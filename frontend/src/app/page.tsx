@@ -4648,7 +4648,7 @@ export default function Home() {
           </nav>
 
           {/* ── Main Content Body ───────────────────────────────── */}
-          <div style={{ flex: 1, overflow: "hidden", position: "relative", display: "flex", flexDirection: "column" }}>
+          <div style={{ flex: 1, overflow: "hidden", position: "relative", display: "flex", flexDirection: "column", paddingBottom: isViewportMobile ? "65px" : "0px" }}>
             
             {/* ── HOME TAB: introductory hero view ────────────────── */}
             {activeTab === "home" && (

@@ -1164,13 +1164,6 @@ label {
     transform: scale(1.1);
   }
 
-  /* Make sure main content doesn't get covered by the bottom nav */
-  .hero-section {
-    padding-bottom: 90px !important;
-  }
-  .content-panel {
-    padding-bottom: 90px !important;
-  }
 
   /* Responsive Grid Adjustments for home page (stacked layout on phone) */
   .home-feature-grid {
