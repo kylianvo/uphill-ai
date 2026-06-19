@@ -9,7 +9,7 @@ Uphill AI is a premium, AI-powered adaptive training platform for trail, mountai
 *   **Adaptive Training Scheduler**: Generates periodized blocks based on race date, distance, elevation gain, and terrain. Supports manual route profile input or **GPX route parsing** to automatically extract elevation splits and calculate grade-adjusted pacing targets.
 *   **Grounded AI Coach**: Chat interface with a running coach assistant. Responses are grounded in elite coaching manuals, sweat/hydration case studies, and user physiological data.
 *   **Knowledge Hub (RAG)**: Ingest reference materials (PDFs, URLs, or YouTube transcripts) into the knowledge base. Features automatic **NotebookLM integration** that synchronizes structured grounding cards in both **English and Vietnamese**.
-*   **Physiology Calculators**: Quy đổi treadmill speed/grade to flat-equivalent efforts, calculate Zone 2 heart rate floors, and predict Split Times for trail checkpoints.
+*   **Physiology Calculators**: Treadmill speed/grade to flat-equivalent efforts, calculate Zone 2 heart rate floors, and predict Split Times for trail checkpoints.
 *   **Athlete Physiology Profile**: Stores threshold heart rates (Aerobic Threshold - AeT, Anaerobic Threshold - AnT) and pace constraints, allowing for precise training zone customization.
 
 ---
@@ -56,10 +56,8 @@ The system's intelligence adheres to established scientific methodologies of eli
 
 ## 📚 References & Resources
 
-*   **Core Manual**: *[Training for the Uphill Athlete](https://www.uphillathlete.com/)* by Steve House, Scott Johnston, and Kílian Jornet.
+*   **Core Manual**: *[Training for the Uphill Athlete](https://www.amazon.com/dp/1938340841/?mr_donotredirect)* by Steve House, Scott Johnston, and Kílian Jornet.
 *   **Aerobic Testing**: *[Heart Rate Drift Test Protocol](https://uphillathlete.com/aerobic-training/heart-rate-drift-test/)*.
-*   **Intensity Guidelines**: *[80/20 Running]* by Matt Fitzgerald.
-*   **Hydration Studies**: *[Precision Hydration Elite Case Studies](https://www.precisionhydration.com/)*.
 
 ---
 
