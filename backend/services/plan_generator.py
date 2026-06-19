@@ -182,13 +182,21 @@ class PlanGenerator:
                 from config import settings
                 notebook_id = settings.NOTEBOOKLM_NOTEBOOK_ID
                 auth_json = settings.NOTEBOOKLM_AUTH_JSON
-                
+
+                # Define `today` early so it can be used by the NotebookLM query builder below
+                start_date_str_early = race_info.get("plan_start_date") or datetime.now().strftime("%Y-%m-%d")
+                try:
+                    today = datetime.strptime(start_date_str_early, "%Y-%m-%d").date()
+                except ValueError:
+                    today = datetime.now().date()
+
                 if notebook_id and auth_json:
                     try:
                         from services.notebooklm_service import NotebookLmService
                         
                         goal_type = race_info.get("goal_type")
                         start_date = race_info.get("plan_start_date") or today.strftime("%Y-%m-%d")
+
                         
                         if goal_type == "start_running":
                             nlm_query = (

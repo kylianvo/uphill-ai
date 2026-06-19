@@ -71,6 +71,11 @@ extraction_status: Dict[str, Any] = {
     "message": None,
 }
 
+# Plan generation job store — keyed by job_id (UUID string)
+# Each entry: {status, user_id, plan_id, workouts, error}
+import uuid as _uuid
+plan_jobs: Dict[str, Dict[str, Any]] = {}
+
 # Data Models
 class ChatMessage(BaseModel):
     role: str # 'user' or 'assistant'
@@ -406,9 +411,11 @@ def auth_mock_login(request: MockLoginRequest):
 @app.post("/api/auth/onboarding")
 async def complete_onboarding(request: OnboardingRequest, user: Dict[str, Any] = Depends(get_current_user)):
     """
-    Save onboarding answers, then auto-generate the user's first training plan.
-    Returns the generated plan so the frontend can navigate directly to it.
+    Save onboarding answers and create the plan row, then kick off Gemini plan
+    generation in the background. Returns immediately with a job_id the frontend
+    can poll via GET /api/coach/plan-status/{job_id}.
     """
+    import asyncio
     from datetime import datetime as dt, date, timedelta
 
     # Compute age from DOB if provided
@@ -500,6 +507,9 @@ async def complete_onboarding(request: OnboardingRequest, user: Dict[str, Any] =
         course_elevation_gain_m=request.course_elevation_gain_m,
     )
 
+    # Mark onboarding complete immediately so the user can enter the app
+    mark_onboarding_complete(user["id"])
+
     fresh_user = get_user_by_id(user["id"]) or user
     model_api_key = fresh_user.get("gemini_api_key") or settings.GEMINI_API_KEY
 
@@ -516,20 +526,35 @@ async def complete_onboarding(request: OnboardingRequest, user: Dict[str, Any] =
         "days_per_week": request.days_per_week,
     }
 
-    workouts = await PlanGenerator.generate_plan_workouts(
-        plan_id, fresh_user, race_info, total_weeks,
-        api_key=model_api_key,
-    )
-    save_workouts(plan_id, workouts)
-    mark_onboarding_complete(user["id"])
+    # Create a job entry and fire plan generation in the background
+    job_id = str(_uuid.uuid4())
+    plan_jobs[job_id] = {"status": "generating", "user_id": user["id"], "plan_id": plan_id, "workouts": None, "error": None}
+
+    async def _run_plan_gen():
+        try:
+            workouts = await PlanGenerator.generate_plan_workouts(
+                plan_id, fresh_user, race_info, total_weeks,
+                api_key=model_api_key,
+            )
+            save_workouts(plan_id, workouts)
+            plan_jobs[job_id]["workouts"] = workouts
+            plan_jobs[job_id]["status"] = "done"
+            print(f"[PlanJob][{job_id}] Onboarding plan generation complete — {len(workouts)} workouts saved.")
+        except Exception as ex:
+            plan_jobs[job_id]["status"] = "error"
+            plan_jobs[job_id]["error"] = str(ex)
+            print(f"[PlanJob][{job_id}] Onboarding plan generation FAILED: {ex}")
+
+    asyncio.create_task(_run_plan_gen())
 
     return {
+        "job_id": job_id,
         "plan": {
             "id": plan_id, "race_name": race_name, "race_date": race_date,
             "goal_type": request.goal_type, "total_weeks": total_weeks,
         },
-        "workouts": workouts,
-        "user": format_user_response(get_user_by_id(user["id"]) or fresh_user),
+        "workouts": [],
+        "user": format_user_response(fresh_user),
     }
 
 def _default_plan_name(goal_type: str) -> str:
@@ -687,6 +712,7 @@ def get_current_active_plan(user: Dict[str, Any] = Depends(get_current_user)):
 @app.post("/api/coach/generate-plan")
 async def generate_training_plan(request: PlanGenerateRequest, user: Dict[str, Any] = Depends(get_current_user)):
     try:
+        import asyncio
         from datetime import datetime, timedelta
         
         goal = request.goal_type
@@ -777,15 +803,32 @@ async def generate_training_plan(request: PlanGenerateRequest, user: Dict[str, A
         
         # Resolve Gemini API Key (per-user key with global settings fallback)
         model_api_key = fresh_user.get("gemini_api_key") or settings.GEMINI_API_KEY
-        
-        workouts = await PlanGenerator.generate_plan_workouts(
-            plan_id, fresh_user, race_info, total_weeks,
-            api_key=model_api_key,
-            cutoff_time_hours=request.cutoff_time_hours
-        )
-        save_workouts(plan_id, workouts)
-        
+        cutoff = request.cutoff_time_hours
+
+        # Create job entry and fire plan generation in the background
+        job_id = str(_uuid.uuid4())
+        plan_jobs[job_id] = {"status": "generating", "user_id": user["id"], "plan_id": plan_id, "workouts": None, "error": None}
+
+        async def _run_gen():
+            try:
+                workouts = await PlanGenerator.generate_plan_workouts(
+                    plan_id, fresh_user, race_info, total_weeks,
+                    api_key=model_api_key,
+                    cutoff_time_hours=cutoff
+                )
+                save_workouts(plan_id, workouts)
+                plan_jobs[job_id]["workouts"] = workouts
+                plan_jobs[job_id]["status"] = "done"
+                print(f"[PlanJob][{job_id}] generate-plan complete — {len(workouts)} workouts saved.")
+            except Exception as ex:
+                plan_jobs[job_id]["status"] = "error"
+                plan_jobs[job_id]["error"] = str(ex)
+                print(f"[PlanJob][{job_id}] generate-plan FAILED: {ex}")
+
+        asyncio.create_task(_run_gen())
+
         return {
+            "job_id": job_id,
             "active": True,
             "plan": {
                 "id": plan_id,
@@ -797,12 +840,38 @@ async def generate_training_plan(request: PlanGenerateRequest, user: Dict[str, A
                 "course_distance_km": request.course_distance_km,
                 "course_elevation_gain_m": request.course_elevation_gain_m
             },
-            "workouts": workouts
+            "workouts": []
         }
     except Exception as e:
         if isinstance(e, HTTPException):
             raise e
         raise HTTPException(status_code=500, detail=f"Failed to generate plan: {str(e)}")
+
+@app.get("/api/coach/plan-status/{job_id}")
+async def get_plan_generation_status(job_id: str, user: Dict[str, Any] = Depends(get_current_user)):
+    """
+    Poll the status of an async plan generation job.
+    Returns {status, plan_id, workouts?, error?}
+    status: 'generating' | 'done' | 'error'
+    """
+    job = plan_jobs.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found.")
+    if job["user_id"] != user["id"]:
+        raise HTTPException(status_code=403, detail="Not authorised to view this job.")
+    
+    response: Dict[str, Any] = {
+        "status": job["status"],
+        "plan_id": job["plan_id"],
+    }
+    if job["status"] == "done":
+        # Return fresh workouts from DB (job store may be large; DB is authoritative)
+        response["workouts"] = get_plan_workouts(job["plan_id"])
+        response["plan"] = get_active_plan(user["id"])
+    if job["status"] == "error":
+        response["error"] = job["error"]
+    return response
+
 
 @app.get("/api/coach/recent-plans")
 def get_user_recent_plans(user: Dict[str, Any] = Depends(get_current_user)):

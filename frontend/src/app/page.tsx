@@ -548,6 +548,12 @@ export default function Home() {
   const [extractStatus, setExtractStatus] = useState<{status: string; current_topic?: string; progress?: number; total?: number; card_count?: number}>({ status: "idle" });
   const knowledgePollerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Async plan generation job tracking
+  const [planJobId, setPlanJobId] = useState<string | null>(null);
+  const [planJobStatus, setPlanJobStatus] = useState<"idle" | "generating" | "done" | "error">("idle");
+  const [planJobMessage, setPlanJobMessage] = useState("");
+  const planJobPollerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   // Active Training Plan state
   const [activePlan, setActivePlan] = useState<ActivePlan | null>(null);
   const [recentPlans, setRecentPlans] = useState<ActivePlan[]>([]);
@@ -1249,6 +1255,43 @@ export default function Home() {
     }
   };
 
+  const startPlanJobPoller = (jobId: string, token: string) => {
+    if (planJobPollerRef.current) clearInterval(planJobPollerRef.current);
+    setPlanJobId(jobId);
+    setPlanJobStatus("generating");
+    setPlanJobMessage("");
+
+    const poll = async () => {
+      try {
+        const res = await fetch(`http://localhost:8000/api/coach/plan-status/${jobId}`, {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.status === "done") {
+          clearInterval(planJobPollerRef.current!);
+          planJobPollerRef.current = null;
+          setPlanJobStatus("done");
+          if (data.workouts) setWorkouts(data.workouts);
+          if (data.plan) setActivePlan(data.plan);
+          fetchRecentPlansWithToken(token);
+          // Auto-dismiss banner after 10 seconds
+          setTimeout(() => setPlanJobStatus("idle"), 10000);
+        } else if (data.status === "error") {
+          clearInterval(planJobPollerRef.current!);
+          planJobPollerRef.current = null;
+          setPlanJobStatus("error");
+          setPlanJobMessage(data.error || "Plan generation failed.");
+          setTimeout(() => setPlanJobStatus("idle"), 10000);
+        }
+      } catch (_) {}
+    };
+
+    planJobPollerRef.current = setInterval(poll, 4000);
+    // Poll immediately too
+    poll();
+  };
+
   const handleCompleteOnboarding = async () => {
     const token = localStorage.getItem("uphill_session_token");
     if (!token || !user) return;
@@ -1310,19 +1353,23 @@ export default function Home() {
       });
       if (!response.ok) throw new Error("Failed to complete onboarding.");
       const data = await response.json();
+      // Update user immediately so the app is accessible
       if (data.user) setUser(data.user);
-      if (data.plan) {
-        setActivePlan(data.plan);
-        setWorkouts(data.workouts || []);
-      }
+      if (data.plan) setActivePlan(data.plan);
+      // Close onboarding and let user into the app right away
       setOnboardingOpen(false);
-      setActiveTab("planner");
+      setActiveTab("home");
+      // Start polling for plan generation in the background
+      if (data.job_id) {
+        startPlanJobPoller(data.job_id, token);
+      }
     } catch (err: any) {
       setAuthErrorMsg(err.message || "Onboarding failed.");
     } finally {
       setOnboardingGenerating(false);
     }
   };
+
 
   const handleLogout = async () => {
     const token = localStorage.getItem("uphill_session_token");
@@ -1696,16 +1743,24 @@ export default function Home() {
       }
 
       const result = await response.json();
-      setActivePlan(result.plan);
-      setWorkouts(result.workouts);
+      // Set plan immediately from the fast response
+      if (result.plan) setActivePlan(result.plan);
       setSelectedWeek(1);
-      if (token) fetchRecentPlansWithToken(token);
+      // Start background polling for workouts
+      if (result.job_id) {
+        startPlanJobPoller(result.job_id, token);
+      } else {
+        // Fallback: if somehow we got workouts synchronously
+        if (result.workouts) setWorkouts(result.workouts);
+        if (token) fetchRecentPlansWithToken(token);
+      }
     } catch (err: any) {
       setPlanErrorMsg(err.message);
     } finally {
       setPlanLoading(false);
     }
   };
+
 
   const getPlanDistance = (p: ActivePlan) => {
     if (p.course_distance_km !== undefined && p.course_distance_km !== null) return p.course_distance_km;
@@ -4340,6 +4395,92 @@ export default function Home() {
             opacity: 0, transition: "none", willChange: "opacity", zIndex: 1, pointerEvents: "none" }}
         />
       </div>
+
+      {/* ── Plan Generation Notification Banner ── */}
+      {planJobStatus !== "idle" && (
+        <div style={{
+          position: "fixed",
+          top: "16px",
+          left: "50%",
+          transform: "translateX(-50%)",
+          zIndex: 9999,
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+          padding: "12px 20px",
+          borderRadius: "16px",
+          background: planJobStatus === "done"
+            ? "rgba(34, 197, 94, 0.18)"
+            : planJobStatus === "error"
+              ? "rgba(239, 68, 68, 0.18)"
+              : "rgba(99, 102, 241, 0.18)",
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
+          border: `1px solid ${planJobStatus === "done" ? "rgba(34,197,94,0.4)" : planJobStatus === "error" ? "rgba(239,68,68,0.4)" : "rgba(99,102,241,0.4)"}`,
+          boxShadow: "0 8px 32px rgba(0,0,0,0.3)",
+          color: "#fff",
+          fontSize: "14px",
+          fontWeight: 600,
+          whiteSpace: "nowrap",
+          maxWidth: "90vw",
+        }}>
+          {planJobStatus === "generating" && (
+            <>
+              <span style={{
+                display: "inline-block",
+                width: "16px",
+                height: "16px",
+                border: "2px solid rgba(255,255,255,0.4)",
+                borderTopColor: "#a78bfa",
+                borderRadius: "50%",
+                animation: "spin 0.8s linear infinite",
+                flexShrink: 0,
+              }} />
+              <span>⚡ Generating your training plan…</span>
+              <span style={{ fontSize: "12px", opacity: 0.7, fontWeight: 400 }}>This may take a few minutes</span>
+            </>
+          )}
+          {planJobStatus === "done" && (
+            <>
+              <span style={{ fontSize: "20px" }}>✅</span>
+              <span>Your training plan is ready!</span>
+              <button
+                onClick={() => { setActiveTab("planner"); setPlanJobStatus("idle"); }}
+                style={{
+                  marginLeft: "8px",
+                  padding: "4px 12px",
+                  borderRadius: "8px",
+                  background: "rgba(34,197,94,0.3)",
+                  border: "1px solid rgba(34,197,94,0.5)",
+                  color: "#fff",
+                  fontSize: "12px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                View Planner →
+              </button>
+              <button
+                onClick={() => setPlanJobStatus("idle")}
+                style={{ marginLeft: "4px", background: "transparent", border: "none", color: "rgba(255,255,255,0.6)", cursor: "pointer", fontSize: "16px", lineHeight: 1 }}
+                aria-label="Dismiss"
+              >×</button>
+            </>
+          )}
+          {planJobStatus === "error" && (
+            <>
+              <span style={{ fontSize: "20px" }}>⚠️</span>
+              <span>Plan generation failed.</span>
+              {planJobMessage && <span style={{ fontSize: "12px", opacity: 0.7, fontWeight: 400, maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis" }}>{planJobMessage}</span>}
+              <button
+                onClick={() => setPlanJobStatus("idle")}
+                style={{ marginLeft: "8px", background: "transparent", border: "none", color: "rgba(255,255,255,0.6)", cursor: "pointer", fontSize: "16px", lineHeight: 1 }}
+                aria-label="Dismiss"
+              >×</button>
+            </>
+          )}
+        </div>
+      )}
 
       {viewMode === "desktop" ? (
         <div className="desktop-only-wrapper" style={{ display: "flex", width: "100%", height: "100%", overflow: "hidden", position: "relative" }}>
