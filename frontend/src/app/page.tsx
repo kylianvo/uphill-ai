@@ -4398,7 +4398,7 @@ export default function Home() {
   };
 
   return (
-    <div style={{ position: "fixed", inset: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+    <div style={{ position: "fixed", top: 0, left: 0, right: 0, height: "100dvh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
       {/* ── Video Background: Two stacked videos for seamless crossfade ── */}
       <div className="video-bg-container">
