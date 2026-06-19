@@ -271,6 +271,7 @@ export default function Home() {
   const isDesktopMode = viewMode === "desktop";
   const isMobileMode = viewMode === "mobile";
   const isShowcaseMode = viewMode === "showcase";
+  const isViewportMobile = viewportWidth <= 900;
 
   // Video background refs — dual-video crossfade engine
   const videoARef = useRef<HTMLVideoElement>(null);
@@ -2041,11 +2042,7 @@ export default function Home() {
         </div>
 
         {/* Feature Grid */}
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', 
-          gap: '16px' 
-        }}>
+        <div className="home-feature-grid">
           {/* Card 1: Grounded AI Coach */}
           <div className="card" style={{ padding: '20px', cursor: 'pointer' }} onClick={() => setActiveTab('chat')}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
@@ -2125,7 +2122,7 @@ export default function Home() {
           )}
 
           {dailyCards.length > 0 && (
-            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr", gap: "14px" }}>
+            <div className="home-daily-grid">
               {dailyCards.map((card, i) => <KnowledgeCard key={i} card={card} />)}
             </div>
           )}
@@ -4650,29 +4647,8 @@ export default function Home() {
             </div>
           </nav>
 
-          {/* Mobile Top Navigation Tabs (visible only on mobile viewports via CSS) */}
-          <div className="mobile-top-nav-tabs">
-            {(["home", "chat", "planner", "knowledge", "calculators", "philosophy"] as const).map((tab) => {
-              const label = tab === "home" ? `🏠 ${t("tab_home")}` :
-                            tab === "chat" ? `🤖 ${t("tab_chat")}` :
-                            tab === "planner" ? `📅 ${t("tab_scheduler")}` :
-                            tab === "knowledge" ? `📚 ${t("tab_knowledge")}` :
-                            tab === "philosophy" ? `🏔️ ${t("tab_philosophy")}` :
-                            `🧮 ${t("tab_calculators")}`;
-              return (
-                <button
-                  key={tab}
-                  className={`mobile-nav-tab ${activeTab === tab ? "active" : ""}`}
-                  onClick={() => setActiveTab(tab)}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-
           {/* ── Main Content Body ───────────────────────────────── */}
-          <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
+          <div style={{ flex: 1, overflow: "hidden", position: "relative", display: "flex", flexDirection: "column" }}>
             
             {/* ── HOME TAB: introductory hero view ────────────────── */}
             {activeTab === "home" && (
@@ -4741,17 +4717,44 @@ export default function Home() {
                   </div>
                 </div>
                 {/* Render home active tab cards underneath the search box */}
-                {renderActiveTab(false)}
+                {renderActiveTab(isViewportMobile)}
               </section>
             )}
 
             {activeTab !== "home" && (
               <div className="content-panel" style={activeTab === "chat" ? { overflowY: "hidden", height: "100%", flex: 1, padding: "20px" } : { height: "100%" }}>
                 <div className="content-panel-inner" style={{ width: "100%", height: activeTab === "chat" ? "100%" : "auto", display: "flex", flexDirection: "column", maxWidth: activeTab === "chat" ? "680px" : undefined }}>
-                  {renderActiveTab(false)}
+                  {renderActiveTab(isViewportMobile)}
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Mobile Bottom Navigation Tabs (visible only on mobile viewports via CSS) */}
+          <div className="mobile-bottom-nav-tabs">
+            {(["home", "chat", "planner", "knowledge", "calculators", "philosophy"] as const).map((tab) => {
+              const active = activeTab === tab;
+              const tabLabel = tab === "home" ? t("tab_home") :
+                               tab === "chat" ? t("tab_chat") :
+                               tab === "planner" ? t("tab_scheduler") :
+                               tab === "knowledge" ? t("tab_knowledge") :
+                               tab === "calculators" ? t("tab_calculators") :
+                               t("tab_philosophy");
+              return (
+                <button
+                  key={tab}
+                  className={`mobile-bottom-nav-tab ${active ? "active" : ""}`}
+                  onClick={() => setActiveTab(tab)}
+                >
+                  <span className="mobile-bottom-nav-tab-icon">
+                    {getTabIcon(tab, active, 20)}
+                  </span>
+                  <span className="mobile-bottom-nav-tab-label">
+                    {tabLabel}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
