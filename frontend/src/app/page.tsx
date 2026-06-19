@@ -4671,12 +4671,12 @@ export default function Home() {
           </main>
         </div>
       ) : viewMode === "mobile" ? (
-        <div className="mobile-only-wrapper" style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100%", width: "100%", position: "relative" }}>
+        <div className="mobile-only-wrapper" style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%", width: "100%", position: "relative", overflow: "hidden" }}>
           {/* Glow Effects */}
           <div className="glow-bg" style={{ opacity: 0.45 }}></div>
           <div className="glow-bg-left" style={{ opacity: 0.35 }}></div>
 
-          <div style={{ width: "100%", maxWidth: "480px", height: "100%", background: "var(--bg-main)", display: "flex", flexDirection: "column", borderLeft: "1px solid var(--border-color)", borderRight: "1px solid var(--border-color)", position: "relative", boxShadow: "0 0 40px rgba(0,0,0,0.05)" }}>
+          <div style={{ width: "100%", maxWidth: "480px", height: "100%", background: "var(--bg-main)", display: "flex", flexDirection: "column", borderLeft: "1px solid var(--border-color)", borderRight: "1px solid var(--border-color)", position: "relative", boxShadow: "0 0 40px rgba(0,0,0,0.05)", overflow: "hidden" }}>
             {/* Phone Top Header */}
             <header className="phone-header-bar" style={{ padding: "12px 16px" }}>
               <a href="#" className="phone-logo" style={{ fontSize: "16px" }}>
