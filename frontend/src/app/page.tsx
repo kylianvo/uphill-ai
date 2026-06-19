@@ -2272,17 +2272,19 @@ export default function Home() {
       <div style={{ width: '100%', display: 'flex', flexDirection: 'column', flex: 1, height: "100%" }}>
         {/* Chat Pane */}
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, width: '100%', height: "100%" }}>
-          <h3 style={{ marginBottom: "12px", fontSize: isMobile ? "16px" : "20px" }}>
-            {lang === "en" ? "Chat Workspace" : "Không gian Trò chuyện"}
-          </h3>
+          {!isMobile && (
+            <h3 style={{ marginBottom: "12px", fontSize: "20px" }}>
+              {lang === "en" ? "Chat Workspace" : "Không gian Trò chuyện"}
+            </h3>
+          )}
           <div className="chat-pane" style={{ flex: 1, display: "flex", flexDirection: "column", width: '100%', minHeight: isMobile ? "0px" : "350px", height: "0px" }}>
-            <div className="chat-header" style={{ padding: isMobile ? "10px 14px" : "16px 20px" }}>
+            <div className="chat-header" style={{ padding: isMobile ? "8px 12px" : "16px 20px" }}>
               <span className="coach-status-dot"></span>
-              <span className="chat-header-title" style={{ fontSize: isMobile ? "13.5px" : "16px" }}>
+              <span className="chat-header-title" style={{ fontSize: isMobile ? "13px" : "16px" }}>
                 {lang === "en" ? "Coach Uphill (AI)" : "Huấn luyện viên Uphill (AI)"}
               </span>
             </div>
-            <div className="chat-history" style={{ padding: isMobile ? "12px" : "20px", gap: isMobile ? "10px" : "16px" }}>
+            <div className="chat-history" style={{ padding: isMobile ? "8px" : "20px", gap: isMobile ? "8px" : "16px" }}>
               {chatMessages.map((msg, idx) => (
                 <div
                   key={idx}
@@ -2308,28 +2310,28 @@ export default function Home() {
               <div ref={chatBottomRef}></div>
             </div>
             
-            <div className="preset-prompt-list" style={{ padding: isMobile ? "0 10px" : "0 20px", gap: "6px", marginBottom: "8px" }}>
-              <button className="preset-prompt-btn" style={{ fontSize: isMobile ? "10.5px" : "12px", padding: "4px 10px" }} onClick={() => sendPresetPrompt(lang === "en" ? "Can you give me an ME workout for trails?" : "Bạn có thể cho tôi một bài tập ME chạy địa hình không?")}>
+            <div className="preset-prompt-list" style={{ padding: isMobile ? "0 8px" : "0 20px", gap: "4px", marginBottom: isMobile ? "4px" : "8px" }}>
+              <button className="preset-prompt-btn" style={{ fontSize: isMobile ? "10px" : "12px", padding: isMobile ? "3px 8px" : "4px 10px" }} onClick={() => sendPresetPrompt(lang === "en" ? "Can you give me an ME workout for trails?" : "Bạn có thể cho tôi một bài tập ME chạy địa hình không?")}>
                 {lang === "en" ? "⛰️ ME Workout" : "⛰️ Bài tập ME"}
               </button>
-              <button className="preset-prompt-btn" style={{ fontSize: isMobile ? "10.5px" : "12px", padding: "4px 10px" }} onClick={() => sendPresetPrompt(lang === "en" ? "How does the 80/20 rule work?" : "Quy tắc 80/20 hoạt động như thế nào?")}>
+              <button className="preset-prompt-btn" style={{ fontSize: isMobile ? "10px" : "12px", padding: isMobile ? "3px 8px" : "4px 10px" }} onClick={() => sendPresetPrompt(lang === "en" ? "How does the 80/20 rule work?" : "Quy tắc 80/20 hoạt động như thế nào?")}>
                 {lang === "en" ? "🏃‍♂️ 80/20 Rule" : "🏃‍♂️ Quy tắc 80/20"}
               </button>
             </div>
 
-            <div className="chat-input-bar" style={{ padding: isMobile ? "10px" : "16px" }}>
+            <div className="chat-input-bar" style={{ padding: isMobile ? "8px" : "16px" }}>
               <input
                 type="text"
                 className="chat-input"
-                style={{ padding: isMobile ? "8px 14px" : "12px 16px", fontSize: isMobile ? "13px" : "14px" }}
+                style={{ padding: isMobile ? "6px 12px" : "12px 16px", fontSize: isMobile ? "13px" : "14px" }}
                 placeholder={t("chat_input_placeholder")}
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
                 disabled={chatLoading}
               />
-              <button className="chat-send-btn" style={{ width: isMobile ? "38px" : "44px", height: isMobile ? "38px" : "44px" }} onClick={() => handleSendMessage()} disabled={chatLoading}>
-                <svg width={isMobile ? "14" : "18"} height={isMobile ? "14" : "18"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <button className="chat-send-btn" style={{ width: isMobile ? "32px" : "44px", height: isMobile ? "32px" : "44px" }} onClick={() => handleSendMessage()} disabled={chatLoading}>
+                <svg width={isMobile ? "12" : "18"} height={isMobile ? "12" : "18"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <line x1="22" y1="2" x2="11" y2="13" />
                   <polygon points="22 2 15 22 11 13 2 9 22 2" />
                 </svg>
