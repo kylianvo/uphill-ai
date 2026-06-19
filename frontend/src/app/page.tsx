@@ -4638,8 +4638,8 @@ export default function Home() {
               {activeTab === "home" ? (
                 renderActiveTab(false)
               ) : (
-                <div className="content-panel" style={activeTab === "chat" ? { overflowY: "hidden", height: "100%", flex: 1, minHeight: 0, padding: "20px" } : { height: "100%" }}>
-                  <div className="content-panel-inner" style={{ width: "100%", height: activeTab === "chat" ? "100%" : "auto", minHeight: 0, display: "flex", flexDirection: "column", maxWidth: activeTab === "chat" ? "680px" : undefined }}>
+                <div className="content-panel" style={activeTab === "chat" ? { overflowY: "hidden", flex: 1, minHeight: 0, padding: "20px" } : { height: "100%" }}>
+                  <div className="content-panel-inner" style={{ width: "100%", height: activeTab === "chat" ? undefined : "auto", flex: activeTab === "chat" ? 1 : undefined, minHeight: 0, display: "flex", flexDirection: "column", maxWidth: activeTab === "chat" ? "680px" : undefined }}>
                     {/* Panel header breadcrumb */}
                     <div className="panel-header">
                       <span className="panel-header-icon">
@@ -4905,7 +4905,7 @@ export default function Home() {
               <div 
                 className="content-panel" 
                 style={activeTab === "chat" 
-                  ? { overflowY: "hidden", height: "100%", flex: 1, minHeight: 0, padding: isViewportMobile ? "0px" : "20px" } 
+                  ? { overflowY: "hidden", flex: 1, minHeight: 0, padding: isViewportMobile ? "0px" : "20px" } 
                   : { height: "100%" }
                 }
               >
@@ -4913,7 +4913,8 @@ export default function Home() {
                   className="content-panel-inner" 
                   style={{ 
                     width: "100%", 
-                    height: activeTab === "chat" ? "100%" : "auto", 
+                    height: activeTab === "chat" ? undefined : "auto", 
+                    flex: activeTab === "chat" ? 1 : undefined,
                     minHeight: 0,
                     display: "flex", 
                     flexDirection: "column", 
