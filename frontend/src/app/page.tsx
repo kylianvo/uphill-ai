@@ -2220,7 +2220,7 @@ export default function Home() {
           <h3 style={{ marginBottom: "12px", fontSize: isMobile ? "16px" : "20px" }}>
             {lang === "en" ? "Chat Workspace" : "Không gian Trò chuyện"}
           </h3>
-          <div className="chat-pane" style={{ flex: 1, display: "flex", flexDirection: "column", width: '100%', minHeight: "350px" }}>
+          <div className="chat-pane" style={{ flex: 1, display: "flex", flexDirection: "column", width: '100%', minHeight: isMobile ? "0px" : "350px", height: "auto" }}>
             <div className="chat-header" style={{ padding: isMobile ? "10px 14px" : "16px 20px" }}>
               <span className="coach-status-dot"></span>
               <span className="chat-header-title" style={{ fontSize: isMobile ? "13.5px" : "16px" }}>
@@ -4551,7 +4551,18 @@ export default function Home() {
             </header>
 
             {/* Mobile Scrollable content */}
-            <div className="phone-scrollable-content" style={{ flex: 1, overflowY: "auto", padding: "16px", paddingBottom: "76px" }}>
+            <div 
+              className="phone-scrollable-content" 
+              style={{ 
+                flex: 1, 
+                overflowY: activeTab === "chat" ? "hidden" : "auto", 
+                padding: activeTab === "chat" ? "0px" : "16px", 
+                paddingBottom: activeTab === "chat" ? "56px" : "76px",
+                display: "flex",
+                flexDirection: "column",
+                height: activeTab === "chat" ? "100%" : "auto"
+              }}
+            >
               {renderActiveTab(true)}
             </div>
 
@@ -4722,8 +4733,24 @@ export default function Home() {
             )}
 
             {activeTab !== "home" && (
-              <div className="content-panel" style={activeTab === "chat" ? { overflowY: "hidden", height: "100%", flex: 1, padding: "20px" } : { height: "100%" }}>
-                <div className="content-panel-inner" style={{ width: "100%", height: activeTab === "chat" ? "100%" : "auto", display: "flex", flexDirection: "column", maxWidth: activeTab === "chat" ? "680px" : undefined }}>
+              <div 
+                className="content-panel" 
+                style={activeTab === "chat" 
+                  ? { overflowY: "hidden", height: "100%", flex: 1, padding: isViewportMobile ? "0px" : "20px" } 
+                  : { height: "100%" }
+                }
+              >
+                <div 
+                  className="content-panel-inner" 
+                  style={{ 
+                    width: "100%", 
+                    height: activeTab === "chat" ? "100%" : "auto", 
+                    display: "flex", 
+                    flexDirection: "column", 
+                    maxWidth: activeTab === "chat" ? "680px" : undefined,
+                    padding: activeTab === "chat" && isViewportMobile ? "0px" : undefined
+                  }}
+                >
                   {renderActiveTab(isViewportMobile)}
                 </div>
               </div>
