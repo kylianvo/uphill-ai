@@ -53,18 +53,16 @@ services:
   tunnel:
     image: cloudflare/cloudflared:latest
     restart: unless-stopped
-    environment:
-      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN:-}
-    entrypoint: >
-      sh -c '
-      if [ -n "$$TUNNEL_TOKEN" ]; then
-        echo "Starting persistent tunnel using token..."
-        exec cloudflared tunnel --no-autoupdate run
-      else
-        echo "Starting temporary quick tunnel..."
-        exec cloudflared tunnel --no-autoupdate --url http://backend:8000
-      fi
-      '
+    # By default, runs a temporary quick tunnel (no account needed).
+    # The public URL will be printed in the container logs: 'docker compose logs tunnel'
+    command: tunnel --no-autoupdate --url http://backend:8000
+    # To use a persistent named tunnel instead:
+    # 1. Create a tunnel in Cloudflare Zero Trust and get its token.
+    # 2. Add CLOUDFLARE_TUNNEL_TOKEN=your-token to backend/.env
+    # 3. Comment out the 'command' line above, and uncomment the lines below:
+    # environment:
+    #   - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN:-}
+    # command: tunnel --no-autoupdate run
     depends_on:
       - backend
 
