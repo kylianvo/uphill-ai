@@ -423,11 +423,11 @@ export default function Home() {
     const loadCards = async (topic?: string) => {
       try {
         const url = topic && topic !== "All"
-          ? `http://localhost:8000/api/knowledge/cards?topic=${encodeURIComponent(topic)}`
-          : `http://localhost:8000/api/knowledge/cards`;
+          ? `http://localhost:8000/api/knowledge/cards?topic=${encodeURIComponent(topic)}&lang=${lang}`
+          : `http://localhost:8000/api/knowledge/cards?lang=${lang}`;
         const [cardsRes, dailyRes, topicsRes] = await Promise.all([
           fetch(url, { headers }),
-          fetch(`http://localhost:8000/api/knowledge/cards/random?n=3`, { headers }),
+          fetch(`http://localhost:8000/api/knowledge/cards/random?n=3&lang=${lang}`, { headers }),
           fetch(`http://localhost:8000/api/knowledge/topics`, { headers }),
         ]);
         if (cardsRes.ok) { const d = await cardsRes.json(); setKnowledgeCards(d.cards || []); }
@@ -482,13 +482,13 @@ export default function Home() {
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]);
+  }, [activeTab, lang]);
 
   const shuffleDailyCards = async () => {
     const token = localStorage.getItem("uphill_session_token");
     if (!token) return;
     try {
-      const res = await fetch(`http://localhost:8000/api/knowledge/cards/random?n=3`, {
+      const res = await fetch(`http://localhost:8000/api/knowledge/cards/random?n=3&lang=${lang}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       if (res.ok) { const d = await res.json(); setDailyCards(d.cards || []); }
@@ -501,8 +501,8 @@ export default function Home() {
     if (!token) return;
     try {
       const url = topic !== "All"
-        ? `http://localhost:8000/api/knowledge/cards?topic=${encodeURIComponent(topic)}`
-        : `http://localhost:8000/api/knowledge/cards`;
+        ? `http://localhost:8000/api/knowledge/cards?topic=${encodeURIComponent(topic)}&lang=${lang}`
+        : `http://localhost:8000/api/knowledge/cards?lang=${lang}`;
       const res = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
       if (res.ok) { const d = await res.json(); setKnowledgeCards(d.cards || []); }
     } catch (e) {}

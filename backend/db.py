@@ -162,9 +162,17 @@ def init_db():
             tags            TEXT NOT NULL,
             topic           TEXT NOT NULL,
             source_label    TEXT DEFAULT 'Uphill Athlete Podcasts',
+            lang            TEXT DEFAULT 'en',
             created_at      TIMESTAMPTZ DEFAULT NOW()
         )
         """))
+
+        try:
+            conn.execute(text("ALTER TABLE knowledge_cards ADD COLUMN lang TEXT DEFAULT 'en'"))
+            conn.commit()
+            print("Added 'lang' column to knowledge_cards.")
+        except Exception:
+            pass
 
         conn.commit()
 
@@ -224,20 +232,35 @@ def seed_data():
 
         conn.commit()
 
-    # Seed knowledge cards if table is empty
+    # Seed knowledge cards if table is empty for the respective language
     import os
-    backup_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "knowledge_cards_backup.json")
-    if os.path.exists(backup_path):
+    # Seed EN cards
+    backup_path_en = os.path.join(os.path.dirname(os.path.abspath(__file__)), "knowledge_cards_backup.json")
+    if os.path.exists(backup_path_en):
         with engine.connect() as conn:
-            card_count = conn.execute(text("SELECT COUNT(*) FROM knowledge_cards")).scalar()
-        if card_count == 0:
+            en_count = conn.execute(text("SELECT COUNT(*) FROM knowledge_cards WHERE lang = 'en'")).scalar()
+        if en_count == 0:
             try:
-                with open(backup_path, "r", encoding="utf-8") as f:
+                with open(backup_path_en, "r", encoding="utf-8") as f:
                     cards = json.load(f)
-                saved = save_knowledge_cards(cards)
-                print(f"Seeded {saved} knowledge cards from default backup file.")
+                saved = save_knowledge_cards(cards, lang="en")
+                print(f"Seeded {saved} English knowledge cards from default backup file.")
             except Exception as e:
-                print(f"Error seeding knowledge cards: {e}")
+                print(f"Error seeding English knowledge cards: {e}")
+
+    # Seed VI cards
+    backup_path_vi = os.path.join(os.path.dirname(os.path.abspath(__file__)), "knowledge_cards_backup_vi.json")
+    if os.path.exists(backup_path_vi):
+        with engine.connect() as conn:
+            vi_count = conn.execute(text("SELECT COUNT(*) FROM knowledge_cards WHERE lang = 'vi'")).scalar()
+        if vi_count == 0:
+            try:
+                with open(backup_path_vi, "r", encoding="utf-8") as f:
+                    cards = json.load(f)
+                saved = save_knowledge_cards(cards, lang="vi")
+                print(f"Seeded {saved} Vietnamese knowledge cards from default backup file.")
+            except Exception as e:
+                print(f"Error seeding Vietnamese knowledge cards: {e}")
 
 
 # ─── Helper ──────────────────────────────────────────────────────────────────
@@ -638,14 +661,14 @@ def delete_session(session_token: str) -> bool:
 
 # ─── Knowledge Cards ─────────────────────────────────────────────────────────
 
-def save_knowledge_cards(cards: List[Dict[str, Any]]) -> int:
+def save_knowledge_cards(cards: List[Dict[str, Any]], lang: str = "en") -> int:
     count = 0
     with engine.connect() as conn:
         for card in cards:
             try:
                 conn.execute(text("""
-                    INSERT INTO knowledge_cards (chapter_title, summary, key_points, tags, topic, source_label)
-                    VALUES (:ct, :sm, :kp, :tg, :tp, :sl)
+                    INSERT INTO knowledge_cards (chapter_title, summary, key_points, tags, topic, source_label, lang)
+                    VALUES (:ct, :sm, :kp, :tg, :tp, :sl, :lang)
                 """), {
                     "ct": card.get("chapter_title", ""),
                     "sm": card.get("summary", ""),
@@ -653,6 +676,7 @@ def save_knowledge_cards(cards: List[Dict[str, Any]]) -> int:
                     "tg": json.dumps(card.get("tags", []), ensure_ascii=False),
                     "tp": card.get("topic", "Training"),
                     "sl": card.get("source_label", "Uphill Athlete Podcasts"),
+                    "lang": lang,
                 })
                 count += 1
             except Exception as e:
@@ -661,16 +685,16 @@ def save_knowledge_cards(cards: List[Dict[str, Any]]) -> int:
     return count
 
 
-def get_all_knowledge_cards(topic: Optional[str] = None) -> List[Dict[str, Any]]:
+def get_all_knowledge_cards(topic: Optional[str] = None, lang: str = "en") -> List[Dict[str, Any]]:
     with engine.connect() as conn:
         if topic and topic.lower() != "all":
             rows = conn.execute(text(
-                "SELECT * FROM knowledge_cards WHERE topic = :t ORDER BY topic, chapter_title"
-            ), {"t": topic}).fetchall()
+                "SELECT * FROM knowledge_cards WHERE topic = :t AND lang = :lang ORDER BY topic, chapter_title"
+            ), {"t": topic, "lang": lang}).fetchall()
         else:
             rows = conn.execute(text(
-                "SELECT * FROM knowledge_cards ORDER BY topic, chapter_title"
-            )).fetchall()
+                "SELECT * FROM knowledge_cards WHERE lang = :lang ORDER BY topic, chapter_title"
+            ), {"lang": lang}).fetchall()
     result = []
     for row in rows:
         d = _row_to_dict(row)
@@ -682,11 +706,11 @@ def get_all_knowledge_cards(topic: Optional[str] = None) -> List[Dict[str, Any]]
     return result
 
 
-def get_random_knowledge_cards(n: int = 3) -> List[Dict[str, Any]]:
+def get_random_knowledge_cards(n: int = 3, lang: str = "en") -> List[Dict[str, Any]]:
     with engine.connect() as conn:
         rows = conn.execute(text(
-            "SELECT * FROM knowledge_cards ORDER BY RANDOM() LIMIT :n"
-        ), {"n": n}).fetchall()
+            "SELECT * FROM knowledge_cards WHERE lang = :lang ORDER BY RANDOM() LIMIT :n"
+        ), {"n": n, "lang": lang}).fetchall()
     result = []
     for row in rows:
         d = _row_to_dict(row)

@@ -1023,15 +1023,15 @@ if __name__ == "__main__":
 # ─── Knowledge Hub Endpoints ─────────────────────────────────────────────────
 
 @app.get("/api/knowledge/cards")
-def get_knowledge_cards(topic: Optional[str] = None, user: Dict[str, Any] = Depends(get_current_user)):
+def get_knowledge_cards(topic: Optional[str] = None, lang: str = "en", user: Dict[str, Any] = Depends(get_current_user)):
     """Return all knowledge cards, optionally filtered by topic."""
-    cards = get_all_knowledge_cards(topic=topic)
+    cards = get_all_knowledge_cards(topic=topic, lang=lang)
     return {"cards": cards, "total": len(cards)}
 
 @app.get("/api/knowledge/cards/random")
-def get_random_cards(n: int = 3, user: Dict[str, Any] = Depends(get_current_user)):
+def get_random_cards(n: int = 3, lang: str = "en", user: Dict[str, Any] = Depends(get_current_user)):
     """Return n random knowledge cards for the Daily Knowledge widget."""
-    cards = get_random_knowledge_cards(n=n)
+    cards = get_random_knowledge_cards(n=n, lang=lang)
     return {"cards": cards}
 
 @app.get("/api/knowledge/topics")

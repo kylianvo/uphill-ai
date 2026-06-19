@@ -199,9 +199,17 @@ async def extract_knowledge_cards(
                 card["topic"] = topic_def["topic"]
                 card["source_label"] = "Uphill Athlete Podcasts"
 
-            saved = save_knowledge_cards(cards)
-            total_saved += saved
-            print(f"[KnowledgeExtractor] Saved {saved} cards for {topic_name} (total so far: {total_saved})")
+            saved_en = save_knowledge_cards(cards, lang="en")
+            total_saved += saved_en
+            print(f"[KnowledgeExtractor] Saved {saved_en} EN cards for {topic_name} (total EN so far: {total_saved})")
+
+            # Translate to Vietnamese and save
+            try:
+                translated_cards = await translate_cards_to_vi_with_gemini(model, cards)
+                saved_vi = save_knowledge_cards(translated_cards, lang="vi")
+                print(f"[KnowledgeExtractor] Translated and saved {saved_vi} VI cards for {topic_name}")
+            except Exception as tr_err:
+                print(f"[KnowledgeExtractor] Failed to translate and save VI cards: {tr_err}")
 
             # Small delay between NLM queries to avoid rate limits
             await asyncio.sleep(1.5)
@@ -222,5 +230,54 @@ async def extract_knowledge_cards(
         "progress": total_topics,
         "total": total_topics,
     })
-    print(f"[KnowledgeExtractor] Extraction complete. Total cards: {total_saved}")
+    print(f"[KnowledgeExtractor] Extraction complete. Total EN cards: {total_saved}")
     return total_saved
+
+
+async def translate_cards_to_vi_with_gemini(model, cards: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    translated = []
+    for card in cards:
+        prompt = f"""
+You are an expert sports translator. Translate the following running coaching knowledge card into Vietnamese.
+
+Rules:
+1. Core physiological/running terms ("Zone 2", "AeT", "AnT", "Pace", "Resting HR", "Max HR") MUST remain in English.
+2. The output MUST be a valid JSON object with the exact same structure and keys: "chapter_title", "summary", "key_points", "tags", "topic", "source_label".
+3. Keep the "topic" and "source_label" fields exactly as they are in English.
+4. Keep the "tags" list elements in English.
+5. Start "key_points" bullet points with an active verb in Vietnamese.
+6. The translations must sound natural, professional, and elite-coaching oriented.
+
+Card to translate:
+{json.dumps(card, indent=2, ensure_ascii=False)}
+
+Return ONLY the JSON object. Do not include markdown code block (no ```json).
+"""
+        try:
+            # Wrap the blocking generate_content call in an async thread to prevent blocking the async loop
+            response = await asyncio.to_thread(model.generate_content, prompt)
+            text = response.text.strip()
+            if text.startswith("```"):
+                lines = text.split("\n")
+                if lines[0].startswith("```json"):
+                    text = "\n".join(lines[1:-1])
+                else:
+                    text = "\n".join(lines[1:-1])
+            translated_card = json.loads(text.strip())
+            # Maintain structural integrity
+            translated_card["topic"] = card["topic"]
+            translated_card["source_label"] = card["source_label"]
+            translated_card["tags"] = card["tags"]
+            translated.append(translated_card)
+        except Exception as e:
+            print(f"[KnowledgeExtractor] Error translating card: {e}")
+            # Fallback to copy the card as-is so we don't drop it
+            translated.append({
+                "chapter_title": f"[VI] {card['chapter_title']}",
+                "summary": card["summary"],
+                "key_points": card["key_points"],
+                "tags": card["tags"],
+                "topic": card["topic"],
+                "source_label": card["source_label"]
+            })
+    return translated
