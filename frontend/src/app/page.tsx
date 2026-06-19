@@ -4580,6 +4580,27 @@ export default function Home() {
             </div>
           </nav>
 
+          {/* Mobile Top Navigation Tabs (visible only on mobile viewports via CSS) */}
+          <div className="mobile-top-nav-tabs">
+            {(["home", "chat", "planner", "knowledge", "calculators", "philosophy"] as const).map((tab) => {
+              const label = tab === "home" ? `🏠 ${t("tab_home")}` :
+                            tab === "chat" ? `🤖 ${t("tab_chat")}` :
+                            tab === "planner" ? `📅 ${t("tab_scheduler")}` :
+                            tab === "knowledge" ? `📚 ${t("tab_knowledge")}` :
+                            tab === "philosophy" ? `🏔️ ${t("tab_philosophy")}` :
+                            `🧮 ${t("tab_calculators")}`;
+              return (
+                <button
+                  key={tab}
+                  className={`mobile-nav-tab ${activeTab === tab ? "active" : ""}`}
+                  onClick={() => setActiveTab(tab)}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+
           {/* ── Main Content Body ───────────────────────────────── */}
           <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
             
