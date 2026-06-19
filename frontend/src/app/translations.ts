@@ -225,7 +225,7 @@ export const translations = {
     save_changes: "Lưu thay đổi",
 
     // Tabs
-    tab_home: "Trang chủ",
+    tab_home: "Home",
     tab_scheduler: "Scheduler",
     tab_chat: "AI Coach",
     tab_knowledge: "Knowledge Hub",

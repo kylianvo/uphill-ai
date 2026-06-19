@@ -3507,16 +3507,6 @@ export default function Home() {
               </button>
             </form>
           )}
-
-          {/* Dev sandbox */}
-          <div style={{ marginTop: "20px", borderTop: "1px solid rgba(0,0,0,0.06)", paddingTop: "14px" }}>
-            <div style={{ fontSize: "10px", color: "var(--text-muted)", textAlign: "center", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Dev Sandbox</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-              <button onClick={() => handleMockLogin("admin@uphill.ai")} disabled={authLoading} style={{ height: "32px", background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: "8px", color: "var(--accent-primary)", fontSize: "11px", fontWeight: "600", cursor: "pointer" }}>🔐 Admin</button>
-              <button onClick={() => handleMockLogin("athlete@uphill.ai")} disabled={authLoading} style={{ height: "32px", background: "rgba(0,0,0,0.02)", border: "1px solid rgba(0,0,0,0.07)", borderRadius: "8px", color: "var(--text-primary)", fontSize: "11px", fontWeight: "600", cursor: "pointer" }}>🏃‍♂️ Athlete</button>
-            </div>
-          </div>
-
           {authLoading && <div style={{ textAlign: "center", color: "var(--accent-secondary)", fontSize: "11px", marginTop: "12px" }}>Authenticating...</div>}
         </div>
       </div>
