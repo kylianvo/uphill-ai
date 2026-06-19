@@ -4832,7 +4832,7 @@ export default function Home() {
             
             {/* ── HOME TAB: introductory hero view ────────────────── */}
             {activeTab === "home" && (
-              <section className="hero-section" style={{ height: "100%", overflowY: "auto", justifyContent: "flex-start", paddingTop: "40px", paddingBottom: "40px", marginTop: 0 }}>
+              <section className="hero-section" style={{ height: "100%", overflowY: "auto", justifyContent: "flex-start", paddingTop: "40px", paddingBottom: isViewportMobile ? "160px" : "40px", marginTop: 0 }}>
                 
                 {/* Micro-badge */}
                 <div className="hero-badge">
@@ -4905,8 +4905,8 @@ export default function Home() {
               <div 
                 className="content-panel" 
                 style={activeTab === "chat" 
-                  ? { overflowY: "hidden", flex: 1, minHeight: 0, padding: isViewportMobile ? "0px" : "20px" } 
-                  : { height: "100%" }
+                  ? { overflowY: "hidden", flex: 1, minHeight: 0, padding: isViewportMobile ? "0px" : "20px", marginBottom: isViewportMobile ? "120px" : "0px" } 
+                  : { height: "100%", marginBottom: isViewportMobile ? "120px" : "0px" }
                 }
               >
                 <div 
