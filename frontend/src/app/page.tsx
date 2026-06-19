@@ -308,7 +308,8 @@ export default function Home() {
     const vidB = videoBRef.current;
     if (!vidA || !vidB) return;
 
-    const SRC = "/bg.mp4";
+    const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+    const SRC = basePath + "/bg.mp4";
     const FADE_MS = 250;
     const FADE_THRESHOLD = 0.55; // seconds before end — begin crossfade
 
