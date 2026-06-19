@@ -44,6 +44,8 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Fustat:wght@400;500;600;700;800&display=swap"
           rel="stylesheet"
         />
+        {/* Google Sign-In SDK */}
+        <script src="https://accounts.google.com/gsi/client" async defer></script>
       </head>
       <body>{children}</body>
     </html>

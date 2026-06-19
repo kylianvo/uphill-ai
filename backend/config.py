@@ -8,6 +8,7 @@ class Config:
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
     API_PORT: int = int(os.getenv("PORT", "8000"))
     API_HOST: str = os.getenv("HOST", "0.0.0.0")
+    GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID", "")
 
     # PostgreSQL connection URL
     DATABASE_URL: str = os.getenv(
