@@ -1748,7 +1748,7 @@ export default function Home() {
       setSelectedWeek(1);
       // Start background polling for workouts
       if (result.job_id) {
-        startPlanJobPoller(result.job_id, token);
+        startPlanJobPoller(result.job_id, token!);
       } else {
         // Fallback: if somehow we got workouts synchronously
         if (result.workouts) setWorkouts(result.workouts);
