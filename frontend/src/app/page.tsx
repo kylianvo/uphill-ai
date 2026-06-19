@@ -672,6 +672,7 @@ export default function Home() {
     injury_history: "",
     race_name: "", race_date: "",
     course_distance_km: "", course_elevation_gain_m: "", terrain: "trail",
+    race_goal: "finish", expected_finish_hours: "", expected_finish_minutes: "",
     days_per_week: 4,
     preferred_run_days: [] as string[],
     long_run_day: "Saturday",
@@ -1290,6 +1291,16 @@ export default function Home() {
       if (onboardingAnswers.course_distance_km) payload.course_distance_km = parseFloat(onboardingAnswers.course_distance_km);
       if (onboardingAnswers.course_elevation_gain_m) payload.course_elevation_gain_m = parseFloat(onboardingAnswers.course_elevation_gain_m);
       if (onboardingAnswers.plan_start_date) payload.plan_start_date = onboardingAnswers.plan_start_date;
+
+      // Race goals
+      payload.race_goal = onboardingAnswers.race_goal || "finish";
+      if (onboardingAnswers.race_goal === "time") {
+        const hh = String(onboardingAnswers.expected_finish_hours || "0");
+        const mm = String(onboardingAnswers.expected_finish_minutes || "0");
+        payload.expected_finish_time = `${hh.padStart(2, '0')}:${mm.padStart(2, '0')}:00`;
+      } else {
+        payload.expected_finish_time = null;
+      }
 
       const response = await fetch("http://localhost:8000/api/auth/onboarding", {
         method: "POST",
@@ -3677,7 +3688,16 @@ export default function Home() {
                   { val: "recovery", emoji: "💤", label: lang === "en" ? "Post-Race Recovery" : "Phục hồi sau cuộc đua" },
                 ].map(({ val, emoji, label }) => (
                   <button key={val} type="button"
-                    onClick={() => { setAns("goal_type", val); }}
+                    onClick={() => {
+                      setAns("goal_type", val);
+                      if (val === "start_running") {
+                        setAns("zone2_pace_min", "8:30");
+                        setAns("zone2_pace_max", "7:30");
+                      } else {
+                        if (onboardingAnswers.zone2_pace_min === "8:30") setAns("zone2_pace_min", "6:30");
+                        if (onboardingAnswers.zone2_pace_max === "7:30") setAns("zone2_pace_max", "5:45");
+                      }
+                    }}
                     style={{ ...optBtn(val, label, emoji), display: "flex", alignItems: "center", gap: "10px", textAlign: "left" as const }}>
                     <span style={{ fontSize: "20px" }}>{emoji}</span>
                     <span>{label}</span>
@@ -3725,6 +3745,25 @@ export default function Home() {
                   <div><label style={labelS}>Resting HR (bpm)</label><input type="number" className="chat-input" style={inputS} placeholder="60" value={onboardingAnswers.resting_hr} onChange={e => setAns("resting_hr", e.target.value)} /></div>
                 </div>
               )}
+
+              <div style={{ marginTop: "16px", borderTop: "1px solid var(--border-color)", paddingTop: "16px" }}>
+                <label style={{ ...labelS, marginBottom: "8px" }}>
+                  {lang === "en" ? "Zone 2 Pace Range (Aerobic Pacing)" : "Khoảng tốc độ Zone 2 (Tốc độ hiếu khí)"}
+                </label>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                  <div>
+                    <label style={{ ...labelS, fontSize: "11px", fontWeight: "normal" }}>{lang === "en" ? "Slowest Pace (min/km)" : "Tốc độ chậm nhất (phút/km)"}</label>
+                    <input type="text" className="chat-input" style={inputS} placeholder="e.g. 6:30" value={onboardingAnswers.zone2_pace_min} onChange={e => setAns("zone2_pace_min", e.target.value)} />
+                  </div>
+                  <div>
+                    <label style={{ ...labelS, fontSize: "11px", fontWeight: "normal" }}>{lang === "en" ? "Fastest Pace (min/km)" : "Tốc độ nhanh nhất (phút/km)"}</label>
+                    <input type="text" className="chat-input" style={inputS} placeholder="e.g. 5:45" value={onboardingAnswers.zone2_pace_max} onChange={e => setAns("zone2_pace_max", e.target.value)} />
+                  </div>
+                </div>
+                <p style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "6px", lineHeight: "1.3" }}>
+                  {lang === "en" ? "This is your conversational running pace range." : "Đây là khoảng tốc độ chạy mà bạn vẫn có thể nói chuyện thoải mái."}
+                </p>
+              </div>
             </div>
           );
         case "injury":
@@ -3781,7 +3820,7 @@ export default function Home() {
                 <div><label style={labelS}>{lang === "en" ? "Distance (km)" : "Cự ly (km)"}</label><input type="number" className="chat-input" style={inputS} placeholder="42" value={onboardingAnswers.course_distance_km} onChange={e => setAns("course_distance_km", e.target.value)} /></div>
                 <div><label style={labelS}>{lang === "en" ? "Elevation Gain (m)" : "Độ cao lũy kế (mét)"}</label><input type="number" className="chat-input" style={inputS} placeholder="1500" value={onboardingAnswers.course_elevation_gain_m} onChange={e => setAns("course_elevation_gain_m", e.target.value)} /></div>
               </div>
-              <div>
+              <div style={{ marginTop: "12px" }}>
                 <label style={labelS}>{lang === "en" ? "Terrain" : "Địa hình"}</label>
                 <div style={{ display: "flex", gap: "8px" }}>
                   {["trail","road","mixed"].map(t => (
@@ -3794,6 +3833,37 @@ export default function Home() {
                   ))}
                 </div>
               </div>
+
+              <div style={{ marginTop: "12px" }}>
+                <label style={labelS}>{lang === "en" ? "Race Goal" : "Mục tiêu giải chạy"}</label>
+                <div style={{ display: "flex", background: "rgba(255,255,255,0.4)", border: "1px solid var(--border-color)", padding: "3px", borderRadius: "10px", marginBottom: "10px" }}>
+                  {[
+                    { val: "finish", label: lang === "en" ? "🏆 Just Finish" : "🏆 Hoàn thành" },
+                    { val: "time", label: lang === "en" ? "⏱️ Time Target" : "⏱️ Đạt mốc thời gian" }
+                  ].map(({ val, label }) => (
+                    <button key={val} type="button" onClick={() => setAns("race_goal", val)}
+                      style={{ flex: 1, height: "30px", fontSize: "12px", borderRadius: "8px", border: "none", background: (onboardingAnswers.race_goal || "finish") === val ? "var(--accent-primary)" : "transparent", color: (onboardingAnswers.race_goal || "finish") === val ? "#fff" : "var(--text-secondary)", fontWeight: "600", cursor: "pointer" }}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {(onboardingAnswers.race_goal === "time") && (
+                <div style={{ marginTop: "10px" }}>
+                  <label style={labelS}>{lang === "en" ? "Expected Finish Time" : "Thời gian hoàn thành mục tiêu"}</label>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                    <div>
+                      <label style={{ ...labelS, fontSize: "11px", fontWeight: "normal" }}>{lang === "en" ? "Hours" : "Giờ"}</label>
+                      <input type="number" min="0" className="chat-input" style={inputS} placeholder="4" value={onboardingAnswers.expected_finish_hours} onChange={e => setAns("expected_finish_hours", e.target.value)} />
+                    </div>
+                    <div>
+                      <label style={{ ...labelS, fontSize: "11px", fontWeight: "normal" }}>{lang === "en" ? "Minutes" : "Phút"}</label>
+                      <input type="number" min="0" max="59" className="chat-input" style={inputS} placeholder="30" value={onboardingAnswers.expected_finish_minutes} onChange={e => setAns("expected_finish_minutes", e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           );
         case "return_questions":

@@ -1160,7 +1160,9 @@ label {
 }
 
 /* Hide mobile tabs on desktop */
-.mobile-top-nav-tabs {
-  display: none;
+@media (min-width: 901px) {
+  .mobile-top-nav-tabs {
+    display: none;
+  }
 }
 

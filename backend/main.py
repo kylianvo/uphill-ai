@@ -175,6 +175,8 @@ class OnboardingRequest(BaseModel):
     course_distance_km: Optional[float] = None
     course_elevation_gain_m: Optional[float] = None
     terrain: Optional[str] = "trail"
+    race_goal: Optional[str] = "finish"
+    expected_finish_time: Optional[str] = None
     # Weekly schedule
     days_per_week: Optional[int] = 4
     preferred_run_days: Optional[List[str]] = None
@@ -424,6 +426,20 @@ async def complete_onboarding(request: OnboardingRequest, user: Dict[str, Any] =
     ant_hr = request.ant_hr or round(max_hr * 0.89)
     resting_hr = request.resting_hr or 60
 
+    # Determine Zone 2 pace ranges with slow defaults for start_running
+    zone2_min = request.zone2_pace_min
+    zone2_max = request.zone2_pace_max
+    if request.goal_type == "start_running":
+        if not zone2_min or zone2_min == "6:30":
+            zone2_min = "8:30"
+        if not zone2_max or zone2_max == "5:45":
+            zone2_max = "7:30"
+    else:
+        if not zone2_min:
+            zone2_min = "6:30"
+        if not zone2_max:
+            zone2_max = "5:45"
+
     onboarding_data = {
         "dob": request.dob,
         "age": age,
@@ -438,8 +454,8 @@ async def complete_onboarding(request: OnboardingRequest, user: Dict[str, Any] =
         "resting_hr": resting_hr,
         "aet_hr": aet_hr,
         "ant_hr": ant_hr,
-        "zone2_pace_min": request.zone2_pace_min or "6:30",
-        "zone2_pace_max": request.zone2_pace_max or "5:45",
+        "zone2_pace_min": zone2_min,
+        "zone2_pace_max": zone2_max,
     }
     update_onboarding_profile(user["id"], onboarding_data)
 
@@ -447,6 +463,23 @@ async def complete_onboarding(request: OnboardingRequest, user: Dict[str, Any] =
     today = date.today()
     race_name = request.race_name or _default_plan_name(request.goal_type)
     race_date = request.race_date or (today + timedelta(weeks=_default_weeks(request.goal_type))).strftime("%Y-%m-%d")
+
+    # Determine plan goal type and parse expected finish time
+    is_event = request.goal_type in ["race", "distance"]
+    plan_goal_type = request.race_goal if is_event else request.goal_type
+    if not plan_goal_type:
+        plan_goal_type = "finish"
+
+    tth = None
+    if plan_goal_type == "time" and request.expected_finish_time:
+        try:
+            parts = request.expected_finish_time.split(":")
+            if len(parts) == 3:
+                tth = int(parts[0]) + int(parts[1]) / 60.0 + int(parts[2]) / 3600.0
+            elif len(parts) == 2:
+                tth = int(parts[0]) + int(parts[1]) / 60.0
+        except Exception:
+            pass
 
     # Calculate weeks
     from datetime import datetime as dt2
@@ -460,8 +493,8 @@ async def complete_onboarding(request: OnboardingRequest, user: Dict[str, Any] =
         user_id=user["id"],
         race_name=race_name,
         race_date=race_date,
-        goal_type="finish",
-        target_time_hours=None,
+        goal_type=plan_goal_type,
+        target_time_hours=tth,
         total_weeks=total_weeks,
         course_distance_km=request.course_distance_km,
         course_elevation_gain_m=request.course_elevation_gain_m,
@@ -474,8 +507,8 @@ async def complete_onboarding(request: OnboardingRequest, user: Dict[str, Any] =
         "name": race_name,
         "date": race_date,
         "terrain": request.terrain or "trail",
-        "goal_type": request.goal_type,
-        "target_time_hours": None,
+        "goal_type": plan_goal_type,
+        "target_time_hours": tth,
         "course_distance_km": request.course_distance_km,
         "course_elevation_gain_m": request.course_elevation_gain_m,
         "preferred_days": request.preferred_run_days,
