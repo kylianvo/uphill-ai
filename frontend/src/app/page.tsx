@@ -2319,19 +2319,19 @@ export default function Home() {
               </button>
             </div>
 
-            <div className="chat-input-bar" style={{ padding: isMobile ? "8px" : "16px" }}>
+            <div className="chat-input-bar" style={{ padding: isMobile ? "12px" : "16px" }}>
               <input
                 type="text"
                 className="chat-input"
-                style={{ padding: isMobile ? "6px 12px" : "12px 16px", fontSize: isMobile ? "13px" : "14px" }}
+                style={{ padding: isMobile ? "10px 16px" : "12px 16px", fontSize: isMobile ? "14px" : "14px" }}
                 placeholder={t("chat_input_placeholder")}
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
                 disabled={chatLoading}
               />
-              <button className="chat-send-btn" style={{ width: isMobile ? "32px" : "44px", height: isMobile ? "32px" : "44px" }} onClick={() => handleSendMessage()} disabled={chatLoading}>
-                <svg width={isMobile ? "12" : "18"} height={isMobile ? "12" : "18"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <button className="chat-send-btn" style={{ width: isMobile ? "38px" : "44px", height: isMobile ? "38px" : "44px" }} onClick={() => handleSendMessage()} disabled={chatLoading}>
+                <svg width={isMobile ? "15" : "18"} height={isMobile ? "15" : "18"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <line x1="22" y1="2" x2="11" y2="13" />
                   <polygon points="22 2 15 22 11 13 2 9 22 2" />
                 </svg>
