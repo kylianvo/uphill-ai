@@ -41,7 +41,7 @@ jobs:
         working-directory: frontend
         env:
           NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
-          NEXT_PUBLIC_BASE_PATH: /uphill-ai
+          NEXT_PUBLIC_BASE_PATH: ""
           NEXT_PUBLIC_GOOGLE_CLIENT_ID: 451637841654-0eoo8qsa5fgnpm4cq0br8phgkhh92c5a.apps.googleusercontent.com
         run: npm run build
 
