@@ -1108,10 +1108,12 @@ label {
     background: rgba(255, 255, 255, 0.82);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
-    margin-bottom: 120px; /* Clear mobile bottom nav tabs */
+    margin-bottom: 0px; /* No margin-bottom, let background extend to bottom */
+    padding-bottom: calc(75px + env(safe-area-inset-bottom));
   }
   .content-panel.chat-panel-active {
     padding: 0px;
+    padding-bottom: calc(75px + env(safe-area-inset-bottom));
   }
   .content-panel-inner {
     padding: 12px;
