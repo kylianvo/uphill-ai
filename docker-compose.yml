@@ -28,7 +28,6 @@ services:
       - ./backend/.env
     environment:
       DATABASE_URL: postgresql://uphill:uphill_secret@db:5432/uphill_ai
-      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
       PYTHONUNBUFFERED: "1"
     depends_on:
       db:
