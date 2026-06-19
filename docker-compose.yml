@@ -28,7 +28,7 @@ services:
       - ./backend/.env
     environment:
       DATABASE_URL: postgresql://uphill:uphill_secret@db:5432/uphill_ai
-      ALLOWED_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
       PYTHONUNBUFFERED: "1"
     depends_on:
       db:
@@ -47,6 +47,24 @@ services:
       - "3000:3000"
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8000
+    depends_on:
+      - backend
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN:-}
+    entrypoint: >
+      sh -c '
+      if [ -n "$$TUNNEL_TOKEN" ]; then
+        echo "Starting persistent tunnel using token..."
+        exec cloudflared tunnel --no-autoupdate run
+      else
+        echo "Starting temporary quick tunnel..."
+        exec cloudflared tunnel --no-autoupdate --url http://backend:8000
+      fi
+      '
     depends_on:
       - backend
 
