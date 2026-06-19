@@ -3,14 +3,40 @@
 import { useState, useEffect, useRef } from "react";
 import { translations } from "./translations";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+if (typeof window !== "undefined") {
+  // Check for api query parameter to override API URL
+  const params = new URLSearchParams(window.location.search);
+  const apiParam = params.get("api");
+  if (apiParam) {
+    if (apiParam === "default" || apiParam === "reset" || apiParam === "clear") {
+      localStorage.removeItem("UPHILL_API_URL_OVERRIDE");
+    } else {
+      localStorage.setItem("UPHILL_API_URL_OVERRIDE", apiParam);
+    }
+    // Remove query param from URL to keep it clean
+    const cleanUrl = new URL(window.location.href);
+    cleanUrl.searchParams.delete("api");
+    window.history.replaceState(null, "", cleanUrl.pathname + cleanUrl.search);
+  }
+}
+
+const getApiBaseUrl = () => {
+  if (typeof window !== "undefined") {
+    const override = localStorage.getItem("UPHILL_API_URL_OVERRIDE");
+    if (override) return override;
+  }
+  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 if (typeof window !== "undefined") {
   const originalFetch = window.fetch;
   window.fetch = async (input, init) => {
     let url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
     if (url.startsWith("http://localhost:8000")) {
-      url = url.replace("http://localhost:8000", API_BASE_URL);
+      const apiBase = localStorage.getItem("UPHILL_API_URL_OVERRIDE") || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      url = url.replace("http://localhost:8000", apiBase);
     }
     return originalFetch(url, init);
   };
