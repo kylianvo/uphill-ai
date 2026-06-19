@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: frontend-config
+  namespace: uphill-prod
+data:
+  NEXT_PUBLIC_API_URL: "http://backend-service:8000"

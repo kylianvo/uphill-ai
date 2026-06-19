@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-deployment
+  namespace: uphill-prod
+  labels:
+    app: uphill-backend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: uphill-backend
+  template:
+    metadata:
+      labels:
+        app: uphill-backend
+    spec:
+      containers:
+      - name: backend
+        image: uphill-backend:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8000
+        envFrom:
+        - configMapRef:
+            name: backend-config
+        env:
+        - name: GEMINI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: uphill-secrets
+              key: gemini-api-key
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: uphill-secrets
+              key: jwt-secret
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+          requests:
+            cpu: "200m"
+            memory: "256Mi"
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 8000
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5

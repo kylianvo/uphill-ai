@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  namespace: uphill-prod
+data:
+  HOST: "0.0.0.0"
+  PORT: "8000"
+  DATABASE_URL: "postgresql://uphill:uphill_secret@postgres-service:5432/uphill_ai"
+  ALLOWED_ORIGINS: "http://uphill.ai,https://uphill.ai,http://localhost:3000"
