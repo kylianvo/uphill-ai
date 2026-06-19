@@ -1,6 +1,6 @@
-# Coach Uphill 🏔️ — Science-Backed Trail & Mountain Coaching
+# Uphill AI 🏔️ — Science-Backed Trail & Mountain Coaching
 
-Coach Uphill is a premium, AI-powered adaptive training platform for trail, mountain, and ultra-runners. The system leverages generative artificial intelligence and grounded athletic literature to design personalized training blocks, analyze route profiles, calculate physiological thresholds, and deliver real-time feedback.
+Uphill AI is a premium, AI-powered adaptive training platform for trail, mountain, and ultra-runners. The system leverages generative artificial intelligence and grounded athletic literature to design personalized training blocks, analyze route profiles, calculate physiological thresholds, and deliver real-time feedback.
 
 ---
 
