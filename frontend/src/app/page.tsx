@@ -2310,7 +2310,7 @@ export default function Home() {
                 {lang === "en" ? "Coach Uphill (AI)" : "Huấn luyện viên Uphill (AI)"}
               </span>
             </div>
-            <div className="chat-history" style={{ padding: isMobile ? "8px" : "20px", gap: isMobile ? "8px" : "16px", minHeight: 0 }}>
+            <div className="chat-history" style={{ padding: isMobile ? "8px" : "20px", gap: isMobile ? "8px" : "16px", minHeight: 0, flex: 1, height: isMobile ? "0px" : undefined, overflowY: "auto" }}>
               {chatMessages.map((msg, idx) => (
                 <div
                   key={idx}
