@@ -2295,22 +2295,22 @@ export default function Home() {
       : "Xin chào! Tôi là Coach Uphill. Hãy chia sẻ với tôi về mục tiêu chạy tiếp theo của bạn. Bạn đang chuẩn bị cho một giải chạy trail ultra hay marathon đường bằng? Chúng ta sẽ thiết kế một kế hoạch tập luyện phù hợp với các nguyên tắc của Scott Johnston hoặc ngưỡng cường độ 80/20.";
 
     return (
-      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', flex: 1, height: "100%" }}>
+      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
         {/* Chat Pane */}
-        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, width: '100%', height: "100%" }}>
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, width: '100%', minHeight: 0 }}>
           {!isMobile && (
             <h3 style={{ marginBottom: "12px", fontSize: "20px" }}>
               {lang === "en" ? "Chat Workspace" : "Không gian Trò chuyện"}
             </h3>
           )}
-          <div className="chat-pane" style={{ flex: 1, display: "flex", flexDirection: "column", width: '100%', minHeight: isMobile ? "0px" : "350px", height: "0px" }}>
+          <div className="chat-pane" style={{ flex: 1, display: "flex", flexDirection: "column", width: '100%', minHeight: isMobile ? "0px" : "350px" }}>
             <div className="chat-header" style={{ padding: isMobile ? "8px 12px" : "16px 20px" }}>
               <span className="coach-status-dot"></span>
               <span className="chat-header-title" style={{ fontSize: isMobile ? "13px" : "16px" }}>
                 {lang === "en" ? "Coach Uphill (AI)" : "Huấn luyện viên Uphill (AI)"}
               </span>
             </div>
-            <div className="chat-history" style={{ padding: isMobile ? "8px" : "20px", gap: isMobile ? "8px" : "16px" }}>
+            <div className="chat-history" style={{ padding: isMobile ? "8px" : "20px", gap: isMobile ? "8px" : "16px", minHeight: 0 }}>
               {chatMessages.map((msg, idx) => (
                 <div
                   key={idx}
@@ -4638,7 +4638,7 @@ export default function Home() {
               {activeTab === "home" ? (
                 renderActiveTab(false)
               ) : (
-                <div className="content-panel" style={activeTab === "chat" ? { overflowY: "hidden", flex: 1, minHeight: 0, padding: "20px" } : { height: "100%" }}>
+                <div className={`content-panel ${activeTab === "chat" ? "chat-panel-active" : ""}`} style={activeTab === "chat" ? { overflowY: "hidden", flex: 1, minHeight: 0 } : { height: "100%" }}>
                   <div className="content-panel-inner" style={{ width: "100%", height: activeTab === "chat" ? undefined : "auto", flex: activeTab === "chat" ? 1 : undefined, minHeight: 0, display: "flex", flexDirection: "column", maxWidth: activeTab === "chat" ? "680px" : undefined }}>
                     {/* Panel header breadcrumb */}
                     <div className="panel-header">
@@ -4903,10 +4903,10 @@ export default function Home() {
 
             {activeTab !== "home" && (
               <div 
-                className="content-panel" 
+                className={`content-panel ${activeTab === "chat" ? "chat-panel-active" : ""}`}
                 style={activeTab === "chat" 
-                  ? { overflowY: "hidden", flex: 1, minHeight: 0, padding: isViewportMobile ? "0px" : "20px", marginBottom: isViewportMobile ? "120px" : "0px" } 
-                  : { height: "100%", marginBottom: isViewportMobile ? "120px" : "0px" }
+                  ? { overflowY: "hidden", flex: 1, minHeight: 0 } 
+                  : { height: "100%" }
                 }
               >
                 <div 
