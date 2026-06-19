@@ -142,9 +142,6 @@ class FacebookAuthRequest(BaseModel):
 class MockLoginRequest(BaseModel):
     email: str
 
-class GoogleLoginRequest(BaseModel):
-    id_token: str
-
 class RegisterRequest(BaseModel):
     name: str
     email: str
@@ -397,73 +394,6 @@ def auth_mock_login(request: MockLoginRequest):
         else:
             name = email.split("@")[0].capitalize()
             user = create_or_get_user(email, name, "mock", f"mock-{name.lower()}-id", "user")
-    session = create_session(user["id"])
-    return {
-        "session_token": session["session_token"],
-        "expires_at": session["expires_at"],
-        "user": format_user_response(user)
-    }
-
-@app.post("/api/auth/google")
-def auth_google_login(request: GoogleLoginRequest):
-    token = request.id_token
-    email = None
-    name = None
-    google_id = None
-    
-    if settings.GOOGLE_CLIENT_ID:
-        try:
-            from google.oauth2 import id_token as google_id_token
-            from google.auth.transport import requests as google_requests
-            
-            idinfo = google_id_token.verify_oauth2_token(
-                token, 
-                google_requests.Request(), 
-                settings.GOOGLE_CLIENT_ID
-            )
-            email = idinfo.get("email")
-            name = idinfo.get("name", email.split("@")[0].capitalize())
-            google_id = idinfo.get("sub")
-        except Exception as e:
-            raise HTTPException(status_code=401, detail=f"Invalid Google ID token: {e}")
-    else:
-        # Fallback mode when Google Client ID is not configured on the backend.
-        # We try to decode the token without signature verification to allow local dev testing,
-        # or fall back to treating it as a raw email if it's not a JWT.
-        try:
-            import jwt
-            decoded = jwt.decode(token, options={"verify_signature": False})
-            email = decoded.get("email")
-            name = decoded.get("name", email.split("@")[0].capitalize())
-            google_id = decoded.get("sub", f"google-mock-{email}")
-        except Exception:
-            # Not a JWT token, treat the payload as a raw email for mock sign-in
-            if "@" in token:
-                email = token.lower().strip()
-                name = email.split("@")[0].capitalize()
-                google_id = f"google-mock-{email}"
-            else:
-                raise HTTPException(
-                    status_code=400, 
-                    detail="Google Client ID is not configured, and the payload is not a valid email or JWT."
-                )
-
-    if not email:
-        raise HTTPException(status_code=400, detail="Could not retrieve email from Google token.")
-        
-    user = get_user_by_email(email)
-    if not user:
-        # Auto-register Google user
-        role = "admin" if email == "admin@uphill.ai" else "user"
-        user = create_or_get_user(
-            email=email,
-            name=name,
-            provider="google",
-            provider_id=google_id,
-            role=role,
-            onboarding_complete=False
-        )
-        
     session = create_session(user["id"])
     return {
         "session_token": session["session_token"],

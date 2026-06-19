@@ -964,11 +964,19 @@ export default function Home() {
       const response = await fetch(`${API_BASE_URL}/api/auth/google`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id_token: idToken }),
+        body: JSON.stringify({ credential: idToken }),
       });
       if (!response.ok) {
         const errData = await response.json();
-        throw new Error(errData.detail || "Google Login failed.");
+        let errMsg = "Google Login failed.";
+        if (typeof errData.detail === "string") {
+          errMsg = errData.detail;
+        } else if (Array.isArray(errData.detail)) {
+          errMsg = errData.detail.map((e: any) => e.msg || JSON.stringify(e)).join(", ");
+        } else if (errData.detail) {
+          errMsg = JSON.stringify(errData.detail);
+        }
+        throw new Error(errMsg);
       }
       const data = await response.json();
       localStorage.setItem("uphill_session_token", data.session_token);
@@ -3522,11 +3530,6 @@ export default function Home() {
           {/* OAuth Buttons (always visible) */}
           <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "16px" }}>
             <div id="google-signin-btn" style={{ width: "100%", height: "40px", minHeight: "40px", display: "flex", justifyContent: "center" }} />
-            <button onClick={() => handleOAuthLogin("facebook")} disabled={authLoading}
-              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", width: "100%", height: "40px", background: "#1877F2", color: "#fff", border: "none", borderRadius: "10px", fontWeight: "600", fontSize: "13px", cursor: "pointer" }}>
-              <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-              Continue with Facebook
-            </button>
           </div>
 
           {/* Divider */}
