@@ -273,6 +273,9 @@ export default function Home() {
 
   // Language State & Persistence
   const [lang, setLang] = useState<"en" | "vi">("en");
+
+  // State for homepage CTA button hover effect
+  const [startBtnHovered, setStartBtnHovered] = useState(false);
   
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -586,6 +589,8 @@ export default function Home() {
 
   // Active Training Plan state
   const [activePlan, setActivePlan] = useState<ActivePlan | null>(null);
+  const [backupActivePlan, setBackupActivePlan] = useState<ActivePlan | null>(null);
+  const [backupWorkouts, setBackupWorkouts] = useState<Workout[]>([]);
   const [recentPlans, setRecentPlans] = useState<ActivePlan[]>([]);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<number>(1);
@@ -1783,7 +1788,11 @@ export default function Home() {
 
       const result = await response.json();
       // Set plan immediately from the fast response
-      if (result.plan) setActivePlan(result.plan);
+      if (result.plan) {
+        setActivePlan(result.plan);
+        setBackupActivePlan(null);
+        setBackupWorkouts([]);
+      }
       setSelectedWeek(1);
       // Start background polling for workouts
       if (result.job_id) {
@@ -1847,6 +1856,8 @@ export default function Home() {
         const data = await response.json();
         setActivePlan(data.plan);
         setWorkouts(data.workouts);
+        setBackupActivePlan(null);
+        setBackupWorkouts([]);
         setSelectedWeek(1);
         fetchRecentPlansWithToken(token);
       } else {
@@ -2083,43 +2094,57 @@ export default function Home() {
   };
 
   const renderHome = (isMobile: boolean) => {
-    const isExtracting = extractStatus.status === "extracting";
-    const hasCards = knowledgeCards.length > 0 || dailyCards.length > 0;
     return (
-      <div style={{ maxWidth: '900px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px', padding: isMobile ? '4px' : '12px' }}>
-        {/* Hero Banner Card */}
-        <div className="card" style={{ 
-          padding: isMobile ? '24px 16px' : '40px 32px',
-          textAlign: 'center',
-          background: 'rgba(255, 255, 255, 0.55)',
-          backdropFilter: 'blur(30px)',
-          borderRadius: '24px',
-          border: '1px solid rgba(255, 255, 255, 0.7)',
-          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.03)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center'
-        }}>
-          <div className="badge" style={{ marginBottom: '16px', display: 'inline-flex' }}>
-            🤖 AI-POWERED RUNNING SYSTEM
-          </div>
-          <h2 style={{ 
-            fontSize: isMobile ? '24px' : '36px', 
-            fontWeight: '800', 
-            lineHeight: '1.25',
-            color: 'var(--text-bright)',
-            marginBottom: '16px',
-            letterSpacing: '-0.02em'
-          }}>
-            {lang === "en" ? (
-              <>Elevate Your Running with <span className="gradient-text">Science-Backed AI</span> Coaching.</>
-            ) : (
-              <>Nâng cao hiệu suất chạy bộ với <span className="gradient-text">AI Coach chuẩn khoa học</span>.</>
-            )}
-          </h2>
-          <button 
-            className="btn btn-primary" 
-            style={{ padding: '8px 24px', fontSize: '13px', height: '40px', display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
+      <div style={{ 
+        maxWidth: '720px', 
+        margin: '0 auto', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center', 
+        textAlign: 'center', 
+        gap: '24px', 
+        padding: isMobile ? '24px 16px' : '40px 32px',
+        width: '100%',
+        boxSizing: 'border-box'
+      }}>
+        {/* Header group */}
+        <div className="hero-header-group" style={{ marginBottom: 0 }}>
+          <h1 className="hero-headline">
+            {lang === "en" ? "Train Smarter, Go Higher" : "Tập Luyện Thông Minh, Chinh Phục Đỉnh Cao."}
+          </h1>
+          <p className="hero-subtitle" style={{ maxWidth: "600px", margin: "0 auto" }}>
+            {lang === "en" 
+              ? "Science-backed trail coaching powered by AI."
+              : "Nền tảng huấn luyện chạy trail chuẩn khoa học đột phá bởi AI."}
+          </p>
+        </div>
+
+        {/* Big Start training plan button */}
+        <div style={{ marginTop: "12px" }}>
+          <button
+            className="btn btn-secondary"
+            onMouseEnter={() => setStartBtnHovered(true)}
+            onMouseLeave={() => setStartBtnHovered(false)}
+            style={{
+              padding: isMobile ? '14px 32px' : '18px 48px',
+              fontSize: isMobile ? '15px' : '18px',
+              height: 'auto',
+              borderRadius: '9999px',
+              fontWeight: '700',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '12px',
+              cursor: 'pointer',
+              boxShadow: startBtnHovered ? '0 12px 40px rgba(0, 0, 0, 0.12)' : '0 8px 32px rgba(0, 0, 0, 0.05)',
+              background: startBtnHovered ? 'rgba(255, 255, 255, 0.85)' : 'rgba(255, 255, 255, 0.65)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              border: startBtnHovered ? '1px solid rgba(255, 255, 255, 0.95)' : '1px solid rgba(255, 255, 255, 0.8)',
+              color: '#000000',
+              transform: startBtnHovered ? 'translateY(-2px) scale(1.02)' : 'none',
+              transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+            }}
             onClick={() => setActiveTab('planner')}
           >
             📅 {t("home_cta_plan")}
@@ -2425,37 +2450,6 @@ export default function Home() {
               <h3 style={{ fontSize: isMobile ? "18px" : "22px", margin: 0, color: "var(--accent-primary)" }}>
                 {lang === "en" ? "Plan Settings" : "Cài đặt Kế hoạch"}
               </h3>
-              {recentPlans.length > 0 && (
-                <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "var(--text-secondary)" }}>
-                  <span>{lang === "en" ? "or" : "hoặc"}</span>
-                  <select
-                    style={{
-                      border: "none",
-                      background: "transparent",
-                      color: "var(--accent-primary)",
-                      fontWeight: "600",
-                      fontSize: "12px",
-                      cursor: "pointer",
-                      padding: "2px 4px",
-                      outline: "none",
-                    }}
-                    value=""
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (val) handleSelectPlan(Number(val));
-                    }}
-                  >
-                    <option value="" style={{ color: "var(--text-primary)" }}>
-                      {lang === "en" ? "load recent training plan..." : "tải giáo án gần đây..."}
-                    </option>
-                    {recentPlans.slice(0, 3).map((p) => (
-                      <option key={p.id} value={p.id} style={{ color: "var(--text-primary)" }}>
-                        {formatPlanName(p)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
             </div>
 
             {/* ── Step 1: Plan Goal Category ────────────────────── */}
@@ -2628,38 +2622,52 @@ export default function Home() {
                   <h4 style={{ margin: 0, fontSize: "14px", fontWeight: "700", color: "var(--text-bright)" }}>
                     {lang === "en" ? "🔄 Return to Running" : "🔄 Tập luyện trở lại"}
                   </h4>
-                  {recentPlans.length > 0 && (
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "var(--text-secondary)" }}>
-                      <span>{lang === "en" ? "or" : "hoặc"}</span>
-                      <select
-                        style={{
-                          border: "none",
-                          background: "transparent",
-                          color: "var(--accent-primary)",
-                          fontWeight: "600",
-                          fontSize: "12px",
-                          cursor: "pointer",
-                          padding: "2px 4px",
-                          outline: "none",
-                          maxWidth: "160px"
-                        }}
-                        value=""
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          if (val) handleSelectPlan(Number(val));
-                        }}
-                      >
-                        <option value="" style={{ color: "var(--text-primary)" }}>
-                          {lang === "en" ? "choose recent plan..." : "chọn kế hoạch..."}
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px" }}>
+                    <span>{lang === "en" ? "or" : "hoặc"}</span>
+                    <select
+                      className="btn btn-secondary"
+                      style={{
+                        fontSize: "12px",
+                        height: "36px",
+                        padding: "0 16px",
+                        cursor: "pointer",
+                        outline: "none",
+                        border: "1px solid rgba(0, 0, 0, 0.1)",
+                        background: "rgba(0, 0, 0, 0.06)",
+                        color: "#111111",
+                        textAlignLast: "center",
+                        WebkitAppearance: "none",
+                        MozAppearance: "none",
+                        appearance: "none",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        borderRadius: "9999px",
+                        width: "auto",
+                        maxWidth: "220px"
+                      }}
+                      value=""
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val) handleSelectPlan(Number(val));
+                      }}
+                    >
+                      <option value="" style={{ color: "var(--text-primary)" }}>
+                        🔄 {lang === "en" ? "Load Recent Plan" : "Tải lịch tập gần đây"}
+                      </option>
+                      {recentPlans.length === 0 ? (
+                        <option value="" disabled style={{ color: "var(--text-muted)" }}>
+                          {lang === "en" ? "— No plans available —" : "— Không có lịch tập —"}
                         </option>
-                        {recentPlans.slice(0, 3).map((p) => (
+                      ) : (
+                        recentPlans.slice(0, 3).map((p) => (
                           <option key={p.id} value={p.id} style={{ color: "var(--text-primary)" }}>
                             {formatPlanName(p)}
                           </option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
+                        ))
+                      )}
+                    </select>
+                  </div>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
                   <div>
@@ -2861,9 +2869,40 @@ export default function Home() {
               </div>
             )}
 
-            <button type="submit" className="btn btn-primary" style={{ width: "100%", height: "42px", fontSize: "13.5px" }} disabled={planLoading}>
-              {planLoading ? (lang === "en" ? "Building Plan..." : "Đang tạo Kế hoạch...") : (lang === "en" ? "🛠️ Build Custom Calendar" : "🛠️ Thiết lập Lịch tập tùy chỉnh")}
-            </button>
+            {backupActivePlan ? (
+              <div style={{ display: "flex", gap: "10px", width: "100%" }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  style={{ flex: 1, height: "42px", fontSize: "13.5px" }}
+                  onClick={() => {
+                    setActivePlan(backupActivePlan);
+                    setWorkouts(backupWorkouts);
+                    setBackupActivePlan(null);
+                    setBackupWorkouts([]);
+                  }}
+                >
+                  {lang === "en" ? "◀ Go Back" : "◀ Quay lại"}
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  style={{ flex: 2, height: "42px", fontSize: "13.5px" }}
+                  disabled={planLoading}
+                >
+                  {planLoading ? (lang === "en" ? "Building Plan..." : "Đang tạo Kế hoạch...") : (lang === "en" ? "🛠️ Build Custom Calendar" : "🛠️ Thiết lập Lịch tập tùy chỉnh")}
+                </button>
+              </div>
+            ) : (
+              <button
+                type="submit"
+                className="btn btn-primary"
+                style={{ width: "100%", height: "42px", fontSize: "13.5px" }}
+                disabled={planLoading}
+              >
+                {planLoading ? (lang === "en" ? "Building Plan..." : "Đang tạo Kế hoạch...") : (lang === "en" ? "🛠️ Build Custom Calendar" : "🛠️ Thiết lập Lịch tập tùy chỉnh")}
+              </button>
+            )}
           </form>
         ) : (
           <div style={{ background: "rgba(255, 255, 255, 0.95)", border: "1px solid var(--border-color)", padding: isMobile ? "20px" : "32px", borderRadius: "16px" }}>
@@ -2890,18 +2929,67 @@ export default function Home() {
               </div>
               
               {!showExportOptions ? (
-                <div style={{ display: "flex", gap: "10px", width: "100%" }}>
+                <div style={{ display: "flex", gap: "10px", width: "100%", flexWrap: "wrap" }}>
                   <button
                     className="btn btn-primary"
-                    style={{ flex: 1, fontSize: "12px", height: "36px", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
+                    style={{ flex: 1, minWidth: "120px", fontSize: "12px", height: "36px", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
                     onClick={() => setShowExportOptions(true)}
                   >
                     🗓️ {lang === "en" ? "Export Calendar" : "Xuất lịch tập"}
                   </button>
+                  
+                  <select
+                    className="btn btn-secondary"
+                    style={{
+                      flex: 1,
+                      minWidth: "120px",
+                      fontSize: "12px",
+                      height: "36px",
+                      padding: "0 8px",
+                      cursor: "pointer",
+                      outline: "none",
+                      border: "1px solid rgba(0, 0, 0, 0.1)",
+                      background: "rgba(0, 0, 0, 0.06)",
+                      color: "#111111",
+                      textAlignLast: "center",
+                      WebkitAppearance: "none",
+                      MozAppearance: "none",
+                      appearance: "none",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderRadius: "9999px",
+                    }}
+                    value=""
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val) handleSelectPlan(Number(val));
+                    }}
+                  >
+                    <option value="" style={{ color: "var(--text-primary)" }}>
+                      🔄 {lang === "en" ? "Load Recent Plan" : "Tải lịch tập gần đây"}
+                    </option>
+                    {recentPlans.length === 0 ? (
+                      <option value="" disabled style={{ color: "var(--text-muted)" }}>
+                        {lang === "en" ? "— No plans available —" : "— Không có lịch tập —"}
+                      </option>
+                    ) : (
+                      recentPlans.map((p) => (
+                        <option key={p.id} value={p.id} style={{ color: "var(--text-primary)" }}>
+                          {formatPlanName(p)}
+                        </option>
+                      ))
+                    )}
+                  </select>
+
                   <button
                     className="btn btn-secondary"
-                    style={{ flex: 1, fontSize: "12px", height: "36px" }}
-                    onClick={() => setActivePlan(null)}
+                    style={{ flex: 1, minWidth: "120px", fontSize: "12px", height: "36px" }}
+                    onClick={() => {
+                      setBackupActivePlan(activePlan);
+                      setBackupWorkouts(workouts);
+                      setActivePlan(null);
+                    }}
                   >
                     {lang === "en" ? "New Plan" : "Kế hoạch mới"}
                   </button>
@@ -4776,71 +4864,7 @@ export default function Home() {
             
             {/* ── HOME TAB: introductory hero view ────────────────── */}
             {activeTab === "home" && (
-              <section className="hero-section" style={{ height: "100%", overflowY: "auto", justifyContent: "flex-start", paddingTop: "40px", paddingBottom: isViewportMobile ? "160px" : "40px", marginTop: 0 }}>
-                
-                {/* Micro-badge */}
-                <div className="hero-badge">
-                  <div className="hero-badge-dark">
-                    <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--accent-success)" }} />
-                    <span>Uphill AI Coach</span>
-                  </div>
-                  <div className="hero-badge-light">
-                    <span>v1.0</span>
-                  </div>
-                </div>
-
-                {/* Header group */}
-                <div className="hero-header-group">
-                  <h1 className="hero-headline">
-                    {lang === "en" ? "Train Smarter, Go Higher" : "Tập Luyện Thông Minh, Chinh Phục Đỉnh Cao."}
-                  </h1>
-                  <p className="hero-subtitle">
-                    {lang === "en" 
-                      ? "Science-backed mountain coaching powered by AI. Upload your race GPX, generate a periodized training block, and fuel with precision."
-                      : "Nền tảng huấn luyện chạy trail chuẩn khoa học đột phá bởi AI. Chỉ cần tải lên tệp GPX để tự động thiết kế giáo án chuyên sâu theo chu kỳ và tối ưu hóa chiến lược dinh dưỡng."}
-                  </p>
-                </div>
-
-                {/* Search / Chat Input Box */}
-                <div className="hero-search-box">
-
-                  {/* Main input */}
-                  <div className="search-input-area">
-                    <input
-                      type="text"
-                      placeholder={lang === "en" 
-                        ? "Ask your coach anything… e.g. 'Build me a 10-week plan for SUM30'" 
-                        : "Hỏi coach của bạn bất kỳ điều gì… VD: 'Lập kế hoạch 10 tuần cho giải chạy SUM30'"}
-                      value={heroInput}
-                      onChange={(e) => setHeroInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && heroInput.trim()) {
-                          setChatMessages(prev => [...prev, { role: "user", content: heroInput }]);
-                          setHeroInput("");
-                          setActiveTab("chat");
-                        }
-                      }}
-                      style={{ background: "transparent", border: "none", fontSize: "16px", color: "#000", fontFamily: "var(--font-inter)" }}
-                    />
-                    <button
-                      className="search-submit-btn"
-                      onClick={() => {
-                        if (heroInput.trim()) {
-                          setChatMessages(prev => [...prev, { role: "user", content: heroInput }]);
-                          setHeroInput("");
-                          setActiveTab("chat");
-                        }
-                      }}
-                      style={{ color: "#ffffff" }}
-                    >
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <line x1="22" y1="2" x2="11" y2="13" />
-                        <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-                {/* Render home active tab cards underneath the search box */}
+              <section className="hero-section" style={{ height: "100%", overflowY: "auto", justifyContent: "center", display: "flex", flexDirection: "column", alignItems: "center", paddingTop: "40px", paddingBottom: isViewportMobile ? "160px" : "40px", marginTop: 0 }}>
                 {renderActiveTab(isViewportMobile)}
               </section>
             )}
