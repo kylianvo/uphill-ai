@@ -551,7 +551,7 @@ export default function Home() {
   const [chatMessages, setChatMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: "Hello! I am Coach Uphill. Tell me about your next target run. Are you preparing for a trail ultra or a road marathon? We will structure a plan matching Scott Johnston's principles or the 80/20 intensity threshold.",
+      content: "Hello! I’m Coach Uphill AI. Are you training for a trail ultra or a road marathon?",
     },
   ]);
   const [chatInput, setChatInput] = useState("");
@@ -2233,8 +2233,8 @@ export default function Home() {
 
   const renderChat = (isMobile: boolean) => {
     const welcomeText = lang === "en" 
-      ? "Hello! I am Coach Uphill. Tell me about your next target run. Are you preparing for a trail ultra or a road marathon? We will structure a plan matching Scott Johnston's principles or the 80/20 intensity threshold."
-      : "Xin chào! Tôi là Coach Uphill. Hãy chia sẻ với tôi về mục tiêu chạy tiếp theo của bạn. Bạn đang chuẩn bị cho một giải chạy trail ultra hay marathon đường bằng? Chúng ta sẽ thiết kế một kế hoạch tập luyện phù hợp với các nguyên tắc của Scott Johnston hoặc ngưỡng cường độ 80/20.";
+      ? "Hello! I’m Coach Uphill AI. Are you training for a trail ultra or a road marathon?"
+      : "Xin chào! Tôi là Coach Uphill AI. Bạn đang chuẩn bị cho một giải chạy trail ultra hay marathon đường bằng?";
 
     return (
       <div style={{ width: '100%', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
