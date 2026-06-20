@@ -5,7 +5,7 @@
 
 /* ─── Font Variables ──────────────────────────────────────────────────────── */
 :root {
-  --font-fustat:    'Fustat', var(--font-inter), sans-serif;
+  --font-fustat:    var(--font-inter), sans-serif;
 
   /* ─── Brand Colors (spec-exact) ─── */
   --color-black:       #000000;
@@ -1105,9 +1105,9 @@ label {
   }
   .content-panel {
     padding: 12px;
-    background: rgba(255, 255, 255, 0.82);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
+    background: rgba(255, 255, 255, 0.5);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     margin-bottom: 0px; /* No margin-bottom, let background extend to bottom */
     padding-bottom: calc(75px + env(safe-area-inset-bottom));
   }

@@ -2112,15 +2112,6 @@ export default function Home() {
               <>Nâng cao hiệu suất chạy bộ với <span className="gradient-text">AI Coach chuẩn khoa học</span>.</>
             )}
           </h2>
-          <p style={{ 
-            fontSize: isMobile ? '13.5px' : '15px', 
-            color: 'var(--text-secondary)', 
-            maxWidth: '680px', 
-            margin: '0 auto 24px auto',
-            lineHeight: '1.6'
-          }}>
-            {t("home_subheadline")}
-          </p>
           <button 
             className="btn btn-primary" 
             style={{ padding: '8px 24px', fontSize: '13px', height: '40px', display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
@@ -2128,93 +2119,6 @@ export default function Home() {
           >
             📅 {t("home_cta_plan")}
           </button>
-        </div>
-
-        {/* Feature Grid */}
-        <div className="home-feature-grid">
-          {/* Card 1: Grounded AI Coach */}
-          <div className="card" style={{ padding: '20px', cursor: 'pointer' }} onClick={() => setActiveTab('chat')}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-              <span className="card-icon" style={{ fontSize: '18px', width: '34px', height: '34px', background: 'rgba(16, 185, 129, 0.08)', color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>💬</span>
-              <h3 className="card-title" style={{ margin: 0, fontSize: '15px', fontWeight: '700' }}>{t("home_feat_chat_title")}</h3>
-            </div>
-            <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: '1.5', margin: 0 }}>
-              {t("home_feat_chat_desc")}
-            </p>
-          </div>
-
-          {/* Card 2: Adaptive Scheduler */}
-          <div className="card" style={{ padding: '20px', cursor: 'pointer' }} onClick={() => setActiveTab('planner')}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-              <span className="card-icon" style={{ fontSize: '18px', width: '34px', height: '34px', background: 'rgba(16, 185, 129, 0.08)', color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>📅</span>
-              <h3 className="card-title" style={{ margin: 0, fontSize: '15px', fontWeight: '700' }}>{t("home_feat_planner_title")}</h3>
-            </div>
-            <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: '1.5', margin: 0 }}>
-              {t("home_feat_planner_desc")}
-            </p>
-          </div>
-
-          {/* Card 3: Physiology Calculators */}
-          <div className="card" style={{ padding: '20px', cursor: 'pointer' }} onClick={() => setActiveTab('calculators')}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-              <span className="card-icon" style={{ fontSize: '18px', width: '34px', height: '34px', background: 'rgba(16, 185, 129, 0.08)', color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>📊</span>
-              <h3 className="card-title" style={{ margin: 0, fontSize: '15px', fontWeight: '700' }}>{t("home_feat_calc_title")}</h3>
-            </div>
-            <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: '1.5', margin: 0 }}>
-              {t("home_feat_calc_desc")}
-            </p>
-          </div>
-
-          {/* Card 4: Coaching Philosophy */}
-          <div className="card" style={{ padding: '20px', cursor: 'pointer' }} onClick={() => setActiveTab('philosophy')}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-              <span className="card-icon" style={{ fontSize: '18px', width: '34px', height: '34px', background: 'rgba(16, 185, 129, 0.08)', color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🏔️</span>
-              <h3 className="card-title" style={{ margin: 0, fontSize: '15px', fontWeight: '700' }}>{t("home_feat_philosophy_title")}</h3>
-            </div>
-            <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: '1.5', margin: 0 }}>
-              {t("home_feat_philosophy_desc")}
-            </p>
-          </div>
-        </div>
-
-        {/* ① Daily Knowledge */}
-        <div className="card" style={{ padding: isMobile ? "20px" : "28px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <span style={{ fontSize: "26px" }}>💡</span>
-              <div>
-                <h3 style={{ margin: 0, fontSize: isMobile ? "16px" : "20px", fontWeight: "800" }}>{t("home_daily_insight")}</h3>
-                <p style={{ margin: 0, fontSize: "12px", color: "var(--text-secondary)" }}>{t("home_daily_desc")}</p>
-              </div>
-            </div>
-            {hasCards && (
-              <button
-                className="btn btn-secondary"
-                style={{ fontSize: "12px", padding: "6px 14px", borderRadius: "8px", height: "32px", flexShrink: 0 }}
-                onClick={shuffleDailyCards}
-              >🔀 {t("home_shuffle_btn")}</button>
-            )}
-          </div>
-
-          {!hasCards && !isExtracting && (
-            <div style={{ textAlign: "center", padding: "32px 16px", color: "var(--text-muted)", fontSize: "13px" }}>
-              {extractStatus.status === "no_notebooklm"
-                ? `⚙️ ${t("home_connect_notebooklm")}`
-                : `📭 ${t("home_no_cards_yet")}`}
-            </div>
-          )}
-
-          {!hasCards && isExtracting && (
-            <div style={{ textAlign: "center", padding: "32px 16px", color: "var(--text-muted)", fontSize: "13px" }}>
-              ⏳ {t("home_extraction_in_progress")}
-            </div>
-          )}
-
-          {dailyCards.length > 0 && (
-            <div className="home-daily-grid">
-              {dailyCards.map((card, i) => <KnowledgeCard key={i} card={card} />)}
-            </div>
-          )}
         </div>
       </div>
     );
@@ -2453,49 +2357,7 @@ export default function Home() {
           )}
         </div>
 
-        {/* ② Browse All Knowledge */}
-        {hasCards && (
-          <div className="card" style={{ padding: isMobile ? "20px" : "28px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
-              <span style={{ fontSize: "24px" }}>📖</span>
-              <div>
-                <h3 style={{ margin: 0, fontSize: isMobile ? "16px" : "20px", fontWeight: "800" }}>
-                  {lang === "en" ? "Browse Knowledge" : "Duyệt tìm Kiến thức"}
-                </h3>
-                <p style={{ margin: 0, fontSize: "12px", color: "var(--text-secondary)" }}>
-                  {knowledgeCards.length} {lang === "en" ? "cards indexed" : "thẻ đã được lập chỉ mục"}
-                </p>
-              </div>
-            </div>
 
-            {/* Topic filter pills */}
-            <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "20px" }}>
-              {["All", ...knowledgeTopics].map((topicItem) => {
-                const active = knowledgeTopic === topicItem;
-                const color = topicColors[topicItem] || "#6366f1";
-                const displayName = topicItem === "All" 
-                  ? (lang === "en" ? "All" : "Tất cả") 
-                  : topicItem;
-                return (
-                  <button key={topicItem} onClick={() => filterKnowledgeByTopic(topicItem)} style={{
-                    padding: "5px 14px", borderRadius: "20px", fontSize: "12px", fontWeight: "600",
-                    cursor: "pointer", border: `1px solid ${active ? color : "var(--border-color)"}`,
-                    background: active ? `${color}22` : "rgba(255,255,255,0.06)",
-                    color: active ? color : "var(--text-secondary)",
-                    transition: "all 0.15s",
-                  }}>
-                    {topicEmojis[topicItem] ? `${topicEmojis[topicItem]} ` : ""}{displayName}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Cards grid */}
-            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: "12px" }}>
-              {knowledgeCards.map((card, i) => <KnowledgeCard key={i} card={card} />)}
-            </div>
-          </div>
-        )}
 
         {/* ③ Sources / Upload (Admin only) */}
         {user?.role === "admin" && (
@@ -3347,7 +3209,10 @@ export default function Home() {
 
           <button
             className="btn btn-primary"
-            style={{ width: "100%", marginBottom: "12px", height: "36px", fontSize: "12.5px" }}
+            style={{ 
+              width: "100%", marginBottom: "12px", height: "36px", fontSize: "12.5px",
+              ...(gpxCheckpoints.length === 0 ? { filter: "blur(3px)", opacity: 0.7, pointerEvents: "none" } : {})
+            }}
             onClick={handleCalculatePacing}
             disabled={gpxCheckpoints.length === 0 || pacingLoading}
           >
@@ -3481,8 +3346,9 @@ export default function Home() {
 
         {/* Card 3: Shoes & Gear Finder */}
         <div className="card" style={{ padding: isMobile ? "16px" : "24px" }}>
-          <h3 style={{ fontSize: isMobile ? "16px" : "18px", marginBottom: "8px", color: "var(--accent-primary)" }}>
-            👟 {lang === "en" ? "Gear Finder" : "Tìm kiếm Thiết bị (Gear Finder)"}
+          <h3 style={{ fontSize: isMobile ? "16px" : "18px", marginBottom: "8px", color: "var(--accent-primary)", display: "flex", alignItems: "center", gap: "8px" }}>
+            <span>👟 {lang === "en" ? "Gear Finder" : "Tìm kiếm Thiết bị"}</span>
+            <span style={{ fontSize: "10px", padding: "2px 6px", background: "rgba(255,255,255,0.15)", borderRadius: "4px", color: "var(--text-secondary)", fontWeight: "600" }}>Demo</span>
           </h3>
           <p style={{ color: "var(--text-secondary)", fontSize: "12.5px", marginBottom: "16px" }}>
             {lang === "en" 
