@@ -8,10 +8,14 @@ if (typeof window !== "undefined") {
   const params = new URLSearchParams(window.location.search);
   const apiParam = params.get("api");
   if (apiParam) {
-    if (apiParam === "default" || apiParam === "reset" || apiParam === "clear") {
+    let cleanParam = apiParam.trim();
+    if ((cleanParam.startsWith('"') && cleanParam.endsWith('"')) || (cleanParam.startsWith("'") && cleanParam.endsWith("'"))) {
+      cleanParam = cleanParam.slice(1, -1).trim();
+    }
+    if (cleanParam === "default" || cleanParam === "reset" || cleanParam === "clear") {
       localStorage.removeItem("UPHILL_API_URL_OVERRIDE");
     } else {
-      localStorage.setItem("UPHILL_API_URL_OVERRIDE", apiParam);
+      localStorage.setItem("UPHILL_API_URL_OVERRIDE", cleanParam);
     }
     // Remove query param from URL to keep it clean
     const cleanUrl = new URL(window.location.href);
