@@ -590,6 +590,7 @@ export default function Home() {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<number>(1);
   const [exportTimePref, setExportTimePref] = useState("all_day");
+  const [showExportOptions, setShowExportOptions] = useState(false);
   const [planForm, setPlanForm] = useState({
     race_name: "",
     race_date: "",
@@ -2418,54 +2419,8 @@ export default function Home() {
   const renderPlanner = (isMobile: boolean) => {
     return (
       <div>
-        {/* Recent Plans Selector */}
-        {recentPlans.length > 0 && (
-          <div style={{
-            marginBottom: "20px",
-            padding: "16px",
-            background: "rgba(255, 255, 255, 0.45)",
-            border: "1px solid var(--border-color)",
-            borderRadius: "12px",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.02)"
-          }}>
-            <label style={{ display: "block", fontSize: "11px", fontWeight: "700", marginBottom: "6px", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-              📅 Load Recent Training Plan
-            </label>
-            <select
-              className="chat-input"
-              style={{
-                width: "100%",
-                borderRadius: "8px",
-                padding: "8px 12px",
-                fontSize: "13px",
-                height: "38px",
-                background: "rgba(255, 255, 255, 0.75)",
-                border: "1px solid var(--border-color)",
-                cursor: "pointer",
-                color: "var(--text-primary)"
-              }}
-              value={activePlan ? activePlan.id : ""}
-              onChange={(e) => {
-                const val = e.target.value;
-                if (val) {
-                  handleSelectPlan(Number(val));
-                } else {
-                  setActivePlan(null);
-                }
-              }}
-            >
-              <option value="">-- Build a New Plan --</option>
-              {recentPlans.slice(0, 3).map((p) => (
-                <option key={p.id} value={p.id}>
-                  {formatPlanName(p)}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
         {!activePlan ? (
-          <form onSubmit={handleGeneratePlan} style={{ background: "var(--bg-card)", border: "1px solid var(--border-color)", padding: isMobile ? "20px" : "32px", borderRadius: "16px" }}>
+          <form onSubmit={handleGeneratePlan} style={{ background: "rgba(255, 255, 255, 0.95)", border: "1px solid var(--border-color)", padding: isMobile ? "20px" : "32px", borderRadius: "16px" }}>
             <h3 style={{ fontSize: isMobile ? "18px" : "22px", marginBottom: "16px", color: "var(--accent-primary)" }}>
               {lang === "en" ? "Plan Settings" : "Cài đặt Kế hoạch"}
             </h3>
@@ -2607,9 +2562,12 @@ export default function Home() {
 
             {/* ── Start Running fields ───────────────────────────── */}
             {planForm.plan_goal_category === "start_running" && (
-              <div style={{ marginBottom: "16px", padding: "16px", background: "rgba(16,185,129,0.04)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: "12px" }}>
-                <div style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "12px" }}>
-                  {lang === "en" ? "🌱 We'll build a gentle walk-to-run programme starting from your plan start date." : "🌱 Chúng tôi sẽ xây dựng một lộ trình chạy kết hợp đi bộ nhẹ nhàng bắt đầu từ ngày bạn chọn."}
+              <div style={{ marginBottom: "16px", padding: "16px", border: "1px solid var(--border-color)", borderRadius: "12px", display: "flex", flexDirection: "column", gap: "12px" }}>
+                <h4 style={{ margin: 0, fontSize: "14px", fontWeight: "700", color: "var(--text-bright)", borderBottom: "1px solid var(--border-color)", paddingBottom: "8px" }}>
+                  {lang === "en" ? "🌱 Start Running Program" : "🌱 Lộ trình Bắt đầu Chạy bộ"}
+                </h4>
+                <div style={{ fontSize: "12.5px", color: "var(--text-muted)" }}>
+                  {lang === "en" ? "We'll build a gentle walk-to-run programme starting from your plan start date." : "Chúng tôi sẽ xây dựng một lộ trình chạy kết hợp đi bộ nhẹ nhàng bắt đầu từ ngày bạn chọn."}
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
                   <div>
@@ -2632,7 +2590,44 @@ export default function Home() {
 
             {/* ── Return to Running fields ───────────────────────── */}
             {planForm.plan_goal_category === "return" && (
-              <div style={{ marginBottom: "16px", padding: "16px", background: "rgba(59,130,246,0.04)", border: "1px solid rgba(59,130,246,0.15)", borderRadius: "12px", display: "flex", flexDirection: "column", gap: "12px" }}>
+              <div style={{ marginBottom: "16px", padding: "16px", border: "1px solid var(--border-color)", borderRadius: "12px", display: "flex", flexDirection: "column", gap: "12px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border-color)", paddingBottom: "8px", flexWrap: "wrap", gap: "8px" }}>
+                  <h4 style={{ margin: 0, fontSize: "14px", fontWeight: "700", color: "var(--text-bright)" }}>
+                    {lang === "en" ? "🔄 Return to Running" : "🔄 Tập luyện trở lại"}
+                  </h4>
+                  {recentPlans.length > 0 && (
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "var(--text-secondary)" }}>
+                      <span>{lang === "en" ? "or" : "hoặc"}</span>
+                      <select
+                        style={{
+                          border: "none",
+                          background: "transparent",
+                          color: "var(--accent-primary)",
+                          fontWeight: "600",
+                          fontSize: "12px",
+                          cursor: "pointer",
+                          padding: "2px 4px",
+                          outline: "none",
+                          maxWidth: "160px"
+                        }}
+                        value=""
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val) handleSelectPlan(Number(val));
+                        }}
+                      >
+                        <option value="" style={{ color: "var(--text-primary)" }}>
+                          {lang === "en" ? "choose recent plan..." : "chọn kế hoạch..."}
+                        </option>
+                        {recentPlans.slice(0, 3).map((p) => (
+                          <option key={p.id} value={p.id} style={{ color: "var(--text-primary)" }}>
+                            {formatPlanName(p)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
                   <div>
                     <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px", color: "var(--text-secondary)" }}>
@@ -2650,7 +2645,7 @@ export default function Home() {
                   </div>
                 </div>
                 <div>
-                  <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px", color: "var(--text-secondary)" }}>
+                  <label style={{ display: "block", fontSize: "12.5px", fontWeight: "600", marginBottom: "6px", color: "var(--text-secondary)" }}>
                     {lang === "en" ? "How long have you been away?" : "Bạn đã dừng chạy trong bao lâu?"}
                   </label>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
@@ -2668,7 +2663,7 @@ export default function Home() {
                   </div>
                 </div>
                 <div>
-                  <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px", color: "var(--text-secondary)" }}>
+                  <label style={{ display: "block", fontSize: "12.5px", fontWeight: "600", marginBottom: "6px", color: "var(--text-secondary)" }}>
                     {lang === "en" ? "How are you feeling now?" : "Hiện tại bạn cảm thấy thế nào?"}
                   </label>
                   <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
@@ -2692,7 +2687,10 @@ export default function Home() {
 
             {/* ── Post-Race Recovery fields ──────────────────────── */}
             {planForm.plan_goal_category === "recovery" && (
-              <div style={{ marginBottom: "16px", padding: "16px", background: "rgba(139,92,246,0.04)", border: "1px solid rgba(139,92,246,0.15)", borderRadius: "12px", display: "flex", flexDirection: "column", gap: "12px" }}>
+              <div style={{ marginBottom: "16px", padding: "16px", border: "1px solid var(--border-color)", borderRadius: "12px", display: "flex", flexDirection: "column", gap: "12px" }}>
+                <h4 style={{ margin: 0, fontSize: "14px", fontWeight: "700", color: "var(--text-bright)", borderBottom: "1px solid var(--border-color)", paddingBottom: "8px" }}>
+                  {lang === "en" ? "💤 Post-Race Recovery Program" : "💤 Lộ trình Phục hồi sau Giải chạy"}
+                </h4>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
                   <div>
                     <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px", color: "var(--text-secondary)" }}>
@@ -2710,7 +2708,7 @@ export default function Home() {
                   </div>
                 </div>
                 <div>
-                  <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px", color: "var(--text-secondary)" }}>
+                  <label style={{ display: "block", fontSize: "12.5px", fontWeight: "600", marginBottom: "6px", color: "var(--text-secondary)" }}>
                     {lang === "en" ? "Race you completed" : "Giải chạy bạn đã hoàn thành"}
                   </label>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
@@ -2835,7 +2833,7 @@ export default function Home() {
             </button>
           </form>
         ) : (
-          <div>
+          <div style={{ background: "rgba(255, 255, 255, 0.95)", border: "1px solid var(--border-color)", padding: isMobile ? "20px" : "32px", borderRadius: "16px" }}>
             {/* Header info */}
             <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "16px" }}>
               <div>
@@ -2857,34 +2855,69 @@ export default function Home() {
                         : activePlan.goal_type.toUpperCase()}
                 </p>
               </div>
-              <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: "10px", width: "100%" }}>
-                <div style={{ display: "flex", gap: "6px", alignItems: "center", background: "rgba(255,255,255,0.2)", border: "1px solid var(--border-color)", padding: "4px 8px", borderRadius: "8px", flex: 1 }}>
-                  <span style={{ fontSize: "11px", color: "var(--text-secondary)", whiteSpace: "nowrap" }}>
-                    {lang === "en" ? "Time:" : "Giờ:"}
-                  </span>
-                  <select
-                    className="chat-input"
-                    style={{ width: "100%", padding: "2px", height: "26px", fontSize: "11.5px", border: "none", background: "transparent", cursor: "pointer", color: "var(--text-primary)" }}
-                    value={exportTimePref}
-                    onChange={(e) => setExportTimePref(e.target.value)}
+              
+              {!showExportOptions ? (
+                <div style={{ display: "flex", gap: "10px", width: "100%" }}>
+                  <button
+                    className="btn btn-primary"
+                    style={{ flex: 1, fontSize: "12px", height: "36px", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
+                    onClick={() => setShowExportOptions(true)}
                   >
-                    <option value="all_day">{lang === "en" ? "All Day" : "Cả ngày"}</option>
-                    <option value="morning">{lang === "en" ? "Morning" : "Buổi sáng"}</option>
-                    <option value="afternoon">{lang === "en" ? "Afternoon" : "Buổi chiều"}</option>
-                    <option value="evening">{lang === "en" ? "Evening" : "Buổi tối"}</option>
-                  </select>
+                    🗓️ {lang === "en" ? "Export Calendar" : "Xuất lịch tập"}
+                  </button>
+                  <button
+                    className="btn btn-secondary"
+                    style={{ flex: 1, fontSize: "12px", height: "36px" }}
+                    onClick={() => setActivePlan(null)}
+                  >
+                    {lang === "en" ? "New Plan" : "Kế hoạch mới"}
+                  </button>
                 </div>
-                <a
-                  href={`${API_BASE_URL}/api/coach/export-ics?plan_id=${activePlan.id}&race_date=${activePlan.race_date}&time_pref=${exportTimePref}&token=${typeof window !== 'undefined' ? localStorage.getItem('uphill_session_token') || '' : ''}`}
-                  className="btn btn-primary"
-                  style={{ gap: "4px", fontSize: "11.5px", padding: "6px 12px", height: "34px", flex: 1, textDecoration: "none" }}
-                >
-                  🗓️ {lang === "en" ? "Export" : "Xuất"}
-                </a>
-                <button className="btn btn-secondary" style={{ fontSize: "11.5px", padding: "6px 12px", height: "34px", flex: 1 }} onClick={() => setActivePlan(null)}>
-                  {lang === "en" ? "New Plan" : "Kế hoạch mới"}
-                </button>
-              </div>
+              ) : (
+                <div style={{
+                  background: "rgba(255, 255, 255, 0.95)",
+                  border: "1px solid var(--border-color)",
+                  padding: "12px",
+                  borderRadius: "10px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "8px",
+                  width: "100%",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.05)"
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: "12px", fontWeight: "600", color: "var(--text-secondary)" }}>
+                      {lang === "en" ? "Select Preferred Workout Time:" : "Chọn thời gian tập ưa thích:"}
+                    </span>
+                    <button
+                      type="button"
+                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: "12px", color: "var(--text-muted)" }}
+                      onClick={() => setShowExportOptions(false)}
+                    >✕</button>
+                  </div>
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <select
+                      className="chat-input"
+                      style={{ flex: 1, borderRadius: "6px", padding: "6px", height: "32px", fontSize: "12px" }}
+                      value={exportTimePref}
+                      onChange={(e) => setExportTimePref(e.target.value)}
+                    >
+                      <option value="all_day">{lang === "en" ? "All Day" : "Cả ngày"}</option>
+                      <option value="morning">{lang === "en" ? "Morning" : "Buổi sáng"}</option>
+                      <option value="afternoon">{lang === "en" ? "Afternoon" : "Buổi chiều"}</option>
+                      <option value="evening">{lang === "en" ? "Evening" : "Buổi tối"}</option>
+                    </select>
+                    <a
+                      href={`${API_BASE_URL}/api/coach/export-ics?plan_id=${activePlan.id}&race_date=${activePlan.race_date}&time_pref=${exportTimePref}&token=${typeof window !== 'undefined' ? localStorage.getItem('uphill_session_token') || '' : ''}`}
+                      className="btn btn-primary"
+                      style={{ fontSize: "12px", padding: "0 14px", height: "32px", display: "flex", alignItems: "center", textDecoration: "none", justifyContent: "center" }}
+                      onClick={() => setShowExportOptions(false)}
+                    >
+                      {lang === "en" ? "Download .ics" : "Tải xuống .ics"}
+                    </a>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Week Selector Tabs */}
