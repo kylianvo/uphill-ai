@@ -4646,8 +4646,8 @@ export default function Home() {
               {activeTab === "home" ? (
                 renderActiveTab(false)
               ) : (
-                <div className={`content-panel ${activeTab === "chat" ? "chat-panel-active" : ""}`} style={activeTab === "chat" ? { overflowY: "hidden", flex: 1, minHeight: 0 } : { minHeight: "100%" }}>
-                  <div className="content-panel-inner" style={{ width: "100%", height: activeTab === "chat" ? undefined : "auto", flex: activeTab === "chat" ? 1 : undefined, minHeight: 0, display: "flex", flexDirection: "column", maxWidth: activeTab === "chat" ? "680px" : undefined }}>
+                <div className={`content-panel ${activeTab === "chat" ? "chat-panel-active" : ""}`} style={activeTab === "chat" ? { overflowY: "hidden", flex: 1, minHeight: 0 } : { flex: 1, minHeight: 0 }}>
+                  <div className="content-panel-inner" style={{ width: "100%", height: activeTab === "chat" ? undefined : "auto", flex: activeTab === "chat" ? 1 : "1 0 auto", minHeight: activeTab === "chat" ? 0 : "100%", display: "flex", flexDirection: "column", maxWidth: activeTab === "chat" ? "680px" : undefined }}>
                     {/* Panel header breadcrumb */}
                     <div className="panel-header">
                       <span className="panel-header-icon">
@@ -4914,7 +4914,7 @@ export default function Home() {
                 className={`content-panel ${activeTab === "chat" ? "chat-panel-active" : ""}`}
                 style={activeTab === "chat" 
                   ? { overflowY: "hidden", flex: 1, minHeight: 0 } 
-                  : { minHeight: "100%" }
+                  : { flex: 1, minHeight: 0 }
                 }
               >
                 <div 
@@ -4922,8 +4922,8 @@ export default function Home() {
                   style={{ 
                     width: "100%", 
                     height: activeTab === "chat" ? undefined : "auto", 
-                    flex: activeTab === "chat" ? 1 : undefined,
-                    minHeight: 0,
+                    flex: activeTab === "chat" ? 1 : "1 0 auto",
+                    minHeight: activeTab === "chat" ? 0 : "100%",
                     display: "flex", 
                     flexDirection: "column", 
                     maxWidth: activeTab === "chat" ? "680px" : undefined,
