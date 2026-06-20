@@ -4679,7 +4679,7 @@ export default function Home() {
           </main>
         </div>
       ) : viewMode === "mobile" ? (
-        <div className="mobile-only-wrapper" style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%", width: "100%", position: "relative", overflow: "hidden" }}>
+        <div className="mobile-only-wrapper" style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100dvh", width: "100%", position: "relative", overflow: "hidden" }}>
           {/* Glow Effects */}
           <div className="glow-bg" style={{ opacity: 0.45 }}></div>
           <div className="glow-bg-left" style={{ opacity: 0.35 }}></div>
@@ -4770,7 +4770,7 @@ export default function Home() {
           </div>
         </div>
       ) : (
-        <div className="app-root" style={{ position: "relative", zIndex: 10, display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
+        <div className="app-root" style={{ position: "relative", zIndex: 10, display: "flex", flexDirection: "column", height: "100dvh", overflow: "hidden" }}>
 
           {/* ── Top Navigation ──────────────────────────────────── */}
           <nav className="top-nav" style={{ flexShrink: 0 }}>
@@ -4927,7 +4927,8 @@ export default function Home() {
                     display: "flex", 
                     flexDirection: "column", 
                     maxWidth: activeTab === "chat" ? "680px" : undefined,
-                    padding: activeTab === "chat" && isViewportMobile ? "0px" : undefined
+                    padding: activeTab === "chat" && isViewportMobile ? "0px" : undefined,
+                    paddingBottom: activeTab === "chat" && isViewportMobile ? "calc(80px + env(safe-area-inset-bottom))" : undefined
                   }}
                 >
                   {renderActiveTab(isViewportMobile)}

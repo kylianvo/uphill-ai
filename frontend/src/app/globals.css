@@ -92,7 +92,7 @@ html, body {
 .app-root {
   position: relative;
   z-index: 10;
-  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
 }
@@ -200,7 +200,7 @@ html, body {
   gap: 44px;
   position: relative;
   z-index: 10;
-  min-height: calc(100vh - 100px);
+  min-height: calc(100dvh - 100px);
 }
 
 /* ─── Badge Component ────────────────────────────────────────────────────── */
