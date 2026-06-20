@@ -73,6 +73,7 @@ class PlanGenerator:
         - Dynamic periodized schedule duration.
         """
         # 1. Base Variables Extract
+        lang = race_info.get("lang", "en").lower()
         age = int(user_profile.get("age", 30))
         max_hr = int(user_profile.get("max_hr", 220 - age))
         resting_hr = int(user_profile.get("resting_hr", 60))
@@ -410,6 +411,8 @@ class PlanGenerator:
                     "3. Make the plan highly customized. For example, scale long runs, map Sunday Muscular Endurance box steps/weighted step-ups based on the race elevation gain, or specify treadmill incline/speed settings for gym workouts.\n"
                     "4. Output MUST be a valid JSON array matching the schema. Do not include markdown wraps like ```json ... ``` inside the response text, output raw JSON array."
                 )
+                if lang == "vi":
+                    prompt += "\n5. CRITICAL: All workout text fields, including 'title', 'description', and 'fueling_tip', MUST be written in Vietnamese."
                 
                 print(f"[PlanGen][Gemini] Sending prompt to gemini-2.5-flash ({len(prompt)} chars)")
                 print(f"[PlanGen][Gemini] --- PROMPT START ---")
@@ -742,4 +745,108 @@ class PlanGenerator:
                         "fueling_tip": fuel_tip
                     })
                 
+        # Localization dictionary for rule-based fallback
+        if lang == "vi":
+            vi_trans = {
+                "Rest & Regeneration": "Nghỉ ngơi & Phục hồi",
+                "Rest day. Prioritize sleep, light stretching, and muscular recovery.": "Ngày nghỉ. Ưu tiên giấc ngủ, giãn cơ nhẹ và phục hồi cơ bắp.",
+                "Focus on standard hydration. Balanced baseline meals.": "Tập trung uống nước đầy đủ. Ăn các bữa ăn cân bằng dinh dưỡng.",
+                
+                "Recovery Zone Run": "Chạy phục hồi nhẹ nhàng",
+                "Active recovery run. Keep effort extremely light and comfortable.": "Chạy phục hồi chủ động. Giữ nỗ lực cực kỳ nhẹ nhàng và thoải mái.",
+                "Hydrate with water. No additional intra-workout carbs required.": "Bổ dung nước lọc. Không cần nạp thêm tinh bột trong khi chạy.",
+                
+                "Restorative Mobility": "Di động khớp phục hồi",
+                "No running. Focus on full-body mobility, gentle stretching, and hydration.": "Không chạy. Tập trung vào vận động khớp toàn thân, giãn cơ nhẹ nhàng và bổ sung nước.",
+                "Eat high-protein, nutrient-dense foods to rebuild muscle tissues.": "Ăn thực phẩm giàu protein, giàu dinh dưỡng để tái tạo mô cơ.",
+                
+                "Aerobic Power Intervals": "Bài tập Interval sức mạnh hiếu khí",
+                "Warmup 10m. Repeat 4x3 minutes at Zone 4 effort. Recover with 2 minutes light jog between.": "Khởi động 10 phút. Lặp lại 4 lần 3 phút ở mức nỗ lực Zone 4. Đi bộ hoặc chạy nhẹ phục hồi 2 phút giữa các tổ.",
+                "High intensity workout: Consume a fast-absorbing energy gel 15 minutes before starting.": "Bài tập cường độ cao: Nạp 1 gel năng lượng hấp thu nhanh 15 phút trước khi bắt đầu.",
+                
+                "Aerobic Tempo Session": "Bài chạy Aerobic Tempo",
+                "Warmup 10m. Run at moderate tempo pace (Zone 3) for 20-30 minutes. Cooldown 10m.": "Khởi động 10 phút. Chạy ở tốc độ tempo vừa phải (Zone 3) trong 20-30 phút. Thả lỏng 10 phút.",
+                "Consume electrolytes during the workout. Take 1 gel mid-session.": "Bổ sung điện giải trong khi chạy. Nạp 1 gel năng lượng ở giữa buổi.",
+                
+                "Easy Recovery Spin or Walk": "Đạp xe nhẹ phục hồi hoặc đi bộ",
+                "30-minute light walk, swim, or easy spin. Keep heart rate strictly in Zone 1.": "30 phút đi bộ nhẹ, bơi hoặc đạp xe nhẹ nhàng. Giữ nhịp tim nghiêm ngặt trong Zone 1.",
+                "Drink plenty of water and electrolytes to rehydrate after target event.": "Uống nhiều nước và điện giải để bổ sung nước sau sự kiện mục tiêu.",
+                
+                "Aerobic Capacity Run": "Bài chạy tích lũy hiếu khí",
+                "Steady continuous run. Targets mitochondrial development and fat oxidation efficiency.": "Chạy đều liên tục. Nhằm phát triển ti thể và tăng hiệu quả đốt cháy chất béo.",
+                "Practice gut-training: take 30g carbs per hour if workout exceeds 60 minutes.": "Luyện tập hệ tiêu hóa: nạp 30g tinh bột mỗi giờ nếu buổi chạy kéo dài hơn 60 phút.",
+                
+                "Rest & Mobilize": "Nghỉ ngơi & Vận động nhẹ",
+                "Rest day. Light yoga, mobility drills, or foam rolling.": "Ngày nghỉ. Tập yoga nhẹ nhàng, các bài tập linh hoạt khớp hoặc dùng con lăn giãn cơ (foam roller).",
+                "Standard nutrition. Keep baseline hydration levels consistent.": "Dinh dưỡng tiêu chuẩn. Giữ mức bổ sung nước cơ bản nhất quán.",
+                
+                "Post-Race Gentle Hike": "Đi bộ nhẹ phục hồi sau đua",
+                "Short restorative walk or light hike on flat, soft terrain. Enjoy the fresh air.": "Đi bộ ngắn phục hồi hoặc đi bộ dã ngoại nhẹ nhàng trên địa hình phẳng, mềm. Tận hưởng không khí trong lành.",
+                "Focus on clean foods. Hydrate normally.": "Tập trung vào thực phẩm sạch. Bổ sung nước bình thường.",
+                
+                "TARGET EVENT: ": "SỰ KIỆN MỤC TIÊU: ",
+                "Race day! Execute pacing strategy for your ": "Ngày chạy đua! Thực hiện chiến lược phân phối tốc độ cho sự kiện ",
+                "km event, maintain fueling targets, and enjoy the run.": "km của bạn, duy trì các mục tiêu nạp năng lượng và tận hưởng cuộc đua.",
+                "RACE FUELING: Target 60-90g carbs/hr, and 500-700mg sodium/hr. Stick to tested products.": "DINH DƯỠNG NGÀY ĐUA: Mục tiêu nạp 60-90g tinh bột/giờ, và 500-700mg natri/giờ. Chỉ dùng các sản phẩm đã thử nghiệm.",
+                
+                "Endurance Long Run": "Chạy dài bền bỉ",
+                "Building aerobic endurance. Keep a steady conversational effort.": "Xây dựng sức bền hiếu khí. Giữ nỗ lực chạy đều đặn ở mức có thể trò chuyện.",
+                "GUT TRAINING: Target 60g carbs/hour using gels and drink mixes to prepare your stomach.": "LUYỆN HỆ TIÊU HÓA: Mục tiêu nạp 60g tinh bột/giờ sử dụng gel và nước uống năng lượng để chuẩn bị cho dạ dày.",
+                "GUT TRAINING: Target 30g carbs/hour using gels and drink mixes to prepare your stomach.": "LUYỆN HỆ TIÊU HÓA: Mục tiêu nạp 30g tinh bột/giờ sử dụng gel và nước uống năng lượng để chuẩn bị cho dạ dày.",
+                
+                "Rest & Recuperation": "Nghỉ ngơi & Phục hồi hoàn toàn",
+                "Complete rest day. Spend time with family, sleep well, and let your body fully restore.": "Ngày nghỉ ngơi hoàn toàn. Dành thời gian cho gia đình, ngủ đủ giấc và để cơ thể phục hồi tối đa.",
+                "Balanced recovery diet.": "Chế độ ăn phục hồi cân bằng.",
+                
+                "General Base Strength": "Bài tập Sức mạnh nền tảng",
+                "Bodyweight routine: lunges, single-leg squats, and core stabilization. 3 sets of 12 reps.": "Bài tập sức nặng cơ thể: chùng chân (lunges), ngồi xổm một chân (single-leg squats), và ổn định cơ trọng tâm. 3 hiệp 12 lần lặp.",
+                "Prepares muscles for the ": "Chuẩn bị cơ bắp cho nhu cầu leo dốc ",
+                "m climbing demands.": "m của cuộc đua.",
+                "Drink amino acids post-workout for protein synthesis.": "Uống axit amin sau khi tập để hỗ trợ tổng hợp protein cơ bắp.",
+                
+                "Muscular Endurance: Weighted Step-Ups": "Sức bền cơ bắp: Bước lên bục với tạ",
+                "Simulates climbing demands for your event (": "Mô phỏng nhu cầu leo dốc cho sự kiện của bạn (",
+                "m total gain).": "m tổng độ cao).",
+                "Consume electrolytes. Keep hydration nearby during strength efforts.": "Bổ sung điện giải. Luôn để sẵn nước bên cạnh khi tập luyện sức mạnh.",
+                
+                "Muscular Endurance: Hill Bounds": "Sức bền cơ bắp: Nhảy dốc",
+                "Find a steep 10-15% grade hill. 6-8x repeats of 30 seconds explosive hill bounds. Walk down recovery.": "Tìm một ngọn dốc đứng 10-15%. Thực hiện 6-8 lần lặp lại nhảy dốc bùng nổ trong 30 giây. Đi bộ xuống dốc để phục hồi.",
+                "Intense muscle breakdown: Consume 25g protein within 30 minutes of finishing.": "Cơ bắp hoạt động cường độ cao: Nạp 25g protein trong vòng 30 phút sau khi tập xong.",
+                
+                "Active Recovery Walk": "Đi bộ phục hồi chủ động",
+                "Restorative 30-minute light walk or hike on soft trail.": "Đi bộ phục hồi nhẹ nhàng 30 phút trên đường trail mềm.",
+                "Recovery focus. Drink water.": "Tập trung phục hồi. Uống nước.",
+                
+                "Core & Hip Stability": "Bài tập Ổn định hông & Cơ trọng tâm",
+                "Focus on glute activation, hip bridges, side planks, and calf raises. Essential for road injury prevention.": "Tập trung vào kích hoạt cơ mông, tư thế cây cầu (hip bridges), plank nghiêng (side planks), và nhón gót (calf raises). Cần thiết để phòng ngừa chấn thương khi chạy đường bằng.",
+                "Protein-focused recovery snack.": "Bữa ăn nhẹ phục hồi tập trung vào protein.",
+            }
+
+            def t_str(s: str) -> str:
+                if not s:
+                    return s
+                if s in vi_trans:
+                    return vi_trans[s]
+                # Partial match checks for dynamic string patterns
+                for en_key, vi_val in vi_trans.items():
+                    if en_key in s:
+                        s = s.replace(en_key, vi_val)
+                # Handle specific dynamic strings
+                if "Building aerobic endurance for your" in s:
+                    s = s.replace("Building aerobic endurance for your", "Xây dựng sức bền hiếu khí cho sự kiện").replace("event. Keep a steady conversational effort. Target: cover around 30-40% of race distance.", "của bạn. Giữ nỗ lực chạy đều đặn ở mức có thể trò chuyện. Mục tiêu: chạy khoảng 30-40% cự ly đua.")
+                if "Steady long run. Keep effort conversational (Zone 2). Target: cover around 50-60% of your race distance" in s:
+                    s = s.replace("Steady long run. Keep effort conversational (Zone 2). Target: cover around 50-60% of your race distance", "Chạy dài ổn định. Giữ nỗ lực ở mức có thể nói chuyện (Zone 2). Mục tiêu: chạy khoảng 50-60% cự ly đua").replace("to build specific fatigue resistance.", "để xây dựng khả năng chống mệt mỏi đặc thù.")
+                if "Peak long run. Practice gear and race-day nutrition. Target: cover around 70-80% of your race distance" in s:
+                    s = s.replace("Peak long run. Practice gear and race-day nutrition. Target: cover around 70-80% of your race distance", "Bài chạy dài đỉnh cao. Tập dượt sử dụng trang thiết bị và dinh dưỡng ngày đua. Mục tiêu: chạy khoảng 70-80% cự ly đua")
+                if "Execute" in s and "step-ups holding" in s:
+                    s = s.replace("Execute", "Thực hiện").replace("step-ups holding", "lượt bước lên bục cao 30cm cầm theo").replace("of your body weight on a 30cm box. Simulates climbing demands for your event", "trọng lượng cơ thể. Mô phỏng nhu cầu leo dốc cho sự kiện của bạn")
+                if "Find a steep 10-15% grade hill simulating your event. 8-10x repeats of 30 seconds explosive hill bounds to handle the" in s:
+                    s = s.replace("Find a steep 10-15% grade hill simulating your event. 8-10x repeats of 30 seconds explosive hill bounds to handle the", "Tìm một ngọn dốc đứng 10-15% mô phỏng sự kiện của bạn. Lặp lại 8-10 lần 30 giây nhảy dốc bùng nổ để chịu đựng").replace("of race vertical. Walk down recovery.", "độ dốc của cuộc đua. Đi bộ xuống để phục hồi.")
+                return s
+
+            for wo in workouts:
+                wo["title"] = t_str(wo.get("title", ""))
+                wo["description"] = t_str(wo.get("description", ""))
+                wo["fueling_tip"] = t_str(wo.get("fueling_tip", ""))
+
         return post_process_workouts(workouts)

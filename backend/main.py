@@ -91,6 +91,7 @@ class LinkIngestRequest(BaseModel):
     url: str
 
 class PlanGenerateRequest(BaseModel):
+    lang: Optional[str] = "en"
     race_name: Optional[str] = None
     race_date: Optional[str] = None  # YYYY-MM-DD
     goal_type: str  # 'finish', 'time', 'optimal', 'start_running', 'return', 'recovery'
@@ -161,6 +162,7 @@ class SetPasswordRequest(BaseModel):
     password: str
 
 class OnboardingRequest(BaseModel):
+    lang: Optional[str] = "en"
     # Step 1
     dob: Optional[str] = None           # YYYY-MM-DD
     age: Optional[int] = None
@@ -529,6 +531,7 @@ async def complete_onboarding(request: OnboardingRequest, user: Dict[str, Any] =
         "preferred_days": request.preferred_run_days,
         "long_run_day": request.long_run_day,
         "days_per_week": request.days_per_week,
+        "lang": request.lang or "en",
     }
 
     # Create a job entry and fire plan generation in the background
@@ -790,7 +793,8 @@ async def generate_training_plan(request: PlanGenerateRequest, user: Dict[str, A
             "long_run_day": request.long_run_day,
             "days_per_week": request.days_per_week,
             # Start date
-            "plan_start_date": start_date_str
+            "plan_start_date": start_date_str,
+            "lang": request.lang or "en",
         }
         
         # Fetch latest user details from database to ensure fresh physiological values

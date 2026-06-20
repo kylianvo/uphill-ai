@@ -1367,6 +1367,7 @@ export default function Home() {
         days_since_race: onboardingAnswers.days_since_race ? parseInt(onboardingAnswers.days_since_race) : null,
         recovery_feel: onboardingAnswers.recovery_feel || null,
         next_goal: onboardingAnswers.next_goal || null,
+        lang: lang,
       };
       // HR zones
       if (onboardingAnswers.aet_hr) payload.aet_hr = parseInt(onboardingAnswers.aet_hr);
@@ -1755,6 +1756,7 @@ export default function Home() {
         race_distance_completed: planForm.race_distance_completed || null,
         days_since_race: planForm.days_since_race ? parseInt(planForm.days_since_race) : null,
         recovery_feel: planForm.recovery_feel || null,
+        lang: lang,
       };
 
       // Combine H/M/S into decimal hours
@@ -3773,13 +3775,28 @@ export default function Home() {
                 {lang === "en" ? `Welcome, ${user.name.split(" ")[0]}! 🎉` : `Chào mừng, ${user.name.split(" ")[0]}! 🎉`}
               </div>
               <p style={{ color: "var(--text-muted)", fontSize: "13px", marginBottom: "20px" }}>
-                {lang === "en" ? "Let's set up your personalised training plan. First, when were you born?" : "Hãy cùng thiết lập kế hoạch tập luyện cá nhân hóa của bạn. Đầu tiên, ngày sinh của bạn là khi nào?"}
+                {lang === "en" ? "Let's set up your personalised training plan. First, select your language and when you were born." : "Hãy cùng thiết lập kế hoạch tập luyện cá nhân hóa của bạn. Đầu tiên, chọn ngôn ngữ của bạn và nhập ngày sinh."}
               </p>
-              <label style={labelS}>{t("onboard_dob")}</label>
-              <input type="date" style={inputS} className="chat-input" value={onboardingAnswers.dob} onChange={e => setAns("dob", e.target.value)} />
-              <p style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "8px" }}>
-                {lang === "en" ? "Used to estimate your maximum heart rate (220 − age)" : "Được sử dụng để ước tính nhịp tim tối đa của bạn (220 − số tuổi)"}
-              </p>
+              
+              <div style={{ marginBottom: "20px" }}>
+                <label style={labelS}>{lang === "en" ? "Language" : "Ngôn ngữ"}</label>
+                <div style={{ display: "flex", background: "rgba(255,255,255,0.4)", border: "1px solid var(--border-color)", padding: "3px", borderRadius: "10px" }}>
+                  {(["en", "vi"] as const).map(l => (
+                    <button key={l} type="button" onClick={() => handleSetLang(l)}
+                      style={{ flex: 1, height: "30px", fontSize: "12px", borderRadius: "8px", border: "none", background: lang === l ? "var(--accent-primary)" : "transparent", color: lang === l ? "#fff" : "var(--text-secondary)", fontWeight: "600", cursor: "pointer", transition: "all 0.15s" }}>
+                      {l === "en" ? "🇬🇧 English" : "🇻🇳 Tiếng Việt"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ marginBottom: "10px" }}>
+                <label style={labelS}>{t("onboard_dob")}</label>
+                <input type="date" style={inputS} className="chat-input" value={onboardingAnswers.dob} onChange={e => setAns("dob", e.target.value)} />
+                <p style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "8px" }}>
+                  {lang === "en" ? "Used to estimate your maximum heart rate (220 − age)" : "Được sử dụng để ước tính nhịp tim tối đa của bạn (220 − số tuổi)"}
+                </p>
+              </div>
             </div>
           );
         case "goal":
