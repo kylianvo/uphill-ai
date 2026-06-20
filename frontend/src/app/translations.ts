@@ -90,7 +90,7 @@ export const translations = {
     goal_race: "Race 🏆",
     goal_distance: "Distance 📏",
     goal_start: "Start Running 🌱",
-    goal_return: "Return 🔄",
+    goal_return: "Return to Running 🔄",
     goal_recovery: "Recovery 💤",
 
     // Plan Generator Form

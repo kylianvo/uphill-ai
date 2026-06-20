@@ -2421,9 +2421,42 @@ export default function Home() {
       <div>
         {!activePlan ? (
           <form onSubmit={handleGeneratePlan} style={{ background: "rgba(255, 255, 255, 0.95)", border: "1px solid var(--border-color)", padding: isMobile ? "20px" : "32px", borderRadius: "16px" }}>
-            <h3 style={{ fontSize: isMobile ? "18px" : "22px", marginBottom: "16px", color: "var(--accent-primary)" }}>
-              {lang === "en" ? "Plan Settings" : "Cài đặt Kế hoạch"}
-            </h3>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "8px" }}>
+              <h3 style={{ fontSize: isMobile ? "18px" : "22px", margin: 0, color: "var(--accent-primary)" }}>
+                {lang === "en" ? "Plan Settings" : "Cài đặt Kế hoạch"}
+              </h3>
+              {recentPlans.length > 0 && (
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "var(--text-secondary)" }}>
+                  <span>{lang === "en" ? "or" : "hoặc"}</span>
+                  <select
+                    style={{
+                      border: "none",
+                      background: "transparent",
+                      color: "var(--accent-primary)",
+                      fontWeight: "600",
+                      fontSize: "12px",
+                      cursor: "pointer",
+                      padding: "2px 4px",
+                      outline: "none",
+                    }}
+                    value=""
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val) handleSelectPlan(Number(val));
+                    }}
+                  >
+                    <option value="" style={{ color: "var(--text-primary)" }}>
+                      {lang === "en" ? "load recent training plan..." : "tải giáo án gần đây..."}
+                    </option>
+                    {recentPlans.slice(0, 3).map((p) => (
+                      <option key={p.id} value={p.id} style={{ color: "var(--text-primary)" }}>
+                        {formatPlanName(p)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
 
             {/* ── Step 1: Plan Goal Category ────────────────────── */}
             <div style={{ marginBottom: "20px" }}>
@@ -2913,7 +2946,7 @@ export default function Home() {
                       style={{ fontSize: "12px", padding: "0 14px", height: "32px", display: "flex", alignItems: "center", textDecoration: "none", justifyContent: "center" }}
                       onClick={() => setShowExportOptions(false)}
                     >
-                      {lang === "en" ? "Download .ics" : "Tải xuống .ics"}
+                      {lang === "en" ? "Add to Calendar (.ics)" : "Thêm vào Lịch (.ics)"}
                     </a>
                   </div>
                 </div>
