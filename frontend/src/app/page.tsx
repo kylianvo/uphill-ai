@@ -1292,15 +1292,21 @@ export default function Home() {
         const res = await fetch(`http://localhost:8000/api/coach/plan-status/${jobId}`, {
           headers: { "Authorization": `Bearer ${token}` }
         });
-        if (!res.ok) return;
+        if (!res.ok) {
+          console.error("Plan status polling failed. HTTP Status:", res.status);
+          return;
+        }
         const data = await res.json();
+        console.log("Plan job polling status update:", data);
         if (data.status === "done") {
           clearInterval(planJobPollerRef.current!);
           planJobPollerRef.current = null;
           setPlanJobStatus("done");
-          if (data.workouts) setWorkouts(data.workouts);
-          if (data.plan) setActivePlan(data.plan);
-          fetchRecentPlansWithToken(token);
+          
+          // Re-fetch active plan and workouts from database to guarantee complete state synchronization
+          await fetchActivePlanWithToken(token);
+          setSelectedWeek(1);
+          
           // Auto-dismiss banner after 10 seconds
           setTimeout(() => setPlanJobStatus("idle"), 10000);
         } else if (data.status === "error") {
@@ -1310,7 +1316,9 @@ export default function Home() {
           setPlanJobMessage(data.error || "Plan generation failed.");
           setTimeout(() => setPlanJobStatus("idle"), 10000);
         }
-      } catch (_) {}
+      } catch (err) {
+        console.error("Exception during plan job polling:", err);
+      }
     };
 
     planJobPollerRef.current = setInterval(poll, 4000);
@@ -4638,7 +4646,7 @@ export default function Home() {
               {activeTab === "home" ? (
                 renderActiveTab(false)
               ) : (
-                <div className={`content-panel ${activeTab === "chat" ? "chat-panel-active" : ""}`} style={activeTab === "chat" ? { overflowY: "hidden", flex: 1, minHeight: 0 } : { height: "100%" }}>
+                <div className={`content-panel ${activeTab === "chat" ? "chat-panel-active" : ""}`} style={activeTab === "chat" ? { overflowY: "hidden", flex: 1, minHeight: 0 } : { minHeight: "100%" }}>
                   <div className="content-panel-inner" style={{ width: "100%", height: activeTab === "chat" ? undefined : "auto", flex: activeTab === "chat" ? 1 : undefined, minHeight: 0, display: "flex", flexDirection: "column", maxWidth: activeTab === "chat" ? "680px" : undefined }}>
                     {/* Panel header breadcrumb */}
                     <div className="panel-header">
@@ -4906,7 +4914,7 @@ export default function Home() {
                 className={`content-panel ${activeTab === "chat" ? "chat-panel-active" : ""}`}
                 style={activeTab === "chat" 
                   ? { overflowY: "hidden", flex: 1, minHeight: 0 } 
-                  : { height: "100%" }
+                  : { minHeight: "100%" }
                 }
               >
                 <div 

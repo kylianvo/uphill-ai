@@ -118,12 +118,27 @@ class PlanGenerator:
             for wo in wos:
                 dur = float(wo.get("duration_minutes") or 0.0)
                 wo["duration_minutes"] = dur
-                w_type = wo.get("type", "Rest")
-                zone = wo.get("target_zone", "Zone 2")
+                w_type = wo.get("type") or "Rest"
+                wo["type"] = w_type
                 
-                # Ensure correct typing for optional numeric fields
-                if "week_number" in wo:
-                    wo["week_number"] = int(wo["week_number"])
+                # Ensure target_zone is never None to satisfy database TEXT NOT NULL constraint
+                zone = wo.get("target_zone") or ("Zone 1" if w_type in ("Rest", "Strength", "Muscular Endurance") else "Zone 2")
+                wo["target_zone"] = zone
+                
+                # Default other non-nullable database columns
+                wo["phase"] = wo.get("phase") or "Training"
+                wo["title"] = wo.get("title") or ("Rest Day" if w_type == "Rest" else "Workout")
+                wo["day_of_week"] = wo.get("day_of_week") or "Monday"
+                
+                # Ensure correct typing for optional numeric fields and week_number
+                if "week_number" in wo and wo["week_number"] is not None:
+                    try:
+                        wo["week_number"] = int(wo["week_number"])
+                    except Exception:
+                        wo["week_number"] = 1
+                else:
+                    wo["week_number"] = 1
+                    
                 if "treadmill_incline" in wo and wo["treadmill_incline"] is not None:
                     try:
                         wo["treadmill_incline"] = float(wo["treadmill_incline"])
