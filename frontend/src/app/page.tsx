@@ -4477,9 +4477,10 @@ export default function Home() {
       {planJobStatus !== "idle" && (
         <div style={{
           position: "fixed",
-          top: "16px",
-          left: "50%",
-          transform: "translateX(-50%)",
+          bottom: isViewportMobile ? "90px" : "24px",
+          left: isViewportMobile ? "16px" : "24px",
+          right: isViewportMobile ? "16px" : "auto",
+          transform: "none",
           zIndex: 9999,
           display: "flex",
           alignItems: "center",
