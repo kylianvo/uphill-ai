@@ -7,7 +7,7 @@ services:
       POSTGRES_USER: uphill
       POSTGRES_PASSWORD: uphill_secret
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -23,7 +23,7 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     env_file:
       - ./backend/.env
     environment:
@@ -36,36 +36,7 @@ services:
       - ./backend:/app
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
-  frontend:
-    image: uphill-frontend:latest
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-https://wear-episode-advocacy-archives.trycloudflare.com}
-    restart: unless-stopped
-    ports:
-      - "3000:3000"
-    environment:
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://wear-episode-advocacy-archives.trycloudflare.com}
-    depends_on:
-      - backend
 
-  tunnel:
-    image: cloudflare/cloudflared:latest
-    restart: unless-stopped
-    # By default, runs a temporary quick tunnel (no account needed).
-    # The public URL will be printed in the container logs: 'docker compose logs tunnel'
-    command: tunnel --no-autoupdate --url http://backend:8000
-    # To use a persistent named tunnel instead:
-    # 1. Create a tunnel in Cloudflare Zero Trust and get its token.
-    # 2. Add CLOUDFLARE_TUNNEL_TOKEN=your-token to backend/.env
-    # 3. Comment out the 'command' line above, and uncomment the lines below:
-    # environment:
-    #   - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN:-}
-    # command: tunnel --no-autoupdate run
-    depends_on:
-      - backend
 
 volumes:
   pgdata:
