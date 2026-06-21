@@ -10,12 +10,15 @@ venv/
 .env
 .env.local
 .env.*.local
+.env.production
 *.pem
 *.key
 
-# Databases
+# Databases and Configs
 *.db
 *.sqlite3
+*.sql
+*.conf
 
 # Python cache
 __pycache__/
