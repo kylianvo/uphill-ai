@@ -2980,9 +2980,6 @@ const renderChat = (isMobile: boolean) => {
                   {(() => {
                     const goal = activePlan.goal_type || "";
                     if (["start_running", "return", "recovery"].includes(goal)) {
-                      if (workouts.length > 0) {
-                        return `${workouts[0].date} - ${activePlan.race_date}`;
-                      }
                       return lang === "en" ? `Block ends: ${activePlan.race_date}` : `Kết thúc: ${activePlan.race_date}`;
                     } else {
                       return lang === "en" ? `Race Day: ${activePlan.race_date}` : `Ngày đua: ${activePlan.race_date}`;
