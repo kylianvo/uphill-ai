@@ -388,7 +388,7 @@ class PlanGenerator:
                     f"Current Date (today): {current_date_str} ({current_weekday})\n"
                     f"{target_date_details}"
                     f"Required Plan Length: {total_weeks} weeks.\n"
-                    f"- Week 1 MUST start on Monday {monday_today_str} (which contains today, {current_date_str}).\n"
+                    f"- Week 1 MUST start on the selected start date: {current_date_str} ({current_weekday}).\n"
                     f"{week_schedule_constraints}\n"
                     f"Grounding Reference Guidelines:\n{grounding_context}\n\n"
                     "Instructions:\n"
