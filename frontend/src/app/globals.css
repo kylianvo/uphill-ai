@@ -26,9 +26,9 @@
 
   /* ─── Surface tokens for feature panels (Light Glassmorphism) ─── */
   --bg-main:           rgba(255, 255, 255, 0.15);
-  --bg-card:           rgba(255, 255, 255, 0.25);
-  --bg-card-hover:     rgba(255, 255, 255, 0.4);
-  --border-color:      rgba(0, 0, 0, 0.15);
+  --bg-card:           rgba(255, 255, 255, 0.65);
+  --bg-card-hover:     rgba(255, 255, 255, 0.8);
+  --border-color:      rgba(0, 0, 0, 0.2);
   --border-color-active: rgba(25, 206, 139, 0.8);
   --text-primary:      #111827;
   --text-secondary:    #4b5563;
