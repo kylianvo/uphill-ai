@@ -2,7 +2,10 @@
 
 import { useState, useEffect, useRef } from "react";
 import { translations } from "./translations";
-
+import { 
+  Robot, CalendarBlank, BookOpen, Calculator, Mountains, 
+  Barbell, BowlFood, Bed, Timer, Brain, Backpack, CaretDown, CaretUp, Book
+} from "@phosphor-icons/react";
 if (typeof window !== "undefined") {
   // Check for api query parameter to override API URL
   const params = new URLSearchParams(window.location.search);
@@ -212,31 +215,43 @@ const topicColors: Record<string, string> = {
   Training: "#3b82f6", Nutrition: "#10b981", Recovery: "#8b5cf6",
   Pacing: "#f59e0b", Mindset: "#ec4899", Gear: "#14b8a6",
 };
-const topicEmojis: Record<string, string> = {
-  Training: "🏔️", Nutrition: "🥗", Recovery: "😴",
-  Pacing: "⏱️", Mindset: "🧠", Gear: "🎒",
+const topicIcons: Record<string, React.ReactNode> = {
+  Training: <Mountains weight="fill" />, 
+  Nutrition: <BowlFood weight="fill" />, 
+  Recovery: <Bed weight="fill" />,
+  Pacing: <Timer weight="fill" />, 
+  Mindset: <Brain weight="fill" />, 
+  Gear: <Backpack weight="fill" />,
 };
 
 const KnowledgeCard = ({ card, expanded = false }: { card: any; expanded?: boolean }) => {
   const [open, setOpen] = useState(expanded);
   const color = topicColors[card.topic] || "#6366f1";
-  const emoji = topicEmojis[card.topic] || "📖";
+  const icon = topicIcons[card.topic] || <Book weight="fill" />;
   return (
     <div style={{
-      background: "rgba(255,255,255,0.5)", border: `1px solid ${color}33`,
+      background: "var(--bg-card)", border: `1px solid var(--border-color)`,
       borderRadius: "14px", padding: "16px", cursor: "pointer",
-      transition: "all 0.2s", backdropFilter: "blur(8px)",
+      transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)", backdropFilter: "blur(8px)",
+      boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05)"
     }}
       onClick={() => setOpen(!open)}
-      onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.8)")}
-      onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.5)")}
+      onMouseEnter={e => {
+        e.currentTarget.style.background = "var(--bg-card-hover)";
+        e.currentTarget.style.transform = "translateY(-1px)";
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.background = "var(--bg-card)";
+        e.currentTarget.style.transform = "translateY(0)";
+      }}
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px", marginBottom: "8px" }}>
         <span style={{
-          fontSize: "10px", fontWeight: "700", padding: "2px 8px", borderRadius: "20px",
+          display: "flex", alignItems: "center", gap: "4px",
+          fontSize: "10px", fontWeight: "700", padding: "4px 8px", borderRadius: "20px",
           background: `${color}22`, color: color, letterSpacing: "0.5px", flexShrink: 0,
-        }}>{emoji} {card.topic?.toUpperCase()}</span>
-        <span style={{ fontSize: "11px", color: "var(--text-muted)", flexShrink: 0 }}>{open ? "▲" : "▼"}</span>
+        }}>{icon} {card.topic?.toUpperCase()}</span>
+        <span style={{ fontSize: "14px", color: "var(--text-muted)", flexShrink: 0 }}>{open ? <CaretUp weight="bold"/> : <CaretDown weight="bold"/>}</span>
       </div>
       <div style={{ fontWeight: "700", fontSize: "14px", color: "var(--text-bright)", marginBottom: "8px", lineHeight: "1.4" }}>
         {card.chapter_title}
@@ -2383,7 +2398,7 @@ export default function Home() {
           )}
 
           {dailyCards.length > 0 && (
-            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr", gap: "14px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.3fr 1fr 1.1fr", gap: "14px" }}>
               {dailyCards.map((card, i) => <KnowledgeCard key={i} card={card} />)}
             </div>
           )}
@@ -2529,7 +2544,7 @@ export default function Home() {
               {planForm.goal_type === "time" && (
                 <div style={{ marginBottom: "16px" }}>
                   <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px", color: "var(--text-secondary)" }}>🎯 {t("plan_target_time")}</label>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr 1.1fr", gap: "8px" }}>
                     <div><label style={{ display: "block", fontSize: "11px", color: "var(--text-secondary)", marginBottom: "4px" }}>{lang === "en" ? "Hours" : "Giờ"}</label><input type="number" min="0" max="99" className="chat-input" style={{ borderRadius: "8px", width: "100%", padding: "8px", textAlign: "center" }} placeholder="0" value={targetTimeH} onChange={(e) => setTargetTimeH(e.target.value)} /></div>
                     <div><label style={{ display: "block", fontSize: "11px", color: "var(--text-secondary)", marginBottom: "4px" }}>{lang === "en" ? "Minutes" : "Phút"}</label><input type="number" min="0" max="59" className="chat-input" style={{ borderRadius: "8px", width: "100%", padding: "8px", textAlign: "center" }} placeholder="0" value={targetTimeM} onChange={(e) => setTargetTimeM(e.target.value)} /></div>
                     <div><label style={{ display: "block", fontSize: "11px", color: "var(--text-secondary)", marginBottom: "4px" }}>{lang === "en" ? "Seconds" : "Giây"}</label><input type="number" min="0" max="59" className="chat-input" style={{ borderRadius: "8px", width: "100%", padding: "8px", textAlign: "center" }} placeholder="0" value={targetTimeS} onChange={(e) => setTargetTimeS(e.target.value)} /></div>
@@ -2541,7 +2556,7 @@ export default function Home() {
               {planForm.goal_type === "finish" && (
                 <div style={{ marginBottom: "16px" }}>
                   <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "2px", color: "var(--text-secondary)" }}>⏱️ {t("plan_cutoff_time")} <span style={{ fontWeight: 400, opacity: 0.7 }}>{lang === "en" ? "(optional — we'll target 85% of cutoff)" : "(tùy chọn — mục tiêu đạt 85% cutoff)"}</span></label>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px", marginTop: "6px" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr 1.1fr", gap: "8px", marginTop: "6px" }}>
                     <div><label style={{ display: "block", fontSize: "11px", color: "var(--text-secondary)", marginBottom: "4px" }}>{lang === "en" ? "Hours" : "Giờ"}</label><input type="number" min="0" max="99" className="chat-input" style={{ borderRadius: "8px", width: "100%", padding: "8px", textAlign: "center" }} placeholder="0" value={cutoffTimeH} onChange={(e) => setCutoffTimeH(e.target.value)} /></div>
                     <div><label style={{ display: "block", fontSize: "11px", color: "var(--text-secondary)", marginBottom: "4px" }}>{lang === "en" ? "Minutes" : "Phút"}</label><input type="number" min="0" max="59" className="chat-input" style={{ borderRadius: "8px", width: "100%", padding: "8px", textAlign: "center" }} placeholder="0" value={cutoffTimeM} onChange={(e) => setCutoffTimeM(e.target.value)} /></div>
                     <div><label style={{ display: "block", fontSize: "11px", color: "var(--text-secondary)", marginBottom: "4px" }}>{lang === "en" ? "Seconds" : "Giây"}</label><input type="number" min="0" max="59" className="chat-input" style={{ borderRadius: "8px", width: "100%", padding: "8px", textAlign: "center" }} placeholder="0" value={cutoffTimeS} onChange={(e) => setCutoffTimeS(e.target.value)} /></div>
@@ -4692,11 +4707,11 @@ export default function Home() {
                   <div className="content-panel-inner" style={{ width: "100%", height: activeTab === "chat" ? undefined : "auto", flex: activeTab === "chat" ? 1 : "1 0 auto", minHeight: activeTab === "chat" ? 0 : "100%", display: "flex", flexDirection: "column", maxWidth: activeTab === "chat" ? "680px" : undefined }}>
                     {/* Panel header breadcrumb */}
                     <div className="panel-header">
-                      <span className="panel-header-icon">
-                        {activeTab === "chat" ? "🤖" :
-                         activeTab === "planner" ? "📅" :
-                         activeTab === "knowledge" ? "📚" :
-                         activeTab === "calculators" ? "🧮" : "🏔️"}
+                      <span className="panel-header-icon" style={{ display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-primary)" }}>
+                        {activeTab === "chat" ? <Robot size={28} weight="duotone" /> :
+                         activeTab === "planner" ? <CalendarBlank size={28} weight="duotone" /> :
+                         activeTab === "knowledge" ? <BookOpen size={28} weight="duotone" /> :
+                         activeTab === "calculators" ? <Calculator size={28} weight="duotone" /> : <Mountains size={28} weight="duotone" />}
                       </span>
                       <div>
                         <h2>{activeTab === "chat" ? t("tab_chat") :

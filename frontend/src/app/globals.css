@@ -5,35 +5,35 @@
 
 /* ─── Font Variables ──────────────────────────────────────────────────────── */
 :root {
-  --font-fustat:    var(--font-inter), sans-serif;
+  --font-fustat:    var(--font-outfit), sans-serif;
 
   /* ─── Brand Colors (spec-exact) ─── */
-  --color-black:       #000000;
-  --color-gray:        #505050;
+  --color-black:       #0d0c0d;
+  --color-gray:        #737373;
   --color-white:       #ffffff;
-  --color-light-bg:    #f8f8f8;
-  --color-green:       rgba(90, 225, 76, 0.89);
-  --color-badge-dark:  #0e1311;
-  --color-glass:       rgba(255, 255, 255, 0.2);
+  --color-light-bg:    #1a1a1a;
+  --color-green:       #19ce8b;
+  --color-badge-dark:  #111111;
+  --color-glass:       rgba(255, 255, 255, 0.05);
 
-  /* ─── Brand Accent Tokens (High-Visibility Mountain Green) ─── */
-  --accent-primary:         #10B981;
-  --accent-secondary:       #059669;
+  /* ─── Brand Accent Tokens (Emerald/Lime Green) ─── */
+  --accent-primary:         #19ce8b;
+  --accent-secondary:       #a2d13c;
   --accent-alert:           #ef4444;
-  --accent-success:         #10b981;
-  --accent-primary-hsl:     162, 72%, 41%;
-  --accent-secondary-hsl:   162, 93%, 30%;
+  --accent-success:         #19ce8b;
+  --accent-primary-hsl:     158, 78%, 45%;
+  --accent-secondary-hsl:   79, 64%, 53%;
 
-  /* ─── Surface tokens for feature panels (Light Snow Glassmorphism) ─── */
-  --bg-main:           rgba(255, 255, 255, 0.82);
-  --bg-card:           rgba(255, 255, 255, 0.75);
-  --bg-card-hover:     rgba(255, 255, 255, 0.88);
-  --border-color:      rgba(0, 0, 0, 0.12);
-  --border-color-active: rgba(16, 185, 129, 0.5);
-  --text-primary:      #111111;
-  --text-secondary:    #444444;
-  --text-muted:        #666666;
-  --text-bright:       #000000;
+  /* ─── Surface tokens for feature panels (Dark Glassmorphism) ─── */
+  --bg-main:           rgba(13, 12, 13, 0.6);
+  --bg-card:           rgba(20, 20, 20, 0.4);
+  --bg-card-hover:     rgba(30, 30, 30, 0.6);
+  --border-color:      rgba(255, 255, 255, 0.1);
+  --border-color-active: rgba(25, 206, 139, 0.5);
+  --text-primary:      #ffffff;
+  --text-secondary:    #a3a3a3;
+  --text-muted:        #737373;
+  --text-bright:       #ffffff;
 }
 
 /* ─── Global Resets ──────────────────────────────────────────────────────── */
@@ -49,7 +49,7 @@ html, body {
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-family: var(--font-inter);
+  font-family: var(--font-outfit);
   color: var(--color-white);
   background: #0a0a0a;
 }
@@ -142,10 +142,10 @@ html, body {
 }
 
 .top-nav-tab {
-  font-family: var(--font-inter), sans-serif;
+  font-family: var(--font-outfit), sans-serif;
   font-size: 14.5px;
   font-weight: 500;
-  color: rgba(0, 0, 0, 0.65);
+  color: rgba(255, 255, 255, 0.65);
   padding: 8px 18px;
   border-radius: 9999px;
   cursor: pointer;
@@ -156,15 +156,15 @@ html, body {
 }
 
 .top-nav-tab:hover {
-  color: #000000;
-  background: rgba(0, 0, 0, 0.04);
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .top-nav-tab.active {
-  background: rgba(0, 0, 0, 0.07);
-  color: #000000;
+  background: rgba(255, 255, 255, 0.07);
+  color: #ffffff;
   font-weight: 600;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
 
 .top-nav-right {
@@ -422,14 +422,15 @@ html, body {
   width: 100%;
   max-width: 1100px;
   margin: 0 auto;
-  /* Light snow frosted glass layer applied only to content card */
-  background: rgba(255, 255, 255, 0.82);
+  /* Dark liquid glass layer */
+  background: var(--bg-main);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--border-color);
   border-radius: 24px;
   padding: 32px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
 }
 
 /* Panel header */
@@ -462,25 +463,25 @@ html, body {
 
 /* ─── Glass Cards (feature UI) ───────────────────────────────────────────── */
 .card {
-  background: rgba(255, 255, 255, 0.75);
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
   border-radius: 16px;
   padding: 28px;
   backdrop-filter: blur(32px);
   -webkit-backdrop-filter: blur(32px);
   display: flex;
   flex-direction: column;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.45);
-  transition: all 0.2s ease;
-  font-family: var(--font-inter), sans-serif;
-  color: #111111;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.05);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: var(--font-outfit), sans-serif;
+  color: var(--text-primary);
 }
 
 .card:hover {
-  background: rgba(255, 255, 255, 0.85);
-  border-color: rgba(0, 0, 0, 0.2);
-  transform: translateY(-1px);
-  box-shadow: 0 14px 48px rgba(0,0,0,0.1);
+  background: var(--bg-card-hover);
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
+  box-shadow: 0 14px 48px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08);
 }
 
 .card-icon {
