@@ -286,6 +286,18 @@ export default function Home() {
   // Navigation active tab
   const [activeTab, setActiveTab] = useState<"home" | "about" | "chat" | "planner" | "calculators" | "knowledge">("home");
 
+  const handleTabSwitch = (tab: "home" | "about" | "chat" | "planner" | "calculators" | "knowledge") => {
+    if ((tab === "chat" || tab === "planner") && !user) {
+      setAuthModalOpen(true);
+      return;
+    }
+    setActiveTab(tab);
+    if (tab === "planner") {
+      setPlanJobStatus("idle");
+    }
+  };
+
+
   // Language State & Persistence
   const [lang, setLang] = useState<"en" | "vi">("en");
 
@@ -821,13 +833,12 @@ export default function Home() {
         .catch(() => {
           localStorage.removeItem("uphill_session_token");
           setUser(null);
-          setAuthModalOpen(true);
         })
         .finally(() => {
           setAuthLoading(false);
         });
     } else {
-      setAuthModalOpen(true);
+      // Lazy auth
     }
   }, []);
 
@@ -1418,7 +1429,7 @@ export default function Home() {
       if (data.plan) setActivePlan(data.plan);
       // Close onboarding and let user into the app right away
       setOnboardingOpen(false);
-      setActiveTab("home");
+      handleTabSwitch("home");
       // Start polling for plan generation in the background
       if (data.job_id) {
         startPlanJobPoller(data.job_id, token);
@@ -2146,7 +2157,7 @@ export default function Home() {
               transform: startBtnHovered ? 'translateY(-2px) scale(1.02)' : 'none',
               transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
             }}
-            onClick={() => setActiveTab('planner')}
+            onClick={() => handleTabSwitch('planner')}
           >
             {t("home_cta_plan")}
           </button>
@@ -3664,6 +3675,14 @@ const renderChat = (isMobile: boolean) => {
         <div style={{ background: "var(--bg-card)", backdropFilter: "blur(30px)", border: "1px solid var(--border-color)", borderRadius: "24px", padding: "32px", width: "100%", maxWidth: "480px", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.1)", position: "relative", color: "var(--text-primary)" }}>
 
           {/* Header */}
+          <button 
+            onClick={() => setAuthModalOpen(false)} 
+            style={{ position: "absolute", top: "20px", right: "20px", background: "transparent", border: "none", cursor: "pointer", color: "var(--text-muted)", padding: "4px", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "50%", transition: "all 0.2s" }}
+            onMouseOver={(e) => e.currentTarget.style.color = "var(--text-primary)"}
+            onMouseOut={(e) => e.currentTarget.style.color = "var(--text-muted)"}
+          >
+            <XCircle size={24} weight="duotone" />
+          </button>
           <div style={{ textAlign: "center", marginBottom: "24px" }}>
             <div style={{ fontSize: "26px", fontWeight: "800", letterSpacing: "-0.03em" }}>Uphill<span style={{ color: "var(--accent-primary)" }}>.AI</span></div>
             <p style={{ color: "var(--text-muted)", fontSize: "13px", marginTop: "4px" }}>Your elite running intelligence coach</p>
@@ -4546,7 +4565,7 @@ const renderChat = (isMobile: boolean) => {
               <span style={{ fontSize: "20px" }}>✅</span>
               <span>Your training plan is ready!</span>
               <button
-                onClick={() => { setActiveTab("planner"); setPlanJobStatus("idle"); }}
+                onClick={() => handleTabSwitch("planner")}
                 style={{
                   marginLeft: "8px",
                   padding: "4px 12px",
@@ -4601,7 +4620,7 @@ const renderChat = (isMobile: boolean) => {
                   return (
                     <li 
                       key={tab}
-                      onClick={() => setActiveTab(tab)}
+                      onClick={() => handleTabSwitch(tab)}
                       className={`sidebar-nav-item ${active ? "sidebar-nav-item-active" : ""}`}
                     >
                       {getTabIcon(tab, active)}
@@ -4821,7 +4840,7 @@ const renderChat = (isMobile: boolean) => {
                 return (
                   <div 
                     key={tab}
-                    onClick={() => setActiveTab(tab)}
+                    onClick={() => handleTabSwitch(tab)}
                     className={`tab-bar-item ${active ? "tab-bar-item-active" : ""}`}
                   >
                     {getTabIcon(tab, active, 16)}
@@ -4863,7 +4882,7 @@ const renderChat = (isMobile: boolean) => {
                   <button
                     key={tab}
                     className={`top-nav-tab ${activeTab === tab ? "active" : ""}`}
-                    onClick={() => setActiveTab(tab)}
+                    onClick={() => handleTabSwitch(tab)}
                     style={{ display: "flex", alignItems: "center", gap: "6px" }}
                   >
                     {getTabIcon(tab, activeTab === tab, 18)}
@@ -4954,7 +4973,7 @@ const renderChat = (isMobile: boolean) => {
                 <button
                   key={tab}
                   className={`mobile-bottom-nav-tab ${active ? "active" : ""}`}
-                  onClick={() => setActiveTab(tab)}
+                  onClick={() => handleTabSwitch(tab)}
                 >
                   <span className="mobile-bottom-nav-tab-icon">
                     {getTabIcon(tab, active, 20)}
