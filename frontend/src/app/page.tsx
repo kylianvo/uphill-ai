@@ -3,8 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import { translations } from "./translations";
 import { 
-  Robot, CalendarBlank, BookOpen, Calculator, Mountains, 
-  Barbell, BowlFood, Bed, Timer, Brain, Backpack, CaretDown, CaretUp, Book
+  Plus, ArrowsLeftRight, Heartbeat, Clock, Calendar, Lightbulb, Sneaker, Plant, Code, Robot, CalendarBlank, BookOpen, Calculator, Mountains, PersonSimpleRun, Trash, Target, XCircle, Warning, Trophy, 
+  Barbell, BowlFood, Bed, Timer, Brain, Backpack, CaretDown, CaretUp, Book, House
 } from "@phosphor-icons/react";
 if (typeof window !== "undefined") {
   // Check for api query parameter to override API URL
@@ -284,7 +284,7 @@ const KnowledgeCard = ({ card, expanded = false }: { card: any; expanded?: boole
 
 export default function Home() {
   // Navigation active tab
-  const [activeTab, setActiveTab] = useState<"home" | "philosophy" | "chat" | "planner" | "calculators" | "knowledge">("home");
+  const [activeTab, setActiveTab] = useState<"home" | "about" | "chat" | "planner" | "calculators" | "knowledge">("home");
 
   // Language State & Persistence
   const [lang, setLang] = useState<"en" | "vi">("en");
@@ -1223,7 +1223,7 @@ export default function Home() {
               <p>Authorize Uphill.AI to access your profile name and email address via <strong>${provider === 'google' ? 'Google' : 'Facebook'} OAuth</strong>.</p>
               
               <button class="btn btn-primary" onclick="login('admin')">🔐 Connect as Coach Admin</button>
-              <button class="btn btn-secondary" onclick="login('user')">🏃‍♂️ Connect as Athlete User</button>
+              <button class="btn btn-secondary" onclick="login('user')"><PersonSimpleRun weight="bold" style={{marginRight: "6px", verticalAlign: "middle"}}/> Connect as Athlete User</button>
             </div>
             
             <script>
@@ -1845,14 +1845,23 @@ export default function Home() {
     const kmStr = dist ? `${dist}km` : "0km";
     const gainStr = elev ? `+${elev}m` : "+0m";
     let targetStr = "Finish";
+    let dateStr = p.race_date || "No Date";
+
     if (p.goal_type === "time" && p.target_time_hours) {
       targetStr = `${p.target_time_hours}h`;
     } else if (p.goal_type === "optimal") {
       targetStr = "Optimal";
     } else if (p.goal_type) {
-      targetStr = p.goal_type.charAt(0).toUpperCase() + p.goal_type.slice(1);
+      targetStr = p.goal_type.charAt(0).toUpperCase() + p.goal_type.slice(1).replace("_", " ");
     }
-    return `${p.race_name || "Untitled Plan"} - ${p.race_date || "No Date"} - ${kmStr} - ${gainStr} - ${targetStr}`;
+    
+    if (["start_running", "return", "recovery"].includes(p.goal_type || "")) {
+      dateStr = `Ends ${p.race_date}`;
+      return `${p.race_name || "Untitled Plan"} (${dateStr}) | ${targetStr}`;
+    } else {
+      dateStr = `Race: ${p.race_date}`;
+      return `${p.race_name || "Untitled Plan"} (${dateStr}) | ${kmStr} | +${elev || 0}m | ${targetStr}`;
+    }
   };
 
   const handleSelectPlan = async (planId: number) => {
@@ -2057,54 +2066,20 @@ export default function Home() {
   // Tab Icon generator
   const getTabIcon = (tabName: string, active: boolean, size = 18) => {
     const color = active ? "var(--accent-primary)" : "var(--text-secondary)";
+    const weight = active ? "fill" : "regular";
     switch (tabName) {
       case "home":
-        return (
-          <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-            <polyline points="9 22 9 12 15 12 15 22" />
-          </svg>
-        );
-      case "philosophy":
-        return (
-          <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-            <circle cx="9" cy="7" r="4" />
-            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-          </svg>
-        );
+        return <House size={size} color={color} weight={weight} />;
+      case "about":
+        return <Mountains size={size} color={color} weight={weight} />;
       case "chat":
-        return (
-          <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-          </svg>
-        );
+        return <Robot size={size} color={color} weight={weight} />;
       case "planner":
-        return (
-          <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-            <line x1="16" y1="2" x2="16" y2="6" />
-            <line x1="8" y1="2" x2="8" y2="6" />
-            <line x1="3" y1="10" x2="21" y2="10" />
-          </svg>
-        );
+        return <CalendarBlank size={size} color={color} weight={weight} />;
       case "calculators":
-        return (
-          <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="4" y="4" width="16" height="16" rx="2" />
-            <line x1="9" y1="9" x2="15" y2="9" />
-            <line x1="9" y1="13" x2="15" y2="13" />
-            <line x1="12" y1="9" x2="12" y2="15" />
-          </svg>
-        );
+        return <Calculator size={size} color={color} weight={weight} />;
       case "knowledge":
-        return (
-          <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-          </svg>
-        );
+        return <BookOpen size={size} color={color} weight={weight} />;
       default:
         return null;
     }
@@ -2125,7 +2100,16 @@ export default function Home() {
         boxSizing: 'border-box'
       }}>
         {/* Header group */}
-        <div className="hero-header-group" style={{ marginBottom: 0 }}>
+        <div className="hero-header-group" style={{ marginBottom: 0, background: "rgba(255, 255, 255, 0.4)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", padding: "24px 32px", borderRadius: "24px", border: "1px solid rgba(255, 255, 255, 0.5)" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", marginBottom: "16px", color: "var(--text-primary)" }}>
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--accent-primary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 15l5-5 4 4 9-9" />
+              <polyline points="16 5 21 5 21 10" />
+            </svg>
+            <span style={{ fontSize: "40px", fontWeight: "700", letterSpacing: "-1.5px", fontFamily: "var(--font-schibsted)" }}>
+              Uphill<span style={{ color: "var(--accent-primary)" }}>.AI</span>
+            </span>
+          </div>
           <h1 className="hero-headline">
             {lang === "en" ? "Train Smarter, Go Higher" : "Tập Luyện Thông Minh, Chinh Phục Đỉnh Cao."}
           </h1>
@@ -2164,91 +2148,139 @@ export default function Home() {
             }}
             onClick={() => setActiveTab('planner')}
           >
-            📅 {t("home_cta_plan")}
+            {t("home_cta_plan")}
           </button>
         </div>
       </div>
     );
   };
 
-  const renderPhilosophy = (isMobile: boolean) => {
+  const renderAboutUs = (isMobile: boolean) => {
     return (
-      <div style={{ maxWidth: '900px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-        <div className="card" style={{ padding: isMobile ? '20px' : '32px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
-            <span className="card-icon" style={{ fontSize: isMobile ? '22px' : '28px', width: isMobile ? '38px' : '48px', height: isMobile ? '38px' : '48px', margin: 0 }}>🏔️</span>
-            <h3 className="card-title" style={{ margin: 0, fontSize: isMobile ? '18px' : '24px' }}>
-              {lang === "en" ? "Trail Philosophy" : "Triết lý Chạy Địa hình"}
+      <div style={{ maxWidth: '1100px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '8px', padding: '0 16px' }}>
+            <Mountains size={isMobile ? 28 : 36} color="var(--accent-primary)" weight="duotone" />
+            <h3 className="card-title" style={{ margin: 0, fontSize: isMobile ? '24px' : '32px' }}>
+              {lang === "en" ? "About Uphill.AI" : "Về Uphill.AI"}
             </h3>
-          </div>
+        </div>
+        
+        {/* Bento Grid */}
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', 
+          gap: '24px',
+          padding: '0 16px' 
+        }}>
           
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div>
-              <h4 style={{ color: 'var(--accent-primary)', marginBottom: '6px', fontSize: isMobile ? '15px' : '18px', fontWeight: 600 }}>
-                {lang === "en" ? "Our Philosophy" : "Triết lý của Chúng tôi"}
-              </h4>
-              <p className="card-description" style={{ fontSize: isMobile ? '13px' : '14px', lineHeight: '1.6', color: 'var(--text-primary)' }}>
-                {lang === "en" 
-                  ? "We believe that long-term athletic success in the mountains is built upon a foundation of structured, high-volume aerobic capacity training and terrain-specific muscular endurance. By training the body to maximize fat utilization and building resistance to localized muscular fatigue, athletes can sustain efforts over vertical terrain for hours."
-                  : "Chúng tôi tin rằng sự thành công thể thao lâu dài trên những ngọn núi được xây dựng trên nền tảng của việc tập luyện dung tích hiếu khí (aerobic capacity) khối lượng lớn, có cấu trúc và sức bền cơ bắp (muscular endurance) đặc thù theo địa hình. Bằng cách huấn luyện cơ thể tối đa hóa việc sử dụng chất béo và xây dựng khả năng kháng mệt mỏi cơ bắp cục bộ, các vận động viên có thể duy trì nỗ lực trên địa hình dốc đứng trong nhiều giờ."}
-              </p>
-            </div>
-
-            <div>
-              <h4 style={{ color: 'var(--accent-primary)', marginBottom: '6px', fontSize: isMobile ? '15px' : '18px', fontWeight: 600 }}>
-                {lang === "en" ? "The Definitive Guide: \"Training for the Uphill Athlete\"" : "Sách hướng dẫn Cốt lõi: \"Training for the Uphill Athlete\""}
-              </h4>
-              <p className="card-description" style={{ fontSize: isMobile ? '13px' : '14px', lineHeight: '1.6', color: 'var(--text-primary)' }}>
-                {lang === "en" 
-                  ? "Our training engine is heavily inspired by the book " 
-                  : "Hệ thống huấn luyện của chúng tôi được truyền cảm hứng mạnh mẽ bởi cuốn sách "}
-                <a href="https://www.amazon.com/Training-Uphill-Athlete-Mountain-Mountaineers/dp/B088MKG7DS/" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent-primary)", textDecoration: "underline", fontWeight: "700" }}>
-                  Training for the Uphill Athlete
-                </a>
-                {lang === "en" 
-                  ? " by Steve House, Scott Johnston, and Kilian Jornet, applying Nordic endurance science specifically to mountain runners."
-                  : " của Steve House, Scott Johnston và Kilian Jornet, áp dụng khoa học sức bền Bắc Âu dành riêng cho người chạy bộ địa hình."}
-              </p>
-            </div>
-
-            <div>
-              <h4 style={{ color: 'var(--accent-primary)', marginBottom: '6px', fontSize: isMobile ? '15px' : '18px', fontWeight: 600 }}>
-                {lang === "en" ? "Authors" : "Tác giả"}
-              </h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '4px' }}>
-                <div style={{ padding: '12px', background: 'rgba(255,255,255,0.15)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.3)' }}>
-                  <strong style={{ display: 'block', marginBottom: '4px', color: 'var(--text-primary)', fontSize: '13.5px' }}>Steve House</strong>
-                  <span style={{ fontSize: '12px', lineHeight: '1.4', color: 'var(--text-secondary)' }}>
-                    {lang === "en" 
-                      ? "World-renowned alpinist, mountain guide, co-founder and current CEO of Uphill Athlete."
-                      : "Vận động viên leo núi nổi tiếng thế giới, hướng dẫn viên leo núi, đồng sáng lập và CEO hiện tại của Uphill Athlete."}
-                  </span>
-                </div>
-                <div style={{ padding: '12px', background: 'rgba(255,255,255,0.15)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.3)' }}>
-                  <strong style={{ display: 'block', marginBottom: '4px', color: 'var(--text-primary)', fontSize: '13.5px' }}>Scott Johnston</strong>
-                  <span style={{ fontSize: '12px', lineHeight: '1.4', color: 'var(--text-secondary)' }}>
-                    {lang === "en" 
-                      ? "Co-founder of Uphill Athlete, elite coach, and founder of Evoke Endurance (established after leaving Uphill Athlete in 2022)."
-                      : "Đồng sáng lập Uphill Athlete, huấn luyện viên ưu tú và là người sáng lập Evoke Endurance (thành lập sau khi rời Uphill Athlete năm 2022)."}
-                  </span>
-                </div>
-                <div style={{ padding: '12px', background: 'rgba(255,255,255,0.15)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.3)' }}>
-                  <strong style={{ display: 'block', marginBottom: '4px', color: 'var(--text-primary)', fontSize: '13.5px' }}>Kilian Jornet</strong>
-                  <span style={{ fontSize: '12px', lineHeight: '1.4', color: 'var(--text-secondary)' }}>
-                    {lang === "en" 
-                      ? "Co-author of the book, widely considered the greatest mountain runner of all time, UTMB champion, and co-founder of NNormal."
-                      : "Đồng tác giả cuốn sách, được coi là vận động viên chạy núi vĩ đại nhất mọi thời đại, nhà vô địch UTMB và đồng sáng lập NNormal."}
-                  </span>
-                </div>
+          {/* Block A: The Engine (Span 2 cols on Desktop) */}
+          <div className="card" style={{ 
+            gridColumn: isMobile ? 'auto' : 'span 2',
+            padding: '32px',
+            background: 'rgba(255, 255, 255, 0.03)',
+            backdropFilter: 'blur(32px)',
+            WebkitBackdropFilter: 'blur(32px)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: '32px',
+            boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+              <div style={{ width: '48px', height: '48px', borderRadius: '16px', background: 'rgba(255, 255, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Brain size={28} color="var(--text-primary)" weight="duotone" />
               </div>
+              <h4 style={{ color: 'var(--text-primary)', margin: 0, fontSize: '20px', fontWeight: 600 }}>
+                {lang === "en" ? "The LLM + RAG Architecture" : "Kiến trúc LLM + RAG"}
+              </h4>
+            </div>
+            <p style={{ fontSize: '15px', lineHeight: '1.7', color: 'var(--text-secondary)', marginBottom: '0' }}>
+              {lang === "en" 
+                ? "Uphill.AI leverages state-of-the-art LLM + Retrieval-Augmented Generation (RAG). Instead of generating generic fitness advice, our AI engine specifically retrieves and synthesizes the gold-standard endurance science from " 
+                : "Uphill.AI ứng dụng công nghệ LLM + Retrieval-Augmented Generation (RAG). Thay vì đưa ra những lời khuyên tập luyện chung chung, hệ thống AI của chúng tôi tập trung tìm kiếm và tổng hợp các kiến thức khoa học sức bền cốt lõi từ cuốn sách "}
+              <a href="https://www.amazon.com/Training-Uphill-Athlete-Mountain-Mountaineers/dp/B088MKG7DS/" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent-primary)", textDecoration: "underline", fontWeight: "600" }}>
+                Training for the Uphill Athlete
+              </a>
+              {lang === "en" 
+                ? " to ensure your training plans are rooted in proven aerobic capacity building and terrain-specific muscular endurance."
+                : ". Nhờ đó, các giáo án tập luyện của bạn luôn được xây dựng dựa trên những phương pháp cải thiện sức bền hiếu khí và sức bền cơ bắp đặc thù theo từng địa hình đã được kiểm chứng."}
+            </p>
+          </div>
+
+          {/* Block B: Author Motivation */}
+          <div className="card" style={{ 
+            padding: '32px',
+            background: 'rgba(255, 255, 255, 0.03)',
+            backdropFilter: 'blur(32px)',
+            WebkitBackdropFilter: 'blur(32px)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: '32px',
+            boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+          }}>
+             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+              <div style={{ width: '48px', height: '48px', borderRadius: '16px', background: 'rgba(255, 255, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <PersonSimpleRun size={28} color="var(--text-primary)" weight="duotone" />
+              </div>
+              <h4 style={{ color: 'var(--text-primary)', margin: 0, fontSize: '20px', fontWeight: 600 }}>
+                {lang === "en" ? "Built for Runners" : "Dành cho những Runners"}
+              </h4>
+            </div>
+            <p style={{ fontSize: '15px', lineHeight: '1.7', color: 'var(--text-secondary)' }}>
+              {lang === "en"
+                ? "Created by a trail runner with an IT, AI, and Data Engineering background. After experiencing immense personal growth racing the "
+                : "Ứng dụng được xây dựng bởi một trail runner có background về IT, AI và Data Engineering. Sau khi tự mình trải nghiệm sự tiến bộ rõ rệt tại giải "
+              }
+              <strong style={{ color: "var(--text-primary)" }}>{lang === "en" ? "Ultra-Trail Australia by UTMB (in the Blue Mountains, NSW)" : "Ultra-Trail Australia của UTMB (Blue Mountains, bang New South Wales, Úc)"}</strong>
+              {lang === "en"
+                ? " using these exact principles, this app was built to democratize that specific training science for everyone."
+                : " nhờ áp dụng chính xác các nguyên lý này, ứng dụng được ra đời với mong muốn chia sẻ và đưa những kiến thức khoa học tập luyện chuyên sâu này đến gần hơn với tất cả mọi người."
+              }
+            </p>
+          </div>
+
+          {/* Block C: Core Source & Philosophy (Span 3 cols) */}
+          <div className="card" style={{ 
+            gridColumn: isMobile ? 'auto' : 'span 3',
+            padding: '32px',
+            background: 'rgba(255, 255, 255, 0.03)',
+            backdropFilter: 'blur(32px)',
+            WebkitBackdropFilter: 'blur(32px)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: '32px',
+            boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+          }}>
+             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+              <div style={{ width: '48px', height: '48px', borderRadius: '16px', background: 'rgba(255, 255, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Target size={28} color="var(--text-primary)" weight="duotone" />
+              </div>
+              <h4 style={{ color: 'var(--text-primary)', margin: 0, fontSize: '20px', fontWeight: 600 }}>
+                {lang === "en" ? "The Core Philosophy" : "Triết Lý Huấn Luyện Cốt Lõi"}
+              </h4>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '20px' }}>
+               <div>
+                  <h5 style={{ color: "var(--text-primary)", fontSize: "16px", marginBottom: "8px" }}>{lang === "en" ? "Aerobic Volume" : "Tích lũy Hiếu khí"}</h5>
+                  <p style={{ fontSize: "14px", color: "var(--text-secondary)", lineHeight: "1.6" }}>
+                    {lang === "en" ? "Long-term athletic success in the mountains is built upon a foundation of structured, high-volume aerobic capacity training." : "Thành quả tập luyện lâu dài trên những cung đường dốc được xây dựng từ nền tảng tập luyện sức bền hiếu khí một cách bài bản và đều đặn."}
+                  </p>
+               </div>
+               <div>
+                  <h5 style={{ color: "var(--text-primary)", fontSize: "16px", marginBottom: "8px" }}>{lang === "en" ? "Muscular Endurance" : "Sức bền Cơ bắp"}</h5>
+                  <p style={{ fontSize: "14px", color: "var(--text-secondary)", lineHeight: "1.6" }}>
+                    {lang === "en" ? "Building resistance to localized muscular fatigue ensures you can sustain efforts over vertical terrain for hours." : "Việc rèn luyện khả năng chống chịu mỏi cơ cục bộ sẽ giúp bạn duy trì được sự dẻo dai và ổn định khi leo dốc liên tục suốt nhiều giờ liền."}
+                  </p>
+               </div>
+               <div>
+                  <h5 style={{ color: "var(--text-primary)", fontSize: "16px", marginBottom: "8px" }}>{lang === "en" ? "The Authors of \"Training for the Uphill Athlete\"" : "Về các Tác giả của quyển sách \"Training for the Uphill Athlete\""}</h5>
+                  <p style={{ fontSize: "14px", color: "var(--text-secondary)", lineHeight: "1.6" }}>
+                    {lang === "en" ? "We express our deepest gratitude to Steve House, Scott Johnston, and Kilian Jornet for their groundbreaking work in endurance science and trail running." : "Ứng dụng xin được bày tỏ lòng tri ân sâu sắc đến Steve House, Scott Johnston và Kilian Jornet vì những đóng góp mang tính nền tảng của họ cho khoa học sức bền và chạy trail."}
+                  </p>
+               </div>
             </div>
           </div>
         </div>
       </div>
     );
   };
-
-  const renderChat = (isMobile: boolean) => {
+const renderChat = (isMobile: boolean) => {
     const welcomeText = lang === "en" 
       ? "Hello! I’m Coach Uphill AI. Are you training for a trail ultra or a road marathon?"
       : "Xin chào! Tôi là Coach Uphill AI. Bạn đang chuẩn bị cho một giải chạy trail ultra hay marathon đường bằng?";
@@ -2297,10 +2329,10 @@ export default function Home() {
             
             <div className="preset-prompt-list" style={{ padding: isMobile ? "0 8px" : "0 20px", gap: "4px", marginBottom: isMobile ? "4px" : "8px" }}>
               <button className="preset-prompt-btn" style={{ fontSize: isMobile ? "10px" : "12px", padding: isMobile ? "3px 8px" : "4px 10px" }} onClick={() => sendPresetPrompt(lang === "en" ? "Can you give me an ME workout for trails?" : "Bạn có thể cho tôi một bài tập ME chạy địa hình không?")}>
-                {lang === "en" ? "⛰️ ME Workout" : "⛰️ Bài tập ME"}
+                {lang === "en" ? "ME Workout" : "Bài tập ME"}
               </button>
               <button className="preset-prompt-btn" style={{ fontSize: isMobile ? "10px" : "12px", padding: isMobile ? "3px 8px" : "4px 10px" }} onClick={() => sendPresetPrompt(lang === "en" ? "How does the 80/20 rule work?" : "Quy tắc 80/20 hoạt động như thế nào?")}>
-                {lang === "en" ? "🏃‍♂️ 80/20 Rule" : "🏃‍♂️ Quy tắc 80/20"}
+                {lang === "en" ? "80/20 Rule" : "Quy tắc 80/20"}
               </button>
             </div>
 
@@ -2342,7 +2374,7 @@ export default function Home() {
             background: "linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.15))",
             border: "1px solid rgba(139,92,246,0.3)", display: "flex", alignItems: "center", gap: "12px",
           }}>
-            <div style={{ fontSize: "20px", animation: "spin 2s linear infinite" }}>🧠</div>
+            <div style={{ fontSize: "20px", animation: "spin 2s linear infinite" }}><Brain weight="bold" /></div>
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: "700", fontSize: "13px", color: "var(--text-bright)", marginBottom: "4px" }}>
                 {lang === "en" ? "Building your Knowledge Hub…" : "Đang tạo Thư viện Kiến thức…"}
@@ -2368,7 +2400,7 @@ export default function Home() {
         <div className="card" style={{ padding: isMobile ? "20px" : "28px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <span style={{ fontSize: "26px" }}>💡</span>
+              <Lightbulb size={26} color="var(--accent-primary)" weight="duotone" />
               <div>
                 <h3 style={{ margin: 0, fontSize: isMobile ? "16px" : "20px", fontWeight: "800" }}>{t("home_daily_insight")}</h3>
                 <p style={{ margin: 0, fontSize: "12px", color: "var(--text-secondary)" }}>{t("home_daily_desc")}</p>
@@ -2444,7 +2476,7 @@ export default function Home() {
                         <span>{src.type === "pdf" ? "📄" : src.type === "youtube" ? "📺" : "🌐"}</span>
                         <span style={{ fontSize: "13px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: isMobile ? "200px" : "450px" }} title={src.title}>{src.title}</span>
                       </div>
-                      <button style={{ background: "none", border: "none", color: "rgba(239,68,68,0.7)", cursor: "pointer", fontSize: "14px", padding: "4px" }} onClick={() => handleDeleteSource(src.id)}>🗑️</button>
+                      <button style={{ background: "none", border: "none", color: "rgba(239,68,68,0.7)", cursor: "pointer", fontSize: "14px", padding: "4px" }} onClick={() => handleDeleteSource(src.id)}><Trash weight="bold" /></button>
                     </div>
                   ))
                 }
@@ -2472,22 +2504,22 @@ export default function Home() {
             {/* ── Step 1: Plan Goal Category ────────────────────── */}
             <div style={{ marginBottom: "20px" }}>
               <label style={{ display: "block", fontSize: "12px", fontWeight: "700", marginBottom: "10px", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                🎯 {t("goal_category")}
+                {t("goal_category")}
               </label>
               <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(5, 1fr)", gap: "8px" }}>
                 {([
-                  { val: "race",          emoji: "🏆", label: t("goal_race").replace(" 🏆", "") },
-                  { val: "distance",      emoji: "📏", label: t("goal_distance").replace(" 📏", "") },
-                  { val: "start_running", emoji: "🌱", label: t("goal_start").replace(" 🌱", "") },
-                  { val: "return",        emoji: "🔄", label: t("goal_return").replace(" 🔄", "") },
-                  { val: "recovery",      emoji: "💤", label: t("goal_recovery").replace(" 💤", "") },
-                ] as const).map(({ val, emoji, label }) => {
+                  { val: "race",          Icon: Trophy, label: t("goal_race").replace(" 🏆", "") },
+                  { val: "distance",      Icon: Target, label: t("goal_distance").replace(" 📏", "") },
+                  { val: "start_running", Icon: Sneaker, label: t("goal_start").replace(" 🌱", "") },
+                  { val: "return",        Icon: PersonSimpleRun, label: t("goal_return").replace(" 🔄", "") },
+                  { val: "recovery",      Icon: Bed, label: t("goal_recovery").replace(" 💤", "") },
+                ] as const).map(({ val, Icon, label }) => {
                   const active = planForm.plan_goal_category === val;
                   return (
                     <button key={val} type="button"
                       onClick={() => setPlanForm({ ...planForm, plan_goal_category: val })}
                       style={{ padding: "10px 6px", borderRadius: "10px", border: `1.5px solid ${active ? "var(--accent-primary)" : "var(--border-color)"}`, background: active ? "rgba(16,185,129,0.1)" : "rgba(255,255,255,0.3)", color: active ? "var(--accent-primary)" : "var(--text-primary)", fontWeight: active ? "700" : "500", fontSize: "12px", cursor: "pointer", textAlign: "center" as const, display: "flex", flexDirection: "column" as const, alignItems: "center", gap: "4px" }}>
-                      <span style={{ fontSize: "18px" }}>{emoji}</span>
+                      <Icon size={24} weight="duotone" />
                       <span>{label}</span>
                     </button>
                   );
@@ -2525,8 +2557,8 @@ export default function Home() {
                   <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px", color: "var(--text-secondary)" }}>{t("plan_terrain")}</label>
                   <select className="chat-input" style={{ borderRadius: "8px", width: "100%", height: "38px", padding: "0 8px", fontSize: "13px" }}
                     value={planForm.terrain} onChange={(e) => setPlanForm({ ...planForm, terrain: e.target.value })}>
-                    <option value="trail">🏔️ {t("plan_trail")}</option>
-                    <option value="road">🏃‍♂️ {t("plan_road")}</option>
+                    <option value="trail">{t("plan_trail")}</option>
+                    <option value="road">{t("plan_road")}</option>
                   </select>
                 </div>
                 <div>
@@ -2543,7 +2575,7 @@ export default function Home() {
               {/* Target time */}
               {planForm.goal_type === "time" && (
                 <div style={{ marginBottom: "16px" }}>
-                  <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px", color: "var(--text-secondary)" }}>🎯 {t("plan_target_time")}</label>
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px", color: "var(--text-secondary)" }}>{t("plan_target_time")}</label>
                   <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr 1.1fr", gap: "8px" }}>
                     <div><label style={{ display: "block", fontSize: "11px", color: "var(--text-secondary)", marginBottom: "4px" }}>{lang === "en" ? "Hours" : "Giờ"}</label><input type="number" min="0" max="99" className="chat-input" style={{ borderRadius: "8px", width: "100%", padding: "8px", textAlign: "center" }} placeholder="0" value={targetTimeH} onChange={(e) => setTargetTimeH(e.target.value)} /></div>
                     <div><label style={{ display: "block", fontSize: "11px", color: "var(--text-secondary)", marginBottom: "4px" }}>{lang === "en" ? "Minutes" : "Phút"}</label><input type="number" min="0" max="59" className="chat-input" style={{ borderRadius: "8px", width: "100%", padding: "8px", textAlign: "center" }} placeholder="0" value={targetTimeM} onChange={(e) => setTargetTimeM(e.target.value)} /></div>
@@ -2555,7 +2587,7 @@ export default function Home() {
               {/* Cutoff time */}
               {planForm.goal_type === "finish" && (
                 <div style={{ marginBottom: "16px" }}>
-                  <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "2px", color: "var(--text-secondary)" }}>⏱️ {t("plan_cutoff_time")} <span style={{ fontWeight: 400, opacity: 0.7 }}>{lang === "en" ? "(optional — we'll target 85% of cutoff)" : "(tùy chọn — mục tiêu đạt 85% cutoff)"}</span></label>
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "2px", color: "var(--text-secondary)" }}>{t("plan_cutoff_time")} <span style={{ fontWeight: 400, opacity: 0.7 }}>{lang === "en" ? "(optional — we'll target 85% of cutoff)" : "(tùy chọn — mục tiêu đạt 85% cutoff)"}</span></label>
                   <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr 1.1fr", gap: "8px", marginTop: "6px" }}>
                     <div><label style={{ display: "block", fontSize: "11px", color: "var(--text-secondary)", marginBottom: "4px" }}>{lang === "en" ? "Hours" : "Giờ"}</label><input type="number" min="0" max="99" className="chat-input" style={{ borderRadius: "8px", width: "100%", padding: "8px", textAlign: "center" }} placeholder="0" value={cutoffTimeH} onChange={(e) => setCutoffTimeH(e.target.value)} /></div>
                     <div><label style={{ display: "block", fontSize: "11px", color: "var(--text-secondary)", marginBottom: "4px" }}>{lang === "en" ? "Minutes" : "Phút"}</label><input type="number" min="0" max="59" className="chat-input" style={{ borderRadius: "8px", width: "100%", padding: "8px", textAlign: "center" }} placeholder="0" value={cutoffTimeM} onChange={(e) => setCutoffTimeM(e.target.value)} /></div>
@@ -2599,7 +2631,7 @@ export default function Home() {
                     {plannerGpxLoading ? (lang === "en" ? "Parsing..." : "Đang đọc...") : (lang === "en" ? "Select GPX" : "Chọn tệp GPX")}
                   </button>
                   {plannerGpxFile && <div style={{ marginTop: "6px", padding: "6px", background: "rgba(16, 185, 129, 0.05)", border: "1px solid var(--border-color)", borderRadius: "6px", fontSize: "11.5px" }}>✅ {planForm.course_distance_km}km, {planForm.course_elevation_gain_m}m</div>}
-                  {plannerGpxError && <div style={{ marginTop: "6px", fontSize: "11px", color: "var(--accent-alert)" }}>❌ {plannerGpxError}</div>}
+                  {plannerGpxError && <div style={{ marginTop: "6px", fontSize: "11px", color: "var(--accent-alert)" }}><XCircle weight="fill" style={{marginRight: "4px", verticalAlign: "middle"}}/> {plannerGpxError}</div>}
                 </div>
               )}
             </>)}
@@ -2608,7 +2640,7 @@ export default function Home() {
             {planForm.plan_goal_category === "start_running" && (
               <div style={{ marginBottom: "16px", padding: "16px", border: "1px solid var(--border-color)", borderRadius: "12px", display: "flex", flexDirection: "column", gap: "12px" }}>
                 <h4 style={{ margin: 0, fontSize: "14px", fontWeight: "700", color: "var(--text-bright)", borderBottom: "1px solid var(--border-color)", paddingBottom: "8px" }}>
-                  {lang === "en" ? "🌱 Start Running Program" : "🌱 Lộ trình Bắt đầu Chạy bộ"}
+                  {lang === "en" ? "Start Running Program" : "Lộ trình Bắt đầu Chạy bộ"}
                 </h4>
                 <div style={{ fontSize: "12.5px", color: "var(--text-muted)" }}>
                   {lang === "en" ? "We'll build a gentle walk-to-run programme starting from your plan start date." : "Chúng tôi sẽ xây dựng một lộ trình chạy kết hợp đi bộ nhẹ nhàng bắt đầu từ ngày bạn chọn."}
@@ -2640,7 +2672,6 @@ export default function Home() {
                     {lang === "en" ? "🔄 Return to Running" : "🔄 Tập luyện trở lại"}
                   </h4>
                   <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px" }}>
-                    <span>{lang === "en" ? "or" : "hoặc"}</span>
                     <select
                       className="btn btn-secondary"
                       style={{
@@ -2670,7 +2701,7 @@ export default function Home() {
                       }}
                     >
                       <option value="" style={{ color: "var(--text-primary)" }}>
-                        🔄 {lang === "en" ? "Load Recent Plan" : "Tải lịch tập gần đây"}
+                        {lang === "en" ? "Load Recent Plan..." : "Tải lịch tập gần đây..."}
                       </option>
                       {recentPlans.length === 0 ? (
                         <option value="" disabled style={{ color: "var(--text-muted)" }}>
@@ -2803,7 +2834,7 @@ export default function Home() {
             {/* ── Plan Start Date for Race/Distance ─────────────── */}
             {(planForm.plan_goal_category === "race" || planForm.plan_goal_category === "distance") && (
               <div style={{ marginBottom: "16px" }}>
-                <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px", color: "var(--text-secondary)" }}>📅 {t("plan_start_date")}</label>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px", color: "var(--text-secondary)" }}>{t("plan_start_date")}</label>
                 <input type="date" className="chat-input" style={{ borderRadius: "8px", width: "100%", padding: "10px" }} value={planForm.plan_start_date} onChange={e => setPlanForm({ ...planForm, plan_start_date: e.target.value })} />
                 <p style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "5px", margin: "5px 0 0 0" }}>
                   {lang === "en" 
@@ -2816,7 +2847,7 @@ export default function Home() {
             {/* ── Schedule Preferences (shared) ─────────────────── */}
             <div style={{ marginBottom: "16px", padding: "14px", background: "rgba(255,255,255,0.15)", border: "1px solid var(--border-color)", borderRadius: "12px" }}>
               <label style={{ display: "block", fontSize: "12px", fontWeight: "700", marginBottom: "10px", color: "var(--text-secondary)", letterSpacing: "0.04em", textTransform: "uppercase" }}>
-                📅 {t("plan_schedule_prefs")}
+                {t("plan_schedule_prefs")}
               </label>
 
               <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: "12px", marginBottom: "12px" }}>
@@ -2927,21 +2958,31 @@ export default function Home() {
             <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "16px" }}>
               <div>
                 <h3 style={{ fontSize: isMobile ? "18px" : "22px", margin: 0 }}>
-                  📅 {activePlan.race_name}
+                  {activePlan.race_name}
                   {(getPlanDistance(activePlan) || getPlanElevation(activePlan)) && (
                     <span style={{ fontWeight: "normal", opacity: 0.85, fontSize: isMobile ? "14px" : "17px", marginLeft: "8px" }}>
                       ({getPlanDistance(activePlan) ? `${getPlanDistance(activePlan)}km` : ""}{getPlanDistance(activePlan) && getPlanElevation(activePlan) ? ", " : ""}{getPlanElevation(activePlan) ? `+${getPlanElevation(activePlan)}m` : ""})
                     </span>
                   )}
                 </h3>
-                <p style={{ color: "var(--text-secondary)", fontSize: "12px", marginTop: "2px" }}>
-                  {activePlan.race_date} | {activePlan.goal_type === "finish" 
+                <p style={{ color: "var(--text-secondary)", fontSize: "12px", marginTop: "2px", fontWeight: "500" }}>
+                  {(() => {
+                    const goal = activePlan.goal_type || "";
+                    if (["start_running", "return", "recovery"].includes(goal)) {
+                      if (workouts.length > 0) {
+                        return `${workouts[0].date} - ${activePlan.race_date}`;
+                      }
+                      return lang === "en" ? `Block ends: ${activePlan.race_date}` : `Kết thúc: ${activePlan.race_date}`;
+                    } else {
+                      return lang === "en" ? `Race Day: ${activePlan.race_date}` : `Ngày đua: ${activePlan.race_date}`;
+                    }
+                  })()} | {activePlan.goal_type === "finish" 
                     ? (lang === "en" ? "Simply Finish" : "Chỉ cần Hoàn thành")
                     : activePlan.goal_type === "time"
                       ? (lang === "en" ? "Time Target" : "Mục tiêu Thời gian")
                       : activePlan.goal_type === "optimal"
                         ? (lang === "en" ? "Optimal Performance" : "Hiệu suất Tối ưu")
-                        : activePlan.goal_type.toUpperCase()}
+                        : activePlan.goal_type.toUpperCase().replace("_", " ")}
                 </p>
               </div>
               
@@ -2952,7 +2993,7 @@ export default function Home() {
                     style={{ flex: 1, minWidth: "120px", fontSize: "12px", height: "36px", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
                     onClick={() => setShowExportOptions(true)}
                   >
-                    🗓️ {lang === "en" ? "Export Calendar" : "Xuất lịch tập"}
+                    {lang === "en" ? "Export Calendar" : "Xuất lịch tập"}
                   </button>
                   
                   <select
@@ -2984,7 +3025,7 @@ export default function Home() {
                     }}
                   >
                     <option value="" style={{ color: "var(--text-primary)" }}>
-                      🔄 {lang === "en" ? "Load Recent Plan" : "Tải lịch tập gần đây"}
+                      {lang === "en" ? "Load Recent Plan..." : "Tải lịch tập gần đây..."}
                     </option>
                     {recentPlans.length === 0 ? (
                       <option value="" disabled style={{ color: "var(--text-muted)" }}>
@@ -3000,14 +3041,15 @@ export default function Home() {
                   </select>
 
                   <button
-                    className="btn btn-secondary"
-                    style={{ flex: 1, minWidth: "120px", fontSize: "12px", height: "36px" }}
+                    className="btn btn-primary"
+                    style={{ flex: 1, minWidth: "120px", fontSize: "13px", fontWeight: "600", height: "38px", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", boxShadow: "0 4px 12px rgba(25, 206, 139, 0.2)" }}
                     onClick={() => {
                       setBackupActivePlan(activePlan);
                       setBackupWorkouts(workouts);
                       setActivePlan(null);
                     }}
                   >
+                    <Plus size={16} weight="bold" />
                     {lang === "en" ? "New Plan" : "Kế hoạch mới"}
                   </button>
                 </div>
@@ -3126,44 +3168,7 @@ export default function Home() {
               );
             })()}
 
-            {/* Swap Day Controller */}
-            <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: "8px", alignItems: isMobile ? "stretch" : "center", background: "rgba(255,255,255,0.15)", border: "1px solid var(--border-color)", padding: "12px", borderRadius: "12px", marginBottom: "16px" }}>
-              <div style={{ fontSize: "12.5px", fontWeight: "600", color: "var(--accent-secondary)" }}>
-                🔄 {lang === "en" ? "Swap:" : "Tráo đổi:"}
-              </div>
-              <div style={{ display: "flex", gap: "6px", alignItems: "center", flex: 1 }}>
-                <select
-                  className="chat-input"
-                  style={{ flex: 1, padding: "4px 8px", height: "30px", fontSize: "12px", borderRadius: "6px" }}
-                  value={swapDay1}
-                  onChange={(e) => setSwapDay1(e.target.value)}
-                >
-                  {["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"].map(d => {
-                    const label = lang === "vi"
-                      ? d.replace("Monday", "T2").replace("Tuesday", "T3").replace("Wednesday", "T4").replace("Thursday", "T5").replace("Friday", "T6").replace("Saturday", "T7").replace("Sunday", "CN")
-                      : d.substring(0, 3);
-                    return <option key={d} value={d}>{label}</option>;
-                  })}
-                </select>
-                <span style={{ fontSize: "11px" }}>↔️</span>
-                <select
-                  className="chat-input"
-                  style={{ flex: 1, padding: "4px 8px", height: "30px", fontSize: "12px", borderRadius: "6px" }}
-                  value={swapDay2}
-                  onChange={(e) => setSwapDay2(e.target.value)}
-                >
-                  {["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"].map(d => {
-                    const label = lang === "vi"
-                      ? d.replace("Monday", "T2").replace("Tuesday", "T3").replace("Wednesday", "T4").replace("Thursday", "T5").replace("Friday", "T6").replace("Saturday", "T7").replace("Sunday", "CN")
-                      : d.substring(0, 3);
-                    return <option key={d} value={d}>{label}</option>;
-                  })}
-                </select>
-              </div>
-              <button className="btn btn-primary" style={{ padding: "6px 12px", height: "30px", fontSize: "12px", borderRadius: "6px", width: isMobile ? "100%" : "auto" }} onClick={handleSwapWorkouts}>
-                {lang === "en" ? "Apply" : "Áp dụng"}
-              </button>
-            </div>
+
 
             {/* Week Workouts Grid */}
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
@@ -3178,7 +3183,10 @@ export default function Home() {
                   <div
                     key={wo.id}
                     style={{
-                      background: rest ? "rgba(255,255,255,0.1)" : "var(--bg-card)",
+                      background: rest ? "rgba(255,255,255,0.05)" : "var(--bg-card)",
+                      backdropFilter: "blur(20px)",
+                      WebkitBackdropFilter: "blur(20px)",
+                      boxShadow: "inset 0 1px 0 rgba(255,255,255,0.4), 0 8px 24px rgba(0,0,0,0.05)",
                       border: "1px solid",
                       borderColor: wo.is_completed ? "var(--accent-success)" : "var(--border-color)",
                       borderRadius: "12px",
@@ -3225,7 +3233,7 @@ export default function Home() {
                       </p>
                       {wo.fueling_tip && (
                         <div style={{ background: "rgba(16, 185, 129, 0.03)", borderLeft: "2px solid var(--accent-primary)", padding: "6px 10px", borderRadius: "4px", fontSize: "12px" }}>
-                          💡 {wo.fueling_tip}
+                          {wo.fueling_tip}
                         </div>
                       )}
                     </div>
@@ -3303,7 +3311,7 @@ export default function Home() {
       <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
         {/* Card 1: GPX Checkpoint Pacer */}
         <div className="card" style={{ padding: isMobile ? "16px" : "24px" }}>
-          <h3 style={{ fontSize: isMobile ? "16px" : "18px", marginBottom: "8px", color: "var(--accent-primary)" }}>🏔️ GPX Checkpoint Pacer</h3>
+          <h3 style={{ fontSize: isMobile ? "16px" : "18px", marginBottom: "8px", color: "var(--accent-primary)" }}>GPX Checkpoint Pacer</h3>
           <p style={{ color: "var(--text-secondary)", fontSize: "12.5px", marginBottom: "16px" }}>
             {lang === "en" 
               ? "Upload a course GPX file to parse checkpoint metrics, or a workout FIT file to view telemetry."
@@ -3394,7 +3402,7 @@ export default function Home() {
             {pacingLoading 
               ? (lang === "en" ? "Calculating Splits..." : "Đang tính toán checkpoint...") 
               : gpxCheckpoints.length === 0 
-                ? (lang === "en" ? "⚠️ Upload GPX First" : "⚠️ Cần tải lên GPX trước") 
+                ? (lang === "en" ? "Upload GPX First" : "Cần tải lên GPX trước") 
                 : (lang === "en" ? "Generate Splits" : "Tạo Checkpoint Pace")}
           </button>
 
@@ -3427,7 +3435,7 @@ export default function Home() {
         {/* Card 2: Precision Fueling Engine */}
         <div className="card" style={{ padding: isMobile ? "16px" : "24px" }}>
           <h3 style={{ fontSize: isMobile ? "16px" : "18px", marginBottom: "8px", color: "var(--accent-secondary)" }}>
-            🍌 {lang === "en" ? "Precision Fueling Engine" : "Công cụ Dinh dưỡng Chính xác"}
+            <span style={{ display: "flex", alignItems: "center", gap: "6px" }}><BowlFood size={20} color="var(--accent-primary)" weight="duotone" /> {lang === "en" ? "Precision Fueling Engine" : "Công cụ Dinh dưỡng Chính xác"}</span>
           </h3>
           <p style={{ color: "var(--text-secondary)", fontSize: "12.5px", marginBottom: "16px" }}>
             {lang === "en" 
@@ -3522,7 +3530,7 @@ export default function Home() {
         {/* Card 3: Shoes & Gear Finder */}
         <div className="card" style={{ padding: isMobile ? "16px" : "24px" }}>
           <h3 style={{ fontSize: isMobile ? "16px" : "18px", marginBottom: "8px", color: "var(--accent-primary)", display: "flex", alignItems: "center", gap: "8px" }}>
-            <span>👟 {lang === "en" ? "Gear Finder" : "Tìm kiếm Thiết bị"}</span>
+            <span style={{ display: "flex", alignItems: "center", gap: "6px" }}><Sneaker size={20} color="var(--accent-primary)" weight="duotone" /> {lang === "en" ? "Gear Finder" : "Tìm kiếm Thiết bị"}</span>
             <span style={{ fontSize: "10px", padding: "2px 6px", background: "rgba(255,255,255,0.15)", borderRadius: "4px", color: "var(--text-secondary)", fontWeight: "600" }}>Demo</span>
           </h3>
           <p style={{ color: "var(--text-secondary)", fontSize: "12.5px", marginBottom: "16px" }}>
@@ -3574,7 +3582,7 @@ export default function Home() {
               onChange={(e) => setShoeCushion(e.target.value)}
             >
               <option value="plush">{lang === "en" ? "☁️ Plush" : "☁️ Siêu êm (Plush)"}</option>
-              <option value="balanced">{lang === "en" ? "👟 Balanced" : "👟 Cân bằng (Balanced)"}</option>
+              <option value="balanced">{lang === "en" ? "Balanced" : "Cân bằng (Balanced)"}</option>
               <option value="firm">{lang === "en" ? "⚡ Firm" : "⚡ Nảy/Cứng (Firm)"}</option>
             </select>
           </div>
@@ -3616,8 +3624,8 @@ export default function Home() {
     switch (activeTab) {
       case "home":
         return renderHome(isMobile);
-      case "philosophy":
-        return renderPhilosophy(isMobile);
+      case "about":
+        return renderAboutUs(isMobile);
       case "chat":
         return renderChat(isMobile);
       case "planner":
@@ -3643,7 +3651,7 @@ export default function Home() {
   const renderAuthModal = () => {
     if (!authModalOpen) return null;
     const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
-    const inputStyle: React.CSSProperties = { borderRadius: "8px", width: "100%", height: "36px", margin: 0, padding: "0 10px", fontSize: "13px", background: "rgba(255,255,255,0.5)", border: "1px solid var(--border-color)", color: "var(--text-primary)", boxSizing: "border-box" as const };
+    const inputStyle: React.CSSProperties = { borderRadius: "8px", width: "100%", height: "36px", margin: 0, padding: "0 10px", fontSize: "13px", background: "transparent", border: "1px solid var(--border-color)", color: "var(--text-primary)", boxSizing: "border-box" as const };
     const labelStyle: React.CSSProperties = { display: "block", fontSize: "11.5px", fontWeight: "600", color: "var(--text-muted)", marginBottom: "5px" };
     const cardBtnStyle = (selected: boolean): React.CSSProperties => ({
       flex: "1 1 auto", minWidth: "120px", padding: "10px 12px", borderRadius: "10px", border: `1.5px solid ${selected ? "var(--accent-primary)" : "var(--border-color)"}`,
@@ -3663,7 +3671,7 @@ export default function Home() {
 
           {authErrorMsg && (
             <div style={{ color: "#ef4444", background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.15)", borderRadius: "8px", padding: "10px", fontSize: "12.5px", marginBottom: "16px" }}>
-              ⚠️ {authErrorMsg}
+              <Warning weight="fill" style={{marginRight: "4px", verticalAlign: "middle"}}/> {authErrorMsg}
             </div>
           )}
 
@@ -3760,7 +3768,7 @@ export default function Home() {
 
     const totalSteps = steps.length;
     const currentStepKey = steps[onboardingStep] || "dob";
-    const inputS: React.CSSProperties = { borderRadius: "8px", width: "100%", height: "36px", margin: 0, padding: "0 10px", fontSize: "13px", background: "rgba(255,255,255,0.5)", border: "1px solid var(--border-color)", color: "var(--text-primary)", boxSizing: "border-box" };
+    const inputS: React.CSSProperties = { borderRadius: "8px", width: "100%", height: "36px", margin: 0, padding: "0 10px", fontSize: "13px", background: "transparent", border: "1px solid var(--border-color)", color: "var(--text-primary)", boxSizing: "border-box" };
     const labelS: React.CSSProperties = { display: "block", fontSize: "12px", fontWeight: "600", color: "var(--text-muted)", marginBottom: "6px" };
     const optBtn = (val: string, label: string, emoji?: string): React.CSSProperties => ({
       padding: "10px 14px", borderRadius: "10px", border: `1.5px solid ${onboardingAnswers[currentStepKey === "goal" ? "goal_type" : currentStepKey] === val ? "var(--accent-primary)" : "var(--border-color)"}`,
@@ -3818,19 +3826,19 @@ export default function Home() {
           return (
             <div>
               <div style={{ fontSize: "20px", fontWeight: "800", marginBottom: "6px" }}>
-                {lang === "en" ? "What's your goal? 🎯" : "Mục tiêu của bạn là gì? 🎯"}
+                {lang === "en" ? "What's your goal?" : "Mục tiêu của bạn là gì?"}
               </div>
               <p style={{ color: "var(--text-muted)", fontSize: "13px", marginBottom: "20px" }}>
                 {lang === "en" ? "Your training plan will be designed specifically around this." : "Kế hoạch tập luyện của bạn sẽ được thiết kế riêng xung quanh mục tiêu này."}
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                 {[
-                  { val: "race", emoji: "🏆", label: lang === "en" ? "Race (target event)" : "Giải chạy (sự kiện mục tiêu)" },
-                  { val: "distance", emoji: "📏", label: lang === "en" ? "Run a Specific Distance" : "Chạy một cự ly cụ thể" },
-                  { val: "start_running", emoji: "🌱", label: lang === "en" ? "Start Running" : "Bắt đầu chạy bộ" },
-                  { val: "return", emoji: "🔄", label: lang === "en" ? "Get Back to Running" : "Tập luyện chạy bộ trở lại" },
-                  { val: "recovery", emoji: "💤", label: lang === "en" ? "Post-Race Recovery" : "Phục hồi sau cuộc đua" },
-                ].map(({ val, emoji, label }) => (
+                  { val: "race", Icon: Trophy, label: lang === "en" ? "Race (target event)" : "Giải chạy (sự kiện mục tiêu)" },
+                  { val: "distance", Icon: Target, label: lang === "en" ? "Run a Specific Distance" : "Chạy một cự ly cụ thể" },
+                  { val: "start_running", Icon: Sneaker, label: lang === "en" ? "Start Running" : "Bắt đầu chạy bộ" },
+                  { val: "return", Icon: PersonSimpleRun, label: lang === "en" ? "Get Back to Running" : "Tập luyện chạy bộ trở lại" },
+                  { val: "recovery", Icon: Bed, label: lang === "en" ? "Post-Race Recovery" : "Phục hồi sau cuộc đua" },
+                ].map(({ val, Icon, label }) => (
                   <button key={val} type="button"
                     onClick={() => {
                       setAns("goal_type", val);
@@ -3842,8 +3850,8 @@ export default function Home() {
                         if (onboardingAnswers.zone2_pace_max === "7:30") setAns("zone2_pace_max", "5:45");
                       }
                     }}
-                    style={{ ...optBtn(val, label, emoji), display: "flex", alignItems: "center", gap: "10px", textAlign: "left" as const }}>
-                    <span style={{ fontSize: "20px" }}>{emoji}</span>
+                    style={{ ...optBtn(val, label), display: "flex", alignItems: "center", gap: "10px", textAlign: "left" as const }}>
+                    <Icon size={24} color="var(--accent-primary)" weight="duotone" />
                     <span>{label}</span>
                     {onboardingAnswers.goal_type === val && <span style={{ marginLeft: "auto" }}>✓</span>}
                   </button>
@@ -3982,8 +3990,8 @@ export default function Home() {
                 <label style={labelS}>{lang === "en" ? "Race Goal" : "Mục tiêu giải chạy"}</label>
                 <div style={{ display: "flex", background: "rgba(255,255,255,0.4)", border: "1px solid var(--border-color)", padding: "3px", borderRadius: "10px", marginBottom: "10px" }}>
                   {[
-                    { val: "finish", label: lang === "en" ? "🏆 Just Finish" : "🏆 Hoàn thành" },
-                    { val: "time", label: lang === "en" ? "⏱️ Time Target" : "⏱️ Đạt mốc thời gian" }
+                    { val: "finish", label: lang === "en" ? "Just Finish" : "Hoàn thành" },
+                    { val: "time", label: lang === "en" ? "Time Target" : "Đạt mốc thời gian" }
                   ].map(({ val, label }) => (
                     <button key={val} type="button" onClick={() => setAns("race_goal", val)}
                       style={{ flex: 1, height: "30px", fontSize: "12px", borderRadius: "8px", border: "none", background: (onboardingAnswers.race_goal || "finish") === val ? "var(--accent-primary)" : "transparent", color: (onboardingAnswers.race_goal || "finish") === val ? "#fff" : "var(--text-secondary)", fontWeight: "600", cursor: "pointer" }}>
@@ -4171,8 +4179,8 @@ export default function Home() {
                       {lang === "en" ? "SUMMARY" : "BẢN TỔNG HỢP"}
                     </div>
                     <div style={{ fontSize: "13px", display: "flex", flexDirection: "column", gap: "4px" }}>
-                      <div>🎯 {lang === "en" ? "Goal:" : "Mục tiêu:"} <strong>{onboardingAnswers.goal_type?.replace("_"," ")}</strong></div>
-                      <div>📅 {lang === "en" ? "Starts:" : "Bắt đầu:"} <strong>{onboardingAnswers.plan_start_date || "Today"}</strong> · {onboardingAnswers.days_per_week || 4} {lang === "en" ? "days/week" : "ngày/tuần"}</div>
+                      <div>{lang === "en" ? "Goal:" : "Mục tiêu:"} <strong>{onboardingAnswers.goal_type?.replace("_"," ")}</strong></div>
+                      <div>{lang === "en" ? "Starts:" : "Bắt đầu:"} <strong>{onboardingAnswers.plan_start_date || "Today"}</strong> · {onboardingAnswers.days_per_week || 4} {lang === "en" ? "days/week" : "ngày/tuần"}</div>
                       <div>🌙 {lang === "en" ? "Long run:" : "Chạy dài:"} <strong>{onboardingAnswers.long_run_day}</strong> · {lang === "en" ? "Volume:" : "Thể tích:"} <strong>{onboardingAnswers.current_weekly_km || 30} km/{lang === "en" ? "wk" : "tuần"}</strong></div>
                       {onboardingAnswers.race_name && <div>🏁 {lang === "en" ? "Race:" : "Giải chạy:"} <strong>{onboardingAnswers.race_name}</strong></div>}
                     </div>
@@ -4234,7 +4242,7 @@ export default function Home() {
 
     const inputStyle: React.CSSProperties = {
       borderRadius: "8px", width: "100%", height: "36px", margin: 0, padding: "0 10px",
-      fontSize: "13px", background: "rgba(255,255,255,0.5)", border: "1px solid var(--border-color)",
+      fontSize: "13px", background: "transparent", border: "1px solid var(--border-color)",
       color: "var(--text-primary)", boxSizing: "border-box" as const
     };
     const labelStyle: React.CSSProperties = {
@@ -4266,7 +4274,7 @@ export default function Home() {
 
           {authErrorMsg && (
             <div style={{ color: "#ef4444", background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.15)", borderRadius: "8px", padding: "10px", fontSize: "12.5px", marginBottom: "16px" }}>
-              ⚠️ {authErrorMsg}
+              <Warning weight="fill" style={{marginRight: "4px", verticalAlign: "middle"}}/> {authErrorMsg}
             </div>
           )}
 
@@ -4283,7 +4291,7 @@ export default function Home() {
                   <input type="number" style={inputStyle} value={profileForm.age} onChange={e => setProfileForm({ ...profileForm, age: e.target.value })} required />
                 </div>
                 <div>
-                  <label style={labelStyle}>{lang === "en" ? "Weekly Volume (km)" : "Thể tích tuần (km)"}</label>
+                  <label style={labelStyle}>{lang === "en" ? "Weekly Volume (km)" : "Khối lượng tuần (km)"}</label>
                   <input type="number" step="0.1" style={inputStyle} value={profileForm.current_weekly_km} onChange={e => setProfileForm({ ...profileForm, current_weekly_km: e.target.value })} required />
                 </div>
                 <div>
@@ -4368,7 +4376,7 @@ export default function Home() {
               )}
               {passwordError && (
                 <div style={{ color: "#ef4444", background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.15)", borderRadius: "8px", padding: "10px", fontSize: "12.5px", marginBottom: "12px" }}>
-                  ⚠️ {passwordError}
+                  <Warning weight="fill" style={{marginRight: "4px", verticalAlign: "middle"}}/> {passwordError}
                 </div>
               )}
 
@@ -4562,7 +4570,7 @@ export default function Home() {
           )}
           {planJobStatus === "error" && (
             <>
-              <span style={{ fontSize: "20px" }}>⚠️</span>
+              <span style={{ fontSize: "20px" }}><Warning weight="fill" /></span>
               <span>Plan generation failed.</span>
               {planJobMessage && <span style={{ fontSize: "12px", opacity: 0.7, fontWeight: 400, maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis" }}>{planJobMessage}</span>}
               <button
@@ -4588,7 +4596,7 @@ export default function Home() {
                 Uphill<span>.AI</span>
               </div>
               <ul className="sidebar-nav-list">
-                {(["home", "philosophy", "chat", "planner", "calculators", "knowledge"] as const).map((tab) => {
+                {(["home", "about", "chat", "planner", "calculators", "knowledge"] as const).map((tab) => {
                   const active = activeTab === tab;
                   return (
                     <li 
@@ -4602,7 +4610,7 @@ export default function Home() {
                          tab === "chat" ? t("tab_chat") :
                          tab === "planner" ? t("tab_scheduler") :
                          tab === "knowledge" ? t("tab_knowledge") :
-                         tab === "philosophy" ? t("tab_philosophy") :
+                         tab === "about" ? t("tab_about") :
                          t("tab_calculators")}
                       </span>
                     </li>
@@ -4651,7 +4659,7 @@ export default function Home() {
                      activeTab === "chat" ? t("tab_chat") :
                      activeTab === "planner" ? t("tab_scheduler") :
                      activeTab === "knowledge" ? t("tab_knowledge") :
-                     activeTab === "philosophy" ? t("tab_philosophy") :
+                     activeTab === "about" ? t("tab_about") :
                      t("tab_calculators")}
                   </span>
                 </span>
@@ -4717,12 +4725,12 @@ export default function Home() {
                         <h2>{activeTab === "chat" ? t("tab_chat") :
                              activeTab === "planner" ? t("plan_setup") :
                              activeTab === "knowledge" ? t("know_title") :
-                             activeTab === "calculators" ? t("tab_calculators") : t("tab_philosophy")}</h2>
+                             activeTab === "calculators" ? t("tab_calculators") : t("tab_about")}</h2>
                         <p>
                           {activeTab === "chat" ? t("header_chat_desc") :
                            activeTab === "planner" ? t("header_planner_desc") :
                            activeTab === "knowledge" ? t("header_knowledge_desc") :
-                           activeTab === "calculators" ? t("header_calculators_desc") : t("header_philosophy_desc")}
+                           activeTab === "calculators" ? t("header_calculators_desc") : t("header_about_desc")}
                         </p>
                       </div>
                     </div>
@@ -4753,7 +4761,7 @@ export default function Home() {
                 <select 
                   value={viewMode} 
                   onChange={(e) => changeViewMode(e.target.value as any)}
-                  style={{ background: "rgba(255,255,255,0.5)", border: "1px solid var(--border-color)", borderRadius: "6px", fontSize: "10px", padding: "2px 6px", color: "var(--text-secondary)", outline: "none", cursor: "pointer" }}
+                  style={{ background: "transparent", border: "1px solid var(--border-color)", borderRadius: "6px", fontSize: "10px", padding: "2px 6px", color: "var(--text-secondary)", outline: "none", cursor: "pointer" }}
                 >
                   <option value="showcase">{lang === "en" ? "Showcase" : "Giới thiệu"}</option>
                   <option value="desktop">{lang === "en" ? "Desktop Only" : "Chỉ Máy tính"}</option>
@@ -4802,7 +4810,7 @@ export default function Home() {
 
             {/* Persistent Bottom Tab Bar */}
             <nav className="phone-bottom-tab-bar">
-              {(["home", "philosophy", "chat", "planner", "calculators", "knowledge"] as const).map((tab) => {
+              {(["home", "about", "chat", "planner", "calculators", "knowledge"] as const).map((tab) => {
                 const active = activeTab === tab;
                 const tabLabel = tab === "home" ? "Home" :
                                  tab === "chat" ? "Coach" :
@@ -4844,19 +4852,21 @@ export default function Home() {
 
             {/* Centre tab pills */}
             <div className="top-nav-tabs">
-              {(["home", "chat", "planner", "knowledge", "calculators", "philosophy"] as const).map((tab) => {
-                const label = tab === "home" ? `🏠 ${t("tab_home")}` :
-                              tab === "chat" ? `🤖 ${t("tab_chat")}` :
-                              tab === "planner" ? `📅 ${t("tab_scheduler")}` :
-                              tab === "knowledge" ? `📚 ${t("tab_knowledge")}` :
-                              tab === "philosophy" ? `🏔️ ${t("tab_philosophy")}` :
-                              `🧮 ${t("tab_calculators")}`;
+              {(["home", "chat", "planner", "knowledge", "calculators", "about"] as const).map((tab) => {
+                const label = tab === "home" ? `${t("tab_home")}` :
+                              tab === "chat" ? `${t("tab_chat")}` :
+                              tab === "planner" ? `${t("tab_scheduler")}` :
+                              tab === "knowledge" ? `${t("tab_knowledge")}` :
+                              tab === "about" ? `${t("tab_about")}` :
+                              `${t("tab_calculators")}`;
                 return (
                   <button
                     key={tab}
                     className={`top-nav-tab ${activeTab === tab ? "active" : ""}`}
                     onClick={() => setActiveTab(tab)}
+                    style={{ display: "flex", alignItems: "center", gap: "6px" }}
                   >
+                    {getTabIcon(tab, activeTab === tab, 18)}
                     {label}
                   </button>
                 );
@@ -4932,14 +4942,14 @@ export default function Home() {
 
           {/* Mobile Bottom Navigation Tabs (visible only on mobile viewports via CSS) */}
           <div className="mobile-bottom-nav-tabs">
-            {(["home", "chat", "planner", "knowledge", "calculators", "philosophy"] as const).map((tab) => {
+            {(["home", "chat", "planner", "knowledge", "calculators", "about"] as const).map((tab) => {
               const active = activeTab === tab;
               const tabLabel = tab === "home" ? t("tab_home") :
                                tab === "chat" ? t("tab_chat") :
                                tab === "planner" ? t("tab_scheduler") :
                                tab === "knowledge" ? t("tab_knowledge") :
                                tab === "calculators" ? t("tab_calculators") :
-                               t("tab_philosophy");
+                               t("tab_about");
               return (
                 <button
                   key={tab}

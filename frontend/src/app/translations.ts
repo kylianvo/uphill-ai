@@ -17,7 +17,7 @@ export const translations = {
     tab_scheduler: "Scheduler",
     tab_chat: "AI Coach",
     tab_knowledge: "Knowledge Hub",
-    tab_philosophy: "Philosophy",
+    tab_about: "About Us",
     tab_calculators: "Calculators",
 
     // Authentication Screen
@@ -164,8 +164,8 @@ export const translations = {
     home_feat_knowledge_desc: "Upload local reference PDFs, links, or YouTube transcripts. Index them directly into your database to enrich the AI Coach's grounding database.",
     home_feat_calc_title: "Physiology Calculators",
     home_feat_calc_desc: "Convert treadmill speeds and inclines to flat-equivalent efforts, analyze GPX elevation split times, and map custom pacing strategies.",
-    home_feat_philosophy_title: "Coaching Philosophy",
-    home_feat_philosophy_desc: "Learn about aerobic volume accumulation, cardiac drift tests, lactate thresholds, and why 80% of your training volume should remain easy.",
+    home_feat_about_title: "About Us",
+    home_feat_about_desc: "Learn about our AI engine, RAG architecture, and the origin story of Uphill.AI.",
     home_cta_plan: "Start Training Plan",
     home_cta_chat: "Ask AI Coach",
     home_daily_insight: "Daily Knowledge",
@@ -209,7 +209,7 @@ export const translations = {
     header_planner_desc: "Periodized training blocks for your next race",
     header_knowledge_desc: "Knowledge cards extracted from your indexed podcasts",
     header_calculators_desc: "Pacing, nutrition, gear — all in one place",
-    header_philosophy_desc: "Training philosophy and principles"
+    header_about_desc: "The story, engine, and philosophy behind Uphill.AI"
   },
   vi: {
     // Brand & App General
@@ -229,7 +229,7 @@ export const translations = {
     tab_scheduler: "Scheduler",
     tab_chat: "AI Coach",
     tab_knowledge: "Knowledge Hub",
-    tab_philosophy: "Philosophy",
+    tab_about: "About Us",
     tab_calculators: "Calculators",
 
     // Authentication Screen
@@ -376,8 +376,8 @@ export const translations = {
     home_feat_knowledge_desc: "Tải lên các tài liệu PDF chuyên ngành, liên kết web hoặc nội dung từ YouTube để lập chỉ mục trực tiếp vào cơ sở dữ liệu, giúp AI Coach đưa ra lời khuyên chuẩn xác hơn.",
     home_feat_calc_title: "Công Cụ Tính Chỉ Số Fitness & Thể Chất",
     home_feat_calc_desc: "Quy đổi tốc độ và độ dốc trên máy treadmill sang nỗ lực tương đương trên đường bằng, phân tích thời gian checkpoint qua GPX và lập chiến thuật pace.",
-    home_feat_philosophy_title: "Triết Lý Huấn Luyện",
-    home_feat_philosophy_desc: "Khám phá các phương pháp tích lũy thể tích hiếu khí (aerobic volume), bài kiểm tra độ trôi nhịp tim (cardiac drift tests), ngưỡng lactate và lý do vì sao 80% khối lượng tập luyện nên ở mức nhẹ nhàng.",
+    home_feat_about_title: "Về Chúng Tôi",
+    home_feat_about_desc: "Khám phá kiến trúc AI, nền tảng RAG và câu chuyện khởi nguồn của Uphill.AI.",
     home_cta_plan: "Bắt đầu giáo án",
     home_cta_chat: "Trò chuyện với AI Coach",
     home_daily_insight: "Kiến thức mỗi ngày",
@@ -421,6 +421,6 @@ export const translations = {
     header_planner_desc: "Các chu kỳ huấn luyện (Periodized blocks) cho giải chạy sắp tới",
     header_knowledge_desc: "Các thẻ kiến thức được trích xuất từ tài liệu đã lưu trữ",
     header_calculators_desc: "Chiến thuật Pace, Dinh dưỡng, Trang bị — Tất cả tại một nơi",
-    header_philosophy_desc: "Triết lý và các nguyên tắc huấn luyện cốt lõi"
+    header_about_desc: "Câu chuyện, nền tảng công nghệ, và triết lý của Uphill.AI"
   }
 };
