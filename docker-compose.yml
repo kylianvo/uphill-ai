@@ -36,10 +36,6 @@ services:
       - ./backend:/app
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
-
-
-volumes:
-  pgdata:
   qdrant:
     image: qdrant/qdrant:latest
     restart: unless-stopped
@@ -47,3 +43,6 @@ volumes:
       - "127.0.0.1:6333:6333"
     volumes:
       - ./backend/qdrant_storage:/qdrant/storage
+
+volumes:
+  pgdata:
