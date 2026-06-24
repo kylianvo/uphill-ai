@@ -29,6 +29,8 @@ class Config:
 
     # NotebookLM — system-level config (not per-user)
     NOTEBOOKLM_NOTEBOOK_ID: str = os.getenv("NOTEBOOKLM_NOTEBOOK_ID", "")
+    NOTEBOOKLM_GEAR_ID: str = os.getenv("NOTEBOOKLM_GEAR_ID", "")
+    NOTEBOOKLM_NUTRITION_ID: str = os.getenv("NOTEBOOKLM_NUTRITION_ID", "")
     NOTEBOOKLM_AUTH_JSON: str = os.getenv("NOTEBOOKLM_AUTH_JSON", "")
 
 settings = Config()

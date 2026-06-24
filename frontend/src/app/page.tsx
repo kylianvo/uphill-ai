@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { NutritionLab } from "../components/NutritionLab";
+import { GearVault } from "../components/GearVault";
 import { translations } from "./translations";
 import { 
   Plus, ArrowsLeftRight, Heartbeat, Clock, Calendar, Lightbulb, Sneaker, Plant, Code, Robot, CalendarBlank, BookOpen, Calculator, Mountains, PersonSimpleRun, Trash, Target, XCircle, Warning, Trophy, 
@@ -27,7 +29,7 @@ if (typeof window !== "undefined") {
   }
 }
 
-const getApiBaseUrl = () => {
+const getApiBaseUrl = (): string => {
   if (typeof window !== "undefined") {
     const override = localStorage.getItem("UPHILL_API_URL_OVERRIDE");
     if (override) return override;
@@ -41,9 +43,9 @@ if (typeof window !== "undefined") {
   const originalFetch = window.fetch;
   window.fetch = async (input, init) => {
     let url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
-    if (url.startsWith("http://localhost:8000")) {
-      const apiBase = localStorage.getItem("UPHILL_API_URL_OVERRIDE") || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-      url = url.replace("http://localhost:8000", apiBase);
+    if (url.startsWith(API_BASE_URL)) {
+      const apiBase = localStorage.getItem("UPHILL_API_URL_OVERRIDE") || process.env.NEXT_PUBLIC_API_URL || API_BASE_URL;
+      url = url.replace(API_BASE_URL, apiBase);
     }
     return originalFetch(url, init);
   };
@@ -284,9 +286,11 @@ const KnowledgeCard = ({ card, expanded = false }: { card: any; expanded?: boole
 
 export default function Home() {
   // Navigation active tab
-  const [activeTab, setActiveTab] = useState<"home" | "about" | "chat" | "planner" | "calculators" | "knowledge">("home");
+    const [isNutritionLabOpen, setIsNutritionLabOpen] = useState(false);
+  const [isGearVaultOpen, setIsGearVaultOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"home" | "about" | "chat" | "planner" | "tools" | "knowledge">("home");
 
-  const handleTabSwitch = (tab: "home" | "about" | "chat" | "planner" | "calculators" | "knowledge") => {
+  const handleTabSwitch = (tab: "home" | "about" | "chat" | "planner" | "tools" | "knowledge") => {
     if ((tab === "chat" || tab === "planner") && !user) {
       setAuthModalOpen(true);
       return;
@@ -485,12 +489,12 @@ export default function Home() {
     const loadCards = async (topic?: string) => {
       try {
         const url = topic && topic !== "All"
-          ? `http://localhost:8000/api/knowledge/cards?topic=${encodeURIComponent(topic)}&lang=${lang}`
-          : `http://localhost:8000/api/knowledge/cards?lang=${lang}`;
+          ? `${API_BASE_URL}/api/knowledge/cards?topic=${encodeURIComponent(topic)}&lang=${lang}`
+          : `${API_BASE_URL}/api/knowledge/cards?lang=${lang}`;
         const [cardsRes, dailyRes, topicsRes] = await Promise.all([
           fetch(url, { headers }),
-          fetch(`http://localhost:8000/api/knowledge/cards/random?n=3&lang=${lang}`, { headers }),
-          fetch(`http://localhost:8000/api/knowledge/topics`, { headers }),
+          fetch(`${API_BASE_URL}/api/knowledge/cards/random?n=3&lang=${lang}`, { headers }),
+          fetch(`${API_BASE_URL}/api/knowledge/topics`, { headers }),
         ]);
         if (cardsRes.ok) { const d = await cardsRes.json(); setKnowledgeCards(d.cards || []); }
         if (dailyRes.ok) { const d = await dailyRes.json(); setDailyCards(d.cards || []); }
@@ -500,7 +504,7 @@ export default function Home() {
 
     const checkStatus = async () => {
       try {
-        const res = await fetch(`http://localhost:8000/api/knowledge/extract/status`, { headers });
+        const res = await fetch(`${API_BASE_URL}/api/knowledge/extract/status`, { headers });
         if (res.ok) {
           const s = await res.json();
           setExtractStatus(s);
@@ -520,13 +524,13 @@ export default function Home() {
       await loadCards();
       if (activeTab === "knowledge") {
         // Check if we need to auto-trigger extraction
-        const statusRes = await fetch(`http://localhost:8000/api/knowledge/extract/status`, { headers });
+        const statusRes = await fetch(`${API_BASE_URL}/api/knowledge/extract/status`, { headers });
         if (statusRes.ok) {
           const s = await statusRes.json();
           setExtractStatus(s);
           if ((s.card_count || 0) === 0 && s.status !== "extracting") {
             // Auto-trigger background extraction
-            await fetch(`http://localhost:8000/api/knowledge/trigger`, { method: "POST", headers });
+            await fetch(`${API_BASE_URL}/api/knowledge/trigger`, { method: "POST", headers });
             setExtractStatus(prev => ({ ...prev, status: "extracting" }));
           }
           if (s.status === "extracting" && !knowledgePollerRef.current) {
@@ -550,7 +554,7 @@ export default function Home() {
     const token = localStorage.getItem("uphill_session_token");
     if (!token) return;
     try {
-      const res = await fetch(`http://localhost:8000/api/knowledge/cards/random?n=3&lang=${lang}`, {
+      const res = await fetch(`${API_BASE_URL}/api/knowledge/cards/random?n=3&lang=${lang}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       if (res.ok) { const d = await res.json(); setDailyCards(d.cards || []); }
@@ -563,8 +567,8 @@ export default function Home() {
     if (!token) return;
     try {
       const url = topic !== "All"
-        ? `http://localhost:8000/api/knowledge/cards?topic=${encodeURIComponent(topic)}&lang=${lang}`
-        : `http://localhost:8000/api/knowledge/cards?lang=${lang}`;
+        ? `${API_BASE_URL}/api/knowledge/cards?topic=${encodeURIComponent(topic)}&lang=${lang}`
+        : `${API_BASE_URL}/api/knowledge/cards?lang=${lang}`;
       const res = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
       if (res.ok) { const d = await res.json(); setKnowledgeCards(d.cards || []); }
     } catch (e) {}
@@ -806,7 +810,7 @@ export default function Home() {
     const token = localStorage.getItem("uphill_session_token");
     if (token) {
       setAuthLoading(true);
-      fetch("http://localhost:8000/api/auth/me", {
+      fetch(`${API_BASE_URL}/api/auth/me`, {
         headers: { "Authorization": `Bearer ${token}` }
       })
         .then((res) => {
@@ -897,7 +901,7 @@ export default function Home() {
   }, [authModalOpen]);
 
   const checkHealth = () => {
-    fetch("http://localhost:8000/api/health")
+    fetch(`${API_BASE_URL}/api/health`)
       .then((res) => res.json())
       .then((data) => {
         if (data.status === "healthy") {
@@ -918,7 +922,7 @@ export default function Home() {
       return;
     }
     try {
-      const response = await fetch("http://localhost:8000/api/rag/sources", {
+      const response = await fetch(`${API_BASE_URL}/api/rag/sources`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       if (response.ok) {
@@ -932,7 +936,7 @@ export default function Home() {
 
   const fetchRecentPlansWithToken = async (token: string) => {
     try {
-      const response = await fetch("http://localhost:8000/api/coach/recent-plans", {
+      const response = await fetch(`${API_BASE_URL}/api/coach/recent-plans`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       if (response.ok) {
@@ -946,7 +950,7 @@ export default function Home() {
 
   const fetchActivePlanWithToken = async (token: string) => {
     try {
-      const response = await fetch("http://localhost:8000/api/coach/active-plan", {
+      const response = await fetch(`${API_BASE_URL}/api/coach/active-plan`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       if (response.ok) {
@@ -988,7 +992,7 @@ export default function Home() {
     setAuthLoading(true);
     setAuthErrorMsg("");
     try {
-      const response = await fetch("http://localhost:8000/api/auth/mock-login", {
+      const response = await fetch(`${API_BASE_URL}/api/auth/mock-login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: emailToUse }),
@@ -1032,7 +1036,7 @@ export default function Home() {
     setAuthErrorMsg("");
     try {
       const response = await fetch(`${API_BASE_URL}/api/auth/google`, {
-        method: "POST",
+        method: `POST`,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ credential: idToken }),
       });
@@ -1084,7 +1088,7 @@ export default function Home() {
     const token = localStorage.getItem("uphill_session_token");
     if (!token) return;
     try {
-      const response = await fetch("http://localhost:8000/api/auth/update-profile", {
+      const response = await fetch(`${API_BASE_URL}/api/auth/update-profile`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1135,7 +1139,7 @@ export default function Home() {
     const token = localStorage.getItem("uphill_session_token");
     if (!token) return;
     try {
-      const response = await fetch("http://localhost:8000/api/auth/set-password", {
+      const response = await fetch(`${API_BASE_URL}/api/auth/set-password`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1261,7 +1265,7 @@ export default function Home() {
       return;
     }
     try {
-      const response = await fetch("http://localhost:8000/api/auth/register", {
+      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: nameInput.trim(), email: emailInput.trim(), password: passwordInput }),
@@ -1290,7 +1294,7 @@ export default function Home() {
     setAuthLoading(true);
     setAuthErrorMsg("");
     try {
-      const response = await fetch("http://localhost:8000/api/auth/login", {
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: emailInput.trim(), password: passwordInput }),
@@ -1325,7 +1329,7 @@ export default function Home() {
 
     const poll = async () => {
       try {
-        const res = await fetch(`http://localhost:8000/api/coach/plan-status/${jobId}`, {
+        const res = await fetch(`${API_BASE_URL}/api/coach/plan-status/${jobId}`, {
           headers: { "Authorization": `Bearer ${token}` }
         });
         if (!res.ok) {
@@ -1417,7 +1421,7 @@ export default function Home() {
         payload.expected_finish_time = null;
       }
 
-      const response = await fetch("http://localhost:8000/api/auth/onboarding", {
+      const response = await fetch(`${API_BASE_URL}/api/auth/onboarding`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify(payload),
@@ -1446,7 +1450,7 @@ export default function Home() {
     const token = localStorage.getItem("uphill_session_token");
     if (token) {
       try {
-        await fetch("http://localhost:8000/api/auth/logout", {
+        await fetch(`${API_BASE_URL}/api/auth/logout`, {
           method: "POST",
           headers: { "Authorization": `Bearer ${token}` }
         });
@@ -1482,7 +1486,7 @@ export default function Home() {
     }
 
     try {
-      const response = await fetch("http://localhost:8000/api/coach/chat", {
+      const response = await fetch(`${API_BASE_URL}/api/coach/chat`, {
         method: "POST",
         headers: headers,
         body: JSON.stringify({
@@ -1559,9 +1563,9 @@ export default function Home() {
     let url = "";
 
     if (extension === "fit") {
-      url = "http://localhost:8000/api/parser/fit";
+      url = `${API_BASE_URL}/api/parser/fit`;
     } else if (extension === "gpx") {
-      url = "http://localhost:8000/api/parser/gpx";
+      url = `${API_BASE_URL}/api/parser/gpx`;
     } else {
       setParserErrorMsg("Unsupported file format. Please upload a .fit or .gpx file.");
       setParserLoading(false);
@@ -1630,7 +1634,7 @@ export default function Home() {
     }
 
     try {
-      const response = await fetch("http://localhost:8000/api/parser/gpx", {
+      const response = await fetch(`${API_BASE_URL}/api/parser/gpx`, {
         method: "POST",
         body: formData,
       });
@@ -1666,7 +1670,7 @@ export default function Home() {
 
     const token = localStorage.getItem("uphill_session_token");
     try {
-      const response = await fetch("http://localhost:8000/api/rag/link", {
+      const response = await fetch(`${API_BASE_URL}/api/rag/link`, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
@@ -1706,7 +1710,7 @@ export default function Home() {
 
     const token = localStorage.getItem("uphill_session_token");
     try {
-      const response = await fetch("http://localhost:8000/api/rag/upload", {
+      const response = await fetch(`${API_BASE_URL}/api/rag/upload`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${token}`
@@ -1731,7 +1735,7 @@ export default function Home() {
   const handleDeleteSource = async (id: number) => {
     const token = localStorage.getItem("uphill_session_token");
     try {
-      const response = await fetch(`http://localhost:8000/api/rag/sources/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/rag/sources/${id}`, {
         method: "DELETE",
         headers: {
           "Authorization": `Bearer ${token}`
@@ -1800,7 +1804,7 @@ export default function Home() {
         if (total > 0) body.cutoff_time_hours = total;
       }
 
-      const response = await fetch("http://localhost:8000/api/coach/generate-plan", {
+      const response = await fetch(`${API_BASE_URL}/api/coach/generate-plan`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1881,7 +1885,7 @@ export default function Home() {
     try {
       setPlanLoading(true);
       setPlanErrorMsg("");
-      const response = await fetch("http://localhost:8000/api/coach/select-plan", {
+      const response = await fetch(`${API_BASE_URL}/api/coach/select-plan`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1913,7 +1917,7 @@ export default function Home() {
     if (!activePlan) return;
     const token = localStorage.getItem("uphill_session_token");
     try {
-      const response = await fetch("http://localhost:8000/api/coach/modify-calendar", {
+      const response = await fetch(`${API_BASE_URL}/api/coach/modify-calendar`, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
@@ -2006,7 +2010,7 @@ export default function Home() {
     setPacingLoading(true);
 
     try {
-      const response = await fetch("http://localhost:8000/api/coach/calculate-pacing", {
+      const response = await fetch(`${API_BASE_URL}/api/coach/calculate-pacing`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -2029,7 +2033,7 @@ export default function Home() {
   const handleCalculateFueling = async () => {
     setFuelLoading(true);
     try {
-      const response = await fetch("http://localhost:8000/api/coach/calculate-fueling", {
+      const response = await fetch(`${API_BASE_URL}/api/coach/calculate-fueling`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -2053,7 +2057,7 @@ export default function Home() {
   const handleRecommendShoes = async () => {
     setShoesLoading(true);
     try {
-      const response = await fetch("http://localhost:8000/api/coach/recommend-shoes", {
+      const response = await fetch(`${API_BASE_URL}/api/coach/recommend-shoes`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -2087,7 +2091,7 @@ export default function Home() {
         return <Robot size={size} color={color} weight={weight} />;
       case "planner":
         return <CalendarBlank size={size} color={color} weight={weight} />;
-      case "calculators":
+      case "tools":
         return <Calculator size={size} color={color} weight={weight} />;
       case "knowledge":
         return <BookOpen size={size} color={color} weight={weight} />;
@@ -2188,12 +2192,7 @@ export default function Home() {
           <div className="card" style={{ 
             gridColumn: isMobile ? 'auto' : 'span 2',
             padding: '32px',
-            background: 'rgba(255, 255, 255, 0.03)',
-            backdropFilter: 'blur(32px)',
-            WebkitBackdropFilter: 'blur(32px)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            borderRadius: '32px',
-            boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+            borderRadius: '32px'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
               <div style={{ width: '48px', height: '48px', borderRadius: '16px', background: 'rgba(255, 255, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -2219,12 +2218,7 @@ export default function Home() {
           {/* Block B: Author Motivation */}
           <div className="card" style={{ 
             padding: '32px',
-            background: 'rgba(255, 255, 255, 0.03)',
-            backdropFilter: 'blur(32px)',
-            WebkitBackdropFilter: 'blur(32px)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            borderRadius: '32px',
-            boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+            borderRadius: '32px'
           }}>
              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
               <div style={{ width: '48px', height: '48px', borderRadius: '16px', background: 'rgba(255, 255, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -2251,12 +2245,7 @@ export default function Home() {
           <div className="card" style={{ 
             gridColumn: isMobile ? 'auto' : 'span 3',
             padding: '32px',
-            background: 'rgba(255, 255, 255, 0.03)',
-            backdropFilter: 'blur(32px)',
-            WebkitBackdropFilter: 'blur(32px)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            borderRadius: '32px',
-            boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+            borderRadius: '32px'
           }}>
              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
               <div style={{ width: '48px', height: '48px', borderRadius: '16px', background: 'rgba(255, 255, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -3314,10 +3303,36 @@ const renderChat = (isMobile: boolean) => {
     );
   };
 
-  const renderCalculators = (isMobile: boolean) => {
+  const renderTools = (isMobile: boolean) => {
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-        {/* Card 1: GPX Checkpoint Pacer */}
+        {/* Card 1: Precision Fueling Engine (Launch Button) */}
+        <div className="card" style={{ padding: isMobile ? "16px" : "24px", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", cursor: "pointer", border: "1px solid var(--accent-primary)" }} onClick={() => setIsNutritionLabOpen(true)}>
+          <BowlFood size={48} color="var(--accent-primary)" weight="duotone" style={{ marginBottom: "16px" }} />
+          <h3 style={{ fontSize: isMobile ? "18px" : "20px", marginBottom: "8px", color: "var(--text-primary)" }}>
+            Nutrition Lab
+          </h3>
+          <p style={{ color: "var(--text-secondary)", fontSize: "13px", marginBottom: "0" }}>
+            {lang === "en" 
+              ? "Launch the metabolic command center to calculate custom gel recipes."
+              : "Mở trung tâm dinh dưỡng để tính toán công thức gel tùy chỉnh."}
+          </p>
+        </div>
+
+        {/* Card 2: Gear Finder (Launch Button) */}
+        <div className="card" style={{ padding: isMobile ? "16px" : "24px", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", cursor: "pointer", border: "1px solid var(--accent-primary)" }} onClick={() => setIsGearVaultOpen(true)}>
+          <Sneaker size={48} color="var(--accent-primary)" weight="duotone" style={{ marginBottom: "16px" }} />
+          <h3 style={{ fontSize: isMobile ? "18px" : "20px", marginBottom: "8px", color: "var(--text-primary)" }}>
+            Gear Finder
+          </h3>
+          <p style={{ color: "var(--text-secondary)", fontSize: "13px", marginBottom: "0" }}>
+            {lang === "en" 
+              ? "Launch the technical equipment matching vault."
+              : "Mở kho tìm kiếm trang bị kỹ thuật."}
+          </p>
+        </div>
+
+        {/* Card 3: GPX Checkpoint Pacer */}
         <div className="card" style={{ padding: isMobile ? "16px" : "24px" }}>
           <h3 style={{ fontSize: isMobile ? "16px" : "18px", marginBottom: "8px", color: "var(--accent-primary)" }}>GPX Checkpoint Pacer</h3>
           <p style={{ color: "var(--text-secondary)", fontSize: "12.5px", marginBottom: "16px" }}>
@@ -3440,190 +3455,6 @@ const renderChat = (isMobile: boolean) => {
           )}
         </div>
 
-        {/* Card 2: Precision Fueling Engine */}
-        <div className="card" style={{ padding: isMobile ? "16px" : "24px" }}>
-          <h3 style={{ fontSize: isMobile ? "16px" : "18px", marginBottom: "8px", color: "var(--accent-secondary)" }}>
-            <span style={{ display: "flex", alignItems: "center", gap: "6px" }}><BowlFood size={20} color="var(--accent-primary)" weight="duotone" /> {lang === "en" ? "Precision Fueling Engine" : "Công cụ Dinh dưỡng Chính xác"}</span>
-          </h3>
-          <p style={{ color: "var(--text-secondary)", fontSize: "12.5px", marginBottom: "16px" }}>
-            {lang === "en" 
-              ? "Prescribes fluid/carb targets per hour and custom gel recipes."
-              : "Tính toán lượng nước/carb mục tiêu mỗi giờ và công thức gel tùy chỉnh."}
-          </p>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "10px" }}>
-            <div>
-              <label style={{ display: "block", fontSize: "11px", color: "var(--text-muted)", marginBottom: "4px" }}>
-                {lang === "en" ? "Hours" : "Giờ"}
-              </label>
-              <input
-                type="number"
-                step="0.5"
-                className="chat-input"
-                style={{ borderRadius: "8px", width: "100%", padding: "8px" }}
-                value={fuelDuration}
-                onChange={(e) => setFuelDuration(e.target.value)}
-              />
-            </div>
-            <div>
-              <label style={{ display: "block", fontSize: "11px", color: "var(--text-muted)", marginBottom: "4px" }}>
-                {lang === "en" ? "Sweat" : "Đổ mồ hôi"}
-              </label>
-              <select
-                className="chat-input"
-                style={{ borderRadius: "8px", width: "100%", height: "36px", padding: "0 4px", fontSize: "12px" }}
-                value={fuelSweatRate}
-                onChange={(e) => setFuelSweatRate(e.target.value)}
-              >
-                <option value="low">{lang === "en" ? "Low" : "Thấp"}</option>
-                <option value="moderate">{lang === "en" ? "Moderate" : "Trung bình"}</option>
-                <option value="high">{lang === "en" ? "High" : "Cao"}</option>
-              </select>
-            </div>
-          </div>
-
-          <div style={{ marginBottom: "12px" }}>
-            <label style={{ display: "block", fontSize: "11px", color: "var(--text-muted)", marginBottom: "4px" }}>
-              {lang === "en" ? "Temp" : "Nhiệt độ"}
-            </label>
-            <select
-              className="chat-input"
-              style={{ borderRadius: "8px", width: "100%", height: "36px", padding: "0 8px", fontSize: "12px" }}
-              value={fuelTemp}
-              onChange={(e) => setFuelTemp(e.target.value)}
-            >
-              <option value="cool">{lang === "en" ? "❄️ Cool" : "❄️ Lạnh"}</option>
-              <option value="moderate">{lang === "en" ? "🌤️ Moderate" : "🌤️ Ôn hòa"}</option>
-              <option value="hot">{lang === "en" ? "🔥 Hot" : "🔥 Nóng"}</option>
-            </select>
-          </div>
-
-          <button className="btn btn-primary" style={{ width: "100%", marginBottom: "12px", height: "36px", fontSize: "12.5px" }} onClick={handleCalculateFueling} disabled={fuelLoading}>
-            {fuelLoading ? (lang === "en" ? "Formulating..." : "Đang lập công thức...") : (lang === "en" ? "Calculate Fueling" : "Tính toán Dinh dưỡng")}
-          </button>
-
-          {fuelStrategy && (
-            <div style={{ padding: "12px", borderRadius: "8px", background: "rgba(255, 255, 255, 0.2)", border: "1px solid var(--border-color)", fontSize: "12px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
-                <span style={{ color: "var(--text-muted)" }}>Carbs:</span>
-                <span style={{ fontWeight: "700" }}>{fuelStrategy.targets.carbs_grams_per_hour}g/hr</span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
-                <span style={{ color: "var(--text-muted)" }}>
-                  {lang === "en" ? "Sodium:" : "Muối (Sodium):"}
-                </span>
-                <span style={{ fontWeight: "700" }}>{fuelStrategy.targets.sodium_mg_per_hour}mg/hr</span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", borderBottom: "1px solid rgba(0,0,0,0.04)", paddingBottom: "6px" }}>
-                <span style={{ color: "var(--text-muted)" }}>
-                  {lang === "en" ? "Fluid:" : "Nước uống (Fluid):"}
-                </span>
-                <span style={{ fontWeight: "700" }}>{fuelStrategy.targets.fluid_ml_per_hour}ml/hr</span>
-              </div>
-
-              <div style={{ fontWeight: "600", color: "var(--accent-primary)", marginBottom: "4px" }}>
-                {lang === "en" ? "Gel/Fluid Recipe:" : "Công thức Gel/Nước uống:"}
-              </div>
-              <ul style={{ listStyleType: "none", paddingLeft: 0, marginBottom: "8px" }}>
-                {fuelStrategy.recommended_hourly_recipe.map((item, i) => (
-                  <li key={i} style={{ padding: "2px 0" }}>
-                    ✅ {item.qty}x <span style={{ fontWeight: "600" }}>{item.product}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-
-        {/* Card 3: Shoes & Gear Finder */}
-        <div className="card" style={{ padding: isMobile ? "16px" : "24px" }}>
-          <h3 style={{ fontSize: isMobile ? "16px" : "18px", marginBottom: "8px", color: "var(--accent-primary)", display: "flex", alignItems: "center", gap: "8px" }}>
-            <span style={{ display: "flex", alignItems: "center", gap: "6px" }}><Sneaker size={20} color="var(--accent-primary)" weight="duotone" /> {lang === "en" ? "Gear Finder" : "Tìm kiếm Thiết bị"}</span>
-            <span style={{ fontSize: "10px", padding: "2px 6px", background: "rgba(255,255,255,0.15)", borderRadius: "4px", color: "var(--text-secondary)", fontWeight: "600" }}>Demo</span>
-          </h3>
-          <p style={{ color: "var(--text-secondary)", fontSize: "12.5px", marginBottom: "16px" }}>
-            {lang === "en" 
-              ? "Match recommended shoes based on your terrain, width, and strike goals."
-              : "Đề xuất giày chạy phù hợp dựa trên địa hình, độ rộng bàn chân và mục tiêu tiếp đất."}
-          </p>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "10px" }}>
-            <div>
-              <label style={{ display: "block", fontSize: "11px", color: "var(--text-muted)", marginBottom: "4px" }}>
-                {lang === "en" ? "Surface" : "Mặt đường"}
-              </label>
-              <select
-                className="chat-input"
-                style={{ borderRadius: "8px", width: "100%", height: "36px", padding: "0 4px", fontSize: "12px" }}
-                value={shoeSurface}
-                onChange={(e) => setShoeSurface(e.target.value)}
-              >
-                <option value="trail">Trail</option>
-                <option value="road">{lang === "en" ? "Road" : "Road (Đường bằng)"}</option>
-              </select>
-            </div>
-            <div>
-              <label style={{ display: "block", fontSize: "11px", color: "var(--text-muted)", marginBottom: "4px" }}>
-                {lang === "en" ? "Width" : "Độ rộng bàn chân"}
-              </label>
-              <select
-                className="chat-input"
-                style={{ borderRadius: "8px", width: "100%", height: "36px", padding: "0 4px", fontSize: "12px" }}
-                value={shoeWidth}
-                onChange={(e) => setShoeWidth(e.target.value)}
-              >
-                <option value="normal">{lang === "en" ? "Normal" : "Bình thường"}</option>
-                <option value="wide">{lang === "en" ? "Wide" : "Bàn chân bè (Wide)"}</option>
-                <option value="narrow">{lang === "en" ? "Narrow" : "Bàn chân thon (Narrow)"}</option>
-              </select>
-            </div>
-          </div>
-
-          <div style={{ marginBottom: "12px" }}>
-            <label style={{ display: "block", fontSize: "11px", color: "var(--text-muted)", marginBottom: "4px" }}>
-              {lang === "en" ? "Cushion" : "Độ êm (Cushion)"}
-            </label>
-            <select
-              className="chat-input"
-              style={{ borderRadius: "8px", width: "100%", height: "36px", padding: "0 8px", fontSize: "12px" }}
-              value={shoeCushion}
-              onChange={(e) => setShoeCushion(e.target.value)}
-            >
-              <option value="plush">{lang === "en" ? "☁️ Plush" : "☁️ Siêu êm (Plush)"}</option>
-              <option value="balanced">{lang === "en" ? "Balanced" : "Cân bằng (Balanced)"}</option>
-              <option value="firm">{lang === "en" ? "⚡ Firm" : "⚡ Nảy/Cứng (Firm)"}</option>
-            </select>
-          </div>
-
-          <button className="btn btn-primary" style={{ width: "100%", marginBottom: "12px", height: "36px", fontSize: "12.5px" }} onClick={handleRecommendShoes} disabled={shoesLoading}>
-            {shoesLoading ? (lang === "en" ? "Matching Gear..." : "Đang tìm kiếm...") : (lang === "en" ? "Match Gear" : "Tìm kiếm Thiết bị")}
-          </button>
-
-          {recommendedShoes.length > 0 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "160px", overflowY: "auto" }}>
-              {recommendedShoes.map((shoe) => (
-                <div
-                  key={shoe.id}
-                  style={{
-                    padding: "8px",
-                    background: "rgba(255, 255, 255, 0.2)",
-                    border: "1px solid var(--border-color)",
-                    borderRadius: "8px",
-                    fontSize: "11.5px"
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-                    <span style={{ fontWeight: "700" }}>{shoe.brand} {shoe.model}</span>
-                    <span className="badge" style={{ margin: 0, fontSize: "8.5px", padding: "1px 4px" }}>{shoe.cushioning}</span>
-                  </div>
-                  <p style={{ color: "var(--text-secondary)", fontSize: "11px", fontStyle: "italic", margin: 0 }}>
-                    {shoe.review_summary}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
       </div>
     );
   };
@@ -3638,8 +3469,8 @@ const renderChat = (isMobile: boolean) => {
         return renderChat(isMobile);
       case "planner":
         return renderPlanner(isMobile);
-      case "calculators":
-        return renderCalculators(isMobile);
+      case "tools":
+        return renderTools(isMobile);
       case "knowledge":
         return renderKnowledge(isMobile);
       default:
@@ -4612,7 +4443,7 @@ const renderChat = (isMobile: boolean) => {
                 Uphill<span>.AI</span>
               </div>
               <ul className="sidebar-nav-list">
-                {(["home", "about", "chat", "planner", "calculators", "knowledge"] as const).map((tab) => {
+                {(["home", "about", "chat", "planner", "tools", "knowledge"] as const).map((tab) => {
                   const active = activeTab === tab;
                   return (
                     <li 
@@ -4627,7 +4458,7 @@ const renderChat = (isMobile: boolean) => {
                          tab === "planner" ? t("tab_scheduler") :
                          tab === "knowledge" ? t("tab_knowledge") :
                          tab === "about" ? t("tab_about") :
-                         t("tab_calculators")}
+                         t("tab_tools")}
                       </span>
                     </li>
                   );
@@ -4676,7 +4507,7 @@ const renderChat = (isMobile: boolean) => {
                      activeTab === "planner" ? t("tab_scheduler") :
                      activeTab === "knowledge" ? t("tab_knowledge") :
                      activeTab === "about" ? t("tab_about") :
-                     t("tab_calculators")}
+                     t("tab_tools")}
                   </span>
                 </span>
               </div>
@@ -4735,18 +4566,18 @@ const renderChat = (isMobile: boolean) => {
                         {activeTab === "chat" ? <Robot size={28} weight="duotone" /> :
                          activeTab === "planner" ? <CalendarBlank size={28} weight="duotone" /> :
                          activeTab === "knowledge" ? <BookOpen size={28} weight="duotone" /> :
-                         activeTab === "calculators" ? <Calculator size={28} weight="duotone" /> : <Mountains size={28} weight="duotone" />}
+                         activeTab === "tools" ? <Calculator size={28} weight="duotone" /> : <Mountains size={28} weight="duotone" />}
                       </span>
                       <div>
                         <h2>{activeTab === "chat" ? t("tab_chat") :
                              activeTab === "planner" ? t("plan_setup") :
                              activeTab === "knowledge" ? t("know_title") :
-                             activeTab === "calculators" ? t("tab_calculators") : t("tab_about")}</h2>
+                             activeTab === "tools" ? t("tab_tools") : t("tab_about")}</h2>
                         <p>
                           {activeTab === "chat" ? t("header_chat_desc") :
                            activeTab === "planner" ? t("header_planner_desc") :
                            activeTab === "knowledge" ? t("header_knowledge_desc") :
-                           activeTab === "calculators" ? t("header_calculators_desc") : t("header_about_desc")}
+                           activeTab === "tools" ? t("header_tools_desc") : t("header_about_desc")}
                         </p>
                       </div>
                     </div>
@@ -4826,13 +4657,13 @@ const renderChat = (isMobile: boolean) => {
 
             {/* Persistent Bottom Tab Bar */}
             <nav className="phone-bottom-tab-bar">
-              {(["home", "about", "chat", "planner", "calculators", "knowledge"] as const).map((tab) => {
+              {(["home", "about", "chat", "planner", "tools", "knowledge"] as const).map((tab) => {
                 const active = activeTab === tab;
                 const tabLabel = tab === "home" ? "Home" :
                                  tab === "chat" ? "Coach" :
                                  tab === "planner" ? "Planner" :
                                  tab === "knowledge" ? "Hub" :
-                                 tab === "calculators" ? "Calculators" :
+                                 tab === "tools" ? "Calculators" :
                                  "Philosophy";
                 return (
                   <div 
@@ -4868,13 +4699,13 @@ const renderChat = (isMobile: boolean) => {
 
             {/* Centre tab pills */}
             <div className="top-nav-tabs">
-              {(["home", "chat", "planner", "knowledge", "calculators", "about"] as const).map((tab) => {
+              {(["home", "chat", "planner", "knowledge", "tools", "about"] as const).map((tab) => {
                 const label = tab === "home" ? `${t("tab_home")}` :
                               tab === "chat" ? `${t("tab_chat")}` :
                               tab === "planner" ? `${t("tab_scheduler")}` :
                               tab === "knowledge" ? `${t("tab_knowledge")}` :
                               tab === "about" ? `${t("tab_about")}` :
-                              `${t("tab_calculators")}`;
+                              `${t("tab_tools")}`;
                 return (
                   <button
                     key={tab}
@@ -4958,13 +4789,13 @@ const renderChat = (isMobile: boolean) => {
 
           {/* Mobile Bottom Navigation Tabs (visible only on mobile viewports via CSS) */}
           <div className="mobile-bottom-nav-tabs">
-            {(["home", "chat", "planner", "knowledge", "calculators", "about"] as const).map((tab) => {
+            {(["home", "chat", "planner", "knowledge", "tools", "about"] as const).map((tab) => {
               const active = activeTab === tab;
               const tabLabel = tab === "home" ? t("tab_home") :
                                tab === "chat" ? t("tab_chat") :
                                tab === "planner" ? t("tab_scheduler") :
                                tab === "knowledge" ? t("tab_knowledge") :
-                               tab === "calculators" ? t("tab_calculators") :
+                               tab === "tools" ? t("tab_tools") :
                                t("tab_about");
               return (
                 <button
@@ -4989,6 +4820,8 @@ const renderChat = (isMobile: boolean) => {
       {renderAuthModal()}
       {renderOnboardingWizard()}
       {renderProfileSettingsModal()}
+      <NutritionLab isOpen={isNutritionLabOpen} onClose={() => setIsNutritionLabOpen(false)} lang={lang} user={user} activePlan={activePlan} />
+      <GearVault isOpen={isGearVaultOpen} onClose={() => setIsGearVaultOpen(false)} lang={lang} />
     </div>
   );
 }

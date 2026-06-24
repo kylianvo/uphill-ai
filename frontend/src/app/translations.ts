@@ -18,7 +18,7 @@ export const translations = {
     tab_chat: "AI Coach",
     tab_knowledge: "Knowledge Hub",
     tab_about: "About Us",
-    tab_calculators: "Calculators",
+    tab_tools: "Tools",
 
     // Authentication Screen
     auth_sign_in: "Sign In",
@@ -208,7 +208,7 @@ export const translations = {
     header_chat_desc: "Chat with Coach Uphill",
     header_planner_desc: "Periodized training blocks for your next race",
     header_knowledge_desc: "Knowledge cards extracted from your indexed podcasts",
-    header_calculators_desc: "Pacing, nutrition, gear — all in one place",
+    header_tools_desc: "Data-driven insights to optimize your training and gear.",
     header_about_desc: "The story, engine, and philosophy behind Uphill.AI"
   },
   vi: {
@@ -230,7 +230,7 @@ export const translations = {
     tab_chat: "AI Coach",
     tab_knowledge: "Knowledge Hub",
     tab_about: "About Us",
-    tab_calculators: "Calculators",
+    tab_tools: "Tools",
 
     // Authentication Screen
     auth_sign_in: "Đăng nhập",
@@ -420,7 +420,7 @@ export const translations = {
     header_chat_desc: "Trò chuyện cùng Coach Uphill",
     header_planner_desc: "Các chu kỳ huấn luyện (Periodized blocks) cho giải chạy sắp tới",
     header_knowledge_desc: "Các thẻ kiến thức được trích xuất từ tài liệu đã lưu trữ",
-    header_calculators_desc: "Chiến thuật Pace, Dinh dưỡng, Trang bị — Tất cả tại một nơi",
+    header_tools_desc: "Tính toán nhịp độ, dinh dưỡng, thiết bị — tất cả tại một nơi",
     header_about_desc: "Câu chuyện, nền tảng công nghệ, và triết lý của Uphill.AI"
   }
 };
