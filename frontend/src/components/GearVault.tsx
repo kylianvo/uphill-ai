@@ -67,6 +67,9 @@ export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang }) =
     try {
       let baseUrl = "http://localhost:8000";
       if (typeof window !== "undefined") {
+        if (window.location.hostname !== "localhost") {
+          baseUrl = ""; // Use relative path if deployed
+        }
         baseUrl = localStorage.getItem("UPHILL_API_URL_OVERRIDE") || process.env.NEXT_PUBLIC_API_URL || baseUrl;
       }
       
@@ -83,19 +86,36 @@ export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang }) =
         race_distance: shoeDistance
       };
 
-      const response = await fetch(`${baseUrl}/api/coach/recommend-shoes`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (response.ok) {
-        const result = await response.json();
-        setGearPlan(result);
-      } else {
-        console.error("Failed to recommend shoes");
+      let attempt = 0;
+      let success = false;
+      
+      while (attempt < 3 && !success) {
+        try {
+          const response = await fetch(`${baseUrl}/api/coach/recommend-shoes`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          
+          if (response.ok) {
+            const result = await response.json();
+            setGearPlan(result);
+            success = true;
+          } else {
+            console.warn(`Gear fetch attempt ${attempt + 1} failed with status: ${response.status}`);
+            attempt++;
+            if (attempt < 3) await new Promise(r => setTimeout(r, 6000));
+          }
+        } catch (err) {
+          console.warn(`Gear fetch attempt ${attempt + 1} threw error:`, err);
+          attempt++;
+          if (attempt < 3) await new Promise(r => setTimeout(r, 6000));
+        }
       }
-    } catch (err) {
-      console.error("Failed to calculate shoes:", err);
+      
+      if (!success) {
+        console.error("Failed to recommend shoes after multiple attempts");
+      }
     } finally {
       setGearLoading(false);
     }

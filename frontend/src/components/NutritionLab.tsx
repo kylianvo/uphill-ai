@@ -74,6 +74,9 @@ export const NutritionLab: React.FC<NutritionLabProps> = ({ isOpen, onClose, lan
     try {
       let baseUrl = "http://localhost:8000";
       if (typeof window !== "undefined") {
+        if (window.location.hostname !== "localhost") {
+          baseUrl = ""; // Use relative path if deployed
+        }
         baseUrl = localStorage.getItem("UPHILL_API_URL_OVERRIDE") || process.env.NEXT_PUBLIC_API_URL || baseUrl;
       }
 
@@ -86,30 +89,47 @@ export const NutritionLab: React.FC<NutritionLabProps> = ({ isOpen, onClose, lan
         activePlanStr = `Distance: ${activePlan.target_event.distance_km || 'N/A'}km, Elevation: ${activePlan.target_event.elevation_gain_m || 'N/A'}m, Duration: ${activePlan.target_event.duration_hours || 'N/A'}h`;
       }
 
-      const response = await fetch(`${baseUrl}/api/coach/calculate-fueling`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          target_time_hours: parseFloat(fuelDuration),
-          weather_temp: fuelTemp,
-          preferred_format: fuelFormats,
-          target_carb_h: parseFloat(targetCarb) || 60,
-          target_sodium_h: parseFloat(targetSodium) || 500,
-          athlete_level: athleteLevel,
-          preferred_brands: preferredBrands,
-          additional_context: additionalContext,
-          user_profile: userProfileStr,
-          active_plan_context: activePlanStr
-        }),
-      });
-      if (response.ok) {
-        const result = await response.json();
-        setPlan(result);
-      } else {
-        console.error("Failed to calculate fueling");
+      let attempt = 0;
+      let success = false;
+      
+      while (attempt < 3 && !success) {
+        try {
+          const response = await fetch(`${baseUrl}/api/coach/calculate-fueling`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              target_time_hours: parseFloat(fuelDuration),
+              weather_temp: fuelTemp,
+              preferred_format: fuelFormats,
+              target_carb_h: parseFloat(targetCarb) || 60,
+              target_sodium_h: parseFloat(targetSodium) || 500,
+              athlete_level: athleteLevel,
+              preferred_brands: preferredBrands,
+              additional_context: additionalContext,
+              user_profile: userProfileStr,
+              active_plan_context: activePlanStr
+            }),
+          });
+          
+          if (response.ok) {
+            const result = await response.json();
+            setPlan(result);
+            success = true;
+          } else {
+            console.warn(`Nutrition fetch attempt ${attempt + 1} failed with status: ${response.status}`);
+            attempt++;
+            if (attempt < 3) await new Promise(r => setTimeout(r, 6000));
+          }
+        } catch (err) {
+          console.warn(`Nutrition fetch attempt ${attempt + 1} threw error:`, err);
+          attempt++;
+          if (attempt < 3) await new Promise(r => setTimeout(r, 6000));
+        }
       }
-    } catch (err) {
-      console.error("Failed to calculate fueling:", err);
+      
+      if (!success) {
+        console.error("Failed to calculate fueling after multiple attempts");
+      }
     } finally {
       setFuelLoading(false);
     }
