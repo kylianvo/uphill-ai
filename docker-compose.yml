@@ -46,3 +46,4 @@ services:
 
 volumes:
   pgdata:
+    name: uphill-ai_pgdata
