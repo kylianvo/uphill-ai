@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+.next/
+out/
+build/
+.venv/
+venv/
+
+# Environment and Secrets
+.env
+.env.local
+.env.*.local
+.env.production
+*.pem
+*.key
+
+# Databases and Configs
+*.db
+*.sqlite3
+*.sql
+*.conf
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDE and OS files
+.DS_Store
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp

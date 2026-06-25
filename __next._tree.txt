@@ -1,0 +1,6 @@
+:HL["/uphill-ai/_next/static/chunks/2_90g9cdck947.css","style"]
+:HL["/uphill-ai/_next/static/media/051742360c26797e-s.p.1bkzbscqrt8rl.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+:HL["/uphill-ai/_next/static/media/e629b5bc06499d58-s.p.10u7vx61f1ie7.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+:HL["/uphill-ai/_next/static/media/fba5a26ea33df6a3-s.p.18rizl4rsrl42.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+:HL["https://fonts.googleapis.com/css2?family=Fustat:wght@400;500;600;700;800&display=swap","style"]
+0:{"tree":{"name":"","param":null,"prefetchHints":16,"slots":{"children":{"name":"__PAGE__","param":null,"prefetchHints":0,"slots":null}}},"staleTime":300,"buildId":"imZaRCRINVuZmVwlraslh"}
