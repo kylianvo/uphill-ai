@@ -1212,7 +1212,7 @@ label {
 
 /* Snow glass effect for cards */
 .snow-glass {
-  background: rgba(255, 255, 255, 0.38);
+  background: rgba(255, 255, 255, 0.50);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border: 1px solid rgba(255, 255, 255, 0.6);
