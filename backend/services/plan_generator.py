@@ -323,7 +323,7 @@ class PlanGenerator:
                     "   - `target_hr_range` (string: heart rate bounds based on athlete's thresholds, e.g. '125-140 bpm')\n"
                     "   - `target_pace` (string: recommended target pace, matching or referencing their custom pace zones, e.g. '6:00 /km')\n"
                     "   - `distance_km` (number: estimated distance in kilometers. Calculate this as duration_minutes / (target_pace in decimal minutes), e.g. 60 mins at 6:00/km is 10.0 km)\n"
-                    "   - `description` (string: detailed description explaining the workout purpose, target effort, box/weight steps if ME, or treadmill settings)\n"
+                    "   - `description` (string: highly detailed description containing specific sections: Process (how to execute it step-by-step), Overall (summary of the session), Reason (why it is scheduled now), Benefit (expected physiological adaptation), and Warning (any injury risks or precautions). Provide extensive context.)\n"
                     "   - `fueling_tip` (string: hydration, carbohydrate, and electrolyte guides specific to duration/intensity)\n"
                     "   - `treadmill_incline` (number, optional: recommended incline percentage if using treadmill)\n"
                     "   - `treadmill_speed` (number, optional: recommended speed in kph if using treadmill)\n\n"

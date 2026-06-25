@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import WorkoutDescription from "@/components/WorkoutDescription";
 import { NutritionLab } from "../components/NutritionLab";
 import { GearVault } from "../components/GearVault";
 import { translations } from "./translations";
@@ -3225,9 +3228,7 @@ const renderChat = (isMobile: boolean) => {
                         <h4 style={{ fontSize: isMobile ? "15px" : "17px", margin: 0 }}>{wo.title}</h4>
                         <span className="badge" style={{ margin: 0, fontSize: "9px", padding: "2px 6px" }}>{woTypeTranslated}</span>
                       </div>
-                      <p style={{ fontSize: "13px", color: "var(--text-secondary)", marginBottom: "8px", lineHeight: "1.4" }}>
-                        {wo.description}
-                      </p>
+                      <WorkoutDescription description={wo.description || ""} />
                       {wo.fueling_tip && (
                         <div style={{ background: "rgba(16, 185, 129, 0.03)", borderLeft: "2px solid var(--accent-primary)", padding: "6px 10px", borderRadius: "4px", fontSize: "12px" }}>
                           {wo.fueling_tip}
