@@ -25,9 +25,11 @@ interface GearVaultProps {
   isOpen: boolean;
   onClose: () => void;
   lang: "en" | "vi";
+  user?: any;
+  activePlan?: any;
 }
 
-export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang }) => {
+export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang, user, activePlan }) => {
   const [shoeSurface, setShoeSurface] = useState("trail");
   const [shoeCushion, setShoeCushion] = useState("balanced");
   const [shoeWidth, setShoeWidth] = useState("normal");
@@ -45,12 +47,7 @@ export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang }) =
   const [gearLoading, setGearLoading] = useState(false);
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
 
-  // Auto-fetch when modal opens
-  useEffect(() => {
-    if (isOpen) handleRecommendShoes();
-  }, [isOpen]);
 
-  if (!isOpen) return null;
 
   const toggleTerrain = (t: string) => {
     if (shoeTerrain.includes(t)) {
@@ -73,6 +70,15 @@ export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang }) =
         baseUrl = localStorage.getItem("UPHILL_API_URL_OVERRIDE") || process.env.NEXT_PUBLIC_API_URL || baseUrl;
       }
       
+      let userProfileStr = "None";
+      if (user) {
+        userProfileStr = `Age: ${user.age || 'N/A'}, Max HR: ${user.max_hr || 'N/A'}, Resting HR: ${user.resting_hr || 'N/A'}, Weekly volume: ${user.current_weekly_km || 'N/A'}km`;
+      }
+      let activePlanStr = "None";
+      if (activePlan?.target_event) {
+        activePlanStr = `Distance: ${activePlan.target_event.distance_km || 'N/A'}km, Elevation: ${activePlan.target_event.elevation_gain_m || 'N/A'}m, Duration: ${activePlan.target_event.duration_hours || 'N/A'}h`;
+      }
+
       const payload = {
         surface: shoeSurface,
         cushioning: shoeCushion,
@@ -83,7 +89,9 @@ export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang }) =
         use_case: shoeSurface === "road" ? shoeUseCase : "",
         preferred_brands: shoeBrands,
         additional_context: shoeContext,
-        race_distance: shoeDistance
+        race_distance: shoeDistance,
+        user_profile: userProfileStr,
+        active_plan_context: activePlanStr
       };
 
       let attempt = 0;
@@ -120,6 +128,8 @@ export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang }) =
       setGearLoading(false);
     }
   };
+
+  if (!isOpen) return null;
 
   return (
     <div style={{

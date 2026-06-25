@@ -51,13 +51,6 @@ export const NutritionLab: React.FC<NutritionLabProps> = ({ isOpen, onClose, lan
   const [activeTab, setActiveTab] = useState<ResultTab>("products");
   const [expandedProduct, setExpandedProduct] = useState<number | null>(null);
 
-  // Auto-fetch when modal opens
-  useEffect(() => {
-    if (isOpen) handleCalculateFueling();
-  }, [isOpen]);
-
-  if (!isOpen) return null;
-
   const toggleFormat = (f: string) => {
     if (fuelFormats.includes(f)) {
       if (fuelFormats.length > 1) setFuelFormats(fuelFormats.filter(x => x !== f));
@@ -153,6 +146,10 @@ export const NutritionLab: React.FC<NutritionLabProps> = ({ isOpen, onClose, lan
     color: active ? "white" : "var(--text-muted)",
     borderRadius: "12px"
   });
+
+
+
+  if (!isOpen) return null;
 
   return (
     <div style={{

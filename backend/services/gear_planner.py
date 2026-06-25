@@ -17,6 +17,8 @@ class GearParams(BaseModel):
     preferred_brands: Optional[str] = None
     additional_context: Optional[str] = None
     race_distance: Optional[str] = None
+    user_profile: Optional[str] = None
+    active_plan_context: Optional[str] = None
 
 # Simple in-memory cache to skip NotebookLM calls for exact same queries
 _GEAR_CACHE: Dict[str, str] = {}
@@ -53,6 +55,8 @@ Please search your documents for shoes that match the following specific criteri
 - Race Distance (if applicable): {params.race_distance or 'Not specified'}
 - Preferred Brands: {params.preferred_brands or 'Any'}
 - Special Requirements/Context: {params.additional_context or 'None'}
+- Athlete Profile: {params.user_profile or 'Not specified'}
+- Current Training Plan / Goal: {params.active_plan_context or 'Not specified'}
 
 TASK: 
 Return your top 5 shoe recommendations based on these exact criteria.

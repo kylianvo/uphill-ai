@@ -4822,7 +4822,7 @@ const renderChat = (isMobile: boolean) => {
       {renderOnboardingWizard()}
       {renderProfileSettingsModal()}
       <NutritionLab isOpen={isNutritionLabOpen} onClose={() => setIsNutritionLabOpen(false)} lang={lang} user={user} activePlan={activePlan} />
-      <GearVault isOpen={isGearVaultOpen} onClose={() => setIsGearVaultOpen(false)} lang={lang} />
+      <GearVault isOpen={isGearVaultOpen} onClose={() => setIsGearVaultOpen(false)} lang={lang} user={user} activePlan={activePlan} />
     </div>
   );
 }
