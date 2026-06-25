@@ -27,7 +27,8 @@ from services.calendar_service import CalendarService
 from services.pacing_calculator import PacingCalculator
 from services.nutrition_calculator import NutritionCalculator
 from services.gear_recommender import GearRecommender
-
+from services.gear_planner import gear_planner, GearParams
+from services.nutrition_planner import nutrition_planner, NutritionParams
 app = FastAPI(
     title="Uphill AI Backend",
     description="Core processing engine and coaching chat API for Uphill AI.",
@@ -975,30 +976,20 @@ def calculate_pacing(request: PacingRequest):
         raise HTTPException(status_code=500, detail=f"Failed to calculate pacing: {str(e)}")
 
 @app.post("/api/coach/calculate-fueling")
-def calculate_fueling(request: FuelingRequest):
-    """Calculates Precision Hydration targets and gel product recipes."""
+async def calculate_fueling(request: NutritionParams):
+    """Calculates Precision Hydration targets and gel product recipes via NotebookLM."""
     try:
-        products = query_nutrition_catalog()
-        strategy = NutritionCalculator.calculate_fueling_strategy(
-            duration_hours=request.duration_hours,
-            sweat_rate=request.sweat_rate,
-            weather_temp=request.weather_temp,
-            products=products
-        )
-        return strategy
+        strategy = await nutrition_planner.generate_plan(user_profile="", params=request)
+        return {"plan": strategy}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to compile fueling plan: {str(e)}")
 
 @app.post("/api/coach/recommend-shoes")
-def recommend_shoes(request: ShoeRecommendRequest):
-    """Matches athlete profiles with suitable shoe catalogs."""
+async def recommend_shoes(request: GearParams):
+    """Matches athlete profiles with suitable shoe catalogs via NotebookLM."""
     try:
-        recs = GearRecommender.recommend_shoes(
-            surface=request.surface,
-            cushioning=request.cushioning,
-            width=request.width
-        )
-        return recs
+        recs = await gear_planner.generate_plan(user_profile="", params=request)
+        return {"recommendations": recs}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to match shoes: {str(e)}")
 
