@@ -31,22 +31,21 @@ class NutritionPlannerService:
         dict_str = json.dumps(param_dict, sort_keys=True)
         return hashlib.md5(dict_str.encode()).hexdigest()
 
-    async def generate_plan(self, user_profile: str, params: NutritionParams) -> str:
+    async def generate_plan(self, user_profile: str, params: NutritionParams) -> Dict[str, Any]:
         cache_key = self._generate_cache_key(params)
         if cache_key in _NUTRITION_CACHE:
             print("[NutritionPlanner] Cache HIT! Returning instant response.")
-            return _NUTRITION_CACHE[cache_key]
+            return json.loads(_NUTRITION_CACHE[cache_key])
 
         # 1. Determine target macros
         target_carb = params.target_carb_h if params.target_carb_h else 60.0
-        
         target_sodium = 500.0
         if params.target_sodium_h:
             target_sodium = params.target_sodium_h
         elif params.weather_temp and "hot" in params.weather_temp.lower():
             target_sodium = 1000.0
 
-        # 2. Query NotebookLM
+        # 2. Build JSON-structured query
         nlm_query = f"""You are an expert ultra-endurance nutrition coach.
 Please provide a highly detailed nutrition suggestion based on the following profile and goals:
 
@@ -68,48 +67,81 @@ Nutrition Goals:
 Please search your documents for specific products matching these brands/formats, calculate the required macros, and suggest a race nutrition plan.
 
 TASK:
-Reformat and summarize your suggestions into a highly visual, ultra-concise Markdown response.
-You MUST use Markdown tables for almost everything. Do NOT use plain text paragraphs.
+You MUST output your response EXACTLY as a valid JSON object.
+DO NOT include any markdown formatting (like ```json), NO conversational filler, NO plain text outside the JSON.
+The JSON must follow this exact structure:
 
-Strict Format Requirements:
+{{
+  "products": [
+    {{
+      "brand": "Brand Name",
+      "name": "Full Product Name (Flavor if applicable)",
+      "total_quantity": 4,
+      "carbs_per_unit": 27.0,
+      "sodium_per_unit": 420.0,
+      "protein_per_unit": 2.0,
+      "tech_notes": "Key science/tech notes about this product"
+    }}
+  ],
+  "hourly_plan": [
+    {{
+      "hour": 1,
+      "action": "Short action description e.g. 1x Gel A + 1x Gel B",
+      "carbs": 57.0,
+      "sodium": 545.0
+    }}
+  ],
+  "tips": [
+    "Concise critical tip 1",
+    "Concise critical tip 2",
+    "Concise critical tip 3"
+  ]
+}}
 
-### 1. Total Requirements
-(Create a Markdown table with columns: Product Name, Brand, Total Quantity)
-
-### 2. Hourly Fueling Strategy
-(Create a Markdown table with columns: Hour, Action/Consumption, Carbs (g), Sodium (mg))
-
-### 3. Product Breakdown
-(Create a Markdown table with columns: Brand, Type, Carbs (g), Sodium (mg), Protein (g), Special Tech/Notes)
-
-### 4. Critical Tips
-(Provide 2-3 extremely short bullet points)
-
-CRITICAL: Output ONLY the tables and bullet points. No introductory text. No conversational filler. Do not use emoji icons. Focus heavily on {params.preferred_brands or 'any brands'} if specified.
+Focus heavily on {params.preferred_brands or 'any brands'} if specified. Do not use emoji icons.
 """
-        
+
         nlm_response = ""
         auth_json = settings.NOTEBOOKLM_AUTH_JSON
         if auth_json:
             try:
                 print(f"[NutritionPlanner] Cache MISS. Querying NotebookLM ({self.notebook_id})...")
                 print(f"[NutritionPlanner] NotebookLM Input Query:\n{nlm_query}\n{'-'*40}")
-                
+
                 nlm_response = await NotebookLmService.query_notebook(
                     notebook_id=self.notebook_id,
                     auth_json=auth_json,
                     query=nlm_query
                 )
                 print(f"[NutritionPlanner] NotebookLM Output Response:\n{nlm_response}\n{'-'*40}")
-                
-                if "Could not retrieve" not in nlm_response:
-                    _NUTRITION_CACHE[cache_key] = nlm_response
-                    
-                return nlm_response
+
+                # Strip markdown fences if present
+                cleaned = nlm_response.strip()
+                if cleaned.startswith("```json"):
+                    cleaned = cleaned[7:]
+                if cleaned.startswith("```"):
+                    cleaned = cleaned[3:]
+                if cleaned.endswith("```"):
+                    cleaned = cleaned[:-3]
+                cleaned = cleaned.strip()
+
+                try:
+                    parsed = json.loads(cleaned)
+                except json.JSONDecodeError:
+                    print("[NutritionPlanner] WARNING: Could not parse JSON. Returning fallback.")
+                    parsed = {
+                        "products": [],
+                        "hourly_plan": [],
+                        "tips": ["Could not parse nutrition plan from NotebookLM. Please try again."]
+                    }
+                    cleaned = json.dumps(parsed)
+
+                _NUTRITION_CACHE[cache_key] = cleaned
+                return parsed
             except Exception as e:
                 print(f"[NutritionPlanner] NotebookLM query failed: {e}")
-                return f"Could not retrieve suggestions from NotebookLM: {str(e)}"
+                return {"products": [], "hourly_plan": [], "tips": [f"Could not retrieve plan: {str(e)}"]}
         else:
-            return "Error: NotebookLM Auth JSON is missing."
+            return {"products": [], "hourly_plan": [], "tips": ["Error: NotebookLM Auth JSON is missing."]}
 
 nutrition_planner = NutritionPlannerService()

@@ -980,7 +980,7 @@ async def calculate_fueling(request: NutritionParams):
     """Calculates Precision Hydration targets and gel product recipes via NotebookLM."""
     try:
         strategy = await nutrition_planner.generate_plan(user_profile="", params=request)
-        return {"plan": strategy}
+        return strategy
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to compile fueling plan: {str(e)}")
 
