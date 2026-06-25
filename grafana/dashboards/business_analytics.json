@@ -236,7 +236,7 @@
             "uid": "uphill-postgres"
           },
           "rawQuery": true,
-          "rawSql": "SELECT $__timeGroup(created_at, '1d') as time, event_name as metric, COUNT(*) as value FROM analytics_events WHERE event_name != 'page_view' GROUP BY 1, 2 ORDER BY 1;",
+          "rawSql": "SELECT $__timeGroup(timestamp, '1d') as time, event_name as metric, COUNT(*) as value FROM analytics_events WHERE event_name != 'page_view' GROUP BY 1, 2 ORDER BY 1;",
           "format": "time_series",
           "refId": "A"
         }
