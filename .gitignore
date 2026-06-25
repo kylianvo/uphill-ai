@@ -34,3 +34,6 @@ __pycache__/
 *.njsproj
 *.sln
 *.swp
+
+# Qdrant
+qdrant_storage/
