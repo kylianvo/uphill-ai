@@ -97,7 +97,8 @@ The JSON must follow this exact structure:
                 nlm_response = await NotebookLmService.query_notebook(
                     notebook_id=self.notebook_id,
                     auth_json=auth_json,
-                    query=nlm_query
+                    query=nlm_query,
+                    service="gear_finder"
                 )
                 print(f"[GearPlanner] NotebookLM Output Response:\n{nlm_response}\n{'-'*40}")
                 

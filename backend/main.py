@@ -29,6 +29,8 @@ from services.nutrition_calculator import NutritionCalculator
 from services.gear_recommender import GearRecommender
 from services.gear_planner import gear_planner, GearParams
 from services.nutrition_planner import nutrition_planner, NutritionParams
+from prometheus_fastapi_instrumentator import Instrumentator
+
 app = FastAPI(
     title="Uphill AI Backend",
     description="Core processing engine and coaching chat API for Uphill AI.",
@@ -44,6 +46,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Instrument FastAPI for Prometheus metrics
+Instrumentator().instrument(app).expose(app, include_in_schema=False, should_gzip=True)
 
 # Initialize SQLite database on startup
 @app.on_event("startup")

@@ -337,7 +337,8 @@ class PlanGenerator:
                 response_text = await NotebookLmService.query_notebook(
                     notebook_id=notebook_id,
                     auth_json=auth_json,
-                    query=prompt
+                    query=prompt,
+                    service="plan_generator"
                 )
                 print(f"[PlanGen][NotebookLM] Response received ({len(response_text)} chars)")
                 

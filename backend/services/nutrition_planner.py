@@ -106,12 +106,11 @@ Focus heavily on {params.preferred_brands or 'any brands'} if specified. Do not 
         if auth_json:
             try:
                 print(f"[NutritionPlanner] Cache MISS. Querying NotebookLM ({self.notebook_id})...")
-                print(f"[NutritionPlanner] NotebookLM Input Query:\n{nlm_query}\n{'-'*40}")
-
                 nlm_response = await NotebookLmService.query_notebook(
                     notebook_id=self.notebook_id,
                     auth_json=auth_json,
-                    query=nlm_query
+                    query=nlm_query,
+                    service="nutrition_lab"
                 )
                 print(f"[NutritionPlanner] NotebookLM Output Response:\n{nlm_response}\n{'-'*40}")
 

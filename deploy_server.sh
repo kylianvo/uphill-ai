@@ -13,8 +13,9 @@ ssh $SERVER "mkdir -p $TARGET_DIR/qdrant_storage"
 rsync -avz --exclude '.venv' --exclude '__pycache__' --exclude '*.pyc' \
     ./backend/ $SERVER:$TARGET_DIR/backend/
 
-# Sync docker-compose.yml 
+# Sync docker-compose.yml and grafana configs
 rsync -avz ./docker-compose.yml $SERVER:$TARGET_DIR/ 
+rsync -avz ./grafana/ $SERVER:$TARGET_DIR/grafana/
 
 # 4. Sync .env file
 rsync -avz ./backend/.env $SERVER:$TARGET_DIR/backend/
