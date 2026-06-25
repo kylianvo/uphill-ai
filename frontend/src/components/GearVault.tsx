@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Sneaker, XCircle, Target, CaretDown, WarningCircle, CheckCircle, Question, Ruler, Path, RocketLaunch } from "@phosphor-icons/react";
 
 interface ShoeRecommendation {
@@ -44,6 +44,11 @@ export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang }) =
   const [gearPlan, setGearPlan] = useState<GearPlanResponse | null>(null);
   const [gearLoading, setGearLoading] = useState(false);
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+
+  // Auto-fetch when modal opens
+  useEffect(() => {
+    if (isOpen) handleRecommendShoes();
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

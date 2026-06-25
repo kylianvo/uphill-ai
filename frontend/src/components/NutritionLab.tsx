@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { BowlFood, XCircle, Target, WarningCircle, Clock, Package, ChartBar } from "@phosphor-icons/react";
 
 interface NutritionProduct {
@@ -50,6 +50,11 @@ export const NutritionLab: React.FC<NutritionLabProps> = ({ isOpen, onClose, lan
   const [fuelLoading, setFuelLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<ResultTab>("products");
   const [expandedProduct, setExpandedProduct] = useState<number | null>(null);
+
+  // Auto-fetch when modal opens
+  useEffect(() => {
+    if (isOpen) handleCalculateFueling();
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
