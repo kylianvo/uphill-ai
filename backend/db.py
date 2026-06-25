@@ -140,6 +140,19 @@ def init_db():
         """))
 
         conn.execute(text("""
+        CREATE TABLE IF NOT EXISTS analytics_events (
+            id              SERIAL PRIMARY KEY,
+            user_id         INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            event_name      TEXT NOT NULL,
+            properties      JSONB DEFAULT '{}'::jsonb,
+            timestamp       TIMESTAMPTZ DEFAULT NOW(),
+            session_id      TEXT,
+            url             TEXT,
+            user_agent      TEXT
+        )
+        """))
+
+        conn.execute(text("""
         CREATE TABLE IF NOT EXISTS shoes (
             id              SERIAL PRIMARY KEY,
             brand           TEXT NOT NULL,

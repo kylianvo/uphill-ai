@@ -7,6 +7,7 @@ import WorkoutDescription from "@/components/WorkoutDescription";
 import { NutritionLab } from "../components/NutritionLab";
 import { GearVault } from "../components/GearVault";
 import { translations } from "./translations";
+import { useAnalytics } from '@/hooks/useAnalytics';
 import { 
   Plus, ArrowsLeftRight, Heartbeat, Clock, Calendar, Lightbulb, Sneaker, Plant, Code, Robot, CalendarBlank, BookOpen, Calculator, Mountains, PersonSimpleRun, Trash, Target, XCircle, Warning, Trophy, 
   Barbell, BowlFood, Bed, Timer, Brain, Backpack, CaretDown, CaretUp, Book, House
@@ -231,8 +232,17 @@ const topicIcons: Record<string, React.ReactNode> = {
 
 const KnowledgeCard = ({ card, expanded = false }: { card: any; expanded?: boolean }) => {
   const [open, setOpen] = useState(expanded);
+  const { trackEvent } = useAnalytics();
   const color = topicColors[card.topic] || "#6366f1";
   const icon = topicIcons[card.topic] || <Book weight="fill" />;
+  
+  const handleToggle = () => {
+    if (!open) {
+      trackEvent('knowledge_card_clicked', { topic: card.topic, chapter_title: card.chapter_title });
+    }
+    setOpen(!open);
+  };
+
   return (
     <div style={{
       background: "var(--bg-card)", border: `1px solid var(--border-color)`,
@@ -240,7 +250,7 @@ const KnowledgeCard = ({ card, expanded = false }: { card: any; expanded?: boole
       transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)", backdropFilter: "blur(8px)",
       boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05)"
     }}
-      onClick={() => setOpen(!open)}
+      onClick={handleToggle}
       onMouseEnter={e => {
         e.currentTarget.style.background = "var(--bg-card-hover)";
         e.currentTarget.style.transform = "translateY(-1px)";
@@ -288,6 +298,7 @@ const KnowledgeCard = ({ card, expanded = false }: { card: any; expanded?: boole
 };
 
 export default function Home() {
+  const { trackEvent } = useAnalytics();
   // Navigation active tab
     const [isNutritionLabOpen, setIsNutritionLabOpen] = useState(false);
   const [isGearVaultOpen, setIsGearVaultOpen] = useState(false);
@@ -1822,6 +1833,14 @@ export default function Home() {
       }
 
       const result = await response.json();
+      
+      trackEvent('plan_generated', {
+        success: true,
+        goal_type: body.goal_type,
+        terrain: body.terrain,
+        duration_weeks: body.plan_duration_weeks
+      });
+
       // Set plan immediately from the fast response
       if (result.plan) {
         setActivePlan(result.plan);
@@ -1839,6 +1858,7 @@ export default function Home() {
       }
     } catch (err: any) {
       setPlanErrorMsg(err.message);
+      trackEvent('plan_generated', { success: false, error: err.message });
     } finally {
       setPlanLoading(false);
     }
@@ -3044,6 +3064,7 @@ const renderChat = (isMobile: boolean) => {
                     className="btn btn-primary"
                     style={{ flex: 1, minWidth: "120px", fontSize: "13px", fontWeight: "600", height: "38px", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", boxShadow: "0 4px 12px rgba(25, 206, 139, 0.2)" }}
                     onClick={() => {
+                      trackEvent('create_new_plan', { previous_plan_id: activePlan?.id });
                       setBackupActivePlan(activePlan);
                       setBackupWorkouts(workouts);
                       setActivePlan(null);
@@ -3091,7 +3112,10 @@ const renderChat = (isMobile: boolean) => {
                       href={`${API_BASE_URL}/api/coach/export-ics?plan_id=${activePlan.id}&race_date=${activePlan.race_date}&time_pref=${exportTimePref}&token=${typeof window !== 'undefined' ? localStorage.getItem('uphill_session_token') || '' : ''}`}
                       className="btn btn-primary"
                       style={{ fontSize: "12px", padding: "0 14px", height: "32px", display: "flex", alignItems: "center", textDecoration: "none", justifyContent: "center" }}
-                      onClick={() => setShowExportOptions(false)}
+                      onClick={() => {
+                        trackEvent('plan_exported', { plan_id: activePlan.id, export_format: 'ics', time_pref: exportTimePref });
+                        setShowExportOptions(false);
+                      }}
                     >
                       {lang === "en" ? "Add to Calendar (.ics)" : "Thêm vào Lịch (.ics)"}
                     </a>

@@ -30,12 +30,15 @@ from services.gear_recommender import GearRecommender
 from services.gear_planner import gear_planner, GearParams
 from services.nutrition_planner import nutrition_planner, NutritionParams
 from prometheus_fastapi_instrumentator import Instrumentator
+from routers.analytics import router as analytics_router
 
 app = FastAPI(
     title="Uphill AI Backend",
     description="Core processing engine and coaching chat API for Uphill AI.",
     version="1.6.0"
 )
+
+app.include_router(analytics_router)
 
 # Set up CORS
 app.add_middleware(

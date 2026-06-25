@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useAnalytics } from '@/hooks/useAnalytics';
 import { Sneaker, XCircle, Target, CaretDown, WarningCircle, CheckCircle, Question, Ruler, Path, RocketLaunch } from "@phosphor-icons/react";
 
 interface ShoeRecommendation {
@@ -49,6 +50,8 @@ export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang, use
 
 
 
+  const { trackEvent } = useAnalytics();
+
   const toggleTerrain = (t: string) => {
     if (shoeTerrain.includes(t)) {
       if (shoeTerrain.length > 1) setShoeTerrain(shoeTerrain.filter(x => x !== t));
@@ -58,6 +61,7 @@ export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang, use
   };
 
   const handleRecommendShoes = async () => {
+    const startTime = Date.now();
     setGearLoading(true);
     setGearPlan(null);
     setExpandedIndex(null);
@@ -120,6 +124,13 @@ export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang, use
           if (attempt < 3) await new Promise(r => setTimeout(r, 6000));
         }
       }
+      
+      trackEvent('gear_finder_used', {
+        success,
+        surface: shoeSurface,
+        cushioning: shoeCushion,
+        latency_ms: Date.now() - startTime
+      });
       
       if (!success) {
         console.error("Failed to recommend shoes after multiple attempts");

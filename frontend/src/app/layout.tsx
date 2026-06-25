@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import AnalyticsProvider from "@/components/AnalyticsProvider";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   variable: "--font-outfit", /* Keeping variable name so we don't have to update all css */
@@ -41,7 +42,10 @@ export default function RootLayout({
         {/* Google Sign-In SDK */}
         <script src="https://accounts.google.com/gsi/client" async defer></script>
       </head>
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        <AnalyticsProvider />
+        {children}
+      </body>
     </html>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useAnalytics } from '@/hooks/useAnalytics';
 import { BowlFood, XCircle, Target, WarningCircle, Clock, Package, ChartBar } from "@phosphor-icons/react";
 
 interface NutritionProduct {
@@ -45,6 +46,8 @@ export const NutritionLab: React.FC<NutritionLabProps> = ({ isOpen, onClose, lan
   const [additionalContext, setAdditionalContext] = useState("");
   const [targetCarb, setTargetCarb] = useState("60");
   const [targetSodium, setTargetSodium] = useState("500");
+
+  const { trackEvent } = useAnalytics();
 
   const [plan, setPlan] = useState<NutritionPlan | null>(null);
   const [fuelLoading, setFuelLoading] = useState(false);
@@ -119,6 +122,12 @@ export const NutritionLab: React.FC<NutritionLabProps> = ({ isOpen, onClose, lan
           if (attempt < 3) await new Promise(r => setTimeout(r, 6000));
         }
       }
+      
+      trackEvent('nutrition_plan_generated', {
+        success,
+        duration: fuelDuration,
+        athlete_level: athleteLevel
+      });
       
       if (!success) {
         console.error("Failed to calculate fueling after multiple attempts");
