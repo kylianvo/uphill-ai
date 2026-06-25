@@ -167,14 +167,14 @@ def init_db():
         )
         """))
 
+        conn.commit()
+
         try:
             conn.execute(text("ALTER TABLE knowledge_cards ADD COLUMN lang TEXT DEFAULT 'en'"))
             conn.commit()
             print("Added 'lang' column to knowledge_cards.")
         except Exception:
             pass
-
-        conn.commit()
 
     seed_data()
     print("PostgreSQL database tables initialized successfully.")

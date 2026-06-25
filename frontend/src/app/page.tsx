@@ -2189,7 +2189,7 @@ export default function Home() {
         }}>
           
           {/* Block A: The Engine (Span 2 cols on Desktop) */}
-          <div className="card" style={{ 
+          <div className="snow-glass" style={{ 
             gridColumn: isMobile ? 'auto' : 'span 2',
             padding: '32px',
             borderRadius: '32px'
@@ -2216,7 +2216,7 @@ export default function Home() {
           </div>
 
           {/* Block B: Author Motivation */}
-          <div className="card" style={{ 
+          <div className="snow-glass" style={{ 
             padding: '32px',
             borderRadius: '32px'
           }}>
@@ -2242,7 +2242,7 @@ export default function Home() {
           </div>
 
           {/* Block C: Core Source & Philosophy (Span 3 cols) */}
-          <div className="card" style={{ 
+          <div className="snow-glass" style={{ 
             gridColumn: isMobile ? 'auto' : 'span 3',
             padding: '32px',
             borderRadius: '32px'
