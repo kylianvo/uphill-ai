@@ -989,7 +989,7 @@ async def recommend_shoes(request: GearParams):
     """Matches athlete profiles with suitable shoe catalogs via NotebookLM."""
     try:
         recs = await gear_planner.generate_plan(user_profile="", params=request)
-        return {"recommendations": recs}
+        return recs
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to match shoes: {str(e)}")
 

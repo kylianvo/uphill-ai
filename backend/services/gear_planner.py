@@ -31,15 +31,15 @@ class GearPlannerService:
         dict_str = json.dumps(param_dict, sort_keys=True)
         return hashlib.md5(dict_str.encode()).hexdigest()
 
-    async def generate_plan(self, user_profile: str, params: GearParams) -> str:
+    async def generate_plan(self, user_profile: str, params: GearParams) -> Dict[str, Any]:
         cache_key = self._generate_cache_key(params)
         if cache_key in _GEAR_CACHE:
             print("[GearPlanner] Cache HIT! Returning instant response.")
-            return _GEAR_CACHE[cache_key]
+            return json.loads(_GEAR_CACHE[cache_key])
 
         terrain_str = ", ".join(params.terrain) if params.terrain else "Not specified"
         
-        # Merged Query: We now ask NotebookLM to do the strict Markdown formatting directly.
+        # Merged Query: Ask NotebookLM to do strict JSON formatting
         nlm_query = f"""You are an expert running shoe specialist. 
 Please search your documents for shoes that match the following specific criteria:
 
@@ -55,15 +55,31 @@ Please search your documents for shoes that match the following specific criteri
 - Special Requirements/Context: {params.additional_context or 'None'}
 
 TASK: 
-Reformat and summarize your top 5 shoe recommendations based on these exact criteria.
-You MUST output your response exactly in the following highly visual, ultra-concise Markdown format. 
-Do NOT use plain text paragraphs or conversational filler. Output ONLY the tables and bullet points.
+Return your top 5 shoe recommendations based on these exact criteria.
+You MUST output your response EXACTLY as a valid JSON object. 
+DO NOT include any markdown formatting (like ```json), DO NOT include conversational filler, DO NOT include plain text paragraphs outside the JSON.
+The JSON must follow this exact structure:
 
-### Top Recommendations
-(Create a Markdown table with columns: Model, Brand, Cushion & Foam (e.g. EVA, PEBA, TPE), Drop/Specs, Price, Best For/Pros)
-
-### Critical Gear Tips
-(Provide 2-3 extremely short bullet points based on the user's specific context, e.g., sizing up for trails)
+{{
+  "recommendations": [
+    {{
+      "model": "Shoe Model Name",
+      "brand": "Brand Name",
+      "foam_material": "Short name of foam material (e.g. PEBA, EVA, ZoomX)",
+      "outsole_compound": "Name of outsole rubber (e.g. Vibram Megagrip, Contagrip, None for road)",
+      "lug_depth": "Lug depth in mm (e.g. 4mm, 5mm, None for road)",
+      "drop": "Drop in mm (e.g. 6mm)",
+      "stack": "Stack height (e.g. 35mm/29mm)",
+      "price": "$XXX",
+      "pros": "2-3 short sentences about what the shoe is best for and its pros",
+      "cons": "1-2 short sentences about the drawbacks or who shouldn't buy this shoe"
+    }}
+  ],
+  "tips": [
+    "Short gear tip 1 based on user context",
+    "Short gear tip 2 based on user context"
+  ]
+}}
 """
 
         nlm_response = ""
@@ -81,15 +97,35 @@ Do NOT use plain text paragraphs or conversational filler. Output ONLY the table
                 )
                 print(f"[GearPlanner] NotebookLM Output Response:\n{nlm_response}\n{'-'*40}")
                 
-                # Save to cache
-                if "Could not retrieve" not in nlm_response:
-                    _GEAR_CACHE[cache_key] = nlm_response
+                # Clean up response in case it has markdown ticks
+                cleaned_response = nlm_response.strip()
+                if cleaned_response.startswith("```json"):
+                    cleaned_response = cleaned_response[7:]
+                if cleaned_response.startswith("```"):
+                    cleaned_response = cleaned_response[3:]
+                if cleaned_response.endswith("```"):
+                    cleaned_response = cleaned_response[:-3]
+                cleaned_response = cleaned_response.strip()
+                
+                # Validate JSON parse
+                try:
+                    parsed_json = json.loads(cleaned_response)
+                except json.JSONDecodeError:
+                    print("[GearPlanner] WARNING: Could not parse response as JSON. Returning fallback.")
+                    # Return a fallback JSON structure in case the LLM failed to format
+                    parsed_json = {
+                        "recommendations": [],
+                        "tips": ["Could not parse recommendations from NotebookLM. Please try again."]
+                    }
+                    cleaned_response = json.dumps(parsed_json)
 
-                return nlm_response
+                # Save to cache
+                _GEAR_CACHE[cache_key] = cleaned_response
+                return parsed_json
             except Exception as e:
                 print(f"[GearPlanner] NotebookLM query failed: {e}")
-                return f"Could not retrieve recommendations from NotebookLM: {str(e)}"
+                return {"recommendations": [], "tips": [f"Could not retrieve recommendations from NotebookLM: {str(e)}"]}
         else:
-            return "Error: NotebookLM Auth JSON is missing."
+            return {"recommendations": [], "tips": ["Error: NotebookLM Auth JSON is missing."]}
 
 gear_planner = GearPlannerService()

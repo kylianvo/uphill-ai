@@ -1,9 +1,25 @@
 "use client";
 
 import React, { useState } from "react";
-import { Sneaker, XCircle, Target } from "@phosphor-icons/react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { Sneaker, XCircle, Target, CaretDown, WarningCircle, CheckCircle, Question, Ruler, Path, RocketLaunch } from "@phosphor-icons/react";
+
+interface ShoeRecommendation {
+  model: string;
+  brand: string;
+  foam_material: string;
+  outsole_compound: string;
+  lug_depth: string;
+  drop: string;
+  stack: string;
+  price: string;
+  pros: string;
+  cons: string;
+}
+
+interface GearPlanResponse {
+  recommendations: ShoeRecommendation[];
+  tips: string[];
+}
 
 interface GearVaultProps {
   isOpen: boolean;
@@ -25,8 +41,9 @@ export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang }) =
   const [shoeUseCase, setShoeUseCase] = useState("daily training"); // For road
   const [shoeDistance, setShoeDistance] = useState(""); // For racing/trail
 
-  const [gearPlan, setGearPlan] = useState<string | null>(null);
+  const [gearPlan, setGearPlan] = useState<GearPlanResponse | null>(null);
   const [gearLoading, setGearLoading] = useState(false);
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
 
   if (!isOpen) return null;
 
@@ -41,6 +58,7 @@ export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang }) =
   const handleRecommendShoes = async () => {
     setGearLoading(true);
     setGearPlan(null);
+    setExpandedIndex(null);
     try {
       let baseUrl = "http://localhost:8000";
       if (typeof window !== "undefined") {
@@ -67,7 +85,7 @@ export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang }) =
       });
       if (response.ok) {
         const result = await response.json();
-        setGearPlan(result.recommendations);
+        setGearPlan(result);
       } else {
         console.error("Failed to recommend shoes");
       }
@@ -213,9 +231,119 @@ export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang }) =
             <h3 style={{ fontSize: "14px", textTransform: "uppercase", letterSpacing: "1px", color: "var(--accent-primary)", marginBottom: "16px", fontWeight: 700, display: "flex", alignItems: "center", gap: "6px" }}>
               <Target size={18} weight="fill" /> MATCH RESULTS
             </h3>
-            <div className="markdown-body" style={{ color: "var(--text-secondary)", lineHeight: 1.6, fontSize: "15px", fontFamily: "var(--font-outfit)" }}>
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{gearPlan}</ReactMarkdown>
+            
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {gearPlan.recommendations.map((shoe, idx) => {
+                const isExpanded = expandedIndex === idx;
+                const isTrail = shoeSurface === "trail";
+                
+                return (
+                  <div key={idx} className="snow-glass" style={{
+                    borderRadius: "16px",
+                    overflow: "hidden",
+                    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                    border: isExpanded ? "1px solid rgba(0,0,0,0.1)" : "1px solid rgba(0,0,0,0.05)",
+                    boxShadow: isExpanded ? "0 12px 24px rgba(0,0,0,0.08)" : "0 4px 12px rgba(0,0,0,0.02)"
+                  }}>
+                    {/* Header: Clickable Area */}
+                    <div 
+                      onClick={() => setExpandedIndex(isExpanded ? null : idx)}
+                      style={{
+                        padding: "16px 20px",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "12px",
+                        cursor: "pointer",
+                        background: isExpanded ? "rgba(255,255,255,0.5)" : "transparent"
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <div>
+                          <span style={{ fontSize: "12px", textTransform: "uppercase", letterSpacing: "1px", color: "var(--text-muted)", fontWeight: 700 }}>
+                            {shoe.brand}
+                          </span>
+                          <h4 style={{ fontSize: "20px", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
+                            {shoe.model}
+                          </h4>
+                        </div>
+                        <CaretDown size={20} color="var(--text-muted)" style={{ transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.3s" }} />
+                      </div>
+                      
+                      {/* Discrete Stats Row */}
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                        <span style={{ display: "flex", alignItems: "center", gap: "4px", background: "rgba(0,0,0,0.04)", padding: "4px 10px", borderRadius: "8px", fontSize: "12px", fontWeight: 600, color: "var(--text-secondary)" }}>
+                          <RocketLaunch size={14} /> {shoe.foam_material}
+                        </span>
+                        {isTrail && shoe.outsole_compound && shoe.outsole_compound !== "None" && (
+                          <span style={{ display: "flex", alignItems: "center", gap: "4px", background: "rgba(0,0,0,0.04)", padding: "4px 10px", borderRadius: "8px", fontSize: "12px", fontWeight: 600, color: "var(--text-secondary)" }}>
+                            <Path size={14} /> {shoe.outsole_compound}
+                          </span>
+                        )}
+                        {isTrail && shoe.lug_depth && shoe.lug_depth !== "None" && (
+                          <span style={{ display: "flex", alignItems: "center", gap: "4px", background: "rgba(0,0,0,0.04)", padding: "4px 10px", borderRadius: "8px", fontSize: "12px", fontWeight: 600, color: "var(--text-secondary)" }}>
+                            <Target size={14} /> {shoe.lug_depth}
+                          </span>
+                        )}
+                        <span style={{ display: "flex", alignItems: "center", gap: "4px", background: "rgba(0,0,0,0.04)", padding: "4px 10px", borderRadius: "8px", fontSize: "12px", fontWeight: 600, color: "var(--text-secondary)" }}>
+                          <Ruler size={14} /> Drop: {shoe.drop}
+                        </span>
+                        <span style={{ display: "flex", alignItems: "center", gap: "4px", background: "rgba(0,0,0,0.04)", padding: "4px 10px", borderRadius: "8px", fontSize: "12px", fontWeight: 600, color: "var(--text-secondary)" }}>
+                          <Ruler size={14} /> Stack: {shoe.stack}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Expanded Content */}
+                    <div style={{
+                      maxHeight: isExpanded ? "600px" : "0px",
+                      opacity: isExpanded ? 1 : 0,
+                      overflow: "hidden",
+                      transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
+                    }}>
+                      <div style={{ padding: "0 20px 20px 20px" }}>
+                        <div style={{ borderTop: "1px solid rgba(0,0,0,0.05)", paddingTop: "16px", marginBottom: "16px" }}>
+                          <div style={{ fontSize: "11px", textTransform: "uppercase", fontWeight: 700, color: "var(--text-muted)", marginBottom: "8px", display: "flex", alignItems: "center", gap: "4px" }}>
+                            <CheckCircle size={14} color="var(--accent-primary)" /> PROS / BEST FOR
+                          </div>
+                          <div style={{ fontSize: "14px", color: "var(--text-primary)", lineHeight: 1.5, background: "rgba(0,255,0,0.03)", padding: "12px", borderRadius: "12px", border: "1px solid rgba(0,255,0,0.05)" }}>
+                            {shoe.pros}
+                          </div>
+                        </div>
+
+                        <div style={{ marginBottom: "16px" }}>
+                          <div style={{ fontSize: "11px", textTransform: "uppercase", fontWeight: 700, color: "var(--text-muted)", marginBottom: "8px", display: "flex", alignItems: "center", gap: "4px" }}>
+                            <WarningCircle size={14} color="#ff4444" /> CONS / DRAWBACKS
+                          </div>
+                          <div style={{ fontSize: "14px", color: "var(--text-primary)", lineHeight: 1.5, background: "rgba(255,0,0,0.02)", padding: "12px", borderRadius: "12px", border: "1px solid rgba(255,0,0,0.05)" }}>
+                            {shoe.cons}
+                          </div>
+                        </div>
+
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid rgba(0,0,0,0.05)", paddingTop: "16px" }}>
+                          <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase" }}>Estimated Price</span>
+                          <span style={{ fontFamily: "var(--font-mono)", fontSize: "18px", fontWeight: 600, color: "var(--text-primary)" }}>
+                            {shoe.price}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
+
+            {gearPlan.tips && gearPlan.tips.length > 0 && (
+              <div style={{ marginTop: "24px", background: "rgba(0,0,0,0.02)", border: "1px dashed rgba(0,0,0,0.1)", borderRadius: "16px", padding: "16px" }}>
+                <h4 style={{ fontSize: "13px", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 700, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "6px", marginBottom: "12px" }}>
+                  <WarningCircle size={16} /> COACH'S NOTES
+                </h4>
+                <ul style={{ margin: 0, paddingLeft: "20px", color: "var(--text-secondary)", fontSize: "14px", lineHeight: 1.5 }}>
+                  {gearPlan.tips.map((tip, idx) => (
+                    <li key={idx} style={{ marginBottom: "6px" }}>{tip}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         )}
       </div>
