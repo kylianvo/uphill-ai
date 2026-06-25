@@ -186,96 +186,16 @@ class PlanGenerator:
                 wo["distance_km"] = round(dur / pace_dec, 1) if pace_dec > 0 else 0.0
             return wos
 
-        # 2. AI Plan Generation using Gemini + RAG (NotebookLM or SQLite)
-        if api_key:
+        # 2. AI Plan Generation using NotebookLM directly
+        from config import settings
+        notebook_id = settings.NOTEBOOKLM_NOTEBOOK_ID
+        auth_json = settings.NOTEBOOKLM_AUTH_JSON
+
+        if notebook_id and auth_json:
             try:
-                import google.generativeai as genai
-                from google.generativeai import client as genai_client
                 import json
-                
-                # Fetch grounding content (NotebookLM or SQLite)
-                grounding_context = ""
-                from config import settings
-                notebook_id = settings.NOTEBOOKLM_NOTEBOOK_ID
-                auth_json = settings.NOTEBOOKLM_AUTH_JSON
-
-                # Define `today` early so it can be used by the NotebookLM query builder below
-                start_date_str_early = race_info.get("plan_start_date") or datetime.now().strftime("%Y-%m-%d")
-                try:
-                    today = datetime.strptime(start_date_str_early, "%Y-%m-%d").date()
-                except ValueError:
-                    today = datetime.now().date()
-
-                if notebook_id and auth_json:
-                    try:
-                        from services.notebooklm_service import NotebookLmService
-                        
-                        goal_type = race_info.get("goal_type")
-                        start_date = race_info.get("plan_start_date") or today.strftime("%Y-%m-%d")
-
-                        
-                        if goal_type == "start_running":
-                            nlm_query = (
-                                f"Provide structured coaching advice and training guidelines for a {total_weeks}-week walk-to-run progression plan "
-                                f"starting on {start_date}. Focus on safe volume building, run-walk interval ratios, weekly frequency, "
-                                f"and preventing overuse injuries for a beginner runner."
-                            )
-                        elif goal_type == "return":
-                            time_away = user_profile.get("time_away") or "some time"
-                            fitness_feel = user_profile.get("fitness_feel") or "rusty"
-                            nlm_query = (
-                                f"Provide structured coaching advice and training guidelines for a {total_weeks}-week return-to-running plan "
-                                f"starting on {start_date} after being away from running for {time_away} (athlete currently feels: {fitness_feel}). "
-                                f"Focus on conservative volume progression, heart rate cap recommendations (aerobic base building), and building consistency safely."
-                            )
-                        elif goal_type == "recovery":
-                            race_dist = user_profile.get("race_distance_completed") or "a recent race"
-                            days_ago = user_profile.get("days_since_race") or 0
-                            rec_feel = user_profile.get("recovery_feel") or "fatigued"
-                            nlm_query = (
-                                f"Provide structured coaching advice and recovery protocols for a {total_weeks}-week training block "
-                                f"starting on {start_date} following a recent {race_dist} race completed {days_ago} days ago (athlete's recovery feel: {rec_feel}). "
-                                f"Focus on active recovery, sleep/fueling protocols, light mobility work, and gradual return to easy aerobic base running."
-                            )
-                        else:
-                            # Race or Distance target
-                            c_dist = course_distance_km if course_distance_km is not None else 0.0
-                            c_elev = course_elevation_gain_m if course_elevation_gain_m is not None else 0.0
-                            nlm_query = (
-                                f"Provide structured coaching advice and training guidelines for a {total_weeks}-week periodized plan "
-                                f"targeting a {terrain} race named '{race_info.get('name')}' on {race_info.get('date')} with distance {c_dist}km "
-                                f"and elevation gain {c_elev}m. Focus on weekly volume distribution, tapering, long run pacing, and strength/muscular endurance guidelines."
-                            )
-                        
-                        print(f"[PlanGen][NotebookLM] Sending query to notebook {notebook_id[:8]}...")
-                        print(f"[PlanGen][NotebookLM] Query: {nlm_query}")
-                        grounding_context = await NotebookLmService.query_notebook(
-                            notebook_id=notebook_id,
-                            auth_json=auth_json,
-                            query=nlm_query
-                        )
-                        print(f"[PlanGen][NotebookLM] Response received ({len(grounding_context)} chars)")
-                    except Exception as nlm_ex:
-                        print(f"[PlanGen][NotebookLM] FAILED — falling back to SQLite RAG: {nlm_ex}")
-                
-                if not grounding_context:
-                    from db import get_all_grounding_content
-                    grounding_docs = get_all_grounding_content()
-                    if grounding_docs:
-                        context_parts = []
-                        for idx, doc in enumerate(grounding_docs, 1):
-                            truncated_content = doc["content"][:15000]
-                            context_parts.append(
-                                f"[Document #{idx}] Title: {doc['title']} | Type: {doc['type'].upper()}\n"
-                                f"Content: {truncated_content}"
-                            )
-                        grounding_context = (
-                            "\n\n=== GROUNDING REFERENCE DATABASE ===\n" +
-                            "\n\n".join(context_parts) +
-                            "\n===================================\n"
-                        )
-                
-
+                import re
+                from services.notebooklm_service import NotebookLmService
                 
                 user_summary = (
                     f"Age: {age}, Weekly volume base: {current_weekly_km} km, Max HR: {max_hr} bpm, "
@@ -390,7 +310,6 @@ class PlanGenerator:
                     f"Required Plan Length: {total_weeks} weeks.\n"
                     f"- Week 1 MUST start on the selected start date: {current_date_str} ({current_weekday}).\n"
                     f"{week_schedule_constraints}\n"
-                    f"Grounding Reference Guidelines:\n{grounding_context}\n\n"
                     "Instructions:\n"
                     "1. Generate a periodized training schedule spanning exactly the required number of weeks. Each week must have structured workouts (typically 4-6 workouts per week, and Rest days on Monday/Friday or similar).\n"
                     "2. The schedule must be returned as a JSON array of workout objects. Each workout object must follow this exact schema:\n"
@@ -414,35 +333,31 @@ class PlanGenerator:
                 if lang == "vi":
                     prompt += "\n5. CRITICAL: All workout text fields, including 'title', 'description', and 'fueling_tip', MUST be written in Vietnamese."
                 
-                print(f"[PlanGen][Gemini] Sending prompt to gemini-2.5-flash ({len(prompt)} chars)")
-                print(f"[PlanGen][Gemini] --- PROMPT START ---")
-                print(prompt[:3000])
-                if len(prompt) > 3000:
-                    print(f"... [truncated, {len(prompt) - 3000} more chars]")
-                print(f"[PlanGen][Gemini] --- PROMPT END ---")
-
-                model = genai.GenerativeModel(model_name="gemini-2.5-flash")
-                my_manager = genai_client._ClientManager()
-                my_manager.configure(api_key=api_key)
-                model._client = my_manager.get_default_client("generative")
-                
-                import asyncio
-                response = await asyncio.to_thread(
-                    model.generate_content,
-                    prompt,
-                    generation_config={"response_mime_type": "application/json"}
+                print(f"[PlanGen][NotebookLM] Sending full prompt to notebook {notebook_id[:8]}...")
+                response_text = await NotebookLmService.query_notebook(
+                    notebook_id=notebook_id,
+                    auth_json=auth_json,
+                    query=prompt
                 )
-                print(f"[PlanGen][Gemini] Response received ({len(response.text)} chars)")
+                print(f"[PlanGen][NotebookLM] Response received ({len(response_text)} chars)")
                 
-                ai_workouts = json.loads(response.text)
+                # Robust JSON parsing
+                try:
+                    # Strip markdown fences if present
+                    clean_text = re.sub(r'```(?:json)?|```', '', response_text).strip()
+                    ai_workouts = json.loads(clean_text)
+                except json.JSONDecodeError as json_err:
+                    print(f"[PlanGen][NotebookLM] JSON parsing failed: {json_err}. Raw text snippet: {response_text[:200]}")
+                    ai_workouts = None
+                
                 if isinstance(ai_workouts, list) and len(ai_workouts) > 0:
                     cleaned_wos = [wo for wo in ai_workouts if isinstance(wo, dict)]
-                    print(f"[PlanGen][Gemini] Parsed {len(cleaned_wos)} workouts from response")
+                    print(f"[PlanGen][NotebookLM] Parsed {len(cleaned_wos)} workouts from response")
                     return post_process_workouts(cleaned_wos)
                 else:
-                    print("[PlanGen][Gemini] Empty or invalid list returned, falling back to rule-based schedule.")
+                    print("[PlanGen][NotebookLM] Empty or invalid list returned, falling back to rule-based schedule.")
             except Exception as ex:
-                print(f"[PlanGen][Gemini] FAILED: {ex}. Using rule-based fallback schedule.")
+                print(f"[PlanGen][NotebookLM] FAILED: {ex}. Using rule-based fallback schedule.")
 
         # --- Rule-Based Fallback Schedule ---
 
