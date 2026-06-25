@@ -9,8 +9,8 @@ datasources:
       timeInterval: 15s
       httpMethod: POST
 
-  - name: PostgreSQL
-    uid: PostgreSQL
+  - name: UphillPostgres
+    uid: uphill-postgres
     type: postgres
     access: proxy
     url: db:5432
