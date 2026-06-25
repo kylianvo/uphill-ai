@@ -44,7 +44,7 @@ jobs:
         run: cd frontend && npx next build
         env:
           NEXT_PUBLIC_API_URL: http://45.119.215.120:8000
-          NEXT_PUBLIC_BASE_PATH: /uphill-ai
+          NEXT_PUBLIC_BASE_PATH: ""
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
