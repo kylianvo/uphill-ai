@@ -14,10 +14,10 @@ datasources:
     type: postgres
     access: proxy
     url: db:5432
-    database: uphill_ai
     user: uphill
     secureJsonData:
       password: uphill_secret
     jsonData:
-      postgresVersion: 16
+      database: uphill_ai
+      postgresVersion: 1600
       sslmode: disable
