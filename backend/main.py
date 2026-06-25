@@ -38,7 +38,7 @@ app = FastAPI(
     version="1.6.0"
 )
 
-app.include_router(analytics_router)
+app.include_router(analytics_router, prefix="/api")
 
 # Set up CORS
 app.add_middleware(
