@@ -8,3 +8,15 @@ datasources:
     jsonData:
       timeInterval: 15s
       httpMethod: POST
+
+  - name: PostgreSQL
+    type: postgres
+    access: proxy
+    url: db:5432
+    database: uphill_ai
+    user: uphill
+    secureJsonData:
+      password: uphill_secret
+    jsonData:
+      postgresVersion: 16
+      sslmode: disable
