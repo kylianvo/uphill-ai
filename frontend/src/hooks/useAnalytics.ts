@@ -20,6 +20,14 @@ export function useAnalytics() {
     });
   };
 
+  const getBackendUrl = () => {
+    if (typeof window !== 'undefined') {
+      const override = localStorage.getItem('UPHILL_API_URL_OVERRIDE');
+      if (override) return override;
+    }
+    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  };
+
   const flushEvents = async () => {
     if (eventQueue.length === 0 || isFlushing.current) return;
     
@@ -28,8 +36,8 @@ export function useAnalytics() {
     eventQueue.length = 0; // Clear queue
     
     try {
-      const token = localStorage.getItem('uphill_token');
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+      const token = localStorage.getItem('uphill_session_token');
+      const backendUrl = getBackendUrl();
       
       const response = await fetch(`${backendUrl}/api/analytics/track_batch`, {
         method: 'POST',
@@ -67,8 +75,8 @@ export function useAnalytics() {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
         if (eventQueue.length > 0) {
-           const token = localStorage.getItem('uphill_token');
-           const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+           const token = localStorage.getItem('uphill_session_token');
+           const backendUrl = localStorage.getItem('UPHILL_API_URL_OVERRIDE') || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
            fetch(`${backendUrl}/api/analytics/track_batch`, {
              method: 'POST',
              headers: {
