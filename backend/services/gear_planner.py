@@ -65,7 +65,7 @@ The JSON must follow this exact structure:
     {{
       "model": "Shoe Model Name",
       "brand": "Brand Name",
-      "foam_material": "Short name of foam material (e.g. PEBA, EVA, ZoomX)",
+      "foam_material": "Name of the foam ALONG WITH its material type in parentheses (e.g. ZoomX (PEBA), PWRRUN PB (PEBA), optiFOAM (EVA))",
       "outsole_compound": "Name of outsole rubber (e.g. Vibram Megagrip, Contagrip, None for road)",
       "lug_depth": "Lug depth in mm (e.g. 4mm, 5mm, None for road)",
       "drop": "Drop in mm (e.g. 6mm)",
