@@ -25,8 +25,12 @@ rsync -avz --exclude '.venv' --exclude '__pycache__' --exclude '*.pyc' \
 rsync -avz ./docker-compose.yml $SERVER:$TARGET_DIR/ 
 rsync -avz ./grafana/ $SERVER:$TARGET_DIR/grafana/
 
-# 4. Sync .env file
-rsync -avz ./backend/.env $SERVER:$TARGET_DIR/backend/
+# 4. Sync .env file (prefer .env.production if it exists)
+if [ -f ./backend/.env.production ]; then
+    rsync -avz ./backend/.env.production $SERVER:$TARGET_DIR/backend/.env
+else
+    rsync -avz ./backend/.env $SERVER:$TARGET_DIR/backend/
+fi
 
 # 5. Start/update docker containers (Metabase, Postgres, etc.)
 ssh $SERVER "cd $TARGET_DIR && docker compose up -d --remove-orphans"
