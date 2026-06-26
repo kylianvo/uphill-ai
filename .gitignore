@@ -40,3 +40,6 @@ qdrant_storage/
 
 # Deploy secrets (never commit)
 deploy.env
+
+# Antigravity IDE skills lockfile
+skills-lock.json
