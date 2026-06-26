@@ -61,7 +61,7 @@ services:
       - "127.0.0.1:3000:3000"
     environment:
       - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=uphill_admin_123
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-changeme}
     volumes:
       - grafana_data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning
@@ -85,7 +85,7 @@ services:
       MB_DB_DBNAME: uphill_ai
       MB_DB_PORT: 5432
       MB_DB_USER: uphill
-      MB_DB_PASS: uphill_secret
+      MB_DB_PASS: ${POSTGRES_PASSWORD:-uphill_secret}
       MB_DB_HOST: db
       JAVA_OPTS: "-Xmx512m -Xms256m"
     depends_on:

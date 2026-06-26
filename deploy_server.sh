@@ -1,8 +1,16 @@
 #!/bin/bash
 set -e
 
-SERVER="root@45.119.215.120"
-TARGET_DIR="/opt/uphill-ai-backend"
+# Load deploy configuration from deploy.env (not committed to git).
+# Copy deploy.env.example → deploy.env and fill in your values.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$SCRIPT_DIR/deploy.env" ]; then
+  # shellcheck source=/dev/null
+  source "$SCRIPT_DIR/deploy.env"
+fi
+
+SERVER="${DEPLOY_SERVER:-root@45.119.215.120}"
+TARGET_DIR="${DEPLOY_TARGET_DIR:-/opt/uphill-ai-backend}"
 
 echo "Deploying backend to $SERVER..."
 

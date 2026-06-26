@@ -32,10 +32,15 @@ from services.nutrition_planner import nutrition_planner, NutritionParams
 from prometheus_fastapi_instrumentator import Instrumentator
 from routers.analytics import router as analytics_router
 
+_is_prod = os.getenv("ENVIRONMENT", "development") == "production"
 app = FastAPI(
     title="Uphill AI Backend",
     description="Core processing engine and coaching chat API for Uphill AI.",
-    version="1.6.0"
+    version="1.6.0",
+    # Disable interactive docs in production — avoids leaking full API schema
+    docs_url=None if _is_prod else "/docs",
+    redoc_url=None if _is_prod else "/redoc",
+    openapi_url=None if _is_prod else "/openapi.json",
 )
 
 app.include_router(analytics_router, prefix="/api")
@@ -405,24 +410,27 @@ async def auth_set_password(request: SetPasswordRequest, user: Dict[str, Any] = 
         raise HTTPException(status_code=500, detail="Failed to set password.")
     return {"message": "Password set successfully."}
 
-@app.post("/api/auth/mock-login")
-def auth_mock_login(request: MockLoginRequest):
-    email = request.email.lower().strip()
-    user = get_user_by_email(email)
-    if not user:
-        if email == "admin@uphill.ai":
-            user = create_or_get_user(email, "Uphill Admin", "mock", "mock-admin-id", "admin", onboarding_complete=True)
-        elif email == "athlete@uphill.ai":
-            user = create_or_get_user(email, "Uphill Athlete", "mock", "mock-athlete-id", "user", onboarding_complete=True)
-        else:
-            name = email.split("@")[0].capitalize()
-            user = create_or_get_user(email, name, "mock", f"mock-{name.lower()}-id", "user")
-    session = create_session(user["id"])
-    return {
-        "session_token": session["session_token"],
-        "expires_at": session["expires_at"],
-        "user": format_user_response(user)
-    }
+# mock-login is only registered in non-production environments.
+# In production (ENVIRONMENT=production) this route does not exist.
+if not _is_prod:
+    @app.post("/api/auth/mock-login")
+    def auth_mock_login(request: MockLoginRequest):
+        email = request.email.lower().strip()
+        user = get_user_by_email(email)
+        if not user:
+            if email == "admin@uphill.ai":
+                user = create_or_get_user(email, "Uphill Admin", "mock", "mock-admin-id", "admin", onboarding_complete=True)
+            elif email == "athlete@uphill.ai":
+                user = create_or_get_user(email, "Uphill Athlete", "mock", "mock-athlete-id", "user", onboarding_complete=True)
+            else:
+                name = email.split("@")[0].capitalize()
+                user = create_or_get_user(email, name, "mock", f"mock-{name.lower()}-id", "user")
+        session = create_session(user["id"])
+        return {
+            "session_token": session["session_token"],
+            "expires_at": session["expires_at"],
+            "user": format_user_response(user)
+        }
 
 @app.post("/api/auth/onboarding")
 async def complete_onboarding(request: OnboardingRequest, user: Dict[str, Any] = Depends(get_current_user)):

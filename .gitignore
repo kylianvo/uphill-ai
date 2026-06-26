@@ -37,3 +37,6 @@ __pycache__/
 
 # Qdrant
 qdrant_storage/
+
+# Deploy secrets (never commit)
+deploy.env
