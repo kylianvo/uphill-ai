@@ -25,8 +25,6 @@ from services.rag_service import RagService
 from services.plan_generator import PlanGenerator
 from services.calendar_service import CalendarService
 from services.pacing_calculator import PacingCalculator
-from services.nutrition_calculator import NutritionCalculator
-from services.gear_recommender import GearRecommender
 from services.gear_planner import gear_planner, GearParams
 from services.nutrition_planner import nutrition_planner, NutritionParams
 from prometheus_fastapi_instrumentator import Instrumentator
