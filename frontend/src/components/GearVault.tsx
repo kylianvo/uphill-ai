@@ -1,8 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useAnalytics } from '@/hooks/useAnalytics';
-import { Sneaker, XCircle, Target, CaretDown, WarningCircle, CheckCircle, Question, Ruler, Path, RocketLaunch } from "@phosphor-icons/react";
+import { Sneaker, XCircle, Target, CaretDown, WarningCircle, CheckCircle, Ruler, Path, RocketLaunch } from "@phosphor-icons/react";
 
 interface ShoeRecommendation {
   model: string;
@@ -34,11 +35,11 @@ export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang, use
   const [shoeSurface, setShoeSurface] = useState("trail");
   const [shoeCushion, setShoeCushion] = useState("balanced");
   const [shoeWidth, setShoeWidth] = useState("normal");
-  const [shoeCarbon, setShoeCarbon] = useState<string>("any");
+  const [shoeCarbon, setShoeCarbon] = useState<string>("unknown");
   const [shoeBudget, setShoeBudget] = useState("");
   const [shoeBrands, setShoeBrands] = useState("");
   const [shoeContext, setShoeContext] = useState("");
-  
+
   // Conditional States
   const [shoeTerrain, setShoeTerrain] = useState<string[]>(["runnable"]); // For trail
   const [shoeUseCase, setShoeUseCase] = useState("daily training"); // For road
@@ -73,7 +74,7 @@ export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang, use
         }
         baseUrl = localStorage.getItem("UPHILL_API_URL_OVERRIDE") || process.env.NEXT_PUBLIC_API_URL || baseUrl;
       }
-      
+
       let userProfileStr = "None";
       if (user) {
         userProfileStr = `Age: ${user.age || 'N/A'}, Max HR: ${user.max_hr || 'N/A'}, Resting HR: ${user.resting_hr || 'N/A'}, Weekly volume: ${user.current_weekly_km || 'N/A'}km`;
@@ -100,7 +101,7 @@ export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang, use
 
       let attempt = 0;
       let success = false;
-      
+
       while (attempt < 3 && !success) {
         try {
           const response = await fetch(`${baseUrl}/api/coach/recommend-shoes`, {
@@ -108,7 +109,7 @@ export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang, use
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
           });
-          
+
           if (response.ok) {
             const result = await response.json();
             setGearPlan(result);
@@ -124,14 +125,14 @@ export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang, use
           if (attempt < 3) await new Promise(r => setTimeout(r, 6000));
         }
       }
-      
+
       trackEvent('gear_finder_used', {
         success,
         surface: shoeSurface,
         cushioning: shoeCushion,
         latency_ms: Date.now() - startTime
       });
-      
+
       if (!success) {
         console.error("Failed to recommend shoes after multiple attempts");
       }
@@ -163,7 +164,7 @@ export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang, use
         </button>
 
         <h2 style={{ fontSize: "28px", fontWeight: 700, marginBottom: "8px", color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "10px" }}>
-          <Sneaker size={32} color="var(--accent-primary)" weight="duotone" /> 
+          <Sneaker size={32} color="var(--accent-primary)" weight="duotone" />
           Gear Finder
         </h2>
         <p style={{ color: "var(--text-secondary)", marginBottom: "32px", fontSize: "15px" }}>
@@ -171,7 +172,7 @@ export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang, use
         </p>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "16px", marginBottom: "32px" }}>
-          
+
           <div style={{ background: "rgba(0,0,0,0.03)", padding: "16px", borderRadius: "16px", border: "1px solid rgba(0,0,0,0.05)" }}>
             <label style={{ display: "block", fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)", marginBottom: "8px", fontWeight: 600 }}>{lang === "en" ? "Surface" : "Mặt đường"}</label>
             <select value={shoeSurface} onChange={(e) => setShoeSurface(e.target.value)}
@@ -213,7 +214,7 @@ export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang, use
                 style={{ width: "100%", background: "transparent", border: "none", fontSize: "16px", fontWeight: 600, color: "var(--text-primary)", outline: "none" }} />
             </div>
           )}
-          
+
           <div style={{ background: "rgba(0,0,0,0.03)", padding: "16px", borderRadius: "16px", border: "1px solid rgba(0,0,0,0.05)" }}>
             <label style={{ display: "block", fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)", marginBottom: "8px", fontWeight: 600 }}>{lang === "en" ? "Cushioning" : "Độ êm"}</label>
             <select value={shoeCushion} onChange={(e) => setShoeCushion(e.target.value)}
@@ -238,7 +239,7 @@ export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang, use
             <label style={{ display: "block", fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)", marginBottom: "8px", fontWeight: 600 }}>{lang === "en" ? "Carbon Plate" : "Đế Carbon"}</label>
             <select value={shoeCarbon} onChange={(e) => setShoeCarbon(e.target.value)}
               style={{ width: "100%", background: "transparent", border: "none", fontSize: "18px", fontWeight: 600, color: "var(--text-primary)", outline: "none", appearance: "none" }}>
-              <option value="any">No Preference</option>
+              <option value="unknown">No Preference</option>
               <option value="yes">Required</option>
               <option value="no">Exclude</option>
             </select>
@@ -264,8 +265,8 @@ export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang, use
 
         </div>
 
-        <button 
-          onClick={handleRecommendShoes} 
+        <button
+          onClick={handleRecommendShoes}
           disabled={gearLoading}
           style={{ width: "100%", padding: "16px", borderRadius: "16px", background: "var(--text-primary)", color: "white", fontSize: "16px", fontWeight: 600, border: "none", cursor: gearLoading ? "not-allowed" : "pointer", opacity: gearLoading ? 0.7 : 1, transition: "0.2s" }}
         >
@@ -277,12 +278,12 @@ export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang, use
             <h3 style={{ fontSize: "14px", textTransform: "uppercase", letterSpacing: "1px", color: "var(--accent-primary)", marginBottom: "16px", fontWeight: 700, display: "flex", alignItems: "center", gap: "6px" }}>
               <Target size={18} weight="fill" /> MATCH RESULTS
             </h3>
-            
+
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               {gearPlan.recommendations.map((shoe, idx) => {
                 const isExpanded = expandedIndex === idx;
                 const isTrail = shoeSurface === "trail";
-                
+
                 return (
                   <div key={idx} className="snow-glass" style={{
                     borderRadius: "16px",
@@ -292,7 +293,7 @@ export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang, use
                     boxShadow: isExpanded ? "0 12px 24px rgba(0,0,0,0.08)" : "0 4px 12px rgba(0,0,0,0.02)"
                   }}>
                     {/* Header: Clickable Area */}
-                    <div 
+                    <div
                       onClick={() => setExpandedIndex(isExpanded ? null : idx)}
                       style={{
                         padding: "16px 20px",
@@ -314,7 +315,7 @@ export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang, use
                         </div>
                         <CaretDown size={20} color="var(--text-muted)" style={{ transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.3s" }} />
                       </div>
-                      
+
                       {/* Discrete Stats Row */}
                       <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
                         <span style={{ display: "flex", alignItems: "center", gap: "4px", background: "rgba(0,0,0,0.04)", padding: "4px 10px", borderRadius: "8px", fontSize: "12px", fontWeight: 600, color: "var(--text-secondary)" }}>
@@ -381,7 +382,7 @@ export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang, use
             {gearPlan.tips && gearPlan.tips.length > 0 && (
               <div style={{ marginTop: "24px", background: "rgba(0,0,0,0.02)", border: "1px dashed rgba(0,0,0,0.1)", borderRadius: "16px", padding: "16px" }}>
                 <h4 style={{ fontSize: "13px", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 700, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "6px", marginBottom: "12px" }}>
-                  <WarningCircle size={16} /> COACH'S NOTES
+                  <WarningCircle size={16} /> COACH&apos;S NOTES
                 </h4>
                 <ul style={{ margin: 0, paddingLeft: "20px", color: "var(--text-secondary)", fontSize: "14px", lineHeight: 1.5 }}>
                   {gearPlan.tips.map((tip, idx) => (

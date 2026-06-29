@@ -1,13 +1,13 @@
-import os
-import sys
 import logging
-from markitdown import MarkItDown
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+import os
+
+from langchain_core.documents import Document
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_qdrant import QdrantVectorStore
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from markitdown import MarkItDown
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams
-from langchain_core.documents import Document
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -57,46 +57,48 @@ LINKS = [
     "https://evokeendurance.com/resources/treadmill-season/",
     "https://evokeendurance.com/resources/setting-your-hear-rate-zones/",
     "https://evokeendurance.com/resources/muscular-endurance-all-you-need-to-know/",
-    "https://evokeendurance.com/resources/how-training-works/"
+    "https://evokeendurance.com/resources/how-training-works/",
 ]
+
 
 def main():
     # Load env for GEMINI_API_KEY
     from dotenv import load_dotenv
+
     load_dotenv()
-    
+
     md = MarkItDown()
-    
+
     logger.info("Initializing Google Gemini Embeddings (gemini-embedding-2)...")
     embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-2")
-    
+
     qdrant_url = os.getenv("QDRANT_URL", "http://localhost:6333")
     logger.info(f"Connecting to Qdrant at {qdrant_url}...")
     client = QdrantClient(url=qdrant_url)
-    
+
     collection_name = "uphill_athlete_materials"
-    
+
     # Delete the existing collection if it exists because dimensions are changing
     if client.collection_exists(collection_name):
         logger.info(f"Deleting existing collection {collection_name} to update dimensions...")
         client.delete_collection(collection_name)
-    
+
     client.create_collection(
         collection_name=collection_name,
         # gemini-embedding-2 uses 3072 dimensions
         vectors_config=VectorParams(size=3072, distance=Distance.COSINE),
     )
     logger.info(f"Created Qdrant collection: {collection_name} with 3072 dimensions")
-        
+
     vector_store = QdrantVectorStore(
         client=client,
         collection_name=collection_name,
         embedding=embeddings,
     )
-    
+
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-    
-    for url in set(LINKS): # Remove duplicates
+
+    for url in set(LINKS):  # Remove duplicates
         logger.info(f"Processing URL: {url}")
         try:
             result = md.convert(url)
@@ -104,17 +106,18 @@ def main():
             if not text_content or len(text_content.strip()) < 50:
                 logger.warning(f"Extracted content is too short or empty for {url}")
                 continue
-            
+
             doc = Document(page_content=text_content, metadata={"source": url})
-            
+
             chunks = text_splitter.split_documents([doc])
             logger.info(f"Split into {len(chunks)} chunks.")
-            
+
             vector_store.add_documents(chunks)
             logger.info(f"Successfully indexed chunks for {url}")
-            
+
         except Exception as e:
             logger.error(f"Failed to process {url}: {e}")
+
 
 if __name__ == "__main__":
     main()

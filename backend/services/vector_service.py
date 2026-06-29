@@ -1,10 +1,12 @@
-import os
 import logging
+import os
+
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
 
 logger = logging.getLogger(__name__)
+
 
 class VectorService:
     def __init__(self):
@@ -20,7 +22,7 @@ class VectorService:
             self.embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-2")
             logger.info(f"Connecting to Qdrant at {self.qdrant_url}...")
             client = QdrantClient(url=self.qdrant_url)
-            
+
             # We don't create the collection here, just connect to it
             self.vector_store = QdrantVectorStore(
                 client=client,
@@ -37,40 +39,38 @@ class VectorService:
         Returns a formatted string of context or an empty string if failed.
         """
         target_collection = collection_name or self.collection_name
-        
+
         try:
             logger.info(f"Performing semantic search for: '{query}' in {target_collection} (k={k})")
-            
+
             client = QdrantClient(url=self.qdrant_url)
             store = QdrantVectorStore(
                 client=client,
                 collection_name=target_collection,
                 embedding=self.embeddings,
             )
-            
+
             docs = store.similarity_search(query, k=k)
-            
+
             if not docs:
                 return ""
-                
+
             context_parts = []
             for idx, doc in enumerate(docs, 1):
-                source = doc.metadata.get('source', 'Unknown Source')
+                source = doc.metadata.get("source", "Unknown Source")
                 truncated_content = doc.page_content.strip()
-                context_parts.append(
-                    f"[Document #{idx}] Source: {source}\n"
-                    f"Content: {truncated_content}"
-                )
-            
+                context_parts.append(f"[Document #{idx}] Source: {source}\n" f"Content: {truncated_content}")
+
             return (
-                "\n\n=== GROUNDING REFERENCE DATABASE (RAG) ===\n" +
-                "\n\n".join(context_parts) +
-                "\n=========================================\n"
+                "\n\n=== GROUNDING REFERENCE DATABASE (RAG) ===\n"
+                + "\n\n".join(context_parts)
+                + "\n=========================================\n"
             )
-            
+
         except Exception as e:
             logger.error(f"Error during semantic search: {e}")
             return ""
+
 
 vector_service = VectorService()
 

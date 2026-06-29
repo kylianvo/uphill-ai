@@ -7,7 +7,7 @@ interface WorkoutDescriptionProps {
 export default function WorkoutDescription({ description }: WorkoutDescriptionProps) {
   if (!description) return null;
 
-  // Regex to extract sections. 
+  // Regex to extract sections.
   // Looks for keywords followed by a colon or dash, capturing the text until the next keyword or end of string.
   const extractSection = (keyword: string) => {
     // Escape keywords for regex safety although they are hardcoded
@@ -61,13 +61,13 @@ export default function WorkoutDescription({ description }: WorkoutDescriptionPr
   };
 
   return (
-    <div style={{ 
-      display: "flex", 
-      flexDirection: "column", 
-      gap: "16px", 
-      marginTop: "16px", 
-      paddingTop: "16px", 
-      borderTop: "1px solid var(--border-subtle, rgba(128, 128, 128, 0.15))" 
+    <div style={{
+      display: "flex",
+      flexDirection: "column",
+      gap: "16px",
+      marginTop: "16px",
+      paddingTop: "16px",
+      borderTop: "1px solid var(--border-subtle, rgba(128, 128, 128, 0.15))"
     }}>
       {/* Overall Summary */}
       {sections.overall && (
@@ -77,10 +77,10 @@ export default function WorkoutDescription({ description }: WorkoutDescriptionPr
       )}
 
       {/* Asymmetric Spec Grid */}
-      <div style={{ 
-        display: "grid", 
-        gridTemplateColumns: "100px 1fr", 
-        gap: "12px 16px" 
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "100px 1fr",
+        gap: "12px 16px"
       }}>
         {/* Execution / Process */}
         {sections.process && (

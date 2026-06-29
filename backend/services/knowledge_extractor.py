@@ -4,9 +4,10 @@ Knowledge Extractor Service
 Queries NotebookLM on 8 targeted topics, then uses Gemini to structure
 each response into JSON knowledge cards, which are saved to the DB.
 """
-import json
+
 import asyncio
-from typing import List, Dict, Any
+import json
+from typing import Any
 
 # Topic queries sent to NotebookLM — each focuses on a distinct area
 TOPIC_QUERIES = [
@@ -106,11 +107,12 @@ Source summary:
 Output ONLY a valid JSON array. No markdown, no explanation, no code fences.
 """
 
+
 async def extract_knowledge_cards(
     notebook_id: str,
     auth_json: str,
     api_key: str,
-    status_holder: Dict[str, Any],
+    status_holder: dict[str, Any],
 ) -> int:
     """
     Full extraction pipeline:
@@ -118,8 +120,8 @@ async def extract_knowledge_cards(
     Updates status_holder in place so the API can stream progress.
     Returns total cards saved.
     """
-    from services.notebooklm_service import NotebookLmService
     from db import clear_knowledge_cards, save_knowledge_cards
+    from services.notebooklm_service import NotebookLmService
 
     try:
         import google.generativeai as genai
@@ -141,12 +143,14 @@ async def extract_knowledge_cards(
 
     for idx, topic_def in enumerate(TOPIC_QUERIES):
         topic_name = topic_def["label"]
-        status_holder.update({
-            "status": "extracting",
-            "current_topic": topic_name,
-            "progress": idx,
-            "total": total_topics,
-        })
+        status_holder.update(
+            {
+                "status": "extracting",
+                "current_topic": topic_name,
+                "progress": idx,
+                "total": total_topics,
+            }
+        )
         print(f"[KnowledgeExtractor] Querying NLM for: {topic_name}")
 
         try:
@@ -170,10 +174,11 @@ async def extract_knowledge_cards(
                 source_text=nlm_text[:8000],  # Trim to avoid token limits
             )
             print(f"[KnowledgeExtractor][Gemini] Sending structure prompt ({len(prompt)} chars) for {topic_name}")
-            print(f"[KnowledgeExtractor][Gemini] --- PROMPT START ---")
+            print("[KnowledgeExtractor][Gemini] --- PROMPT START ---")
             print(prompt[:1000])
-            print(f"[KnowledgeExtractor][Gemini] --- PROMPT END ---")
+            print("[KnowledgeExtractor][Gemini] --- PROMPT END ---")
             import asyncio
+
             response = await asyncio.to_thread(
                 model.generate_content,
                 prompt,
@@ -222,19 +227,22 @@ async def extract_knowledge_cards(
             continue
 
     from datetime import datetime
-    status_holder.update({
-        "status": "done",
-        "current_topic": None,
-        "card_count": total_saved,
-        "last_extracted": datetime.utcnow().isoformat(),
-        "progress": total_topics,
-        "total": total_topics,
-    })
+
+    status_holder.update(
+        {
+            "status": "done",
+            "current_topic": None,
+            "card_count": total_saved,
+            "last_extracted": datetime.utcnow().isoformat(),
+            "progress": total_topics,
+            "total": total_topics,
+        }
+    )
     print(f"[KnowledgeExtractor] Extraction complete. Total EN cards: {total_saved}")
     return total_saved
 
 
-async def translate_cards_to_vi_with_gemini(model, cards: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+async def translate_cards_to_vi_with_gemini(model, cards: list[dict[str, Any]]) -> list[dict[str, Any]]:
     translated = []
     for card in cards:
         prompt = f"""
@@ -272,12 +280,14 @@ Return ONLY the JSON object. Do not include markdown code block (no ```json).
         except Exception as e:
             print(f"[KnowledgeExtractor] Error translating card: {e}")
             # Fallback to copy the card as-is so we don't drop it
-            translated.append({
-                "chapter_title": f"[VI] {card['chapter_title']}",
-                "summary": card["summary"],
-                "key_points": card["key_points"],
-                "tags": card["tags"],
-                "topic": card["topic"],
-                "source_label": card["source_label"]
-            })
+            translated.append(
+                {
+                    "chapter_title": f"[VI] {card['chapter_title']}",
+                    "summary": card["summary"],
+                    "key_points": card["key_points"],
+                    "tags": card["tags"],
+                    "topic": card["topic"],
+                    "source_label": card["source_label"],
+                }
+            )
     return translated

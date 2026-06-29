@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import AnalyticsProvider from "@/components/AnalyticsProvider";
+import { AppProvider } from "@/contexts/AppContext";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   variable: "--font-outfit", /* Keeping variable name so we don't have to update all css */
@@ -44,7 +45,9 @@ export default function RootLayout({
       </head>
       <body className="antialiased">
         <AnalyticsProvider />
-        {children}
+        <AppProvider>
+          {children}
+        </AppProvider>
       </body>
     </html>
   );

@@ -1,11 +1,14 @@
-from typing import List, Dict, Any, Optional
 import json
-from db import engine
+from typing import Any
+
 from sqlalchemy import text
+
+from db import engine
+
 
 class AnalyticsService:
     @staticmethod
-    def track_events(events: List[Dict[str, Any]], user_id: Optional[int] = None, session_id: Optional[str] = None):
+    def track_events(events: list[dict[str, Any]], user_id: int | None = None, session_id: str | None = None):
         """
         Batch insert analytics events into PostgreSQL.
         """
@@ -17,7 +20,7 @@ class AnalyticsService:
                 event_name = event.get("event_name")
                 properties = event.get("properties", {})
                 url = event.get("url")
-                
+
                 if not event_name:
                     continue
 
@@ -31,6 +34,6 @@ class AnalyticsService:
                         "event_name": event_name,
                         "properties": json.dumps(properties),
                         "session_id": session_id,
-                        "url": url
-                    }
+                        "url": url,
+                    },
                 )

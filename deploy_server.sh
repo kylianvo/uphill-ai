@@ -22,7 +22,7 @@ rsync -avz --exclude '.venv' --exclude '__pycache__' --exclude '*.pyc' \
     ./backend/ $SERVER:$TARGET_DIR/backend/
 
 # Sync docker-compose.yml and grafana configs
-rsync -avz ./docker-compose.yml $SERVER:$TARGET_DIR/ 
+rsync -avz ./docker-compose.yml $SERVER:$TARGET_DIR/
 rsync -avz ./grafana/ $SERVER:$TARGET_DIR/grafana/
 
 # 4. Sync .env file (prefer .env.production if it exists)

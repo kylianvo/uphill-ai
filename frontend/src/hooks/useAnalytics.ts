@@ -1,8 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 
 export interface AnalyticsEvent {
   event_name: string;
-  properties?: Record<string, any>;
+  properties?: Record<string, unknown>;
   url?: string;
 }
 
@@ -12,7 +12,7 @@ const eventQueue: AnalyticsEvent[] = [];
 export function useAnalytics() {
   const isFlushing = useRef(false);
 
-  const trackEvent = (event_name: string, properties?: Record<string, any>) => {
+  const trackEvent = (event_name: string, properties?: Record<string, unknown>) => {
     eventQueue.push({
       event_name,
       properties,
@@ -20,25 +20,25 @@ export function useAnalytics() {
     });
   };
 
-  const getBackendUrl = () => {
+  const getBackendUrl = useCallback(() => {
     if (typeof window !== 'undefined') {
       const override = localStorage.getItem('UPHILL_API_URL_OVERRIDE');
       if (override) return override;
     }
     return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-  };
+  }, []);
 
-  const flushEvents = async () => {
+  const flushEvents = useCallback(async () => {
     if (eventQueue.length === 0 || isFlushing.current) return;
-    
+
     isFlushing.current = true;
     const batch = [...eventQueue];
     eventQueue.length = 0; // Clear queue
-    
+
     try {
       const token = localStorage.getItem('uphill_session_token');
       const backendUrl = getBackendUrl();
-      
+
       const response = await fetch(`${backendUrl}/api/analytics/track_batch`, {
         method: 'POST',
         headers: {
@@ -50,17 +50,17 @@ export function useAnalytics() {
           session_id: localStorage.getItem('uphill_session_id')
         })
       });
-      
+
       if (!response.ok) {
         // If it failed, put them back in the queue
         eventQueue.unshift(...batch);
       }
-    } catch (e) {
+    } catch {
       eventQueue.unshift(...batch);
     } finally {
       isFlushing.current = false;
     }
-  };
+  }, [getBackendUrl]);
 
   useEffect(() => {
     // Generate a simple session ID if one doesn't exist
@@ -70,7 +70,7 @@ export function useAnalytics() {
 
     // Flush every 5 seconds
     const interval = setInterval(flushEvents, 5000);
-    
+
     // Also flush on visibility change (e.g. user leaves page)
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
@@ -93,14 +93,14 @@ export function useAnalytics() {
         }
       }
     };
-    
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    
+
     return () => {
       clearInterval(interval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, []);
+  }, [flushEvents]);
 
   return { trackEvent };
 }

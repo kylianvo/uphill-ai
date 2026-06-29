@@ -1,27 +1,31 @@
-import os
 import hashlib
 import json
-from typing import List, Optional, Dict, Any
+from typing import Any
+
 from pydantic import BaseModel
+
 from config import settings
 from services.notebooklm_service import NotebookLmService
 
+
 class GearParams(BaseModel):
-    surface: Optional[str] = None
-    cushioning: Optional[str] = None
-    width: Optional[str] = None
-    carbon_plate: Optional[str] = None
-    budget: Optional[str] = None
-    terrain: Optional[List[str]] = None
-    use_case: Optional[str] = None
-    preferred_brands: Optional[str] = None
-    additional_context: Optional[str] = None
-    race_distance: Optional[str] = None
-    user_profile: Optional[str] = None
-    active_plan_context: Optional[str] = None
+    surface: str | None = None
+    cushioning: str | None = None
+    width: str | None = None
+    carbon_plate: str | None = None
+    budget: str | None = None
+    terrain: list[str] | None = None
+    use_case: str | None = None
+    preferred_brands: str | None = None
+    additional_context: str | None = None
+    race_distance: str | None = None
+    user_profile: str | None = None
+    active_plan_context: str | None = None
+
 
 # Simple in-memory cache to skip NotebookLM calls for exact same queries
-_GEAR_CACHE: Dict[str, str] = {}
+_GEAR_CACHE: dict[str, str] = {}
+
 
 class GearPlannerService:
     def __init__(self):
@@ -33,16 +37,16 @@ class GearPlannerService:
         dict_str = json.dumps(param_dict, sort_keys=True)
         return hashlib.md5(dict_str.encode()).hexdigest()
 
-    async def generate_plan(self, user_profile: str, params: GearParams) -> Dict[str, Any]:
+    async def generate_plan(self, user_profile: str, params: GearParams) -> dict[str, Any]:
         cache_key = self._generate_cache_key(params)
         if cache_key in _GEAR_CACHE:
             print("[GearPlanner] Cache HIT! Returning instant response.")
             return json.loads(_GEAR_CACHE[cache_key])
 
         terrain_str = ", ".join(params.terrain) if params.terrain else "Not specified"
-        
+
         # Merged Query: Ask NotebookLM to do strict JSON formatting
-        nlm_query = f"""You are an expert running shoe specialist. 
+        nlm_query = f"""You are an expert running shoe specialist.
 Please search your documents for shoes that match the following specific criteria:
 
 - Surface: {params.surface or 'Unknown'}
@@ -58,9 +62,9 @@ Please search your documents for shoes that match the following specific criteri
 - Athlete Profile: {params.user_profile or 'Not specified'}
 - Current Training Plan / Goal: {params.active_plan_context or 'Not specified'}
 
-TASK: 
+TASK:
 Return your top 5 shoe recommendations based on these exact criteria.
-You MUST output your response EXACTLY as a valid JSON object. 
+You MUST output your response EXACTLY as a valid JSON object.
 DO NOT include any markdown formatting (like ```json), DO NOT include conversational filler, DO NOT include plain text paragraphs outside the JSON.
 The JSON must follow this exact structure:
 
@@ -92,16 +96,13 @@ The JSON must follow this exact structure:
             try:
                 print(f"[GearPlanner] Cache MISS. Querying NotebookLM ({self.notebook_id})...")
                 print(f"[GearPlanner] NotebookLM Input Query:\n{nlm_query}\n{'-'*40}")
-                
+
                 # Single LLM call!
                 nlm_response = await NotebookLmService.query_notebook(
-                    notebook_id=self.notebook_id,
-                    auth_json=auth_json,
-                    query=nlm_query,
-                    service="gear_finder"
+                    notebook_id=self.notebook_id, auth_json=auth_json, query=nlm_query, service="gear_finder"
                 )
                 print(f"[GearPlanner] NotebookLM Output Response:\n{nlm_response}\n{'-'*40}")
-                
+
                 # Clean up response in case it has markdown ticks
                 cleaned_response = nlm_response.strip()
                 if cleaned_response.startswith("```json"):
@@ -111,7 +112,7 @@ The JSON must follow this exact structure:
                 if cleaned_response.endswith("```"):
                     cleaned_response = cleaned_response[:-3]
                 cleaned_response = cleaned_response.strip()
-                
+
                 # Validate JSON parse
                 try:
                     parsed_json = json.loads(cleaned_response)
@@ -120,7 +121,7 @@ The JSON must follow this exact structure:
                     # Return a fallback JSON structure in case the LLM failed to format
                     parsed_json = {
                         "recommendations": [],
-                        "tips": ["Could not parse recommendations from NotebookLM. Please try again."]
+                        "tips": ["Could not parse recommendations from NotebookLM. Please try again."],
                     }
                     cleaned_response = json.dumps(parsed_json)
 
@@ -129,8 +130,12 @@ The JSON must follow this exact structure:
                 return parsed_json
             except Exception as e:
                 print(f"[GearPlanner] NotebookLM query failed: {e}")
-                return {"recommendations": [], "tips": [f"Could not retrieve recommendations from NotebookLM: {str(e)}"]}
+                return {
+                    "recommendations": [],
+                    "tips": [f"Could not retrieve recommendations from NotebookLM: {str(e)}"],
+                }
         else:
             return {"recommendations": [], "tips": ["Error: NotebookLM Auth JSON is missing."]}
+
 
 gear_planner = GearPlannerService()

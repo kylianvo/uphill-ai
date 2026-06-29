@@ -1,6 +1,7 @@
 import json
 import os
 import time
+
 import google.generativeai as genai
 from dotenv import load_dotenv
 
@@ -13,6 +14,7 @@ if not api_key:
 
 genai.configure(api_key=api_key)
 model = genai.GenerativeModel("gemini-2.5-flash")
+
 
 def translate_card(card):
     prompt = f"""
@@ -60,11 +62,12 @@ Return ONLY the JSON object. Do not include markdown code block (no ```json).
             print(f"Retry failed: {retry_err}")
             return None
 
+
 def main():
     backup_path = os.path.join(os.path.dirname(__file__), "knowledge_cards_backup.json")
     output_path = os.path.join(os.path.dirname(__file__), "knowledge_cards_backup_vi.json")
 
-    with open(backup_path, "r", encoding="utf-8") as f:
+    with open(backup_path, encoding="utf-8") as f:
         cards = json.load(f)
 
     print(f"Loaded {len(cards)} cards for translation.")
@@ -84,6 +87,7 @@ def main():
         json.dump(translated_cards, f, indent=2, ensure_ascii=False)
 
     print(f"Saved {len(translated_cards)} translated cards to {output_path}")
+
 
 if __name__ == "__main__":
     main()

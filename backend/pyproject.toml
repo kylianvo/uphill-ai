@@ -1,0 +1,22 @@
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes (unused imports, undefined names)
+    "I",   # isort (import ordering)
+    "W",   # pycodestyle warnings
+    "UP",  # pyupgrade (modernise syntax)
+]
+ignore = [
+    "E501",  # line too long — handled by formatter
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["config", "db", "services", "parsers", "routers"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

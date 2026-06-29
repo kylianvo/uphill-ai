@@ -1,16 +1,9 @@
-from datetime import datetime, timedelta, timezone
-from typing import List, Dict, Any
+from datetime import UTC, datetime, timedelta
+from typing import Any
+
 
 class CalendarService:
-    DAY_OFFSETS = {
-        "Monday": 0,
-        "Tuesday": 1,
-        "Wednesday": 2,
-        "Thursday": 3,
-        "Friday": 4,
-        "Saturday": 5,
-        "Sunday": 6
-    }
+    DAY_OFFSETS = {"Monday": 0, "Tuesday": 1, "Wednesday": 2, "Thursday": 3, "Friday": 4, "Saturday": 5, "Sunday": 6}
 
     @staticmethod
     def escape_text(val: str) -> str:
@@ -42,12 +35,12 @@ class CalendarService:
         """
         if not line:
             return ""
-            
+
         chunks = []
         current_chunk = ""
         current_bytes = 0
         limit = 75
-        
+
         for char in line:
             char_bytes = len(char.encode("utf-8"))
             if current_bytes + char_bytes > limit:
@@ -58,14 +51,14 @@ class CalendarService:
             else:
                 current_chunk += char
                 current_bytes += char_bytes
-                
+
         if current_chunk:
             chunks.append(current_chunk)
-            
+
         return "\r\n".join(chunks)
 
     @classmethod
-    def generate_ics_string(cls, race_date_str: str, workouts: List[Dict[str, Any]], time_pref: str = "all_day") -> str:
+    def generate_ics_string(cls, race_date_str: str, workouts: list[dict[str, Any]], time_pref: str = "all_day") -> str:
         """
         Generates a standard RFC 5545 iCalendar string.
         Paces workouts backwards from the target race date.
@@ -112,27 +105,27 @@ class CalendarService:
             "METHOD:PUBLISH",
         ]
 
-        timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
 
         for idx, wo in enumerate(workouts):
             week_num = int(wo["week_number"])
             day_name = wo["day_of_week"]
-            
+
             day_offset = cls.DAY_OFFSETS.get(day_name, 0)
             workout_days_delta = ((week_num - 1) * 7) + day_offset
             workout_date = start_monday + timedelta(days=workout_days_delta)
-            
+
             # Standard RFC 5545: DTEND for all-day events is non-inclusive (the following day)
             next_date = workout_date + timedelta(days=1)
             date_str = workout_date.strftime("%Y%m%d")
             next_date_str = next_date.strftime("%Y%m%d")
-            
+
             uid = f"uphill-ai-wo-{wo.get('plan_id', 1)}-{week_num}-{day_offset}-{idx}@uphill.ai"
-            
+
             summary = f"Uphill AI: {wo['title']}"
             if wo["type"] == "Rest":
                 summary = f"Uphill AI: {wo['title']} (Rest)"
-                
+
             # Compile description with human-readable date
             desc_parts = []
             desc_parts.append(f"Scheduled Date: {workout_date.strftime('%A, %B %d, %Y')}")
@@ -150,14 +143,14 @@ class CalendarService:
                 desc_parts.append(f"\nWorkout Guide:\n{wo['description']}")
             if wo.get("fueling_tip"):
                 desc_parts.append(f"\nFueling / Nutrition:\n{wo['fueling_tip']}")
-                
+
             raw_description = "\n".join(desc_parts)
-            
+
             # iCalendar properties with escaping and folding
             ics_lines.append("BEGIN:VEVENT")
             ics_lines.append(f"UID:{uid}")
             ics_lines.append(f"DTSTAMP:{timestamp}")
-            
+
             if time_pref in ("morning", "afternoon", "evening"):
                 # Determine start hour
                 start_hour = 8 if time_pref == "morning" else (14 if time_pref == "afternoon" else 18)
@@ -165,28 +158,29 @@ class CalendarService:
                 duration = int(wo.get("duration_minutes", 60))
                 if duration <= 0:
                     duration = 60
-                
+
                 # Combine workout date with start time
                 from datetime import time
+
                 start_time = time(hour=start_hour, minute=0, second=0)
                 start_dt = datetime.combine(workout_date, start_time)
                 end_dt = start_dt + timedelta(minutes=duration)
-                
+
                 start_str = start_dt.strftime("%Y%m%dT%H%M%S")
                 end_str = end_dt.strftime("%Y%m%dT%H%M%S")
-                
+
                 ics_lines.append(f"DTSTART:{start_str}")
                 ics_lines.append(f"DTEND:{end_str}")
             else:
                 ics_lines.append(f"DTSTART;VALUE=DATE:{date_str}")
                 ics_lines.append(f"DTEND;VALUE=DATE:{next_date_str}")
-                
+
             ics_lines.append(f"SUMMARY:{cls.escape_text(summary)}")
             ics_lines.append(f"DESCRIPTION:{cls.escape_text(raw_description)}")
             ics_lines.append("END:VEVENT")
 
         ics_lines.append("END:VCALENDAR")
-        
+
         # Fold and format all output lines with CRLF endings
         folded_lines = [cls.fold_line(line) for line in ics_lines]
         return "\r\n".join(folded_lines) + "\r\n"

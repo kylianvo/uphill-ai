@@ -1,26 +1,30 @@
-import os
 import hashlib
 import json
-from typing import List, Optional, Dict, Any
+from typing import Any
+
 from pydantic import BaseModel
+
 from config import settings
 from services.notebooklm_service import NotebookLmService
 
-class NutritionParams(BaseModel):
-    distance_km: Optional[float] = None
-    elevation_gain_m: Optional[float] = None
-    target_time_hours: Optional[float] = None
-    weather_temp: Optional[str] = None
-    preferred_brands: Optional[str] = None
-    target_carb_h: Optional[float] = None
-    target_sodium_h: Optional[float] = None
-    preferred_format: Optional[List[str]] = None
-    athlete_level: Optional[str] = None
-    additional_context: Optional[str] = None
-    user_profile: Optional[str] = None
-    active_plan_context: Optional[str] = None
 
-_NUTRITION_CACHE: Dict[str, str] = {}
+class NutritionParams(BaseModel):
+    distance_km: float | None = None
+    elevation_gain_m: float | None = None
+    target_time_hours: float | None = None
+    weather_temp: str | None = None
+    preferred_brands: str | None = None
+    target_carb_h: float | None = None
+    target_sodium_h: float | None = None
+    preferred_format: list[str] | None = None
+    athlete_level: str | None = None
+    additional_context: str | None = None
+    user_profile: str | None = None
+    active_plan_context: str | None = None
+
+
+_NUTRITION_CACHE: dict[str, str] = {}
+
 
 class NutritionPlannerService:
     def __init__(self):
@@ -31,7 +35,7 @@ class NutritionPlannerService:
         dict_str = json.dumps(param_dict, sort_keys=True)
         return hashlib.md5(dict_str.encode()).hexdigest()
 
-    async def generate_plan(self, user_profile: str, params: NutritionParams) -> Dict[str, Any]:
+    async def generate_plan(self, user_profile: str, params: NutritionParams) -> dict[str, Any]:
         cache_key = self._generate_cache_key(params)
         if cache_key in _NUTRITION_CACHE:
             print("[NutritionPlanner] Cache HIT! Returning instant response.")
@@ -107,10 +111,7 @@ Focus heavily on {params.preferred_brands or 'any brands'} if specified. Do not 
             try:
                 print(f"[NutritionPlanner] Cache MISS. Querying NotebookLM ({self.notebook_id})...")
                 nlm_response = await NotebookLmService.query_notebook(
-                    notebook_id=self.notebook_id,
-                    auth_json=auth_json,
-                    query=nlm_query,
-                    service="nutrition_lab"
+                    notebook_id=self.notebook_id, auth_json=auth_json, query=nlm_query, service="nutrition_lab"
                 )
                 print(f"[NutritionPlanner] NotebookLM Output Response:\n{nlm_response}\n{'-'*40}")
 
@@ -131,7 +132,7 @@ Focus heavily on {params.preferred_brands or 'any brands'} if specified. Do not 
                     parsed = {
                         "products": [],
                         "hourly_plan": [],
-                        "tips": ["Could not parse nutrition plan from NotebookLM. Please try again."]
+                        "tips": ["Could not parse nutrition plan from NotebookLM. Please try again."],
                     }
                     cleaned = json.dumps(parsed)
 
@@ -142,5 +143,6 @@ Focus heavily on {params.preferred_brands or 'any brands'} if specified. Do not 
                 return {"products": [], "hourly_plan": [], "tips": [f"Could not retrieve plan: {str(e)}"]}
         else:
             return {"products": [], "hourly_plan": [], "tips": ["Error: NotebookLM Auth JSON is missing."]}
+
 
 nutrition_planner = NutritionPlannerService()

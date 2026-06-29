@@ -1,8 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useAnalytics } from '@/hooks/useAnalytics';
-import { BowlFood, XCircle, Target, WarningCircle, Clock, Package, ChartBar } from "@phosphor-icons/react";
+import { BowlFood, XCircle, WarningCircle, Clock, Package } from "@phosphor-icons/react";
 
 interface NutritionProduct {
   brand: string;
@@ -87,7 +88,7 @@ export const NutritionLab: React.FC<NutritionLabProps> = ({ isOpen, onClose, lan
 
       let attempt = 0;
       let success = false;
-      
+
       while (attempt < 3 && !success) {
         try {
           const response = await fetch(`${baseUrl}/api/coach/calculate-fueling`, {
@@ -106,7 +107,7 @@ export const NutritionLab: React.FC<NutritionLabProps> = ({ isOpen, onClose, lan
               active_plan_context: activePlanStr
             }),
           });
-          
+
           if (response.ok) {
             const result = await response.json();
             setPlan(result);
@@ -122,13 +123,13 @@ export const NutritionLab: React.FC<NutritionLabProps> = ({ isOpen, onClose, lan
           if (attempt < 3) await new Promise(r => setTimeout(r, 6000));
         }
       }
-      
+
       trackEvent('nutrition_plan_generated', {
         success,
         duration: fuelDuration,
         athlete_level: athleteLevel
       });
-      
+
       if (!success) {
         console.error("Failed to calculate fueling after multiple attempts");
       }
@@ -306,7 +307,7 @@ export const NutritionLab: React.FC<NutritionLabProps> = ({ isOpen, onClose, lan
               </button>
               <button id="tab-tips" onClick={() => setActiveTab("tips")} style={tabStyle(activeTab === "tips")}>
                 <WarningCircle size={14} style={{ display: "inline", marginRight: "5px", verticalAlign: "middle" }} />
-                Coach's Notes
+                Coach&apos;s Notes
               </button>
             </div>
 

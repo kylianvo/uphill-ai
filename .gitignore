@@ -43,3 +43,7 @@ deploy.env
 
 # Antigravity IDE skills lockfile
 skills-lock.json
+
+# Backup files
+*.bak
+*.bak2

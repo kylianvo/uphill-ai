@@ -92,6 +92,17 @@ services:
       db:
         condition: service_healthy
 
+
+  frontend:
+    image: uphill-frontend:latest
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
 volumes:
   pgdata:
     name: uphill-ai_pgdata

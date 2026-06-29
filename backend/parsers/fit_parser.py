@@ -1,20 +1,22 @@
 import math
 from datetime import datetime
-from typing import Dict, Any, List, Optional
+from typing import Any
+
 import fitparse
+
 
 class FitParser:
     SEMICIRCLE_CONVERSION = 180.0 / (2**31)
 
     @staticmethod
-    def semicircles_to_degrees(semicircles: Optional[int]) -> Optional[float]:
+    def semicircles_to_degrees(semicircles: int | None) -> float | None:
         if semicircles is None:
             return None
         # Fit files use semicircles for lat/lon representation.
         return semicircles * FitParser.SEMICIRCLE_CONVERSION
 
     @classmethod
-    def parse(cls, file_bytes: bytes) -> Dict[str, Any]:
+    def parse(cls, file_bytes: bytes) -> dict[str, Any]:
         """
         Parses FIT file bytes and returns a dictionary containing
         summary metrics and downsampled time-series data.
@@ -24,7 +26,7 @@ class FitParser:
         except Exception as e:
             raise ValueError(f"Failed to parse FIT file structure: {str(e)}")
 
-        summary: Dict[str, Any] = {
+        summary: dict[str, Any] = {
             "start_time": None,
             "total_distance_meters": 0.0,
             "total_duration_seconds": 0.0,
@@ -35,17 +37,19 @@ class FitParser:
             "avg_speed_mps": 0.0,
             "max_speed_mps": 0.0,
             "avg_cadence": None,
-            "calories": 0
+            "calories": 0,
         }
-        
-        records: List[Dict[str, Any]] = []
+
+        records: list[dict[str, Any]] = []
 
         # 1. Gather all records and extract session summary if available
         for message in fit_file.get_messages():
             if message.name == "session":
                 values = message.get_values()
                 summary["total_distance_meters"] = values.get("total_distance", 0.0)
-                summary["total_duration_seconds"] = values.get("total_timer_time", values.get("total_elapsed_time", 0.0))
+                summary["total_duration_seconds"] = values.get(
+                    "total_timer_time", values.get("total_elapsed_time", 0.0)
+                )
                 summary["avg_heart_rate"] = values.get("avg_heart_rate")
                 summary["max_heart_rate"] = values.get("max_heart_rate")
                 summary["total_elevation_gain_meters"] = values.get("total_ascent", 0.0)
@@ -62,20 +66,22 @@ class FitParser:
                 # Semicircles conversion
                 lat = cls.semicircles_to_degrees(values.get("position_lat"))
                 lon = cls.semicircles_to_degrees(values.get("position_long"))
-                
+
                 record_time = values.get("timestamp")
                 timestamp_str = record_time.isoformat() if isinstance(record_time, datetime) else None
-                
-                records.append({
-                    "timestamp": timestamp_str,
-                    "latitude": lat,
-                    "longitude": lon,
-                    "altitude_meters": values.get("enhanced_altitude", values.get("altitude")),
-                    "heart_rate": values.get("heart_rate"),
-                    "speed_mps": values.get("enhanced_speed", values.get("speed")),
-                    "distance_meters": values.get("distance"),
-                    "cadence": values.get("cadence")
-                })
+
+                records.append(
+                    {
+                        "timestamp": timestamp_str,
+                        "latitude": lat,
+                        "longitude": lon,
+                        "altitude_meters": values.get("enhanced_altitude", values.get("altitude")),
+                        "heart_rate": values.get("heart_rate"),
+                        "speed_mps": values.get("enhanced_speed", values.get("speed")),
+                        "distance_meters": values.get("distance"),
+                        "cadence": values.get("cadence"),
+                    }
+                )
 
         # 2. Backfill start time and check aggregates if 'session' was missing
         if not summary["start_time"] and records:
@@ -83,7 +89,7 @@ class FitParser:
 
         if summary["total_distance_meters"] == 0.0 and records:
             summary["total_distance_meters"] = records[-1].get("distance_meters") or 0.0
-            
+
         if summary["total_duration_seconds"] == 0.0 and records:
             # Estimate from timestamps
             t_start = records[0]["timestamp"]
@@ -110,8 +116,4 @@ class FitParser:
             step = math.ceil(len(records) / max_points)
             downsampled_records = records[::step]
 
-        return {
-            "summary": summary,
-            "records": downsampled_records,
-            "total_raw_points": len(records)
-        }
+        return {"summary": summary, "records": downsampled_records, "total_raw_points": len(records)}

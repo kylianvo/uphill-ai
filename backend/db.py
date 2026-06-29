@@ -2,10 +2,11 @@
 Database layer — SQLAlchemy Core with PostgreSQL.
 All raw SQL uses %s-style placeholders via psycopg2 through SQLAlchemy.
 """
+
+import datetime
 import json
 import uuid
-import datetime
-from typing import List, Dict, Any, Optional
+from typing import Any
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.pool import QueuePool
@@ -31,10 +32,12 @@ def get_conn():
 
 # ─── Schema Init ─────────────────────────────────────────────────────────────
 
+
 def init_db():
     """Create all tables if they don't exist. Safe to call on every startup."""
     with engine.connect() as conn:
-        conn.execute(text("""
+        conn.execute(
+            text("""
         CREATE TABLE IF NOT EXISTS users (
             id                      SERIAL PRIMARY KEY,
             email                   TEXT UNIQUE NOT NULL,
@@ -66,17 +69,21 @@ def init_db():
             gemini_api_key          TEXT,
             created_at              TIMESTAMPTZ DEFAULT NOW()
         )
-        """))
+        """)
+        )
 
-        conn.execute(text("""
+        conn.execute(
+            text("""
         CREATE TABLE IF NOT EXISTS sessions (
             session_token   TEXT PRIMARY KEY,
             user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
             expires_at      TIMESTAMPTZ NOT NULL
         )
-        """))
+        """)
+        )
 
-        conn.execute(text("""
+        conn.execute(
+            text("""
         CREATE TABLE IF NOT EXISTS sources (
             id          SERIAL PRIMARY KEY,
             title       TEXT NOT NULL,
@@ -86,9 +93,11 @@ def init_db():
             summary     TEXT,
             created_at  TIMESTAMPTZ DEFAULT NOW()
         )
-        """))
+        """)
+        )
 
-        conn.execute(text("""
+        conn.execute(
+            text("""
         CREATE TABLE IF NOT EXISTS plans (
             id                      SERIAL PRIMARY KEY,
             user_id                 INTEGER REFERENCES users(id) ON DELETE CASCADE,
@@ -102,9 +111,11 @@ def init_db():
             course_elevation_gain_m REAL,
             created_at              TIMESTAMPTZ DEFAULT NOW()
         )
-        """))
+        """)
+        )
 
-        conn.execute(text("""
+        conn.execute(
+            text("""
         CREATE TABLE IF NOT EXISTS workouts (
             id                  SERIAL PRIMARY KEY,
             plan_id             INTEGER NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
@@ -124,9 +135,11 @@ def init_db():
             fueling_tip         TEXT,
             is_completed        INTEGER DEFAULT 0
         )
-        """))
+        """)
+        )
 
-        conn.execute(text("""
+        conn.execute(
+            text("""
         CREATE TABLE IF NOT EXISTS nutrition_products (
             id              SERIAL PRIMARY KEY,
             brand           TEXT NOT NULL,
@@ -137,9 +150,11 @@ def init_db():
             caffeine_mg     REAL DEFAULT 0.0,
             water_ratio_ml  REAL DEFAULT 250.0
         )
-        """))
+        """)
+        )
 
-        conn.execute(text("""
+        conn.execute(
+            text("""
         CREATE TABLE IF NOT EXISTS analytics_events (
             id              SERIAL PRIMARY KEY,
             user_id         INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -150,9 +165,11 @@ def init_db():
             url             TEXT,
             user_agent      TEXT
         )
-        """))
+        """)
+        )
 
-        conn.execute(text("""
+        conn.execute(
+            text("""
         CREATE TABLE IF NOT EXISTS shoes (
             id              SERIAL PRIMARY KEY,
             brand           TEXT NOT NULL,
@@ -164,9 +181,11 @@ def init_db():
             width           TEXT DEFAULT 'normal',
             review_summary  TEXT
         )
-        """))
+        """)
+        )
 
-        conn.execute(text("""
+        conn.execute(
+            text("""
         CREATE TABLE IF NOT EXISTS knowledge_cards (
             id              SERIAL PRIMARY KEY,
             chapter_title   TEXT NOT NULL,
@@ -178,7 +197,8 @@ def init_db():
             lang            TEXT DEFAULT 'en',
             created_at      TIMESTAMPTZ DEFAULT NOW()
         )
-        """))
+        """)
+        )
 
         conn.commit()
 
@@ -199,7 +219,8 @@ def seed_data():
         # Users
         count = conn.execute(text("SELECT COUNT(*) FROM users")).scalar()
         if count == 0:
-            conn.execute(text("""
+            conn.execute(
+                text("""
                 INSERT INTO users (email, name, role, provider, provider_user_id, age, current_weekly_km,
                                    max_hr, resting_hr, aet_hr, ant_hr, use_treadmill, onboarding_complete)
                 VALUES
@@ -207,13 +228,15 @@ def seed_data():
                    35, 50.0, 185, 50, 140, 168, 1, TRUE),
                   ('athlete@uphill.ai', 'Uphill Athlete', 'user', 'mock', 'mock-athlete-id',
                    30, 30.0, 190, 60, 130, 165, 0, TRUE)
-            """))
+            """)
+            )
             print("Seeded default users.")
 
         # Nutrition
         count = conn.execute(text("SELECT COUNT(*) FROM nutrition_products")).scalar()
         if count == 0:
-            conn.execute(text("""
+            conn.execute(
+                text("""
                 INSERT INTO nutrition_products (brand, name, type, carbs_grams, sodium_mg, caffeine_mg, water_ratio_ml)
                 VALUES
                   ('Maurten', 'Gel 100', 'gel', 25.0, 20.0, 0.0, 0.0),
@@ -223,13 +246,15 @@ def seed_data():
                   ('SiS', 'Beta Fuel Gel', 'gel', 40.0, 30.0, 0.0, 0.0),
                   ('Skratch', 'Hydration Mix (1 scoop)', 'drink_mix', 20.0, 380.0, 0.0, 350.0),
                   ('Clif Bar', 'Shot Energy Gel', 'gel', 24.0, 90.0, 0.0, 0.0)
-            """))
+            """)
+            )
             print("Seeded nutrition products.")
 
         # Shoes
         count = conn.execute(text("SELECT COUNT(*) FROM shoes")).scalar()
         if count == 0:
-            conn.execute(text("""
+            conn.execute(
+                text("""
                 INSERT INTO shoes (brand, model, surface, cushioning, drop_mm, plate, width, review_summary)
                 VALUES
                   ('Hoka', 'Speedgoat 6', 'trail', 'plush', 4, 'none', 'normal', 'Cushioned trail shoe for technical vertical loops. Deep lugs.'),
@@ -240,13 +265,15 @@ def seed_data():
                   ('Nike', 'Alphafly 3', 'road', 'plush', 8, 'carbon', 'normal', 'Elite carbon-plated road marathon racer. Ultra responsive.'),
                   ('Asics', 'Superblast 2', 'road', 'plush', 8, 'none', 'normal', 'Highly cushioned non-plated trainer for marathon recovery and long tempos.'),
                   ('Saucony', 'Endorphin Speed 4', 'road', 'balanced', 8, 'nylon', 'normal', 'Nylon-plated tempo and race shoe. Responsive cushioning.')
-            """))
+            """)
+            )
             print("Seeded shoes.")
 
         conn.commit()
 
     # Seed knowledge cards if table is empty for the respective language
     import os
+
     # Seed EN cards
     backup_path_en = os.path.join(os.path.dirname(os.path.abspath(__file__)), "knowledge_cards_backup.json")
     if os.path.exists(backup_path_en):
@@ -254,7 +281,7 @@ def seed_data():
             en_count = conn.execute(text("SELECT COUNT(*) FROM knowledge_cards WHERE lang = 'en'")).scalar()
         if en_count == 0:
             try:
-                with open(backup_path_en, "r", encoding="utf-8") as f:
+                with open(backup_path_en, encoding="utf-8") as f:
                     cards = json.load(f)
                 saved = save_knowledge_cards(cards, lang="en")
                 print(f"Seeded {saved} English knowledge cards from default backup file.")
@@ -268,7 +295,7 @@ def seed_data():
             vi_count = conn.execute(text("SELECT COUNT(*) FROM knowledge_cards WHERE lang = 'vi'")).scalar()
         if vi_count == 0:
             try:
-                with open(backup_path_vi, "r", encoding="utf-8") as f:
+                with open(backup_path_vi, encoding="utf-8") as f:
                     cards = json.load(f)
                 saved = save_knowledge_cards(cards, lang="vi")
                 print(f"Seeded {saved} Vietnamese knowledge cards from default backup file.")
@@ -278,129 +305,151 @@ def seed_data():
 
 # ─── Helper ──────────────────────────────────────────────────────────────────
 
-def _row_to_dict(row) -> Dict[str, Any]:
+
+def _row_to_dict(row) -> dict[str, Any]:
     return dict(row._mapping)
 
 
 # ─── RAG / Sources ───────────────────────────────────────────────────────────
 
-def add_source(title: str, type_str: str, content: str,
-               url_path: Optional[str] = None, summary: Optional[str] = None) -> int:
+
+def add_source(title: str, type_str: str, content: str, url_path: str | None = None, summary: str | None = None) -> int:
     with engine.connect() as conn:
-        result = conn.execute(text(
-            "INSERT INTO sources (title, type, content, url_path, summary) "
-            "VALUES (:title, :type, :content, :url_path, :summary) RETURNING id"
-        ), {"title": title, "type": type_str, "content": content,
-            "url_path": url_path, "summary": summary})
+        result = conn.execute(
+            text(
+                "INSERT INTO sources (title, type, content, url_path, summary) "
+                "VALUES (:title, :type, :content, :url_path, :summary) RETURNING id"
+            ),
+            {"title": title, "type": type_str, "content": content, "url_path": url_path, "summary": summary},
+        )
         conn.commit()
         return result.scalar()
 
 
-def list_sources() -> List[Dict[str, Any]]:
+def list_sources() -> list[dict[str, Any]]:
     with engine.connect() as conn:
-        rows = conn.execute(text(
-            "SELECT id, title, type, url_path, summary, created_at "
-            "FROM sources ORDER BY created_at DESC"
-        )).fetchall()
+        rows = conn.execute(
+            text("SELECT id, title, type, url_path, summary, created_at " "FROM sources ORDER BY created_at DESC")
+        ).fetchall()
     return [_row_to_dict(r) for r in rows]
 
 
-def get_all_grounding_content() -> List[Dict[str, Any]]:
+def get_all_grounding_content() -> list[dict[str, Any]]:
     with engine.connect() as conn:
-        rows = conn.execute(text(
-            "SELECT title, type, content FROM sources"
-        )).fetchall()
+        rows = conn.execute(text("SELECT title, type, content FROM sources")).fetchall()
     return [_row_to_dict(r) for r in rows]
 
 
 def delete_source(source_id: int) -> bool:
     with engine.connect() as conn:
-        result = conn.execute(text(
-            "DELETE FROM sources WHERE id = :id"
-        ), {"id": source_id})
+        result = conn.execute(text("DELETE FROM sources WHERE id = :id"), {"id": source_id})
         conn.commit()
     return result.rowcount > 0
 
 
 # ─── Training Plans ──────────────────────────────────────────────────────────
 
-def create_plan(user_id: int, race_name: str, race_date: str, goal_type: str,
-                target_time_hours: Optional[float], total_weeks: int,
-                course_distance_km: Optional[float] = None,
-                course_elevation_gain_m: Optional[float] = None) -> int:
+
+def create_plan(
+    user_id: int,
+    race_name: str,
+    race_date: str,
+    goal_type: str,
+    target_time_hours: float | None,
+    total_weeks: int,
+    course_distance_km: float | None = None,
+    course_elevation_gain_m: float | None = None,
+) -> int:
     with engine.connect() as conn:
-        result = conn.execute(text("""
+        result = conn.execute(
+            text("""
             INSERT INTO plans (user_id, race_name, race_date, goal_type,
                                target_time_hours, total_weeks, course_distance_km,
                                course_elevation_gain_m)
             VALUES (:user_id, :race_name, :race_date, :goal_type,
                     :tth, :total_weeks, :dist_km, :elev_m)
             RETURNING id
-        """), {"user_id": user_id, "race_name": race_name, "race_date": race_date,
-               "goal_type": goal_type, "tth": target_time_hours,
-               "total_weeks": total_weeks, "dist_km": course_distance_km,
-               "elev_m": course_elevation_gain_m})
+        """),
+            {
+                "user_id": user_id,
+                "race_name": race_name,
+                "race_date": race_date,
+                "goal_type": goal_type,
+                "tth": target_time_hours,
+                "total_weeks": total_weeks,
+                "dist_km": course_distance_km,
+                "elev_m": course_elevation_gain_m,
+            },
+        )
         conn.commit()
         return result.scalar()
 
 
-def get_recent_plans(user_id: int, limit: int = 3) -> List[Dict[str, Any]]:
+def get_recent_plans(user_id: int, limit: int = 3) -> list[dict[str, Any]]:
     with engine.connect() as conn:
-        rows = conn.execute(text(
-            "SELECT * FROM plans WHERE user_id = :uid "
-            "ORDER BY created_at DESC, id DESC LIMIT :lim"
-        ), {"uid": user_id, "lim": limit}).fetchall()
+        rows = conn.execute(
+            text("SELECT * FROM plans WHERE user_id = :uid " "ORDER BY created_at DESC, id DESC LIMIT :lim"),
+            {"uid": user_id, "lim": limit},
+        ).fetchall()
     return [_row_to_dict(r) for r in rows]
 
 
-def save_workouts(plan_id: int, workouts: List[Dict[str, Any]]):
+def save_workouts(plan_id: int, workouts: list[dict[str, Any]]):
     with engine.connect() as conn:
         for wo in workouts:
-            conn.execute(text("""
+            conn.execute(
+                text("""
                 INSERT INTO workouts (plan_id, week_number, day_of_week, phase, title, type,
                     duration_minutes, distance_km, target_zone, target_hr_range, target_pace,
                     treadmill_incline, treadmill_speed, description, fueling_tip)
                 VALUES (:plan_id, :week_number, :day_of_week, :phase, :title, :type,
                     :duration_minutes, :distance_km, :target_zone, :target_hr_range, :target_pace,
                     :treadmill_incline, :treadmill_speed, :description, :fueling_tip)
-            """), {
-                "plan_id": plan_id, "week_number": wo["week_number"],
-                "day_of_week": wo["day_of_week"], "phase": wo["phase"],
-                "title": wo["title"], "type": wo["type"],
-                "duration_minutes": wo["duration_minutes"],
-                "distance_km": wo.get("distance_km"),
-                "target_zone": wo["target_zone"],
-                "target_hr_range": wo.get("target_hr_range"),
-                "target_pace": wo.get("target_pace"),
-                "treadmill_incline": wo.get("treadmill_incline", 0.0),
-                "treadmill_speed": wo.get("treadmill_speed", 0.0),
-                "description": wo.get("description"),
-                "fueling_tip": wo.get("fueling_tip"),
-            })
+            """),
+                {
+                    "plan_id": plan_id,
+                    "week_number": wo["week_number"],
+                    "day_of_week": wo["day_of_week"],
+                    "phase": wo["phase"],
+                    "title": wo["title"],
+                    "type": wo["type"],
+                    "duration_minutes": wo["duration_minutes"],
+                    "distance_km": wo.get("distance_km"),
+                    "target_zone": wo["target_zone"],
+                    "target_hr_range": wo.get("target_hr_range"),
+                    "target_pace": wo.get("target_pace"),
+                    "treadmill_incline": wo.get("treadmill_incline", 0.0),
+                    "treadmill_speed": wo.get("treadmill_speed", 0.0),
+                    "description": wo.get("description"),
+                    "fueling_tip": wo.get("fueling_tip"),
+                },
+            )
         conn.commit()
 
 
-def get_active_plan(user_id: int) -> Optional[Dict[str, Any]]:
+def get_active_plan(user_id: int) -> dict[str, Any] | None:
     with engine.connect() as conn:
-        row = conn.execute(text(
-            "SELECT * FROM plans WHERE user_id = :uid "
-            "ORDER BY created_at DESC, id DESC LIMIT 1"
-        ), {"uid": user_id}).fetchone()
+        row = conn.execute(
+            text("SELECT * FROM plans WHERE user_id = :uid " "ORDER BY created_at DESC, id DESC LIMIT 1"),
+            {"uid": user_id},
+        ).fetchone()
     return _row_to_dict(row) if row else None
 
 
 def set_plan_active(user_id: int, plan_id: int) -> bool:
     with engine.connect() as conn:
-        result = conn.execute(text(
-            "UPDATE plans SET created_at = NOW() WHERE id = :pid AND user_id = :uid"
-        ), {"pid": plan_id, "uid": user_id})
+        result = conn.execute(
+            text("UPDATE plans SET created_at = NOW() WHERE id = :pid AND user_id = :uid"),
+            {"pid": plan_id, "uid": user_id},
+        )
         conn.commit()
     return result.rowcount > 0
 
 
-def get_plan_workouts(plan_id: int) -> List[Dict[str, Any]]:
+def get_plan_workouts(plan_id: int) -> list[dict[str, Any]]:
     with engine.connect() as conn:
-        rows = conn.execute(text("""
+        rows = conn.execute(
+            text("""
             SELECT * FROM workouts WHERE plan_id = :plan_id
             ORDER BY week_number ASC,
             CASE day_of_week
@@ -412,25 +461,41 @@ def get_plan_workouts(plan_id: int) -> List[Dict[str, Any]]:
               WHEN 'Saturday'  THEN 6
               WHEN 'Sunday'    THEN 7
             END ASC
-        """), {"plan_id": plan_id}).fetchall()
+        """),
+            {"plan_id": plan_id},
+        ).fetchall()
     return [_row_to_dict(r) for r in rows]
 
 
 def swap_workouts(plan_id: int, week_number: int, day_1: str, day_2: str) -> bool:
     with engine.connect() as conn:
-        wo1 = conn.execute(text(
-            "SELECT * FROM workouts WHERE plan_id=:pid AND week_number=:wn AND day_of_week=:day"
-        ), {"pid": plan_id, "wn": week_number, "day": day_1}).fetchone()
-        wo2 = conn.execute(text(
-            "SELECT * FROM workouts WHERE plan_id=:pid AND week_number=:wn AND day_of_week=:day"
-        ), {"pid": plan_id, "wn": week_number, "day": day_2}).fetchone()
+        wo1 = conn.execute(
+            text("SELECT * FROM workouts WHERE plan_id=:pid AND week_number=:wn AND day_of_week=:day"),
+            {"pid": plan_id, "wn": week_number, "day": day_1},
+        ).fetchone()
+        wo2 = conn.execute(
+            text("SELECT * FROM workouts WHERE plan_id=:pid AND week_number=:wn AND day_of_week=:day"),
+            {"pid": plan_id, "wn": week_number, "day": day_2},
+        ).fetchone()
 
         if not wo1 or not wo2:
             return False
 
-        swap_cols = ["phase", "title", "type", "duration_minutes", "distance_km",
-                     "target_zone", "target_hr_range", "target_pace",
-                     "treadmill_incline", "treadmill_speed", "description", "fueling_tip", "is_completed"]
+        swap_cols = [
+            "phase",
+            "title",
+            "type",
+            "duration_minutes",
+            "distance_km",
+            "target_zone",
+            "target_hr_range",
+            "target_pace",
+            "treadmill_incline",
+            "treadmill_speed",
+            "description",
+            "fueling_tip",
+            "is_completed",
+        ]
         d1, d2 = _row_to_dict(wo1), _row_to_dict(wo2)
 
         set1 = ", ".join([f"{c} = :{c}_v" for c in swap_cols])
@@ -449,111 +514,117 @@ def swap_workouts(plan_id: int, week_number: int, day_1: str, day_2: str) -> boo
 
 # ─── Catalog ─────────────────────────────────────────────────────────────────
 
-def query_nutrition_catalog() -> List[Dict[str, Any]]:
+
+def query_nutrition_catalog() -> list[dict[str, Any]]:
     with engine.connect() as conn:
-        rows = conn.execute(text(
-            "SELECT * FROM nutrition_products ORDER BY brand, name"
-        )).fetchall()
+        rows = conn.execute(text("SELECT * FROM nutrition_products ORDER BY brand, name")).fetchall()
     return [_row_to_dict(r) for r in rows]
 
 
-def query_shoes_catalog(surface: str, cushioning: str, width: str) -> List[Dict[str, Any]]:
+def query_shoes_catalog(surface: str, cushioning: str, width: str) -> list[dict[str, Any]]:
     with engine.connect() as conn:
-        rows = conn.execute(text(
-            "SELECT * FROM shoes WHERE surface=:s AND cushioning=:c AND width=:w"
-        ), {"s": surface, "c": cushioning, "w": width}).fetchall()
+        rows = conn.execute(
+            text("SELECT * FROM shoes WHERE surface=:s AND cushioning=:c AND width=:w"),
+            {"s": surface, "c": cushioning, "w": width},
+        ).fetchall()
         if not rows:
-            rows = conn.execute(text(
-                "SELECT * FROM shoes WHERE surface=:s LIMIT 3"
-            ), {"s": surface}).fetchall()
+            rows = conn.execute(text("SELECT * FROM shoes WHERE surface=:s LIMIT 3"), {"s": surface}).fetchall()
     return [_row_to_dict(r) for r in rows]
 
 
 # ─── Auth / Users ─────────────────────────────────────────────────────────────
 
-def create_or_get_user(email: str, name: str, provider: str,
-                       provider_user_id: str, role: str = "user",
-                       onboarding_complete: bool = False) -> Dict[str, Any]:
+
+def create_or_get_user(
+    email: str, name: str, provider: str, provider_user_id: str, role: str = "user", onboarding_complete: bool = False
+) -> dict[str, Any]:
     email = email.lower().strip()
     with engine.connect() as conn:
         row = conn.execute(text("SELECT * FROM users WHERE email = :e"), {"e": email}).fetchone()
         if row:
             return _row_to_dict(row)
-        conn.execute(text("""
+        conn.execute(
+            text("""
             INSERT INTO users (email, name, role, provider, provider_user_id, onboarding_complete)
             VALUES (:e, :n, :r, :p, :pid, :oc)
-        """), {"e": email, "n": name, "r": role, "p": provider,
-               "pid": provider_user_id, "oc": onboarding_complete})
+        """),
+            {"e": email, "n": name, "r": role, "p": provider, "pid": provider_user_id, "oc": onboarding_complete},
+        )
         conn.commit()
         row = conn.execute(text("SELECT * FROM users WHERE email = :e"), {"e": email}).fetchone()
         return _row_to_dict(row)
 
 
-def create_user_with_password(email: str, name: str, password_hash: str) -> Dict[str, Any]:
+def create_user_with_password(email: str, name: str, password_hash: str) -> dict[str, Any]:
     email = email.lower().strip()
     with engine.connect() as conn:
-        conn.execute(text("""
+        conn.execute(
+            text("""
             INSERT INTO users (email, name, role, provider, provider_user_id, password_hash, onboarding_complete)
             VALUES (:e, :n, 'user', 'email', :e, :ph, FALSE)
-        """), {"e": email, "n": name, "ph": password_hash})
+        """),
+            {"e": email, "n": name, "ph": password_hash},
+        )
         conn.commit()
         row = conn.execute(text("SELECT * FROM users WHERE email = :e"), {"e": email}).fetchone()
         return _row_to_dict(row)
 
 
-def get_user_by_id(user_id: int) -> Optional[Dict[str, Any]]:
+def get_user_by_id(user_id: int) -> dict[str, Any] | None:
     with engine.connect() as conn:
         row = conn.execute(text("SELECT * FROM users WHERE id = :id"), {"id": user_id}).fetchone()
     return _row_to_dict(row) if row else None
 
 
-def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
+def get_user_by_email(email: str) -> dict[str, Any] | None:
     with engine.connect() as conn:
-        row = conn.execute(
-            text("SELECT * FROM users WHERE email = :e"), {"e": email.lower().strip()}
-        ).fetchone()
+        row = conn.execute(text("SELECT * FROM users WHERE email = :e"), {"e": email.lower().strip()}).fetchone()
     return _row_to_dict(row) if row else None
 
 
 def set_user_password(user_id: int, password_hash: str) -> bool:
     with engine.connect() as conn:
-        result = conn.execute(text(
-            "UPDATE users SET password_hash = :ph WHERE id = :id"
-        ), {"ph": password_hash, "id": user_id})
+        result = conn.execute(
+            text("UPDATE users SET password_hash = :ph WHERE id = :id"), {"ph": password_hash, "id": user_id}
+        )
         conn.commit()
     return result.rowcount > 0
 
 
-def update_user_profile(user_id: int, profile_data: Dict[str, Any]) -> bool:
+def update_user_profile(user_id: int, profile_data: dict[str, Any]) -> bool:
     with engine.connect() as conn:
-        result = conn.execute(text("""
+        result = conn.execute(
+            text("""
             UPDATE users SET
                 age = :age, current_weekly_km = :ckm, max_hr = :max_hr,
                 resting_hr = :rhr, aet_hr = :aet, ant_hr = :ant,
                 use_treadmill = :ut, gemini_api_key = :gak,
                 zone2_pace_min = :z2min, zone2_pace_max = :z2max
             WHERE id = :id
-        """), {
-            "age": int(profile_data.get("age", 30)),
-            "ckm": float(profile_data.get("current_weekly_km", 30.0)),
-            "max_hr": int(profile_data.get("max_hr", 185)),
-            "rhr": int(profile_data.get("resting_hr", 60)),
-            "aet": int(profile_data.get("aet_hr", 135)),
-            "ant": int(profile_data.get("ant_hr", 165)),
-            "ut": 1 if profile_data.get("use_treadmill") else 0,
-            "gak": profile_data.get("gemini_api_key"),
-            "z2min": profile_data.get("zone2_pace_min", "6:30"),
-            "z2max": profile_data.get("zone2_pace_max", "5:45"),
-            "id": user_id,
-        })
+        """),
+            {
+                "age": int(profile_data.get("age", 30)),
+                "ckm": float(profile_data.get("current_weekly_km", 30.0)),
+                "max_hr": int(profile_data.get("max_hr", 185)),
+                "rhr": int(profile_data.get("resting_hr", 60)),
+                "aet": int(profile_data.get("aet_hr", 135)),
+                "ant": int(profile_data.get("ant_hr", 165)),
+                "ut": 1 if profile_data.get("use_treadmill") else 0,
+                "gak": profile_data.get("gemini_api_key"),
+                "z2min": profile_data.get("zone2_pace_min", "6:30"),
+                "z2max": profile_data.get("zone2_pace_max", "5:45"),
+                "id": user_id,
+            },
+        )
         conn.commit()
     return result.rowcount > 0
 
 
-def update_onboarding_profile(user_id: int, data: Dict[str, Any]) -> bool:
+def update_onboarding_profile(user_id: int, data: dict[str, Any]) -> bool:
     """Save all onboarding answers to the user profile."""
     with engine.connect() as conn:
-        result = conn.execute(text("""
+        result = conn.execute(
+            text("""
             UPDATE users SET
                 dob = :dob,
                 age = :age,
@@ -572,46 +643,48 @@ def update_onboarding_profile(user_id: int, data: Dict[str, Any]) -> bool:
                 zone2_pace_min = :zone2_pace_min,
                 zone2_pace_max = :zone2_pace_max
             WHERE id = :id
-        """), {
-            "dob": data.get("dob"),
-            "age": data.get("age", 30),
-            "goal_type": data.get("goal_type"),
-            "injury_history": data.get("injury_history"),
-            "preferred_run_days": json.dumps(data.get("preferred_run_days", [])),
-            "long_run_day": data.get("long_run_day"),
-            "days_per_week": data.get("days_per_week", 4),
-            "has_gym_access": data.get("has_gym_access", False),
-            "use_treadmill": 1 if data.get("has_gym_access") else 0,
-            "current_weekly_km": float(data.get("current_weekly_km", 30.0)),
-            "max_hr": int(data.get("max_hr", 185)),
-            "resting_hr": int(data.get("resting_hr", 60)),
-            "aet_hr": int(data.get("aet_hr", 135)),
-            "ant_hr": int(data.get("ant_hr", 165)),
-            "zone2_pace_min": data.get("zone2_pace_min", "6:30"),
-            "zone2_pace_max": data.get("zone2_pace_max", "5:45"),
-            "id": user_id,
-        })
+        """),
+            {
+                "dob": data.get("dob"),
+                "age": data.get("age", 30),
+                "goal_type": data.get("goal_type"),
+                "injury_history": data.get("injury_history"),
+                "preferred_run_days": json.dumps(data.get("preferred_run_days", [])),
+                "long_run_day": data.get("long_run_day"),
+                "days_per_week": data.get("days_per_week", 4),
+                "has_gym_access": data.get("has_gym_access", False),
+                "use_treadmill": 1 if data.get("has_gym_access") else 0,
+                "current_weekly_km": float(data.get("current_weekly_km", 30.0)),
+                "max_hr": int(data.get("max_hr", 185)),
+                "resting_hr": int(data.get("resting_hr", 60)),
+                "aet_hr": int(data.get("aet_hr", 135)),
+                "ant_hr": int(data.get("ant_hr", 165)),
+                "zone2_pace_min": data.get("zone2_pace_min", "6:30"),
+                "zone2_pace_max": data.get("zone2_pace_max", "5:45"),
+                "id": user_id,
+            },
+        )
         conn.commit()
     return result.rowcount > 0
 
 
 def mark_onboarding_complete(user_id: int) -> bool:
     with engine.connect() as conn:
-        result = conn.execute(text(
-            "UPDATE users SET onboarding_complete = TRUE WHERE id = :id"
-        ), {"id": user_id})
+        result = conn.execute(text("UPDATE users SET onboarding_complete = TRUE WHERE id = :id"), {"id": user_id})
         conn.commit()
     return result.rowcount > 0
 
 
 # ─── Sessions (JWT-based, stored for revocation) ─────────────────────────────
 
-def create_session(user_id: int, duration_days: int = 7) -> Dict[str, Any]:
+
+def create_session(user_id: int, duration_days: int = 7) -> dict[str, Any]:
     """Creates a DB session record alongside JWT. Returns JWT token."""
     import jwt
+
     from config import settings
 
-    now = datetime.datetime.now(datetime.timezone.utc)
+    now = datetime.datetime.now(datetime.UTC)
     expires_at = now + datetime.timedelta(days=duration_days)
 
     payload = {
@@ -623,10 +696,13 @@ def create_session(user_id: int, duration_days: int = 7) -> Dict[str, Any]:
     token = jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 
     with engine.connect() as conn:
-        conn.execute(text("""
+        conn.execute(
+            text("""
             INSERT INTO sessions (session_token, user_id, expires_at)
             VALUES (:tok, :uid, :exp)
-        """), {"tok": token, "uid": user_id, "exp": expires_at})
+        """),
+            {"tok": token, "uid": user_id, "exp": expires_at},
+        )
         conn.commit()
 
     return {
@@ -636,61 +712,59 @@ def create_session(user_id: int, duration_days: int = 7) -> Dict[str, Any]:
     }
 
 
-def verify_session(session_token: str) -> Optional[Dict[str, Any]]:
+def verify_session(session_token: str) -> dict[str, Any] | None:
     """Verifies JWT signature + expiry, then loads user from DB."""
     import jwt
+
     from config import settings
 
     try:
-        payload = jwt.decode(
-            session_token, settings.JWT_SECRET,
-            algorithms=[settings.JWT_ALGORITHM]
-        )
+        payload = jwt.decode(session_token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
         user_id = int(payload["sub"])
     except Exception:
         return None
 
     with engine.connect() as conn:
         # Confirm session still exists (allows server-side revocation)
-        row = conn.execute(text(
-            "SELECT * FROM sessions WHERE session_token = :tok AND expires_at > NOW()"
-        ), {"tok": session_token}).fetchone()
+        row = conn.execute(
+            text("SELECT * FROM sessions WHERE session_token = :tok AND expires_at > NOW()"), {"tok": session_token}
+        ).fetchone()
         if not row:
             return None
-        user_row = conn.execute(
-            text("SELECT * FROM users WHERE id = :id"), {"id": user_id}
-        ).fetchone()
+        user_row = conn.execute(text("SELECT * FROM users WHERE id = :id"), {"id": user_id}).fetchone()
     return _row_to_dict(user_row) if user_row else None
 
 
 def delete_session(session_token: str) -> bool:
     with engine.connect() as conn:
-        result = conn.execute(text(
-            "DELETE FROM sessions WHERE session_token = :tok"
-        ), {"tok": session_token})
+        result = conn.execute(text("DELETE FROM sessions WHERE session_token = :tok"), {"tok": session_token})
         conn.commit()
     return result.rowcount > 0
 
 
 # ─── Knowledge Cards ─────────────────────────────────────────────────────────
 
-def save_knowledge_cards(cards: List[Dict[str, Any]], lang: str = "en") -> int:
+
+def save_knowledge_cards(cards: list[dict[str, Any]], lang: str = "en") -> int:
     count = 0
     with engine.connect() as conn:
         for card in cards:
             try:
-                conn.execute(text("""
+                conn.execute(
+                    text("""
                     INSERT INTO knowledge_cards (chapter_title, summary, key_points, tags, topic, source_label, lang)
                     VALUES (:ct, :sm, :kp, :tg, :tp, :sl, :lang)
-                """), {
-                    "ct": card.get("chapter_title", ""),
-                    "sm": card.get("summary", ""),
-                    "kp": json.dumps(card.get("key_points", []), ensure_ascii=False),
-                    "tg": json.dumps(card.get("tags", []), ensure_ascii=False),
-                    "tp": card.get("topic", "Training"),
-                    "sl": card.get("source_label", "Uphill Athlete Podcasts"),
-                    "lang": lang,
-                })
+                """),
+                    {
+                        "ct": card.get("chapter_title", ""),
+                        "sm": card.get("summary", ""),
+                        "kp": json.dumps(card.get("key_points", []), ensure_ascii=False),
+                        "tg": json.dumps(card.get("tags", []), ensure_ascii=False),
+                        "tp": card.get("topic", "Training"),
+                        "sl": card.get("source_label", "Uphill Athlete Podcasts"),
+                        "lang": lang,
+                    },
+                )
                 count += 1
             except Exception as e:
                 print(f"Error saving knowledge card: {e}")
@@ -698,48 +772,55 @@ def save_knowledge_cards(cards: List[Dict[str, Any]], lang: str = "en") -> int:
     return count
 
 
-def get_all_knowledge_cards(topic: Optional[str] = None, lang: str = "en") -> List[Dict[str, Any]]:
+def get_all_knowledge_cards(topic: str | None = None, lang: str = "en") -> list[dict[str, Any]]:
     with engine.connect() as conn:
         if topic and topic.lower() != "all":
-            rows = conn.execute(text(
-                "SELECT * FROM knowledge_cards WHERE topic = :t AND lang = :lang ORDER BY topic, chapter_title"
-            ), {"t": topic, "lang": lang}).fetchall()
+            rows = conn.execute(
+                text("SELECT * FROM knowledge_cards WHERE topic = :t AND lang = :lang ORDER BY topic, chapter_title"),
+                {"t": topic, "lang": lang},
+            ).fetchall()
         else:
-            rows = conn.execute(text(
-                "SELECT * FROM knowledge_cards WHERE lang = :lang ORDER BY topic, chapter_title"
-            ), {"lang": lang}).fetchall()
+            rows = conn.execute(
+                text("SELECT * FROM knowledge_cards WHERE lang = :lang ORDER BY topic, chapter_title"), {"lang": lang}
+            ).fetchall()
     result = []
     for row in rows:
         d = _row_to_dict(row)
-        try: d["key_points"] = json.loads(d.get("key_points", "[]"))
-        except: d["key_points"] = []
-        try: d["tags"] = json.loads(d.get("tags", "[]"))
-        except: d["tags"] = []
+        try:
+            d["key_points"] = json.loads(d.get("key_points", "[]"))
+        except Exception:
+            d["key_points"] = []
+        try:
+            d["tags"] = json.loads(d.get("tags", "[]"))
+        except Exception:
+            d["tags"] = []
         result.append(d)
     return result
 
 
-def get_random_knowledge_cards(n: int = 3, lang: str = "en") -> List[Dict[str, Any]]:
+def get_random_knowledge_cards(n: int = 3, lang: str = "en") -> list[dict[str, Any]]:
     with engine.connect() as conn:
-        rows = conn.execute(text(
-            "SELECT * FROM knowledge_cards WHERE lang = :lang ORDER BY RANDOM() LIMIT :n"
-        ), {"n": n, "lang": lang}).fetchall()
+        rows = conn.execute(
+            text("SELECT * FROM knowledge_cards WHERE lang = :lang ORDER BY RANDOM() LIMIT :n"), {"n": n, "lang": lang}
+        ).fetchall()
     result = []
     for row in rows:
         d = _row_to_dict(row)
-        try: d["key_points"] = json.loads(d.get("key_points", "[]"))
-        except: d["key_points"] = []
-        try: d["tags"] = json.loads(d.get("tags", "[]"))
-        except: d["tags"] = []
+        try:
+            d["key_points"] = json.loads(d.get("key_points", "[]"))
+        except Exception:
+            d["key_points"] = []
+        try:
+            d["tags"] = json.loads(d.get("tags", "[]"))
+        except Exception:
+            d["tags"] = []
         result.append(d)
     return result
 
 
-def get_knowledge_topics() -> List[str]:
+def get_knowledge_topics() -> list[str]:
     with engine.connect() as conn:
-        rows = conn.execute(text(
-            "SELECT DISTINCT topic FROM knowledge_cards ORDER BY topic"
-        )).fetchall()
+        rows = conn.execute(text("SELECT DISTINCT topic FROM knowledge_cards ORDER BY topic")).fetchall()
     return [r[0] for r in rows]
 
 

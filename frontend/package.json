@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "deploy": "gh-pages -d out -t"
+    "deploy": "gh-pages -d out -t",
+    "test:e2e": "playwright test",
+    "test:visual:update": "playwright test --update-snapshots"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
@@ -18,12 +20,14 @@
     "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.7",
+    "eslint-plugin-unused-imports": "^4.4.1",
     "gh-pages": "^6.3.0",
     "tailwindcss": "^4",
     "typescript": "^5"
