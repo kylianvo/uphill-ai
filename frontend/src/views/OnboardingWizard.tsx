@@ -1267,7 +1267,7 @@ export default function OnboardingWizard() {
 
                   </div>
 
-                  <p style={{ color: "var(--text-muted)", fontSize: "13px", marginBottom: "20px" }}>
+                  <p style={{ color: "var(--text-muted)", fontSize: "13px", marginBottom: "16px" }}>
 
                     {lang === "en"
 
@@ -1277,33 +1277,11 @@ export default function OnboardingWizard() {
 
                   </p>
 
-                  <div style={{ background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: "12px", padding: "14px", marginBottom: "20px", textAlign: "left" }}>
-
-                    <div style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "6px", fontWeight: "600" }}>
-
-                      {lang === "en" ? "SUMMARY" : "BẢN TỔNG HỢP"}
-
-                    </div>
-
-                    <div style={{ fontSize: "13px", display: "flex", flexDirection: "column", gap: "4px" }}>
-
-                      <div>{lang === "en" ? "Goal:" : "Mục tiêu:"} <strong>{onboardingAnswers.goal_type?.replace("_"," ")}</strong></div>
-
-                      <div>{lang === "en" ? "Starts:" : "Bắt đầu:"} <strong>{onboardingAnswers.plan_start_date || "Today"}</strong> · {onboardingAnswers.days_per_week || 4} {lang === "en" ? "days/week" : "ngày/tuần"}</div>
-
-                      <div>🌙 {lang === "en" ? "Long run:" : "Chạy dài:"} <strong>{onboardingAnswers.long_run_day}</strong> · {lang === "en" ? "Volume:" : "Thể tích:"} <strong>{onboardingAnswers.current_weekly_km || 30} km/{lang === "en" ? "wk" : "tuần"}</strong></div>
-
-                      {onboardingAnswers.race_name && <div>🏁 {lang === "en" ? "Race:" : "Giải chạy:"} <strong>{onboardingAnswers.race_name}</strong></div>}
-
-                    </div>
-
-                  </div>
-
-                  {/* Fitness estimated disclaimer */}
+                  {/* Fitness estimated disclaimer — shown before summary so it's seen without scrolling */}
 
                   {(isStart || (!onboardingAnswers.aet_hr && !onboardingAnswers.race_time_hours)) && (
 
-                    <div style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: "10px", padding: "12px 14px", marginBottom: "16px", display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                    <div style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: "10px", padding: "12px 14px", marginBottom: "16px", display: "flex", gap: "10px", alignItems: "flex-start", textAlign: "left" }}>
 
                       <span style={{ fontSize: "15px", flexShrink: 0, marginTop: "1px" }}>ℹ️</span>
 
@@ -1315,7 +1293,7 @@ export default function OnboardingWizard() {
 
                         </div>
 
-                        <div style={{ fontSize: "12px", color: "var(--text-secondary)", lineHeight: "1.45" }}>
+                        <div style={{ fontSize: "12px", color: "var(--text-secondary)", lineHeight: "1.5" }}>
 
                           {isStart
 
@@ -1338,6 +1316,28 @@ export default function OnboardingWizard() {
                     </div>
 
                   )}
+
+                  <div style={{ background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: "12px", padding: "14px", marginBottom: "20px", textAlign: "left" }}>
+
+                    <div style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "6px", fontWeight: "600" }}>
+
+                      {lang === "en" ? "SUMMARY" : "BẢN TỔNG HỢP"}
+
+                    </div>
+
+                    <div style={{ fontSize: "13px", display: "flex", flexDirection: "column", gap: "4px" }}>
+
+                      <div>{lang === "en" ? "Goal:" : "Mục tiêu:"} <strong>{onboardingAnswers.goal_type?.replace("_"," ")}</strong></div>
+
+                      <div>{lang === "en" ? "Starts:" : "Bắt đầu:"} <strong>{onboardingAnswers.plan_start_date || "Today"}</strong> · {onboardingAnswers.days_per_week || 4} {lang === "en" ? "days/week" : "ngày/tuần"}</div>
+
+                      <div>🌙 {lang === "en" ? "Long run:" : "Chạy dài:"} <strong>{onboardingAnswers.long_run_day}</strong> · {lang === "en" ? "Volume:" : "Thể tích:"} <strong>{onboardingAnswers.current_weekly_km || 30} km/{lang === "en" ? "wk" : "tuần"}</strong></div>
+
+                      {onboardingAnswers.race_name && <div>🏁 {lang === "en" ? "Race:" : "Giải chạy:"} <strong>{onboardingAnswers.race_name}</strong></div>}
+
+                    </div>
+
+                  </div>
 
                   <button className="btn btn-primary" style={{ width: "100%", height: "44px", fontSize: "14px", fontWeight: "700" }} onClick={handleCompleteOnboarding}>
 
