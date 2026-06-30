@@ -193,11 +193,11 @@ export default function OnboardingWizard() {
 
     if (isRaceOrDist) steps.push("fitness", "injury", "target", "schedule");
 
-    else if (isStart) steps.push("schedule");
+    else if (isStart) steps.push("fitness_start", "schedule");
 
-    else if (isReturn) steps.push("return_questions", "schedule");
+    else if (isReturn) steps.push("return_questions", "fitness_return", "schedule");
 
-    else if (isRecovery) steps.push("recovery_questions", "schedule");
+    else if (isRecovery) steps.push("recovery_questions", "fitness_return", "schedule");
 
     else if (!goal) { /* no extra steps yet */ }
 
@@ -867,6 +867,260 @@ export default function OnboardingWizard() {
 
           );
 
+        case "fitness_start": {
+
+          const dobAge = onboardingAnswers.dob
+
+            ? Math.floor((new Date().getTime() - new Date(onboardingAnswers.dob).getTime()) / (365.25 * 24 * 3600 * 1000))
+
+            : null;
+
+          const estMaxHR = dobAge ? 220 - dobAge : null;
+
+          return (
+
+            <div>
+
+              <div style={{ fontSize: "20px", fontWeight: "800", marginBottom: "6px" }}>
+
+                {lang === "en" ? "Training Zones 💓" : "Vùng tập luyện 💓"}
+
+              </div>
+
+              <p style={{ color: "var(--text-muted)", fontSize: "13px", marginBottom: "16px" }}>
+
+                {lang === "en"
+
+                  ? "We'll set your zones from your age. Add your resting heart rate for better accuracy."
+
+                  : "Chúng tôi sẽ thiết lập vùng nhịp tim từ tuổi của bạn. Thêm nhịp tim nghỉ ngơi để tăng độ chính xác."}
+
+              </p>
+
+              <div style={{ background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.2)", borderRadius: "10px", padding: "12px 14px", marginBottom: "16px" }}>
+
+                <div style={{ fontSize: "11px", fontWeight: "700", color: "#3b82f6", letterSpacing: "0.05em", marginBottom: "4px" }}>
+
+                  {lang === "en" ? "ESTIMATED FROM AGE" : "ƯỚC TÍNH TỪ TUỔI"}
+
+                </div>
+
+                {estMaxHR ? (
+
+                  <div style={{ fontSize: "14px", fontWeight: "600", color: "var(--text-primary)" }}>
+
+                    {lang === "en"
+
+                      ? `Max HR ≈ ${estMaxHR} bpm (220 − ${dobAge})`
+
+                      : `Nhịp tim tối đa ≈ ${estMaxHR} bpm (220 − ${dobAge})`}
+
+                  </div>
+
+                ) : (
+
+                  <div style={{ fontSize: "12.5px", color: "var(--text-muted)" }}>
+
+                    {lang === "en"
+
+                      ? "Add your date of birth in step 1 to get a personalised estimate."
+
+                      : "Thêm ngày sinh ở bước 1 để có ước tính cá nhân hóa."}
+
+                  </div>
+
+                )}
+
+              </div>
+
+              <div style={{ marginBottom: "14px" }}>
+
+                <label style={labelS}>{lang === "en" ? "Resting Heart Rate (optional)" : "Nhịp tim nghỉ ngơi (tùy chọn)"}</label>
+
+                <input type="number" className="chat-input" style={inputS} placeholder={lang === "en" ? "e.g. 55" : "ví dụ 55"} value={onboardingAnswers.resting_hr || ""} onChange={e => setAns("resting_hr", e.target.value)} />
+
+                <p style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "5px", margin: "5px 0 0 0" }}>
+
+                  {lang === "en"
+
+                    ? "Check your watch's morning HR reading. Improves zone accuracy."
+
+                    : "Kiểm tra đồng hồ sau khi thức dậy. Cải thiện độ chính xác của vùng nhịp tim."}
+
+                </p>
+
+              </div>
+
+              <div style={{ borderTop: "1px solid var(--border-color)", paddingTop: "14px" }}>
+
+                <label style={{ ...labelS, marginBottom: "8px" }}>
+
+                  {lang === "en" ? "Easy Run Pace (optional)" : "Tốc độ chạy dễ (tùy chọn)"}
+
+                </label>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+
+                  <div>
+
+                    <label style={{ ...labelS, fontSize: "11px", fontWeight: "normal" }}>{lang === "en" ? "Slowest (min/km)" : "Chậm nhất (phút/km)"}</label>
+
+                    <input type="text" className="chat-input" style={inputS} placeholder="8:30" value={onboardingAnswers.zone2_pace_min || ""} onChange={e => setAns("zone2_pace_min", e.target.value)} />
+
+                  </div>
+
+                  <div>
+
+                    <label style={{ ...labelS, fontSize: "11px", fontWeight: "normal" }}>{lang === "en" ? "Fastest (min/km)" : "Nhanh nhất (phút/km)"}</label>
+
+                    <input type="text" className="chat-input" style={inputS} placeholder="7:30" value={onboardingAnswers.zone2_pace_max || ""} onChange={e => setAns("zone2_pace_max", e.target.value)} />
+
+                  </div>
+
+                </div>
+
+              </div>
+
+            </div>
+
+          );
+
+        }
+
+        case "fitness_return": {
+
+          return (
+
+            <div>
+
+              <div style={{ fontSize: "20px", fontWeight: "800", marginBottom: "6px" }}>
+
+                {lang === "en" ? "Current Fitness 💓" : "Thể trạng hiện tại 💓"}
+
+              </div>
+
+              <p style={{ color: "var(--text-muted)", fontSize: "13px", marginBottom: "2px" }}>
+
+                {lang === "en"
+
+                  ? "Helps us set your training zones accurately."
+
+                  : "Giúp chúng tôi thiết lập vùng tập luyện của bạn chính xác hơn."}
+
+              </p>
+
+              <p style={{ color: "var(--text-muted)", fontSize: "12px", fontStyle: "italic", marginBottom: "16px" }}>
+
+                {lang === "en" ? "Optional — tap Next to skip and add this later." : "Tùy chọn — nhấn Tiếp theo để bỏ qua và thêm sau."}
+
+              </p>
+
+              <div style={{ display: "flex", background: "rgba(255,255,255,0.4)", border: "1px solid var(--border-color)", padding: "3px", borderRadius: "10px", marginBottom: "16px" }}>
+
+                {(["estimate", "manual"] as const).map(m => (
+
+                  <button key={m} type="button" onClick={() => setAns("fitness_input_mode", m)}
+
+                    style={{ flex: 1, height: "30px", fontSize: "12px", borderRadius: "8px", border: "none", background: onboardingAnswers.fitness_input_mode === m ? "var(--accent-primary)" : "transparent", color: onboardingAnswers.fitness_input_mode === m ? "#fff" : "var(--text-secondary)", fontWeight: "600", cursor: "pointer" }}>
+
+                    {m === "estimate"
+
+                      ? (lang === "en" ? "⚡ Estimate from race" : "⚡ Ước tính từ giải chạy")
+
+                      : (lang === "en" ? "🧪 I know my zones" : "🧪 Tôi đã biết vùng nhịp tim")}
+
+                  </button>
+
+                ))}
+
+              </div>
+
+              {onboardingAnswers.fitness_input_mode === "estimate" && (
+
+                <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr", gap: "8px", marginBottom: "14px" }}>
+
+                  <div>
+
+                    <label style={labelS}>{lang === "en" ? "Race Distance" : "Cự ly giải chạy"}</label>
+
+                    <select className="chat-input" style={{ ...inputS }} value={onboardingAnswers.race_distance || "10k"} onChange={e => setAns("race_distance", e.target.value)}>
+
+                      <option value="5k">5k</option>
+
+                      <option value="10k">10k</option>
+
+                      <option value="half">Half Marathon</option>
+
+                      <option value="marathon">Marathon</option>
+
+                    </select>
+
+                  </div>
+
+                  <div><label style={labelS}>{lang === "en" ? "Hours" : "Giờ"}</label><input type="number" min="0" className="chat-input" style={inputS} value={onboardingAnswers.race_time_hours || ""} onChange={e => setAns("race_time_hours", e.target.value)} /></div>
+
+                  <div><label style={labelS}>{lang === "en" ? "Minutes" : "Phút"}</label><input type="number" min="0" max="59" className="chat-input" style={inputS} value={onboardingAnswers.race_time_minutes || ""} onChange={e => setAns("race_time_minutes", e.target.value)} /></div>
+
+                </div>
+
+              )}
+
+              {onboardingAnswers.fitness_input_mode === "manual" && (
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "14px" }}>
+
+                  <div><label style={labelS}>AeT HR (bpm)</label><input type="number" className="chat-input" style={inputS} placeholder="135" value={onboardingAnswers.aet_hr || ""} onChange={e => setAns("aet_hr", e.target.value)} /></div>
+
+                  <div><label style={labelS}>AnT HR (bpm)</label><input type="number" className="chat-input" style={inputS} placeholder="165" value={onboardingAnswers.ant_hr || ""} onChange={e => setAns("ant_hr", e.target.value)} /></div>
+
+                  <div><label style={labelS}>Max HR (bpm)</label><input type="number" className="chat-input" style={inputS} placeholder="185" value={onboardingAnswers.max_hr || ""} onChange={e => setAns("max_hr", e.target.value)} /></div>
+
+                  <div><label style={labelS}>Resting HR (bpm)</label><input type="number" className="chat-input" style={inputS} placeholder="60" value={onboardingAnswers.resting_hr || ""} onChange={e => setAns("resting_hr", e.target.value)} /></div>
+
+                </div>
+
+              )}
+
+              {onboardingAnswers.fitness_input_mode && (
+
+                <div style={{ borderTop: "1px solid var(--border-color)", paddingTop: "14px" }}>
+
+                  <label style={{ ...labelS, marginBottom: "8px" }}>
+
+                    {lang === "en" ? "Zone 2 Pace Range" : "Khoảng tốc độ Zone 2"}
+
+                  </label>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+
+                    <div>
+
+                      <label style={{ ...labelS, fontSize: "11px", fontWeight: "normal" }}>{lang === "en" ? "Slowest (min/km)" : "Chậm nhất (phút/km)"}</label>
+
+                      <input type="text" className="chat-input" style={inputS} placeholder="6:30" value={onboardingAnswers.zone2_pace_min || ""} onChange={e => setAns("zone2_pace_min", e.target.value)} />
+
+                    </div>
+
+                    <div>
+
+                      <label style={{ ...labelS, fontSize: "11px", fontWeight: "normal" }}>{lang === "en" ? "Fastest (min/km)" : "Nhanh nhất (phút/km)"}</label>
+
+                      <input type="text" className="chat-input" style={inputS} placeholder="5:45" value={onboardingAnswers.zone2_pace_max || ""} onChange={e => setAns("zone2_pace_max", e.target.value)} />
+
+                    </div>
+
+                  </div>
+
+                </div>
+
+              )}
+
+            </div>
+
+          );
+
+        }
+
         case "schedule":
 
           return (
@@ -1044,6 +1298,46 @@ export default function OnboardingWizard() {
                     </div>
 
                   </div>
+
+                  {/* Fitness estimated disclaimer */}
+
+                  {(isStart || ((isReturn || isRecovery) && !onboardingAnswers.aet_hr && !onboardingAnswers.race_time_hours)) && (
+
+                    <div style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: "10px", padding: "12px 14px", marginBottom: "16px", display: "flex", gap: "10px", alignItems: "flex-start" }}>
+
+                      <span style={{ fontSize: "15px", flexShrink: 0, marginTop: "1px" }}>ℹ️</span>
+
+                      <div>
+
+                        <div style={{ fontSize: "11.5px", fontWeight: "700", color: "#d97706", letterSpacing: "0.04em", marginBottom: "3px" }}>
+
+                          {lang === "en" ? "FITNESS ZONES ESTIMATED" : "VÙNG TẬP LUYỆN ĐÃ ĐƯỢC ƯỚC TÍNH"}
+
+                        </div>
+
+                        <div style={{ fontSize: "12px", color: "var(--text-secondary)", lineHeight: "1.45" }}>
+
+                          {isStart
+
+                            ? (lang === "en"
+
+                                ? "Zones are estimated from your age. Once you have heart rate data from your watch, update them in your Profile for a more accurate plan."
+
+                                : "Vùng nhịp tim được ước tính từ tuổi của bạn. Khi có dữ liệu từ đồng hồ, hãy cập nhật trong Hồ sơ để có kế hoạch chính xác hơn.")
+
+                            : (lang === "en"
+
+                                ? "Training zones are estimated. Enter a recent race result or your heart rate zones in Profile when you have a measurement from your watch."
+
+                                : "Vùng tập luyện đang được ước tính. Hãy cập nhật kết quả giải chạy gần nhất hoặc vùng nhịp tim trong Hồ sơ khi có số liệu từ đồng hồ.")}
+
+                        </div>
+
+                      </div>
+
+                    </div>
+
+                  )}
 
                   <button className="btn btn-primary" style={{ width: "100%", height: "44px", fontSize: "14px", fontWeight: "700" }} onClick={handleCompleteOnboarding}>
 
