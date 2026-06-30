@@ -28,6 +28,8 @@ from db import (
     get_recent_plans,
     get_user_by_email,
     get_user_by_id,
+    get_workout_type_count,
+    get_workout_types,
     init_db,
     list_sources,
     mark_onboarding_complete,
@@ -38,6 +40,7 @@ from db import (
     swap_workouts,
     update_onboarding_profile,
     update_user_profile,
+    update_workout_log,
     verify_session,
 )
 from parsers.fit_parser import FitParser
@@ -103,6 +106,16 @@ extraction_status: dict[str, Any] = {
     "progress": 0,
     "total": 8,
     "card_count": 0,
+    "last_extracted": None,
+    "message": None,
+}
+
+workout_type_extraction_status: dict[str, Any] = {
+    "status": "idle",
+    "current_type": None,
+    "progress": 0,
+    "total": 12,
+    "type_count": 0,
     "last_extracted": None,
     "message": None,
 }
@@ -1020,6 +1033,30 @@ def modify_calendar_swap(request: ModifyCalendarRequest, user: dict[str, Any] = 
     return {"message": "Swapped successfully", "workouts": updated_workouts}
 
 
+class WorkoutLogRequest(BaseModel):
+    workout_id: int
+    is_completed: int | None = None
+    rpe: int | None = None
+    notes: str | None = None
+
+
+@app.patch("/api/coach/workouts/log")
+def log_workout(request: WorkoutLogRequest, user: dict[str, Any] = Depends(get_current_user)):
+    """Save RPE, notes, and/or completion status for a workout."""
+    active_plan = get_active_plan(user["id"])
+    if not active_plan:
+        raise HTTPException(status_code=404, detail="No active plan.")
+    workouts = get_plan_workouts(active_plan["id"])
+    wo_ids = {w["id"] for w in workouts}
+    if request.workout_id not in wo_ids:
+        raise HTTPException(status_code=403, detail="Workout not in your active plan.")
+    ok = update_workout_log(request.workout_id, request.is_completed, request.rpe, request.notes)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Workout not found.")
+    updated = get_plan_workouts(active_plan["id"])
+    return {"workouts": updated}
+
+
 @app.get("/api/coach/export-ics")
 def export_ics(
     plan_id: int,
@@ -1274,4 +1311,56 @@ async def trigger_knowledge_extraction(user: dict[str, Any] = Depends(get_curren
 
     asyncio.create_task(run_extraction())
     extraction_status.update({"status": "extracting", "progress": 0, "current_topic": "Starting…"})
+    return {"status": "started"}
+
+
+# ─── Workout Types ────────────────────────────────────────────────────────────
+
+
+@app.get("/api/workouts/types")
+def list_workout_types(lang: str = "en"):
+    """Return all workout type descriptions from the DB. No auth required."""
+    return {"types": get_workout_types(lang=lang)}
+
+
+@app.get("/api/workouts/types/extract/status")
+def get_workout_type_extraction_status(user: dict[str, Any] = Depends(get_current_user)):
+    status = dict(workout_type_extraction_status)
+    status["type_count"] = get_workout_type_count()
+    return status
+
+
+@app.post("/api/workouts/types/extract")
+async def trigger_workout_type_extraction(user: dict[str, Any] = Depends(get_current_user)):
+    """
+    Extract workout type descriptions from NotebookLM and store in DB.
+    Can be re-triggered to refresh content. Runs in background.
+    """
+    import asyncio
+
+    from services.workout_type_extractor import extract_workout_types
+
+    if workout_type_extraction_status["status"] == "extracting":
+        return {"status": "already_extracting", "type_count": get_workout_type_count()}
+
+    notebook_id = settings.NOTEBOOKLM_NOTEBOOK_ID
+    auth_json = settings.NOTEBOOKLM_AUTH_JSON
+
+    if not notebook_id or not auth_json:
+        return {"status": "no_notebooklm", "type_count": 0}
+
+    fresh_user = get_user_by_id(user["id"]) or user
+    api_key = fresh_user.get("gemini_api_key") or settings.GEMINI_API_KEY
+    if not api_key:
+        return {"status": "no_api_key", "type_count": 0}
+
+    async def run():
+        try:
+            await extract_workout_types(notebook_id, auth_json, api_key, workout_type_extraction_status)
+        except Exception as e:
+            workout_type_extraction_status.update({"status": "error", "message": str(e)})
+            print(f"[WorkoutTypes] Extraction failed: {e}")
+
+    asyncio.create_task(run())
+    workout_type_extraction_status.update({"status": "extracting", "progress": 0, "current_type": "Starting…"})
     return {"status": "started"}

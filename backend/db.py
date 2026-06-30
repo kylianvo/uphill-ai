@@ -186,6 +186,25 @@ def init_db():
 
         conn.execute(
             text("""
+        CREATE TABLE IF NOT EXISTS workout_types (
+            id              SERIAL PRIMARY KEY,
+            type_key        TEXT NOT NULL,
+            display_name    TEXT NOT NULL,
+            zone            TEXT NOT NULL,
+            color           TEXT NOT NULL,
+            overview        TEXT NOT NULL,
+            execution       TEXT NOT NULL,
+            benefit         TEXT NOT NULL,
+            warning         TEXT NOT NULL,
+            lang            TEXT NOT NULL DEFAULT 'en',
+            created_at      TIMESTAMPTZ DEFAULT NOW(),
+            UNIQUE (type_key, lang)
+        )
+        """)
+        )
+
+        conn.execute(
+            text("""
         CREATE TABLE IF NOT EXISTS knowledge_cards (
             id              SERIAL PRIMARY KEY,
             chapter_title   TEXT NOT NULL,
@@ -208,6 +227,16 @@ def init_db():
             print("Added 'lang' column to knowledge_cards.")
         except Exception:
             pass
+
+        for col_sql in [
+            "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS rpe INTEGER",
+            "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS notes TEXT",
+        ]:
+            try:
+                conn.execute(text(col_sql))
+                conn.commit()
+            except Exception:
+                pass
 
     seed_data()
     print("PostgreSQL database tables initialized successfully.")
@@ -465,6 +494,26 @@ def get_plan_workouts(plan_id: int) -> list[dict[str, Any]]:
             {"plan_id": plan_id},
         ).fetchall()
     return [_row_to_dict(r) for r in rows]
+
+
+def update_workout_log(
+    workout_id: int, is_completed: int | None = None, rpe: int | None = None, notes: str | None = None
+) -> bool:
+    """Update is_completed, rpe, and/or notes for a workout."""
+    with engine.connect() as conn:
+        row = conn.execute(text("SELECT id FROM workouts WHERE id = :id"), {"id": workout_id}).fetchone()
+        if not row:
+            return False
+        if is_completed is not None:
+            conn.execute(
+                text("UPDATE workouts SET is_completed = :v WHERE id = :id"), {"v": is_completed, "id": workout_id}
+            )
+        if rpe is not None:
+            conn.execute(text("UPDATE workouts SET rpe = :v WHERE id = :id"), {"v": rpe, "id": workout_id})
+        if notes is not None:
+            conn.execute(text("UPDATE workouts SET notes = :v WHERE id = :id"), {"v": notes, "id": workout_id})
+        conn.commit()
+    return True
 
 
 def swap_workouts(plan_id: int, week_number: int, day_1: str, day_2: str) -> bool:
@@ -833,3 +882,55 @@ def clear_knowledge_cards() -> None:
 def get_knowledge_card_count() -> int:
     with engine.connect() as conn:
         return conn.execute(text("SELECT COUNT(*) FROM knowledge_cards")).scalar()
+
+
+# ─── Workout Types ────────────────────────────────────────────────────────────
+
+
+def save_workout_types(types: list[dict[str, Any]], lang: str = "en") -> int:
+    """Upsert workout type entries. Returns count saved."""
+    saved = 0
+    with engine.connect() as conn:
+        for t in types:
+            conn.execute(
+                text("""
+                INSERT INTO workout_types (type_key, display_name, zone, color, overview, execution, benefit, warning, lang)
+                VALUES (:type_key, :display_name, :zone, :color, :overview, :execution, :benefit, :warning, :lang)
+                ON CONFLICT (type_key, lang) DO UPDATE SET
+                    display_name = EXCLUDED.display_name,
+                    zone         = EXCLUDED.zone,
+                    color        = EXCLUDED.color,
+                    overview     = EXCLUDED.overview,
+                    execution    = EXCLUDED.execution,
+                    benefit      = EXCLUDED.benefit,
+                    warning      = EXCLUDED.warning
+                """),
+                {
+                    "type_key": t["type_key"],
+                    "display_name": t["display_name"],
+                    "zone": t.get("zone", "moderate"),
+                    "color": t.get("color", "#6b7280"),
+                    "overview": t["overview"],
+                    "execution": t["execution"],
+                    "benefit": t["benefit"],
+                    "warning": t["warning"],
+                    "lang": lang,
+                },
+            )
+            saved += 1
+        conn.commit()
+    return saved
+
+
+def get_workout_types(lang: str = "en") -> list[dict[str, Any]]:
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("SELECT * FROM workout_types WHERE lang = :lang ORDER BY type_key ASC"),
+            {"lang": lang},
+        ).fetchall()
+    return [_row_to_dict(r) for r in rows]
+
+
+def get_workout_type_count() -> int:
+    with engine.connect() as conn:
+        return conn.execute(text("SELECT COUNT(*) FROM workout_types")).scalar()

@@ -35,23 +35,24 @@ export function usePlanner() {
 
     planJobPollerRef.current = setInterval(async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/api/coach/plan-job-status/${jobId}`, {
+        const res = await fetch(`${API_BASE_URL}/api/coach/plan-status/${jobId}`, {
           headers: { "Authorization": `Bearer ${token}` }
         });
         if (res.ok) {
           const data = await res.json();
 
-          if (data.status === "completed") {
+          if (data.status === "done") {
             clearInterval(planJobPollerRef.current);
             setPlanLoading(false);
             if (data.plan) setActivePlan(data.plan);
             if (data.workouts) setWorkouts(data.workouts);
             fetchRecentPlansWithToken(token);
-          } else if (data.status === "failed") {
+          } else if (data.status === "error") {
             clearInterval(planJobPollerRef.current);
             setPlanLoading(false);
-            setPlanErrorMsg(data.message || "Plan generation failed");
+            setPlanErrorMsg(data.error || "Plan generation failed");
           }
+          // status === "generating" → keep polling
         } else {
           clearInterval(planJobPollerRef.current);
           setPlanLoading(false);
@@ -188,9 +189,11 @@ export function usePlanner() {
         duration_weeks: body.plan_duration_weeks
       });
 
-      // Set plan immediately from the fast response
+      // Set plan immediately from the fast response; clear old workouts so
+      // stale data doesn't appear under the new plan title while polling
       if (result.plan) {
         setActivePlan(result.plan);
+        setWorkouts([]);
         setBackupActivePlan(null);
         setBackupWorkouts([]);
       }
@@ -312,6 +315,37 @@ export function usePlanner() {
     setWorkouts((prev: any) =>
       prev.map((wo: any) => (wo.id === woId ? { ...wo, is_completed: isCompleted ? 1 : 0 } : wo))
     );
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("uphill_session_token") : null;
+      if (!token) return;
+      await fetch(`${API_BASE_URL}/api/coach/workouts/log`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({ workout_id: woId, is_completed: isCompleted ? 1 : 0 }),
+      });
+    } catch {
+      // optimistic update already applied — failure is silent
+    }
+  };
+
+  const handleLogWorkout = async (woId: number, rpe: number | null, notes: string) => {
+    setWorkouts((prev: any) =>
+      prev.map((wo: any) => (wo.id === woId ? { ...wo, rpe: rpe ?? wo.rpe, notes: notes ?? wo.notes } : wo))
+    );
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("uphill_session_token") : null;
+      if (!token) return;
+      const body: any = { workout_id: woId };
+      if (rpe !== null) body.rpe = rpe;
+      body.notes = notes;
+      await fetch(`${API_BASE_URL}/api/coach/workouts/log`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify(body),
+      });
+    } catch {
+      // optimistic update already applied
+    }
   };
 
   const getWeekWorkouts = (weekNum: number) => {
@@ -371,5 +405,5 @@ export function usePlanner() {
     }
   };
 
-  return { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, handleSwapWorkouts, handleToggleComplete, getWeekWorkouts, getWorkoutDate, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller };
+  return { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, handleSwapWorkouts, handleToggleComplete, handleLogWorkout, getWeekWorkouts, getWorkoutDate, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller };
 }

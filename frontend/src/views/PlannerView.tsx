@@ -1,18 +1,190 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useAppContext } from "../contexts/AppContext";
 import { usePlanner } from "../hooks/usePlanner";
 import { translations } from "../app/translations";
-import WorkoutDescription from "../components/WorkoutDescription";
+import WorkoutCard from "../components/WorkoutCard";
+import { KnowledgeCard } from "../components/KnowledgeCard";
 import ToolsView from "./ToolsView";
 import { UploadSimple, FileArrowUp, Heart, Clock, Mountains, MapPin, Footprints, ArrowsMerge, PlayCircle, CheckCircle, Fire, Path, RoadHorizon, Info, Check, Question, WarningCircle, Plus, Trash, Archive, LockKey, LockKeyOpen, Trophy, Target, Sneaker, PersonSimpleRun, Bed, XCircle, DownloadSimple } from '@phosphor-icons/react';
 
 export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   const ctx = useAppContext();
-  const { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, handleSwapWorkouts, handleToggleComplete, getWeekWorkouts, getWorkoutDate, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller } = usePlanner();
+  const { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, handleSwapWorkouts, handleToggleComplete, handleLogWorkout, getWeekWorkouts, getWorkoutDate, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller } = usePlanner();
   const { lang, activePlan, planLoading, planErrorMsg, planForm, setPlanForm, targetTimeH, setTargetTimeH, targetTimeM, setTargetTimeM, targetTimeS, setTargetTimeS, cutoffTimeH, setCutoffTimeH, cutoffTimeM, setCutoffTimeM, cutoffTimeS, setCutoffTimeS, recentPlans, selectedWeek, setSelectedWeek, swapDay1, setSwapDay1, swapDay2, setSwapDay2, setWorkouts, setBackupWorkouts, setActivePlan, workouts, backupWorkouts, backupActivePlan, setBackupActivePlan, courseInputMode, setCourseInputMode, plannerGpxLoading, plannerGpxFile, plannerGpxError, showExportOptions, setShowExportOptions, exportTimePref, setExportTimePref } = ctx;
   const t = (key: keyof typeof translations.en) => translations[lang]?.[key] || translations.en[key] || key;
   const totalWeeks = activePlan ? (activePlan.plan_duration_weeks || 1) : 0;
+
+  // ── Phase → knowledge card topic mapping ────────────────────────────────
+  const phaseToTopic = (phase: string, daysToRace: number | null): string | null => {
+    const p = phase.toLowerCase();
+    if (daysToRace !== null && daysToRace < 0 && daysToRace >= -14) return "Recovery";
+    if (daysToRace !== null && daysToRace >= 0 && daysToRace <= 14) return "Nutrition";
+    if (p.includes("peak")) return "Mindset";
+    if (p.includes("taper")) return "Pacing";
+    if (p.includes("build")) return "Training";
+    if (p.includes("base")) return "Training";
+    if (p.includes("recovery")) return "Recovery";
+    return null;
+  };
+
+  // ── Fetch a contextual knowledge card for this week's phase ─────────────
+  const [contextCard, setContextCard] = useState<any>(null);
+  useEffect(() => {
+    if (!activePlan) { Promise.resolve().then(() => setContextCard(null)); return; }
+    const weekWorkouts = getWeekWorkouts(selectedWeek);
+    const phase = weekWorkouts[0]?.phase || "";
+    let daysToRace: number | null = null;
+    try {
+      const [y, m, d] = activePlan.race_date.split("-").map(Number);
+      const race = new Date(y, m - 1, d);
+      daysToRace = Math.round((race.getTime() - new Date().getTime()) / 86400000);
+    } catch { /* ignore */ }
+
+    const topic = phaseToTopic(phase, daysToRace);
+    if (!topic) { Promise.resolve().then(() => setContextCard(null)); return; }
+
+    const token = typeof window !== "undefined" ? localStorage.getItem("uphill_session_token") : null;
+    if (!token) return;
+    fetch(`${API_BASE_URL}/api/knowledge/cards?topic=${topic}&lang=${lang}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        const cards: any[] = data?.cards || [];
+        if (cards.length > 0) {
+          setContextCard(cards[Math.floor(selectedWeek % cards.length)]);
+        } else {
+          setContextCard(null);
+        }
+      })
+      .catch(() => setContextCard(null));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedWeek, activePlan?.id, lang]);
+
+  // ── Coach contextual message ─────────────────────────────────────────────
+  const getCoachMessage = () => {
+    if (!activePlan) return null;
+    const weekWorkouts = getWeekWorkouts(selectedWeek);
+    const phase = (weekWorkouts[0]?.phase || "").toLowerCase();
+    const raceName = activePlan.race_name || "your race";
+
+    let daysToRace: number | null = null;
+    try {
+      const [y, m, d] = activePlan.race_date.split("-").map(Number);
+      daysToRace = Math.round((new Date(y, m - 1, d).getTime() - new Date().getTime()) / 86400000);
+    } catch { /* ignore */ }
+
+    const v = selectedWeek % 3; // variant picker — cycles through message variants
+
+    // Race-date-driven messages (highest priority)
+    if (daysToRace !== null && daysToRace < 0 && daysToRace >= -14) {
+      const msgs = lang === "en" ? [
+        `You did it — ${raceName} is done. Rest, reflect, and let your body absorb everything you put into this block.`,
+        `Race complete. Whatever the result, you showed up and crossed the line. Take the next two weeks easy — recovery is training.`,
+        `${raceName} is behind you now. Celebrate properly, sleep deeply, and eat well. The next chapter starts after real recovery.`,
+      ] : [
+        `Bạn đã làm được — ${raceName} xong rồi. Nghỉ ngơi, suy ngẫm, và để cơ thể hấp thụ tất cả những gì bạn đã đầu tư.`,
+        `Đua xong rồi. Dù kết quả thế nào, bạn đã xuất hiện và về đích. Hãy nhẹ nhàng hai tuần tới — hồi phục là huấn luyện.`,
+      ];
+      return { icon: "🎉", color: "#10b981", text: msgs[v % msgs.length] };
+    }
+
+    if (daysToRace !== null && daysToRace === 0) {
+      const msgs = lang === "en" ? [
+        `Race day. Everything you've done in training is already inside you. Go run your race.`,
+        `Today is ${raceName}. Trust your preparation, run your own race, and enjoy every kilometre of it.`,
+      ] : [
+        `Ngày thi đấu rồi. Tất cả những gì bạn đã tập luyện đã ở trong bạn rồi. Hãy ra đường chạy đua.`,
+      ];
+      return { icon: "⚡", color: "#f59e0b", text: msgs[v % msgs.length] };
+    }
+
+    if (daysToRace !== null && daysToRace > 0 && daysToRace <= 7) {
+      const msgs = lang === "en" ? [
+        `Race week for ${raceName}. The hay is in the barn — your job now is to stay loose, sleep well, and trust the process.`,
+        `${raceName} is ${daysToRace} day${daysToRace > 1 ? "s" : ""} away. Short, easy sessions only. Let your legs fill with spring.`,
+        `You've put in the work for ${raceName}. This week: sleep, eat, stay calm. The fitness is already there.`,
+      ] : [
+        `Tuần đua ${raceName}. Công sức đã xong — giờ chỉ cần giữ người nhẹ nhàng, ngủ ngon, và tin vào quá trình.`,
+        `${raceName} còn ${daysToRace} ngày nữa. Bài tập ngắn và nhẹ thôi. Để chân đầy lực.`,
+      ];
+      return { icon: "🏁", color: "#f59e0b", text: msgs[v % msgs.length] };
+    }
+
+    if (daysToRace !== null && daysToRace > 7 && daysToRace <= 14) {
+      const msgs = lang === "en" ? [
+        `Two weeks to ${raceName}. The taper is working — trust the lighter load even when your legs feel restless.`,
+        `${raceName} is close. Resist the urge to cram in extra sessions. Your body is peaking right now.`,
+      ] : [
+        `Còn hai tuần đến ${raceName}. Giai đoạn taper đang có tác dụng — hãy tin vào lịch nhẹ hơn dù chân bứt rứt.`,
+      ];
+      return { icon: "🌊", color: "#3b82f6", text: msgs[v % msgs.length] };
+    }
+
+    // Phase-based messages
+    if (phase.includes("peak")) {
+      const msgs = lang === "en" ? [
+        `Peak week. This is where fitness is forged under pressure. Go all in — then rest hard.`,
+        `Your hardest week of the block. Every session counts. Run hard, sleep harder.`,
+        `Peak training week for ${raceName}. What you do here is what you'll feel on race day.`,
+      ] : [
+        `Tuần đỉnh điểm. Đây là lúc thể lực được tôi luyện. Hết mình — rồi nghỉ thật sâu.`,
+        `Tuần khó nhất của block. Mỗi buổi tập đều quan trọng. Tập mạnh, ngủ nhiều hơn.`,
+      ];
+      return { icon: "🔥", color: "#ef4444", text: msgs[v % msgs.length] };
+    }
+
+    if (phase.includes("taper")) {
+      const msgs = lang === "en" ? [
+        `Taper week. The hard work is banked — adding more now only hurts you. Trust the process.`,
+        `Your body is absorbing everything you built. Resist the urge to run extra. Rest IS the training right now.`,
+      ] : [
+        `Tuần taper. Công sức đã tích lũy — thêm bài tập bây giờ chỉ gây hại. Hãy tin vào quá trình.`,
+      ];
+      return { icon: "🌊", color: "#3b82f6", text: msgs[v % msgs.length] };
+    }
+
+    if (phase.includes("build")) {
+      const msgs = lang === "en" ? [
+        `Build phase — the aerobic base is laid, now you're adding race-specific fitness on top. Quality over quantity.`,
+        `You're in the build. Intensity is rising. Make your hard days hard and your easy days truly easy.`,
+        `Build phase, week ${selectedWeek}. The gap between easy and hard sessions matters more than ever now.`,
+      ] : [
+        `Giai đoạn Build — nền tảng hiếu khí đã có, giờ thêm thể lực đặc thù. Chất lượng hơn số lượng.`,
+      ];
+      return { icon: "📈", color: "#8b5cf6", text: msgs[v % msgs.length] };
+    }
+
+    if (phase.includes("base")) {
+      if (selectedWeek === 1) {
+        const text = lang === "en"
+          ? `Welcome to your ${activePlan.total_weeks}-week plan for ${raceName}. These first weeks build the aerobic foundation everything else sits on. Run easy, run often, and resist the urge to push.`
+          : `Chào mừng bạn đến với kế hoạch ${activePlan.total_weeks} tuần cho ${raceName}. Những tuần đầu xây nền tảng hiếu khí. Chạy nhẹ, chạy đều, và đừng ép bản thân.`;
+        return { icon: "🌱", color: "#10b981", text };
+      }
+      const msgs = lang === "en" ? [
+        `Base phase — consistency beats intensity right now. Show up, run easy, let the aerobic engine grow.`,
+        `You're building the engine. Zone 2 miles now mean faster miles later. Trust the boring work.`,
+      ] : [
+        `Giai đoạn Base — sự đều đặn quan trọng hơn cường độ. Xuất hiện, chạy nhẹ, để động cơ hiếu khí lớn lên.`,
+      ];
+      return { icon: "🌱", color: "#10b981", text: msgs[v % msgs.length] };
+    }
+
+    if (phase.includes("recovery")) {
+      const msgs = lang === "en" ? [
+        `Recovery week. Adaptation happens during rest, not training. Honor the lighter load — it's doing real work.`,
+        `Deload week. Your body is consolidating the fitness from last block. Don't add extra — let it happen.`,
+      ] : [
+        `Tuần phục hồi. Thích nghi xảy ra khi nghỉ ngơi, không phải khi tập. Tôn trọng lịch nhẹ hơn.`,
+      ];
+      return { icon: "💧", color: "#6b7280", text: msgs[v % msgs.length] };
+    }
+
+    return null;
+  };
+  const coachMessage = getCoachMessage();
     return (
       <div>
         {!activePlan ? (
@@ -693,134 +865,45 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
 
 
 
+            {/* Coach message for this week */}
+            {coachMessage && (
+              <div style={{
+                display: "flex", alignItems: "flex-start", gap: "10px",
+                padding: "12px 16px", borderRadius: "10px", marginBottom: "12px",
+                background: `${coachMessage.color}10`,
+                border: `1px solid ${coachMessage.color}30`,
+              }}>
+                <span style={{ fontSize: "18px", flexShrink: 0 }}>{coachMessage.icon}</span>
+                <p style={{ fontSize: "13px", color: "var(--text-secondary)", margin: 0, lineHeight: "1.6", fontStyle: "italic" }}>
+                  {coachMessage.text}
+                </p>
+              </div>
+            )}
+
             {/* Week Workouts Grid */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-              {getWeekWorkouts(selectedWeek).map((wo: any) => {
-                const rest = wo.type === "Rest";
-                const dayOfWeekShort = lang === "vi"
-                  ? wo.day_of_week.replace("Monday", "T2").replace("Tuesday", "T3").replace("Wednesday", "T4").replace("Thursday", "T5").replace("Friday", "T6").replace("Saturday", "T7").replace("Sunday", "CN")
-                  : wo.day_of_week.slice(0, 3);
-                const woTypeTranslated = wo.type === "Rest" ? (lang === "en" ? "Rest" : "Nghỉ ngơi") : wo.type;
-
-                return (
-                  <div
-                    key={wo.id}
-                    style={{
-                      background: rest ? "rgba(255,255,255,0.05)" : "var(--bg-card)",
-                      backdropFilter: "blur(20px)",
-                      WebkitBackdropFilter: "blur(20px)",
-                      boxShadow: "inset 0 1px 0 rgba(255,255,255,0.4), 0 8px 24px rgba(0,0,0,0.05)",
-                      border: "1px solid",
-                      borderColor: wo.is_completed ? "var(--accent-success)" : "var(--border-color)",
-                      borderRadius: "12px",
-                      padding: isMobile ? "14px" : "20px",
-                      opacity: rest ? 0.75 : 1,
-                      display: "grid",
-                      gridTemplateColumns: isMobile ? "1fr" : "70px 1.6fr 1.1fr",
-                      gap: isMobile ? "10px" : "16px",
-                      alignItems: "start",
-                    }}
-                  >
-                    {/* Day name & Status Checkbox */}
-                    <div style={{
-                      display: "flex",
-                      flexDirection: isMobile ? "row" : "column",
-                      alignItems: "center",
-                      justifyContent: isMobile ? "space-between" : "center",
-                      textAlign: "center",
-                      borderBottom: isMobile ? "1px solid rgba(0,0,0,0.05)" : "none",
-                      paddingBottom: isMobile ? "8px" : 0,
-                    }}>
-                      <div style={{ display: "flex", gap: "8px", alignItems: "baseline" }}>
-                        <span style={{ fontWeight: "700", fontSize: "15px" }}>{dayOfWeekShort}</span>
-                        <span style={{ fontSize: "11px", color: "var(--text-secondary)" }}>{getWorkoutDate(wo)}</span>
-                      </div>
-                      {!rest && (
-                        <input
-                          type="checkbox"
-                          style={{ width: "18px", height: "18px", accentColor: "var(--accent-success)", cursor: "pointer", margin: 0 }}
-                          checked={wo.is_completed === 1}
-                          onChange={(e) => handleToggleComplete(wo.id, e.target.checked)}
-                        />
-                      )}
-                    </div>
-
-                    {/* Workout Details */}
-                    <div>
-                      <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap", marginBottom: "6px" }}>
-                        <h4 style={{ fontSize: isMobile ? "15px" : "17px", margin: 0 }}>{wo.title}</h4>
-                        <span className="badge" style={{ margin: 0, fontSize: "9px", padding: "2px 6px" }}>{woTypeTranslated}</span>
-                      </div>
-                      <WorkoutDescription description={wo.description || ""} />
-                      {wo.fueling_tip && (
-                        <div style={{ background: "rgba(16, 185, 129, 0.03)", borderLeft: "2px solid var(--accent-primary)", padding: "6px 10px", borderRadius: "4px", fontSize: "12px" }}>
-                          {wo.fueling_tip}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Target Metrics Column */}
-                    <div style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "12.5px" }}>
-                      {wo.duration_minutes > 0 && (
-                        <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(0,0,0,0.04)", paddingBottom: "4px" }}>
-                          <span style={{ color: "var(--text-muted)", fontWeight: "600" }}>
-                            {lang === "en" ? "Target Time:" : "Thời gian mục tiêu:"}
-                          </span>
-                          <span style={{ fontWeight: "700" }}>{wo.duration_minutes}m</span>
-                        </div>
-                      )}
-                      {wo.distance_km !== undefined && wo.distance_km > 0 && (
-                        <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(0,0,0,0.04)", paddingBottom: "4px" }}>
-                          <span style={{ color: "var(--text-muted)", fontWeight: "600" }}>
-                            {lang === "en" ? "Est. Dist:" : "Cự ly ước tính:"}
-                          </span>
-                          <span style={{ fontWeight: "700", color: "var(--accent-primary)" }}>{wo.distance_km}km</span>
-                        </div>
-                      )}
-                      {wo.target_pace && wo.target_pace.trim() !== "" && (
-                        <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(0,0,0,0.04)", paddingBottom: "4px" }}>
-                          <span style={{ color: "var(--text-muted)", fontWeight: "600" }}>
-                            {lang === "en" ? "Target Pace:" : "Pace mục tiêu:"}
-                          </span>
-                          <span style={{ fontWeight: "700", color: "var(--accent-success)" }}>{wo.target_pace}</span>
-                        </div>
-                      )}
-                      {wo.target_hr_range && (
-                        <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(0,0,0,0.04)", paddingBottom: "4px" }}>
-                          <span style={{ color: "var(--text-muted)", fontWeight: "600" }}>
-                            {lang === "en" ? "HR Limit:" : "Giới hạn HR:"}
-                          </span>
-                          <span style={{ fontWeight: "700", color: "var(--accent-secondary)" }}>{wo.target_hr_range}</span>
-                        </div>
-                      )}
-                      {wo.treadmill_incline > 0 && (
-                        <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                          <div style={{ display: "flex", justifyContent: "space-between" }}>
-                            <span style={{ color: "var(--text-muted)", fontWeight: "600" }}>
-                              {lang === "en" ? "Incline:" : "Độ dốc (Incline):"}
-                            </span>
-                            <span style={{ fontWeight: "700" }}>{wo.treadmill_incline}%</span>
-                          </div>
-                          <div style={{ display: "flex", justifyContent: "space-between" }}>
-                            <span style={{ color: "var(--text-muted)", fontWeight: "600" }}>
-                              {lang === "en" ? "Speed:" : "Tốc độ (Speed):"}
-                            </span>
-                            <span style={{ fontWeight: "700" }}>{wo.treadmill_speed}kph</span>
-                          </div>
-                        </div>
-                      )}
-                      {rest && (
-                        <div style={{ display: "flex", justifyContent: "center", padding: "6px", background: "rgba(0,0,0,0.02)", borderRadius: "6px" }}>
-                          <span style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase" }}>
-                            {lang === "en" ? "Rest Day" : "Ngày nghỉ ngơi"}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              {getWeekWorkouts(selectedWeek).map((wo: any) => (
+                <WorkoutCard
+                  key={wo.id}
+                  wo={wo}
+                  isMobile={isMobile}
+                  lang={lang}
+                  onToggleComplete={handleToggleComplete}
+                  onLogWorkout={handleLogWorkout}
+                  getWorkoutDate={getWorkoutDate}
+                />
+              ))}
             </div>
+
+            {/* Coach's pick — contextual knowledge card for this phase */}
+            {contextCard && (
+              <div style={{ marginTop: "20px", paddingTop: "16px", borderTop: "1px solid rgba(0,0,0,0.06)" }}>
+                <p style={{ fontSize: "10px", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 8px 2px" }}>
+                  {lang === "en" ? "Coach's pick this week" : "Bài đọc Coach chọn tuần này"}
+                </p>
+                <KnowledgeCard card={contextCard} />
+              </div>
+            )}
           </div>
         )}
       </div>
