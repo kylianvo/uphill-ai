@@ -198,11 +198,12 @@ export function usePlanner() {
         setBackupWorkouts([]);
       }
       setSelectedWeek(1);
-      // Start background polling for workouts
+      // Start background polling for workouts — poller owns planLoading from here
       if (result.job_id) {
         startPlanJobPoller(result.job_id, token!);
+        return; // skip finally's setPlanLoading(false) — poller will clear it when done
       } else {
-        // Fallback: if somehow we got workouts synchronously
+        // Fallback: synchronous workouts (no job)
         if (result.workouts) setWorkouts(result.workouts);
         if (token) fetchRecentPlansWithToken(token);
       }
