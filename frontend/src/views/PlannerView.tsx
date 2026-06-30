@@ -5,12 +5,14 @@ import { usePlanner } from "../hooks/usePlanner";
 import { translations } from "../app/translations";
 import WorkoutCard from "../components/WorkoutCard";
 import { KnowledgeCard } from "../components/KnowledgeCard";
+import { DndContext, DragEndEvent, DragOverEvent, useDraggable, useDroppable } from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
 import ToolsView from "./ToolsView";
 import { UploadSimple, FileArrowUp, Heart, Clock, Mountains, MapPin, Footprints, ArrowsMerge, PlayCircle, CheckCircle, Fire, Path, RoadHorizon, Info, Check, Question, WarningCircle, Plus, Trash, Archive, LockKey, LockKeyOpen, Trophy, Target, Sneaker, PersonSimpleRun, Bed, XCircle, DownloadSimple } from '@phosphor-icons/react';
 
 export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   const ctx = useAppContext();
-  const { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, handleSwapWorkouts, handleToggleComplete, handleLogWorkout, getWeekWorkouts, getWorkoutDate, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller } = usePlanner();
+  const { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, handleSwapWorkouts, swapDays, handleToggleComplete, handleLogWorkout, getWeekWorkouts, getWorkoutDate, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller } = usePlanner();
   const { lang, activePlan, planLoading, planErrorMsg, planForm, setPlanForm, targetTimeH, setTargetTimeH, targetTimeM, setTargetTimeM, targetTimeS, setTargetTimeS, cutoffTimeH, setCutoffTimeH, cutoffTimeM, setCutoffTimeM, cutoffTimeS, setCutoffTimeS, recentPlans, selectedWeek, setSelectedWeek, swapDay1, setSwapDay1, swapDay2, setSwapDay2, setWorkouts, setBackupWorkouts, setActivePlan, workouts, backupWorkouts, backupActivePlan, setBackupActivePlan, courseInputMode, setCourseInputMode, plannerGpxLoading, plannerGpxFile, plannerGpxError, showExportOptions, setShowExportOptions, exportTimePref, setExportTimePref } = ctx;
   const t = (key: keyof typeof translations.en) => translations[lang]?.[key] || translations.en[key] || key;
   const totalWeeks = activePlan ? (activePlan.plan_duration_weeks || 1) : 0;
@@ -996,102 +998,16 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 ))}
               </div>
             ) : (
-              /* Week Workouts — grouped by day */
-              (() => {
-                const DAY_ORDER = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-                const DAY_VI = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy", "Chủ Nhật"];
-                const weekWos = getWeekWorkouts(selectedWeek);
-                // Group by day, preserving day order
-                const byDay: Record<string, any[]> = {};
-                DAY_ORDER.forEach(d => { byDay[d] = []; });
-                weekWos.forEach((wo: any) => {
-                  const d = wo.day_of_week || "Monday";
-                  if (!byDay[d]) byDay[d] = [];
-                  byDay[d].push(wo);
-                });
-                // Sort within each day: morning → main → afternoon
-                const SLOT_ORDER: Record<string, number> = { morning: 0, main: 1, afternoon: 2 };
-                DAY_ORDER.forEach(d => {
-                  byDay[d].sort((a: any, b: any) => (SLOT_ORDER[a.session_slot ?? "main"] ?? 1) - (SLOT_ORDER[b.session_slot ?? "main"] ?? 1));
-                });
-                return (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-                    {DAY_ORDER.map((day, di) => {
-                      const dayWos = byDay[day];
-                      if (!dayWos || dayWos.length === 0) return null;
-                      const isDoubleDay = dayWos.length >= 2;
-                      const dayKm = dayWos.reduce((s: number, w: any) => s + (w.distance_km || 0), 0);
-                      const dayMins = dayWos.reduce((s: number, w: any) => s + (w.duration_minutes || 0), 0);
-                      const dayHrs = (dayMins / 60).toFixed(1);
-                      const allRest = dayWos.every((w: any) => w.type === "Rest" || w.duration_minutes === 0);
-                      const dayLabel = lang === "vi" ? DAY_VI[di] : day;
-                      return (
-                        <div key={day}>
-                          {/* Day header */}
-                          <div style={{
-                            display: "flex", alignItems: "center", justifyContent: "space-between",
-                            marginBottom: "6px", paddingBottom: "5px",
-                            borderBottom: "1px solid rgba(0,0,0,0.06)",
-                          }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
-                              <span style={{ fontSize: "12px", fontWeight: "700", color: "var(--text-secondary)", letterSpacing: "0.02em" }}>
-                                {dayLabel.toUpperCase()}
-                              </span>
-                              {isDoubleDay && (
-                                <span style={{
-                                  fontSize: "9px", fontWeight: "700", padding: "2px 6px",
-                                  borderRadius: "99px", background: "rgba(16,185,129,0.12)",
-                                  color: "var(--accent-primary)", border: "1px solid rgba(16,185,129,0.25)",
-                                  letterSpacing: "0.03em",
-                                }}>
-                                  {lang === "en" ? "2×" : "2 BUỔI"}
-                                </span>
-                              )}
-                            </div>
-                            {!allRest && (
-                              <span style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: "500" }}>
-                                {dayKm > 0 ? `${dayKm.toFixed(1)} km · ` : ""}{dayHrs} {lang === "en" ? "h" : "giờ"}
-                              </span>
-                            )}
-                          </div>
-                          {/* Session cards */}
-                          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                            {dayWos.map((wo: any) => {
-                              const slot = wo.session_slot ?? "main";
-                              const showSlotBadge = isDoubleDay && slot !== "main";
-                              return (
-                                <div key={wo.id}>
-                                  {showSlotBadge && (
-                                    <div style={{
-                                      fontSize: "10px", fontWeight: "700", marginBottom: "3px",
-                                      paddingLeft: "2px", color: slot === "morning" ? "#f59e0b" : "#6366f1",
-                                      display: "flex", alignItems: "center", gap: "4px",
-                                    }}>
-                                      <span>{slot === "morning" ? "☀️" : "🌙"}</span>
-                                      <span>{slot === "morning"
-                                        ? (lang === "en" ? "MORNING SESSION" : "BUỔI SÁNG")
-                                        : (lang === "en" ? "AFTERNOON SESSION" : "BUỔI CHIỀU")
-                                      }</span>
-                                    </div>
-                                  )}
-                                  <WorkoutCard
-                                    wo={wo}
-                                    isMobile={isMobile}
-                                    lang={lang}
-                                    onToggleComplete={handleToggleComplete}
-                                    onLogWorkout={handleLogWorkout}
-                                    getWorkoutDate={getWorkoutDate}
-                                  />
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })()
+              /* Week Workouts — grouped by day with drag-and-drop swap */
+              <WeekDayList
+                weekWos={getWeekWorkouts(selectedWeek)}
+                lang={lang}
+                isMobile={isMobile}
+                onSwapDays={swapDays}
+                onToggleComplete={handleToggleComplete}
+                onLogWorkout={handleLogWorkout}
+                getWorkoutDate={getWorkoutDate}
+              />
             )}
 
             {/* Coach's pick — contextual knowledge card for this phase */}
@@ -1251,3 +1167,182 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   };
 
   const renderTools = (isMobile: boolean) => <ToolsView isMobile={isMobile} />;
+
+// ─── Drag-and-drop day components ─────────────────────────────────────────────
+
+const DAY_ORDER = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const DAY_VI = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy", "Chủ Nhật"];
+const SLOT_ORDER: Record<string, number> = { morning: 0, main: 1, afternoon: 2 };
+
+interface DayGroupProps {
+  day: string;
+  dayIndex: number;
+  dayWos: any[];
+  lang: string;
+  isMobile: boolean;
+  isOver: boolean;
+  onToggleComplete: (id: number, completed: boolean) => void;
+  onLogWorkout: (id: number, rpe: number | null, notes: string) => Promise<void>;
+  getWorkoutDate: (wo: any) => string;
+}
+
+function DayGroup({ day, dayIndex, dayWos, lang, isMobile, isOver, onToggleComplete, onLogWorkout, getWorkoutDate }: DayGroupProps) {
+  const { attributes, listeners, setNodeRef: setDragRef, transform, isDragging } = useDraggable({ id: day });
+  const { setNodeRef: setDropRef } = useDroppable({ id: day });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Translate.toString(transform),
+    opacity: isDragging ? 0.45 : 1,
+    transition: isDragging ? undefined : "transform 150ms ease",
+  };
+
+  const containerStyle: React.CSSProperties = {
+    borderRadius: "10px",
+    padding: isOver ? "8px" : "0",
+    background: isOver ? "rgba(16,185,129,0.06)" : "transparent",
+    border: isOver ? "1.5px dashed rgba(16,185,129,0.4)" : "1.5px solid transparent",
+    transition: "background 120ms, border 120ms, padding 120ms",
+  };
+
+  const isDoubleDay = dayWos.length >= 2;
+  const dayKm = dayWos.reduce((s: number, w: any) => s + (w.distance_km || 0), 0);
+  const dayMins = dayWos.reduce((s: number, w: any) => s + (w.duration_minutes || 0), 0);
+  const dayHrs = (dayMins / 60).toFixed(1);
+  const allRest = dayWos.every((w: any) => w.type === "Rest" || w.duration_minutes === 0);
+  const dayLabel = lang === "vi" ? DAY_VI[dayIndex] : day;
+
+  // Combine refs
+  const setRef = (node: HTMLElement | null) => { setDragRef(node); setDropRef(node); };
+
+  return (
+    <div ref={setRef} style={{ ...style, ...containerStyle }}>
+      {/* Day header — drag handle */}
+      <div
+        {...listeners}
+        {...attributes}
+        style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          marginBottom: "6px", paddingBottom: "5px",
+          borderBottom: "1px solid rgba(0,0,0,0.06)",
+          cursor: "grab", userSelect: "none",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
+          <span style={{ fontSize: "14px", color: "rgba(0,0,0,0.2)", flexShrink: 0, lineHeight: 1 }}>⠿</span>
+          <span style={{ fontSize: "12px", fontWeight: "700", color: "var(--text-secondary)", letterSpacing: "0.02em" }}>
+            {dayLabel.toUpperCase()}
+          </span>
+          {isDoubleDay && (
+            <span style={{
+              fontSize: "9px", fontWeight: "700", padding: "2px 6px", borderRadius: "99px",
+              background: "rgba(16,185,129,0.12)", color: "var(--accent-primary)",
+              border: "1px solid rgba(16,185,129,0.25)", letterSpacing: "0.03em",
+            }}>
+              {lang === "en" ? "2×" : "2 BUỔI"}
+            </span>
+          )}
+        </div>
+        {!allRest && (
+          <span style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: "500" }}>
+            {dayKm > 0 ? `${dayKm.toFixed(1)} km · ` : ""}{dayHrs} {lang === "en" ? "h" : "giờ"}
+          </span>
+        )}
+      </div>
+
+      {/* Session cards */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+        {dayWos.map((wo: any) => {
+          const slot = wo.session_slot ?? "main";
+          const showSlotBadge = isDoubleDay && slot !== "main";
+          return (
+            <div key={wo.id}>
+              {showSlotBadge && (
+                <div style={{
+                  fontSize: "10px", fontWeight: "700", marginBottom: "3px",
+                  paddingLeft: "2px", color: slot === "morning" ? "#f59e0b" : "#6366f1",
+                  display: "flex", alignItems: "center", gap: "4px",
+                }}>
+                  <span>{slot === "morning" ? "☀️" : "🌙"}</span>
+                  <span>{slot === "morning"
+                    ? (lang === "en" ? "MORNING SESSION" : "BUỔI SÁNG")
+                    : (lang === "en" ? "AFTERNOON SESSION" : "BUỔI CHIỀU")
+                  }</span>
+                </div>
+              )}
+              <WorkoutCard
+                wo={wo}
+                isMobile={isMobile}
+                lang={lang}
+                onToggleComplete={onToggleComplete}
+                onLogWorkout={onLogWorkout}
+                getWorkoutDate={getWorkoutDate}
+              />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+interface WeekDayListProps {
+  weekWos: any[];
+  lang: string;
+  isMobile: boolean;
+  onSwapDays: (day1: string, day2: string) => void;
+  onToggleComplete: (id: number, completed: boolean) => void;
+  onLogWorkout: (id: number, rpe: number | null, notes: string) => Promise<void>;
+  getWorkoutDate: (wo: any) => string;
+}
+
+function WeekDayList({ weekWos, lang, isMobile, onSwapDays, onToggleComplete, onLogWorkout, getWorkoutDate }: WeekDayListProps) {
+  const [overId, setOverId] = React.useState<string | null>(null);
+
+  const byDay: Record<string, any[]> = {};
+  DAY_ORDER.forEach(d => { byDay[d] = []; });
+  weekWos.forEach((wo: any) => {
+    const d = wo.day_of_week || "Monday";
+    if (!byDay[d]) byDay[d] = [];
+    byDay[d].push(wo);
+  });
+  DAY_ORDER.forEach(d => {
+    byDay[d].sort((a: any, b: any) => (SLOT_ORDER[a.session_slot ?? "main"] ?? 1) - (SLOT_ORDER[b.session_slot ?? "main"] ?? 1));
+  });
+
+  const handleDragOver = (event: DragOverEvent) => {
+    setOverId(event.over ? String(event.over.id) : null);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    setOverId(null);
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      onSwapDays(String(active.id), String(over.id));
+    }
+  };
+
+  return (
+    <DndContext onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+        {DAY_ORDER.map((day, di) => {
+          const dayWos = byDay[day];
+          if (!dayWos || dayWos.length === 0) return null;
+          return (
+            <DayGroup
+              key={day}
+              day={day}
+              dayIndex={di}
+              dayWos={dayWos}
+              lang={lang}
+              isMobile={isMobile}
+              isOver={overId === day}
+              onToggleComplete={onToggleComplete}
+              onLogWorkout={onLogWorkout}
+              getWorkoutDate={getWorkoutDate}
+            />
+          );
+        })}
+      </div>
+    </DndContext>
+  );
+}

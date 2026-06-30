@@ -314,6 +314,24 @@ export function usePlanner() {
     }
   };
 
+  const swapDays = async (day1: string, day2: string) => {
+    if (!activePlan || day1 === day2) return;
+    const token = localStorage.getItem("uphill_session_token");
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/coach/modify-calendar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({ plan_id: activePlan.id, week_number: selectedWeek, day_1: day1, day_2: day2 }),
+      });
+      if (response.ok) {
+        const result = await response.json();
+        setWorkouts(result.workouts);
+      }
+    } catch (err) {
+      console.error("Failed to swap days:", err);
+    }
+  };
+
   const handleToggleComplete = async (woId: number, isCompleted: boolean) => {
     setWorkouts((prev: any) =>
       prev.map((wo: any) => (wo.id === woId ? { ...wo, is_completed: isCompleted ? 1 : 0 } : wo))
@@ -408,5 +426,5 @@ export function usePlanner() {
     }
   };
 
-  return { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, handleSwapWorkouts, handleToggleComplete, handleLogWorkout, getWeekWorkouts, getWorkoutDate, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller };
+  return { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, handleSwapWorkouts, swapDays, handleToggleComplete, handleLogWorkout, getWeekWorkouts, getWorkoutDate, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller };
 }
