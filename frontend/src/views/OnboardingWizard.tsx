@@ -1301,7 +1301,7 @@ export default function OnboardingWizard() {
 
                   {/* Fitness estimated disclaimer */}
 
-                  {(isStart || ((isReturn || isRecovery) && !onboardingAnswers.aet_hr && !onboardingAnswers.race_time_hours)) && (
+                  {(isStart || (!onboardingAnswers.aet_hr && !onboardingAnswers.race_time_hours)) && (
 
                     <div style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: "10px", padding: "12px 14px", marginBottom: "16px", display: "flex", gap: "10px", alignItems: "flex-start" }}>
 
