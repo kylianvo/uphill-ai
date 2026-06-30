@@ -96,7 +96,15 @@ class PlanGenerator:
 
         course_distance_km = race_info.get("course_distance_km")
         course_elevation_gain_m = race_info.get("course_elevation_gain_m")
+        target_time_hours = race_info.get("target_time_hours")
         current_weekly_km = float(user_profile.get("current_weekly_km", 30.0))
+
+        # Pre-compute goal race pace if we have both a target time and distance
+        if target_time_hours and course_distance_km:
+            race_pace_dec = (float(target_time_hours) * 60) / float(course_distance_km)
+            goal_race_pace_str = PlanGenerator.decimal_to_pace_str(race_pace_dec)
+        else:
+            goal_race_pace_str = None  # fall back to Zone 4 (race effort)
 
         # Extract Zone 2 bounds and calculate estimated pacing zones
         z2_min = user_profile.get("zone2_pace_min") or "6:30"
@@ -161,11 +169,12 @@ class PlanGenerator:
                     wo["distance_km"] = 0.0
                     continue
 
-                # Race / Target Race: use the known course distance (ignore AI estimate)
+                # Race / Target Race: use the known course distance and goal pace
                 title_lower = wo.get("title", "").lower()
                 if ("target race" in title_lower or w_type == "Race") and course_distance_km:
                     wo["distance_km"] = float(course_distance_km)
-                    wo["target_pace"] = f"{p_z2_mid} /km"
+                    # Use goal race pace derived from target finish time; fall back to Zone 4
+                    wo["target_pace"] = f"{goal_race_pace_str or p_z4} /km"
                     continue
 
                 # Map zone to decimal pace and label (always recalculate, discard AI distance)
