@@ -241,14 +241,14 @@ export default function OnboardingWizard() {
     // count as "still at default". Only HR fields or a changed pace count as real input.
     const isFitnessStep = currentStepKey === "fitness_start" || currentStepKey === "fitness_return" || currentStepKey === "fitness";
     const DEFAULT_PACES = ["8:30", "7:30", "6:30", "5:45"];
-    const hasRealFitnessData =
-      !!onboardingAnswers.aet_hr ||
-      !!onboardingAnswers.race_time_hours ||
-      !!onboardingAnswers.resting_hr ||
-      (onboardingAnswers.zone2_pace_min && !DEFAULT_PACES.includes(onboardingAnswers.zone2_pace_min)) ||
-      (onboardingAnswers.zone2_pace_max && !DEFAULT_PACES.includes(onboardingAnswers.zone2_pace_max));
+    const fitnessDataIncomplete =
+      !onboardingAnswers.aet_hr ||
+      !onboardingAnswers.race_time_hours ||
+      !onboardingAnswers.resting_hr ||
+      !onboardingAnswers.zone2_pace_min || DEFAULT_PACES.includes(onboardingAnswers.zone2_pace_min) ||
+      !onboardingAnswers.zone2_pace_max || DEFAULT_PACES.includes(onboardingAnswers.zone2_pace_max);
     const handleNextStep = () => {
-      if (isFitnessStep && !hasRealFitnessData) {
+      if (isFitnessStep && fitnessDataIncomplete) {
         setShowFitnessWarning(true);
       } else {
         nextStep();
