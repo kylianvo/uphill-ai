@@ -65,6 +65,9 @@ class PlanGenerator:
         total_weeks: int = 12,
         api_key: str = None,
         cutoff_time_hours: float = None,
+        block_number: int = 1,
+        weeks_per_block: int = 2,
+        block_context: str | None = None,
     ) -> list[dict[str, Any]]:
         """
         Generates a structured running plan based on:
@@ -74,6 +77,10 @@ class PlanGenerator:
         - The 80/20 intensity threshold logic for road running.
         - Dynamic periodized schedule duration.
         """
+        # Block window calculation
+        block_start_week = (block_number - 1) * weeks_per_block + 1
+        block_end_week = min(block_start_week + weeks_per_block - 1, total_weeks)
+
         # 1. Base Variables Extract
         lang = race_info.get("lang", "en").lower()
         age = int(user_profile.get("age", 30))
@@ -146,11 +153,13 @@ class PlanGenerator:
                 # Ensure correct typing for optional numeric fields and week_number
                 if "week_number" in wo and wo["week_number"] is not None:
                     try:
-                        wo["week_number"] = int(wo["week_number"])
+                        wn = int(wo["week_number"])
+                        # Clamp to block range to catch AI hallucinating out-of-range week numbers
+                        wo["week_number"] = max(block_start_week, min(block_end_week, wn))
                     except Exception:
-                        wo["week_number"] = 1
+                        wo["week_number"] = block_start_week
                 else:
-                    wo["week_number"] = 1
+                    wo["week_number"] = block_start_week
 
                 if "treadmill_incline" in wo and wo["treadmill_incline"] is not None:
                     try:
@@ -312,6 +321,20 @@ class PlanGenerator:
                     target_date_details = ""
                     week_schedule_constraints = ""
 
+                total_blocks = (total_weeks + weeks_per_block - 1) // weeks_per_block
+                block_instruction = (
+                    f"\nSEQUENTIAL BLOCK GENERATION:\n"
+                    f"This plan spans {total_weeks} weeks total, generated in {total_blocks} blocks of {weeks_per_block} weeks each.\n"
+                    f"Generate ONLY Block {block_number} of {total_blocks}: weeks {block_start_week} through {block_end_week}.\n"
+                    f"CRITICAL: Every workout `week_number` MUST be between {block_start_week} and {block_end_week} (inclusive). Do NOT output week numbers outside this range.\n"
+                )
+                if block_context:
+                    block_instruction += (
+                        f"\nATHLETE FEEDBACK FROM PREVIOUS BLOCKS:\n{block_context}\n"
+                        "Use this feedback to adjust volume and intensity. If RPE was high (≥7), reduce intensity by 5-10%. "
+                        "If RPE was low (≤4), you can modestly increase load. Honor any injury notes with extra caution.\n"
+                    )
+
                 prompt = (
                     "You are a world-class running coach training athletes based on the 'Training for the Uphill Athlete' philosophy.\n"
                     f"{goal_intro}\n\n"
@@ -319,13 +342,14 @@ class PlanGenerator:
                     f"{program_details}"
                     f"Current Date (today): {current_date_str} ({current_weekday})\n"
                     f"{target_date_details}"
-                    f"Required Plan Length: {total_weeks} weeks.\n"
-                    f"- Week 1 MUST start on the selected start date: {current_date_str} ({current_weekday}).\n"
-                    f"{week_schedule_constraints}\n"
+                    f"Full Plan Length: {total_weeks} weeks.\n"
+                    f"- Week 1 starts on: {current_date_str} ({current_weekday}).\n"
+                    f"{week_schedule_constraints}"
+                    f"{block_instruction}\n"
                     "Instructions:\n"
-                    "1. Generate a periodized training schedule spanning exactly the required number of weeks. Each week must have structured workouts (typically 4-6 workouts per week, and Rest days on Monday/Friday or similar).\n"
+                    "1. Generate workouts for the specified block weeks only. Each week must have structured workouts (typically 4-6 workouts per week, with Rest days on Monday/Friday or similar).\n"
                     "2. The schedule must be returned as a JSON array of workout objects. Each workout object must follow this exact schema:\n"
-                    "   - `week_number` (integer: 1 to total_weeks)\n"
+                    "   - `week_number` (integer: MUST be within the block range specified above)\n"
                     "   - `day_of_week` (string: 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')\n"
                     "   - `phase` (string: 'Base', 'Build', 'Peak', 'Taper', 'Race Week', 'Recovery'. IMPORTANT: Follow this exact progression — Base (early weeks) → Build (mid weeks) → Peak (highest intensity week, 1-2 weeks before taper) → Taper (the week immediately before Race Week, reduce volume to ~50%) → Race Week (the week containing the actual race event) → Recovery (final week after the race).)\n"
                     "   - `title` (string: name of workout)\n"
@@ -398,7 +422,7 @@ class PlanGenerator:
             else:
                 return "Base"
 
-        for week in range(1, total_weeks + 1):
+        for week in range(block_start_week, block_end_week + 1):
             phase = get_phase_for_week(week)
             if phase == "Base":
                 volume_multiplier = 1.0 + (0.05 * (week - 1))

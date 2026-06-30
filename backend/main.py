@@ -21,8 +21,11 @@ from db import (
     get_active_plan,
     get_all_grounding_content,
     get_all_knowledge_cards,
+    get_block_completion,
+    get_block_reviews,
     get_knowledge_card_count,
     get_knowledge_topics,
+    get_max_generated_week,
     get_plan_workouts,
     get_random_knowledge_cards,
     get_recent_plans,
@@ -34,6 +37,7 @@ from db import (
     list_sources,
     mark_onboarding_complete,
     query_nutrition_catalog,
+    save_block_review,
     save_workouts,
     set_plan_active,
     set_user_password,
@@ -174,6 +178,20 @@ class ModifyCalendarRequest(BaseModel):
     week_number: int
     day_1: str
     day_2: str
+
+
+class BlockReviewRequest(BaseModel):
+    plan_id: int
+    block_number: int
+    overall_rpe: int | None = None
+    notes: str | None = None
+
+
+class GenerateNextBlockRequest(BaseModel):
+    plan_id: int
+    block_number: int  # the next block to generate (1-indexed)
+    overall_rpe: int | None = None  # optional pre-submission of RPE for current block
+    notes: str | None = None
 
 
 # Phase 3 Request Models
@@ -643,6 +661,8 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
                 race_info,
                 total_weeks,
                 api_key=model_api_key,
+                block_number=1,
+                weeks_per_block=2,
             )
             save_workouts(plan_id, workouts)
             plan_jobs[job_id]["workouts"] = workouts
@@ -940,7 +960,14 @@ async def generate_training_plan(request: PlanGenerateRequest, user: dict[str, A
         async def _run_gen():
             try:
                 workouts = await PlanGenerator.generate_plan_workouts(
-                    plan_id, fresh_user, race_info, total_weeks, api_key=model_api_key, cutoff_time_hours=cutoff
+                    plan_id,
+                    fresh_user,
+                    race_info,
+                    total_weeks,
+                    api_key=model_api_key,
+                    cutoff_time_hours=cutoff,
+                    block_number=1,
+                    weeks_per_block=2,
                 )
                 save_workouts(plan_id, workouts)
                 plan_jobs[job_id]["workouts"] = workouts
@@ -1004,6 +1031,145 @@ async def get_plan_generation_status(job_id: str, user: dict[str, Any] = Depends
 def get_user_recent_plans(user: dict[str, Any] = Depends(get_current_user)):
     plans = get_recent_plans(user["id"], limit=3)
     return {"plans": plans}
+
+
+# ─── Sequential Plan Endpoints ────────────────────────────────────────────────
+
+
+@app.get("/api/coach/block-completion/{plan_id}")
+def get_plan_block_completion(plan_id: int, user: dict[str, Any] = Depends(get_current_user)):
+    """Return completion % for each 2-week block generated so far."""
+    max_week = get_max_generated_week(plan_id)
+    total_blocks = (max_week + 1) // 2  # number of blocks with any workouts
+    blocks = []
+    for b in range(1, total_blocks + 1):
+        blocks.append(get_block_completion(plan_id, b))
+    return {"plan_id": plan_id, "blocks": blocks, "max_generated_week": max_week}
+
+
+@app.post("/api/coach/block-review")
+async def submit_block_review(request: BlockReviewRequest, user: dict[str, Any] = Depends(get_current_user)):
+    """Save a block check-in (RPE + notes) before generating the next block."""
+    review = save_block_review(
+        plan_id=request.plan_id,
+        block_number=request.block_number,
+        overall_rpe=request.overall_rpe,
+        notes=request.notes,
+    )
+    return {"review": review}
+
+
+@app.post("/api/coach/generate-next-block")
+async def generate_next_block(request: GenerateNextBlockRequest, user: dict[str, Any] = Depends(get_current_user)):
+    """
+    Generate the next 2-week block for an existing plan.
+    Requires the previous block to be ≥80% complete by training hours.
+    Injects block review feedback into the generation prompt.
+    """
+    import asyncio
+
+    prev_block = request.block_number - 1
+
+    # Enforce 80% completion gate on the preceding block
+    if prev_block >= 1:
+        completion = get_block_completion(request.plan_id, prev_block)
+        if not completion["unlocked"]:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Block {prev_block} is {completion['completion_pct']}% complete. Need ≥80% to unlock the next block.",
+            )
+
+    # If the caller passes RPE/notes, save them as the review for the previous block first
+    if prev_block >= 1 and (request.overall_rpe is not None or request.notes):
+        save_block_review(
+            plan_id=request.plan_id,
+            block_number=prev_block,
+            overall_rpe=request.overall_rpe,
+            notes=request.notes,
+        )
+
+    # Fetch plan details and user profile
+    plan = get_active_plan(user["id"])
+    if not plan or plan["id"] != request.plan_id:
+        # Allow fetching any plan belonging to the user via recent-plans
+        recent = get_recent_plans(user["id"], limit=10)
+        plan = next((p for p in recent if p["id"] == request.plan_id), None)
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found.")
+
+    total_weeks = plan.get("total_weeks", 12)
+    block_start = (request.block_number - 1) * 2 + 1
+    if block_start > total_weeks:
+        raise HTTPException(status_code=400, detail="All blocks for this plan have already been generated.")
+
+    fresh_user = get_user_by_id(user["id"]) or user
+
+    # Collect all block reviews for context injection
+    reviews = get_block_reviews(request.plan_id)
+    block_context = None
+    if reviews:
+        lines = []
+        for r in reviews:
+            rpe_str = f"RPE {r['overall_rpe']}/10" if r.get("overall_rpe") else "no RPE logged"
+            note_str = f'"{r["notes"]}"' if r.get("notes") else "no notes"
+            lines.append(f"Block {r['block_number']}: {rpe_str} — {note_str}")
+        block_context = "\n".join(lines)
+
+    race_info = {
+        "name": plan.get("race_name", "Training Plan"),
+        "date": plan.get("race_date"),
+        "terrain": fresh_user.get("terrain", "trail"),
+        "goal_type": plan.get("goal_type"),
+        "target_time_hours": plan.get("target_time_hours"),
+        "course_distance_km": plan.get("course_distance_km"),
+        "course_elevation_gain_m": plan.get("course_elevation_gain_m"),
+        "preferred_days": fresh_user.get("preferred_run_days"),
+        "long_run_day": fresh_user.get("long_run_day"),
+        "days_per_week": fresh_user.get("days_per_week"),
+        "lang": fresh_user.get("lang", "en"),
+    }
+
+    model_api_key = fresh_user.get("gemini_api_key") or settings.GEMINI_API_KEY
+
+    job_id = str(_uuid.uuid4())
+    plan_jobs[job_id] = {
+        "status": "generating",
+        "user_id": user["id"],
+        "plan_id": request.plan_id,
+        "workouts": None,
+        "error": None,
+    }
+
+    async def _run_next_block():
+        try:
+            workouts = await PlanGenerator.generate_plan_workouts(
+                request.plan_id,
+                fresh_user,
+                race_info,
+                total_weeks,
+                api_key=model_api_key,
+                block_number=request.block_number,
+                weeks_per_block=2,
+                block_context=block_context,
+            )
+            save_workouts(request.plan_id, workouts)
+            plan_jobs[job_id]["workouts"] = workouts
+            plan_jobs[job_id]["status"] = "done"
+            print(f"[NextBlock][{job_id}] Block {request.block_number} complete — {len(workouts)} workouts saved.")
+        except Exception as ex:
+            plan_jobs[job_id]["status"] = "error"
+            plan_jobs[job_id]["error"] = str(ex)
+            print(f"[NextBlock][{job_id}] Block {request.block_number} FAILED: {ex}")
+
+    asyncio.create_task(_run_next_block())
+
+    return {
+        "job_id": job_id,
+        "plan_id": request.plan_id,
+        "block_number": request.block_number,
+        "week_start": block_start,
+        "week_end": min(block_start + 1, total_weeks),
+    }
 
 
 @app.post("/api/coach/select-plan")
