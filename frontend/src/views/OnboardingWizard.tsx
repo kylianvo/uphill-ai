@@ -10,6 +10,7 @@ export default function OnboardingWizard() {
   const { startPlanJobPoller, fetchRecentPlansWithToken } = usePlanner();
   const fetchActivePlanWithToken = fetchRecentPlansWithToken; // just alias if needed or handle properly.
   const { activeTab, setActiveTab, lang, setLang, user, setUser, setActivePlan, setAuthErrorMsg, onboardingOpen, setOnboardingOpen, onboardingAnswers, setOnboardingAnswers, onboardingStep, setOnboardingStep, onboardingGenerating, setOnboardingGenerating } = ctx;
+  const [showFitnessWarning, setShowFitnessWarning] = React.useState(false);
   const trackEvent = (name: string, props?: any) => { if (typeof window !== "undefined" && (window as any).posthog) { (window as any).posthog.capture(name, props); } };
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
   const t = (key: keyof typeof translations.en) => translations[lang]?.[key] || translations.en[key] || key;
@@ -234,6 +235,17 @@ export default function OnboardingWizard() {
     const nextStep = () => setOnboardingStep((s: any) => Math.min(s + 1, totalSteps - 1));
 
     const prevStep = () => setOnboardingStep((s: any) => Math.max(s - 1, 0));
+
+    // Intercept Next on fitness steps — show disclaimer popup if no data entered
+    const isFitnessStep = currentStepKey === "fitness_start" || currentStepKey === "fitness_return" || currentStepKey === "fitness";
+    const fitnessSkipped = !onboardingAnswers.aet_hr && !onboardingAnswers.race_time_hours;
+    const handleNextStep = () => {
+      if (isFitnessStep && (currentStepKey === "fitness_start" || fitnessSkipped)) {
+        setShowFitnessWarning(true);
+      } else {
+        nextStep();
+      }
+    };
 
 
 
@@ -1277,46 +1289,6 @@ export default function OnboardingWizard() {
 
                   </p>
 
-                  {/* Fitness estimated disclaimer — shown before summary so it's seen without scrolling */}
-
-                  {(isStart || (!onboardingAnswers.aet_hr && !onboardingAnswers.race_time_hours)) && (
-
-                    <div style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: "10px", padding: "12px 14px", marginBottom: "16px", display: "flex", gap: "10px", alignItems: "flex-start", textAlign: "left" }}>
-
-                      <span style={{ fontSize: "15px", flexShrink: 0, marginTop: "1px" }}>ℹ️</span>
-
-                      <div>
-
-                        <div style={{ fontSize: "11.5px", fontWeight: "700", color: "#d97706", letterSpacing: "0.04em", marginBottom: "3px" }}>
-
-                          {lang === "en" ? "FITNESS ZONES ESTIMATED" : "VÙNG TẬP LUYỆN ĐÃ ĐƯỢC ƯỚC TÍNH"}
-
-                        </div>
-
-                        <div style={{ fontSize: "12px", color: "var(--text-secondary)", lineHeight: "1.5" }}>
-
-                          {isStart
-
-                            ? (lang === "en"
-
-                                ? "Zones are estimated from your age. Once you have heart rate data from your watch, update them in your Profile for a more accurate plan."
-
-                                : "Vùng nhịp tim được ước tính từ tuổi của bạn. Khi có dữ liệu từ đồng hồ, hãy cập nhật trong Hồ sơ để có kế hoạch chính xác hơn.")
-
-                            : (lang === "en"
-
-                                ? "Training zones are estimated. Enter a recent race result or your heart rate zones in Profile when you have a measurement from your watch."
-
-                                : "Vùng tập luyện đang được ước tính. Hãy cập nhật kết quả giải chạy gần nhất hoặc vùng nhịp tim trong Hồ sơ khi có số liệu từ đồng hồ.")}
-
-                        </div>
-
-                      </div>
-
-                    </div>
-
-                  )}
-
                   <div style={{ background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: "12px", padding: "14px", marginBottom: "20px", textAlign: "left" }}>
 
                     <div style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "6px", fontWeight: "600" }}>
@@ -1367,7 +1339,81 @@ export default function OnboardingWizard() {
 
       <div style={{ position: "fixed", inset: 0, background: "rgba(255,255,255,0.35)", backdropFilter: "blur(16px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1001, padding: "20px" }}>
 
-        <div style={{ background: "var(--bg-card)", backdropFilter: "blur(30px)", border: "1px solid var(--border-color)", borderRadius: "24px", padding: "32px", width: "100%", maxWidth: "500px", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.1)", color: "var(--text-primary)" }}>
+        <div style={{ position: "relative", background: "var(--bg-card)", backdropFilter: "blur(30px)", border: "1px solid var(--border-color)", borderRadius: "24px", padding: "32px", width: "100%", maxWidth: "500px", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.1)", color: "var(--text-primary)" }}>
+
+          {/* Fitness skip confirmation popup */}
+
+          {showFitnessWarning && (
+
+            <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.45)", borderRadius: "24px", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 20, padding: "24px" }}>
+
+              <div style={{ background: "var(--bg-card)", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "360px", textAlign: "center", boxShadow: "0 8px 32px rgba(0,0,0,0.2)" }}>
+
+                <div style={{ fontSize: "32px", marginBottom: "12px" }}>⌚</div>
+
+                <div style={{ fontSize: "16px", fontWeight: "800", marginBottom: "10px", color: "var(--text-primary)" }}>
+
+                  {lang === "en" ? "Fitness zones will be estimated" : "Vùng tập luyện sẽ được ước tính"}
+
+                </div>
+
+                <p style={{ fontSize: "13px", color: "var(--text-secondary)", lineHeight: "1.6", marginBottom: "20px" }}>
+
+                  {isStart
+
+                    ? (lang === "en"
+
+                        ? "Your training zones will be estimated from your age. Once you have heart rate data from your watch, update them in Profile for a more accurate plan."
+
+                        : "Vùng tập luyện sẽ được ước tính từ tuổi của bạn. Khi có dữ liệu nhịp tim từ đồng hồ, hãy cập nhật trong Hồ sơ để kế hoạch chính xác hơn.")
+
+                    : (lang === "en"
+
+                        ? "Your training zones will be estimated. Once you have a recent race result or heart rate zones from your watch, update them in Profile for a more accurate plan."
+
+                        : "Vùng tập luyện sẽ được ước tính. Khi có kết quả giải chạy gần nhất hoặc vùng nhịp tim từ đồng hồ, hãy cập nhật trong Hồ sơ.")}
+
+                </p>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+
+                  <button
+
+                    type="button"
+
+                    onClick={() => { setShowFitnessWarning(false); nextStep(); }}
+
+                    className="btn btn-primary"
+
+                    style={{ height: "42px", fontSize: "13px", fontWeight: "700" }}
+
+                  >
+
+                    {lang === "en" ? "Got it, continue →" : "Đã hiểu, tiếp tục →"}
+
+                  </button>
+
+                  <button
+
+                    type="button"
+
+                    onClick={() => setShowFitnessWarning(false)}
+
+                    style={{ height: "38px", background: "transparent", border: "1.5px solid var(--border-color)", borderRadius: "10px", cursor: "pointer", fontSize: "13px", color: "var(--text-secondary)", fontWeight: "600" }}
+
+                  >
+
+                    {lang === "en" ? "← Add fitness data" : "← Thêm dữ liệu thể trạng"}
+
+                  </button>
+
+                </div>
+
+              </div>
+
+            </div>
+
+          )}
 
           {/* Progress bar */}
 
@@ -1413,7 +1459,7 @@ export default function OnboardingWizard() {
 
               )}
 
-              <button type="button" onClick={nextStep}
+              <button type="button" onClick={handleNextStep}
 
                 disabled={currentStepKey === "goal" && !onboardingAnswers.goal_type}
 
