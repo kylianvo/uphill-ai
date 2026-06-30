@@ -1345,15 +1345,13 @@ export default function OnboardingWizard() {
 
     return (
 
-      <div style={{ position: "fixed", inset: 0, background: "rgba(255,255,255,0.35)", backdropFilter: "blur(16px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1001, padding: "20px" }}>
+      <>
 
-        <div style={{ position: "relative", background: "var(--bg-card)", backdropFilter: "blur(30px)", border: "1px solid var(--border-color)", borderRadius: "24px", padding: "32px", width: "100%", maxWidth: "500px", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.1)", color: "var(--text-primary)" }}>
+      {/* Fitness disclaimer popup — rendered outside the modal card so backdrop-filter/overflow don't clip it */}
 
-          {/* Fitness skip confirmation popup — fixed so overflowY:auto on the card doesn't clip it */}
+      {showFitnessWarning && (
 
-          {showFitnessWarning && (
-
-            <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.80)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100, padding: "24px" }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.80)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1200, padding: "24px" }}>
 
               <div style={{ background: "var(--bg-card)", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "360px", textAlign: "center", boxShadow: "0 8px 32px rgba(0,0,0,0.2)" }}>
 
@@ -1421,7 +1419,11 @@ export default function OnboardingWizard() {
 
             </div>
 
-          )}
+      )}
+
+      <div style={{ position: "fixed", inset: 0, background: "rgba(255,255,255,0.35)", backdropFilter: "blur(16px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1001, padding: "20px" }}>
+
+        <div style={{ position: "relative", background: "var(--bg-card)", backdropFilter: "blur(30px)", border: "1px solid var(--border-color)", borderRadius: "24px", padding: "32px", width: "100%", maxWidth: "500px", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.1)", color: "var(--text-primary)" }}>
 
           {/* Progress bar */}
 
@@ -1492,6 +1494,8 @@ export default function OnboardingWizard() {
         </div>
 
       </div>
+
+      </>
 
     );
 
