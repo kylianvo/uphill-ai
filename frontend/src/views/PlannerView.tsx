@@ -1030,7 +1030,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
             )}
 
             {/* Block Complete Banner */}
-            {blockUnlocked && !allBlocksGenerated && !planLoading && (
+            {blockUnlocked && !planLoading && (
               <div style={{
                 marginTop: "20px",
                 padding: "16px 20px",
@@ -1049,40 +1049,28 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                         ? `Block ${currentBlockNum} Complete! (${currentBlockCompletion?.completion_pct ?? 0}% done)`
                         : `Block ${currentBlockNum} hoàn thành! (${currentBlockCompletion?.completion_pct ?? 0}% xong)`}
                     </div>
-                    <div style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "2px" }}>
-                      {lang === "en"
-                        ? `Weeks ${nextBlockStartWeek}–${Math.min(nextBlockStartWeek + 1, totalWeeks)} are ready to generate.`
-                        : `Tuần ${nextBlockStartWeek}–${Math.min(nextBlockStartWeek + 1, totalWeeks)} sẵn sàng để tạo.`}
-                    </div>
+                    {!allBlocksGenerated && (
+                      <div style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "2px" }}>
+                        {lang === "en"
+                          ? `Weeks ${nextBlockStartWeek}–${Math.min(nextBlockStartWeek + 1, totalWeeks)} are ready to generate.`
+                          : `Tuần ${nextBlockStartWeek}–${Math.min(nextBlockStartWeek + 1, totalWeeks)} sẵn sàng để tạo.`}
+                      </div>
+                    )}
                   </div>
                 </div>
-                <button
-                  className="btn btn-primary"
-                  style={{ alignSelf: "flex-start", fontSize: "13px", height: "38px", paddingLeft: "20px", paddingRight: "20px", display: "flex", alignItems: "center", gap: "6px" }}
-                  onClick={() => setShowBlockReview(true)}
-                  disabled={nextBlockLoading}
-                >
-                  <span>⚡</span>
-                  {nextBlockLoading
-                    ? (lang === "en" ? "Generating..." : "Đang tạo...")
-                    : (lang === "en" ? `Generate Block ${nextBlockNum}` : `Tạo Block ${nextBlockNum}`)}
-                </button>
-              </div>
-            )}
-
-            {/* All blocks generated message */}
-            {allBlocksGenerated && !planLoading && totalWeeks > 0 && (
-              <div style={{
-                marginTop: "20px", padding: "14px 18px", borderRadius: "12px",
-                background: "rgba(99,102,241,0.07)", border: "1px solid rgba(99,102,241,0.2)",
-                fontSize: "13px", color: "var(--text-secondary)", display: "flex", gap: "10px", alignItems: "center",
-              }}>
-                <span style={{ fontSize: "20px" }}>✅</span>
-                <span>
-                  {lang === "en"
-                    ? `All ${totalWeeks} weeks generated. Your full plan is ready — go get it!`
-                    : `Đã tạo đủ ${totalWeeks} tuần. Kế hoạch của bạn đã sẵn sàng!`}
-                </span>
+                {!allBlocksGenerated && (
+                  <button
+                    className="btn btn-primary"
+                    style={{ alignSelf: "flex-start", fontSize: "13px", height: "38px", paddingLeft: "20px", paddingRight: "20px", display: "flex", alignItems: "center", gap: "6px" }}
+                    onClick={() => setShowBlockReview(true)}
+                    disabled={nextBlockLoading}
+                  >
+                    <span>⚡</span>
+                    {nextBlockLoading
+                      ? (lang === "en" ? "Generating..." : "Đang tạo...")
+                      : (lang === "en" ? `Generate Block ${nextBlockNum}` : `Tạo Block ${nextBlockNum}`)}
+                  </button>
+                )}
               </div>
             )}
           </div>
