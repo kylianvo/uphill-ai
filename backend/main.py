@@ -1036,9 +1036,17 @@ def get_user_recent_plans(user: dict[str, Any] = Depends(get_current_user)):
 # ─── Sequential Plan Endpoints ────────────────────────────────────────────────
 
 
+def _verify_plan_ownership(plan_id: int, user_id: int):
+    """Raise 404 if the plan doesn't belong to this user (prevents IDOR)."""
+    recent = get_recent_plans(user_id, limit=100)
+    if not any(p["id"] == plan_id for p in recent):
+        raise HTTPException(status_code=404, detail="Plan not found.")
+
+
 @app.get("/api/coach/block-completion/{plan_id}")
 def get_plan_block_completion(plan_id: int, user: dict[str, Any] = Depends(get_current_user)):
     """Return completion % for each 2-week block generated so far."""
+    _verify_plan_ownership(plan_id, user["id"])
     max_week = get_max_generated_week(plan_id)
     total_blocks = (max_week + 1) // 2  # number of blocks with any workouts
     blocks = []
@@ -1050,6 +1058,7 @@ def get_plan_block_completion(plan_id: int, user: dict[str, Any] = Depends(get_c
 @app.post("/api/coach/block-review")
 async def submit_block_review(request: BlockReviewRequest, user: dict[str, Any] = Depends(get_current_user)):
     """Save a block check-in (RPE + notes) before generating the next block."""
+    _verify_plan_ownership(request.plan_id, user["id"])
     review = save_block_review(
         plan_id=request.plan_id,
         block_number=request.block_number,
@@ -1068,6 +1077,12 @@ async def generate_next_block(request: GenerateNextBlockRequest, user: dict[str,
     """
     import asyncio
 
+    # Ownership check FIRST — before any reads or writes on this plan
+    recent = get_recent_plans(user["id"], limit=100)
+    plan = next((p for p in recent if p["id"] == request.plan_id), None)
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found.")
+
     prev_block = request.block_number - 1
 
     # Enforce 80% completion gate on the preceding block
@@ -1079,7 +1094,7 @@ async def generate_next_block(request: GenerateNextBlockRequest, user: dict[str,
                 detail=f"Block {prev_block} is {completion['completion_pct']}% complete. Need ≥80% to unlock the next block.",
             )
 
-    # If the caller passes RPE/notes, save them as the review for the previous block first
+    # If the caller passes RPE/notes, save them as the review for the previous block
     if prev_block >= 1 and (request.overall_rpe is not None or request.notes):
         save_block_review(
             plan_id=request.plan_id,
@@ -1087,15 +1102,6 @@ async def generate_next_block(request: GenerateNextBlockRequest, user: dict[str,
             overall_rpe=request.overall_rpe,
             notes=request.notes,
         )
-
-    # Fetch plan details and user profile
-    plan = get_active_plan(user["id"])
-    if not plan or plan["id"] != request.plan_id:
-        # Allow fetching any plan belonging to the user via recent-plans
-        recent = get_recent_plans(user["id"], limit=10)
-        plan = next((p for p in recent if p["id"] == request.plan_id), None)
-    if not plan:
-        raise HTTPException(status_code=404, detail="Plan not found.")
 
     total_weeks = plan.get("total_weeks", 12)
     block_start = (request.block_number - 1) * 2 + 1

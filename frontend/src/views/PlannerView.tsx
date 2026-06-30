@@ -185,6 +185,79 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
     return null;
   };
   const coachMessage = getCoachMessage();
+
+  // ── Block completion state ───────────────────────────────────────────────
+  const [blockData, setBlockData] = useState<{ blocks: any[]; max_generated_week: number } | null>(null);
+  const [showBlockReview, setShowBlockReview] = useState(false);
+  const [blockReviewRpe, setBlockReviewRpe] = useState(5);
+  const [blockReviewNotes, setBlockReviewNotes] = useState("");
+  const [nextBlockLoading, setNextBlockLoading] = useState(false);
+
+  const fetchBlockCompletion = React.useCallback(() => {
+    if (!activePlan) return;
+    const token = typeof window !== "undefined" ? localStorage.getItem("uphill_session_token") : null;
+    if (!token) return;
+    fetch(`${API_BASE_URL}/api/coach/block-completion/${activePlan.id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setBlockData(data); })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePlan?.id, API_BASE_URL]);
+
+  useEffect(() => {
+    if (!activePlan) { Promise.resolve().then(() => setBlockData(null)); return; }
+    fetchBlockCompletion();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePlan?.id, fetchBlockCompletion]);
+
+  const maxGeneratedWeek = blockData?.max_generated_week ?? (workouts.length > 0 ? totalWeeks : 0);
+  const currentBlockNum = maxGeneratedWeek > 0 ? Math.ceil(maxGeneratedWeek / 2) : 1;
+  const currentBlockCompletion = blockData?.blocks?.find((b: any) => b.block_number === currentBlockNum);
+  const blockUnlocked = currentBlockCompletion?.unlocked ?? false;
+  const nextBlockNum = currentBlockNum + 1;
+  const nextBlockStartWeek = nextBlockNum * 2 - 1;
+  const allBlocksGenerated = maxGeneratedWeek >= totalWeeks && totalWeeks > 0;
+
+  const handleGenerateNextBlock = async () => {
+    if (!activePlan) return;
+    setNextBlockLoading(true);
+    const token = typeof window !== "undefined" ? localStorage.getItem("uphill_session_token") : null;
+    if (!token) { setNextBlockLoading(false); return; }
+    try {
+      const resp = await fetch(`${API_BASE_URL}/api/coach/generate-next-block`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          plan_id: activePlan.id,
+          block_number: nextBlockNum,
+          overall_rpe: blockReviewRpe || null,
+          notes: blockReviewNotes || null,
+        }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.detail || "Failed to start next block generation");
+      setShowBlockReview(false);
+      setBlockReviewNotes("");
+      setBlockReviewRpe(5);
+      // Poll for completion
+      startPlanJobPoller(data.job_id, token);
+      // Re-fetch block data after poller finishes (via a small delay + re-fetch)
+      const repoll = setInterval(() => {
+        const tkn = localStorage.getItem("uphill_session_token");
+        if (!tkn) { clearInterval(repoll); return; }
+        fetch(`${API_BASE_URL}/api/coach/plan-status/${data.job_id}`, { headers: { Authorization: `Bearer ${tkn}` } })
+          .then(r => r.ok ? r.json() : null)
+          .then(d => { if (d?.status === "done" || d?.status === "error") { clearInterval(repoll); fetchBlockCompletion(); } })
+          .catch(() => clearInterval(repoll));
+      }, 5000);
+    } catch (err: any) {
+      alert(err.message || "Failed to generate next block");
+    }
+    setNextBlockLoading(false);
+  };
+
     return (
       <div>
         {!activePlan ? (
@@ -799,27 +872,40 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
             <div style={{ display: "flex", gap: "6px", overflowX: "auto", paddingBottom: "8px", marginBottom: "16px" }}>
               {Array.from({ length: activePlan.total_weeks }).map((_, i) => {
                 const w = i + 1;
+                const isLocked = w > maxGeneratedWeek;
                 const firstWo = workouts.find((wo: any) => wo.week_number === w);
-                const phase = firstWo ? firstWo.phase : "Training";
-                const active = selectedWeek === w;
+                const phase = firstWo ? firstWo.phase : (isLocked ? "Locked" : "Training");
+                const active = selectedWeek === w && !isLocked;
                 const phaseDisplay = lang === "vi"
-                  ? phase.replace("Base", "Base").replace("Build", "Build").replace("Taper", "Taper").replace("Peak", "Peak").replace("Recovery", "Phục hồi").replace("Transition", "Chuyển đổi")
+                  ? phase.replace("Base", "Base").replace("Build", "Build").replace("Taper", "Taper").replace("Peak", "Peak").replace("Recovery", "Phục hồi").replace("Transition", "Chuyển đổi").replace("Locked", "Chưa mở")
                   : phase;
+                if (isLocked) {
+                  return (
+                    <div
+                      key={w}
+                      title={lang === "en" ? "Complete the current block to unlock" : "Hoàn thành block hiện tại để mở khóa"}
+                      style={{
+                        padding: "6px 12px", borderRadius: "8px", flexShrink: 0,
+                        fontSize: "12px", display: "flex", flexDirection: "column",
+                        alignItems: "center", gap: "1px", minWidth: "60px", height: "44px",
+                        background: "rgba(0,0,0,0.04)", border: "1px dashed rgba(0,0,0,0.15)",
+                        color: "var(--text-muted)", opacity: 0.55, cursor: "not-allowed",
+                        userSelect: "none",
+                      }}
+                    >
+                      <span style={{ fontSize: "11px" }}>🔒</span>
+                      <span style={{ fontSize: "9px" }}>{lang === "en" ? `Wk ${w}` : `T${w}`}</span>
+                    </div>
+                  );
+                }
                 return (
                   <button
                     key={w}
                     className={`btn ${active ? "btn-primary" : "btn-secondary"}`}
                     style={{
-                      padding: "6px 12px",
-                      borderRadius: "8px",
-                      flexShrink: 0,
-                      fontSize: "12px",
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      gap: "1px",
-                      minWidth: "60px",
-                      height: "44px",
+                      padding: "6px 12px", borderRadius: "8px", flexShrink: 0,
+                      fontSize: "12px", display: "flex", flexDirection: "column",
+                      alignItems: "center", gap: "1px", minWidth: "60px", height: "44px",
                       background: active ? "var(--accent-primary)" : "rgba(255,255,255,0.25)",
                       borderColor: active ? "var(--accent-primary)" : "var(--border-color)",
                       color: active ? "#ffffff" : "var(--text-primary)"
@@ -935,6 +1021,147 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 <KnowledgeCard card={contextCard} />
               </div>
             )}
+
+            {/* Block Complete Banner */}
+            {blockUnlocked && !allBlocksGenerated && !planLoading && (
+              <div style={{
+                marginTop: "20px",
+                padding: "16px 20px",
+                borderRadius: "14px",
+                background: "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(5,150,105,0.08))",
+                border: "1.5px solid rgba(16,185,129,0.35)",
+                display: "flex",
+                flexDirection: "column",
+                gap: "10px",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <span style={{ fontSize: "22px" }}>🎉</span>
+                  <div>
+                    <div style={{ fontWeight: "800", fontSize: "14px", color: "var(--accent-primary)" }}>
+                      {lang === "en"
+                        ? `Block ${currentBlockNum} Complete! (${currentBlockCompletion?.completion_pct ?? 0}% done)`
+                        : `Block ${currentBlockNum} hoàn thành! (${currentBlockCompletion?.completion_pct ?? 0}% xong)`}
+                    </div>
+                    <div style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "2px" }}>
+                      {lang === "en"
+                        ? `Weeks ${nextBlockStartWeek}–${Math.min(nextBlockStartWeek + 1, totalWeeks)} are ready to generate.`
+                        : `Tuần ${nextBlockStartWeek}–${Math.min(nextBlockStartWeek + 1, totalWeeks)} sẵn sàng để tạo.`}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  className="btn btn-primary"
+                  style={{ alignSelf: "flex-start", fontSize: "13px", height: "38px", paddingLeft: "20px", paddingRight: "20px", display: "flex", alignItems: "center", gap: "6px" }}
+                  onClick={() => setShowBlockReview(true)}
+                  disabled={nextBlockLoading}
+                >
+                  <span>⚡</span>
+                  {nextBlockLoading
+                    ? (lang === "en" ? "Generating..." : "Đang tạo...")
+                    : (lang === "en" ? `Generate Block ${nextBlockNum}` : `Tạo Block ${nextBlockNum}`)}
+                </button>
+              </div>
+            )}
+
+            {/* All blocks generated message */}
+            {allBlocksGenerated && !planLoading && totalWeeks > 0 && (
+              <div style={{
+                marginTop: "20px", padding: "14px 18px", borderRadius: "12px",
+                background: "rgba(99,102,241,0.07)", border: "1px solid rgba(99,102,241,0.2)",
+                fontSize: "13px", color: "var(--text-secondary)", display: "flex", gap: "10px", alignItems: "center",
+              }}>
+                <span style={{ fontSize: "20px" }}>✅</span>
+                <span>
+                  {lang === "en"
+                    ? `All ${totalWeeks} weeks generated. Your full plan is ready — go get it!`
+                    : `Đã tạo đủ ${totalWeeks} tuần. Kế hoạch của bạn đã sẵn sàng!`}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Block Review Modal */}
+        {showBlockReview && (
+          <div style={{
+            position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)",
+            zIndex: 1200, display: "flex", alignItems: "center", justifyContent: "center", padding: "24px",
+          }}>
+            <div style={{
+              background: "rgba(255,255,255,0.97)", borderRadius: "18px",
+              padding: "28px 24px", maxWidth: "420px", width: "100%",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+            }}>
+              <h3 style={{ margin: "0 0 4px", fontSize: "18px", fontWeight: "800" }}>
+                {lang === "en" ? `How was Block ${currentBlockNum}?` : `Block ${currentBlockNum} như thế nào?`}
+              </h3>
+              <p style={{ fontSize: "13px", color: "var(--text-muted)", margin: "0 0 20px" }}>
+                {lang === "en"
+                  ? "Your feedback shapes the next 2 weeks of training."
+                  : "Phản hồi của bạn sẽ định hình 2 tuần tập tiếp theo."}
+              </p>
+
+              <label style={{ display: "block", fontSize: "12px", fontWeight: "700", color: "var(--text-secondary)", marginBottom: "8px" }}>
+                {lang === "en" ? `Overall Effort (RPE ${blockReviewRpe}/10)` : `Cảm giác chung (RPE ${blockReviewRpe}/10)`}
+              </label>
+              <div style={{ marginBottom: "6px" }}>
+                <input
+                  type="range" min={1} max={10} value={blockReviewRpe}
+                  onChange={e => setBlockReviewRpe(Number(e.target.value))}
+                  style={{ width: "100%", accentColor: "var(--accent-primary)" }}
+                />
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", color: "var(--text-muted)", marginTop: "2px" }}>
+                  <span>{lang === "en" ? "Very easy" : "Rất nhẹ"}</span>
+                  <span>{lang === "en" ? "Max effort" : "Cực kỳ nặng"}</span>
+                </div>
+              </div>
+              <div style={{
+                textAlign: "center", fontSize: "12px", fontWeight: "600",
+                color: blockReviewRpe >= 8 ? "#ef4444" : blockReviewRpe >= 6 ? "#f59e0b" : "#10b981",
+                marginBottom: "18px",
+              }}>
+                {blockReviewRpe >= 9 ? (lang === "en" ? "Very hard — consider reducing next block" : "Rất nặng — cân nhắc giảm block tiếp")
+                  : blockReviewRpe >= 7 ? (lang === "en" ? "Hard — coach will ease off slightly" : "Nặng — coach sẽ giảm nhẹ")
+                  : blockReviewRpe >= 5 ? (lang === "en" ? "Manageable — good progression" : "Vừa phải — tiến độ tốt")
+                  : (lang === "en" ? "Easy — coach can increase load" : "Nhẹ — coach có thể tăng tải")}
+              </div>
+
+              <label style={{ display: "block", fontSize: "12px", fontWeight: "700", color: "var(--text-secondary)", marginBottom: "6px" }}>
+                {lang === "en" ? "Notes (optional)" : "Ghi chú (tùy chọn)"}
+              </label>
+              <textarea
+                placeholder={lang === "en" ? "Any injuries, what worked, what didn't..." : "Chấn thương, điều hiệu quả, điều chưa tốt..."}
+                value={blockReviewNotes}
+                onChange={e => setBlockReviewNotes(e.target.value)}
+                style={{
+                  width: "100%", borderRadius: "10px", border: "1px solid var(--border-color)",
+                  padding: "10px", fontSize: "13px", minHeight: "80px", resize: "vertical",
+                  background: "rgba(0,0,0,0.03)", boxSizing: "border-box",
+                  fontFamily: "inherit",
+                }}
+              />
+
+              <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
+                <button
+                  type="button"
+                  onClick={() => setShowBlockReview(false)}
+                  style={{ flex: 1, height: "42px", borderRadius: "10px", border: "1px solid var(--border-color)", background: "rgba(0,0,0,0.04)", cursor: "pointer", fontSize: "13px" }}
+                >
+                  {lang === "en" ? "Cancel" : "Hủy"}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  style={{ flex: 2, height: "42px", fontSize: "13px", fontWeight: "700" }}
+                  onClick={handleGenerateNextBlock}
+                  disabled={nextBlockLoading}
+                >
+                  {nextBlockLoading
+                    ? (lang === "en" ? "Starting..." : "Đang bắt đầu...")
+                    : (lang === "en" ? `⚡ Generate Block ${nextBlockNum}` : `⚡ Tạo Block ${nextBlockNum}`)}
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
