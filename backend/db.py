@@ -618,6 +618,7 @@ def get_block_completion(plan_id: int, block_number: int) -> dict[str, Any]:
             WHERE plan_id = :plan_id
               AND week_number BETWEEN :ws AND :we
               AND type != 'Rest'
+              AND duration_minutes > 0
             """),
             {"plan_id": plan_id, "ws": week_start, "we": week_end},
         ).fetchall()

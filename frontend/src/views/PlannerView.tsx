@@ -15,7 +15,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   const { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, handleSwapWorkouts, swapDays, handleToggleComplete, handleLogWorkout, getWeekWorkouts, getWorkoutDate, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller } = usePlanner();
   const { lang, activePlan, planLoading, planErrorMsg, planForm, setPlanForm, targetTimeH, setTargetTimeH, targetTimeM, setTargetTimeM, targetTimeS, setTargetTimeS, cutoffTimeH, setCutoffTimeH, cutoffTimeM, setCutoffTimeM, cutoffTimeS, setCutoffTimeS, recentPlans, selectedWeek, setSelectedWeek, swapDay1, setSwapDay1, swapDay2, setSwapDay2, setWorkouts, setBackupWorkouts, setActivePlan, workouts, backupWorkouts, backupActivePlan, setBackupActivePlan, courseInputMode, setCourseInputMode, plannerGpxLoading, plannerGpxFile, plannerGpxError, showExportOptions, setShowExportOptions, exportTimePref, setExportTimePref } = ctx;
   const t = (key: keyof typeof translations.en) => translations[lang]?.[key] || translations.en[key] || key;
-  const totalWeeks = activePlan ? (activePlan.plan_duration_weeks || 1) : 0;
+  const totalWeeks = activePlan ? (activePlan.total_weeks || activePlan.plan_duration_weeks || 1) : 0;
 
   // ── Phase → knowledge card topic mapping ────────────────────────────────
   const phaseToTopic = (phase: string, daysToRace: number | null): string | null => {
