@@ -87,6 +87,22 @@ class PlanGenerator:
         max_hr = int(user_profile.get("max_hr", 220 - age))
         resting_hr = int(user_profile.get("resting_hr", 60))
 
+        # Parse scheduling preferences stored as JSON strings in the DB
+        import json as _json
+
+        def _parse_days(val) -> list[str]:
+            if not val:
+                return []
+            if isinstance(val, list):
+                return val
+            try:
+                return _json.loads(val) or []
+            except Exception:
+                return []
+
+        preferred_run_days = _parse_days(user_profile.get("preferred_run_days") or race_info.get("preferred_days"))
+        double_session_days = _parse_days(user_profile.get("double_session_days"))
+
         # Threshold Heart Rates (AeT = Aerobic, AnT = Anaerobic)
         aet_hr = int(user_profile.get("aet_hr", resting_hr + int((max_hr - resting_hr) * 0.65)))
         ant_hr = int(user_profile.get("ant_hr", resting_hr + int((max_hr - resting_hr) * 0.85)))
@@ -221,6 +237,23 @@ class PlanGenerator:
 
                 from services.notebooklm_service import NotebookLmService
 
+                scheduling_notes = ""
+                if preferred_run_days:
+                    all_days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+                    rest_days = [d for d in all_days if d not in preferred_run_days]
+                    scheduling_notes += (
+                        f"\nScheduling Preferences:\n"
+                        f"- Preferred training days: {', '.join(preferred_run_days)}\n"
+                        f"- Rest/off days (assign Rest workouts): {', '.join(rest_days) if rest_days else 'none'}\n"
+                    )
+                if double_session_days:
+                    scheduling_notes += (
+                        f"- Double-session days: {', '.join(double_session_days)}\n"
+                        "  On these days produce TWO workout objects for the same day_of_week:\n"
+                        "  one with session_slot='morning' (shorter, lower-intensity) and one with session_slot='afternoon' (the main session).\n"
+                        "  Do NOT double-session a day already designated as Rest.\n"
+                    )
+
                 user_summary = (
                     f"Age: {age}, Weekly volume base: {current_weekly_km} km, Max HR: {max_hr} bpm, "
                     f"Resting HR: {resting_hr} bpm, AeT: {aet_hr} bpm, AnT: {ant_hr} bpm, Treadmill Access: {use_treadmill}\n"
@@ -230,6 +263,7 @@ class PlanGenerator:
                     f"- Zone 3 (Tempo): {p_z3}\n"
                     f"- Zone 4 (Threshold): {p_z4}\n"
                     f"- Zone 5 (Interval): {p_z5}"
+                    f"{scheduling_notes}"
                 )
 
                 # Calculate Mondays and exact week mapping for the AI prompt
@@ -331,8 +365,12 @@ class PlanGenerator:
                 if block_context:
                     block_instruction += (
                         f"\nATHLETE FEEDBACK FROM PREVIOUS BLOCKS:\n{block_context}\n"
-                        "Use this feedback to adjust volume and intensity. If RPE was high (≥7), reduce intensity by 5-10%. "
-                        "If RPE was low (≤4), you can modestly increase load. Honor any injury notes with extra caution.\n"
+                        "CRITICAL — adjust this block based on feedback above:\n"
+                        "  • RPE ≥ 8: reduce weekly volume by 10-15% AND drop one quality session to easy running.\n"
+                        "  • RPE 6-7: reduce intensity slightly (shift a Tempo to Zone 2, or shorten intervals by 10%).\n"
+                        "  • RPE 4-5: maintain current progression — athlete is adapting well.\n"
+                        "  • RPE ≤ 3: athlete is underloaded — increase long run by 10-15% or add a quality session.\n"
+                        "  • Any mention of injury/pain: remove ALL high-intensity work for that body region and add Strength or active recovery.\n"
                     )
 
                 prompt = (
@@ -347,7 +385,7 @@ class PlanGenerator:
                     f"{week_schedule_constraints}"
                     f"{block_instruction}\n"
                     "Instructions:\n"
-                    "1. Generate workouts for the specified block weeks only. Each week must have structured workouts (typically 4-6 workouts per week, with Rest days on Monday/Friday or similar).\n"
+                    "1. Generate workouts for the specified block weeks only. Each week must have structured workouts (typically 4-6 workouts per week). ALWAYS honor the athlete's preferred training days and double-session days from their profile — place Rest workouts on non-preferred days, and produce two workout objects on each double-session day as described above.\n"
                     "2. The schedule must be returned as a JSON array of workout objects. Each workout object must follow this exact schema:\n"
                     "   - `week_number` (integer: MUST be within the block range specified above)\n"
                     "   - `day_of_week` (string: 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')\n"
@@ -362,7 +400,8 @@ class PlanGenerator:
                     "   - `description` (string: highly detailed description containing specific sections: Process (how to execute it step-by-step), Overall (summary of the session), Reason (why it is scheduled now), Benefit (expected physiological adaptation), and Warning (any injury risks or precautions). Provide extensive context.)\n"
                     "   - `fueling_tip` (string: hydration, carbohydrate, and electrolyte guides specific to duration/intensity)\n"
                     "   - `treadmill_incline` (number, optional: recommended incline percentage if using treadmill)\n"
-                    "   - `treadmill_speed` (number, optional: recommended speed in kph if using treadmill)\n\n"
+                    "   - `treadmill_speed` (number, optional: recommended speed in kph if using treadmill)\n"
+                    "   - `session_slot` (string, optional: ONLY set this on double-session days. Use 'morning' for the first/shorter session and 'afternoon' for the main/longer session. Omit entirely for single-session days.)\n\n"
                     "3. Make the plan highly customized. For example, scale long runs, map Sunday Muscular Endurance box steps/weighted step-ups based on the race elevation gain, or specify treadmill incline/speed settings for gym workouts.\n"
                     "4. Output MUST be a valid JSON array matching the schema. Do not include markdown wraps like ```json ... ``` inside the response text, output raw JSON array."
                 )
