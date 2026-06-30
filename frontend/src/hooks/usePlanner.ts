@@ -127,6 +127,7 @@ export function usePlanner() {
     setPlanErrorMsg("");
 
     const token = localStorage.getItem("uphill_session_token");
+    let pollerStarted = false;
     try {
       const isRaceOrDist = planForm.plan_goal_category === "race" || planForm.plan_goal_category === "distance";
       // Build request body
@@ -198,10 +199,10 @@ export function usePlanner() {
         setBackupWorkouts([]);
       }
       setSelectedWeek(1);
-      // Start background polling for workouts — poller owns planLoading from here
+      // Start background polling — poller owns planLoading until job completes
       if (result.job_id) {
+        pollerStarted = true;
         startPlanJobPoller(result.job_id, token!);
-        return; // skip finally's setPlanLoading(false) — poller will clear it when done
       } else {
         // Fallback: synchronous workouts (no job)
         if (result.workouts) setWorkouts(result.workouts);
@@ -211,7 +212,8 @@ export function usePlanner() {
       setPlanErrorMsg(err.message);
       trackEvent('plan_generated', { success: false, error: err.message });
     } finally {
-      setPlanLoading(false);
+      // Only clear loading here if the poller isn't taking over
+      if (!pollerStarted) setPlanLoading(false);
     }
   };
 
