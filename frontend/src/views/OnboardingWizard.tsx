@@ -149,7 +149,7 @@ export default function OnboardingWizard() {
 
       setOnboardingOpen(false);
 
-      setActiveTab("home");
+      setActiveTab("planner");
 
       // Start polling for plan generation in the background
 
