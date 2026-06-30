@@ -62,7 +62,7 @@ export function usePlanner() {
         clearInterval(planJobPollerRef.current);
         setPlanLoading(false);
       }
-    }, 2000);
+    }, 10000);
   };
 
   const handlePlannerGpxFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
