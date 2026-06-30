@@ -62,7 +62,7 @@ const DB_TYPE_MAP: Record<string, string> = {
   "cross-training":     "cross_training",
   "aerobic capacity":   "easy_run",
   "walk/run":           "easy_run",
-  "race":               "rest",
+  "race":               "race_day",
   "rest":               "rest",
 };
 

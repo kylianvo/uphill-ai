@@ -109,6 +109,13 @@ const LIBRARY: Array<[string, WorkoutInfo]> = [
     benefit: "Maintains or builds aerobic capacity during injury phases, or adds training volume without additional impact stress.",
     warning: "Cross-training doesn't replace running's neural and mechanical adaptations. It's a supplement, not a substitute.",
   }],
+  ["race day", {
+    zone: "hard", color: "#eab308",
+    overview: "Race day — everything you've trained for comes together today. Your only job is to execute your plan and leave it all out there.",
+    execution: "Warm up easy 10–15 min → start conservatively, first km should feel almost too easy → settle into race effort by 20% through → fuel every 40–50 min, don't wait until thirsty → hike the steep climbs by effort, not ego → run your own race, not the crowd's → find your finish.",
+    benefit: "Race day is the expression of every early morning and every hard session. The fitness is already built — today is about execution, courage, and celebrating what you've trained to become.",
+    warning: "The most common race day mistake: going out too fast in the first 10 minutes. Adrenaline will push you faster than planned — resist it. Your race truly begins in the second half.",
+  }],
   ["rest", {
     zone: "rest", color: "#94a3b8",
     overview: "Complete rest or very gentle movement. This day is as much a part of your training as any hard session.",
@@ -132,7 +139,7 @@ const TYPE_MAP: Record<string, string> = {
   "cross-training":     "cross-training",
   "aerobic capacity":   "easy run",
   "walk/run":           "easy run",
-  "race":               "rest",
+  "race":               "race day",
 };
 
 export function getWorkoutInfo(title: string, type: string): WorkoutInfo | null {

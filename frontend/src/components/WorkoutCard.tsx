@@ -33,6 +33,36 @@ interface WorkoutCardProps {
   getWorkoutDate: (wo: any) => string;
 }
 
+const RACE_COACH_MESSAGES: Record<string, string[]> = {
+  en: [
+    "All those early mornings, all those hard sessions — today is why. Trust your training. You're ready.",
+    "Today isn't about fitness anymore — it's about execution. Start slow, stay calm, find your finish.",
+    "Your body knows what to do. You've done this in training. Today, just race.",
+  ],
+  vi: [
+    "Tất cả những buổi sáng sớm, những buổi tập cực — là vì ngày hôm nay. Tin vào quá trình. Bạn đã sẵn sàng.",
+    "Hôm nay không còn là về thể lực — mà là chiến thuật. Xuất phát chậm, bình tĩnh, về đích mạnh.",
+    "Cơ thể bạn đã biết phải làm gì. Bạn đã luyện tập điều này. Hôm nay, cứ chạy thôi.",
+  ],
+};
+
+const RACE_STRATEGY_TIPS: Record<string, string[]> = {
+  en: [
+    "Start conservatively — your first km should feel almost too easy. Adrenaline will try to pull you faster.",
+    "Fuel early and often. Don't wait until you're hungry. Every 40–50 min.",
+    "Hike steep climbs by effort, not ego. Walking the climbs is often faster when legs are tired.",
+    "The race truly begins in the second half — manage the first half well.",
+    "Your only competitor is the course. Run your plan, not anyone else's pace.",
+  ],
+  vi: [
+    "Xuất phát chậm — km đầu phải cảm thấy gần như quá dễ. Adrenaline sẽ cố kéo bạn nhanh hơn.",
+    "Nạp năng lượng sớm và thường xuyên. Đừng đợi đến khi đói. Cứ 40–50 phút một lần.",
+    "Đi bộ lên dốc dựng khi cần — đó thường là chiến thuật nhanh hơn khi chân mỏi.",
+    "Cuộc đua thực sự bắt đầu ở nửa sau — hãy tiết kiệm ở nửa đầu.",
+    "Đối thủ duy nhất của bạn là địa hình. Chạy theo kế hoạch của mình, không phải của ai khác.",
+  ],
+};
+
 const ZONE_LABELS: Record<string, string> = {
   easy: "Zone 1–2",
   moderate: "Zone 2–3",
@@ -121,6 +151,7 @@ export default function WorkoutCard({
   getWorkoutDate,
 }: WorkoutCardProps) {
   const isRest = wo.type === "Rest";
+  const isRaceDay = wo.type?.toLowerCase() === "race";
   const dbTypes = useWorkoutTypes(lang);
   const libraryInfo = resolveWorkoutInfo(wo.title || "", wo.type || "", dbTypes);
   const zoneColor = libraryInfo?.color || getZoneColor(wo.target_zone || "", wo.title || "", wo.type || "");
@@ -464,6 +495,32 @@ export default function WorkoutCard({
               )}
             </div>
 
+            {/* Race day coach message */}
+            {isRaceDay && (
+              <div
+                style={{
+                  background: "linear-gradient(135deg, rgba(234,179,8,0.12) 0%, rgba(234,179,8,0.04) 100%)",
+                  border: "1.5px solid rgba(234,179,8,0.35)",
+                  borderRadius: "10px",
+                  padding: "12px 14px",
+                  marginBottom: "16px",
+                  display: "flex",
+                  gap: "10px",
+                  alignItems: "flex-start",
+                }}
+              >
+                <span style={{ fontSize: "18px", flexShrink: 0 }}>🏁</span>
+                <div>
+                  <div style={{ fontSize: "9px", fontWeight: "800", letterSpacing: "0.08em", color: "#d97706", textTransform: "uppercase", marginBottom: "4px" }}>
+                    {lang === "en" ? "Coach Uphill" : "Coach Uphill"}
+                  </div>
+                  <p style={{ fontSize: "13px", color: "var(--text-primary)", margin: 0, lineHeight: "1.6", fontStyle: "italic", fontWeight: "500" }}>
+                    &ldquo;{(RACE_COACH_MESSAGES[lang] || RACE_COACH_MESSAGES.en)[wo.id % 3]}&rdquo;
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Workout info: tabbed (library) or raw fallback */}
             {libraryInfo ? (
               <WorkoutLibrarySection
@@ -473,6 +530,7 @@ export default function WorkoutCard({
                 lang={lang}
                 rawDescription={wo.description}
                 wo={wo}
+                isRaceDay={isRaceDay}
               />
             ) : wo.description ? (
               <RawDescription description={wo.description} />
@@ -937,6 +995,7 @@ function WorkoutLibrarySection({
   lang,
   rawDescription,
   wo,
+  isRaceDay,
 }: {
   info: NonNullable<ReturnType<typeof resolveWorkoutInfo>>;
   title: string;
@@ -944,6 +1003,7 @@ function WorkoutLibrarySection({
   lang: string;
   rawDescription?: string;
   wo: any;
+  isRaceDay?: boolean;
 }) {
   const [tab, setTab] = useState<"execution" | "about">("execution");
 
@@ -1088,6 +1148,38 @@ function WorkoutLibrarySection({
               {info.warning}
             </p>
           </div>
+
+          {/* Race strategy tips */}
+          {isRaceDay && (
+            <div
+              style={{
+                padding: "10px 14px",
+                borderRadius: "8px",
+                background: "rgba(234,179,8,0.06)",
+                borderLeft: "3px solid #eab308",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: "9px",
+                  fontWeight: "800",
+                  textTransform: "uppercase" as const,
+                  letterSpacing: "0.1em",
+                  color: "#d97706",
+                  marginBottom: "8px",
+                }}
+              >
+                {lang === "en" ? "Race Strategy" : "Chiến thuật đua"}
+              </div>
+              <ul style={{ margin: 0, padding: "0 0 0 14px", display: "flex", flexDirection: "column" as const, gap: "5px" }}>
+                {(RACE_STRATEGY_TIPS[lang] || RACE_STRATEGY_TIPS.en).map((tip, i) => (
+                  <li key={i} style={{ fontSize: "12.5px", color: "var(--text-secondary)", lineHeight: "1.55" }}>
+                    {tip}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {/* AI-generated description if present */}
           {rawDescription && (
