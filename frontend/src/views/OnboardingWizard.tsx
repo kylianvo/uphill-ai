@@ -325,7 +325,23 @@ export default function OnboardingWizard() {
 
                 <label style={labelS}>{t("onboard_dob")}</label>
 
-                <input type="date" style={inputS} className="chat-input" value={onboardingAnswers.dob} onChange={e => setAns("dob", e.target.value)} />
+                <input type="date" style={inputS} className="chat-input"
+                  min="1924-01-01" max={new Date(new Date().getFullYear() - 10, 11, 31).toISOString().slice(0, 10)}
+                  value={onboardingAnswers.dob}
+                  onChange={e => {
+                    const val = e.target.value;
+                    const year = val ? parseInt(val.slice(0, 4), 10) : 0;
+                    if (!val || (year >= 1924 && year <= new Date().getFullYear() - 10)) {
+                      setAns("dob", val);
+                      setAns("dob_error", "");
+                    } else {
+                      setAns("dob_error", lang === "en" ? "Please enter a valid birth year (1924–2015)" : "Vui lòng nhập năm sinh hợp lệ (1924–2015)");
+                    }
+                  }} />
+
+                {onboardingAnswers.dob_error && (
+                  <p style={{ fontSize: "12px", color: "#ef4444", marginTop: "6px", fontWeight: "600" }}>{onboardingAnswers.dob_error}</p>
+                )}
 
                 <p style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "8px" }}>
 
@@ -1473,7 +1489,7 @@ export default function OnboardingWizard() {
 
                 <button type="button" onClick={handleNextStep}
 
-                  disabled={currentStepKey === "goal" && !onboardingAnswers.goal_type}
+                  disabled={(currentStepKey === "goal" && !onboardingAnswers.goal_type) || (currentStepKey === "dob" && !!onboardingAnswers.dob_error)}
 
                   className="btn btn-primary" style={{ flex: 2, height: "40px", fontSize: "13px" }}>
 
