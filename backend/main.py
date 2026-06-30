@@ -295,6 +295,7 @@ class UpdateProfileRequest(BaseModel):
     gemini_api_key: str | None = None
     zone2_pace_min: str | None = None
     zone2_pace_max: str | None = None
+    double_session_days: list[str] | None = None
 
 
 def format_user_response(user: dict[str, Any]) -> dict[str, Any]:

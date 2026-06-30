@@ -214,13 +214,22 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activePlan?.id, fetchBlockCompletion]);
 
-  const maxGeneratedWeek = blockData?.max_generated_week ?? (workouts.length > 0 ? totalWeeks : 0);
+  // Derive directly from workouts so it updates immediately when setWorkouts() fires
+  const maxGeneratedWeek = workouts.length > 0
+    ? Math.max(...workouts.map((w: any) => w.week_number || 0))
+    : 0;
   const currentBlockNum = maxGeneratedWeek > 0 ? Math.ceil(maxGeneratedWeek / 2) : 1;
   const currentBlockCompletion = blockData?.blocks?.find((b: any) => b.block_number === currentBlockNum);
   const blockUnlocked = currentBlockCompletion?.unlocked ?? false;
   const nextBlockNum = currentBlockNum + 1;
   const nextBlockStartWeek = nextBlockNum * 2 - 1;
   const allBlocksGenerated = maxGeneratedWeek >= totalWeeks && totalWeeks > 0;
+
+  // Re-check block completion % whenever a workout is toggled
+  const handleToggleCompleteWithRefresh = async (id: number, completed: boolean) => {
+    await handleToggleComplete(id, completed);
+    fetchBlockCompletion();
+  };
 
   const handleGenerateNextBlock = async () => {
     if (!activePlan) return;
@@ -896,7 +905,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                       }}
                     >
                       <span style={{ fontSize: "11px" }}>🔒</span>
-                      <span style={{ fontSize: "9px" }}>{lang === "en" ? `Wk ${w}` : `T${w}`}</span>
+                      <span style={{ fontSize: "9px" }}>{lang === "en" ? `Week ${w}` : `Tuần ${w}`}</span>
                     </div>
                   );
                 }
@@ -914,7 +923,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                     }}
                     onClick={() => setSelectedWeek(w)}
                   >
-                    <span>{lang === "en" ? `Wk ${w}` : `Tuần ${w}`}</span>
+                    <span>{lang === "en" ? `Week ${w}` : `Tuần ${w}`}</span>
                     <span style={{ fontSize: "9px", opacity: 0.7 }}>{phaseDisplay}</span>
                   </button>
                 );
@@ -940,7 +949,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                     gap: "4px"
                   }}>
                     <span style={{ fontSize: "10px", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: "700" }}>
-                      {lang === "en" ? `Weekly Volume (Wk ${selectedWeek})` : `Thể tích tuần (Tuần ${selectedWeek})`}
+                      {lang === "en" ? `Weekly Volume (Week ${selectedWeek})` : `Thể tích tuần (Tuần ${selectedWeek})`}
                     </span>
                     <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
                       <span style={{ fontSize: "18px", fontWeight: "800", color: "var(--accent-primary)" }}>{weeklyKm.toFixed(1)} km</span>
@@ -1004,7 +1013,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 lang={lang}
                 isMobile={isMobile}
                 onSwapDays={swapDays}
-                onToggleComplete={handleToggleComplete}
+                onToggleComplete={handleToggleCompleteWithRefresh}
                 onLogWorkout={handleLogWorkout}
                 getWorkoutDate={getWorkoutDate}
               />
