@@ -136,17 +136,27 @@ const TYPE_MAP: Record<string, string> = {
 };
 
 export function getWorkoutInfo(title: string, type: string): WorkoutInfo | null {
-  // 1. Try direct type mapping first (most reliable)
+  const titleLower = title.toLowerCase();
+
+  // 1. Title keyword scan first — catches compound sessions like "Aerobic Base + Hill Sprints"
+  //    Skip short/generic keys (≤5 chars) to avoid "rest" matching "forest run" etc.
+  for (const [keyword, info] of LIBRARY) {
+    if (keyword.length > 5 && titleLower.includes(keyword)) return info;
+  }
+
+  // 2. Direct type→library mapping for single-type sessions
   const mapped = TYPE_MAP[type.toLowerCase()];
   if (mapped) {
     const entry = LIBRARY.find(([k]) => k === mapped);
     if (entry) return entry[1];
   }
-  // 2. Fall back to keyword search across title + type
-  const key = `${title} ${type}`.toLowerCase();
+
+  // 3. Combined title+type keyword search as final fallback
+  const key = `${titleLower} ${type.toLowerCase()}`;
   for (const [keyword, info] of LIBRARY) {
     if (key.includes(keyword)) return info;
   }
+
   return null;
 }
 

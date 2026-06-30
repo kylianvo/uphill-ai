@@ -880,20 +880,51 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
               </div>
             )}
 
-            {/* Week Workouts Grid */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              {getWeekWorkouts(selectedWeek).map((wo: any) => (
-                <WorkoutCard
-                  key={wo.id}
-                  wo={wo}
-                  isMobile={isMobile}
-                  lang={lang}
-                  onToggleComplete={handleToggleComplete}
-                  onLogWorkout={handleLogWorkout}
-                  getWorkoutDate={getWorkoutDate}
-                />
-              ))}
-            </div>
+            {/* Generating plan skeleton */}
+            {planLoading && workouts.length === 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                <div style={{
+                  display: "flex", alignItems: "center", gap: "14px",
+                  padding: "20px 24px", borderRadius: "12px",
+                  background: "linear-gradient(135deg, rgba(99,102,241,0.08), rgba(139,92,246,0.08))",
+                  border: "1px solid rgba(139,92,246,0.2)",
+                }}>
+                  <div style={{ fontSize: "24px", animation: "spin 2s linear infinite", flexShrink: 0 }}>⚙️</div>
+                  <div>
+                    <div style={{ fontSize: "14px", fontWeight: "700", color: "var(--text-primary)", marginBottom: "3px" }}>
+                      {lang === "en" ? "Generating your plan…" : "Đang tạo kế hoạch…"}
+                    </div>
+                    <div style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
+                      {lang === "en" ? "Coach Uphill is designing your workouts. This takes about 30–60 seconds." : "Coach Uphill đang thiết kế bài tập. Mất khoảng 30–60 giây."}
+                    </div>
+                  </div>
+                </div>
+                {/* Skeleton cards */}
+                {[1, 2, 3].map((i) => (
+                  <div key={i} style={{
+                    height: "68px", borderRadius: "12px",
+                    background: "rgba(0,0,0,0.04)",
+                    border: "1px solid rgba(0,0,0,0.06)",
+                    animation: `pulse 1.5s ease-in-out ${i * 0.2}s infinite`,
+                  }} />
+                ))}
+              </div>
+            ) : (
+              /* Week Workouts Grid */
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                {getWeekWorkouts(selectedWeek).map((wo: any) => (
+                  <WorkoutCard
+                    key={wo.id}
+                    wo={wo}
+                    isMobile={isMobile}
+                    lang={lang}
+                    onToggleComplete={handleToggleComplete}
+                    onLogWorkout={handleLogWorkout}
+                    getWorkoutDate={getWorkoutDate}
+                  />
+                ))}
+              </div>
+            )}
 
             {/* Coach's pick — contextual knowledge card for this phase */}
             {contextCard && (

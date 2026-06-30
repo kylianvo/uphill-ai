@@ -73,12 +73,17 @@ export function resolveWorkoutInfo(
   dbTypes: WorkoutTypeEntry[]
 ): WorkoutInfo | null {
   if (dbTypes.length > 0) {
-    // 1. Direct type → type_key mapping (most reliable)
-    const mappedKey = DB_TYPE_MAP[type.toLowerCase()];
-    const match = mappedKey
-      ? dbTypes.find((t) => t.type_key === mappedKey)
-      // 2. Keyword fallback on title + type
-      : dbTypes.find((t) => `${title} ${type}`.toLowerCase().includes(t.type_key.replace(/_/g, " ")));
+    // 1. Title keyword scan first — catches compound sessions like "Aerobic Base + Hill Sprints"
+    const titleLower = title.toLowerCase();
+    const titleMatch = dbTypes.find(
+      (t) => t.type_key.length > 5 && titleLower.includes(t.type_key.replace(/_/g, " "))
+    );
+    const match =
+      titleMatch ||
+      // 2. Direct type → type_key mapping
+      dbTypes.find((t) => t.type_key === DB_TYPE_MAP[type.toLowerCase()]) ||
+      // 3. Combined title+type keyword fallback
+      dbTypes.find((t) => `${titleLower} ${type}`.toLowerCase().includes(t.type_key.replace(/_/g, " ")));
     if (match) {
       return {
         zone: match.zone as any,
