@@ -77,6 +77,8 @@ export default function OnboardingWizard() {
 
         next_goal: onboardingAnswers.next_goal || null,
 
+        double_session_days: onboardingAnswers.double_session_days || [],
+
         lang: lang,
 
       };
@@ -192,17 +194,17 @@ export default function OnboardingWizard() {
 
     const steps = ["dob", "goal"];
 
-    if (isRaceOrDist) steps.push("fitness", "injury", "target", "schedule");
+    if (isRaceOrDist) steps.push("fitness", "injury", "target", "schedule", "double_session");
 
-    else if (isStart) steps.push("fitness_start", "schedule");
+    else if (isStart) steps.push("fitness_start", "schedule", "double_session");
 
-    else if (isReturn) steps.push("return_questions", "fitness_return", "schedule");
+    else if (isReturn) steps.push("return_questions", "fitness_return", "schedule", "double_session");
 
-    else if (isRecovery) steps.push("recovery_questions", "fitness_return", "schedule");
+    else if (isRecovery) steps.push("recovery_questions", "fitness_return", "schedule", "double_session");
 
     else if (!goal) { /* no extra steps yet */ }
 
-    else steps.push("schedule");
+    else steps.push("schedule", "double_session");
 
     steps.push("generate");
 
@@ -266,6 +268,22 @@ export default function OnboardingWizard() {
         if (days.includes(day)) return { ...prev, preferred_run_days: days.filter(d => d !== day) };
 
         return { ...prev, preferred_run_days: [...days, day] };
+
+      });
+
+    };
+
+    const toggleDoubleDay = (day: string) => {
+
+      setOnboardingAnswers((prev: any) => {
+
+        const days = [...(prev.double_session_days || [])];
+
+        if (days.includes(day)) return { ...prev, double_session_days: days.filter(d => d !== day) };
+
+        if (days.length >= 2) return prev; // max 2 double-session days
+
+        return { ...prev, double_session_days: [...days, day] };
 
       });
 
@@ -1260,6 +1278,122 @@ export default function OnboardingWizard() {
             </div>
 
           );
+
+        case "double_session": {
+
+          const preferredDays = onboardingAnswers.preferred_run_days || DAYS;
+
+          const selectedDouble = onboardingAnswers.double_session_days || [];
+
+          return (
+
+            <div>
+
+              <div style={{ fontSize: "20px", fontWeight: "800", marginBottom: "6px" }}>
+
+                {lang === "en" ? "Double Session Days ⚡" : "Ngày tập hai buổi ⚡"}
+
+              </div>
+
+              <p style={{ color: "var(--text-muted)", fontSize: "13px", marginBottom: "4px" }}>
+
+                {lang === "en"
+
+                  ? "On double-session days, Coach Uphill can schedule a short morning activation + an afternoon quality session."
+
+                  : "Vào ngày tập hai buổi, Coach Uphill sẽ xếp buổi sáng ngắn + buổi chiều chất lượng cao."}
+
+              </p>
+
+              <p style={{ color: "var(--text-muted)", fontSize: "12px", fontStyle: "italic", marginBottom: "20px" }}>
+
+                {lang === "en" ? "Optional — skip if you prefer one session per day." : "Tùy chọn — bỏ qua nếu bạn chỉ muốn một buổi mỗi ngày."}
+
+              </p>
+
+              <div style={{ marginBottom: "16px" }}>
+
+                <label style={{ ...labelS, marginBottom: "10px" }}>
+
+                  {lang === "en" ? "Pick up to 2 days (from your available days)" : "Chọn tối đa 2 ngày (từ ngày bạn có thể chạy)"}
+
+                </label>
+
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+
+                  {preferredDays.map((day: string) => {
+
+                    const sel = selectedDouble.includes(day);
+
+                    const disabled = !sel && selectedDouble.length >= 2;
+
+                    return (
+
+                      <button
+
+                        key={day}
+
+                        type="button"
+
+                        onClick={() => !disabled && toggleDoubleDay(day)}
+
+                        style={{
+
+                          padding: "8px 14px",
+
+                          borderRadius: "8px",
+
+                          border: `1.5px solid ${sel ? "var(--accent-primary)" : "var(--border-color)"}`,
+
+                          background: sel ? "rgba(16,185,129,0.12)" : disabled ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.3)",
+
+                          color: sel ? "var(--accent-primary)" : disabled ? "var(--text-muted)" : "var(--text-primary)",
+
+                          fontWeight: sel ? "700" : "500",
+
+                          fontSize: "13px",
+
+                          cursor: disabled ? "not-allowed" : "pointer",
+
+                          opacity: disabled ? 0.5 : 1,
+
+                        }}
+
+                      >
+
+                        {day.slice(0, 3)}
+
+                        {sel && <span style={{ marginLeft: "4px", fontSize: "11px" }}>⚡</span>}
+
+                      </button>
+
+                    );
+
+                  })}
+
+                </div>
+
+              </div>
+
+              {selectedDouble.length > 0 && (
+
+                <div style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.3)", borderRadius: "10px", padding: "12px 14px", fontSize: "12.5px", color: "var(--text-muted)" }}>
+
+                  {lang === "en"
+
+                    ? `Double sessions on: ${selectedDouble.join(", ")}. Coach will add a short morning activation (20–30 min) + main session in afternoon.`
+
+                    : `Tập hai buổi vào: ${selectedDouble.join(", ")}. Coach sẽ thêm buổi sáng ngắn (20–30 phút) + buổi chiều chính.`}
+
+                </div>
+
+              )}
+
+            </div>
+
+          );
+
+        }
 
         case "generate":
 

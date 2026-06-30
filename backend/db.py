@@ -774,7 +774,8 @@ def update_onboarding_profile(user_id: int, data: dict[str, Any]) -> bool:
                 aet_hr = :aet_hr,
                 ant_hr = :ant_hr,
                 zone2_pace_min = :zone2_pace_min,
-                zone2_pace_max = :zone2_pace_max
+                zone2_pace_max = :zone2_pace_max,
+                double_session_days = :double_session_days
             WHERE id = :id
         """),
             {
@@ -794,6 +795,7 @@ def update_onboarding_profile(user_id: int, data: dict[str, Any]) -> bool:
                 "ant_hr": int(data.get("ant_hr", 165)),
                 "zone2_pace_min": data.get("zone2_pace_min", "6:30"),
                 "zone2_pace_max": data.get("zone2_pace_max", "5:45"),
+                "double_session_days": json.dumps(data.get("double_session_days", [])),
                 "id": user_id,
             },
         )

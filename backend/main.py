@@ -262,6 +262,8 @@ class OnboardingRequest(BaseModel):
     days_since_race: int | None = None
     recovery_feel: str | None = None
     next_goal: str | None = None
+    # Double session preference
+    double_session_days: list[str] | None = None
 
 
 class UpdateProfileRequest(BaseModel):
@@ -303,6 +305,7 @@ def format_user_response(user: dict[str, Any]) -> dict[str, Any]:
         "gemini_api_key": user.get("gemini_api_key") or "",
         "zone2_pace_min": user.get("zone2_pace_min") or "6:30",
         "zone2_pace_max": user.get("zone2_pace_max") or "5:45",
+        "double_session_days": user.get("double_session_days") or "[]",
     }
 
 
@@ -568,6 +571,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         "days_per_week": request.days_per_week or 4,
         "has_gym_access": request.has_gym_access or False,
         "current_weekly_km": request.current_weekly_km or 30.0,
+        "double_session_days": request.double_session_days or [],
         "max_hr": max_hr,
         "resting_hr": resting_hr,
         "aet_hr": aet_hr,
