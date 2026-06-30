@@ -1341,11 +1341,11 @@ export default function OnboardingWizard() {
 
         <div style={{ position: "relative", background: "var(--bg-card)", backdropFilter: "blur(30px)", border: "1px solid var(--border-color)", borderRadius: "24px", padding: "32px", width: "100%", maxWidth: "500px", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.1)", color: "var(--text-primary)" }}>
 
-          {/* Fitness skip confirmation popup */}
+          {/* Fitness skip confirmation popup — fixed so overflowY:auto on the card doesn't clip it */}
 
           {showFitnessWarning && (
 
-            <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.45)", borderRadius: "24px", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 20, padding: "24px" }}>
+            <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100, padding: "24px" }}>
 
               <div style={{ background: "var(--bg-card)", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "360px", textAlign: "center", boxShadow: "0 8px 32px rgba(0,0,0,0.2)" }}>
 
@@ -1445,7 +1445,7 @@ export default function OnboardingWizard() {
 
           {/* Navigation */}
 
-          {!onboardingGenerating && currentStepKey !== "generate" && (
+          {!onboardingGenerating && (
 
             <div style={{ display: "flex", gap: "10px", marginTop: "24px" }}>
 
@@ -1459,19 +1459,23 @@ export default function OnboardingWizard() {
 
               )}
 
-              <button type="button" onClick={handleNextStep}
+              {currentStepKey !== "generate" && (
 
-                disabled={currentStepKey === "goal" && !onboardingAnswers.goal_type}
+                <button type="button" onClick={handleNextStep}
 
-                className="btn btn-primary" style={{ flex: 2, height: "40px", fontSize: "13px" }}>
+                  disabled={currentStepKey === "goal" && !onboardingAnswers.goal_type}
 
-                {onboardingStep === totalSteps - 2
+                  className="btn btn-primary" style={{ flex: 2, height: "40px", fontSize: "13px" }}>
 
-                  ? (lang === "en" ? "Review →" : "Xem lại →")
+                  {onboardingStep === totalSteps - 2
 
-                  : (lang === "en" ? "Next →" : "Tiếp theo →")}
+                    ? (lang === "en" ? "Review →" : "Xem lại →")
 
-              </button>
+                    : (lang === "en" ? "Next →" : "Tiếp theo →")}
+
+                </button>
+
+              )}
 
             </div>
 
