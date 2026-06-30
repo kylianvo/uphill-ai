@@ -226,17 +226,34 @@ def init_db():
             conn.commit()
             print("Added 'lang' column to knowledge_cards.")
         except Exception:
-            pass
+            conn.rollback()
+
+        # block_reviews: one row per 2-week block check-in before next-block generation
+        conn.execute(
+            text("""
+        CREATE TABLE IF NOT EXISTS block_reviews (
+            id           SERIAL PRIMARY KEY,
+            plan_id      INTEGER NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
+            block_number INTEGER NOT NULL,
+            overall_rpe  INTEGER,
+            notes        TEXT,
+            created_at   TIMESTAMPTZ DEFAULT NOW()
+        )
+        """)
+        )
+        conn.commit()
 
         for col_sql in [
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS rpe INTEGER",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS notes TEXT",
+            "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS session_slot TEXT DEFAULT 'main'",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS double_session_days TEXT",
         ]:
             try:
                 conn.execute(text(col_sql))
                 conn.commit()
             except Exception:
-                pass
+                conn.rollback()
 
     seed_data()
     print("PostgreSQL database tables initialized successfully.")
@@ -430,10 +447,10 @@ def save_workouts(plan_id: int, workouts: list[dict[str, Any]]):
                 text("""
                 INSERT INTO workouts (plan_id, week_number, day_of_week, phase, title, type,
                     duration_minutes, distance_km, target_zone, target_hr_range, target_pace,
-                    treadmill_incline, treadmill_speed, description, fueling_tip)
+                    treadmill_incline, treadmill_speed, description, fueling_tip, session_slot)
                 VALUES (:plan_id, :week_number, :day_of_week, :phase, :title, :type,
                     :duration_minutes, :distance_km, :target_zone, :target_hr_range, :target_pace,
-                    :treadmill_incline, :treadmill_speed, :description, :fueling_tip)
+                    :treadmill_incline, :treadmill_speed, :description, :fueling_tip, :session_slot)
             """),
                 {
                     "plan_id": plan_id,
@@ -451,6 +468,7 @@ def save_workouts(plan_id: int, workouts: list[dict[str, Any]]):
                     "treadmill_speed": wo.get("treadmill_speed", 0.0),
                     "description": wo.get("description"),
                     "fueling_tip": wo.get("fueling_tip"),
+                    "session_slot": wo.get("session_slot", "main"),
                 },
             )
         conn.commit()
@@ -544,6 +562,7 @@ def swap_workouts(plan_id: int, week_number: int, day_1: str, day_2: str) -> boo
             "description",
             "fueling_tip",
             "is_completed",
+            "session_slot",
         ]
         d1, d2 = _row_to_dict(wo1), _row_to_dict(wo2)
 
@@ -559,6 +578,71 @@ def swap_workouts(plan_id: int, week_number: int, day_1: str, day_2: str) -> boo
 
         conn.commit()
     return True
+
+
+# ─── Block Reviews ────────────────────────────────────────────────────────────
+
+
+def save_block_review(plan_id: int, block_number: int, overall_rpe: int | None, notes: str | None) -> dict[str, Any]:
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("""
+            INSERT INTO block_reviews (plan_id, block_number, overall_rpe, notes)
+            VALUES (:plan_id, :block_number, :overall_rpe, :notes)
+            RETURNING *
+            """),
+            {"plan_id": plan_id, "block_number": block_number, "overall_rpe": overall_rpe, "notes": notes},
+        ).fetchone()
+        conn.commit()
+    return _row_to_dict(row)
+
+
+def get_block_reviews(plan_id: int) -> list[dict[str, Any]]:
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("SELECT * FROM block_reviews WHERE plan_id = :plan_id ORDER BY block_number ASC"),
+            {"plan_id": plan_id},
+        ).fetchall()
+    return [_row_to_dict(r) for r in rows]
+
+
+def get_block_completion(plan_id: int, block_number: int) -> dict[str, Any]:
+    """Returns total and completed hours for a 2-week block (block 1 = weeks 1-2, etc.)."""
+    week_start = (block_number - 1) * 2 + 1
+    week_end = block_number * 2
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("""
+            SELECT is_completed, duration_minutes
+            FROM workouts
+            WHERE plan_id = :plan_id
+              AND week_number BETWEEN :ws AND :we
+              AND type != 'Rest'
+            """),
+            {"plan_id": plan_id, "ws": week_start, "we": week_end},
+        ).fetchall()
+    total_minutes = sum(r[1] or 0 for r in rows)
+    completed_minutes = sum(r[1] or 0 for r in rows if r[0] == 1)
+    pct = round(completed_minutes / total_minutes * 100) if total_minutes > 0 else 0
+    return {
+        "block_number": block_number,
+        "week_start": week_start,
+        "week_end": week_end,
+        "total_minutes": total_minutes,
+        "completed_minutes": completed_minutes,
+        "completion_pct": pct,
+        "unlocked": pct >= 80,
+    }
+
+
+def get_max_generated_week(plan_id: int) -> int:
+    """Returns the highest week_number that has been generated for this plan."""
+    with engine.connect() as conn:
+        result = conn.execute(
+            text("SELECT COALESCE(MAX(week_number), 0) FROM workouts WHERE plan_id = :plan_id"),
+            {"plan_id": plan_id},
+        ).scalar()
+    return result or 0
 
 
 # ─── Catalog ─────────────────────────────────────────────────────────────────
