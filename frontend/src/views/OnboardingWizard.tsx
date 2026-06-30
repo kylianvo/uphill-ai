@@ -236,11 +236,19 @@ export default function OnboardingWizard() {
 
     const prevStep = () => setOnboardingStep((s: any) => Math.max(s - 1, 0));
 
-    // Intercept Next on fitness steps — show disclaimer popup if no data entered
+    // Intercept Next on fitness steps — show disclaimer popup when no real measurement provided.
+    // Zone2 pace defaults ("8:30"/"6:30") are auto-set by the app, not user-measured, so they
+    // count as "still at default". Only HR fields or a changed pace count as real input.
     const isFitnessStep = currentStepKey === "fitness_start" || currentStepKey === "fitness_return" || currentStepKey === "fitness";
-    const fitnessSkipped = !onboardingAnswers.aet_hr && !onboardingAnswers.race_time_hours;
+    const DEFAULT_PACES = ["8:30", "7:30", "6:30", "5:45"];
+    const hasRealFitnessData =
+      !!onboardingAnswers.aet_hr ||
+      !!onboardingAnswers.race_time_hours ||
+      !!onboardingAnswers.resting_hr ||
+      (onboardingAnswers.zone2_pace_min && !DEFAULT_PACES.includes(onboardingAnswers.zone2_pace_min)) ||
+      (onboardingAnswers.zone2_pace_max && !DEFAULT_PACES.includes(onboardingAnswers.zone2_pace_max));
     const handleNextStep = () => {
-      if (isFitnessStep && (currentStepKey === "fitness_start" || fitnessSkipped)) {
+      if (isFitnessStep && !hasRealFitnessData) {
         setShowFitnessWarning(true);
       } else {
         nextStep();
