@@ -453,13 +453,23 @@ class PlanGenerator:
         except Exception as _prompt_ex:
             print(f"[PlanGen] Prompt building failed: {_prompt_ex}. Using rule-based fallback.")
 
-        if _ai_prompt and notebook_id and auth_json:
+        # NotebookLM has a strict query-size limit (~4000 chars). The full prompt is always sent
+        # to Gemini, but for NotebookLM we cap it so block 2+ (which carry block_context) don't
+        # silently return an empty streaming response.
+        _NOTEBOOKLM_MAX_CHARS = 3800
+        _nb_query = _ai_prompt[:_NOTEBOOKLM_MAX_CHARS] if _ai_prompt else None
+
+        if _nb_query and notebook_id and auth_json:
             try:
                 from services.notebooklm_service import NotebookLmService
 
-                print(f"[PlanGen][NotebookLM] Sending prompt to notebook {notebook_id[:8]}...")
+                truncated = len(_ai_prompt) > _NOTEBOOKLM_MAX_CHARS
+                print(
+                    f"[PlanGen][NotebookLM] Sending prompt to notebook {notebook_id[:8]}... "
+                    f"({len(_nb_query)} chars{', truncated from ' + str(len(_ai_prompt)) if truncated else ''})"
+                )
                 response_text = await NotebookLmService.query_notebook(
-                    notebook_id=notebook_id, auth_json=auth_json, query=_ai_prompt, service="plan_generator"
+                    notebook_id=notebook_id, auth_json=auth_json, query=_nb_query, service="plan_generator"
                 )
                 print(f"[PlanGen][NotebookLM] Response received ({len(response_text)} chars)")
                 clean_text = _re.sub(r"```(?:json)?|```", "", response_text).strip()
@@ -478,8 +488,8 @@ class PlanGenerator:
                 err_str = str(ex)
                 if "No parseable chunks" in err_str or "empty" in err_str.lower():
                     print(
-                        "[PlanGen][NotebookLM] Auth token likely expired or streaming format changed — "
-                        "update NOTEBOOKLM_AUTH_JSON on the server. Falling back to Gemini."
+                        "[PlanGen][NotebookLM] Empty streaming response — prompt may still be too large, "
+                        "or auth token expired (update NOTEBOOKLM_AUTH_JSON). Falling back to Gemini."
                     )
                 else:
                     print(f"[PlanGen][NotebookLM] FAILED: {ex}. Trying Gemini fallback.")
