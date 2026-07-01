@@ -107,7 +107,7 @@ class PlanGenerator:
         )
         long_run_day = race_info.get("long_run_day") or user_profile.get("long_run_day")
         days_per_week = race_info.get("days_per_week") or user_profile.get("days_per_week") or 4
-        injury_history = race_info.get("injury_history") or user_profile.get("injury_history")
+        injury_history = user_profile.get("injury_history")
 
         # Threshold Heart Rates (AeT = Aerobic, AnT = Anaerobic)
         aet_hr = int(user_profile.get("aet_hr", resting_hr + int((max_hr - resting_hr) * 0.65)))

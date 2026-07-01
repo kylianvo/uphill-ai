@@ -22,13 +22,11 @@ def upgrade() -> None:
     op.add_column("plans", sa.Column("preferred_run_days", sa.Text(), nullable=True))
     op.add_column("plans", sa.Column("long_run_day", sa.Text(), nullable=True))
     op.add_column("plans", sa.Column("days_per_week", sa.Integer(), nullable=True, server_default="4"))
-    op.add_column("plans", sa.Column("injury_history", sa.Text(), nullable=True))
     op.add_column("plans", sa.Column("double_session_days", sa.Text(), nullable=True))
 
 
 def downgrade() -> None:
     op.drop_column("plans", "double_session_days")
-    op.drop_column("plans", "injury_history")
     op.drop_column("plans", "days_per_week")
     op.drop_column("plans", "long_run_day")
     op.drop_column("plans", "preferred_run_days")

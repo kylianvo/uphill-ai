@@ -251,7 +251,6 @@ def init_db():
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS preferred_run_days TEXT",
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS long_run_day TEXT",
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS days_per_week INTEGER DEFAULT 4",
-            "ALTER TABLE plans ADD COLUMN IF NOT EXISTS injury_history TEXT",
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS double_session_days TEXT",
         ]:
             try:
@@ -413,7 +412,6 @@ def create_plan(
     preferred_run_days: list | None = None,
     long_run_day: str | None = None,
     days_per_week: int = 4,
-    injury_history: str | None = None,
     double_session_days: list | None = None,
 ) -> int:
     with engine.connect() as conn:
@@ -422,10 +420,10 @@ def create_plan(
             INSERT INTO plans (user_id, race_name, race_date, goal_type,
                                target_time_hours, total_weeks, course_distance_km,
                                course_elevation_gain_m, preferred_run_days, long_run_day,
-                               days_per_week, injury_history, double_session_days)
+                               days_per_week, double_session_days)
             VALUES (:user_id, :race_name, :race_date, :goal_type,
                     :tth, :total_weeks, :dist_km, :elev_m, :preferred_run_days,
-                    :long_run_day, :days_per_week, :injury_history, :double_session_days)
+                    :long_run_day, :days_per_week, :double_session_days)
             RETURNING id
         """),
             {
@@ -440,7 +438,6 @@ def create_plan(
                 "preferred_run_days": json.dumps(preferred_run_days or []),
                 "long_run_day": long_run_day,
                 "days_per_week": days_per_week or 4,
-                "injury_history": injury_history,
                 "double_session_days": json.dumps(double_session_days or []),
             },
         )

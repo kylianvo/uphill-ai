@@ -625,7 +625,6 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         preferred_run_days=request.preferred_run_days or [],
         long_run_day=request.long_run_day,
         days_per_week=request.days_per_week or 4,
-        injury_history=request.injury_history,
         double_session_days=request.double_session_days or [],
     )
 
@@ -646,7 +645,6 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         "preferred_days": request.preferred_run_days,
         "long_run_day": request.long_run_day,
         "days_per_week": request.days_per_week,
-        "injury_history": request.injury_history,
         "double_session_days": request.double_session_days or [],
         "lang": request.lang or "en",
     }
@@ -920,7 +918,6 @@ async def generate_training_plan(request: PlanGenerateRequest, user: dict[str, A
             preferred_run_days=request.preferred_days or [],
             long_run_day=request.long_run_day,
             days_per_week=request.days_per_week or 4,
-            injury_history=request.injury_history,
             double_session_days=[],
         )
 
@@ -936,7 +933,6 @@ async def generate_training_plan(request: PlanGenerateRequest, user: dict[str, A
             "preferred_days": request.preferred_days,
             "long_run_day": request.long_run_day,
             "days_per_week": request.days_per_week,
-            "injury_history": request.injury_history,
             "double_session_days": [],
             # Start date
             "plan_start_date": start_date_str,
@@ -1147,7 +1143,6 @@ async def generate_next_block(request: GenerateNextBlockRequest, user: dict[str,
         "preferred_days": plan.get("preferred_run_days"),
         "long_run_day": plan.get("long_run_day"),
         "days_per_week": plan.get("days_per_week"),
-        "injury_history": plan.get("injury_history"),
         "double_session_days": plan.get("double_session_days"),
         "lang": fresh_user.get("lang", "en"),
     }
