@@ -622,6 +622,11 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         total_weeks=total_weeks,
         course_distance_km=request.course_distance_km,
         course_elevation_gain_m=request.course_elevation_gain_m,
+        preferred_run_days=request.preferred_run_days or [],
+        long_run_day=request.long_run_day,
+        days_per_week=request.days_per_week or 4,
+        injury_history=request.injury_history,
+        double_session_days=request.double_session_days or [],
     )
 
     # Mark onboarding complete immediately so the user can enter the app
@@ -641,6 +646,8 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         "preferred_days": request.preferred_run_days,
         "long_run_day": request.long_run_day,
         "days_per_week": request.days_per_week,
+        "injury_history": request.injury_history,
+        "double_session_days": request.double_session_days or [],
         "lang": request.lang or "en",
     }
 
@@ -910,6 +917,11 @@ async def generate_training_plan(request: PlanGenerateRequest, user: dict[str, A
             total_weeks=total_weeks,
             course_distance_km=request.course_distance_km,
             course_elevation_gain_m=request.course_elevation_gain_m,
+            preferred_run_days=request.preferred_days or [],
+            long_run_day=request.long_run_day,
+            days_per_week=request.days_per_week or 4,
+            injury_history=request.injury_history,
+            double_session_days=[],
         )
 
         race_info = {
@@ -920,10 +932,12 @@ async def generate_training_plan(request: PlanGenerateRequest, user: dict[str, A
             "target_time_hours": request.target_time_hours,
             "course_distance_km": request.course_distance_km,
             "course_elevation_gain_m": request.course_elevation_gain_m,
-            # Scheduling preferences
+            # Scheduling preferences (plan-level)
             "preferred_days": request.preferred_days,
             "long_run_day": request.long_run_day,
             "days_per_week": request.days_per_week,
+            "injury_history": request.injury_history,
+            "double_session_days": [],
             # Start date
             "plan_start_date": start_date_str,
             "lang": request.lang or "en",
@@ -1130,9 +1144,11 @@ async def generate_next_block(request: GenerateNextBlockRequest, user: dict[str,
         "target_time_hours": plan.get("target_time_hours"),
         "course_distance_km": plan.get("course_distance_km"),
         "course_elevation_gain_m": plan.get("course_elevation_gain_m"),
-        "preferred_days": fresh_user.get("preferred_run_days"),
-        "long_run_day": fresh_user.get("long_run_day"),
-        "days_per_week": fresh_user.get("days_per_week"),
+        "preferred_days": plan.get("preferred_run_days"),
+        "long_run_day": plan.get("long_run_day"),
+        "days_per_week": plan.get("days_per_week"),
+        "injury_history": plan.get("injury_history"),
+        "double_session_days": plan.get("double_session_days"),
         "lang": fresh_user.get("lang", "en"),
     }
 

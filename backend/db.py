@@ -248,6 +248,11 @@ def init_db():
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS notes TEXT",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS session_slot TEXT DEFAULT 'main'",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS double_session_days TEXT",
+            "ALTER TABLE plans ADD COLUMN IF NOT EXISTS preferred_run_days TEXT",
+            "ALTER TABLE plans ADD COLUMN IF NOT EXISTS long_run_day TEXT",
+            "ALTER TABLE plans ADD COLUMN IF NOT EXISTS days_per_week INTEGER DEFAULT 4",
+            "ALTER TABLE plans ADD COLUMN IF NOT EXISTS injury_history TEXT",
+            "ALTER TABLE plans ADD COLUMN IF NOT EXISTS double_session_days TEXT",
         ]:
             try:
                 conn.execute(text(col_sql))
@@ -405,15 +410,22 @@ def create_plan(
     total_weeks: int,
     course_distance_km: float | None = None,
     course_elevation_gain_m: float | None = None,
+    preferred_run_days: list | None = None,
+    long_run_day: str | None = None,
+    days_per_week: int = 4,
+    injury_history: str | None = None,
+    double_session_days: list | None = None,
 ) -> int:
     with engine.connect() as conn:
         result = conn.execute(
             text("""
             INSERT INTO plans (user_id, race_name, race_date, goal_type,
                                target_time_hours, total_weeks, course_distance_km,
-                               course_elevation_gain_m)
+                               course_elevation_gain_m, preferred_run_days, long_run_day,
+                               days_per_week, injury_history, double_session_days)
             VALUES (:user_id, :race_name, :race_date, :goal_type,
-                    :tth, :total_weeks, :dist_km, :elev_m)
+                    :tth, :total_weeks, :dist_km, :elev_m, :preferred_run_days,
+                    :long_run_day, :days_per_week, :injury_history, :double_session_days)
             RETURNING id
         """),
             {
@@ -425,6 +437,11 @@ def create_plan(
                 "total_weeks": total_weeks,
                 "dist_km": course_distance_km,
                 "elev_m": course_elevation_gain_m,
+                "preferred_run_days": json.dumps(preferred_run_days or []),
+                "long_run_day": long_run_day,
+                "days_per_week": days_per_week or 4,
+                "injury_history": injury_history,
+                "double_session_days": json.dumps(double_session_days or []),
             },
         )
         conn.commit()

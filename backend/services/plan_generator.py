@@ -100,8 +100,14 @@ class PlanGenerator:
             except Exception:
                 return []
 
-        preferred_run_days = _parse_days(user_profile.get("preferred_run_days") or race_info.get("preferred_days"))
-        double_session_days = _parse_days(user_profile.get("double_session_days"))
+        # Scheduling prefs are plan-level (stored in plans table, passed via race_info)
+        preferred_run_days = _parse_days(race_info.get("preferred_days"))
+        double_session_days = _parse_days(
+            race_info.get("double_session_days") or user_profile.get("double_session_days")
+        )
+        long_run_day = race_info.get("long_run_day") or user_profile.get("long_run_day")
+        days_per_week = race_info.get("days_per_week") or user_profile.get("days_per_week") or 4
+        injury_history = race_info.get("injury_history") or user_profile.get("injury_history")
 
         # Threshold Heart Rates (AeT = Aerobic, AnT = Anaerobic)
         aet_hr = int(user_profile.get("aet_hr", resting_hr + int((max_hr - resting_hr) * 0.65)))
@@ -236,14 +242,21 @@ class PlanGenerator:
         _ai_prompt = None
         try:
             scheduling_notes = ""
+            all_days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
             if preferred_run_days:
-                all_days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
                 rest_days = [d for d in all_days if d not in preferred_run_days]
                 scheduling_notes += (
                     f"\nScheduling Preferences:\n"
+                    f"- Training days per week: {days_per_week}\n"
                     f"- Preferred training days: {', '.join(preferred_run_days)}\n"
                     f"- Rest/off days (assign Rest workouts): {', '.join(rest_days) if rest_days else 'none'}\n"
                 )
+                if long_run_day:
+                    scheduling_notes += f"- Preferred long run day: {long_run_day}\n"
+            elif days_per_week:
+                scheduling_notes += f"\nScheduling Preferences:\n" f"- Training days per week: {days_per_week}\n"
+                if long_run_day:
+                    scheduling_notes += f"- Preferred long run day: {long_run_day}\n"
             if double_session_days:
                 scheduling_notes += (
                     f"- Double-session days: {', '.join(double_session_days)}\n"
@@ -251,6 +264,8 @@ class PlanGenerator:
                     "  one with session_slot='morning' (shorter, lower-intensity) and one with session_slot='afternoon' (the main session).\n"
                     "  Do NOT double-session a day already designated as Rest.\n"
                 )
+            if injury_history:
+                scheduling_notes += f"- Injury history: {injury_history}\n"
 
             user_summary = (
                 f"Age: {age}, Weekly volume base: {current_weekly_km} km, Max HR: {max_hr} bpm, "
