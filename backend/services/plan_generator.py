@@ -244,6 +244,24 @@ class PlanGenerator:
         # 2. AI Plan Generation (NotebookLM → Gemini → Rule-Based)
         import re as _re
 
+        def _extract_json_array(text: str) -> str:
+            """Extract the first JSON array from text, tolerating prose preambles."""
+            # Strip markdown fences first
+            text = _re.sub(r"```(?:json)?|```", "", text).strip()
+            # Find the first '[' and its matching ']'
+            start = text.find("[")
+            if start == -1:
+                return text
+            depth = 0
+            for i, ch in enumerate(text[start:], start):
+                if ch == "[":
+                    depth += 1
+                elif ch == "]":
+                    depth -= 1
+                    if depth == 0:
+                        return text[start : i + 1]
+            return text[start:]  # malformed but let json.loads produce a clear error
+
         from config import settings
 
         notebook_id = settings.NOTEBOOKLM_NOTEBOOK_ID
@@ -472,7 +490,7 @@ class PlanGenerator:
                     notebook_id=notebook_id, auth_json=auth_json, query=_nb_query, service="plan_generator"
                 )
                 print(f"[PlanGen][NotebookLM] Response received ({len(response_text)} chars)")
-                clean_text = _re.sub(r"```(?:json)?|```", "", response_text).strip()
+                clean_text = _extract_json_array(response_text)
                 try:
                     ai_workouts = _json.loads(clean_text)
                 except _json.JSONDecodeError as json_err:
@@ -504,7 +522,7 @@ class PlanGenerator:
                 _model = _genai.GenerativeModel("gemini-2.5-flash")
                 print(f"[PlanGen][Gemini] Sending prompt ({len(_ai_prompt)} chars)...")
                 _response = await asyncio.to_thread(_model.generate_content, _ai_prompt)
-                clean_text = _re.sub(r"```(?:json)?|```", "", _response.text).strip()
+                clean_text = _extract_json_array(_response.text)
                 try:
                     ai_workouts = _json.loads(clean_text)
                 except _json.JSONDecodeError as json_err:
