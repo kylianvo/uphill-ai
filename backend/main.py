@@ -1125,71 +1125,78 @@ async def generate_next_block(request: GenerateNextBlockRequest, user: dict[str,
 
     fresh_user = get_user_by_id(user["id"]) or user
 
-    # Collect block reviews + per-session data for previous blocks
+    # Build compact block context for previous blocks
     reviews = get_block_reviews(request.plan_id)
     all_workouts = get_plan_workouts(request.plan_id)
 
-    # Build per-session stats for every completed workout in prior blocks
-    prev_weeks_end = (request.block_number - 1) * 2  # last week of previous blocks
-    prior_completed = [
-        w
-        for w in all_workouts
-        if w.get("is_completed") == 1 and (w.get("week_number") or 0) <= prev_weeks_end and w.get("type") != "Rest"
-    ]
+    review_map = {r["block_number"]: r for r in (reviews or [])}
 
     block_context = None
     context_lines: list[str] = []
 
-    # Block-level review summaries
-    review_map = {r["block_number"]: r for r in (reviews or [])}
+    for blk in range(1, request.block_number):
+        wk_start = (blk - 1) * 2 + 1
+        wk_end = blk * 2
 
-    # Per-session breakdown grouped by block
-    sessions_by_block: dict[int, list[str]] = {}
-    for w in prior_completed:
-        wk = w.get("week_number", 0)
-        blk = ((wk - 1) // 2) + 1
-        parts = [f"    • {w.get('day_of_week', '?')} W{wk}: {w.get('title', w.get('type', '?'))}"]
-        stats = []
-        if w.get("duration_minutes"):
-            stats.append(f"{w['duration_minutes']} min")
-        if w.get("distance_km"):
-            stats.append(f"{w['distance_km']:.1f} km")
-        if w.get("rpe"):
-            stats.append(f"RPE {w['rpe']}/10")
-        if w.get("notes"):
-            stats.append(f'note: "{w["notes"]}"')
-        if stats:
-            parts.append(f" ({', '.join(stats)})")
-        sessions_by_block.setdefault(blk, []).append("".join(parts))
+        block_wos = [
+            w for w in all_workouts if wk_start <= (w.get("week_number") or 0) <= wk_end and w.get("type") != "Rest"
+        ]
+        completed_wos = [w for w in block_wos if w.get("is_completed") == 1]
 
-    all_block_nums = sorted(set(list(review_map.keys()) + list(sessions_by_block.keys())))
-    for blk in all_block_nums:
+        # Planned totals (from generated workouts)
+        planned_km = sum(w.get("distance_km") or 0 for w in block_wos)
+        planned_min = sum(w.get("duration_minutes") or 0 for w in block_wos)
+
+        # Actual totals (from completed workouts)
+        actual_km = sum(w.get("distance_km") or 0 for w in completed_wos)
+        actual_min = sum(w.get("duration_minutes") or 0 for w in completed_wos)
+
+        sessions_done = len(completed_wos)
+        sessions_total = len(block_wos)
+        completion_pct = round(sessions_done / sessions_total * 100) if sessions_total else 0
+
+        # Avg per-session RPE from individual workouts that have it logged
+        session_rpes = [w["rpe"] for w in completed_wos if w.get("rpe")]
+        avg_session_rpe = round(sum(session_rpes) / len(session_rpes), 1) if session_rpes else None
+
+        # Block-level review (from the review modal)
         rev = review_map.get(blk)
-        rpe_str = f"RPE {rev['overall_rpe']}/10" if rev and rev.get("overall_rpe") else "no block RPE"
-        note_str = f'"{rev["notes"]}"' if rev and rev.get("notes") else "no notes"
-        context_lines.append(f"Block {blk} review: {rpe_str} — {note_str}")
+        block_rpe = rev["overall_rpe"] if rev and rev.get("overall_rpe") else avg_session_rpe
+        block_note = rev["notes"] if rev and rev.get("notes") else None
 
-        sessions = sessions_by_block.get(blk, [])
-        if sessions:
-            # Summarise completion rate for the block
-            total_in_block = len(
-                [w for w in all_workouts if ((w.get("week_number", 0) - 1) // 2) + 1 == blk and w.get("type") != "Rest"]
-            )
-            done_in_block = len(sessions)
-            km_total = sum(
-                w.get("distance_km") or 0 for w in prior_completed if ((w.get("week_number", 0) - 1) // 2) + 1 == blk
-            )
-            min_total = sum(
-                w.get("duration_minutes") or 0
-                for w in prior_completed
-                if ((w.get("week_number", 0) - 1) // 2) + 1 == blk
-            )
+        # Collect session-level notes (exclude empty/None)
+        session_notes = [
+            f'{w.get("day_of_week","?")} W{w.get("week_number","?")}: "{w["notes"]}"'
+            for w in completed_wos
+            if w.get("notes")
+        ]
+
+        # Identify missed sessions (not completed, not Rest)
+        missed = [
+            f'{w.get("day_of_week","?")} {w.get("title") or w.get("type","?")}'
+            for w in block_wos
+            if w.get("is_completed") != 1
+        ]
+
+        # Compose the compact summary line
+        line = (
+            f"Block {blk} (Wk {wk_start}-{wk_end}): "
+            f"{sessions_done}/{sessions_total} sessions ({completion_pct}%) | "
+            f"Actual {actual_km:.1f}km/{actual_min/60:.1f}h vs Planned {planned_km:.1f}km/{planned_min/60:.1f}h"
+        )
+        if block_rpe:
+            line += f" | RPE {block_rpe}/10"
+        context_lines.append(line)
+
+        if block_note:
+            context_lines.append(f'  Athlete note: "{block_note}"')
+        for n in session_notes:
+            context_lines.append(f"  Session note — {n}")
+        if missed:
             context_lines.append(
-                f"  Completed {done_in_block}/{total_in_block} sessions"
-                + (f", {km_total:.1f} km total" if km_total else "")
-                + (f", {min_total} min total" if min_total else "")
+                f"  Missed: {', '.join(missed[:3])}"
+                + (" +" + str(len(missed) - 3) + " more" if len(missed) > 3 else "")
             )
-            context_lines.extend(sessions)
 
     if context_lines:
         block_context = "\n".join(context_lines)
