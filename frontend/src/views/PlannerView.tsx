@@ -5,15 +5,17 @@ import { usePlanner } from "../hooks/usePlanner";
 import { translations } from "../app/translations";
 import WorkoutCard from "../components/WorkoutCard";
 import { KnowledgeCard } from "../components/KnowledgeCard";
+import { DndContext, DragEndEvent, DragOverEvent, useDraggable, useDroppable } from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
 import ToolsView from "./ToolsView";
 import { UploadSimple, FileArrowUp, Heart, Clock, Mountains, MapPin, Footprints, ArrowsMerge, PlayCircle, CheckCircle, Fire, Path, RoadHorizon, Info, Check, Question, WarningCircle, Plus, Trash, Archive, LockKey, LockKeyOpen, Trophy, Target, Sneaker, PersonSimpleRun, Bed, XCircle, DownloadSimple } from '@phosphor-icons/react';
 
 export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   const ctx = useAppContext();
-  const { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, handleSwapWorkouts, handleToggleComplete, handleLogWorkout, getWeekWorkouts, getWorkoutDate, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller } = usePlanner();
+  const { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, handleSwapWorkouts, swapDays, handleToggleComplete, handleLogWorkout, getWeekWorkouts, getWorkoutDate, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller } = usePlanner();
   const { lang, activePlan, planLoading, planErrorMsg, planForm, setPlanForm, targetTimeH, setTargetTimeH, targetTimeM, setTargetTimeM, targetTimeS, setTargetTimeS, cutoffTimeH, setCutoffTimeH, cutoffTimeM, setCutoffTimeM, cutoffTimeS, setCutoffTimeS, recentPlans, selectedWeek, setSelectedWeek, swapDay1, setSwapDay1, swapDay2, setSwapDay2, setWorkouts, setBackupWorkouts, setActivePlan, workouts, backupWorkouts, backupActivePlan, setBackupActivePlan, courseInputMode, setCourseInputMode, plannerGpxLoading, plannerGpxFile, plannerGpxError, showExportOptions, setShowExportOptions, exportTimePref, setExportTimePref } = ctx;
   const t = (key: keyof typeof translations.en) => translations[lang]?.[key] || translations.en[key] || key;
-  const totalWeeks = activePlan ? (activePlan.plan_duration_weeks || 1) : 0;
+  const totalWeeks = activePlan ? (activePlan.total_weeks || activePlan.plan_duration_weeks || 1) : 0;
 
   // ── Phase → knowledge card topic mapping ────────────────────────────────
   const phaseToTopic = (phase: string, daysToRace: number | null): string | null => {
@@ -185,6 +187,93 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
     return null;
   };
   const coachMessage = getCoachMessage();
+
+  // ── Block completion state ───────────────────────────────────────────────
+  const [blockData, setBlockData] = useState<{ blocks: any[]; max_generated_week: number } | null>(null);
+  const [showBlockReview, setShowBlockReview] = useState(false);
+  const [blockReviewRpe, setBlockReviewRpe] = useState(5);
+  const [blockReviewNotes, setBlockReviewNotes] = useState("");
+  const [nextBlockLoading, setNextBlockLoading] = useState(false);
+
+  const fetchBlockCompletion = React.useCallback(() => {
+    if (!activePlan) return;
+    const token = typeof window !== "undefined" ? localStorage.getItem("uphill_session_token") : null;
+    if (!token) return;
+    fetch(`${API_BASE_URL}/api/coach/block-completion/${activePlan.id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setBlockData(data); })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePlan?.id, API_BASE_URL]);
+
+  useEffect(() => {
+    if (!activePlan) { Promise.resolve().then(() => setBlockData(null)); return; }
+    fetchBlockCompletion();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePlan?.id, fetchBlockCompletion]);
+
+  // Derive directly from workouts so it updates immediately when setWorkouts() fires
+  const maxGeneratedWeek = workouts.length > 0
+    ? Math.max(...workouts.map((w: any) => w.week_number || 0))
+    : 0;
+  const currentBlockNum = maxGeneratedWeek > 0 ? Math.ceil(maxGeneratedWeek / 2) : 1;
+  const currentBlockCompletion = blockData?.blocks?.find((b: any) => b.block_number === currentBlockNum);
+  const blockUnlocked = currentBlockCompletion?.unlocked ?? false;
+  const nextBlockNum = currentBlockNum + 1;
+  const nextBlockStartWeek = nextBlockNum * 2 - 1;
+  const allBlocksGenerated = maxGeneratedWeek >= totalWeeks && totalWeeks > 0;
+
+  // Re-check block completion % whenever a workout is toggled
+  const handleToggleCompleteWithRefresh = async (id: number, completed: boolean) => {
+    await handleToggleComplete(id, completed);
+    fetchBlockCompletion();
+  };
+
+  const handleGenerateNextBlock = async () => {
+    if (!activePlan) return;
+    setNextBlockLoading(true);
+    const token = typeof window !== "undefined" ? localStorage.getItem("uphill_session_token") : null;
+    if (!token) { setNextBlockLoading(false); return; }
+    try {
+      const resp = await fetch(`${API_BASE_URL}/api/coach/generate-next-block`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          plan_id: activePlan.id,
+          block_number: nextBlockNum,
+          overall_rpe: blockReviewRpe || null,
+          notes: blockReviewNotes || null,
+        }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.detail || "Failed to start next block generation");
+      setShowBlockReview(false);
+      setBlockReviewNotes("");
+      setBlockReviewRpe(5);
+      // nextBlockLoading stays true until the job finishes
+      startPlanJobPoller(data.job_id, token);
+      const repoll = setInterval(() => {
+        const tkn = localStorage.getItem("uphill_session_token");
+        if (!tkn) { clearInterval(repoll); setNextBlockLoading(false); return; }
+        fetch(`${API_BASE_URL}/api/coach/plan-status/${data.job_id}`, { headers: { Authorization: `Bearer ${tkn}` } })
+          .then(r => r.ok ? r.json() : null)
+          .then(d => {
+            if (d?.status === "done" || d?.status === "error") {
+              clearInterval(repoll);
+              setNextBlockLoading(false);
+              fetchBlockCompletion();
+            }
+          })
+          .catch(() => { clearInterval(repoll); setNextBlockLoading(false); });
+      }, 3000);
+    } catch (err: any) {
+      alert(err.message || "Failed to generate next block");
+      setNextBlockLoading(false);
+    }
+  };
+
     return (
       <div>
         {!activePlan ? (
@@ -799,34 +888,47 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
             <div style={{ display: "flex", gap: "6px", overflowX: "auto", paddingBottom: "8px", marginBottom: "16px" }}>
               {Array.from({ length: activePlan.total_weeks }).map((_, i) => {
                 const w = i + 1;
+                const isLocked = w > maxGeneratedWeek;
                 const firstWo = workouts.find((wo: any) => wo.week_number === w);
-                const phase = firstWo ? firstWo.phase : "Training";
-                const active = selectedWeek === w;
+                const phase = firstWo ? firstWo.phase : (isLocked ? "Locked" : "Training");
+                const active = selectedWeek === w && !isLocked;
                 const phaseDisplay = lang === "vi"
-                  ? phase.replace("Base", "Base").replace("Build", "Build").replace("Taper", "Taper").replace("Peak", "Peak").replace("Recovery", "Phục hồi").replace("Transition", "Chuyển đổi")
+                  ? phase.replace("Base", "Base").replace("Build", "Build").replace("Taper", "Taper").replace("Peak", "Peak").replace("Recovery", "Phục hồi").replace("Transition", "Chuyển đổi").replace("Locked", "Chưa mở")
                   : phase;
+                if (isLocked) {
+                  return (
+                    <div
+                      key={w}
+                      title={lang === "en" ? "Complete the current block to unlock" : "Hoàn thành block hiện tại để mở khóa"}
+                      style={{
+                        padding: "6px 12px", borderRadius: "8px", flexShrink: 0,
+                        fontSize: "12px", display: "flex", flexDirection: "column",
+                        alignItems: "center", gap: "1px", minWidth: "60px", height: "44px",
+                        background: "rgba(0,0,0,0.04)", border: "1px dashed rgba(0,0,0,0.15)",
+                        color: "var(--text-muted)", opacity: 0.55, cursor: "not-allowed",
+                        userSelect: "none",
+                      }}
+                    >
+                      <span style={{ fontSize: "11px" }}>🔒</span>
+                      <span style={{ fontSize: "9px" }}>{lang === "en" ? `Week ${w}` : `Tuần ${w}`}</span>
+                    </div>
+                  );
+                }
                 return (
                   <button
                     key={w}
                     className={`btn ${active ? "btn-primary" : "btn-secondary"}`}
                     style={{
-                      padding: "6px 12px",
-                      borderRadius: "8px",
-                      flexShrink: 0,
-                      fontSize: "12px",
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      gap: "1px",
-                      minWidth: "60px",
-                      height: "44px",
+                      padding: "6px 12px", borderRadius: "8px", flexShrink: 0,
+                      fontSize: "12px", display: "flex", flexDirection: "column",
+                      alignItems: "center", gap: "1px", minWidth: "60px", height: "44px",
                       background: active ? "var(--accent-primary)" : "rgba(255,255,255,0.25)",
                       borderColor: active ? "var(--accent-primary)" : "var(--border-color)",
                       color: active ? "#ffffff" : "var(--text-primary)"
                     }}
                     onClick={() => setSelectedWeek(w)}
                   >
-                    <span>{lang === "en" ? `Wk ${w}` : `Tuần ${w}`}</span>
+                    <span>{lang === "en" ? `Week ${w}` : `Tuần ${w}`}</span>
                     <span style={{ fontSize: "9px", opacity: 0.7 }}>{phaseDisplay}</span>
                   </button>
                 );
@@ -852,7 +954,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                     gap: "4px"
                   }}>
                     <span style={{ fontSize: "10px", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: "700" }}>
-                      {lang === "en" ? `Weekly Volume (Wk ${selectedWeek})` : `Thể tích tuần (Tuần ${selectedWeek})`}
+                      {lang === "en" ? `Weekly Volume (Week ${selectedWeek})` : `Thể tích tuần (Tuần ${selectedWeek})`}
                     </span>
                     <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
                       <span style={{ fontSize: "18px", fontWeight: "800", color: "var(--accent-primary)" }}>{weeklyKm.toFixed(1)} km</span>
@@ -910,20 +1012,16 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 ))}
               </div>
             ) : (
-              /* Week Workouts Grid */
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                {getWeekWorkouts(selectedWeek).map((wo: any) => (
-                  <WorkoutCard
-                    key={wo.id}
-                    wo={wo}
-                    isMobile={isMobile}
-                    lang={lang}
-                    onToggleComplete={handleToggleComplete}
-                    onLogWorkout={handleLogWorkout}
-                    getWorkoutDate={getWorkoutDate}
-                  />
-                ))}
-              </div>
+              /* Week Workouts — grouped by day with drag-and-drop swap */
+              <WeekDayList
+                weekWos={getWeekWorkouts(selectedWeek)}
+                lang={lang}
+                isMobile={isMobile}
+                onSwapDays={swapDays}
+                onToggleComplete={handleToggleCompleteWithRefresh}
+                onLogWorkout={handleLogWorkout}
+                getWorkoutDate={getWorkoutDate}
+              />
             )}
 
             {/* Coach's pick — contextual knowledge card for this phase */}
@@ -935,6 +1033,166 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 <KnowledgeCard card={contextCard} />
               </div>
             )}
+
+            {/* Block Complete Banner */}
+            {blockUnlocked && !planLoading && (
+              <div style={{
+                marginTop: "20px",
+                padding: "16px 20px",
+                borderRadius: "14px",
+                background: "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(5,150,105,0.08))",
+                border: "1.5px solid rgba(16,185,129,0.35)",
+                display: "flex",
+                flexDirection: "column",
+                gap: "10px",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <span style={{ fontSize: "22px" }}>🎉</span>
+                  <div>
+                    <div style={{ fontWeight: "800", fontSize: "14px", color: "var(--accent-primary)" }}>
+                      {lang === "en"
+                        ? `Block ${currentBlockNum} Complete! (${currentBlockCompletion?.completion_pct ?? 0}% done)`
+                        : `Block ${currentBlockNum} hoàn thành! (${currentBlockCompletion?.completion_pct ?? 0}% xong)`}
+                    </div>
+                    {!allBlocksGenerated && (
+                      <div style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "2px" }}>
+                        {lang === "en"
+                          ? `Weeks ${nextBlockStartWeek}–${Math.min(nextBlockStartWeek + 1, totalWeeks)} are ready to generate.`
+                          : `Tuần ${nextBlockStartWeek}–${Math.min(nextBlockStartWeek + 1, totalWeeks)} sẵn sàng để tạo.`}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {!allBlocksGenerated && (
+                  <button
+                    className="btn btn-primary"
+                    style={{ alignSelf: "flex-start", fontSize: "13px", height: "38px", paddingLeft: "20px", paddingRight: "20px", display: "flex", alignItems: "center", gap: "6px" }}
+                    onClick={() => setShowBlockReview(true)}
+                    disabled={nextBlockLoading}
+                  >
+                    <span>⚡</span>
+                    {nextBlockLoading
+                      ? (lang === "en" ? "Generating..." : "Đang tạo...")
+                      : (lang === "en" ? `Generate Block ${nextBlockNum}` : `Tạo Block ${nextBlockNum}`)}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Next Block Generating Banner */}
+        {nextBlockLoading && !showBlockReview && (
+          <div style={{
+            background: "rgba(255, 255, 255, 0.95)",
+            border: "1px solid var(--border-color)",
+            padding: isMobile ? "16px 18px" : "18px 24px",
+            borderRadius: "16px",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+            display: "flex",
+            alignItems: "center",
+            gap: "16px",
+            marginTop: "16px",
+          }}>
+            <div style={{
+              width: "22px", height: "22px", borderRadius: "50%",
+              border: "3px solid rgba(99,102,241,0.2)",
+              borderTopColor: "var(--accent-primary)",
+              animation: "spin 0.8s linear infinite",
+              flexShrink: 0,
+            }} />
+            <div>
+              <div style={{ fontWeight: "700", fontSize: "14px", color: "var(--accent-primary)" }}>
+                {lang === "en" ? `Generating Block ${nextBlockNum}…` : `Đang tạo Block ${nextBlockNum}…`}
+              </div>
+              <div style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "3px" }}>
+                {lang === "en" ? "Usually 30–60 seconds. Your calendar will update automatically." : "Thường mất 30–60 giây. Lịch tập sẽ tự động cập nhật."}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Block Review Modal */}
+        {showBlockReview && (
+          <div style={{
+            position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)",
+            zIndex: 1200, display: "flex", alignItems: "center", justifyContent: "center", padding: "24px",
+          }}>
+            <div style={{
+              background: "rgba(255,255,255,0.97)", borderRadius: "18px",
+              padding: "28px 24px", maxWidth: "420px", width: "100%",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+            }}>
+              <h3 style={{ margin: "0 0 4px", fontSize: "18px", fontWeight: "800" }}>
+                {lang === "en" ? `How was Block ${currentBlockNum}?` : `Block ${currentBlockNum} như thế nào?`}
+              </h3>
+              <p style={{ fontSize: "13px", color: "var(--text-muted)", margin: "0 0 20px" }}>
+                {lang === "en"
+                  ? "Your feedback shapes the next 2 weeks of training."
+                  : "Phản hồi của bạn sẽ định hình 2 tuần tập tiếp theo."}
+              </p>
+
+              <label style={{ display: "block", fontSize: "12px", fontWeight: "700", color: "var(--text-secondary)", marginBottom: "8px" }}>
+                {lang === "en" ? `Overall Effort (RPE ${blockReviewRpe}/10)` : `Cảm giác chung (RPE ${blockReviewRpe}/10)`}
+              </label>
+              <div style={{ marginBottom: "6px" }}>
+                <input
+                  type="range" min={1} max={10} value={blockReviewRpe}
+                  onChange={e => setBlockReviewRpe(Number(e.target.value))}
+                  style={{ width: "100%", accentColor: "var(--accent-primary)" }}
+                />
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", color: "var(--text-muted)", marginTop: "2px" }}>
+                  <span>{lang === "en" ? "Very easy" : "Rất nhẹ"}</span>
+                  <span>{lang === "en" ? "Max effort" : "Cực kỳ nặng"}</span>
+                </div>
+              </div>
+              <div style={{
+                textAlign: "center", fontSize: "12px", fontWeight: "600",
+                color: blockReviewRpe >= 8 ? "#ef4444" : blockReviewRpe >= 6 ? "#f59e0b" : "#10b981",
+                marginBottom: "18px",
+              }}>
+                {blockReviewRpe >= 9 ? (lang === "en" ? "Very hard — consider reducing next block" : "Rất nặng — cân nhắc giảm block tiếp")
+                  : blockReviewRpe >= 7 ? (lang === "en" ? "Hard — coach will ease off slightly" : "Nặng — coach sẽ giảm nhẹ")
+                  : blockReviewRpe >= 5 ? (lang === "en" ? "Manageable — good progression" : "Vừa phải — tiến độ tốt")
+                  : (lang === "en" ? "Easy — coach can increase load" : "Nhẹ — coach có thể tăng tải")}
+              </div>
+
+              <label style={{ display: "block", fontSize: "12px", fontWeight: "700", color: "var(--text-secondary)", marginBottom: "6px" }}>
+                {lang === "en" ? "Notes (optional)" : "Ghi chú (tùy chọn)"}
+              </label>
+              <textarea
+                placeholder={lang === "en" ? "Any injuries, what worked, what didn't..." : "Chấn thương, điều hiệu quả, điều chưa tốt..."}
+                value={blockReviewNotes}
+                onChange={e => setBlockReviewNotes(e.target.value)}
+                style={{
+                  width: "100%", borderRadius: "10px", border: "1px solid var(--border-color)",
+                  padding: "10px", fontSize: "13px", minHeight: "80px", resize: "vertical",
+                  background: "rgba(0,0,0,0.03)", boxSizing: "border-box",
+                  fontFamily: "inherit",
+                }}
+              />
+
+              <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
+                <button
+                  type="button"
+                  onClick={() => setShowBlockReview(false)}
+                  style={{ flex: 1, height: "42px", borderRadius: "10px", border: "1px solid var(--border-color)", background: "rgba(0,0,0,0.04)", cursor: "pointer", fontSize: "13px" }}
+                >
+                  {lang === "en" ? "Cancel" : "Hủy"}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  style={{ flex: 2, height: "42px", fontSize: "13px", fontWeight: "700" }}
+                  onClick={handleGenerateNextBlock}
+                  disabled={nextBlockLoading}
+                >
+                  {nextBlockLoading
+                    ? (lang === "en" ? "Starting..." : "Đang bắt đầu...")
+                    : (lang === "en" ? `⚡ Generate Block ${nextBlockNum}` : `⚡ Tạo Block ${nextBlockNum}`)}
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -942,3 +1200,182 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   };
 
   const renderTools = (isMobile: boolean) => <ToolsView isMobile={isMobile} />;
+
+// ─── Drag-and-drop day components ─────────────────────────────────────────────
+
+const DAY_ORDER = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const DAY_VI = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy", "Chủ Nhật"];
+const SLOT_ORDER: Record<string, number> = { morning: 0, main: 1, afternoon: 2 };
+
+interface DayGroupProps {
+  day: string;
+  dayIndex: number;
+  dayWos: any[];
+  lang: string;
+  isMobile: boolean;
+  isOver: boolean;
+  onToggleComplete: (id: number, completed: boolean) => void;
+  onLogWorkout: (id: number, rpe: number | null, notes: string) => Promise<void>;
+  getWorkoutDate: (wo: any) => string;
+}
+
+function DayGroup({ day, dayIndex, dayWos, lang, isMobile, isOver, onToggleComplete, onLogWorkout, getWorkoutDate }: DayGroupProps) {
+  const { attributes, listeners, setNodeRef: setDragRef, transform, isDragging } = useDraggable({ id: day });
+  const { setNodeRef: setDropRef } = useDroppable({ id: day });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Translate.toString(transform),
+    opacity: isDragging ? 0.45 : 1,
+    transition: isDragging ? undefined : "transform 150ms ease",
+  };
+
+  const containerStyle: React.CSSProperties = {
+    borderRadius: "10px",
+    padding: isOver ? "8px" : "0",
+    background: isOver ? "rgba(16,185,129,0.06)" : "transparent",
+    border: isOver ? "1.5px dashed rgba(16,185,129,0.4)" : "1.5px solid transparent",
+    transition: "background 120ms, border 120ms, padding 120ms",
+  };
+
+  const isDoubleDay = dayWos.length >= 2;
+  const dayKm = dayWos.reduce((s: number, w: any) => s + (w.distance_km || 0), 0);
+  const dayMins = dayWos.reduce((s: number, w: any) => s + (w.duration_minutes || 0), 0);
+  const dayHrs = (dayMins / 60).toFixed(1);
+  const allRest = dayWos.every((w: any) => w.type === "Rest" || w.duration_minutes === 0);
+  const dayLabel = lang === "vi" ? DAY_VI[dayIndex] : day;
+
+  // Combine refs
+  const setRef = (node: HTMLElement | null) => { setDragRef(node); setDropRef(node); };
+
+  return (
+    <div ref={setRef} style={{ ...style, ...containerStyle }}>
+      {/* Day header — drag handle */}
+      <div
+        {...listeners}
+        {...attributes}
+        style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          marginBottom: "6px", paddingBottom: "5px",
+          borderBottom: "1px solid rgba(0,0,0,0.06)",
+          cursor: "grab", userSelect: "none",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
+          <span style={{ fontSize: "14px", color: "rgba(0,0,0,0.2)", flexShrink: 0, lineHeight: 1 }}>⠿</span>
+          <span style={{ fontSize: "12px", fontWeight: "700", color: "var(--text-secondary)", letterSpacing: "0.02em" }}>
+            {dayLabel.toUpperCase()}
+          </span>
+          {isDoubleDay && (
+            <span style={{
+              fontSize: "9px", fontWeight: "700", padding: "2px 6px", borderRadius: "99px",
+              background: "rgba(16,185,129,0.12)", color: "var(--accent-primary)",
+              border: "1px solid rgba(16,185,129,0.25)", letterSpacing: "0.03em",
+            }}>
+              {lang === "en" ? "2×" : "2 BUỔI"}
+            </span>
+          )}
+        </div>
+        {!allRest && (
+          <span style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: "500" }}>
+            {dayKm > 0 ? `${dayKm.toFixed(1)} km · ` : ""}{dayHrs} {lang === "en" ? "h" : "giờ"}
+          </span>
+        )}
+      </div>
+
+      {/* Session cards */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+        {dayWos.map((wo: any) => {
+          const slot = wo.session_slot ?? "main";
+          const showSlotBadge = isDoubleDay && slot !== "main";
+          return (
+            <div key={wo.id}>
+              {showSlotBadge && (
+                <div style={{
+                  fontSize: "10px", fontWeight: "700", marginBottom: "3px",
+                  paddingLeft: "2px", color: slot === "morning" ? "#f59e0b" : "#6366f1",
+                  display: "flex", alignItems: "center", gap: "4px",
+                }}>
+                  <span>{slot === "morning" ? "☀️" : "🌙"}</span>
+                  <span>{slot === "morning"
+                    ? (lang === "en" ? "MORNING SESSION" : "BUỔI SÁNG")
+                    : (lang === "en" ? "AFTERNOON SESSION" : "BUỔI CHIỀU")
+                  }</span>
+                </div>
+              )}
+              <WorkoutCard
+                wo={wo}
+                isMobile={isMobile}
+                lang={lang}
+                onToggleComplete={onToggleComplete}
+                onLogWorkout={onLogWorkout}
+                getWorkoutDate={getWorkoutDate}
+              />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+interface WeekDayListProps {
+  weekWos: any[];
+  lang: string;
+  isMobile: boolean;
+  onSwapDays: (day1: string, day2: string) => void;
+  onToggleComplete: (id: number, completed: boolean) => void;
+  onLogWorkout: (id: number, rpe: number | null, notes: string) => Promise<void>;
+  getWorkoutDate: (wo: any) => string;
+}
+
+function WeekDayList({ weekWos, lang, isMobile, onSwapDays, onToggleComplete, onLogWorkout, getWorkoutDate }: WeekDayListProps) {
+  const [overId, setOverId] = React.useState<string | null>(null);
+
+  const byDay: Record<string, any[]> = {};
+  DAY_ORDER.forEach(d => { byDay[d] = []; });
+  weekWos.forEach((wo: any) => {
+    const d = wo.day_of_week || "Monday";
+    if (!byDay[d]) byDay[d] = [];
+    byDay[d].push(wo);
+  });
+  DAY_ORDER.forEach(d => {
+    byDay[d].sort((a: any, b: any) => (SLOT_ORDER[a.session_slot ?? "main"] ?? 1) - (SLOT_ORDER[b.session_slot ?? "main"] ?? 1));
+  });
+
+  const handleDragOver = (event: DragOverEvent) => {
+    setOverId(event.over ? String(event.over.id) : null);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    setOverId(null);
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      onSwapDays(String(active.id), String(over.id));
+    }
+  };
+
+  return (
+    <DndContext onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+        {DAY_ORDER.map((day, di) => {
+          const dayWos = byDay[day];
+          if (!dayWos || dayWos.length === 0) return null;
+          return (
+            <DayGroup
+              key={day}
+              day={day}
+              dayIndex={di}
+              dayWos={dayWos}
+              lang={lang}
+              isMobile={isMobile}
+              isOver={overId === day}
+              onToggleComplete={onToggleComplete}
+              onLogWorkout={onLogWorkout}
+              getWorkoutDate={getWorkoutDate}
+            />
+          );
+        })}
+      </div>
+    </DndContext>
+  );
+}

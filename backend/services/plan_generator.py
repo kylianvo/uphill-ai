@@ -65,6 +65,9 @@ class PlanGenerator:
         total_weeks: int = 12,
         api_key: str = None,
         cutoff_time_hours: float = None,
+        block_number: int = 1,
+        weeks_per_block: int = 2,
+        block_context: str | None = None,
     ) -> list[dict[str, Any]]:
         """
         Generates a structured running plan based on:
@@ -74,11 +77,37 @@ class PlanGenerator:
         - The 80/20 intensity threshold logic for road running.
         - Dynamic periodized schedule duration.
         """
+        # Block window calculation
+        block_start_week = (block_number - 1) * weeks_per_block + 1
+        block_end_week = min(block_start_week + weeks_per_block - 1, total_weeks)
+
         # 1. Base Variables Extract
         lang = race_info.get("lang", "en").lower()
         age = int(user_profile.get("age", 30))
         max_hr = int(user_profile.get("max_hr", 220 - age))
         resting_hr = int(user_profile.get("resting_hr", 60))
+
+        # Parse scheduling preferences stored as JSON strings in the DB
+        import json as _json
+
+        def _parse_days(val) -> list[str]:
+            if not val:
+                return []
+            if isinstance(val, list):
+                return val
+            try:
+                return _json.loads(val) or []
+            except Exception:
+                return []
+
+        # Scheduling prefs are plan-level (stored in plans table, passed via race_info)
+        preferred_run_days = _parse_days(race_info.get("preferred_days"))
+        double_session_days = _parse_days(
+            race_info.get("double_session_days") or user_profile.get("double_session_days")
+        )
+        long_run_day = race_info.get("long_run_day") or user_profile.get("long_run_day")
+        days_per_week = race_info.get("days_per_week") or user_profile.get("days_per_week") or 4
+        injury_history = user_profile.get("injury_history")
 
         # Threshold Heart Rates (AeT = Aerobic, AnT = Anaerobic)
         aet_hr = int(user_profile.get("aet_hr", resting_hr + int((max_hr - resting_hr) * 0.65)))
@@ -146,11 +175,13 @@ class PlanGenerator:
                 # Ensure correct typing for optional numeric fields and week_number
                 if "week_number" in wo and wo["week_number"] is not None:
                     try:
-                        wo["week_number"] = int(wo["week_number"])
+                        wn = int(wo["week_number"])
+                        # Clamp to block range to catch AI hallucinating out-of-range week numbers
+                        wo["week_number"] = max(block_start_week, min(block_end_week, wn))
                     except Exception:
-                        wo["week_number"] = 1
+                        wo["week_number"] = block_start_week
                 else:
-                    wo["week_number"] = 1
+                    wo["week_number"] = block_start_week
 
                 if "treadmill_incline" in wo and wo["treadmill_incline"] is not None:
                     try:
@@ -199,177 +230,247 @@ class PlanGenerator:
                 wo["distance_km"] = round(dur / pace_dec, 1) if pace_dec > 0 else 0.0
             return wos
 
-        # 2. AI Plan Generation using NotebookLM directly
+        # 2. AI Plan Generation (NotebookLM → Gemini → Rule-Based)
+        import re as _re
+
         from config import settings
 
         notebook_id = settings.NOTEBOOKLM_NOTEBOOK_ID
         auth_json = settings.NOTEBOOKLM_AUTH_JSON
 
-        if notebook_id and auth_json:
-            try:
-                import json
-                import re
+        # Build shared AI prompt (used by both NotebookLM and Gemini paths)
+        _ai_prompt = None
+        try:
+            scheduling_notes = ""
+            all_days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+            if preferred_run_days:
+                rest_days = [d for d in all_days if d not in preferred_run_days]
+                scheduling_notes += (
+                    f"\nScheduling Preferences:\n"
+                    f"- Training days per week: {days_per_week}\n"
+                    f"- Preferred training days: {', '.join(preferred_run_days)}\n"
+                    f"- Rest/off days (assign Rest workouts): {', '.join(rest_days) if rest_days else 'none'}\n"
+                )
+                if long_run_day:
+                    scheduling_notes += f"- Preferred long run day: {long_run_day}\n"
+            elif days_per_week:
+                scheduling_notes += f"\nScheduling Preferences:\n" f"- Training days per week: {days_per_week}\n"
+                if long_run_day:
+                    scheduling_notes += f"- Preferred long run day: {long_run_day}\n"
+            if double_session_days:
+                scheduling_notes += (
+                    f"- Double-session days: {', '.join(double_session_days)}\n"
+                    "  On these days produce TWO workout objects for the same day_of_week:\n"
+                    "  one with session_slot='morning' (shorter, lower-intensity) and one with session_slot='afternoon' (the main session).\n"
+                    "  Do NOT double-session a day already designated as Rest.\n"
+                )
+            if injury_history:
+                scheduling_notes += f"- Injury history: {injury_history}\n"
 
+            user_summary = (
+                f"Age: {age}, Weekly volume base: {current_weekly_km} km, Max HR: {max_hr} bpm, "
+                f"Resting HR: {resting_hr} bpm, AeT: {aet_hr} bpm, AnT: {ant_hr} bpm, Treadmill Access: {use_treadmill}\n"
+                f"Custom Pace Zones (min/km):\n"
+                f"- Zone 1 (Recovery): {p_z1}\n"
+                f"- Zone 2 (Easy Range): {p_z2}\n"
+                f"- Zone 3 (Tempo): {p_z3}\n"
+                f"- Zone 4 (Threshold): {p_z4}\n"
+                f"- Zone 5 (Interval): {p_z5}"
+                f"{scheduling_notes}"
+            )
+
+            # Calculate week/date context for the AI prompt
+            try:
+                race_date_parsed = datetime.strptime(race_info.get("date"), "%Y-%m-%d").date()
+            except (ValueError, TypeError):
+                race_date_parsed = datetime.now().date() + timedelta(days=90)
+
+            start_date_str = race_info.get("plan_start_date") or datetime.now().strftime("%Y-%m-%d")
+            try:
+                today = datetime.strptime(start_date_str, "%Y-%m-%d").date()
+            except ValueError:
+                today = datetime.now().date()
+            race_week_num = total_weeks - 1
+            race_weekday_name = race_date_parsed.strftime("%A")
+
+            current_date_str = today.strftime("%Y-%m-%d")
+            current_weekday = today.strftime("%A")
+
+            is_event_goal = race_info.get("goal_type") not in ["start_running", "return", "recovery"]
+
+            # Build goal description for AI context
+            if race_info.get("goal_type") == "start_running":
+                goal_description = (
+                    "Goal: Start Running / Learn to run. Build a safe, injury-free aerobic base "
+                    "starting with walk-to-run progressions. Do NOT assign high-intensity threshold "
+                    "or anaerobic intervals. Volume must start low and increase very slowly."
+                )
+            elif race_info.get("goal_type") == "return":
+                time_away = user_profile.get("time_away") or "some time"
+                fitness_feel = user_profile.get("fitness_feel") or "rusty"
+                goal_description = (
+                    f"Goal: Return to running after a break of {time_away}. Currently feeling: {fitness_feel}. "
+                    "Re-establish a safe baseline volume. Start at about 50% of the athlete's previous volume "
+                    "and gradually condition the tendons/joints. No intense speedwork; keep workouts in Zone 1 and 2."
+                )
+            elif race_info.get("goal_type") == "recovery":
+                race_dist = user_profile.get("race_distance_completed") or "a recent race"
+                days_ago = user_profile.get("days_since_race") or "a few"
+                rec_feel = user_profile.get("recovery_feel") or "fatigued"
+                goal_description = (
+                    f"Goal: Post-Race Recovery after completing a {race_dist} race {days_ago} days ago. "
+                    f"Current recovery state: {rec_feel}. The first 1-2 weeks must be focused entirely "
+                    "on active recovery, resting, and very light movement (mostly Zone 1 or Rest). "
+                    "Gradually reintroduce short, easy Zone 2 runs in the remaining weeks. No workouts above Zone 2."
+                )
+            elif cutoff_time_hours:
+                cutoff_h = int(cutoff_time_hours)
+                cutoff_m = int(round((cutoff_time_hours - cutoff_h) * 60))
+                safe_hours = cutoff_time_hours * 0.85
+                safe_h = int(safe_hours)
+                safe_m = int(round((safe_hours - safe_h) * 60))
+                goal_description = (
+                    f"Goal: Just to Finish safely. "
+                    f"Cutoff Time: {cutoff_h}h{cutoff_m:02d}m. "
+                    f"Target Safe Finish Time: {safe_h}h{safe_m:02d}m (85% of cutoff)."
+                )
+            elif race_info.get("goal_type") == "time" and race_info.get("target_time_hours"):
+                t = race_info["target_time_hours"]
+                th = int(t)
+                tm = int(round((t - th) * 60))
+                goal_description = f"Goal: Finish in {th}h{tm:02d}m."
+            else:
+                goal_description = "Goal: Optimal performance."
+
+            if is_event_goal:
+                program_summary = (
+                    f"Race Name: {race_info.get('name')}, Date: {race_info.get('date')}, Terrain: {terrain}, "
+                    f"Distance: {course_distance_km} km, Elevation Gain: {course_elevation_gain_m} m. "
+                    f"{goal_description}"
+                )
+            else:
+                program_summary = (
+                    f"Training Plan Name: {race_info.get('name')}, Focus: {race_info.get('goal_type')}. "
+                    f"{goal_description}"
+                )
+
+            if is_event_goal:
+                goal_intro = "You will design a complete, periodized training schedule from scratch for this athlete leading to their target race."
+                program_details = f"Race Details:\n{program_summary}\n"
+                target_date_details = f"Target Race Date: {race_info.get('date')} ({race_weekday_name})\n\n"
+                week_schedule_constraints = (
+                    f"- Week {race_week_num} is the Race Week. The target race event MUST be scheduled in Week {race_week_num} on {race_weekday_name} ({race_info.get('date')}).\n"
+                    f"- Week {total_weeks} is the post-race Recovery week.\n"
+                )
+            else:
+                goal_intro = f"You will design a complete, periodized {race_info.get('goal_type')} training program from scratch for this athlete."
+                program_details = f"Program Focus:\n{program_summary}\n"
+                target_date_details = ""
+                week_schedule_constraints = ""
+
+            total_blocks = (total_weeks + weeks_per_block - 1) // weeks_per_block
+            block_instruction = (
+                f"\nSEQUENTIAL BLOCK GENERATION:\n"
+                f"This plan spans {total_weeks} weeks total, generated in {total_blocks} blocks of {weeks_per_block} weeks each.\n"
+                f"Generate ONLY Block {block_number} of {total_blocks}: weeks {block_start_week} through {block_end_week}.\n"
+                f"CRITICAL: Every workout `week_number` MUST be between {block_start_week} and {block_end_week} (inclusive). Do NOT output week numbers outside this range.\n"
+            )
+            if block_context:
+                block_instruction += (
+                    f"\nATHLETE FEEDBACK FROM PREVIOUS BLOCKS:\n{block_context}\n"
+                    "CRITICAL — adjust this block based on feedback above:\n"
+                    "  • RPE ≥ 8: reduce weekly volume by 10-15% AND drop one quality session to easy running.\n"
+                    "  • RPE 6-7: reduce intensity slightly (shift a Tempo to Zone 2, or shorten intervals by 10%).\n"
+                    "  • RPE 4-5: maintain current progression — athlete is adapting well.\n"
+                    "  • RPE ≤ 3: athlete is underloaded — increase long run by 10-15% or add a quality session.\n"
+                    "  • Any mention of injury/pain: remove ALL high-intensity work for that body region and add Strength or active recovery.\n"
+                )
+
+            _ai_prompt = (
+                "You are a world-class running coach training athletes based on the 'Training for the Uphill Athlete' philosophy.\n"
+                f"{goal_intro}\n\n"
+                f"Athlete Profile:\n{user_summary}\n\n"
+                f"{program_details}"
+                f"Current Date (today): {current_date_str} ({current_weekday})\n"
+                f"{target_date_details}"
+                f"Full Plan Length: {total_weeks} weeks.\n"
+                f"- Week 1 starts on: {current_date_str} ({current_weekday}).\n"
+                f"{week_schedule_constraints}"
+                f"{block_instruction}\n"
+                "Instructions:\n"
+                "1. Generate workouts for the specified block weeks only. Each week must have structured workouts (typically 4-6 workouts per week). ALWAYS honor the athlete's preferred training days and double-session days from their profile — place Rest workouts on non-preferred days, and produce two workout objects on each double-session day as described above.\n"
+                "2. The schedule must be returned as a JSON array of workout objects. Each workout object must follow this exact schema:\n"
+                "   - `week_number` (integer: MUST be within the block range specified above)\n"
+                "   - `day_of_week` (string: 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')\n"
+                "   - `phase` (string: 'Base', 'Build', 'Peak', 'Taper', 'Race Week', 'Recovery'. IMPORTANT: Follow this exact progression — Base (early weeks) → Build (mid weeks) → Peak (highest intensity week, 1-2 weeks before taper) → Taper (the week immediately before Race Week, reduce volume to ~50%) → Race Week (the week containing the actual race event) → Recovery (final week after the race).)\n"
+                "   - `title` (string: name of workout)\n"
+                "   - `type` (string: 'Easy', 'Tempo', 'Interval', 'Long Run', 'Strength', 'Rest', 'Race', 'Recovery', 'Muscular Endurance')\n"
+                "   - `duration_minutes` (number: duration of workout)\n"
+                "   - `target_zone` (string: 'Zone 1', 'Zone 2', 'Zone 3', 'Zone 4', 'Zone 5')\n"
+                "   - `target_hr_range` (string: heart rate bounds based on athlete's thresholds, e.g. '125-140 bpm')\n"
+                "   - `target_pace` (string: recommended target pace, matching or referencing their custom pace zones, e.g. '6:00 /km')\n"
+                "   - `distance_km` (number: estimated distance in kilometers. Calculate this as duration_minutes / (target_pace in decimal minutes), e.g. 60 mins at 6:00/km is 10.0 km)\n"
+                "   - `description` (string: highly detailed description containing specific sections: Process (how to execute it step-by-step), Overall (summary of the session), Reason (why it is scheduled now), Benefit (expected physiological adaptation), and Warning (any injury risks or precautions). Provide extensive context.)\n"
+                "   - `fueling_tip` (string: hydration, carbohydrate, and electrolyte guides specific to duration/intensity)\n"
+                "   - `treadmill_incline` (number, optional: recommended incline percentage if using treadmill)\n"
+                "   - `treadmill_speed` (number, optional: recommended speed in kph if using treadmill)\n"
+                "   - `session_slot` (string, optional: ONLY set this on double-session days. Use 'morning' for the first/shorter session and 'afternoon' for the main/longer session. Omit entirely for single-session days.)\n\n"
+                "3. Make the plan highly customized. For example, scale long runs, map Sunday Muscular Endurance box steps/weighted step-ups based on the race elevation gain, or specify treadmill incline/speed settings for gym workouts.\n"
+                "4. Output MUST be a valid JSON array matching the schema. Do not include markdown wraps like ```json ... ``` inside the response text, output raw JSON array."
+            )
+            if lang == "vi":
+                _ai_prompt += "\n5. CRITICAL: All workout text fields, including 'title', 'description', and 'fueling_tip', MUST be written in Vietnamese."
+        except Exception as _prompt_ex:
+            print(f"[PlanGen] Prompt building failed: {_prompt_ex}. Using rule-based fallback.")
+
+        if _ai_prompt and notebook_id and auth_json:
+            try:
                 from services.notebooklm_service import NotebookLmService
 
-                user_summary = (
-                    f"Age: {age}, Weekly volume base: {current_weekly_km} km, Max HR: {max_hr} bpm, "
-                    f"Resting HR: {resting_hr} bpm, AeT: {aet_hr} bpm, AnT: {ant_hr} bpm, Treadmill Access: {use_treadmill}\n"
-                    f"Custom Pace Zones (min/km):\n"
-                    f"- Zone 1 (Recovery): {p_z1}\n"
-                    f"- Zone 2 (Easy Range): {p_z2}\n"
-                    f"- Zone 3 (Tempo): {p_z3}\n"
-                    f"- Zone 4 (Threshold): {p_z4}\n"
-                    f"- Zone 5 (Interval): {p_z5}"
-                )
-
-                # Calculate Mondays and exact week mapping for the AI prompt
-                try:
-                    race_date_parsed = datetime.strptime(race_info.get("date"), "%Y-%m-%d").date()
-                except ValueError:
-                    race_date_parsed = datetime.now().date() + timedelta(days=90)
-
-                start_date_str = race_info.get("plan_start_date") or datetime.now().strftime("%Y-%m-%d")
-                try:
-                    today = datetime.strptime(start_date_str, "%Y-%m-%d").date()
-                except ValueError:
-                    today = datetime.now().date()
-                race_week_num = total_weeks - 1
-                race_weekday_name = race_date_parsed.strftime("%A")
-
-                current_date_str = today.strftime("%Y-%m-%d")
-                current_weekday = today.strftime("%A")
-
-                is_event_goal = race_info.get("goal_type") not in ["start_running", "return", "recovery"]
-
-                # Build goal description for AI context
-                if race_info.get("goal_type") == "start_running":
-                    goal_description = (
-                        "Goal: Start Running / Learn to run. Build a safe, injury-free aerobic base "
-                        "starting with walk-to-run progressions. Do NOT assign high-intensity threshold "
-                        "or anaerobic intervals. Volume must start low and increase very slowly."
-                    )
-                elif race_info.get("goal_type") == "return":
-                    time_away = user_profile.get("time_away") or "some time"
-                    fitness_feel = user_profile.get("fitness_feel") or "rusty"
-                    goal_description = (
-                        f"Goal: Return to running after a break of {time_away}. Currently feeling: {fitness_feel}. "
-                        "Re-establish a safe baseline volume. Start at about 50% of the athlete's previous volume "
-                        "and gradually condition the tendons/joints. No intense speedwork; keep workouts in Zone 1 and 2."
-                    )
-                elif race_info.get("goal_type") == "recovery":
-                    race_dist = user_profile.get("race_distance_completed") or "a recent race"
-                    days_ago = user_profile.get("days_since_race") or "a few"
-                    rec_feel = user_profile.get("recovery_feel") or "fatigued"
-                    goal_description = (
-                        f"Goal: Post-Race Recovery after completing a {race_dist} race {days_ago} days ago. "
-                        f"Current recovery state: {rec_feel}. The first 1-2 weeks must be focused entirely "
-                        "on active recovery, resting, and very light movement (mostly Zone 1 or Rest). "
-                        "Gradually reintroduce short, easy Zone 2 runs in the remaining weeks. No workouts above Zone 2."
-                    )
-                elif cutoff_time_hours:
-                    cutoff_h = int(cutoff_time_hours)
-                    cutoff_m = int(round((cutoff_time_hours - cutoff_h) * 60))
-                    safe_hours = cutoff_time_hours * 0.85
-                    safe_h = int(safe_hours)
-                    safe_m = int(round((safe_hours - safe_h) * 60))
-                    goal_description = (
-                        f"Goal: Just to Finish safely. "
-                        f"Cutoff Time: {cutoff_h}h{cutoff_m:02d}m. "
-                        f"Target Safe Finish Time: {safe_h}h{safe_m:02d}m (85% of cutoff)."
-                    )
-                elif race_info.get("goal_type") == "time" and race_info.get("target_time_hours"):
-                    t = race_info["target_time_hours"]
-                    th = int(t)
-                    tm = int(round((t - th) * 60))
-                    goal_description = f"Goal: Finish in {th}h{tm:02d}m."
-                else:
-                    goal_description = "Goal: Optimal performance."
-
-                if is_event_goal:
-                    program_summary = (
-                        f"Race Name: {race_info.get('name')}, Date: {race_info.get('date')}, Terrain: {terrain}, "
-                        f"Distance: {course_distance_km} km, Elevation Gain: {course_elevation_gain_m} m. "
-                        f"{goal_description}"
-                    )
-                else:
-                    program_summary = (
-                        f"Training Plan Name: {race_info.get('name')}, Focus: {race_info.get('goal_type')}. "
-                        f"{goal_description}"
-                    )
-
-                if is_event_goal:
-                    goal_intro = "You will design a complete, periodized training schedule from scratch for this athlete leading to their target race."
-                    program_details = f"Race Details:\n{program_summary}\n"
-                    target_date_details = f"Target Race Date: {race_info.get('date')} ({race_weekday_name})\n\n"
-                    week_schedule_constraints = (
-                        f"- Week {race_week_num} is the Race Week. The target race event MUST be scheduled in Week {race_week_num} on {race_weekday_name} ({race_info.get('date')}).\n"
-                        f"- Week {total_weeks} is the post-race Recovery week.\n"
-                    )
-                else:
-                    goal_intro = f"You will design a complete, periodized {race_info.get('goal_type')} training program from scratch for this athlete."
-                    program_details = f"Program Focus:\n{program_summary}\n"
-                    target_date_details = ""
-                    week_schedule_constraints = ""
-
-                prompt = (
-                    "You are a world-class running coach training athletes based on the 'Training for the Uphill Athlete' philosophy.\n"
-                    f"{goal_intro}\n\n"
-                    f"Athlete Profile:\n{user_summary}\n\n"
-                    f"{program_details}"
-                    f"Current Date (today): {current_date_str} ({current_weekday})\n"
-                    f"{target_date_details}"
-                    f"Required Plan Length: {total_weeks} weeks.\n"
-                    f"- Week 1 MUST start on the selected start date: {current_date_str} ({current_weekday}).\n"
-                    f"{week_schedule_constraints}\n"
-                    "Instructions:\n"
-                    "1. Generate a periodized training schedule spanning exactly the required number of weeks. Each week must have structured workouts (typically 4-6 workouts per week, and Rest days on Monday/Friday or similar).\n"
-                    "2. The schedule must be returned as a JSON array of workout objects. Each workout object must follow this exact schema:\n"
-                    "   - `week_number` (integer: 1 to total_weeks)\n"
-                    "   - `day_of_week` (string: 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')\n"
-                    "   - `phase` (string: 'Base', 'Build', 'Peak', 'Taper', 'Race Week', 'Recovery'. IMPORTANT: Follow this exact progression — Base (early weeks) → Build (mid weeks) → Peak (highest intensity week, 1-2 weeks before taper) → Taper (the week immediately before Race Week, reduce volume to ~50%) → Race Week (the week containing the actual race event) → Recovery (final week after the race).)\n"
-                    "   - `title` (string: name of workout)\n"
-                    "   - `type` (string: 'Easy', 'Tempo', 'Interval', 'Long Run', 'Strength', 'Rest', 'Race', 'Recovery', 'Muscular Endurance')\n"
-                    "   - `duration_minutes` (number: duration of workout)\n"
-                    "   - `target_zone` (string: 'Zone 1', 'Zone 2', 'Zone 3', 'Zone 4', 'Zone 5')\n"
-                    "   - `target_hr_range` (string: heart rate bounds based on athlete's thresholds, e.g. '125-140 bpm')\n"
-                    "   - `target_pace` (string: recommended target pace, matching or referencing their custom pace zones, e.g. '6:00 /km')\n"
-                    "   - `distance_km` (number: estimated distance in kilometers. Calculate this as duration_minutes / (target_pace in decimal minutes), e.g. 60 mins at 6:00/km is 10.0 km)\n"
-                    "   - `description` (string: highly detailed description containing specific sections: Process (how to execute it step-by-step), Overall (summary of the session), Reason (why it is scheduled now), Benefit (expected physiological adaptation), and Warning (any injury risks or precautions). Provide extensive context.)\n"
-                    "   - `fueling_tip` (string: hydration, carbohydrate, and electrolyte guides specific to duration/intensity)\n"
-                    "   - `treadmill_incline` (number, optional: recommended incline percentage if using treadmill)\n"
-                    "   - `treadmill_speed` (number, optional: recommended speed in kph if using treadmill)\n\n"
-                    "3. Make the plan highly customized. For example, scale long runs, map Sunday Muscular Endurance box steps/weighted step-ups based on the race elevation gain, or specify treadmill incline/speed settings for gym workouts.\n"
-                    "4. Output MUST be a valid JSON array matching the schema. Do not include markdown wraps like ```json ... ``` inside the response text, output raw JSON array."
-                )
-                if lang == "vi":
-                    prompt += "\n5. CRITICAL: All workout text fields, including 'title', 'description', and 'fueling_tip', MUST be written in Vietnamese."
-
-                print(f"[PlanGen][NotebookLM] Sending full prompt to notebook {notebook_id[:8]}...")
+                print(f"[PlanGen][NotebookLM] Sending prompt to notebook {notebook_id[:8]}...")
                 response_text = await NotebookLmService.query_notebook(
-                    notebook_id=notebook_id, auth_json=auth_json, query=prompt, service="plan_generator"
+                    notebook_id=notebook_id, auth_json=auth_json, query=_ai_prompt, service="plan_generator"
                 )
                 print(f"[PlanGen][NotebookLM] Response received ({len(response_text)} chars)")
-
-                # Robust JSON parsing
+                clean_text = _re.sub(r"```(?:json)?|```", "", response_text).strip()
                 try:
-                    # Strip markdown fences if present
-                    clean_text = re.sub(r"```(?:json)?|```", "", response_text).strip()
-                    ai_workouts = json.loads(clean_text)
-                except json.JSONDecodeError as json_err:
-                    print(
-                        f"[PlanGen][NotebookLM] JSON parsing failed: {json_err}. Raw text snippet: {response_text[:200]}"
-                    )
+                    ai_workouts = _json.loads(clean_text)
+                except _json.JSONDecodeError as json_err:
+                    print(f"[PlanGen][NotebookLM] JSON parsing failed: {json_err}. Raw snippet: {response_text[:200]}")
                     ai_workouts = None
-
                 if isinstance(ai_workouts, list) and len(ai_workouts) > 0:
                     cleaned_wos = [wo for wo in ai_workouts if isinstance(wo, dict)]
-                    print(f"[PlanGen][NotebookLM] Parsed {len(cleaned_wos)} workouts from response")
+                    print(f"[PlanGen][NotebookLM] Parsed {len(cleaned_wos)} workouts")
                     return post_process_workouts(cleaned_wos)
                 else:
-                    print("[PlanGen][NotebookLM] Empty or invalid list returned, falling back to rule-based schedule.")
+                    print("[PlanGen][NotebookLM] Empty or invalid list returned, trying Gemini fallback.")
             except Exception as ex:
-                print(f"[PlanGen][NotebookLM] FAILED: {ex}. Using rule-based fallback schedule.")
+                print(f"[PlanGen][NotebookLM] FAILED: {ex}. Trying Gemini fallback.")
+
+        if _ai_prompt and api_key:
+            try:
+                import asyncio
+
+                import google.generativeai as _genai
+
+                _genai.configure(api_key=api_key)
+                _model = _genai.GenerativeModel("gemini-2.5-flash")
+                print(f"[PlanGen][Gemini] Sending prompt ({len(_ai_prompt)} chars)...")
+                _response = await asyncio.to_thread(_model.generate_content, _ai_prompt)
+                clean_text = _re.sub(r"```(?:json)?|```", "", _response.text).strip()
+                try:
+                    ai_workouts = _json.loads(clean_text)
+                except _json.JSONDecodeError as json_err:
+                    print(f"[PlanGen][Gemini] JSON parsing failed: {json_err}. Raw snippet: {_response.text[:200]}")
+                    ai_workouts = None
+                if isinstance(ai_workouts, list) and len(ai_workouts) > 0:
+                    cleaned_wos = [wo for wo in ai_workouts if isinstance(wo, dict)]
+                    print(f"[PlanGen][Gemini] Parsed {len(cleaned_wos)} workouts")
+                    return post_process_workouts(cleaned_wos)
+                else:
+                    print("[PlanGen][Gemini] Empty or invalid list returned, using rule-based fallback.")
+            except Exception as ex:
+                print(f"[PlanGen][Gemini] FAILED: {ex}. Using rule-based fallback schedule.")
 
         # --- Rule-Based Fallback Schedule ---
 
@@ -398,7 +499,7 @@ class PlanGenerator:
             else:
                 return "Base"
 
-        for week in range(1, total_weeks + 1):
+        for week in range(block_start_week, block_end_week + 1):
             phase = get_phase_for_week(week)
             if phase == "Base":
                 volume_multiplier = 1.0 + (0.05 * (week - 1))

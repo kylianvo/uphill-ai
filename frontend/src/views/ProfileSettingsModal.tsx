@@ -8,12 +8,30 @@ import { X, User, Heartbeat, Watch, SignOut, Warning } from '@phosphor-icons/rea
 export default function ProfileSettingsModal() {
   const ctx = useAppContext();
   const { lang, setLang, user, setUser, profileSettingsOpen, setProfileSettingsOpen, profileForm, setProfileForm, setActivePlan, setWorkouts, setSources, setAuthModalOpen, setOnboardingOpen, handleLogout } = ctx;
+  const [doubleDays, setDoubleDays] = useState<string[]>([]);
   const [passwordFormOpen, setPasswordFormOpen] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [passwordMsg, setPasswordMsg] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
 
+
+  React.useEffect(() => {
+    if (profileSettingsOpen && user) {
+      Promise.resolve().then(() => {
+        try { setDoubleDays(JSON.parse(user.double_session_days || "[]")); } catch { setDoubleDays([]); }
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profileSettingsOpen]);
+
+  const toggleDoubleDay = (day: string) => {
+    setDoubleDays(prev => {
+      if (prev.includes(day)) return prev.filter(d => d !== day);
+      if (prev.length >= 2) return prev;
+      return [...prev, day];
+    });
+  };
 
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileMsg, setProfileMsg] = useState("");
@@ -240,7 +258,8 @@ export default function ProfileSettingsModal() {
 
 
 
-          zone2_pace_max: profileForm.zone2_pace_max
+          zone2_pace_max: profileForm.zone2_pace_max,
+          double_session_days: doubleDays,
 
 
 
@@ -1136,6 +1155,59 @@ export default function ProfileSettingsModal() {
 
 
 
+
+            {/* Double Session Days Section */}
+            <div style={{ marginTop: "10px" }}>
+              <h3 style={{ fontSize: "14px", fontWeight: "700", borderBottom: "1px solid var(--border-color)", paddingBottom: "6px", marginBottom: "12px", color: "var(--accent-primary)" }}>
+                {lang === "en" ? "DOUBLE SESSION DAYS" : "NGÀY TẬP HAI BUỔI"}
+              </h3>
+              <p style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "12px" }}>
+                {lang === "en"
+                  ? "Pick up to 2 days for morning + afternoon sessions. Choose from your preferred training days."
+                  : "Chọn tối đa 2 ngày để tập buổi sáng + buổi chiều. Chọn từ các ngày tập ưa thích của bạn."}
+              </p>
+              {(() => {
+                const ALL_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+                const DAY_VI = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy", "Chủ Nhật"];
+                let preferredDays: string[] = [];
+                try { preferredDays = JSON.parse(user?.preferred_run_days || "[]"); } catch { preferredDays = []; }
+                const days = preferredDays.length > 0 ? preferredDays : ALL_DAYS;
+                return (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                    {days.map((day: string) => {
+                      const di = ALL_DAYS.indexOf(day);
+                      const label = lang === "vi" ? DAY_VI[di] ?? day : day.slice(0, 3);
+                      const selected = doubleDays.includes(day);
+                      const disabled = !selected && doubleDays.length >= 2;
+                      return (
+                        <button
+                          key={day}
+                          type="button"
+                          onClick={() => !disabled && toggleDoubleDay(day)}
+                          style={{
+                            padding: "6px 14px", borderRadius: "99px", fontSize: "12px", fontWeight: "600",
+                            cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.4 : 1,
+                            border: selected ? "1.5px solid var(--accent-primary)" : "1.5px solid var(--border-color)",
+                            background: selected ? "rgba(16,185,129,0.12)" : "rgba(0,0,0,0.04)",
+                            color: selected ? "var(--accent-primary)" : "var(--text-secondary)",
+                            transition: "all 120ms",
+                          }}
+                        >
+                          {selected ? "⚡ " : ""}{label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+              {doubleDays.length > 0 && (
+                <p style={{ fontSize: "11px", color: "var(--accent-primary)", marginTop: "10px", fontWeight: "600" }}>
+                  {lang === "en"
+                    ? `Selected: ${doubleDays.join(", ")} — these days will have morning + afternoon sessions`
+                    : `Đã chọn: ${doubleDays.join(", ")} — những ngày này sẽ có buổi sáng + buổi chiều`}
+                </p>
+              )}
+            </div>
 
             {/* Language Settings Section */}
 

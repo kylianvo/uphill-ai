@@ -21,8 +21,11 @@ from db import (
     get_active_plan,
     get_all_grounding_content,
     get_all_knowledge_cards,
+    get_block_completion,
+    get_block_reviews,
     get_knowledge_card_count,
     get_knowledge_topics,
+    get_max_generated_week,
     get_plan_workouts,
     get_random_knowledge_cards,
     get_recent_plans,
@@ -34,6 +37,7 @@ from db import (
     list_sources,
     mark_onboarding_complete,
     query_nutrition_catalog,
+    save_block_review,
     save_workouts,
     set_plan_active,
     set_user_password,
@@ -176,6 +180,20 @@ class ModifyCalendarRequest(BaseModel):
     day_2: str
 
 
+class BlockReviewRequest(BaseModel):
+    plan_id: int
+    block_number: int
+    overall_rpe: int | None = None
+    notes: str | None = None
+
+
+class GenerateNextBlockRequest(BaseModel):
+    plan_id: int
+    block_number: int  # the next block to generate (1-indexed)
+    overall_rpe: int | None = None  # optional pre-submission of RPE for current block
+    notes: str | None = None
+
+
 # Phase 3 Request Models
 class PacingRequest(BaseModel):
     checkpoints: list[dict[str, Any]]
@@ -262,6 +280,8 @@ class OnboardingRequest(BaseModel):
     days_since_race: int | None = None
     recovery_feel: str | None = None
     next_goal: str | None = None
+    # Double session preference
+    double_session_days: list[str] | None = None
 
 
 class UpdateProfileRequest(BaseModel):
@@ -275,6 +295,7 @@ class UpdateProfileRequest(BaseModel):
     gemini_api_key: str | None = None
     zone2_pace_min: str | None = None
     zone2_pace_max: str | None = None
+    double_session_days: list[str] | None = None
 
 
 def format_user_response(user: dict[str, Any]) -> dict[str, Any]:
@@ -303,6 +324,7 @@ def format_user_response(user: dict[str, Any]) -> dict[str, Any]:
         "gemini_api_key": user.get("gemini_api_key") or "",
         "zone2_pace_min": user.get("zone2_pace_min") or "6:30",
         "zone2_pace_max": user.get("zone2_pace_max") or "5:45",
+        "double_session_days": user.get("double_session_days") or "[]",
     }
 
 
@@ -568,6 +590,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         "days_per_week": request.days_per_week or 4,
         "has_gym_access": request.has_gym_access or False,
         "current_weekly_km": request.current_weekly_km or 30.0,
+        "double_session_days": request.double_session_days or [],
         "max_hr": max_hr,
         "resting_hr": resting_hr,
         "aet_hr": aet_hr,
@@ -599,6 +622,10 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         total_weeks=total_weeks,
         course_distance_km=request.course_distance_km,
         course_elevation_gain_m=request.course_elevation_gain_m,
+        preferred_run_days=request.preferred_run_days or [],
+        long_run_day=request.long_run_day,
+        days_per_week=request.days_per_week or 4,
+        double_session_days=request.double_session_days or [],
     )
 
     # Mark onboarding complete immediately so the user can enter the app
@@ -618,6 +645,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         "preferred_days": request.preferred_run_days,
         "long_run_day": request.long_run_day,
         "days_per_week": request.days_per_week,
+        "double_session_days": request.double_session_days or [],
         "lang": request.lang or "en",
     }
 
@@ -639,6 +667,8 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
                 race_info,
                 total_weeks,
                 api_key=model_api_key,
+                block_number=1,
+                weeks_per_block=2,
             )
             save_workouts(plan_id, workouts)
             plan_jobs[job_id]["workouts"] = workouts
@@ -885,6 +915,10 @@ async def generate_training_plan(request: PlanGenerateRequest, user: dict[str, A
             total_weeks=total_weeks,
             course_distance_km=request.course_distance_km,
             course_elevation_gain_m=request.course_elevation_gain_m,
+            preferred_run_days=request.preferred_days or [],
+            long_run_day=request.long_run_day,
+            days_per_week=request.days_per_week or 4,
+            double_session_days=[],
         )
 
         race_info = {
@@ -895,10 +929,11 @@ async def generate_training_plan(request: PlanGenerateRequest, user: dict[str, A
             "target_time_hours": request.target_time_hours,
             "course_distance_km": request.course_distance_km,
             "course_elevation_gain_m": request.course_elevation_gain_m,
-            # Scheduling preferences
+            # Scheduling preferences (plan-level)
             "preferred_days": request.preferred_days,
             "long_run_day": request.long_run_day,
             "days_per_week": request.days_per_week,
+            "double_session_days": [],
             # Start date
             "plan_start_date": start_date_str,
             "lang": request.lang or "en",
@@ -936,7 +971,14 @@ async def generate_training_plan(request: PlanGenerateRequest, user: dict[str, A
         async def _run_gen():
             try:
                 workouts = await PlanGenerator.generate_plan_workouts(
-                    plan_id, fresh_user, race_info, total_weeks, api_key=model_api_key, cutoff_time_hours=cutoff
+                    plan_id,
+                    fresh_user,
+                    race_info,
+                    total_weeks,
+                    api_key=model_api_key,
+                    cutoff_time_hours=cutoff,
+                    block_number=1,
+                    weeks_per_block=2,
                 )
                 save_workouts(plan_id, workouts)
                 plan_jobs[job_id]["workouts"] = workouts
@@ -1000,6 +1042,210 @@ async def get_plan_generation_status(job_id: str, user: dict[str, Any] = Depends
 def get_user_recent_plans(user: dict[str, Any] = Depends(get_current_user)):
     plans = get_recent_plans(user["id"], limit=3)
     return {"plans": plans}
+
+
+# ─── Sequential Plan Endpoints ────────────────────────────────────────────────
+
+
+def _verify_plan_ownership(plan_id: int, user_id: int):
+    """Raise 404 if the plan doesn't belong to this user (prevents IDOR)."""
+    recent = get_recent_plans(user_id, limit=100)
+    if not any(p["id"] == plan_id for p in recent):
+        raise HTTPException(status_code=404, detail="Plan not found.")
+
+
+@app.get("/api/coach/block-completion/{plan_id}")
+def get_plan_block_completion(plan_id: int, user: dict[str, Any] = Depends(get_current_user)):
+    """Return completion % for each 2-week block generated so far."""
+    _verify_plan_ownership(plan_id, user["id"])
+    max_week = get_max_generated_week(plan_id)
+    total_blocks = (max_week + 1) // 2  # number of blocks with any workouts
+    blocks = []
+    for b in range(1, total_blocks + 1):
+        blocks.append(get_block_completion(plan_id, b))
+    return {"plan_id": plan_id, "blocks": blocks, "max_generated_week": max_week}
+
+
+@app.post("/api/coach/block-review")
+async def submit_block_review(request: BlockReviewRequest, user: dict[str, Any] = Depends(get_current_user)):
+    """Save a block check-in (RPE + notes) before generating the next block."""
+    _verify_plan_ownership(request.plan_id, user["id"])
+    review = save_block_review(
+        plan_id=request.plan_id,
+        block_number=request.block_number,
+        overall_rpe=request.overall_rpe,
+        notes=request.notes,
+    )
+    return {"review": review}
+
+
+@app.post("/api/coach/generate-next-block")
+async def generate_next_block(request: GenerateNextBlockRequest, user: dict[str, Any] = Depends(get_current_user)):
+    """
+    Generate the next 2-week block for an existing plan.
+    Requires the previous block to be ≥70% complete by training hours.
+    Injects block review feedback into the generation prompt.
+    """
+    import asyncio
+
+    # Ownership check FIRST — before any reads or writes on this plan
+    recent = get_recent_plans(user["id"], limit=100)
+    plan = next((p for p in recent if p["id"] == request.plan_id), None)
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found.")
+
+    prev_block = request.block_number - 1
+
+    # Enforce 80% completion gate on the preceding block
+    if prev_block >= 1:
+        completion = get_block_completion(request.plan_id, prev_block)
+        if not completion["unlocked"]:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Block {prev_block} is {completion['completion_pct']}% complete. Need ≥70% to unlock the next block.",
+            )
+
+    # If the caller passes RPE/notes, save them as the review for the previous block
+    if prev_block >= 1 and (request.overall_rpe is not None or request.notes):
+        save_block_review(
+            plan_id=request.plan_id,
+            block_number=prev_block,
+            overall_rpe=request.overall_rpe,
+            notes=request.notes,
+        )
+
+    total_weeks = plan.get("total_weeks", 12)
+    block_start = (request.block_number - 1) * 2 + 1
+    if block_start > total_weeks:
+        raise HTTPException(status_code=400, detail="All blocks for this plan have already been generated.")
+
+    fresh_user = get_user_by_id(user["id"]) or user
+
+    # Collect block reviews + per-session data for previous blocks
+    reviews = get_block_reviews(request.plan_id)
+    all_workouts = get_plan_workouts(request.plan_id)
+
+    # Build per-session stats for every completed workout in prior blocks
+    prev_weeks_end = (request.block_number - 1) * 2  # last week of previous blocks
+    prior_completed = [
+        w
+        for w in all_workouts
+        if w.get("is_completed") == 1 and (w.get("week_number") or 0) <= prev_weeks_end and w.get("type") != "Rest"
+    ]
+
+    block_context = None
+    context_lines: list[str] = []
+
+    # Block-level review summaries
+    review_map = {r["block_number"]: r for r in (reviews or [])}
+
+    # Per-session breakdown grouped by block
+    sessions_by_block: dict[int, list[str]] = {}
+    for w in prior_completed:
+        wk = w.get("week_number", 0)
+        blk = ((wk - 1) // 2) + 1
+        parts = [f"    • {w.get('day_of_week', '?')} W{wk}: {w.get('title', w.get('type', '?'))}"]
+        stats = []
+        if w.get("duration_minutes"):
+            stats.append(f"{w['duration_minutes']} min")
+        if w.get("distance_km"):
+            stats.append(f"{w['distance_km']:.1f} km")
+        if w.get("rpe"):
+            stats.append(f"RPE {w['rpe']}/10")
+        if w.get("notes"):
+            stats.append(f'note: "{w["notes"]}"')
+        if stats:
+            parts.append(f" ({', '.join(stats)})")
+        sessions_by_block.setdefault(blk, []).append("".join(parts))
+
+    all_block_nums = sorted(set(list(review_map.keys()) + list(sessions_by_block.keys())))
+    for blk in all_block_nums:
+        rev = review_map.get(blk)
+        rpe_str = f"RPE {rev['overall_rpe']}/10" if rev and rev.get("overall_rpe") else "no block RPE"
+        note_str = f'"{rev["notes"]}"' if rev and rev.get("notes") else "no notes"
+        context_lines.append(f"Block {blk} review: {rpe_str} — {note_str}")
+
+        sessions = sessions_by_block.get(blk, [])
+        if sessions:
+            # Summarise completion rate for the block
+            total_in_block = len(
+                [w for w in all_workouts if ((w.get("week_number", 0) - 1) // 2) + 1 == blk and w.get("type") != "Rest"]
+            )
+            done_in_block = len(sessions)
+            km_total = sum(
+                w.get("distance_km") or 0 for w in prior_completed if ((w.get("week_number", 0) - 1) // 2) + 1 == blk
+            )
+            min_total = sum(
+                w.get("duration_minutes") or 0
+                for w in prior_completed
+                if ((w.get("week_number", 0) - 1) // 2) + 1 == blk
+            )
+            context_lines.append(
+                f"  Completed {done_in_block}/{total_in_block} sessions"
+                + (f", {km_total:.1f} km total" if km_total else "")
+                + (f", {min_total} min total" if min_total else "")
+            )
+            context_lines.extend(sessions)
+
+    if context_lines:
+        block_context = "\n".join(context_lines)
+
+    race_info = {
+        "name": plan.get("race_name", "Training Plan"),
+        "date": plan.get("race_date"),
+        "terrain": fresh_user.get("terrain", "trail"),
+        "goal_type": plan.get("goal_type"),
+        "target_time_hours": plan.get("target_time_hours"),
+        "course_distance_km": plan.get("course_distance_km"),
+        "course_elevation_gain_m": plan.get("course_elevation_gain_m"),
+        "preferred_days": plan.get("preferred_run_days"),
+        "long_run_day": plan.get("long_run_day"),
+        "days_per_week": plan.get("days_per_week"),
+        "double_session_days": plan.get("double_session_days"),
+        "lang": fresh_user.get("lang", "en"),
+    }
+
+    model_api_key = fresh_user.get("gemini_api_key") or settings.GEMINI_API_KEY
+
+    job_id = str(_uuid.uuid4())
+    plan_jobs[job_id] = {
+        "status": "generating",
+        "user_id": user["id"],
+        "plan_id": request.plan_id,
+        "workouts": None,
+        "error": None,
+    }
+
+    async def _run_next_block():
+        try:
+            workouts = await PlanGenerator.generate_plan_workouts(
+                request.plan_id,
+                fresh_user,
+                race_info,
+                total_weeks,
+                api_key=model_api_key,
+                block_number=request.block_number,
+                weeks_per_block=2,
+                block_context=block_context,
+            )
+            save_workouts(request.plan_id, workouts)
+            plan_jobs[job_id]["workouts"] = workouts
+            plan_jobs[job_id]["status"] = "done"
+            print(f"[NextBlock][{job_id}] Block {request.block_number} complete — {len(workouts)} workouts saved.")
+        except Exception as ex:
+            plan_jobs[job_id]["status"] = "error"
+            plan_jobs[job_id]["error"] = str(ex)
+            print(f"[NextBlock][{job_id}] Block {request.block_number} FAILED: {ex}")
+
+    asyncio.create_task(_run_next_block())
+
+    return {
+        "job_id": job_id,
+        "plan_id": request.plan_id,
+        "block_number": request.block_number,
+        "week_start": block_start,
+        "week_end": min(block_start + 1, total_weeks),
+    }
 
 
 @app.post("/api/coach/select-plan")
