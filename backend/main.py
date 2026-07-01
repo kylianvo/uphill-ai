@@ -1083,7 +1083,7 @@ async def submit_block_review(request: BlockReviewRequest, user: dict[str, Any] 
 async def generate_next_block(request: GenerateNextBlockRequest, user: dict[str, Any] = Depends(get_current_user)):
     """
     Generate the next 2-week block for an existing plan.
-    Requires the previous block to be ≥80% complete by training hours.
+    Requires the previous block to be ≥70% complete by training hours.
     Injects block review feedback into the generation prompt.
     """
     import asyncio
@@ -1102,7 +1102,7 @@ async def generate_next_block(request: GenerateNextBlockRequest, user: dict[str,
         if not completion["unlocked"]:
             raise HTTPException(
                 status_code=403,
-                detail=f"Block {prev_block} is {completion['completion_pct']}% complete. Need ≥80% to unlock the next block.",
+                detail=f"Block {prev_block} is {completion['completion_pct']}% complete. Need ≥70% to unlock the next block.",
             )
 
     # If the caller passes RPE/notes, save them as the review for the previous block
@@ -1121,16 +1121,74 @@ async def generate_next_block(request: GenerateNextBlockRequest, user: dict[str,
 
     fresh_user = get_user_by_id(user["id"]) or user
 
-    # Collect all block reviews for context injection
+    # Collect block reviews + per-session data for previous blocks
     reviews = get_block_reviews(request.plan_id)
+    all_workouts = get_plan_workouts(request.plan_id)
+
+    # Build per-session stats for every completed workout in prior blocks
+    prev_weeks_end = (request.block_number - 1) * 2  # last week of previous blocks
+    prior_completed = [
+        w
+        for w in all_workouts
+        if w.get("is_completed") == 1 and (w.get("week_number") or 0) <= prev_weeks_end and w.get("type") != "Rest"
+    ]
+
     block_context = None
-    if reviews:
-        lines = []
-        for r in reviews:
-            rpe_str = f"RPE {r['overall_rpe']}/10" if r.get("overall_rpe") else "no RPE logged"
-            note_str = f'"{r["notes"]}"' if r.get("notes") else "no notes"
-            lines.append(f"Block {r['block_number']}: {rpe_str} — {note_str}")
-        block_context = "\n".join(lines)
+    context_lines: list[str] = []
+
+    # Block-level review summaries
+    review_map = {r["block_number"]: r for r in (reviews or [])}
+
+    # Per-session breakdown grouped by block
+    sessions_by_block: dict[int, list[str]] = {}
+    for w in prior_completed:
+        wk = w.get("week_number", 0)
+        blk = ((wk - 1) // 2) + 1
+        parts = [f"    • {w.get('day_of_week', '?')} W{wk}: {w.get('title', w.get('type', '?'))}"]
+        stats = []
+        if w.get("duration_minutes"):
+            stats.append(f"{w['duration_minutes']} min")
+        if w.get("distance_km"):
+            stats.append(f"{w['distance_km']:.1f} km")
+        if w.get("rpe"):
+            stats.append(f"RPE {w['rpe']}/10")
+        if w.get("notes"):
+            stats.append(f'note: "{w["notes"]}"')
+        if stats:
+            parts.append(f" ({', '.join(stats)})")
+        sessions_by_block.setdefault(blk, []).append("".join(parts))
+
+    all_block_nums = sorted(set(list(review_map.keys()) + list(sessions_by_block.keys())))
+    for blk in all_block_nums:
+        rev = review_map.get(blk)
+        rpe_str = f"RPE {rev['overall_rpe']}/10" if rev and rev.get("overall_rpe") else "no block RPE"
+        note_str = f'"{rev["notes"]}"' if rev and rev.get("notes") else "no notes"
+        context_lines.append(f"Block {blk} review: {rpe_str} — {note_str}")
+
+        sessions = sessions_by_block.get(blk, [])
+        if sessions:
+            # Summarise completion rate for the block
+            total_in_block = len(
+                [w for w in all_workouts if ((w.get("week_number", 0) - 1) // 2) + 1 == blk and w.get("type") != "Rest"]
+            )
+            done_in_block = len(sessions)
+            km_total = sum(
+                w.get("distance_km") or 0 for w in prior_completed if ((w.get("week_number", 0) - 1) // 2) + 1 == blk
+            )
+            min_total = sum(
+                w.get("duration_minutes") or 0
+                for w in prior_completed
+                if ((w.get("week_number", 0) - 1) // 2) + 1 == blk
+            )
+            context_lines.append(
+                f"  Completed {done_in_block}/{total_in_block} sessions"
+                + (f", {km_total:.1f} km total" if km_total else "")
+                + (f", {min_total} min total" if min_total else "")
+            )
+            context_lines.extend(sessions)
+
+    if context_lines:
+        block_context = "\n".join(context_lines)
 
     race_info = {
         "name": plan.get("race_name", "Training Plan"),

@@ -1084,28 +1084,29 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
         {/* Next Block Generating Banner */}
         {nextBlockLoading && !showBlockReview && (
           <div style={{
-            marginTop: "20px",
-            padding: "14px 18px",
-            borderRadius: "12px",
-            background: "rgba(99,102,241,0.07)",
-            border: "1.5px solid rgba(99,102,241,0.25)",
+            background: "rgba(255, 255, 255, 0.95)",
+            border: "1px solid var(--border-color)",
+            padding: isMobile ? "16px 18px" : "18px 24px",
+            borderRadius: "16px",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
             display: "flex",
             alignItems: "center",
-            gap: "12px",
+            gap: "16px",
+            marginTop: "16px",
           }}>
             <div style={{
-              width: "18px", height: "18px", borderRadius: "50%",
-              border: "2.5px solid rgba(99,102,241,0.25)",
+              width: "22px", height: "22px", borderRadius: "50%",
+              border: "3px solid rgba(99,102,241,0.2)",
               borderTopColor: "var(--accent-primary)",
               animation: "spin 0.8s linear infinite",
               flexShrink: 0,
             }} />
             <div>
-              <div style={{ fontWeight: "700", fontSize: "13px", color: "var(--accent-primary)" }}>
+              <div style={{ fontWeight: "700", fontSize: "14px", color: "var(--accent-primary)" }}>
                 {lang === "en" ? `Generating Block ${nextBlockNum}…` : `Đang tạo Block ${nextBlockNum}…`}
               </div>
-              <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "2px" }}>
-                {lang === "en" ? "This usually takes 30–60 seconds. Your plan will update automatically." : "Thường mất 30–60 giây. Kế hoạch sẽ tự động cập nhật."}
+              <div style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "3px" }}>
+                {lang === "en" ? "Usually 30–60 seconds. Your calendar will update automatically." : "Thường mất 30–60 giây. Lịch tập sẽ tự động cập nhật."}
               </div>
             </div>
           </div>

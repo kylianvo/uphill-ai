@@ -646,7 +646,7 @@ def get_block_completion(plan_id: int, block_number: int) -> dict[str, Any]:
         "total_minutes": total_minutes,
         "completed_minutes": completed_minutes,
         "completion_pct": pct,
-        "unlocked": pct >= 80,
+        "unlocked": pct >= 70,
     }
 
 
