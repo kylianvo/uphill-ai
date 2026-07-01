@@ -160,6 +160,65 @@
           "legendFormat": "Memory %"
         }
       ]
+    },
+    {
+      "title": "NotebookLM Attempts",
+      "type": "stat",
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 12,
+        "h": 4
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum(notebooklm_attempts_total{status=\"success\"})",
+          "legendFormat": "Success",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(notebooklm_attempts_total{status=\"error\"})",
+          "legendFormat": "Error",
+          "refId": "B"
+        },
+        {
+          "expr": "sum(notebooklm_attempts_total{status=\"attempt\"})",
+          "legendFormat": "Attempted",
+          "refId": "C"
+        }
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
     }
   ]
 }

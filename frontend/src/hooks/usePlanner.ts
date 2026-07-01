@@ -374,48 +374,47 @@ export function usePlanner() {
   };
 
   const getWorkoutDate = (wo: Workout) => {
-    if (!activePlan || !activePlan.race_date) return "";
+    if (!activePlan) return "";
     try {
-      const parts = activePlan.race_date.split("-");
-      if (parts.length !== 3) return "";
-      const year = parseInt(parts[0], 10);
-      const month = parseInt(parts[1], 10) - 1;
-      const day = parseInt(parts[2], 10);
-      const raceDate = new Date(year, month, day);
-
-      const raceWo = workouts.find((w: any) => {
-        const title = w.title.toUpperCase();
-        const type = w.type.toUpperCase();
-        return title.includes("TARGET EVENT") || type === "RACE";
-      });
-
-      const raceWeek = raceWo ? raceWo.week_number : activePlan.total_weeks;
-
-      const getMondayRelativeOffset = (jsDay: number) => {
-        if (jsDay === 0) return 6; // Sunday
-        return jsDay - 1; // Mon-Sat
-      };
-
-      const raceDayOffset = getMondayRelativeOffset(raceDate.getDay());
-      const raceWeekMonday = new Date(raceDate);
-      raceWeekMonday.setDate(raceDate.getDate() - raceDayOffset);
-
-      const startMonday = new Date(raceWeekMonday);
-      startMonday.setDate(raceWeekMonday.getDate() - (raceWeek - 1) * 7);
-
       const DAY_OFFSETS: Record<string, number> = {
-        "Monday": 0,
-        "Tuesday": 1,
-        "Wednesday": 2,
-        "Thursday": 3,
-        "Friday": 4,
-        "Saturday": 5,
-        "Sunday": 6
+        "Monday": 0, "Tuesday": 1, "Wednesday": 2, "Thursday": 3,
+        "Friday": 4, "Saturday": 5, "Sunday": 6,
       };
 
-      const dayName = wo.day_of_week;
-      const workoutDayOffset = DAY_OFFSETS[dayName] !== undefined ? DAY_OFFSETS[dayName] : 0;
+      const getMondayOf = (d: Date) => {
+        const offset = d.getDay() === 0 ? 6 : d.getDay() - 1;
+        const m = new Date(d);
+        m.setDate(d.getDate() - offset);
+        return m;
+      };
 
+      let startMonday: Date;
+
+      // Prefer plan_start_date (exact user-inputted date) if stored
+      if (activePlan.start_date) {
+        const parts = activePlan.start_date.split("-");
+        const sd = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        // Week 1 starts on the Monday on or before the start date
+        startMonday = getMondayOf(sd);
+      } else if (activePlan.race_date) {
+        // Fallback: anchor from race date backward (legacy behaviour)
+        const parts = activePlan.race_date.split("-");
+        if (parts.length !== 3) return "";
+        const raceDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        const raceWo = workouts.find((w: any) => {
+          const title = w.title.toUpperCase();
+          const type = w.type.toUpperCase();
+          return title.includes("TARGET EVENT") || type === "RACE";
+        });
+        const raceWeek = raceWo ? raceWo.week_number : activePlan.total_weeks;
+        const raceWeekMonday = getMondayOf(raceDate);
+        startMonday = new Date(raceWeekMonday);
+        startMonday.setDate(raceWeekMonday.getDate() - (raceWeek - 1) * 7);
+      } else {
+        return "";
+      }
+
+      const workoutDayOffset = DAY_OFFSETS[wo.day_of_week] ?? 0;
       const workoutDate = new Date(startMonday);
       workoutDate.setDate(startMonday.getDate() + (wo.week_number - 1) * 7 + workoutDayOffset);
 

@@ -6,7 +6,12 @@ from pathlib import Path
 from notebooklm import NotebookLMClient
 from notebooklm.auth import AuthTokens
 
-from telemetry import notebooklm_latency_seconds, notebooklm_tokens_received_total, notebooklm_tokens_sent_total
+from telemetry import (
+    notebooklm_attempts_total,
+    notebooklm_latency_seconds,
+    notebooklm_tokens_received_total,
+    notebooklm_tokens_sent_total,
+)
 
 
 class NotebookLmService:
@@ -35,21 +40,26 @@ class NotebookLmService:
 
             # Query NotebookLM with latency measurement
             start_time = time.time()
-            async with NotebookLMClient(auth) as client:
-                result = await client.chat.ask(notebook_id, query)
-                duration = time.time() - start_time
+            notebooklm_attempts_total.labels(service=service, status="attempt").inc()
+            try:
+                async with NotebookLMClient(auth) as client:
+                    result = await client.chat.ask(notebook_id, query)
+                    duration = time.time() - start_time
 
-                # Record metrics
-                notebooklm_latency_seconds.labels(service=service).observe(duration)
+                    notebooklm_latency_seconds.labels(service=service).observe(duration)
+                    notebooklm_attempts_total.labels(service=service, status="success").inc()
 
-                # Use a character-count heuristic for token estimation (roughly 4 chars = 1 token)
-                est_sent_tokens = len(query) // 4
-                est_recv_tokens = len(result.answer) // 4
+                    est_sent_tokens = len(query) // 4
+                    est_recv_tokens = len(result.answer) // 4
+                    notebooklm_tokens_sent_total.labels(service=service).inc(est_sent_tokens)
+                    notebooklm_tokens_received_total.labels(service=service).inc(est_recv_tokens)
 
-                notebooklm_tokens_sent_total.labels(service=service).inc(est_sent_tokens)
-                notebooklm_tokens_received_total.labels(service=service).inc(est_recv_tokens)
-
-                return result.answer
+                    print(f"[NotebookLM][{service}] OK — {duration:.1f}s, ~{est_recv_tokens} tokens received")
+                    return result.answer
+            except Exception as e:
+                notebooklm_attempts_total.labels(service=service, status="error").inc()
+                print(f"[NotebookLM][{service}] ERROR: {e}")
+                raise e
         except Exception as e:
             print(f"Error querying NotebookLM: {e}")
             raise e

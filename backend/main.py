@@ -613,6 +613,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
     tth = _parse_time_hours(request.expected_finish_time) if plan_goal_type == "time" else None
     total_weeks = _calculate_total_weeks(race_date, today)
 
+    onboarding_start_date = today.strftime("%Y-%m-%d")
     plan_id = create_plan(
         user_id=user["id"],
         race_name=race_name,
@@ -626,6 +627,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         long_run_day=request.long_run_day,
         days_per_week=request.days_per_week or 4,
         double_session_days=request.double_session_days or [],
+        start_date=onboarding_start_date,
     )
 
     # Mark onboarding complete immediately so the user can enter the app
@@ -646,6 +648,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         "long_run_day": request.long_run_day,
         "days_per_week": request.days_per_week,
         "double_session_days": request.double_session_days or [],
+        "plan_start_date": onboarding_start_date,
         "lang": request.lang or "en",
     }
 
@@ -919,6 +922,7 @@ async def generate_training_plan(request: PlanGenerateRequest, user: dict[str, A
             long_run_day=request.long_run_day,
             days_per_week=request.days_per_week or 4,
             double_session_days=[],
+            start_date=start_date_str,
         )
 
         race_info = {
@@ -1202,10 +1206,20 @@ async def generate_next_block(request: GenerateNextBlockRequest, user: dict[str,
         "long_run_day": plan.get("long_run_day"),
         "days_per_week": plan.get("days_per_week"),
         "double_session_days": plan.get("double_session_days"),
+        "plan_start_date": plan.get("start_date"),
         "lang": fresh_user.get("lang", "en"),
     }
 
     model_api_key = fresh_user.get("gemini_api_key") or settings.GEMINI_API_KEY
+    _nb_id = settings.NOTEBOOKLM_NOTEBOOK_ID
+    _nb_auth = settings.NOTEBOOKLM_AUTH_JSON
+    print(
+        f"[NextBlock] plan_id={request.plan_id} block={request.block_number} "
+        f"notebook_configured={'yes' if (_nb_id and _nb_auth) else 'NO — will use Gemini/rule-based'} "
+        f"gemini_key={'yes' if model_api_key else 'NO'} "
+        f"plan_start_date={race_info.get('plan_start_date')} "
+        f"block_context_lines={len(block_context.splitlines()) if block_context else 0}"
+    )
 
     job_id = str(_uuid.uuid4())
     plan_jobs[job_id] = {

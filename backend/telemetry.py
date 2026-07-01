@@ -11,3 +11,7 @@ notebooklm_tokens_sent_total = Counter(
 notebooklm_tokens_received_total = Counter(
     "notebooklm_tokens_received_total", "Total estimated tokens received from NotebookLM API", ["service"]
 )
+
+notebooklm_attempts_total = Counter(
+    "notebooklm_attempts_total", "Total NotebookLM query attempts (success + error)", ["service", "status"]
+)
