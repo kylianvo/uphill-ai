@@ -252,21 +252,26 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
       setShowBlockReview(false);
       setBlockReviewNotes("");
       setBlockReviewRpe(5);
-      // Poll for completion
+      // nextBlockLoading stays true until the job finishes
       startPlanJobPoller(data.job_id, token);
-      // Re-fetch block data after poller finishes (via a small delay + re-fetch)
       const repoll = setInterval(() => {
         const tkn = localStorage.getItem("uphill_session_token");
-        if (!tkn) { clearInterval(repoll); return; }
+        if (!tkn) { clearInterval(repoll); setNextBlockLoading(false); return; }
         fetch(`${API_BASE_URL}/api/coach/plan-status/${data.job_id}`, { headers: { Authorization: `Bearer ${tkn}` } })
           .then(r => r.ok ? r.json() : null)
-          .then(d => { if (d?.status === "done" || d?.status === "error") { clearInterval(repoll); fetchBlockCompletion(); } })
-          .catch(() => clearInterval(repoll));
-      }, 5000);
+          .then(d => {
+            if (d?.status === "done" || d?.status === "error") {
+              clearInterval(repoll);
+              setNextBlockLoading(false);
+              fetchBlockCompletion();
+            }
+          })
+          .catch(() => { clearInterval(repoll); setNextBlockLoading(false); });
+      }, 3000);
     } catch (err: any) {
       alert(err.message || "Failed to generate next block");
+      setNextBlockLoading(false);
     }
-    setNextBlockLoading(false);
   };
 
     return (
@@ -1073,6 +1078,36 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 )}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Next Block Generating Banner */}
+        {nextBlockLoading && !showBlockReview && (
+          <div style={{
+            marginTop: "20px",
+            padding: "14px 18px",
+            borderRadius: "12px",
+            background: "rgba(99,102,241,0.07)",
+            border: "1.5px solid rgba(99,102,241,0.25)",
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+          }}>
+            <div style={{
+              width: "18px", height: "18px", borderRadius: "50%",
+              border: "2.5px solid rgba(99,102,241,0.25)",
+              borderTopColor: "var(--accent-primary)",
+              animation: "spin 0.8s linear infinite",
+              flexShrink: 0,
+            }} />
+            <div>
+              <div style={{ fontWeight: "700", fontSize: "13px", color: "var(--accent-primary)" }}>
+                {lang === "en" ? `Generating Block ${nextBlockNum}…` : `Đang tạo Block ${nextBlockNum}…`}
+              </div>
+              <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "2px" }}>
+                {lang === "en" ? "This usually takes 30–60 seconds. Your plan will update automatically." : "Thường mất 30–60 giây. Kế hoạch sẽ tự động cập nhật."}
+              </div>
+            </div>
           </div>
         )}
 
