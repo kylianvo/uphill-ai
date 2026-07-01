@@ -155,6 +155,17 @@ class PlanGenerator:
 
         # Helper function to post-process and estimate target pace and distance for all workouts
         def post_process_workouts(wos: list[dict[str, Any]]) -> list[dict[str, Any]]:
+            # Safety net: strip any week-1 workouts that land before the plan start day
+            if block_number == 1 and _excluded_days_w1:
+                wos = [
+                    wo
+                    for wo in wos
+                    if not (
+                        int(wo.get("week_number") or block_start_week) == 1
+                        and wo.get("day_of_week") in _excluded_days_w1
+                    )
+                ]
+
             for wo in wos:
                 dur = float(wo.get("duration_minutes") or 0.0)
                 wo["duration_minutes"] = dur
@@ -296,6 +307,11 @@ class PlanGenerator:
             current_date_str = today.strftime("%Y-%m-%d")
             current_weekday = today.strftime("%A")
 
+            # Days of the week before the start day that must be excluded from week 1
+            _all_days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+            _start_idx = _all_days.index(current_weekday) if current_weekday in _all_days else 0
+            _excluded_days_w1 = _all_days[:_start_idx]  # e.g. if start=Wednesday → [Monday, Tuesday]
+
             is_event_goal = race_info.get("goal_type") not in ["start_running", "return", "recovery"]
 
             # Build goal description for AI context
@@ -386,15 +402,29 @@ class PlanGenerator:
                     "  • Any mention of injury/pain: remove ALL high-intensity work for that body region and add Strength or active recovery.\n"
                 )
 
+            # Start-date constraint for the first week of the first block
+            _start_date_constraint = ""
+            if block_number == 1 and _excluded_days_w1:
+                _start_date_constraint = (
+                    f"\nSTART DATE CONSTRAINT:\n"
+                    f"The plan starts on {current_date_str} ({current_weekday}). "
+                    f"Week 1 is a partial week.\n"
+                    f"CRITICAL: Do NOT generate any workouts in Week 1 on "
+                    f"{', '.join(_excluded_days_w1)} — those days are BEFORE the start date.\n"
+                    f"Week 1 workouts must only be assigned to: "
+                    f"{', '.join(_all_days[_start_idx:])}.\n"
+                )
+
             _ai_prompt = (
                 "You are a world-class running coach training athletes based on the 'Training for the Uphill Athlete' philosophy.\n"
                 f"{goal_intro}\n\n"
                 f"Athlete Profile:\n{user_summary}\n\n"
                 f"{program_details}"
-                f"Current Date (today): {current_date_str} ({current_weekday})\n"
+                f"Plan Start Date: {current_date_str} ({current_weekday})\n"
                 f"{target_date_details}"
                 f"Full Plan Length: {total_weeks} weeks.\n"
                 f"- Week 1 starts on: {current_date_str} ({current_weekday}).\n"
+                f"{_start_date_constraint}"
                 f"{week_schedule_constraints}"
                 f"{block_instruction}\n"
                 "Instructions:\n"
@@ -445,7 +475,14 @@ class PlanGenerator:
                 else:
                     print("[PlanGen][NotebookLM] Empty or invalid list returned, trying Gemini fallback.")
             except Exception as ex:
-                print(f"[PlanGen][NotebookLM] FAILED: {ex}. Trying Gemini fallback.")
+                err_str = str(ex)
+                if "No parseable chunks" in err_str or "empty" in err_str.lower():
+                    print(
+                        "[PlanGen][NotebookLM] Auth token likely expired or streaming format changed — "
+                        "update NOTEBOOKLM_AUTH_JSON on the server. Falling back to Gemini."
+                    )
+                else:
+                    print(f"[PlanGen][NotebookLM] FAILED: {ex}. Trying Gemini fallback.")
 
         if _ai_prompt and api_key:
             try:

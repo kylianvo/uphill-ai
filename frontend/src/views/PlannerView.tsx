@@ -1014,7 +1014,21 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
             ) : (
               /* Week Workouts — grouped by day with drag-and-drop swap */
               <WeekDayList
-                weekWos={getWeekWorkouts(selectedWeek)}
+                weekWos={(() => {
+                  const wos = getWeekWorkouts(selectedWeek);
+                  // For week 1, hide workouts on days before the plan start date
+                  if (selectedWeek === 1 && activePlan?.start_date) {
+                    const DAY_ORDER = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+                    const sdParts = activePlan.start_date.split("-");
+                    const sd = new Date(parseInt(sdParts[0],10), parseInt(sdParts[1],10)-1, parseInt(sdParts[2],10));
+                    const startDayIdx = sd.getDay() === 0 ? 6 : sd.getDay() - 1;
+                    return wos.filter((wo: any) => {
+                      const idx = DAY_ORDER.indexOf(wo.day_of_week);
+                      return idx === -1 || idx >= startDayIdx;
+                    });
+                  }
+                  return wos;
+                })()}
                 lang={lang}
                 isMobile={isMobile}
                 onSwapDays={swapDays}
