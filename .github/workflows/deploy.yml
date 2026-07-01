@@ -15,8 +15,80 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
+      - name: Run frontend unit tests (Vitest)
+        run: cd frontend && npm run test -- --run
+      - name: Install Playwright browsers
+        run: cd frontend && npx playwright install --with-deps chromium
+      - name: Synthesize a minimal backend/.env for CI
+        # docker-compose.yml's backend service requires env_file: ./backend/.env to
+        # exist. Real secrets aren't needed here -- Gemini/NotebookLM calls are either
+        # unexercised by these specs or fail gracefully (mock-login and the
+        # onboarding regression test only need the plans row committed synchronously,
+        # which happens before any real AI call).
+        run: |
+          cat > backend/.env <<'EOF'
+          ENVIRONMENT=development
+          GEMINI_API_KEY=test-key-not-real
+          JWT_SECRET=ci-test-secret
+          ALLOWED_ORIGINS=http://localhost:8080,http://127.0.0.1:8080
+          EOF
+      - name: Start Postgres and backend
+        run: docker compose up -d db backend
+      - name: Wait for backend health
+        run: |
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:8000/docs >/dev/null && exit 0
+            sleep 2
+          done
+          echo "Backend did not become healthy in time" >&2
+          docker compose logs backend
+          exit 1
+      - name: Build frontend for e2e (static export, pointed at the local backend)
+        run: cd frontend && npx next build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000
+          NEXT_PUBLIC_BASE_PATH: ""
+      - name: Serve static export on :8080
+        run: npx --yes serve frontend/out -l 8080 &
+      - name: Wait for frontend to be servable
+        run: |
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:8080 >/dev/null && exit 0
+            sleep 1
+          done
+          echo "Frontend did not become servable in time" >&2
+          exit 1
+      - name: Run Playwright e2e tests
+        run: cd frontend && npx playwright test
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000
+          CI: "true"
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+      - name: Dump backend logs on failure
+        if: failure()
+        run: docker compose logs backend
+
   build:
     runs-on: ubuntu-latest
+    needs: [test]
     steps:
       - name: Checkout
         uses: actions/checkout@v4

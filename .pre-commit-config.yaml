@@ -31,3 +31,24 @@ repos:
         entry: bash -c 'cd frontend && npm run lint'
         pass_filenames: false
         files: ^frontend/src/
+
+  # Python — fast unit tests only (backend). No DB/network — safe on every commit.
+  # Requires `pip install -r backend/requirements-dev.txt` in backend/.venv once.
+  - repo: local
+    hooks:
+      - id: backend-unit-tests
+        name: Backend unit tests (pytest, no DB/network)
+        language: system
+        entry: bash -c 'cd backend && .venv/bin/pytest tests/unit -q'
+        pass_filenames: false
+        files: ^backend/(main\.py|db\.py|services/|parsers/|tests/unit/)
+
+  # TypeScript/JS — fast unit tests only (frontend). No backend/browser needed.
+  - repo: local
+    hooks:
+      - id: frontend-unit-tests
+        name: Frontend unit tests (vitest)
+        language: system
+        entry: bash -c 'cd frontend && npm run test -- --run'
+        pass_filenames: false
+        files: ^frontend/src/

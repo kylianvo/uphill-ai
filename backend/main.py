@@ -282,6 +282,7 @@ class OnboardingRequest(BaseModel):
     next_goal: str | None = None
     # Double session preference
     double_session_days: list[str] | None = None
+    plan_start_date: str | None = None  # YYYY-MM-DD
 
 
 class UpdateProfileRequest(BaseModel):
@@ -611,9 +612,13 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         plan_goal_type = "finish"
 
     tth = _parse_time_hours(request.expected_finish_time) if plan_goal_type == "time" else None
-    total_weeks = _calculate_total_weeks(race_date, today)
 
-    onboarding_start_date = today.strftime("%Y-%m-%d")
+    onboarding_start_date = request.plan_start_date or today.strftime("%Y-%m-%d")
+    try:
+        start_date_parsed = date.fromisoformat(onboarding_start_date)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid plan_start_date format. Expected YYYY-MM-DD.")
+    total_weeks = _calculate_total_weeks(race_date, start_date_parsed)
     plan_id = create_plan(
         user_id=user["id"],
         race_name=race_name,
