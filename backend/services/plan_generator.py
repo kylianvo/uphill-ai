@@ -269,6 +269,7 @@ class PlanGenerator:
 
         # Build shared AI prompt (used by both NotebookLM and Gemini paths)
         _ai_prompt = None
+        _nb_prompt = None
         try:
             scheduling_notes = ""
             all_days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
@@ -482,23 +483,67 @@ class PlanGenerator:
                 f"- Week 1 starts on: {current_date_str} ({current_weekday}).\n"
                 f"{feedback_instruction}"
             )
+
+            # NotebookLM enforces a strict ~4000-char query limit — too small to fit the full
+            # Gemini prompt above once the schema, athlete profile, and feedback are all present.
+            # Rather than slicing the full prompt at a fixed offset (which risks cutting off
+            # whichever section happens to land near the cutoff — the schema, or the athlete
+            # profile, depending on prompt length), build a distinct, compact prompt with the
+            # same information in terser wording, and only truncate the unbounded, least-critical
+            # trailing section (prior-block feedback) to whatever budget remains.
+            nb_schema_block = (
+                "OUTPUT CONTRACT: Return ONLY a JSON array of workout objects — no markdown fences, no prose.\n"
+                "Each object MUST have: week_number (int, within block range below), day_of_week (Mon-Sun), "
+                "phase (Base→Build→Peak→Taper→Race Week→Recovery, in that exact order; Taper cuts volume ~50%), "
+                "title (string), type (Easy/Tempo/Interval/Long Run/Strength/Rest/Race/Recovery/Muscular Endurance), "
+                "duration_minutes (number), target_zone (Zone 1-5), target_hr_range (e.g. '125-140 bpm'), "
+                "target_pace (e.g. '6:00 /km'), distance_km (= duration_minutes / pace, decimal min/km), "
+                "description (detailed: Process/Overall/Reason/Benefit/Warning sections), fueling_tip (string), "
+                "treadmill_incline/treadmill_speed (optional numbers, treadmill only), "
+                "session_slot ('morning'/'afternoon' on double-session days only, omit otherwise).\n\n"
+            )
+            nb_rules_block = (
+                "Rules: Honor the athlete's preferred training and double-session days below — place Rest on "
+                "non-preferred days, produce two objects on double-session days. Customize scaling to the "
+                "athlete's actual numbers (long runs, ME volume, treadmill settings) instead of a generic "
+                "template. NEVER invent a claim or figure beyond standard Uphill Athlete training principles."
+                f"{lang_rule}\n\n"
+            )
+            _nb_prompt_head = (
+                "You are a world-class running coach training athletes based on the 'Training for the Uphill Athlete' philosophy.\n"
+                f"{goal_intro}\n\n"
+                f"{nb_schema_block}"
+                f"{block_scope_instruction}"
+                f"{_start_date_constraint}"
+                f"{week_schedule_constraints}"
+                f"{nb_rules_block}"
+                f"Athlete Profile:\n{user_summary}\n\n"
+                f"{program_details}"
+                f"Plan Start Date: {current_date_str} ({current_weekday})\n"
+                f"{target_date_details}"
+                f"Full Plan Length: {total_weeks} weeks.\n"
+                f"- Week 1 starts on: {current_date_str} ({current_weekday}).\n"
+            )
+            _NOTEBOOKLM_MAX_CHARS = 3800
+            _nb_feedback_budget = _NOTEBOOKLM_MAX_CHARS - len(_nb_prompt_head)
+            _nb_prompt = _nb_prompt_head + (
+                feedback_instruction[:_nb_feedback_budget] if _nb_feedback_budget > 0 else ""
+            )
+            # Safety net in case the head itself ever exceeds the budget (e.g. unusually long
+            # scheduling notes) — truncate the whole thing rather than send an oversized query.
+            _nb_prompt = _nb_prompt[:_NOTEBOOKLM_MAX_CHARS]
         except Exception as _prompt_ex:
             print(f"[PlanGen] Prompt building failed: {_prompt_ex}. Using rule-based fallback.")
 
-        # NotebookLM has a strict query-size limit (~4000 chars). The full prompt is always sent
-        # to Gemini, but for NotebookLM we cap it so block 2+ (which carry block_context) don't
-        # silently return an empty streaming response.
-        _NOTEBOOKLM_MAX_CHARS = 3800
-        _nb_query = _ai_prompt[:_NOTEBOOKLM_MAX_CHARS] if _ai_prompt else None
+        _nb_query = _nb_prompt
 
         if _nb_query and notebook_id and auth_json:
             try:
                 from services.notebooklm_service import NotebookLmService
 
-                truncated = len(_ai_prompt) > _NOTEBOOKLM_MAX_CHARS
                 print(
-                    f"[PlanGen][NotebookLM] Sending prompt to notebook {notebook_id[:8]}... "
-                    f"({len(_nb_query)} chars{', truncated from ' + str(len(_ai_prompt)) if truncated else ''})"
+                    f"[PlanGen][NotebookLM] Sending compact prompt to notebook {notebook_id[:8]}... "
+                    f"({len(_nb_query)} chars, full Gemini prompt is {len(_ai_prompt)} chars)"
                 )
                 response_text = await NotebookLmService.query_notebook(
                     notebook_id=notebook_id, auth_json=auth_json, query=_nb_query, service="plan_generator"
