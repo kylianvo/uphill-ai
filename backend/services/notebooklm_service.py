@@ -15,6 +15,16 @@ from telemetry import (
 
 
 class NotebookLmService:
+    # Appended to every query. NotebookLM (like Gemini) will fabricate plausible-sounding
+    # facts and citations when a query pushes past what its source documents cover —
+    # this keeps every caller's query grounded without duplicating the instruction
+    # across each service's prompt text.
+    GROUNDING_SUFFIX = (
+        "\n\nGrounding rule: base this answer only on your source documents. Do not invent "
+        "facts, product names, or citations that are not in your documents. If your documents "
+        "don't cover part of this, say so plainly instead of guessing."
+    )
+
     @classmethod
     async def query_notebook(cls, notebook_id: str, auth_json: str, query: str, service: str = "unknown") -> str:
         """
@@ -24,6 +34,8 @@ class NotebookLmService:
         """
         if not notebook_id or not auth_json:
             raise ValueError("Notebook ID and Auth JSON are required.")
+
+        query = f"{query}{cls.GROUNDING_SUFFIX}"
 
         # Create a temporary file to store the credentials safely
         import uuid

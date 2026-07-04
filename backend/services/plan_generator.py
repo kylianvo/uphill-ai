@@ -403,14 +403,19 @@ class PlanGenerator:
                 week_schedule_constraints = ""
 
             total_blocks = (total_weeks + weeks_per_block - 1) // weeks_per_block
-            block_instruction = (
+            block_scope_instruction = (
                 f"\nSEQUENTIAL BLOCK GENERATION:\n"
                 f"This plan spans {total_weeks} weeks total, generated in {total_blocks} blocks of {weeks_per_block} weeks each.\n"
                 f"Generate ONLY Block {block_number} of {total_blocks}: weeks {block_start_week} through {block_end_week}.\n"
                 f"CRITICAL: Every workout `week_number` MUST be between {block_start_week} and {block_end_week} (inclusive). Do NOT output week numbers outside this range.\n"
             )
+            # Kept separate from block_scope_instruction (and placed last in the final prompt below):
+            # this is free-text athlete feedback of unbounded length, and NotebookLM truncates the
+            # full prompt at ~3800 chars — the schema and hard constraints must survive truncation
+            # even if this section gets cut off.
+            feedback_instruction = ""
             if block_context:
-                block_instruction += (
+                feedback_instruction = (
                     f"\nATHLETE FEEDBACK FROM PREVIOUS BLOCKS:\n{block_context}\n"
                     "CRITICAL — adjust this block based on feedback above:\n"
                     "  • RPE ≥ 8: reduce weekly volume by 10-15% AND drop one quality session to easy running.\n"
@@ -433,22 +438,19 @@ class PlanGenerator:
                     f"{', '.join(_all_days[_start_idx:])}.\n"
                 )
 
+            lang_rule = (
+                "\n5. CRITICAL: All workout text fields, including 'title', 'description', and 'fueling_tip', MUST be written in Vietnamese."
+                if lang == "vi"
+                else ""
+            )
+
             _ai_prompt = (
                 "You are a world-class running coach training athletes based on the 'Training for the Uphill Athlete' philosophy.\n"
                 f"{goal_intro}\n\n"
-                f"Athlete Profile:\n{user_summary}\n\n"
-                f"{program_details}"
-                f"Plan Start Date: {current_date_str} ({current_weekday})\n"
-                f"{target_date_details}"
-                f"Full Plan Length: {total_weeks} weeks.\n"
-                f"- Week 1 starts on: {current_date_str} ({current_weekday}).\n"
-                f"{_start_date_constraint}"
-                f"{week_schedule_constraints}"
-                f"{block_instruction}\n"
-                "Instructions:\n"
-                "1. Generate workouts for the specified block weeks only. Each week must have structured workouts (typically 4-6 workouts per week). ALWAYS honor the athlete's preferred training days and double-session days from their profile — place Rest workouts on non-preferred days, and produce two workout objects on each double-session day as described above.\n"
-                "2. The schedule must be returned as a JSON array of workout objects. Each workout object must follow this exact schema:\n"
-                "   - `week_number` (integer: MUST be within the block range specified above)\n"
+                "OUTPUT CONTRACT — this is the most important instruction and applies no matter what follows:\n"
+                "You MUST return ONLY a JSON array of workout objects. NEVER wrap it in markdown fences like ```json, "
+                "NEVER add prose before or after it. Each workout object MUST follow this exact schema:\n"
+                "   - `week_number` (integer: MUST be within the block range specified below)\n"
                 "   - `day_of_week` (string: 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')\n"
                 "   - `phase` (string: 'Base', 'Build', 'Peak', 'Taper', 'Race Week', 'Recovery'. IMPORTANT: Follow this exact progression — Base (early weeks) → Build (mid weeks) → Peak (highest intensity week, 1-2 weeks before taper) → Taper (the week immediately before Race Week, reduce volume to ~50%) → Race Week (the week containing the actual race event) → Recovery (final week after the race).)\n"
                 "   - `title` (string: name of workout)\n"
@@ -463,11 +465,23 @@ class PlanGenerator:
                 "   - `treadmill_incline` (number, optional: recommended incline percentage if using treadmill)\n"
                 "   - `treadmill_speed` (number, optional: recommended speed in kph if using treadmill)\n"
                 "   - `session_slot` (string, optional: ONLY set this on double-session days. Use 'morning' for the first/shorter session and 'afternoon' for the main/longer session. Omit entirely for single-session days.)\n\n"
-                "3. Make the plan highly customized. For example, scale long runs, map Sunday Muscular Endurance box steps/weighted step-ups based on the race elevation gain, or specify treadmill incline/speed settings for gym workouts.\n"
-                "4. Output MUST be a valid JSON array matching the schema. Do not include markdown wraps like ```json ... ``` inside the response text, output raw JSON array."
+                f"{block_scope_instruction}"
+                f"{_start_date_constraint}"
+                f"{week_schedule_constraints}"
+                "\nRules:\n"
+                "1. Generate workouts for the specified block weeks only. Each week must have structured workouts (typically 4-6 workouts per week). ALWAYS honor the athlete's preferred training days and double-session days from their profile — place Rest workouts on non-preferred days, and produce two workout objects on each double-session day as described above.\n"
+                "2. Make the plan highly customized. For example, scale long runs, map Sunday Muscular Endurance box steps/weighted step-ups based on the race elevation gain, or specify treadmill incline/speed settings for gym workouts.\n"
+                "3. NEVER invent a physiological claim, exercise, or number beyond what the Uphill Athlete training philosophy implies. If unsure of an exact figure, give a sensible range instead of fabricating false precision.\n"
+                "4. Give the athlete profile and prior feedback below real weight — this plan MUST reflect their specific numbers, schedule, and history, not a generic template.\n"
+                f"{lang_rule}\n\n"
+                f"Athlete Profile:\n{user_summary}\n\n"
+                f"{program_details}"
+                f"Plan Start Date: {current_date_str} ({current_weekday})\n"
+                f"{target_date_details}"
+                f"Full Plan Length: {total_weeks} weeks.\n"
+                f"- Week 1 starts on: {current_date_str} ({current_weekday}).\n"
+                f"{feedback_instruction}"
             )
-            if lang == "vi":
-                _ai_prompt += "\n5. CRITICAL: All workout text fields, including 'title', 'description', and 'fueling_tip', MUST be written in Vietnamese."
         except Exception as _prompt_ex:
             print(f"[PlanGen] Prompt building failed: {_prompt_ex}. Using rule-based fallback.")
 

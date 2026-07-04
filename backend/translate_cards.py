@@ -20,18 +20,17 @@ def translate_card(card):
     prompt = f"""
 You are an expert sports translator. Translate the following running coaching knowledge card into Vietnamese.
 
+OUTPUT CONTRACT: Return ONLY a JSON object with the exact same keys as the input — "chapter_title", "summary", "key_points", "tags", "topic", "source_label". NEVER wrap it in a markdown code block.
+
 Rules:
 1. Core physiological/running terms ("Zone 2", "AeT", "AnT", "Pace", "Resting HR", "Max HR") MUST remain in English.
-2. The output MUST be a valid JSON object with the exact same structure and keys: "chapter_title", "summary", "key_points", "tags", "topic", "source_label".
-3. Keep the "topic" and "source_label" fields exactly as they are in English.
-4. Keep the "tags" list elements in English.
-5. Start "key_points" bullet points with an active verb in Vietnamese.
-6. The translations must sound natural, professional, and elite-coaching oriented.
+2. Keep the "topic" and "source_label" fields exactly as they are in English.
+3. Keep the "tags" list elements in English.
+4. Start "key_points" bullet points with an active verb in Vietnamese.
+5. Translations MUST sound natural, professional, and elite-coaching oriented — NEVER a literal word-for-word translation.
 
 Card to translate:
 {json.dumps(card, indent=2, ensure_ascii=False)}
-
-Return ONLY the JSON object. Do not include markdown code block (no ```json).
 """
     try:
         response = model.generate_content(prompt)
