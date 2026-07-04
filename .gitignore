@@ -47,3 +47,9 @@ skills-lock.json
 # Backup files
 *.bak
 *.bak2
+
+# Business/strategy docs (local only, not part of the shipped repo)
+docs/
+
+# MS Office lock files
+~$*
