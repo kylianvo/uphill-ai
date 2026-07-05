@@ -119,3 +119,28 @@ class TestEstimatePaceZones:
         # Zone 4 is faster than Zone 2, so a wider gap must push it to an
         # even smaller (faster) decimal.
         assert wide_z4_fast < narrow_z4_fast
+
+
+class TestPaceAndDistanceForZone:
+    def test_maps_a_named_zone_to_its_range_pace_and_computed_distance(self):
+        est_zones = PlanGenerator.estimate_pace_zones("6:30", "5:45", aet_hr=140, ant_hr=161)
+        pace, distance = PlanGenerator.pace_and_distance_for_zone("Zone 4", 40.0, est_zones)
+
+        assert pace == f"{est_zones['zone4_pace']} /km"
+        expected_dec = PlanGenerator.parse_pace_to_decimal(est_zones["zone4_pace_mid"])
+        assert distance == round(40.0 / expected_dec, 1)
+
+    def test_defaults_to_zone_2_for_unrecognized_zone_labels(self):
+        est_zones = PlanGenerator.estimate_pace_zones("6:30", "5:45")
+        pace, _ = PlanGenerator.pace_and_distance_for_zone("Some Weird Zone", 30.0, est_zones)
+        assert pace == f"{est_zones['zone2_pace']} /km"
+
+    def test_zero_duration_yields_zero_distance(self):
+        est_zones = PlanGenerator.estimate_pace_zones("6:30", "5:45")
+        _, distance = PlanGenerator.pace_and_distance_for_zone("Zone 3", 0.0, est_zones)
+        assert distance == 0.0
+
+    def test_is_case_insensitive_on_the_zone_label(self):
+        est_zones = PlanGenerator.estimate_pace_zones("6:30", "5:45")
+        pace, _ = PlanGenerator.pace_and_distance_for_zone("zone 5", 20.0, est_zones)
+        assert pace == f"{est_zones['zone5_pace']} /km"

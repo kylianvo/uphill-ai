@@ -94,6 +94,25 @@ class PlanGenerator:
         }
 
     @staticmethod
+    def pace_and_distance_for_zone(zone: str, duration_minutes: float, est_zones: dict[str, str]) -> tuple[str, float]:
+        """Maps a target_zone label to its display pace range and computed distance_km."""
+        zone_lower = (zone or "").lower()
+        if "zone 1" in zone_lower:
+            pace_str, mid_key = est_zones["zone1_pace"], "zone1_pace_mid"
+        elif "zone 3" in zone_lower:
+            pace_str, mid_key = est_zones["zone3_pace"], "zone3_pace_mid"
+        elif "zone 4" in zone_lower:
+            pace_str, mid_key = est_zones["zone4_pace"], "zone4_pace_mid"
+        elif "zone 5" in zone_lower:
+            pace_str, mid_key = est_zones["zone5_pace"], "zone5_pace_mid"
+        else:  # Zone 2 default
+            pace_str, mid_key = est_zones["zone2_pace"], "zone2_pace_mid"
+
+        pace_dec = PlanGenerator.parse_pace_to_decimal(est_zones[mid_key])
+        distance_km = round(duration_minutes / pace_dec, 1) if pace_dec > 0 else 0.0
+        return f"{pace_str} /km", distance_km
+
+    @staticmethod
     async def generate_plan_workouts(
         plan_id: int,
         user_profile: dict[str, Any],
@@ -171,23 +190,16 @@ class PlanGenerator:
         else:
             goal_race_pace_str = None  # fall back to Zone 4 (race effort)
 
-        # Extract Zone 2 bounds and calculate estimated pacing zones
+        # Extract Zone 2 bounds and calculate personalized pacing zone ranges
         z2_min = user_profile.get("zone2_pace_min") or "6:30"
         z2_max = user_profile.get("zone2_pace_max") or "5:45"
-        est_zones = PlanGenerator.estimate_pace_zones(z2_min, z2_max)
+        est_zones = PlanGenerator.estimate_pace_zones(z2_min, z2_max, aet_hr, ant_hr)
 
-        p_z1 = est_zones["zone1_pace"]
+        p_z1 = est_zones["zone1_pace"]  # Range representation for prompt, e.g. "6:53 - 6:04"
         p_z2 = est_zones["zone2_pace"]  # Range representation for prompt, e.g. "6:30 - 5:45"
-        p_z2_mid = est_zones["zone2_pace_mid"]  # Midpoint representation, e.g. "6:08"
         p_z3 = est_zones["zone3_pace"]
         p_z4 = est_zones["zone4_pace"]
         p_z5 = est_zones["zone5_pace"]
-
-        d_z1 = PlanGenerator.parse_pace_to_decimal(p_z1)
-        d_z2 = PlanGenerator.parse_pace_to_decimal(p_z2_mid)
-        d_z3 = PlanGenerator.parse_pace_to_decimal(p_z3)
-        d_z4 = PlanGenerator.parse_pace_to_decimal(p_z4)
-        d_z5 = PlanGenerator.parse_pace_to_decimal(p_z5)
 
         # Helper function to post-process and estimate target pace and distance for all workouts
         def post_process_workouts(wos: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -255,26 +267,8 @@ class PlanGenerator:
                     wo["target_pace"] = f"{goal_race_pace_str or p_z4} /km"
                     continue
 
-                # Map zone to decimal pace and label (always recalculate, discard AI distance)
-                if "zone 1" in zone.lower():
-                    pace_dec = d_z1
-                    pace_str = p_z1
-                elif "zone 3" in zone.lower():
-                    pace_dec = d_z3
-                    pace_str = p_z3
-                elif "zone 4" in zone.lower():
-                    pace_dec = d_z4
-                    pace_str = p_z4
-                elif "zone 5" in zone.lower():
-                    pace_dec = d_z5
-                    pace_str = p_z5
-                else:  # Zone 2 default
-                    pace_dec = d_z2
-                    pace_str = p_z2_mid
-
-                wo["target_pace"] = f"{pace_str} /km"
-                # Always recalculate distance from duration + pace (never use AI's value)
-                wo["distance_km"] = round(dur / pace_dec, 1) if pace_dec > 0 else 0.0
+                # Map zone to pace range + distance (always recalculate, discard AI distance)
+                wo["target_pace"], wo["distance_km"] = PlanGenerator.pace_and_distance_for_zone(zone, dur, est_zones)
             return wos
 
         # 2. AI Plan Generation (NotebookLM → Gemini → Rule-Based)
