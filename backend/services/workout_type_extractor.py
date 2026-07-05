@@ -169,7 +169,7 @@ The JSON MUST have exactly these fields:
 - "zone": "{zone}" (use exactly this value — do not change)
 - "color": "{color}" (use exactly this value — do not change)
 - "overview": 2-3 sentences. What is this workout type at its core? Audience: experienced trail runners. Tone: expert, direct.
-- "execution": 3-5 sentences describing exactly how to perform this workout. Include effort level, structure, duration guidance.
+- "execution": 3-5 sentences describing exactly how to perform this workout. Include effort level, structure, duration guidance. If this workout type is gym/strength-based (ME session, Strength Training), NAME the specific exercises (e.g. weighted box step-ups, single-leg squats, Bulgarian split squats, walking lunges, calf raises) with their sets/reps — never summarize it as just "a circuit" or "a routine" without naming what's in it.
 - "benefit": 2-3 sentences on the specific physiological adaptations this workout produces. Be precise (e.g. "raises lactate threshold", "builds mitochondrial density").
 - "warning": 1-3 sentences on the most important mistake or risk with this workout type. Be direct.
 
