@@ -458,7 +458,20 @@ def get_recent_plans(user_id: int, limit: int = 3) -> list[dict[str, Any]]:
 
 
 def save_workouts(plan_id: int, workouts: list[dict[str, Any]]):
+    if not workouts:
+        return
+    week_numbers = [wo["week_number"] for wo in workouts]
+    week_start, week_end = min(week_numbers), max(week_numbers)
     with engine.connect() as conn:
+        # Clear any existing rows in this block's week range first, so retries/duplicate
+        # generation calls overwrite instead of stacking duplicate workouts on top.
+        conn.execute(
+            text("""
+                DELETE FROM workouts
+                WHERE plan_id = :plan_id AND week_number BETWEEN :week_start AND :week_end
+            """),
+            {"plan_id": plan_id, "week_start": week_start, "week_end": week_end},
+        )
         for wo in workouts:
             conn.execute(
                 text("""
