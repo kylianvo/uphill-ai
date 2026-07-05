@@ -30,16 +30,25 @@ function looksLikeExercisePrescription(sentence: string): boolean {
   return hasSets && hasRepsOrDuration;
 }
 
-function splitOutExerciseSentences(text: string): { exercises: string[]; remainder: string } {
-  const sentences = text
-    .split(/(?<=[.!?])\s+/)
+// Splits on sentence-ending punctuation AND semicolons — the model sometimes
+// chains multiple exercises into one semicolon-separated run-on sentence
+// instead of ending each with a period, which would otherwise hide them from
+// per-exercise classification (and, in Main Set, render as one unreadable
+// paragraph instead of separate lines).
+function splitIntoClauses(text: string): string[] {
+  return text
+    .split(/(?<=[.!?;])\s+/)
     .map((s) => s.trim())
     .filter(Boolean);
+}
+
+function splitOutExerciseSentences(text: string): { exercises: string[]; remainder: string } {
+  const sentences = splitIntoClauses(text);
   const exercises: string[] = [];
   const remainder: string[] = [];
   for (const s of sentences) {
     if (looksLikeExercisePrescription(s)) {
-      exercises.push(s.replace(/\.$/, ""));
+      exercises.push(s.replace(/[.;]$/, ""));
     } else {
       remainder.push(s);
     }
@@ -129,7 +138,7 @@ export function parseExecutionSteps(execution: string): ExecutionSteps {
 
     return {
       warmup: warmup.length > 0 ? warmup.join(" → ") : null,
-      mainSteps: main,
+      mainSteps: expandRunOnSteps(main),
       cooldown: cooldown.length > 0 ? cooldown.join(" → ") : null,
     };
   }
@@ -155,9 +164,22 @@ export function parseExecutionSteps(execution: string): ExecutionSteps {
 
   return {
     warmup: warmup.length > 0 ? warmup.join(" ") : null,
-    mainSteps: main.length > 0 ? main : [execution],
+    mainSteps: expandRunOnSteps(main.length > 0 ? main : [execution]),
     cooldown: cooldown.length > 0 ? cooldown.join(" ") : null,
   };
+}
+
+// A single main step can itself be a run-on chunk the model chained together
+// with semicolons instead of splitting into separate sentences/segments (e.g.
+// "Perform 5 sets of Squats...; perform 5 sets of Lunges...; ..."). Break
+// those apart so Main Set renders each exercise as its own line rather than
+// one hard-to-read paragraph.
+function expandRunOnSteps(steps: string[]): string[] {
+  const expanded: string[] = [];
+  for (const step of steps) {
+    expanded.push(...step.split(/;\s*/).map((s) => s.trim()).filter(Boolean));
+  }
+  return expanded;
 }
 
 // Extracts the first number found in a warm-up/cool-down text chunk, e.g.

@@ -105,6 +105,21 @@ describe("parseExecutionSteps", () => {
     expect(result.mainSteps.join(" ")).toContain("4 sets of 12 squats");
     expect(result.cooldown).toContain("Cool down");
   });
+
+  it("splits a semicolon-chained run-on main step into separate exercises", () => {
+    const result = parseExecutionSteps(
+      "Warm up with 5 minutes of mobility. " +
+        "Complete 5 sets of 10 reps of Squats with 45 seconds rest between sets; " +
+        "perform 5 sets of 10 reps of Lunges with 45 seconds rest between sets; " +
+        "perform 5 sets of 12 reps of Glute Bridges with 30 seconds rest between sets. " +
+        "Cool down with 5 minutes of stretching."
+    );
+    expect(result.mainSteps).toEqual([
+      "Complete 5 sets of 10 reps of Squats with 45 seconds rest between sets",
+      "perform 5 sets of 10 reps of Lunges with 45 seconds rest between sets",
+      "perform 5 sets of 12 reps of Glute Bridges with 30 seconds rest between sets.",
+    ]);
+  });
 });
 
 describe("selectMainSetText", () => {
