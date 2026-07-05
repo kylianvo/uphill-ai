@@ -18,13 +18,76 @@ function extractSection(description: string, keyword: string): string | null {
   return value ? value : null;
 }
 
+// A sentence that names sets alongside reps or a duration reads as a
+// structured exercise prescription (e.g. "Perform 2 sets of 10 repetitions
+// of bodyweight Squats with 60 seconds of rest between sets.") rather than
+// ordinary prose — used to rescue exercise breakdowns the model misplaced
+// outside the Process section (most often appended after Warning).
+function looksLikeExercisePrescription(sentence: string): boolean {
+  const hasSets = /\b\d+\s*sets?\b/i.test(sentence);
+  const hasRepsOrDuration =
+    /\b(reps?|repetitions?)\b/i.test(sentence) || /\b\d+[\s-]*seconds?\b/i.test(sentence);
+  return hasSets && hasRepsOrDuration;
+}
+
+function splitOutExerciseSentences(text: string): { exercises: string[]; remainder: string } {
+  const sentences = text
+    .split(/(?<=[.!?])\s+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const exercises: string[] = [];
+  const remainder: string[] = [];
+  for (const s of sentences) {
+    if (looksLikeExercisePrescription(s)) {
+      exercises.push(s.replace(/\.$/, ""));
+    } else {
+      remainder.push(s);
+    }
+  }
+  return { exercises, remainder: remainder.join(" ").trim() };
+}
+
 export function extractDescriptionSections(description: string): DescriptionSections {
-  return {
+  let process = extractSection(description, "Process");
+  const raw = {
     overall: extractSection(description, "Overall"),
-    process: extractSection(description, "Process"),
     reason: extractSection(description, "Reason"),
     benefit: extractSection(description, "Benefit"),
     warning: extractSection(description, "Warning"),
+  };
+
+  // Rescue any exercise-prescription sentence that landed in the wrong
+  // section (typically Warning) and fold it into Process's main portion,
+  // so Main Set shows the actual exercises instead of a vague placeholder
+  // like "Perform the bodyweight strength circuit for 20 minutes."
+  const rescued: string[] = [];
+  const cleaned = { ...raw };
+  for (const key of Object.keys(raw) as (keyof typeof raw)[]) {
+    const value = raw[key];
+    if (!value) continue;
+    const { exercises, remainder } = splitOutExerciseSentences(value);
+    if (exercises.length > 0) {
+      rescued.push(...exercises);
+      cleaned[key] = remainder || null;
+    }
+  }
+
+  if (rescued.length > 0) {
+    const steps = parseExecutionSteps(process || "");
+    const mainHasNamedExercise = steps.mainSteps.some(looksLikeExercisePrescription);
+    if (!mainHasNamedExercise) {
+      process = [steps.warmup, ...rescued, steps.cooldown].filter(Boolean).join(" → ");
+    } else if (!process) {
+      process = rescued.join(" → ");
+    }
+  }
+
+  return {
+    overall: cleaned.overall,
+    process,
+    reason: cleaned.reason,
+    benefit: cleaned.benefit,
+    warning: cleaned.warning,
   };
 }
 

@@ -53,6 +53,38 @@ describe("extractDescriptionSections", () => {
       warning: null,
     });
   });
+
+  it("rescues exercise prescriptions the model misplaced after Warning into Process", () => {
+    const description =
+      "Process: Warm-up with gentle floor mobility movements for 5 minutes → " +
+      "Perform the bodyweight mobility strength circuit for 20 minutes → " +
+      "Cool-down with passive stretching for 5 minutes. " +
+      "Overall: A low-load, bodyweight strength session. " +
+      "Reason: Placed on Thursday to avoid extra fatigue. " +
+      "Benefit: Encourages pelvic stability. " +
+      "Warning: Focus strictly on slow, controlled movement with perfect posture. " +
+      "Perform 2 sets of 10 repetitions of bodyweight Squats with 60 seconds of rest between sets. " +
+      "Perform 2 sets of 30-second Planks with 45 seconds of rest between sets.";
+
+    const sections = extractDescriptionSections(description);
+
+    expect(sections.process).toBe(
+      "Warm-up with gentle floor mobility movements for 5 minutes → " +
+        "Perform 2 sets of 10 repetitions of bodyweight Squats with 60 seconds of rest between sets → " +
+        "Perform 2 sets of 30-second Planks with 45 seconds of rest between sets → " +
+        "Cool-down with passive stretching for 5 minutes."
+    );
+    expect(sections.warning).toBe("Focus strictly on slow, controlled movement with perfect posture.");
+  });
+
+  it("leaves Process and Warning untouched when Warning has no exercise prescriptions", () => {
+    const description =
+      "Process: Warm up 10 min easy → 20 min @ tempo pace → cool down 10 min.\n" +
+      "Warning: Stop if calf tightness returns.";
+    const sections = extractDescriptionSections(description);
+    expect(sections.process).toBe("Warm up 10 min easy → 20 min @ tempo pace → cool down 10 min.");
+    expect(sections.warning).toBe("Stop if calf tightness returns.");
+  });
 });
 
 describe("parseExecutionSteps", () => {
