@@ -1122,7 +1122,6 @@ label {
   }
   .content-panel.chat-panel-active {
     padding: 0px;
-    padding-bottom: calc(90px + env(safe-area-inset-bottom));
   }
   .content-panel-inner {
     padding: 12px 16px;
