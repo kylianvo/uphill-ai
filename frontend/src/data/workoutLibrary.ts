@@ -167,6 +167,16 @@ export function getWorkoutInfo(title: string, type: string): WorkoutInfo | null 
   return null;
 }
 
+// Zone 1-5 colors, reusing the same blue-green-amber-orange-red progression
+// already used across the app (RPE_DESCRIPTORS, workout-type colors below).
+export const ZONE_NUMBER_COLORS: Record<1 | 2 | 3 | 4 | 5, string> = {
+  1: "#3b82f6",
+  2: "#10b981",
+  3: "#f59e0b",
+  4: "#f97316",
+  5: "#ef4444",
+};
+
 export function getZoneColor(targetZone: string, title: string, type: string): string {
   const info = getWorkoutInfo(title, type);
   if (info) return info.color;

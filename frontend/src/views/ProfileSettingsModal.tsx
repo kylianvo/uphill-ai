@@ -4,6 +4,7 @@ import { useAppContext } from "../contexts/AppContext";
 
 import { translations } from "../app/translations";
 import { usePaceZones } from "../hooks/usePaceZones";
+import { ZONE_NUMBER_COLORS } from "../data/workoutLibrary";
 import { X, User, Heartbeat, Watch, SignOut, Warning } from '@phosphor-icons/react';
 
 export default function ProfileSettingsModal() {
@@ -945,6 +946,7 @@ export default function ProfileSettingsModal() {
 
 
                   <input type="number" style={inputStyle} value={profileForm.aet_hr} onChange={e => setProfileForm({ ...profileForm, aet_hr: e.target.value })} required />
+                  <p style={{ fontSize: "11px", color: "var(--text-muted)", margin: "4px 0 0 0" }}>{t("profile_aet_hint")}</p>
 
 
 
@@ -977,6 +979,7 @@ export default function ProfileSettingsModal() {
 
 
                   <input type="number" style={inputStyle} value={profileForm.ant_hr} onChange={e => setProfileForm({ ...profileForm, ant_hr: e.target.value })} required />
+                  <p style={{ fontSize: "11px", color: "var(--text-muted)", margin: "4px 0 0 0" }}>{t("profile_ant_hint")}</p>
 
 
 
@@ -1060,12 +1063,27 @@ export default function ProfileSettingsModal() {
 
                 <div style={{ marginTop: "12px" }}>
                   <label style={labelStyle}>{lang === "en" ? "Your Training Zones" : "Your Training Zones"}</label>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "13px", color: "var(--text-secondary)" }}>
-                    <div>{lang === "en" ? "Zone 1 (Recovery):" : "Zone 1 (Recovery):"} {paceZones ? `${paceZones.zone1_pace} /km` : "—"}</div>
-                    <div>{lang === "en" ? "Zone 2 (Easy):" : "Zone 2 (Easy):"} {paceZones ? `${paceZones.zone2_pace} /km` : "—"}</div>
-                    <div>{lang === "en" ? "Zone 3 (Tempo):" : "Zone 3 (Tempo):"} {paceZones ? `${paceZones.zone3_pace} /km` : "—"}</div>
-                    <div>{lang === "en" ? "Zone 4 (Threshold):" : "Zone 4 (Threshold):"} {paceZones ? `${paceZones.zone4_pace} /km` : "—"}</div>
-                    <div>{lang === "en" ? "Zone 5 (Interval):" : "Zone 5 (Interval):"} {paceZones ? `${paceZones.zone5_pace} /km` : "—"}</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "6px" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 10px", borderRadius: "8px", background: `${ZONE_NUMBER_COLORS[1]}14`, borderLeft: `3px solid ${ZONE_NUMBER_COLORS[1]}` }}>
+                      <span style={{ fontSize: "12px", fontWeight: 700, color: ZONE_NUMBER_COLORS[1] }}>{lang === "en" ? "Zone 1 (Recovery)" : "Zone 1 (Recovery)"}</span>
+                      <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)" }}>{paceZones ? `${paceZones.zone1_pace} /km` : "—"}</span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 10px", borderRadius: "8px", background: `${ZONE_NUMBER_COLORS[2]}14`, borderLeft: `3px solid ${ZONE_NUMBER_COLORS[2]}` }}>
+                      <span style={{ fontSize: "12px", fontWeight: 700, color: ZONE_NUMBER_COLORS[2] }}>{lang === "en" ? "Zone 2 (Easy)" : "Zone 2 (Easy)"}</span>
+                      <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)" }}>{paceZones ? `${paceZones.zone2_pace} /km` : "—"}</span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 10px", borderRadius: "8px", background: `${ZONE_NUMBER_COLORS[3]}14`, borderLeft: `3px solid ${ZONE_NUMBER_COLORS[3]}` }}>
+                      <span style={{ fontSize: "12px", fontWeight: 700, color: ZONE_NUMBER_COLORS[3] }}>{lang === "en" ? "Zone 3 (Tempo)" : "Zone 3 (Tempo)"}</span>
+                      <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)" }}>{paceZones ? `${paceZones.zone3_pace} /km` : "—"}</span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 10px", borderRadius: "8px", background: `${ZONE_NUMBER_COLORS[4]}14`, borderLeft: `3px solid ${ZONE_NUMBER_COLORS[4]}` }}>
+                      <span style={{ fontSize: "12px", fontWeight: 700, color: ZONE_NUMBER_COLORS[4] }}>{lang === "en" ? "Zone 4 (Threshold)" : "Zone 4 (Threshold)"}</span>
+                      <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)" }}>{paceZones ? `${paceZones.zone4_pace} /km` : "—"}</span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 10px", borderRadius: "8px", background: `${ZONE_NUMBER_COLORS[5]}14`, borderLeft: `3px solid ${ZONE_NUMBER_COLORS[5]}` }}>
+                      <span style={{ fontSize: "12px", fontWeight: 700, color: ZONE_NUMBER_COLORS[5] }}>{lang === "en" ? "Zone 5 (Interval)" : "Zone 5 (Interval)"}</span>
+                      <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)" }}>{paceZones ? `${paceZones.zone5_pace} /km` : "—"}</span>
+                    </div>
                   </div>
                 </div>
 
