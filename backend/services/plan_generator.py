@@ -110,6 +110,15 @@ class PlanGenerator:
         }
 
     @staticmethod
+    def _warmup_cooldown_minutes(total_minutes: float) -> tuple[int, int]:
+        """Proportional warm-up/cool-down minutes (20% of total each, clamped
+        to 3-10 min) for a rule-based fallback session description. Used so
+        the stated Process minutes always sum to the day's actual
+        duration_minutes instead of a fixed value that ignores it."""
+        wc = min(10, max(3, round(round(total_minutes) * 0.2)))
+        return wc, wc
+
+    @staticmethod
     def pace_and_distance_for_zone(zone: str, duration_minutes: float, est_zones: dict[str, str]) -> tuple[str, float]:
         """Maps a target_zone label to its display pace range and computed distance_km."""
         zone_lower = (zone or "").lower()
@@ -509,9 +518,12 @@ class PlanGenerator:
                 "   - `distance_km` (number: estimated distance in kilometers. Calculate this as duration_minutes / (target_pace in decimal minutes), e.g. 60 mins at 6:00/km is 10.0 km)\n"
                 "   - `description` (string: highly detailed description containing specific sections: "
                 "Process (step-by-step execution using → to separate phases, e.g. 'Warm up 10 min easy → "
-                "4 x 6min @ Zone 4, 2min jog recovery → cool down 10 min'; for Strength/Muscular Endurance "
-                "workouts, state exact sets x reps or duration and rest interval per exercise; for Interval "
-                "workouts, state exact rep count, distance or duration per rep, and recovery between reps), "
+                "4 x 6min @ Zone 4, 2min jog recovery → cool down 10 min'; the warm-up, main, and cool-down "
+                "minutes stated MUST sum exactly to duration_minutes; for Strength/Muscular Endurance "
+                "workouts, state exact sets x reps or duration and rest interval per exercise, with EACH "
+                "exercise as its own separate sentence — never combine multiple exercises into one "
+                "comma-separated sentence; for Interval workouts, state exact rep count, distance or "
+                "duration per rep, and recovery between reps), "
                 "Overall (summary of the session), Reason (why it is scheduled now), Benefit (expected "
                 "physiological adaptation), and Warning (any injury risks or precautions). Provide extensive context.)\n"
                 "   - `fueling_tip` (string: hydration, carbohydrate, and electrolyte guides specific to duration/intensity)\n"
@@ -550,8 +562,10 @@ class PlanGenerator:
                 "title (string), type (Easy/Tempo/Interval/Long Run/Strength/Rest/Race/Recovery/Muscular Endurance), "
                 "duration_minutes (number), target_zone (Zone 1-5), target_hr_range (e.g. '125-140 bpm'), "
                 "target_pace (e.g. '6:00 /km'), distance_km (= duration_minutes / pace, decimal min/km), "
-                "description (detailed: Process uses → between phases; Strength/ME state exact sets/reps/rest; "
-                "Intervals state exact reps/distance-or-duration/recovery; plus Overall/Reason/Benefit/Warning), "
+                "description (detailed: Process uses → between phases, minutes must sum to duration_minutes; "
+                "Strength/ME state exact sets/reps/rest per exercise, ONE exercise per sentence (never comma-list "
+                "multiple exercises in one sentence); Intervals state exact reps/distance-or-duration/recovery; "
+                "plus Overall/Reason/Benefit/Warning), "
                 "fueling_tip (string), "
                 "treadmill_incline/treadmill_speed (optional numbers, treadmill only), "
                 "session_slot ('morning'/'afternoon' on double-session days only, omit otherwise).\n\n"
@@ -748,7 +762,21 @@ class PlanGenerator:
                 zone = "Zone 4"
                 hr_range = z4_range
                 pace = f"{p_z4} /km"
-                desc = "Warmup 10m. Repeat 4x3 minutes at Zone 4 effort. Recover with 2 minutes light jog between."
+                # Reps/recovery fixed; warmup+cooldown scale with the day's
+                # actual duration, and cooldown absorbs any rounding
+                # remainder so the stated minutes always sum to wed_dur.
+                total_dur = round(wed_dur)
+                warmup, cooldown = PlanGenerator._warmup_cooldown_minutes(total_dur)
+                main_minutes = max(6, total_dur - warmup - cooldown)
+                reps = 4
+                recovery_per_gap = 2
+                work_per_rep = max(1, round((main_minutes - (reps - 1) * recovery_per_gap) / reps))
+                main_actual = reps * work_per_rep + (reps - 1) * recovery_per_gap
+                cooldown = max(1, cooldown + (main_minutes - main_actual))
+                desc = (
+                    f"Warmup {warmup}m. Repeat {reps}x{work_per_rep} minutes at Zone 4 effort. "
+                    f"Recover with {recovery_per_gap} minutes light jog between. Cooldown {cooldown}m."
+                )
                 fuel_tip = "High intensity workout: Consume a fast-absorbing energy gel 15 minutes before starting."
             else:
                 title = "Aerobic Tempo Session"
@@ -756,7 +784,13 @@ class PlanGenerator:
                 zone = "Zone 3"
                 hr_range = z3_range
                 pace = f"{p_z3} /km"
-                desc = "Warmup 10m. Run at moderate tempo pace (Zone 3) for 20-30 minutes. Cooldown 10m."
+                # Warmup/cooldown scale with the day's actual duration; main
+                # is the exact remainder, so the stated minutes always sum
+                # to wed_dur.
+                total_dur = round(wed_dur)
+                warmup, cooldown = PlanGenerator._warmup_cooldown_minutes(total_dur)
+                main_minutes = max(5, total_dur - warmup - cooldown)
+                desc = f"Warmup {warmup}m. Run at moderate tempo pace (Zone 3) for {main_minutes} minutes. Cooldown {cooldown}m."
                 fuel_tip = "Consume electrolytes during the workout. Take 1 gel mid-session."
 
             workouts.append(
@@ -951,7 +985,7 @@ class PlanGenerator:
                     else:
                         title = "Active Recovery Walk"
                         w_type = "Recovery"
-                        desc = "Restorative 30-minute light walk or hike on soft trail."
+                        desc = f"Restorative {round(sun_dur)}-minute light walk or hike on soft trail."
                         fuel_tip = "Recovery focus. Drink water."
                 else:
                     title = "Core & Hip Stability"
@@ -989,10 +1023,11 @@ class PlanGenerator:
                 "No running. Focus on full-body mobility, gentle stretching, and hydration.": "Không chạy. Tập trung vào vận động khớp toàn thân, giãn cơ nhẹ nhàng và bổ sung nước.",
                 "Eat high-protein, nutrient-dense foods to rebuild muscle tissues.": "Ăn thực phẩm giàu protein, giàu dinh dưỡng để tái tạo mô cơ.",
                 "Aerobic Power Intervals": "Bài tập Interval sức mạnh hiếu khí",
-                "Warmup 10m. Repeat 4x3 minutes at Zone 4 effort. Recover with 2 minutes light jog between.": "Khởi động 10 phút. Lặp lại 4 lần 3 phút ở mức nỗ lực Zone 4. Đi bộ hoặc chạy nhẹ phục hồi 2 phút giữa các tổ.",
+                # Note: the Interval/Tempo Process descriptions now embed
+                # dynamic warmup/main/cooldown minutes (see t_str's regex
+                # substitutions below) instead of a fixed exact string.
                 "High intensity workout: Consume a fast-absorbing energy gel 15 minutes before starting.": "Bài tập cường độ cao: Nạp 1 gel năng lượng hấp thu nhanh 15 phút trước khi bắt đầu.",
                 "Aerobic Tempo Session": "Bài chạy Aerobic Tempo",
-                "Warmup 10m. Run at moderate tempo pace (Zone 3) for 20-30 minutes. Cooldown 10m.": "Khởi động 10 phút. Chạy ở tốc độ tempo vừa phải (Zone 3) trong 20-30 phút. Thả lỏng 10 phút.",
                 "Consume electrolytes during the workout. Take 1 gel mid-session.": "Bổ sung điện giải trong khi chạy. Nạp 1 gel năng lượng ở giữa buổi.",
                 "Easy Recovery Spin or Walk": "Đạp xe nhẹ phục hồi hoặc đi bộ",
                 "30-minute light walk, swim, or easy spin. Keep heart rate strictly in Zone 1.": "30 phút đi bộ nhẹ, bơi hoặc đạp xe nhẹ nhàng. Giữ nhịp tim nghiêm ngặt trong Zone 1.",
@@ -1030,7 +1065,9 @@ class PlanGenerator:
                 "Find a steep 10-15% grade hill. 6-8x repeats of 30 seconds explosive hill bounds. Walk down recovery.": "Tìm một ngọn dốc đứng 10-15%. Thực hiện 6-8 lần lặp lại nhảy dốc bùng nổ trong 30 giây. Đi bộ xuống dốc để phục hồi.",
                 "Intense muscle breakdown: Consume 25g protein within 30 minutes of finishing.": "Cơ bắp hoạt động cường độ cao: Nạp 25g protein trong vòng 30 phút sau khi tập xong.",
                 "Active Recovery Walk": "Đi bộ phục hồi chủ động",
-                "Restorative 30-minute light walk or hike on soft trail.": "Đi bộ phục hồi nhẹ nhàng 30 phút trên đường trail mềm.",
+                # Note: this description now embeds a dynamic minute count
+                # (see t_str's regex substitutions below) instead of a fixed
+                # exact string.
                 "Recovery focus. Drink water.": "Tập trung phục hồi. Uống nước.",
                 "Core & Hip Stability": "Bài tập Ổn định hông & Cơ trọng tâm",
                 "Focus on glute activation, hip bridges, side planks, and calf raises. Essential for road injury prevention.": "Tập trung vào kích hoạt cơ mông, tư thế cây cầu (hip bridges), plank nghiêng (side planks), và nhón gót (calf raises). Cần thiết để phòng ngừa chấn thương khi chạy đường bằng.",
@@ -1087,6 +1124,26 @@ class PlanGenerator:
                         "Find a steep 10-15% grade hill simulating your event. 8-10x repeats of 30 seconds explosive hill bounds to handle the",
                         "Tìm một ngọn dốc đứng 10-15% mô phỏng sự kiện của bạn. Lặp lại 8-10 lần 30 giây nhảy dốc bùng nổ để chịu đựng",
                     ).replace("of race vertical. Walk down recovery.", "độ dốc của cuộc đua. Đi bộ xuống để phục hồi.")
+                # Dynamic Tempo/Interval/Taper-walk descriptions (see
+                # _warmup_cooldown_minutes) embed minute counts that scale
+                # with the day's duration -- translate around the numbers.
+                s = _re.sub(
+                    r"Warmup (\d+)m\. Run at moderate tempo pace \(Zone 3\) for (\d+) minutes\. Cooldown (\d+)m\.",
+                    r"Khởi động \1 phút. Chạy ở tốc độ tempo vừa phải (Zone 3) trong \2 phút. Thả lỏng \3 phút.",
+                    s,
+                )
+                s = _re.sub(
+                    r"Warmup (\d+)m\. Repeat (\d+)x(\d+) minutes at Zone 4 effort\. "
+                    r"Recover with (\d+) minutes light jog between\. Cooldown (\d+)m\.",
+                    r"Khởi động \1 phút. Lặp lại \2 lần \3 phút ở mức nỗ lực Zone 4. "
+                    r"Đi bộ hoặc chạy nhẹ phục hồi \4 phút giữa các tổ. Thả lỏng \5 phút.",
+                    s,
+                )
+                s = _re.sub(
+                    r"Restorative (\d+)-minute light walk or hike on soft trail\.",
+                    r"Đi bộ phục hồi nhẹ nhàng \1 phút trên đường trail mềm.",
+                    s,
+                )
                 return s
 
             for wo in workouts:

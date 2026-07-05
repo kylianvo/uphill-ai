@@ -6,6 +6,10 @@ minutes conversions are a classic off-by-format bug class, the same flavor
 as the plan_start_date regression this suite exists to catch.
 """
 
+import re
+
+import pytest
+
 from services.plan_generator import PlanGenerator
 
 
@@ -183,3 +187,167 @@ class TestPaceAndDistanceForZone:
         est_zones = PlanGenerator.estimate_pace_zones("6:30", "5:45")
         pace, _ = PlanGenerator.pace_and_distance_for_zone("zone 5", 20.0, est_zones)
         assert pace == f"{est_zones['zone5_pace']} /km"
+
+
+class TestWarmupCooldownMinutes:
+    def test_clamps_to_a_3_to_10_minute_range(self):
+        # 20% of 10 = 2, clamped up to the 3-minute floor.
+        assert PlanGenerator._warmup_cooldown_minutes(10) == (3, 3)
+        # 20% of 100 = 20, clamped down to the 10-minute ceiling.
+        assert PlanGenerator._warmup_cooldown_minutes(100) == (10, 10)
+
+    def test_scales_proportionally_within_the_clamp_range(self):
+        # 20% of 30 = 6, within [3, 10].
+        assert PlanGenerator._warmup_cooldown_minutes(30) == (6, 6)
+
+
+class TestRuleBasedFallbackDescriptionConsistency:
+    """Regression tests: the rule-based fallback generator (used when
+    NotebookLM/Gemini are both unavailable) used to hardcode Process minutes
+    that never matched the day's actual computed duration_minutes -- e.g. a
+    Tempo day always said "20-30 minutes" regardless of whether that day's
+    duration_minutes was 18 or 50. Now the stated minutes must always sum
+    exactly to duration_minutes.
+    """
+
+    TEMPO_RE = re.compile(
+        r"Warmup (\d+)m\. Run at moderate tempo pace \(Zone 3\) for (\d+) minutes\. Cooldown (\d+)m\."
+    )
+    INTERVAL_RE = re.compile(
+        r"Warmup (\d+)m\. Repeat (\d+)x(\d+) minutes at Zone 4 effort\. "
+        r"Recover with (\d+) minutes light jog between\. Cooldown (\d+)m\."
+    )
+    TAPER_WALK_RE = re.compile(r"Restorative (\d+)-minute light walk or hike on soft trail\.")
+
+    @pytest.mark.asyncio
+    async def test_wednesday_and_sunday_descriptions_sum_to_duration_minutes(self, monkeypatch):
+        # Force the rule-based fallback deterministically and without any
+        # network calls -- don't rely on the environment's real NotebookLM/
+        # Gemini config (whatever it happens to be) to land here.
+        from config import settings
+
+        monkeypatch.setattr(settings, "NOTEBOOKLM_NOTEBOOK_ID", "")
+        monkeypatch.setattr(settings, "NOTEBOOKLM_AUTH_JSON", "")
+
+        user_profile = {
+            "age": 30,
+            "max_hr": 185,
+            "resting_hr": 60,
+            "aet_hr": 135,
+            "ant_hr": 165,
+            "current_weekly_km": 40.0,
+            "zone2_pace_min": "6:30",
+            "zone2_pace_max": "5:45",
+        }
+        race_info = {"name": "Test Race", "goal_type": "finish", "terrain": "trail"}
+
+        # 8 weeks in one block: Base(1-2)/Build(3-4)/Peak(5)/Taper(6)/Race Week(7)/Recovery(8)
+        # -- week 5 (odd) exercises the Tempo branch, week 6 (even) exercises
+        # both the Interval branch and the Sunday Taper "Active Recovery Walk".
+        workouts = await PlanGenerator.generate_plan_workouts(
+            plan_id=1,
+            user_profile=user_profile,
+            race_info=race_info,
+            total_weeks=8,
+            api_key=None,  # no Gemini key either -- guarantees the rule-based path
+            block_number=1,
+            weeks_per_block=8,
+        )
+
+        checked = {"tempo": 0, "interval": 0, "taper_walk": 0}
+        for wo in workouts:
+            desc = wo.get("description") or ""
+            duration = wo["duration_minutes"]
+
+            m = self.TEMPO_RE.match(desc)
+            if m:
+                warmup, main, cooldown = (int(g) for g in m.groups())
+                assert warmup + main + cooldown == duration, f"Tempo desc {desc!r} != duration {duration}"
+                checked["tempo"] += 1
+                continue
+
+            m = self.INTERVAL_RE.match(desc)
+            if m:
+                warmup, reps, work_per_rep, recovery, cooldown = (int(g) for g in m.groups())
+                total = warmup + reps * work_per_rep + (reps - 1) * recovery + cooldown
+                assert total == duration, f"Interval desc {desc!r} != duration {duration}"
+                checked["interval"] += 1
+                continue
+
+            m = self.TAPER_WALK_RE.match(desc)
+            if m:
+                assert int(m.group(1)) == duration, f"Taper walk desc {desc!r} != duration {duration}"
+                checked["taper_walk"] += 1
+
+        assert checked["tempo"] > 0, "no Tempo-session description matched the expected format"
+        assert checked["interval"] > 0, "no Interval-session description matched the expected format"
+        assert checked["taper_walk"] > 0, "no Taper Active-Recovery-Walk description matched the expected format"
+
+    VI_TEMPO_RE = re.compile(
+        r"Khởi động (\d+) phút\. Chạy ở tốc độ tempo vừa phải \(Zone 3\) trong (\d+) phút\. Thả lỏng (\d+) phút\."
+    )
+    VI_INTERVAL_RE = re.compile(
+        r"Khởi động (\d+) phút\. Lặp lại (\d+) lần (\d+) phút ở mức nỗ lực Zone 4\. "
+        r"Đi bộ hoặc chạy nhẹ phục hồi (\d+) phút giữa các tổ\. Thả lỏng (\d+) phút\."
+    )
+    VI_TAPER_WALK_RE = re.compile(r"Đi bộ phục hồi nhẹ nhàng (\d+) phút trên đường trail mềm\.")
+
+    @pytest.mark.asyncio
+    async def test_vietnamese_translation_keeps_the_dynamic_minutes_consistent(self, monkeypatch):
+        from config import settings
+
+        monkeypatch.setattr(settings, "NOTEBOOKLM_NOTEBOOK_ID", "")
+        monkeypatch.setattr(settings, "NOTEBOOKLM_AUTH_JSON", "")
+
+        user_profile = {
+            "age": 30,
+            "max_hr": 185,
+            "resting_hr": 60,
+            "aet_hr": 135,
+            "ant_hr": 165,
+            "current_weekly_km": 40.0,
+            "zone2_pace_min": "6:30",
+            "zone2_pace_max": "5:45",
+        }
+        race_info = {"name": "Test Race", "goal_type": "finish", "terrain": "trail", "lang": "vi"}
+
+        workouts = await PlanGenerator.generate_plan_workouts(
+            plan_id=1,
+            user_profile=user_profile,
+            race_info=race_info,
+            total_weeks=8,
+            api_key=None,
+            block_number=1,
+            weeks_per_block=8,
+        )
+
+        checked = {"tempo": 0, "interval": 0, "taper_walk": 0}
+        for wo in workouts:
+            desc = wo.get("description") or ""
+            duration = wo["duration_minutes"]
+
+            m = self.VI_TEMPO_RE.match(desc)
+            if m:
+                warmup, main, cooldown = (int(g) for g in m.groups())
+                assert warmup + main + cooldown == duration, f"vi Tempo desc {desc!r} != duration {duration}"
+                checked["tempo"] += 1
+                continue
+
+            m = self.VI_INTERVAL_RE.match(desc)
+            if m:
+                warmup, reps, work_per_rep, recovery, cooldown = (int(g) for g in m.groups())
+                total = warmup + reps * work_per_rep + (reps - 1) * recovery + cooldown
+                assert total == duration, f"vi Interval desc {desc!r} != duration {duration}"
+                checked["interval"] += 1
+                continue
+
+            m = self.VI_TAPER_WALK_RE.match(desc)
+            if m:
+                assert int(m.group(1)) == duration, f"vi Taper walk desc {desc!r} != duration {duration}"
+                checked["taper_walk"] += 1
+
+        assert checked["tempo"] > 0, "no Vietnamese Tempo-session description matched the expected format"
+        assert checked["interval"] > 0, "no Vietnamese Interval-session description matched the expected format"
+        assert (
+            checked["taper_walk"] > 0
+        ), "no Vietnamese Taper Active-Recovery-Walk description matched the expected format"
