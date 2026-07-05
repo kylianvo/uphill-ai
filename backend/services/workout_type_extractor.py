@@ -162,8 +162,7 @@ You are structuring training knowledge into workout type descriptions for a trai
 
 The source material is from "Training for the Uphill Athlete" podcasts and books by Scott Johnston and Kilian Jornet.
 
-Convert the following NotebookLM response into a structured JSON object for workout type: "{display_name}"
-
+OUTPUT CONTRACT: Return ONLY a valid JSON object. NEVER include markdown fences or explanation.
 The JSON MUST have exactly these fields:
 - "type_key": "{type_key}" (use exactly this value)
 - "display_name": "{display_name}" (use exactly this value)
@@ -174,26 +173,27 @@ The JSON MUST have exactly these fields:
 - "benefit": 2-3 sentences on the specific physiological adaptations this workout produces. Be precise (e.g. "raises lactate threshold", "builds mitochondrial density").
 - "warning": 1-3 sentences on the most important mistake or risk with this workout type. Be direct.
 
+NEVER add a fact, statistic, or claim that isn't grounded in the source content below — restructure it, don't extend it.
+
+Convert the following NotebookLM response into the JSON object above for workout type: "{display_name}"
+
 Source content:
 {source_text}
-
-Output ONLY a valid JSON object. No markdown, no explanation, no code fences.
 """
 
 TRANSLATE_PROMPT = """
 You are an expert sports translator. Translate the following workout type description into Vietnamese.
 
+OUTPUT CONTRACT: Return ONLY a JSON object with the EXACT same keys as the input. NEVER wrap it in markdown code blocks.
+
 Rules:
 1. Technical terms MUST remain in English: Zone 1, Zone 2, Zone 3, Zone 4, Zone 5, RPE, HR, AeT, AnT, Pace, VO2max, ME, HIIT, GPS.
-2. The output MUST be a valid JSON object with the EXACT same keys.
-3. "type_key", "zone", and "color" MUST remain unchanged (English/hex).
-4. "display_name" should be translated or kept if it's a standard term (e.g. "Tempo Run" stays as "Tempo Run").
-5. Translations must sound natural and professional for a Vietnamese trail running audience.
+2. "type_key", "zone", and "color" MUST remain unchanged (English/hex).
+3. "display_name" should be translated, or kept if it's a standard term (e.g. "Tempo Run" stays as "Tempo Run").
+4. Translations MUST sound natural and professional for a Vietnamese trail running audience — NEVER a literal word-for-word translation.
 
 Object to translate:
 {source_json}
-
-Return ONLY the JSON object. No markdown code blocks.
 """
 
 

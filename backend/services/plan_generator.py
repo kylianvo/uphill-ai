@@ -269,6 +269,7 @@ class PlanGenerator:
 
         # Build shared AI prompt (used by both NotebookLM and Gemini paths)
         _ai_prompt = None
+        _nb_prompt = None
         try:
             scheduling_notes = ""
             all_days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
@@ -403,14 +404,19 @@ class PlanGenerator:
                 week_schedule_constraints = ""
 
             total_blocks = (total_weeks + weeks_per_block - 1) // weeks_per_block
-            block_instruction = (
+            block_scope_instruction = (
                 f"\nSEQUENTIAL BLOCK GENERATION:\n"
                 f"This plan spans {total_weeks} weeks total, generated in {total_blocks} blocks of {weeks_per_block} weeks each.\n"
                 f"Generate ONLY Block {block_number} of {total_blocks}: weeks {block_start_week} through {block_end_week}.\n"
                 f"CRITICAL: Every workout `week_number` MUST be between {block_start_week} and {block_end_week} (inclusive). Do NOT output week numbers outside this range.\n"
             )
+            # Kept separate from block_scope_instruction (and placed last in the final prompt below):
+            # this is free-text athlete feedback of unbounded length, and NotebookLM truncates the
+            # full prompt at ~3800 chars — the schema and hard constraints must survive truncation
+            # even if this section gets cut off.
+            feedback_instruction = ""
             if block_context:
-                block_instruction += (
+                feedback_instruction = (
                     f"\nATHLETE FEEDBACK FROM PREVIOUS BLOCKS:\n{block_context}\n"
                     "CRITICAL — adjust this block based on feedback above:\n"
                     "  • RPE ≥ 8: reduce weekly volume by 10-15% AND drop one quality session to easy running.\n"
@@ -433,22 +439,19 @@ class PlanGenerator:
                     f"{', '.join(_all_days[_start_idx:])}.\n"
                 )
 
+            lang_rule = (
+                "\n5. CRITICAL: All workout text fields, including 'title', 'description', and 'fueling_tip', MUST be written in Vietnamese."
+                if lang == "vi"
+                else ""
+            )
+
             _ai_prompt = (
                 "You are a world-class running coach training athletes based on the 'Training for the Uphill Athlete' philosophy.\n"
                 f"{goal_intro}\n\n"
-                f"Athlete Profile:\n{user_summary}\n\n"
-                f"{program_details}"
-                f"Plan Start Date: {current_date_str} ({current_weekday})\n"
-                f"{target_date_details}"
-                f"Full Plan Length: {total_weeks} weeks.\n"
-                f"- Week 1 starts on: {current_date_str} ({current_weekday}).\n"
-                f"{_start_date_constraint}"
-                f"{week_schedule_constraints}"
-                f"{block_instruction}\n"
-                "Instructions:\n"
-                "1. Generate workouts for the specified block weeks only. Each week must have structured workouts (typically 4-6 workouts per week). ALWAYS honor the athlete's preferred training days and double-session days from their profile — place Rest workouts on non-preferred days, and produce two workout objects on each double-session day as described above.\n"
-                "2. The schedule must be returned as a JSON array of workout objects. Each workout object must follow this exact schema:\n"
-                "   - `week_number` (integer: MUST be within the block range specified above)\n"
+                "OUTPUT CONTRACT — this is the most important instruction and applies no matter what follows:\n"
+                "You MUST return ONLY a JSON array of workout objects. NEVER wrap it in markdown fences like ```json, "
+                "NEVER add prose before or after it. Each workout object MUST follow this exact schema:\n"
+                "   - `week_number` (integer: MUST be within the block range specified below)\n"
                 "   - `day_of_week` (string: 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')\n"
                 "   - `phase` (string: 'Base', 'Build', 'Peak', 'Taper', 'Race Week', 'Recovery'. IMPORTANT: Follow this exact progression — Base (early weeks) → Build (mid weeks) → Peak (highest intensity week, 1-2 weeks before taper) → Taper (the week immediately before Race Week, reduce volume to ~50%) → Race Week (the week containing the actual race event) → Recovery (final week after the race).)\n"
                 "   - `title` (string: name of workout)\n"
@@ -463,28 +466,84 @@ class PlanGenerator:
                 "   - `treadmill_incline` (number, optional: recommended incline percentage if using treadmill)\n"
                 "   - `treadmill_speed` (number, optional: recommended speed in kph if using treadmill)\n"
                 "   - `session_slot` (string, optional: ONLY set this on double-session days. Use 'morning' for the first/shorter session and 'afternoon' for the main/longer session. Omit entirely for single-session days.)\n\n"
-                "3. Make the plan highly customized. For example, scale long runs, map Sunday Muscular Endurance box steps/weighted step-ups based on the race elevation gain, or specify treadmill incline/speed settings for gym workouts.\n"
-                "4. Output MUST be a valid JSON array matching the schema. Do not include markdown wraps like ```json ... ``` inside the response text, output raw JSON array."
+                f"{block_scope_instruction}"
+                f"{_start_date_constraint}"
+                f"{week_schedule_constraints}"
+                "\nRules:\n"
+                "1. Generate workouts for the specified block weeks only. Each week must have structured workouts (typically 4-6 workouts per week). ALWAYS honor the athlete's preferred training days and double-session days from their profile — place Rest workouts on non-preferred days, and produce two workout objects on each double-session day as described above.\n"
+                "2. Make the plan highly customized. For example, scale long runs, map Sunday Muscular Endurance box steps/weighted step-ups based on the race elevation gain, or specify treadmill incline/speed settings for gym workouts.\n"
+                "3. NEVER invent a physiological claim, exercise, or number beyond what the Uphill Athlete training philosophy implies. If unsure of an exact figure, give a sensible range instead of fabricating false precision.\n"
+                "4. Give the athlete profile and prior feedback below real weight — this plan MUST reflect their specific numbers, schedule, and history, not a generic template.\n"
+                f"{lang_rule}\n\n"
+                f"Athlete Profile:\n{user_summary}\n\n"
+                f"{program_details}"
+                f"Plan Start Date: {current_date_str} ({current_weekday})\n"
+                f"{target_date_details}"
+                f"Full Plan Length: {total_weeks} weeks.\n"
+                f"- Week 1 starts on: {current_date_str} ({current_weekday}).\n"
+                f"{feedback_instruction}"
             )
-            if lang == "vi":
-                _ai_prompt += "\n5. CRITICAL: All workout text fields, including 'title', 'description', and 'fueling_tip', MUST be written in Vietnamese."
+
+            # NotebookLM enforces a strict ~4000-char query limit — too small to fit the full
+            # Gemini prompt above once the schema, athlete profile, and feedback are all present.
+            # Rather than slicing the full prompt at a fixed offset (which risks cutting off
+            # whichever section happens to land near the cutoff — the schema, or the athlete
+            # profile, depending on prompt length), build a distinct, compact prompt with the
+            # same information in terser wording, and only truncate the unbounded, least-critical
+            # trailing section (prior-block feedback) to whatever budget remains.
+            nb_schema_block = (
+                "OUTPUT CONTRACT: Return ONLY a JSON array of workout objects — no markdown fences, no prose.\n"
+                "Each object MUST have: week_number (int, within block range below), day_of_week (Mon-Sun), "
+                "phase (Base→Build→Peak→Taper→Race Week→Recovery, in that exact order; Taper cuts volume ~50%), "
+                "title (string), type (Easy/Tempo/Interval/Long Run/Strength/Rest/Race/Recovery/Muscular Endurance), "
+                "duration_minutes (number), target_zone (Zone 1-5), target_hr_range (e.g. '125-140 bpm'), "
+                "target_pace (e.g. '6:00 /km'), distance_km (= duration_minutes / pace, decimal min/km), "
+                "description (detailed: Process/Overall/Reason/Benefit/Warning sections), fueling_tip (string), "
+                "treadmill_incline/treadmill_speed (optional numbers, treadmill only), "
+                "session_slot ('morning'/'afternoon' on double-session days only, omit otherwise).\n\n"
+            )
+            nb_rules_block = (
+                "Rules: Honor the athlete's preferred training and double-session days below — place Rest on "
+                "non-preferred days, produce two objects on double-session days. Customize scaling to the "
+                "athlete's actual numbers (long runs, ME volume, treadmill settings) instead of a generic "
+                "template. NEVER invent a claim or figure beyond standard Uphill Athlete training principles."
+                f"{lang_rule}\n\n"
+            )
+            _nb_prompt_head = (
+                "You are a world-class running coach training athletes based on the 'Training for the Uphill Athlete' philosophy.\n"
+                f"{goal_intro}\n\n"
+                f"{nb_schema_block}"
+                f"{block_scope_instruction}"
+                f"{_start_date_constraint}"
+                f"{week_schedule_constraints}"
+                f"{nb_rules_block}"
+                f"Athlete Profile:\n{user_summary}\n\n"
+                f"{program_details}"
+                f"Plan Start Date: {current_date_str} ({current_weekday})\n"
+                f"{target_date_details}"
+                f"Full Plan Length: {total_weeks} weeks.\n"
+                f"- Week 1 starts on: {current_date_str} ({current_weekday}).\n"
+            )
+            _NOTEBOOKLM_MAX_CHARS = 3800
+            _nb_feedback_budget = _NOTEBOOKLM_MAX_CHARS - len(_nb_prompt_head)
+            _nb_prompt = _nb_prompt_head + (
+                feedback_instruction[:_nb_feedback_budget] if _nb_feedback_budget > 0 else ""
+            )
+            # Safety net in case the head itself ever exceeds the budget (e.g. unusually long
+            # scheduling notes) — truncate the whole thing rather than send an oversized query.
+            _nb_prompt = _nb_prompt[:_NOTEBOOKLM_MAX_CHARS]
         except Exception as _prompt_ex:
             print(f"[PlanGen] Prompt building failed: {_prompt_ex}. Using rule-based fallback.")
 
-        # NotebookLM has a strict query-size limit (~4000 chars). The full prompt is always sent
-        # to Gemini, but for NotebookLM we cap it so block 2+ (which carry block_context) don't
-        # silently return an empty streaming response.
-        _NOTEBOOKLM_MAX_CHARS = 3800
-        _nb_query = _ai_prompt[:_NOTEBOOKLM_MAX_CHARS] if _ai_prompt else None
+        _nb_query = _nb_prompt
 
         if _nb_query and notebook_id and auth_json:
             try:
                 from services.notebooklm_service import NotebookLmService
 
-                truncated = len(_ai_prompt) > _NOTEBOOKLM_MAX_CHARS
                 print(
-                    f"[PlanGen][NotebookLM] Sending prompt to notebook {notebook_id[:8]}... "
-                    f"({len(_nb_query)} chars{', truncated from ' + str(len(_ai_prompt)) if truncated else ''})"
+                    f"[PlanGen][NotebookLM] Sending compact prompt to notebook {notebook_id[:8]}... "
+                    f"({len(_nb_query)} chars, full Gemini prompt is {len(_ai_prompt)} chars)"
                 )
                 response_text = await NotebookLmService.query_notebook(
                     notebook_id=notebook_id, auth_json=auth_json, query=_nb_query, service="plan_generator"

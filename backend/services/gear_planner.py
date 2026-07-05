@@ -46,28 +46,13 @@ class GearPlannerService:
         terrain_str = ", ".join(params.terrain) if params.terrain else "Not specified"
 
         # Merged Query: Ask NotebookLM to do strict JSON formatting
-        nlm_query = f"""You are an expert running shoe specialist.
-Please search your documents for shoes that match the following specific criteria:
+        nlm_query = f"""You are an expert running shoe specialist searching your documents for shoes that match an athlete's criteria.
 
-- Surface: {params.surface or 'Unknown'}
-- Cushioning: {params.cushioning or 'Any'}
-- Width: {params.width or 'Standard'}
-- Carbon Plate: {params.carbon_plate or 'No preference'}
-- Budget: {params.budget or 'Any'}
-- Trail Terrain (if applicable): {terrain_str}
-- Road Use Case (if applicable): {params.use_case or 'Not specified'}
-- Race Distance (if applicable): {params.race_distance or 'Not specified'}
-- Preferred Brands: {params.preferred_brands or 'Any'}
-- Special Requirements/Context: {params.additional_context or 'None'}
-- Athlete Profile: {params.user_profile or 'Not specified'}
-- Current Training Plan / Goal: {params.active_plan_context or 'Not specified'}
+OUTPUT CONTRACT: You MUST output your response EXACTLY as a valid JSON object matching the schema below. NEVER include markdown formatting (like ```json), conversational filler, or plain text paragraphs outside the JSON.
+NEVER invent a shoe model, spec, or price that isn't in your documents — if you're not confident a detail is accurate, omit that field or say so in "cons" rather than guessing.
+BRAND CONSTRAINT: If "Preferred Brands" below is not empty, every recommendation MUST be from that brand (or brands) only — NEVER substitute a different brand. The ONLY exception: if your documents contain zero matching shoes for the requested brand, say so explicitly in "tips" and then recommend the closest available alternative from your documents.
 
-TASK:
-Return your top 5 shoe recommendations based on these exact criteria.
-You MUST output your response EXACTLY as a valid JSON object.
-DO NOT include any markdown formatting (like ```json), DO NOT include conversational filler, DO NOT include plain text paragraphs outside the JSON.
-The JSON must follow this exact structure:
-
+Schema:
 {{
   "recommendations": [
     {{
@@ -88,6 +73,20 @@ The JSON must follow this exact structure:
     "Short gear tip 2 based on user context"
   ]
 }}
+
+Return your top 5 shoe recommendations matching this exact criteria:
+- Surface: {params.surface or 'Unknown'}
+- Cushioning: {params.cushioning or 'Any'}
+- Width: {params.width or 'Standard'}
+- Carbon Plate: {params.carbon_plate or 'No preference'}
+- Budget: {params.budget or 'Any'}
+- Trail Terrain (if applicable): {terrain_str}
+- Road Use Case (if applicable): {params.use_case or 'Not specified'}
+- Race Distance (if applicable): {params.race_distance or 'Not specified'}
+- Preferred Brands: {params.preferred_brands or 'Any'}
+- Special Requirements/Context: {params.additional_context or 'None'}
+- Athlete Profile: {params.user_profile or 'Not specified'}
+- Current Training Plan / Goal: {params.active_plan_context or 'Not specified'}
 """
 
         nlm_response = ""

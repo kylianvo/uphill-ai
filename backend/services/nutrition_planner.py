@@ -50,31 +50,13 @@ class NutritionPlannerService:
             target_sodium = 1000.0
 
         # 2. Build JSON-structured query
-        nlm_query = f"""You are an expert ultra-endurance nutrition coach.
-Please provide a highly detailed nutrition suggestion based on the following profile and goals:
+        nlm_query = f"""You are an expert ultra-endurance nutrition coach searching your documents for a race nutrition plan.
 
-Race Profile:
-- Distance: {params.distance_km or 'Unknown'} km
-- Elevation Gain: {params.elevation_gain_m or 'Unknown'} m
-- Target Time: {params.target_time_hours or 'Unknown'} hours
-- Weather: {params.weather_temp or 'Unknown'}
-- Athlete Level: {params.athlete_level or 'Unknown'}
-- Preferences: Brands: {params.preferred_brands or 'Any'}, Format: {', '.join(params.preferred_format) if params.preferred_format else 'Any'}
-- Additional Context: {params.additional_context or 'None'}
-- Athlete Profile Details: {params.user_profile or user_profile}
-- Current Active Plan: {params.active_plan_context or 'None'}
+OUTPUT CONTRACT: You MUST output your response EXACTLY as a valid JSON object matching the schema below. NEVER include markdown formatting (like ```json), conversational filler, or plain text outside the JSON. NEVER use emoji icons.
+NEVER invent a product, brand, or macro figure that isn't in your documents — if you're not confident a number is accurate, calculate it from the stated Nutrition Goals below instead of guessing.
+BRAND CONSTRAINT: If "Preferred Brands" below is not empty, every product in "products" MUST be from that brand (or brands) only — NEVER substitute a different brand. The ONLY exception: if your documents contain zero matching products for the requested brand/format, say so explicitly as the first entry in "tips" and then recommend the closest available alternative from your documents.
 
-Nutrition Goals:
-- Target Carbs/Hour: {target_carb}g
-- Target Sodium/Hour: {target_sodium}mg
-
-Please search your documents for specific products matching these brands/formats, calculate the required macros, and suggest a race nutrition plan.
-
-TASK:
-You MUST output your response EXACTLY as a valid JSON object.
-DO NOT include any markdown formatting (like ```json), NO conversational filler, NO plain text outside the JSON.
-The JSON must follow this exact structure:
-
+Schema:
 {{
   "products": [
     {{
@@ -102,7 +84,22 @@ The JSON must follow this exact structure:
   ]
 }}
 
-Focus heavily on {params.preferred_brands or 'any brands'} if specified. Do not use emoji icons.
+Search your documents for specific products matching these brands/formats, calculate the required macros, and suggest a race nutrition plan.
+
+Race Profile:
+- Distance: {params.distance_km or 'Unknown'} km
+- Elevation Gain: {params.elevation_gain_m or 'Unknown'} m
+- Target Time: {params.target_time_hours or 'Unknown'} hours
+- Weather: {params.weather_temp or 'Unknown'}
+- Athlete Level: {params.athlete_level or 'Unknown'}
+- Preferences: Brands: {params.preferred_brands or 'Any'}, Format: {', '.join(params.preferred_format) if params.preferred_format else 'Any'}
+- Additional Context: {params.additional_context or 'None'}
+- Athlete Profile Details: {params.user_profile or user_profile}
+- Current Active Plan: {params.active_plan_context or 'None'}
+
+Nutrition Goals:
+- Target Carbs/Hour: {target_carb}g
+- Target Sodium/Hour: {target_sodium}mg
 """
 
         nlm_response = ""

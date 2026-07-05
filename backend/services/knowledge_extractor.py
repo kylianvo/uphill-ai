@@ -88,10 +88,7 @@ TOPIC_QUERIES = [
 GEMINI_STRUCTURE_PROMPT = """
 You are structuring podcast transcript summaries into knowledge cards for a training app.
 
-Convert the following topic summary into a JSON array of knowledge cards.
-Each card represents one distinct concept, principle, or piece of advice.
-Aim for 3–6 cards from this topic.
-
+OUTPUT CONTRACT: Return ONLY a valid JSON array. NEVER include markdown fences or explanation.
 Each card MUST have exactly these fields:
 - "chapter_title": Short, punchy title (max 8 words, no punctuation at end)
 - "summary": 2–3 sentences explaining the concept clearly
@@ -100,11 +97,12 @@ Each card MUST have exactly these fields:
 - "topic": Exactly one of: Training, Nutrition, Recovery, Pacing, Mindset, Gear
 - "source_label": "Uphill Athlete Podcasts"
 
+Convert the source summary below into 3–6 cards, one per distinct concept, principle, or piece of advice.
+NEVER add a fact, statistic, or claim that isn't present in the source summary — restructure it, don't extend it.
+
 Topic category for this batch: {topic}
 Source summary:
 {source_text}
-
-Output ONLY a valid JSON array. No markdown, no explanation, no code fences.
 """
 
 
@@ -248,18 +246,17 @@ async def translate_cards_to_vi_with_gemini(model, cards: list[dict[str, Any]]) 
         prompt = f"""
 You are an expert sports translator. Translate the following running coaching knowledge card into Vietnamese.
 
+OUTPUT CONTRACT: Return ONLY a JSON object with the exact same keys as the input — "chapter_title", "summary", "key_points", "tags", "topic", "source_label". NEVER wrap it in a markdown code block.
+
 Rules:
 1. Core physiological/running terms ("Zone 2", "AeT", "AnT", "Pace", "Resting HR", "Max HR") MUST remain in English.
-2. The output MUST be a valid JSON object with the exact same structure and keys: "chapter_title", "summary", "key_points", "tags", "topic", "source_label".
-3. Keep the "topic" and "source_label" fields exactly as they are in English.
-4. Keep the "tags" list elements in English.
-5. Start "key_points" bullet points with an active verb in Vietnamese.
-6. The translations must sound natural, professional, and elite-coaching oriented.
+2. Keep the "topic" and "source_label" fields exactly as they are in English.
+3. Keep the "tags" list elements in English.
+4. Start "key_points" bullet points with an active verb in Vietnamese.
+5. Translations MUST sound natural, professional, and elite-coaching oriented — NEVER a literal word-for-word translation.
 
 Card to translate:
 {json.dumps(card, indent=2, ensure_ascii=False)}
-
-Return ONLY the JSON object. Do not include markdown code block (no ```json).
 """
         try:
             # Wrap the blocking generate_content call in an async thread to prevent blocking the async loop
