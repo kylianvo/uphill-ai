@@ -28,6 +28,7 @@ import {
   extractDescriptionSections,
   selectMainSetText,
   buildCoachNotesContent,
+  mainDurationMinutes,
 } from "../utils/workoutDescription";
 
 interface WorkoutCardProps {
@@ -962,12 +963,15 @@ function WorkoutLibrarySection({
     rawDescription
   );
 
+  // Main Set shows only the main portion's duration, not warm-up+main+cool-down.
+  const mainMinutes = mainDurationMinutes(wo.duration_minutes, parseExecutionSteps(executionText));
+
   // Build the "today's target" chips from actual planner values
   const targets: Array<{ label: string; value: string; color: string; icon: React.ReactNode }> = [];
   if (wo.target_zone) targets.push({ label: lang === "en" ? "Zone" : "Vùng", value: wo.target_zone, color: zoneColor, icon: <Lightning size={10} /> });
   if (wo.target_pace?.trim()) targets.push({ label: lang === "en" ? "Pace" : "Pace", value: wo.target_pace, color: zoneColor, icon: <Footprints size={10} /> });
   if (wo.target_hr_range) targets.push({ label: "HR", value: wo.target_hr_range, color: "#ef4444", icon: <Heart size={10} /> });
-  if (wo.duration_minutes > 0) targets.push({ label: lang === "en" ? "Duration" : "Thời gian", value: `${wo.duration_minutes} min`, color: "var(--text-secondary)", icon: <Timer size={10} /> });
+  if (mainMinutes > 0) targets.push({ label: lang === "en" ? "Duration" : "Thời gian", value: `${mainMinutes} min`, color: "var(--text-secondary)", icon: <Timer size={10} /> });
   if (wo.distance_km > 0) targets.push({ label: lang === "en" ? "Distance" : "Khoảng cách", value: `${wo.distance_km} km`, color: "var(--text-secondary)", icon: <MapPin size={10} /> });
 
   return (

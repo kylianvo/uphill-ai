@@ -4,6 +4,8 @@ import {
   parseExecutionSteps,
   selectMainSetText,
   buildCoachNotesContent,
+  extractLeadingMinutes,
+  mainDurationMinutes,
 } from "./workoutDescription";
 
 describe("extractDescriptionSections", () => {
@@ -120,5 +122,42 @@ describe("buildCoachNotesContent", () => {
     const content = buildCoachNotesContent(description);
     expect(content.hasSections).toBe(false);
     expect(content.fallbackText).toBe(description);
+  });
+});
+
+describe("extractLeadingMinutes", () => {
+  it("extracts the first number found in the text", () => {
+    expect(extractLeadingMinutes("15-minute easy Zone 1/2 warm-up.")).toBe(15);
+    expect(extractLeadingMinutes("Warmup 10m.")).toBe(10);
+  });
+
+  it("returns null for text with no number", () => {
+    expect(extractLeadingMinutes("Easy warm-up jog.")).toBeNull();
+  });
+
+  it("returns null for null input", () => {
+    expect(extractLeadingMinutes(null)).toBeNull();
+  });
+});
+
+describe("mainDurationMinutes", () => {
+  it("subtracts parsed warm-up and cool-down minutes from the total", () => {
+    const steps = { warmup: "15-minute easy warm-up.", mainSteps: ["Run tempo."], cooldown: "10-minute cool-down." };
+    expect(mainDurationMinutes(60, steps)).toBe(35);
+  });
+
+  it("falls back to the total when warm-up is missing", () => {
+    const steps = { warmup: null, mainSteps: ["Run tempo."], cooldown: "10-minute cool-down." };
+    expect(mainDurationMinutes(60, steps)).toBe(60);
+  });
+
+  it("falls back to the total when cool-down text has no parseable number", () => {
+    const steps = { warmup: "15-minute easy warm-up.", mainSteps: ["Run tempo."], cooldown: "Easy jog to finish." };
+    expect(mainDurationMinutes(60, steps)).toBe(60);
+  });
+
+  it("clamps to zero instead of going negative when warm-up+cool-down exceed the total", () => {
+    const steps = { warmup: "40-minute warm-up.", mainSteps: ["Run tempo."], cooldown: "40-minute cool-down." };
+    expect(mainDurationMinutes(60, steps)).toBe(0);
   });
 });

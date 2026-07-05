@@ -97,6 +97,28 @@ export function parseExecutionSteps(execution: string): ExecutionSteps {
   };
 }
 
+// Extracts the first number found in a warm-up/cool-down text chunk, e.g.
+// 15 from "15-minute easy Zone 1/2 warm-up." Returns null if none found.
+export function extractLeadingMinutes(text: string | null): number | null {
+  if (!text) return null;
+  const match = text.match(/(\d+)/);
+  return match ? parseInt(match[1], 10) : null;
+}
+
+// A workout's total duration_minutes is warm-up + main + cool-down; Main Set
+// should display only the main portion. Derives it by subtracting the
+// parsed warm-up/cool-down minutes from the total. Falls back to the full
+// total when either chunk is missing or has no parseable number, so the
+// displayed duration is never blank.
+export function mainDurationMinutes(totalMinutes: number, steps: ExecutionSteps): number {
+  const warmup = extractLeadingMinutes(steps.warmup);
+  const cooldown = extractLeadingMinutes(steps.cooldown);
+  if (warmup === null || cooldown === null || totalMinutes <= 0) {
+    return totalMinutes;
+  }
+  return Math.max(0, totalMinutes - warmup - cooldown);
+}
+
 export interface LibraryExecutionInfo {
   execution: string;
   overview: string;
