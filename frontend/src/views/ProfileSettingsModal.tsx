@@ -3,12 +3,14 @@ import React, { useState } from "react";
 import { useAppContext } from "../contexts/AppContext";
 
 import { translations } from "../app/translations";
+import { usePaceZones } from "../hooks/usePaceZones";
 import { X, User, Heartbeat, Watch, SignOut, Warning } from '@phosphor-icons/react';
 
 export default function ProfileSettingsModal() {
   const ctx = useAppContext();
   const { lang, setLang, user, setUser, profileSettingsOpen, setProfileSettingsOpen, profileForm, setProfileForm, setActivePlan, setWorkouts, setSources, setAuthModalOpen, setOnboardingOpen, handleLogout } = ctx;
   const [doubleDays, setDoubleDays] = useState<string[]>([]);
+  const { zones: paceZones, fetchPaceZones } = usePaceZones();
   const [passwordFormOpen, setPasswordFormOpen] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [passwordMsg, setPasswordMsg] = useState("");
@@ -21,6 +23,7 @@ export default function ProfileSettingsModal() {
       Promise.resolve().then(() => {
         try { setDoubleDays(JSON.parse(user.double_session_days || "[]")); } catch { setDoubleDays([]); }
       });
+      fetchPaceZones();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profileSettingsOpen]);
@@ -340,6 +343,7 @@ export default function ProfileSettingsModal() {
 
 
       setUser(updatedUser);
+      fetchPaceZones();
 
 
 
@@ -1053,6 +1057,18 @@ export default function ProfileSettingsModal() {
 
 
               </div>
+
+                <div style={{ marginTop: "12px" }}>
+                  <label style={labelStyle}>{lang === "en" ? "Your Training Zones" : "Your Training Zones"}</label>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "13px", color: "var(--text-secondary)" }}>
+                    <div>{lang === "en" ? "Zone 1 (Recovery):" : "Zone 1 (Recovery):"} {paceZones ? `${paceZones.zone1_pace} /km` : "—"}</div>
+                    <div>{lang === "en" ? "Zone 2 (Easy):" : "Zone 2 (Easy):"} {paceZones ? `${paceZones.zone2_pace} /km` : "—"}</div>
+                    <div>{lang === "en" ? "Zone 3 (Tempo):" : "Zone 3 (Tempo):"} {paceZones ? `${paceZones.zone3_pace} /km` : "—"}</div>
+                    <div>{lang === "en" ? "Zone 4 (Threshold):" : "Zone 4 (Threshold):"} {paceZones ? `${paceZones.zone4_pace} /km` : "—"}</div>
+                    <div>{lang === "en" ? "Zone 5 (Interval):" : "Zone 5 (Interval):"} {paceZones ? `${paceZones.zone5_pace} /km` : "—"}</div>
+                  </div>
+                </div>
+
 
 
 
