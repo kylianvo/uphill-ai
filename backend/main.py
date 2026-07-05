@@ -1129,6 +1129,25 @@ async def generate_next_block(request: GenerateNextBlockRequest, user: dict[str,
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found.")
 
+    # Guard against double-submission: if a block generation job for this plan is
+    # already in flight, hand back that job instead of starting a second one that
+    # would independently insert a duplicate set of workouts.
+    for existing_job_id, job in plan_jobs.items():
+        if (
+            job.get("plan_id") == request.plan_id
+            and job.get("kind") == "next_block"
+            and job.get("status") == "generating"
+        ):
+            return {
+                "job_id": existing_job_id,
+                "plan_id": request.plan_id,
+                "block_number": job.get("block_number", request.block_number),
+                "week_start": (job.get("block_number", request.block_number) - 1) * 2 + 1,
+                "week_end": min(
+                    (job.get("block_number", request.block_number) - 1) * 2 + 2, plan.get("total_weeks", 12)
+                ),
+            }
+
     prev_block = request.block_number - 1
 
     # Enforce 80% completion gate on the preceding block
@@ -1264,6 +1283,8 @@ async def generate_next_block(request: GenerateNextBlockRequest, user: dict[str,
         "status": "generating",
         "user_id": user["id"],
         "plan_id": request.plan_id,
+        "kind": "next_block",
+        "block_number": request.block_number,
         "workouts": None,
         "error": None,
     }
