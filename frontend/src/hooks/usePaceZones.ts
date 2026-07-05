@@ -6,6 +6,11 @@ export interface PaceZones {
   zone3_pace: string;
   zone4_pace: string;
   zone5_pace: string;
+  zone1_hr: string;
+  zone2_hr: string;
+  zone3_hr: string;
+  zone4_hr: string;
+  zone5_hr: string;
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";

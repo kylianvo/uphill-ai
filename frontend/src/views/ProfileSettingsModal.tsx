@@ -1066,23 +1066,38 @@ export default function ProfileSettingsModal() {
                   <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "6px" }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 10px", borderRadius: "8px", background: `${ZONE_NUMBER_COLORS[1]}14`, borderLeft: `3px solid ${ZONE_NUMBER_COLORS[1]}` }}>
                       <span style={{ fontSize: "12px", fontWeight: 700, color: ZONE_NUMBER_COLORS[1] }}>{lang === "en" ? "Zone 1 (Recovery)" : "Zone 1 (Recovery)"}</span>
-                      <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)" }}>{paceZones ? `${paceZones.zone1_pace} /km` : "—"}</span>
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "1px" }}>
+                        <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)" }}>{paceZones ? `${paceZones.zone1_pace} /km` : "—"}</span>
+                        <span style={{ fontSize: "10px", fontWeight: 500, color: "var(--text-muted)" }}>{paceZones ? paceZones.zone1_hr : ""}</span>
+                      </div>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 10px", borderRadius: "8px", background: `${ZONE_NUMBER_COLORS[2]}14`, borderLeft: `3px solid ${ZONE_NUMBER_COLORS[2]}` }}>
                       <span style={{ fontSize: "12px", fontWeight: 700, color: ZONE_NUMBER_COLORS[2] }}>{lang === "en" ? "Zone 2 (Easy)" : "Zone 2 (Easy)"}</span>
-                      <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)" }}>{paceZones ? `${paceZones.zone2_pace} /km` : "—"}</span>
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "1px" }}>
+                        <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)" }}>{paceZones ? `${paceZones.zone2_pace} /km` : "—"}</span>
+                        <span style={{ fontSize: "10px", fontWeight: 500, color: "var(--text-muted)" }}>{paceZones ? paceZones.zone2_hr : ""}</span>
+                      </div>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 10px", borderRadius: "8px", background: `${ZONE_NUMBER_COLORS[3]}14`, borderLeft: `3px solid ${ZONE_NUMBER_COLORS[3]}` }}>
                       <span style={{ fontSize: "12px", fontWeight: 700, color: ZONE_NUMBER_COLORS[3] }}>{lang === "en" ? "Zone 3 (Tempo)" : "Zone 3 (Tempo)"}</span>
-                      <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)" }}>{paceZones ? `${paceZones.zone3_pace} /km` : "—"}</span>
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "1px" }}>
+                        <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)" }}>{paceZones ? `${paceZones.zone3_pace} /km` : "—"}</span>
+                        <span style={{ fontSize: "10px", fontWeight: 500, color: "var(--text-muted)" }}>{paceZones ? paceZones.zone3_hr : ""}</span>
+                      </div>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 10px", borderRadius: "8px", background: `${ZONE_NUMBER_COLORS[4]}14`, borderLeft: `3px solid ${ZONE_NUMBER_COLORS[4]}` }}>
                       <span style={{ fontSize: "12px", fontWeight: 700, color: ZONE_NUMBER_COLORS[4] }}>{lang === "en" ? "Zone 4 (Threshold)" : "Zone 4 (Threshold)"}</span>
-                      <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)" }}>{paceZones ? `${paceZones.zone4_pace} /km` : "—"}</span>
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "1px" }}>
+                        <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)" }}>{paceZones ? `${paceZones.zone4_pace} /km` : "—"}</span>
+                        <span style={{ fontSize: "10px", fontWeight: 500, color: "var(--text-muted)" }}>{paceZones ? paceZones.zone4_hr : ""}</span>
+                      </div>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 10px", borderRadius: "8px", background: `${ZONE_NUMBER_COLORS[5]}14`, borderLeft: `3px solid ${ZONE_NUMBER_COLORS[5]}` }}>
                       <span style={{ fontSize: "12px", fontWeight: 700, color: ZONE_NUMBER_COLORS[5] }}>{lang === "en" ? "Zone 5 (Interval)" : "Zone 5 (Interval)"}</span>
-                      <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)" }}>{paceZones ? `${paceZones.zone5_pace} /km` : "—"}</span>
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "1px" }}>
+                        <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)" }}>{paceZones ? `${paceZones.zone5_pace} /km` : "—"}</span>
+                        <span style={{ fontSize: "10px", fontWeight: 500, color: "var(--text-muted)" }}>{paceZones ? paceZones.zone5_hr : ""}</span>
+                      </div>
                     </div>
                   </div>
                 </div>

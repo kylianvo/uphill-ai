@@ -1,6 +1,7 @@
 """Integration tests for GET /api/auth/pace-zones."""
 
 from services.plan_generator import PlanGenerator
+from services.training_rules import TrainingRules
 
 
 class TestPaceZonesEndpoint:
@@ -23,13 +24,19 @@ class TestPaceZonesEndpoint:
         assert resp.status_code == 200, resp.text
         body = resp.json()
 
-        expected = PlanGenerator.estimate_pace_zones("6:20", "5:30", 140, 165)
+        expected_pace = PlanGenerator.estimate_pace_zones("6:20", "5:30", 140, 165)
+        expected_hr = TrainingRules.calculate_heart_rate_zones(190, 50)
         assert body == {
-            "zone1_pace": expected["zone1_pace"],
-            "zone2_pace": expected["zone2_pace"],
-            "zone3_pace": expected["zone3_pace"],
-            "zone4_pace": expected["zone4_pace"],
-            "zone5_pace": expected["zone5_pace"],
+            "zone1_pace": expected_pace["zone1_pace"],
+            "zone2_pace": expected_pace["zone2_pace"],
+            "zone3_pace": expected_pace["zone3_pace"],
+            "zone4_pace": expected_pace["zone4_pace"],
+            "zone5_pace": expected_pace["zone5_pace"],
+            "zone1_hr": f"{expected_hr['Zone 1']['min']}-{expected_hr['Zone 1']['max']} bpm",
+            "zone2_hr": f"{expected_hr['Zone 2']['min']}-{expected_hr['Zone 2']['max']} bpm",
+            "zone3_hr": f"{expected_hr['Zone 3']['min']}-{expected_hr['Zone 3']['max']} bpm",
+            "zone4_hr": f"{expected_hr['Zone 4']['min']}-{expected_hr['Zone 4']['max']} bpm",
+            "zone5_hr": f"{expected_hr['Zone 5']['min']}-{expected_hr['Zone 5']['max']} bpm",
         }
 
     def test_requires_authentication(self, client):

@@ -57,6 +57,7 @@ from services.nutrition_planner import NutritionParams, nutrition_planner
 from services.pacing_calculator import PacingCalculator
 from services.plan_generator import PlanGenerator
 from services.rag_service import RagService
+from services.training_rules import TrainingRules
 
 _is_prod = os.getenv("ENVIRONMENT", "development") == "production"
 app = FastAPI(
@@ -746,12 +747,20 @@ def get_pace_zones(user: dict[str, Any] = Depends(get_current_user)):
         user.get("aet_hr"),
         user.get("ant_hr"),
     )
+    hr_zones = TrainingRules.calculate_heart_rate_zones(
+        int(user.get("max_hr") or 185), int(user.get("resting_hr") or 60)
+    )
     return {
         "zone1_pace": zones["zone1_pace"],
         "zone2_pace": zones["zone2_pace"],
         "zone3_pace": zones["zone3_pace"],
         "zone4_pace": zones["zone4_pace"],
         "zone5_pace": zones["zone5_pace"],
+        "zone1_hr": f"{hr_zones['Zone 1']['min']}-{hr_zones['Zone 1']['max']} bpm",
+        "zone2_hr": f"{hr_zones['Zone 2']['min']}-{hr_zones['Zone 2']['max']} bpm",
+        "zone3_hr": f"{hr_zones['Zone 3']['min']}-{hr_zones['Zone 3']['max']} bpm",
+        "zone4_hr": f"{hr_zones['Zone 4']['min']}-{hr_zones['Zone 4']['max']} bpm",
+        "zone5_hr": f"{hr_zones['Zone 5']['min']}-{hr_zones['Zone 5']['max']} bpm",
     }
 
 

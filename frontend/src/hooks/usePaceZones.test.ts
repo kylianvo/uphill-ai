@@ -21,6 +21,11 @@ describe("usePaceZones", () => {
       zone3_pace: "5:16 - 4:40",
       zone4_pace: "4:48 - 4:15",
       zone5_pace: "4:14 - 3:45",
+      zone1_hr: "100-115 bpm",
+      zone2_hr: "115-130 bpm",
+      zone3_hr: "130-145 bpm",
+      zone4_hr: "145-160 bpm",
+      zone5_hr: "160-175 bpm",
     };
     fetchMock.mockResolvedValueOnce(jsonResponse(body));
 
