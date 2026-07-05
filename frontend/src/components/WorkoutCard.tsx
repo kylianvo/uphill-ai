@@ -23,6 +23,12 @@ import {
 } from "@phosphor-icons/react";
 import { getZoneColor, RPE_DESCRIPTORS } from "../data/workoutLibrary";
 import { useWorkoutTypes, resolveWorkoutInfo } from "../hooks/useWorkoutTypes";
+import {
+  parseExecutionSteps,
+  extractDescriptionSections,
+  selectMainSetText,
+  buildCoachNotesContent,
+} from "../utils/workoutDescription";
 
 interface WorkoutCardProps {
   wo: any;
@@ -72,75 +78,6 @@ const ZONE_LABELS: Record<string, string> = {
   cross: "Cross",
   rest: "Rest",
 };
-
-// Parse execution text into warm-up / main steps / cool-down.
-// Tries arrow-separated (→) first, falls back to sentence splitting.
-function parseExecutionSteps(execution: string): {
-  warmup: string | null;
-  mainSteps: string[];
-  cooldown: string | null;
-} {
-  const isWarmup = (s: string) => {
-    const l = s.toLowerCase();
-    return l.includes("warm") || l.includes("easy jog") && l.includes("start");
-  };
-  const isCooldown = (s: string) => {
-    const l = s.toLowerCase();
-    return l.includes("cool") || l.includes("stretch");
-  };
-
-  // Arrow-separated (e.g. "Warm up 10 min → main work → cool down 10 min")
-  const arrowParts = execution.split(/\s*→\s*/).map((s) => s.trim()).filter(Boolean);
-  if (arrowParts.length > 1) {
-    const warmup: string[] = [];
-    const main: string[] = [];
-    const cooldown: string[] = [];
-    let seenMain = false;
-
-    for (const part of arrowParts) {
-      if (!seenMain && isWarmup(part)) {
-        warmup.push(part);
-      } else if (isCooldown(part)) {
-        cooldown.push(part);
-      } else {
-        main.push(part);
-        seenMain = true;
-      }
-    }
-
-    return {
-      warmup: warmup.length > 0 ? warmup.join(" → ") : null,
-      mainSteps: main,
-      cooldown: cooldown.length > 0 ? cooldown.join(" → ") : null,
-    };
-  }
-
-  // Sentence-based fallback
-  const sentences = execution.split(/(?<=[.!?])\s+/).filter((s) => s.trim().length > 0);
-  const warmup: string[] = [];
-  const main: string[] = [];
-  const cooldown: string[] = [];
-  let inCooldown = false;
-
-  for (const s of sentences) {
-    if (!main.length && !inCooldown && isWarmup(s)) {
-      warmup.push(s);
-    } else if (isCooldown(s)) {
-      cooldown.push(s);
-      inCooldown = true;
-    } else if (inCooldown) {
-      cooldown.push(s);
-    } else {
-      main.push(s);
-    }
-  }
-
-  return {
-    warmup: warmup.length > 0 ? warmup.join(" ") : null,
-    mainSteps: main.length > 0 ? main : [execution],
-    cooldown: cooldown.length > 0 ? cooldown.join(" ") : null,
-  };
-}
 
 export default function WorkoutCard({
   wo,
@@ -1020,6 +957,11 @@ function WorkoutLibrarySection({
     },
   ];
 
+  const { executionText, overviewText } = selectMainSetText(
+    { execution: info.execution, overview: info.overview },
+    rawDescription
+  );
+
   // Build the "today's target" chips from actual planner values
   const targets: Array<{ label: string; value: string; color: string; icon: React.ReactNode }> = [];
   if (wo.target_zone) targets.push({ label: lang === "en" ? "Zone" : "Vùng", value: wo.target_zone, color: zoneColor, icon: <Lightning size={10} /> });
@@ -1068,9 +1010,9 @@ function WorkoutLibrarySection({
               lineHeight: "1.65",
             }}
           >
-            {info.overview}
+            {overviewText}
           </p>
-          <ExecutionTimeline execution={info.execution} zoneColor={zoneColor} lang={lang} targets={targets} />
+          <ExecutionTimeline execution={executionText} zoneColor={zoneColor} lang={lang} targets={targets} />
         </div>
       )}
 
@@ -1181,7 +1123,7 @@ function WorkoutLibrarySection({
             </div>
           )}
 
-          {/* AI-generated description if present */}
+          {/* AI-generated coach notes: Overall/Reason/Benefit/Warning (Process lives in Main Set) */}
           {rawDescription && (
             <div
               style={{
@@ -1203,7 +1145,7 @@ function WorkoutLibrarySection({
               >
                 {lang === "en" ? "Coach notes" : "Ghi chú từ Coach"}
               </div>
-              <RawDescription description={rawDescription} />
+              <CoachNotesSections description={rawDescription} />
             </div>
           )}
 
@@ -1224,20 +1166,47 @@ function WorkoutLibrarySection({
   );
 }
 
+// ── Coach notes: AI-generated sections, excluding Process (shown in Main Set) ──
+function CoachNotesSections({ description }: { description: string }) {
+  const content = buildCoachNotesContent(description);
+
+  if (!content.hasSections) {
+    return (
+      <p style={{ fontSize: "12.5px", color: "var(--text-secondary)", margin: 0, lineHeight: "1.65" }}>
+        {content.fallbackText}
+      </p>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+      {content.overall && (
+        <p style={{ fontSize: "13px", color: "var(--text-primary)", margin: 0, lineHeight: "1.65" }}>
+          {content.overall}
+        </p>
+      )}
+      {content.reason && (
+        <p style={{ fontSize: "12.5px", color: "var(--text-secondary)", margin: 0, lineHeight: "1.65" }}>
+          {content.reason}
+        </p>
+      )}
+      {content.benefit && (
+        <p style={{ fontSize: "12.5px", color: "#10b981", margin: 0, lineHeight: "1.65" }}>{content.benefit}</p>
+      )}
+      {content.warning && (
+        <p style={{ fontSize: "12.5px", color: "#ef4444", margin: 0, lineHeight: "1.65" }}>{content.warning}</p>
+      )}
+    </div>
+  );
+}
+
 // ── Raw AI description (fallback) ─────────────────────────────────────────────
 function RawDescription({ description }: { description: string }) {
-  const extract = (keyword: string) => {
-    const regex = new RegExp(
-      `${keyword}[:\\-]\\s*([\\s\\S]*?)(?=(Process|Overall|Reason|Benefit|Warning)[:\\-]|$)`,
-      "i"
-    );
-    const match = description.match(regex);
-    return match ? match[1].trim() : null;
-  };
-  const overall = extract("Overall");
-  const process = extract("Process");
-  const benefit = extract("Benefit");
-  const warning = extract("Warning");
+  const sections = extractDescriptionSections(description);
+  const overall = sections.overall;
+  const process = sections.process;
+  const benefit = sections.benefit;
+  const warning = sections.warning;
   const hasSections = overall || process || benefit || warning;
 
   if (!hasSections) {
