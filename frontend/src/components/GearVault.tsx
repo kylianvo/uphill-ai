@@ -80,8 +80,8 @@ export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang, use
         userProfileStr = `Age: ${user.age || 'N/A'}, Max HR: ${user.max_hr || 'N/A'}, Resting HR: ${user.resting_hr || 'N/A'}, Weekly volume: ${user.current_weekly_km || 'N/A'}km`;
       }
       let activePlanStr = "None";
-      if (activePlan?.target_event) {
-        activePlanStr = `Distance: ${activePlan.target_event.distance_km || 'N/A'}km, Elevation: ${activePlan.target_event.elevation_gain_m || 'N/A'}m, Duration: ${activePlan.target_event.duration_hours || 'N/A'}h`;
+      if (activePlan) {
+        activePlanStr = `${activePlan.race_name} on ${activePlan.race_date}, Goal: ${activePlan.goal_type}, Distance: ${activePlan.course_distance_km ?? 'N/A'}km, Elevation: ${activePlan.course_elevation_gain_m ?? 'N/A'}m${activePlan.target_time_hours ? `, Target Time: ${activePlan.target_time_hours}h` : ''}`;
       }
 
       const payload = {

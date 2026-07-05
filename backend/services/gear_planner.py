@@ -50,6 +50,7 @@ class GearPlannerService:
 
 OUTPUT CONTRACT: You MUST output your response EXACTLY as a valid JSON object matching the schema below. NEVER include markdown formatting (like ```json), conversational filler, or plain text paragraphs outside the JSON.
 NEVER invent a shoe model, spec, or price that isn't in your documents — if you're not confident a detail is accurate, omit that field or say so in "cons" rather than guessing.
+BRAND CONSTRAINT: If "Preferred Brands" below is not empty, every recommendation MUST be from that brand (or brands) only — NEVER substitute a different brand. The ONLY exception: if your documents contain zero matching shoes for the requested brand, say so explicitly in "tips" and then recommend the closest available alternative from your documents.
 
 Schema:
 {{

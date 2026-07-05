@@ -54,6 +54,7 @@ class NutritionPlannerService:
 
 OUTPUT CONTRACT: You MUST output your response EXACTLY as a valid JSON object matching the schema below. NEVER include markdown formatting (like ```json), conversational filler, or plain text outside the JSON. NEVER use emoji icons.
 NEVER invent a product, brand, or macro figure that isn't in your documents — if you're not confident a number is accurate, calculate it from the stated Nutrition Goals below instead of guessing.
+BRAND CONSTRAINT: If "Preferred Brands" below is not empty, every product in "products" MUST be from that brand (or brands) only — NEVER substitute a different brand. The ONLY exception: if your documents contain zero matching products for the requested brand/format, say so explicitly as the first entry in "tips" and then recommend the closest available alternative from your documents.
 
 Schema:
 {{
@@ -83,7 +84,7 @@ Schema:
   ]
 }}
 
-Search your documents for specific products matching these brands/formats, calculate the required macros, and suggest a race nutrition plan. Focus heavily on {params.preferred_brands or 'any brands'} if specified.
+Search your documents for specific products matching these brands/formats, calculate the required macros, and suggest a race nutrition plan.
 
 Race Profile:
 - Distance: {params.distance_km or 'Unknown'} km
