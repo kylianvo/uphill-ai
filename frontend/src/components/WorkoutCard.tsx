@@ -30,6 +30,7 @@ import {
   buildCoachNotesContent,
   mainDurationMinutes,
 } from "../utils/workoutDescription";
+import { getTreadmillGuide } from "../utils/treadmill";
 
 interface WorkoutCardProps {
   wo: any;
@@ -96,6 +97,7 @@ export default function WorkoutCard({
 
   const defaultSurface = wo.treadmill_incline > 0 ? "treadmill" : "outdoor";
   const [surface, setSurface] = useState<"outdoor" | "treadmill">(defaultSurface);
+  const treadmillGuide = getTreadmillGuide(wo.target_pace, wo.treadmill_speed, wo.treadmill_incline);
   const [expanded, setExpanded] = useState(false);
   const [rpe, setRpe] = useState<number | null>(wo.rpe ?? null);
   const [notes, setNotes] = useState<string>(wo.notes ?? "");
@@ -404,18 +406,26 @@ export default function WorkoutCard({
                   icon={<Footprints size={12} />}
                 />
               )}
-              {surface === "treadmill" && wo.treadmill_speed > 0 && (
+              {surface === "treadmill" && treadmillGuide && (
                 <MetricPill
                   label={lang === "en" ? "Speed" : "Tốc độ"}
-                  value={`${wo.treadmill_speed} kph`}
+                  value={
+                    treadmillGuide.estimated
+                      ? `~${treadmillGuide.speedKph} kph`
+                      : `${treadmillGuide.speedKph} kph`
+                  }
                   color={zoneColor}
                   icon={<Lightning size={12} />}
                 />
               )}
-              {surface === "treadmill" && wo.treadmill_incline > 0 && (
+              {surface === "treadmill" && treadmillGuide && (
                 <MetricPill
                   label={lang === "en" ? "Grade" : "Độ dốc"}
-                  value={`${wo.treadmill_incline}%`}
+                  value={
+                    treadmillGuide.estimated
+                      ? `~${treadmillGuide.inclinePercent}%`
+                      : `${treadmillGuide.inclinePercent}%`
+                  }
                   color={zoneColor}
                   icon={<Gauge size={12} />}
                 />
@@ -432,6 +442,14 @@ export default function WorkoutCard({
                 <MetricPill label="HR" value={wo.target_hr_range} color="#ef4444" icon={<Heart size={12} />} />
               )}
             </div>
+
+            {surface === "treadmill" && treadmillGuide?.estimated && (
+              <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "-10px", marginBottom: "16px" }}>
+                {lang === "en"
+                  ? "Estimated from your target pace using the standard 1% incline rule."
+                  : "Ước tính từ pace mục tiêu theo quy tắc độ dốc 1% tiêu chuẩn."}
+              </p>
+            )}
 
             {/* Race day coach message */}
             {isRaceDay && (
