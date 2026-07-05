@@ -84,16 +84,55 @@ class TestEstimatePaceZones:
 
     def test_missing_aet_ant_hr_falls_back_to_baseline_ratios(self):
         # scale=1.0 reproduces the original fixed ratios: Z1=1.15x, Z3=0.90x,
-        # Z4=0.82x, Z5=0.73x of the Zone 2 bounds (both slow and fast ends).
+        # Z4=0.82x, Z5=0.73x. Zones are chained (each one's slow bound is the
+        # adjacent zone's fast bound), anchored on Zone 2's own bounds: Zone 1
+        # touches Zone 2 at zone2_min; Zones 3/4/5 chain outward from zone2_max.
         zone2_min, zone2_max = "6:30", "5:45"
         z2_min_dec = PlanGenerator.parse_pace_to_decimal(zone2_min)
         z2_max_dec = PlanGenerator.parse_pace_to_decimal(zone2_max)
 
         zones = PlanGenerator.estimate_pace_zones(zone2_min, zone2_max)  # no aet_hr/ant_hr
-        z4_slow_str, z4_fast_str = zones["zone4_pace"].split(" - ")
 
-        assert z4_slow_str == PlanGenerator.decimal_to_pace_str(z2_min_dec * 0.82)
+        z1_slow_str, z1_fast_str = zones["zone1_pace"].split(" - ")
+        assert z1_slow_str == PlanGenerator.decimal_to_pace_str(z2_min_dec * 1.15)
+        assert z1_fast_str == PlanGenerator.decimal_to_pace_str(z2_min_dec)
+
+        z3_slow_str, z3_fast_str = zones["zone3_pace"].split(" - ")
+        assert z3_slow_str == PlanGenerator.decimal_to_pace_str(z2_max_dec)
+        assert z3_fast_str == PlanGenerator.decimal_to_pace_str(z2_max_dec * 0.90)
+
+        z4_slow_str, z4_fast_str = zones["zone4_pace"].split(" - ")
+        assert z4_slow_str == PlanGenerator.decimal_to_pace_str(z2_max_dec * 0.90)
         assert z4_fast_str == PlanGenerator.decimal_to_pace_str(z2_max_dec * 0.82)
+
+        z5_slow_str, z5_fast_str = zones["zone5_pace"].split(" - ")
+        assert z5_slow_str == PlanGenerator.decimal_to_pace_str(z2_max_dec * 0.82)
+        assert z5_fast_str == PlanGenerator.decimal_to_pace_str(z2_max_dec * 0.73)
+
+    def test_adjacent_zones_are_contiguous_with_no_overlap(self):
+        # Regression test: independently scaling both ends of every zone by
+        # its own ratio (the original approach) could make adjacent zones
+        # overlap whenever the athlete's own Zone 2 range was proportionally
+        # wider than the gap between zone ratios. Zones must instead chain
+        # together -- each one's boundary is exactly the next zone's boundary,
+        # for both a narrow and a wide Zone 2 range, and across the clamp.
+        for zone2_min, zone2_max, aet_hr, ant_hr in [
+            ("6:30", "5:45", None, None),
+            ("6:22", "5:14", 142, 168),  # wide Zone 2 range that triggered the original bug
+            ("6:30", "5:45", 100, 200),  # clamped at the 1.4 scale ceiling
+            ("6:30", "5:45", 150, 100),  # clamped at the 0.7 scale floor
+        ]:
+            zones = PlanGenerator.estimate_pace_zones(zone2_min, zone2_max, aet_hr, ant_hr)
+            z1_fast = zones["zone1_pace"].split(" - ")[1]
+            z2_slow, z2_fast = zones["zone2_pace"].split(" - ")
+            z3_slow, z3_fast = zones["zone3_pace"].split(" - ")
+            z4_slow, z4_fast = zones["zone4_pace"].split(" - ")
+            z5_slow, _ = zones["zone5_pace"].split(" - ")
+
+            assert z1_fast == z2_slow, "Zone 1's fast bound must equal Zone 2's slow bound"
+            assert z2_fast == z3_slow, "Zone 2's fast bound must equal Zone 3's slow bound"
+            assert z3_fast == z4_slow, "Zone 3's fast bound must equal Zone 4's slow bound"
+            assert z4_fast == z5_slow, "Zone 4's fast bound must equal Zone 5's slow bound"
 
     def test_scale_factor_is_clamped_to_0_7_min(self):
         # ant_hr below aet_hr (unusual/bad data) pushes gap_ratio well under

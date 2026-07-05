@@ -40,15 +40,26 @@ class PlanGenerator:
         ant_hr: float | None = None,
     ) -> dict[str, str]:
         """
-        Estimates all 5 pace zones as ranges, based on Zone 2 min/max bounds.
+        Estimates all 5 pace zones as contiguous, non-overlapping ranges,
+        chained outward from the athlete's Zone 2 bounds.
 
-        Each zone's distance from Zone 2 is scaled by the athlete's own
-        AeT/AnT heart-rate gap (ant_hr / aet_hr) relative to a 1.15
-        reference gap, so athletes with a wider aerobic-to-anaerobic
-        separation get more spread between zones, and a narrower gap
-        compresses them. This is a heuristic improvement over a single
-        universal ratio -- not a clinically validated formula (no formula
-        is, without lactate testing).
+        Each zone touches the next at a shared boundary point: Zone 1's fast
+        bound is Zone 2's slow bound; Zone 3's slow bound is Zone 2's fast
+        bound; Zone 4's slow bound is Zone 3's fast bound; Zone 5's slow
+        bound is Zone 4's fast bound. Each boundary is computed by scaling
+        Zone 2's slow bound (for Zone 1) or fast bound (for Zones 3-5) by a
+        personalized ratio, scaled by the athlete's own AeT/AnT heart-rate
+        gap (ant_hr / aet_hr) relative to a 1.15 reference gap, so athletes
+        with a wider aerobic-to-anaerobic separation get more spread between
+        zones, and a narrower gap compresses them. This is a heuristic
+        improvement over a single universal ratio -- not a clinically
+        validated formula (no formula is, without lactate testing).
+
+        Chaining (rather than independently scaling both ends of every zone
+        by its own ratio) guarantees zones never overlap: independently
+        scaling both ends gives every zone the same relative width as Zone
+        2, which can exceed the gap between zone ratios whenever the
+        athlete's own Zone 2 range is proportionally wide.
         """
         z2_min = PlanGenerator.parse_pace_to_decimal(zone2_min_str or "6:30")
         z2_max = PlanGenerator.parse_pace_to_decimal(zone2_max_str or "5:45")
@@ -62,22 +73,27 @@ class PlanGenerator:
 
         # Baseline deviations from Zone 2 (unchanged from the original
         # single-point ratios: Z1=1.15x, Z3=0.90x, Z4=0.82x, Z5=0.73x).
-        deviations = {1: 0.15, 3: -0.10, 4: -0.18, 5: -0.27}
+        ratio_1 = 1.0 + 0.15 * scale
+        ratio_3 = 1.0 - 0.10 * scale
+        ratio_4 = 1.0 - 0.18 * scale
+        ratio_5 = 1.0 - 0.27 * scale
 
-        def _zone_range(deviation: float) -> tuple[str, str]:
-            ratio = 1.0 + deviation * scale
-            min_dec = z2_min * ratio
-            max_dec = z2_max * ratio
-            mid_dec = (min_dec + max_dec) / 2.0
+        b0 = z2_min * ratio_1  # Zone 1's slow (outer) bound
+        b3 = z2_max * ratio_3  # Zone 3/4 boundary
+        b4 = z2_max * ratio_4  # Zone 4/5 boundary
+        b5 = z2_max * ratio_5  # Zone 5's fast (outer) bound
+
+        def _range_and_mid(slow_dec: float, fast_dec: float) -> tuple[str, str]:
             range_str = (
-                f"{PlanGenerator.decimal_to_pace_str(min_dec)} - " f"{PlanGenerator.decimal_to_pace_str(max_dec)}"
+                f"{PlanGenerator.decimal_to_pace_str(slow_dec)} - " f"{PlanGenerator.decimal_to_pace_str(fast_dec)}"
             )
-            return range_str, PlanGenerator.decimal_to_pace_str(mid_dec)
+            mid_str = PlanGenerator.decimal_to_pace_str((slow_dec + fast_dec) / 2.0)
+            return range_str, mid_str
 
-        z1_range, z1_mid = _zone_range(deviations[1])
-        z3_range, z3_mid = _zone_range(deviations[3])
-        z4_range, z4_mid = _zone_range(deviations[4])
-        z5_range, z5_mid = _zone_range(deviations[5])
+        z1_range, z1_mid = _range_and_mid(b0, z2_min)
+        z3_range, z3_mid = _range_and_mid(z2_max, b3)
+        z4_range, z4_mid = _range_and_mid(b3, b4)
+        z5_range, z5_mid = _range_and_mid(b4, b5)
         z2_mid_dec = (z2_min + z2_max) / 2.0
 
         return {
