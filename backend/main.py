@@ -738,6 +738,23 @@ def update_profile(request: UpdateProfileRequest, user: dict[str, Any] = Depends
     return format_user_response(updated_user)
 
 
+@app.get("/api/auth/pace-zones")
+def get_pace_zones(user: dict[str, Any] = Depends(get_current_user)):
+    zones = PlanGenerator.estimate_pace_zones(
+        user.get("zone2_pace_min") or "6:30",
+        user.get("zone2_pace_max") or "5:45",
+        user.get("aet_hr"),
+        user.get("ant_hr"),
+    )
+    return {
+        "zone1_pace": zones["zone1_pace"],
+        "zone2_pace": zones["zone2_pace"],
+        "zone3_pace": zones["zone3_pace"],
+        "zone4_pace": zones["zone4_pace"],
+        "zone5_pace": zones["zone5_pace"],
+    }
+
+
 @app.post("/api/auth/logout")
 def auth_logout(authorization: str | None = Header(None)):
     if authorization and authorization.startswith("Bearer "):
