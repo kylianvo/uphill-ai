@@ -33,28 +33,64 @@ class PlanGenerator:
         return f"{mins}:{secs:02d}"
 
     @staticmethod
-    def estimate_pace_zones(zone2_min_str: str, zone2_max_str: str) -> dict[str, str]:
+    def estimate_pace_zones(
+        zone2_min_str: str,
+        zone2_max_str: str,
+        aet_hr: float | None = None,
+        ant_hr: float | None = None,
+    ) -> dict[str, str]:
         """
-        Estimates all 5 pace zones based on Zone 2 min/max bounds using standard ratios.
-        Ratios are anchored on the fast-end of Zone 2 (zone2_max).
+        Estimates all 5 pace zones as ranges, based on Zone 2 min/max bounds.
+
+        Each zone's distance from Zone 2 is scaled by the athlete's own
+        AeT/AnT heart-rate gap (ant_hr / aet_hr) relative to a 1.15
+        reference gap, so athletes with a wider aerobic-to-anaerobic
+        separation get more spread between zones, and a narrower gap
+        compresses them. This is a heuristic improvement over a single
+        universal ratio -- not a clinically validated formula (no formula
+        is, without lactate testing).
         """
         z2_min = PlanGenerator.parse_pace_to_decimal(zone2_min_str or "6:30")
         z2_max = PlanGenerator.parse_pace_to_decimal(zone2_max_str or "5:45")
 
-        # Calculate other zones based on z2_max (fast end)
-        z1_dec = z2_max * 1.15
-        z2_dec = (z2_min + z2_max) / 2.0
-        z3_dec = z2_max * 0.90
-        z4_dec = z2_max * 0.82
-        z5_dec = z2_max * 0.73
+        reference_gap = 1.15
+        if aet_hr and ant_hr and aet_hr > 0:
+            scale = (ant_hr / aet_hr) / reference_gap
+        else:
+            scale = 1.0
+        scale = max(0.7, min(1.4, scale))
+
+        # Baseline deviations from Zone 2 (unchanged from the original
+        # single-point ratios: Z1=1.15x, Z3=0.90x, Z4=0.82x, Z5=0.73x).
+        deviations = {1: 0.15, 3: -0.10, 4: -0.18, 5: -0.27}
+
+        def _zone_range(deviation: float) -> tuple[str, str]:
+            ratio = 1.0 + deviation * scale
+            min_dec = z2_min * ratio
+            max_dec = z2_max * ratio
+            mid_dec = (min_dec + max_dec) / 2.0
+            range_str = (
+                f"{PlanGenerator.decimal_to_pace_str(min_dec)} - " f"{PlanGenerator.decimal_to_pace_str(max_dec)}"
+            )
+            return range_str, PlanGenerator.decimal_to_pace_str(mid_dec)
+
+        z1_range, z1_mid = _zone_range(deviations[1])
+        z3_range, z3_mid = _zone_range(deviations[3])
+        z4_range, z4_mid = _zone_range(deviations[4])
+        z5_range, z5_mid = _zone_range(deviations[5])
+        z2_mid_dec = (z2_min + z2_max) / 2.0
 
         return {
-            "zone1_pace": PlanGenerator.decimal_to_pace_str(z1_dec),
+            "zone1_pace": z1_range,
+            "zone1_pace_mid": z1_mid,
             "zone2_pace": f"{zone2_min_str or '6:30'} - {zone2_max_str or '5:45'}",
-            "zone2_pace_mid": PlanGenerator.decimal_to_pace_str(z2_dec),
-            "zone3_pace": PlanGenerator.decimal_to_pace_str(z3_dec),
-            "zone4_pace": PlanGenerator.decimal_to_pace_str(z4_dec),
-            "zone5_pace": PlanGenerator.decimal_to_pace_str(z5_dec),
+            "zone2_pace_mid": PlanGenerator.decimal_to_pace_str(z2_mid_dec),
+            "zone3_pace": z3_range,
+            "zone3_pace_mid": z3_mid,
+            "zone4_pace": z4_range,
+            "zone4_pace_mid": z4_mid,
+            "zone5_pace": z5_range,
+            "zone5_pace_mid": z5_mid,
         }
 
     @staticmethod
