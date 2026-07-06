@@ -6,10 +6,12 @@ minutes conversions are a classic off-by-format bug class, the same flavor
 as the plan_start_date regression this suite exists to catch.
 """
 
+import asyncio
 import re
 
 import pytest
 
+from config import settings
 from services.plan_generator import PlanGenerator
 
 
@@ -449,3 +451,88 @@ class TestResolveElevationAndGrade:
             course_distance_km=50.0,
         )
         assert result == (0.0, 0.0)
+
+
+class TestPostProcessWorkoutsElevation:
+    def _run_rule_based(self, monkeypatch, terrain: str, course_distance_km: float, course_elevation_gain_m: float):
+        # Force the rule-based path regardless of what's in this machine's
+        # backend/.env: config.py's load_dotenv() populates
+        # settings.NOTEBOOKLM_NOTEBOOK_ID/NOTEBOOKLM_AUTH_JSON from the real
+        # .env file (this repo's local dev .env has real values configured),
+        # and generate_plan_workouts gates the NotebookLM path on those two
+        # settings attributes (plan_generator.py:322-323,643) — NOT on an
+        # environment variable conftest.py controls. Without this patch the
+        # test would silently attempt a real external NotebookLM API call.
+        monkeypatch.setattr(settings, "NOTEBOOKLM_NOTEBOOK_ID", "")
+        monkeypatch.setattr(settings, "NOTEBOOKLM_AUTH_JSON", "")
+
+        user_profile = {
+            "current_weekly_km": 30.0,
+            "max_hr": 185,
+            "resting_hr": 60,
+            "aet_hr": 135,
+            "ant_hr": 165,
+            "zone2_pace_min": "6:30",
+            "zone2_pace_max": "5:45",
+            "use_treadmill": False,
+        }
+        race_info = {
+            "terrain": terrain,
+            "course_distance_km": course_distance_km,
+            "course_elevation_gain_m": course_elevation_gain_m,
+            "name": "Test Race",
+            "date": "2026-12-01",
+            "goal_type": "finish",
+        }
+        # api_key=None additionally skips the Gemini path (plan_generator.py:677:
+        # `if _ai_prompt and api_key:`), so together with the monkeypatch above,
+        # this call is guaranteed to fall through to the rule-based generator.
+        #
+        # total_weeks=12 (not a short toy value like 2): get_phase_for_week
+        # (plan_generator.py:715-727) always makes the FINAL week "Recovery"
+        # (Saturday -> type "Recovery", not "Long Run") and can make earlier
+        # weeks "Race Week"/"Taper" depending on W = total_weeks - 1. With
+        # total_weeks=12: W=11, num_peak_weeks=2, remaining_weeks=8,
+        # num_build_weeks=4, num_base_weeks=4 -- weeks 1-4 are "Base", so
+        # requesting block_number=1 (weeks 1-2) reliably lands in Base phase,
+        # where Saturday always produces a "Long Run" workout
+        # (plan_generator.py:945-959, the `else` branch after the
+        # Recovery/Race-Week checks).
+        return asyncio.run(
+            PlanGenerator.generate_plan_workouts(
+                plan_id=1,
+                user_profile=user_profile,
+                race_info=race_info,
+                total_weeks=12,
+                api_key=None,
+                block_number=1,
+                weeks_per_block=2,
+            )
+        )
+
+    def test_trail_long_run_gets_nonzero_elevation_and_grade(self, monkeypatch):
+        workouts = self._run_rule_based(
+            monkeypatch, terrain="trail", course_distance_km=50.0, course_elevation_gain_m=2000.0
+        )
+        long_runs = [w for w in workouts if w["type"] == "Long Run"]
+        assert long_runs, "expected at least one Long Run workout"
+        assert all(w["elevation_gain_m"] > 0 for w in long_runs)
+        assert all(w["grade_percent"] > 0 for w in long_runs)
+
+    def test_road_terrain_gets_zero_elevation(self, monkeypatch):
+        workouts = self._run_rule_based(
+            monkeypatch, terrain="road", course_distance_km=50.0, course_elevation_gain_m=2000.0
+        )
+        long_runs = [w for w in workouts if w["type"] == "Long Run"]
+        assert long_runs
+        assert all(w["elevation_gain_m"] == 0.0 for w in long_runs)
+        assert all(w["grade_percent"] == 0.0 for w in long_runs)
+
+    def test_rest_and_strength_always_zero_even_on_trail(self, monkeypatch):
+        workouts = self._run_rule_based(
+            monkeypatch, terrain="trail", course_distance_km=50.0, course_elevation_gain_m=2000.0
+        )
+        non_run_types = [w for w in workouts if w["type"] in ("Rest", "Strength", "Muscular Endurance")]
+        assert non_run_types
+        assert all(w["elevation_gain_m"] == 0.0 for w in non_run_types)
+        assert all(w["grade_percent"] == 0.0 for w in non_run_types)
