@@ -453,6 +453,43 @@ class TestResolveElevationAndGrade:
         assert result == (0.0, 0.0)
 
 
+class TestResolveHillSprintTreadmill:
+    def test_non_hill_sprint_title_passes_through_unchanged(self):
+        wo = {"title": "Aerobic Tempo Session", "treadmill_incline": 3.0, "treadmill_speed": 10.0}
+        result = PlanGenerator.resolve_hill_sprint_treadmill(wo, target_pace="6:00 /km")
+        assert result == (3.0, 10.0)
+
+    def test_hill_sprint_title_keeps_ai_incline_already_in_range(self):
+        wo = {"title": "Hill Sprint Repeats", "treadmill_incline": 12.0}
+        incline, speed = PlanGenerator.resolve_hill_sprint_treadmill(wo, target_pace="6:00 /km")
+        assert incline == 12.0
+        assert speed > 0
+
+    def test_hill_sprint_title_clamps_out_of_range_incline_to_midpoint(self):
+        wo = {"title": "Afternoon Hill Sprints & Neuromuscular Power", "treadmill_incline": 1.0}
+        incline, _ = PlanGenerator.resolve_hill_sprint_treadmill(wo, target_pace="6:00 /km")
+        assert incline == 12.5
+
+    def test_hill_sprint_title_defaults_when_ai_omits_incline(self):
+        wo = {"title": "Hill Sprint Repeats"}
+        incline, speed = PlanGenerator.resolve_hill_sprint_treadmill(wo, target_pace="6:00 /km")
+        assert incline == 12.5
+        assert speed > 0
+
+    def test_hill_repeat_keyword_matches(self):
+        wo = {"title": "Steep Hill Repeat Session"}
+        incline, _ = PlanGenerator.resolve_hill_sprint_treadmill(wo, target_pace="6:00 /km")
+        assert 10.0 <= incline <= 15.0
+
+    def test_hill_bound_keyword_matches(self):
+        # Rule-based fallback's ME session is titled "Muscular Endurance: Hill Bounds" —
+        # same steep-hill-effort category as Hill Sprint/Hill Repeat, so it must get the
+        # same 10-15% backstop rather than silently falling through unmatched.
+        wo = {"title": "Muscular Endurance: Hill Bounds", "treadmill_incline": 999.0}
+        incline, _ = PlanGenerator.resolve_hill_sprint_treadmill(wo, target_pace="6:00 /km")
+        assert 10.0 <= incline <= 15.0
+
+
 class TestPostProcessWorkoutsElevation:
     def _run_rule_based(self, monkeypatch, terrain: str, course_distance_km: float, course_elevation_gain_m: float):
         # Force the rule-based path regardless of what's in this machine's

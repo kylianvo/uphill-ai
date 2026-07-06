@@ -957,9 +957,12 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                       {lang === "en" ? `Weekly Volume (Week ${selectedWeek})` : `Thể tích tuần (Tuần ${selectedWeek})`}
                     </span>
                     <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
-                      <span style={{ fontSize: "18px", fontWeight: "800", color: "var(--accent-primary)" }}>{weeklyKm.toFixed(1)} km</span>
-                      <span style={{ fontSize: "13px", color: "var(--text-muted)", fontWeight: "600" }}>/ {weeklyHours} {lang === "en" ? "hrs" : "giờ"}</span>
+                      <span style={{ fontSize: "18px", fontWeight: "800", color: "var(--accent-primary)" }}>{weeklyHours} {lang === "en" ? "hrs" : "giờ"}</span>
+                      <span style={{ fontSize: "13px", color: "var(--text-muted)", fontWeight: "600" }}>· ~{weeklyKm.toFixed(1)} km</span>
                     </div>
+                    <span style={{ fontSize: "9.5px", color: "var(--text-muted)", fontWeight: "500", fontStyle: "italic" }}>
+                      {lang === "en" ? "Sessions are run by time — distance is an estimate for planning" : "Buổi tập theo dõi bằng thời gian — quãng đường chỉ là ước tính"}
+                    </span>
                   </div>
                 </div>
               );
@@ -1291,7 +1294,7 @@ function DayGroup({ day, dayIndex, dayWos, lang, isMobile, isOver, onToggleCompl
         </div>
         {!allRest && (
           <span style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: "500" }}>
-            {dayKm > 0 ? `${dayKm.toFixed(1)} km · ` : ""}{dayHrs} {lang === "en" ? "h" : "giờ"}
+            {dayHrs} {lang === "en" ? "h" : "giờ"}{dayKm > 0 ? ` · ~${dayKm.toFixed(1)} km` : ""}
           </span>
         )}
       </div>

@@ -41,31 +41,41 @@ export function calculateTreadmillSettings(
 
 export interface TreadmillGuide extends TreadmillSettings {
   estimated: boolean;
+  // Where the incline came from when estimated — lets callers explain the
+  // number accurately instead of always citing the flat 1% rule, which is
+  // only true for the "default" case.
+  gradeSource: "ai" | "outdoor-grade" | "default";
 }
 
 // Resolves the treadmill guide to show for a workout: prefers the AI's own
 // treadmill_speed/treadmill_incline when both are set (e.g. a course-
-// elevation-specific gym session), otherwise derives one from the workout's
-// target pace and the standard 1% incline rule, so the Treadmill tab always
-// shows an actionable Speed/Grade instead of going blank.
+// elevation-specific gym session). Otherwise derives one from the workout's
+// target pace, preferring this same run's own outdoor grade_percent over the
+// flat 1% default — so a trail run with real climbing shows a Treadmill Grade
+// that matches its Outdoor Grade, instead of defaulting to a flat belt that
+// under-trains the climb. Falls back to the standard 1% incline rule only
+// when neither an AI-supplied incline nor an outdoor grade_percent exists.
 export function getTreadmillGuide(
   targetPace: string | null | undefined,
   aiSpeedKph: number,
-  aiInclinePercent: number
+  aiInclinePercent: number,
+  outdoorGradePercent?: number | null
 ): TreadmillGuide | null {
   if (aiSpeedKph > 0 && aiInclinePercent > 0) {
-    return { speedKph: aiSpeedKph, inclinePercent: aiInclinePercent, estimated: false };
+    return { speedKph: aiSpeedKph, inclinePercent: aiInclinePercent, estimated: false, gradeSource: "ai" };
   }
 
   const pace = parsePaceToDecimalMinutes(targetPace);
   if (pace === null) {
     if (aiSpeedKph > 0 || aiInclinePercent > 0) {
-      return { speedKph: aiSpeedKph, inclinePercent: aiInclinePercent, estimated: false };
+      return { speedKph: aiSpeedKph, inclinePercent: aiInclinePercent, estimated: false, gradeSource: "ai" };
     }
     return null;
   }
 
-  const grade = aiInclinePercent > 0 ? aiInclinePercent : DEFAULT_TREADMILL_GRADE_PERCENT;
+  const hasOutdoorGrade = !!outdoorGradePercent && outdoorGradePercent > 0;
+  const grade = aiInclinePercent > 0 ? aiInclinePercent : hasOutdoorGrade ? outdoorGradePercent! : DEFAULT_TREADMILL_GRADE_PERCENT;
+  const gradeSource: TreadmillGuide["gradeSource"] = aiInclinePercent > 0 ? "ai" : hasOutdoorGrade ? "outdoor-grade" : "default";
   const settings = calculateTreadmillSettings(pace, grade);
-  return { ...settings, estimated: true };
+  return { ...settings, estimated: true, gradeSource };
 }

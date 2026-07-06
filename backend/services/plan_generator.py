@@ -187,6 +187,57 @@ class PlanGenerator:
 
         return round(elevation_gain_m, 1), round(grade_percent, 1)
 
+    # Title substrings (case-insensitive) that identify a true hill-sprint/hill-repeat
+    # session — short, near-maximal efforts that require a steep grade by design,
+    # regardless of the race's average grade or this workout's own grade_percent.
+    HILL_SPRINT_TITLE_KEYWORDS = ("hill sprint", "hill repeat", "hill bound")
+    HILL_SPRINT_INCLINE_MIN = 10.0
+    HILL_SPRINT_INCLINE_MAX = 15.0
+
+    @staticmethod
+    def resolve_hill_sprint_treadmill(
+        wo: dict[str, Any],
+        target_pace: str | None,
+    ) -> tuple[float, float]:
+        """Guarantees a realistic 10-15% treadmill incline for Hill Sprint/Hill
+        Repeat workouts, regardless of what the AI supplied (or omitted).
+
+        The AI prompt already asks for this range, but prompt compliance isn't
+        guaranteed — this is a deterministic backstop, the same pattern as
+        resolve_elevation_and_grade: if the AI's own treadmill_incline already
+        falls in [10, 15], it's kept as-is; otherwise it's clamped to the
+        nearest bound (or defaulted to the range midpoint, 12.5, if the AI
+        omitted it entirely or gave 0). treadmill_speed is then recomputed
+        from the workout's own target_pace so the two stay physiologically
+        consistent with each other, rather than pairing a clamped incline with
+        the AI's original (now-stale) speed.
+
+        Workouts whose title doesn't mention Hill Sprint/Hill Repeat are
+        returned unchanged.
+        """
+        title_lower = (wo.get("title") or "").lower()
+        if not any(kw in title_lower for kw in PlanGenerator.HILL_SPRINT_TITLE_KEYWORDS):
+            try:
+                incline = float(wo.get("treadmill_incline") or 0.0)
+            except (TypeError, ValueError):
+                incline = 0.0
+            try:
+                speed = float(wo.get("treadmill_speed") or 0.0)
+            except (TypeError, ValueError):
+                speed = 0.0
+            return incline, speed
+
+        try:
+            incline = float(wo.get("treadmill_incline") or 0.0)
+        except (TypeError, ValueError):
+            incline = 0.0
+        if not (PlanGenerator.HILL_SPRINT_INCLINE_MIN <= incline <= PlanGenerator.HILL_SPRINT_INCLINE_MAX):
+            incline = (PlanGenerator.HILL_SPRINT_INCLINE_MIN + PlanGenerator.HILL_SPRINT_INCLINE_MAX) / 2
+
+        flat_pace = PlanGenerator.parse_pace_to_decimal((target_pace or "").replace("/km", "").strip())
+        settings = TrainingRules.calculate_treadmill_settings(flat_pace, incline)
+        return settings["incline_percentage"], settings["speed_kph"]
+
     @staticmethod
     async def generate_plan_workouts(
         plan_id: int,
@@ -346,6 +397,13 @@ class PlanGenerator:
 
                 wo["elevation_gain_m"], wo["grade_percent"] = PlanGenerator.resolve_elevation_and_grade(
                     wo, w_type, terrain, wo["distance_km"], course_elevation_gain_m, course_distance_km
+                )
+
+                # Guarantee: Hill Sprint/Hill Repeat titles always get a realistic 10-15%
+                # treadmill incline, regardless of what the AI supplied (or omitted) — the
+                # prompt asks for this range, but this backstop makes it non-negotiable.
+                wo["treadmill_incline"], wo["treadmill_speed"] = PlanGenerator.resolve_hill_sprint_treadmill(
+                    wo, wo["target_pace"]
                 )
             return wos
 
@@ -614,8 +672,18 @@ class PlanGenerator:
                 "precautions — NEVER exercise prescriptions, sets, or reps; those belong exclusively in "
                 "Process). Provide extensive context.)\n"
                 "   - `fueling_tip` (string: hydration, carbohydrate, and electrolyte guides specific to duration/intensity)\n"
-                "   - `treadmill_incline` (number, optional: recommended incline percentage if using treadmill)\n"
-                "   - `treadmill_speed` (number, optional: recommended speed in kph if using treadmill)\n"
+                "   - `treadmill_incline` (number, optional: recommended incline percentage if using treadmill. "
+                "Inform this from the route's actual grade instead of a flat generic default: for trail-terrain "
+                "Easy/Tempo/Interval/Long Run workouts, set it consistent with this same workout's own "
+                "`grade_percent` above (a flat 1% belt incline under-trains the specific climbing demand of a "
+                "genuinely hilly race). EXCEPTION — for a Hill Sprint or Hill Repeat workout specifically "
+                "(identifiable by 'Hill Sprint'/'Hill Repeat' in the `title`), `treadmill_incline` MUST be in the "
+                "10-15% range regardless of the race's average grade or this workout's own `grade_percent` — "
+                "these are short, near-maximal efforts that require a steep grade by design, not a race-average "
+                "one. Omit or use 0 when treadmill access isn't relevant.)\n"
+                "   - `treadmill_speed` (number, optional: recommended speed in kph if using treadmill, reduced "
+                "appropriately for the incline set above — a steeper incline needs a slower speed to hold the "
+                "same target effort)\n"
                 "   - `session_slot` (string, optional: ONLY set this on double-session days. Use 'morning' for the first/shorter session and 'afternoon' for the main/longer session. Omit entirely for single-session days.)\n\n"
                 f"{block_scope_instruction}"
                 f"{_start_date_constraint}"
@@ -666,7 +734,9 @@ class PlanGenerator:
                 "(e.g. after Warning, injury-risks only); Intervals state exact reps/distance-or-"
                 "duration/recovery; plus Overall/Reason/Benefit/Warning), "
                 "fueling_tip (string), "
-                "treadmill_incline/treadmill_speed (optional numbers, treadmill only), "
+                "treadmill_incline/treadmill_speed (optional numbers, treadmill only — incline should match this "
+                "run's own grade_percent for trail workouts, not a flat 1%; EXCEPTION: Hill Sprint/Hill Repeat "
+                "titles MUST use 10-15% incline regardless of grade_percent; speed reduced to match incline), "
                 "session_slot ('morning'/'afternoon' on double-session days only, omit otherwise).\n\n"
             )
             nb_rules_block = (
