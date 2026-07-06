@@ -329,27 +329,20 @@ class PlanGenerator:
                         wo["treadmill_speed"] = 0.0
 
                 # Reset Rest/Strength/ME — always zero distance, never inherit AI value
+                title_lower = wo.get("title", "").lower()
                 if w_type in ("Rest", "Strength", "Muscular Endurance") or dur <= 0.0:
                     wo["target_pace"] = ""
                     wo["distance_km"] = 0.0
-                    wo["elevation_gain_m"], wo["grade_percent"] = PlanGenerator.resolve_elevation_and_grade(
-                        wo, w_type, terrain, wo["distance_km"], course_elevation_gain_m, course_distance_km
-                    )
-                    continue
-
                 # Race / Target Race: use the known course distance and goal pace
-                title_lower = wo.get("title", "").lower()
-                if ("target race" in title_lower or w_type == "Race") and course_distance_km:
+                elif ("target race" in title_lower or w_type == "Race") and course_distance_km:
                     wo["distance_km"] = float(course_distance_km)
                     # Use goal race pace derived from target finish time; fall back to Zone 4
                     wo["target_pace"] = f"{goal_race_pace_str or p_z4} /km"
-                    wo["elevation_gain_m"], wo["grade_percent"] = PlanGenerator.resolve_elevation_and_grade(
-                        wo, w_type, terrain, wo["distance_km"], course_elevation_gain_m, course_distance_km
+                else:
+                    # Map zone to pace range + distance (always recalculate, discard AI distance)
+                    wo["target_pace"], wo["distance_km"] = PlanGenerator.pace_and_distance_for_zone(
+                        zone, dur, est_zones
                     )
-                    continue
-
-                # Map zone to pace range + distance (always recalculate, discard AI distance)
-                wo["target_pace"], wo["distance_km"] = PlanGenerator.pace_and_distance_for_zone(zone, dur, est_zones)
 
                 wo["elevation_gain_m"], wo["grade_percent"] = PlanGenerator.resolve_elevation_and_grade(
                     wo, w_type, terrain, wo["distance_km"], course_elevation_gain_m, course_distance_km
