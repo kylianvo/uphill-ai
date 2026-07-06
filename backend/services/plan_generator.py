@@ -1,3 +1,4 @@
+import traceback
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -781,7 +782,9 @@ class PlanGenerator:
 
         _nb_query = _nb_prompt
 
-        if _nb_query and notebook_id and auth_json:
+        async def _try_notebooklm() -> list[dict[str, Any]] | None:
+            if not (_nb_query and notebook_id and auth_json):
+                return None
             try:
                 from services.notebooklm_service import NotebookLmService
 
@@ -805,6 +808,7 @@ class PlanGenerator:
                     return post_process_workouts(cleaned_wos)
                 else:
                     print("[PlanGen][NotebookLM] Empty or invalid list returned, trying Gemini fallback.")
+                    return None
             except Exception as ex:
                 err_str = str(ex)
                 if "No parseable chunks" in err_str or "empty" in err_str.lower():
@@ -813,18 +817,42 @@ class PlanGenerator:
                         "or auth token expired (update NOTEBOOKLM_AUTH_JSON). Falling back to Gemini."
                     )
                 else:
-                    print(f"[PlanGen][NotebookLM] FAILED: {ex}. Trying Gemini fallback.")
+                    print(f"[PlanGen][NotebookLM] FAILED: {ex}. Trying Gemini fallback.\n{traceback.format_exc()}")
+                return None
 
-        if _ai_prompt and api_key:
+        async def _try_gemini() -> list[dict[str, Any]] | None:
+            if not (_ai_prompt and api_key):
+                return None
+            import asyncio
+
+            _kb_context = ""
+            if settings.RAG_ENGINE == "gemini":
+                # Ground the plan in distilled Uphill Athlete philosophy. Retrieval failure
+                # is non-fatal — the prompt already carries the core rules inline.
+                try:
+                    from services.kb_context import render_principles_context
+                    from services.kb_retrieval import search_scheduler_chunks
+
+                    _retrieval_query = (
+                        f"{race_info.get('terrain', 'trail')} race training plan: periodization "
+                        f"phases, muscular endurance circuit design, taper and race week, long run "
+                        f"and Zone 2 volume, double sessions"
+                    )
+                    _hits = await asyncio.to_thread(search_scheduler_chunks, _retrieval_query, api_key, 6)
+                    _kb_context = render_principles_context(
+                        _hits, heading="UPHILL ATHLETE PHILOSOPHY (grounding context)"
+                    )
+                    print(f"[PlanGen][KB] Retrieved {len(_hits)} philosophy chunks")
+                except Exception as _kb_ex:
+                    print(f"[PlanGen][KB] Retrieval failed (continuing without): {_kb_ex}")
+            _gemini_prompt = _ai_prompt + ("\n\n" + _kb_context if _kb_context else "")
             try:
-                import asyncio
-
                 import google.generativeai as _genai
 
                 _genai.configure(api_key=api_key)
                 _model = _genai.GenerativeModel("gemini-2.5-flash")
-                print(f"[PlanGen][Gemini] Sending prompt ({len(_ai_prompt)} chars)...")
-                _response = await asyncio.to_thread(_model.generate_content, _ai_prompt)
+                print(f"[PlanGen][Gemini] Sending prompt ({len(_gemini_prompt)} chars)...")
+                _response = await asyncio.to_thread(_model.generate_content, _gemini_prompt)
                 clean_text = _extract_json_array(_response.text)
                 try:
                     ai_workouts = _json.loads(clean_text)
@@ -837,8 +865,18 @@ class PlanGenerator:
                     return post_process_workouts(cleaned_wos)
                 else:
                     print("[PlanGen][Gemini] Empty or invalid list returned, using rule-based fallback.")
+                    return None
             except Exception as ex:
-                print(f"[PlanGen][Gemini] FAILED: {ex}. Using rule-based fallback schedule.")
+                print(f"[PlanGen][Gemini] FAILED: {ex}. Using rule-based fallback schedule.\n{traceback.format_exc()}")
+                return None
+
+        _engine_order = (
+            [_try_gemini, _try_notebooklm] if settings.RAG_ENGINE == "gemini" else [_try_notebooklm, _try_gemini]
+        )
+        for _attempt in _engine_order:
+            _result = await _attempt()
+            if _result:
+                return _result
 
         # --- Rule-Based Fallback Schedule ---
 
