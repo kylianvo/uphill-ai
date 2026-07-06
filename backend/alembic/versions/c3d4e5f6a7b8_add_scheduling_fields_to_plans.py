@@ -8,6 +8,8 @@ Create Date: 2026-07-01 00:00:00.000000
 
 from collections.abc import Sequence
 
+import sqlalchemy as sa
+
 from alembic import op
 
 revision: str = "c3d4e5f6a7b8"
@@ -17,14 +19,14 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.execute("ALTER TABLE plans ADD COLUMN IF NOT EXISTS preferred_run_days TEXT")
-    op.execute("ALTER TABLE plans ADD COLUMN IF NOT EXISTS long_run_day TEXT")
-    op.execute("ALTER TABLE plans ADD COLUMN IF NOT EXISTS days_per_week INTEGER DEFAULT 4")
-    op.execute("ALTER TABLE plans ADD COLUMN IF NOT EXISTS double_session_days TEXT")
+    op.add_column("plans", sa.Column("preferred_run_days", sa.Text(), nullable=True))
+    op.add_column("plans", sa.Column("long_run_day", sa.Text(), nullable=True))
+    op.add_column("plans", sa.Column("days_per_week", sa.Integer(), nullable=True, server_default="4"))
+    op.add_column("plans", sa.Column("double_session_days", sa.Text(), nullable=True))
 
 
 def downgrade() -> None:
-    op.execute("ALTER TABLE plans DROP COLUMN IF EXISTS double_session_days")
-    op.execute("ALTER TABLE plans DROP COLUMN IF EXISTS days_per_week")
-    op.execute("ALTER TABLE plans DROP COLUMN IF EXISTS long_run_day")
-    op.execute("ALTER TABLE plans DROP COLUMN IF EXISTS preferred_run_days")
+    op.drop_column("plans", "double_session_days")
+    op.drop_column("plans", "days_per_week")
+    op.drop_column("plans", "long_run_day")
+    op.drop_column("plans", "preferred_run_days")

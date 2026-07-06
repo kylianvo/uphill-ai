@@ -249,6 +249,8 @@ def init_db():
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS rpe INTEGER",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS notes TEXT",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS session_slot TEXT DEFAULT 'main'",
+            "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS elevation_gain_m REAL DEFAULT 0.0",
+            "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS grade_percent REAL DEFAULT 0.0",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS double_session_days TEXT",
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS preferred_run_days TEXT",
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS long_run_day TEXT",

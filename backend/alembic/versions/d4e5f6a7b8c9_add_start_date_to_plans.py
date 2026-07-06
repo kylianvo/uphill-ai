@@ -8,6 +8,8 @@ Create Date: 2026-07-01 00:00:00.000000
 
 from collections.abc import Sequence
 
+import sqlalchemy as sa
+
 from alembic import op
 
 revision: str = "d4e5f6a7b8c9"
@@ -17,8 +19,8 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.execute("ALTER TABLE plans ADD COLUMN IF NOT EXISTS start_date TEXT")
+    op.add_column("plans", sa.Column("start_date", sa.Text(), nullable=True))
 
 
 def downgrade() -> None:
-    op.execute("ALTER TABLE plans DROP COLUMN IF EXISTS start_date")
+    op.drop_column("plans", "start_date")

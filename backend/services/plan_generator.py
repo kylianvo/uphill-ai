@@ -137,6 +137,56 @@ class PlanGenerator:
         distance_km = round(duration_minutes / pace_dec, 1) if pace_dec > 0 else 0.0
         return f"{pace_str} /km", distance_km
 
+    ELEVATION_ELIGIBLE_TYPES = ("Easy", "Tempo", "Interval", "Long Run")
+
+    @staticmethod
+    def resolve_elevation_and_grade(
+        wo: dict[str, Any],
+        w_type: str,
+        terrain: str,
+        distance_km: float,
+        course_elevation_gain_m: float | None,
+        course_distance_km: float | None,
+    ) -> tuple[float, float]:
+        """Resolves (elevation_gain_m, grade_percent) for a single workout.
+
+        Elevation and grade resolve independently and in order: elevation
+        first (AI-supplied value if present and numeric, else a course-
+        proportional formula, else 0.0), then grade (AI-supplied value if
+        present and numeric, else derived from the now-resolved elevation
+        and distance_km, else 0.0). Grade's fallback deliberately never reads
+        course_elevation_gain_m directly, so an AI-supplied elevation_gain_m
+        with no AI-supplied grade_percent still gets a grade consistent with
+        that specific elevation value, not the race's average.
+
+        Only applies to Easy/Tempo/Interval/Long Run on trail terrain; every
+        other type or terrain always returns (0.0, 0.0).
+        """
+        if w_type not in PlanGenerator.ELEVATION_ELIGIBLE_TYPES or terrain != "trail":
+            return 0.0, 0.0
+
+        def _as_float(value: Any) -> float | None:
+            try:
+                return float(value) if value is not None else None
+            except (TypeError, ValueError):
+                return None
+
+        elevation_gain_m = _as_float(wo.get("elevation_gain_m"))
+        if elevation_gain_m is None:
+            if course_elevation_gain_m and course_distance_km and float(course_distance_km) > 0:
+                elevation_gain_m = distance_km * (float(course_elevation_gain_m) / float(course_distance_km))
+            else:
+                elevation_gain_m = 0.0
+
+        grade_percent = _as_float(wo.get("grade_percent"))
+        if grade_percent is None:
+            if elevation_gain_m and distance_km > 0:
+                grade_percent = elevation_gain_m / (distance_km * 10)
+            else:
+                grade_percent = 0.0
+
+        return round(elevation_gain_m, 1), round(grade_percent, 1)
+
     @staticmethod
     async def generate_plan_workouts(
         plan_id: int,

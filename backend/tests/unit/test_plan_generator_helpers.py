@@ -351,3 +351,101 @@ class TestRuleBasedFallbackDescriptionConsistency:
         assert (
             checked["taper_walk"] > 0
         ), "no Vietnamese Taper Active-Recovery-Walk description matched the expected format"
+
+
+class TestResolveElevationAndGrade:
+    def test_non_qualifying_type_returns_zero(self):
+        result = PlanGenerator.resolve_elevation_and_grade(
+            wo={},
+            w_type="Strength",
+            terrain="trail",
+            distance_km=10.0,
+            course_elevation_gain_m=1000.0,
+            course_distance_km=50.0,
+        )
+        assert result == (0.0, 0.0)
+
+    def test_non_trail_terrain_returns_zero(self):
+        result = PlanGenerator.resolve_elevation_and_grade(
+            wo={},
+            w_type="Long Run",
+            terrain="road",
+            distance_km=10.0,
+            course_elevation_gain_m=1000.0,
+            course_distance_km=50.0,
+        )
+        assert result == (0.0, 0.0)
+
+    def test_keeps_ai_supplied_values_when_present(self):
+        wo = {"elevation_gain_m": 320.0, "grade_percent": 4.2}
+        result = PlanGenerator.resolve_elevation_and_grade(
+            wo=wo,
+            w_type="Long Run",
+            terrain="trail",
+            distance_km=10.0,
+            course_elevation_gain_m=1000.0,
+            course_distance_km=50.0,
+        )
+        assert result == (320.0, 4.2)
+
+    def test_derives_elevation_from_course_ratio_when_ai_omits_it(self):
+        # course grade = 1000m / 50km = 20 m/km; distance 10km -> 200m
+        result = PlanGenerator.resolve_elevation_and_grade(
+            wo={},
+            w_type="Easy",
+            terrain="trail",
+            distance_km=10.0,
+            course_elevation_gain_m=1000.0,
+            course_distance_km=50.0,
+        )
+        assert result[0] == 200.0
+
+    def test_derives_grade_from_resolved_elevation_not_course_ratio(self):
+        # AI supplies its own elevation_gain_m but not grade_percent: grade must
+        # come from THIS elevation_gain_m / distance_km, not the course ratio.
+        wo = {"elevation_gain_m": 500.0}
+        result = PlanGenerator.resolve_elevation_and_grade(
+            wo=wo,
+            w_type="Long Run",
+            terrain="trail",
+            distance_km=10.0,
+            course_elevation_gain_m=1000.0,
+            course_distance_km=50.0,
+        )
+        elevation_gain_m, grade_percent = result
+        assert elevation_gain_m == 500.0
+        assert grade_percent == 5.0  # 500 / (10 * 10)
+
+    def test_returns_zero_when_course_data_missing_and_ai_omits_values(self):
+        result = PlanGenerator.resolve_elevation_and_grade(
+            wo={},
+            w_type="Long Run",
+            terrain="trail",
+            distance_km=10.0,
+            course_elevation_gain_m=None,
+            course_distance_km=None,
+        )
+        assert result == (0.0, 0.0)
+
+    def test_ignores_unparseable_ai_values_and_falls_back(self):
+        wo = {"elevation_gain_m": "not-a-number", "grade_percent": None}
+        result = PlanGenerator.resolve_elevation_and_grade(
+            wo=wo,
+            w_type="Easy",
+            terrain="trail",
+            distance_km=10.0,
+            course_elevation_gain_m=1000.0,
+            course_distance_km=50.0,
+        )
+        assert result == (200.0, 2.0)  # 200 / (10*10) = 2.0
+
+    def test_zero_distance_never_divides_by_zero(self):
+        result = PlanGenerator.resolve_elevation_and_grade(
+            wo={},
+            w_type="Easy",
+            terrain="trail",
+            distance_km=0.0,
+            course_elevation_gain_m=1000.0,
+            course_distance_km=50.0,
+        )
+        assert result == (0.0, 0.0)
