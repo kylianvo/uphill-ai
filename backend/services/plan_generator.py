@@ -703,13 +703,12 @@ class PlanGenerator:
                 f"{feedback_instruction}"
             )
 
-            # NotebookLM enforces a strict ~4000-char query limit — too small to fit the full
-            # Gemini prompt above once the schema, athlete profile, and feedback are all present.
-            # Rather than slicing the full prompt at a fixed offset (which risks cutting off
-            # whichever section happens to land near the cutoff — the schema, or the athlete
-            # profile, depending on prompt length), build a distinct, compact prompt with the
-            # same information in terser wording, and only truncate the unbounded, least-critical
-            # trailing section (prior-block feedback) to whatever budget remains.
+            # NotebookLM's actual query limit is ~10,000 chars (confirmed) — comfortably large
+            # enough to carry the same schema detail as the full Gemini prompt above, so this
+            # reuses the exact same wording rather than a terser paraphrase (a terser schema
+            # risks losing the ME-circuit-vs-straight-set distinction, which has needed a
+            # concrete example to reliably hold in the past). Built as a separate prompt (not
+            # a direct reuse of _ai_prompt) only because a couple of framing lines differ.
             nb_schema_block = (
                 "OUTPUT CONTRACT: Return ONLY a JSON array of workout objects — no markdown fences, no prose.\n"
                 "Each object MUST have: week_number (int, within block range below), day_of_week (Mon-Sun), "
@@ -746,22 +745,30 @@ class PlanGenerator:
                 "template. NEVER invent a claim or figure beyond standard Uphill Athlete training principles."
                 f"{lang_rule}\n\n"
             )
+            # Ordered so the per-request facts that can't be inferred or regenerated — hard
+            # week-range/date constraints, the athlete's own profile and scheduling
+            # preferences, and the race/program details — come before the generic, identical-
+            # every-time schema block. At the real ~10,000-char limit this ordering is a
+            # defensive safety margin rather than a load-bearing necessity (everything fits
+            # without truncation in practice), but it means an unusually long feedback blob
+            # (the one genuinely unbounded section) is the only thing ever at risk of being
+            # cut, never the athlete/race facts.
             _nb_prompt_head = (
                 "You are a world-class running coach training athletes based on the 'Training for the Uphill Athlete' philosophy.\n"
                 f"{goal_intro}\n\n"
-                f"{nb_schema_block}"
                 f"{block_scope_instruction}"
                 f"{_start_date_constraint}"
                 f"{week_schedule_constraints}"
-                f"{nb_rules_block}"
                 f"Athlete Profile:\n{user_summary}\n\n"
                 f"{program_details}"
                 f"Plan Start Date: {current_date_str} ({current_weekday})\n"
                 f"{target_date_details}"
                 f"Full Plan Length: {total_weeks} weeks.\n"
-                f"- Week 1 starts on: {current_date_str} ({current_weekday}).\n"
+                f"- Week 1 starts on: {current_date_str} ({current_weekday}).\n\n"
+                f"{nb_rules_block}"
+                f"{nb_schema_block}"
             )
-            _NOTEBOOKLM_MAX_CHARS = 3800
+            _NOTEBOOKLM_MAX_CHARS = 9500
             _nb_feedback_budget = _NOTEBOOKLM_MAX_CHARS - len(_nb_prompt_head)
             _nb_prompt = _nb_prompt_head + (
                 feedback_instruction[:_nb_feedback_budget] if _nb_feedback_budget > 0 else ""
