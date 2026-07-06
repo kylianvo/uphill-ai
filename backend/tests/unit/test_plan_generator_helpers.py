@@ -8,6 +8,7 @@ as the plan_start_date regression this suite exists to catch.
 
 import asyncio
 import re
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -573,3 +574,130 @@ class TestPostProcessWorkoutsElevation:
         assert non_run_types
         assert all(w["elevation_gain_m"] == 0.0 for w in non_run_types)
         assert all(w["grade_percent"] == 0.0 for w in non_run_types)
+
+
+class TestNotebookLmCompactPromptContent:
+    """The NotebookLM path builds its own compact prompt (nb_prompt_head) separate from
+    the full Gemini prompt, historically kept short for a query length limit that turned
+    out to be much smaller than NotebookLM's actual ~10,000-char limit. A prior version of
+    this prompt put the generic JSON-schema description before the athlete's own profile,
+    scheduling preferences, and race details — so on longer profiles, the actual per-athlete
+    context (Schedule Preferences chief among them) silently fell off the end of the
+    truncated string while the model still received a complete schema. These tests capture
+    the real query sent to NotebookLM and assert the per-athlete facts always survive.
+    """
+
+    def _capture_nb_query(
+        self, monkeypatch, user_profile: dict, race_info: dict, block_context: str | None = None
+    ) -> str:
+        monkeypatch.setattr(settings, "NOTEBOOKLM_NOTEBOOK_ID", "fake-notebook-id")
+        monkeypatch.setattr(settings, "NOTEBOOKLM_AUTH_JSON", "fake-auth-json")
+
+        captured: dict[str, str] = {}
+
+        async def fake_query_notebook(notebook_id, auth_json, query, service=None):
+            captured["query"] = query
+            return "[]"  # empty list -> falls through to Gemini/rule-based, no real network call
+
+        with patch(
+            "services.notebooklm_service.NotebookLmService.query_notebook",
+            new=AsyncMock(side_effect=fake_query_notebook),
+        ):
+            asyncio.run(
+                PlanGenerator.generate_plan_workouts(
+                    plan_id=1,
+                    user_profile=user_profile,
+                    race_info=race_info,
+                    total_weeks=race_info.get("total_weeks", 16),
+                    api_key=None,
+                    block_number=race_info.get("block_number", 1),
+                    weeks_per_block=2,
+                    block_context=block_context,
+                )
+            )
+        assert "query" in captured, "NotebookLmService.query_notebook was never called"
+        return captured["query"]
+
+    def _base_profile_and_race(self) -> tuple[dict, dict]:
+        user_profile = {
+            "age": 32,
+            "current_weekly_km": 40.0,
+            "max_hr": 188,
+            "resting_hr": 55,
+            "aet_hr": 140,
+            "ant_hr": 172,
+            "use_treadmill": False,
+            "zone2_pace_min": "6:15",
+            "zone2_pace_max": "5:30",
+            "double_session_days": '["Tuesday"]',
+            "injury_history": "Mild right knee IT band tightness",
+        }
+        race_info = {
+            "name": "SUM 42km",
+            "date": "2026-11-15",
+            "terrain": "trail",
+            "course_distance_km": 42.0,
+            "course_elevation_gain_m": 1800.0,
+            "goal_type": "time",
+            "target_time_hours": 6.5,
+            "preferred_days": '["Monday", "Wednesday", "Friday", "Saturday"]',
+            "long_run_day": "Saturday",
+            "days_per_week": 4,
+            "lang": "en",
+        }
+        return user_profile, race_info
+
+    def test_schedule_preferences_fully_present_not_truncated(self, monkeypatch):
+        user_profile, race_info = self._base_profile_and_race()
+        query = self._capture_nb_query(monkeypatch, user_profile, race_info)
+
+        assert "Scheduling Preferences" in query
+        assert "Preferred training days: Monday, Wednesday, Friday, Saturday" in query
+        assert "Rest/off days (assign Rest workouts):" in query
+        assert "Preferred long run day: Saturday" in query
+        assert "Double-session days: Tuesday" in query
+        assert "Injury history: Mild right knee IT band tightness" in query
+
+    def test_race_and_date_context_fully_present(self, monkeypatch):
+        user_profile, race_info = self._base_profile_and_race()
+        query = self._capture_nb_query(monkeypatch, user_profile, race_info)
+
+        assert "Race Details" in query
+        assert "SUM 42km" in query
+        assert "1800.0 m" in query
+        assert "Target Race Date" in query
+        assert "Full Plan Length: 16 weeks." in query
+
+    def test_schema_fields_still_present_alongside_athlete_context(self, monkeypatch):
+        # Guards against fixing the truncation bug by simply dropping schema content —
+        # the schema (including fields near its end) must survive too.
+        user_profile, race_info = self._base_profile_and_race()
+        query = self._capture_nb_query(monkeypatch, user_profile, race_info)
+
+        assert "OUTPUT CONTRACT" in query
+        assert "elevation_gain_m/grade_percent" in query
+        assert "treadmill_incline/treadmill_speed" in query
+        assert "session_slot" in query
+
+    def test_survives_even_with_long_feedback_and_verbose_profile(self, monkeypatch):
+        user_profile, race_info = self._base_profile_and_race()
+        user_profile["double_session_days"] = '["Tuesday", "Thursday"]'
+        user_profile["injury_history"] = (
+            "Mild right knee IT band tightness in 2025, also occasional lower back "
+            "stiffness after long runs on consecutive weekends"
+        )
+        race_info["name"] = "Ultra Trail Mont Something Very Long Name 100 Miler"
+        race_info["course_distance_km"] = 160.0
+        race_info["course_elevation_gain_m"] = 9800.0
+        race_info["total_weeks"] = 24
+        race_info["block_number"] = 2
+        long_feedback = "Athlete reported RPE 8 last week and mentioned right knee pain during downhill sections. " * 20
+
+        query = self._capture_nb_query(monkeypatch, user_profile, race_info, block_context=long_feedback)
+
+        assert len(query) < 9500, "query should stay comfortably under NotebookLM's real ~10,000-char limit"
+        assert "Preferred long run day: Saturday" in query
+        assert "Double-session days: Tuesday, Thursday" in query
+        assert "9800.0 m" in query
+        assert "session_slot" in query
+        assert "ATHLETE FEEDBACK FROM PREVIOUS BLOCKS" in query
