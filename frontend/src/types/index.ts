@@ -36,6 +36,8 @@ export interface Workout {
   target_pace?: string;
   treadmill_incline: number;
   treadmill_speed: number;
+  elevation_gain_m: number;
+  grade_percent: number;
   description?: string;
   fueling_tip?: string;
   is_completed: number;

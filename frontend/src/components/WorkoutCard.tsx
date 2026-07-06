@@ -20,6 +20,7 @@ import {
   Wind,
   Warning,
   Leaf,
+  Mountains,
 } from "@phosphor-icons/react";
 import { getZoneColor, RPE_DESCRIPTORS } from "../data/workoutLibrary";
 import { useWorkoutTypes, resolveWorkoutInfo } from "../hooks/useWorkoutTypes";
@@ -404,6 +405,22 @@ export default function WorkoutCard({
                   value={wo.target_pace}
                   color={zoneColor}
                   icon={<Footprints size={12} />}
+                />
+              )}
+              {surface === "outdoor" && wo.elevation_gain_m > 0 && (
+                <MetricPill
+                  label={lang === "en" ? "Elevation" : "Độ cao"}
+                  value={`+${Math.round(wo.elevation_gain_m)}m`}
+                  color={zoneColor}
+                  icon={<Mountains size={12} />}
+                />
+              )}
+              {surface === "outdoor" && wo.grade_percent > 0 && (
+                <MetricPill
+                  label={lang === "en" ? "Grade" : "Độ dốc"}
+                  value={`${wo.grade_percent.toFixed(1)}%`}
+                  color={zoneColor}
+                  icon={<Gauge size={12} />}
                 />
               )}
               {surface === "treadmill" && treadmillGuide && (
