@@ -131,6 +131,8 @@ def init_db():
             target_pace         TEXT,
             treadmill_incline   REAL DEFAULT 0.0,
             treadmill_speed     REAL DEFAULT 0.0,
+            elevation_gain_m    REAL DEFAULT 0.0,
+            grade_percent       REAL DEFAULT 0.0,
             description         TEXT,
             fueling_tip         TEXT,
             is_completed        INTEGER DEFAULT 0
@@ -477,10 +479,12 @@ def save_workouts(plan_id: int, workouts: list[dict[str, Any]]):
                 text("""
                 INSERT INTO workouts (plan_id, week_number, day_of_week, phase, title, type,
                     duration_minutes, distance_km, target_zone, target_hr_range, target_pace,
-                    treadmill_incline, treadmill_speed, description, fueling_tip, session_slot)
+                    treadmill_incline, treadmill_speed, elevation_gain_m, grade_percent,
+                    description, fueling_tip, session_slot)
                 VALUES (:plan_id, :week_number, :day_of_week, :phase, :title, :type,
                     :duration_minutes, :distance_km, :target_zone, :target_hr_range, :target_pace,
-                    :treadmill_incline, :treadmill_speed, :description, :fueling_tip, :session_slot)
+                    :treadmill_incline, :treadmill_speed, :elevation_gain_m, :grade_percent,
+                    :description, :fueling_tip, :session_slot)
             """),
                 {
                     "plan_id": plan_id,
@@ -496,6 +500,8 @@ def save_workouts(plan_id: int, workouts: list[dict[str, Any]]):
                     "target_pace": wo.get("target_pace"),
                     "treadmill_incline": wo.get("treadmill_incline", 0.0),
                     "treadmill_speed": wo.get("treadmill_speed", 0.0),
+                    "elevation_gain_m": wo.get("elevation_gain_m", 0.0),
+                    "grade_percent": wo.get("grade_percent", 0.0),
                     "description": wo.get("description"),
                     "fueling_tip": wo.get("fueling_tip"),
                     "session_slot": wo.get("session_slot", "main"),
