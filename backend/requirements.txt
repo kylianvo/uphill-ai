@@ -22,3 +22,5 @@ notebooklm-py>=0.7.0
 # Telemetry
 prometheus-client>=0.20.0
 prometheus-fastapi-instrumentator>=7.0.0
+# KB vector retrieval
+qdrant-client>=1.10.0
