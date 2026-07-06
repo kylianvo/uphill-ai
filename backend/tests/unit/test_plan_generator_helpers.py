@@ -6,10 +6,12 @@ minutes conversions are a classic off-by-format bug class, the same flavor
 as the plan_start_date regression this suite exists to catch.
 """
 
+import asyncio
 import re
 
 import pytest
 
+from config import settings
 from services.plan_generator import PlanGenerator
 
 
@@ -351,3 +353,223 @@ class TestRuleBasedFallbackDescriptionConsistency:
         assert (
             checked["taper_walk"] > 0
         ), "no Vietnamese Taper Active-Recovery-Walk description matched the expected format"
+
+
+class TestResolveElevationAndGrade:
+    def test_non_qualifying_type_returns_zero(self):
+        result = PlanGenerator.resolve_elevation_and_grade(
+            wo={},
+            w_type="Strength",
+            terrain="trail",
+            distance_km=10.0,
+            course_elevation_gain_m=1000.0,
+            course_distance_km=50.0,
+        )
+        assert result == (0.0, 0.0)
+
+    def test_non_trail_terrain_returns_zero(self):
+        result = PlanGenerator.resolve_elevation_and_grade(
+            wo={},
+            w_type="Long Run",
+            terrain="road",
+            distance_km=10.0,
+            course_elevation_gain_m=1000.0,
+            course_distance_km=50.0,
+        )
+        assert result == (0.0, 0.0)
+
+    def test_keeps_ai_supplied_values_when_present(self):
+        wo = {"elevation_gain_m": 320.0, "grade_percent": 4.2}
+        result = PlanGenerator.resolve_elevation_and_grade(
+            wo=wo,
+            w_type="Long Run",
+            terrain="trail",
+            distance_km=10.0,
+            course_elevation_gain_m=1000.0,
+            course_distance_km=50.0,
+        )
+        assert result == (320.0, 4.2)
+
+    def test_derives_elevation_from_course_ratio_when_ai_omits_it(self):
+        # course grade = 1000m / 50km = 20 m/km; distance 10km -> 200m
+        result = PlanGenerator.resolve_elevation_and_grade(
+            wo={},
+            w_type="Easy",
+            terrain="trail",
+            distance_km=10.0,
+            course_elevation_gain_m=1000.0,
+            course_distance_km=50.0,
+        )
+        assert result[0] == 200.0
+
+    def test_derives_grade_from_resolved_elevation_not_course_ratio(self):
+        # AI supplies its own elevation_gain_m but not grade_percent: grade must
+        # come from THIS elevation_gain_m / distance_km, not the course ratio.
+        wo = {"elevation_gain_m": 500.0}
+        result = PlanGenerator.resolve_elevation_and_grade(
+            wo=wo,
+            w_type="Long Run",
+            terrain="trail",
+            distance_km=10.0,
+            course_elevation_gain_m=1000.0,
+            course_distance_km=50.0,
+        )
+        elevation_gain_m, grade_percent = result
+        assert elevation_gain_m == 500.0
+        assert grade_percent == 5.0  # 500 / (10 * 10)
+
+    def test_returns_zero_when_course_data_missing_and_ai_omits_values(self):
+        result = PlanGenerator.resolve_elevation_and_grade(
+            wo={},
+            w_type="Long Run",
+            terrain="trail",
+            distance_km=10.0,
+            course_elevation_gain_m=None,
+            course_distance_km=None,
+        )
+        assert result == (0.0, 0.0)
+
+    def test_ignores_unparseable_ai_values_and_falls_back(self):
+        wo = {"elevation_gain_m": "not-a-number", "grade_percent": None}
+        result = PlanGenerator.resolve_elevation_and_grade(
+            wo=wo,
+            w_type="Easy",
+            terrain="trail",
+            distance_km=10.0,
+            course_elevation_gain_m=1000.0,
+            course_distance_km=50.0,
+        )
+        assert result == (200.0, 2.0)  # 200 / (10*10) = 2.0
+
+    def test_zero_distance_never_divides_by_zero(self):
+        result = PlanGenerator.resolve_elevation_and_grade(
+            wo={},
+            w_type="Easy",
+            terrain="trail",
+            distance_km=0.0,
+            course_elevation_gain_m=1000.0,
+            course_distance_km=50.0,
+        )
+        assert result == (0.0, 0.0)
+
+
+class TestResolveHillSprintTreadmill:
+    def test_non_hill_sprint_title_passes_through_unchanged(self):
+        wo = {"title": "Aerobic Tempo Session", "treadmill_incline": 3.0, "treadmill_speed": 10.0}
+        result = PlanGenerator.resolve_hill_sprint_treadmill(wo, target_pace="6:00 /km")
+        assert result == (3.0, 10.0)
+
+    def test_hill_sprint_title_keeps_ai_incline_already_in_range(self):
+        wo = {"title": "Hill Sprint Repeats", "treadmill_incline": 12.0}
+        incline, speed = PlanGenerator.resolve_hill_sprint_treadmill(wo, target_pace="6:00 /km")
+        assert incline == 12.0
+        assert speed > 0
+
+    def test_hill_sprint_title_clamps_out_of_range_incline_to_midpoint(self):
+        wo = {"title": "Afternoon Hill Sprints & Neuromuscular Power", "treadmill_incline": 1.0}
+        incline, _ = PlanGenerator.resolve_hill_sprint_treadmill(wo, target_pace="6:00 /km")
+        assert incline == 12.5
+
+    def test_hill_sprint_title_defaults_when_ai_omits_incline(self):
+        wo = {"title": "Hill Sprint Repeats"}
+        incline, speed = PlanGenerator.resolve_hill_sprint_treadmill(wo, target_pace="6:00 /km")
+        assert incline == 12.5
+        assert speed > 0
+
+    def test_hill_repeat_keyword_matches(self):
+        wo = {"title": "Steep Hill Repeat Session"}
+        incline, _ = PlanGenerator.resolve_hill_sprint_treadmill(wo, target_pace="6:00 /km")
+        assert 10.0 <= incline <= 15.0
+
+    def test_hill_bound_keyword_matches(self):
+        # Rule-based fallback's ME session is titled "Muscular Endurance: Hill Bounds" —
+        # same steep-hill-effort category as Hill Sprint/Hill Repeat, so it must get the
+        # same 10-15% backstop rather than silently falling through unmatched.
+        wo = {"title": "Muscular Endurance: Hill Bounds", "treadmill_incline": 999.0}
+        incline, _ = PlanGenerator.resolve_hill_sprint_treadmill(wo, target_pace="6:00 /km")
+        assert 10.0 <= incline <= 15.0
+
+
+class TestPostProcessWorkoutsElevation:
+    def _run_rule_based(self, monkeypatch, terrain: str, course_distance_km: float, course_elevation_gain_m: float):
+        # Force the rule-based path regardless of what's in this machine's
+        # backend/.env: config.py's load_dotenv() populates
+        # settings.NOTEBOOKLM_NOTEBOOK_ID/NOTEBOOKLM_AUTH_JSON from the real
+        # .env file (this repo's local dev .env has real values configured),
+        # and generate_plan_workouts gates the NotebookLM path on those two
+        # settings attributes (plan_generator.py:322-323,643) — NOT on an
+        # environment variable conftest.py controls. Without this patch the
+        # test would silently attempt a real external NotebookLM API call.
+        monkeypatch.setattr(settings, "NOTEBOOKLM_NOTEBOOK_ID", "")
+        monkeypatch.setattr(settings, "NOTEBOOKLM_AUTH_JSON", "")
+
+        user_profile = {
+            "current_weekly_km": 30.0,
+            "max_hr": 185,
+            "resting_hr": 60,
+            "aet_hr": 135,
+            "ant_hr": 165,
+            "zone2_pace_min": "6:30",
+            "zone2_pace_max": "5:45",
+            "use_treadmill": False,
+        }
+        race_info = {
+            "terrain": terrain,
+            "course_distance_km": course_distance_km,
+            "course_elevation_gain_m": course_elevation_gain_m,
+            "name": "Test Race",
+            "date": "2026-12-01",
+            "goal_type": "finish",
+        }
+        # api_key=None additionally skips the Gemini path (plan_generator.py:677:
+        # `if _ai_prompt and api_key:`), so together with the monkeypatch above,
+        # this call is guaranteed to fall through to the rule-based generator.
+        #
+        # total_weeks=12 (not a short toy value like 2): get_phase_for_week
+        # (plan_generator.py:715-727) always makes the FINAL week "Recovery"
+        # (Saturday -> type "Recovery", not "Long Run") and can make earlier
+        # weeks "Race Week"/"Taper" depending on W = total_weeks - 1. With
+        # total_weeks=12: W=11, num_peak_weeks=2, remaining_weeks=8,
+        # num_build_weeks=4, num_base_weeks=4 -- weeks 1-4 are "Base", so
+        # requesting block_number=1 (weeks 1-2) reliably lands in Base phase,
+        # where Saturday always produces a "Long Run" workout
+        # (plan_generator.py:945-959, the `else` branch after the
+        # Recovery/Race-Week checks).
+        return asyncio.run(
+            PlanGenerator.generate_plan_workouts(
+                plan_id=1,
+                user_profile=user_profile,
+                race_info=race_info,
+                total_weeks=12,
+                api_key=None,
+                block_number=1,
+                weeks_per_block=2,
+            )
+        )
+
+    def test_trail_long_run_gets_nonzero_elevation_and_grade(self, monkeypatch):
+        workouts = self._run_rule_based(
+            monkeypatch, terrain="trail", course_distance_km=50.0, course_elevation_gain_m=2000.0
+        )
+        long_runs = [w for w in workouts if w["type"] == "Long Run"]
+        assert long_runs, "expected at least one Long Run workout"
+        assert all(w["elevation_gain_m"] > 0 for w in long_runs)
+        assert all(w["grade_percent"] > 0 for w in long_runs)
+
+    def test_road_terrain_gets_zero_elevation(self, monkeypatch):
+        workouts = self._run_rule_based(
+            monkeypatch, terrain="road", course_distance_km=50.0, course_elevation_gain_m=2000.0
+        )
+        long_runs = [w for w in workouts if w["type"] == "Long Run"]
+        assert long_runs
+        assert all(w["elevation_gain_m"] == 0.0 for w in long_runs)
+        assert all(w["grade_percent"] == 0.0 for w in long_runs)
+
+    def test_rest_and_strength_always_zero_even_on_trail(self, monkeypatch):
+        workouts = self._run_rule_based(
+            monkeypatch, terrain="trail", course_distance_km=50.0, course_elevation_gain_m=2000.0
+        )
+        non_run_types = [w for w in workouts if w["type"] in ("Rest", "Strength", "Muscular Endurance")]
+        assert non_run_types
+        assert all(w["elevation_gain_m"] == 0.0 for w in non_run_types)
+        assert all(w["grade_percent"] == 0.0 for w in non_run_types)

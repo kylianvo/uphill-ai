@@ -20,6 +20,7 @@ import {
   Wind,
   Warning,
   Leaf,
+  Mountains,
 } from "@phosphor-icons/react";
 import { getZoneColor, RPE_DESCRIPTORS } from "../data/workoutLibrary";
 import { useWorkoutTypes, resolveWorkoutInfo } from "../hooks/useWorkoutTypes";
@@ -97,7 +98,7 @@ export default function WorkoutCard({
 
   const defaultSurface = wo.treadmill_incline > 0 ? "treadmill" : "outdoor";
   const [surface, setSurface] = useState<"outdoor" | "treadmill">(defaultSurface);
-  const treadmillGuide = getTreadmillGuide(wo.target_pace, wo.treadmill_speed, wo.treadmill_incline);
+  const treadmillGuide = getTreadmillGuide(wo.target_pace, wo.treadmill_speed, wo.treadmill_incline, wo.grade_percent);
   const [expanded, setExpanded] = useState(false);
   const [rpe, setRpe] = useState<number | null>(wo.rpe ?? null);
   const [notes, setNotes] = useState<string>(wo.notes ?? "");
@@ -240,17 +241,22 @@ export default function WorkoutCard({
                 )}
                 {wo.distance_km > 0 && (
                   <span
+                    title={
+                      lang === "en"
+                        ? "Estimated from time and pace — follow the clock, not the distance"
+                        : "Ước tính từ thời gian và pace — theo dõi đồng hồ, không phải quãng đường"
+                    }
                     style={{
                       display: "flex",
                       alignItems: "center",
                       gap: "3px",
                       fontSize: "11px",
-                      color: "var(--text-secondary)",
-                      fontWeight: "600",
+                      color: "var(--text-muted)",
+                      fontWeight: "500",
                     }}
                   >
-                    <MapPin size={11} weight="bold" />
-                    {wo.distance_km}km
+                    <MapPin size={11} weight="regular" />
+                    ~{wo.distance_km}km
                   </span>
                 )}
                 {wo.target_pace && wo.target_pace.trim() && (
@@ -406,6 +412,14 @@ export default function WorkoutCard({
                   icon={<Footprints size={12} />}
                 />
               )}
+              {surface === "outdoor" && wo.elevation_gain_m > 0 && (
+                <MetricPill
+                  label={lang === "en" ? "Elevation" : "Độ cao"}
+                  value={`+${Math.ceil(wo.elevation_gain_m / 100) * 100}m`}
+                  color={zoneColor}
+                  icon={<Mountains size={12} />}
+                />
+              )}
               {surface === "treadmill" && treadmillGuide && (
                 <MetricPill
                   label={lang === "en" ? "Speed" : "Tốc độ"}
@@ -445,7 +459,11 @@ export default function WorkoutCard({
 
             {surface === "treadmill" && treadmillGuide?.estimated && (
               <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "-10px", marginBottom: "16px" }}>
-                {lang === "en"
+                {treadmillGuide.gradeSource === "outdoor-grade"
+                  ? lang === "en"
+                    ? "Estimated from your target pace, matched to this route's outdoor grade."
+                    : "Ước tính từ pace mục tiêu, khớp với độ dốc ngoài trời của tuyến đường này."
+                  : lang === "en"
                   ? "Estimated from your target pace using the standard 1% incline rule."
                   : "Ước tính từ pace mục tiêu theo quy tắc độ dốc 1% tiêu chuẩn."}
               </p>
@@ -990,7 +1008,7 @@ function WorkoutLibrarySection({
   if (wo.target_pace?.trim()) targets.push({ label: lang === "en" ? "Pace" : "Pace", value: wo.target_pace, color: zoneColor, icon: <Footprints size={10} /> });
   if (wo.target_hr_range) targets.push({ label: "HR", value: wo.target_hr_range, color: "#ef4444", icon: <Heart size={10} /> });
   if (mainMinutes > 0) targets.push({ label: lang === "en" ? "Duration" : "Thời gian", value: `${mainMinutes} min`, color: "var(--text-secondary)", icon: <Timer size={10} /> });
-  if (wo.distance_km > 0) targets.push({ label: lang === "en" ? "Distance" : "Khoảng cách", value: `${wo.distance_km} km`, color: "var(--text-secondary)", icon: <MapPin size={10} /> });
+  if (wo.distance_km > 0) targets.push({ label: lang === "en" ? "Est. distance" : "Cự ly ước tính", value: `~${wo.distance_km} km`, color: "var(--text-secondary)", icon: <MapPin size={10} /> });
 
   return (
     <div style={{ marginBottom: "14px" }}>

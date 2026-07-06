@@ -137,6 +137,107 @@ class PlanGenerator:
         distance_km = round(duration_minutes / pace_dec, 1) if pace_dec > 0 else 0.0
         return f"{pace_str} /km", distance_km
 
+    ELEVATION_ELIGIBLE_TYPES = ("Easy", "Tempo", "Interval", "Long Run")
+
+    @staticmethod
+    def resolve_elevation_and_grade(
+        wo: dict[str, Any],
+        w_type: str,
+        terrain: str,
+        distance_km: float,
+        course_elevation_gain_m: float | None,
+        course_distance_km: float | None,
+    ) -> tuple[float, float]:
+        """Resolves (elevation_gain_m, grade_percent) for a single workout.
+
+        Elevation and grade resolve independently and in order: elevation
+        first (AI-supplied value if present and numeric, else a course-
+        proportional formula, else 0.0), then grade (AI-supplied value if
+        present and numeric, else derived from the now-resolved elevation
+        and distance_km, else 0.0). Grade's fallback deliberately never reads
+        course_elevation_gain_m directly, so an AI-supplied elevation_gain_m
+        with no AI-supplied grade_percent still gets a grade consistent with
+        that specific elevation value, not the race's average.
+
+        Only applies to Easy/Tempo/Interval/Long Run on trail terrain; every
+        other type or terrain always returns (0.0, 0.0).
+        """
+        if w_type not in PlanGenerator.ELEVATION_ELIGIBLE_TYPES or terrain != "trail":
+            return 0.0, 0.0
+
+        def _as_float(value: Any) -> float | None:
+            try:
+                return float(value) if value is not None else None
+            except (TypeError, ValueError):
+                return None
+
+        elevation_gain_m = _as_float(wo.get("elevation_gain_m"))
+        if elevation_gain_m is None:
+            if course_elevation_gain_m and course_distance_km and float(course_distance_km) > 0:
+                elevation_gain_m = distance_km * (float(course_elevation_gain_m) / float(course_distance_km))
+            else:
+                elevation_gain_m = 0.0
+
+        grade_percent = _as_float(wo.get("grade_percent"))
+        if grade_percent is None:
+            if elevation_gain_m and distance_km > 0:
+                grade_percent = elevation_gain_m / (distance_km * 10)
+            else:
+                grade_percent = 0.0
+
+        return round(elevation_gain_m, 1), round(grade_percent, 1)
+
+    # Title substrings (case-insensitive) that identify a true hill-sprint/hill-repeat
+    # session — short, near-maximal efforts that require a steep grade by design,
+    # regardless of the race's average grade or this workout's own grade_percent.
+    HILL_SPRINT_TITLE_KEYWORDS = ("hill sprint", "hill repeat", "hill bound")
+    HILL_SPRINT_INCLINE_MIN = 10.0
+    HILL_SPRINT_INCLINE_MAX = 15.0
+
+    @staticmethod
+    def resolve_hill_sprint_treadmill(
+        wo: dict[str, Any],
+        target_pace: str | None,
+    ) -> tuple[float, float]:
+        """Guarantees a realistic 10-15% treadmill incline for Hill Sprint/Hill
+        Repeat workouts, regardless of what the AI supplied (or omitted).
+
+        The AI prompt already asks for this range, but prompt compliance isn't
+        guaranteed — this is a deterministic backstop, the same pattern as
+        resolve_elevation_and_grade: if the AI's own treadmill_incline already
+        falls in [10, 15], it's kept as-is; otherwise it's clamped to the
+        nearest bound (or defaulted to the range midpoint, 12.5, if the AI
+        omitted it entirely or gave 0). treadmill_speed is then recomputed
+        from the workout's own target_pace so the two stay physiologically
+        consistent with each other, rather than pairing a clamped incline with
+        the AI's original (now-stale) speed.
+
+        Workouts whose title doesn't mention Hill Sprint/Hill Repeat are
+        returned unchanged.
+        """
+        title_lower = (wo.get("title") or "").lower()
+        if not any(kw in title_lower for kw in PlanGenerator.HILL_SPRINT_TITLE_KEYWORDS):
+            try:
+                incline = float(wo.get("treadmill_incline") or 0.0)
+            except (TypeError, ValueError):
+                incline = 0.0
+            try:
+                speed = float(wo.get("treadmill_speed") or 0.0)
+            except (TypeError, ValueError):
+                speed = 0.0
+            return incline, speed
+
+        try:
+            incline = float(wo.get("treadmill_incline") or 0.0)
+        except (TypeError, ValueError):
+            incline = 0.0
+        if not (PlanGenerator.HILL_SPRINT_INCLINE_MIN <= incline <= PlanGenerator.HILL_SPRINT_INCLINE_MAX):
+            incline = (PlanGenerator.HILL_SPRINT_INCLINE_MIN + PlanGenerator.HILL_SPRINT_INCLINE_MAX) / 2
+
+        flat_pace = PlanGenerator.parse_pace_to_decimal((target_pace or "").replace("/km", "").strip())
+        settings = TrainingRules.calculate_treadmill_settings(flat_pace, incline)
+        return settings["incline_percentage"], settings["speed_kph"]
+
     @staticmethod
     async def generate_plan_workouts(
         plan_id: int,
@@ -279,21 +380,31 @@ class PlanGenerator:
                         wo["treadmill_speed"] = 0.0
 
                 # Reset Rest/Strength/ME — always zero distance, never inherit AI value
+                title_lower = wo.get("title", "").lower()
                 if w_type in ("Rest", "Strength", "Muscular Endurance") or dur <= 0.0:
                     wo["target_pace"] = ""
                     wo["distance_km"] = 0.0
-                    continue
-
                 # Race / Target Race: use the known course distance and goal pace
-                title_lower = wo.get("title", "").lower()
-                if ("target race" in title_lower or w_type == "Race") and course_distance_km:
+                elif ("target race" in title_lower or w_type == "Race") and course_distance_km:
                     wo["distance_km"] = float(course_distance_km)
                     # Use goal race pace derived from target finish time; fall back to Zone 4
                     wo["target_pace"] = f"{goal_race_pace_str or p_z4} /km"
-                    continue
+                else:
+                    # Map zone to pace range + distance (always recalculate, discard AI distance)
+                    wo["target_pace"], wo["distance_km"] = PlanGenerator.pace_and_distance_for_zone(
+                        zone, dur, est_zones
+                    )
 
-                # Map zone to pace range + distance (always recalculate, discard AI distance)
-                wo["target_pace"], wo["distance_km"] = PlanGenerator.pace_and_distance_for_zone(zone, dur, est_zones)
+                wo["elevation_gain_m"], wo["grade_percent"] = PlanGenerator.resolve_elevation_and_grade(
+                    wo, w_type, terrain, wo["distance_km"], course_elevation_gain_m, course_distance_km
+                )
+
+                # Guarantee: Hill Sprint/Hill Repeat titles always get a realistic 10-15%
+                # treadmill incline, regardless of what the AI supplied (or omitted) — the
+                # prompt asks for this range, but this backstop makes it non-negotiable.
+                wo["treadmill_incline"], wo["treadmill_speed"] = PlanGenerator.resolve_hill_sprint_treadmill(
+                    wo, wo["target_pace"]
+                )
             return wos
 
         # 2. AI Plan Generation (NotebookLM → Gemini → Rule-Based)
@@ -516,6 +627,14 @@ class PlanGenerator:
                 "   - `target_hr_range` (string: heart rate bounds based on athlete's thresholds, e.g. '125-140 bpm')\n"
                 "   - `target_pace` (string: recommended target pace, matching or referencing their custom pace zones, e.g. '6:00 /km')\n"
                 "   - `distance_km` (number: estimated distance in kilometers. Calculate this as duration_minutes / (target_pace in decimal minutes), e.g. 60 mins at 6:00/km is 10.0 km)\n"
+                "   - `elevation_gain_m` and `grade_percent` (numbers, ONLY for `type` Easy/Tempo/Interval/Long Run "
+                "AND only when the athlete's terrain is trail/mountain — omit or use 0 otherwise): give this "
+                "specific run a plausible amount of climbing, using the race's overall course_elevation_gain_m/"
+                "course_distance_km (given below in the athlete/race profile) as context for what's typical, and "
+                "this run's own distance/phase/role to vary it — a Base-phase Easy run climbs less than a "
+                "Peak-phase Long Run. `grade_percent` should be consistent with `elevation_gain_m` and this run's "
+                "own `distance_km` (grade ≈ elevation_gain_m / (distance_km × 10)), not just the race's average. "
+                "NEVER invent a figure wildly inconsistent with the race's overall elevation profile.\n"
                 "   - `description` (string: highly detailed description containing specific sections, "
                 "each introduced by its keyword — Process, Overall, Reason, Benefit, Warning — appearing "
                 "in that order and each appearing EXACTLY ONCE: "
@@ -553,8 +672,18 @@ class PlanGenerator:
                 "precautions — NEVER exercise prescriptions, sets, or reps; those belong exclusively in "
                 "Process). Provide extensive context.)\n"
                 "   - `fueling_tip` (string: hydration, carbohydrate, and electrolyte guides specific to duration/intensity)\n"
-                "   - `treadmill_incline` (number, optional: recommended incline percentage if using treadmill)\n"
-                "   - `treadmill_speed` (number, optional: recommended speed in kph if using treadmill)\n"
+                "   - `treadmill_incline` (number, optional: recommended incline percentage if using treadmill. "
+                "Inform this from the route's actual grade instead of a flat generic default: for trail-terrain "
+                "Easy/Tempo/Interval/Long Run workouts, set it consistent with this same workout's own "
+                "`grade_percent` above (a flat 1% belt incline under-trains the specific climbing demand of a "
+                "genuinely hilly race). EXCEPTION — for a Hill Sprint or Hill Repeat workout specifically "
+                "(identifiable by 'Hill Sprint'/'Hill Repeat' in the `title`), `treadmill_incline` MUST be in the "
+                "10-15% range regardless of the race's average grade or this workout's own `grade_percent` — "
+                "these are short, near-maximal efforts that require a steep grade by design, not a race-average "
+                "one. Omit or use 0 when treadmill access isn't relevant.)\n"
+                "   - `treadmill_speed` (number, optional: recommended speed in kph if using treadmill, reduced "
+                "appropriately for the incline set above — a steeper incline needs a slower speed to hold the "
+                "same target effort)\n"
                 "   - `session_slot` (string, optional: ONLY set this on double-session days. Use 'morning' for the first/shorter session and 'afternoon' for the main/longer session. Omit entirely for single-session days.)\n\n"
                 f"{block_scope_instruction}"
                 f"{_start_date_constraint}"
@@ -588,6 +717,9 @@ class PlanGenerator:
                 "title (string), type (Easy/Tempo/Interval/Long Run/Strength/Rest/Race/Recovery/Muscular Endurance), "
                 "duration_minutes (number), target_zone (Zone 1-5), target_hr_range (e.g. '125-140 bpm'), "
                 "target_pace (e.g. '6:00 /km'), distance_km (= duration_minutes / pace, decimal min/km), "
+                "elevation_gain_m/grade_percent (numbers, Easy/Tempo/Interval/Long Run on trail terrain only, "
+                "else 0: plausible climb for this run given the race's course_elevation_gain_m/course_distance_km "
+                "context and this run's own distance/phase — grade_percent ≈ elevation_gain_m/(distance_km×10)), "
                 "description (detailed: Process uses → between phases, minutes sum to duration_minutes; "
                 "EVERY exercise is its own → segment — never semicolon/comma-chain exercises into one "
                 "segment, never wrap them in a 'Main Circuit: ...' label. Strength = straight sets, e.g. "
@@ -602,7 +734,9 @@ class PlanGenerator:
                 "(e.g. after Warning, injury-risks only); Intervals state exact reps/distance-or-"
                 "duration/recovery; plus Overall/Reason/Benefit/Warning), "
                 "fueling_tip (string), "
-                "treadmill_incline/treadmill_speed (optional numbers, treadmill only), "
+                "treadmill_incline/treadmill_speed (optional numbers, treadmill only — incline should match this "
+                "run's own grade_percent for trail workouts, not a flat 1%; EXCEPTION: Hill Sprint/Hill Repeat "
+                "titles MUST use 10-15% incline regardless of grade_percent; speed reduced to match incline), "
                 "session_slot ('morning'/'afternoon' on double-session days only, omit otherwise).\n\n"
             )
             nb_rules_block = (
