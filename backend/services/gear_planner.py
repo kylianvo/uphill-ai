@@ -1,6 +1,7 @@
 import asyncio
 import hashlib
 import json
+import traceback
 from typing import Any
 
 import google.generativeai as genai
@@ -89,7 +90,7 @@ class GearPlannerService:
                     return await self._generate_with_gemini(params, cache_key)
                 return await self._generate_with_notebooklm(params, cache_key)
             except Exception as e:
-                print(f"[GearPlanner] {engine_name} engine failed: {e}")
+                print(f"[GearPlanner] {engine_name} engine failed: {e}\n{traceback.format_exc()}")
                 last_error = e
         return {
             "recommendations": [],
