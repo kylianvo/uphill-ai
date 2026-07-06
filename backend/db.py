@@ -4,6 +4,7 @@ All raw SQL uses %s-style placeholders via psycopg2 through SQLAlchemy.
 """
 
 import datetime
+import hashlib
 import json
 import uuid
 from typing import Any
@@ -216,6 +217,22 @@ def init_db():
             topic           TEXT NOT NULL,
             source_label    TEXT DEFAULT 'Uphill Athlete Podcasts',
             lang            TEXT DEFAULT 'en',
+            created_at      TIMESTAMPTZ DEFAULT NOW()
+        )
+        """)
+        )
+
+        conn.execute(
+            text("""
+        CREATE TABLE IF NOT EXISTS kb_chunks (
+            id              SERIAL PRIMARY KEY,
+            domain          TEXT NOT NULL,               -- 'gear' | 'nutrition' | 'scheduler'
+            kind            TEXT NOT NULL,               -- 'catalog_item' | 'principle'
+            title           TEXT NOT NULL,
+            content         TEXT NOT NULL,
+            payload         JSONB,
+            source_label    TEXT DEFAULT 'NotebookLM distillation',
+            content_hash    TEXT NOT NULL,
             created_at      TIMESTAMPTZ DEFAULT NOW()
         )
         """)
@@ -1059,3 +1076,68 @@ def get_workout_types(lang: str = "en") -> list[dict[str, Any]]:
 def get_workout_type_count() -> int:
     with engine.connect() as conn:
         return conn.execute(text("SELECT COUNT(*) FROM workout_types")).scalar()
+
+
+# ─── KB Chunks (distilled knowledge base) ────────────────────────────────────
+
+
+def save_kb_chunks(chunks: list[dict[str, Any]]) -> int:
+    count = 0
+    with engine.connect() as conn:
+        for chunk in chunks:
+            try:
+                content = chunk.get("content", "")
+                payload = chunk.get("payload")
+                conn.execute(
+                    text("""
+                    INSERT INTO kb_chunks (domain, kind, title, content, payload, source_label, content_hash)
+                    VALUES (:domain, :kind, :title, :content, CAST(:payload AS JSONB), :source_label, :content_hash)
+                """),
+                    {
+                        "domain": chunk["domain"],
+                        "kind": chunk.get("kind", "principle"),
+                        "title": chunk.get("title", ""),
+                        "content": content,
+                        "payload": json.dumps(payload, ensure_ascii=False) if payload is not None else None,
+                        "source_label": chunk.get("source_label", "NotebookLM distillation"),
+                        "content_hash": chunk.get("content_hash") or hashlib.md5(content.encode("utf-8")).hexdigest(),
+                    },
+                )
+                count += 1
+            except Exception as e:
+                print(f"Error saving kb chunk: {e}")
+        conn.commit()
+    return count
+
+
+def get_kb_chunks(domain: str, kind: str | None = None) -> list[dict[str, Any]]:
+    with engine.connect() as conn:
+        if kind:
+            rows = (
+                conn.execute(
+                    text("SELECT * FROM kb_chunks WHERE domain = :d AND kind = :k ORDER BY title"),
+                    {"d": domain, "k": kind},
+                )
+                .mappings()
+                .all()
+            )
+        else:
+            rows = (
+                conn.execute(text("SELECT * FROM kb_chunks WHERE domain = :d ORDER BY kind, title"), {"d": domain})
+                .mappings()
+                .all()
+            )
+    return [dict(r) for r in rows]
+
+
+def clear_kb_chunks(domain: str) -> None:
+    with engine.connect() as conn:
+        conn.execute(text("DELETE FROM kb_chunks WHERE domain = :d"), {"d": domain})
+        conn.commit()
+
+
+def get_kb_chunk_count(domain: str | None = None) -> int:
+    with engine.connect() as conn:
+        if domain:
+            return conn.execute(text("SELECT COUNT(*) FROM kb_chunks WHERE domain = :d"), {"d": domain}).scalar()
+        return conn.execute(text("SELECT COUNT(*) FROM kb_chunks")).scalar()
