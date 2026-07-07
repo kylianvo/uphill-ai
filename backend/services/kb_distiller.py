@@ -283,8 +283,7 @@ async def distill_domain(domain: str, api_key: str, status_holder: dict) -> int:
         # A failed sweep must never wipe a working KB.
         raise RuntimeError(f"Distillation produced an empty result for '{domain}' — keeping existing KB.")
 
-    db.clear_kb_chunks(domain)
-    saved = db.save_kb_chunks(rows)
+    saved = db.replace_kb_chunks(domain, rows)
     export_seed(domain, rows)
     if domain == "scheduler":
         from services.kb_retrieval import reindex_scheduler_chunks
@@ -317,11 +316,15 @@ def load_seed(domain: str, api_key: str | None = None) -> int:
     chunks = data.get("chunks", [])
     if not chunks:
         raise RuntimeError(f"Seed file for '{domain}' is empty — refusing to wipe existing KB.")
-    db.clear_kb_chunks(domain)
-    saved = db.save_kb_chunks(chunks)
+    saved = db.replace_kb_chunks(domain, chunks)
     if domain == "scheduler" and api_key:
         from services.kb_retrieval import reindex_scheduler_chunks
 
         reindex_scheduler_chunks(chunks, api_key)
+    elif domain == "scheduler":
+        print(
+            "[KBDistiller] WARNING: scheduler chunks saved but Qdrant reindex SKIPPED "
+            "(no Gemini API key) — plans will generate without philosophy grounding until reindexed."
+        )
     print(f"[KBDistiller] Seed '{domain}' loaded: {saved} chunks.")
     return saved

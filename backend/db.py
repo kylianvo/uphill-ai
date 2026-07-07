@@ -1141,3 +1141,32 @@ def get_kb_chunk_count(domain: str | None = None) -> int:
         if domain:
             return conn.execute(text("SELECT COUNT(*) FROM kb_chunks WHERE domain = :d"), {"d": domain}).scalar()
         return conn.execute(text("SELECT COUNT(*) FROM kb_chunks")).scalar()
+
+
+def replace_kb_chunks(domain: str, chunks: list[dict[str, Any]]) -> int:
+    """Atomically replace a domain's chunks: DELETE + all INSERTs in one
+    transaction, one commit. Any bad row aborts the whole replace, leaving
+    the existing KB untouched (unlike clear+save, which commits the DELETE
+    separately)."""
+    with engine.connect() as conn:
+        conn.execute(text("DELETE FROM kb_chunks WHERE domain = :d"), {"d": domain})
+        for chunk in chunks:
+            content = chunk.get("content", "")
+            payload = chunk.get("payload")
+            conn.execute(
+                text("""
+                INSERT INTO kb_chunks (domain, kind, title, content, payload, source_label, content_hash)
+                VALUES (:domain, :kind, :title, :content, CAST(:payload AS JSONB), :source_label, :content_hash)
+            """),
+                {
+                    "domain": chunk["domain"],
+                    "kind": chunk.get("kind", "principle"),
+                    "title": chunk.get("title", ""),
+                    "content": content,
+                    "payload": json.dumps(payload, ensure_ascii=False) if payload is not None else None,
+                    "source_label": chunk.get("source_label", "NotebookLM distillation"),
+                    "content_hash": chunk.get("content_hash") or hashlib.md5(content.encode("utf-8")).hexdigest(),
+                },
+            )
+        conn.commit()
+    return len(chunks)

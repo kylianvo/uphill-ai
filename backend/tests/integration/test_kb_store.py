@@ -43,3 +43,34 @@ def test_clear_kb_chunks_is_domain_scoped(_init_test_database):
     assert get_kb_chunk_count("gear") == 0
     assert get_kb_chunk_count("scheduler") == 1
     assert get_kb_chunk_count() == 1
+
+
+def test_replace_kb_chunks_is_atomic(_init_test_database):
+    import pytest
+
+    from db import replace_kb_chunks
+
+    save_kb_chunks(_sample_chunks())
+    assert get_kb_chunk_count("gear") == 1
+    bad_batch = [
+        {"domain": "gear", "kind": "catalog_item", "title": "New Shoe", "content": "c", "payload": None},
+        # NOT NULL violation — must abort the whole replace, not just this row
+        {"domain": None, "kind": "catalog_item", "title": "Broken", "content": "c", "payload": None},
+    ]
+    with pytest.raises(Exception):
+        replace_kb_chunks("gear", bad_batch)
+    # the failed replace must not have wiped the existing row
+    assert get_kb_chunk_count("gear") == 1
+    assert get_kb_chunks("gear")[0]["title"] == "Speedgoat 7"
+
+
+def test_replace_kb_chunks_swaps_domain_content(_init_test_database):
+    from db import replace_kb_chunks
+
+    save_kb_chunks(_sample_chunks())
+    replace_kb_chunks(
+        "gear", [{"domain": "gear", "kind": "catalog_item", "title": "Tecton X 3", "content": "c", "payload": None}]
+    )
+    gear = get_kb_chunks("gear")
+    assert [c["title"] for c in gear] == ["Tecton X 3"]
+    assert get_kb_chunk_count("scheduler") == 1  # other domains untouched

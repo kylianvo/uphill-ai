@@ -73,11 +73,11 @@ def test_distill_domain_refuses_to_wipe_on_empty_sweep(monkeypatch):
     monkeypatch.setattr(settings, "NOTEBOOKLM_AUTH_JSON", '{"tok":1}')
     with (
         patch.object(kb_distiller, "_distill_gear", new_callable=AsyncMock, return_value=[]),
-        patch("db.clear_kb_chunks") as clear_mock,
+        patch("db.replace_kb_chunks") as replace_mock,
     ):
         with pytest.raises(RuntimeError, match="empty"):
             asyncio.run(kb_distiller.distill_domain("gear", "test-key", {}))
-    clear_mock.assert_not_called()  # existing KB must survive a failed sweep
+    replace_mock.assert_not_called()  # existing KB must survive a failed sweep
 
 
 def test_export_and_load_seed_roundtrip(tmp_path, monkeypatch):
@@ -87,13 +87,10 @@ def test_export_and_load_seed_roundtrip(tmp_path, monkeypatch):
     assert path.endswith("gear.json")
     assert json.loads(open(path, encoding="utf-8").read())["chunks"][0]["title"] == "X"
 
-    with (
-        patch("db.clear_kb_chunks") as clear_mock,
-        patch("db.save_kb_chunks", return_value=1) as save_mock,
-    ):
+    with patch("db.replace_kb_chunks", return_value=1) as replace_mock:
         loaded = kb_distiller.load_seed("gear")
-    clear_mock.assert_called_once_with("gear")
-    save_mock.assert_called_once()
+    replace_mock.assert_called_once()
+    assert replace_mock.call_args[0][0] == "gear"
     assert loaded == 1
 
 

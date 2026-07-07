@@ -54,6 +54,18 @@ def reindex_scheduler_chunks(chunks: list[dict], api_key: str) -> int:
     return len(points)
 
 
+def scheduler_point_count() -> int | None:
+    """Point count of the scheduler philosophy collection, or None if unreachable/missing."""
+    try:
+        client = _client()
+        if not client.collection_exists(COLLECTION):
+            return None
+        return client.count(collection_name=COLLECTION).count
+    except Exception as e:
+        print(f"[KBRetrieval] Could not read collection count: {e}")
+        return None
+
+
 def search_scheduler_chunks(query: str, api_key: str, k: int = 6) -> list[dict]:
     """Top-k philosophy chunks for a retrieval query. [] if collection absent."""
     client = _client()

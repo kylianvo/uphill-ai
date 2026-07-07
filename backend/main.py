@@ -1637,26 +1637,25 @@ async def trigger_knowledge_extraction(user: dict[str, Any] = Depends(get_curren
 # ─── KB Distillation (NotebookLM → kb_chunks) ────────────────────────────────
 
 kb_distill_status: dict[str, Any] = {"status": "idle"}
-
-
-def _require_admin(user: dict[str, Any]) -> None:
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin only")
+# Strong reference to the running distillation task — the event loop keeps only
+# weak refs, and a GC'd multi-hour task would die silently while the status dict
+# still said "distilling". Busy-ness is derived from the task, so it self-heals.
+kb_distill_task = None
 
 
 @app.post("/api/kb/distill")
-async def trigger_kb_distill(domain: str = "all", user: dict[str, Any] = Depends(get_current_user)):
+async def trigger_kb_distill(domain: str = "all", user: dict[str, Any] = Depends(require_admin)):
     """Re-distill the knowledge base from the NotebookLM notebooks (admin, background job).
     Operator workflow: add sources to the notebook in NotebookLM, then call this."""
     import asyncio
 
     from services.kb_distiller import DOMAINS, distill_domain
 
-    _require_admin(user)
+    global kb_distill_task
     domains = list(DOMAINS) if domain == "all" else [domain]
     if any(d not in DOMAINS for d in domains):
         raise HTTPException(status_code=400, detail=f"domain must be one of {list(DOMAINS)} or 'all'")
-    if kb_distill_status.get("status") == "distilling":
+    if kb_distill_task is not None and not kb_distill_task.done():
         return {"status": "already_distilling"}
 
     fresh_user = get_user_by_id(user["id"]) or user
@@ -1675,27 +1674,31 @@ async def trigger_kb_distill(domain: str = "all", user: dict[str, Any] = Depends
             kb_distill_status.update({"status": "error", "message": str(e)})
             print(f"[KB] Distillation failed: {e}")
 
-    asyncio.create_task(run_distillation())
+    kb_distill_task = asyncio.create_task(run_distillation())
     kb_distill_status.update({"status": "distilling", "domains": domains})
     return {"status": "started", "domains": domains}
 
 
 @app.get("/api/kb/distill/status")
 def get_kb_distill_status(user: dict[str, Any] = Depends(get_current_user)):
+    from services.kb_retrieval import scheduler_point_count
+
     status = dict(kb_distill_status)
     status["counts"] = {d: get_kb_chunk_count(d) for d in ("gear", "nutrition", "scheduler")}
+    # None = collection missing/unreachable — scheduler plans would generate
+    # without philosophy grounding even if counts.scheduler > 0.
+    status["qdrant_scheduler_points"] = scheduler_point_count()
     return status
 
 
 @app.post("/api/kb/import")
-async def import_kb_seed(domain: str = "all", user: dict[str, Any] = Depends(get_current_user)):
+async def import_kb_seed(domain: str = "all", user: dict[str, Any] = Depends(require_admin)):
     """Load committed backend/kb_seed/<domain>.json files into this environment's
     Postgres (+ Qdrant for scheduler). This is how prod gets the KB without re-distilling."""
     import asyncio
 
     from services.kb_distiller import DOMAINS, load_seed
 
-    _require_admin(user)
     domains = list(DOMAINS) if domain == "all" else [domain]
     if any(d not in DOMAINS for d in domains):
         raise HTTPException(status_code=400, detail=f"domain must be one of {list(DOMAINS)} or 'all'")
