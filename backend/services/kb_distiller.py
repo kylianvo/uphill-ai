@@ -10,6 +10,7 @@ imports without re-distilling), and scheduler chunks are embedded into Qdrant.
 import asyncio
 import json
 import os
+import re
 from typing import Any
 
 import google.generativeai as genai
@@ -118,8 +119,45 @@ async def _sweep_brands(notebook_id: str, auth_json: str, api_key: str, thing: s
     return parsed.get("brands", [])
 
 
+# Gear sweeps use this operator-curated whitelist instead of a NotebookLM brand
+# enumeration — the sources mention many competitor brands in passing (review
+# sites compare shoes), and sweeping every mentioned brand adds noise. Add a
+# brand here and re-run POST /api/kb/distill?domain=gear to onboard it.
+GEAR_BRANDS = [
+    "adidas",
+    "Nike",
+    "New Balance",
+    "Hoka",
+    "Salomon",
+    "Saucony",
+    "Brooks",
+    "Mount to Coast",
+    "Norda",
+    "Puma",
+    "NNormal",
+    "Asics",
+    "On",
+    "Kailas",
+    "Altra",
+]
+
+
+def _whitelisted_brand(returned_brand: str, queried_brand: str) -> str | None:
+    """Keep only whitelisted brands. The per-brand sweep text may mention
+    competitors (review comparisons), and Gemini may restyle the brand name
+    (e.g. 'HOKA ONE ONE' for the 'Hoka' query) — coerce those to the queried
+    brand; drop anything else."""
+    returned = (returned_brand or "").strip()
+    allowed = {b.lower(): b for b in GEAR_BRANDS}
+    if returned.lower() in allowed:
+        return allowed[returned.lower()]
+    if re.search(rf"\b{re.escape(queried_brand.lower())}\b", returned.lower()):
+        return queried_brand
+    return None
+
+
 async def _distill_gear(notebook_id: str, auth_json: str, api_key: str, status: dict) -> list[dict]:
-    brands = await _sweep_brands(notebook_id, auth_json, api_key, "running shoe")
+    brands = GEAR_BRANDS
     rows: list[dict] = []
     for i, brand in enumerate(brands):
         status.update({"current_topic": f"gear: {brand}", "progress": i, "total": len(brands)})
@@ -143,7 +181,12 @@ async def _distill_gear(notebook_id: str, auth_json: str, api_key: str, status: 
                 ShoeList,
             )
             for shoe in structured.get("shoes", []):
-                title = f"{shoe.get('brand', brand)} {shoe.get('model', '')}".strip()
+                brand_final = _whitelisted_brand(shoe.get("brand", brand), brand)
+                if brand_final is None:
+                    print(f"[KBDistiller][gear] Skipping non-whitelisted brand row: {shoe.get('brand')!r}")
+                    continue
+                shoe["brand"] = brand_final
+                title = f"{brand_final} {shoe.get('model', '')}".strip()
                 rows.append(
                     {
                         "domain": "gear",
