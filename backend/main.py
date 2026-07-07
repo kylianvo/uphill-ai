@@ -1664,18 +1664,28 @@ async def trigger_kb_distill(domain: str = "all", user: dict[str, Any] = Depends
         raise HTTPException(status_code=400, detail="No Gemini API key configured")
 
     async def run_distillation():
-        try:
-            for d in domains:
-                kb_distill_status.update({"status": "distilling", "domain": d})
-                saved = await distill_domain(d, api_key, kb_distill_status)
-                kb_distill_status[f"{d}_saved"] = saved
-            kb_distill_status.update({"status": "done", "domain": None})
-        except Exception as e:
-            kb_distill_status.update({"status": "error", "message": str(e)})
-            print(f"[KB] Distillation failed: {e}")
+        async def run_domain(d: str):
+            domain_status = kb_distill_status["per_domain"][d]
+            try:
+                saved = await distill_domain(d, api_key, domain_status)
+                domain_status.update({"status": "done", "saved": saved})
+            except Exception as e:
+                domain_status.update({"status": "error", "message": str(e)})
+                print(f"[KB] Distillation failed for '{d}': {e}")
 
+        # The three notebooks are independent, so domains distill concurrently —
+        # wall time is the slowest domain, not the sum. Each domain still paces
+        # its own NotebookLM queries internally (rate-limit courtesy).
+        await asyncio.gather(*(run_domain(d) for d in domains))
+        failed = {d: s.get("message") for d, s in kb_distill_status["per_domain"].items() if s.get("status") == "error"}
+        kb_distill_status.update({"status": "error" if failed else "done", "errors": failed or None})
+
+    # Fresh status per run — stale keys from a previous run would mislead operators.
+    kb_distill_status.clear()
+    kb_distill_status.update(
+        {"status": "distilling", "domains": domains, "per_domain": {d: {"status": "distilling"} for d in domains}}
+    )
     kb_distill_task = asyncio.create_task(run_distillation())
-    kb_distill_status.update({"status": "distilling", "domains": domains})
     return {"status": "started", "domains": domains}
 
 
