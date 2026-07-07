@@ -29,3 +29,17 @@ def test_render_principles_context():
     assert "[ME circuits]" in block
     assert "6-8 rounds" in block
     assert render_principles_context([]) == ""
+
+
+def test_find_uncatalogued_flags_unknown_products():
+    from services.kb_context import find_uncatalogued
+
+    catalog = ["Hoka Speedgoat 7", "Salomon Genesis"]
+    recs = [
+        {"brand": "Hoka", "model": "Speedgoat 7"},  # exact — ok
+        {"brand": "Salomon", "name": "Genesis"},  # name key variant — ok
+        {"brand": "Nike", "model": "Imaginary Trail 9"},  # hallucinated
+    ]
+    missing = find_uncatalogued(recs, catalog)
+    assert missing == ["nike imaginary trail 9"]
+    assert find_uncatalogued([], catalog) == []

@@ -1,0 +1,5 @@
+{
+  "user_profile": {"age": 34, "max_hr": 188, "resting_hr": 52, "aet_hr": 148, "ant_hr": 168},
+  "race_info": {"lang": "en", "terrain": "trail", "course_distance_km": 50, "course_elevation_gain_m": 2500},
+  "total_weeks": 8
+}

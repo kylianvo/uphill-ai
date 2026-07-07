@@ -41,3 +41,14 @@ def render_principles_context(chunks: list[dict[str, Any]], heading: str = "GROU
         return ""
     parts = [f"[{chunk.get('title', '')}]\n{chunk.get('content', '')}" for chunk in chunks]
     return f"=== {heading} ===\n" + "\n\n".join(parts) + f"\n=== END {heading} ===\n"
+
+
+def find_uncatalogued(recommended: list[dict[str, Any]], catalog_titles: list[str]) -> list[str]:
+    """Names the model recommended that aren't in the distilled catalog (hallucination guard)."""
+    titles = [t.lower().strip() for t in catalog_titles]
+    missing = []
+    for rec in recommended:
+        name = f"{rec.get('brand', '')} {rec.get('model') or rec.get('name') or ''}".strip().lower()
+        if name and not any(name in t or t in name for t in titles):
+            missing.append(name)
+    return missing
