@@ -23,7 +23,7 @@ def main():
         try:
             count = load_seed(domain, settings.GEMINI_API_KEY or None)
             print(f"{domain}: loaded {count} chunks")
-        except FileNotFoundError as e:
+        except (FileNotFoundError, RuntimeError) as e:
             print(f"{domain}: SKIPPED — {e}")
 
 

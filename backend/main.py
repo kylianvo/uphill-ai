@@ -1701,12 +1701,18 @@ async def import_kb_seed(domain: str = "all", user: dict[str, Any] = Depends(get
         raise HTTPException(status_code=400, detail=f"domain must be one of {list(DOMAINS)} or 'all'")
     api_key = settings.GEMINI_API_KEY
     loaded: dict[str, int] = {}
-    try:
-        for d in domains:
+    errors: dict[str, str] = {}
+    for d in domains:
+        try:
             loaded[d] = await asyncio.to_thread(load_seed, d, api_key)
-    except FileNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    return {"status": "ok", "loaded": loaded}
+        except (FileNotFoundError, RuntimeError) as e:
+            errors[d] = str(e)
+    if not loaded:
+        # If nothing loaded, use 404 only if ALL errors are FileNotFoundError, else 400
+        all_missing = all("Seed file not found" in msg for msg in errors.values())
+        status_code = 404 if all_missing else 400
+        raise HTTPException(status_code=status_code, detail=errors)
+    return {"status": "ok" if not errors else "partial", "loaded": loaded, "errors": errors}
 
 
 # ─── Workout Types ────────────────────────────────────────────────────────────
