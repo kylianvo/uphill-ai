@@ -23,6 +23,7 @@ from db import (
     get_all_knowledge_cards,
     get_block_completion,
     get_block_reviews,
+    get_kb_chunk_count,
     get_knowledge_card_count,
     get_knowledge_topics,
     get_max_generated_week,
@@ -1631,6 +1632,81 @@ async def trigger_knowledge_extraction(user: dict[str, Any] = Depends(get_curren
     asyncio.create_task(run_extraction())
     extraction_status.update({"status": "extracting", "progress": 0, "current_topic": "Starting…"})
     return {"status": "started"}
+
+
+# ─── KB Distillation (NotebookLM → kb_chunks) ────────────────────────────────
+
+kb_distill_status: dict[str, Any] = {"status": "idle"}
+
+
+def _require_admin(user: dict[str, Any]) -> None:
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+
+
+@app.post("/api/kb/distill")
+async def trigger_kb_distill(domain: str = "all", user: dict[str, Any] = Depends(get_current_user)):
+    """Re-distill the knowledge base from the NotebookLM notebooks (admin, background job).
+    Operator workflow: add sources to the notebook in NotebookLM, then call this."""
+    import asyncio
+
+    from services.kb_distiller import DOMAINS, distill_domain
+
+    _require_admin(user)
+    domains = list(DOMAINS) if domain == "all" else [domain]
+    if any(d not in DOMAINS for d in domains):
+        raise HTTPException(status_code=400, detail=f"domain must be one of {list(DOMAINS)} or 'all'")
+    if kb_distill_status.get("status") == "distilling":
+        return {"status": "already_distilling"}
+
+    fresh_user = get_user_by_id(user["id"]) or user
+    api_key = fresh_user.get("gemini_api_key") or settings.GEMINI_API_KEY
+    if not api_key:
+        raise HTTPException(status_code=400, detail="No Gemini API key configured")
+
+    async def run_distillation():
+        try:
+            for d in domains:
+                kb_distill_status.update({"status": "distilling", "domain": d})
+                saved = await distill_domain(d, api_key, kb_distill_status)
+                kb_distill_status[f"{d}_saved"] = saved
+            kb_distill_status.update({"status": "done", "domain": None})
+        except Exception as e:
+            kb_distill_status.update({"status": "error", "message": str(e)})
+            print(f"[KB] Distillation failed: {e}")
+
+    asyncio.create_task(run_distillation())
+    kb_distill_status.update({"status": "distilling", "domains": domains})
+    return {"status": "started", "domains": domains}
+
+
+@app.get("/api/kb/distill/status")
+def get_kb_distill_status(user: dict[str, Any] = Depends(get_current_user)):
+    status = dict(kb_distill_status)
+    status["counts"] = {d: get_kb_chunk_count(d) for d in ("gear", "nutrition", "scheduler")}
+    return status
+
+
+@app.post("/api/kb/import")
+async def import_kb_seed(domain: str = "all", user: dict[str, Any] = Depends(get_current_user)):
+    """Load committed backend/kb_seed/<domain>.json files into this environment's
+    Postgres (+ Qdrant for scheduler). This is how prod gets the KB without re-distilling."""
+    import asyncio
+
+    from services.kb_distiller import DOMAINS, load_seed
+
+    _require_admin(user)
+    domains = list(DOMAINS) if domain == "all" else [domain]
+    if any(d not in DOMAINS for d in domains):
+        raise HTTPException(status_code=400, detail=f"domain must be one of {list(DOMAINS)} or 'all'")
+    api_key = settings.GEMINI_API_KEY
+    loaded: dict[str, int] = {}
+    try:
+        for d in domains:
+            loaded[d] = await asyncio.to_thread(load_seed, d, api_key)
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return {"status": "ok", "loaded": loaded}
 
 
 # ─── Workout Types ────────────────────────────────────────────────────────────
