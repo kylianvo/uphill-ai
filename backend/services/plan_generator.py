@@ -847,12 +847,25 @@ class PlanGenerator:
                     print(f"[PlanGen][KB] Retrieval failed (continuing without): {_kb_ex}")
             _gemini_prompt = _ai_prompt + ("\n\n" + _kb_context if _kb_context else "")
             try:
+                import time
+
                 import google.generativeai as _genai
+
+                from telemetry import rag_attempts_total, rag_latency_seconds
 
                 _genai.configure(api_key=api_key)
                 _model = _genai.GenerativeModel("gemini-2.5-flash")
                 print(f"[PlanGen][Gemini] Sending prompt ({len(_gemini_prompt)} chars)...")
-                _response = await asyncio.to_thread(_model.generate_content, _gemini_prompt)
+
+                rag_attempts_total.labels(service="plan_generator", engine="gemini", status="attempt").inc()
+                _start = time.time()
+                try:
+                    _response = await asyncio.to_thread(_model.generate_content, _gemini_prompt)
+                    rag_latency_seconds.labels(service="plan_generator", engine="gemini").observe(time.time() - _start)
+                    rag_attempts_total.labels(service="plan_generator", engine="gemini", status="success").inc()
+                except Exception:
+                    rag_attempts_total.labels(service="plan_generator", engine="gemini", status="error").inc()
+                    raise
                 clean_text = _extract_json_array(_response.text)
                 try:
                     ai_workouts = _json.loads(clean_text)

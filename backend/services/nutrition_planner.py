@@ -114,8 +114,11 @@ Nutrition Goals:
         }
 
     async def _generate_with_gemini(self, user_profile: str, params: NutritionParams, cache_key: str) -> dict[str, Any]:
+        import time
+
         from db import get_kb_chunks
         from services.kb_context import render_catalog_context, render_principles_context
+        from telemetry import rag_attempts_total, rag_latency_seconds
 
         api_key = settings.GEMINI_API_KEY
         if not api_key:
@@ -144,13 +147,23 @@ Pick specific products from the knowledge base matching the requested brands/for
         )
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel("gemini-2.5-flash")
-        response = await asyncio.to_thread(
-            model.generate_content,
-            prompt,
-            generation_config=genai.GenerationConfig(
-                response_mime_type="application/json", response_schema=NutritionResponse, temperature=0.2
-            ),
-        )
+
+        rag_attempts_total.labels(service="nutrition_lab", engine="gemini", status="attempt").inc()
+        _start = time.time()
+        try:
+            response = await asyncio.to_thread(
+                model.generate_content,
+                prompt,
+                generation_config=genai.GenerationConfig(
+                    response_mime_type="application/json", response_schema=NutritionResponse, temperature=0.2
+                ),
+            )
+            rag_latency_seconds.labels(service="nutrition_lab", engine="gemini").observe(time.time() - _start)
+            rag_attempts_total.labels(service="nutrition_lab", engine="gemini", status="success").inc()
+        except Exception:
+            rag_attempts_total.labels(service="nutrition_lab", engine="gemini", status="error").inc()
+            raise
+
         parsed = json.loads(response.text)
         _NUTRITION_CACHE[cache_key] = json.dumps(parsed)
         print(f"[NutritionPlanner][Gemini] OK — {len(parsed.get('products', []))} products")

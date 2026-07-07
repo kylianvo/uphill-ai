@@ -98,8 +98,11 @@ class GearPlannerService:
         }
 
     async def _generate_with_gemini(self, params: GearParams, cache_key: str) -> dict[str, Any]:
+        import time
+
         from db import get_kb_chunks
         from services.kb_context import render_catalog_context
+        from telemetry import rag_attempts_total, rag_latency_seconds
 
         api_key = settings.GEMINI_API_KEY
         if not api_key:
@@ -123,13 +126,23 @@ Field guidance: "foam_material" names the foam ALONG WITH its material type in p
         print(f"[GearPlanner][Gemini] Querying with {len(chunks)} catalog entries...")
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel("gemini-2.5-flash")
-        response = await asyncio.to_thread(
-            model.generate_content,
-            prompt,
-            generation_config=genai.GenerationConfig(
-                response_mime_type="application/json", response_schema=GearResponse, temperature=0.2
-            ),
-        )
+
+        rag_attempts_total.labels(service="gear_finder", engine="gemini", status="attempt").inc()
+        _start = time.time()
+        try:
+            response = await asyncio.to_thread(
+                model.generate_content,
+                prompt,
+                generation_config=genai.GenerationConfig(
+                    response_mime_type="application/json", response_schema=GearResponse, temperature=0.2
+                ),
+            )
+            rag_latency_seconds.labels(service="gear_finder", engine="gemini").observe(time.time() - _start)
+            rag_attempts_total.labels(service="gear_finder", engine="gemini", status="success").inc()
+        except Exception:
+            rag_attempts_total.labels(service="gear_finder", engine="gemini", status="error").inc()
+            raise
+
         parsed = json.loads(response.text)
         _GEAR_CACHE[cache_key] = json.dumps(parsed)
         print(f"[GearPlanner][Gemini] OK — {len(parsed.get('recommendations', []))} recommendations")
