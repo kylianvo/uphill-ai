@@ -6,6 +6,11 @@
 capture saves <fixture>.ref.json next to each fixture. compare writes
 tests/golden/report_<service>.md. Review the report before flipping RAG_ENGINE=gemini.
 Requires backend/.env (NotebookLM creds for capture, GEMINI_API_KEY + distilled KB for compare).
+
+Scheduler engine attribution: gear/nutrition call single-engine methods directly, but the
+plan generator has internal engine fallback (Gemini → NotebookLM → rule-based), so scheduler
+output is attributed to the engine whose in-process Prometheus success counter moved — a
+mismatched attribution is flagged loudly in the ref file and the report.
 """
 
 import argparse
@@ -49,11 +54,36 @@ async def _run_gear_nutrition(service: str, fixture: dict, engine: str) -> dict:
     return await planner._generate_with_gemini(*args)
 
 
-async def _run_scheduler(fixture: dict, engine: str) -> list[dict]:
+def _sample(name: str, labels: dict) -> float:
+    from prometheus_client import REGISTRY
+
+    return REGISTRY.get_sample_value(name, labels) or 0.0
+
+
+def _scheduler_counters() -> dict:
+    return {
+        "gemini_ok": _sample(
+            "rag_attempts_total", {"service": "plan_generator", "engine": "gemini", "status": "success"}
+        ),
+        "nlm_ok": _sample("notebooklm_attempts_total", {"service": "plan_generator", "status": "success"}),
+    }
+
+
+def _scheduler_engine_used(before: dict, after: dict) -> str:
+    """Attribute the produced plan to the engine whose success counter moved."""
+    if after["gemini_ok"] > before["gemini_ok"]:
+        return "gemini"
+    if after["nlm_ok"] > before["nlm_ok"]:
+        return "notebooklm"
+    return "rule-based-or-unknown"
+
+
+async def _run_scheduler(fixture: dict, engine: str) -> tuple[list[dict], str]:
     from services.plan_generator import PlanGenerator
 
     settings.RAG_ENGINE = "gemini" if engine == "gemini" else "notebooklm"
-    return await PlanGenerator.generate_plan_workouts(
+    before = _scheduler_counters()
+    workouts = await PlanGenerator.generate_plan_workouts(
         plan_id=0,
         user_profile=fixture["user_profile"],
         race_info=fixture["race_info"],
@@ -61,12 +91,14 @@ async def _run_scheduler(fixture: dict, engine: str) -> list[dict]:
         api_key=settings.GEMINI_API_KEY,
         block_number=1,
     )
+    return workouts, _scheduler_engine_used(before, _scheduler_counters())
 
 
-async def _run(service: str, fixture: dict, engine: str):
+async def _run(service: str, fixture: dict, engine: str) -> tuple[dict | list, str]:
+    """Returns (output, engine_used). Gear/nutrition are single-engine by construction."""
     if service == "scheduler":
         return await _run_scheduler(fixture, engine)
-    return await _run_gear_nutrition(service, fixture, engine)
+    return await _run_gear_nutrition(service, fixture, engine), engine
 
 
 def _scheduler_summary(workouts: list[dict]) -> dict:
@@ -89,8 +121,14 @@ def capture(service: str):
         fixture = json.load(open(path, encoding="utf-8"))
         print(f"[capture] {os.path.basename(path)} → NotebookLM (slow)...")
         start = time.time()
-        result = asyncio.run(_run(service, fixture, "notebooklm"))
-        ref = {"latency_s": round(time.time() - start, 1), "output": result}
+        result, engine_used = asyncio.run(_run(service, fixture, "notebooklm"))
+        ref = {"latency_s": round(time.time() - start, 1), "engine_used": engine_used, "output": result}
+        if engine_used != "notebooklm":
+            ref["engine_mismatch"] = True
+            print(
+                f"[capture] WARNING: {os.path.basename(path)} reference was produced by "
+                f"'{engine_used}', NOT NotebookLM — do not trust it as a reference."
+            )
         ref_path = path.replace(".json", ".ref.json")
         json.dump(ref, open(ref_path, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
         print(f"[capture] saved {os.path.basename(ref_path)} ({ref['latency_s']}s)")
@@ -108,7 +146,7 @@ def compare(service: str):
         ref = json.load(open(ref_path, encoding="utf-8")) if os.path.exists(ref_path) else None
         print(f"[compare] {os.path.basename(path)} → Gemini+KB...")
         start = time.time()
-        result = asyncio.run(_run(service, fixture, "gemini"))
+        result, engine_used = asyncio.run(_run(service, fixture, "gemini"))
         latency = round(time.time() - start, 1)
 
         lines.append(f"\n## {os.path.basename(path)}\n")
@@ -116,6 +154,15 @@ def compare(service: str):
             f"- Gemini+KB latency: **{latency}s**"
             + (f" (NotebookLM reference: {ref['latency_s']}s)" if ref else " (no reference captured)")
         )
+        if service == "scheduler":
+            attribution = f"- Engine attribution: **{engine_used}**"
+            if engine_used != "gemini":
+                attribution = f"- ❌ NOT GEMINI — result came from {engine_used}; do not trust this comparison row"
+            lines.append(attribution)
+            if ref and ref.get("engine_mismatch"):
+                lines.append(
+                    f"- ⚠️ Reference was produced by '{ref.get('engine_used')}', not NotebookLM — re-capture it"
+                )
         if service in ("gear", "nutrition"):
             recs = result.get("recommendations") or result.get("products") or []
             missing = find_uncatalogued(recs, catalog_titles)
