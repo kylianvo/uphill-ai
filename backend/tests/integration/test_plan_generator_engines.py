@@ -89,6 +89,43 @@ def test_default_flag_keeps_notebooklm_primary(monkeypatch):
     assert workouts and workouts[0]["type"] == "Easy"
 
 
+def _used_count(engine: str) -> float:
+    from prometheus_client import REGISTRY
+
+    return (
+        REGISTRY.get_sample_value(
+            "rag_attempts_total", {"service": "plan_generator", "engine": engine, "status": "used"}
+        )
+        or 0.0
+    )
+
+
+def test_used_counter_attributes_returned_plan_to_its_engine(monkeypatch):
+    """A NotebookLM answer that fails JSON parsing must NOT count as "used" —
+    only the engine whose parsed output is actually returned increments it
+    (golden_eval.py relies on this for engine attribution)."""
+    import asyncio
+
+    monkeypatch.setattr(settings, "RAG_ENGINE", "notebooklm")
+    monkeypatch.setattr(settings, "NOTEBOOKLM_NOTEBOOK_ID", "nb-sched")
+    monkeypatch.setattr(settings, "NOTEBOOKLM_AUTH_JSON", '{"tok": 1}')
+    before = {"gemini": _used_count("gemini"), "notebooklm": _used_count("notebooklm")}
+    fake_model = _fake_gemini_model()
+    with (
+        patch(
+            "services.notebooklm_service.NotebookLmService.query_notebook",
+            new_callable=AsyncMock,
+            return_value="Sorry, I could not find that in your sources.",  # unparsable → discarded
+        ),
+        patch("google.generativeai.GenerativeModel", return_value=fake_model),
+        patch("google.generativeai.configure"),
+    ):
+        workouts = asyncio.run(_generate())
+    assert workouts and workouts[0]["title"] == "Easy Aerobic Run"  # Gemini's output won
+    assert _used_count("notebooklm") == before["notebooklm"]  # parse-failed answer never "used"
+    assert _used_count("gemini") == before["gemini"] + 1
+
+
 def test_gemini_failure_falls_back_to_notebooklm(monkeypatch):
     import asyncio
 

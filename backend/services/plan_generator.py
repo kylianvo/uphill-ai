@@ -805,6 +805,12 @@ class PlanGenerator:
                 if isinstance(ai_workouts, list) and len(ai_workouts) > 0:
                     cleaned_wos = [wo for wo in ai_workouts if isinstance(wo, dict)]
                     print(f"[PlanGen][NotebookLM] Parsed {len(cleaned_wos)} workouts")
+                    from telemetry import rag_attempts_total
+
+                    # "used" fires only when this engine's output is what the plan
+                    # actually returns — unlike "success", which fires at the API
+                    # level before parse validation.
+                    rag_attempts_total.labels(service="plan_generator", engine="notebooklm", status="used").inc()
                     return post_process_workouts(cleaned_wos)
                 else:
                     print("[PlanGen][NotebookLM] Empty or invalid list returned, trying Gemini fallback.")
@@ -875,6 +881,7 @@ class PlanGenerator:
                 if isinstance(ai_workouts, list) and len(ai_workouts) > 0:
                     cleaned_wos = [wo for wo in ai_workouts if isinstance(wo, dict)]
                     print(f"[PlanGen][Gemini] Parsed {len(cleaned_wos)} workouts")
+                    rag_attempts_total.labels(service="plan_generator", engine="gemini", status="used").inc()
                     return post_process_workouts(cleaned_wos)
                 else:
                     print("[PlanGen][Gemini] Empty or invalid list returned, using rule-based fallback.")

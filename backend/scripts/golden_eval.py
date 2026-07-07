@@ -61,11 +61,14 @@ def _sample(name: str, labels: dict) -> float:
 
 
 def _scheduler_counters() -> dict:
+    # status="used" fires in plan_generator only when that engine's parsed output is
+    # what the call actually returns — an API "success" whose JSON fails to parse is
+    # discarded by the fallback loop and never increments "used".
     return {
-        "gemini_ok": _sample(
-            "rag_attempts_total", {"service": "plan_generator", "engine": "gemini", "status": "success"}
+        "gemini_ok": _sample("rag_attempts_total", {"service": "plan_generator", "engine": "gemini", "status": "used"}),
+        "nlm_ok": _sample(
+            "rag_attempts_total", {"service": "plan_generator", "engine": "notebooklm", "status": "used"}
         ),
-        "nlm_ok": _sample("notebooklm_attempts_total", {"service": "plan_generator", "status": "success"}),
     }
 
 
