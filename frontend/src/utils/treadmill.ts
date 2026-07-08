@@ -15,6 +15,29 @@ export function parsePaceToDecimalMinutes(pace: string | null | undefined): numb
   return minutes + seconds / 60;
 }
 
+// Parses a pace string — single or range ("6:30 - 5:45 /km") — into
+// [slower, faster] decimal min/km. Mirrors PlanGenerator.parse_pace_range.
+export function parsePaceRange(pace: string | null | undefined): [number, number] | null {
+  if (!pace) return null;
+  const matches = [...pace.matchAll(/(\d+):(\d{1,2})/g)].slice(0, 2);
+  if (matches.length === 0) {
+    const single = parsePaceToDecimalMinutes(pace);
+    return single === null ? null : [single, single];
+  }
+  const values = matches.map((m) => parseInt(m[1], 10) + parseInt(m[2], 10) / 60);
+  if (values.length === 1) values.push(values[0]);
+  return [Math.max(values[0], values[1]), Math.min(values[0], values[1])];
+}
+
+// "8.2-9.2" (or "8.2" when both ends coincide) — mirrors the backend's
+// PlanGenerator._format_range so estimated guides read like stored ones.
+function formatRange(a: number, b: number): string {
+  const fmt = (v: number) => String(Math.round(v * 10) / 10);
+  const low = Math.min(a, b);
+  const high = Math.max(a, b);
+  return fmt(low) === fmt(high) ? fmt(low) : `${fmt(low)}-${fmt(high)}`;
+}
+
 export interface TreadmillSettings {
   speedKph: number;
   inclinePercent: number;
@@ -93,6 +116,20 @@ export function getTreadmillGuide(
   const hasOutdoorGrade = !!outdoorGradePercent && outdoorGradePercent > 0;
   const grade = inclineNum > 0 ? inclineNum : hasOutdoorGrade ? outdoorGradePercent! : DEFAULT_TREADMILL_GRADE_PERCENT;
   const gradeSource: TreadmillGuide["gradeSource"] = inclineNum > 0 ? "ai" : hasOutdoorGrade ? "outdoor-grade" : "default";
-  const settings = calculateTreadmillSettings(pace, grade);
-  return { ...settings, estimated: true, gradeSource };
+
+  // Mirror the backend's range semantics (PlanGenerator.resolve_treadmill_settings):
+  // a ±1% incline band around the resolved grade (floored at 1%), and speed
+  // derived from both ends of the pace range at the band midpoint.
+  const inclineLow = Math.max(1.0, grade - 1.0);
+  const inclineHigh = grade + 1.0;
+  const inclineMid = (inclineLow + inclineHigh) / 2;
+  const paceRange = parsePaceRange(targetPace) ?? [pace, pace];
+  const speedLow = calculateTreadmillSettings(paceRange[0], inclineMid).speedKph;
+  const speedHigh = calculateTreadmillSettings(paceRange[1], inclineMid).speedKph;
+  return {
+    speedKph: formatRange(speedLow, speedHigh),
+    inclinePercent: formatRange(inclineLow, inclineHigh),
+    estimated: true,
+    gradeSource,
+  };
 }
