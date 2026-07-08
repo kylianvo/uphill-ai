@@ -49,6 +49,8 @@ class ShoeEntry(BaseModel):
     carbon_plate: str  # "yes (carbon plate)", "yes (rods)", "no" — plus detail if noted
     arch_support: str  # e.g. "neutral", "stability", "motion control" — plus detail if noted
     terrain: list[str]  # e.g. ["muddy", "technical", "rocky", "runnable", "road"]
+    intended_use: str  # e.g. "daily trainer", "race day", "tempo/workouts", "recovery", "ultras"
+    overview: str  # 1-2 sentence plain-language summary of the shoe's character
     highlights: str  # standout tech or special features worth calling out
     suitability: str  # who it suits/doesn't: heavier runners, injury-prone, beginners…
 
@@ -203,6 +205,8 @@ _SPEC_FIELDS = (
     "carbon_plate",
     "arch_support",
     "terrain",
+    "intended_use",
+    "overview",
     "highlights",
     "suitability",
 )
@@ -231,12 +235,13 @@ _GEAR_SPEC_ASK = (
     "material with its type in parentheses (e.g. ZoomX (PEBA)); outsole compound; lug depth in mm; drop "
     "in mm; stack height; price; cushioning level (max/moderate/firm); toe box / fit width (narrow, "
     "standard, wide, roomy toe box); carbon plate or rods (yes/no + detail); arch support (neutral, "
-    "stability, motion control); recommended terrain (muddy, technical, rocky, runnable, road…); any "
-    "standout tech or special highlight; who it suits or doesn't (e.g. heavier runners, "
-    "injury-prone/stability needs, beginners); what it is best for and its strengths (pros); and its "
-    "drawbacks or who shouldn't buy it (cons). If the documents don't state a detail, skip that detail "
-    "rather than guessing. Answer as a COMPACT plain-text list right here in chat, at most 6 short "
-    "lines per shoe — do NOT compile a guide, table document, note, or file."
+    "stability, motion control); recommended terrain (muddy, technical, rocky, runnable, road…); its "
+    "intended use (daily trainer, race day, tempo/workouts, recovery, ultras…); a 1-2 sentence overview "
+    "of the shoe's character; any standout tech or special highlight; who it suits or doesn't (e.g. "
+    "heavier runners, injury-prone/stability needs, beginners); what it is best for and its strengths "
+    "(pros); and its drawbacks or who shouldn't buy it (cons). If the documents don't state a detail, "
+    "skip that detail rather than guessing. Answer as a COMPACT plain-text list right here in chat, at "
+    "most 7 short lines per shoe — do NOT compile a guide, table document, note, or file."
 )
 
 
