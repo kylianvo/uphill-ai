@@ -47,7 +47,37 @@ ssh root@45.119.215.120 "curl -sf http://localhost:8000/api/health" || echo "hea
 server's local port since the public production hostname/proxy isn't fixed
 here — confirm with the user if there's an external URL to check too.)
 
+## Schema changes
+
+`init_db()` runs at app startup and self-migrates the production database
+(idempotent `CREATE TABLE IF NOT EXISTS` + `ALTER` list) — no manual Alembic
+step is needed on the server. The Alembic history exists for environments
+that upgrade via `alembic upgrade head` instead; keep both in sync per the
+`db-migration` skill.
+
+## Knowledge base (RAG engine)
+
+The distilled KB ships with the rsync (`backend/kb_seed/*.json`) but must be
+loaded into the server's Postgres + Qdrant after the containers are up:
+
+```bash
+ssh root@45.119.215.120 "cd /opt/uphill-ai-backend && docker compose exec -T backend python scripts/load_kb.py"
+```
+
+This is idempotent (atomic per-domain replace) and re-embeds scheduler chunks
+into the server's Qdrant using the server `GEMINI_API_KEY`. Verify with:
+
+```bash
+ssh root@45.119.215.120 "cd /opt/uphill-ai-backend && docker compose exec -T db psql -U uphill -d uphill_ai -c \"SELECT domain, count(*) FROM kb_chunks GROUP BY 1;\""
+```
+
+`RAG_ENGINE=gemini` in the server `.env` selects the fast KB engine
+(NotebookLM stays as automatic fallback); without it the default is the
+legacy `notebooklm` engine. If the KB import is skipped while
+`RAG_ENGINE=gemini`, the app still works — the Gemini engine refuses on an
+empty KB and every request falls back to slow NotebookLM.
+
 ## After deploying
 
-Report back concretely: what was synced, whether preflight tests passed, and
-the container status — not just "deploy succeeded."
+Report back concretely: what was synced, whether preflight tests passed, the
+container status, and the kb_chunks counts — not just "deploy succeeded."
