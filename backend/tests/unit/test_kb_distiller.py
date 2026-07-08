@@ -80,6 +80,106 @@ def test_distill_gear_sweeps_whitelisted_brands_and_builds_catalog_rows(monkeypa
     assert rows[0]["payload"]["cons"] == "Heavy for racing."  # qualitative fields captured
     assert rows[0]["payload"]["best_for"].startswith("Long technical")
     assert rows[1]["title"] == "Salomon Genesis"
+    assert rows[1]["payload"]["model"] == "Genesis"  # brand stripped from payload model too
+
+
+def _thin_shoe(model):
+    return {
+        "model": model,
+        "brand": "Salomon",
+        "foam_material": "",
+        "outsole_compound": "",
+        "lug_depth": "",
+        "drop": "",
+        "stack": "",
+        "price": "",
+        "pros": "",
+        "cons": "",
+        "best_for": "",
+    }
+
+
+def _rich_shoe(model):
+    return {
+        "model": model,
+        "brand": "Salomon",
+        "foam_material": "EnergyFoam (EVA)",
+        "outsole_compound": "Contagrip",
+        "lug_depth": "4mm",
+        "drop": "8mm",
+        "stack": "31mm/23mm",
+        "price": "$140",
+        "pros": "Secure fit.",
+        "cons": "Firm.",
+        "best_for": "Mountain running.",
+    }
+
+
+def test_thin_sweep_is_retried_and_richer_result_kept(monkeypatch):
+    monkeypatch.setattr(kb_distiller, "GEAR_BRANDS", ["Salomon"])
+    with (
+        patch(
+            "services.notebooklm_service.NotebookLmService.query_notebook",
+            new_callable=AsyncMock,
+            side_effect=["thin answer", "rich answer"],
+        ) as nlm,
+        patch.object(
+            kb_distiller,
+            "_gemini_structured",
+            new_callable=AsyncMock,
+            side_effect=[
+                {"shoes": [_thin_shoe("Aero Glide series"), _thin_shoe("S/Lab racing line")]},
+                {"shoes": [_rich_shoe("Genesis"), _rich_shoe("S/Lab Ultra Glide 2")]},
+            ],
+        ),
+        patch("asyncio.sleep", new_callable=AsyncMock),
+    ):
+        rows = asyncio.run(kb_distiller._distill_gear("nb-gear", '{"tok":1}', "test-key", {}))
+    assert nlm.call_count == 2  # thin first sweep triggered exactly one re-sweep
+    assert [r["title"] for r in rows] == ["Salomon Genesis", "Salomon S/Lab Ultra Glide 2"]
+    assert rows[0]["payload"]["price"] == "$140"  # the rich result won
+
+
+def test_overflowing_brand_answer_splits_into_trail_and_road(monkeypatch):
+    calls = []
+
+    async def fake_query(notebook_id, auth_json, query, attempts=3):
+        calls.append(query)
+        if len(calls) == 1:
+            raise Exception("RPC response exceeded 52428800 bytes")
+        return f"answer {len(calls)}"
+
+    with (
+        patch.object(kb_distiller, "_query_with_retries", side_effect=fake_query),
+        patch.object(
+            kb_distiller,
+            "_gemini_structured",
+            new_callable=AsyncMock,
+            side_effect=[
+                {"shoes": [_rich_shoe("Pegasus Trail 5"), _rich_shoe("Zegama 2")]},
+                {"shoes": [_rich_shoe("Pegasus Trail 5"), _rich_shoe("Vaporfly 4")]},  # dup deduped
+            ],
+        ),
+        patch("asyncio.sleep", new_callable=AsyncMock),
+    ):
+        shoes = asyncio.run(kb_distiller._sweep_gear_brand("nb-gear", '{"tok":1}', "test-key", "Nike"))
+    assert len(calls) == 3  # full sweep + trail + road
+    assert "trail running" in calls[1] and "road running" in calls[2]
+    assert sorted(s["model"] for s in shoes) == ["Pegasus Trail 5", "Vaporfly 4", "Zegama 2"]
+
+
+def test_query_with_retries_does_not_retry_stream_overflow():
+    with (
+        patch(
+            "services.notebooklm_service.NotebookLmService.query_notebook",
+            new_callable=AsyncMock,
+            side_effect=Exception("RPC response exceeded 52428800 bytes"),
+        ) as nlm,
+        patch("asyncio.sleep", new_callable=AsyncMock),
+    ):
+        with pytest.raises(Exception, match="RPC response exceeded"):
+            asyncio.run(kb_distiller._query_with_retries("nb", '{"tok":1}', "q"))
+    assert nlm.call_count == 1  # deterministic overflow — retrying is pure waste
 
 
 def test_query_with_retries_recovers_from_transient_failure():

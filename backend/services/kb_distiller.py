@@ -116,6 +116,10 @@ async def _query_with_retries(notebook_id: str, auth_json: str, query: str, atte
                 notebook_id=notebook_id, auth_json=auth_json, query=query, service="kb_distiller"
             )
         except Exception as e:
+            if "RPC response exceeded" in str(e):
+                # Deterministic: the answer itself overflows the client's stream
+                # cap, so the same query will always fail — callers must narrow it.
+                raise
             if attempt == attempts:
                 raise
             wait_s = 15.0 * attempt
@@ -172,22 +176,32 @@ def _whitelisted_brand(returned_brand: str, queried_brand: str) -> str | None:
     return None
 
 
-async def _distill_gear(notebook_id: str, auth_json: str, api_key: str, status: dict) -> list[dict]:
-    brands = GEAR_BRANDS
-    rows: list[dict] = []
+# A distilled shoe is only useful if it carries real specs. Score = number of
+# filled spec fields; a brand sweep averaging below the threshold is re-swept
+# (NotebookLM under load returns thin series-level summaries).
+_SPEC_FIELDS = ("foam_material", "outsole_compound", "lug_depth", "drop", "stack", "price", "pros", "cons", "best_for")
+_MIN_AVG_RICHNESS = 4
 
-    async def sweep_brand(brand: str) -> list[dict]:
-        answer = await _query_with_retries(
-            notebook_id,
-            auth_json,
-            (
-                f"List EVERY {brand} shoe in your documents. For each shoe give: exact model name, "
-                "foam material with its type in parentheses (e.g. ZoomX (PEBA)), outsole compound, "
-                "lug depth in mm, drop in mm, stack height, price, what it is best for and its "
-                "strengths (pros), and its drawbacks or who shouldn't buy it (cons). Include every "
-                "model mentioned, even briefly."
-            ),
-        )
+
+def _shoe_richness(shoe: dict) -> int:
+    return sum(1 for field in _SPEC_FIELDS if (shoe.get(field) or "").strip())
+
+
+def _sweep_richness(shoes: list[dict]) -> int:
+    return sum(_shoe_richness(s) for s in shoes)
+
+
+_GEAR_SPEC_ASK = (
+    "For each shoe give: exact model name, foam material with its type in parentheses "
+    "(e.g. ZoomX (PEBA)), outsole compound, lug depth in mm, drop in mm, stack height, price, "
+    "what it is best for and its strengths (pros), and its drawbacks or who shouldn't buy it (cons). "
+    "Include every model mentioned, even briefly."
+)
+
+
+async def _sweep_gear_brand(notebook_id: str, auth_json: str, api_key: str, brand: str) -> list[dict]:
+    async def sweep_query(query_text: str) -> list[dict]:
+        answer = await _query_with_retries(notebook_id, auth_json, query_text)
         structured = await _gemini_structured(
             api_key,
             "Structure every shoe in this text into the schema. NEVER add a shoe, spec, or price "
@@ -196,18 +210,54 @@ async def _distill_gear(notebook_id: str, auth_json: str, api_key: str, status: 
         )
         return structured.get("shoes", [])
 
+    try:
+        return await sweep_query(f"List EVERY {brand} shoe in your documents. {_GEAR_SPEC_ASK}")
+    except Exception as e:
+        if "RPC response exceeded" not in str(e):
+            raise
+        # The brand's full answer overflows the NotebookLM client's stream cap
+        # (seen with Nike and Altra) — split the sweep into narrower scopes.
+        print(f"[KBDistiller][gear] Brand '{brand}' answer overflowed the stream cap — splitting trail/road.")
+        shoes: list[dict] = []
+        for scope in ("trail running", "road running"):
+            try:
+                shoes += await sweep_query(
+                    f"List EVERY {brand} {scope} shoe in your documents. Keep each shoe brief. {_GEAR_SPEC_ASK}"
+                )
+            except Exception as scope_e:
+                print(f"[KBDistiller][gear] '{brand}' {scope} split failed, continuing: {scope_e}")
+            await asyncio.sleep(1.5)
+        seen: set[str] = set()
+        unique: list[dict] = []
+        for shoe in shoes:
+            key = (shoe.get("model") or "").strip().lower()
+            if key and key not in seen:
+                seen.add(key)
+                unique.append(shoe)
+        return unique
+
+
+async def _distill_gear(notebook_id: str, auth_json: str, api_key: str, status: dict) -> list[dict]:
+    brands = GEAR_BRANDS
+    rows: list[dict] = []
+
     for i, brand in enumerate(brands):
         status.update({"current_topic": f"gear: {brand}", "progress": i, "total": len(brands)})
         try:
-            shoes = await sweep_brand(brand)
-            if not shoes:
-                # Under load NotebookLM sometimes answers a brand query with a
-                # refusal ("not in my documents") even when sources exist — the
-                # call "succeeds" so _query_with_retries never fires. One full
-                # re-sweep recovers most of these silent empties.
-                print(f"[KBDistiller][gear] Brand '{brand}' yielded 0 shoes — retrying the sweep once.")
+            shoes = await _sweep_gear_brand(notebook_id, auth_json, api_key, brand)
+            if not shoes or _sweep_richness(shoes) / max(len(shoes), 1) < _MIN_AVG_RICHNESS:
+                # Under load NotebookLM sometimes "succeeds" with a refusal or a
+                # thin series-level summary (model names, no specs) — either way
+                # the catalog entry would be useless. Re-sweep once and keep the
+                # richer of the two results.
+                print(
+                    f"[KBDistiller][gear] Brand '{brand}' sweep was empty/thin "
+                    f"({len(shoes)} shoes, richness {_sweep_richness(shoes)}) — retrying the sweep once."
+                )
                 await asyncio.sleep(10)
-                shoes = await sweep_brand(brand)
+                second = await _sweep_gear_brand(notebook_id, auth_json, api_key, brand)
+                if _sweep_richness(second) > _sweep_richness(shoes):
+                    shoes = second
             kept = 0
             for shoe in shoes:
                 brand_final = _whitelisted_brand(shoe.get("brand", brand), brand)
@@ -219,6 +269,7 @@ async def _distill_gear(notebook_id: str, auth_json: str, api_key: str, status: 
                 if model.lower().startswith(brand_final.lower() + " "):
                     # Gemini sometimes repeats the brand inside the model name
                     model = model[len(brand_final) :].strip()
+                shoe["model"] = model  # keep payload consistent so UIs don't show "Kailas Kailas Fuga"
                 title = f"{brand_final} {model}".strip()
                 rows.append(
                     {
