@@ -73,4 +73,15 @@ describe("getTreadmillGuide", () => {
     const guide = getTreadmillGuide(null, 8.0, 0);
     expect(guide).toEqual({ speedKph: 8.0, inclinePercent: 0, estimated: false, gradeSource: "ai" });
   });
+
+  it("passes the backend's range strings through verbatim", () => {
+    const guide = getTreadmillGuide("6:30 - 5:45 /km", "8.1-9.2", "2-4");
+    expect(guide).toEqual({ speedKph: "8.1-9.2", inclinePercent: "2-4", estimated: false, gradeSource: "ai" });
+  });
+
+  it('treats "0" range strings as unset and estimates from pace instead', () => {
+    const guide = getTreadmillGuide("6:00 /km", "0", "0");
+    expect(guide?.estimated).toBe(true);
+    expect(guide?.gradeSource).toBe("default");
+  });
 });

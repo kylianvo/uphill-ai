@@ -1185,7 +1185,10 @@ async def generate_next_block(request: GenerateNextBlockRequest, user: dict[str,
     block_context = None
     context_lines: list[str] = []
 
-    for blk in range(1, request.block_number):
+    # Newest block first: it carries per-session detail, and the NotebookLM
+    # fallback truncates the tail of the feedback blob — older summaries are
+    # the right thing to lose, not last block's session-by-session feedback.
+    for blk in range(request.block_number - 1, 0, -1):
         wk_start = (blk - 1) * 2 + 1
         wk_end = blk * 2
 
@@ -1241,13 +1244,35 @@ async def generate_next_block(request: GenerateNextBlockRequest, user: dict[str,
 
         if block_note:
             context_lines.append(f'  Athlete note: "{block_note}"')
-        for n in session_notes:
-            context_lines.append(f"  Session note — {n}")
-        if missed:
-            context_lines.append(
-                f"  Missed: {', '.join(missed[:3])}"
-                + (" +" + str(len(missed) - 3) + " more" if len(missed) > 3 else "")
-            )
+
+        if blk == request.block_number - 1:
+            # Most recent block: one line per session — performance, feedback,
+            # RPE — so the next block reacts to specific sessions, not averages.
+            context_lines.append("  Session-by-session (previous block):")
+            for w in block_wos:
+                dur = w.get("duration_minutes") or 0
+                km = w.get("distance_km") or 0
+                planned = f"{w.get('title') or w.get('type', '?')} ({dur:.0f}min" + (f"/{km:.1f}km)" if km else ")")
+                if w.get("is_completed") == 1:
+                    detail = "completed"
+                    if w.get("rpe"):
+                        detail += f", RPE {w['rpe']}/10"
+                    if w.get("notes"):
+                        detail += f', feedback: "{w["notes"]}"'
+                else:
+                    detail = "MISSED"
+                context_lines.append(
+                    f"    W{w.get('week_number', '?')} {w.get('day_of_week', '?')} — {planned}: {detail}"
+                )
+        else:
+            # Older blocks: keep the compact summary form
+            for n in session_notes:
+                context_lines.append(f"  Session note — {n}")
+            if missed:
+                context_lines.append(
+                    f"  Missed: {', '.join(missed[:3])}"
+                    + (" +" + str(len(missed) - 3) + " more" if len(missed) > 3 else "")
+                )
 
     if context_lines:
         block_context = "\n".join(context_lines)

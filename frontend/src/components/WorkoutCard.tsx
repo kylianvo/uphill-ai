@@ -31,7 +31,7 @@ import {
   buildCoachNotesContent,
   mainDurationMinutes,
 } from "../utils/workoutDescription";
-import { getTreadmillGuide } from "../utils/treadmill";
+import { getTreadmillGuide, leadingNumber } from "../utils/treadmill";
 
 interface WorkoutCardProps {
   wo: any;
@@ -96,7 +96,7 @@ export default function WorkoutCard({
   const libraryInfo = resolveWorkoutInfo(wo.title || "", wo.type || "", dbTypes);
   const zoneColor = libraryInfo?.color || getZoneColor(wo.target_zone || "", wo.title || "", wo.type || "");
 
-  const defaultSurface = wo.treadmill_incline > 0 ? "treadmill" : "outdoor";
+  const defaultSurface = leadingNumber(wo.treadmill_incline) > 0 ? "treadmill" : "outdoor";
   const [surface, setSurface] = useState<"outdoor" | "treadmill">(defaultSurface);
   const treadmillGuide = getTreadmillGuide(wo.target_pace, wo.treadmill_speed, wo.treadmill_incline, wo.grade_percent);
   const [expanded, setExpanded] = useState(false);

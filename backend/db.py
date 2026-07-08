@@ -130,8 +130,8 @@ def init_db():
             target_zone         TEXT NOT NULL,
             target_hr_range     TEXT,
             target_pace         TEXT,
-            treadmill_incline   REAL DEFAULT 0.0,
-            treadmill_speed     REAL DEFAULT 0.0,
+            treadmill_incline   TEXT DEFAULT '0',    -- range string, e.g. "7.3-9.3" (%)
+            treadmill_speed     TEXT DEFAULT '0',    -- range string, e.g. "8.2-9.2" (kph)
             elevation_gain_m    REAL DEFAULT 0.0,
             grade_percent       REAL DEFAULT 0.0,
             description         TEXT,
@@ -263,6 +263,12 @@ def init_db():
         conn.commit()
 
         for col_sql in [
+            # Type upgrades for databases created before treadmill fields became
+            # range strings (idempotent: TEXT→TEXT re-runs harmlessly).
+            "ALTER TABLE workouts ALTER COLUMN treadmill_incline TYPE TEXT USING treadmill_incline::text",
+            "ALTER TABLE workouts ALTER COLUMN treadmill_incline SET DEFAULT '0'",
+            "ALTER TABLE workouts ALTER COLUMN treadmill_speed TYPE TEXT USING treadmill_speed::text",
+            "ALTER TABLE workouts ALTER COLUMN treadmill_speed SET DEFAULT '0'",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS rpe INTEGER",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS notes TEXT",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS session_slot TEXT DEFAULT 'main'",
@@ -531,8 +537,11 @@ def save_workouts(plan_id: int, workouts: list[dict[str, Any]]):
                     "target_zone": _flatten_llm_text(wo["target_zone"]),
                     "target_hr_range": _flatten_llm_text(wo.get("target_hr_range")),
                     "target_pace": _flatten_llm_text(wo.get("target_pace")),
-                    "treadmill_incline": wo.get("treadmill_incline", 0.0),
-                    "treadmill_speed": wo.get("treadmill_speed", 0.0),
+                    # Range strings ("8.2-9.2"); legacy numeric values stringify.
+                    "treadmill_incline": str(
+                        wo.get("treadmill_incline") if wo.get("treadmill_incline") is not None else "0"
+                    ),
+                    "treadmill_speed": str(wo.get("treadmill_speed") if wo.get("treadmill_speed") is not None else "0"),
                     "elevation_gain_m": wo.get("elevation_gain_m", 0.0),
                     "grade_percent": wo.get("grade_percent", 0.0),
                     "description": _flatten_llm_text(wo.get("description")),
