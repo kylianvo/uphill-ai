@@ -22,7 +22,9 @@ class NotebookLmService:
     GROUNDING_SUFFIX = (
         "\n\nGrounding rule: base this answer only on your source documents. Do not invent "
         "facts, product names, or citations that are not in your documents. If your documents "
-        "don't cover part of this, say so plainly instead of guessing."
+        "don't cover part of this, say so plainly instead of guessing. Answer directly in this "
+        "chat as plain text — NEVER compile or save your answer as a note, guide, report, "
+        "document, or file."
     )
 
     @classmethod

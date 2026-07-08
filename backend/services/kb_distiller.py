@@ -195,7 +195,8 @@ _GEAR_SPEC_ASK = (
     "For each shoe give: exact model name, foam material with its type in parentheses "
     "(e.g. ZoomX (PEBA)), outsole compound, lug depth in mm, drop in mm, stack height, price, "
     "what it is best for and its strengths (pros), and its drawbacks or who shouldn't buy it (cons). "
-    "Include every model mentioned, even briefly."
+    "Include every model mentioned, even briefly. Answer as a COMPACT plain-text list right here in "
+    "chat, at most 4 short lines per shoe — do NOT compile a guide, table document, note, or file."
 )
 
 
@@ -301,7 +302,9 @@ async def _distill_nutrition(notebook_id: str, auth_json: str, api_key: str, sta
                 (
                     f"List EVERY {brand} product in your documents (gels, drink mixes, chews, bars). "
                     "For each give: exact product name, format, carbs per unit (g), sodium per unit (mg), "
-                    "protein per unit (g), and any technology/science notes. Include every product mentioned."
+                    "protein per unit (g), and any technology/science notes. Include every product mentioned. "
+                    "Answer as a COMPACT plain-text list right here in chat, at most 3 short lines per "
+                    "product — do NOT compile a guide, table document, note, or file."
                 ),
             )
             structured = await _gemini_structured(
@@ -394,6 +397,63 @@ def _notebook_id(domain: str) -> str:
     }[domain]
 
 
+def _rows_by_brand(rows: list[dict]) -> dict[str, list[dict]]:
+    grouped: dict[str, list[dict]] = {}
+    for row in rows:
+        payload = row.get("payload") or {}
+        if isinstance(payload, str):
+            payload = json.loads(payload)
+        brand = (payload.get("brand") or "").strip()
+        grouped.setdefault(brand, []).append(row)
+    return grouped
+
+
+def _merge_gear_ratchet(new_rows: list[dict]) -> list[dict]:
+    """Per brand, keep the richer of the existing catalog's rows and the new
+    sweep's — NotebookLM answer quality varies run to run (thin summaries,
+    stream overflows), so re-runs should only ever improve the catalog, never
+    regress a brand that swept richly before."""
+    import db
+
+    existing = _rows_by_brand(db.get_kb_chunks("gear", kind="catalog_item"))
+    fresh = _rows_by_brand(new_rows)
+    merged: list[dict] = []
+    for brand in sorted(set(existing) | set(fresh)):
+        old_rows, new_brand_rows = existing.get(brand, []), fresh.get(brand, [])
+
+        def richness(rows: list[dict]) -> int:
+            total = 0
+            for row in rows:
+                payload = row.get("payload") or {}
+                if isinstance(payload, str):
+                    payload = json.loads(payload)
+                total += _shoe_richness(payload)
+            return total
+
+        if richness(old_rows) > richness(new_brand_rows):
+            print(
+                f"[KBDistiller][gear] Ratchet: keeping previous '{brand}' rows "
+                f"({len(old_rows)} shoes, richness {richness(old_rows)} > {richness(new_brand_rows)})"
+            )
+            kept = old_rows
+        else:
+            kept = new_brand_rows
+        for row in kept:
+            merged.append(
+                {
+                    "domain": "gear",
+                    "kind": "catalog_item",
+                    "title": row["title"],
+                    "content": row["content"],
+                    "payload": row["payload"]
+                    if not isinstance(row.get("payload"), str)
+                    else json.loads(row["payload"]),
+                    "source_label": row.get("source_label", "NotebookLM distillation"),
+                }
+            )
+    return merged
+
+
 async def distill_domain(domain: str, api_key: str, status_holder: dict) -> int:
     """Sweep one notebook → replace that domain's kb_chunks → export seed → (scheduler) reindex."""
     import db
@@ -409,6 +469,8 @@ async def distill_domain(domain: str, api_key: str, status_holder: dict) -> int:
         # A failed sweep must never wipe a working KB.
         raise RuntimeError(f"Distillation produced an empty result for '{domain}' — keeping existing KB.")
 
+    if domain == "gear":
+        rows = _merge_gear_ratchet(rows)
     saved = db.replace_kb_chunks(domain, rows)
     export_seed(domain, rows)
     if domain == "scheduler":

@@ -168,6 +168,26 @@ def test_overflowing_brand_answer_splits_into_trail_and_road(monkeypatch):
     assert sorted(s["model"] for s in shoes) == ["Pegasus Trail 5", "Vaporfly 4", "Zegama 2"]
 
 
+def _row(payload):
+    title = f"{payload['brand']} {payload['model']}"
+    return {"domain": "gear", "kind": "catalog_item", "title": title, "content": title, "payload": payload}
+
+
+def test_merge_gear_ratchet_keeps_richer_brand_and_adds_new_brands():
+    existing = [
+        _row(_rich_shoe("Gel-Trabuco 12") | {"brand": "Asics"}),
+        _row(_rich_shoe("Novablast 5") | {"brand": "Asics"}),
+    ]
+    new_rows = [
+        _row(_thin_shoe("Gel-Trabuco series") | {"brand": "Asics"}),  # this run regressed Asics
+        _row(_rich_shoe("005") | {"brand": "Norda"}),  # new brand, rich
+    ]
+    with patch("db.get_kb_chunks", return_value=existing):
+        merged = kb_distiller._merge_gear_ratchet(new_rows)
+    titles = sorted(r["title"] for r in merged)
+    assert titles == ["Asics Gel-Trabuco 12", "Asics Novablast 5", "Norda 005"]  # old Asics kept, Norda added
+
+
 def test_query_with_retries_does_not_retry_stream_overflow():
     with (
         patch(
