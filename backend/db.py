@@ -478,6 +478,20 @@ def get_recent_plans(user_id: int, limit: int = 3) -> list[dict[str, Any]]:
     return [_row_to_dict(r) for r in rows]
 
 
+def _flatten_llm_text(value: Any) -> Any:
+    """LLM engines occasionally nest a text field as an object or array (a
+    sectioned description, target_hr_range as {min, max}); the workouts table
+    stores these as text — flatten instead of letting psycopg2 fail the whole
+    save with "can't adapt type 'dict'"."""
+    if isinstance(value, dict):
+        if {"min", "max"} <= set(value):
+            return f"{value['min']}-{value['max']}"
+        return " ".join(f"{k}: {v}" for k, v in value.items())
+    if isinstance(value, list):
+        return " ".join(str(v) for v in value)
+    return value
+
+
 def save_workouts(plan_id: int, workouts: list[dict[str, Any]]):
     if not workouts:
         return
@@ -508,22 +522,22 @@ def save_workouts(plan_id: int, workouts: list[dict[str, Any]]):
                 {
                     "plan_id": plan_id,
                     "week_number": wo["week_number"],
-                    "day_of_week": wo["day_of_week"],
-                    "phase": wo["phase"],
-                    "title": wo["title"],
-                    "type": wo["type"],
+                    "day_of_week": _flatten_llm_text(wo["day_of_week"]),
+                    "phase": _flatten_llm_text(wo["phase"]),
+                    "title": _flatten_llm_text(wo["title"]),
+                    "type": _flatten_llm_text(wo["type"]),
                     "duration_minutes": wo["duration_minutes"],
                     "distance_km": wo.get("distance_km"),
-                    "target_zone": wo["target_zone"],
-                    "target_hr_range": wo.get("target_hr_range"),
-                    "target_pace": wo.get("target_pace"),
+                    "target_zone": _flatten_llm_text(wo["target_zone"]),
+                    "target_hr_range": _flatten_llm_text(wo.get("target_hr_range")),
+                    "target_pace": _flatten_llm_text(wo.get("target_pace")),
                     "treadmill_incline": wo.get("treadmill_incline", 0.0),
                     "treadmill_speed": wo.get("treadmill_speed", 0.0),
                     "elevation_gain_m": wo.get("elevation_gain_m", 0.0),
                     "grade_percent": wo.get("grade_percent", 0.0),
-                    "description": wo.get("description"),
-                    "fueling_tip": wo.get("fueling_tip"),
-                    "session_slot": wo.get("session_slot", "main"),
+                    "description": _flatten_llm_text(wo.get("description")),
+                    "fueling_tip": _flatten_llm_text(wo.get("fueling_tip")),
+                    "session_slot": _flatten_llm_text(wo.get("session_slot", "main")),
                 },
             )
         conn.commit()
