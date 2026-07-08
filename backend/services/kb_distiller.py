@@ -175,33 +175,51 @@ def _whitelisted_brand(returned_brand: str, queried_brand: str) -> str | None:
 async def _distill_gear(notebook_id: str, auth_json: str, api_key: str, status: dict) -> list[dict]:
     brands = GEAR_BRANDS
     rows: list[dict] = []
+
+    async def sweep_brand(brand: str) -> list[dict]:
+        answer = await _query_with_retries(
+            notebook_id,
+            auth_json,
+            (
+                f"List EVERY {brand} shoe in your documents. For each shoe give: exact model name, "
+                "foam material with its type in parentheses (e.g. ZoomX (PEBA)), outsole compound, "
+                "lug depth in mm, drop in mm, stack height, price, what it is best for and its "
+                "strengths (pros), and its drawbacks or who shouldn't buy it (cons). Include every "
+                "model mentioned, even briefly."
+            ),
+        )
+        structured = await _gemini_structured(
+            api_key,
+            "Structure every shoe in this text into the schema. NEVER add a shoe, spec, or price "
+            "that is not present in the text.\n\n" + answer,
+            ShoeList,
+        )
+        return structured.get("shoes", [])
+
     for i, brand in enumerate(brands):
         status.update({"current_topic": f"gear: {brand}", "progress": i, "total": len(brands)})
         try:
-            answer = await _query_with_retries(
-                notebook_id,
-                auth_json,
-                (
-                    f"List EVERY {brand} shoe in your documents. For each shoe give: exact model name, "
-                    "foam material with its type in parentheses (e.g. ZoomX (PEBA)), outsole compound, "
-                    "lug depth in mm, drop in mm, stack height, price, what it is best for and its "
-                    "strengths (pros), and its drawbacks or who shouldn't buy it (cons). Include every "
-                    "model mentioned, even briefly."
-                ),
-            )
-            structured = await _gemini_structured(
-                api_key,
-                "Structure every shoe in this text into the schema. NEVER add a shoe, spec, or price "
-                "that is not present in the text.\n\n" + answer,
-                ShoeList,
-            )
-            for shoe in structured.get("shoes", []):
+            shoes = await sweep_brand(brand)
+            if not shoes:
+                # Under load NotebookLM sometimes answers a brand query with a
+                # refusal ("not in my documents") even when sources exist — the
+                # call "succeeds" so _query_with_retries never fires. One full
+                # re-sweep recovers most of these silent empties.
+                print(f"[KBDistiller][gear] Brand '{brand}' yielded 0 shoes — retrying the sweep once.")
+                await asyncio.sleep(10)
+                shoes = await sweep_brand(brand)
+            kept = 0
+            for shoe in shoes:
                 brand_final = _whitelisted_brand(shoe.get("brand", brand), brand)
                 if brand_final is None:
                     print(f"[KBDistiller][gear] Skipping non-whitelisted brand row: {shoe.get('brand')!r}")
                     continue
                 shoe["brand"] = brand_final
-                title = f"{brand_final} {shoe.get('model', '')}".strip()
+                model = (shoe.get("model") or "").strip()
+                if model.lower().startswith(brand_final.lower() + " "):
+                    # Gemini sometimes repeats the brand inside the model name
+                    model = model[len(brand_final) :].strip()
+                title = f"{brand_final} {model}".strip()
                 rows.append(
                     {
                         "domain": "gear",
@@ -211,6 +229,8 @@ async def _distill_gear(notebook_id: str, auth_json: str, api_key: str, status: 
                         "payload": shoe,
                     }
                 )
+                kept += 1
+            print(f"[KBDistiller][gear] Brand '{brand}': {kept} shoes")
         except Exception as e:
             print(f"[KBDistiller][gear] Brand '{brand}' failed, continuing: {e}")
         await asyncio.sleep(1.5)  # NotebookLM rate-limit courtesy (same as knowledge_extractor)

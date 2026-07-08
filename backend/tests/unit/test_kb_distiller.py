@@ -45,7 +45,7 @@ def test_distill_gear_sweeps_whitelisted_brands_and_builds_catalog_rows(monkeypa
         {
             "shoes": [
                 {
-                    "model": "Genesis",
+                    "model": "Salomon Genesis",  # brand repeated inside model → deduped in title
                     "brand": "Salomon",
                     "foam_material": "EnergyCell (EVA)",
                     "outsole_compound": "Contagrip",
