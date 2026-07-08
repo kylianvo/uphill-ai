@@ -47,6 +47,7 @@ class ShoeEntry(BaseModel):
     cushioning: str  # e.g. "max", "moderate", "firm/minimal"
     foot_shape: str  # e.g. "narrow", "standard", "wide", "roomy toe box"
     carbon_plate: str  # "yes (carbon plate)", "yes (rods)", "no" — plus detail if noted
+    arch_support: str  # e.g. "neutral", "stability", "motion control" — plus detail if noted
     terrain: list[str]  # e.g. ["muddy", "technical", "rocky", "runnable", "road"]
     highlights: str  # standout tech or special features worth calling out
     suitability: str  # who it suits/doesn't: heavier runners, injury-prone, beginners…
@@ -200,6 +201,7 @@ _SPEC_FIELDS = (
     "cushioning",
     "foot_shape",
     "carbon_plate",
+    "arch_support",
     "terrain",
     "highlights",
     "suitability",
@@ -223,16 +225,18 @@ def _sweep_richness(shoes: list[dict]) -> int:
 
 
 _GEAR_SPEC_ASK = (
-    "For each shoe give: exact model name; foam material with its type in parentheses "
-    "(e.g. ZoomX (PEBA)); outsole compound; lug depth in mm; drop in mm; stack height; price; "
-    "cushioning level (max/moderate/firm); toe box / fit width (narrow, standard, wide, roomy toe box); "
-    "carbon plate or rods (yes/no + detail); recommended terrain (muddy, technical, rocky, runnable, road…); "
-    "any standout tech or special highlight; who it suits or doesn't (e.g. heavier runners, "
+    "ONLY include shoes that are properly reviewed in your documents — a dedicated review, lab data, "
+    "or detailed testing/fit notes. EXCLUDE shoes that are merely mentioned in passing, as a comparison "
+    "point, or as a historical reference. For each properly-reviewed shoe give: exact model name; foam "
+    "material with its type in parentheses (e.g. ZoomX (PEBA)); outsole compound; lug depth in mm; drop "
+    "in mm; stack height; price; cushioning level (max/moderate/firm); toe box / fit width (narrow, "
+    "standard, wide, roomy toe box); carbon plate or rods (yes/no + detail); arch support (neutral, "
+    "stability, motion control); recommended terrain (muddy, technical, rocky, runnable, road…); any "
+    "standout tech or special highlight; who it suits or doesn't (e.g. heavier runners, "
     "injury-prone/stability needs, beginners); what it is best for and its strengths (pros); and its "
-    "drawbacks or who shouldn't buy it (cons). Include every model mentioned, even briefly — if the "
-    "documents don't state a detail, skip that detail rather than guessing. Answer as a COMPACT "
-    "plain-text list right here in chat, at most 6 short lines per shoe — do NOT compile a guide, "
-    "table document, note, or file."
+    "drawbacks or who shouldn't buy it (cons). If the documents don't state a detail, skip that detail "
+    "rather than guessing. Answer as a COMPACT plain-text list right here in chat, at most 6 short "
+    "lines per shoe — do NOT compile a guide, table document, note, or file."
 )
 
 
@@ -242,7 +246,8 @@ async def _sweep_gear_brand(notebook_id: str, auth_json: str, api_key: str, bran
         structured = await _gemini_structured(
             api_key,
             "Structure every shoe in this text into the schema. NEVER add a shoe, spec, or price "
-            "that is not present in the text.\n\n" + answer,
+            "that is not present in the text. If the text marks a shoe as only briefly mentioned, "
+            "referenced historically, or not fully reviewed, SKIP it.\n\n" + answer,
             ShoeList,
         )
         return structured.get("shoes", [])
