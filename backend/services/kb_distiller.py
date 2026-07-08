@@ -42,6 +42,14 @@ class ShoeEntry(BaseModel):
     pros: str
     cons: str
     best_for: str
+    # Fields below mirror the Gear planner's input criteria (GearParams) so the
+    # runtime engine can match athlete needs against catalog facts directly.
+    cushioning: str  # e.g. "max", "moderate", "firm/minimal"
+    foot_shape: str  # e.g. "narrow", "standard", "wide", "roomy toe box"
+    carbon_plate: str  # "yes (carbon plate)", "yes (rods)", "no" — plus detail if noted
+    terrain: list[str]  # e.g. ["muddy", "technical", "rocky", "runnable", "road"]
+    highlights: str  # standout tech or special features worth calling out
+    suitability: str  # who it suits/doesn't: heavier runners, injury-prone, beginners…
 
 
 class ShoeList(BaseModel):
@@ -179,12 +187,35 @@ def _whitelisted_brand(returned_brand: str, queried_brand: str) -> str | None:
 # A distilled shoe is only useful if it carries real specs. Score = number of
 # filled spec fields; a brand sweep averaging below the threshold is re-swept
 # (NotebookLM under load returns thin series-level summaries).
-_SPEC_FIELDS = ("foam_material", "outsole_compound", "lug_depth", "drop", "stack", "price", "pros", "cons", "best_for")
+_SPEC_FIELDS = (
+    "foam_material",
+    "outsole_compound",
+    "lug_depth",
+    "drop",
+    "stack",
+    "price",
+    "pros",
+    "cons",
+    "best_for",
+    "cushioning",
+    "foot_shape",
+    "carbon_plate",
+    "terrain",
+    "highlights",
+    "suitability",
+)
 _MIN_AVG_RICHNESS = 4
 
 
 def _shoe_richness(shoe: dict) -> int:
-    return sum(1 for field in _SPEC_FIELDS if (shoe.get(field) or "").strip())
+    score = 0
+    for field in _SPEC_FIELDS:
+        value = shoe.get(field)
+        if isinstance(value, str):
+            score += 1 if value.strip() else 0
+        elif isinstance(value, list):
+            score += 1 if value else 0
+    return score
 
 
 def _sweep_richness(shoes: list[dict]) -> int:
@@ -192,11 +223,16 @@ def _sweep_richness(shoes: list[dict]) -> int:
 
 
 _GEAR_SPEC_ASK = (
-    "For each shoe give: exact model name, foam material with its type in parentheses "
-    "(e.g. ZoomX (PEBA)), outsole compound, lug depth in mm, drop in mm, stack height, price, "
-    "what it is best for and its strengths (pros), and its drawbacks or who shouldn't buy it (cons). "
-    "Include every model mentioned, even briefly. Answer as a COMPACT plain-text list right here in "
-    "chat, at most 4 short lines per shoe — do NOT compile a guide, table document, note, or file."
+    "For each shoe give: exact model name; foam material with its type in parentheses "
+    "(e.g. ZoomX (PEBA)); outsole compound; lug depth in mm; drop in mm; stack height; price; "
+    "cushioning level (max/moderate/firm); toe box / fit width (narrow, standard, wide, roomy toe box); "
+    "carbon plate or rods (yes/no + detail); recommended terrain (muddy, technical, rocky, runnable, road…); "
+    "any standout tech or special highlight; who it suits or doesn't (e.g. heavier runners, "
+    "injury-prone/stability needs, beginners); what it is best for and its strengths (pros); and its "
+    "drawbacks or who shouldn't buy it (cons). Include every model mentioned, even briefly — if the "
+    "documents don't state a detail, skip that detail rather than guessing. Answer as a COMPACT "
+    "plain-text list right here in chat, at most 6 short lines per shoe — do NOT compile a guide, "
+    "table document, note, or file."
 )
 
 
