@@ -44,6 +44,52 @@ def _create_plan_with_one_workout(client, headers):
     return plan_id, workout_id
 
 
+def test_save_workouts_flattens_nested_llm_fields(client, auth_headers):
+    """Gemini occasionally nests a text field as an object/array (sectioned
+    description, {min,max} HR range) — saving must flatten, not crash with
+    psycopg2 "can't adapt type 'dict'"."""
+    with patch(
+        "services.plan_generator.PlanGenerator.generate_plan_workouts",
+        new_callable=AsyncMock,
+        return_value=[],
+    ):
+        resp = client.post(
+            "/api/coach/generate-plan",
+            headers=auth_headers["headers"],
+            json={
+                "goal_type": "finish",
+                "race_name": "Nested 50K",
+                "race_date": "2027-05-01",
+                "plan_start_date": "2027-03-15",
+                "days_per_week": 4,
+            },
+        )
+    plan_id = resp.json()["plan"]["id"]
+
+    save_workouts(
+        plan_id,
+        [
+            {
+                "week_number": 1,
+                "day_of_week": "Tue",
+                "phase": "Base",
+                "title": "Easy Run",
+                "type": "Easy",
+                "duration_minutes": 45,
+                "target_zone": "Zone 2",
+                "target_hr_range": {"min": 125, "max": 140},
+                "description": {"Process": "Warm up 10min → run 30min", "Overall": "aerobic base"},
+                "fueling_tip": ["Water only.", "Gel if hungry."],
+            }
+        ],
+    )
+    wo = get_plan_workouts(plan_id)[0]
+    assert wo["target_hr_range"] == "125-140"
+    assert "Process: Warm up 10min" in wo["description"]
+    assert "Overall: aerobic base" in wo["description"]
+    assert wo["fueling_tip"] == "Water only. Gel if hungry."
+
+
 class TestLogWorkout:
     def test_marks_a_workout_completed_with_rpe_and_notes(self, client, auth_headers):
         _plan_id, workout_id = _create_plan_with_one_workout(client, auth_headers["headers"])

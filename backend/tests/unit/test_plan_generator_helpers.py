@@ -454,41 +454,63 @@ class TestResolveElevationAndGrade:
         assert result == (0.0, 0.0)
 
 
-class TestResolveHillSprintTreadmill:
-    def test_non_hill_sprint_title_passes_through_unchanged(self):
-        wo = {"title": "Aerobic Tempo Session", "treadmill_incline": 3.0, "treadmill_speed": 10.0}
-        result = PlanGenerator.resolve_hill_sprint_treadmill(wo, target_pace="6:00 /km")
-        assert result == (3.0, 10.0)
+class TestParsePaceRange:
+    def test_range_string(self):
+        assert PlanGenerator.parse_pace_range("6:30 - 5:45 /km") == (6.5, 5.75)
 
-    def test_hill_sprint_title_keeps_ai_incline_already_in_range(self):
-        wo = {"title": "Hill Sprint Repeats", "treadmill_incline": 12.0}
-        incline, speed = PlanGenerator.resolve_hill_sprint_treadmill(wo, target_pace="6:00 /km")
-        assert incline == 12.0
-        assert speed > 0
+    def test_single_value(self):
+        assert PlanGenerator.parse_pace_range("6:00 /km") == (6.0, 6.0)
 
-    def test_hill_sprint_title_clamps_out_of_range_incline_to_midpoint(self):
-        wo = {"title": "Afternoon Hill Sprints & Neuromuscular Power", "treadmill_incline": 1.0}
-        incline, _ = PlanGenerator.resolve_hill_sprint_treadmill(wo, target_pace="6:00 /km")
-        assert incline == 12.5
+    def test_empty_is_none(self):
+        assert PlanGenerator.parse_pace_range("") is None
+        assert PlanGenerator.parse_pace_range(None) is None
 
-    def test_hill_sprint_title_defaults_when_ai_omits_incline(self):
-        wo = {"title": "Hill Sprint Repeats"}
-        incline, speed = PlanGenerator.resolve_hill_sprint_treadmill(wo, target_pace="6:00 /km")
-        assert incline == 12.5
-        assert speed > 0
 
-    def test_hill_repeat_keyword_matches(self):
-        wo = {"title": "Steep Hill Repeat Session"}
-        incline, _ = PlanGenerator.resolve_hill_sprint_treadmill(wo, target_pace="6:00 /km")
-        assert 10.0 <= incline <= 15.0
+class TestResolveTreadmillSettings:
+    def test_not_treadmill_relevant_returns_zero_strings(self):
+        wo = {"title": "Aerobic Tempo Session"}
+        assert PlanGenerator.resolve_treadmill_settings(wo, "6:00 /km") == ("0", "0")
+
+    def test_speed_derived_from_pace_range_not_ai_number(self):
+        # The reported bug: pace 6:30-5:45/km but AI said 8.2 kph flat — speed
+        # must be recomputed from the pace range at the incline band midpoint.
+        wo = {"title": "Tempo on Treadmill", "treadmill_incline": 3.0, "treadmill_speed": 8.2}
+        incline, speed = PlanGenerator.resolve_treadmill_settings(wo, "6:30 - 5:45 /km")
+        assert incline == "2-4"  # ±1% band around the AI's 3%
+        assert speed == "8.1-9.2"  # 60/6.5 and 60/5.75 kph, effort-adjusted at 3%
+
+    def test_incline_band_falls_back_to_outdoor_grade(self):
+        wo = {"title": "Trail Long Run", "treadmill_speed": 9.0, "grade_percent": 8.3}
+        incline, speed = PlanGenerator.resolve_treadmill_settings(wo, "6:00 /km")
+        assert incline == "7.3-9.3"
+        assert speed == "7.3"  # single pace → single speed, adjusted at 8.3%
+
+    def test_default_one_percent_rule_when_no_grade_known(self):
+        wo = {"title": "Easy Run", "treadmill_speed": 9.0}
+        incline, _ = PlanGenerator.resolve_treadmill_settings(wo, "6:00 /km")
+        assert incline == "1-2"
+
+    def test_hill_sprint_gets_10_15_band(self):
+        wo = {"title": "Hill Sprint Repeats", "treadmill_incline": 1.0}
+        incline, speed = PlanGenerator.resolve_treadmill_settings(wo, "6:00 /km")
+        assert incline == "10-15"
+        assert speed == "6.4"  # 10 kph flat, effort-adjusted at the 12.5% midpoint
 
     def test_hill_bound_keyword_matches(self):
         # Rule-based fallback's ME session is titled "Muscular Endurance: Hill Bounds" —
         # same steep-hill-effort category as Hill Sprint/Hill Repeat, so it must get the
         # same 10-15% backstop rather than silently falling through unmatched.
         wo = {"title": "Muscular Endurance: Hill Bounds", "treadmill_incline": 999.0}
-        incline, _ = PlanGenerator.resolve_hill_sprint_treadmill(wo, target_pace="6:00 /km")
-        assert 10.0 <= incline <= 15.0
+        incline, _ = PlanGenerator.resolve_treadmill_settings(wo, "6:00 /km")
+        assert incline == "10-15"
+
+    def test_no_pace_keeps_ai_speed_but_never_invents_one(self):
+        wo = {"title": "Gym Session", "treadmill_incline": 5.0, "treadmill_speed": 7.5}
+        incline, speed = PlanGenerator.resolve_treadmill_settings(wo, "")
+        assert incline == "4-6"
+        assert speed == "7.5"
+        wo_no_speed = {"title": "Gym Session", "treadmill_incline": 5.0}
+        assert PlanGenerator.resolve_treadmill_settings(wo_no_speed, "")[1] == "0"
 
 
 class TestPostProcessWorkoutsElevation:

@@ -4,6 +4,7 @@ All raw SQL uses %s-style placeholders via psycopg2 through SQLAlchemy.
 """
 
 import datetime
+import hashlib
 import json
 import uuid
 from typing import Any
@@ -129,8 +130,8 @@ def init_db():
             target_zone         TEXT NOT NULL,
             target_hr_range     TEXT,
             target_pace         TEXT,
-            treadmill_incline   REAL DEFAULT 0.0,
-            treadmill_speed     REAL DEFAULT 0.0,
+            treadmill_incline   TEXT DEFAULT '0',    -- range string, e.g. "7.3-9.3" (%)
+            treadmill_speed     TEXT DEFAULT '0',    -- range string, e.g. "8.2-9.2" (kph)
             elevation_gain_m    REAL DEFAULT 0.0,
             grade_percent       REAL DEFAULT 0.0,
             description         TEXT,
@@ -221,6 +222,22 @@ def init_db():
         """)
         )
 
+        conn.execute(
+            text("""
+        CREATE TABLE IF NOT EXISTS kb_chunks (
+            id              SERIAL PRIMARY KEY,
+            domain          TEXT NOT NULL,               -- 'gear' | 'nutrition' | 'scheduler'
+            kind            TEXT NOT NULL,               -- 'catalog_item' | 'principle'
+            title           TEXT NOT NULL,
+            content         TEXT NOT NULL,
+            payload         JSONB,
+            source_label    TEXT DEFAULT 'NotebookLM distillation',
+            content_hash    TEXT NOT NULL,
+            created_at      TIMESTAMPTZ DEFAULT NOW()
+        )
+        """)
+        )
+
         conn.commit()
 
         try:
@@ -246,6 +263,12 @@ def init_db():
         conn.commit()
 
         for col_sql in [
+            # Type upgrades for databases created before treadmill fields became
+            # range strings (idempotent: TEXT→TEXT re-runs harmlessly).
+            "ALTER TABLE workouts ALTER COLUMN treadmill_incline TYPE TEXT USING treadmill_incline::text",
+            "ALTER TABLE workouts ALTER COLUMN treadmill_incline SET DEFAULT '0'",
+            "ALTER TABLE workouts ALTER COLUMN treadmill_speed TYPE TEXT USING treadmill_speed::text",
+            "ALTER TABLE workouts ALTER COLUMN treadmill_speed SET DEFAULT '0'",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS rpe INTEGER",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS notes TEXT",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS session_slot TEXT DEFAULT 'main'",
@@ -461,6 +484,20 @@ def get_recent_plans(user_id: int, limit: int = 3) -> list[dict[str, Any]]:
     return [_row_to_dict(r) for r in rows]
 
 
+def _flatten_llm_text(value: Any) -> Any:
+    """LLM engines occasionally nest a text field as an object or array (a
+    sectioned description, target_hr_range as {min, max}); the workouts table
+    stores these as text — flatten instead of letting psycopg2 fail the whole
+    save with "can't adapt type 'dict'"."""
+    if isinstance(value, dict):
+        if {"min", "max"} <= set(value):
+            return f"{value['min']}-{value['max']}"
+        return " ".join(f"{k}: {v}" for k, v in value.items())
+    if isinstance(value, list):
+        return " ".join(str(v) for v in value)
+    return value
+
+
 def save_workouts(plan_id: int, workouts: list[dict[str, Any]]):
     if not workouts:
         return
@@ -491,22 +528,25 @@ def save_workouts(plan_id: int, workouts: list[dict[str, Any]]):
                 {
                     "plan_id": plan_id,
                     "week_number": wo["week_number"],
-                    "day_of_week": wo["day_of_week"],
-                    "phase": wo["phase"],
-                    "title": wo["title"],
-                    "type": wo["type"],
+                    "day_of_week": _flatten_llm_text(wo["day_of_week"]),
+                    "phase": _flatten_llm_text(wo["phase"]),
+                    "title": _flatten_llm_text(wo["title"]),
+                    "type": _flatten_llm_text(wo["type"]),
                     "duration_minutes": wo["duration_minutes"],
                     "distance_km": wo.get("distance_km"),
-                    "target_zone": wo["target_zone"],
-                    "target_hr_range": wo.get("target_hr_range"),
-                    "target_pace": wo.get("target_pace"),
-                    "treadmill_incline": wo.get("treadmill_incline", 0.0),
-                    "treadmill_speed": wo.get("treadmill_speed", 0.0),
+                    "target_zone": _flatten_llm_text(wo["target_zone"]),
+                    "target_hr_range": _flatten_llm_text(wo.get("target_hr_range")),
+                    "target_pace": _flatten_llm_text(wo.get("target_pace")),
+                    # Range strings ("8.2-9.2"); legacy numeric values stringify.
+                    "treadmill_incline": str(
+                        wo.get("treadmill_incline") if wo.get("treadmill_incline") is not None else "0"
+                    ),
+                    "treadmill_speed": str(wo.get("treadmill_speed") if wo.get("treadmill_speed") is not None else "0"),
                     "elevation_gain_m": wo.get("elevation_gain_m", 0.0),
                     "grade_percent": wo.get("grade_percent", 0.0),
-                    "description": wo.get("description"),
-                    "fueling_tip": wo.get("fueling_tip"),
-                    "session_slot": wo.get("session_slot", "main"),
+                    "description": _flatten_llm_text(wo.get("description")),
+                    "fueling_tip": _flatten_llm_text(wo.get("fueling_tip")),
+                    "session_slot": _flatten_llm_text(wo.get("session_slot", "main")),
                 },
             )
         conn.commit()
@@ -1059,3 +1099,97 @@ def get_workout_types(lang: str = "en") -> list[dict[str, Any]]:
 def get_workout_type_count() -> int:
     with engine.connect() as conn:
         return conn.execute(text("SELECT COUNT(*) FROM workout_types")).scalar()
+
+
+# ─── KB Chunks (distilled knowledge base) ────────────────────────────────────
+
+
+def save_kb_chunks(chunks: list[dict[str, Any]]) -> int:
+    count = 0
+    with engine.connect() as conn:
+        for chunk in chunks:
+            try:
+                content = chunk.get("content", "")
+                payload = chunk.get("payload")
+                conn.execute(
+                    text("""
+                    INSERT INTO kb_chunks (domain, kind, title, content, payload, source_label, content_hash)
+                    VALUES (:domain, :kind, :title, :content, CAST(:payload AS JSONB), :source_label, :content_hash)
+                """),
+                    {
+                        "domain": chunk["domain"],
+                        "kind": chunk.get("kind", "principle"),
+                        "title": chunk.get("title", ""),
+                        "content": content,
+                        "payload": json.dumps(payload, ensure_ascii=False) if payload is not None else None,
+                        "source_label": chunk.get("source_label", "NotebookLM distillation"),
+                        "content_hash": chunk.get("content_hash") or hashlib.md5(content.encode("utf-8")).hexdigest(),
+                    },
+                )
+                count += 1
+            except Exception as e:
+                print(f"Error saving kb chunk: {e}")
+        conn.commit()
+    return count
+
+
+def get_kb_chunks(domain: str, kind: str | None = None) -> list[dict[str, Any]]:
+    with engine.connect() as conn:
+        if kind:
+            rows = (
+                conn.execute(
+                    text("SELECT * FROM kb_chunks WHERE domain = :d AND kind = :k ORDER BY title"),
+                    {"d": domain, "k": kind},
+                )
+                .mappings()
+                .all()
+            )
+        else:
+            rows = (
+                conn.execute(text("SELECT * FROM kb_chunks WHERE domain = :d ORDER BY kind, title"), {"d": domain})
+                .mappings()
+                .all()
+            )
+    return [dict(r) for r in rows]
+
+
+def clear_kb_chunks(domain: str) -> None:
+    with engine.connect() as conn:
+        conn.execute(text("DELETE FROM kb_chunks WHERE domain = :d"), {"d": domain})
+        conn.commit()
+
+
+def get_kb_chunk_count(domain: str | None = None) -> int:
+    with engine.connect() as conn:
+        if domain:
+            return conn.execute(text("SELECT COUNT(*) FROM kb_chunks WHERE domain = :d"), {"d": domain}).scalar()
+        return conn.execute(text("SELECT COUNT(*) FROM kb_chunks")).scalar()
+
+
+def replace_kb_chunks(domain: str, chunks: list[dict[str, Any]]) -> int:
+    """Atomically replace a domain's chunks: DELETE + all INSERTs in one
+    transaction, one commit. Any bad row aborts the whole replace, leaving
+    the existing KB untouched (unlike clear+save, which commits the DELETE
+    separately)."""
+    with engine.connect() as conn:
+        conn.execute(text("DELETE FROM kb_chunks WHERE domain = :d"), {"d": domain})
+        for chunk in chunks:
+            content = chunk.get("content", "")
+            payload = chunk.get("payload")
+            conn.execute(
+                text("""
+                INSERT INTO kb_chunks (domain, kind, title, content, payload, source_label, content_hash)
+                VALUES (:domain, :kind, :title, :content, CAST(:payload AS JSONB), :source_label, :content_hash)
+            """),
+                {
+                    "domain": chunk["domain"],
+                    "kind": chunk.get("kind", "principle"),
+                    "title": chunk.get("title", ""),
+                    "content": content,
+                    "payload": json.dumps(payload, ensure_ascii=False) if payload is not None else None,
+                    "source_label": chunk.get("source_label", "NotebookLM distillation"),
+                    "content_hash": chunk.get("content_hash") or hashlib.md5(content.encode("utf-8")).hexdigest(),
+                },
+            )
+        conn.commit()
+    return len(chunks)

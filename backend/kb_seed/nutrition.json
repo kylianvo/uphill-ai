@@ -1,0 +1,1223 @@
+{
+  "domain": "nutrition",
+  "chunks": [
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Bix The Big 40 Energy Gel",
+      "content": "Bix The Big 40 Energy Gel: This gel features an optimal 1:0.8 glucose-to-fructose ratio to maximize absorption, increase carbohydrate utilization, and decrease stomach distress. It is vegan, uses natural flavors and colors, is manufactured in a UK GMP-certified facility, and is Informed Sport batch tested. Engineered to deliver double the carbs and sodium of typical market gels, it simplifies fueling logistics for endurance athletes. Its light, fluid consistency reduces stickiness and makes it easy to ingest, while its \"stay-on\" tab packaging keeps the torn tip attached to prevent trail litter. The caffeinated variant is noted for being highly effective while remaining remarkably gentle on the stomach.",
+      "payload": {
+        "brand": "Bix",
+        "carbs_per_unit": 40,
+        "format": "Energy Gel",
+        "name": "The Big 40 Energy Gel",
+        "protein_per_unit": 0,
+        "sodium_per_unit": 200,
+        "tech_notes": "This gel features an optimal 1:0.8 glucose-to-fructose ratio to maximize absorption, increase carbohydrate utilization, and decrease stomach distress. It is vegan, uses natural flavors and colors, is manufactured in a UK GMP-certified facility, and is Informed Sport batch tested. Engineered to deliver double the carbs and sodium of typical market gels, it simplifies fueling logistics for endurance athletes. Its light, fluid consistency reduces stickiness and makes it easy to ingest, while its \"stay-on\" tab packaging keeps the torn tip attached to prevent trail litter. The caffeinated variant is noted for being highly effective while remaining remarkably gentle on the stomach."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Bix Bix 30 Energy Gel – Salted Strawberry",
+      "content": "Bix Bix 30 Energy Gel – Salted Strawberry: Formulated with a 1:0.8 glucose-to-fructose ratio, this gel is vegan, uses natural flavors and colors, and is Informed Sport batch tested. It is designed specifically for longer efforts, hotter conditions, or heavy sweat to maintain an ideal balance between quick energy and robust electrolyte replenishment. Its natural strawberry flavor with a slightly salty finish is smooth, light, and engineered to prevent palate fatigue during long sessions.",
+      "payload": {
+        "brand": "Bix",
+        "carbs_per_unit": 30,
+        "format": "Energy Gel",
+        "name": "Bix 30 Energy Gel – Salted Strawberry",
+        "protein_per_unit": 0,
+        "sodium_per_unit": 300,
+        "tech_notes": "Formulated with a 1:0.8 glucose-to-fructose ratio, this gel is vegan, uses natural flavors and colors, and is Informed Sport batch tested. It is designed specifically for longer efforts, hotter conditions, or heavy sweat to maintain an ideal balance between quick energy and robust electrolyte replenishment. Its natural strawberry flavor with a slightly salty finish is smooth, light, and engineered to prevent palate fatigue during long sessions."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Bix Bix 30 Gel – Berry",
+      "content": "Bix Bix 30 Gel – Berry: Built on the same high-electrolyte 1:0.8 glucose-to-fructose ratio platform. It is formulated for long efforts and heavy sweat. Customers highlight its light, non-sticky texture and pleasant berry flavor that goes down easily and remains gentle on the stomach.",
+      "payload": {
+        "brand": "Bix",
+        "carbs_per_unit": 30,
+        "format": "Energy Gel",
+        "name": "Bix 30 Gel – Berry",
+        "sodium_per_unit": 300,
+        "tech_notes": "Built on the same high-electrolyte 1:0.8 glucose-to-fructose ratio platform. It is formulated for long efforts and heavy sweat. Customers highlight its light, non-sticky texture and pleasant berry flavor that goes down easily and remains gentle on the stomach."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Bix Performance Fuel – High Carb Drink Mix",
+      "content": "Bix Performance Fuel – High Carb Drink Mix: Developed by athletes, for athletes. This mix is designed to deliver a perfect balance of fast-acting energy and electrolytes with a light, non-sickly taste, making it highly tolerable for endurance training and racing. The \"Salty\" variant is engineered with a crisp, clean taste to specifically mitigate flavor fatigue.",
+      "payload": {
+        "brand": "Bix",
+        "format": "High-Carb Drink Mix",
+        "name": "Performance Fuel – High Carb Drink Mix",
+        "tech_notes": "Developed by athletes, for athletes. This mix is designed to deliver a perfect balance of fast-acting energy and electrolytes with a light, non-sickly taste, making it highly tolerable for endurance training and racing. The \"Salty\" variant is engineered with a crisp, clean taste to specifically mitigate flavor fatigue."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Bix Bix Daily Recovery Supplement",
+      "content": "Bix Bix Daily Recovery Supplement: Developed by sports nutritionists and food scientists with high-quality ingredients. This formula focuses on micronutrient-driven recovery to help repair the body, significantly reducing post-exercise fatigue and helping athletes feel energized after intense training.",
+      "payload": {
+        "brand": "Bix",
+        "format": "Recovery Tablet",
+        "name": "Bix Daily Recovery Supplement",
+        "tech_notes": "Developed by sports nutritionists and food scientists with high-quality ingredients. This formula focuses on micronutrient-driven recovery to help repair the body, significantly reducing post-exercise fatigue and helping athletes feel energized after intense training."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Bix Bix Active – Electrolytes",
+      "content": "Bix Bix Active – Electrolytes: Designed to deliver next-level hydration and improve physical performance. Bix Active contains the 4 main electrolytes: Sodium, Magnesium, Potassium, and Calcium to keep fluid balance stabilized during workouts.",
+      "payload": {
+        "brand": "Bix",
+        "format": "Hydration Tablet",
+        "name": "Bix Active – Electrolytes",
+        "tech_notes": "Designed to deliver next-level hydration and improve physical performance. Bix Active contains the 4 main electrolytes: Sodium, Magnesium, Potassium, and Calcium to keep fluid balance stabilized during workouts."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Bix Salt Electrolyte Caps",
+      "content": "Bix Salt Electrolyte Caps: Listed in Bix Hydration's product catalog, but further scientific or nutritional details are not detailed in the provided source texts.",
+      "payload": {
+        "brand": "Bix",
+        "format": "Capsule",
+        "name": "Salt Electrolyte Caps",
+        "tech_notes": "Listed in Bix Hydration's product catalog, but further scientific or nutritional details are not detailed in the provided source texts."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "GU Original Energy Gel",
+      "content": "GU Original Energy Gel: Uses a dual-source carbohydrate blend of maltodextrin and fructose. The maltodextrin converts quickly to energy molecules within minutes, while the fructose absorbs more slowly to provide a steady stream of energy, preventing the insulin spikes and subsequent sugar crashes associated with simple sugars. Formulated with a BCAA blend (L-Leucine, L-Valine, and L-Isoleucine) to help protect working muscles from breakdown, aid in energy production, and prevent mental fatigue during exertion. Contains sodium to maintain fluid balance and aid carbohydrate absorption. Contains 450mg of branched-chain amino acids (BCAAs).",
+      "payload": {
+        "brand": "GU",
+        "carbs_per_unit": 22,
+        "format": "Energy Gel (Smooth Gel)",
+        "name": "Original Energy Gel",
+        "protein_per_unit": 0,
+        "sodium_per_unit": 60,
+        "tech_notes": "Uses a dual-source carbohydrate blend of maltodextrin and fructose. The maltodextrin converts quickly to energy molecules within minutes, while the fructose absorbs more slowly to provide a steady stream of energy, preventing the insulin spikes and subsequent sugar crashes associated with simple sugars. Formulated with a BCAA blend (L-Leucine, L-Valine, and L-Isoleucine) to help protect working muscles from breakdown, aid in energy production, and prevent mental fatigue during exertion. Contains sodium to maintain fluid balance and aid carbohydrate absorption. Contains 450mg of branched-chain amino acids (BCAAs)."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "GU Roctane Energy Gel",
+      "content": "GU Roctane Energy Gel: Specifically engineered for long-duration and high-intensity activities requiring additional nutritional support. It delivers 3x the amino acids and 2 to 3x the electrolytes of GU's Original Gels. It uniquely includes the amino acids taurine (to help maintain heart contractility and improve cardiac output during long exercise sessions) and beta-alanine (to help buffer muscle acidity during intense efforts). Contains an amped-up BCAA/amino acid blend of 1,425mg per packet. The Lemonade flavor contains the highest sodium content out of any GU Energy Gel.",
+      "payload": {
+        "brand": "GU",
+        "carbs_per_unit": 21,
+        "format": "Energy Gel (Smooth Gel)",
+        "name": "Roctane Energy Gel",
+        "protein_per_unit": 0,
+        "sodium_per_unit": 125,
+        "tech_notes": "Specifically engineered for long-duration and high-intensity activities requiring additional nutritional support. It delivers 3x the amino acids and 2 to 3x the electrolytes of GU's Original Gels. It uniquely includes the amino acids taurine (to help maintain heart contractility and improve cardiac output during long exercise sessions) and beta-alanine (to help buffer muscle acidity during intense efforts). Contains an amped-up BCAA/amino acid blend of 1,425mg per packet. The Lemonade flavor contains the highest sodium content out of any GU Energy Gel."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "GU Liquid Energy Gel",
+      "content": "GU Liquid Energy Gel: Affectionately called \"The GU You Can Gulp,\" it features a thin, refreshingly light, and smooth liquid consistency designed for quick, easy intake on the go without the thickness of a traditional gel. Because of its higher water content, it can be frozen into a slushie for hot training days. Uses a dual-source carbohydrate system to provide separate \"express lanes\" for absorption, maximizing fuel delivery without stomach upset. It includes BCAAs to delay the onset of physical fatigue, decrease muscle breakdown, and jumpstart protein synthesis. Contains 450mg of amino acids per serving.",
+      "payload": {
+        "brand": "GU",
+        "carbs_per_unit": 23,
+        "format": "Liquid Energy Gel (Light Liquid)",
+        "name": "Liquid Energy Gel",
+        "protein_per_unit": 0,
+        "sodium_per_unit": 75,
+        "tech_notes": "Affectionately called \"The GU You Can Gulp,\" it features a thin, refreshingly light, and smooth liquid consistency designed for quick, easy intake on the go without the thickness of a traditional gel. Because of its higher water content, it can be frozen into a slushie for hot training days. Uses a dual-source carbohydrate system to provide separate \"express lanes\" for absorption, maximizing fuel delivery without stomach upset. It includes BCAAs to delay the onset of physical fatigue, decrease muscle breakdown, and jumpstart protein synthesis. Contains 450mg of amino acids per serving."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "GU Energy Chews",
+      "content": "GU Energy Chews: Created to provide the exact same portable, easily digestible carbohydrate benefits as the Original Gels but in a chewable, gummy format. Utilizes a mix of maltodextrin and fructose to enhance absorption rates and diminish gastric distress. Formulated with a branched-chain amino acid blend to protect muscles from damage, decrease mental fatigue, and accelerate recovery. Contains 400mg of amino acids. The Salted Lime flavor is formulated with triple the sodium (120mg) of other flavors to assist with hydration.",
+      "payload": {
+        "brand": "GU",
+        "carbs_per_unit": 22,
+        "format": "Energy Chew / Gummy",
+        "name": "Energy Chews",
+        "protein_per_unit": 0,
+        "sodium_per_unit": 40,
+        "tech_notes": "Created to provide the exact same portable, easily digestible carbohydrate benefits as the Original Gels but in a chewable, gummy format. Utilizes a mix of maltodextrin and fructose to enhance absorption rates and diminish gastric distress. Formulated with a branched-chain amino acid blend to protect muscles from damage, decrease mental fatigue, and accelerate recovery. Contains 400mg of amino acids. The Salted Lime flavor is formulated with triple the sodium (120mg) of other flavors to assist with hydration."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "GU Hydration Drink Tabs",
+      "content": "GU Hydration Drink Tabs: Light, effervescent tablets designed to dissolve in 16oz of water. Specially formulated with 320mg of sodium and 55mg of potassium to replace the primary minerals lost in sweat. By supplementing water with these electrolytes, they help maintain fluid balance, prevent muscle cramping, and delay fatigue. Sweetened naturally using stevia and cane sugar. Each tab contains 10 calories.",
+      "payload": {
+        "brand": "GU",
+        "carbs_per_unit": 0,
+        "format": "Dissolvable Hydration Tablet",
+        "name": "Hydration Drink Tabs",
+        "protein_per_unit": 0,
+        "sodium_per_unit": 320,
+        "tech_notes": "Light, effervescent tablets designed to dissolve in 16oz of water. Specially formulated with 320mg of sodium and 55mg of potassium to replace the primary minerals lost in sweat. By supplementing water with these electrolytes, they help maintain fluid balance, prevent muscle cramping, and delay fatigue. Sweetened naturally using stevia and cane sugar. Each tab contains 10 calories."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Hammer Hammer Gel (Apple-Cinnamon)",
+      "content": "Hammer Hammer Gel (Apple-Cinnamon): Formulated with apple juice concentrate, Energy Smart® (grape juice, rice dextrin), cinnamon, ascorbic acid, vanilla extract, malic acid, potassium carbonate, salt, and the four core amino acids. Verified owners highlight its pleasant taste resembling apple pie, making it highly tolerable even 6 hours into an endurance effort.",
+      "payload": {
+        "brand": "Hammer",
+        "carbs_per_unit": 21,
+        "format": "Energy Gel",
+        "name": "Hammer Gel (Apple-Cinnamon)",
+        "protein_per_unit": 0,
+        "sodium_per_unit": 25,
+        "tech_notes": "Formulated with apple juice concentrate, Energy Smart® (grape juice, rice dextrin), cinnamon, ascorbic acid, vanilla extract, malic acid, potassium carbonate, salt, and the four core amino acids. Verified owners highlight its pleasant taste resembling apple pie, making it highly tolerable even 6 hours into an endurance effort."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Hammer Hammer Gel (Banana)",
+      "content": "Hammer Hammer Gel (Banana): Formulated with real bananas, Energy Smart® (grape juice, rice dextrin), cultured dextrose, citric acid, potassium chloride, and the four core amino acids.",
+      "payload": {
+        "brand": "Hammer",
+        "carbs_per_unit": 22,
+        "format": "Energy Gel",
+        "name": "Hammer Gel (Banana)",
+        "protein_per_unit": 0,
+        "sodium_per_unit": 15,
+        "tech_notes": "Formulated with real bananas, Energy Smart® (grape juice, rice dextrin), cultured dextrose, citric acid, potassium chloride, and the four core amino acids."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Hammer Hammer Gel (Chocolate)",
+      "content": "Hammer Hammer Gel (Chocolate): Formulated with cocoa, tapioca syrup, Energy Smart® (grape juice, rice dextrin), cultured dextrose, salt, ascorbic acid, potassium carbonate, and the four core amino acids.",
+      "payload": {
+        "brand": "Hammer",
+        "carbs_per_unit": 21,
+        "format": "Energy Gel",
+        "name": "Hammer Gel (Chocolate)",
+        "protein_per_unit": 0,
+        "sodium_per_unit": 35,
+        "tech_notes": "Formulated with cocoa, tapioca syrup, Energy Smart® (grape juice, rice dextrin), cultured dextrose, salt, ascorbic acid, potassium carbonate, and the four core amino acids."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Hammer Hammer Gel (Espresso)",
+      "content": "Hammer Hammer Gel (Espresso): Contains 50mg of caffeine per serving from real coffee. Formulated with cocoa, coffee, tapioca syrup, Energy Smart® (grape juice, rice dextrin), cultured dextrose, salt, ascorbic acid, potassium carbonate, and the four core amino acids. Highly recommended by athletes seeking a caffeinated gel that remains extremely gentle on the stomach.",
+      "payload": {
+        "brand": "Hammer",
+        "carbs_per_unit": 22,
+        "format": "Energy Gel (Caffeinated)",
+        "name": "Hammer Gel (Espresso)",
+        "protein_per_unit": 0,
+        "sodium_per_unit": 35,
+        "tech_notes": "Contains 50mg of caffeine per serving from real coffee. Formulated with cocoa, coffee, tapioca syrup, Energy Smart® (grape juice, rice dextrin), cultured dextrose, salt, ascorbic acid, potassium carbonate, and the four core amino acids. Highly recommended by athletes seeking a caffeinated gel that remains extremely gentle on the stomach."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Hammer Hammer Gel (Montana Huckleberry)",
+      "content": "Hammer Hammer Gel (Montana Huckleberry): Formulated with real huckleberries, Energy Smart® (grape juice, rice dextrin), natural flavor, cultured dextrose, citric acid, salt, potassium chloride, and the four core amino acids.",
+      "payload": {
+        "brand": "Hammer",
+        "carbs_per_unit": 22,
+        "format": "Energy Gel",
+        "name": "Hammer Gel (Montana Huckleberry)",
+        "protein_per_unit": 0,
+        "sodium_per_unit": 20,
+        "tech_notes": "Formulated with real huckleberries, Energy Smart® (grape juice, rice dextrin), natural flavor, cultured dextrose, citric acid, salt, potassium chloride, and the four core amino acids."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Hammer Hammer Gel (Nocciola)",
+      "content": "Hammer Hammer Gel (Nocciola): Certified Kosher Dairy and is NOT vegan-certified due to milk contents. Formulated with real hazelnut paste (hazelnuts, sugar, sunflower oil), roasted hazelnuts, nonfat dry milk, cocoa, tapioca syrup, Energy Smart® (grape juice, rice dextrin), salt, ascorbic acid, potassium carbonate, and the four core amino acids.",
+      "payload": {
+        "brand": "Hammer",
+        "carbs_per_unit": 20,
+        "format": "Energy Gel",
+        "name": "Hammer Gel (Nocciola)",
+        "protein_per_unit": 1,
+        "sodium_per_unit": 30,
+        "tech_notes": "Certified Kosher Dairy and is NOT vegan-certified due to milk contents. Formulated with real hazelnut paste (hazelnuts, sugar, sunflower oil), roasted hazelnuts, nonfat dry milk, cocoa, tapioca syrup, Energy Smart® (grape juice, rice dextrin), salt, ascorbic acid, potassium carbonate, and the four core amino acids."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Hammer Hammer Gel (Orange)",
+      "content": "Hammer Hammer Gel (Orange): Formulated with orange juice concentrate, Energy Smart® (grape juice, rice dextrin), natural flavor, cultured dextrose, ascorbic acid, potassium carbonate, salt, and the four core amino acids. Can be blended with Vanilla to make an \"Orange Creamsicle\" flavor.",
+      "payload": {
+        "brand": "Hammer",
+        "carbs_per_unit": 22,
+        "format": "Energy Gel",
+        "name": "Hammer Gel (Orange)",
+        "protein_per_unit": 0,
+        "sodium_per_unit": 30,
+        "tech_notes": "Formulated with orange juice concentrate, Energy Smart® (grape juice, rice dextrin), natural flavor, cultured dextrose, ascorbic acid, potassium carbonate, salt, and the four core amino acids. Can be blended with Vanilla to make an \"Orange Creamsicle\" flavor."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Hammer Hammer Gel (Peanut Butter)",
+      "content": "Hammer Hammer Gel (Peanut Butter): Contains peanuts. Formulated with natural creamy peanut butter (dry roasted peanuts), tapioca syrup, Energy Smart® (grape juice, rice dextrin), cultured dextrose, salt, ascorbic acid, potassium carbonate, and the four core amino acids.",
+      "payload": {
+        "brand": "Hammer",
+        "carbs_per_unit": 20,
+        "format": "Energy Gel",
+        "name": "Hammer Gel (Peanut Butter)",
+        "protein_per_unit": 1,
+        "sodium_per_unit": 35,
+        "tech_notes": "Contains peanuts. Formulated with natural creamy peanut butter (dry roasted peanuts), tapioca syrup, Energy Smart® (grape juice, rice dextrin), cultured dextrose, salt, ascorbic acid, potassium carbonate, and the four core amino acids."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Hammer Hammer Gel (Peanut Butter-Chocolate)",
+      "content": "Hammer Hammer Gel (Peanut Butter-Chocolate): Contains peanuts. Formulated with natural creamy peanut butter (dry roasted peanuts), cocoa, tapioca syrup, Energy Smart® (grape juice, rice dextrin), cultured dextrose, salt, ascorbic acid, natural flavors, and the four core amino acids.",
+      "payload": {
+        "brand": "Hammer",
+        "carbs_per_unit": 20,
+        "format": "Energy Gel",
+        "name": "Hammer Gel (Peanut Butter-Chocolate)",
+        "protein_per_unit": 1,
+        "sodium_per_unit": 35,
+        "tech_notes": "Contains peanuts. Formulated with natural creamy peanut butter (dry roasted peanuts), cocoa, tapioca syrup, Energy Smart® (grape juice, rice dextrin), cultured dextrose, salt, ascorbic acid, natural flavors, and the four core amino acids."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Hammer Hammer Gel (Raspberry)",
+      "content": "Hammer Hammer Gel (Raspberry): Formulated with real raspberries, Energy Smart® (grape juice, rice dextrin), natural flavor, ascorbic acid, cultured dextrose, potassium carbonate, citric acid, salt, and the four core amino acids.",
+      "payload": {
+        "brand": "Hammer",
+        "carbs_per_unit": 21,
+        "format": "Energy Gel",
+        "name": "Hammer Gel (Raspberry)",
+        "protein_per_unit": 0,
+        "sodium_per_unit": 20,
+        "tech_notes": "Formulated with real raspberries, Energy Smart® (grape juice, rice dextrin), natural flavor, ascorbic acid, cultured dextrose, potassium carbonate, citric acid, salt, and the four core amino acids."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Hammer Hammer Gel (Tropical)",
+      "content": "Hammer Hammer Gel (Tropical): Contains 25mg of caffeine per serving from green tea extract. Contains coconut. Formulated with pineapple juice concentrate, Energy Smart® (grape juice, rice dextrin), natural flavors, cultured dextrose, ascorbic acid, potassium carbonate, green tea extract, salt, and the four core amino acids.",
+      "payload": {
+        "brand": "Hammer",
+        "carbs_per_unit": 22,
+        "format": "Energy Gel (Caffeinated)",
+        "name": "Hammer Gel (Tropical)",
+        "protein_per_unit": 0,
+        "sodium_per_unit": 25,
+        "tech_notes": "Contains 25mg of caffeine per serving from green tea extract. Contains coconut. Formulated with pineapple juice concentrate, Energy Smart® (grape juice, rice dextrin), natural flavors, cultured dextrose, ascorbic acid, potassium carbonate, green tea extract, salt, and the four core amino acids."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Hammer Hammer Gel (Vanilla)",
+      "content": "Hammer Hammer Gel (Vanilla): Formulated with vanilla extract, Energy Smart® (grape juice, rice dextrin), cultured dextrose, citric acid, potassium chloride, salt, and the four core amino acids. Vanilla can be mixed with any other Hammer flavor to make it milder for long-term use.",
+      "payload": {
+        "brand": "Hammer",
+        "carbs_per_unit": 21,
+        "format": "Energy Gel",
+        "name": "Hammer Gel (Vanilla)",
+        "protein_per_unit": 0,
+        "sodium_per_unit": 25,
+        "tech_notes": "Formulated with vanilla extract, Energy Smart® (grape juice, rice dextrin), cultured dextrose, citric acid, potassium chloride, salt, and the four core amino acids. Vanilla can be mixed with any other Hammer flavor to make it milder for long-term use."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Hammer Hammer Gel (Unflavored)",
+      "content": "Hammer Hammer Gel (Unflavored): No added refined sugars, artificial colors, flavors, or sweeteners. Designed as pure, neutral fuel or as a clean mixing base.",
+      "payload": {
+        "brand": "Hammer",
+        "format": "Energy Gel",
+        "name": "Hammer Gel (Unflavored)",
+        "tech_notes": "No added refined sugars, artificial colors, flavors, or sweeteners. Designed as pure, neutral fuel or as a clean mixing base."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Hammer Hammer Bars – Energy Bar",
+      "content": "Hammer Hammer Bars – Energy Bar: Cataloged under Hammer's energy fuel product line.",
+      "payload": {
+        "brand": "Hammer",
+        "format": "Energy Bar",
+        "name": "Hammer Bars – Energy Bar",
+        "tech_notes": "Cataloged under Hammer's energy fuel product line."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Hammer Perpetuem",
+      "content": "Hammer Perpetuem: Recommended as a primary fuel source for sessions and races going longer than two to three hours. It is fully compatible with Hammer Gel.",
+      "payload": {
+        "brand": "Hammer",
+        "format": "Powdered Drink Mix / Energy Fuel",
+        "name": "Perpetuem",
+        "tech_notes": "Recommended as a primary fuel source for sessions and races going longer than two to three hours. It is fully compatible with Hammer Gel."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Hammer Perpetuem Solids",
+      "content": "Hammer Perpetuem Solids: Cataloged as a solid, portable formulation of Perpetuem.",
+      "payload": {
+        "brand": "Hammer",
+        "format": "Solid / Chewable fuel",
+        "name": "Perpetuem Solids",
+        "tech_notes": "Cataloged as a solid, portable formulation of Perpetuem."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Hammer HEED",
+      "content": "Hammer HEED: An electrolyte and energy drink that can be combined with Hammer Gel to customize taste and carbohydrate concentration.",
+      "payload": {
+        "brand": "Hammer",
+        "format": "Powdered Drink Mix / Electrolyte Drink",
+        "name": "HEED",
+        "tech_notes": "An electrolyte and energy drink that can be combined with Hammer Gel to customize taste and carbohydrate concentration."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Hammer Sustained Energy",
+      "content": "Hammer Sustained Energy: Served as a primary fuel source for activities lasting longer than two hours. Hammer Gel can be used to flavor Sustained Energy.",
+      "payload": {
+        "brand": "Hammer",
+        "format": "Powdered Drink Mix / Energy Fuel",
+        "name": "Sustained Energy",
+        "tech_notes": "Served as a primary fuel source for activities lasting longer than two hours. Hammer Gel can be used to flavor Sustained Energy."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Hammer Recoverite",
+      "content": "Hammer Recoverite: Part of Hammer's recovery product line.",
+      "payload": {
+        "brand": "Hammer",
+        "format": "Powdered Recovery Drink Mix",
+        "name": "Recoverite",
+        "tech_notes": "Part of Hammer's recovery product line."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Hammer Protein Recovery Bars",
+      "content": "Hammer Protein Recovery Bars: Designed to facilitate protein balance and muscle recovery.",
+      "payload": {
+        "brand": "Hammer",
+        "format": "Energy & Recovery Bar",
+        "name": "Protein Recovery Bars",
+        "tech_notes": "Designed to facilitate protein balance and muscle recovery."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Hammer Vegan Recoverite®",
+      "content": "Hammer Vegan Recoverite®: Specifically formulated to offer plant-based recovery solutions.",
+      "payload": {
+        "brand": "Hammer",
+        "format": "Powder Mix",
+        "name": "Vegan Recoverite®",
+        "tech_notes": "Specifically formulated to offer plant-based recovery solutions."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Hammer Vegan Recovery Bars",
+      "content": "Hammer Vegan Recovery Bars: Specifically formulated to offer plant-based recovery solutions.",
+      "payload": {
+        "brand": "Hammer",
+        "format": "Bar formats",
+        "name": "Vegan Recovery Bars",
+        "tech_notes": "Specifically formulated to offer plant-based recovery solutions."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Hammer Nutrition Endurolytes",
+      "content": "Hammer Nutrition Endurolytes: Cataloged in your documents as supportive supplements, meaning they contain negligible or zero primary macronutrients (carbs/protein) and focus heavily on micronutrients and performance support.",
+      "payload": {
+        "brand": "Hammer Nutrition",
+        "format": "Electrolyte supplement capsule",
+        "name": "Endurolytes",
+        "tech_notes": "Cataloged in your documents as supportive supplements, meaning they contain negligible or zero primary macronutrients (carbs/protein) and focus heavily on micronutrients and performance support."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Hammer Nutrition Endurolytes Extreme",
+      "content": "Hammer Nutrition Endurolytes Extreme: Cataloged in your documents as supportive supplements, meaning they contain negligible or zero primary macronutrients (carbs/protein) and focus heavily on micronutrients and performance support.",
+      "payload": {
+        "brand": "Hammer Nutrition",
+        "format": "High-strength electrolyte supplement capsule",
+        "name": "Endurolytes Extreme",
+        "tech_notes": "Cataloged in your documents as supportive supplements, meaning they contain negligible or zero primary macronutrients (carbs/protein) and focus heavily on micronutrients and performance support."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Hammer Nutrition Endurolytes Extreme Powder",
+      "content": "Hammer Nutrition Endurolytes Extreme Powder: Cataloged in your documents as supportive supplements, meaning they contain negligible or zero primary macronutrients (carbs/protein) and focus heavily on micronutrients and performance support.",
+      "payload": {
+        "brand": "Hammer Nutrition",
+        "format": "Electrolyte powder supplement",
+        "name": "Endurolytes Extreme Powder",
+        "tech_notes": "Cataloged in your documents as supportive supplements, meaning they contain negligible or zero primary macronutrients (carbs/protein) and focus heavily on micronutrients and performance support."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Hammer Nutrition Endurolytes Fizz",
+      "content": "Hammer Nutrition Endurolytes Fizz: Cataloged in your documents as supportive supplements, meaning they contain negligible or zero primary macronutrients (carbs/protein) and focus heavily on micronutrients and performance support.",
+      "payload": {
+        "brand": "Hammer Nutrition",
+        "format": "Effervescent dissolvable electrolyte tablet",
+        "name": "Endurolytes Fizz",
+        "tech_notes": "Cataloged in your documents as supportive supplements, meaning they contain negligible or zero primary macronutrients (carbs/protein) and focus heavily on micronutrients and performance support."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Hammer Nutrition Tissue Rejuvenator",
+      "content": "Hammer Nutrition Tissue Rejuvenator: Cataloged in your documents as supportive supplements, meaning they contain negligible or zero primary macronutrients (carbs/protein) and focus heavily on micronutrients and performance support.",
+      "payload": {
+        "brand": "Hammer Nutrition",
+        "format": "Joint and muscle tissue support supplement",
+        "name": "Tissue Rejuvenator",
+        "tech_notes": "Cataloged in your documents as supportive supplements, meaning they contain negligible or zero primary macronutrients (carbs/protein) and focus heavily on micronutrients and performance support."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Hammer Nutrition Vegan Tissue Rejuvenator",
+      "content": "Hammer Nutrition Vegan Tissue Rejuvenator: Cataloged in your documents as supportive supplements, meaning they contain negligible or zero primary macronutrients (carbs/protein) and focus heavily on micronutrients and performance support.",
+      "payload": {
+        "brand": "Hammer Nutrition",
+        "format": "Joint and muscle tissue support supplement",
+        "name": "Vegan Tissue Rejuvenator",
+        "tech_notes": "Cataloged in your documents as supportive supplements, meaning they contain negligible or zero primary macronutrients (carbs/protein) and focus heavily on micronutrients and performance support."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Hammer Nutrition Essential M",
+      "content": "Hammer Nutrition Essential M: Cataloged in your documents as supportive supplements, meaning they contain negligible or zero primary macronutrients (carbs/protein) and focus heavily on micronutrients and performance support.",
+      "payload": {
+        "brand": "Hammer Nutrition",
+        "format": "Micronutrient supplement",
+        "name": "Essential M",
+        "tech_notes": "Cataloged in your documents as supportive supplements, meaning they contain negligible or zero primary macronutrients (carbs/protein) and focus heavily on micronutrients and performance support."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Hammer Nutrition Anti Fatigue",
+      "content": "Hammer Nutrition Anti Fatigue: Cataloged in your documents as supportive supplements, meaning they contain negligible or zero primary macronutrients (carbs/protein) and focus heavily on micronutrients and performance support.",
+      "payload": {
+        "brand": "Hammer Nutrition",
+        "format": "Endurance support supplement",
+        "name": "Anti Fatigue",
+        "tech_notes": "Cataloged in your documents as supportive supplements, meaning they contain negligible or zero primary macronutrients (carbs/protein) and focus heavily on micronutrients and performance support."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Hammer Nutrition Creatine Boost",
+      "content": "Hammer Nutrition Creatine Boost: Cataloged in your documents as supportive supplements, meaning they contain negligible or zero primary macronutrients (carbs/protein) and focus heavily on micronutrients and performance support.",
+      "payload": {
+        "brand": "Hammer Nutrition",
+        "format": "Performance supplement",
+        "name": "Creatine Boost",
+        "tech_notes": "Cataloged in your documents as supportive supplements, meaning they contain negligible or zero primary macronutrients (carbs/protein) and focus heavily on micronutrients and performance support."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Hammer Nutrition Collagen",
+      "content": "Hammer Nutrition Collagen: Cataloged in your documents as supportive supplements, meaning they contain negligible or zero primary macronutrients (carbs/protein) and focus heavily on micronutrients and performance support.",
+      "payload": {
+        "brand": "Hammer Nutrition",
+        "format": "Recovery supplement",
+        "name": "Collagen",
+        "tech_notes": "Cataloged in your documents as supportive supplements, meaning they contain negligible or zero primary macronutrients (carbs/protein) and focus heavily on micronutrients and performance support."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Maurten Gel 100",
+      "content": "Maurten Gel 100: Uses patented Hydrogel Technology to encapsulate carbohydrates, allowing them to safely pass through the stomach acid to be absorbed directly in the intestine, which prevents the gastrointestinal distress common with simple sugars. Unlike traditional syrupy gels, it has a firm, Jell-O-like texture that is easy to swallow during high-intensity efforts and does not require water to wash it down. Built with only 6 natural ingredients in an optimal 0.8:1 ratio of fructose to glucose. Contains no added colors, preservatives, or flavorings.",
+      "payload": {
+        "brand": "Maurten",
+        "carbs_per_unit": 25,
+        "format": "Firm energy gel (portable tear-open sachet)",
+        "name": "Gel 100",
+        "tech_notes": "Uses patented Hydrogel Technology to encapsulate carbohydrates, allowing them to safely pass through the stomach acid to be absorbed directly in the intestine, which prevents the gastrointestinal distress common with simple sugars. Unlike traditional syrupy gels, it has a firm, Jell-O-like texture that is easy to swallow during high-intensity efforts and does not require water to wash it down. Built with only 6 natural ingredients in an optimal 0.8:1 ratio of fructose to glucose. Contains no added colors, preservatives, or flavorings."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Maurten Gel 100 Caf 100",
+      "content": "Maurten Gel 100 Caf 100: Features the same patented Hydrogel Technology and firm, non-syrupy consistency as Gel 100. It encapsulates both the carbohydrates and the caffeine to carry them safely through the stomach to reduce gastrointestinal distress and remove any bitter caffeine aftertaste. Built with only 7 natural ingredients in a 0.8:1 ratio of fructose to glucose. Contains no added colors, preservatives, or flavorings.",
+      "payload": {
+        "brand": "Maurten",
+        "carbs_per_unit": 25,
+        "format": "Firm energy gel (caffeinated portable tear-open sachet)",
+        "name": "Gel 100 Caf 100",
+        "tech_notes": "Features the same patented Hydrogel Technology and firm, non-syrupy consistency as Gel 100. It encapsulates both the carbohydrates and the caffeine to carry them safely through the stomach to reduce gastrointestinal distress and remove any bitter caffeine aftertaste. Built with only 7 natural ingredients in a 0.8:1 ratio of fructose to glucose. Contains no added colors, preservatives, or flavorings."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Maurten Gel 160",
+      "content": "Maurten Gel 160: Developed as a larger hydrogel option for endurance athletes who want to meet higher hourly carbohydrate targets with less packaging to carry and less trail waste to carry out. It utilizes Hydrogel Technology to carry 40 grams of carbohydrates cleanly through the stomach in an optimal 0.8:1 fructose-to-glucose ratio. Features a firm, Jell-O-like consistency that is only slightly sweet and goes down smoothly. Formulated with only 6 natural ingredients, is suitable for vegetarians and vegans, and contains no artificial colors, preservatives, or flavors.",
+      "payload": {
+        "brand": "Maurten",
+        "carbs_per_unit": 40,
+        "format": "Large-format firm energy gel (portable tear-open sachet)",
+        "name": "Gel 160",
+        "tech_notes": "Developed as a larger hydrogel option for endurance athletes who want to meet higher hourly carbohydrate targets with less packaging to carry and less trail waste to carry out. It utilizes Hydrogel Technology to carry 40 grams of carbohydrates cleanly through the stomach in an optimal 0.8:1 fructose-to-glucose ratio. Features a firm, Jell-O-like consistency that is only slightly sweet and goes down smoothly. Formulated with only 6 natural ingredients, is suitable for vegetarians and vegans, and contains no artificial colors, preservatives, or flavors."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Maurten Drink Mix 160",
+      "content": "Maurten Drink Mix 160: Based on patented Hydrogel Technology. Unlike other sports drinks, the liquid instantly converts into a hydrogel upon coming into contact with the acidity of stomach acid. This encapsulates the carbohydrates, carrying them through the stomach safely to reduce gastrointestinal distress and minimize the sensation of liquid sloshing in the gut. Designed for longer, lower-intensity training and racing. It dissolves quickly and has a very basic, neutral taste with no excessive sugars or artificial flavorings.",
+      "payload": {
+        "brand": "Maurten",
+        "carbs_per_unit": 40,
+        "format": "Powdered sports drink mix",
+        "name": "Drink Mix 160",
+        "tech_notes": "Based on patented Hydrogel Technology. Unlike other sports drinks, the liquid instantly converts into a hydrogel upon coming into contact with the acidity of stomach acid. This encapsulates the carbohydrates, carrying them through the stomach safely to reduce gastrointestinal distress and minimize the sensation of liquid sloshing in the gut. Designed for longer, lower-intensity training and racing. It dissolves quickly and has a very basic, neutral taste with no excessive sugars or artificial flavorings."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Maurten Drink Mix 320",
+      "content": "Maurten Drink Mix 320: Uses Hydrogel Technology to deliver an exceptionally high concentration of carbohydrates (80 grams) in 500ml of fluid. The drink instantly converts to a gel in stomach acid, encapsulating the carbohydrates so they are absorbed in the intestine without causing stomach issues. Designed primarily for high-intensity training and racing. Features an extremely neutral flavor, neutral pH, and dissolves easily in water.",
+      "payload": {
+        "brand": "Maurten",
+        "carbs_per_unit": 80,
+        "format": "Powdered sports drink mix",
+        "name": "Drink Mix 320",
+        "tech_notes": "Uses Hydrogel Technology to deliver an exceptionally high concentration of carbohydrates (80 grams) in 500ml of fluid. The drink instantly converts to a gel in stomach acid, encapsulating the carbohydrates so they are absorbed in the intestine without causing stomach issues. Designed primarily for high-intensity training and racing. Features an extremely neutral flavor, neutral pH, and dissolves easily in water."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Maurten Drink Mix 320 Caf 100",
+      "content": "Maurten Drink Mix 320 Caf 100: Engineered to support high-intensity efforts and racing. It utilizes Hydrogel Technology to encapsulate both the high-carbohydrate formula and the caffeine, bypassing stomach breakdown to limit digestive issues while masking any bitter caffeine taste. Built with only 7 clean ingredients and contains no added colorings, preservatives, or artificial flavorings.",
+      "payload": {
+        "brand": "Maurten",
+        "carbs_per_unit": 80,
+        "format": "Powdered sports drink mix (caffeinated)",
+        "name": "Drink Mix 320 Caf 100",
+        "tech_notes": "Engineered to support high-intensity efforts and racing. It utilizes Hydrogel Technology to encapsulate both the high-carbohydrate formula and the caffeine, bypassing stomach breakdown to limit digestive issues while masking any bitter caffeine taste. Built with only 7 clean ingredients and contains no added colorings, preservatives, or artificial flavorings."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Maurten Bicarb (Bicarb System)",
+      "content": "Maurten Bicarb (Bicarb System): ",
+      "payload": {
+        "brand": "Maurten",
+        "name": "Bicarb (Bicarb System)"
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Maurten Solids",
+      "content": "Maurten Solids: ",
+      "payload": {
+        "brand": "Maurten",
+        "name": "Solids"
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Näak Näak Boost™ Gel 30 Neutral",
+      "content": "Näak Näak Boost™ Gel 30 Neutral: Utilizes a scientifically backed 2:1 glucose-to-fructose ratio to optimize carbohydrate absorption pathways, allowing the body to process more fuel per hour during high-intensity efforts. Features a unique sugar-encapsulating, hydrogel-type consistency. This texture encapsulates simple sugars, reducing cloying sweetness to prevent palate fatigue and avoiding the sticky-sweet throat burn typical of syrupy competitor gels. Designed with low sweetening power for a mild finish, making it easy to swallow when the heart rate is redlining. Formulated with eco-friendly ingredients like agave powder and tapioca starch, which use less water and emit less CO2 than conventional sugars. Certified by Informed Sport to be free of banned substances.",
+      "payload": {
+        "brand": "Näak",
+        "carbs_per_unit": 30,
+        "format": "Textured energy gel",
+        "name": "Näak Boost™ Gel 30 Neutral",
+        "protein_per_unit": 0,
+        "sodium_per_unit": 125,
+        "tech_notes": "Utilizes a scientifically backed 2:1 glucose-to-fructose ratio to optimize carbohydrate absorption pathways, allowing the body to process more fuel per hour during high-intensity efforts. Features a unique sugar-encapsulating, hydrogel-type consistency. This texture encapsulates simple sugars, reducing cloying sweetness to prevent palate fatigue and avoiding the sticky-sweet throat burn typical of syrupy competitor gels. Designed with low sweetening power for a mild finish, making it easy to swallow when the heart rate is redlining. Formulated with eco-friendly ingredients like agave powder and tapioca starch, which use less water and emit less CO2 than conventional sugars. Certified by Informed Sport to be free of banned substances."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Näak Näak Boost™ Gel 30 Salted Lemon",
+      "content": "Näak Näak Boost™ Gel 30 Salted Lemon: Utilizes a scientifically backed 2:1 glucose-to-fructose ratio to optimize carbohydrate absorption pathways, allowing the body to process more fuel per hour during high-intensity efforts. Features a unique sugar-encapsulating, hydrogel-type consistency. This texture encapsulates simple sugars, reducing cloying sweetness to prevent palate fatigue and avoiding the sticky-sweet throat burn typical of syrupy competitor gels. Designed with low sweetening power for a mild finish, making it easy to swallow when the heart rate is redlining. Formulated with eco-friendly ingredients like agave powder and tapioca starch, which use less water and emit less CO2 than conventional sugars. Certified by Informed Sport to be free of banned substances.",
+      "payload": {
+        "brand": "Näak",
+        "carbs_per_unit": 30,
+        "format": "Textured energy gel",
+        "name": "Näak Boost™ Gel 30 Salted Lemon",
+        "protein_per_unit": 0,
+        "sodium_per_unit": 250,
+        "tech_notes": "Utilizes a scientifically backed 2:1 glucose-to-fructose ratio to optimize carbohydrate absorption pathways, allowing the body to process more fuel per hour during high-intensity efforts. Features a unique sugar-encapsulating, hydrogel-type consistency. This texture encapsulates simple sugars, reducing cloying sweetness to prevent palate fatigue and avoiding the sticky-sweet throat burn typical of syrupy competitor gels. Designed with low sweetening power for a mild finish, making it easy to swallow when the heart rate is redlining. Formulated with eco-friendly ingredients like agave powder and tapioca starch, which use less water and emit less CO2 than conventional sugars. Certified by Informed Sport to be free of banned substances."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Näak Näak Boost™ Gel 30 Peach Tea",
+      "content": "Näak Näak Boost™ Gel 30 Peach Tea: Utilizes a scientifically backed 2:1 glucose-to-fructose ratio to optimize carbohydrate absorption pathways, allowing the body to process more fuel per hour during high-intensity efforts. Features a unique sugar-encapsulating, hydrogel-type consistency. This texture encapsulates simple sugars, reducing cloying sweetness to prevent palate fatigue and avoiding the sticky-sweet throat burn typical of syrupy competitor gels. Designed with low sweetening power for a mild finish, making it easy to swallow when the heart rate is redlining. Formulated with eco-friendly ingredients like agave powder and tapioca starch, which use less water and emit less CO2 than conventional sugars. Specific physiological enhancers are added to distinct flavors: Peach Tea contains 100mg of caffeine from yerba mate and guarana to stave off mental fatigue. Certified by Informed Sport to be free of banned substances.",
+      "payload": {
+        "brand": "Näak",
+        "carbs_per_unit": 30,
+        "format": "Textured energy gel",
+        "name": "Näak Boost™ Gel 30 Peach Tea",
+        "protein_per_unit": 0,
+        "tech_notes": "Utilizes a scientifically backed 2:1 glucose-to-fructose ratio to optimize carbohydrate absorption pathways, allowing the body to process more fuel per hour during high-intensity efforts. Features a unique sugar-encapsulating, hydrogel-type consistency. This texture encapsulates simple sugars, reducing cloying sweetness to prevent palate fatigue and avoiding the sticky-sweet throat burn typical of syrupy competitor gels. Designed with low sweetening power for a mild finish, making it easy to swallow when the heart rate is redlining. Formulated with eco-friendly ingredients like agave powder and tapioca starch, which use less water and emit less CO2 than conventional sugars. Specific physiological enhancers are added to distinct flavors: Peach Tea contains 100mg of caffeine from yerba mate and guarana to stave off mental fatigue. Certified by Informed Sport to be free of banned substances."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Näak Näak Boost™ Gel 30 Ice Mint",
+      "content": "Näak Näak Boost™ Gel 30 Ice Mint: Utilizes a scientifically backed 2:1 glucose-to-fructose ratio to optimize carbohydrate absorption pathways, allowing the body to process more fuel per hour during high-intensity efforts. Features a unique sugar-encapsulating, hydrogel-type consistency. This texture encapsulates simple sugars, reducing cloying sweetness to prevent palate fatigue and avoiding the sticky-sweet throat burn typical of syrupy competitor gels. Designed with low sweetening power for a mild finish, making it easy to swallow when the heart rate is redlining. Formulated with eco-friendly ingredients like agave powder and tapioca starch, which use less water and emit less CO2 than conventional sugars. Specific physiological enhancers are added to distinct flavors: Ice Mint features 0.05% menthol to act as an internal coolant when racing in extreme heat. Certified by Informed Sport to be free of banned substances.",
+      "payload": {
+        "brand": "Näak",
+        "carbs_per_unit": 30,
+        "format": "Textured energy gel",
+        "name": "Näak Boost™ Gel 30 Ice Mint",
+        "protein_per_unit": 0,
+        "tech_notes": "Utilizes a scientifically backed 2:1 glucose-to-fructose ratio to optimize carbohydrate absorption pathways, allowing the body to process more fuel per hour during high-intensity efforts. Features a unique sugar-encapsulating, hydrogel-type consistency. This texture encapsulates simple sugars, reducing cloying sweetness to prevent palate fatigue and avoiding the sticky-sweet throat burn typical of syrupy competitor gels. Designed with low sweetening power for a mild finish, making it easy to swallow when the heart rate is redlining. Formulated with eco-friendly ingredients like agave powder and tapioca starch, which use less water and emit less CO2 than conventional sugars. Specific physiological enhancers are added to distinct flavors: Ice Mint features 0.05% menthol to act as an internal coolant when racing in extreme heat. Certified by Informed Sport to be free of banned substances."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Näak Näak Boost™ Gel 25 Neutral",
+      "content": "Näak Näak Boost™ Gel 25 Neutral: Engineered with an unflavored, zero-fatigue profile designed specifically for the late stages of ultra-endurance events when the palate rejects sweetness. Provides instant energy and is highly tolerable for athletes with a fatigued or sensitive digestive system. Shares the same easy-tear packaging with an attached tab to prevent littering on the trails. Shares the same vegan formulation as the Gel 30 line.",
+      "payload": {
+        "brand": "Näak",
+        "carbs_per_unit": 25,
+        "format": "Textured energy gel",
+        "name": "Näak Boost™ Gel 25 Neutral",
+        "protein_per_unit": 0,
+        "sodium_per_unit": 125,
+        "tech_notes": "Engineered with an unflavored, zero-fatigue profile designed specifically for the late stages of ultra-endurance events when the palate rejects sweetness. Provides instant energy and is highly tolerable for athletes with a fatigued or sensitive digestive system. Shares the same easy-tear packaging with an attached tab to prevent littering on the trails. Shares the same vegan formulation as the Gel 30 line."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Näak Näak Boost™ Drink Mix 60 Neutral",
+      "content": "Näak Näak Boost™ Drink Mix 60 Neutral: Features a 2:1 glucose-to-fructose ratio employing dual carbohydrate absorption pathways to maximize energy absorption without overloading a single pathway or causing gut distress. Blends Tapioca Maltodextrin (a complex carb that breaks down into glucose for prolonged energy release) with Isomaltulose (a slow-digesting, low-glycemic sugar derived from beets) to ensure stable energy output with no sugar crashes. Designed for a water-like consistency that glides easily in the mouth with exceptionally low sweetness. Formulated with 100% natural, allergen-free ingredients. Informed Sport certified.",
+      "payload": {
+        "brand": "Näak",
+        "carbs_per_unit": 60,
+        "format": "High-carb powdered sports drink mix",
+        "name": "Näak Boost™ Drink Mix 60 Neutral",
+        "protein_per_unit": 0,
+        "tech_notes": "Features a 2:1 glucose-to-fructose ratio employing dual carbohydrate absorption pathways to maximize energy absorption without overloading a single pathway or causing gut distress. Blends Tapioca Maltodextrin (a complex carb that breaks down into glucose for prolonged energy release) with Isomaltulose (a slow-digesting, low-glycemic sugar derived from beets) to ensure stable energy output with no sugar crashes. Designed for a water-like consistency that glides easily in the mouth with exceptionally low sweetness. Formulated with 100% natural, allergen-free ingredients. Informed Sport certified."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Näak Näak Boost™ Drink Mix 60 Salted Cucumber",
+      "content": "Näak Näak Boost™ Drink Mix 60 Salted Cucumber: Features a 2:1 glucose-to-fructose ratio employing dual carbohydrate absorption pathways to maximize energy absorption without overloading a single pathway or causing gut distress. Blends Tapioca Maltodextrin (a complex carb that breaks down into glucose for prolonged energy release) with Isomaltulose (a slow-digesting, low-glycemic sugar derived from beets) to ensure stable energy output with no sugar crashes. Designed for a water-like consistency that glides easily in the mouth with exceptionally low sweetness. Formulated with 100% natural, allergen-free ingredients. Informed Sport certified.",
+      "payload": {
+        "brand": "Näak",
+        "carbs_per_unit": 60,
+        "format": "High-carb powdered sports drink mix",
+        "name": "Näak Boost™ Drink Mix 60 Salted Cucumber",
+        "protein_per_unit": 0,
+        "sodium_per_unit": 500,
+        "tech_notes": "Features a 2:1 glucose-to-fructose ratio employing dual carbohydrate absorption pathways to maximize energy absorption without overloading a single pathway or causing gut distress. Blends Tapioca Maltodextrin (a complex carb that breaks down into glucose for prolonged energy release) with Isomaltulose (a slow-digesting, low-glycemic sugar derived from beets) to ensure stable energy output with no sugar crashes. Designed for a water-like consistency that glides easily in the mouth with exceptionally low sweetness. Formulated with 100% natural, allergen-free ingredients. Informed Sport certified."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Näak Näak Ultra Energy™ Gel | Salted Maple",
+      "content": "Näak Näak Ultra Energy™ Gel | Salted Maple: Specifically engineered for ultra-endurance efforts where simple carbohydrate ingestion alone is insufficient. Uses a precise 1:1 ratio of short (simple) and complex carbohydrates to provide an immediate energy spike without the subsequent \"sugar crash,\" alongside a 3:1 glucose-to-fructose ratio to optimize intestinal sugar absorption. Formulated with plant-based proteins and branched-chain amino acids (BCAAs: Leucine, Isoleucine, Valine) to reduce muscle fatigue and optimize cellular glycogen storage. The low glycemic load and smooth, semi-liquid texture make it easy to consume at speed and highly digestible under physical stress. Highly sustainable: made using 37% upcycled maple syrup.",
+      "payload": {
+        "brand": "Näak",
+        "carbs_per_unit": 27,
+        "format": "Semi-liquid energy gel",
+        "name": "Näak Ultra Energy™ Gel | Salted Maple",
+        "protein_per_unit": 2,
+        "tech_notes": "Specifically engineered for ultra-endurance efforts where simple carbohydrate ingestion alone is insufficient. Uses a precise 1:1 ratio of short (simple) and complex carbohydrates to provide an immediate energy spike without the subsequent \"sugar crash,\" alongside a 3:1 glucose-to-fructose ratio to optimize intestinal sugar absorption. Formulated with plant-based proteins and branched-chain amino acids (BCAAs: Leucine, Isoleucine, Valine) to reduce muscle fatigue and optimize cellular glycogen storage. The low glycemic load and smooth, semi-liquid texture make it easy to consume at speed and highly digestible under physical stress. Highly sustainable: made using 37% upcycled maple syrup."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Näak Näak Ultra Energy™ Puree | Sweet Potatoes Butternut Squash",
+      "content": "Näak Näak Ultra Energy™ Puree | Sweet Potatoes Butternut Squash: Developed as a savory food option for ultra-endurance athletes to provide 200 calories while actively breaking up sweet flavor fatigue during long training days or races. Constructed with a low glycemic index to deliver a slow, highly stable, and long-lasting stream of energy. Blends natural simple sugars (maple syrup) with complex carbohydrates (hydrolyzed oat flour). Utilizes highly digestible soy and pea proteins. Made using sustainable, upcycled, and organic ingredients, including sustainably grown Oregon sweet potatoes and malting barley protein upcycled from beer by-products.",
+      "payload": {
+        "brand": "Näak",
+        "carbs_per_unit": 26,
+        "format": "High-energy food puree",
+        "name": "Näak Ultra Energy™ Puree | Sweet Potatoes Butternut Squash",
+        "protein_per_unit": 5,
+        "tech_notes": "Developed as a savory food option for ultra-endurance athletes to provide 200 calories while actively breaking up sweet flavor fatigue during long training days or races. Constructed with a low glycemic index to deliver a slow, highly stable, and long-lasting stream of energy. Blends natural simple sugars (maple syrup) with complex carbohydrates (hydrolyzed oat flour). Utilizes highly digestible soy and pea proteins. Made using sustainable, upcycled, and organic ingredients, including sustainably grown Oregon sweet potatoes and malting barley protein upcycled from beer by-products."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Näak Näak Ultra Energy™ Waffle | Salted Caramel",
+      "content": "Näak Näak Ultra Energy™ Waffle | Salted Caramel: Formulated with an optimal carbohydrate-to-protein ratio to deliver a fast 140-calorie energy boost while preventing blood sugar spikes and crashes. Shares a smooth, easy-to-chew texture that remains soft and palatable even during active exercise. Completely free of palm oil, substituting it with hydrogenated coconut oil to actively prevent deforestation.",
+      "payload": {
+        "brand": "Näak",
+        "carbs_per_unit": 16,
+        "format": "Plant-based energy waffle/snack",
+        "name": "Näak Ultra Energy™ Waffle | Salted Caramel",
+        "protein_per_unit": 3,
+        "tech_notes": "Formulated with an optimal carbohydrate-to-protein ratio to deliver a fast 140-calorie energy boost while preventing blood sugar spikes and crashes. Shares a smooth, easy-to-chew texture that remains soft and palatable even during active exercise. Completely free of palm oil, substituting it with hydrogenated coconut oil to actively prevent deforestation."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Näak Näak RECOVERY™ Complete Mix | Chocolate Hazelnut",
+      "content": "Näak Näak RECOVERY™ Complete Mix | Chocolate Hazelnut: Utilizes a scientifically proven 4:1 carbohydrate-to-protein ratio, which is considered ideal for complete, accelerated muscle and glycogen recovery after grueling endurance efforts. Dillutes smoothly in 400ml of water and provides a comforting, gourmet flavor designed to be consumed within 30 minutes post-exercise. Gluten-free, vegan, soy-free, non-GMO, and utilizes upcycled canola protein.",
+      "payload": {
+        "brand": "Näak",
+        "carbs_per_unit": 40,
+        "format": "Powdered recovery drink mix",
+        "name": "Näak RECOVERY™ Complete Mix | Chocolate Hazelnut",
+        "protein_per_unit": 10,
+        "tech_notes": "Utilizes a scientifically proven 4:1 carbohydrate-to-protein ratio, which is considered ideal for complete, accelerated muscle and glycogen recovery after grueling endurance efforts. Dillutes smoothly in 400ml of water and provides a comforting, gourmet flavor designed to be consumed within 30 minutes post-exercise. Gluten-free, vegan, soy-free, non-GMO, and utilizes upcycled canola protein."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "PF Carb & Electrolyte Drink Mix",
+      "content": "PF Carb & Electrolyte Drink Mix: Formulated with a scientifically backed 2:1 glucose-to-fructose ratio to maximize carbohydrate absorption. It is designed to deliver a steady stream of rapidly digestible energy during high-intensity efforts lasting several hours, helping to replace fluid and sweat losses simultaneously. It is engineered with a very mild, neutral taste to minimize palate fatigue and stomach issues during hard efforts, making it highly palatable even when breathing hard. Certified by Informed Sport and uses 100% recyclable packaging.",
+      "payload": {
+        "brand": "Precision (PF)",
+        "carbs_per_unit": 60,
+        "format": "Powdered Drink Mix",
+        "name": "Carb & Electrolyte Drink Mix",
+        "protein_per_unit": 0,
+        "sodium_per_unit": 1000,
+        "tech_notes": "Formulated with a scientifically backed 2:1 glucose-to-fructose ratio to maximize carbohydrate absorption. It is designed to deliver a steady stream of rapidly digestible energy during high-intensity efforts lasting several hours, helping to replace fluid and sweat losses simultaneously. It is engineered with a very mild, neutral taste to minimize palate fatigue and stomach issues during hard efforts, making it highly palatable even when breathing hard. Certified by Informed Sport and uses 100% recyclable packaging."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "PF Carb Only Drink Mix",
+      "content": "PF Carb Only Drink Mix: Developed in collaboration with pro cycling team Lotto Dstny for the Tour de France. Formulated with a 2:1 glucose-to-fructose ratio that utilizes dual carbohydrate pathways to maximize energy absorption without overloading a single pathway. It contains zero sodium, giving athletes the flexibility to scale their carbohydrate intake up to 120g/hr from their bottles while independently managing their sodium needs using electrolyte capsules or tablets. It features a clean, light, and neutral taste to completely prevent flavor fatigue and gastrointestinal issues over long-duration events.",
+      "payload": {
+        "brand": "Precision (PF)",
+        "carbs_per_unit": 120,
+        "format": "Powdered Drink Mix",
+        "name": "Carb Only Drink Mix",
+        "protein_per_unit": 0,
+        "sodium_per_unit": 0,
+        "tech_notes": "Developed in collaboration with pro cycling team Lotto Dstny for the Tour de France. Formulated with a 2:1 glucose-to-fructose ratio that utilizes dual carbohydrate pathways to maximize energy absorption without overloading a single pathway. It contains zero sodium, giving athletes the flexibility to scale their carbohydrate intake up to 120g/hr from their bottles while independently managing their sodium needs using electrolyte capsules or tablets. It features a clean, light, and neutral taste to completely prevent flavor fatigue and gastrointestinal issues over long-duration events."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "PF 30 Energy Gel",
+      "content": "PF 30 Energy Gel: Employs a 2:1 glucose-to-fructose ratio for fast-acting and highly efficient carbohydrate absorption. It is designed with a mild, neutral \"Original\" flavor profile to actively minimize the sweet taste overload and palate fatigue common during long efforts. The gel's texture is specifically engineered to reduce stickiness in the mouth, allowing it to be easily swallowed without requiring an immediate wash-down of plain water. Certified by Informed Sport.",
+      "payload": {
+        "brand": "Precision (PF)",
+        "carbs_per_unit": 30,
+        "format": "Energy Gel",
+        "name": "30 Energy Gel",
+        "protein_per_unit": 0,
+        "sodium_per_unit": 0,
+        "tech_notes": "Employs a 2:1 glucose-to-fructose ratio for fast-acting and highly efficient carbohydrate absorption. It is designed with a mild, neutral \"Original\" flavor profile to actively minimize the sweet taste overload and palate fatigue common during long efforts. The gel's texture is specifically engineered to reduce stickiness in the mouth, allowing it to be easily swallowed without requiring an immediate wash-down of plain water. Certified by Informed Sport."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "PF 30 Caffeine Gel",
+      "content": "PF 30 Caffeine Gel: Blends 30g of carbohydrates in a 2:1 glucose-to-fructose ratio with a powerful 100mg caffeine kick to stave off physical and mental fatigue, increase alertness, and lower perceived exertion during races. Designed to taste significantly better than typical caffeinated gels, offering a smooth, palatable consistency that goes down easily under race stress. Certified by Informed Sport.",
+      "payload": {
+        "brand": "Precision (PF)",
+        "carbs_per_unit": 30,
+        "format": "Caffeinated Energy Gel",
+        "name": "30 Caffeine Gel",
+        "protein_per_unit": 0,
+        "sodium_per_unit": 0,
+        "tech_notes": "Blends 30g of carbohydrates in a 2:1 glucose-to-fructose ratio with a powerful 100mg caffeine kick to stave off physical and mental fatigue, increase alertness, and lower perceived exertion during races. Designed to taste significantly better than typical caffeinated gels, offering a smooth, palatable consistency that goes down easily under race stress. Certified by Informed Sport."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "PF 90 Energy Gel",
+      "content": "PF 90 Energy Gel: Contains exactly three servings of the standard PF 30 Gel inside a single, highly efficient pouch. Designed with a resealable cap to allow athletes to easily carry and meter out their hourly fuel (e.g., nursing one pouch over several hours) without dealing with multiple single-use gel packets. Employs a 2:1 glucose-to-fructose ratio to deliver rapid, stomach-friendly energy during high-intensity efforts past the 2-hour mark. Certified by Informed Sport.",
+      "payload": {
+        "brand": "Precision (PF)",
+        "carbs_per_unit": 90,
+        "format": "Large-Format Energy Gel pouch with a resealable cap",
+        "name": "90 Energy Gel",
+        "protein_per_unit": 0,
+        "sodium_per_unit": 0,
+        "tech_notes": "Contains exactly three servings of the standard PF 30 Gel inside a single, highly efficient pouch. Designed with a resealable cap to allow athletes to easily carry and meter out their hourly fuel (e.g., nursing one pouch over several hours) without dealing with multiple single-use gel packets. Employs a 2:1 glucose-to-fructose ratio to deliver rapid, stomach-friendly energy during high-intensity efforts past the 2-hour mark. Certified by Informed Sport."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "PF 30 Energy Chew",
+      "content": "PF 30 Energy Chew: Features an exceptionally high carbohydrate-to-weight ratio, making it a great choice when traveling light is essential. Chews provide a solid, satisfying bite that can feel more gratifying than liquid gels during lower-intensity sections or longer races, actively helping to break up flavor fatigue. Available in Original (mild, neutral flavor), Watermelon, and Mint & Lemon. Independently batch-tested for WADA-prohibited substances.",
+      "payload": {
+        "brand": "Precision (PF)",
+        "carbs_per_unit": 30,
+        "format": "Energy Chew / Gummy",
+        "name": "30 Energy Chew",
+        "protein_per_unit": 0,
+        "sodium_per_unit": 0,
+        "tech_notes": "Features an exceptionally high carbohydrate-to-weight ratio, making it a great choice when traveling light is essential. Chews provide a solid, satisfying bite that can feel more gratifying than liquid gels during lower-intensity sections or longer races, actively helping to break up flavor fatigue. Available in Original (mild, neutral flavor), Watermelon, and Mint & Lemon. Independently batch-tested for WADA-prohibited substances."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "PF 60 Energy Chew Bar",
+      "content": "PF 60 Energy Chew Bar: Offers an outstanding energy-to-weight ratio, delivering 60g of carbohydrates for just 68g of weight. Provides a satisfying, solid chew format that helps prevent flavor fatigue and sits easily on sensitive stomachs during long training runs and ultra events. Available in Original (mild, neutral flavor), Mint & Lemon, and Combo Box formats. Certified vegan, uses no artificial ingredients, and is independently batch-tested.",
+      "payload": {
+        "brand": "Precision (PF)",
+        "carbs_per_unit": 60,
+        "format": "Energy Chew Bar",
+        "name": "60 Energy Chew Bar",
+        "protein_per_unit": 0,
+        "sodium_per_unit": 0,
+        "tech_notes": "Offers an outstanding energy-to-weight ratio, delivering 60g of carbohydrates for just 68g of weight. Provides a satisfying, solid chew format that helps prevent flavor fatigue and sits easily on sensitive stomachs during long training runs and ultra events. Available in Original (mild, neutral flavor), Mint & Lemon, and Combo Box formats. Certified vegan, uses no artificial ingredients, and is independently batch-tested."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "PF 300 Flow Gel",
+      "content": "PF 300 Flow Gel: A super-sized, 300g carbohydrate pouch engineered specifically for ultra-endurance athletes. Features a smooth, liquid \"flow\" consistency that allows athletes to meter out huge amounts of stomach-friendly carbs easily. It can be consumed directly or decanted into a flask (like a Flow Flask) or a water bottle, allowing for custom concentration and simplified race logistics.",
+      "payload": {
+        "brand": "Precision (PF)",
+        "carbs_per_unit": 300,
+        "format": "High-Carbohydrate Liquid/Flow Gel pouch",
+        "name": "300 Flow Gel",
+        "protein_per_unit": 0,
+        "sodium_per_unit": 0,
+        "tech_notes": "A super-sized, 300g carbohydrate pouch engineered specifically for ultra-endurance athletes. Features a smooth, liquid \"flow\" consistency that allows athletes to meter out huge amounts of stomach-friendly carbs easily. It can be consumed directly or decanted into a flask (like a Flow Flask) or a water bottle, allowing for custom concentration and simplified race logistics."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "PH 1500",
+      "content": "PH 1500: A very high strength hydration formulation designed primarily as a preloading drink to be consumed the night before and the morning of a race. This protocol increases blood plasma volume to ensure athletes start fully hydrated, actively preventing early dehydration, cardiovascular strain, and muscle cramps. Also used during races for exceptionally heavy, salty sweaters or in hot/humid climates.",
+      "payload": {
+        "brand": "Precision (PF)",
+        "carbs_per_unit": 0,
+        "format": "High-Strength Electrolyte Supplement (available in Tablet or Powder Drink Mix format)",
+        "name": "1500",
+        "protein_per_unit": 0,
+        "sodium_per_unit": 1500,
+        "tech_notes": "A very high strength hydration formulation designed primarily as a preloading drink to be consumed the night before and the morning of a race. This protocol increases blood plasma volume to ensure athletes start fully hydrated, actively preventing early dehydration, cardiovascular strain, and muscle cramps. Also used during races for exceptionally heavy, salty sweaters or in hot/humid climates."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "PH 1000",
+      "content": "PH 1000: Formulated for moderately salty sweaters or hot conditions. This high-strength electrolyte solution helps maintain proper fluid balance, prevents cardiac output decline, and delays physical fatigue by matching standard sweat sodium losses during prolonged endurance events.",
+      "payload": {
+        "brand": "Precision (PF)",
+        "carbs_per_unit": 0,
+        "format": "High-Strength Electrolyte Supplement (available in Tablet or Powder Drink Mix format)",
+        "name": "1000",
+        "protein_per_unit": 0,
+        "sodium_per_unit": 1000,
+        "tech_notes": "Formulated for moderately salty sweaters or hot conditions. This high-strength electrolyte solution helps maintain proper fluid balance, prevents cardiac output decline, and delays physical fatigue by matching standard sweat sodium losses during prolonged endurance events."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "PH Electrolyte Capsules",
+      "content": "PH Electrolyte Capsules: Blister-packed swallowable capsules containing highly concentrated sodium. Designed to give athletes the ultimate flexibility to decouple their hydration/electrolyte intake from their carbohydrate fueling. This allows athletes to consume plain water or customized drink mixes from aid stations and separately ingest capsules to precisely match their genetically determined sweat sodium losses without altering their carbohydrate math or causing stomach upset.",
+      "payload": {
+        "brand": "Precision (PF)",
+        "carbs_per_unit": 0,
+        "format": "Swallowable Capsule",
+        "name": "Electrolyte Capsules",
+        "protein_per_unit": 0,
+        "sodium_per_unit": 250,
+        "tech_notes": "Blister-packed swallowable capsules containing highly concentrated sodium. Designed to give athletes the ultimate flexibility to decouple their hydration/electrolyte intake from their carbohydrate fueling. This allows athletes to consume plain water or customized drink mixes from aid stations and separately ingest capsules to precisely match their genetically determined sweat sodium losses without altering their carbohydrate math or causing stomach upset."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "PH 500",
+      "content": "PH 500: Designed to support standard hydration and electrolyte maintenance for athletes with low sweat sodium concentration or for shorter efforts in mild conditions.",
+      "payload": {
+        "brand": "Precision (PF)",
+        "carbs_per_unit": 0,
+        "format": "Low-Strength Electrolyte Supplement (Tablet/Powder)",
+        "name": "500",
+        "protein_per_unit": 0,
+        "sodium_per_unit": 500,
+        "tech_notes": "Designed to support standard hydration and electrolyte maintenance for athletes with low sweat sodium concentration or for shorter efforts in mild conditions."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Science in Sport (SiS) Beta Fuel Dual Source Energy Drink (BETA FUEL 80 Sachet)",
+      "content": "Science in Sport (SiS) Beta Fuel Dual Source Energy Drink (BETA FUEL 80 Sachet): Formulated as an all-in-one convenient isotonic fueling solution for endurance athletes whose events last more than two hours. It utilizes an optimized 1:0.8 maltodextrin-to-fructose ratio (replacing the traditional 2:1 ratio) to increase the efficiency of ingested carbohydrate oxidation from 62% to 74%. This specific ratio enhances exogenous carbohydrate oxidation by 10% to 17% and increases mean power output during maximal sprint efforts by 3%. Crucially, it significantly reduces self-reported symptoms of stomach fullness and nausea.",
+      "payload": {
+        "brand": "Science in Sport (SiS)",
+        "carbs_per_unit": 80,
+        "format": "Powdered Energy Drink",
+        "name": "Beta Fuel Dual Source Energy Drink (BETA FUEL 80 Sachet)",
+        "tech_notes": "Formulated as an all-in-one convenient isotonic fueling solution for endurance athletes whose events last more than two hours. It utilizes an optimized 1:0.8 maltodextrin-to-fructose ratio (replacing the traditional 2:1 ratio) to increase the efficiency of ingested carbohydrate oxidation from 62% to 74%. This specific ratio enhances exogenous carbohydrate oxidation by 10% to 17% and increases mean power output during maximal sprint efforts by 3%. Crucially, it significantly reduces self-reported symptoms of stomach fullness and nausea."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Science in Sport (SiS) BETA Fuel Energy Gel (BETA FUEL Gel 60ml)",
+      "content": "Science in Sport (SiS) BETA Fuel Energy Gel (BETA FUEL Gel 60ml): A high-carbohydrate energy gel designed for longer sessions. It uses the advanced 1:0.8 maltodextrin-to-fructose ratio to allow the body to utilize +17% more carbohydrate. It is formulated to help athletes reach higher hourly targets of 80g to 120g of carbohydrates with minimal risk of gastrointestinal discomfort.",
+      "payload": {
+        "brand": "Science in Sport (SiS)",
+        "carbs_per_unit": 40,
+        "format": "Dual-Source Energy Gel",
+        "name": "BETA Fuel Energy Gel (BETA FUEL Gel 60ml)",
+        "tech_notes": "A high-carbohydrate energy gel designed for longer sessions. It uses the advanced 1:0.8 maltodextrin-to-fructose ratio to allow the body to utilize +17% more carbohydrate. It is formulated to help athletes reach higher hourly targets of 80g to 120g of carbohydrates with minimal risk of gastrointestinal discomfort."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Science in Sport (SiS) BETA Fuel Energy+ Nootropics Gel",
+      "content": "Science in Sport (SiS) BETA Fuel Energy+ Nootropics Gel: Delivered as a dual-source carbohydrate blend optimized with added nootropics. It is designed to fuel long sessions while actively enhancing focus and mental performance, keeping athletes sharp and energized during high-fatigue segments of a race.",
+      "payload": {
+        "brand": "Science in Sport (SiS)",
+        "format": "Energy Gel with Added Nootropics",
+        "name": "BETA Fuel Energy+ Nootropics Gel",
+        "tech_notes": "Delivered as a dual-source carbohydrate blend optimized with added nootropics. It is designed to fuel long sessions while actively enhancing focus and mental performance, keeping athletes sharp and energized during high-fatigue segments of a race."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Science in Sport (SiS) GO Plus Isotonic Energy Gel (GO Isotonic Energy Gel 60ml)",
+      "content": "Science in Sport (SiS) GO Plus Isotonic Energy Gel (GO Isotonic Energy Gel 60ml): A liquid carbohydrate gel created using a single source of carbohydrate (maltodextrin). It is formulated as a unique isotonic formula, meaning it is quickly absorbed by the stomach and requires no additional water or fluids to go down. This fast-acting design supplies immediate energy without the bloating or sluggishness associated with high fluid volumes. Contains no artificial flavors.",
+      "payload": {
+        "brand": "Science in Sport (SiS)",
+        "carbs_per_unit": 22,
+        "format": "Isotonic Liquid Energy Gel",
+        "name": "GO Plus Isotonic Energy Gel (GO Isotonic Energy Gel 60ml)",
+        "tech_notes": "A liquid carbohydrate gel created using a single source of carbohydrate (maltodextrin). It is formulated as a unique isotonic formula, meaning it is quickly absorbed by the stomach and requires no additional water or fluids to go down. This fast-acting design supplies immediate energy without the bloating or sluggishness associated with high fluid volumes. Contains no artificial flavors."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Science in Sport (SiS) Beta Fuel Chew Bar",
+      "content": "Science in Sport (SiS) Beta Fuel Chew Bar: Part of the Beta Fuel range. It is noted as a solid format that can be combined with Beta Fuel drinks or gels to help athletes safely scale up to hit big hourly targets of 80g to 120g of carbohydrates.",
+      "payload": {
+        "brand": "Science in Sport (SiS)",
+        "format": "Chew Bar",
+        "name": "Beta Fuel Chew Bar",
+        "tech_notes": "Part of the Beta Fuel range. It is noted as a solid format that can be combined with Beta Fuel drinks or gels to help athletes safely scale up to hit big hourly targets of 80g to 120g of carbohydrates."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Tailwind Nutrition Tailwind Endurance Fuel",
+      "content": "Tailwind Nutrition Tailwind Endurance Fuel: Employs a dual-carbohydrate formula of non-GMO dextrose (glucose) and non-GMO sucrose designed to match what the small intestine is built to absorb. This allows the carbohydrates to enter the bloodstream rapidly without causing digestive distress or \"gut bombs\". It provides complete calories, hydration, and electrolytes (sodium, potassium, magnesium, calcium) in a single mix, eliminating the need to supplement with other fuels like gels or salt pills. It contains no artificial dyes, preservatives, or complex chemical additives.",
+      "payload": {
+        "brand": "Tailwind Nutrition",
+        "carbs_per_unit": 50.0,
+        "sodium_per_unit": 310,
+        "format": "Powdered Drink Mix",
+        "name": "Tailwind Endurance Fuel",
+        "protein_per_unit": 0.0,
+        "tech_notes": "Employs a dual-carbohydrate formula of non-GMO dextrose (glucose) and non-GMO sucrose designed to match what the small intestine is built to absorb. This allows the carbohydrates to enter the bloodstream rapidly without causing digestive distress or \"gut bombs\". It provides complete calories, hydration, and electrolytes (sodium, potassium, magnesium, calcium) in a single mix, eliminating the need to supplement with other fuels like gels or salt pills. It contains no artificial dyes, preservatives, or complex chemical additives."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Tailwind Nutrition Tailwind Endurance Fuel (Caffeinated)",
+      "content": "Tailwind Nutrition Tailwind Endurance Fuel (Caffeinated): Employs a dual-carbohydrate formula of non-GMO dextrose (glucose) and non-GMO sucrose designed to match what the small intestine is built to absorb. This allows the carbohydrates to enter the bloodstream rapidly without causing digestive distress or \"gut bombs\". It provides complete calories, hydration, and electrolytes (sodium, potassium, magnesium, calcium) in a single mix, eliminating the need to supplement with other fuels like gels or salt pills. It contains no artificial dyes, preservatives, or complex chemical additives. Formulated with organic caffeine.",
+      "payload": {
+        "brand": "Tailwind Nutrition",
+        "carbs_per_unit": 50.0,
+        "sodium_per_unit": 310,
+        "format": "Powdered Drink Mix",
+        "name": "Tailwind Endurance Fuel (Caffeinated)",
+        "protein_per_unit": 0.0,
+        "tech_notes": "Employs a dual-carbohydrate formula of non-GMO dextrose (glucose) and non-GMO sucrose designed to match what the small intestine is built to absorb. This allows the carbohydrates to enter the bloodstream rapidly without causing digestive distress or \"gut bombs\". It provides complete calories, hydration, and electrolytes (sodium, potassium, magnesium, calcium) in a single mix, eliminating the need to supplement with other fuels like gels or salt pills. It contains no artificial dyes, preservatives, or complex chemical additives. Formulated with organic caffeine."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Tailwind Nutrition Tailwind High Carb Fuel (Lemonade)",
+      "content": "Tailwind Nutrition Tailwind High Carb Fuel (Lemonade): A power-packed drink mix engineered specifically for high-intensity efforts, delivering a higher carbohydrate concentration to maximize energy per sip. It utilizes an optimized 2:1 glucose-to-fructose ratio to increase carbohydrate absorption, lower perceived exertion, and accelerate recovery. It features a clean, refreshing, and light taste designed to mix easily and prevent sickliness or flavor fatigue even at high concentrations.",
+      "payload": {
+        "brand": "Tailwind Nutrition",
+        "carbs_per_unit": 90.0,
+        "sodium_per_unit": 660,
+        "format": "Powdered Drink Mix",
+        "name": "Tailwind High Carb Fuel (Lemonade)",
+        "protein_per_unit": 0.0,
+        "tech_notes": "A power-packed drink mix engineered specifically for high-intensity efforts, delivering a higher carbohydrate concentration to maximize energy per sip. It utilizes an optimized 2:1 glucose-to-fructose ratio to increase carbohydrate absorption, lower perceived exertion, and accelerate recovery. It features a clean, refreshing, and light taste designed to mix easily and prevent sickliness or flavor fatigue even at high concentrations."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Tailwind Nutrition Tailwind Recovery Mix",
+      "content": "Tailwind Nutrition Tailwind Recovery Mix: Formulated to speed up rehydration, energy restoration, and muscle rebuilding within the critical 30-minute window post-exercise. It is noted as the most efficient protein on the market, delivering 3x more complete protein than whey protein isolate and 2x more than chocolate milk, ensuring usable protein goes directly to damaged muscles instead of the kidneys. It is completely vegan, gluten-free, soy-free, and dairy-free.",
+      "payload": {
+        "brand": "Tailwind Nutrition",
+        "format": "Powdered Recovery Drink Mix",
+        "name": "Tailwind Recovery Mix",
+        "tech_notes": "Formulated to speed up rehydration, energy restoration, and muscle rebuilding within the critical 30-minute window post-exercise. It is noted as the most efficient protein on the market, delivering 3x more complete protein than whey protein isolate and 2x more than chocolate milk, ensuring usable protein goes directly to damaged muscles instead of the kidneys. It is completely vegan, gluten-free, soy-free, and dairy-free."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "catalog_item",
+      "title": "Tailwind Nutrition Tailwind Caffeinated Recovery Mix",
+      "content": "Tailwind Nutrition Tailwind Caffeinated Recovery Mix: Formulated to speed up rehydration, energy restoration, and muscle rebuilding within the critical 30-minute window post-exercise. It is noted as the most efficient protein on the market, delivering 3x more complete protein than whey protein isolate and 2x more than chocolate milk, ensuring usable protein goes directly to damaged muscles instead of the kidneys. The caffeinated variant contains 80mg of caffeine from 100% Arabica coffee extract and healthy fats from coconut milk powder. It is completely vegan, gluten-free, soy-free, and dairy-free.",
+      "payload": {
+        "brand": "Tailwind Nutrition",
+        "format": "Powdered Recovery Drink Mix",
+        "name": "Tailwind Caffeinated Recovery Mix",
+        "tech_notes": "Formulated to speed up rehydration, energy restoration, and muscle rebuilding within the critical 30-minute window post-exercise. It is noted as the most efficient protein on the market, delivering 3x more complete protein than whey protein isolate and 2x more than chocolate milk, ensuring usable protein goes directly to damaged muscles instead of the kidneys. The caffeinated variant contains 80mg of caffeine from 100% Arabica coffee extract and healthy fats from coconut milk powder. It is completely vegan, gluten-free, soy-free, and dairy-free."
+      }
+    },
+    {
+      "domain": "nutrition",
+      "kind": "principle",
+      "title": "Carbohydrate Intake Targets and Multiple Transportable Carbohydrates",
+      "content": "Carbohydrates are the primary fuel burned during high-intensity endurance racing [1-3]. Because endogenous glycogen stores in the liver (~100g) and skeletal muscles (~500g) are finite and typically become depleted after 90 to 120 minutes of hard activity, exogenous carbohydrate intake is necessary to sustain performance [3-7]. Scientific recommendations for hourly carbohydrate intake are structured around exercise duration, intensity, and athletic tier: Under 1 Hour: Starting well-fueled generally requires no carbohydrate intake [8, 9]. For all-out efforts lasting 45 to 60 minutes, a carbohydrate mouth rinse may offer neurological and performance benefits [9, 10]. 1 to 2 Hours: Athletes should aim for 30g to 60g of simple carbohydrates per hour, scaling toward the upper limit as intensity increases [8, 10, 11]. 2+ Hours (Very Prolonged Events): Athletes should target 60g to 90g of carbohydrates per hour to maximize oxidation rates, maintain blood glucose, and delay fatigue [8, 10, 12-14]. The High-Carb Frontier (≥100g/h): Trained endurance and elite athletes frequently target 100g to 120g+ per hour [15-17]. A benchmark study by Viribay et al. (2020) demonstrated that 7 of 9 trained runners successfully tolerated 120g/h during a mountain marathon, showing reduced muscle damage markers and lower internal load [10, 17, 18]. Stellingwerff and Cox (2014) also advised a broad target range of 40g/h to 110g/h for events exceeding 2 hours [19]. For any intake exceeding 60g/h, athletes must utilize multiple transportable carbohydrates (typically a glucose-fructose or maltodextrin-fructose blend) to avoid saturating the gut's primary SGLT1 glucose transporters [35-37]. Utilizing a 2:1 ratio of glucose-to-fructose unlocks separate absorption pathways to increase total carbohydrate delivery [36, 38-40]. An advanced 1:0.8 ratio of maltodextrin to fructose (found in Science in Sport Beta Fuel or Maurten) is proven to be even more efficient, raising whole-body carbohydrate oxidation efficiency from 62% to 74% compared to a 2:1 ratio [41, 42]. It increases exogenous oxidation by 10% to 17% and significantly reduces self-reported symptoms of stomach fullness and nausea [41, 42].",
+      "payload": null
+    },
+    {
+      "domain": "nutrition",
+      "kind": "principle",
+      "title": "The Physiology and Benefits of Gut Training",
+      "content": "The gastrointestinal tract is highly plastic and acts as the ultimate rate-limiting bottleneck for exogenous carbohydrate delivery [43, 44]. Pushing high carb numbers without prior adaptation regularly induces severe gastrointestinal symptoms (bloating, sloshing, diarrhea, and vomiting) due to malabsorption and delayed gastric emptying under physical stress [45-49]. Physiological Adaptations of Gut Training: 1. Reduces Malabsorption and GI Distress: Exposing the gut to high carbohydrate volumes during exercise over a short 2-week period can reduce gastrointestinal symptoms and malabsorption by as much as half (50%) [50, 51]. 2. Up-regulates Intestinal Sugar Transporters: Chronically supplementing your daily training diet with high carbohydrate availability (such as 1.5g of carbohydrate per kg of body weight for every hour of exercise performed daily over 28 days) significantly increases exogenous carbohydrate oxidation rates, likely by up-regulating the density and activity of SGLT1 (glucose) and GLUT5 (fructose) transporters in the small intestine [44, 52]. 3. Spares Glycogen and Prevents \"Bonking\": Consuming high carbohydrate volumes at race intensity allows for stable blood glucose availability and spares endogenous muscle and liver glycogen stores [39, 53]. Specifically, maintaining an intake near 100g/h has been shown to successfully preserve liver glycogen [53]. 4. Improves Fluid Tolerance: Gut training must also build tolerance to fluid volume [54]. Highly concentrated carbohydrate drinks increase the osmolality of the gut; training the stomach to handle both high carbohydrate densities and necessary fluid volumes (e.g., 500ml to 1,000ml per hour to match sweat rates) prevents fluid from \"sloshing\" around and causing nausea [45, 54, 55].",
+      "payload": null
+    },
+    {
+      "domain": "nutrition",
+      "kind": "principle",
+      "title": "A Step-by-Step Protocol for Building Carbohydrate Tolerance",
+      "content": "Building carbohydrate tolerance requires a systematic, progressive program executed over several weeks. 1. Establish the Daily Diet Foundation: Eat adequate carbohydrates daily: Do not train on a chronic low-carbohydrate or ketogenic (LCHF) diet if you intend to race on carbohydrates [56, 57]. A lack of daily carbohydrates down-regulates your gut microbiome and transporter pathways, increasing your risk of severe GI distress on race day [58]. 2. Timeline and Session Selection: Begin your structured gut training plan 6 to 8 weeks before your target race [59]. Choose 1, preferably 2, training sessions per week to practice your fueling [59, 60]. These sessions should be your longest and hardest workouts that closely mimic race-day intensity and environmental conditions [59]. 3. The Progressive Loading Protocol: Begin fueling at an hourly rate you are 100% confident will not cause GI distress [59]. Progressively increase your intake by ~10g/h every 1 to 2 weeks [60, 61]. Hold at the new dose for at least 1 to 2 weeks until your gut feels entirely comfortable and symptom-free before stepping up again [59, 60]. Aim to train at a carbohydrate rate that exceeds your race-day target by at least 20% [53]. 4. In-Session Execution and Logistics: Start consuming carbohydrates 15 to 20 minutes into your training run [59]. Aim to consume small, digestible doses of 20g to 30g every 15 to 20 minutes [64] or take a quarter of a jumbo gel pouch every 15 minutes [65]. You must drink plain water alongside gels (e.g., 300ml to 600ml per hour) or use pre-mixed electrolyte drinks to support gastric emptying and carbohydrate transport [45, 59, 67, 68]. Practise only with the exact sports nutrition brands, flavors, and formats you intend to use on race day [59, 60]. For sessions under 2 to 3 hours or very high intensities, rely almost exclusively on liquid carbohydrate drink mixes and highly digestible gels [59, 69]. As training duration extends and intensity drops, selectively introduce solid options [59, 69]. Record the exact grams of carbohydrates consumed per hour, formats used, fluid volumes, and subjective ratings of energy and gut comfort [59].",
+      "payload": null
+    },
+    {
+      "domain": "nutrition",
+      "kind": "principle",
+      "title": "Sodium Intake Targets and Strategies",
+      "content": "Sweat sodium concentration is genetically determined and highly stable, yet varies drastically among individuals from 200 mg to over 2,000 mg per liter, with an average athlete losing about 991 mg/L. Government guidelines recommend a daily intake limit of 2,300 mg, which a heavily sweating athlete can lose in just one hour of exercise. Rather than absolute hourly targets, sports science suggests focusing on the relative sodium concentration in drinks (mg/L) to prevent GI issues and excessive thirst: ~500 mg/L for low-sweat/cool weather, ~1,000 mg/L as a baseline, and ~1,500 mg/L for heavy sweaters or hot climates. General hourly sodium supplementation during exercise ranges from 300 mg to 800 mg, with some brands recommending 200 mg to 600 mg. When using table salt (39% sodium), approximately 3g is needed for ~1,170 mg of sodium. A preloading protocol involves drinking ~500 ml of a high-sodium electrolyte drink the night before a race, and another ~500 ml on race morning, finishing 45-60 minutes prior to allow absorption and urination. A decoupled fueling strategy, separating carbohydrate intake from hydration (plain water and electrolyte capsules), enables dynamic adjustment of fluid and sodium based on weather and sweat rates without impacting calorie math.",
+      "payload": null
+    },
+    {
+      "domain": "nutrition",
+      "kind": "principle",
+      "title": "Fluid Management and Environmental Factors",
+      "content": "Sweat rate is highly individual, influenced by temperature, humidity, work rate, clothing, genetics, and heat acclimation. While 100% sweat replacement is unnecessary and can cause issues like hyponatremia, body mass losses exceeding 2% impair performance, reduce blood volume, and elevate core temperature and heart rate. In temperate conditions (~8–15°C), 300-600 ml of fluid per hour is a suitable target. For heat adaptation training, 50–65 kg individuals should target 1–2 L/h sweat rates, and 65 kg+ individuals 1.5–2.5+ L/h. Fluid needs scale with weather: cold weather may require only ~100 ml/hour, while hot weather can demand ~1.1 L/hour or more, as seen in elite athletes. High humidity severely hinders sweat evaporation, compromising cooling, elevating core temperatures, and increasing sweat rates, which also redirects blood flow from the gut. To counter heat-induced GI distress, small, frequent carbohydrate doses (every 10–20 minutes) are better than large hourly boluses. Proactive cooling tactics like ice bandanas or dousing with cold water mitigate thermal strain and reduce dehydration risk by modulating sweat rate.",
+      "payload": null
+    },
+    {
+      "domain": "nutrition",
+      "kind": "principle",
+      "title": "Hydration, Sodium, and Cramping",
+      "content": "A landmark 30-year study analyzing over 49,000 Kona triathletes demonstrated a strong relationship between dehydration and cramping, showing that cramping athletes lost significantly more body mass than non-cramping athletes (-1.95 kg vs. -1.49 kg). The same Kona study showed that cramping and non-cramping athletes had identical blood sodium levels at the point of treatment. However, blood sodium levels are not a proxy for total body sodium status. The body tightly regulates blood sodium concentration to preserve life; during heavy sweat losses, it draws sodium from other compartments—including the interstitial fluid surrounding the muscles—to keep blood levels stable. Consequently, local muscle-level dehydration and sodium depletion can be severe even when a blood test appears completely normal. In a classic 1930s study by Dr. R.A. McCance, subjects subjected to a low-salt diet combined with sweating hot baths experienced severe muscle cramps, weakness, and exertion distress. Crucially, reintroducing sodium led to a dramatic recovery and the immediate cessation of cramping within 15 minutes of ingestion.",
+      "payload": null
+    },
+    {
+      "domain": "nutrition",
+      "kind": "principle",
+      "title": "Pre-Race Nutrition & Hydration",
+      "content": "An effective pre-race strategy focuses on saturating internal (endogenous) carbohydrate stores in the muscles and liver while establishing a strong hydration and electrolyte buffer. Muscle glycogen stores are maximized by consuming 8 to 12 grams of carbohydrate per kilogram of body weight per day for the 24 to 48 hours (1 to 2 days) leading up to race day. To hit these high numbers without overwhelming the digestive system, athletes must increase simple carbohydrates while actively reducing fat and fiber intake to prevent bloating and GI distress. Lean liquid carbs (drink mixes, juices, gels, and sweets) are highly effective tools to pack in calories without adding physical volume to meals. Glycogen is stored alongside water; each gram of glycogen binds with at least 3 grams of water. This frequently causes a noticeable pre-race weight gain, which is a normal indicator that your energy reserves are fully stocked. For example, Peter Tierney (81 kg) consumed 749g of carbs (9.2 g/kg) on RD-2 and 858g of carbs (10.6 g/kg) on RD-1, and Rachel Entrekin hit ~7.7 g/kg the day before her Cocodona 250 victory. Overnight, liver glycogen levels drop significantly. To top them up, athletes should consume 1 to 4 grams of carbohydrates per kilogram of body mass within 1 to 4 hours before the starting gun. Megan Hill had a robust pre-race breakfast of two bagels and orange juice, hitting ~1.8 g/kg, while Brad Williams took in ~1.2 g/kg. Conversely, Tom Caldecourt fell below guidelines by eating only ~0.8 g/kg, likely leaving him with sub-optimal liver glycogen reserves. Taking a 30g carbohydrate \"hit\" in the final 15 to 20 minutes before the race elevates circulating blood glucose levels and \"spares\" stored liver and muscle glycogen for the latter portions of the event. To expand blood plasma volume and establish a fluid safety reservoir, athletes should drink ~500ml (16 oz) of a high-sodium electrolyte drink the night before, and another ~500ml (16 oz) of the same drink on race morning, finishing it 45 to 60 minutes before the start to allow the body to absorb the fluid and excrete any excess.",
+      "payload": null
+    },
+    {
+      "domain": "nutrition",
+      "kind": "principle",
+      "title": "Real Food vs. Gels During Long Races",
+      "content": "Endurance athletes must decide how to package their carbohydrate intake, as both gels/drinks and real foods have distinct physiological impacts and practical trade-offs. Gels and drink mixes are overwhelmingly preferred by elite-level athletes under race stress. For example, Eli Hemming took 73% of his carbs from gels and 21% from drink mixes during his 7th-place finish at CCC by UTMB. Formulated sports nutrition delivers consistent, fast-absorbing carbohydrates (typically using maltodextrin/glucose and fructose) that require minimal digestive energy under physical stress. Newer hydrogel-based products encapsulate carbohydrates, allowing them to bypass breakdown in the stomach acid for fast absorption in the intestine, reducing GI distress. Other brands use agar-agar to create a textured gel that encapsulates sugars to mitigate sweet taste fatigue and throat burn. Digestion is sport-specific; adventure racer Dougal Allan notes that the mechanical bouncing of running limits his gut tolerance to 70–90g/h, whereas the stable seated posture of kayaking allows him to comfortably tolerate 120g/h+ using gels and liquid mixes. During ultra-endurance events lasting 6+ hours, the palate often rejects cloying sweetness. Introducing savory real foods (such as salted mashed potatoes, broth, white rice, oatmeal, or pretzels) provides a welcome change of texture and keeps athletes eating. However, real foods carry significantly higher digestive demands because they contain a mix of macronutrients. Consuming fat and fiber during intensive exercise is highly problematic; for example, coach Paul Booth warns that consuming fats (like avocados or olive oil) slows gastric emptying and can easily trigger vomiting under high-intensity race stress.",
+      "payload": null
+    },
+    {
+      "domain": "nutrition",
+      "kind": "principle",
+      "title": "Common Race Fueling Mistakes",
+      "content": "Even experienced endurance athletes frequently fall victim to severe fueling and hydration mistakes. Over-fueling or forcing extreme intakes (120-140g/h) without gut training overloads intestinal transporters, causing gastric backup, nausea, or projectile vomiting. Elite runner Tom Booth, for instance, DNF'ed at UTMB trying to force high intakes, but later succeeded by dialing his target back to a stomach-friendly range. Conversely, chronic under-fueling is prevalent, with many amateur athletes underestimating carbohydrate costs. A 2012 study showed 73% of marathon runners failed to reach even a modest recommendation of 30-60 grams of carbohydrate per hour. Athlete Mel Caldecourt, consuming only ~17g/h, hit 'the wall' at mile 19. Dehydration-induced gut shutdown occurs when athletes neglect plain water while consuming concentrated gels and electrolyte pills, increasing gut osmolality and hindering carbohydrate absorption. Dehydration also diverts blood from the gut to working muscles and skin, inducing inflammation, increasing gut permeability, and causing severe nausea. Dehydration exceeding a 2% body weight loss typically degrades performance; founder Andy Blow experienced debilitating muscle cramps due to a 3.1% body weight loss during a hot marathon. Relying on single-source carbs at high intakes (over 60g/h) saturates SGLT1 transporters, causing nausea. Lauren Hall suffered severe nausea from single-source gels at ~76g/h. Transitioning to dual-source carbohydrates (e.g., 2:1 glucose-to-fructose) utilizes separate absorption pathways, allowing higher intake with lower gut stress. Logistical failures and lack of spares are also common. Brad Williams missed a planned gel due to miscalculated aid station, suffering an energy dip. Hayden Hawks accidentally threw away his high-carb gel, dropping his hourly intake. Over-drinking on race morning to compensate for prior dehydration also frequently backfires, as Brad Williams experienced by overloading his bladder and forcing an unplanned stop.",
+      "payload": null
+    }
+  ]
+}

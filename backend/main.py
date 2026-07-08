@@ -23,6 +23,7 @@ from db import (
     get_all_knowledge_cards,
     get_block_completion,
     get_block_reviews,
+    get_kb_chunk_count,
     get_knowledge_card_count,
     get_knowledge_topics,
     get_max_generated_week,
@@ -1184,7 +1185,10 @@ async def generate_next_block(request: GenerateNextBlockRequest, user: dict[str,
     block_context = None
     context_lines: list[str] = []
 
-    for blk in range(1, request.block_number):
+    # Newest block first: it carries per-session detail, and the NotebookLM
+    # fallback truncates the tail of the feedback blob — older summaries are
+    # the right thing to lose, not last block's session-by-session feedback.
+    for blk in range(request.block_number - 1, 0, -1):
         wk_start = (blk - 1) * 2 + 1
         wk_end = blk * 2
 
@@ -1240,13 +1244,35 @@ async def generate_next_block(request: GenerateNextBlockRequest, user: dict[str,
 
         if block_note:
             context_lines.append(f'  Athlete note: "{block_note}"')
-        for n in session_notes:
-            context_lines.append(f"  Session note — {n}")
-        if missed:
-            context_lines.append(
-                f"  Missed: {', '.join(missed[:3])}"
-                + (" +" + str(len(missed) - 3) + " more" if len(missed) > 3 else "")
-            )
+
+        if blk == request.block_number - 1:
+            # Most recent block: one line per session — performance, feedback,
+            # RPE — so the next block reacts to specific sessions, not averages.
+            context_lines.append("  Session-by-session (previous block):")
+            for w in block_wos:
+                dur = w.get("duration_minutes") or 0
+                km = w.get("distance_km") or 0
+                planned = f"{w.get('title') or w.get('type', '?')} ({dur:.0f}min" + (f"/{km:.1f}km)" if km else ")")
+                if w.get("is_completed") == 1:
+                    detail = "completed"
+                    if w.get("rpe"):
+                        detail += f", RPE {w['rpe']}/10"
+                    if w.get("notes"):
+                        detail += f', feedback: "{w["notes"]}"'
+                else:
+                    detail = "MISSED"
+                context_lines.append(
+                    f"    W{w.get('week_number', '?')} {w.get('day_of_week', '?')} — {planned}: {detail}"
+                )
+        else:
+            # Older blocks: keep the compact summary form
+            for n in session_notes:
+                context_lines.append(f"  Session note — {n}")
+            if missed:
+                context_lines.append(
+                    f"  Missed: {', '.join(missed[:3])}"
+                    + (" +" + str(len(missed) - 3) + " more" if len(missed) > 3 else "")
+                )
 
     if context_lines:
         block_context = "\n".join(context_lines)
@@ -1631,6 +1657,100 @@ async def trigger_knowledge_extraction(user: dict[str, Any] = Depends(get_curren
     asyncio.create_task(run_extraction())
     extraction_status.update({"status": "extracting", "progress": 0, "current_topic": "Starting…"})
     return {"status": "started"}
+
+
+# ─── KB Distillation (NotebookLM → kb_chunks) ────────────────────────────────
+
+kb_distill_status: dict[str, Any] = {"status": "idle"}
+# Strong reference to the running distillation task — the event loop keeps only
+# weak refs, and a GC'd multi-hour task would die silently while the status dict
+# still said "distilling". Busy-ness is derived from the task, so it self-heals.
+kb_distill_task = None
+
+
+@app.post("/api/kb/distill")
+async def trigger_kb_distill(domain: str = "all", user: dict[str, Any] = Depends(require_admin)):
+    """Re-distill the knowledge base from the NotebookLM notebooks (admin, background job).
+    Operator workflow: add sources to the notebook in NotebookLM, then call this."""
+    import asyncio
+
+    from services.kb_distiller import DOMAINS, distill_domain
+
+    global kb_distill_task
+    domains = list(DOMAINS) if domain == "all" else [domain]
+    if any(d not in DOMAINS for d in domains):
+        raise HTTPException(status_code=400, detail=f"domain must be one of {list(DOMAINS)} or 'all'")
+    if kb_distill_task is not None and not kb_distill_task.done():
+        return {"status": "already_distilling"}
+
+    fresh_user = get_user_by_id(user["id"]) or user
+    api_key = fresh_user.get("gemini_api_key") or settings.GEMINI_API_KEY
+    if not api_key:
+        raise HTTPException(status_code=400, detail="No Gemini API key configured")
+
+    async def run_distillation():
+        async def run_domain(d: str):
+            domain_status = kb_distill_status["per_domain"][d]
+            try:
+                saved = await distill_domain(d, api_key, domain_status)
+                domain_status.update({"status": "done", "saved": saved})
+            except Exception as e:
+                domain_status.update({"status": "error", "message": str(e)})
+                print(f"[KB] Distillation failed for '{d}': {e}")
+
+        # The three notebooks are independent, so domains distill concurrently —
+        # wall time is the slowest domain, not the sum. Each domain still paces
+        # its own NotebookLM queries internally (rate-limit courtesy).
+        await asyncio.gather(*(run_domain(d) for d in domains))
+        failed = {d: s.get("message") for d, s in kb_distill_status["per_domain"].items() if s.get("status") == "error"}
+        kb_distill_status.update({"status": "error" if failed else "done", "errors": failed or None})
+
+    # Fresh status per run — stale keys from a previous run would mislead operators.
+    kb_distill_status.clear()
+    kb_distill_status.update(
+        {"status": "distilling", "domains": domains, "per_domain": {d: {"status": "distilling"} for d in domains}}
+    )
+    kb_distill_task = asyncio.create_task(run_distillation())
+    return {"status": "started", "domains": domains}
+
+
+@app.get("/api/kb/distill/status")
+def get_kb_distill_status(user: dict[str, Any] = Depends(get_current_user)):
+    from services.kb_retrieval import scheduler_point_count
+
+    status = dict(kb_distill_status)
+    status["counts"] = {d: get_kb_chunk_count(d) for d in ("gear", "nutrition", "scheduler")}
+    # None = collection missing/unreachable — scheduler plans would generate
+    # without philosophy grounding even if counts.scheduler > 0.
+    status["qdrant_scheduler_points"] = scheduler_point_count()
+    return status
+
+
+@app.post("/api/kb/import")
+async def import_kb_seed(domain: str = "all", user: dict[str, Any] = Depends(require_admin)):
+    """Load committed backend/kb_seed/<domain>.json files into this environment's
+    Postgres (+ Qdrant for scheduler). This is how prod gets the KB without re-distilling."""
+    import asyncio
+
+    from services.kb_distiller import DOMAINS, load_seed
+
+    domains = list(DOMAINS) if domain == "all" else [domain]
+    if any(d not in DOMAINS for d in domains):
+        raise HTTPException(status_code=400, detail=f"domain must be one of {list(DOMAINS)} or 'all'")
+    api_key = settings.GEMINI_API_KEY
+    loaded: dict[str, int] = {}
+    errors: dict[str, str] = {}
+    for d in domains:
+        try:
+            loaded[d] = await asyncio.to_thread(load_seed, d, api_key)
+        except (FileNotFoundError, RuntimeError) as e:
+            errors[d] = str(e)
+    if not loaded:
+        # If nothing loaded, use 404 only if ALL errors are FileNotFoundError, else 400
+        all_missing = all("Seed file not found" in msg for msg in errors.values())
+        status_code = 404 if all_missing else 400
+        raise HTTPException(status_code=status_code, detail=errors)
+    return {"status": "ok" if not errors else "partial", "loaded": loaded, "errors": errors}
 
 
 # ─── Workout Types ────────────────────────────────────────────────────────────

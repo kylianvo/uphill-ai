@@ -34,8 +34,10 @@ export interface Workout {
   target_zone: string;
   target_hr_range?: string;
   target_pace?: string;
-  treadmill_incline: number;
-  treadmill_speed: number;
+  // Range strings from the backend ("7.3-9.3" %, "8.1-9.2" kph); plans
+  // generated before the range change still carry plain numbers.
+  treadmill_incline: number | string;
+  treadmill_speed: number | string;
   elevation_gain_m: number;
   grade_percent: number;
   description?: string;

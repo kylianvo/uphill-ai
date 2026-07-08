@@ -1,3 +1,4 @@
+import traceback
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -195,48 +196,87 @@ class PlanGenerator:
     HILL_SPRINT_INCLINE_MAX = 15.0
 
     @staticmethod
-    def resolve_hill_sprint_treadmill(
-        wo: dict[str, Any],
-        target_pace: str | None,
-    ) -> tuple[float, float]:
-        """Guarantees a realistic 10-15% treadmill incline for Hill Sprint/Hill
-        Repeat workouts, regardless of what the AI supplied (or omitted).
+    def parse_pace_range(pace_str: str | None) -> tuple[float, float] | None:
+        """Parses a pace string — single ("6:00 /km") or range ("6:30 - 5:45 /km")
+        — into (slower, faster) decimal min/km. Returns None when there's nothing
+        parseable."""
+        if not pace_str:
+            return None
+        cleaned = str(pace_str).replace("/km", "").strip()
+        parts = [p.strip() for p in cleaned.split("-") if p.strip()]
+        if not parts:
+            return None
+        values = [PlanGenerator.parse_pace_to_decimal(p) for p in parts[:2]]
+        if len(values) == 1:
+            values.append(values[0])
+        return max(values), min(values)
 
-        The AI prompt already asks for this range, but prompt compliance isn't
-        guaranteed — this is a deterministic backstop, the same pattern as
-        resolve_elevation_and_grade: if the AI's own treadmill_incline already
-        falls in [10, 15], it's kept as-is; otherwise it's clamped to the
-        nearest bound (or defaulted to the range midpoint, 12.5, if the AI
-        omitted it entirely or gave 0). treadmill_speed is then recomputed
-        from the workout's own target_pace so the two stay physiologically
-        consistent with each other, rather than pairing a clamped incline with
-        the AI's original (now-stale) speed.
+    @staticmethod
+    def _format_range(low: float, high: float) -> str:
+        """ "8.2-9.2" (or "8.2" when both ends coincide), with trailing .0 trimmed."""
 
-        Workouts whose title doesn't mention Hill Sprint/Hill Repeat are
-        returned unchanged.
+        def fmt(v: float) -> str:
+            return f"{round(v, 1):g}"
+
+        low, high = min(low, high), max(low, high)
+        return fmt(low) if fmt(low) == fmt(high) else f"{fmt(low)}-{fmt(high)}"
+
+    @staticmethod
+    def resolve_treadmill_settings(wo: dict[str, Any], target_pace: str | None) -> tuple[str, str]:
+        """Deterministic treadmill settings as range strings — the same backstop
+        pattern as resolve_elevation_and_grade, applied to EVERY workout instead
+        of trusting the AI's numbers (which drifted from the pace range in
+        practice). Returns (incline_range, speed_range), e.g. ("7.3-9.3",
+        "8.2-9.2"); ("0", "0") when the workout isn't treadmill-relevant.
+
+        - Hill Sprint/Hill Repeat titles: incline "10-15"; speed derived from the
+          workout's own target_pace range at the band midpoint (12.5%).
+        - Other workouts the AI marked treadmill-relevant (incline or speed > 0):
+          incline is a ±1% band around the resolved grade (AI incline when > 0,
+          else this run's own grade_percent, floored at 1%); speed is derived
+          from both ends of the target_pace range at the band midpoint, using
+          the grade-adjusted effort model in TrainingRules.
         """
+
+        def _as_float(value: Any) -> float:
+            try:
+                return float(value or 0.0)
+            except (TypeError, ValueError):
+                return 0.0
+
+        ai_incline = _as_float(wo.get("treadmill_incline"))
+        ai_speed = _as_float(wo.get("treadmill_speed"))
         title_lower = (wo.get("title") or "").lower()
-        if not any(kw in title_lower for kw in PlanGenerator.HILL_SPRINT_TITLE_KEYWORDS):
-            try:
-                incline = float(wo.get("treadmill_incline") or 0.0)
-            except (TypeError, ValueError):
-                incline = 0.0
-            try:
-                speed = float(wo.get("treadmill_speed") or 0.0)
-            except (TypeError, ValueError):
-                speed = 0.0
-            return incline, speed
+        is_hill_sprint = any(kw in title_lower for kw in PlanGenerator.HILL_SPRINT_TITLE_KEYWORDS)
 
-        try:
-            incline = float(wo.get("treadmill_incline") or 0.0)
-        except (TypeError, ValueError):
-            incline = 0.0
-        if not (PlanGenerator.HILL_SPRINT_INCLINE_MIN <= incline <= PlanGenerator.HILL_SPRINT_INCLINE_MAX):
-            incline = (PlanGenerator.HILL_SPRINT_INCLINE_MIN + PlanGenerator.HILL_SPRINT_INCLINE_MAX) / 2
+        if not is_hill_sprint and ai_incline <= 0 and ai_speed <= 0:
+            return "0", "0"  # AI marked this workout as not treadmill-relevant
 
-        flat_pace = PlanGenerator.parse_pace_to_decimal((target_pace or "").replace("/km", "").strip())
-        settings = TrainingRules.calculate_treadmill_settings(flat_pace, incline)
-        return settings["incline_percentage"], settings["speed_kph"]
+        if is_hill_sprint:
+            incline_low = PlanGenerator.HILL_SPRINT_INCLINE_MIN
+            incline_high = PlanGenerator.HILL_SPRINT_INCLINE_MAX
+        else:
+            grade = ai_incline if ai_incline > 0 else _as_float(wo.get("grade_percent"))
+            if grade <= 0:
+                grade = 1.0  # standard 1% treadmill rule when nothing else is known
+            incline_low = max(1.0, grade - 1.0)
+            incline_high = grade + 1.0
+        incline_mid = (incline_low + incline_high) / 2
+
+        pace_range = PlanGenerator.parse_pace_range(target_pace)
+        if pace_range is None:
+            # No pace to derive from (shouldn't happen for run types) — keep the
+            # AI's speed if it gave one, but never invent our own number.
+            speed_str = PlanGenerator._format_range(ai_speed, ai_speed) if ai_speed > 0 else "0"
+            return PlanGenerator._format_range(incline_low, incline_high), speed_str
+
+        slow_pace, fast_pace = pace_range
+        speed_low = TrainingRules.calculate_treadmill_settings(slow_pace, incline_mid)["speed_kph"]
+        speed_high = TrainingRules.calculate_treadmill_settings(fast_pace, incline_mid)["speed_kph"]
+        return (
+            PlanGenerator._format_range(incline_low, incline_high),
+            PlanGenerator._format_range(speed_low, speed_high),
+        )
 
     @staticmethod
     async def generate_plan_workouts(
@@ -368,17 +408,6 @@ class PlanGenerator:
                 else:
                     wo["week_number"] = block_start_week
 
-                if "treadmill_incline" in wo and wo["treadmill_incline"] is not None:
-                    try:
-                        wo["treadmill_incline"] = float(wo["treadmill_incline"])
-                    except Exception:
-                        wo["treadmill_incline"] = 0.0
-                if "treadmill_speed" in wo and wo["treadmill_speed"] is not None:
-                    try:
-                        wo["treadmill_speed"] = float(wo["treadmill_speed"])
-                    except Exception:
-                        wo["treadmill_speed"] = 0.0
-
                 # Reset Rest/Strength/ME — always zero distance, never inherit AI value
                 title_lower = wo.get("title", "").lower()
                 if w_type in ("Rest", "Strength", "Muscular Endurance") or dur <= 0.0:
@@ -399,10 +428,10 @@ class PlanGenerator:
                     wo, w_type, terrain, wo["distance_km"], course_elevation_gain_m, course_distance_km
                 )
 
-                # Guarantee: Hill Sprint/Hill Repeat titles always get a realistic 10-15%
-                # treadmill incline, regardless of what the AI supplied (or omitted) — the
-                # prompt asks for this range, but this backstop makes it non-negotiable.
-                wo["treadmill_incline"], wo["treadmill_speed"] = PlanGenerator.resolve_hill_sprint_treadmill(
+                # Treadmill settings are never the AI's raw numbers: derive range
+                # strings from this workout's own pace range and resolved grade
+                # (Hill Sprints get the non-negotiable 10-15% band).
+                wo["treadmill_incline"], wo["treadmill_speed"] = PlanGenerator.resolve_treadmill_settings(
                     wo, wo["target_pace"]
                 )
             return wos
@@ -781,7 +810,9 @@ class PlanGenerator:
 
         _nb_query = _nb_prompt
 
-        if _nb_query and notebook_id and auth_json:
+        async def _try_notebooklm() -> list[dict[str, Any]] | None:
+            if not (_nb_query and notebook_id and auth_json):
+                return None
             try:
                 from services.notebooklm_service import NotebookLmService
 
@@ -802,9 +833,17 @@ class PlanGenerator:
                 if isinstance(ai_workouts, list) and len(ai_workouts) > 0:
                     cleaned_wos = [wo for wo in ai_workouts if isinstance(wo, dict)]
                     print(f"[PlanGen][NotebookLM] Parsed {len(cleaned_wos)} workouts")
-                    return post_process_workouts(cleaned_wos)
+                    from telemetry import rag_attempts_total
+
+                    _processed = post_process_workouts(cleaned_wos)
+                    # "used" fires only when this engine's output is what the plan
+                    # actually returns — unlike "success", which fires at the API
+                    # level before parse validation.
+                    rag_attempts_total.labels(service="plan_generator", engine="notebooklm", status="used").inc()
+                    return _processed
                 else:
                     print("[PlanGen][NotebookLM] Empty or invalid list returned, trying Gemini fallback.")
+                    return None
             except Exception as ex:
                 err_str = str(ex)
                 if "No parseable chunks" in err_str or "empty" in err_str.lower():
@@ -813,18 +852,55 @@ class PlanGenerator:
                         "or auth token expired (update NOTEBOOKLM_AUTH_JSON). Falling back to Gemini."
                     )
                 else:
-                    print(f"[PlanGen][NotebookLM] FAILED: {ex}. Trying Gemini fallback.")
+                    print(f"[PlanGen][NotebookLM] FAILED: {ex}. Trying Gemini fallback.\n{traceback.format_exc()}")
+                return None
 
-        if _ai_prompt and api_key:
+        async def _try_gemini() -> list[dict[str, Any]] | None:
+            if not (_ai_prompt and api_key):
+                return None
+            import asyncio
+
+            _kb_context = ""
+            if settings.RAG_ENGINE == "gemini":
+                # Ground the plan in distilled Uphill Athlete philosophy. Retrieval failure
+                # is non-fatal — the prompt already carries the core rules inline.
+                try:
+                    from services.kb_context import render_principles_context
+                    from services.kb_retrieval import search_scheduler_chunks
+
+                    _retrieval_query = (
+                        f"{race_info.get('terrain', 'trail')} race training plan: periodization "
+                        f"phases, muscular endurance circuit design, taper and race week, long run "
+                        f"and Zone 2 volume, double sessions"
+                    )
+                    _hits = await asyncio.to_thread(search_scheduler_chunks, _retrieval_query, api_key, 6)
+                    _kb_context = render_principles_context(
+                        _hits, heading="UPHILL ATHLETE PHILOSOPHY (grounding context)"
+                    )
+                    print(f"[PlanGen][KB] Retrieved {len(_hits)} philosophy chunks")
+                except Exception as _kb_ex:
+                    print(f"[PlanGen][KB] Retrieval failed (continuing without): {_kb_ex}")
+            _gemini_prompt = _ai_prompt + ("\n\n" + _kb_context if _kb_context else "")
             try:
-                import asyncio
+                import time
 
                 import google.generativeai as _genai
 
+                from telemetry import rag_attempts_total, rag_latency_seconds
+
                 _genai.configure(api_key=api_key)
                 _model = _genai.GenerativeModel("gemini-2.5-flash")
-                print(f"[PlanGen][Gemini] Sending prompt ({len(_ai_prompt)} chars)...")
-                _response = await asyncio.to_thread(_model.generate_content, _ai_prompt)
+                print(f"[PlanGen][Gemini] Sending prompt ({len(_gemini_prompt)} chars)...")
+
+                rag_attempts_total.labels(service="plan_generator", engine="gemini", status="attempt").inc()
+                _start = time.time()
+                try:
+                    _response = await asyncio.to_thread(_model.generate_content, _gemini_prompt)
+                    rag_latency_seconds.labels(service="plan_generator", engine="gemini").observe(time.time() - _start)
+                    rag_attempts_total.labels(service="plan_generator", engine="gemini", status="success").inc()
+                except Exception:
+                    rag_attempts_total.labels(service="plan_generator", engine="gemini", status="error").inc()
+                    raise
                 clean_text = _extract_json_array(_response.text)
                 try:
                     ai_workouts = _json.loads(clean_text)
@@ -834,11 +910,23 @@ class PlanGenerator:
                 if isinstance(ai_workouts, list) and len(ai_workouts) > 0:
                     cleaned_wos = [wo for wo in ai_workouts if isinstance(wo, dict)]
                     print(f"[PlanGen][Gemini] Parsed {len(cleaned_wos)} workouts")
-                    return post_process_workouts(cleaned_wos)
+                    _processed = post_process_workouts(cleaned_wos)
+                    rag_attempts_total.labels(service="plan_generator", engine="gemini", status="used").inc()
+                    return _processed
                 else:
                     print("[PlanGen][Gemini] Empty or invalid list returned, using rule-based fallback.")
+                    return None
             except Exception as ex:
-                print(f"[PlanGen][Gemini] FAILED: {ex}. Using rule-based fallback schedule.")
+                print(f"[PlanGen][Gemini] FAILED: {ex}. Using rule-based fallback schedule.\n{traceback.format_exc()}")
+                return None
+
+        _engine_order = (
+            [_try_gemini, _try_notebooklm] if settings.RAG_ENGINE == "gemini" else [_try_notebooklm, _try_gemini]
+        )
+        for _attempt in _engine_order:
+            _result = await _attempt()
+            if _result:
+                return _result
 
         # --- Rule-Based Fallback Schedule ---
 

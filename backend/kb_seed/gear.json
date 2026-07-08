@@ -1,0 +1,2628 @@
+{
+  "domain": "gear",
+  "chunks": [
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Altra Mont Blanc Carbon",
+      "content": "Altra Mont Blanc Carbon: Adaptable stone-protection, soft forgiving dual-foam ride, great Vibram traction Cons: Very expensive, and the wobbly heel fit from previous models is improved but still not fully fixed",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "fast, rolling trail pacing",
+        "brand": "Altra",
+        "carbon_plate": "Yes, full-length monoflex Carbitex Plate",
+        "cons": "Very expensive, and the wobbly heel fit from previous models is improved but still not fully fixed",
+        "cushioning": "High",
+        "drop": "0 mm",
+        "foam_material": "Ego Pro / Ego Max",
+        "foot_shape": "Standard FootShape",
+        "highlights": "Carbitex plate flexes downward but resists upward toe-off flex",
+        "intended_use": "Trail racing & fast runs",
+        "model": "Mont Blanc Carbon",
+        "outsole_compound": "Vibram Megagrip Litebase",
+        "overview": "A sleek, nimble zero-drop trail racing shoe built to establish speed, adaptability, and joint protection underfoot.",
+        "price": "$260",
+        "pros": "Adaptable stone-protection, soft forgiving dual-foam ride, great Vibram traction",
+        "stack": "33 mm",
+        "suitability": "Suits zero-drop trail racers wanting a highly protective but nimble platform",
+        "terrain": [
+          "Technical/rocky trails",
+          "fast stretches"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Altra Mont Blanc Speed",
+      "content": "Altra Mont Blanc Speed: Very soft midsole, highly comfortable ride on light paths Cons: Insecure upper/heel lock limits confidence on steep, off-camber trails",
+      "payload": {
+        "arch_support": "Neutral",
+        "brand": "Altra",
+        "carbon_plate": "TPU StoneGuard (No carbon plate)",
+        "cons": "Insecure upper/heel lock limits confidence on steep, off-camber trails",
+        "cushioning": "Soft",
+        "drop": "0 mm",
+        "foam_material": "Ego Pro core / Ego Max rim",
+        "foot_shape": "Standard FootShape (polarizing loose fit)",
+        "intended_use": "Daily runs, long miles, and sub-ultra uptempo",
+        "model": "Mont Blanc Speed",
+        "outsole_compound": "Vibram Megagrip Litebase",
+        "overview": "A zero-drop trail option designed to balance soft, forgiving comfort with lightweight stone guard protection on fast, non-technical trail sections.",
+        "price": "$185",
+        "pros": "Very soft midsole, highly comfortable ride on light paths",
+        "stack": "29 mm heel & forefoot",
+        "suitability": "Suits zero-drop believers looking for a fast-paced uptempo daily trainer",
+        "terrain": [
+          "Smoother singletrack",
+          "gravel",
+          "mixed trails"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Altra Timp 6",
+      "content": "Altra Timp 6: Highly nimble, drains water exceptionally, outstanding wet/dry Vibram grip Cons: Lower heel counter design can cause heel slippage inside the roomy toe box",
+      "payload": {
+        "arch_support": "Neutral",
+        "brand": "Altra",
+        "carbon_plate": "No plate",
+        "cons": "Lower heel counter design can cause heel slippage inside the roomy toe box",
+        "cushioning": "High/Protective",
+        "drop": "0 mm",
+        "foam_material": "Ego Max",
+        "foot_shape": "Standard FootShape (roomy toe box but snug heel/midfoot)",
+        "intended_use": "Well-protected trail runs & ultras",
+        "model": "Timp 6",
+        "outsole_compound": "Vibram Megagrip",
+        "overview": "A nimble, highly comfortable mountain trainer designed to supply stable joint protection while easily shedding dirt, mud, and water.",
+        "price": "$165",
+        "pros": "Highly nimble, drains water exceptionally, outstanding wet/dry Vibram grip",
+        "stack": "30 mm",
+        "suitability": "Suits high-mileage trail runners and ultra racers seeking robust zero-drop protection with premium traction",
+        "terrain": [
+          "Mud",
+          "snow",
+          "freezing wet terrain",
+          "road transitions"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Altra Experience Wild 3 & Experience Wild 3+",
+      "content": "Altra Experience Wild 3 & Experience Wild 3+: Natural toe splay, light-on-foot feel, exceptional traction on the Wild 3+ version Cons: Ego P35 foam ride is a bit firm/unexciting underfoot, and has some foot slippage issues",
+      "payload": {
+        "arch_support": "Neutral",
+        "brand": "Altra",
+        "carbon_plate": "No plate",
+        "cons": "Ego P35 foam ride is a bit firm/unexciting underfoot, and has some foot slippage issues",
+        "cushioning": "Firm",
+        "drop": "4 mm",
+        "foam_material": "Ego P35",
+        "foot_shape": "Roomy front for natural toe splay (accommodating fit)",
+        "intended_use": "Approaching daily trail running",
+        "model": "Experience Wild 3 & Experience Wild 3+",
+        "outsole_compound": "MaxTrac (Wild 3) or Vibram Megagrip (Wild 3+)",
+        "overview": "An efficient, comfortable, low-drop door-to-trail transition shoe built with a roomy toe box and a smooth, rolling turnover.",
+        "price": "$149 (Wild 3) / $165 (Wild 3+)",
+        "pros": "Natural toe splay, light-on-foot feel, exceptional traction on the Wild 3+ version",
+        "stack": "33 mm heel / 29 mm forefoot",
+        "suitability": "Suits wide-footed runners and those wanting room up front without committing to a true zero-drop",
+        "terrain": [
+          "Light-duty trails",
+          "gravel",
+          "dirt roads"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Altra Experience Flow 3",
+      "content": "Altra Experience Flow 3: Insane underfoot flexibility (8.6N), roomy comfort, and upgraded outsole traction (0.70) Cons: Underwhelming energy return from the foam, and breathability runs warm (2/5)",
+      "payload": {
+        "arch_support": "Neutral",
+        "brand": "Altra",
+        "carbon_plate": "No plate",
+        "cons": "Underwhelming energy return from the foam, and breathability runs warm (2/5)",
+        "cushioning": "Soft",
+        "drop": "5.2 mm actual drop",
+        "foam_material": "EGO P35",
+        "foot_shape": "Wide fit with roomy big toe splay area (79.3 mm)",
+        "intended_use": "Daily running and casual wear",
+        "lug_depth": "Road (0.0 mm)",
+        "model": "Experience Flow 3",
+        "outsole_compound": "Segmented road rubber",
+        "overview": "A highly flexible, comfortable road daily companion designed to help runners smoothly transition toward zero-drop.",
+        "price": "$145",
+        "pros": "Insane underfoot flexibility (8.6N), roomy comfort, and upgraded outsole traction (0.70)",
+        "stack": "31.0 mm heel / 25.8 mm forefoot",
+        "suitability": "Suits wide-footed runners needing toe splay during transition phases",
+        "terrain": [
+          "Road",
+          "treadmill"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Altra Olympus 275",
+      "content": "Altra Olympus 275: Lighter than Olympus 6, extremely stable wide platform, outstanding MATRYX upper comfort Cons: Low-rebound CMEVA foam feels flat, and the shoe is still somewhat heavy (10.7 oz actual), not for narrow feet",
+      "payload": {
+        "arch_support": "Neutral",
+        "brand": "Altra",
+        "carbon_plate": "No plate",
+        "cons": "Low-rebound CMEVA foam feels flat, and the shoe is still somewhat heavy (10.7 oz actual), not for narrow feet",
+        "cushioning": "Balanced",
+        "drop": "0.3 mm actual drop",
+        "foam_material": "CMEVA",
+        "foot_shape": "Extremely wide fit with a massive toe box (81.0 mm big toe splay)",
+        "highlights": "Premium MATRYX upper",
+        "intended_use": "Long-distance hiking & ultra trails",
+        "lug_depth": "3.5 mm actual",
+        "model": "Olympus 275",
+        "outsole_compound": "Vibram Megagrip",
+        "overview": "A highly stable, towering zero-drop trail shoe engineered with a massive footprint to protect joints on flat, easy trails.",
+        "price": "$185",
+        "pros": "Lighter than Olympus 6, extremely stable wide platform, outstanding MATRYX upper comfort",
+        "stack": "30.8 mm heel / 30.5 mm forefoot",
+        "suitability": "Suits wide-footed ultra hikers and midfoot/forefoot strikers",
+        "terrain": [
+          "Gravel",
+          "mixed trails",
+          "flat, easy paths"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Altra Olympus 6",
+      "content": "Altra Olympus 6: Second-to-none toebox and outsole durability, light-reflecting laces, and an ultra-plush 10.2 mm padded tongue Cons: Disappointingly heavy build (12.6 oz actual), and low-rebound foam lacks snappy energy return",
+      "payload": {
+        "arch_support": "Neutral",
+        "brand": "Altra",
+        "carbon_plate": "No plate",
+        "cons": "Disappointingly heavy build (12.6 oz actual), and low-rebound foam lacks snappy energy return",
+        "cushioning": "Max",
+        "drop": "0.7 mm actual drop",
+        "foam_material": "Low-rebound CMEVA",
+        "foot_shape": "Medium fit with exceptionally wide big toe splay (81.1 mm big toe area)",
+        "intended_use": "Ultra-distance training & heavy-duty hiking",
+        "lug_depth": "3.5 mm",
+        "model": "Olympus 6",
+        "outsole_compound": "Vibram Megagrip",
+        "overview": "A skyscraper-high zero-drop cruiser engineered with premium, exceptionally durable materials to withstand the toughest mountain paths.",
+        "price": "$175 - $185",
+        "pros": "Second-to-none toebox and outsole durability, light-reflecting laces, and an ultra-plush 10.2 mm padded tongue",
+        "stack": "32.2 mm heel / 31.5 mm forefoot",
+        "suitability": "Suits heavy runners/hikers desiring absolute joint protection",
+        "terrain": [
+          "Rugged technical singletrack",
+          "mud",
+          "gravel"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Altra Paradigm 8",
+      "content": "Altra Paradigm 8: Exceptional 4.4 mm outsole durability, soft impact absorption, and roomy splay Cons: Heavy daily layout (9.8 oz actual), and lacks high energy return",
+      "payload": {
+        "arch_support": "Stability",
+        "brand": "Altra",
+        "carbon_plate": "No plate",
+        "cons": "Heavy daily layout (9.8 oz actual), and lacks high energy return",
+        "cushioning": "Soft/Max",
+        "drop": "2.1 mm actual drop",
+        "foam_material": "EGO MAX (soft/responsive)",
+        "foot_shape": "Roomy foot-shaped splay / Medium fit (Wide available)",
+        "intended_use": "Daily running, jogging, and easy walking",
+        "lug_depth": "Road (0.0 mm)",
+        "model": "Paradigm 8",
+        "outsole_compound": "Extra-thick road rubber",
+        "overview": "A soft, highly protective everyday trainer that relies on non-intrusive GuideRail-style guidance instead of harsh plastic structures.",
+        "price": "$170",
+        "pros": "Exceptional 4.4 mm outsole durability, soft impact absorption, and roomy splay",
+        "stack": "29.4 mm heel / 27.3 mm forefoot",
+        "suitability": "Suits overpronators and flat-footed runners needing stable support without sacrificing a roomy toe box",
+        "terrain": [
+          "Road",
+          "treadmill"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Altra Torin 8",
+      "content": "Altra Torin 8: True zero-drop geometry, wide toebox comfort, and improved heel collar hold Cons: Notable weight gain compared to v7 (9.7 oz actual), non-gusseted tongue, and needs an update to bouncier supercritical foam, not for heavy heel strikers",
+      "payload": {
+        "arch_support": "Neutral",
+        "brand": "Altra",
+        "carbon_plate": "No plate",
+        "cons": "Notable weight gain compared to v7 (9.7 oz actual), non-gusseted tongue, and needs an update to bouncier supercritical foam, not for heavy heel strikers",
+        "cushioning": "Balanced",
+        "drop": "-0.1 mm actual drop",
+        "foam_material": "Standard daily training foam",
+        "foot_shape": "Foot-shaped wide toebox / Medium standard midfoot (Wide available)",
+        "intended_use": "Daily running and walking",
+        "lug_depth": "Road (0.0 mm)",
+        "model": "Torin 8",
+        "outsole_compound": "High-traction road rubber",
+        "overview": "A classic, dependable everyday neutral trainer updated with improved heel lockdown and a plush, comfortable ride for easy miles.",
+        "price": "$150 - $160",
+        "pros": "True zero-drop geometry, wide toebox comfort, and improved heel collar hold",
+        "stack": "27.6 mm heel / 27.7 mm forefoot",
+        "suitability": "Suits forefoot strikers, neutral joggers, and walkers seeking comfortable toe splay",
+        "terrain": [
+          "Road"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Asics MetaFuji Trail",
+      "content": "Asics MetaFuji Trail: Excellent energy return, secure upper volume splay, and lightweight design Cons: Upper/midsole can separate at the toe crease bend and lacks the deep nimbleness required for highly technical terrain",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "fast racers with strong ankles",
+        "brand": "Asics",
+        "carbon_plate": "full-length carbon plate",
+        "cons": "Upper/midsole can separate at the toe crease bend and lacks the deep nimbleness required for highly technical terrain",
+        "cushioning": "Max cushioning",
+        "drop": "5 mm",
+        "foam_material": "FlyteFoam Blast Plus & Turbo (PEBA/EVA dual-density)",
+        "foot_shape": "Slightly roomy fit",
+        "highlights": "Stiff curved carbon plate, tachy high-traction AsicsGrip, and secure lock-down serrated laces that do not slip",
+        "intended_use": "Fast trail races",
+        "model": "MetaFuji Trail",
+        "outsole_compound": "AsicsGrip (Trail lugs)",
+        "overview": "A highly responsive off-road racer that delivers an agile and poppy ride despite its tall maximalist trail stack",
+        "price": "$250",
+        "pros": "Excellent energy return, secure upper volume splay, and lightweight design",
+        "stack": "44/39 mm",
+        "terrain": [
+          "Less technical trails"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Asics Gel Kayano 32",
+      "content": "Asics Gel Kayano 32: Extremely stable, outstanding durability, and pillow-soft heel padding Cons: Very low energy return (not a bouncy supercritical ride) and fairly heavy daily layout (10.4 oz actual US M9)",
+      "payload": {
+        "arch_support": "Stability",
+        "best_for": "flat-footed runners and overpronators needing stable protection",
+        "brand": "Asics",
+        "carbon_plate": "No plate",
+        "cons": "Very low energy return (not a bouncy supercritical ride) and fairly heavy daily layout (10.4 oz actual US M9)",
+        "cushioning": "Max/Balanced cushioning",
+        "drop": "9.3 mm actual (8 mm brand)",
+        "foam_material": "Balanced daily foam",
+        "foot_shape": "Medium fit",
+        "highlights": "4D Guidance System, PureGEL heel insert, and a strategically ventilated mesh upper that balances structure and breathability",
+        "intended_use": "Daily miles & walking",
+        "model": "Gel Kayano 32",
+        "outsole_compound": "Heavy-duty road rubber (0.0 mm)",
+        "overview": "A premium stability workhorse built to deliver reliable, heavy-duty overpronation guidance with elite landing protection and comfort",
+        "price": "$165",
+        "pros": "Extremely stable, outstanding durability, and pillow-soft heel padding",
+        "stack": "39.9/30.6 mm actual",
+        "terrain": [
+          "Road",
+          "treadmill"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Asics Gel Nimbus 28",
+      "content": "Asics Gel Nimbus 28: Exceptional step-in comfort, high shock absorption, and secure lockdown Cons: Poor underfoot energy return, breathability is only moderate (can run warm), and second consecutive price increase",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "neutral runners and heel strikers seeking cozy muscle saving",
+        "brand": "Asics",
+        "carbon_plate": "No plate (rockered)",
+        "cons": "Poor underfoot energy return, breathability is only moderate (can run warm), and second consecutive price increase",
+        "cushioning": "Max cushioning",
+        "drop": "5.2 mm actual (8 mm brand)",
+        "foam_material": "Balanced daily foam",
+        "foot_shape": "Medium fit",
+        "highlights": "PureGEL cushioning, rockered transition shape, and Hybrid ASICSGRIP that remains soft in freezing cold",
+        "intended_use": "Easy recovery runs & walking",
+        "model": "Gel Nimbus 28",
+        "outsole_compound": "Hybrid ASICSGRIP (0 mm)",
+        "overview": "A premium max-cushion road companion designed to smooth out slow paces with plush step-in comfort and heavy-duty protective impact absorption",
+        "price": "$170",
+        "pros": "Exceptional step-in comfort, high shock absorption, and secure lockdown",
+        "stack": "39.5/34.3 mm actual",
+        "terrain": [
+          "Road"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Asics Metaspeed Edge Tokyo",
+      "content": "Asics Metaspeed Edge Tokyo: Exceptionally lightweight (5.6 oz actual) and elite traction Cons: Narrow restrictive fit, shaky overall landing stability, non-gusseted shifting tongue, and very low toebox durability (1/5 score)",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "neutral cadence runners and heel strikers desiring stable super-shoe rolls",
+        "brand": "Asics",
+        "carbon_plate": "curved carbon plate",
+        "cons": "Narrow restrictive fit, shaky overall landing stability, non-gusseted shifting tongue, and very low toebox durability (1/5 score)",
+        "cushioning": "Max cushioning",
+        "drop": "6.9 mm actual (5 mm brand)",
+        "foam_material": "FF Leap supercritical (PEBA)",
+        "foot_shape": "Narrow snug fit",
+        "highlights": "Next-level bouncy FF Leap foam, curved plate geometry, and a weight-stripped minimalist layout devoid of heel tabs",
+        "intended_use": "Competition (5K to Marathon)",
+        "model": "Metaspeed Edge Tokyo",
+        "outsole_compound": "ASICSGRIP (0 mm)",
+        "overview": "An explosive road racing weapon built with a rolling rocker and curved plate to maximize cadence efficiency on race day",
+        "price": "$270",
+        "pros": "Exceptionally lightweight (5.6 oz actual) and elite traction",
+        "stack": "38.9/32.0 mm actual",
+        "terrain": [
+          "Road"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Asics Metaspeed Sky Tokyo",
+      "content": "Asics Metaspeed Sky Tokyo: Hyper-light build (5.7 oz), explosive bounce, and perfect 5/5 breathability Cons: Shaky landing stability for heel strikers, snug narrow fit limits splay, and poor toebox upper durability (1/5 Dremel score)",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "stride-driven elite marathoners looking for airy ventilation",
+        "brand": "Asics",
+        "carbon_plate": "stiff flat carbon plate",
+        "cons": "Shaky landing stability for heel strikers, snug narrow fit limits splay, and poor toebox upper durability (1/5 Dremel score)",
+        "cushioning": "Max cushioning",
+        "drop": "6.0 mm actual (5 mm brand)",
+        "foam_material": "FF Leap supercritical (PEBA)",
+        "foot_shape": "Narrow fit (generous height)",
+        "highlights": "High-rebound FF Leap foam, flat plate orientation, and next-level insole perforations for 360-degree ventilation",
+        "intended_use": "Competition (5K to Marathon)",
+        "model": "Metaspeed Sky Tokyo",
+        "outsole_compound": "ASICSGRIP (0 mm)",
+        "overview": "A towering, speed-focused road racer engineered to deliver maximum vertical propulsion and forward bounce for stride-driven runners",
+        "price": "$270",
+        "pros": "Hyper-light build (5.7 oz), explosive bounce, and perfect 5/5 breathability",
+        "stack": "38.7/32.7 mm actual",
+        "terrain": [
+          "Road"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Asics Novablast 5",
+      "content": "Asics Novablast 5: High-energy rebound, great cushion-to-weight ratio (9.0 oz), and flexible ride Cons: Subpar toebox mesh durability (1/5 score) and moderate breathability that can run slightly warm in heat (3/5 score)",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "neutral runners desiring a versatile, bouncy companion",
+        "brand": "Asics",
+        "carbon_plate": "No plate (rockered)",
+        "cons": "Subpar toebox mesh durability (1/5 score) and moderate breathability that can run slightly warm in heat (3/5 score)",
+        "cushioning": "Max cushioning",
+        "drop": "7.4 mm actual",
+        "foam_material": "FF Blast MAX (supercritical)",
+        "foot_shape": "Medium fit (wide-foot friendly)",
+        "highlights": "Next-gen bouncy FF Blast MAX midsole and a revamped tongue lacing tab to easily lock in a centered fit",
+        "intended_use": "Daily running & tempos",
+        "model": "Novablast 5",
+        "outsole_compound": "High-traction road rubber (0 mm)",
+        "overview": "A highly energetic, bouncy daily trainer designed to make daily runs and tempo blocks feel dynamic, lightweight, and fun",
+        "price": "$150",
+        "pros": "High-energy rebound, great cushion-to-weight ratio (9.0 oz), and flexible ride",
+        "stack": "40.9/33.5 mm actual",
+        "terrain": [
+          "Road"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Asics Superblast 3",
+      "content": "Asics Superblast 3: Highly responsive, stable feel, and elite outsole longevity (0.5 mm wear) Cons: Low-density FF Blast+ carrier limits ultimate energy return, narrow snug toebox splay (71.6 mm), and limited breathability",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "long-distance runners seeking maximalist joint protection without bulky weight",
+        "brand": "Asics",
+        "carbon_plate": "No plate (rockered)",
+        "cons": "Low-density FF Blast+ carrier limits ultimate energy return, narrow snug toebox splay (71.6 mm), and limited breathability",
+        "cushioning": "Max cushioning",
+        "drop": "8.1 mm actual",
+        "foam_material": "Dual FF Leap & FF Blast+ (PEBA/EVA)",
+        "foot_shape": "Medium snug-toebox fit",
+        "highlights": "Dual-density cushioning, unique \"lace-in-lace\" elastic cord eyelet design, and a highly stable landing platform",
+        "intended_use": "High-mileage daily running & tempos",
+        "model": "Superblast 3",
+        "outsole_compound": "High-grip road rubber (0 mm)",
+        "overview": "A skyscraper-high daily super trainer built with towering protection to save leg muscles over long-distance efforts",
+        "price": "$200",
+        "pros": "Highly responsive, stable feel, and elite outsole longevity (0.5 mm wear)",
+        "stack": "45.8/37.7 mm actual",
+        "terrain": [
+          "Road"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Asics Trabuco 14",
+      "content": "Asics Trabuco 14: Superb rock splay, elite wet/dry grip, and stellar $145 value Cons: Fairly heavy layout (10.0 oz actual US M9), low ankle collar easily admits trail debris, and hit-or-miss lacing layout",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "wide-footed trail runners and ultra hikers needing stable traction",
+        "brand": "Asics",
+        "carbon_plate": "rock plate",
+        "cons": "Fairly heavy layout (10.0 oz actual US M9), low ankle collar easily admits trail debris, and hit-or-miss lacing layout",
+        "cushioning": "Moderate/firm cushion",
+        "drop": "6.3 mm actual (8 mm brand)",
+        "foam_material": "FF Blast Max (supercritical)",
+        "foot_shape": "Wide fit (roomy toebox)",
+        "highlights": "FF Blast Max supercritical midsole, aggressive 3.7 mm chevrons, and insole highlighting eco-manufacturing details",
+        "intended_use": "Ultras & hiking",
+        "lug_depth": "3.7 mm",
+        "model": "Trabuco 14",
+        "outsole_compound": "ASICSGRIP",
+        "overview": "A rugged, highly stable mountain workhorse designed for maximum rock protection, reliable wet traction, and wide comfortable fit",
+        "price": "$145",
+        "pros": "Superb rock splay, elite wet/dry grip, and stellar $145 value",
+        "stack": "32.1/25.8 mm actual",
+        "terrain": [
+          "Versatile trails",
+          "gravel"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Brooks Cascadia 19",
+      "content": "Brooks Cascadia 19: Immediately comfortable plush tongue, outstanding platform stability, and highly durable build quality for the price Cons: Very heavy daily layout (10.8 oz actual M9), and the wide base is overkill for smooth, flat trails",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "Stability-First Trail Workhorse",
+        "brand": "Brooks",
+        "carbon_plate": "Rock plate",
+        "cons": "Very heavy daily layout (10.8 oz actual M9), and the wide base is overkill for smooth, flat trails",
+        "cushioning": "Moderate",
+        "drop": "7.8 mm actual (6.0 mm brand)",
+        "foam_material": "Nitrogen-infused EVA",
+        "foot_shape": "Medium fit (Wide available)",
+        "highlights": "Protective rock plate, wide stable platform",
+        "intended_use": "Daily trail runs and hiking",
+        "lug_depth": "4.0 mm",
+        "model": "Cascadia 19",
+        "outsole_compound": "TrailTack Green",
+        "overview": "A highly predictable and protective daily trail trainer that doubles as a highly capable day hiker, prioritizing stable protection over speed",
+        "price": "$150",
+        "pros": "Immediately comfortable plush tongue, outstanding platform stability, and highly durable build quality for the price",
+        "stack": "34.8 / 27.0 mm actual (35/29 mm brand)",
+        "suitability": "Suits hikers and trail runners wanting stable protection; not for those seeking a speedy option.",
+        "terrain": [
+          "Rocky",
+          "gravel"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Brooks Catamount 4",
+      "content": "Brooks Catamount 4: Exceptionally stable platform, highly versatile wet/dry traction (grips on wet leaves, snow, and ice), and lightweight durable design Cons: Firm underfoot ride with minimal plush comfort, making it highly fatiguing on ultra-long days",
+      "payload": {
+        "best_for": "Agile Technical Trail Racer",
+        "brand": "Brooks",
+        "carbon_plate": "TPE plate",
+        "cons": "Firm underfoot ride with minimal plush comfort, making it highly fatiguing on ultra-long days",
+        "cushioning": "Firm/Moderate",
+        "foam_material": "Nitrogen-infused EVA",
+        "foot_shape": "Dialed, locked-in fit",
+        "highlights": "Protective TPE plate, reinforced upper",
+        "intended_use": "Agility efforts & short-distance races",
+        "lug_depth": "3.5 mm",
+        "model": "Catamount 4",
+        "outsole_compound": "TrailTack Green",
+        "overview": "A light, firm, and fast trail shoe engineered for locked-in agility and precise traction on steep and rowdy climbs",
+        "price": "$170",
+        "pros": "Exceptionally stable platform, highly versatile wet/dry traction (grips on wet leaves, snow, and ice), and lightweight durable design",
+        "stack": "34 / 28 mm brand",
+        "suitability": "Suits mountain runners chasing precision; does not suit runners seeking plush, soft padding",
+        "terrain": [
+          "Steep technical trails",
+          "rock"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Brooks Cascadia Elite",
+      "content": "Brooks Cascadia Elite: Outstanding underfoot PEBA bounce, superb wet/dry off-road traction, stable landing platform, and plush premium comfort Cons: Prohibitively expensive ($275), restrictive narrow toe space, and very poor toebox upper durability",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "Premium Plated Trail Ultra",
+        "brand": "Brooks",
+        "carbon_plate": "Rock plate",
+        "cons": "Prohibitively expensive ($275), restrictive narrow toe space, and very poor toebox upper durability",
+        "cushioning": "Max",
+        "drop": "11.5 mm actual (6.0 mm brand)",
+        "foam_material": "PEBA foam",
+        "foot_shape": "Narrow-fitting toebox",
+        "highlights": "Vibram Megagrip Elite, sock-like MATRYX upper",
+        "intended_use": "Long ultras & speed trail runs",
+        "lug_depth": "3.2 mm",
+        "model": "Cascadia Elite",
+        "outsole_compound": "Vibram Megagrip Elite",
+        "overview": "A premium, visually stunning off-road shoe pairing soft, responsive PEBA foam and plate protection for stable long-distance efforts",
+        "price": "$275",
+        "pros": "Outstanding underfoot PEBA bounce, superb wet/dry off-road traction, stable landing platform, and plush premium comfort",
+        "stack": "38.8 / 27.3 mm actual (40/34 mm brand)",
+        "suitability": "Suits heel strikers and ultra racers; does not suit wide feet or low-drop lovers",
+        "terrain": [
+          "Gravel",
+          "Road-to-trail"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Brooks Glycerin 23",
+      "content": "Brooks Glycerin 23: Incredible plush step-in comfort, highly dependable wet/dry road grip, premium build quality, and outstanding top-to-bottom durability Cons: Fairly heavy layout (10.7 oz actual), lacks modern bouncy energy return, and lacks a gusseted tongue at this price point",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "Ultra-Comfortable Road Daily",
+        "brand": "Brooks",
+        "carbon_plate": "No plate",
+        "cons": "Fairly heavy layout (10.7 oz actual), lacks modern bouncy energy return, and lacks a gusseted tongue at this price point",
+        "cushioning": "Max",
+        "drop": "8.2 mm actual (8.0 mm brand)",
+        "foam_material": "Soft daily training foam",
+        "foot_shape": "Medium fit (Wide/X-Wide available)",
+        "highlights": "Premium knit upper, heel lockdown counter",
+        "intended_use": "Everyday running & walking",
+        "lug_depth": "0.0 mm",
+        "model": "Glycerin 23",
+        "outsole_compound": "Reliable road rubber",
+        "overview": "A premium-built, comfortable daily road trainer designed for a highly stable, durable, and easy-going ride",
+        "price": "$175",
+        "pros": "Incredible plush step-in comfort, highly dependable wet/dry road grip, premium build quality, and outstanding top-to-bottom durability",
+        "stack": "37.2 / 29.0 mm actual (38/30 mm brand)",
+        "suitability": "Suits everyday runners, walkers, and beginners; does not suit runners seeking energetic speed",
+        "terrain": [
+          "Road"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Brooks Glycerin Max 2",
+      "content": "Brooks Glycerin Max 2: Extreme joint-protecting impact absorption, smooth forward rolling transitions, highly breathable heat-managing mesh upper, and very stable platform Cons: Highly heavy Daily layout (11.2 oz actual US M9), low midsole bounce/energy return, non-gusseted tongue, and high pricing ($200)",
+      "payload": {
+        "best_for": "Ultra-Plush Max-Cushion Road",
+        "brand": "Brooks",
+        "carbon_plate": "No plate",
+        "cons": "Highly heavy Daily layout (11.2 oz actual US M9), low midsole bounce/energy return, non-gusseted tongue, and high pricing ($200)",
+        "cushioning": "Max",
+        "drop": "8.1 mm actual (6.0 mm brand)",
+        "foam_material": "Plush daily cushion foam",
+        "foot_shape": "Medium fit",
+        "highlights": "Rocker transition geometry, massive stack",
+        "intended_use": "Recovery runs & slow daily miles",
+        "lug_depth": "0.0 mm",
+        "model": "Glycerin Max 2",
+        "outsole_compound": "Solid traction road rubber",
+        "overview": "A skyscraper-high maximalist trainer built with a towering protective cushion and rockered roll to smooth out slow efforts",
+        "price": "$200",
+        "pros": "Extreme joint-protecting impact absorption, smooth forward rolling transitions, highly breathable heat-managing mesh upper, and very stable platform",
+        "stack": "45.4 / 37.3 mm actual (45/39 mm brand)",
+        "suitability": "Suits recovery cruisers and heavy runners wanting ultimate impact protection",
+        "terrain": [
+          "Road"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Hoka Mafate 5",
+      "content": "Hoka Mafate 5: Highly stable for its tall stack, roomy anatomical fit, superb joint protection, and robust overall durability Cons: Heavy and bulky underfoot (11.1 oz lab / 11.7 oz brand), poorly designed non-gusseted tongue, and can feel too stiff",
+      "payload": {
+        "arch_support": "Neutral arch support",
+        "brand": "Hoka",
+        "carbon_plate": "No plate",
+        "cons": "Heavy and bulky underfoot (11.1 oz lab / 11.7 oz brand), poorly designed non-gusseted tongue, and can feel too stiff",
+        "cushioning": "Max cushioning",
+        "drop": "9.0 mm actual",
+        "foam_material": "Supercritical EVA (EVA)",
+        "foot_shape": "Medium roomier fit",
+        "highlights": "Vibram Traction Lugs",
+        "intended_use": "Ultra training & racing",
+        "lug_depth": "4.4 mm",
+        "model": "Mafate 5",
+        "outsole_compound": "Vibram Megagrip with asymmetric chevrons",
+        "overview": "A maximalist off-road workhorse designed to supply highly stable, cushioned comfort over long distances. It provides endless joint protection and a plush, energetic ride.",
+        "price": "$185",
+        "pros": "Highly stable for its tall stack, roomy anatomical fit, superb joint protection, and robust overall durability",
+        "stack": "42.9/33.9 mm actual",
+        "suitability": "Suits ultrarunners needing high-mileage protection, heel strikers wanting a higher drop, and heavy runners",
+        "terrain": [
+          "Versatile moderate",
+          "off-trail"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Hoka Tecton X 3",
+      "content": "Hoka Tecton X 3: World-class 69.9% energy return, exceptional underfoot impact protection, shields debris, and durable MATRYX upper (4/5 Dremel score) Cons: Extremely expensive ($275), heavier than v2 (9.7 oz lab / 10.3 oz brand), absolutely not for wide feet, and the ankle gaiter is polarizing",
+      "payload": {
+        "arch_support": "Neutral arch support",
+        "brand": "Hoka",
+        "carbon_plate": "Yes, parallel carbon plates & rocker",
+        "cons": "Extremely expensive ($275), heavier than v2 (9.7 oz lab / 10.3 oz brand), absolutely not for wide feet, and the ankle gaiter is polarizing",
+        "cushioning": "Max cushioning",
+        "drop": "6.9 mm actual",
+        "foam_material": "PEBA foam (PEBA)",
+        "foot_shape": "Narrow snug fit",
+        "highlights": "Integrated ankle gaiter, water-repellent MATRYX upper",
+        "intended_use": "Ultra racing & Spartan OCR",
+        "lug_depth": "4.0 mm",
+        "model": "Tecton X 3",
+        "outsole_compound": "Vibram Megagrip Litebase with asymmetric chevrons",
+        "overview": "An elite trail racing super shoe engineered with parallel carbon plates and bouncy super-foam for highly stable, propulsive landings. It is Jim Walmsley's signature trail weapon engineered to maintain fast legs over long courses.",
+        "price": "$275",
+        "pros": "World-class 69.9% energy return, exceptional underfoot impact protection, shields debris, and durable MATRYX upper (4/5 Dremel score)",
+        "stack": "37.8/30.9 mm actual",
+        "suitability": "Suits narrow-footed racers and performance-focused athletes",
+        "terrain": [
+          "Gravel",
+          "road-to-trail",
+          "versatile terrain"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Hoka Speedgoat 7",
+      "content": "Hoka Speedgoat 7: Responsive fresh-legs cushioning, outstanding Vibram wet/dry traction, and significantly improved upper durability Cons: Tall stack can feel clunky or disconnected on technical trails, runs slightly short (need to size up half size), and less nimble for fast short races",
+      "payload": {
+        "brand": "Hoka",
+        "carbon_plate": "No plate",
+        "cons": "Tall stack can feel clunky or disconnected on technical trails, runs slightly short (need to size up half size), and less nimble for fast short races",
+        "cushioning": "Max cushioning",
+        "drop": "5.0 mm brand",
+        "foam_material": "Supercritical EVA (EVA)",
+        "foot_shape": "Secure woven fit",
+        "highlights": "Nitrogen-infused supercritical EVA",
+        "intended_use": "All-around daily trail trainer & ultra-distance events",
+        "lug_depth": "5.0 mm with Traction Lug",
+        "model": "Speedgoat 7",
+        "outsole_compound": "Vibram Megagrip",
+        "overview": "A highly cushioned, capable mountain workhorse that combines dependable comfort with a responsive, nitro-infused midsole. It subtly refines Hoka's most popular design with a livelier feel and secure lockdown.",
+        "price": "$165",
+        "pros": "Responsive fresh-legs cushioning, outstanding Vibram wet/dry traction, and significantly improved upper durability",
+        "stack": "37.0/32.0 mm brand",
+        "suitability": "Suits thru-hikers, high-mileage mountain goers, and runners seeking impact absorption",
+        "terrain": [
+          "Rugged and technical trails",
+          "rocks and roots"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Hoka Arahi 8",
+      "content": "Hoka Arahi 8: Extremely lightweight for its size (9.1 oz lab weight), and outstanding 5/5 toebox/heel splay durability Cons: Midsole lacks supercritical foam bounce, and features very poor upper breathability (2/5)",
+      "payload": {
+        "arch_support": "Stability",
+        "best_for": "overpronators, flat feet, and beginners wanting walking versatility",
+        "brand": "Hoka",
+        "carbon_plate": "No plate",
+        "cons": "Midsole lacks supercritical foam bounce, and features very poor upper breathability (2/5)",
+        "cushioning": "Moderate (balanced) cushioning",
+        "drop": "11.3 mm actual drop (8 mm brand)",
+        "foam_material": "Traditional daily stability foam (not supercritical)",
+        "foot_shape": "Medium standard fit",
+        "highlights": "H-Frame stability system and Early-Stage Meta Rocker",
+        "intended_use": "Daily running, walking, jogging, and easy recovery miles",
+        "lug_depth": "0.0 mm lugs",
+        "model": "Arahi 8",
+        "outsole_compound": "Durable road rubber",
+        "overview": "A lightweight, comfort-first daily road shoe designed to deliver supportive, reliable stability for flat-footed or neutral runners.",
+        "price": "$150",
+        "pros": "Extremely lightweight for its size (9.1 oz lab weight), and outstanding 5/5 toebox/heel splay durability",
+        "stack": "Heel 39.4 mm / Forefoot 28.1 mm actual",
+        "suitability": "Suits overpronators, flat feet, and beginners wanting walking versatility; does not suit hot-climate runners",
+        "terrain": [
+          "Road"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Hoka Cielo X1 3.0",
+      "content": "Hoka Cielo X1 3.0: Incredible 75.3% energy return and out-of-this-world 170 SA heel shock absorption Cons: Restrictive tight fit limits toe splay, unstable ride for some, and exceptionally poor heel padding durability (1/5)",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "competitive marathoners and road ultra racers",
+        "brand": "Hoka",
+        "carbon_plate": "Yes, carbon plate & extreme rocker",
+        "cons": "Restrictive tight fit limits toe splay, unstable ride for some, and exceptionally poor heel padding durability (1/5)",
+        "cushioning": "Max cushioning",
+        "drop": "13.4 mm actual drop (7 mm brand)",
+        "foam_material": "Supercritical PEBA foam (PEBA)",
+        "foot_shape": "Narrow, tight fit and tapered toebox",
+        "highlights": "Toothed laces and extreme rocker",
+        "intended_use": "Race day (marathons) and road ultras",
+        "lug_depth": "0.0 mm lugs",
+        "model": "Cielo X1 3.0",
+        "outsole_compound": "High-grip road rubber",
+        "overview": "A towering, speed-focused racing weapon designed to deliver massive underfoot bounce and aggressive forward propulsion.",
+        "price": "$275",
+        "pros": "Incredible 75.3% energy return and out-of-this-world 170 SA heel shock absorption",
+        "stack": "Heel 44.5 mm / Forefoot 31.1 mm actual",
+        "suitability": "Suits competitive marathoners and road ultra racers; absolutely does not suit wide feet or those preferring a calm ride",
+        "terrain": [
+          "Road"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Hoka Mach 7",
+      "content": "Hoka Mach 7: Elite-level upper breathability (96 BR), exceptionally lightweight build (7.9 oz lab weight), and secure lockdown Cons: Narrow fit can pinch wide toes, ride can feel firm, and stiff heel counter may irritate Achilles",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "narrow-footed runners, heel strikers, and beginners looking for an agile one-shoe daily setup",
+        "brand": "Hoka",
+        "carbon_plate": "No plate",
+        "cons": "Narrow fit can pinch wide toes, ride can feel firm, and stiff heel counter may irritate Achilles",
+        "cushioning": "Moderate (balanced) cushioning",
+        "drop": "9.4 mm actual drop (5 mm brand)",
+        "foam_material": "Balanced daily EVA-blend (EVA)",
+        "foot_shape": "Narrow, snug fit",
+        "highlights": "Perforated insole and Early-Stage Meta Rocker",
+        "intended_use": "Daily training and tempo workouts",
+        "lug_depth": "0.0 mm lugs",
+        "model": "Mach 7",
+        "outsole_compound": "Segmented road rubber",
+        "overview": "A highly nimble, lightweight daily trainer engineered with a smooth forward-rolling rocker for versatile, fun paces.",
+        "price": "$145",
+        "pros": "Elite-level upper breathability (96 BR), exceptionally lightweight build (7.9 oz lab weight), and secure lockdown",
+        "stack": "Heel 35.6 mm / Forefoot 26.2 mm actual",
+        "suitability": "Suits narrow-footed runners, heel strikers, and beginners looking for an agile one-shoe daily setup",
+        "terrain": [
+          "Road"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Hoka Mach X 3",
+      "content": "Hoka Mach X 3: Bouncy forefoot propulsion, deep cushioning, stable ride, and fixed comfortable upper (resolves v2 flaws) Cons: Slippery non-gusseted tongue, heavy layout (9.3 oz actual), tight fit, and heel EVA block dulls energy return",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "neutral runners looking for a stable, highly rockered plated trainer to tackle tempo workouts and daily mileage",
+        "brand": "Hoka",
+        "carbon_plate": "Yes, full-length carbon plate & Meta Rocker",
+        "cons": "Slippery non-gusseted tongue, heavy layout (9.3 oz actual), tight fit, and heel EVA block dulls energy return",
+        "cushioning": "Max cushioning",
+        "drop": "9.5 mm actual drop (5 mm brand)",
+        "foam_material": "Dual-density PEBA & EVA dual foam",
+        "foot_shape": "Narrow fit",
+        "highlights": "Keeps performance and stays soft in cold weather",
+        "intended_use": "Daily running and fast tempo training",
+        "lug_depth": "0.0 mm lugs",
+        "model": "Mach X 3",
+        "outsole_compound": "Durable road rubber",
+        "overview": "A high-stack, propulsive plated trainer that balances long-run protection with snappy forefoot transitions.",
+        "price": "$190",
+        "pros": "Bouncy forefoot propulsion, deep cushioning, stable ride, and fixed comfortable upper (resolves v2 flaws)",
+        "stack": "Heel 42.9 mm / Forefoot 33.4 mm actual",
+        "suitability": "Suits neutral runners looking for a stable, highly rockered plated trainer to tackle tempo workouts and daily mileage",
+        "terrain": [
+          "Road"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Hoka Bondi 9",
+      "content": "Hoka Bondi 9: Endless protective cushioning, surprisingly stable platform for its tall stack, plush step-in comfort, and lighter build than Bondi 8 Cons: Feels heavy and clunky underfoot (10.7 oz lab weight), non-gusseted tongue, and actual drop exceeds stated",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "walkers, slow recovery runners, and runners suffering from plantar fasciitis or Achilles tightness",
+        "brand": "Hoka",
+        "carbon_plate": "No plate",
+        "cons": "Feels heavy and clunky underfoot (10.7 oz lab weight), non-gusseted tongue, and actual drop exceeds stated",
+        "cushioning": "Max cushioning (firm/stable feel)",
+        "drop": "9.1 mm actual drop (5 mm brand)",
+        "foam_material": "Supercritical EVA (EVA)",
+        "foot_shape": "Medium fit (not for wide feet)",
+        "highlights": "Supercritical EVA midsole",
+        "intended_use": "Jogging, walking, daily running, and easy recovery miles",
+        "lug_depth": "0.0 mm lugs",
+        "model": "Bondi 9",
+        "outsole_compound": "Road-specific rubber",
+        "overview": "An ultra-cushioned road daily cruiser designed to absorb heavy joint impact and supply premium comfort at slow-and-steady paces.",
+        "price": "$170",
+        "pros": "Endless protective cushioning, surprisingly stable platform for its tall stack, plush step-in comfort, and lighter build than Bondi 8",
+        "stack": "Heel 41.3 mm / Forefoot 32.2 mm actual",
+        "suitability": "Suits walkers, slow recovery runners, and runners suffering from plantar fasciitis or Achilles tightness",
+        "terrain": [
+          "Road"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Hoka Clifton 10",
+      "content": "Hoka Clifton 10: Superb joint protection, stellar 5/5 heel padding durability, spacious comfortable upper, and durable 3.6 mm thick outsole Cons: Heavy and bulky (9.7 oz actual / 9.8 oz actual US M10), non-gusseted tongue, and needs update to bouncier supercritical foam",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "heel strikers, marathoners, and runners who previously skipped Cliftons due to narrow toeboxes",
+        "brand": "Hoka",
+        "carbon_plate": "No plate",
+        "cons": "Heavy and bulky (9.7 oz actual / 9.8 oz actual US M10), non-gusseted tongue, and needs update to bouncier supercritical foam",
+        "cushioning": "Max cushioning",
+        "drop": "12.4 mm actual drop (8 mm brand)",
+        "foam_material": "Balanced daily trainer foam",
+        "foot_shape": "Medium width (roomier toebox than previous Cliftons)",
+        "highlights": "Achilles-friendly heel collar",
+        "intended_use": "Daily running, jogging, walking, and long slow miles",
+        "lug_depth": "0.0 mm lugs",
+        "model": "Clifton 10",
+        "outsole_compound": "Durable road rubber",
+        "overview": "A skyscraper-high everyday cruiser designed for reliable joint protection and comfort that feels closer to a Bondi than a classic Clifton.",
+        "price": "$150",
+        "pros": "Superb joint protection, stellar 5/5 heel padding durability, spacious comfortable upper, and durable 3.6 mm thick outsole",
+        "stack": "Heel 44.4 mm / Forefoot 32.0 mm actual",
+        "suitability": "Suits heel strikers, marathoners, and runners who previously skipped Cliftons due to narrow toeboxes",
+        "terrain": [
+          "Road"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Hoka Rocket X 3",
+      "content": "Hoka Rocket X 3: Responsive PEBA bounce, flawless 5/5 upper breathability, excellent durability for a racer, and comfortable heel/tongue Cons: Tight restrictive toebox, heavier than key competitors (7.8 oz actual weight), and clunky at slow paces",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "competitive marathon racers and heel strikers looking for high-stack speed",
+        "brand": "Hoka",
+        "carbon_plate": "Yes, full-length stiff carbon plate & rocker",
+        "cons": "Tight restrictive toebox, heavier than key competitors (7.8 oz actual weight), and clunky at slow paces",
+        "cushioning": "Max cushioning (balanced feel)",
+        "drop": "10.0 mm actual drop (7 mm brand)",
+        "foam_material": "Dual-density PEBA (PEBA)",
+        "foot_shape": "Narrow, tight tapered fit",
+        "highlights": "Dual PEBA layers",
+        "intended_use": "Competition (marathons, 5K/10K)",
+        "lug_depth": "0.0 mm lugs",
+        "model": "Rocket X 3",
+        "outsole_compound": "High-traction road rubber",
+        "overview": "A highly stable, durable road racer designed with dual PEBA layers to give heel strikers a supportive yet snappy, fast roll",
+        "price": "$250",
+        "pros": "Responsive PEBA bounce, flawless 5/5 upper breathability, excellent durability for a racer, and comfortable heel/tongue",
+        "stack": "Heel 39.6 mm / Forefoot 29.6 mm actual",
+        "suitability": "Suits competitive marathon racers and heel strikers looking for high-stack speed; does not suit runners seeking toe splay",
+        "terrain": [
+          "Road"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Kailas Fuga EX Pro",
+      "content": "Kailas Fuga EX Pro: Highly energetic and bouncy underfoot feel, outstanding wet/dry Vibram grip, and highly breathable Cons: Tight restrictive toe box, high retail price ($300), and minor upper durability concerns",
+      "payload": {
+        "arch_support": "Neutral",
+        "brand": "Kailas",
+        "carbon_plate": "Yes, X-shaped carbon-fiber plate",
+        "cons": "Tight restrictive toe box, high retail price ($300), and minor upper durability concerns",
+        "cushioning": "Max cushioning",
+        "drop": "7.2 mm actual (5 mm brand)",
+        "foam_material": "TPU foam (TPU)",
+        "foot_shape": "Narrow fit / tapered toebox",
+        "highlights": "XDiMESH thin upper, X-shaped carbon plate, and a unique dual-section lacing system",
+        "intended_use": "Trail ultras & racing",
+        "lug_depth": "3.7 mm",
+        "model": "Fuga EX Pro",
+        "outsole_compound": "Vibram Megagrip Litebase",
+        "overview": "A premium off-road racing shoe featuring an aggressive forward rocker and an X-shaped carbon plate to keep stride transitions highly efficient",
+        "price": "$300",
+        "pros": "Highly energetic and bouncy underfoot feel, outstanding wet/dry Vibram grip, and highly breathable",
+        "stack": "37.9/30.7 mm actual",
+        "suitability": "Suits heel strikers wanting carbon rolling drive and runners with deep pockets; does not suit wide-footed runners",
+        "terrain": [
+          "Gravel",
+          "road-to-trail",
+          "moderate trails"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Kailas Fuga EX330",
+      "content": "Kailas Fuga EX330: Exceptional impact absorption, excellent breathable airflow, and secure, accommodating lock Cons: Relatively heavy daily layout (10.1 oz for US M8.5)",
+      "payload": {
+        "brand": "Kailas",
+        "cons": "Relatively heavy daily layout (10.1 oz for US M8.5)",
+        "cushioning": "Max cushioning",
+        "drop": "5 mm",
+        "foam_material": "Supercritical foam",
+        "foot_shape": "Roomy toebox with a narrow heel & midfoot hold",
+        "highlights": "Thin, single-layer XDiMESH upper and a Salomon-esque two-section quick-lace system",
+        "intended_use": "Technical ultras",
+        "model": "Fuga EX330",
+        "outsole_compound": "Vibram Megagrip",
+        "overview": "A heavily beefed-up off-road cruiser designed to behave like an energetic, highly protective super trainer for long trail days",
+        "price": "$200",
+        "pros": "Exceptional impact absorption, excellent breathable airflow, and secure, accommodating lock",
+        "stack": "39/34 mm",
+        "suitability": "Suits non-heel strikers looking for maximum protection and aggressive outsole response; not for weight-conscious trail racers",
+        "terrain": [
+          "Technical singletrack",
+          "dirt",
+          "gravel"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Mount to Coast H1",
+      "content": "Mount to Coast H1: Exceptionally lightweight (8.8 oz actual US M9), stable, bouncy supercritical CircleCell response, and great hybrid traction Cons: Restrictive tapered toe box, thin outsole might limit overall lifespan, and suspect upper mesh durability",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "heavy runners and multi-surface transitioners",
+        "brand": "Mount to Coast",
+        "carbon_plate": "No plate",
+        "cons": "Restrictive tapered toe box, thin outsole might limit overall lifespan, and suspect upper mesh durability",
+        "cushioning": "Balanced cushioning",
+        "drop": "8.1 mm actual (6 mm brand)",
+        "foam_material": "CircleCell (supercritical foam)",
+        "foot_shape": "Narrow toe box / Medium fit",
+        "highlights": "Zonal TunedFit lacing",
+        "intended_use": "Road-to-trail daily running",
+        "lug_depth": "1.9 mm",
+        "model": "H1",
+        "outsole_compound": "CPU Versagrip outsole",
+        "overview": "A smooth, bouncy, and exceptionally lightweight multi-surface hybrid designed to confidently transition from roads to gravel paths",
+        "price": "$160",
+        "pros": "Exceptionally lightweight (8.8 oz actual US M9), stable, bouncy supercritical CircleCell response, and great hybrid traction",
+        "stack": "34.5/26.4 mm actual",
+        "suitability": "heavy runners and multi-surface transitioners; does not suit runners needing standard toe box splay",
+        "terrain": [
+          "Gravel",
+          "road",
+          "light trails"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Mount to Coast T1",
+      "content": "Mount to Coast T1: Incredible durability from Kevlar fibers, outstanding wet/dry Vibram trail grip, breathable, and highly comfortable standard fit Cons: Finicky TunedFit pull-cord lacing system can be highly complicated to dial in on changing terrain",
+      "payload": {
+        "best_for": "trail ultra-marathoners and average-to-high-volume feet",
+        "brand": "Mount to Coast",
+        "carbon_plate": "No plate",
+        "cons": "Finicky TunedFit pull-cord lacing system can be highly complicated to dial in on changing terrain",
+        "cushioning": "Soft, structured cushioning",
+        "drop": "4 mm brand",
+        "foam_material": "Lightcell foam",
+        "foot_shape": "Standard fit with roomy/relaxed toe splay",
+        "highlights": "TunedFit dual lacing system, Kevlar-reinforced mesh upper",
+        "intended_use": "Daily trail and ultra races",
+        "model": "T1",
+        "outsole_compound": "Vibram Megagrip Litebase",
+        "overview": "A high-end, extremely durable off-road option featuring mild rocker geometry and protective cushioning engineered specifically to conquer ultra distances",
+        "price": "$180",
+        "pros": "Incredible durability from Kevlar fibers, outstanding wet/dry Vibram trail grip, breathable, and highly comfortable standard fit",
+        "stack": "36/32 mm brand",
+        "suitability": "trail ultra-marathoners and average-to-high-volume feet",
+        "terrain": [
+          "Trails",
+          "rocky singletrack"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Mount to Coast C1",
+      "content": "Mount to Coast C1: Exceptionally comfortable/breathable upper, highly stable base, suitable weight for stack (9.4 oz actual), and accommodating custom lacing adjustability Cons: Ride is relatively firm for its skyscraper height, lacks high-energy energetic pop, and dual lacing system is polarizing",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "mid-to-forefoot strikers and long-distance road runners preferring structured stability",
+        "brand": "Mount to Coast",
+        "carbon_plate": "No plate",
+        "cons": "Ride is relatively firm for its skyscraper height, lacks high-energy energetic pop, and dual lacing system is polarizing",
+        "cushioning": "Max cushioning (firm/stable feel)",
+        "drop": "7.5 mm actual (6 mm brand)",
+        "foam_material": "Dual-density CircleCell & rubberized EVA",
+        "foot_shape": "Accommodating medium fit on wide platform",
+        "highlights": "Extra forefoot CircleCell, TunedFit dual lacing",
+        "intended_use": "Long daily runs",
+        "lug_depth": "0 mm",
+        "model": "C1",
+        "outsole_compound": "Road rubber",
+        "overview": "A skyscraper-high max-stack road daily trainer engineered to offer high platform stability and structured joint protection over long miles",
+        "price": "$180",
+        "pros": "Exceptionally comfortable/breathable upper, highly stable base, suitable weight for stack (9.4 oz actual), and accommodating custom lacing adjustability",
+        "stack": "40.7/33.2 mm actual",
+        "suitability": "mid-to-forefoot strikers and long-distance road runners preferring structured stability",
+        "terrain": [
+          "Road",
+          "treadmill"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "NNormal Kjerag 02",
+      "content": "NNormal Kjerag 02: Incredible ground feel/sensitivity, extremely lightweight (9.11 oz), fluid turnover, excellent dry rock grip, and highly durable (lasts 800+ miles). Cons: ",
+      "payload": {
+        "brand": "NNormal",
+        "model": "Kjerag 02",
+        "overview": "An ultralight precision tool with ultralight cushioning and a narrow midfoot/snug fit, intended for fast technical trail races on technical, rocky, dry hardpack terrain.",
+        "price": "$215",
+        "pros": "Incredible ground feel/sensitivity, extremely lightweight (9.11 oz), fluid turnover, excellent dry rock grip, and highly durable (lasts 800+ miles).",
+        "suitability": "Suits midfoot/forefoot strikers with narrow-to-normal feet; does not suit heel strikers, wide feet, or mud/snow running.",
+        "terrain": [
+          "Technical",
+          "rocky",
+          "dry hardpack"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "NNormal Tomir 2.0",
+      "content": "NNormal Tomir 2.0: Extremely versatile midsole, exceptional durability, and incredible traction in slick, subpar trail conditions. Cons: ",
+      "payload": {
+        "brand": "NNormal",
+        "model": "Tomir 2.0",
+        "overview": "A highly versatile and durable mountain training partner with springy yet firm cushioning and a loose midfoot fit, intended for everyday trail training on technical ridgelines to road.",
+        "price": "$180",
+        "pros": "Extremely versatile midsole, exceptional durability, and incredible traction in slick, subpar trail conditions.",
+        "suitability": "Suits runners wanting a durable everyday trainer with outstanding traction on dicey terrain; does not suit those needing steep downhill foot security.",
+        "terrain": [
+          "Technical ridgelines",
+          "road"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "NNormal Cadi",
+      "content": "NNormal Cadi: Highly dependable comfort, outstanding women's specific fit, great traction/rock protection, and versatile \"mountain-to-road\" transition. Cons: ",
+      "payload": {
+        "brand": "NNormal",
+        "model": "Cadi",
+        "overview": "NNormal's most cushioned shoe to date, offering a mellowed-out, dependable ride with max/moderate cushioning and an accommodating generous fit, intended for everyday training and ultra races on smooth to rolling trails, gravel, road, and hikes.",
+        "price": "$175",
+        "pros": "Highly dependable comfort, outstanding women's specific fit, great traction/rock protection, and versatile \"mountain-to-road\" transition.",
+        "suitability": "Suits all experience levels and ultra-marathoners wanting versatile comfort; excellent option for a true \"one-shoe quiver\".",
+        "terrain": [
+          "Smooth trails",
+          "rolling trails",
+          "gravel",
+          "road",
+          "hikes"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "New Balance Ellipse",
+      "content": "New Balance Ellipse: Excellent step-in comfort, high flexibility, well-balanced upper fit, and a highly agile ride Cons: Limited stability and foam significantly hardens in cold weather",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "Comfort-driven daily road runs and easy walking",
+        "brand": "New Balance",
+        "carbon_plate": "No plate",
+        "cons": "Limited stability and foam significantly hardens in cold weather",
+        "cushioning": "Soft/Max cushioning",
+        "drop": "9.5 mm actual",
+        "foam_material": "Fresh Foam X (Soft EVA-based)",
+        "foot_shape": "Medium fit",
+        "intended_use": "comfortable daily runs and daily walking",
+        "lug_depth": "0.0 mm",
+        "model": "Ellipse",
+        "outsole_compound": "Road rubber",
+        "overview": "A deliciously soft and cozy daily trainer with smooth heel rocker transition and a premium lifestyle look.",
+        "price": "$140 - $145",
+        "pros": "Excellent step-in comfort, high flexibility, well-balanced upper fit, and a highly agile ride",
+        "stack": "36.9/27.4 mm actual",
+        "suitability": "Beginners and walkers",
+        "terrain": [
+          "Road",
+          "Treadmill"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "New Balance FuelCell Rebel v5",
+      "content": "New Balance FuelCell Rebel v5: Very lightweight feel (7.8 oz actual US M9), highly flexible, and its Fantomfit upper provides secure and comfortable lockdown Cons: Weak toebox durability, and foam may flatten or become dead quickly for heavy runners (clydesdales)",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "Fast speed intervals, daily training, and high-tempo miles",
+        "brand": "New Balance",
+        "carbon_plate": "No plate/rods",
+        "cons": "Weak toebox durability, and foam may flatten or become dead quickly for heavy runners (clydesdales)",
+        "cushioning": "Soft cushioning (high shock absorption)",
+        "drop": "6.3 mm actual",
+        "foam_material": "PEBA-blended FuelCell (PEBA-blended)",
+        "intended_use": "daily road running, tempo workouts, and budget race days",
+        "lug_depth": "0.0 mm",
+        "model": "FuelCell Rebel v5",
+        "outsole_compound": "High-traction road rubber",
+        "overview": "An exceptionally lightweight, highly flexible road trainer that provides steady and reliable comfort with the bounciness of modern supercritical foam.",
+        "price": "$140",
+        "pros": "Very lightweight feel (7.8 oz actual US M9), highly flexible, and its Fantomfit upper provides secure and comfortable lockdown",
+        "stack": "33.0/26.7 mm actual",
+        "suitability": "Neutral/leanish runners seeking plate-free versatility",
+        "terrain": [
+          "Road"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Nike Alphafly 3",
+      "content": "Nike Alphafly 3: Exceptionally lightweight (7.1 oz actual), best-in-class breathability, massive underfoot energy return, and smooth transitions. Cons: Glued-down non-removable insole, polarizing arch shape, potential heel/outsole durability issues for heel strikers.",
+      "payload": {
+        "arch_support": "Neutral arch support",
+        "best_for": "Elite marathoners and competitive runners chasing personal records",
+        "brand": "Nike",
+        "carbon_plate": "Yes, carbon-fiber Flyplate",
+        "cons": "Glued-down non-removable insole, polarizing arch shape, potential heel/outsole durability issues for heel strikers.",
+        "cushioning": "Max cushioning",
+        "drop": "8.5 mm actual (8.0 mm brand)",
+        "foam_material": "ZoomX (PEBA) paired with Air Pods",
+        "foot_shape": "Standard fit width",
+        "highlights": "Forefoot Air Zoom Pods and Atomknit 3.0 upper.",
+        "intended_use": "Race day (marathons, 5K/10K, half-marathons)",
+        "lug_depth": "Road (0 mm)",
+        "model": "Alphafly 3",
+        "outsole_compound": "Fast Shot outsole with high-abrasion rubber",
+        "overview": "A towering, featherlight road racing weapon designed to deliver explosive bounce and maximum forward rolling efficiency.",
+        "price": "$285",
+        "pros": "Exceptionally lightweight (7.1 oz actual), best-in-class breathability, massive underfoot energy return, and smooth transitions.",
+        "stack": "38.1/29.6 mm actual (40.0/32.0 mm brand)",
+        "suitability": "Suits elite marathoners and competitive runners chasing personal records; does not suit heavy heel strikers who wear out exposed outsole rubber quickly.",
+        "terrain": [
+          "Road"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Nike Vaporfly 4",
+      "content": "Nike Vaporfly 4: Incredibly bouncy underfoot ride, extremely lightweight build (5.9 oz US M9 actual), and great upper breathability. Cons: Less ideal for full marathon racing than predecessor models, narrow midfoot/heel limits stability, and poor outsole durability.",
+      "payload": {
+        "arch_support": "Neutral arch support",
+        "best_for": "Neutral forefoot strikers seeking a lightweight, highly bouncy racing platform",
+        "brand": "Nike",
+        "carbon_plate": "Yes, carbon-fiber Flyplate",
+        "cons": "Less ideal for full marathon racing than predecessor models, narrow midfoot/heel limits stability, and poor outsole durability.",
+        "cushioning": "Max cushioning",
+        "drop": "8.6 mm actual (6.0 mm brand)",
+        "foam_material": "ZoomX (PEBA)",
+        "foot_shape": "Narrow fit",
+        "highlights": "Perforated removable insole and carbon Flyplate.",
+        "intended_use": "Road competition (5K, 10K, half-marathon)",
+        "lug_depth": "Road (0 mm)",
+        "model": "Vaporfly 4",
+        "outsole_compound": "Fast Shot rubber",
+        "overview": "A razor-sharp, spring-loaded competition flat designed for high-speed road efforts and tempo intervals.",
+        "price": "$260",
+        "pros": "Incredibly bouncy underfoot ride, extremely lightweight build (5.9 oz US M9 actual), and great upper breathability.",
+        "stack": "34.1/25.5 mm actual (35.0/29.0 mm brand)",
+        "suitability": "Suits neutral forefoot strikers seeking a lightweight, highly bouncy racing platform; does not suit runners seeking high landing stability.",
+        "terrain": [
+          "Road"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Nike Zoom Fly 6",
+      "content": "Nike Zoom Fly 6: Versatile performance across all paces, outstanding outsole durability, comfortable upper, and reasonable weight (8.7 oz lab). Cons: Restrictive toebox width, SR-02 carrier foam lacks energetic bounce, and can feel unstable on uneven surfaces.",
+      "payload": {
+        "arch_support": "Neutral arch support",
+        "best_for": "Neutral runners seeking a durable, plated daily trainer for tempo paces",
+        "brand": "Nike",
+        "carbon_plate": "Yes, carbon Flyplate",
+        "cons": "Restrictive toebox width, SR-02 carrier foam lacks energetic bounce, and can feel unstable on uneven surfaces.",
+        "cushioning": "Max cushioning",
+        "drop": "9.6 mm actual (8.0 mm brand)",
+        "foam_material": "ZoomX (PEBA) & SR-02 (EVA) dual-density midsole",
+        "foot_shape": "Narrow fit and restrictive toebox",
+        "highlights": "PEBA ZoomX core encapsulated in protective SR-02 foam.",
+        "intended_use": "Tempo workouts and marathon training",
+        "lug_depth": "Road (0 mm)",
+        "model": "Zoom Fly 6",
+        "outsole_compound": "High-durability road rubber",
+        "overview": "A versatile, performance-ready super trainer that bridges daily mileage with carbon-plated speed.",
+        "price": "$170",
+        "pros": "Versatile performance across all paces, outstanding outsole durability, comfortable upper, and reasonable weight (8.7 oz lab).",
+        "stack": "39.7/30.1 mm actual (40.0/32.0 mm brand)",
+        "suitability": "Suits neutral runners seeking a durable, plated daily trainer for tempo paces; does not suit runners who need roomy toe splay.",
+        "terrain": [
+          "Road"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Nike ACG Ultrafly Trail",
+      "content": "Nike ACG Ultrafly Trail: Incredible energy return, outstanding wet/dry outsole traction, roomy fit, and excellent cold-weather performance. Cons: High retail price, steep actual drop (10.7 mm), lacks airflow in hot weather, and shallow 3 mm lugs limit mud versatility.",
+      "payload": {
+        "arch_support": "Neutral arch support",
+        "best_for": "Trail racers looking for maximum energy return and underfoot protection",
+        "brand": "Nike",
+        "carbon_plate": "Yes, carbon Flyplate",
+        "cons": "High retail price, steep actual drop (10.7 mm), lacks airflow in hot weather, and shallow 3 mm lugs limit mud versatility.",
+        "cushioning": "Max (plush) cushioning",
+        "drop": "10.7 mm actual (8.5 mm brand)",
+        "foam_material": "ZoomX (PEBA) wrapped in fabric protective shell",
+        "foot_shape": "Medium fit with wide toebox",
+        "highlights": "Protective fabric midsole wrapper.",
+        "intended_use": "Trail ultra racing",
+        "lug_depth": "3.0 mm",
+        "model": "ACG Ultrafly Trail",
+        "outsole_compound": "Vibram Megagrip",
+        "overview": "A highly cushioned off-road racer pairing soft ZoomX foam and a carbon plate to maintain fast legs over long trail courses.",
+        "price": "$260",
+        "pros": "Incredible energy return, outstanding wet/dry outsole traction, roomy fit, and excellent cold-weather performance.",
+        "stack": "38.1/27.4 mm actual (38.0/29.5 mm brand)",
+        "suitability": "Suits trail racers looking for maximum energy return and underfoot protection; does not suit runners looking for nimble ground feel.",
+        "terrain": [
+          "Gravel",
+          "dry trails"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Nike ACG Pegasus Trail",
+      "content": "Nike ACG Pegasus Trail: Excellent door-to-trail versatility, durable outsole rubber, dependable landing shock absorption, and practical travel utility. Cons: Very bad toebox mesh durability, runs warm, minor price bump, and lacks premium energy return.",
+      "payload": {
+        "arch_support": "Neutral arch support",
+        "best_for": "Beginners, recreational joggers, and travelers seeking a single versatile hybrid",
+        "brand": "Nike",
+        "carbon_plate": "No plate/rods",
+        "cons": "Very bad toebox mesh durability, runs warm, minor price bump, and lacks premium energy return.",
+        "cushioning": "Moderate (soft) cushioning",
+        "drop": "8.5 mm actual (8.0 mm brand)",
+        "foam_material": "Plush daily cushioning foam",
+        "foot_shape": "Medium fit (roomier than older versions)",
+        "highlights": "Highly padded comfortable tongue.",
+        "intended_use": "Door-to-trail hybrid daily miles",
+        "lug_depth": "3.1 mm",
+        "model": "ACG Pegasus Trail",
+        "outsole_compound": "Durable trail rubber",
+        "overview": "A comfortable road-to-trail transition cruiser engineered for versatility and travel convenience.",
+        "price": "$155",
+        "pros": "Excellent door-to-trail versatility, durable outsole rubber, dependable landing shock absorption, and practical travel utility.",
+        "stack": "34.1/25.6 mm actual (35.0/27.0 mm brand)",
+        "suitability": "Suits beginners, recreational joggers, and travelers seeking a single versatile hybrid; does not suit runners wanting a high-energy supercritical ride.",
+        "terrain": [
+          "Road-to-trail",
+          "gravel",
+          "light dirt paths"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Nike ACG Zegama Trail",
+      "content": "Nike ACG Zegama Trail: Excellent wet/dry off-road traction, highly protective ZoomX-guided ride, and improved upper/heel lockdown security. Cons: Bulky and heavy build (11.8 oz US M10 / 9.6 oz US W8), ankle bootie can rub skin (tall socks recommended), and toebox fit is excessively wide.",
+      "payload": {
+        "best_for": "Wide-footed trail runners seeking robust underfoot joint protection",
+        "brand": "Nike",
+        "carbon_plate": "No plate",
+        "cons": "Bulky and heavy build (11.8 oz US M10 / 9.6 oz US W8), ankle bootie can rub skin (tall socks recommended), and toebox fit is excessively wide.",
+        "cushioning": "Max cushioning",
+        "drop": "4 mm brand",
+        "foam_material": "ZoomX (PEBA) top layer & Cushlon 3.0 (EVA) bottom carrier",
+        "foot_shape": "Wide fit (far too wide toebox)",
+        "highlights": "Dual-density ZoomX and Cushlon hybrid midsole.",
+        "intended_use": "Long-distance trail runs and ultra racing",
+        "model": "ACG Zegama Trail",
+        "outsole_compound": "Vibram Megagrip with Traction Lug",
+        "overview": "A maximalist trail workhorse designed to supply highly stable, cushioned comfort over technical terrains.",
+        "price": "$180",
+        "pros": "Excellent wet/dry off-road traction, highly protective ZoomX-guided ride, and improved upper/heel lockdown security.",
+        "stack": "38 mm heel / 34 mm forefoot brand",
+        "suitability": "Suits wide-footed trail runners seeking robust underfoot joint protection; does not suit narrow feet or those wanting an agile, minimal trail feel.",
+        "terrain": [
+          "Rocky singletrack",
+          "technical trails"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Nike Pegasus 42",
+      "content": "Nike Pegasus 42: Outstanding outsole longevity, exceptionally soft and comfortable upper mesh, stable landing platform, and solid overall build. Cons: Feels heavy (10.1 oz actual), lacks forefoot shock absorption, lacks energetic rebound, and features a very steep 14 mm actual drop.",
+      "payload": {
+        "arch_support": "Neutral arch support",
+        "best_for": "Beginners, walkers, and heel strikers needing a stable platform",
+        "brand": "Nike",
+        "carbon_plate": "No plate/rods",
+        "cons": "Feels heavy (10.1 oz actual), lacks forefoot shock absorption, lacks energetic rebound, and features a very steep 14 mm actual drop.",
+        "cushioning": "Moderate cushioning",
+        "drop": "14.0 mm actual (10.0 mm brand)",
+        "foam_material": "ReactX daily foam",
+        "foot_shape": "Medium fit (roomier than Peg 41)",
+        "highlights": "Air Zoom units and upgraded ReactX foam.",
+        "intended_use": "Everyday road runs and daily walking",
+        "lug_depth": "Road (0 mm)",
+        "model": "Pegasus 42",
+        "outsole_compound": "High-longevity road rubber",
+        "overview": "A dependable, traditional daily cruiser designed for stable road comfort and everyday versatility.",
+        "price": "$145",
+        "pros": "Outstanding outsole longevity, exceptionally soft and comfortable upper mesh, stable landing platform, and solid overall build.",
+        "stack": "36.0/22.0 mm actual (37.0/27.0 mm brand)",
+        "suitability": "Suits beginners, walkers, and heel strikers needing a stable platform; does not suit runners seeking responsive, bouncy performance.",
+        "terrain": [
+          "Road"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Nike Vomero Plus",
+      "content": "Nike Vomero Plus: Energetic underfoot bounce, outstanding heel and forefoot shock absorption, stable heel counter, and resists cold well. Cons: Heavier than expected (10.2 oz actual), narrow fit can squeeze wide feet, non-gusseted tongue, and road grip needs improvement.",
+      "payload": {
+        "arch_support": "Neutral arch support",
+        "best_for": "Neutral recovery runners seeking deep underfoot shock absorption",
+        "brand": "Nike",
+        "carbon_plate": "No plate/rods",
+        "cons": "Heavier than expected (10.2 oz actual), narrow fit can squeeze wide feet, non-gusseted tongue, and road grip needs improvement.",
+        "cushioning": "Max cushioning",
+        "drop": "9.6 mm actual (10.0 mm brand)",
+        "foam_material": "Training-friendly, durability-boosted ZoomX (PEBA variant)",
+        "foot_shape": "Snug fit with narrow toebox",
+        "highlights": "Full training ZoomX midsole.",
+        "intended_use": "Road daily runs and slow recovery paces",
+        "lug_depth": "Road (0 mm)",
+        "model": "Vomero Plus",
+        "outsole_compound": "Moderate traction road rubber",
+        "overview": "A true max-stack cruiser providing soft, protective underfoot bounce for effortless recovery miles.",
+        "price": "$180",
+        "pros": "Energetic underfoot bounce, outstanding heel and forefoot shock absorption, stable heel counter, and resists cold well.",
+        "stack": "42.3/32.7 mm actual (45.0/35.0 mm brand)",
+        "suitability": "Suits neutral recovery runners seeking deep underfoot shock absorption; does not suit wide-footed runners.",
+        "terrain": [
+          "Road"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Nike Vomero 18",
+      "content": "Nike Vomero 18: Incredible step-in comfort, outstanding heel shock absorption (147 SA), surprisingly stable for its stack, and retail price drop. Cons: Heavy daily layout (10.5 oz actual / 11.5 oz M11.5), narrow toebox limits toe splay, lacks fast-paced agility, and steep actual drop.",
+      "payload": {
+        "arch_support": "Neutral arch support",
+        "best_for": "Slow-paced recovery runners and heel strikers desiring maximum underfoot softness",
+        "brand": "Nike",
+        "carbon_plate": "No plate/rods",
+        "cons": "Heavy daily layout (10.5 oz actual / 11.5 oz M11.5), narrow toebox limits toe splay, lacks fast-paced agility, and steep actual drop.",
+        "cushioning": "Max cushioning",
+        "drop": "13.9 mm actual (10.0 mm brand)",
+        "foam_material": "Durability-boosted training ZoomX (PEBA variant)",
+        "foot_shape": "Medium fit with narrow toebox",
+        "highlights": "First true max-stack design in the Vomero series.",
+        "intended_use": "Slow-paced recovery runs and walking",
+        "lug_depth": "Road (0 mm)",
+        "model": "Vomero 18",
+        "outsole_compound": "Durable road rubber",
+        "overview": "An ultra-plush, maximalist recovery shoe designed to deliver highly protective step-in luxury on easy days.",
+        "price": "$150",
+        "pros": "Incredible step-in comfort, outstanding heel shock absorption (147 SA), surprisingly stable for its stack, and retail price drop.",
+        "stack": "42.5/28.6 mm actual (45.0/35.0 mm brand)",
+        "suitability": "Suits slow-paced recovery runners and heel strikers desiring maximum underfoot softness; does not suit runners seeking snappy speed.",
+        "terrain": [
+          "Road"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Norda 001A",
+      "content": "Norda 001A:  Cons: ",
+      "payload": {
+        "brand": "Norda",
+        "model": "001A",
+        "overview": "A premium, highly durable all-terrain trail runner designed with a refined, elastic-free upper and a bouncy, resilient foam midsole that doesn't collapse over time",
+        "price": "$295",
+        "stack": "26/21 mm stack",
+        "suitability": "Suits trail runners wanting top-tier material longevity",
+        "terrain": [
+          "Rugged trails",
+          "all-terrain adventures"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Norda 005",
+      "content": "Norda 005:  Cons: ",
+      "payload": {
+        "brand": "Norda",
+        "model": "005",
+        "overview": "A next-generation, next-to-nothing off-road racing shoe built to establish high-end super-foam energy return and stability on a featherlight chassis",
+        "price": "$325",
+        "stack": "32.5/25.5 mm stack",
+        "suitability": "Suits performance trail racers",
+        "terrain": [
+          "Smoother singletrack",
+          "gravel roads",
+          "mixed trails"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "On Cloudboom Strike",
+      "content": "On Cloudboom Strike: Exceptional energy return (72.1%), outstanding shock absorption, and very lightweight chassis (7.1 oz actual) Cons: Polarizing heel security/slippage, limited landing stability, and high retail price ($280)",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "competitive runners and forefoot strikers",
+        "brand": "On",
+        "carbon_plate": "Yes, carbon Speedboard",
+        "cons": "Polarizing heel security/slippage, limited landing stability, and high retail price ($280)",
+        "cushioning": "Max cushioning",
+        "drop": "3.2 mm actual drop (4 mm brand)",
+        "foam_material": "Helion HF (Pebax)",
+        "foot_shape": "Medium fit (roomier than older models)",
+        "highlights": "Drop-in Pebax midsole construct",
+        "intended_use": "Race day (5K to Marathon)",
+        "model": "Cloudboom Strike",
+        "outsole_compound": "Mission Grip",
+        "overview": "An innovative, exceptionally bouncy road racing shoe designed to maximize forward rolling efficiency",
+        "price": "$280",
+        "pros": "Exceptional energy return (72.1%), outstanding shock absorption, and very lightweight chassis (7.1 oz actual)",
+        "stack": "38.1/34.9 mm actual",
+        "suitability": "not suitable for heel strikers",
+        "terrain": [
+          "Road"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "On Cloudmonster 3 Hyper",
+      "content": "On Cloudmonster 3 Hyper: Amazing step-in comfort, excellent upper/outsole durability, stable wide platform, and improved energy return Cons: Slightly heavy (9.3 oz actual), limited breathability (runs warm), and expensive ($220)",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "heavy runners and neutral runners wanting high-stack muscle protection",
+        "brand": "On",
+        "carbon_plate": "No plate",
+        "cons": "Slightly heavy (9.3 oz actual), limited breathability (runs warm), and expensive ($220)",
+        "cushioning": "Max cushioning",
+        "drop": "9.2 mm actual drop (6 mm brand)",
+        "foam_material": "Dual-density Helion HF & secondary foam",
+        "foot_shape": "Medium fit",
+        "intended_use": "Daily training & tempos",
+        "model": "Cloudmonster 3 Hyper",
+        "outsole_compound": "Road rubber",
+        "overview": "A towering daily trainer that brings premium super-foam energy return to high-mileage runs with a highly stable chassis",
+        "price": "$220",
+        "pros": "Amazing step-in comfort, excellent upper/outsole durability, stable wide platform, and improved energy return",
+        "stack": "43.4/34.2 mm actual",
+        "terrain": [
+          "Road"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "On Cloudmonster 3",
+      "content": "On Cloudmonster 3: Updated three-layer CloudTec system, premium build, 360-degree reflective details, and stable wide landing platform Cons: Fairly heavy layout (10.6 oz actual), firm rigid ride, and subpar upper breathability",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "heavier runners desiring highly stable joint protection and walking versatility",
+        "brand": "On",
+        "carbon_plate": "Yes, TPU Speedboard",
+        "cons": "Fairly heavy layout (10.6 oz actual), firm rigid ride, and subpar upper breathability",
+        "cushioning": "Max cushioning",
+        "drop": "6.4 mm actual drop (6 mm brand)",
+        "foam_material": "Helion foam",
+        "foot_shape": "Medium to Wide fit",
+        "intended_use": "Daily training",
+        "model": "Cloudmonster 3",
+        "outsole_compound": "Durable road rubber",
+        "overview": "A chunky, highly rockered cruiser designed to absorb heavy landing shock and roll smoothly at slow paces",
+        "price": "$190",
+        "pros": "Updated three-layer CloudTec system, premium build, 360-degree reflective details, and stable wide landing platform",
+        "stack": "38.6/32.2 mm actual",
+        "terrain": [
+          "Road"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "On Cloudultra 3",
+      "content": "On Cloudultra 3: Outstanding upper ventilation, premium custom lockdown, and excellent ground-connection stability Cons: Midsole may feel too firm or rigid to runners who prefer modern, mushy trail cushioning",
+      "payload": {
+        "best_for": "trail runners seeking a stable, firm underfoot footprint that stays fresh over long distances",
+        "brand": "On",
+        "carbon_plate": "No plate",
+        "cons": "Midsole may feel too firm or rigid to runners who prefer modern, mushy trail cushioning",
+        "cushioning": "Moderate/Firm cushioning",
+        "drop": "5.5 mm drop",
+        "foam_material": "Helion HF dual foam",
+        "intended_use": "Long-distance trail runs",
+        "model": "Cloudultra 3",
+        "outsole_compound": "Missiongrip",
+        "overview": "A highly breathable trail companion that balances supportive ground feel with a slightly firmer, stable ride",
+        "price": "$190",
+        "pros": "Outstanding upper ventilation, premium custom lockdown, and excellent ground-connection stability",
+        "stack": "32.0/26.5 mm",
+        "terrain": [
+          "Trail"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "On Cloudultra Pro",
+      "content": "On Cloudultra Pro: Exceptional bouncy energy return, top-class shock absorption, lightweight build (9.3 oz actual), and debris-defending collar Cons: High price ($260), potential heel security/lacing adjustment quirks, and reduced lateral stability on extreme technical terrain",
+      "payload": {
+        "best_for": "ultra-marathon trail racers chasing speed without losing underfoot joint protection",
+        "brand": "On",
+        "carbon_plate": "Yes, propulsion Speedboard",
+        "cons": "High price ($260), potential heel security/lacing adjustment quirks, and reduced lateral stability on extreme technical terrain",
+        "cushioning": "Max cushioning",
+        "drop": "6 mm drop",
+        "foam_material": "Helion HF (supple Pebax-based superfoam)",
+        "foot_shape": "Roomy, accommodating fit",
+        "intended_use": "Long trail runs & ultra racing",
+        "model": "Cloudultra Pro",
+        "outsole_compound": "Missiongrip",
+        "overview": "An elite off-road weapon designed to deliver smooth, effortless transitions and maximum leg savings over long trail miles",
+        "price": "$260",
+        "pros": "Exceptional bouncy energy return, top-class shock absorption, lightweight build (9.3 oz actual), and debris-defending collar",
+        "stack": "38.5/32.5 mm",
+        "terrain": [
+          "Trail"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Puma Deviate Nitro 4",
+      "content": "Puma Deviate Nitro 4: Refreshed breathable upper mesh, comfy padded collar/heel, secure lockdown, and soft step-in feel with a fast responsive roll Cons: Refreshed mesh upper has bad toebox durability, and heel padding durability is bad in lab testing",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "daily runners wanting a plated all-rounder",
+        "brand": "Puma",
+        "carbon_plate": "Yes, carbon PWRPlate",
+        "cons": "Refreshed mesh upper has bad toebox durability, and heel padding durability is bad in lab testing",
+        "cushioning": "Moderate cushioning",
+        "drop": "7.0 mm actual (8 mm brand)",
+        "foam_material": "Dual-density Nitrofoam (100% PEBAX top / PEBA-blend bottom)",
+        "foot_shape": "Medium fit (Narrow toebox)",
+        "highlights": "PWRPlate & dual-density Nitrofoam",
+        "intended_use": "Daily training & uptempo",
+        "model": "Deviate Nitro 4",
+        "outsole_compound": "Pumagrip",
+        "overview": "A reliable daily workhorse with a slightly wider, softer step-in fit that maintains a highly responsive, snappy plated transition",
+        "price": "$180",
+        "pros": "Refreshed breathable upper mesh, comfy padded collar/heel, secure lockdown, and soft step-in feel with a fast responsive roll",
+        "stack": "33.6/26.6 mm actual (38/30 mm brand)",
+        "suitability": "Suits daily runners wanting a plated all-rounder; does not suit wide-footed runners",
+        "terrain": [
+          "Road"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Puma Deviate Nitro Elite 4",
+      "content": "Puma Deviate Nitro Elite 4: Extremely bouncy and fast, exceptionally lightweight (6.5 oz US M10.5 / 5 oz W7.5), and highly secure, breathable Ultraweave upper Cons: Outsole rubber is unjustifiably thin and shows serious wear on the heels quickly (unlikely to last over 50 miles)",
+      "payload": {
+        "best_for": "competitive marathon racers",
+        "brand": "Puma",
+        "carbon_plate": "Yes, carbon PWRPLATE",
+        "cons": "Outsole rubber is unjustifiably thin and shows serious wear on the heels quickly (unlikely to last over 50 miles)",
+        "cushioning": "Max cushioning",
+        "drop": "8 mm brand",
+        "foam_material": "Updated ATPU Nitrofoam (aliphatic TPU)",
+        "foot_shape": "Race day fit",
+        "highlights": "ATPU Nitrofoam & carbon fiber PWRPLATE",
+        "intended_use": "Race day up to a marathon",
+        "model": "Deviate Nitro Elite 4",
+        "outsole_compound": "Pumagrip",
+        "overview": "Possibly the best road racing shoe ever created by Puma, combining luxurious step-in bounce with aggressive race-day speed",
+        "price": "$250",
+        "pros": "Extremely bouncy and fast, exceptionally lightweight (6.5 oz US M10.5 / 5 oz W7.5), and highly secure, breathable Ultraweave upper",
+        "stack": "40/32 mm brand",
+        "suitability": "Suits competitive marathon racers",
+        "terrain": [
+          "Road"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Puma Fast-R Nitro Elite 3",
+      "content": "Puma Fast-R Nitro Elite 3: Exceptional energy return, fast and lightweight build (6 oz US M8 actual), and legendary wet/dry road traction Cons: Polarizing/unstructured upper mesh, expensive ($300), and the extended carbon plate can cause severe big-toe pain over 10 miles",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "PR-chasing road racers",
+        "brand": "Puma",
+        "carbon_plate": "Yes, restructured carbon PWRPlate",
+        "cons": "Polarizing/unstructured upper mesh, expensive ($300), and the extended carbon plate can cause severe big-toe pain over 10 miles",
+        "cushioning": "Max cushioning",
+        "drop": "8.3 mm actual (8 mm brand)",
+        "foam_material": "Aliphatic ETPU (ATPU) midsole",
+        "foot_shape": "Narrow fit (Snug race upper)",
+        "highlights": "Decoupled ATPU midsole & extended PWRPlate",
+        "intended_use": "Race day",
+        "model": "Fast-R Nitro Elite 3",
+        "outsole_compound": "Pumagrip",
+        "overview": "A decoupled, wildly futuristic road racing weapon designed for extreme forward momentum and explosive energy return",
+        "price": "$300",
+        "pros": "Exceptional energy return, fast and lightweight build (6 oz US M8 actual), and legendary wet/dry road traction",
+        "stack": "38.5/30.2 mm actual (40/32 mm brand)",
+        "suitability": "Suits PR-chasing road racers; does not suit wide feet or runners with bunions",
+        "terrain": [
+          "Road"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Puma Velocity Nitro 4",
+      "content": "Puma Velocity Nitro 4: Incredible price/value ($140), phenomenal wet/dry traction, long outsole lifespan, and a highly stable, bouncy footprint Cons: Extremely narrow fit (toes can bump the end of the shoe), and the high 10 mm drop can feel annoying to low-drop fans",
+      "payload": {
+        "best_for": "narrow-footed runners wanting high value",
+        "brand": "Puma",
+        "carbon_plate": "No",
+        "cons": "Extremely narrow fit (toes can bump the end of the shoe), and the high 10 mm drop can feel annoying to low-drop fans",
+        "cushioning": "Balanced cushioning (bouncy feel)",
+        "drop": "10 mm brand",
+        "foam_material": "Reformulated Nitrofoam (TPU)",
+        "foot_shape": "Narrow fit (Snug toebox)",
+        "highlights": "Reformulated Nitrofoam & thick Pumagrip",
+        "intended_use": "Daily training of any distance",
+        "model": "Velocity Nitro 4",
+        "outsole_compound": "Pumagrip",
+        "overview": "An exceptionally versatile, non-plated daily cruiser that offers a highly fun, durable, and reliable ride",
+        "price": "$140",
+        "pros": "Incredible price/value ($140), phenomenal wet/dry traction, long outsole lifespan, and a highly stable, bouncy footprint",
+        "stack": "36/26 mm brand",
+        "suitability": "Suits narrow-footed runners wanting high value; does not suit wide-footed runners",
+        "terrain": [
+          "Road"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Puma Deviate Nitro Pure",
+      "content": "Puma Deviate Nitro Pure: Bouncy, lively supercritical response, incredibly lightweight (7.9 oz M10.5 / 6.4 oz W7.5), and excellent $150 pricing Cons: Concerns over premature outsole wear and tear",
+      "payload": {
+        "best_for": "runners seeking maximum lightness for workouts up to half-marathon distances",
+        "brand": "Puma",
+        "carbon_plate": "No",
+        "cons": "Concerns over premature outsole wear and tear",
+        "cushioning": "Soft cushioning",
+        "drop": "8 mm brand",
+        "foam_material": "PEBA-based Nitro foam midsole",
+        "foot_shape": "Medium fit",
+        "highlights": "PEBA supercritical Nitro foam",
+        "intended_use": "Uptempo days & daily miles",
+        "model": "Deviate Nitro Pure",
+        "outsole_compound": "Pumagrip",
+        "overview": "An ultra-lightweight, non-plated daily trainer that relies on a full-superfoam midsole for comfortable, bouncy road miles",
+        "price": "$150",
+        "pros": "Bouncy, lively supercritical response, incredibly lightweight (7.9 oz M10.5 / 6.4 oz W7.5), and excellent $150 pricing",
+        "stack": "38/30 mm brand",
+        "suitability": "Suits runners seeking maximum lightness for workouts up to half-marathon distances",
+        "terrain": [
+          "Road"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Salomon Aero Glide 4 GRVL",
+      "content": "Salomon Aero Glide 4 GRVL: Premium winter traction, stable high stack Cons: Fit runs overly snug, poor upper ventilation, bulky tongue",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "heavy/winter runners",
+        "brand": "Salomon",
+        "carbon_plate": "No",
+        "cons": "Fit runs overly snug, poor upper ventilation, bulky tongue",
+        "cushioning": "Max cushioning",
+        "drop": "9.2 mm actual",
+        "foam_material": "Optifoam2 (eTPU)",
+        "foot_shape": "Snug fit (71.4 mm wide)",
+        "highlights": "Quicklace Neo system",
+        "intended_use": "Door-to-trail, gravel days, flat ultras",
+        "lug_depth": "2.3 mm lugs",
+        "model": "Aero Glide 4 GRVL",
+        "outsole_compound": "Gravel Contagrip",
+        "overview": "A highly stable, maximalist hybrid shoe designed to provide a smooth, cushioned rolling transition between light trails and paved roads.",
+        "price": "$160",
+        "pros": "Premium winter traction, stable high stack",
+        "stack": "40.9/31.7 mm actual",
+        "suitability": "Suits heavy/winter runners; does not suit wide-footed or hot-climate runners.",
+        "terrain": [
+          "Gravel",
+          "Road-to-trail"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Salomon Genesis",
+      "content": "Salomon Genesis: Superb platform stability, highly breathable upper, flexible ride Cons: Outsole wears down quickly, high drop, missing reflective elements",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "heel strikers and ultra runners",
+        "brand": "Salomon",
+        "carbon_plate": "No",
+        "cons": "Outsole wears down quickly, high drop, missing reflective elements",
+        "cushioning": "Moderate/Balanced cushion",
+        "drop": "9.0 mm actual",
+        "foam_material": "Energy Foam (EVA/OBC)",
+        "foot_shape": "Roomy, accommodating fit",
+        "highlights": "Kevlar-reinforced MATRYX upper, Quicklace",
+        "intended_use": "Daily trail training, hiking, ultras",
+        "lug_depth": "4.0 mm lugs",
+        "model": "Genesis",
+        "outsole_compound": "Contagrip",
+        "overview": "A stable, highly versatile trail workhorse designed to handle easy daily miles to technical ultra marathons with a forgiving ride.",
+        "price": "$150",
+        "pros": "Superb platform stability, highly breathable upper, flexible ride",
+        "stack": "33.5/24.5 mm actual",
+        "suitability": "Suits heel strikers and ultra runners; not for heavy forefoot strikers.",
+        "terrain": [
+          "Gravel",
+          "Road-to-trail",
+          "Rocky technical"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Salomon S/Lab Genesis",
+      "content": "Salomon S/Lab Genesis: Exceptionally lightweight (8.8 oz), outstanding custom lock, downhill control Cons: Foam lacks bounce, expensive, upper wear concerns",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "mountain ultrarunners & heavy runners wanting fast agility",
+        "brand": "Salomon",
+        "carbon_plate": "rock plate",
+        "cons": "Foam lacks bounce, expensive, upper wear concerns",
+        "cushioning": "Moderate cushion (low shock absorption)",
+        "drop": "7.8 mm actual",
+        "foam_material": "Energy Foam (EVA/OBC)",
+        "foot_shape": "Medium secure fit",
+        "highlights": "Profeel rock plate, Kevlar-reinforced MATRYX",
+        "intended_use": "Elite ultra racing & hiking",
+        "lug_depth": "4.3 mm lugs",
+        "model": "S/Lab Genesis",
+        "outsole_compound": "Contagrip",
+        "overview": "An exceptionally lightweight off-road racing flat built with premium materials to provide maximum control on technical descents.",
+        "price": "$199",
+        "pros": "Exceptionally lightweight (8.8 oz), outstanding custom lock, downhill control",
+        "stack": "31.9/24.1 mm actual",
+        "suitability": "Suits mountain ultrarunners & heavy runners wanting fast agility.",
+        "terrain": [
+          "Versatile",
+          "Technical terrain and mud"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Salomon S/Lab Pulsar 4",
+      "content": "Salomon S/Lab Pulsar 4: Elite lateral stability, roomy toebox splay height, secure fit Cons: Low energy return, reduced grip on wet grass/mud, expensive",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "neutral runners wanting agile stability",
+        "brand": "Salomon",
+        "carbon_plate": "No",
+        "cons": "Low energy return, reduced grip on wet grass/mud, expensive",
+        "cushioning": "High shock absorption",
+        "drop": "7.1 mm actual",
+        "foam_material": "OptiFoam (EVA/OBC) & Optifoam+ (PEBA) ",
+        "foot_shape": "Medium fit with high toebox splay",
+        "highlights": "Active Chassis, MATRYX, Quicklace",
+        "intended_use": "Fast trail races and agile runs",
+        "lug_depth": "3.0 mm lugs",
+        "model": "S/Lab Pulsar 4",
+        "outsole_compound": "Contagrip",
+        "overview": "A compact, plate-free trail racer that offers a highly stable and natural-feeling ground connection.",
+        "price": "$220",
+        "pros": "Elite lateral stability, roomy toebox splay height, secure fit",
+        "stack": "32.6/25.5 mm actual",
+        "suitability": "Suits neutral runners wanting agile stability; does not suit wide feet or those seeking super foam bounce.",
+        "terrain": [
+          "Gravel",
+          "Road-to-trail",
+          "Easy trails"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Salomon Speedcross 6",
+      "content": "Salomon Speedcross 6: Incredible mud shedding, exceptionally durable closed upper, agile corners Cons: Extremely firm concrete-like ride, bad breathability",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "heel strikers and winter athletes",
+        "brand": "Salomon",
+        "carbon_plate": "No",
+        "cons": "Extremely firm concrete-like ride, bad breathability",
+        "cushioning": "Firm cushioning (feels like concrete)",
+        "drop": "14.1 mm actual",
+        "foam_material": "EnergyCell+ (EVA)",
+        "foot_shape": "Medium fit (Wide available)",
+        "highlights": "Deep mud-shedding chevron lugs, flared Ortholite insole",
+        "intended_use": "Technical winter training and racing",
+        "lug_depth": "5.8 mm lugs",
+        "model": "Speedcross 6",
+        "outsole_compound": "Mud Contagrip",
+        "overview": "A legendary, aggressively clawed winter trail beast built to plow through heavy mud, snow, and soft ground.",
+        "price": "$145",
+        "pros": "Incredible mud shedding, exceptionally durable closed upper, agile corners",
+        "stack": "36.5/22.4 mm actual",
+        "suitability": "Suits heel strikers and winter athletes; not for forefoot strikers.",
+        "terrain": [
+          "Mud",
+          "Soft ground",
+          "Snowy winter trails"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Salomon Ultra Glide 4",
+      "content": "Salomon Ultra Glide 4: Smooth rockered comfort, high forefoot shock absorption Cons: Low energy return dulls ride, pointy toebox squeezes toes",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "narrow feet and forefoot strikers seeking plush, stable impact protection",
+        "brand": "Salomon",
+        "carbon_plate": "No",
+        "cons": "Low energy return dulls ride, pointy toebox squeezes toes",
+        "cushioning": "Max cushioning",
+        "drop": "7.5 mm actual",
+        "foam_material": "Optifoam (EVA)",
+        "foot_shape": "Medium fit (pointy toebox, Wide available)",
+        "highlights": "Reverse camber geometry, Quicklace",
+        "intended_use": "High-mileage ultra running, training, and hiking",
+        "lug_depth": "3.9 mm lugs",
+        "model": "Ultra Glide 4",
+        "outsole_compound": "All-terrain Contagrip",
+        "overview": "A plush, max-cushion door-to-trail cruiser designed with a smooth rocker to roll easily over long miles.",
+        "price": "$160",
+        "pros": "Smooth rockered comfort, high forefoot shock absorption",
+        "stack": "38.6/31.1 mm actual",
+        "suitability": "Suits narrow feet and forefoot strikers seeking plush, stable impact protection.",
+        "terrain": [
+          "Gravel",
+          "Road-to-trail",
+          "Versatile terrain"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Salomon Aero Blaze 3 GRVL",
+      "content": "Salomon Aero Blaze 3 GRVL: Terrific door-to-trail versatility, comfortable locked-in custom upper Cons: Midsole runs firm underfoot, lacks bouncy energy return",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "road-to-trail transition runners and gravel-path joggers",
+        "brand": "Salomon",
+        "carbon_plate": "No",
+        "cons": "Midsole runs firm underfoot, lacks bouncy energy return",
+        "cushioning": "Balanced/firm cushioning",
+        "drop": "8 mm brand",
+        "foam_material": "Optifoam2 (eTPU)",
+        "foot_shape": "Secure custom fit comfortable upper",
+        "highlights": "Reverse camber geometry",
+        "intended_use": "Door-to-trail hybrid daily training",
+        "lug_depth": "Shallow lugs",
+        "model": "Aero Blaze 3 GRVL",
+        "outsole_compound": "Gravel Contagrip",
+        "overview": "A firm, dependable daily transition shoe designed to provide reliable grip and stable custom midfoot lockdown on gravel pathways.",
+        "pros": "Terrific door-to-trail versatility, comfortable locked-in custom upper",
+        "stack": "35/27 mm brand",
+        "suitability": "Suits road-to-trail transition runners and gravel-path joggers.",
+        "terrain": [
+          "Gravel",
+          "Light trails",
+          "Transitions"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Salomon Aero Glide 4",
+      "content": "Salomon Aero Glide 4: Deep protective cushion, outstanding value, smooth rolling ride for heel strikers Cons: Extreme drop may irritate forefoot strikers; features an oversized tongue and below-average outsole durability",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "heel strikers, neutral runners, and heavy runners",
+        "brand": "Salomon",
+        "carbon_plate": "No plate",
+        "cons": "Extreme drop may irritate forefoot strikers; features an oversized tongue and below-average outsole durability",
+        "cushioning": "Max cushioning",
+        "drop": "11.7 mm actual",
+        "foam_material": "Optifoam2 (eTPU)",
+        "foot_shape": "Medium standard fit",
+        "highlights": "Upgraded premium foam",
+        "intended_use": "Daily training & recovery runs",
+        "lug_depth": "0.0 mm lugs",
+        "model": "Aero Glide 4",
+        "outsole_compound": "Road Contagrip",
+        "overview": "Max Cushion Road Daily",
+        "price": "$160",
+        "pros": "Deep protective cushion, outstanding value, smooth rolling ride for heel strikers",
+        "stack": "43.2/31.5 mm actual",
+        "suitability": "Suits heel strikers, neutral runners, and heavy runners wanting a stable, comfortable, protective ride",
+        "terrain": [
+          "Road"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Salomon Aero Blaze 3",
+      "content": "Salomon Aero Blaze 3: Exceptionally lightweight (7.9 oz actual), soft and energetic bounce, and excellent value Cons: Lacks midfoot upper support, lacks forefoot response for fast intervals, and heavier runners over 190–200 lbs may bottom out the foam",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "neutral runners under 190–200 lbs wanting a soft daily cruiser; highly recommended for Achilles-plagued runners",
+        "brand": "Salomon",
+        "carbon_plate": "No plate",
+        "cons": "Lacks midfoot upper support, lacks forefoot response for fast intervals, and heavier runners over 190–200 lbs may bottom out the foam",
+        "cushioning": "Soft, energetic cushioning",
+        "drop": "8.0 mm",
+        "foam_material": "Optifoam2 (eTPU)",
+        "foot_shape": "Accommodating fit",
+        "highlights": "reverse camber geometry and a lightweight build",
+        "intended_use": "Daily miles, tempos, and casual wear",
+        "model": "Aero Blaze 3",
+        "outsole_compound": "Road rubber",
+        "overview": "Lightweight Road Daily",
+        "price": "$140",
+        "pros": "Exceptionally lightweight (7.9 oz actual), soft and energetic bounce, and excellent value",
+        "stack": "35.0/27.0 mm",
+        "suitability": "Suits neutral runners under 190–200 lbs wanting a soft daily cruiser; highly recommended for Achilles-plagued runners",
+        "terrain": [
+          "Road"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Salomon S/Lab Phantasm 3",
+      "content": "Salomon S/Lab Phantasm 3: Explosive PEBA-boosted bounce, exceptionally lightweight build (7.0 oz US M9.5), and secure locked-in feel Cons: Snug, gaiter-like upper fit is highly polarizing and difficult to put on.",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "elite road racers and fast-paced athletes",
+        "brand": "Salomon",
+        "carbon_plate": "Yes, carbon fiber EnergyBlade",
+        "cons": "Snug, gaiter-like upper fit is highly polarizing and difficult to put on.",
+        "cushioning": "Max cushioning",
+        "drop": "6.0 mm",
+        "foam_material": "PEBA-based OptiFoam+ (PEBA/EVA)",
+        "foot_shape": "Snug gaiter-like fit",
+        "highlights": "Carbon fiber EnergyBlade and premium high-rebound OptiFoam",
+        "intended_use": "Race day and uptempo workouts",
+        "lug_depth": "0.0 mm lugs",
+        "model": "S/Lab Phantasm 3",
+        "outsole_compound": "All Purpose ContaGrip",
+        "overview": "Elite Road Racer",
+        "pros": "Explosive PEBA-boosted bounce, exceptionally lightweight build (7.0 oz US M9.5), and secure locked-in feel",
+        "stack": "39.0/33.0 mm",
+        "suitability": "Suits elite road racers and fast-paced athletes looking to maximize speed on race day.",
+        "terrain": [
+          "Road"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Saucony Endorphin Elite 2",
+      "content": "Saucony Endorphin Elite 2: Record-breaking energy return, ultra-plush bounce, and superb upper breathability Cons: Extremely bad lateral stability, minimal padding, and high price",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "Marathon racing",
+        "brand": "Saucony",
+        "carbon_plate": "Yes, carbon plate & rocker",
+        "cons": "Extremely bad lateral stability, minimal padding, and high price",
+        "cushioning": "Max/Soft cushioning",
+        "drop": "7.5 mm actual drop (8.0 mm brand)",
+        "foam_material": "Soft supercritical superfoam",
+        "foot_shape": "Medium fit with a snug racing knit tongue",
+        "highlights": "Microscopic translucent upper mesh structure, premium knit tongue",
+        "intended_use": "Elite Road Racer",
+        "lug_depth": "0.0 mm road lugs",
+        "model": "Endorphin Elite 2",
+        "outsole_compound": "High-grip 40.0 HC outsole rubber",
+        "overview": "An explosive, forward-driving road racing weapon designed with an addictively bouncy, record-breaking rebound to max out legal stack limits",
+        "price": "$290 (best price $203)",
+        "pros": "Record-breaking energy return, ultra-plush bounce, and superb upper breathability",
+        "stack": "Heel 39.9 mm / Forefoot 32.4 mm (Heel 39.5 / Forefoot 31.5 mm brand)",
+        "suitability": "Suits elite marathoners; not for heel strikers needing specific support",
+        "terrain": [
+          "Road terrain"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Saucony Endorphin Pro 5",
+      "content": "Saucony Endorphin Pro 5: Improved energy return, stable ride for a super shoe, and exceptional outsole longevity Cons: Heavier than most elite super shoes and can feel stiff underfoot",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "Marathon race day / Premium training",
+        "brand": "Saucony",
+        "carbon_plate": "Yes, carbon plate & aggressive rocker",
+        "cons": "Heavier than most elite super shoes and can feel stiff underfoot",
+        "cushioning": "Max cushioning",
+        "drop": "8.7 mm actual drop (8.0 mm brand)",
+        "foam_material": "Soft superfoam",
+        "foot_shape": "Medium fit with a stretchy knit tongue",
+        "highlights": "Outstanding outsole durability (0.6 mm wear), pull-tab knit tongue",
+        "intended_use": "Approachable Road Racer",
+        "lug_depth": "0.0 mm lugs",
+        "model": "Endorphin Pro 5",
+        "outsole_compound": "High-coverage durable road rubber",
+        "overview": "An approachable carbon-plated racer that balances high energy return with a stable platform and long-lasting outsole durability",
+        "price": "$225 (best price $170)",
+        "pros": "Improved energy return, stable ride for a super shoe, and exceptional outsole longevity",
+        "stack": "Heel 36.5 mm / Forefoot 27.8 mm (Heel 39.5 / Forefoot 31.5 mm brand)",
+        "suitability": "Suits heel strikers and beginners; not for runners wanting a flexible ride",
+        "terrain": [
+          "Road terrain"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Saucony Endorphin Speed 5",
+      "content": "Saucony Endorphin Speed 5: Snappy energy return, excellent upper ventilation, and exceptional 5/5 heel padding durability Cons: Less agile than predecessors and has a toebox durability of only 2/5",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "Tempo workouts / racing",
+        "brand": "Saucony",
+        "carbon_plate": "Yes, plate & rocker",
+        "cons": "Less agile than predecessors and has a toebox durability of only 2/5",
+        "cushioning": "Max cushioning (firm/structured 44.5 AC feel)",
+        "drop": "10.6 mm actual drop (8.0 mm brand)",
+        "foam_material": "PWRRUN PB (PEBA)",
+        "foot_shape": "Medium fit with a roomier, taller toebox",
+        "highlights": "SPEEDROLL rocker, PWRRUN PB hyper foam",
+        "intended_use": "Plated Speed Trainer",
+        "lug_depth": "0.0 mm lugs",
+        "model": "Endorphin Speed 5",
+        "outsole_compound": "Durable road-gripping rubber",
+        "overview": "A highly versatile plated trainer that preserves its fast-paced Endorphin DNA, blending snappy, super-shoe-like energy return with structured stability",
+        "price": "$175 (best price $122)",
+        "pros": "Snappy energy return, excellent upper ventilation, and exceptional 5/5 heel padding durability",
+        "stack": "Heel 37.4 mm / Forefoot 26.8 mm (Heel 36.0 / Forefoot 28.0 mm brand)",
+        "suitability": "Suits tempo training, treadmill runs, and budget racers; not for runners preferring mushy plushness",
+        "terrain": [
+          "Road terrain"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Saucony Guide 19",
+      "content": "Saucony Guide 19: Stellar 5/5 toebox durability, outstanding upper breathability, and flexible feel Cons: Base PWRRUN foam is starting to feel dated, and heel padding durability is poor (2/5)",
+      "payload": {
+        "arch_support": "Stability",
+        "best_for": "Daily training / walking",
+        "brand": "Saucony",
+        "carbon_plate": "No plate (rocker only)",
+        "cons": "Base PWRRUN foam is starting to feel dated, and heel padding durability is poor (2/5)",
+        "cushioning": "Max/Soft cushioning",
+        "drop": "6.0 mm actual drop (6.0 mm brand)",
+        "foam_material": "Softer daily cushion foam",
+        "foot_shape": "Medium fit (Wide/X-Wide available)",
+        "highlights": "Massive platform footprint, premium mesh upper",
+        "intended_use": "Supportive Daily Trainer",
+        "lug_depth": "0.0 mm lugs",
+        "model": "Guide 19",
+        "outsole_compound": "High-longevity road rubber",
+        "overview": "A comfortable and highly stable daily trainer that relies on an ultra-wide platform instead of aggressive structures for pronation guidance",
+        "price": "$140 (best price $133)",
+        "pros": "Stellar 5/5 toebox durability, outstanding upper breathability, and flexible feel",
+        "stack": "Heel 37.4 mm / Forefoot 31.4 mm (Heel 35.0 / Forefoot 29.0 mm brand)",
+        "suitability": "Suits overpronators and midfoot strikers; does not suit extreme heel strikers",
+        "terrain": [
+          "Road terrain"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Saucony Peregrine 16",
+      "content": "Saucony Peregrine 16: Incredible wet/dry traction, highly secure custom lockdown, and stable base Cons: Squeezes wide toes due to its narrow tapered design, and has slightly gained weight",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "versatile trails / hiking",
+        "brand": "Saucony",
+        "carbon_plate": "Rock plate",
+        "cons": "Squeezes wide toes due to its narrow tapered design, and has slightly gained weight",
+        "cushioning": "Moderate/Soft cushioning",
+        "drop": "4.8 mm actual drop (4.0 mm brand)",
+        "foam_material": "Comfort trail foam with premium PWRRUN+ insole",
+        "foot_shape": "Medium fit (narrow, tapered toebox; Wide available)",
+        "highlights": "Vibram Megagrip, rock plate, closed-weave durable mesh",
+        "intended_use": "Technical Trail Daily",
+        "lug_depth": "3.5 mm lugs",
+        "model": "Peregrine 16",
+        "outsole_compound": "Vibram Megagrip",
+        "overview": "A stable, protective trail workhorse engineered to deliver outstanding multi-terrain grip and a secure, confidence-inspiring ride",
+        "price": "$145 ($150 List)",
+        "pros": "Incredible wet/dry traction, highly secure custom lockdown, and stable base",
+        "stack": "Heel 31.7 mm / Forefoot 26.9 mm (Heel 32.0 / Forefoot 28.0 mm brand)",
+        "suitability": "Suits trail training and hiking; not for runners wanting a roomy toe splay",
+        "terrain": [
+          "Gravel",
+          "versatile trails"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Saucony Ride 19",
+      "content": "Saucony Ride 19: High energy return, wide stable landing platform, and excellent upper breathability Cons: Heavier than its predecessor and has limited outsole rubber coverage",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "Daily training / walking",
+        "brand": "Saucony",
+        "carbon_plate": "No plate (rocker only)",
+        "cons": "Heavier than its predecessor and has limited outsole rubber coverage",
+        "cushioning": "Max/Balanced cushioning",
+        "drop": "8.5 mm actual drop (8.0 mm brand)",
+        "foam_material": "High-energy daily foam",
+        "foot_shape": "Medium fit (Wide available)",
+        "highlights": "Extra underfoot foam stack, semi-gusseted tongue",
+        "intended_use": "Road Daily Cruiser",
+        "lug_depth": "0.0 mm lugs",
+        "model": "Ride 19",
+        "outsole_compound": "XT-900 high-traction rubber",
+        "overview": "A classic, highly dependable daily trainer updated with extra stack height to provide a soft, highly stable, and breathable ride",
+        "price": "$145 (best price $117)",
+        "pros": "High energy return, wide stable landing platform, and excellent upper breathability",
+        "stack": "Heel 38.7 mm / Forefoot 30.2 mm (Heel 36.0 / Forefoot 28.0 mm brand)",
+        "suitability": "Suits neutral daily miles, beginners, high arches, and supination support",
+        "terrain": [
+          "Road terrain"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Saucony Triumph 23",
+      "content": "Saucony Triumph 23: Elite PEBA-powered energy return, luxurious step-in comfort, and highly stable base Cons: Bulkier footprint limits agility, and upper ventilation could be improved",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "Long slow recovery runs / walking",
+        "brand": "Saucony",
+        "carbon_plate": "No plate (rocker only)",
+        "cons": "Bulkier footprint limits agility, and upper ventilation could be improved",
+        "cushioning": "Max cushioning",
+        "drop": "10.0 mm actual drop (10.0 mm brand)",
+        "foam_material": "PWRRUN PB (PEBAX)",
+        "foot_shape": "Medium fit (wide platform; Wide available)",
+        "highlights": "Supercritical PEBA foam, ultra-thick 8.8 mm semi-gusseted tongue",
+        "intended_use": "Premium Max-Cushion",
+        "lug_depth": "0.0 mm lugs",
+        "model": "Triumph 23",
+        "outsole_compound": "Durable high-traction road rubber",
+        "overview": "A luxurious, heavily cushioned maximalist trainer designed for stable rearfoot support and high-rebound energy return on high-mileage runs",
+        "price": "$170 (best price $119)",
+        "pros": "Elite PEBA-powered energy return, luxurious step-in comfort, and highly stable base",
+        "stack": "Heel 42.3 mm / Forefoot 32.3 mm (Heel 37.0 / Forefoot 27.0 mm brand)",
+        "suitability": "Suits heavy runners and plantar/Achilles sufferers",
+        "terrain": [
+          "Road terrain"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "adidas Adizero Adios Pro 4",
+      "content": "adidas Adizero Adios Pro 4: Exceptional energy return, invisible on-foot feel Cons: Rips up heel skin (due to empty pocket design), narrow toe box causes severe big toe agony",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "marathoners seeking maximum bounce",
+        "brand": "adidas",
+        "carbon_plate": "Yes, Evo Pro EnergyRods & Lightlock support band",
+        "cons": "Rips up heel skin (due to empty pocket design), narrow toe box causes severe big toe agony",
+        "cushioning": "Max",
+        "drop": "6 mm",
+        "foam_material": "Soft Lightstrike Pro (TPE)",
+        "foot_shape": "Narrow & small (requires sizing up)",
+        "highlights": "A highly rockered, featherlight super shoe designed to maximize forward rolling efficiency and race-day propulsion.",
+        "intended_use": "Race day up to a marathon",
+        "lug_depth": "0.0 mm",
+        "model": "Adizero Adios Pro 4",
+        "outsole_compound": "High-traction road rubber",
+        "overview": "A highly rockered, featherlight super shoe designed to maximize forward rolling efficiency and race-day propulsion.",
+        "price": "$250",
+        "pros": "Exceptional energy return, invisible on-foot feel",
+        "stack": "39/33 mm",
+        "terrain": [
+          "Road"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "adidas Adizero Boston 13",
+      "content": "adidas Adizero Boston 13: Great step-in feel, padding, and durable past 500–600 miles Cons: Frustratingly difficult to dial in and tie the laces",
+      "payload": {
+        "best_for": "narrow-footed runners and triathletes preferring slightly firmer rides",
+        "brand": "adidas",
+        "carbon_plate": "Yes, carbon fiber EnergyRods",
+        "cons": "Frustratingly difficult to dial in and tie the laces",
+        "cushioning": "Moderate",
+        "drop": "6 mm",
+        "foam_material": "Lightstrike Pro (TPE) & Lightstrike (EVA)",
+        "foot_shape": "Standard (fits just right)",
+        "highlights": "A versatile, highly durable \"one-and-done\" trainer built to seamlessly cover almost any pace except recovery.",
+        "intended_use": "Daily trainer, tempo, budget race day",
+        "lug_depth": "0.0 mm",
+        "model": "Adizero Boston 13",
+        "outsole_compound": "Continental rubber in forefoot & LightTraxion lateral rubber",
+        "overview": "A versatile, highly durable \"one-and-done\" trainer built to seamlessly cover almost any pace except recovery.",
+        "price": "$160",
+        "pros": "Great step-in feel, padding, and durable past 500–600 miles",
+        "stack": "36/30 mm",
+        "terrain": [
+          "Road"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "adidas Adizero Evo SL",
+      "content": "adidas Adizero Evo SL: Soft but incredibly bouncy; simple bliss underfoot Cons: Sliding non-gusseted tongue, lacks structural upper stabilization elements",
+      "payload": {
+        "best_for": "neutral runners looking for an affordable speed training shoe",
+        "brand": "adidas",
+        "carbon_plate": "No",
+        "cons": "Sliding non-gusseted tongue, lacks structural upper stabilization elements",
+        "cushioning": "Max",
+        "drop": "6 mm",
+        "foam_material": "Full Lightstrike Pro (TPE)",
+        "foot_shape": "Standard (workable, slightly wide toe box)",
+        "highlights": "An exceptionally lightweight daily companion utilizing a full super-foam midsole to provide a fast, nimble, non-plated roll.",
+        "intended_use": "Daily training, long runs, uptempo",
+        "lug_depth": "0.0 mm",
+        "model": "Adizero Evo SL",
+        "outsole_compound": "Continental rubber",
+        "overview": "An exceptionally lightweight daily companion utilizing a full super-foam midsole to provide a fast, nimble, non-plated roll.",
+        "price": "$150",
+        "pros": "Soft but incredibly bouncy; simple bliss underfoot",
+        "stack": "38/32 mm",
+        "terrain": [
+          "Road"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "adidas Hyperboost Edge",
+      "content": "adidas Hyperboost Edge: Soft impact, dynamic rebound, premium aesthetic Cons: Collar and upper rub raw ankle blisters on cambered country roads, high price",
+      "payload": {
+        "best_for": "treadmill runners and neutral cruisers",
+        "brand": "adidas",
+        "carbon_plate": "No plate or rods",
+        "cons": "Collar and upper rub raw ankle blisters on cambered country roads, high price",
+        "cushioning": "Max (soft/responsive)",
+        "drop": "6 mm",
+        "foam_material": "Hyperboost Pro foam (PEBA)",
+        "highlights": "A visually striking, ultra-cushioned trainer designed with a next-generation game-changing Boost-line superfoam.",
+        "intended_use": "Daily training, long runs, uptempo",
+        "lug_depth": "0.0 mm",
+        "model": "Hyperboost Edge",
+        "outsole_compound": "Lighttraxion outsole",
+        "overview": "A visually striking, ultra-cushioned trainer designed with a next-generation game-changing Boost-line superfoam.",
+        "price": "$200",
+        "pros": "Soft impact, dynamic rebound, premium aesthetic",
+        "stack": "45/39 mm",
+        "terrain": [
+          "Road"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "adidas Terrex Agravic Speed 2",
+      "content": "adidas Terrex Agravic Speed 2: Agile trail-feel, exceptionally lightweight Cons: Lacks the deep underfoot cushion and rock protection needed for ultra distances",
+      "payload": {
+        "best_for": "short-distance trail racers",
+        "brand": "adidas",
+        "carbon_plate": "No",
+        "cons": "Lacks the deep underfoot cushion and rock protection needed for ultra distances",
+        "cushioning": "Moderate",
+        "drop": "8 mm",
+        "foam_material": "Lightstrike Pro (TPE) & Lightstrike (EVA)",
+        "foot_shape": "Standard fit width",
+        "highlights": "A low-profile, nimble option that feels incredibly light (8.1 oz US M9) and fast.",
+        "intended_use": "short-distance trail racers",
+        "lug_depth": "low-profile trail lugs",
+        "model": "Terrex Agravic Speed 2",
+        "outsole_compound": "Continental Rubber",
+        "overview": "A low-profile, nimble option that feels incredibly light (8.1 oz US M9) and fast.",
+        "pros": "Agile trail-feel, exceptionally lightweight",
+        "stack": "35 mm heel / 27 mm forefoot",
+        "terrain": [
+          "Sub-ultra trails"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "adidas Terrex Agravic Speed Ultra 2",
+      "content": "adidas Terrex Agravic Speed Ultra 2: Improved heel comfort, robust TPE-reinforced mesh Cons: ",
+      "payload": {
+        "best_for": "elite trail racers looking for maximum energy return",
+        "brand": "adidas",
+        "carbon_plate": "Yes, TPE Energy Rods",
+        "cushioning": "Max",
+        "drop": "8 mm",
+        "foam_material": "Lightstrike Pro (TPE)",
+        "highlights": "A max-stack, highly propulsive off-road super shoe engineered to maintain fast legs over long trail courses.",
+        "intended_use": "Trail racing (especially ultra distances)",
+        "lug_depth": "4 mm",
+        "model": "Terrex Agravic Speed Ultra 2",
+        "outsole_compound": "Continental Rubber",
+        "overview": "A max-stack, highly propulsive off-road super shoe engineered to maintain fast legs over long trail courses.",
+        "price": "$225",
+        "pros": "Improved heel comfort, robust TPE-reinforced mesh",
+        "stack": "44 mm heel / 36 mm forefoot",
+        "terrain": [
+          "Trail racing"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "adidas Terrex Agravic TT",
+      "content": "adidas Terrex Agravic TT: Exceptional wet/dry grip, plush-padded heel Cons: Too bulky and bottom-heavy (10.2 oz US M9 actual; 11.5 oz for M10.5)",
+      "payload": {
+        "best_for": "heavy runners or mountain athletes needing deep cushion",
+        "brand": "adidas",
+        "carbon_plate": "No",
+        "cons": "Too bulky and bottom-heavy (10.2 oz US M9 actual; 11.5 oz for M10.5)",
+        "cushioning": "Max",
+        "drop": "8 mm",
+        "foam_material": "Dual-layer Lightstrike Pro & Lightstrike",
+        "highlights": "An overbuilt, maximum-protection mountain workhorse built for stability and safety on highly uneven trail conditions. Features a rock plate & stabilizing rod system.",
+        "intended_use": "Long distances, ultra training",
+        "lug_depth": "aggressive lugs",
+        "model": "Terrex Agravic TT",
+        "outsole_compound": "Continental Rubber",
+        "overview": "An overbuilt, maximum-protection mountain workhorse built for stability and safety on highly uneven trail conditions.",
+        "price": "$185",
+        "pros": "Exceptional wet/dry grip, plush-padded heel",
+        "stack": "39/31 mm",
+        "terrain": [
+          "Technical, rocky, muddy trails"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "adidas Adizero Adios Pro Evo 3",
+      "content": "adidas Adizero Adios Pro Evo 3: Unbelievably featherlight (3.5 oz / 99g actual), explosive energy return Cons: Prohibitively expensive ($500), poor durability, narrow toe box",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "non-heel-striking elite marathoners",
+        "brand": "adidas",
+        "carbon_plate": "Yes, full carbon plate",
+        "cons": "Prohibitively expensive ($500), poor durability, narrow toe box",
+        "cushioning": "Max",
+        "drop": "5.9 mm",
+        "foam_material": "Non-compressed Lightstrike Pro variant",
+        "foot_shape": "Narrow fit and narrow toe box",
+        "highlights": "A record-breaking, mind-blowingly lightweight racing weapon designed for elite runners chasing absolute marginal speed gains.",
+        "intended_use": "Elite competition",
+        "lug_depth": "0.0 mm (1.0 mm thick)",
+        "model": "Adizero Adios Pro Evo 3",
+        "outsole_compound": "Liquid rubber outsole",
+        "overview": "A record-breaking, mind-blowingly lightweight racing weapon designed for elite runners chasing absolute marginal speed gains.",
+        "price": "$500",
+        "pros": "Unbelievably featherlight (3.5 oz / 99g actual), explosive energy return",
+        "stack": "38.1/32.2 mm",
+        "terrain": [
+          "Road"
+        ]
+      },
+      "source_label": "NotebookLM distillation"
+    }
+  ]
+}

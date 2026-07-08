@@ -1,10 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  parsePaceToDecimalMinutes,
-  calculateTreadmillSettings,
-  getTreadmillGuide,
-  DEFAULT_TREADMILL_GRADE_PERCENT,
-} from "./treadmill";
+import { parsePaceToDecimalMinutes, calculateTreadmillSettings, getTreadmillGuide } from "./treadmill";
 
 describe("parsePaceToDecimalMinutes", () => {
   it("parses 'MM:SS /km' into decimal minutes", () => {
@@ -44,25 +39,31 @@ describe("getTreadmillGuide", () => {
     expect(guide).toEqual({ speedKph: 9.5, inclinePercent: 12.0, estimated: false, gradeSource: "ai" });
   });
 
-  it("derives speed/incline from target pace using the default 1% grade when the AI and outdoor grade are both blank", () => {
+  it("derives range strings from target pace using the default 1% grade when the AI and outdoor grade are both blank", () => {
     const guide = getTreadmillGuide("6:00 /km", 0, 0);
     expect(guide?.estimated).toBe(true);
     expect(guide?.gradeSource).toBe("default");
-    expect(guide?.inclinePercent).toBe(DEFAULT_TREADMILL_GRADE_PERCENT);
-    expect(guide?.speedKph).toBe(9.6);
+    expect(guide?.inclinePercent).toBe("1-2"); // ±1% band floored at 1, around the 1% default
+    expect(guide?.speedKph).toBe("9.4"); // single pace → single speed, adjusted at the 1.5% midpoint
+  });
+
+  it("computes a speed range when the target pace is a range", () => {
+    const guide = getTreadmillGuide("6:30 - 5:45 /km", 0, 0);
+    expect(guide?.inclinePercent).toBe("1-2");
+    expect(guide?.speedKph).toBe("8.6-9.8");
   });
 
   it("prefers this run's own outdoor grade_percent over the flat default when the AI left incline blank", () => {
     const guide = getTreadmillGuide("6:00 /km", 0, 0, 5.0);
     expect(guide?.estimated).toBe(true);
     expect(guide?.gradeSource).toBe("outdoor-grade");
-    expect(guide?.inclinePercent).toBe(5.0);
+    expect(guide?.inclinePercent).toBe("4-6");
   });
 
   it("still prefers an explicit AI incline over the outdoor grade_percent", () => {
     const guide = getTreadmillGuide("6:00 /km", 0, 8.0, 5.0);
     expect(guide?.gradeSource).toBe("ai");
-    expect(guide?.inclinePercent).toBe(8.0);
+    expect(guide?.inclinePercent).toBe("7-9");
   });
 
   it("returns null when there is no pace and no AI-supplied settings", () => {
@@ -72,5 +73,16 @@ describe("getTreadmillGuide", () => {
   it("falls back to whatever partial AI value exists when pace is unparseable", () => {
     const guide = getTreadmillGuide(null, 8.0, 0);
     expect(guide).toEqual({ speedKph: 8.0, inclinePercent: 0, estimated: false, gradeSource: "ai" });
+  });
+
+  it("passes the backend's range strings through verbatim", () => {
+    const guide = getTreadmillGuide("6:30 - 5:45 /km", "8.1-9.2", "2-4");
+    expect(guide).toEqual({ speedKph: "8.1-9.2", inclinePercent: "2-4", estimated: false, gradeSource: "ai" });
+  });
+
+  it('treats "0" range strings as unset and estimates from pace instead', () => {
+    const guide = getTreadmillGuide("6:00 /km", "0", "0");
+    expect(guide?.estimated).toBe(true);
+    expect(guide?.gradeSource).toBe("default");
   });
 });

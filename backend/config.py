@@ -29,5 +29,11 @@ class Config:
     NOTEBOOKLM_NUTRITION_ID: str = os.getenv("NOTEBOOKLM_NUTRITION_ID", "")
     NOTEBOOKLM_AUTH_JSON: str = os.getenv("NOTEBOOKLM_AUTH_JSON", "")
 
+    # KB RAG engine — 'notebooklm' (current behavior) or 'gemini' (distilled kb_chunks + Gemini)
+    RAG_ENGINE: str = os.getenv("RAG_ENGINE", "notebooklm")
+    QDRANT_URL: str = os.getenv(
+        "QDRANT_URL", "http://qdrant:6333" if os.path.exists("/.dockerenv") else "http://localhost:6333"
+    )
+
 
 settings = Config()

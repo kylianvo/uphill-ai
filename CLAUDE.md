@@ -14,11 +14,21 @@ FastAPI app (`main.py`) with SQLAlchemy Core against PostgreSQL. No ORM — all 
 Key modules:
 - `config.py` — all env vars via `settings` singleton
 - `db.py` — entire data access layer (no separate repo pattern)
-- `services/` — stateless service classes: `PlanGenerator`, `RagService`, `CalendarService`, `PacingCalculator`, `gear_planner`, `nutrition_planner`, `knowledge_extractor`
+- `services/` — stateless service classes: `PlanGenerator`, `RagService`, `CalendarService`, `PacingCalculator`, `gear_planner`, `nutrition_planner`, `knowledge_extractor`, `kb_distiller`, `kb_retrieval`, `kb_context`
 - `parsers/` — `FitParser` (Garmin .fit files), `GpxParser` (route profiles)
 - `routers/analytics.py` — analytics endpoints (the only router extracted from main.py)
 
 Plan generation is async and job-based: `POST /api/coach/generate-plan` returns a `job_id`, and the frontend polls `GET /api/coach/plan-status/{job_id}`. Job state is in-memory (`plan_jobs` dict in main.py — not persisted across restarts).
+
+### Knowledge-base RAG engine (Scheduler / Nutrition / Gear)
+The three AI features run on a dual-engine design selected by `RAG_ENGINE` (`gemini` | `notebooklm`; whichever is primary, the other is the automatic fallback, and the Scheduler keeps its rule-based schedule as the final fallback):
+
+- **gemini** (production): answers come from Gemini 2.5 Flash grounded on the distilled `kb_chunks` Postgres table. Gear/Nutrition inject their FULL catalog into the prompt (no retrieval-miss risk); the Scheduler retrieves top-k philosophy chunks from Qdrant (`uphill_kb_scheduler` collection, `services/kb_retrieval.py`). The Gemini engine refuses when the KB is empty — it never answers ungrounded.
+- **notebooklm** (legacy): one slow (~2 min) runtime call per request to the NotebookLM notebooks.
+
+**KB lifecycle**: sources are curated in the NotebookLM notebooks → `POST /api/kb/distill?domain=gear|nutrition|scheduler|all` (admin) sweeps them offline into `kb_chunks` via `services/kb_distiller.py` (brand whitelist `GEAR_BRANDS`, major-review-only curation, retries, atomic per-domain replace) → seeds are exported to `backend/kb_seed/<domain>.json` (committed to the repo, human-editable) → any environment imports them without re-distilling via `POST /api/kb/import` or `python scripts/load_kb.py` (also re-embeds scheduler chunks into that env's Qdrant). `GET /api/kb/distill/status` reports per-domain progress, chunk counts, and the Qdrant point count. Eval harness: `python scripts/golden_eval.py capture|compare --service <svc>`.
+
+Treadmill `treadmill_speed`/`treadmill_incline` on workouts are TEXT range strings ("8.1-9.2" kph, "2-4" %) derived deterministically from each workout's own `target_pace` in `PlanGenerator.resolve_treadmill_settings` — never the AI's raw numbers.
 
 Auth uses JWT sessions stored in the `sessions` table. Google and Facebook OAuth are supported alongside email/password. `mock-login` endpoint only exists in non-production.
 
@@ -95,13 +105,16 @@ Backend reads from `backend/.env`. Key variables:
 - `ENVIRONMENT=production` — disables `/docs`, `/redoc`, `/openapi.json`, and `mock-login`
 - `GOOGLE_CLIENT_ID` — for Google OAuth
 - `ALLOWED_ORIGINS` — comma-separated CORS origins
-- `NOTEBOOKLM_NOTEBOOK_ID`, `NOTEBOOKLM_AUTH_JSON` — for NotebookLM RAG extraction
+- `NOTEBOOKLM_NOTEBOOK_ID`, `NOTEBOOKLM_GEAR_ID`, `NOTEBOOKLM_NUTRITION_ID`, `NOTEBOOKLM_AUTH_JSON` — the three NotebookLM notebooks (scheduler/gear/nutrition) used by the offline KB distiller and the legacy runtime engine
+- `RAG_ENGINE` — `gemini` (distilled KB + Gemini, ~5-45s) or `notebooklm` (legacy runtime NotebookLM, ~2 min); the other engine remains the automatic fallback
+- `QDRANT_URL` — defaults to `http://qdrant:6333` in Docker, `http://localhost:6333` otherwise
 
-Per-user Gemini API keys are stored in the `users` table (`gemini_api_key` column) and take precedence over the server-level key for chat and plan generation.
+Per-user Gemini API keys are stored in the `users` table (`gemini_api_key` column) and take precedence over the server-level key for chat and plan generation (NOT yet for the gear/nutrition Gemini engines, which use the server key).
 
 ## Key Patterns
 
 - **Dual database strategy**: The app uses PostgreSQL in production (via SQLAlchemy) and has legacy SQLite code paths. Always use the SQLAlchemy `engine`/`text()` pattern from `db.py`, not raw sqlite3.
 - **Admin check**: `role == "admin"` is set when the email is `admin@uphill.ai` at OAuth login time.
 - **Bilingual support**: The app supports English and Vietnamese (`lang: "en" | "vi"`). Knowledge cards and plan generation respect the `lang` parameter.
-- **Qdrant**: A Qdrant vector DB container is in docker-compose for semantic search, wired via `services/vector_service.py`.
+- **Qdrant**: A Qdrant vector DB container is in docker-compose. The KB RAG engine uses it via `services/kb_retrieval.py` (plain qdrant-client + `gemini-embedding-2`, collection `uphill_kb_scheduler`). `services/vector_service.py` is legacy (langchain-based, deps not in requirements.txt) kept only for the old `scripts/index_*.py`.
+- **Dual schema**: every table/column change goes in BOTH `db.py:init_db()` and a hand-written Alembic migration (see the `db-migration` skill). `init_db()` also self-migrates existing dev databases via idempotent ALTERs at startup.

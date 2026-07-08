@@ -119,8 +119,8 @@ interface Workout {
   target_zone: string;
   target_hr_range?: string;
   target_pace?: string;
-  treadmill_incline: number;
-  treadmill_speed: number;
+  treadmill_incline: number | string;
+  treadmill_speed: number | string;
   description?: string;
   fueling_tip?: string;
   is_completed: number;
