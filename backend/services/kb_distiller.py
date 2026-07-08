@@ -252,7 +252,8 @@ async def _sweep_gear_brand(notebook_id: str, auth_json: str, api_key: str, bran
             api_key,
             "Structure every shoe in this text into the schema. NEVER add a shoe, spec, or price "
             "that is not present in the text. If the text marks a shoe as only briefly mentioned, "
-            "referenced historically, or not fully reviewed, SKIP it.\n\n" + answer,
+            "referenced historically, or not fully reviewed, SKIP it. Write every field in clear "
+            "English only — never any other language.\n\n" + answer,
             ShoeList,
         )
         return structured.get("shoes", [])
@@ -356,7 +357,8 @@ async def _distill_nutrition(notebook_id: str, auth_json: str, api_key: str, sta
             structured = await _gemini_structured(
                 api_key,
                 "Structure every product in this text into the schema. NEVER add a product or macro "
-                "figure that is not present in the text.\n\n" + answer,
+                "figure that is not present in the text. Write every field in clear English only — "
+                "never any other language.\n\n" + answer,
                 ProductList,
             )
             for product in structured.get("products", []):
@@ -384,7 +386,8 @@ async def _distill_nutrition(notebook_id: str, auth_json: str, api_key: str, sta
             structured = await _gemini_structured(
                 api_key,
                 "Split this text into 1-3 self-contained principle chunks (title + 100-400 word content). "
-                "NEVER add facts not present in the text.\n\n" + answer,
+                "NEVER add facts not present in the text. Write every field in clear English only — "
+                "never any other language.\n\n" + answer,
                 PrincipleList,
             )
             for principle in structured.get("principles", []):
@@ -416,7 +419,8 @@ async def _distill_scheduler(notebook_id: str, auth_json: str, api_key: str, sta
             structured = await _gemini_structured(
                 api_key,
                 "Split this text into 2-4 self-contained principle chunks (title + 200-600 word content) "
-                "for grounding a training-plan generator. NEVER add facts not present in the text.\n\n" + answer,
+                "for grounding a training-plan generator. NEVER add facts not present in the text. "
+                "Write every field in clear English only — never any other language.\n\n" + answer,
                 PrincipleList,
             )
             for principle in structured.get("principles", []):
