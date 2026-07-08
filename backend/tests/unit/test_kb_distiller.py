@@ -82,6 +82,34 @@ def test_distill_gear_sweeps_whitelisted_brands_and_builds_catalog_rows(monkeypa
     assert rows[1]["title"] == "Salomon Genesis"
 
 
+def test_query_with_retries_recovers_from_transient_failure():
+    with (
+        patch(
+            "services.notebooklm_service.NotebookLmService.query_notebook",
+            new_callable=AsyncMock,
+            side_effect=[Exception("Server disconnected"), "recovered answer"],
+        ) as nlm,
+        patch("asyncio.sleep", new_callable=AsyncMock),
+    ):
+        answer = asyncio.run(kb_distiller._query_with_retries("nb", '{"tok":1}', "q"))
+    assert answer == "recovered answer"
+    assert nlm.call_count == 2
+
+
+def test_query_with_retries_gives_up_after_attempts():
+    with (
+        patch(
+            "services.notebooklm_service.NotebookLmService.query_notebook",
+            new_callable=AsyncMock,
+            side_effect=Exception("DNS down"),
+        ) as nlm,
+        patch("asyncio.sleep", new_callable=AsyncMock),
+    ):
+        with pytest.raises(Exception, match="DNS down"):
+            asyncio.run(kb_distiller._query_with_retries("nb", '{"tok":1}', "q", attempts=3))
+    assert nlm.call_count == 3
+
+
 def test_whitelisted_brand_word_boundary():
     # "Salomon" contains "on" but must NOT be coerced to the "On" brand
     assert kb_distiller._whitelisted_brand("Salomon", "On") == "Salomon"  # exact whitelist hit wins

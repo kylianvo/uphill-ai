@@ -106,12 +106,28 @@ async def _gemini_structured(api_key: str, prompt: str, schema: type[BaseModel])
     return json.loads(response.text)
 
 
+async def _query_with_retries(notebook_id: str, auth_json: str, query: str, attempts: int = 3) -> str:
+    """NotebookLM calls fail transiently (server disconnects, truncated streams,
+    brief DNS outages) — observed holing an entire sweep. Retry with a growing
+    backoff before giving up on a topic/brand."""
+    for attempt in range(1, attempts + 1):
+        try:
+            return await NotebookLmService.query_notebook(
+                notebook_id=notebook_id, auth_json=auth_json, query=query, service="kb_distiller"
+            )
+        except Exception as e:
+            if attempt == attempts:
+                raise
+            wait_s = 15.0 * attempt
+            print(f"[KBDistiller] Query attempt {attempt}/{attempts} failed ({e}); retrying in {wait_s:.0f}s…")
+            await asyncio.sleep(wait_s)
+
+
 async def _sweep_brands(notebook_id: str, auth_json: str, api_key: str, thing: str) -> list[str]:
-    brands_text = await NotebookLmService.query_notebook(
-        notebook_id=notebook_id,
-        auth_json=auth_json,
-        query=f"List every {thing} brand covered in your documents. Output one brand name per line, nothing else.",
-        service="kb_distiller",
+    brands_text = await _query_with_retries(
+        notebook_id,
+        auth_json,
+        f"List every {thing} brand covered in your documents. Output one brand name per line, nothing else.",
     )
     parsed = await _gemini_structured(
         api_key, f"Extract the list of brand names from this text:\n{brands_text}", BrandList
@@ -162,17 +178,16 @@ async def _distill_gear(notebook_id: str, auth_json: str, api_key: str, status: 
     for i, brand in enumerate(brands):
         status.update({"current_topic": f"gear: {brand}", "progress": i, "total": len(brands)})
         try:
-            answer = await NotebookLmService.query_notebook(
-                notebook_id=notebook_id,
-                auth_json=auth_json,
-                query=(
+            answer = await _query_with_retries(
+                notebook_id,
+                auth_json,
+                (
                     f"List EVERY {brand} shoe in your documents. For each shoe give: exact model name, "
                     "foam material with its type in parentheses (e.g. ZoomX (PEBA)), outsole compound, "
                     "lug depth in mm, drop in mm, stack height, price, what it is best for and its "
                     "strengths (pros), and its drawbacks or who shouldn't buy it (cons). Include every "
                     "model mentioned, even briefly."
                 ),
-                service="kb_distiller",
             )
             structured = await _gemini_structured(
                 api_key,
@@ -209,15 +224,14 @@ async def _distill_nutrition(notebook_id: str, auth_json: str, api_key: str, sta
     for i, brand in enumerate(brands):
         status.update({"current_topic": f"nutrition: {brand}", "progress": i, "total": total})
         try:
-            answer = await NotebookLmService.query_notebook(
-                notebook_id=notebook_id,
-                auth_json=auth_json,
-                query=(
+            answer = await _query_with_retries(
+                notebook_id,
+                auth_json,
+                (
                     f"List EVERY {brand} product in your documents (gels, drink mixes, chews, bars). "
                     "For each give: exact product name, format, carbs per unit (g), sodium per unit (mg), "
                     "protein per unit (g), and any technology/science notes. Include every product mentioned."
                 ),
-                service="kb_distiller",
             )
             structured = await _gemini_structured(
                 api_key,
@@ -242,11 +256,10 @@ async def _distill_nutrition(notebook_id: str, auth_json: str, api_key: str, sta
     for j, topic in enumerate(NUTRITION_PRINCIPLE_TOPICS):
         status.update({"current_topic": f"nutrition principle {j + 1}", "progress": len(brands) + j, "total": total})
         try:
-            answer = await NotebookLmService.query_notebook(
-                notebook_id=notebook_id,
-                auth_json=auth_json,
-                query=f"Summarize everything your documents say about: {topic}. Be specific with numbers.",
-                service="kb_distiller",
+            answer = await _query_with_retries(
+                notebook_id,
+                auth_json,
+                f"Summarize everything your documents say about: {topic}. Be specific with numbers.",
             )
             structured = await _gemini_structured(
                 api_key,
@@ -275,11 +288,10 @@ async def _distill_scheduler(notebook_id: str, auth_json: str, api_key: str, sta
     for i, topic in enumerate(SCHEDULER_TOPICS):
         status.update({"current_topic": f"scheduler: {topic[:50]}…", "progress": i, "total": len(SCHEDULER_TOPICS)})
         try:
-            answer = await NotebookLmService.query_notebook(
-                notebook_id=notebook_id,
-                auth_json=auth_json,
-                query=f"Summarize everything your documents say about: {topic}. Be specific — numbers, protocols, examples.",
-                service="kb_distiller",
+            answer = await _query_with_retries(
+                notebook_id,
+                auth_json,
+                f"Summarize everything your documents say about: {topic}. Be specific — numbers, protocols, examples.",
             )
             structured = await _gemini_structured(
                 api_key,
