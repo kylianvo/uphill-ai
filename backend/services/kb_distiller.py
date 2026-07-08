@@ -450,10 +450,12 @@ def _rows_by_brand(rows: list[dict]) -> dict[str, list[dict]]:
 
 
 def _merge_gear_ratchet(new_rows: list[dict]) -> list[dict]:
-    """Per brand, keep the richer of the existing catalog's rows and the new
-    sweep's — NotebookLM answer quality varies run to run (thin summaries,
-    stream overflows), so re-runs should only ever improve the catalog, never
-    regress a brand that swept richly before."""
+    """Keep the previous catalog's rows for a brand ONLY when the new sweep
+    came back empty for it (NotebookLM outage/refusal holed the brand). When
+    the new sweep produced anything, it wins outright — sweep criteria evolve
+    (schema fields, major-review-only curation), and comparing 'richness'
+    across criteria generations would let stale noisy rows veto intentional
+    refinements."""
     import db
 
     existing = _rows_by_brand(db.get_kb_chunks("gear", kind="catalog_item"))
@@ -461,24 +463,14 @@ def _merge_gear_ratchet(new_rows: list[dict]) -> list[dict]:
     merged: list[dict] = []
     for brand in sorted(set(existing) | set(fresh)):
         old_rows, new_brand_rows = existing.get(brand, []), fresh.get(brand, [])
-
-        def richness(rows: list[dict]) -> int:
-            total = 0
-            for row in rows:
-                payload = row.get("payload") or {}
-                if isinstance(payload, str):
-                    payload = json.loads(payload)
-                total += _shoe_richness(payload)
-            return total
-
-        if richness(old_rows) > richness(new_brand_rows):
+        if new_brand_rows:
+            kept = new_brand_rows
+        else:
             print(
-                f"[KBDistiller][gear] Ratchet: keeping previous '{brand}' rows "
-                f"({len(old_rows)} shoes, richness {richness(old_rows)} > {richness(new_brand_rows)})"
+                f"[KBDistiller][gear] Ratchet: new sweep holed '{brand}' — "
+                f"keeping its previous {len(old_rows)} rows."
             )
             kept = old_rows
-        else:
-            kept = new_brand_rows
         for row in kept:
             merged.append(
                 {

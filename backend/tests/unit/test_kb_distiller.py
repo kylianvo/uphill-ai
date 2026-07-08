@@ -173,19 +173,22 @@ def _row(payload):
     return {"domain": "gear", "kind": "catalog_item", "title": title, "content": title, "payload": payload}
 
 
-def test_merge_gear_ratchet_keeps_richer_brand_and_adds_new_brands():
+def test_merge_gear_ratchet_backfills_only_holed_brands():
     existing = [
         _row(_rich_shoe("Gel-Trabuco 12") | {"brand": "Asics"}),
-        _row(_rich_shoe("Novablast 5") | {"brand": "Asics"}),
+        _row(_rich_shoe("Speedgoat 7") | {"brand": "Hoka"}),
+        _row(_rich_shoe("Speedcross 6") | {"brand": "Hoka"}),
     ]
     new_rows = [
-        _row(_thin_shoe("Gel-Trabuco series") | {"brand": "Asics"}),  # this run regressed Asics
-        _row(_rich_shoe("005") | {"brand": "Norda"}),  # new brand, rich
+        # Asics present in the new sweep (even if smaller/curated) → new wins outright
+        _row(_rich_shoe("Novablast 5") | {"brand": "Asics"}),
+        _row(_rich_shoe("005") | {"brand": "Norda"}),  # brand new to the catalog
+        # Hoka absent from the new sweep entirely → previous rows kept
     ]
     with patch("db.get_kb_chunks", return_value=existing):
         merged = kb_distiller._merge_gear_ratchet(new_rows)
     titles = sorted(r["title"] for r in merged)
-    assert titles == ["Asics Gel-Trabuco 12", "Asics Novablast 5", "Norda 005"]  # old Asics kept, Norda added
+    assert titles == ["Asics Novablast 5", "Hoka Speedcross 6", "Hoka Speedgoat 7", "Norda 005"]
 
 
 def test_query_with_retries_does_not_retry_stream_overflow():
