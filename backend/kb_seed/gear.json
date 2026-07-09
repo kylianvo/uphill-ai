@@ -29,7 +29,7 @@
      "Technical/rocky trails",
      "fast stretches"
     ],
-    "weight": "9.6 oz / 272 g actual (9.3 oz / 264 g stated men's; 7.7 oz / 218 g stated women's)",
+    "weight": "9.3 oz / 264 g (men's); 7.7 oz / 218 g (women's)",
     "lug_depth": "4.0 mm"
    },
    "source_label": "NotebookLM distillation"
@@ -142,7 +142,7 @@
     "carbon_plate": "No plate",
     "cons": "Underwhelming energy return from the foam, and breathability runs warm (2/5)",
     "cushioning": "Soft",
-    "drop": "5.2 mm actual drop",
+    "drop": "5.2 mm",
     "foam_material": "EGO P35",
     "foot_shape": "Wide fit with roomy big toe splay area (79.3 mm)",
     "intended_use": "Daily running and casual wear",
@@ -158,7 +158,7 @@
      "Road",
      "treadmill"
     ],
-    "weight": "8.5 oz / 241 g actual (8.7 oz / 246 g stated men's; 7.3 oz / 207 g stated women's)"
+    "weight": "8.7 oz / 246 g (men's); 7.3 oz / 207 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -173,12 +173,12 @@
     "carbon_plate": "No plate",
     "cons": "Low-rebound CMEVA foam feels flat, and the shoe is still somewhat heavy (10.7 oz actual), not for narrow feet",
     "cushioning": "Balanced",
-    "drop": "0.3 mm actual drop",
+    "drop": "0.3 mm",
     "foam_material": "CMEVA",
     "foot_shape": "Extremely wide fit with a massive toe box (81.0 mm big toe splay)",
     "highlights": "Premium MATRYX upper",
     "intended_use": "Long-distance hiking & ultra trails",
-    "lug_depth": "3.5 mm actual",
+    "lug_depth": "3.5 mm",
     "model": "Olympus 275",
     "outsole_compound": "Vibram Megagrip",
     "overview": "A highly stable, towering zero-drop trail shoe engineered with a massive footprint to protect joints on flat, easy trails.",
@@ -191,7 +191,7 @@
      "mixed trails",
      "flat, easy paths"
     ],
-    "weight": "10.7 oz / 303 g actual (10.8 oz / 305 g stated men's; 9.7 oz / 274 g stated women's)"
+    "weight": "10.8 oz / 305 g (men's); 9.7 oz / 274 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -206,7 +206,7 @@
     "carbon_plate": "No plate",
     "cons": "Disappointingly heavy build (12.6 oz actual), and low-rebound foam lacks snappy energy return",
     "cushioning": "Max",
-    "drop": "0.7 mm actual drop",
+    "drop": "0.7 mm",
     "foam_material": "Low-rebound CMEVA",
     "foot_shape": "Medium fit with exceptionally wide big toe splay (81.1 mm big toe area)",
     "intended_use": "Ultra-distance training & heavy-duty hiking",
@@ -223,7 +223,7 @@
      "mud",
      "gravel"
     ],
-    "weight": "12.6 oz / 357 g actual (12.5 oz / 354 g stated men's; 10.8 oz / 306 g stated women's)"
+    "weight": "12.5 oz / 354 g (men's); 10.8 oz / 306 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -238,7 +238,7 @@
     "carbon_plate": "No plate",
     "cons": "Heavy daily layout (9.8 oz actual), and lacks high energy return",
     "cushioning": "Soft/Max",
-    "drop": "2.1 mm actual drop",
+    "drop": "2.1 mm",
     "foam_material": "EGO MAX (soft/responsive)",
     "foot_shape": "Roomy foot-shaped splay / Medium fit (Wide available)",
     "intended_use": "Daily running, jogging, and easy walking",
@@ -254,7 +254,7 @@
      "Road",
      "treadmill"
     ],
-    "weight": "9.8 oz / 278 g actual (9.8 oz / 278 g stated men's; 8.6 oz / 244 g stated women's)"
+    "weight": "9.8 oz / 278 g (men's); 8.6 oz / 244 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -269,7 +269,7 @@
     "carbon_plate": "No plate",
     "cons": "Notable weight gain compared to v7 (9.7 oz actual), non-gusseted tongue, and needs an update to bouncier supercritical foam, not for heavy heel strikers",
     "cushioning": "Balanced",
-    "drop": "-0.1 mm actual drop",
+    "drop": "0 mm",
     "foam_material": "Standard daily training foam",
     "foot_shape": "Foot-shaped wide toebox / Medium standard midfoot (Wide available)",
     "intended_use": "Daily running and walking",
@@ -284,7 +284,7 @@
     "terrain": [
      "Road"
     ],
-    "weight": "9.7 oz / 275 g actual (10.1 oz / 287 g stated men's; 8.4 oz / 238 g stated women's)"
+    "weight": "10.1 oz / 287 g (men's); 8.4 oz / 238 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -314,7 +314,7 @@
     "terrain": [
      "Less technical trails"
     ],
-    "weight": "9.1 oz / 258 g actual (9.2 oz / 261 g stated men's)",
+    "weight": "9.2 oz / 261 g (men's)",
     "lug_depth": "2.7 mm"
    },
    "source_label": "NotebookLM distillation"
@@ -331,7 +331,7 @@
     "carbon_plate": "No plate",
     "cons": "Very low energy return (not a bouncy supercritical ride) and fairly heavy daily layout (10.4 oz actual US M9)",
     "cushioning": "Max/Balanced cushioning",
-    "drop": "9.3 mm actual (8 mm brand)",
+    "drop": "8 mm",
     "foam_material": "Balanced daily foam",
     "foot_shape": "Medium fit",
     "highlights": "4D Guidance System, PureGEL heel insert, and a strategically ventilated mesh upper that balances structure and breathability",
@@ -341,12 +341,12 @@
     "overview": "A premium stability workhorse built to deliver reliable, heavy-duty overpronation guidance with elite landing protection and comfort",
     "price": "$165",
     "pros": "Extremely stable, outstanding durability, and pillow-soft heel padding",
-    "stack": "39.9/30.6 mm actual",
+    "stack": "39.9/30.6 mm",
     "terrain": [
      "Road",
      "treadmill"
     ],
-    "weight": "10.4 oz / 295 g actual (10.7 oz / 304 g stated men's; 9 oz / 256 g stated women's)"
+    "weight": "10.7 oz / 304 g (men's); 9 oz / 256 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -362,7 +362,7 @@
     "carbon_plate": "No plate (rockered)",
     "cons": "Poor underfoot energy return, breathability is only moderate (can run warm), and second consecutive price increase",
     "cushioning": "Max cushioning",
-    "drop": "5.2 mm actual (8 mm brand)",
+    "drop": "8 mm",
     "foam_material": "Balanced daily foam",
     "foot_shape": "Medium fit",
     "highlights": "PureGEL cushioning, rockered transition shape, and Hybrid ASICSGRIP that remains soft in freezing cold",
@@ -372,11 +372,11 @@
     "overview": "A premium max-cushion road companion designed to smooth out slow paces with plush step-in comfort and heavy-duty protective impact absorption",
     "price": "$170",
     "pros": "Exceptional step-in comfort, high shock absorption, and secure lockdown",
-    "stack": "39.5/34.3 mm actual",
+    "stack": "39.5/34.3 mm",
     "terrain": [
      "Road"
     ],
-    "weight": "9.8 oz / 278 g actual (10 oz / 283 g stated men's; 8.5 oz / 242 g stated women's)"
+    "weight": "10 oz / 283 g (men's); 8.5 oz / 242 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -392,8 +392,8 @@
     "carbon_plate": "curved carbon plate",
     "cons": "Narrow restrictive fit, shaky overall landing stability, non-gusseted shifting tongue, and very low toebox durability (1/5 score)",
     "cushioning": "Max cushioning",
-    "drop": "6.9 mm actual (5 mm brand)",
-    "foam_material": "FF Leap supercritical (PEBA)",
+    "drop": "5 mm brand",
+    "foam_material": "FF LEAP (A-TPU) and FF TURBO PLUS (PEBA)",
     "foot_shape": "Narrow snug fit",
     "highlights": "Next-level bouncy FF Leap foam, curved plate geometry, and a weight-stripped minimalist layout devoid of heel tabs",
     "intended_use": "Competition (5K to Marathon)",
@@ -402,11 +402,11 @@
     "overview": "An explosive road racing weapon built with a rolling rocker and curved plate to maximize cadence efficiency on race day",
     "price": "$270",
     "pros": "Exceptionally lightweight (5.6 oz actual) and elite traction",
-    "stack": "38.9/32.0 mm actual",
+    "stack": "38.9/32.0 mm",
     "terrain": [
      "Road"
     ],
-    "weight": "5.6 oz / 159 g actual (6 oz / 170 g stated men's; 4.8 oz / 135 g stated women's)"
+    "weight": "6 oz / 170 g (men's); 4.8 oz / 135 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -422,8 +422,8 @@
     "carbon_plate": "stiff flat carbon plate",
     "cons": "Shaky landing stability for heel strikers, snug narrow fit limits splay, and poor toebox upper durability (1/5 Dremel score)",
     "cushioning": "Max cushioning",
-    "drop": "6.0 mm actual (5 mm brand)",
-    "foam_material": "FF Leap supercritical (PEBA)",
+    "drop": "5 mm",
+    "foam_material": "FF LEAP (A-TPU) and FF TURBO PLUS (PEBA)",
     "foot_shape": "Narrow fit (generous height)",
     "highlights": "High-rebound FF Leap foam, flat plate orientation, and next-level insole perforations for 360-degree ventilation",
     "intended_use": "Competition (5K to Marathon)",
@@ -432,11 +432,11 @@
     "overview": "A towering, speed-focused road racer engineered to deliver maximum vertical propulsion and forward bounce for stride-driven runners",
     "price": "$270",
     "pros": "Hyper-light build (5.7 oz), explosive bounce, and perfect 5/5 breathability",
-    "stack": "38.7/32.7 mm actual",
+    "stack": "38.7/32.7 mm",
     "terrain": [
      "Road"
     ],
-    "weight": "5.7 oz / 163 g actual (6 oz / 170 g stated men's; 5.1 oz / 145 g stated women's)"
+    "weight": "6 oz / 170 g (men's); 5.1 oz / 145 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -452,7 +452,7 @@
     "carbon_plate": "No plate (rockered)",
     "cons": "Subpar toebox mesh durability (1/5 score) and moderate breathability that can run slightly warm in heat (3/5 score)",
     "cushioning": "Max cushioning",
-    "drop": "7.4 mm actual",
+    "drop": "7.4 mm",
     "foam_material": "FF Blast MAX (supercritical)",
     "foot_shape": "Medium fit (wide-foot friendly)",
     "highlights": "Next-gen bouncy FF Blast MAX midsole and a revamped tongue lacing tab to easily lock in a centered fit",
@@ -462,11 +462,11 @@
     "overview": "A highly energetic, bouncy daily trainer designed to make daily runs and tempo blocks feel dynamic, lightweight, and fun",
     "price": "$150",
     "pros": "High-energy rebound, great cushion-to-weight ratio (9.0 oz), and flexible ride",
-    "stack": "40.9/33.5 mm actual",
+    "stack": "40.9/33.5 mm",
     "terrain": [
      "Road"
     ],
-    "weight": "9 oz / 254 g actual (9 oz / 255 g stated men's; 7.9 oz / 225 g stated women's)"
+    "weight": "9 oz / 255 g (men's); 7.9 oz / 225 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -482,7 +482,7 @@
     "carbon_plate": "No plate (rockered)",
     "cons": "Low-density FF Blast+ carrier limits ultimate energy return, narrow snug toebox splay (71.6 mm), and limited breathability",
     "cushioning": "Max cushioning",
-    "drop": "8.1 mm actual",
+    "drop": "8.1 mm",
     "foam_material": "Dual FF Leap & FF Blast+ (PEBA/EVA)",
     "foot_shape": "Medium snug-toebox fit",
     "highlights": "Dual-density cushioning, unique \"lace-in-lace\" elastic cord eyelet design, and a highly stable landing platform",
@@ -492,11 +492,11 @@
     "overview": "A skyscraper-high daily super trainer built with towering protection to save leg muscles over long-distance efforts",
     "price": "$200",
     "pros": "Highly responsive, stable feel, and elite outsole longevity (0.5 mm wear)",
-    "stack": "45.8/37.7 mm actual",
+    "stack": "45.8/37.7 mm",
     "terrain": [
      "Road"
     ],
-    "weight": "8.3 oz / 235 g actual (8.8 oz / 249 g stated men's; 7.6 oz / 215 g stated women's)"
+    "weight": "8.8 oz / 249 g (men's); 7.6 oz / 215 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -512,7 +512,7 @@
     "carbon_plate": "rock plate",
     "cons": "Fairly heavy layout (10.0 oz actual US M9), low ankle collar easily admits trail debris, and hit-or-miss lacing layout",
     "cushioning": "Moderate/firm cushion",
-    "drop": "6.3 mm actual (8 mm brand)",
+    "drop": "8 mm",
     "foam_material": "FF Blast Max (supercritical)",
     "foot_shape": "Wide fit (roomy toebox)",
     "highlights": "FF Blast Max supercritical midsole, aggressive 3.7 mm chevrons, and insole highlighting eco-manufacturing details",
@@ -523,12 +523,12 @@
     "overview": "A rugged, highly stable mountain workhorse designed for maximum rock protection, reliable wet traction, and wide comfortable fit",
     "price": "$145",
     "pros": "Superb rock splay, elite wet/dry grip, and stellar $145 value",
-    "stack": "32.1/25.8 mm actual",
+    "stack": "32.1/25.8 mm",
     "terrain": [
      "Versatile trails",
      "gravel"
     ],
-    "weight": "10 oz / 283 g actual (9.9 oz / 281 g stated men's; 8.8 oz / 249 g stated women's)"
+    "weight": "9.9 oz / 281 g (men's); 8.8 oz / 249 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -544,7 +544,7 @@
     "carbon_plate": "Rock plate",
     "cons": "Very heavy daily layout (10.8 oz actual M9), and the wide base is overkill for smooth, flat trails",
     "cushioning": "Moderate",
-    "drop": "7.8 mm actual (6.0 mm brand)",
+    "drop": "6.0 mm",
     "foam_material": "Nitrogen-infused EVA",
     "foot_shape": "Medium fit (Wide available)",
     "highlights": "Protective rock plate, wide stable platform",
@@ -555,13 +555,13 @@
     "overview": "A highly predictable and protective daily trail trainer that doubles as a highly capable day hiker, prioritizing stable protection over speed",
     "price": "$150",
     "pros": "Immediately comfortable plush tongue, outstanding platform stability, and highly durable build quality for the price",
-    "stack": "34.8 / 27.0 mm actual (35/29 mm brand)",
+    "stack": "35/29 mm",
     "suitability": "Suits hikers and trail runners wanting stable protection; not for those seeking a speedy option.",
     "terrain": [
      "Rocky",
      "gravel"
     ],
-    "weight": "10.8 oz / 306 g actual (10.7 oz / 303 g stated men's)"
+    "weight": "10.7 oz / 303 g (men's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -608,7 +608,7 @@
     "carbon_plate": "Rock plate",
     "cons": "Prohibitively expensive ($275), restrictive narrow toe space, and very poor toebox upper durability",
     "cushioning": "Max",
-    "drop": "11.5 mm actual (6.0 mm brand)",
+    "drop": "6.0 mm",
     "foam_material": "PEBA foam",
     "foot_shape": "Narrow-fitting toebox",
     "highlights": "Vibram Megagrip Elite, sock-like MATRYX upper",
@@ -619,13 +619,13 @@
     "overview": "A premium, visually stunning off-road shoe pairing soft, responsive PEBA foam and plate protection for stable long-distance efforts",
     "price": "$275",
     "pros": "Outstanding underfoot PEBA bounce, superb wet/dry off-road traction, stable landing platform, and plush premium comfort",
-    "stack": "38.8 / 27.3 mm actual (40/34 mm brand)",
+    "stack": "40/34 mm brand",
     "suitability": "Suits heel strikers and ultra racers; does not suit wide feet or low-drop lovers",
     "terrain": [
      "Gravel",
      "Road-to-trail"
     ],
-    "weight": "9.7 oz / 275 g actual (9.7 oz / 275 g stated men's; 8.7 oz / 247 g stated women's)"
+    "weight": "9.7 oz / 275 g (men's); 8.7 oz / 247 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -641,7 +641,7 @@
     "carbon_plate": "No plate",
     "cons": "Fairly heavy layout (10.7 oz actual), lacks modern bouncy energy return, and lacks a gusseted tongue at this price point",
     "cushioning": "Max",
-    "drop": "8.2 mm actual (8.0 mm brand)",
+    "drop": "8.0 mm",
     "foam_material": "Soft daily training foam",
     "foot_shape": "Medium fit (Wide/X-Wide available)",
     "highlights": "Premium knit upper, heel lockdown counter",
@@ -652,12 +652,12 @@
     "overview": "A premium-built, comfortable daily road trainer designed for a highly stable, durable, and easy-going ride",
     "price": "$175",
     "pros": "Incredible plush step-in comfort, highly dependable wet/dry road grip, premium build quality, and outstanding top-to-bottom durability",
-    "stack": "37.2 / 29.0 mm actual (38/30 mm brand)",
+    "stack": "38/30 mm",
     "suitability": "Suits everyday runners, walkers, and beginners; does not suit runners seeking energetic speed",
     "terrain": [
      "Road"
     ],
-    "weight": "10.7 oz / 303 g actual (10.7 oz / 303 g stated men's; 9 oz / 255 g stated women's)"
+    "weight": "10.7 oz / 303 g (men's); 9 oz / 255 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -672,7 +672,7 @@
     "carbon_plate": "No plate",
     "cons": "Highly heavy Daily layout (11.2 oz actual US M9), low midsole bounce/energy return, non-gusseted tongue, and high pricing ($200)",
     "cushioning": "Max",
-    "drop": "8.1 mm actual (6.0 mm brand)",
+    "drop": "6.0 mm",
     "foam_material": "Plush daily cushion foam",
     "foot_shape": "Medium fit",
     "highlights": "Rocker transition geometry, massive stack",
@@ -683,12 +683,12 @@
     "overview": "A skyscraper-high maximalist trainer built with a towering protective cushion and rockered roll to smooth out slow efforts",
     "price": "$200",
     "pros": "Extreme joint-protecting impact absorption, smooth forward rolling transitions, highly breathable heat-managing mesh upper, and very stable platform",
-    "stack": "45.4 / 37.3 mm actual (45/39 mm brand)",
+    "stack": "45/39 mm",
     "suitability": "Suits recovery cruisers and heavy runners wanting ultimate impact protection",
     "terrain": [
      "Road"
     ],
-    "weight": "11.2 oz / 318 g actual (11 oz / 311 g stated men's; 10 oz / 283 g stated women's)"
+    "weight": "11 oz / 311 g (men's); 10 oz / 283 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -703,7 +703,7 @@
     "carbon_plate": "No plate",
     "cons": "Heavy and bulky underfoot (11.1 oz lab / 11.7 oz brand), poorly designed non-gusseted tongue, and can feel too stiff",
     "cushioning": "Max cushioning",
-    "drop": "9.0 mm actual",
+    "drop": "9.0 mm",
     "foam_material": "Supercritical EVA (EVA)",
     "foot_shape": "Medium roomier fit",
     "highlights": "Vibram Traction Lugs",
@@ -714,13 +714,13 @@
     "overview": "A maximalist off-road workhorse designed to supply highly stable, cushioned comfort over long distances. It provides endless joint protection and a plush, energetic ride.",
     "price": "$185",
     "pros": "Highly stable for its tall stack, roomy anatomical fit, superb joint protection, and robust overall durability",
-    "stack": "42.9/33.9 mm actual",
+    "stack": "42.9/33.9 mm",
     "suitability": "Suits ultrarunners needing high-mileage protection, heel strikers wanting a higher drop, and heavy runners",
     "terrain": [
      "Versatile moderate",
      "off-trail"
     ],
-    "weight": "11.1 oz / 315 g actual (11.7 oz / 332 g stated men's; 10.4 oz / 296 g stated women's)"
+    "weight": "11.7 oz / 332 g (men's); 10.4 oz / 296 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -735,7 +735,7 @@
     "carbon_plate": "Yes, parallel carbon plates & rocker",
     "cons": "Extremely expensive ($275), heavier than v2 (9.7 oz lab / 10.3 oz brand), absolutely not for wide feet, and the ankle gaiter is polarizing",
     "cushioning": "Max cushioning",
-    "drop": "6.9 mm actual",
+    "drop": "6.9 mm",
     "foam_material": "PEBA foam (PEBA)",
     "foot_shape": "Narrow snug fit",
     "highlights": "Integrated ankle gaiter, water-repellent MATRYX upper",
@@ -746,14 +746,14 @@
     "overview": "An elite trail racing super shoe engineered with parallel carbon plates and bouncy super-foam for highly stable, propulsive landings. It is Jim Walmsley's signature trail weapon engineered to maintain fast legs over long courses.",
     "price": "$275",
     "pros": "World-class 69.9% energy return, exceptional underfoot impact protection, shields debris, and durable MATRYX upper (4/5 Dremel score)",
-    "stack": "37.8/30.9 mm actual",
+    "stack": "37.8/30.9 mm",
     "suitability": "Suits narrow-footed racers and performance-focused athletes",
     "terrain": [
      "Gravel",
      "road-to-trail",
      "versatile terrain"
     ],
-    "weight": "9.7 oz / 275 g actual (10.3 oz / 292 g stated men's; 8.6 oz / 244 g stated women's)"
+    "weight": "10.3 oz / 292 g (men's); 8.6 oz / 244 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -800,7 +800,7 @@
     "carbon_plate": "No plate",
     "cons": "Midsole lacks supercritical foam bounce, and features very poor upper breathability (2/5)",
     "cushioning": "Moderate (balanced) cushioning",
-    "drop": "11.3 mm actual drop (8 mm brand)",
+    "drop": "8 mm",
     "foam_material": "Traditional daily stability foam (not supercritical)",
     "foot_shape": "Medium standard fit",
     "highlights": "H-Frame stability system and Early-Stage Meta Rocker",
@@ -811,12 +811,12 @@
     "overview": "A lightweight, comfort-first daily road shoe designed to deliver supportive, reliable stability for flat-footed or neutral runners.",
     "price": "$150",
     "pros": "Extremely lightweight for its size (9.1 oz lab weight), and outstanding 5/5 toebox/heel splay durability",
-    "stack": "Heel 39.4 mm / Forefoot 28.1 mm actual",
+    "stack": "Heel 39.4 mm / Forefoot 28.1 mm",
     "suitability": "Suits overpronators, flat feet, and beginners wanting walking versatility; does not suit hot-climate runners",
     "terrain": [
      "Road"
     ],
-    "weight": "9.1 oz / 259 g actual (9 oz / 256 g stated men's; 8 oz / 228 g stated women's)"
+    "weight": "9 oz / 256 g (men's); 8 oz / 228 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -832,7 +832,7 @@
     "carbon_plate": "Yes, carbon plate & extreme rocker",
     "cons": "Restrictive tight fit limits toe splay, unstable ride for some, and exceptionally poor heel padding durability (1/5)",
     "cushioning": "Max cushioning",
-    "drop": "13.4 mm actual drop (7 mm brand)",
+    "drop": "7 mm",
     "foam_material": "Supercritical PEBA foam (PEBA)",
     "foot_shape": "Narrow, tight fit and tapered toebox",
     "highlights": "Toothed laces and extreme rocker",
@@ -843,12 +843,12 @@
     "overview": "A towering, speed-focused racing weapon designed to deliver massive underfoot bounce and aggressive forward propulsion.",
     "price": "$275",
     "pros": "Incredible 75.3% energy return and out-of-this-world 170 SA heel shock absorption",
-    "stack": "Heel 44.5 mm / Forefoot 31.1 mm actual",
+    "stack": "Heel 44.5 mm / Forefoot 31.1 mm",
     "suitability": "Suits competitive marathoners and road ultra racers; absolutely does not suit wide feet or those preferring a calm ride",
     "terrain": [
      "Road"
     ],
-    "weight": "6.8 oz / 193 g actual (7.5 oz / 213 g stated men's; 6.2 oz / 175 g stated women's)"
+    "weight": "7.5 oz / 213 g (men's); 6.2 oz / 175 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -864,7 +864,7 @@
     "carbon_plate": "No plate",
     "cons": "Narrow fit can pinch wide toes, ride can feel firm, and stiff heel counter may irritate Achilles",
     "cushioning": "Moderate (balanced) cushioning",
-    "drop": "9.4 mm actual drop (5 mm brand)",
+    "drop": "5 mm",
     "foam_material": "Balanced daily EVA-blend (EVA)",
     "foot_shape": "Narrow, snug fit",
     "highlights": "Perforated insole and Early-Stage Meta Rocker",
@@ -875,12 +875,12 @@
     "overview": "A highly nimble, lightweight daily trainer engineered with a smooth forward-rolling rocker for versatile, fun paces.",
     "price": "$145",
     "pros": "Elite-level upper breathability (96 BR), exceptionally lightweight build (7.9 oz lab weight), and secure lockdown",
-    "stack": "Heel 35.6 mm / Forefoot 26.2 mm actual",
+    "stack": "Heel 35.6 mm / Forefoot 26.2 mm",
     "suitability": "Suits narrow-footed runners, heel strikers, and beginners looking for an agile one-shoe daily setup",
     "terrain": [
      "Road"
     ],
-    "weight": "7.9 oz / 224 g actual (8.5 oz / 241 g stated men's; 7.1 oz / 201 g stated women's)"
+    "weight": "8.5 oz / 241 g (men's); 7.1 oz / 201 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -896,7 +896,7 @@
     "carbon_plate": "Yes, full-length carbon plate & Meta Rocker",
     "cons": "Slippery non-gusseted tongue, heavy layout (9.3 oz actual), tight fit, and heel EVA block dulls energy return",
     "cushioning": "Max cushioning",
-    "drop": "9.5 mm actual drop (5 mm brand)",
+    "drop": "5 mm",
     "foam_material": "Dual-density PEBA & EVA dual foam",
     "foot_shape": "Narrow fit",
     "highlights": "Keeps performance and stays soft in cold weather",
@@ -907,12 +907,12 @@
     "overview": "A high-stack, propulsive plated trainer that balances long-run protection with snappy forefoot transitions.",
     "price": "$190",
     "pros": "Bouncy forefoot propulsion, deep cushioning, stable ride, and fixed comfortable upper (resolves v2 flaws)",
-    "stack": "Heel 42.9 mm / Forefoot 33.4 mm actual",
+    "stack": "Heel 42.9 mm / Forefoot 33.4 mm",
     "suitability": "Suits neutral runners looking for a stable, highly rockered plated trainer to tackle tempo workouts and daily mileage",
     "terrain": [
      "Road"
     ],
-    "weight": "9.3 oz / 264 g actual (8.9 oz / 252 g stated men's; 7.6 oz / 215 g stated women's)"
+    "weight": "8.9 oz / 252 g (men's); 7.6 oz / 215 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -928,7 +928,7 @@
     "carbon_plate": "No plate",
     "cons": "Feels heavy and clunky underfoot (10.7 oz lab weight), non-gusseted tongue, and actual drop exceeds stated",
     "cushioning": "Max cushioning (firm/stable feel)",
-    "drop": "9.1 mm actual drop (5 mm brand)",
+    "drop": "5 mm",
     "foam_material": "Supercritical EVA (EVA)",
     "foot_shape": "Medium fit (not for wide feet)",
     "highlights": "Supercritical EVA midsole",
@@ -939,12 +939,12 @@
     "overview": "An ultra-cushioned road daily cruiser designed to absorb heavy joint impact and supply premium comfort at slow-and-steady paces.",
     "price": "$170",
     "pros": "Endless protective cushioning, surprisingly stable platform for its tall stack, plush step-in comfort, and lighter build than Bondi 8",
-    "stack": "Heel 41.3 mm / Forefoot 32.2 mm actual",
+    "stack": "Heel 41.3 mm / Forefoot 32.2 mm",
     "suitability": "Suits walkers, slow recovery runners, and runners suffering from plantar fasciitis or Achilles tightness",
     "terrain": [
      "Road"
     ],
-    "weight": "10.7 oz / 303 g actual (10.5 oz / 297 g stated men's; 9.3 oz / 263 g stated women's)"
+    "weight": "10.5 oz / 297 g (men's); 9.3 oz / 263 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -960,7 +960,7 @@
     "carbon_plate": "No plate",
     "cons": "Heavy and bulky (9.7 oz actual / 9.8 oz actual US M10), non-gusseted tongue, and needs update to bouncier supercritical foam",
     "cushioning": "Max cushioning",
-    "drop": "12.4 mm actual drop (8 mm brand)",
+    "drop": "8 mm",
     "foam_material": "Balanced daily trainer foam",
     "foot_shape": "Medium width (roomier toebox than previous Cliftons)",
     "highlights": "Achilles-friendly heel collar",
@@ -971,12 +971,12 @@
     "overview": "A skyscraper-high everyday cruiser designed for reliable joint protection and comfort that feels closer to a Bondi than a classic Clifton.",
     "price": "$150",
     "pros": "Superb joint protection, stellar 5/5 heel padding durability, spacious comfortable upper, and durable 3.6 mm thick outsole",
-    "stack": "Heel 44.4 mm / Forefoot 32.0 mm actual",
+    "stack": "Heel 44.4 mm / Forefoot 32.0 mm",
     "suitability": "Suits heel strikers, marathoners, and runners who previously skipped Cliftons due to narrow toeboxes",
     "terrain": [
      "Road"
     ],
-    "weight": "9.7 oz / 275 g actual (9.8 oz / 277 g stated men's; 8 oz / 226 g stated women's)"
+    "weight": "9.8 oz / 277 g (men's); 8 oz / 226 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -992,7 +992,7 @@
     "carbon_plate": "Yes, full-length stiff carbon plate & rocker",
     "cons": "Tight restrictive toebox, heavier than key competitors (7.8 oz actual weight), and clunky at slow paces",
     "cushioning": "Max cushioning (balanced feel)",
-    "drop": "10.0 mm actual drop (7 mm brand)",
+    "drop": "7 mm",
     "foam_material": "Dual-density PEBA (PEBA)",
     "foot_shape": "Narrow, tight tapered fit",
     "highlights": "Dual PEBA layers",
@@ -1003,12 +1003,12 @@
     "overview": "A highly stable, durable road racer designed with dual PEBA layers to give heel strikers a supportive yet snappy, fast roll",
     "price": "$250",
     "pros": "Responsive PEBA bounce, flawless 5/5 upper breathability, excellent durability for a racer, and comfortable heel/tongue",
-    "stack": "Heel 39.6 mm / Forefoot 29.6 mm actual",
+    "stack": "Heel 39.6 mm / Forefoot 29.6 mm",
     "suitability": "Suits competitive marathon racers and heel strikers looking for high-stack speed; does not suit runners seeking toe splay",
     "terrain": [
      "Road"
     ],
-    "weight": "7.8 oz / 220 g actual (7.4 oz / 210 g stated men's; 5.9 oz / 167 g stated women's)"
+    "weight": "7.4 oz / 210 g (men's); 5.9 oz / 167 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -1023,7 +1023,7 @@
     "carbon_plate": "Yes, X-shaped carbon-fiber plate",
     "cons": "Tight restrictive toe box, high retail price ($300), and minor upper durability concerns",
     "cushioning": "Max cushioning",
-    "drop": "7.2 mm actual (5 mm brand)",
+    "drop": "5 mm",
     "foam_material": "TPU foam (TPU)",
     "foot_shape": "Narrow fit / tapered toebox",
     "highlights": "XDiMESH thin upper, X-shaped carbon plate, and a unique dual-section lacing system",
@@ -1034,14 +1034,14 @@
     "overview": "A premium off-road racing shoe featuring an aggressive forward rocker and an X-shaped carbon plate to keep stride transitions highly efficient",
     "price": "$300",
     "pros": "Highly energetic and bouncy underfoot feel, outstanding wet/dry Vibram grip, and highly breathable",
-    "stack": "37.9/30.7 mm actual",
+    "stack": "37.9/30.7 mm",
     "suitability": "Suits heel strikers wanting carbon rolling drive and runners with deep pockets; does not suit wide-footed runners",
     "terrain": [
      "Gravel",
      "road-to-trail",
      "moderate trails"
     ],
-    "weight": "9.6 oz / 272 g actual (9.7 oz / 275 g stated men's; 8.1 oz / 230 g stated women's)"
+    "weight": "9.7 oz / 275 g (men's); 8.1 oz / 230 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -1055,7 +1055,7 @@
     "cons": "Relatively heavy daily layout (10.1 oz for US M8.5)",
     "cushioning": "Max cushioning",
     "drop": "5 mm",
-    "foam_material": "Supercritical foam",
+    "foam_material": "Supercritical foam (EVA)",
     "foot_shape": "Roomy toebox with a narrow heel & midfoot hold",
     "highlights": "Thin, single-layer XDiMESH upper and a Salomon-esque two-section quick-lace system",
     "intended_use": "Technical ultras",
@@ -1088,7 +1088,7 @@
     "carbon_plate": "No plate",
     "cons": "Restrictive tapered toe box, thin outsole might limit overall lifespan, and suspect upper mesh durability",
     "cushioning": "Balanced cushioning",
-    "drop": "8.1 mm actual (6 mm brand)",
+    "drop": "6 mm",
     "foam_material": "CircleCell (supercritical foam)",
     "foot_shape": "Narrow toe box / Medium fit",
     "highlights": "Zonal TunedFit lacing",
@@ -1099,14 +1099,14 @@
     "overview": "A smooth, bouncy, and exceptionally lightweight multi-surface hybrid designed to confidently transition from roads to gravel paths",
     "price": "$160",
     "pros": "Exceptionally lightweight (8.8 oz actual US M9), stable, bouncy supercritical CircleCell response, and great hybrid traction",
-    "stack": "34.5/26.4 mm actual",
+    "stack": "34.5/26.4 mm",
     "suitability": "heavy runners and multi-surface transitioners; does not suit runners needing standard toe box splay",
     "terrain": [
      "Gravel",
      "road",
      "light trails"
     ],
-    "weight": "8.8 oz / 249 g actual (8.5 oz / 242 g stated men's; 7.9 oz / 223 g stated women's)"
+    "weight": "8.5 oz / 242 g (men's); 7.9 oz / 223 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -1154,7 +1154,7 @@
     "carbon_plate": "No plate",
     "cons": "Ride is relatively firm for its skyscraper height, lacks high-energy energetic pop, and dual lacing system is polarizing",
     "cushioning": "Max cushioning (firm/stable feel)",
-    "drop": "7.5 mm actual (6 mm brand)",
+    "drop": "6 mm",
     "foam_material": "Dual-density CircleCell & rubberized EVA",
     "foot_shape": "Accommodating medium fit on wide platform",
     "highlights": "Extra forefoot CircleCell, TunedFit dual lacing",
@@ -1165,13 +1165,13 @@
     "overview": "A skyscraper-high max-stack road daily trainer engineered to offer high platform stability and structured joint protection over long miles",
     "price": "$180",
     "pros": "Exceptionally comfortable/breathable upper, highly stable base, suitable weight for stack (9.4 oz actual), and accommodating custom lacing adjustability",
-    "stack": "40.7/33.2 mm actual",
+    "stack": "40.7/33.2 mm",
     "suitability": "mid-to-forefoot strikers and long-distance road runners preferring structured stability",
     "terrain": [
      "Road",
      "treadmill"
     ],
-    "weight": "9.6 oz / 272 g actual (9.2 oz / 260 g stated men's)"
+    "weight": "9.2 oz / 260 g (men's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -1179,56 +1179,90 @@
    "domain": "gear",
    "kind": "catalog_item",
    "title": "NNormal Kjerag 02",
-   "content": "NNormal Kjerag 02: Incredible ground feel/sensitivity, extremely lightweight (9.11 oz), fluid turnover, excellent dry rock grip, and highly durable (lasts 800+ miles). Cons: ",
+   "content": "NNormal Kjerag 02: Incredible ground feel/sensitivity, extremely lightweight (9.11 oz), fluid turnover, excellent dry rock grip, and highly durable (lasts 800+ miles) Cons: Narrow midfoot limits wider feet, shallow lugs struggle in mud and snow, and no-insole design plus lack of rock plate make it more fatiguing over long distances",
    "payload": {
+    "arch_support": "Neutral",
     "brand": "NNormal",
+    "carbon_plate": "No plate (no rock plate at all)",
+    "cons": "Narrow midfoot limits wider feet, shallow 3.1 mm lugs struggle in mud and snow, more fatiguing over long distances for non-midfoot strikers, no rock plate so sharp rocks are noticeable on aggressive terrain, wet smooth granite grip drops off",
+    "cushioning": "Low/firm, no-insole design (foot sits directly on midsole foam)",
+    "drop": "5 mm measured (6 mm claimed)",
+    "foam_material": "EExpure+ supercritical TPE (updated from original EExpure, more responsive on firm surfaces)",
+    "foot_shape": "Narrow through midfoot and heel, toe box widened 2-3 mm over v1 but still not wide-friendly; unisex sizing runs large, size down a half size",
+    "highlights": "No-insole design for maximum ground feedback, single-layer Matryx Jacquard upper, more pronounced toe rocker than v1, OutdoorGearLab's #1 of 16 ranked trail shoe and 'Best for Ultralight Cushioning' Top Pick",
+    "intended_use": "Fast technical trail racing at speed",
+    "lug_depth": "3.1 mm",
     "model": "Kjerag 02",
+    "outsole_compound": "Vibram Megagrip Litebase (chevron lugs, roughly half the thickness of standard Megagrip)",
     "overview": "An ultralight precision tool with ultralight cushioning and a narrow midfoot/snug fit, intended for fast technical trail races on technical, rocky, dry hardpack terrain.",
     "price": "$215",
-    "pros": "Incredible ground feel/sensitivity, extremely lightweight (9.11 oz), fluid turnover, excellent dry rock grip, and highly durable (lasts 800+ miles).",
+    "pros": "Incredible ground feel/sensitivity, extremely lightweight (9.11 oz), fluid turnover, excellent dry rock grip, breathable fast-draining Matryx Jacquard upper, and highly durable (lasts 800+ miles)",
     "suitability": "Suits midfoot/forefoot strikers with narrow-to-normal feet; does not suit heel strikers, wide feet, or mud/snow running.",
     "terrain": [
      "Technical",
      "rocky",
      "dry hardpack"
     ],
-    "weight": "9.11 oz / 258 g actual",
-    "lug_depth": "3.5 mm"
+    "weight": "9.11 oz / 258 g"
    },
-   "source_label": "NotebookLM distillation"
+   "source_label": "OutdoorGearLab review"
   },
   {
    "domain": "gear",
    "kind": "catalog_item",
    "title": "NNormal Tomir 2.0",
-   "content": "NNormal Tomir 2.0: Extremely versatile midsole, exceptional durability, and incredible traction in slick, subpar trail conditions. Cons: ",
+   "content": "NNormal Tomir 2.0: Extremely versatile midsole, exceptional durability, and incredible traction in slick, subpar trail conditions Cons: Slim Ripstop TPE upper isn't accommodating for wider feet and runs warm/steamy in muggy conditions",
    "payload": {
+    "arch_support": "Neutral",
     "brand": "NNormal",
+    "carbon_plate": "No plate",
+    "cons": "Slim, minimally-stretch Ripstop TPE upper is not accommodating for wide or average-to-wide feet, tight weave runs warm/steamy in muggy conditions, unlikely to match the near-indestructible longevity of the original Tomir",
+    "cushioning": "Moderate, medium-density with a light squish that firms up nicely after a short (~20 mile) break-in",
+    "drop": "8 mm",
+    "foam_material": "EExpure supercritical foam",
+    "foot_shape": "True to size, slimmer/more fitted profile than v1, Ripstop TPE upper (Dyneema-like), lacing chain runs from the medial side along the crest of the foot, padded gusseted tongue, structured padded heel collar; size up a half size for wider feet",
+    "highlights": "Topographically modeled overlays, no-slip serrated laces, stitched-on midsole with an easy-to-resole outsole design for sustainability",
+    "intended_use": "Everyday trail training on technical ridgelines to road",
+    "lug_depth": "5.0 mm",
     "model": "Tomir 2.0",
+    "outsole_compound": "Vibram Megagrip Litebase, 33 five-millimeter lugs with varied lug shapes and micro-traction nodules",
     "overview": "A highly versatile and durable mountain training partner with springy yet firm cushioning and a loose midfoot fit, intended for everyday trail training on technical ridgelines to road.",
-    "price": "$180",
-    "pros": "Extremely versatile midsole, exceptional durability, and incredible traction in slick, subpar trail conditions.",
-    "suitability": "Suits runners wanting a durable everyday trainer with outstanding traction on dicey terrain; does not suit those needing steep downhill foot security.",
+    "price": "$170",
+    "pros": "Extremely versatile midsole, exceptional durability, and incredible traction in slick, subpar trail conditions (mud, snow, stream crossings, granite)",
+    "suitability": "Suits runners wanting a durable everyday trainer with outstanding traction on dicey terrain; does not suit those needing steep downhill foot security or a wide toe box.",
     "terrain": [
      "Technical ridgelines",
-     "road"
+     "road",
+     "mud",
+     "snow"
     ],
-    "weight": "10.84 oz / 307 g actual",
-    "lug_depth": "5.0 mm"
+    "weight": "9.9 oz / 280 g stated (US M9, unisex sizing)"
    },
-   "source_label": "NotebookLM distillation"
+   "source_label": "Believe in the Run review"
   },
   {
    "domain": "gear",
    "kind": "catalog_item",
    "title": "NNormal Cadi",
-   "content": "NNormal Cadi: Highly dependable comfort, outstanding women's specific fit, great traction/rock protection, and versatile \"mountain-to-road\" transition. Cons: ",
+   "content": "NNormal Cadi: Highly dependable comfort, outstanding women's specific fit, great traction/rock protection, and versatile \"mountain-to-road\" transition Cons: Midsole lacks a springy/energetic feel and the shoe runs heavier than expected for a supercritical foam trainer",
    "payload": {
+    "arch_support": "Neutral",
     "brand": "NNormal",
+    "carbon_plate": "No plate",
+    "cons": "Midsole lacks a \"springy\", energetic element compared to other max-cushion trail shoes, runs heavier than expected for a supercritical foam midsole paired with a relatively shallow lug outsole, not the best pick for rocky/very uneven terrain or fast, demanding efforts where a more technical shoe would work better",
+    "cushioning": "Max/moderate, NNormal's most cushioned shoe to date, protective and confidence-inspiring but firmer in-hand than expected",
+    "drop": "6 mm",
+    "foam_material": "Supercritical foam midsole",
+    "foot_shape": "Sincetech woven engineered upper, wider toe box inspired by the Kjerag last for more natural foot movement, new lace system for easy fit dial-in; broad platform (120 mm forefoot / 80 mm midfoot / 95 mm heel)",
+    "highlights": "NNormal's highest stack height shoe to date, broadest platform in the lineup, all-day comfort suited to a true one-shoe quiver from short runs to ultra distances",
+    "intended_use": "Everyday training and ultra races on smooth to rolling trails, gravel, road, and hikes",
+    "lug_depth": "3.5-4.0 mm",
     "model": "Cadi",
+    "outsole_compound": "Vibram Megagrip, full underfoot coverage",
     "overview": "NNormal's most cushioned shoe to date, offering a mellowed-out, dependable ride with max/moderate cushioning and an accommodating generous fit, intended for everyday training and ultra races on smooth to rolling trails, gravel, road, and hikes.",
     "price": "$175",
-    "pros": "Highly dependable comfort, outstanding women's specific fit, great traction/rock protection, and versatile \"mountain-to-road\" transition.",
+    "pros": "Highly dependable comfort, outstanding women's specific fit, great traction/rock protection, versatile \"mountain-to-road\" transition, and confidence-inspiring underfoot security for long, all-day efforts",
+    "stack": "35 mm heel / 29 mm forefoot",
     "suitability": "Suits all experience levels and ultra-marathoners wanting versatile comfort; excellent option for a true \"one-shoe quiver\".",
     "terrain": [
      "Smooth trails",
@@ -1237,10 +1271,9 @@
      "road",
      "hikes"
     ],
-    "weight": "9.91 oz / 281 g actual (10.1 oz / 286 g stated men's)",
-    "lug_depth": "4.0 mm"
+    "weight": "10.1 oz / 286 g (men's)"
    },
-   "source_label": "NotebookLM distillation"
+   "source_label": "RoadTrailRun / Running Warehouse review"
   },
   {
    "domain": "gear",
@@ -1254,7 +1287,7 @@
     "carbon_plate": "No plate",
     "cons": "Limited stability and foam significantly hardens in cold weather",
     "cushioning": "Soft/Max cushioning",
-    "drop": "9.5 mm actual",
+    "drop": "9.5 mm",
     "foam_material": "Fresh Foam X (Soft EVA-based)",
     "foot_shape": "Medium fit",
     "intended_use": "comfortable daily runs and daily walking",
@@ -1264,13 +1297,13 @@
     "overview": "A deliciously soft and cozy daily trainer with smooth heel rocker transition and a premium lifestyle look.",
     "price": "$140 - $145",
     "pros": "Excellent step-in comfort, high flexibility, well-balanced upper fit, and a highly agile ride",
-    "stack": "36.9/27.4 mm actual",
+    "stack": "36.9/27.4 mm",
     "suitability": "Beginners and walkers",
     "terrain": [
      "Road",
      "Treadmill"
     ],
-    "weight": "9.2 oz / 261 g actual (9.2 oz / 261 g stated men's; 8.3 oz / 234 g stated women's)"
+    "weight": "9.2 oz / 261 g (men's); 8.3 oz / 234 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -1286,7 +1319,7 @@
     "carbon_plate": "No plate/rods",
     "cons": "Weak toebox durability, and foam may flatten or become dead quickly for heavy runners (clydesdales)",
     "cushioning": "Soft cushioning (high shock absorption)",
-    "drop": "6.3 mm actual",
+    "drop": "6.3 mm",
     "foam_material": "PEBA-blended FuelCell (PEBA-blended)",
     "intended_use": "daily road running, tempo workouts, and budget race days",
     "lug_depth": "0.0 mm",
@@ -1295,12 +1328,12 @@
     "overview": "An exceptionally lightweight, highly flexible road trainer that provides steady and reliable comfort with the bounciness of modern supercritical foam.",
     "price": "$140",
     "pros": "Very lightweight feel (7.8 oz actual US M9), highly flexible, and its Fantomfit upper provides secure and comfortable lockdown",
-    "stack": "33.0/26.7 mm actual",
+    "stack": "33.0/26.7 mm",
     "suitability": "Neutral/leanish runners seeking plate-free versatility",
     "terrain": [
      "Road"
     ],
-    "weight": "7.8 oz / 220 g actual (7.9 oz / 225 g stated men's)"
+    "weight": "7.9 oz / 225 g (men's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -1316,7 +1349,7 @@
     "carbon_plate": "Yes, carbon-fiber Flyplate",
     "cons": "Glued-down non-removable insole, polarizing arch shape, potential heel/outsole durability issues for heel strikers.",
     "cushioning": "Max cushioning",
-    "drop": "8.5 mm actual (8.0 mm brand)",
+    "drop": "8.0 mm",
     "foam_material": "ZoomX (PEBA) paired with Air Pods",
     "foot_shape": "Standard fit width",
     "highlights": "Forefoot Air Zoom Pods and Atomknit 3.0 upper.",
@@ -1327,12 +1360,12 @@
     "overview": "A towering, featherlight road racing weapon designed to deliver explosive bounce and maximum forward rolling efficiency.",
     "price": "$285",
     "pros": "Exceptionally lightweight (7.1 oz actual), best-in-class breathability, massive underfoot energy return, and smooth transitions.",
-    "stack": "38.1/29.6 mm actual (40.0/32.0 mm brand)",
+    "stack": "40.0/32.0 mm",
     "suitability": "Suits elite marathoners and competitive runners chasing personal records; does not suit heavy heel strikers who wear out exposed outsole rubber quickly.",
     "terrain": [
      "Road"
     ],
-    "weight": "7.1 oz / 201 g actual (7 oz / 198 g stated men's; 6.1 oz / 174 g stated women's)"
+    "weight": "7 oz / 198 g (men's); 6.1 oz / 174 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -1348,7 +1381,7 @@
     "carbon_plate": "Yes, carbon-fiber Flyplate",
     "cons": "Less ideal for full marathon racing than predecessor models, narrow midfoot/heel limits stability, and poor outsole durability.",
     "cushioning": "Max cushioning",
-    "drop": "8.6 mm actual (6.0 mm brand)",
+    "drop": "6.0 mm",
     "foam_material": "ZoomX (PEBA)",
     "foot_shape": "Narrow fit",
     "highlights": "Perforated removable insole and carbon Flyplate.",
@@ -1359,12 +1392,12 @@
     "overview": "A razor-sharp, spring-loaded competition flat designed for high-speed road efforts and tempo intervals.",
     "price": "$260",
     "pros": "Incredibly bouncy underfoot ride, extremely lightweight build (5.9 oz US M9 actual), and great upper breathability.",
-    "stack": "34.1/25.5 mm actual (35.0/29.0 mm brand)",
+    "stack": "35.0/29.0 mm",
     "suitability": "Suits neutral forefoot strikers seeking a lightweight, highly bouncy racing platform; does not suit runners seeking high landing stability.",
     "terrain": [
      "Road"
     ],
-    "weight": "5.9 oz / 166 g actual (6.5 oz / 184 g stated men's; 5.8 oz / 164 g stated women's)"
+    "weight": "6.5 oz / 184 g (men's); 5.8 oz / 164 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -1380,7 +1413,7 @@
     "carbon_plate": "Yes, carbon Flyplate",
     "cons": "Restrictive toebox width, SR-02 carrier foam lacks energetic bounce, and can feel unstable on uneven surfaces.",
     "cushioning": "Max cushioning",
-    "drop": "9.6 mm actual (8.0 mm brand)",
+    "drop": "8.0 mm",
     "foam_material": "ZoomX (PEBA) & SR-02 (EVA) dual-density midsole",
     "foot_shape": "Narrow fit and restrictive toebox",
     "highlights": "PEBA ZoomX core encapsulated in protective SR-02 foam.",
@@ -1391,12 +1424,12 @@
     "overview": "A versatile, performance-ready super trainer that bridges daily mileage with carbon-plated speed.",
     "price": "$170",
     "pros": "Versatile performance across all paces, outstanding outsole durability, comfortable upper, and reasonable weight (8.7 oz lab).",
-    "stack": "39.7/30.1 mm actual (40.0/32.0 mm brand)",
+    "stack": "40.0/32.0 mm",
     "suitability": "Suits neutral runners seeking a durable, plated daily trainer for tempo paces; does not suit runners who need roomy toe splay.",
     "terrain": [
      "Road"
     ],
-    "weight": "8.7 oz / 248 g actual (8.6 oz / 244 g stated men's; 7.6 oz / 216 g stated women's)"
+    "weight": "8.6 oz / 244 g (men's); 7.6 oz / 216 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -1412,7 +1445,7 @@
     "carbon_plate": "Yes, carbon Flyplate",
     "cons": "High retail price, steep actual drop (10.7 mm), lacks airflow in hot weather, and shallow 3 mm lugs limit mud versatility.",
     "cushioning": "Max (plush) cushioning",
-    "drop": "10.7 mm actual (8.5 mm brand)",
+    "drop": "8.5 mm",
     "foam_material": "ZoomX (PEBA) wrapped in fabric protective shell",
     "foot_shape": "Medium fit with wide toebox",
     "highlights": "Protective fabric midsole wrapper.",
@@ -1423,13 +1456,13 @@
     "overview": "A highly cushioned off-road racer pairing soft ZoomX foam and a carbon plate to maintain fast legs over long trail courses.",
     "price": "$260",
     "pros": "Incredible energy return, outstanding wet/dry outsole traction, roomy fit, and excellent cold-weather performance.",
-    "stack": "38.1/27.4 mm actual (38.0/29.5 mm brand)",
+    "stack": "38.0/29.5 mm",
     "suitability": "Suits trail racers looking for maximum energy return and underfoot protection; does not suit runners looking for nimble ground feel.",
     "terrain": [
      "Gravel",
      "dry trails"
     ],
-    "weight": "9.8 oz / 278 g actual (9.5 oz / 269 g stated men's; 8.6 oz / 244 g stated women's)"
+    "weight": "9.5 oz / 269 g (men's); 8.6 oz / 244 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -1445,7 +1478,7 @@
     "carbon_plate": "No plate/rods",
     "cons": "Very bad toebox mesh durability, runs warm, minor price bump, and lacks premium energy return.",
     "cushioning": "Moderate (soft) cushioning",
-    "drop": "8.5 mm actual (8.0 mm brand)",
+    "drop": "8.0 mm",
     "foam_material": "Plush daily cushioning foam",
     "foot_shape": "Medium fit (roomier than older versions)",
     "highlights": "Highly padded comfortable tongue.",
@@ -1456,14 +1489,14 @@
     "overview": "A comfortable road-to-trail transition cruiser engineered for versatility and travel convenience.",
     "price": "$155",
     "pros": "Excellent door-to-trail versatility, durable outsole rubber, dependable landing shock absorption, and practical travel utility.",
-    "stack": "34.1/25.6 mm actual (35.0/27.0 mm brand)",
+    "stack": "35.0/27.0 mm",
     "suitability": "Suits beginners, recreational joggers, and travelers seeking a single versatile hybrid; does not suit runners wanting a high-energy supercritical ride.",
     "terrain": [
      "Road-to-trail",
      "gravel",
      "light dirt paths"
     ],
-    "weight": "10.2 oz / 289 g actual (10.8 oz / 305 g stated men's; 9.5 oz / 269 g stated women's)"
+    "weight": "10.8 oz / 305 g (men's); 9.5 oz / 269 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -1494,7 +1527,7 @@
      "Rocky singletrack",
      "technical trails"
     ],
-    "weight": "11.9 oz / 337 g actual (11.8 oz / 336 g stated men's; 9.6 oz / 273 g stated women's)",
+    "weight": "11.8 oz / 336 g (men's); 9.6 oz / 273 g (women's)",
     "lug_depth": "4.0 mm"
    },
    "source_label": "NotebookLM distillation"
@@ -1511,7 +1544,7 @@
     "carbon_plate": "No plate/rods",
     "cons": "Feels heavy (10.1 oz actual), lacks forefoot shock absorption, lacks energetic rebound, and features a very steep 14 mm actual drop.",
     "cushioning": "Moderate cushioning",
-    "drop": "14.0 mm actual (10.0 mm brand)",
+    "drop": "10.0 mm",
     "foam_material": "ReactX daily foam",
     "foot_shape": "Medium fit (roomier than Peg 41)",
     "highlights": "Air Zoom units and upgraded ReactX foam.",
@@ -1522,12 +1555,12 @@
     "overview": "A dependable, traditional daily cruiser designed for stable road comfort and everyday versatility.",
     "price": "$145",
     "pros": "Outstanding outsole longevity, exceptionally soft and comfortable upper mesh, stable landing platform, and solid overall build.",
-    "stack": "36.0/22.0 mm actual (37.0/27.0 mm brand)",
+    "stack": "37.0/27.0 mm",
     "suitability": "Suits beginners, walkers, and heel strikers needing a stable platform; does not suit runners seeking responsive, bouncy performance.",
     "terrain": [
      "Road"
     ],
-    "weight": "10.1 oz / 286 g actual (10.5 oz / 297 g stated men's; 8.6 oz / 243 g stated women's)"
+    "weight": "10.5 oz / 297 g (men's); 8.6 oz / 243 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -1543,7 +1576,7 @@
     "carbon_plate": "No plate/rods",
     "cons": "Heavier than expected (10.2 oz actual), narrow fit can squeeze wide feet, non-gusseted tongue, and road grip needs improvement.",
     "cushioning": "Max cushioning",
-    "drop": "9.6 mm actual (10.0 mm brand)",
+    "drop": "10.0 mm",
     "foam_material": "Training-friendly, durability-boosted ZoomX (PEBA variant)",
     "foot_shape": "Snug fit with narrow toebox",
     "highlights": "Full training ZoomX midsole.",
@@ -1554,12 +1587,12 @@
     "overview": "A true max-stack cruiser providing soft, protective underfoot bounce for effortless recovery miles.",
     "price": "$180",
     "pros": "Energetic underfoot bounce, outstanding heel and forefoot shock absorption, stable heel counter, and resists cold well.",
-    "stack": "42.3/32.7 mm actual (45.0/35.0 mm brand)",
+    "stack": "45.0/35.0 mm",
     "suitability": "Suits neutral recovery runners seeking deep underfoot shock absorption; does not suit wide-footed runners.",
     "terrain": [
      "Road"
     ],
-    "weight": "10.2 oz / 289 g actual (10.1 oz / 285 g stated men's; 8.5 oz / 241 g stated women's)"
+    "weight": "10.1 oz / 285 g (men's); 8.5 oz / 241 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -1575,7 +1608,7 @@
     "carbon_plate": "No plate/rods",
     "cons": "Heavy daily layout (10.5 oz actual / 11.5 oz M11.5), narrow toebox limits toe splay, lacks fast-paced agility, and steep actual drop.",
     "cushioning": "Max cushioning",
-    "drop": "13.9 mm actual (10.0 mm brand)",
+    "drop": "10.0 mm",
     "foam_material": "Durability-boosted training ZoomX (PEBA variant)",
     "foot_shape": "Medium fit with narrow toebox",
     "highlights": "First true max-stack design in the Vomero series.",
@@ -1586,12 +1619,12 @@
     "overview": "An ultra-plush, maximalist recovery shoe designed to deliver highly protective step-in luxury on easy days.",
     "price": "$150",
     "pros": "Incredible step-in comfort, outstanding heel shock absorption (147 SA), surprisingly stable for its stack, and retail price drop.",
-    "stack": "42.5/28.6 mm actual (45.0/35.0 mm brand)",
+    "stack": "45.0/35.0 mm",
     "suitability": "Suits slow-paced recovery runners and heel strikers desiring maximum underfoot softness; does not suit runners seeking snappy speed.",
     "terrain": [
      "Road"
     ],
-    "weight": "10.5 oz / 298 g actual (11.5 oz / 325 g stated men's; 9.2 oz / 262 g stated women's)"
+    "weight": "11.5 oz / 325 g (men's); 9.2 oz / 262 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -1599,44 +1632,68 @@
    "domain": "gear",
    "kind": "catalog_item",
    "title": "Norda 001A",
-   "content": "Norda 001A:  Cons: ",
+   "content": "Norda 001A: Excellent Arnitel TPEE midsole feel, virtually indestructible Dyneema upper, sticky durable Vibram Megagrip Litebase outsole Cons: Ankle collar/tongue junction and heel counter can rub and irritate on longer runs, weight savings vs. the original 001 are barely noticeable",
    "payload": {
+    "arch_support": "Neutral",
     "brand": "Norda",
+    "carbon_plate": "No plate",
+    "cons": "Ankle collar/tongue junction and heel counter can rub and irritate (a carryover issue from the original 001, not fully resolved), toe box runs generous/roomy which some narrow-footed runners found excessive, actual weight savings over the 001 are minimal despite lighter materials",
+    "cushioning": "Moderate, softly cushioned but stable",
+    "drop": "5 mm",
+    "foam_material": "Arnitel TPEE (denser tune than the Norda 005, softer and more energetic than the original Vibram midsole)",
+    "foot_shape": "Slightly rounded toe box with midfoot/heel wiggle room, Norda Lock System (fully-gusseted tongue with reinforced medial midfoot); size up at least a half size",
+    "highlights": "Norda Lock lacing system, topo map etched into the outsole (a nod to the Canadian Shield), same instant-classic silhouette as the original 001",
+    "intended_use": "All-around trail adventures from daily miles up to 50K-50 mile efforts",
     "model": "001A",
-    "overview": "A premium, highly durable all-terrain trail runner designed with a refined, elastic-free upper and a bouncy, resilient foam midsole that doesn't collapse over time",
+    "outsole_compound": "Vibram Megagrip Litebase, 5 mm lugs",
+    "overview": "A halfway update to the landmark Norda 001, keeping its virtually indestructible Dyneema upper and beloved fit while swapping in the Arnitel TPEE midsole (a denser tune of the foam used in the 005) for a softer, more energetic, and more stable ride.",
     "price": "$295",
-    "stack": "26/21 mm stack",
-    "suitability": "Suits trail runners wanting top-tier material longevity",
+    "pros": "Excellent Arnitel TPEE midsole feel that adds comfort and performance over the original 001, virtually indestructible Dyneema upper that fits better with age, sticky and durable Vibram Megagrip Litebase outsole, versatile enough for a wide range of trail terrain and distances",
+    "stack": "26 mm heel / 21 mm forefoot (5 mm drop), plus outsole and eTPU insole",
+    "suitability": "Suits trail runners wanting the durability and fit of the original Norda 001 with an upgraded, more comfortable and performance-enhancing midsole",
     "terrain": [
      "Rugged trails",
-     "all-terrain adventures"
+     "all-terrain adventures",
+     "technical terrain"
     ],
     "weight": "9.4 oz / 268 g stated men's; 8.2 oz / 232 g stated women's",
     "lug_depth": "5.0 mm"
    },
-   "source_label": "NotebookLM distillation"
+   "source_label": "Believe in the Run review"
   },
   {
    "domain": "gear",
    "kind": "catalog_item",
    "title": "Norda 005",
-   "content": "Norda 005:  Cons: ",
+   "content": "Norda 005: Shockingly lightweight for a full-stack trail racer, plush yet energetic Arnitel TPEE midsole, exceptional Vibram Megagrip Elite wet/dry traction Cons: Could use more heel structure/support, midfoot lockdown can loosen slightly on technical terrain for narrow feet, no heel tab makes the shoe harder to put on",
    "payload": {
+    "arch_support": "Neutral (broader forefoot for stability, no stability mechanisms)",
     "brand": "Norda",
+    "carbon_plate": "No plate (unplated Arnitel TPEE foam does the work)",
+    "cons": "Could use more heel structure/support despite added collar pillows, midfoot lockdown loosens slightly on technical terrain for narrower feet, low toe box ceiling, no heel tab makes the shoe harder to pull on, underfoot protection is less suited to very long/technical pounding (100-mile terrain) than the 001",
+    "cushioning": "Moderate, plush yet energetic without being unstable",
+    "drop": "7 mm",
+    "foam_material": "Arnitel TPEE",
+    "foot_shape": "Broader forefoot with generous midfoot/forefoot wiggle room, Bio-Dyneema upper with Dyneema laces and perforated microsuede tongue, ankle collar pillows for heel hold; size up a half size",
+    "highlights": "Bio-Dyneema upper, all-new Vibram Megagrip Elite outsole (softer/tackier formulation than standard Megagrip), used by Matt Seidel for a podium finish (3rd) at the 2024 JFK 50 Mile without a shoe change",
+    "intended_use": "Race day and fast training across a mix of road and trail",
+    "lug_depth": "4.0 mm",
     "model": "005",
-    "overview": "A next-generation, next-to-nothing off-road racing shoe built to establish high-end super-foam energy return and stability on a featherlight chassis",
+    "outsole_compound": "Vibram Megagrip Elite",
+    "overview": "An ultralight, unplated trail racing super shoe combining a Bio-Dyneema upper, Arnitel TPEE midsole, and all-new Vibram Megagrip Elite outsole to deliver race-day speed, stability, and durability at a featherlight weight.",
     "price": "$325",
-    "stack": "32.5/25.5 mm stack",
-    "suitability": "Suits performance trail racers",
+    "pros": "Shockingly light for a full-stack trail racer, smooth and bouncy ride with great ground feel, exceptional wet and dry traction from Megagrip Elite, durable Dyneema upper and TPEE midsole that hold up over hundreds of miles, broad forefoot lends a surprisingly stable ride despite the low weight",
+    "stack": "32.5 mm heel / 25.5 mm forefoot",
+    "suitability": "Suits performance trail racers and daily-run enthusiasts wanting race-day speed on moderate-to-non-technical terrain; less ideal for very long ultras or highly technical trails",
     "terrain": [
      "Smoother singletrack",
      "gravel roads",
-     "mixed trails"
+     "mixed trails",
+     "road-to-trail transitions"
     ],
-    "weight": "7.5 oz / 214 g stated men's; 6.2 oz / 177 g stated women's",
-    "lug_depth": "4.0 mm"
+    "weight": "7.5 oz / 214 g stated men's; 6.2 oz / 177 g stated women's"
    },
-   "source_label": "NotebookLM distillation"
+   "source_label": "Believe in the Run review"
   },
   {
    "domain": "gear",
@@ -1650,7 +1707,7 @@
     "carbon_plate": "Yes, carbon Speedboard",
     "cons": "Polarizing heel security/slippage, limited landing stability, and high retail price ($280)",
     "cushioning": "Max cushioning",
-    "drop": "3.2 mm actual drop (4 mm brand)",
+    "drop": "4 mm",
     "foam_material": "Helion HF (Pebax)",
     "foot_shape": "Medium fit (roomier than older models)",
     "highlights": "Drop-in Pebax midsole construct",
@@ -1660,12 +1717,12 @@
     "overview": "An innovative, exceptionally bouncy road racing shoe designed to maximize forward rolling efficiency",
     "price": "$280",
     "pros": "Exceptional energy return (72.1%), outstanding shock absorption, and very lightweight chassis (7.1 oz actual)",
-    "stack": "38.1/34.9 mm actual",
+    "stack": "38.1/34.9 mm",
     "suitability": "not suitable for heel strikers",
     "terrain": [
      "Road"
     ],
-    "weight": "7.1 oz / 201 g actual (7.4 oz / 210 g stated men's; 6 oz / 169 g stated women's)"
+    "weight": "7.4 oz / 210 g (men's); 6 oz / 169 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -1681,7 +1738,7 @@
     "carbon_plate": "No plate",
     "cons": "Slightly heavy (9.3 oz actual), limited breathability (runs warm), and expensive ($220)",
     "cushioning": "Max cushioning",
-    "drop": "9.2 mm actual drop (6 mm brand)",
+    "drop": "6 mm",
     "foam_material": "Dual-density Helion HF & secondary foam",
     "foot_shape": "Medium fit",
     "intended_use": "Daily training & tempos",
@@ -1690,11 +1747,11 @@
     "overview": "A towering daily trainer that brings premium super-foam energy return to high-mileage runs with a highly stable chassis",
     "price": "$220",
     "pros": "Amazing step-in comfort, excellent upper/outsole durability, stable wide platform, and improved energy return",
-    "stack": "43.4/34.2 mm actual",
+    "stack": "43.4/34.2 mm",
     "terrain": [
      "Road"
     ],
-    "weight": "9.3 oz / 264 g actual (9.3 oz / 263 g stated men's; 7.6 oz / 215 g stated women's)"
+    "weight": "9.3 oz / 263 g (men's); 7.6 oz / 215 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -1710,7 +1767,7 @@
     "carbon_plate": "Yes, TPU Speedboard",
     "cons": "Fairly heavy layout (10.6 oz actual), firm rigid ride, and subpar upper breathability",
     "cushioning": "Max cushioning",
-    "drop": "6.4 mm actual drop (6 mm brand)",
+    "drop": "6 mm",
     "foam_material": "Helion foam",
     "foot_shape": "Medium to Wide fit",
     "intended_use": "Daily training",
@@ -1719,11 +1776,11 @@
     "overview": "A chunky, highly rockered cruiser designed to absorb heavy landing shock and roll smoothly at slow paces",
     "price": "$190",
     "pros": "Updated three-layer CloudTec system, premium build, 360-degree reflective details, and stable wide landing platform",
-    "stack": "38.6/32.2 mm actual",
+    "stack": "38.6/32.2 mm",
     "terrain": [
      "Road"
     ],
-    "weight": "10.6 oz / 301 g actual (10.4 oz / 295 g stated men's; 9 oz / 255 g stated women's)"
+    "weight": "10.4 oz / 295 g (men's); 9 oz / 255 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -1796,7 +1853,7 @@
     "carbon_plate": "Yes, carbon PWRPlate",
     "cons": "Refreshed mesh upper has bad toebox durability, and heel padding durability is bad in lab testing",
     "cushioning": "Moderate cushioning",
-    "drop": "7.0 mm actual (8 mm brand)",
+    "drop": "8 mm",
     "foam_material": "Dual-density Nitrofoam (100% PEBAX top / PEBA-blend bottom)",
     "foot_shape": "Medium fit (Narrow toebox)",
     "highlights": "PWRPlate & dual-density Nitrofoam",
@@ -1806,12 +1863,12 @@
     "overview": "A reliable daily workhorse with a slightly wider, softer step-in fit that maintains a highly responsive, snappy plated transition",
     "price": "$180",
     "pros": "Refreshed breathable upper mesh, comfy padded collar/heel, secure lockdown, and soft step-in feel with a fast responsive roll",
-    "stack": "33.6/26.6 mm actual (38/30 mm brand)",
+    "stack": "38/30 mm",
     "suitability": "Suits daily runners wanting a plated all-rounder; does not suit wide-footed runners",
     "terrain": [
      "Road"
     ],
-    "weight": "8.7 oz / 247 g actual (8.6 oz / 245 g stated men's)"
+    "weight": "8.6 oz / 245 g (men's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -1857,7 +1914,7 @@
     "carbon_plate": "Yes, restructured carbon PWRPlate",
     "cons": "Polarizing/unstructured upper mesh, expensive ($300), and the extended carbon plate can cause severe big-toe pain over 10 miles",
     "cushioning": "Max cushioning",
-    "drop": "8.3 mm actual (8 mm brand)",
+    "drop": "8 mm",
     "foam_material": "Aliphatic ETPU (ATPU) midsole",
     "foot_shape": "Narrow fit (Snug race upper)",
     "highlights": "Decoupled ATPU midsole & extended PWRPlate",
@@ -1867,12 +1924,12 @@
     "overview": "A decoupled, wildly futuristic road racing weapon designed for extreme forward momentum and explosive energy return",
     "price": "$300",
     "pros": "Exceptional energy return, fast and lightweight build (6 oz US M8 actual), and legendary wet/dry road traction",
-    "stack": "38.5/30.2 mm actual (40/32 mm brand)",
+    "stack": "40/32 mm",
     "suitability": "Suits PR-chasing road racers; does not suit wide feet or runners with bunions",
     "terrain": [
      "Road"
     ],
-    "weight": "6.1 oz / 173 g actual (6 oz / 170 g stated men's)"
+    "weight": "6 oz / 170 g (men's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -1948,7 +2005,7 @@
     "carbon_plate": "No",
     "cons": "Fit runs overly snug, poor upper ventilation, bulky tongue",
     "cushioning": "Max cushioning",
-    "drop": "9.2 mm actual",
+    "drop": "9.2 mm",
     "foam_material": "Optifoam2 (eTPU)",
     "foot_shape": "Snug fit (71.4 mm wide)",
     "highlights": "Quicklace Neo system",
@@ -1959,13 +2016,13 @@
     "overview": "A highly stable, maximalist hybrid shoe designed to provide a smooth, cushioned rolling transition between light trails and paved roads.",
     "price": "$160",
     "pros": "Premium winter traction, stable high stack",
-    "stack": "40.9/31.7 mm actual",
+    "stack": "40.9/31.7 mm",
     "suitability": "Suits heavy/winter runners; does not suit wide-footed or hot-climate runners.",
     "terrain": [
      "Gravel",
      "Road-to-trail"
     ],
-    "weight": "9.7 oz / 275 g actual (9.7 oz / 276 g stated men's; 8.6 oz / 243 g stated women's)"
+    "weight": "9.7 oz / 276 g (men's); 8.6 oz / 243 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -1981,7 +2038,7 @@
     "carbon_plate": "No",
     "cons": "Outsole wears down quickly, high drop, missing reflective elements",
     "cushioning": "Moderate/Balanced cushion",
-    "drop": "9.0 mm actual",
+    "drop": "9.0 mm",
     "foam_material": "Energy Foam (EVA/OBC)",
     "foot_shape": "Roomy, accommodating fit",
     "highlights": "Kevlar-reinforced MATRYX upper, Quicklace",
@@ -1992,14 +2049,14 @@
     "overview": "A stable, highly versatile trail workhorse designed to handle easy daily miles to technical ultra marathons with a forgiving ride.",
     "price": "$150",
     "pros": "Superb platform stability, highly breathable upper, flexible ride",
-    "stack": "33.5/24.5 mm actual",
+    "stack": "33.5/24.5 mm",
     "suitability": "Suits heel strikers and ultra runners; not for heavy forefoot strikers.",
     "terrain": [
      "Gravel",
      "Road-to-trail",
      "Rocky technical"
     ],
-    "weight": "9.9 oz / 282 g actual (9.7 oz / 275 g stated men's; 8.8 oz / 249 g stated women's)"
+    "weight": "9.7 oz / 275 g (men's); 8.8 oz / 249 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -2015,7 +2072,7 @@
     "carbon_plate": "rock plate",
     "cons": "Foam lacks bounce, expensive, upper wear concerns",
     "cushioning": "Moderate cushion (low shock absorption)",
-    "drop": "7.8 mm actual",
+    "drop": "7.8 mm",
     "foam_material": "Energy Foam (EVA/OBC)",
     "foot_shape": "Medium secure fit",
     "highlights": "Profeel rock plate, Kevlar-reinforced MATRYX",
@@ -2026,13 +2083,13 @@
     "overview": "An exceptionally lightweight off-road racing flat built with premium materials to provide maximum control on technical descents.",
     "price": "$199",
     "pros": "Exceptionally lightweight (8.8 oz), outstanding custom lock, downhill control",
-    "stack": "31.9/24.1 mm actual",
+    "stack": "31.9/24.1 mm",
     "suitability": "Suits mountain ultrarunners & heavy runners wanting fast agility.",
     "terrain": [
      "Versatile",
      "Technical terrain and mud"
     ],
-    "weight": "8.8 oz / 249 g actual (9.1 oz / 258 g stated men's; 7.8 oz / 221 g stated women's)"
+    "weight": "9.1 oz / 258 g (men's); 7.8 oz / 221 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -2048,7 +2105,7 @@
     "carbon_plate": "No",
     "cons": "Low energy return, reduced grip on wet grass/mud, expensive",
     "cushioning": "High shock absorption",
-    "drop": "7.1 mm actual",
+    "drop": "7.1 mm",
     "foam_material": "OptiFoam (EVA/OBC) & Optifoam+ (PEBA) ",
     "foot_shape": "Medium fit with high toebox splay",
     "highlights": "Active Chassis, MATRYX, Quicklace",
@@ -2059,14 +2116,14 @@
     "overview": "A compact, plate-free trail racer that offers a highly stable and natural-feeling ground connection.",
     "price": "$220",
     "pros": "Elite lateral stability, roomy toebox splay height, secure fit",
-    "stack": "32.6/25.5 mm actual",
+    "stack": "32.6/25.5 mm",
     "suitability": "Suits neutral runners wanting agile stability; does not suit wide feet or those seeking super foam bounce.",
     "terrain": [
      "Gravel",
      "Road-to-trail",
      "Easy trails"
     ],
-    "weight": "8.7 oz / 247 g actual (8.8 oz / 250 g stated men's; 7.6 oz / 215 g stated women's)"
+    "weight": "8.8 oz / 250 g (men's); 7.6 oz / 215 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -2082,7 +2139,7 @@
     "carbon_plate": "No",
     "cons": "Extremely firm concrete-like ride, bad breathability",
     "cushioning": "Firm cushioning (feels like concrete)",
-    "drop": "14.1 mm actual",
+    "drop": "14.1 mm",
     "foam_material": "EnergyCell+ (EVA)",
     "foot_shape": "Medium fit (Wide available)",
     "highlights": "Deep mud-shedding chevron lugs, flared Ortholite insole",
@@ -2093,14 +2150,14 @@
     "overview": "A legendary, aggressively clawed winter trail beast built to plow through heavy mud, snow, and soft ground.",
     "price": "$145",
     "pros": "Incredible mud shedding, exceptionally durable closed upper, agile corners",
-    "stack": "36.5/22.4 mm actual",
+    "stack": "36.5/22.4 mm",
     "suitability": "Suits heel strikers and winter athletes; not for forefoot strikers.",
     "terrain": [
      "Mud",
      "Soft ground",
      "Snowy winter trails"
     ],
-    "weight": "10.4 oz / 296 g actual (10.5 oz / 298 g stated men's; 9.2 oz / 262 g stated women's)"
+    "weight": "10.5 oz / 298 g (men's); 9.2 oz / 262 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -2116,7 +2173,7 @@
     "carbon_plate": "No",
     "cons": "Low energy return dulls ride, pointy toebox squeezes toes",
     "cushioning": "Max cushioning",
-    "drop": "7.5 mm actual",
+    "drop": "7.5 mm",
     "foam_material": "Optifoam (EVA)",
     "foot_shape": "Medium fit (pointy toebox, Wide available)",
     "highlights": "Reverse camber geometry, Quicklace",
@@ -2127,14 +2184,14 @@
     "overview": "A plush, max-cushion door-to-trail cruiser designed with a smooth rocker to roll easily over long miles.",
     "price": "$160",
     "pros": "Smooth rockered comfort, high forefoot shock absorption",
-    "stack": "38.6/31.1 mm actual",
+    "stack": "38.6/31.1 mm",
     "suitability": "Suits narrow feet and forefoot strikers seeking plush, stable impact protection.",
     "terrain": [
      "Gravel",
      "Road-to-trail",
      "Versatile terrain"
     ],
-    "weight": "10.4 oz / 295 g actual (10.4 oz / 295 g stated men's)"
+    "weight": "10.4 oz / 295 g (men's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -2183,7 +2240,7 @@
     "carbon_plate": "No plate",
     "cons": "Extreme drop may irritate forefoot strikers; features an oversized tongue and below-average outsole durability",
     "cushioning": "Max cushioning",
-    "drop": "11.7 mm actual",
+    "drop": "11.7 mm",
     "foam_material": "Optifoam2 (eTPU)",
     "foot_shape": "Medium standard fit",
     "highlights": "Upgraded premium foam",
@@ -2194,12 +2251,12 @@
     "overview": "Max Cushion Road Daily",
     "price": "$160",
     "pros": "Deep protective cushion, outstanding value, smooth rolling ride for heel strikers",
-    "stack": "43.2/31.5 mm actual",
+    "stack": "43.2/31.5 mm",
     "suitability": "Suits heel strikers, neutral runners, and heavy runners wanting a stable, comfortable, protective ride",
     "terrain": [
      "Road"
     ],
-    "weight": "9 oz / 255 g actual (8.8 oz / 250 g stated men's; 8.3 oz / 235 g stated women's)"
+    "weight": "8.8 oz / 250 g (men's); 8.3 oz / 235 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -2207,13 +2264,13 @@
    "domain": "gear",
    "kind": "catalog_item",
    "title": "Salomon Aero Blaze 3",
-   "content": "Salomon Aero Blaze 3: Exceptionally lightweight (7.9 oz actual), soft and energetic bounce, and excellent value Cons: Lacks midfoot upper support, lacks forefoot response for fast intervals, and heavier runners over 190\u2013200 lbs may bottom out the foam",
+   "content": "Salomon Aero Blaze 3: Exceptionally lightweight (7.9 oz actual), soft and energetic bounce, and excellent value Cons: Lacks midfoot upper support, lacks forefoot response for fast intervals, and heavier runners over 190–200 lbs may bottom out the foam",
    "payload": {
     "arch_support": "Neutral",
-    "best_for": "neutral runners under 190\u2013200 lbs wanting a soft daily cruiser; highly recommended for Achilles-plagued runners",
+    "best_for": "neutral runners under 190–200 lbs wanting a soft daily cruiser; highly recommended for Achilles-plagued runners",
     "brand": "Salomon",
     "carbon_plate": "No plate",
-    "cons": "Lacks midfoot upper support, lacks forefoot response for fast intervals, and heavier runners over 190\u2013200 lbs may bottom out the foam",
+    "cons": "Lacks midfoot upper support, lacks forefoot response for fast intervals, and heavier runners over 190–200 lbs may bottom out the foam",
     "cushioning": "Soft, energetic cushioning",
     "drop": "8.0 mm",
     "foam_material": "Optifoam2 (eTPU)",
@@ -2226,7 +2283,7 @@
     "price": "$140",
     "pros": "Exceptionally lightweight (7.9 oz actual), soft and energetic bounce, and excellent value",
     "stack": "35.0/27.0 mm",
-    "suitability": "Suits neutral runners under 190\u2013200 lbs wanting a soft daily cruiser; highly recommended for Achilles-plagued runners",
+    "suitability": "Suits neutral runners under 190–200 lbs wanting a soft daily cruiser; highly recommended for Achilles-plagued runners",
     "terrain": [
      "Road"
     ],
@@ -2277,7 +2334,7 @@
     "carbon_plate": "Yes, carbon plate & rocker",
     "cons": "Extremely bad lateral stability, minimal padding, and high price",
     "cushioning": "Max/Soft cushioning",
-    "drop": "7.5 mm actual drop (8.0 mm brand)",
+    "drop": "8.0 mm",
     "foam_material": "Soft supercritical superfoam",
     "foot_shape": "Medium fit with a snug racing knit tongue",
     "highlights": "Microscopic translucent upper mesh structure, premium knit tongue",
@@ -2293,7 +2350,7 @@
     "terrain": [
      "Road terrain"
     ],
-    "weight": "6.9 oz / 197 g actual (7 oz / 199 g stated men's; 6.4 oz / 182 g stated women's)"
+    "weight": "7 oz / 199 g (men's); 6.4 oz / 182 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -2309,7 +2366,7 @@
     "carbon_plate": "Yes, carbon plate & aggressive rocker",
     "cons": "Heavier than most elite super shoes and can feel stiff underfoot",
     "cushioning": "Max cushioning",
-    "drop": "8.7 mm actual drop (8.0 mm brand)",
+    "drop": "8.0 mm",
     "foam_material": "Soft superfoam",
     "foot_shape": "Medium fit with a stretchy knit tongue",
     "highlights": "Outstanding outsole durability (0.6 mm wear), pull-tab knit tongue",
@@ -2325,7 +2382,7 @@
     "terrain": [
      "Road terrain"
     ],
-    "weight": "7.6 oz / 215 g actual (7.3 oz / 206 g stated men's; 6.3 oz / 178 g stated women's)"
+    "weight": "7.3 oz / 206 g (men's); 6.3 oz / 178 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -2341,7 +2398,7 @@
     "carbon_plate": "Yes, plate & rocker",
     "cons": "Less agile than predecessors and has a toebox durability of only 2/5",
     "cushioning": "Max cushioning (firm/structured 44.5 AC feel)",
-    "drop": "10.6 mm actual drop (8.0 mm brand)",
+    "drop": "8.0 mm",
     "foam_material": "PWRRUN PB (PEBA)",
     "foot_shape": "Medium fit with a roomier, taller toebox",
     "highlights": "SPEEDROLL rocker, PWRRUN PB hyper foam",
@@ -2357,7 +2414,7 @@
     "terrain": [
      "Road terrain"
     ],
-    "weight": "8.5 oz / 241 g actual (8.4 oz / 238 g stated men's; 7.6 oz / 215 g stated women's)"
+    "weight": "8.4 oz / 238 g (men's); 7.6 oz / 215 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -2373,7 +2430,7 @@
     "carbon_plate": "No plate (rocker only)",
     "cons": "Base PWRRUN foam is starting to feel dated, and heel padding durability is poor (2/5)",
     "cushioning": "Max/Soft cushioning",
-    "drop": "6.0 mm actual drop (6.0 mm brand)",
+    "drop": "6.0 mm",
     "foam_material": "Softer daily cushion foam",
     "foot_shape": "Medium fit (Wide/X-Wide available)",
     "highlights": "Massive platform footprint, premium mesh upper",
@@ -2389,7 +2446,7 @@
     "terrain": [
      "Road terrain"
     ],
-    "weight": "10.5 oz / 298 g actual (9.7 oz / 275 g stated men's; 8.9 oz / 252 g stated women's)"
+    "weight": "9.7 oz / 275 g (men's); 8.9 oz / 252 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -2405,7 +2462,7 @@
     "carbon_plate": "Rock plate",
     "cons": "Squeezes wide toes due to its narrow tapered design, and has slightly gained weight",
     "cushioning": "Moderate/Soft cushioning",
-    "drop": "4.8 mm actual drop (4.0 mm brand)",
+    "drop": "4.0 mm",
     "foam_material": "Comfort trail foam with premium PWRRUN+ insole",
     "foot_shape": "Medium fit (narrow, tapered toebox; Wide available)",
     "highlights": "Vibram Megagrip, rock plate, closed-weave durable mesh",
@@ -2422,7 +2479,7 @@
      "Gravel",
      "versatile trails"
     ],
-    "weight": "9.8 oz / 278 g actual (9.6 oz / 271 g stated men's; 8.4 oz / 239 g stated women's)"
+    "weight": "9.6 oz / 271 g (men's); 8.4 oz / 239 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -2438,7 +2495,7 @@
     "carbon_plate": "No plate (rocker only)",
     "cons": "Heavier than its predecessor and has limited outsole rubber coverage",
     "cushioning": "Max/Balanced cushioning",
-    "drop": "8.5 mm actual drop (8.0 mm brand)",
+    "drop": "8.0 mm",
     "foam_material": "High-energy daily foam",
     "foot_shape": "Medium fit (Wide available)",
     "highlights": "Extra underfoot foam stack, semi-gusseted tongue",
@@ -2454,7 +2511,7 @@
     "terrain": [
      "Road terrain"
     ],
-    "weight": "9.8 oz / 278 g actual (9 oz / 255 g stated men's; 7.8 oz / 221 g stated women's)"
+    "weight": "9 oz / 255 g (men's); 7.8 oz / 221 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -2470,7 +2527,7 @@
     "carbon_plate": "No plate (rocker only)",
     "cons": "Bulkier footprint limits agility, and upper ventilation could be improved",
     "cushioning": "Max cushioning",
-    "drop": "10.0 mm actual drop (10.0 mm brand)",
+    "drop": "10.0 mm",
     "foam_material": "PWRRUN PB (PEBAX)",
     "foot_shape": "Medium fit (wide platform; Wide available)",
     "highlights": "Supercritical PEBA foam, ultra-thick 8.8 mm semi-gusseted tongue",
@@ -2486,7 +2543,7 @@
     "terrain": [
      "Road terrain"
     ],
-    "weight": "9.6 oz / 272 g actual (9.3 oz / 263 g stated men's; 8.4 oz / 239 g stated women's)"
+    "weight": "9.3 oz / 263 g (men's); 8.4 oz / 239 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -2525,7 +2582,7 @@
    "domain": "gear",
    "kind": "catalog_item",
    "title": "adidas Adizero Boston 13",
-   "content": "adidas Adizero Boston 13: Great step-in feel, padding, and durable past 500\u2013600 miles Cons: Frustratingly difficult to dial in and tie the laces",
+   "content": "adidas Adizero Boston 13: Great step-in feel, padding, and durable past 500–600 miles Cons: Frustratingly difficult to dial in and tie the laces",
    "payload": {
     "best_for": "narrow-footed runners and triathletes preferring slightly firmer rides",
     "brand": "adidas",
@@ -2542,7 +2599,7 @@
     "outsole_compound": "Continental rubber in forefoot & LightTraxion lateral rubber",
     "overview": "A versatile, highly durable \"one-and-done\" trainer built to seamlessly cover almost any pace except recovery.",
     "price": "$160",
-    "pros": "Great step-in feel, padding, and durable past 500\u2013600 miles",
+    "pros": "Great step-in feel, padding, and durable past 500–600 miles",
     "stack": "36/30 mm",
     "terrain": [
      "Road"
@@ -2692,7 +2749,7 @@
     "terrain": [
      "Technical, rocky, muddy trails"
     ],
-    "weight": "11.5 oz / 326 g actual (10.2 oz / 290 g stated men's; 8.8 oz / 250 g stated women's)"
+    "weight": "10.2 oz / 290 g (men's); 8.8 oz / 250 g (women's)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -2723,7 +2780,7 @@
     "terrain": [
      "Road"
     ],
-    "weight": "3.5 oz / 99 g actual (3.5 oz / 98 g stated men's)"
+    "weight": "3.5 oz / 98 g (men's)"
    },
    "source_label": "NotebookLM distillation"
   },
