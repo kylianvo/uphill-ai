@@ -137,8 +137,9 @@ class CalendarService:
                 desc_parts.append(f"HR Range: {wo['target_hr_range']}")
             if wo.get("target_zone"):
                 desc_parts.append(f"Target Effort: {wo['target_zone']}")
-            if wo.get("treadmill_incline", 0) > 0:
-                desc_parts.append(f"Treadmill: Incline {wo['treadmill_incline']}% | Speed {wo['treadmill_speed']} kph")
+            treadmill_incline = wo.get("treadmill_incline")
+            if treadmill_incline and treadmill_incline != "0":
+                desc_parts.append(f"Treadmill: Incline {treadmill_incline}% | Speed {wo['treadmill_speed']} kph")
             if wo.get("description"):
                 desc_parts.append(f"\nWorkout Guide:\n{wo['description']}")
             if wo.get("fueling_tip"):
