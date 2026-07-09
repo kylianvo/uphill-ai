@@ -3,7 +3,7 @@
 
 import React, { useState } from "react";
 import { useAnalytics } from '@/hooks/useAnalytics';
-import { Sneaker, XCircle, Target, CaretDown, WarningCircle, CheckCircle, Ruler, Path, RocketLaunch } from "@phosphor-icons/react";
+import { Sneaker, XCircle, Target, CaretDown, WarningCircle, CheckCircle, Ruler, Path, RocketLaunch, Scales } from "@phosphor-icons/react";
 
 interface ShoeRecommendation {
   model: string;
@@ -13,6 +13,7 @@ interface ShoeRecommendation {
   lug_depth: string;
   drop: string;
   stack: string;
+  weight: string;
   price: string;
   pros: string;
   cons: string;
@@ -337,6 +338,11 @@ export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang, use
                         <span style={{ display: "flex", alignItems: "center", gap: "4px", background: "rgba(0,0,0,0.04)", padding: "4px 10px", borderRadius: "8px", fontSize: "12px", fontWeight: 600, color: "var(--text-secondary)" }}>
                           <Ruler size={14} /> Stack: {shoe.stack}
                         </span>
+                        {shoe.weight && shoe.weight !== "None" && (
+                          <span style={{ display: "flex", alignItems: "center", gap: "4px", background: "rgba(0,0,0,0.04)", padding: "4px 10px", borderRadius: "8px", fontSize: "12px", fontWeight: 600, color: "var(--text-secondary)" }}>
+                            <Scales size={14} /> {shoe.weight}
+                          </span>
+                        )}
                       </div>
                     </div>
 
