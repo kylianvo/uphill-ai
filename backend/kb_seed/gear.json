@@ -29,7 +29,8 @@
      "Technical/rocky trails",
      "fast stretches"
     ],
-    "weight": "9.6 oz / 272 g actual (9.3 oz / 264 g stated men's; 7.7 oz / 218 g stated women's)"
+    "weight": "9.6 oz / 272 g actual (9.3 oz / 264 g stated men's; 7.7 oz / 218 g stated women's)",
+    "lug_depth": "4.0 mm"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -60,7 +61,8 @@
      "gravel",
      "mixed trails"
     ],
-    "weight": "9.9 oz / 282 g stated men's; 8.2 oz / 232 g stated women's"
+    "weight": "9.9 oz / 282 g stated men's; 8.2 oz / 232 g stated women's",
+    "lug_depth": "3.0 mm"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -92,7 +94,8 @@
      "freezing wet terrain",
      "road transitions"
     ],
-    "weight": "11.45 oz / 324 g stated men's; 9.5 oz / 269 g stated women's"
+    "weight": "11.45 oz / 324 g stated men's; 9.5 oz / 269 g stated women's",
+    "lug_depth": "3.5 mm"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -123,7 +126,8 @@
      "gravel",
      "dirt roads"
     ],
-    "weight": "9.9 oz / 281 g stated men's; 8.7 oz / 247 g stated women's (Wild 3) / 9.8 oz / 278 g stated men's; 8.6 oz / 244 g stated women's (Wild 3+)"
+    "weight": "9.9 oz / 281 g stated men's; 8.7 oz / 247 g stated women's (Wild 3) / 9.8 oz / 278 g stated men's; 8.6 oz / 244 g stated women's (Wild 3+)",
+    "lug_depth": "4.0 mm (both Wild 3 and Wild 3+)"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -310,7 +314,8 @@
     "terrain": [
      "Less technical trails"
     ],
-    "weight": "9.1 oz / 258 g actual (9.2 oz / 261 g stated men's)"
+    "weight": "9.1 oz / 258 g actual (9.2 oz / 261 g stated men's)",
+    "lug_depth": "2.7 mm"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -1066,7 +1071,8 @@
      "dirt",
      "gravel"
     ],
-    "weight": "10.1 oz / 285 g stated men's"
+    "weight": "10.1 oz / 285 g stated men's",
+    "lug_depth": "6.0 mm (side) / 4.0 mm (center/rear) dual-depth"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -1131,7 +1137,8 @@
      "Trails",
      "rocky singletrack"
     ],
-    "weight": "9.2 oz / 260 g stated men's"
+    "weight": "9.2 oz / 260 g stated men's",
+    "lug_depth": "4.0 mm"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -1185,7 +1192,8 @@
      "rocky",
      "dry hardpack"
     ],
-    "weight": "9.11 oz / 258 g actual"
+    "weight": "9.11 oz / 258 g actual",
+    "lug_depth": "3.5 mm"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -1205,7 +1213,8 @@
      "Technical ridgelines",
      "road"
     ],
-    "weight": "10.84 oz / 307 g actual"
+    "weight": "10.84 oz / 307 g actual",
+    "lug_depth": "5.0 mm"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -1228,7 +1237,8 @@
      "road",
      "hikes"
     ],
-    "weight": "9.91 oz / 281 g actual (10.1 oz / 286 g stated men's)"
+    "weight": "9.91 oz / 281 g actual (10.1 oz / 286 g stated men's)",
+    "lug_depth": "4.0 mm"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -1484,7 +1494,8 @@
      "Rocky singletrack",
      "technical trails"
     ],
-    "weight": "11.9 oz / 337 g actual (11.8 oz / 336 g stated men's; 9.6 oz / 273 g stated women's)"
+    "weight": "11.9 oz / 337 g actual (11.8 oz / 336 g stated men's; 9.6 oz / 273 g stated women's)",
+    "lug_depth": "4.0 mm"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -1600,7 +1611,8 @@
      "Rugged trails",
      "all-terrain adventures"
     ],
-    "weight": "9.4 oz / 268 g stated men's; 8.2 oz / 232 g stated women's"
+    "weight": "9.4 oz / 268 g stated men's; 8.2 oz / 232 g stated women's",
+    "lug_depth": "5.0 mm"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -1621,7 +1633,8 @@
      "gravel roads",
      "mixed trails"
     ],
-    "weight": "7.5 oz / 214 g stated men's; 6.2 oz / 177 g stated women's"
+    "weight": "7.5 oz / 214 g stated men's; 6.2 oz / 177 g stated women's",
+    "lug_depth": "4.0 mm"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -1737,7 +1750,8 @@
     "terrain": [
      "Trail"
     ],
-    "weight": "10.4 oz / 295 g stated men's; 8.3 oz / 235 g stated women's"
+    "weight": "10.4 oz / 295 g stated men's; 8.3 oz / 235 g stated women's",
+    "lug_depth": "3.5 mm"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -1765,7 +1779,8 @@
     "terrain": [
      "Trail"
     ],
-    "weight": "9.3 oz / 265 g stated men's; 8.3 oz / 235 g stated women's"
+    "weight": "9.3 oz / 265 g stated men's; 8.3 oz / 235 g stated women's",
+    "lug_depth": "3.5 mm"
    },
    "source_label": "NotebookLM distillation"
   },
@@ -2711,6 +2726,101 @@
     "weight": "3.5 oz / 99 g actual (3.5 oz / 98 g stated men's)"
    },
    "source_label": "NotebookLM distillation"
+  },
+  {
+   "domain": "gear",
+   "kind": "catalog_item",
+   "title": "Salomon S/Lab Ultra Glide 2",
+   "content": "Salomon S/Lab Ultra Glide 2: Impressive stability for so much stack, OptiFoam feels great on the trails Cons: Still just a bit too heavy",
+   "payload": {
+    "arch_support": "Neutral",
+    "brand": "Salomon",
+    "carbon_plate": "No plate",
+    "cons": "Still just a bit too heavy; heel rubbing before break-in; excess QuickLace pocket hard to use",
+    "cushioning": "Max cushion",
+    "drop": "6 mm",
+    "foam_material": "Dual-layer OptiFoam+ (top) and OptiFoam midsole",
+    "foot_shape": "Broad, generous forefoot tapering through midfoot and heel",
+    "intended_use": "Long-distance trail runs and races",
+    "lug_depth": "4.0 mm",
+    "model": "S/Lab Ultra Glide 2",
+    "outsole_compound": "All-Terrain ContaGrip",
+    "overview": "A max-stack race-day trail shoe with a Matryx sock-like upper (shared construction with the S/Lab Genesis), RelieveSphere geometry for stability, and Salomon's most dynamic OptiFoam+ foam directly underfoot.",
+    "price": "$250",
+    "pros": "Impressive stability for so much stack, OptiFoam feels great on the trails, secure Matryx upper with QuickLace",
+    "stack": "41 mm heel / 35 mm forefoot",
+    "suitability": "Runners wanting a stable, cushioned race-day shoe for long-distance trail racing on varied terrain",
+    "terrain": [
+     "Long-distance trail",
+     "technical terrain",
+     "mixed surfaces"
+    ],
+    "weight": "10.4 oz / 295 g (US M9/W10.5, unisex sizing)"
+   },
+   "source_label": "Believe in the Run review"
+  },
+  {
+   "domain": "gear",
+   "kind": "catalog_item",
+   "title": "Norda 055",
+   "content": "Norda 055: Incredible protection and cushion, Locked-in fit Cons: Still a little heel rubbing",
+   "payload": {
+    "arch_support": "Neutral",
+    "brand": "Norda",
+    "carbon_plate": "No plate",
+    "cons": "Still a little heel rubbing on steep climbs, outsole durability slightly concerning on forward-most lugs, heavier than the Norda 005, insole tends to come out with foot",
+    "cushioning": "Max cushion",
+    "drop": "7 mm",
+    "foam_material": "Arnitel TPEE",
+    "foot_shape": "Accommodating forefoot, secure midfoot via FitLock system, integrated knit sock collar",
+    "intended_use": "Long runs on varied and technical terrain",
+    "lug_depth": "4.5 mm (with knobs extending to 7 mm)",
+    "model": "055",
+    "outsole_compound": "Vibram Megagrip Elite",
+    "overview": "An elevated, higher-stack sibling to the Norda 005 with roughly 9.5mm more Arnitel TPEE foam, a more structured integrated knit heel collar, and the same Dyneema upper and Vibram Megagrip Elite outsole that made the 005 a standout.",
+    "price": "$325",
+    "pros": "Incredible protection and cushion, locked-in fit, S-tier traction, durable Dyneema upper and Arnitel midsole",
+    "stack": "38 mm heel / 31 mm forefoot",
+    "suitability": "Trail runners wanting a maximal, highly durable shoe for big mountain days, 100+ mile races, and technical terrain",
+    "terrain": [
+     "Long runs",
+     "technical terrain",
+     "big mountain adventures",
+     "loose and rocky trails"
+    ],
+    "weight": "11.6 oz / 330 g (US M11)"
+   },
+   "source_label": "Believe in the Run review"
+  },
+  {
+   "domain": "gear",
+   "kind": "catalog_item",
+   "title": "Hoka Clifton Pro",
+   "content": "Hoka Clifton Pro: Same reliable fit as the Clifton 10, Finally a midsole update Cons: Not quite 'Pro' enough for its name",
+   "payload": {
+    "arch_support": "Neutral",
+    "brand": "Hoka",
+    "carbon_plate": "No plate",
+    "cons": "Not quite 'Pro' enough for its name, still uses EVA rather than a next-gen foam, slightly heavier than the Clifton 11",
+    "cushioning": "Max cushion",
+    "drop": "8 mm",
+    "foam_material": "ProGlide+ supercritical EVA",
+    "foot_shape": "Same last as the Clifton 10, true to size",
+    "intended_use": "Plush daily road miles",
+    "lug_depth": "Road (0.0 mm)",
+    "model": "Clifton Pro",
+    "outsole_compound": "Durabrasion rubber, podular design",
+    "overview": "A premium daily trainer built on the Clifton 10 last, pairing a new supercritical ProGlide+ EVA midsole with a more aggressive MetaRocker geometry for a springier, more energetic ride than prior Cliftons.",
+    "price": "$165",
+    "pros": "Same reliable fit as the Clifton 10, finally a midsole update with noticeable bounce, smooth MetaRocker transitions, strong value at $165",
+    "stack": "Men: 42 mm heel / 34 mm forefoot; Women: 38 mm heel / 30 mm forefoot",
+    "suitability": "Runners wanting a plush, familiar-fitting daily trainer with a livelier ride than the standard Clifton",
+    "terrain": [
+     "Road"
+    ],
+    "weight": "10.4 oz / 296 g (US M10); 8.5 oz / 242 g (US W8)"
+   },
+   "source_label": "Believe in the Run review"
   }
  ]
 }
