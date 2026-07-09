@@ -34,6 +34,7 @@ class GearRecommendation(BaseModel):
     lug_depth: str
     drop: str
     stack: str
+    weight: str
     price: str
     pros: str
     cons: str
@@ -119,7 +120,7 @@ class GearPlannerService:
 NEVER invent a shoe model, spec, or price that isn't in the knowledge base above — if you're not confident a detail is accurate, omit that field or say so in "cons" rather than guessing.
 BRAND CONSTRAINT: If "Preferred Brands" below is not empty, every recommendation MUST be from that brand (or brands) only — NEVER substitute a different brand. The ONLY exception: if the knowledge base contains zero matching shoes for the requested brand, say so explicitly in "tips" and then recommend the closest available alternative from the knowledge base.
 
-Field guidance: "foam_material" names the foam ALONG WITH its material type in parentheses (e.g. ZoomX (PEBA), PWRRUN PB (PEBA), optiFOAM (EVA)); "outsole_compound" e.g. Vibram Megagrip, Contagrip, None for road; "lug_depth"/"drop"/"stack" in mm; "pros" is 2-3 short sentences on what the shoe is best for; "cons" is 1-2 short sentences on drawbacks or who shouldn't buy it; "tips" are 2 short gear tips based on user context.
+Field guidance: "foam_material" names the foam ALONG WITH its material type in parentheses (e.g. ZoomX (PEBA), PWRRUN PB (PEBA), optiFOAM (EVA)); "outsole_compound" e.g. Vibram Megagrip, Contagrip, None for road; "lug_depth"/"drop"/"stack" in mm; "weight" is the shoe's own weight EXACTLY as given in that catalog entry's "weight" field (e.g. "9.6 oz / 272 g") — never estimate it yourself; "pros" is 2-3 short sentences on what the shoe is best for; "cons" is 1-2 short sentences on drawbacks or who shouldn't buy it; "tips" are 2 short gear tips based on user context.
 MATCHING: weigh each catalog entry's own fields against the athlete's criteria — "foot_shape" against the requested Width, "carbon_plate" against the Carbon Plate preference, "arch_support" and "suitability" against the athlete profile and special requirements (e.g. injury history, stability needs, heavier runners), "terrain"/"cushioning" against the requested Trail Terrain/Cushioning, and "intended_use"/"overview" against the Road Use Case and Race Distance. Prefer entries whose fields explicitly match over entries where the detail is missing.
 
 {self._criteria_block(params)}"""
@@ -172,6 +173,7 @@ Schema:
       "lug_depth": "Lug depth in mm (e.g. 4mm, 5mm, None for road)",
       "drop": "Drop in mm (e.g. 6mm)",
       "stack": "Stack height (e.g. 35mm/29mm)",
+      "weight": "Shoe's own weight exactly as given in your documents (e.g. '9.6 oz / 272 g'), never estimated",
       "price": "$XXX",
       "pros": "2-3 short sentences about what the shoe is best for and its pros",
       "cons": "1-2 short sentences about the drawbacks or who shouldn't buy this shoe"

@@ -19,6 +19,7 @@ GEAR_JSON = json.dumps(
                 "lug_depth": "5mm",
                 "drop": "4mm",
                 "stack": "40mm/36mm",
+                "weight": "10.3 oz / 292 g",
                 "price": "$155",
                 "pros": "Grippy and plush; great for long technical trail days.",
                 "cons": "On the heavy side.",
@@ -94,3 +95,23 @@ def test_default_flag_keeps_notebooklm_primary(monkeypatch):
         result = asyncio.run(gp.gear_planner.generate_plan("", GearParams(surface="road")))
     nlm.assert_called_once()
     assert result["tips"] == ["Size up half a size."]
+
+
+def test_gear_recommendation_schema_includes_weight():
+    assert "weight" in gp.GearRecommendation.model_fields
+
+
+def test_gemini_prompt_includes_weight_field_guidance(monkeypatch):
+    monkeypatch.setattr(settings, "RAG_ENGINE", "gemini")
+    monkeypatch.setattr(settings, "GEMINI_API_KEY", "test-key")
+    fake_model = _mock_gemini_model(GEAR_JSON)
+    chunks = [{"title": "Speedgoat 7", "payload": {"brand": "Hoka", "weight": "9.6 oz / 272 g"}}]
+    with (
+        patch("db.get_kb_chunks", return_value=chunks),
+        patch("google.generativeai.GenerativeModel", return_value=fake_model),
+        patch("google.generativeai.configure"),
+    ):
+        asyncio.run(gp.gear_planner.generate_plan("", GearParams(surface="trail")))
+    prompt_sent = fake_model.generate_content.call_args[0][0]
+    assert '"weight"' in prompt_sent  # field guidance mentions weight
+    assert "9.6 oz / 272 g" in prompt_sent  # catalog's own weight value was injected
