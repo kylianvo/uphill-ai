@@ -115,3 +115,17 @@ def test_gemini_prompt_includes_weight_field_guidance(monkeypatch):
     prompt_sent = fake_model.generate_content.call_args[0][0]
     assert '"weight"' in prompt_sent  # field guidance mentions weight
     assert "9.6 oz / 272 g" in prompt_sent  # catalog's own weight value was injected
+
+
+def test_notebooklm_schema_includes_weight_field_guidance(monkeypatch):
+    monkeypatch.setattr(settings, "RAG_ENGINE", "notebooklm")
+    monkeypatch.setattr(settings, "NOTEBOOKLM_AUTH_JSON", '{"tok": 1}')
+    monkeypatch.setattr(settings, "NOTEBOOKLM_GEAR_ID", "nb-gear")
+    with patch(
+        "services.notebooklm_service.NotebookLmService.query_notebook",
+        new_callable=AsyncMock,
+        return_value=GEAR_JSON,
+    ) as nlm:
+        asyncio.run(gp.gear_planner.generate_plan("", GearParams(surface="road")))
+    query_sent = nlm.call_args.kwargs["query"]
+    assert '"weight"' in query_sent  # schema block mentions weight guidance
