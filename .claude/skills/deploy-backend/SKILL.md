@@ -57,6 +57,18 @@ that upgrade via `alembic upgrade head` instead; keep both in sync per the
 
 ## Knowledge base (RAG engine)
 
+**Seed-data-only change?** If you only edited `backend/kb_seed/*.json` by
+hand and no backend code changed, skip this whole script and use
+`./deploy_kb.sh [--domain gear|nutrition|scheduler|all]` instead. It rsyncs
+just the changed seed file(s) and reloads them via `scripts/load_kb.py` —
+no full backend rsync, no preflight test suite, no container restart
+(`kb_chunks` is read at request time, so there's nothing to restart). Commit
+the seed file change to git first, same as any other change. Verify with
+the same `kb_chunks` count query below (the script prints it automatically).
+
+The rest of this section covers the KB reload step as part of a full
+`deploy_server.sh` run, when backend code changed too.
+
 The distilled KB ships with the rsync (`backend/kb_seed/*.json`) but must be
 loaded into the server's Postgres + Qdrant after the containers are up:
 
