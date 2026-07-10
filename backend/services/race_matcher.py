@@ -86,6 +86,17 @@ def _keyword_hit(keyword: str, query: str) -> bool:
     return bool(re.search(rf"\b{re.escape(query)}\b", keyword))
 
 
+def _lopsided_short_candidate(query: str, candidate: str) -> bool:
+    """WRatio's partial-ratio component over-credits a short candidate that is
+    merely a substring fragment of a much longer query (e.g. alias "uta"
+    scores 90 against "utah 100 endurance run") -- skip fuzzy scoring in that
+    lopsided case. Comparisons where both strings are similarly short (e.g.
+    "my25" vs "my25") are unaffected: the length-ratio check only trips when
+    the candidate is short AND the query is disproportionately longer."""
+    candidate = candidate.lower()
+    return len(candidate) < 5 and len(query) > 2 * len(candidate)
+
+
 def match_race(
     name: str | None,
     distance_km: float | None = None,
@@ -116,15 +127,9 @@ def match_race(
             best_score = 100.0
             break
 
-        # Very short candidates (e.g. 3-4 letter acronyms like "UTA") are excluded
-        # from fuzzy scoring: WRatio's partial-ratio component gives near-full
-        # credit when a short string is merely a substring of an unrelated query
-        # (e.g. alias "UTA" inside "Utah 100 Endurance Run"), letting the same
-        # class of false positive back in above the confidence threshold even
-        # though the exact-keyword bypass above is fixed.
         candidates = [payload.get("race_name", "")] + list(payload.get("aliases", []))
         score = max(
-            (fuzz.WRatio(query, c.lower()) for c in candidates if c and len(c) >= 5),
+            (fuzz.WRatio(query, c.lower()) for c in candidates if c and not _lopsided_short_candidate(query, c)),
             default=0.0,
         )
         if score > best_score:

@@ -105,6 +105,29 @@ def test_substring_of_keyword_does_not_cause_false_positive_match():
     assert matched is None
 
 
+MALAYSIA_CHUNK = {
+    "title": "Malaysia by UTMB",
+    "content": "Malaysia by UTMB course prose.",
+    "payload": {
+        "race_name": "Malaysia by UTMB",
+        "aliases": ["MY100", "MY50", "MY25", "MY13", "MYVK"],
+        "terrain": ["jungle trail"],
+        "distances": [{"label": "25km", "distance_km": 25.0, "elevation_gain_m": 1200}],
+        "matching_hints": {
+            "name_keywords": ["malaysia by utmb", "my100", "my50"],  # MY25/MY13/MYVK deliberately NOT mirrored
+            "distance_km_options": [25.0],
+        },
+    },
+}
+
+
+def test_short_alias_not_in_keywords_still_matches_exactly_via_fuzzy_pass():
+    with patch("db.get_kb_chunks", return_value=[VMM_CHUNK, UNRELATED_CHUNK, MALAYSIA_CHUNK]):
+        matched = match_race("MY25")
+    assert matched is not None
+    assert matched.race_name == "Malaysia by UTMB"
+
+
 def test_to_dict_shape():
     with patch("db.get_kb_chunks", return_value=[VMM_CHUNK, UNRELATED_CHUNK]):
         matched = match_race("VMM", distance_km=48.0)
