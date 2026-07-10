@@ -598,6 +598,10 @@ class PlanGenerator:
                 target_date_details = ""
                 week_schedule_constraints = ""
 
+            course_context = race_info.get("course_context")
+            if course_context:
+                program_details += f"\nCOURSE PROFILE (curated race data):\n{course_context}\n"
+
             total_blocks = (total_weeks + weeks_per_block - 1) // weeks_per_block
             block_scope_instruction = (
                 f"\nSEQUENTIAL BLOCK GENERATION:\n"

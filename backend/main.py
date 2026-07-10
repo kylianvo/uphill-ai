@@ -621,6 +621,9 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid plan_start_date format. Expected YYYY-MM-DD.")
     total_weeks = _calculate_total_weeks(race_date, start_date_parsed)
+    request.course_distance_km, request.course_elevation_gain_m, course_context = _resolve_course_match(
+        race_name, request.course_distance_km, request.course_elevation_gain_m
+    )
     plan_id = create_plan(
         user_id=user["id"],
         race_name=race_name,
@@ -651,6 +654,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         "target_time_hours": tth,
         "course_distance_km": request.course_distance_km,
         "course_elevation_gain_m": request.course_elevation_gain_m,
+        "course_context": course_context,
         "preferred_days": request.preferred_run_days,
         "long_run_day": request.long_run_day,
         "days_per_week": request.days_per_week,
@@ -723,6 +727,27 @@ def _default_weeks(goal_type: str) -> int:
         "distance": 16,
         "race": 16,
     }.get(goal_type, 12)
+
+
+def _resolve_course_match(
+    race_name: str | None, course_distance_km: float | None, course_elevation_gain_m: float | None
+) -> tuple[float | None, float | None, str | None]:
+    """Fuzzy-matches race_name against the curated race_courses KB. Returns
+    (resolved_distance_km, resolved_elevation_gain_m, course_context) —
+    numeric fields are backfilled only when the caller passed None; manual
+    entry and GPX-derived values are never overwritten. course_context
+    (qualitative terrain/climate prose) is always returned when there's a
+    match, regardless of whether the numeric fields needed backfilling."""
+    from services.race_matcher import match_race
+
+    matched = match_race(race_name, distance_km=course_distance_km)
+    if not matched:
+        return course_distance_km, course_elevation_gain_m, None
+    resolved_distance_km = course_distance_km if course_distance_km is not None else matched.distance_km
+    resolved_elevation_gain_m = (
+        course_elevation_gain_m if course_elevation_gain_m is not None else matched.elevation_gain_m
+    )
+    return resolved_distance_km, resolved_elevation_gain_m, matched.course_context
 
 
 @app.get("/api/auth/me")
@@ -941,6 +966,12 @@ async def generate_training_plan(request: PlanGenerateRequest, user: dict[str, A
             else:
                 race_name_str = request.race_name or "Training Block"
 
+        course_context = None
+        if is_race_or_dist:
+            request.course_distance_km, request.course_elevation_gain_m, course_context = _resolve_course_match(
+                race_name_str, request.course_distance_km, request.course_elevation_gain_m
+            )
+
         plan_id = create_plan(
             user_id=user["id"],
             race_name=race_name_str,
@@ -965,6 +996,7 @@ async def generate_training_plan(request: PlanGenerateRequest, user: dict[str, A
             "target_time_hours": request.target_time_hours,
             "course_distance_km": request.course_distance_km,
             "course_elevation_gain_m": request.course_elevation_gain_m,
+            "course_context": course_context,
             # Scheduling preferences (plan-level)
             "preferred_days": request.preferred_days,
             "long_run_day": request.long_run_day,
@@ -1277,6 +1309,9 @@ async def generate_next_block(request: GenerateNextBlockRequest, user: dict[str,
     if context_lines:
         block_context = "\n".join(context_lines)
 
+    _, _, course_context = _resolve_course_match(
+        plan.get("race_name"), plan.get("course_distance_km"), plan.get("course_elevation_gain_m")
+    )
     race_info = {
         "name": plan.get("race_name", "Training Plan"),
         "date": plan.get("race_date"),
@@ -1285,6 +1320,7 @@ async def generate_next_block(request: GenerateNextBlockRequest, user: dict[str,
         "target_time_hours": plan.get("target_time_hours"),
         "course_distance_km": plan.get("course_distance_km"),
         "course_elevation_gain_m": plan.get("course_elevation_gain_m"),
+        "course_context": course_context,
         "preferred_days": plan.get("preferred_run_days"),
         "long_run_day": plan.get("long_run_day"),
         "days_per_week": plan.get("days_per_week"),
