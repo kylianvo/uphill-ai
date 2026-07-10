@@ -1754,6 +1754,20 @@ async def import_kb_seed(domain: str = "all", user: dict[str, Any] = Depends(req
     return {"status": "ok" if not errors else "partial", "loaded": loaded, "errors": errors}
 
 
+@app.get("/api/kb/match-race")
+def match_race_course(name: str, distance_km: float | None = None, distance_label: str | None = None):
+    """Fuzzy-matches a race name (+ optional distance) against the curated
+    race_courses KB. Read-only, no auth — used for live UI confirmation
+    chips. Never guesses: returns matched=false below the confidence
+    threshold rather than a wrong course."""
+    from services.race_matcher import match_race
+
+    matched = match_race(name, distance_km=distance_km, distance_label=distance_label)
+    if not matched:
+        return {"matched": False}
+    return {"matched": True, **matched.to_dict()}
+
+
 # ─── Workout Types ────────────────────────────────────────────────────────────
 
 
