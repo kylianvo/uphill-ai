@@ -1719,7 +1719,7 @@ def get_kb_distill_status(user: dict[str, Any] = Depends(get_current_user)):
     from services.kb_retrieval import scheduler_point_count
 
     status = dict(kb_distill_status)
-    status["counts"] = {d: get_kb_chunk_count(d) for d in ("gear", "nutrition", "scheduler")}
+    status["counts"] = {d: get_kb_chunk_count(d) for d in ("gear", "nutrition", "scheduler", "race_courses")}
     # None = collection missing/unreachable — scheduler plans would generate
     # without philosophy grounding even if counts.scheduler > 0.
     status["qdrant_scheduler_points"] = scheduler_point_count()
@@ -1732,11 +1732,12 @@ async def import_kb_seed(domain: str = "all", user: dict[str, Any] = Depends(req
     Postgres (+ Qdrant for scheduler). This is how prod gets the KB without re-distilling."""
     import asyncio
 
-    from services.kb_distiller import DOMAINS, load_seed
+    from services.kb_distiller import DOMAINS, HAND_CURATED_DOMAINS, load_seed
 
-    domains = list(DOMAINS) if domain == "all" else [domain]
-    if any(d not in DOMAINS for d in domains):
-        raise HTTPException(status_code=400, detail=f"domain must be one of {list(DOMAINS)} or 'all'")
+    importable_domains = DOMAINS + HAND_CURATED_DOMAINS
+    domains = list(importable_domains) if domain == "all" else [domain]
+    if any(d not in importable_domains for d in domains):
+        raise HTTPException(status_code=400, detail=f"domain must be one of {list(importable_domains)} or 'all'")
     api_key = settings.GEMINI_API_KEY
     loaded: dict[str, int] = {}
     errors: dict[str, str] = {}

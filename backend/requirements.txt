@@ -24,3 +24,5 @@ prometheus-client>=0.20.0
 prometheus-fastapi-instrumentator>=7.0.0
 # KB vector retrieval
 qdrant-client>=1.10.0
+# Race course matching
+rapidfuzz>=3.0.0

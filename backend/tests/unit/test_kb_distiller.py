@@ -272,3 +272,8 @@ def test_load_seed_missing_file_raises(tmp_path, monkeypatch):
     monkeypatch.setattr(kb_distiller, "SEED_DIR", str(tmp_path))
     with pytest.raises(FileNotFoundError):
         kb_distiller.load_seed("nutrition")
+
+
+def test_hand_curated_domains_excludes_race_courses_from_distillable_domains():
+    assert "race_courses" in kb_distiller.HAND_CURATED_DOMAINS
+    assert "race_courses" not in kb_distiller.DOMAINS
