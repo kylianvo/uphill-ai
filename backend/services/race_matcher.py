@@ -76,6 +76,16 @@ def _closest_distance_entry(distances: list[dict[str, Any]], distance_km: float)
     return min(distances, key=lambda d: abs((d.get("distance_km") or 0) - distance_km))
 
 
+def _keyword_hit(keyword: str, query: str) -> bool:
+    """Word/phrase-boundary match: True if `keyword` appears in `query` as a
+    whole word or phrase (not merely as a substring), or vice versa."""
+    if not keyword:
+        return False
+    if re.search(rf"\b{re.escape(keyword)}\b", query):
+        return True
+    return bool(re.search(rf"\b{re.escape(query)}\b", keyword))
+
+
 def match_race(
     name: str | None,
     distance_km: float | None = None,
@@ -101,13 +111,22 @@ def match_race(
     for chunk in chunks:
         payload = _payload_as_dict(chunk.get("payload"))
         keywords = payload.get("matching_hints", {}).get("name_keywords", [])
-        if any(kw.lower() == query or kw.lower() in query or query in kw.lower() for kw in keywords if kw):
+        if any(_keyword_hit(kw.lower(), query) for kw in keywords if kw):
             best_chunk = chunk
             best_score = 100.0
             break
 
+        # Very short candidates (e.g. 3-4 letter acronyms like "UTA") are excluded
+        # from fuzzy scoring: WRatio's partial-ratio component gives near-full
+        # credit when a short string is merely a substring of an unrelated query
+        # (e.g. alias "UTA" inside "Utah 100 Endurance Run"), letting the same
+        # class of false positive back in above the confidence threshold even
+        # though the exact-keyword bypass above is fixed.
         candidates = [payload.get("race_name", "")] + list(payload.get("aliases", []))
-        score = max((fuzz.WRatio(query, c.lower()) for c in candidates if c), default=0.0)
+        score = max(
+            (fuzz.WRatio(query, c.lower()) for c in candidates if c and len(c) >= 5),
+            default=0.0,
+        )
         if score > best_score:
             best_score = score
             best_chunk = chunk

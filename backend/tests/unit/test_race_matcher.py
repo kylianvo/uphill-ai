@@ -99,6 +99,12 @@ def test_db_error_degrades_to_none_instead_of_raising():
     assert matched is None
 
 
+def test_substring_of_keyword_does_not_cause_false_positive_match():
+    with patch("db.get_kb_chunks", return_value=[VMM_CHUNK, UNRELATED_CHUNK]):
+        matched = match_race("Utah 100 Endurance Run")
+    assert matched is None
+
+
 def test_to_dict_shape():
     with patch("db.get_kb_chunks", return_value=[VMM_CHUNK, UNRELATED_CHUNK]):
         matched = match_race("VMM", distance_km=48.0)
