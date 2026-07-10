@@ -40,6 +40,7 @@ interface WorkoutCardProps {
   onToggleComplete: (id: number, completed: boolean) => void;
   onLogWorkout: (id: number, rpe: number | null, notes: string) => Promise<void>;
   getWorkoutDate: (wo: any) => string;
+  defaultExpanded?: boolean;
 }
 
 const RACE_COACH_MESSAGES: Record<string, string[]> = {
@@ -89,6 +90,7 @@ export default function WorkoutCard({
   onToggleComplete,
   onLogWorkout,
   getWorkoutDate,
+  defaultExpanded,
 }: WorkoutCardProps) {
   const isRest = wo.type === "Rest";
   const isRaceDay = wo.type?.toLowerCase() === "race";
@@ -99,7 +101,7 @@ export default function WorkoutCard({
   const defaultSurface = leadingNumber(wo.treadmill_incline) > 0 ? "treadmill" : "outdoor";
   const [surface, setSurface] = useState<"outdoor" | "treadmill">(defaultSurface);
   const treadmillGuide = getTreadmillGuide(wo.target_pace, wo.treadmill_speed, wo.treadmill_incline, wo.grade_percent);
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(defaultExpanded ?? false);
   const [rpe, setRpe] = useState<number | null>(wo.rpe ?? null);
   const [notes, setNotes] = useState<string>(wo.notes ?? "");
   const [saving, setSaving] = useState(false);

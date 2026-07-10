@@ -613,46 +613,39 @@ def update_workout_log(
 
 
 def swap_workouts(plan_id: int, week_number: int, day_1: str, day_2: str) -> bool:
+    # Relocates every workout row on day_1 to day_2 and vice versa, rather than
+    # copying content between two fixed rows — a "double day" (e.g. an AM
+    # strength session + a PM run, two rows sharing one day_of_week) has more
+    # than one row per day, and copying column-by-column between exactly one
+    # row per side would silently drop one of the sessions. Reassigning
+    # day_of_week itself works for any number of rows on either side, and as a
+    # side effect keeps each workout's own id/rpe/notes attached to it as it moves.
     with engine.connect() as conn:
-        wo1 = conn.execute(
-            text("SELECT * FROM workouts WHERE plan_id=:pid AND week_number=:wn AND day_of_week=:day"),
+        count1 = conn.execute(
+            text("SELECT COUNT(*) FROM workouts WHERE plan_id=:pid AND week_number=:wn AND day_of_week=:day"),
             {"pid": plan_id, "wn": week_number, "day": day_1},
-        ).fetchone()
-        wo2 = conn.execute(
-            text("SELECT * FROM workouts WHERE plan_id=:pid AND week_number=:wn AND day_of_week=:day"),
+        ).scalar()
+        count2 = conn.execute(
+            text("SELECT COUNT(*) FROM workouts WHERE plan_id=:pid AND week_number=:wn AND day_of_week=:day"),
             {"pid": plan_id, "wn": week_number, "day": day_2},
-        ).fetchone()
+        ).scalar()
 
-        if not wo1 or not wo2:
+        if not count1 or not count2:
             return False
 
-        swap_cols = [
-            "phase",
-            "title",
-            "type",
-            "duration_minutes",
-            "distance_km",
-            "target_zone",
-            "target_hr_range",
-            "target_pace",
-            "treadmill_incline",
-            "treadmill_speed",
-            "description",
-            "fueling_tip",
-            "is_completed",
-            "session_slot",
-        ]
-        d1, d2 = _row_to_dict(wo1), _row_to_dict(wo2)
-
-        set1 = ", ".join([f"{c} = :{c}_v" for c in swap_cols])
-        params1 = {f"{c}_v": d2[c] for c in swap_cols}
-        params1["id"] = d1["id"]
-        conn.execute(text(f"UPDATE workouts SET {set1} WHERE id = :id"), params1)
-
-        set2 = ", ".join([f"{c} = :{c}_v" for c in swap_cols])
-        params2 = {f"{c}_v": d1[c] for c in swap_cols}
-        params2["id"] = d2["id"]
-        conn.execute(text(f"UPDATE workouts SET {set2} WHERE id = :id"), params2)
+        placeholder_day = f"__swap_pending__{day_1}"
+        conn.execute(
+            text("UPDATE workouts SET day_of_week=:tmp WHERE plan_id=:pid AND week_number=:wn AND day_of_week=:day1"),
+            {"tmp": placeholder_day, "pid": plan_id, "wn": week_number, "day1": day_1},
+        )
+        conn.execute(
+            text("UPDATE workouts SET day_of_week=:day1 WHERE plan_id=:pid AND week_number=:wn AND day_of_week=:day2"),
+            {"day1": day_1, "pid": plan_id, "wn": week_number, "day2": day_2},
+        )
+        conn.execute(
+            text("UPDATE workouts SET day_of_week=:day2 WHERE plan_id=:pid AND week_number=:wn AND day_of_week=:tmp"),
+            {"day2": day_2, "pid": plan_id, "wn": week_number, "tmp": placeholder_day},
+        )
 
         conn.commit()
     return True

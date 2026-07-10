@@ -4,6 +4,7 @@ import { useAppContext } from "../contexts/AppContext";
 import { usePlanner } from "../hooks/usePlanner";
 import { translations } from "../app/translations";
 import WorkoutCard from "../components/WorkoutCard";
+import PlanCalendarView from "../components/PlanCalendarView";
 import { KnowledgeCard } from "../components/KnowledgeCard";
 import { DndContext, DragEndEvent, DragOverEvent, useDraggable, useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
@@ -12,7 +13,8 @@ import { UploadSimple, FileArrowUp, Heart, Clock, Mountains, MapPin, Footprints,
 
 export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   const ctx = useAppContext();
-  const { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, handleSwapWorkouts, swapDays, handleToggleComplete, handleLogWorkout, getWeekWorkouts, getWorkoutDate, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller } = usePlanner();
+  const { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, handleSwapWorkouts, swapDays, handleToggleComplete, handleLogWorkout, getWeekWorkouts, getWorkoutDate, getWorkoutDateObj, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller } = usePlanner();
+  const [planViewMode, setPlanViewMode] = useState<"list" | "calendar">("list");
   const { lang, activePlan, planLoading, planErrorMsg, planForm, setPlanForm, targetTimeH, setTargetTimeH, targetTimeM, setTargetTimeM, targetTimeS, setTargetTimeS, cutoffTimeH, setCutoffTimeH, cutoffTimeM, setCutoffTimeM, cutoffTimeS, setCutoffTimeS, recentPlans, selectedWeek, setSelectedWeek, swapDay1, setSwapDay1, swapDay2, setSwapDay2, setWorkouts, setBackupWorkouts, setActivePlan, workouts, backupWorkouts, backupActivePlan, setBackupActivePlan, courseInputMode, setCourseInputMode, plannerGpxLoading, plannerGpxFile, plannerGpxError, showExportOptions, setShowExportOptions, exportTimePref, setExportTimePref } = ctx;
   const t = (key: keyof typeof translations.en) => translations[lang]?.[key] || translations.en[key] || key;
   const totalWeeks = activePlan ? (activePlan.total_weeks || activePlan.plan_duration_weeks || 1) : 0;
@@ -766,6 +768,26 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 </p>
               </div>
 
+              <div style={{ display: "flex", background: "rgba(0,0,0,0.05)", border: "1px solid var(--border-color)", borderRadius: "999px", padding: "3px", gap: "2px", alignSelf: "flex-start" }}>
+                {(["list", "calendar"] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setPlanViewMode(mode)}
+                    style={{
+                      border: "none", borderRadius: "999px", padding: "6px 16px", fontSize: "12px", fontWeight: 600,
+                      cursor: "pointer",
+                      background: planViewMode === mode ? "var(--accent-primary)" : "transparent",
+                      color: planViewMode === mode ? "#ffffff" : "var(--text-secondary)",
+                    }}
+                  >
+                    {mode === "list"
+                      ? (lang === "en" ? "List" : "Danh sách")
+                      : (lang === "en" ? "Calendar" : "Lịch")}
+                  </button>
+                ))}
+              </div>
+
               {!showExportOptions ? (
                 <div style={{ display: "flex", gap: "10px", width: "100%", flexWrap: "wrap" }}>
                   <button
@@ -884,7 +906,8 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
               )}
             </div>
 
-            {/* Week Selector Tabs */}
+            {/* Week Selector Tabs, Weekly Volume, and coach message only apply to the week-scoped list view */}
+            {planViewMode === "list" && (<>
             <div style={{ display: "flex", gap: "6px", overflowX: "auto", paddingBottom: "8px", marginBottom: "16px" }}>
               {Array.from({ length: activePlan.total_weeks }).map((_, i) => {
                 const w = i + 1;
@@ -984,6 +1007,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 </p>
               </div>
             )}
+            </>)}
 
             {/* Generating plan skeleton */}
             {planLoading && workouts.length === 0 ? (
@@ -1014,6 +1038,30 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                   }} />
                 ))}
               </div>
+            ) : planViewMode === "calendar" ? (
+              <PlanCalendarView
+                workouts={(() => {
+                  // Week 1: hide workouts on days before the plan's actual start date
+                  // (matches WeekDayList's behavior below, but applied across the whole
+                  // plan since the calendar isn't scoped to a single selected week).
+                  if (!activePlan?.start_date) return workouts;
+                  const sdParts = activePlan.start_date.split("-");
+                  const sd = new Date(parseInt(sdParts[0], 10), parseInt(sdParts[1], 10) - 1, parseInt(sdParts[2], 10));
+                  const startDayIdx = sd.getDay() === 0 ? 6 : sd.getDay() - 1;
+                  return workouts.filter((wo: any) => {
+                    if (wo.week_number !== 1) return true;
+                    const idx = DAY_ORDER.indexOf(wo.day_of_week);
+                    return idx === -1 || idx >= startDayIdx;
+                  });
+                })()}
+                lang={lang}
+                isMobile={isMobile}
+                getWorkoutDateObj={getWorkoutDateObj}
+                getWorkoutDate={getWorkoutDate}
+                onSwapDays={swapDays}
+                onToggleComplete={handleToggleCompleteWithRefresh}
+                onLogWorkout={handleLogWorkout}
+              />
             ) : (
               /* Week Workouts — grouped by day with drag-and-drop swap */
               <WeekDayList

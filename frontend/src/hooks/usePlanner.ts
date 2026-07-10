@@ -314,14 +314,14 @@ export function usePlanner() {
     }
   };
 
-  const swapDays = async (day1: string, day2: string) => {
+  const swapDays = async (day1: string, day2: string, weekNumberOverride?: number) => {
     if (!activePlan || day1 === day2) return;
     const token = localStorage.getItem("uphill_session_token");
     try {
       const response = await fetch(`${API_BASE_URL}/api/coach/modify-calendar`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-        body: JSON.stringify({ plan_id: activePlan.id, week_number: selectedWeek, day_1: day1, day_2: day2 }),
+        body: JSON.stringify({ plan_id: activePlan.id, week_number: weekNumberOverride ?? selectedWeek, day_1: day1, day_2: day2 }),
       });
       if (response.ok) {
         const result = await response.json();
@@ -373,21 +373,24 @@ export function usePlanner() {
     return workouts.filter((w: any) => w.week_number === weekNum);
   };
 
-  const getWorkoutDate = (wo: Workout) => {
-    if (!activePlan) return "";
+  const DAY_OFFSETS: Record<string, number> = {
+    "Monday": 0, "Tuesday": 1, "Wednesday": 2, "Thursday": 3,
+    "Friday": 4, "Saturday": 5, "Sunday": 6,
+  };
+
+  const getMondayOf = (d: Date) => {
+    const offset = d.getDay() === 0 ? 6 : d.getDay() - 1;
+    const m = new Date(d);
+    m.setDate(d.getDate() - offset);
+    return m;
+  };
+
+  // Returns the real calendar Date a workout falls on, or null if it can't be
+  // computed (no active plan / malformed dates). Used by getWorkoutDate below
+  // and by the calendar grid view, which needs a real Date, not a formatted string.
+  const getWorkoutDateObj = (wo: Workout): Date | null => {
+    if (!activePlan) return null;
     try {
-      const DAY_OFFSETS: Record<string, number> = {
-        "Monday": 0, "Tuesday": 1, "Wednesday": 2, "Thursday": 3,
-        "Friday": 4, "Saturday": 5, "Sunday": 6,
-      };
-
-      const getMondayOf = (d: Date) => {
-        const offset = d.getDay() === 0 ? 6 : d.getDay() - 1;
-        const m = new Date(d);
-        m.setDate(d.getDate() - offset);
-        return m;
-      };
-
       let startMonday: Date;
 
       // Prefer plan_start_date (exact user-inputted date) if stored
@@ -399,7 +402,7 @@ export function usePlanner() {
       } else if (activePlan.race_date) {
         // Fallback: anchor from race date backward (legacy behaviour)
         const parts = activePlan.race_date.split("-");
-        if (parts.length !== 3) return "";
+        if (parts.length !== 3) return null;
         const raceDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
         const raceWo = workouts.find((w: any) => {
           const title = w.title.toUpperCase();
@@ -411,19 +414,25 @@ export function usePlanner() {
         startMonday = new Date(raceWeekMonday);
         startMonday.setDate(raceWeekMonday.getDate() - (raceWeek - 1) * 7);
       } else {
-        return "";
+        return null;
       }
 
       const workoutDayOffset = DAY_OFFSETS[wo.day_of_week] ?? 0;
       const workoutDate = new Date(startMonday);
       workoutDate.setDate(startMonday.getDate() + (wo.week_number - 1) * 7 + workoutDayOffset);
 
-      return workoutDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      return workoutDate;
     } catch (e) {
       console.error(e);
-      return "";
+      return null;
     }
   };
 
-  return { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, handleSwapWorkouts, swapDays, handleToggleComplete, handleLogWorkout, getWeekWorkouts, getWorkoutDate, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller };
+  const getWorkoutDate = (wo: Workout) => {
+    const d = getWorkoutDateObj(wo);
+    if (!d) return "";
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  };
+
+  return { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, handleSwapWorkouts, swapDays, handleToggleComplete, handleLogWorkout, getWeekWorkouts, getWorkoutDate, getWorkoutDateObj, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller };
 }
