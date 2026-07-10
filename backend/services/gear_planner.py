@@ -22,6 +22,7 @@ class GearParams(BaseModel):
     preferred_brands: str | None = None
     additional_context: str | None = None
     race_distance: str | None = None
+    race_name: str | None = None
     user_profile: str | None = None
     active_plan_context: str | None = None
 
@@ -60,6 +61,12 @@ class GearPlannerService:
         return hashlib.md5(dict_str.encode()).hexdigest()
 
     @staticmethod
+    def _course_context_block(matched) -> str:
+        if not matched:
+            return ""
+        return f"\nCURATED COURSE PROFILE ({matched.race_name}):\n{matched.course_context}\n"
+
+    @staticmethod
     def _criteria_block(params: GearParams) -> str:
         terrain_str = ", ".join(params.terrain) if params.terrain else "Not specified"
         return f"""Return your top 5 shoe recommendations matching this exact criteria:
@@ -83,22 +90,27 @@ class GearPlannerService:
             print("[GearPlanner] Cache HIT! Returning instant response.")
             return json.loads(_GEAR_CACHE[cache_key])
 
+        from services.race_matcher import match_race
+
+        matched_course = match_race(params.race_name, distance_label=params.race_distance)
+
         order = ["gemini", "notebooklm"] if settings.RAG_ENGINE == "gemini" else ["notebooklm", "gemini"]
         last_error: Exception | None = None
         for engine_name in order:
             try:
                 if engine_name == "gemini":
-                    return await self._generate_with_gemini(params, cache_key)
-                return await self._generate_with_notebooklm(params, cache_key)
+                    return await self._generate_with_gemini(params, cache_key, matched_course)
+                return await self._generate_with_notebooklm(params, cache_key, matched_course)
             except Exception as e:
                 print(f"[GearPlanner] {engine_name} engine failed: {e}\n{traceback.format_exc()}")
                 last_error = e
         return {
             "recommendations": [],
             "tips": [f"Could not retrieve recommendations: {last_error}"],
+            "matched_race": matched_course.to_dict() if matched_course else None,
         }
 
-    async def _generate_with_gemini(self, params: GearParams, cache_key: str) -> dict[str, Any]:
+    async def _generate_with_gemini(self, params: GearParams, cache_key: str, matched_course=None) -> dict[str, Any]:
         import time
 
         from db import get_kb_chunks
@@ -123,7 +135,7 @@ BRAND CONSTRAINT: If "Preferred Brands" below is not empty, every recommendation
 Field guidance: "foam_material" names the foam ALONG WITH its material type in parentheses (e.g. ZoomX (PEBA), PWRRUN PB (PEBA), optiFOAM (EVA)); "outsole_compound" e.g. Vibram Megagrip, Contagrip, None for road; "lug_depth"/"drop"/"stack" in mm; "weight" is a SHORT summary of the shoe's own weight from that catalog entry's "weight" field — output ONLY the primary oz/g figure (e.g. "9.6 oz / 272 g"), dropping any parenthetical breakdown (actual vs. stated, men's vs. women's, multiple model variants) — never invent a number that isn't present in that field; "pros" is 2-3 short sentences on what the shoe is best for; "cons" is 1-2 short sentences on drawbacks or who shouldn't buy it; "tips" are 2 short gear tips based on user context.
 MATCHING: weigh each catalog entry's own fields against the athlete's criteria — "foot_shape" against the requested Width, "carbon_plate" against the Carbon Plate preference, "arch_support" and "suitability" against the athlete profile and special requirements (e.g. injury history, stability needs, heavier runners), "terrain"/"cushioning" against the requested Trail Terrain/Cushioning, and "intended_use"/"overview" against the Road Use Case and Race Distance. Prefer entries whose fields explicitly match over entries where the detail is missing.
 
-{self._criteria_block(params)}"""
+{self._criteria_block(params)}{self._course_context_block(matched_course)}"""
 
         print(f"[GearPlanner][Gemini] Querying with {len(chunks)} catalog entries...")
         genai.configure(api_key=api_key)
@@ -146,11 +158,14 @@ MATCHING: weigh each catalog entry's own fields against the athlete's criteria �
             raise
 
         parsed = json.loads(response.text)
+        parsed["matched_race"] = matched_course.to_dict() if matched_course else None
         _GEAR_CACHE[cache_key] = json.dumps(parsed)
         print(f"[GearPlanner][Gemini] OK — {len(parsed.get('recommendations', []))} recommendations")
         return parsed
 
-    async def _generate_with_notebooklm(self, params: GearParams, cache_key: str) -> dict[str, Any]:
+    async def _generate_with_notebooklm(
+        self, params: GearParams, cache_key: str, matched_course=None
+    ) -> dict[str, Any]:
         auth_json = settings.NOTEBOOKLM_AUTH_JSON
         if not auth_json:
             raise RuntimeError("NotebookLM Auth JSON is missing.")
@@ -185,7 +200,7 @@ Schema:
   ]
 }}
 
-{self._criteria_block(params)}"""
+{self._criteria_block(params)}{self._course_context_block(matched_course)}"""
 
         print(f"[GearPlanner] Querying NotebookLM ({self.notebook_id})...")
         nlm_response = await NotebookLmService.query_notebook(
@@ -210,8 +225,9 @@ Schema:
                 "recommendations": [],
                 "tips": ["Could not parse recommendations from NotebookLM. Please try again."],
             }
-            cleaned_response = json.dumps(parsed_json)
 
+        parsed_json["matched_race"] = matched_course.to_dict() if matched_course else None
+        cleaned_response = json.dumps(parsed_json)
         _GEAR_CACHE[cache_key] = cleaned_response
         return parsed_json
 
