@@ -30,6 +30,8 @@ export function useRaceMatch(
   useEffect(() => {
     const trimmed = name.trim();
     if (trimmed.length < MIN_NAME_LENGTH) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setMatch(null);
       return;
     }
 

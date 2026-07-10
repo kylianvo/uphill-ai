@@ -226,8 +226,8 @@ def init_db():
             text("""
         CREATE TABLE IF NOT EXISTS kb_chunks (
             id              SERIAL PRIMARY KEY,
-            domain          TEXT NOT NULL,               -- 'gear' | 'nutrition' | 'scheduler'
-            kind            TEXT NOT NULL,               -- 'catalog_item' | 'principle'
+            domain          TEXT NOT NULL,               -- 'gear' | 'nutrition' | 'scheduler' | 'race_courses'
+            kind            TEXT NOT NULL,               -- 'catalog_item' | 'principle' | 'race_profile'
             title           TEXT NOT NULL,
             content         TEXT NOT NULL,
             payload         JSONB,

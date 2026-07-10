@@ -83,4 +83,34 @@ describe("useRaceMatch", () => {
     const [url] = fetchMock.mock.calls[0];
     expect(url).toContain("distance_km=50");
   });
+
+  it("clears a stale match when the name is shortened back below the minimum length", async () => {
+    const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>;
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        matched: true,
+        race_name: "Vietnam Mountain Marathon",
+        distance_label: "50km",
+        distance_km: 46.7,
+        elevation_gain_m: 2800,
+        terrain: ["rice terraces"],
+      })
+    );
+
+    const { result, rerender } = renderHook(({ name }) => useRaceMatch(name), {
+      initialProps: { name: "VMM" },
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500);
+    });
+    expect(result.current?.race_name).toBe("Vietnam Mountain Marathon");
+
+    rerender({ name: "VM" });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500);
+    });
+    expect(result.current).toBeNull();
+  });
 });
