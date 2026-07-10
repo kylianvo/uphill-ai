@@ -38,3 +38,11 @@ def test_no_match_returns_inputs_unchanged_and_no_context():
     assert distance == 50.0
     assert elevation is None
     assert context is None
+
+
+def test_never_raises_even_if_match_race_raises_unexpectedly():
+    with patch("services.race_matcher.match_race", side_effect=RuntimeError("malformed KB payload")):
+        distance, elevation, context = _resolve_course_match("VMM", 50.0, None)
+    assert distance == 50.0
+    assert elevation is None
+    assert context is None

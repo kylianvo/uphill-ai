@@ -621,9 +621,11 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid plan_start_date format. Expected YYYY-MM-DD.")
     total_weeks = _calculate_total_weeks(race_date, start_date_parsed)
-    request.course_distance_km, request.course_elevation_gain_m, course_context = _resolve_course_match(
-        race_name, request.course_distance_km, request.course_elevation_gain_m
-    )
+    course_context = None
+    if is_event:
+        request.course_distance_km, request.course_elevation_gain_m, course_context = _resolve_course_match(
+            race_name, request.course_distance_km, request.course_elevation_gain_m
+        )
     plan_id = create_plan(
         user_id=user["id"],
         race_name=race_name,
@@ -737,10 +739,16 @@ def _resolve_course_match(
     numeric fields are backfilled only when the caller passed None; manual
     entry and GPX-derived values are never overwritten. course_context
     (qualitative terrain/climate prose) is always returned when there's a
-    match, regardless of whether the numeric fields needed backfilling."""
+    match, regardless of whether the numeric fields needed backfilling.
+    Never raises: race matching is enrichment, never allowed to break plan
+    creation or generation, even if the hand-edited KB has malformed data."""
     from services.race_matcher import match_race
 
-    matched = match_race(race_name, distance_km=course_distance_km)
+    try:
+        matched = match_race(race_name, distance_km=course_distance_km)
+    except Exception as e:
+        print(f"[CourseMatch] match_race failed unexpectedly: {e}")
+        matched = None
     if not matched:
         return course_distance_km, course_elevation_gain_m, None
     resolved_distance_km = course_distance_km if course_distance_km is not None else matched.distance_km

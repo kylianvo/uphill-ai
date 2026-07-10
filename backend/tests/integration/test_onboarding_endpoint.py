@@ -13,8 +13,10 @@ fixtures.
 """
 
 from datetime import date
+from unittest.mock import patch
 
 from db import get_active_plan
+from services.race_matcher import MatchedRace
 
 FAR_FUTURE_START_DATE = "2027-03-15"  # deliberately far from "today" so a regression is unmistakable
 
@@ -78,3 +80,39 @@ def test_onboarding_recalculates_total_weeks_from_submitted_start_date(client, a
     assert resp.status_code == 200, resp.text
     plan = get_active_plan(auth_headers["user_id"])
     assert plan["total_weeks"] == 17  # same math verified in tests/unit/test_onboarding_helpers.py
+
+
+def test_onboarding_non_race_goal_never_calls_race_matcher(client, auth_headers, mock_plan_generation):
+    """Non-race onboarding goals (start_running/return/recovery) fall back to
+    a generic default race_name (e.g. "My Running Journey" via
+    _default_plan_name). Unlike the PlannerView plan-creation site (guarded
+    by is_race_or_dist), nothing should let one of these generic names
+    coincidentally fuzzy-match a curated race in the KB -- the is_event
+    guard in the onboarding handler must suppress the race-matcher call
+    entirely for non-race goals."""
+    fake_match = MatchedRace(
+        race_name="Vietnam Mountain Marathon",
+        distance_label="50km",
+        distance_km=46.7,
+        elevation_gain_m=2800,
+        terrain=["rice terraces"],
+        course_context="Course prose here.",
+        confidence=100.0,
+    )
+    with patch("services.race_matcher.match_race", return_value=fake_match) as mock_match_race:
+        resp = client.post(
+            "/api/auth/onboarding",
+            headers=auth_headers["headers"],
+            json={
+                "goal_type": "start_running",
+                "days_per_week": 4,
+            },
+        )
+
+    assert resp.status_code == 200, resp.text
+    mock_match_race.assert_not_called()
+
+    plan = get_active_plan(auth_headers["user_id"])
+    assert plan is not None
+    assert plan["course_distance_km"] is None
+    assert plan["course_elevation_gain_m"] is None
