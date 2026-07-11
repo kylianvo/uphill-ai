@@ -3,6 +3,8 @@
 
 import React, { useState } from "react";
 import { useAnalytics } from '@/hooks/useAnalytics';
+import { useRaceMatch, RaceMatch } from '@/hooks/useRaceMatch';
+import { RaceMatchChip } from '@/components/RaceMatchChip';
 import { Sneaker, XCircle, Target, CaretDown, WarningCircle, CheckCircle, Ruler, Path, RocketLaunch, Scales } from "@phosphor-icons/react";
 
 interface ShoeRecommendation {
@@ -22,6 +24,7 @@ interface ShoeRecommendation {
 interface GearPlanResponse {
   recommendations: ShoeRecommendation[];
   tips: string[];
+  matched_race?: RaceMatch | null;
 }
 
 interface GearVaultProps {
@@ -45,6 +48,8 @@ export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang, use
   const [shoeTerrain, setShoeTerrain] = useState<string[]>(["runnable"]); // For trail
   const [shoeUseCase, setShoeUseCase] = useState("daily training"); // For road
   const [shoeDistance, setShoeDistance] = useState(""); // For racing/trail
+  const [shoeRaceName, setShoeRaceName] = useState("");
+  const raceMatch = useRaceMatch(shoeRaceName, { distanceLabel: shoeDistance });
 
   const [gearPlan, setGearPlan] = useState<GearPlanResponse | null>(null);
   const [gearLoading, setGearLoading] = useState(false);
@@ -96,6 +101,7 @@ export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang, use
         preferred_brands: shoeBrands,
         additional_context: shoeContext,
         race_distance: shoeDistance,
+        race_name: shoeRaceName,
         user_profile: userProfileStr,
         active_plan_context: activePlanStr
       };
@@ -210,6 +216,15 @@ export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang, use
 
           {(shoeSurface === "trail" || (shoeSurface === "road" && shoeUseCase === "racing")) && (
             <div style={{ background: "rgba(0,0,0,0.03)", padding: "16px", borderRadius: "16px", border: "1px solid rgba(0,0,0,0.05)" }}>
+              <label style={{ display: "block", fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)", marginBottom: "8px", fontWeight: 600 }}>{lang === "en" ? "Race Name (optional)" : "Tên giải (tùy chọn)"}</label>
+              <input type="text" placeholder="e.g. UTMB, VMM" value={shoeRaceName} onChange={(e) => setShoeRaceName(e.target.value)}
+                style={{ width: "100%", background: "transparent", border: "none", fontSize: "16px", fontWeight: 600, color: "var(--text-primary)", outline: "none" }} />
+              <RaceMatchChip match={raceMatch} lang={lang} />
+            </div>
+          )}
+
+          {(shoeSurface === "trail" || (shoeSurface === "road" && shoeUseCase === "racing")) && (
+            <div style={{ background: "rgba(0,0,0,0.03)", padding: "16px", borderRadius: "16px", border: "1px solid rgba(0,0,0,0.05)" }}>
               <label style={{ display: "block", fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)", marginBottom: "8px", fontWeight: 600 }}>{lang === "en" ? "Race Distance" : "Cự ly giải"}</label>
               <input type="text" placeholder="e.g. 50k, 100 miles, Marathon" value={shoeDistance} onChange={(e) => setShoeDistance(e.target.value)}
                 style={{ width: "100%", background: "transparent", border: "none", fontSize: "16px", fontWeight: 600, color: "var(--text-primary)", outline: "none" }} />
@@ -279,6 +294,7 @@ export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang, use
             <h3 style={{ fontSize: "14px", textTransform: "uppercase", letterSpacing: "1px", color: "var(--accent-primary)", marginBottom: "16px", fontWeight: 700, display: "flex", alignItems: "center", gap: "6px" }}>
               <Target size={18} weight="fill" /> MATCH RESULTS
             </h3>
+            <RaceMatchChip match={gearPlan.matched_race ?? null} lang={lang} />
 
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               {gearPlan.recommendations.map((shoe, idx) => {

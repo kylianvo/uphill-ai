@@ -10,6 +10,8 @@ import { DndContext, DragEndEvent, DragOverEvent, useDraggable, useDroppable } f
 import { CSS } from "@dnd-kit/utilities";
 import ToolsView from "./ToolsView";
 import { UploadSimple, FileArrowUp, Heart, Clock, Mountains, MapPin, Footprints, ArrowsMerge, PlayCircle, CheckCircle, Fire, Path, RoadHorizon, Info, Check, Question, WarningCircle, Plus, Trash, Archive, LockKey, LockKeyOpen, Trophy, Target, Sneaker, PersonSimpleRun, Bed, XCircle, DownloadSimple } from '@phosphor-icons/react';
+import { useRaceMatch } from "../hooks/useRaceMatch";
+import { RaceMatchChip } from "../components/RaceMatchChip";
 
 export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   const ctx = useAppContext();
@@ -276,6 +278,14 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
     }
   };
 
+  const raceMatch = useRaceMatch(planForm.race_name || "", { distanceKm: planForm.course_distance_km });
+  React.useEffect(() => {
+    if (raceMatch?.elevation_gain_m && !planForm.course_elevation_gain_m) {
+      setPlanForm({ ...planForm, course_elevation_gain_m: String(raceMatch.elevation_gain_m) });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [raceMatch]);
+
     return (
       <div>
         {!activePlan ? (
@@ -325,6 +335,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                     placeholder={planForm.plan_goal_category === "race" ? "e.g. UTMB, SUM30" : "e.g. My First Marathon"}
                     value={planForm.race_name}
                     onChange={(e) => setPlanForm({ ...planForm, race_name: e.target.value })} />
+                  <RaceMatchChip match={raceMatch} lang={lang} />
                 </div>
                 <div>
                   <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px", color: "var(--text-secondary)" }}>

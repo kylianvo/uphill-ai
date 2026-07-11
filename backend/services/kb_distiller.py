@@ -21,6 +21,10 @@ from services.notebooklm_service import NotebookLmService
 
 SEED_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "kb_seed")
 DOMAINS = ("gear", "nutrition", "scheduler")
+# Hand-curated domains have no NotebookLM notebook to sweep -- they only ever
+# load via load_seed(), never distill_domain(). Kept separate from DOMAINS so
+# /api/kb/distill (which sweeps notebooks) never tries to validate against them.
+HAND_CURATED_DOMAINS = ("race_courses",)
 
 
 # ─── Gemini structuring schemas ──────────────────────────────────────────────

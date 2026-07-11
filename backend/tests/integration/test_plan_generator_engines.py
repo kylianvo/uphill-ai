@@ -147,3 +147,56 @@ def test_gemini_failure_falls_back_to_notebooklm(monkeypatch):
         workouts = asyncio.run(_generate())
     nlm.assert_called_once()
     assert workouts and workouts[0]["week_number"] == 1
+
+
+RACE_INFO_WITH_COURSE_CONTEXT = {
+    "lang": "en",
+    "terrain": "trail",
+    "name": "Vietnam Mountain Marathon",
+    "goal_type": "finish",
+    "course_context": "Highly technical hand-and-knees scrambles on the final climbs.",
+}
+
+
+def test_course_context_is_injected_into_the_prompt_when_present(monkeypatch):
+    import asyncio
+
+    monkeypatch.setattr(settings, "RAG_ENGINE", "gemini")
+    monkeypatch.setattr(settings, "NOTEBOOKLM_NOTEBOOK_ID", "nb-sched")
+    monkeypatch.setattr(settings, "NOTEBOOKLM_AUTH_JSON", '{"tok": 1}')
+    fake_model = _fake_gemini_model()
+    with (
+        patch("services.kb_retrieval.search_scheduler_chunks", return_value=[]),
+        patch("google.generativeai.GenerativeModel", return_value=fake_model),
+        patch("google.generativeai.configure"),
+    ):
+        asyncio.run(
+            PlanGenerator.generate_plan_workouts(
+                plan_id=999999,
+                user_profile=USER_PROFILE,
+                race_info=RACE_INFO_WITH_COURSE_CONTEXT,
+                total_weeks=8,
+                api_key="test-key",
+                block_number=1,
+            )
+        )
+    prompt_sent = fake_model.generate_content.call_args[0][0]
+    assert "COURSE PROFILE" in prompt_sent
+    assert "hand-and-knees scrambles" in prompt_sent
+
+
+def test_no_course_context_key_omits_the_section(monkeypatch):
+    import asyncio
+
+    monkeypatch.setattr(settings, "RAG_ENGINE", "gemini")
+    monkeypatch.setattr(settings, "NOTEBOOKLM_NOTEBOOK_ID", "nb-sched")
+    monkeypatch.setattr(settings, "NOTEBOOKLM_AUTH_JSON", '{"tok": 1}')
+    fake_model = _fake_gemini_model()
+    with (
+        patch("services.kb_retrieval.search_scheduler_chunks", return_value=[]),
+        patch("google.generativeai.GenerativeModel", return_value=fake_model),
+        patch("google.generativeai.configure"),
+    ):
+        asyncio.run(_generate())  # RACE_INFO has no course_context key
+    prompt_sent = fake_model.generate_content.call_args[0][0]
+    assert "COURSE PROFILE" not in prompt_sent

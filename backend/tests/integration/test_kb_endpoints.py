@@ -107,3 +107,68 @@ def test_kb_import_all_returns_partial_when_some_seeds_missing(client, tmp_path,
     assert body["status"] == "partial"
     assert body["loaded"]["gear"] == 1
     assert "nutrition" in body["errors"] and "scheduler" in body["errors"]
+
+
+def test_kb_import_loads_race_courses_seed(client, tmp_path, monkeypatch):
+    from services import kb_distiller
+
+    monkeypatch.setattr(kb_distiller, "SEED_DIR", str(tmp_path))
+    (tmp_path / "race_courses.json").write_text(
+        json.dumps(
+            {
+                "domain": "race_courses",
+                "chunks": [
+                    {
+                        "domain": "race_courses",
+                        "kind": "race_profile",
+                        "title": "Test Race",
+                        "content": "c",
+                        "payload": {"race_name": "Test Race", "aliases": [], "distances": []},
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    headers = _admin_headers(client)
+    resp = client.post("/api/kb/import?domain=race_courses", headers=headers)
+    assert resp.status_code == 200
+    assert resp.json()["loaded"]["race_courses"] == 1
+
+
+def test_kb_distill_rejects_hand_curated_domain(client):
+    headers = _admin_headers(client)
+    resp = client.post("/api/kb/distill?domain=race_courses", headers=headers)
+    assert resp.status_code == 400
+
+
+def test_match_race_endpoint_no_auth_required(client):
+    save_kb_chunks(
+        [
+            {
+                "domain": "race_courses",
+                "kind": "race_profile",
+                "title": "VMM",
+                "content": "Course prose here.",
+                "payload": {
+                    "race_name": "Vietnam Mountain Marathon",
+                    "aliases": ["VMM"],
+                    "terrain": ["rice terraces"],
+                    "distances": [{"label": "50km", "distance_km": 46.7, "elevation_gain_m": 2800}],
+                    "matching_hints": {"name_keywords": ["vmm"], "distance_km_options": [46.7]},
+                },
+            }
+        ]
+    )
+    resp = client.get("/api/kb/match-race?name=VMM&distance_km=48")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["matched"] is True
+    assert body["race_name"] == "Vietnam Mountain Marathon"
+    assert body["elevation_gain_m"] == 2800
+
+
+def test_match_race_endpoint_returns_unmatched_for_unknown_name(client):
+    resp = client.get("/api/kb/match-race?name=Totally Unknown Race XYZ")
+    assert resp.status_code == 200
+    assert resp.json() == {"matched": False}

@@ -129,3 +129,50 @@ def test_notebooklm_schema_includes_weight_field_guidance(monkeypatch):
         asyncio.run(gp.gear_planner.generate_plan("", GearParams(surface="road")))
     query_sent = nlm.call_args.kwargs["query"]
     assert '"weight"' in query_sent  # schema block mentions weight guidance
+
+
+def test_gear_params_accepts_race_name():
+    assert "race_name" in GearParams.model_fields
+
+
+def test_gemini_engine_injects_course_context_and_echoes_matched_race(monkeypatch):
+    monkeypatch.setattr(settings, "RAG_ENGINE", "gemini")
+    monkeypatch.setattr(settings, "GEMINI_API_KEY", "test-key")
+    fake_model = _mock_gemini_model(GEAR_JSON)
+    chunks = [{"title": "Speedgoat 7", "payload": {"brand": "Hoka", "price": "$155"}}]
+    from services.race_matcher import MatchedRace
+
+    matched = MatchedRace(
+        race_name="Vietnam Mountain Marathon",
+        distance_label="50km",
+        distance_km=46.7,
+        elevation_gain_m=2800,
+        terrain=["rice terraces"],
+        course_context="Highly technical hand-and-knees scrambles on the final climbs.",
+        confidence=100.0,
+    )
+    with (
+        patch("db.get_kb_chunks", return_value=chunks),
+        patch("services.race_matcher.match_race", return_value=matched),
+        patch("google.generativeai.GenerativeModel", return_value=fake_model),
+        patch("google.generativeai.configure"),
+    ):
+        result = asyncio.run(gp.gear_planner.generate_plan("", GearParams(surface="trail", race_name="VMM")))
+    prompt_sent = fake_model.generate_content.call_args[0][0]
+    assert "hand-and-knees scrambles" in prompt_sent
+    assert result["matched_race"]["race_name"] == "Vietnam Mountain Marathon"
+    assert result["matched_race"]["elevation_gain_m"] == 2800
+
+
+def test_no_race_name_means_no_matched_race_in_response(monkeypatch):
+    monkeypatch.setattr(settings, "RAG_ENGINE", "gemini")
+    monkeypatch.setattr(settings, "GEMINI_API_KEY", "test-key")
+    fake_model = _mock_gemini_model(GEAR_JSON)
+    chunks = [{"title": "Speedgoat 7", "payload": {"brand": "Hoka"}}]
+    with (
+        patch("db.get_kb_chunks", return_value=chunks),
+        patch("google.generativeai.GenerativeModel", return_value=fake_model),
+        patch("google.generativeai.configure"),
+    ):
+        result = asyncio.run(gp.gear_planner.generate_plan("", GearParams(surface="trail")))
+    assert result["matched_race"] is None
