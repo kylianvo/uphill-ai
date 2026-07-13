@@ -55,6 +55,11 @@ export function RaceNameField({
     setActiveIndex(0);
   }, [candidates]);
 
+  const handleSelect = (candidate: RaceCandidate) => {
+    onChange(candidate.race_name);
+    selectCandidate(candidate);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (candidates.length === 0) return;
     if (e.key === "ArrowDown") {
@@ -65,7 +70,7 @@ export function RaceNameField({
       setActiveIndex((i) => Math.max(i - 1, 0));
     } else if (e.key === "Enter") {
       e.preventDefault();
-      selectCandidate(candidates[activeIndex]);
+      handleSelect(candidates[activeIndex]);
     } else if (e.key === "Escape") {
       e.preventDefault();
       dismissCandidates();
@@ -114,7 +119,7 @@ export function RaceNameField({
               onMouseEnter={() => setActiveIndex(index)}
               onMouseDown={(e) => {
                 e.preventDefault();
-                selectCandidate(candidate);
+                handleSelect(candidate);
               }}
             >
               {candidateLabel(candidate)}

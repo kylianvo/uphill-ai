@@ -149,6 +149,54 @@ describe("RaceNameField", () => {
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
     expect(screen.getByText("Cross du Mont-Blanc")).toBeInTheDocument();
     expect(onMatchChange).toHaveBeenLastCalledWith(expect.objectContaining({ race_name: "Cross du Mont-Blanc" }));
+    expect(input).toHaveValue("Cross du Mont-Blanc");
+  });
+
+  it("clicking a candidate updates the input text to the selected race name", async () => {
+    const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>;
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        matched: true,
+        auto_apply: false,
+        match: {
+          race_name: "Marathon du Mont-Blanc",
+          distance_label: null,
+          distance_km: null,
+          elevation_gain_m: null,
+          terrain: [],
+        },
+        candidates: [
+          {
+            race_name: "Marathon du Mont-Blanc",
+            distance_label: "42km",
+            distance_km: 42,
+            elevation_gain_m: 2500,
+            terrain: [],
+            score: 100,
+          },
+          {
+            race_name: "Cross du Mont-Blanc",
+            distance_label: "23km",
+            distance_km: 23,
+            elevation_gain_m: 1400,
+            terrain: [],
+            score: 100,
+          },
+        ],
+      })
+    );
+    render(<Harness />);
+
+    const input = screen.getByPlaceholderText("race");
+    fireEvent.change(input, { target: { value: "Marathon du Mont Blanc" } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500);
+    });
+
+    fireEvent.mouseDown(screen.getByRole("option", { name: /Cross du Mont-Blanc/ }));
+
+    expect(input).toHaveValue("Cross du Mont-Blanc");
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
   });
 
   it("Escape dismisses the dropdown without applying a match", async () => {
