@@ -2,7 +2,15 @@ import React from "react";
 import { MapPin } from "@phosphor-icons/react";
 import { RaceMatch } from "../hooks/useRaceMatch";
 
-export function RaceMatchChip({ match, lang }: { match: RaceMatch | null; lang: "en" | "vi" }) {
+export function RaceMatchChip({
+  match,
+  lang,
+  onChangeClick,
+}: {
+  match: RaceMatch | null;
+  lang: "en" | "vi";
+  onChangeClick?: () => void;
+}) {
   if (!match) return null;
 
   const distancePart = match.distance_label
@@ -26,9 +34,30 @@ export function RaceMatchChip({ match, lang }: { match: RaceMatch | null; lang: 
     >
       <MapPin size={14} weight="fill" />
       <span>
-        {lang === "en" ? "Matched: " : "Đã khớp: "}
+        {lang === "en" ? "Using " : "Đang dùng "}
         <strong>{match.race_name}</strong>
+        {lang === "en" ? " as context" : " làm ngữ cảnh"}
         {distancePart ? ` — ${distancePart}` : ""}
+        {onChangeClick && (
+          <>
+            {" · "}
+            <button
+              type="button"
+              onClick={onChangeClick}
+              style={{
+                background: "none",
+                border: "none",
+                padding: 0,
+                font: "inherit",
+                color: "var(--accent-primary)",
+                textDecoration: "underline",
+                cursor: "pointer",
+              }}
+            >
+              {lang === "en" ? "Change" : "Đổi"}
+            </button>
+          </>
+        )}
       </span>
     </div>
   );
