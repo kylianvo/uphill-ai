@@ -164,11 +164,54 @@ def test_match_race_endpoint_no_auth_required(client):
     assert resp.status_code == 200
     body = resp.json()
     assert body["matched"] is True
-    assert body["race_name"] == "Vietnam Mountain Marathon"
-    assert body["elevation_gain_m"] == 2800
+    assert body["auto_apply"] is True
+    assert body["match"]["race_name"] == "Vietnam Mountain Marathon"
+    assert body["match"]["elevation_gain_m"] == 2800
+    assert "candidates" not in body
 
 
 def test_match_race_endpoint_returns_unmatched_for_unknown_name(client):
     resp = client.get("/api/kb/match-race?name=Totally Unknown Race XYZ")
     assert resp.status_code == 200
     assert resp.json() == {"matched": False}
+
+
+def test_match_race_endpoint_returns_candidates_for_ambiguous_name(client):
+    save_kb_chunks(
+        [
+            {
+                "domain": "race_courses",
+                "kind": "race_profile",
+                "title": "Marathon du Mont-Blanc",
+                "content": "prose",
+                "payload": {
+                    "race_name": "Marathon du Mont-Blanc",
+                    "aliases": ["marathon du mont blanc"],
+                    "terrain": ["alpine trail"],
+                    "distances": [{"label": "42km", "distance_km": 42.0, "elevation_gain_m": 2500}],
+                    "matching_hints": {"name_keywords": [], "distance_km_options": [42.0]},
+                },
+            },
+            {
+                "domain": "race_courses",
+                "kind": "race_profile",
+                "title": "Cross du Mont-Blanc",
+                "content": "prose",
+                "payload": {
+                    "race_name": "Cross du Mont-Blanc",
+                    "aliases": [],
+                    "terrain": ["alpine trail"],
+                    "distances": [{"label": "23km", "distance_km": 23.0, "elevation_gain_m": 1400}],
+                    "matching_hints": {"name_keywords": ["marathon du mont blanc"], "distance_km_options": [23.0]},
+                },
+            },
+        ]
+    )
+    resp = client.get("/api/kb/match-race?name=Marathon du Mont Blanc")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["matched"] is True
+    assert body["auto_apply"] is False
+    names = {c["race_name"] for c in body["candidates"]}
+    assert names == {"Marathon du Mont-Blanc", "Cross du Mont-Blanc"}
+    assert all("score" in c for c in body["candidates"])
