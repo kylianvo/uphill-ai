@@ -10,8 +10,8 @@ import { DndContext, DragEndEvent, DragOverEvent, useDraggable, useDroppable } f
 import { CSS } from "@dnd-kit/utilities";
 import ToolsView from "./ToolsView";
 import { UploadSimple, FileArrowUp, Heart, Clock, Mountains, MapPin, Footprints, ArrowsMerge, PlayCircle, CheckCircle, Fire, Path, RoadHorizon, Info, Check, Question, WarningCircle, Plus, Trash, Archive, LockKey, LockKeyOpen, Trophy, Target, Sneaker, PersonSimpleRun, Bed, XCircle, DownloadSimple } from '@phosphor-icons/react';
-import { useRaceMatch } from "../hooks/useRaceMatch";
-import { RaceMatchChip } from "../components/RaceMatchChip";
+import { RaceMatch } from "../hooks/useRaceMatch";
+import { RaceNameField } from "../components/RaceNameField";
 
 export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   const ctx = useAppContext();
@@ -278,13 +278,11 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
     }
   };
 
-  const raceMatch = useRaceMatch(planForm.race_name || "", { distanceKm: planForm.course_distance_km });
-  React.useEffect(() => {
-    if (raceMatch?.elevation_gain_m && !planForm.course_elevation_gain_m) {
-      setPlanForm({ ...planForm, course_elevation_gain_m: String(raceMatch.elevation_gain_m) });
+  const handleRaceMatchChange = (match: RaceMatch | null) => {
+    if (match?.elevation_gain_m && !planForm.course_elevation_gain_m) {
+      setPlanForm({ ...planForm, course_elevation_gain_m: String(match.elevation_gain_m) });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [raceMatch]);
+  };
 
   // Pre-fill gym/treadmill/training-environment/double-session choices from the
   // most recent plan once, when the create-plan form first has something to seed from.
@@ -348,12 +346,16 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                   <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px", color: "var(--text-secondary)" }}>
                     {planForm.plan_goal_category === "race" ? t("plan_race_name") : (lang === "en" ? "Distance Goal Name" : "Tên Mục tiêu Cự ly")}
                   </label>
-                  <input type="text" className="chat-input"
+                  <RaceNameField
+                    className="chat-input"
                     style={{ borderRadius: "8px", width: "100%", padding: "10px" }}
                     placeholder={planForm.plan_goal_category === "race" ? "e.g. UTMB, SUM30" : "e.g. My First Marathon"}
                     value={planForm.race_name}
-                    onChange={(e) => setPlanForm({ ...planForm, race_name: e.target.value })} />
-                  <RaceMatchChip match={raceMatch} lang={lang} />
+                    onChange={(v) => setPlanForm({ ...planForm, race_name: v })}
+                    distanceKm={planForm.course_distance_km}
+                    lang={lang}
+                    onMatchChange={handleRaceMatchChange}
+                  />
                 </div>
                 <div>
                   <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px", color: "var(--text-secondary)" }}>
