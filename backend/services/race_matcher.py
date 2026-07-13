@@ -1,18 +1,21 @@
 """Fuzzy-matches a user-entered race name (+ optional distance) against the
 hand-curated race_courses KB, to enrich Scheduler and Gear Finder prompts
 with curated terrain/climate/elevation context. Never guesses: a match
-below the confidence threshold, or any lookup failure, returns None so
+below the confidence threshold, or any lookup failure, returns no match so
 callers fall back to whatever the user/GPX already supplied."""
 
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from rapidfuzz import fuzz
 
 _MIN_NAME_LENGTH = 3
 _FUZZY_THRESHOLD = 86.0
+_AUTO_APPLY_GAP = 10.0
+_CANDIDATE_THRESHOLD = 70.0
+_MAX_CANDIDATES = 5
 _MILE_TO_KM = 1.60934
 _NAMED_DISTANCES_KM = {
     "half marathon": 21.0975,
@@ -41,6 +44,14 @@ class MatchedRace:
             "elevation_gain_m": self.elevation_gain_m,
             "terrain": self.terrain,
         }
+
+
+@dataclass
+class RaceMatchResult:
+    matched: bool
+    auto_apply: bool
+    top: MatchedRace | None
+    candidates: list[MatchedRace] = field(default_factory=list)
 
 
 def _payload_as_dict(payload: Any) -> dict[str, Any]:
@@ -97,13 +108,58 @@ def _lopsided_short_candidate(query: str, candidate: str) -> bool:
     return len(candidate) < 5 and len(query) > 2 * len(candidate)
 
 
-def match_race(
+def _score_chunks(query: str, chunks: list[dict[str, Any]]) -> list[tuple[dict[str, Any], float]]:
+    """Scores every chunk against `query` (exact keyword hits score 100.0,
+    otherwise the best rapidfuzz WRatio across race_name + aliases), sorted
+    highest score first."""
+    scored: list[tuple[dict[str, Any], float]] = []
+    for chunk in chunks:
+        payload = _payload_as_dict(chunk.get("payload"))
+        keywords = payload.get("matching_hints", {}).get("name_keywords", [])
+        if any(_keyword_hit(kw.lower(), query) for kw in keywords if kw):
+            scored.append((chunk, 100.0))
+            continue
+
+        candidates = [payload.get("race_name", "")] + list(payload.get("aliases", []))
+        score = max(
+            (fuzz.WRatio(query, c.lower()) for c in candidates if c and not _lopsided_short_candidate(query, c)),
+            default=0.0,
+        )
+        scored.append((chunk, score))
+
+    scored.sort(key=lambda pair: pair[1], reverse=True)
+    return scored
+
+
+def _to_matched_race(chunk: dict[str, Any], score: float, resolved_distance_km: float | None) -> MatchedRace:
+    payload = _payload_as_dict(chunk.get("payload"))
+    distance_entry = None
+    if resolved_distance_km is not None:
+        distance_entry = _closest_distance_entry(payload.get("distances", []), resolved_distance_km)
+
+    return MatchedRace(
+        race_name=payload.get("race_name", chunk.get("title", "")),
+        distance_label=distance_entry.get("label") if distance_entry else None,
+        distance_km=distance_entry.get("distance_km") if distance_entry else None,
+        elevation_gain_m=distance_entry.get("elevation_gain_m") if distance_entry else None,
+        terrain=payload.get("terrain", []),
+        course_context=chunk.get("content", ""),
+        confidence=score,
+    )
+
+
+def match_race_candidates(
     name: str | None,
     distance_km: float | None = None,
     distance_label: str | None = None,
-) -> MatchedRace | None:
+) -> RaceMatchResult:
+    """Scores every race in the curated KB against `name` and decides
+    whether the top match clearly dominates (auto_apply=True, no
+    candidates) or is ambiguous enough that the caller should let the user
+    disambiguate (auto_apply=False, up to 5 candidates scoring >= 70)."""
+    empty = RaceMatchResult(matched=False, auto_apply=False, top=None, candidates=[])
     if not name or len(name.strip()) < _MIN_NAME_LENGTH:
-        return None
+        return empty
 
     import db
 
@@ -111,47 +167,38 @@ def match_race(
         chunks = db.get_kb_chunks("race_courses", kind="race_profile")
     except Exception as e:
         print(f"[RaceMatcher] Failed to load race_courses KB: {e}")
-        return None
+        return empty
     if not chunks:
-        return None
+        return empty
 
     query = name.strip().lower()
-    best_chunk = None
-    best_score = 0.0
+    scored = _score_chunks(query, chunks)
+    if not scored or scored[0][1] < _FUZZY_THRESHOLD:
+        return empty
 
-    for chunk in chunks:
-        payload = _payload_as_dict(chunk.get("payload"))
-        keywords = payload.get("matching_hints", {}).get("name_keywords", [])
-        if any(_keyword_hit(kw.lower(), query) for kw in keywords if kw):
-            best_chunk = chunk
-            best_score = 100.0
-            break
-
-        candidates = [payload.get("race_name", "")] + list(payload.get("aliases", []))
-        score = max(
-            (fuzz.WRatio(query, c.lower()) for c in candidates if c and not _lopsided_short_candidate(query, c)),
-            default=0.0,
-        )
-        if score > best_score:
-            best_score = score
-            best_chunk = chunk
-
-    if best_chunk is None or best_score < _FUZZY_THRESHOLD:
-        return None
-
-    payload = _payload_as_dict(best_chunk.get("payload"))
     resolved_distance_km = distance_km if distance_km is not None else _parse_distance_km(distance_label)
+    top_chunk, top_score = scored[0]
+    top_race = _to_matched_race(top_chunk, top_score, resolved_distance_km)
 
-    distance_entry = None
-    if resolved_distance_km is not None:
-        distance_entry = _closest_distance_entry(payload.get("distances", []), resolved_distance_km)
+    second_score = scored[1][1] if len(scored) > 1 else 0.0
+    auto_apply = (top_score - second_score) >= _AUTO_APPLY_GAP
+    if auto_apply:
+        return RaceMatchResult(matched=True, auto_apply=True, top=top_race, candidates=[])
 
-    return MatchedRace(
-        race_name=payload.get("race_name", best_chunk.get("title", "")),
-        distance_label=distance_entry.get("label") if distance_entry else None,
-        distance_km=distance_entry.get("distance_km") if distance_entry else None,
-        elevation_gain_m=distance_entry.get("elevation_gain_m") if distance_entry else None,
-        terrain=payload.get("terrain", []),
-        course_context=best_chunk.get("content", ""),
-        confidence=best_score,
-    )
+    candidates = [
+        _to_matched_race(chunk, score, resolved_distance_km)
+        for chunk, score in scored[:_MAX_CANDIDATES]
+        if score >= _CANDIDATE_THRESHOLD
+    ]
+    return RaceMatchResult(matched=True, auto_apply=False, top=top_race, candidates=candidates)
+
+
+def match_race(
+    name: str | None,
+    distance_km: float | None = None,
+    distance_label: str | None = None,
+) -> MatchedRace | None:
+    """Backward-compatible single-best-match lookup, used by server-side
+    enrichment call sites (_resolve_course_match, gear_planner) that always
+    want the top match regardless of how close the runner-up scored."""
+    return match_race_candidates(name, distance_km=distance_km, distance_label=distance_label).top
