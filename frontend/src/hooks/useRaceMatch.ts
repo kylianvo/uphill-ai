@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export interface RaceMatch {
   race_name: string;
@@ -6,6 +6,18 @@ export interface RaceMatch {
   distance_km: number | null;
   elevation_gain_m: number | null;
   terrain: string[];
+}
+
+export interface RaceCandidate extends RaceMatch {
+  score: number;
+}
+
+export interface UseRaceMatchResult {
+  selectedMatch: RaceMatch | null;
+  candidates: RaceCandidate[];
+  selectCandidate: (candidate: RaceCandidate) => void;
+  reopenPicker: () => void;
+  dismissCandidates: () => void;
 }
 
 function getBackendUrl(): string {
@@ -22,8 +34,10 @@ const DEBOUNCE_MS = 500;
 export function useRaceMatch(
   name: string,
   options?: { distanceKm?: number | string; distanceLabel?: string }
-): RaceMatch | null {
-  const [match, setMatch] = useState<RaceMatch | null>(null);
+): UseRaceMatchResult {
+  const [selectedMatch, setSelectedMatch] = useState<RaceMatch | null>(null);
+  const [candidates, setCandidates] = useState<RaceCandidate[]>([]);
+  const lastCandidatesRef = useRef<RaceCandidate[]>([]);
   const distanceKm = options?.distanceKm;
   const distanceLabel = options?.distanceLabel;
 
@@ -31,7 +45,10 @@ export function useRaceMatch(
     const trimmed = name.trim();
     if (trimmed.length < MIN_NAME_LENGTH) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setMatch(null);
+      setSelectedMatch(null);
+
+      setCandidates([]);
+      lastCandidatesRef.current = [];
       return;
     }
 
@@ -46,7 +63,25 @@ export function useRaceMatch(
       }
       fetch(`${getBackendUrl()}/api/kb/match-race?${params.toString()}`, { signal: controller.signal })
         .then((r) => (r.ok ? r.json() : { matched: false }))
-        .then((data) => setMatch(data.matched ? (data as RaceMatch & { matched: true }) : null))
+        .then((data) => {
+          if (!data.matched) {
+            setSelectedMatch(null);
+            setCandidates([]);
+            lastCandidatesRef.current = [];
+            return;
+          }
+          if (data.auto_apply) {
+            const match: RaceMatch = data.match;
+            lastCandidatesRef.current = [{ ...match, score: 100 }];
+            setSelectedMatch(match);
+            setCandidates([]);
+          } else {
+            const responseCandidates: RaceCandidate[] = data.candidates;
+            lastCandidatesRef.current = responseCandidates;
+            setSelectedMatch(null);
+            setCandidates(responseCandidates);
+          }
+        })
         .catch(() => {});
     }, DEBOUNCE_MS);
 
@@ -56,5 +91,20 @@ export function useRaceMatch(
     };
   }, [name, distanceKm, distanceLabel]);
 
-  return match;
+  const selectCandidate = (candidate: RaceCandidate) => {
+    const { score: _score, ...match } = candidate;
+    void _score;
+    setSelectedMatch(match);
+    setCandidates([]);
+  };
+
+  const reopenPicker = () => {
+    setCandidates(lastCandidatesRef.current);
+  };
+
+  const dismissCandidates = () => {
+    setCandidates([]);
+  };
+
+  return { selectedMatch, candidates, selectCandidate, reopenPicker, dismissCandidates };
 }
