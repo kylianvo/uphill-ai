@@ -4,8 +4,8 @@ import { useAppContext } from "../contexts/AppContext";
 import { usePlanner } from "../hooks/usePlanner";
 import { translations } from "../app/translations";
 import { Calendar, PersonSimpleRun, Mountains, Watch, Target, CaretRight, CaretLeft, CaretDown, CaretUp, Plus, Info, X, Footprints, Lightning, Heartbeat , Trophy, Sneaker, Bed } from '@phosphor-icons/react';
-import { useRaceMatch } from "../hooks/useRaceMatch";
-import { RaceMatchChip } from "../components/RaceMatchChip";
+import { RaceMatch } from "../hooks/useRaceMatch";
+import { RaceNameField } from "../components/RaceNameField";
 
 export default function OnboardingWizard() {
   const ctx = useAppContext();
@@ -13,15 +13,11 @@ export default function OnboardingWizard() {
   const fetchActivePlanWithToken = fetchRecentPlansWithToken; // just alias if needed or handle properly.
   const { activeTab, setActiveTab, lang, setLang, user, setUser, setActivePlan, setAuthErrorMsg, onboardingOpen, setOnboardingOpen, onboardingAnswers, setOnboardingAnswers, onboardingStep, setOnboardingStep, onboardingGenerating, setOnboardingGenerating } = ctx;
   const [showFitnessWarning, setShowFitnessWarning] = React.useState(false);
-  const raceMatch = useRaceMatch(onboardingAnswers.race_name || "", {
-    distanceKm: onboardingAnswers.course_distance_km,
-  });
-  React.useEffect(() => {
-    if (raceMatch?.elevation_gain_m && !onboardingAnswers.course_elevation_gain_m) {
-      setOnboardingAnswers((prev: any) => ({ ...prev, course_elevation_gain_m: String(raceMatch.elevation_gain_m) }));
+  const handleRaceMatchChange = (match: RaceMatch | null) => {
+    if (match?.elevation_gain_m && !onboardingAnswers.course_elevation_gain_m) {
+      setOnboardingAnswers((prev: any) => ({ ...prev, course_elevation_gain_m: String(match.elevation_gain_m) }));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [raceMatch]);
+  };
   const trackEvent = (name: string, props?: any) => { if (typeof window !== "undefined" && (window as any).posthog) { (window as any).posthog.capture(name, props); } };
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
   const t = (key: keyof typeof translations.en) => translations[lang]?.[key] || translations.en[key] || key;
@@ -660,9 +656,16 @@ export default function OnboardingWizard() {
 
                   <label style={labelS}>{lang === "en" ? "Race Name" : "Tên giải chạy"}</label>
 
-                  <input type="text" className="chat-input" style={inputS} placeholder="e.g. UTMB, Boston Marathon" value={onboardingAnswers.race_name} onChange={e => setAns("race_name", e.target.value)} />
-
-                  <RaceMatchChip match={raceMatch} lang={lang} />
+                  <RaceNameField
+                    className="chat-input"
+                    style={inputS}
+                    placeholder="e.g. UTMB, Boston Marathon"
+                    value={onboardingAnswers.race_name}
+                    onChange={(v) => setAns("race_name", v)}
+                    distanceKm={onboardingAnswers.course_distance_km}
+                    lang={lang}
+                    onMatchChange={handleRaceMatchChange}
+                  />
 
                 </div>
 
