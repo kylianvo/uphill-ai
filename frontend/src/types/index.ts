@@ -54,6 +54,10 @@ export interface ActivePlan {
   total_weeks: number;
   course_distance_km?: number;
   course_elevation_gain_m?: number;
+  has_gym_access?: boolean;
+  use_treadmill?: boolean;
+  training_environment?: "flat" | "hilly" | "mixed";
+  double_session_days?: string;
 }
 
 export interface PacedCheckpoint {
@@ -111,7 +115,6 @@ export interface User {
   resting_hr?: number;
   aet_hr?: number;
   ant_hr?: number;
-  use_treadmill?: number;
   gemini_api_key?: string;
   notebooklm_notebook_id?: string;
   notebooklm_auth_json?: string;

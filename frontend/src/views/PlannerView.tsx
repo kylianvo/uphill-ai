@@ -286,6 +286,24 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [raceMatch]);
 
+  // Pre-fill gym/treadmill/training-environment/double-session choices from the
+  // most recent plan once, when the create-plan form first has something to seed from.
+  const prefilledFromRecentRef = React.useRef(false);
+  useEffect(() => {
+    if (prefilledFromRecentRef.current || activePlan || !recentPlans || recentPlans.length === 0) return;
+    prefilledFromRecentRef.current = true;
+    const p: any = recentPlans[0];
+    let doubleSessionDays: string[] = [];
+    try { doubleSessionDays = JSON.parse(p.double_session_days || "[]"); } catch { doubleSessionDays = []; }
+    setPlanForm((prev: any) => ({
+      ...prev,
+      has_gym_access: !!p.has_gym_access,
+      use_treadmill: !!p.use_treadmill,
+      training_environment: p.training_environment || "flat",
+      double_session_days: doubleSessionDays,
+    }));
+  }, [recentPlans, activePlan, setPlanForm]);
+
     return (
       <div>
         {!activePlan ? (
@@ -703,6 +721,72 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                   {lang === "en"
                     ? "The AI will prioritise these days when building your weekly schedule."
                     : "Trí tuệ nhân tạo (AI) sẽ ưu tiên xếp lịch tập vào các ngày này."}
+                </p>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: "12px", marginTop: "12px" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "13px", color: "var(--text-primary)" }}>
+                  <input type="checkbox" checked={planForm.has_gym_access}
+                    onChange={e => setPlanForm({ ...planForm, has_gym_access: e.target.checked })}
+                    style={{ width: "16px", height: "16px", accentColor: "var(--accent-primary)" }} />
+                  {t("plan_gym_access")}
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "13px", color: "var(--text-primary)" }}>
+                  <input type="checkbox" checked={planForm.use_treadmill}
+                    onChange={e => setPlanForm({ ...planForm, use_treadmill: e.target.checked })}
+                    style={{ width: "16px", height: "16px", accentColor: "var(--accent-primary)" }} />
+                  {t("plan_use_treadmill")}
+                </label>
+              </div>
+
+              <div style={{ marginTop: "12px" }}>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px", color: "var(--text-secondary)" }}>
+                  {t("plan_training_environment")}
+                </label>
+                <div style={{ display: "flex", gap: "6px" }}>
+                  {(["flat", "hilly", "mixed"] as const).map(env => {
+                    const selected = planForm.training_environment === env;
+                    const envKey = ("plan_training_environment_" + env) as keyof typeof translations.en;
+                    return (
+                      <button key={env} type="button" onClick={() => setPlanForm({ ...planForm, training_environment: env })}
+                        style={{ flex: 1, padding: "7px 0", borderRadius: "8px", border: `1.5px solid ${selected ? "var(--accent-primary)" : "var(--border-color)"}`, background: selected ? "rgba(16,185,129,0.1)" : "rgba(255,255,255,0.3)", color: selected ? "var(--accent-primary)" : "var(--text-primary)", fontWeight: selected ? "700" : "500", fontSize: "13px", cursor: "pointer" }}
+                      >{t(envKey)}</button>
+                    );
+                  })}
+                </div>
+                <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "5px", margin: "5px 0 0 0" }}>
+                  {t("plan_training_environment_help")}
+                </p>
+              </div>
+
+              <div style={{ marginTop: "12px" }}>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px", color: "var(--text-secondary)" }}>
+                  {t("plan_double_session_days")}
+                </label>
+                <div style={{ display: "flex", gap: "5px", flexWrap: "wrap" }}>
+                  {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((short, i) => {
+                    const full = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"][i];
+                    if (!planForm.preferred_days.includes(full)) return null;
+                    const selected = planForm.double_session_days.includes(full);
+                    const disabled = !selected && planForm.double_session_days.length >= 2;
+                    const label = lang === "vi"
+                      ? ["T2","T3","T4","T5","T6","T7","CN"][i]
+                      : short;
+                    return (
+                      <button key={full} type="button" disabled={disabled}
+                        onClick={() => {
+                          const next = selected
+                            ? planForm.double_session_days.filter((d: string) => d !== full)
+                            : [...planForm.double_session_days, full];
+                          setPlanForm({ ...planForm, double_session_days: next });
+                        }}
+                        style={{ padding: "5px 10px", borderRadius: "8px", border: `1.5px solid ${selected ? "var(--accent-primary)" : "var(--border-color)"}`, background: selected ? "rgba(16,185,129,0.1)" : "rgba(255,255,255,0.3)", color: selected ? "var(--accent-primary)" : disabled ? "var(--text-muted)" : "var(--text-secondary)", fontWeight: selected ? "700" : "500", fontSize: "12px", cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.5 : 1 }}
+                      >{label}</button>
+                    );
+                  })}
+                </div>
+                <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "5px", margin: "5px 0 0 0" }}>
+                  {t("plan_double_session_help")}
                 </p>
               </div>
             </div>

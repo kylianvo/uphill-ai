@@ -222,13 +222,18 @@ class PlanGenerator:
         return fmt(low) if fmt(low) == fmt(high) else f"{fmt(low)}-{fmt(high)}"
 
     @staticmethod
-    def resolve_treadmill_settings(wo: dict[str, Any], target_pace: str | None) -> tuple[str, str]:
+    def resolve_treadmill_settings(
+        wo: dict[str, Any], target_pace: str | None, use_treadmill: bool = True
+    ) -> tuple[str, str]:
         """Deterministic treadmill settings as range strings — the same backstop
         pattern as resolve_elevation_and_grade, applied to EVERY workout instead
         of trusting the AI's numbers (which drifted from the pace range in
         practice). Returns (incline_range, speed_range), e.g. ("7.3-9.3",
         "8.2-9.2"); ("0", "0") when the workout isn't treadmill-relevant.
 
+        - `use_treadmill=False`: always ("0", "0") — the athlete has no
+          treadmill, regardless of what the AI emitted, so a workout can never
+          carry treadmill settings into the final plan.
         - Hill Sprint/Hill Repeat titles: incline "10-15"; speed derived from the
           workout's own target_pace range at the band midpoint (12.5%).
         - Other workouts the AI marked treadmill-relevant (incline or speed > 0):
@@ -237,6 +242,8 @@ class PlanGenerator:
           from both ends of the target_pace range at the band midpoint, using
           the grade-adjusted effort model in TrainingRules.
         """
+        if not use_treadmill:
+            return "0", "0"
 
         def _as_float(value: Any) -> float:
             try:
@@ -342,7 +349,13 @@ class PlanGenerator:
         z4_range = f"{hr_zones['Zone 4']['min']}-{hr_zones['Zone 4']['max']} bpm"
 
         terrain = race_info.get("terrain", "trail").lower()
-        use_treadmill = user_profile.get("use_treadmill", False)
+        has_gym_access = bool(race_info.get("has_gym_access", False))
+        use_treadmill = bool(race_info.get("use_treadmill", False))
+        training_environment = (race_info.get("training_environment") or "flat").lower()
+        # Hill Sprint/Hill Repeat/Hill Bound sessions need either real hills
+        # (training_environment) or a treadmill incline to substitute for them —
+        # not required for gym access, since these are bodyweight/no-equipment.
+        hill_sprint_eligible = training_environment in ("hilly", "mixed") or use_treadmill
 
         course_distance_km = race_info.get("course_distance_km")
         course_elevation_gain_m = race_info.get("course_elevation_gain_m")
@@ -410,6 +423,18 @@ class PlanGenerator:
 
                 # Reset Rest/Strength/ME — always zero distance, never inherit AI value
                 title_lower = wo.get("title", "").lower()
+
+                # Backstop: no hills and no treadmill means Hill Sprint/Hill Repeat/Hill
+                # Bound is physically impossible regardless of what the AI prescribed —
+                # relabel to a flat-terrain equivalent (mirrors not trusting the AI's
+                # raw treadmill numbers below).
+                if not hill_sprint_eligible and any(
+                    kw in title_lower for kw in PlanGenerator.HILL_SPRINT_TITLE_KEYWORDS
+                ):
+                    fallback_title = "Chạy Biến Tốc / Tăng Tốc" if lang == "vi" else "Fartlek / Surges"
+                    wo["title"] = fallback_title
+                    title_lower = fallback_title.lower()
+
                 if w_type in ("Rest", "Strength", "Muscular Endurance") or dur <= 0.0:
                     wo["target_pace"] = ""
                     wo["distance_km"] = 0.0
@@ -432,7 +457,7 @@ class PlanGenerator:
                 # strings from this workout's own pace range and resolved grade
                 # (Hill Sprints get the non-negotiable 10-15% band).
                 wo["treadmill_incline"], wo["treadmill_speed"] = PlanGenerator.resolve_treadmill_settings(
-                    wo, wo["target_pace"]
+                    wo, wo["target_pace"], use_treadmill
                 )
             return wos
 
@@ -494,7 +519,9 @@ class PlanGenerator:
 
             user_summary = (
                 f"Age: {age}, Weekly volume base: {current_weekly_km} km, Max HR: {max_hr} bpm, "
-                f"Resting HR: {resting_hr} bpm, AeT: {aet_hr} bpm, AnT: {ant_hr} bpm, Treadmill Access: {use_treadmill}\n"
+                f"Resting HR: {resting_hr} bpm, AeT: {aet_hr} bpm, AnT: {ant_hr} bpm, "
+                f"Gym Access: {has_gym_access}, Treadmill Access: {use_treadmill}, "
+                f"Training Environment: {training_environment} (hills available: {training_environment in ('hilly', 'mixed')})\n"
                 f"Custom Pace Zones (min/km):\n"
                 f"- Zone 1 (Recovery): {p_z1}\n"
                 f"- Zone 2 (Easy Range): {p_z2}\n"
@@ -638,8 +665,27 @@ class PlanGenerator:
                     f"{', '.join(_all_days[_start_idx:])}.\n"
                 )
 
+            equipment_terrain_rule = (
+                "\n5. Equipment/terrain constraints — hard requirements, not preferences:\n"
+                f"   - Gym access: {'available' if has_gym_access else 'NOT available'}. "
+                + (
+                    ""
+                    if has_gym_access
+                    else "NEVER prescribe weighted or machine-based exercises for Strength or Muscular "
+                    "Endurance sessions — bodyweight-only (step-ups, lunges, squats, bodyweight circuits). "
+                )
+                + f"\n   - Hill Sprint/Hill Repeat/Hill Bound availability: {'available' if hill_sprint_eligible else 'NOT available'}"
+                + (
+                    "."
+                    if hill_sprint_eligible
+                    else " (no hills and no treadmill). NEVER prescribe a Hill Sprint, Hill Repeat, or Hill "
+                    "Bound session — substitute an equivalent flat-terrain intensity session (e.g. Fartlek or "
+                    "Surges) covering the same training purpose.\n"
+                )
+            )
+
             lang_rule = (
-                "\n5. CRITICAL: All workout text fields, including 'title', 'description', and 'fueling_tip', MUST be written in Vietnamese."
+                "\n6. CRITICAL: All workout text fields, including 'title', 'description', and 'fueling_tip', MUST be written in Vietnamese."
                 if lang == "vi"
                 else ""
             )
@@ -726,6 +772,7 @@ class PlanGenerator:
                 "2. Make the plan highly customized. For example, scale long runs, map Sunday Muscular Endurance box steps/weighted step-ups based on the race elevation gain, or specify treadmill incline/speed settings for gym workouts.\n"
                 "3. NEVER invent a physiological claim, exercise, or number beyond what the Uphill Athlete training philosophy implies. If unsure of an exact figure, give a sensible range instead of fabricating false precision.\n"
                 "4. Give the athlete profile and prior feedback below real weight — this plan MUST reflect their specific numbers, schedule, and history, not a generic template.\n"
+                f"{equipment_terrain_rule}"
                 f"{lang_rule}\n\n"
                 f"Athlete Profile:\n{user_summary}\n\n"
                 f"{program_details}"
@@ -771,11 +818,29 @@ class PlanGenerator:
                 "titles MUST use 10-15% incline regardless of grade_percent; speed reduced to match incline), "
                 "session_slot ('morning'/'afternoon' on double-session days only, omit otherwise).\n\n"
             )
+            nb_equipment_terrain_rule = (
+                ""
+                if has_gym_access and hill_sprint_eligible
+                else (
+                    " Equipment/terrain (hard constraints): "
+                    + (
+                        "No gym — Strength/ME must be bodyweight-only, no weights/machines. "
+                        if not has_gym_access
+                        else ""
+                    )
+                    + (
+                        "No hills or treadmill — NEVER prescribe Hill Sprint/Repeat/Bound, substitute Fartlek/Surges instead."
+                        if not hill_sprint_eligible
+                        else ""
+                    )
+                )
+            )
             nb_rules_block = (
                 "Rules: Honor the athlete's preferred training and double-session days below — place Rest on "
                 "non-preferred days, produce two objects on double-session days. Customize scaling to the "
                 "athlete's actual numbers (long runs, ME volume, treadmill settings) instead of a generic "
                 "template. NEVER invent a claim or figure beyond standard Uphill Athlete training principles."
+                f"{nb_equipment_terrain_rule}"
                 f"{lang_rule}\n\n"
             )
             # Ordered so the per-request facts that can't be inferred or regenerated — hard
@@ -1222,33 +1287,44 @@ class PlanGenerator:
                             desc += f" Prepares muscles for the {course_elevation_gain_m}m climbing demands."
                         fuel_tip = "Drink amino acids post-workout for protein synthesis."
                     elif phase == "Build":
-                        title = "Muscular Endurance: Weighted Step-Ups"
                         w_type = "Muscular Endurance"
-                        weight_pct = 10 if week <= 6 else 15
                         steps = 400 + (100 * (week - num_base_weeks - 1))
                         if course_elevation_gain_m and course_elevation_gain_m > 0:
                             steps += int(course_elevation_gain_m / 10)
                         steps = min(1200, steps)
-                        desc = f"Execute {steps} step-ups holding {weight_pct}% of your body weight on a 30cm box. Simulates climbing demands for your event ({course_elevation_gain_m or ''}m total gain)."
-                        fuel_tip = "Consume electrolytes. Keep hydration nearby during strength efforts."
+                        if has_gym_access:
+                            title = "Muscular Endurance: Weighted Step-Ups"
+                            weight_pct = 10 if week <= 6 else 15
+                            desc = f"Execute {steps} step-ups holding {weight_pct}% of your body weight on a 30cm box. Simulates climbing demands for your event ({course_elevation_gain_m or ''}m total gain)."
+                            fuel_tip = "Consume electrolytes. Keep hydration nearby during strength efforts."
 
-                        incline_pct = 12.0
-                        if course_elevation_gain_m and course_distance_km:
-                            incline_pct = min(
-                                15.0,
-                                max(8.0, round((course_elevation_gain_m / (course_distance_km * 1000.0)) * 100, 1)),
-                            )
+                            incline_pct = 12.0
+                            if course_elevation_gain_m and course_distance_km:
+                                incline_pct = min(
+                                    15.0,
+                                    max(8.0, round((course_elevation_gain_m / (course_distance_km * 1000.0)) * 100, 1)),
+                                )
 
-                        if use_treadmill:
-                            treadmill_incl = incline_pct
-                            settings = TrainingRules.calculate_treadmill_settings(12.0, incline_pct)
-                            treadmill_sp = settings["speed_kph"]
+                            if use_treadmill:
+                                treadmill_incl = incline_pct
+                                settings = TrainingRules.calculate_treadmill_settings(12.0, incline_pct)
+                                treadmill_sp = settings["speed_kph"]
+                        else:
+                            title = "Muscular Endurance: Bodyweight Step-Ups"
+                            desc = f"Execute {steps} bodyweight step-ups on a 30cm box, no added weight. Simulates climbing demands for your event ({course_elevation_gain_m or ''}m total gain)."
+                            fuel_tip = "Consume electrolytes. Keep hydration nearby during strength efforts."
                     elif phase == "Peak":
-                        title = "Muscular Endurance: Hill Bounds"
                         w_type = "Muscular Endurance"
-                        desc = "Find a steep 10-15% grade hill. 6-8x repeats of 30 seconds explosive hill bounds. Walk down recovery."
-                        if course_elevation_gain_m and course_elevation_gain_m > 0:
-                            desc = f"Find a steep 10-15% grade hill simulating your event. 8-10x repeats of 30 seconds explosive hill bounds to handle the {course_elevation_gain_m}m of race vertical. Walk down recovery."
+                        if hill_sprint_eligible:
+                            title = "Muscular Endurance: Hill Bounds"
+                            desc = "Find a steep 10-15% grade hill. 6-8x repeats of 30 seconds explosive hill bounds. Walk down recovery."
+                            if course_elevation_gain_m and course_elevation_gain_m > 0:
+                                desc = f"Find a steep 10-15% grade hill simulating your event. 8-10x repeats of 30 seconds explosive hill bounds to handle the {course_elevation_gain_m}m of race vertical. Walk down recovery."
+                        else:
+                            title = "Muscular Endurance: Explosive Bounding"
+                            desc = "No hills or treadmill available: 6-8x sets of 8-10 explosive bounding strides on flat ground, focusing on power and stride length. Full recovery between sets."
+                            if course_elevation_gain_m and course_elevation_gain_m > 0:
+                                desc = f"No hills or treadmill available: 6-8x sets of 8-10 explosive bounding strides on flat ground to build the power needed for the {course_elevation_gain_m}m of race vertical. Full recovery between sets."
                         fuel_tip = "Intense muscle breakdown: Consume 25g protein within 30 minutes of finishing."
                     else:
                         title = "Active Recovery Walk"
@@ -1326,11 +1402,14 @@ class PlanGenerator:
                 "m climbing demands.": "m của cuộc đua.",
                 "Drink amino acids post-workout for protein synthesis.": "Uống axit amin sau khi tập để hỗ trợ tổng hợp protein cơ bắp.",
                 "Muscular Endurance: Weighted Step-Ups": "Sức bền cơ bắp: Bước lên bục với tạ",
+                "Muscular Endurance: Bodyweight Step-Ups": "Sức bền cơ bắp: Bước lên bục không tạ",
                 "Simulates climbing demands for your event (": "Mô phỏng nhu cầu leo dốc cho sự kiện của bạn (",
                 "m total gain).": "m tổng độ cao).",
                 "Consume electrolytes. Keep hydration nearby during strength efforts.": "Bổ sung điện giải. Luôn để sẵn nước bên cạnh khi tập luyện sức mạnh.",
                 "Muscular Endurance: Hill Bounds": "Sức bền cơ bắp: Nhảy dốc",
+                "Muscular Endurance: Explosive Bounding": "Sức bền cơ bắp: Nhảy bật bùng nổ",
                 "Find a steep 10-15% grade hill. 6-8x repeats of 30 seconds explosive hill bounds. Walk down recovery.": "Tìm một ngọn dốc đứng 10-15%. Thực hiện 6-8 lần lặp lại nhảy dốc bùng nổ trong 30 giây. Đi bộ xuống dốc để phục hồi.",
+                "No hills or treadmill available: 6-8x sets of 8-10 explosive bounding strides on flat ground, focusing on power and stride length. Full recovery between sets.": "Không có đồi hoặc máy chạy bộ: Thực hiện 6-8 hiệp x 8-10 lần nhảy bật bùng nổ trên mặt đất phẳng, tập trung vào sức mạnh và độ dài bước chạy. Nghỉ hoàn toàn giữa các hiệp.",
                 "Intense muscle breakdown: Consume 25g protein within 30 minutes of finishing.": "Cơ bắp hoạt động cường độ cao: Nạp 25g protein trong vòng 30 phút sau khi tập xong.",
                 "Active Recovery Walk": "Đi bộ phục hồi chủ động",
                 # Note: this description now embeds a dynamic minute count
@@ -1384,6 +1463,11 @@ class PlanGenerator:
                             "trọng lượng cơ thể. Mô phỏng nhu cầu leo dốc cho sự kiện của bạn",
                         )
                     )
+                if "Execute" in s and "bodyweight step-ups on a 30cm box, no added weight" in s:
+                    s = s.replace("Execute", "Thực hiện").replace(
+                        "bodyweight step-ups on a 30cm box, no added weight.",
+                        "lượt bước lên bục cao 30cm, không cần tạ.",
+                    )
                 if (
                     "Find a steep 10-15% grade hill simulating your event. 8-10x repeats of 30 seconds explosive hill bounds to handle the"
                     in s
@@ -1392,6 +1476,17 @@ class PlanGenerator:
                         "Find a steep 10-15% grade hill simulating your event. 8-10x repeats of 30 seconds explosive hill bounds to handle the",
                         "Tìm một ngọn dốc đứng 10-15% mô phỏng sự kiện của bạn. Lặp lại 8-10 lần 30 giây nhảy dốc bùng nổ để chịu đựng",
                     ).replace("of race vertical. Walk down recovery.", "độ dốc của cuộc đua. Đi bộ xuống để phục hồi.")
+                if (
+                    "No hills or treadmill available: 6-8x sets of 8-10 explosive bounding strides on flat ground to build the power needed for the"
+                    in s
+                ):
+                    s = s.replace(
+                        "No hills or treadmill available: 6-8x sets of 8-10 explosive bounding strides on flat ground to build the power needed for the",
+                        "Không có đồi hoặc máy chạy bộ: Thực hiện 6-8 hiệp x 8-10 lần nhảy bật bùng nổ trên mặt đất phẳng để xây dựng sức mạnh cần thiết cho",
+                    ).replace(
+                        "of race vertical. Full recovery between sets.",
+                        "độ dốc của cuộc đua. Nghỉ hoàn toàn giữa các hiệp.",
+                    )
                 # Dynamic Tempo/Interval/Taper-walk descriptions (see
                 # _warmup_cooldown_minutes) embed minute counts that scale
                 # with the day's duration -- translate around the numbers.

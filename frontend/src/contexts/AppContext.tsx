@@ -259,6 +259,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     days_per_week: 4,
     long_run_day: "Saturday",
     preferred_days: ["Monday", "Wednesday", "Saturday"] as string[],
+    has_gym_access: false,
+    use_treadmill: false,
+    training_environment: "flat" as "flat" | "hilly" | "mixed",
+    double_session_days: [] as string[],
     plan_goal_category: "race" as string,  // race | distance | start_running | return | recovery
     plan_start_date: new Date().toISOString().split("T")[0],
     plan_duration_weeks: 12,
@@ -331,6 +335,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     long_run_day: "Saturday",
     current_weekly_km: "30",
     has_gym_access: false,
+    training_environment: "flat" as "flat" | "hilly" | "mixed",
     time_away: "", reason_for_break: "", fitness_feel: "",
     race_distance_completed: "", days_since_race: "", recovery_feel: "", next_goal: "",
     plan_start_date: new Date().toISOString().split("T")[0],
@@ -343,7 +348,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     resting_hr: "60",
     aet_hr: "135",
     ant_hr: "165",
-    use_treadmill: false,
     gemini_api_key: "",
     zone2_pace_min: "6:30",
     zone2_pace_max: "5:45"

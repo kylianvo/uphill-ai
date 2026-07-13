@@ -141,6 +141,10 @@ export function usePlanner() {
         days_per_week: planForm.days_per_week,
         long_run_day: planForm.long_run_day,
         preferred_days: planForm.preferred_days,
+        has_gym_access: planForm.has_gym_access,
+        use_treadmill: planForm.use_treadmill,
+        training_environment: planForm.training_environment,
+        double_session_days: planForm.double_session_days,
         plan_start_date: planForm.plan_start_date || null,
         plan_duration_weeks: isRaceOrDist ? null : planForm.plan_duration_weeks,
         // non-race context fields

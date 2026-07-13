@@ -161,6 +161,10 @@ class PlanGenerateRequest(BaseModel):
     preferred_days: list[str] | None = None  # e.g. ["Monday","Wednesday","Saturday"]
     long_run_day: str | None = None  # e.g. "Saturday"
     days_per_week: int | None = None  # 3-7
+    double_session_days: list[str] | None = None
+    has_gym_access: bool | None = False
+    use_treadmill: bool | None = None
+    training_environment: str | None = "flat"  # 'flat' | 'hilly' | 'mixed'
     # Non-race / start date fields
     plan_start_date: str | None = None  # YYYY-MM-DD
     plan_duration_weeks: int | None = None
@@ -274,6 +278,7 @@ class OnboardingRequest(BaseModel):
     long_run_day: str | None = None
     current_weekly_km: float | None = 30.0
     has_gym_access: bool | None = False
+    training_environment: str | None = "flat"  # 'flat' | 'hilly' | 'mixed'
     # Goal-specific extras
     time_away: str | None = None
     reason_for_break: str | None = None
@@ -294,11 +299,9 @@ class UpdateProfileRequest(BaseModel):
     resting_hr: int
     aet_hr: int
     ant_hr: int
-    use_treadmill: bool
     gemini_api_key: str | None = None
     zone2_pace_min: str | None = None
     zone2_pace_max: str | None = None
-    double_session_days: list[str] | None = None
 
 
 def format_user_response(user: dict[str, Any]) -> dict[str, Any]:
@@ -318,8 +321,6 @@ def format_user_response(user: dict[str, Any]) -> dict[str, Any]:
         "resting_hr": user.get("resting_hr", 60),
         "aet_hr": user.get("aet_hr", 135),
         "ant_hr": user.get("ant_hr", 165),
-        "use_treadmill": user.get("use_treadmill", 0),
-        "has_gym_access": bool(user.get("has_gym_access", False)),
         "days_per_week": user.get("days_per_week", 4),
         "preferred_run_days": user.get("preferred_run_days") or "[]",
         "long_run_day": user.get("long_run_day") or "",
@@ -327,7 +328,6 @@ def format_user_response(user: dict[str, Any]) -> dict[str, Any]:
         "gemini_api_key": user.get("gemini_api_key") or "",
         "zone2_pace_min": user.get("zone2_pace_min") or "6:30",
         "zone2_pace_max": user.get("zone2_pace_max") or "5:45",
-        "double_session_days": user.get("double_session_days") or "[]",
     }
 
 
@@ -591,9 +591,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         "preferred_run_days": request.preferred_run_days or [],
         "long_run_day": request.long_run_day,
         "days_per_week": request.days_per_week or 4,
-        "has_gym_access": request.has_gym_access or False,
         "current_weekly_km": request.current_weekly_km or 30.0,
-        "double_session_days": request.double_session_days or [],
         "max_hr": max_hr,
         "resting_hr": resting_hr,
         "aet_hr": aet_hr,
@@ -640,6 +638,9 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         days_per_week=request.days_per_week or 4,
         double_session_days=request.double_session_days or [],
         start_date=onboarding_start_date,
+        has_gym_access=request.has_gym_access or False,
+        use_treadmill=request.has_gym_access or False,
+        training_environment=request.training_environment or "flat",
     )
 
     # Mark onboarding complete immediately so the user can enter the app
@@ -661,6 +662,9 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         "long_run_day": request.long_run_day,
         "days_per_week": request.days_per_week,
         "double_session_days": request.double_session_days or [],
+        "has_gym_access": request.has_gym_access or False,
+        "use_treadmill": request.has_gym_access or False,
+        "training_environment": request.training_environment or "flat",
         "plan_start_date": onboarding_start_date,
         "lang": request.lang or "en",
     }
@@ -741,10 +745,11 @@ def _resolve_course_match(
     (qualitative terrain/climate prose) is always returned when there's a
     match, regardless of whether the numeric fields needed backfilling.
     Never raises: race matching is enrichment, never allowed to break plan
-    creation or generation, even if the hand-edited KB has malformed data."""
-    from services.race_matcher import match_race
-
+    creation or generation, even if the hand-edited KB has malformed data
+    or the matcher's dependencies aren't installed."""
     try:
+        from services.race_matcher import match_race
+
         matched = match_race(race_name, distance_km=course_distance_km)
     except Exception as e:
         print(f"[CourseMatch] match_race failed unexpectedly: {e}")
@@ -992,8 +997,11 @@ async def generate_training_plan(request: PlanGenerateRequest, user: dict[str, A
             preferred_run_days=request.preferred_days or [],
             long_run_day=request.long_run_day,
             days_per_week=request.days_per_week or 4,
-            double_session_days=[],
+            double_session_days=request.double_session_days or [],
             start_date=start_date_str,
+            has_gym_access=request.has_gym_access or False,
+            use_treadmill=request.use_treadmill,
+            training_environment=request.training_environment or "flat",
         )
 
         race_info = {
@@ -1009,7 +1017,12 @@ async def generate_training_plan(request: PlanGenerateRequest, user: dict[str, A
             "preferred_days": request.preferred_days,
             "long_run_day": request.long_run_day,
             "days_per_week": request.days_per_week,
-            "double_session_days": [],
+            "double_session_days": request.double_session_days or [],
+            "has_gym_access": request.has_gym_access or False,
+            "use_treadmill": request.use_treadmill
+            if request.use_treadmill is not None
+            else (request.has_gym_access or False),
+            "training_environment": request.training_environment or "flat",
             # Start date
             "plan_start_date": start_date_str,
             "lang": request.lang or "en",
@@ -1333,6 +1346,9 @@ async def generate_next_block(request: GenerateNextBlockRequest, user: dict[str,
         "long_run_day": plan.get("long_run_day"),
         "days_per_week": plan.get("days_per_week"),
         "double_session_days": plan.get("double_session_days"),
+        "has_gym_access": plan.get("has_gym_access", False),
+        "use_treadmill": plan.get("use_treadmill", False),
+        "training_environment": plan.get("training_environment") or "flat",
         "plan_start_date": plan.get("start_date"),
         "lang": fresh_user.get("lang", "en"),
     }

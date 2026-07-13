@@ -68,6 +68,8 @@ export default function OnboardingWizard() {
 
         has_gym_access: onboardingAnswers.has_gym_access || false,
 
+        training_environment: onboardingAnswers.training_environment || "flat",
+
         zone2_pace_min: onboardingAnswers.zone2_pace_min || "6:30",
 
         zone2_pace_max: onboardingAnswers.zone2_pace_max || "5:45",
@@ -1271,6 +1273,40 @@ export default function OnboardingWizard() {
                   </label>
 
                 </div>
+
+              </div>
+
+              <div style={{ marginBottom: "14px" }}>
+
+                <label style={labelS}>{lang === "en" ? "Training environment" : "Môi trường tập luyện"}</label>
+
+                <div style={{ display: "flex", gap: "6px" }}>
+
+                  {(["flat", "hilly", "mixed"] as const).map(env => {
+
+                    const selected = onboardingAnswers.training_environment === env;
+
+                    const envLabel = lang === "en"
+                      ? { flat: "Flat", hilly: "Hilly", mixed: "Mixed" }[env]
+                      : { flat: "Bằng phẳng", hilly: "Nhiều đồi dốc", mixed: "Kết hợp" }[env];
+
+                    return (
+                      <button key={env} type="button" onClick={() => setAns("training_environment", env)}
+                        style={{ flex: 1, padding: "8px 0", borderRadius: "8px", border: `1.5px solid ${selected ? "var(--accent-primary)" : "var(--border-color)"}`, background: selected ? "rgba(16,185,129,0.1)" : "transparent", color: selected ? "var(--accent-primary)" : "var(--text-primary)", fontWeight: selected ? "700" : "500", fontSize: "12.5px", cursor: "pointer" }}
+                      >{envLabel}</button>
+                    );
+
+                  })}
+
+                </div>
+
+                <p style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "5px", margin: "5px 0 0 0" }}>
+
+                  {lang === "en"
+                    ? "Whether Hill Sprint sessions can be prescribed depends on this and your treadmill access."
+                    : "Việc có được xếp bài Hill Sprint (chạy dốc) hay không phụ thuộc vào lựa chọn này và việc bạn có máy chạy bộ hay không."}
+
+                </p>
 
               </div>
 

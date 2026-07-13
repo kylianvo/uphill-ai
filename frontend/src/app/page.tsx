@@ -975,7 +975,6 @@ export default function Home() {
     resting_hr?: number;
     aet_hr?: number;
     ant_hr?: number;
-    use_treadmill?: number;
     gemini_api_key?: string;
     notebooklm_notebook_id?: string;
     notebooklm_auth_json?: string;
@@ -1034,7 +1033,6 @@ export default function Home() {
             resting_hr: String(userData.resting_hr ?? 60),
             aet_hr: String(userData.aet_hr ?? 135),
             ant_hr: String(userData.ant_hr ?? 165),
-            use_treadmill: userData.use_treadmill === 1,
             gemini_api_key: userData.gemini_api_key ?? "",
             zone2_pace_min: userData.zone2_pace_min ?? "6:30",
             zone2_pace_max: userData.zone2_pace_max ?? "5:45",
@@ -1207,7 +1205,6 @@ export default function Home() {
         resting_hr: String(data.user.resting_hr ?? 60),
         aet_hr: String(data.user.aet_hr ?? 135),
         ant_hr: String(data.user.ant_hr ?? 165),
-        use_treadmill: data.user.use_treadmill === 1,
         gemini_api_key: data.user.gemini_api_key ?? "",
         zone2_pace_min: data.user.zone2_pace_min ?? "6:30",
         zone2_pace_max: data.user.zone2_pace_max ?? "5:45",
@@ -1259,7 +1256,6 @@ export default function Home() {
         resting_hr: String(data.user.resting_hr ?? 60),
         aet_hr: String(data.user.aet_hr ?? 135),
         ant_hr: String(data.user.ant_hr ?? 165),
-        use_treadmill: data.user.use_treadmill === 1,
         gemini_api_key: data.user.gemini_api_key ?? "",
         zone2_pace_min: data.user.zone2_pace_min ?? "6:30",
         zone2_pace_max: data.user.zone2_pace_max ?? "5:45",
@@ -1297,7 +1293,6 @@ export default function Home() {
           resting_hr: parseInt(profileForm.resting_hr),
           aet_hr: parseInt(profileForm.aet_hr),
           ant_hr: parseInt(profileForm.ant_hr),
-          use_treadmill: profileForm.use_treadmill,
           gemini_api_key: profileForm.gemini_api_key,
           zone2_pace_min: profileForm.zone2_pace_min,
           zone2_pace_max: profileForm.zone2_pace_max,
@@ -1579,6 +1574,8 @@ export default function Home() {
         current_weekly_km:
           parseFloat(onboardingAnswers.current_weekly_km) || 30.0,
         has_gym_access: onboardingAnswers.has_gym_access || false,
+        training_environment: onboardingAnswers.training_environment || "flat",
+        double_session_days: onboardingAnswers.double_session_days || [],
         zone2_pace_min: onboardingAnswers.zone2_pace_min || "6:30",
         zone2_pace_max: onboardingAnswers.zone2_pace_max || "5:45",
         terrain: onboardingAnswers.terrain || "trail",
@@ -1703,7 +1700,7 @@ export default function Home() {
             resting_hr: user?.resting_hr ?? 60,
             aet_hr: user?.aet_hr ?? 135,
             ant_hr: user?.ant_hr ?? 165,
-            use_treadmill: user?.use_treadmill === 1,
+            use_treadmill: activePlan?.use_treadmill === true,
             gemini_api_key: user?.gemini_api_key ?? "",
             zone2_pace_min: user?.zone2_pace_min ?? "6:30",
             zone2_pace_max: user?.zone2_pace_max ?? "5:45",

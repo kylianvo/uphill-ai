@@ -64,8 +64,6 @@ def init_db():
             preferred_run_days      TEXT,
             long_run_day            TEXT,
             days_per_week           INTEGER DEFAULT 4,
-            has_gym_access          BOOLEAN DEFAULT FALSE,
-            use_treadmill           INTEGER DEFAULT 0,
             -- api keys
             gemini_api_key          TEXT,
             created_at              TIMESTAMPTZ DEFAULT NOW()
@@ -110,6 +108,9 @@ def init_db():
             current_week            INTEGER DEFAULT 1,
             course_distance_km      REAL,
             course_elevation_gain_m REAL,
+            has_gym_access          BOOLEAN DEFAULT FALSE,
+            use_treadmill           BOOLEAN DEFAULT FALSE,
+            training_environment    TEXT DEFAULT 'flat',
             created_at              TIMESTAMPTZ DEFAULT NOW()
         )
         """)
@@ -274,12 +275,17 @@ def init_db():
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS session_slot TEXT DEFAULT 'main'",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS elevation_gain_m REAL DEFAULT 0.0",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS grade_percent REAL DEFAULT 0.0",
-            "ALTER TABLE users ADD COLUMN IF NOT EXISTS double_session_days TEXT",
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS preferred_run_days TEXT",
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS long_run_day TEXT",
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS days_per_week INTEGER DEFAULT 4",
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS double_session_days TEXT",
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS start_date TEXT",
+            "ALTER TABLE plans ADD COLUMN IF NOT EXISTS has_gym_access BOOLEAN DEFAULT FALSE",
+            "ALTER TABLE plans ADD COLUMN IF NOT EXISTS use_treadmill BOOLEAN DEFAULT FALSE",
+            "ALTER TABLE plans ADD COLUMN IF NOT EXISTS training_environment TEXT DEFAULT 'flat'",
+            "ALTER TABLE users DROP COLUMN IF EXISTS has_gym_access",
+            "ALTER TABLE users DROP COLUMN IF EXISTS use_treadmill",
+            "ALTER TABLE users DROP COLUMN IF EXISTS double_session_days",
         ]:
             try:
                 conn.execute(text(col_sql))
@@ -300,12 +306,12 @@ def seed_data():
             conn.execute(
                 text("""
                 INSERT INTO users (email, name, role, provider, provider_user_id, age, current_weekly_km,
-                                   max_hr, resting_hr, aet_hr, ant_hr, use_treadmill, onboarding_complete)
+                                   max_hr, resting_hr, aet_hr, ant_hr, onboarding_complete)
                 VALUES
                   ('admin@uphill.ai', 'Uphill Admin', 'admin', 'mock', 'mock-admin-id',
-                   35, 50.0, 185, 50, 140, 168, 1, TRUE),
+                   35, 50.0, 185, 50, 140, 168, TRUE),
                   ('athlete@uphill.ai', 'Uphill Athlete', 'user', 'mock', 'mock-athlete-id',
-                   30, 30.0, 190, 60, 130, 165, 0, TRUE)
+                   30, 30.0, 190, 60, 130, 165, TRUE)
             """)
             )
             print("Seeded default users.")
@@ -442,6 +448,9 @@ def create_plan(
     days_per_week: int = 4,
     double_session_days: list | None = None,
     start_date: str | None = None,
+    has_gym_access: bool = False,
+    use_treadmill: bool | None = None,
+    training_environment: str = "flat",
 ) -> int:
     with engine.connect() as conn:
         result = conn.execute(
@@ -449,10 +458,12 @@ def create_plan(
             INSERT INTO plans (user_id, race_name, race_date, goal_type,
                                target_time_hours, total_weeks, course_distance_km,
                                course_elevation_gain_m, preferred_run_days, long_run_day,
-                               days_per_week, double_session_days, start_date)
+                               days_per_week, double_session_days, start_date,
+                               has_gym_access, use_treadmill, training_environment)
             VALUES (:user_id, :race_name, :race_date, :goal_type,
                     :tth, :total_weeks, :dist_km, :elev_m, :preferred_run_days,
-                    :long_run_day, :days_per_week, :double_session_days, :start_date)
+                    :long_run_day, :days_per_week, :double_session_days, :start_date,
+                    :has_gym_access, :use_treadmill, :training_environment)
             RETURNING id
         """),
             {
@@ -469,6 +480,9 @@ def create_plan(
                 "days_per_week": days_per_week or 4,
                 "double_session_days": json.dumps(double_session_days or []),
                 "start_date": start_date,
+                "has_gym_access": has_gym_access,
+                "use_treadmill": use_treadmill if use_treadmill is not None else has_gym_access,
+                "training_environment": training_environment or "flat",
             },
         )
         conn.commit()
@@ -803,7 +817,7 @@ def update_user_profile(user_id: int, profile_data: dict[str, Any]) -> bool:
             UPDATE users SET
                 age = :age, current_weekly_km = :ckm, max_hr = :max_hr,
                 resting_hr = :rhr, aet_hr = :aet, ant_hr = :ant,
-                use_treadmill = :ut, gemini_api_key = :gak,
+                gemini_api_key = :gak,
                 zone2_pace_min = :z2min, zone2_pace_max = :z2max
             WHERE id = :id
         """),
@@ -814,7 +828,6 @@ def update_user_profile(user_id: int, profile_data: dict[str, Any]) -> bool:
                 "rhr": int(profile_data.get("resting_hr", 60)),
                 "aet": int(profile_data.get("aet_hr", 135)),
                 "ant": int(profile_data.get("ant_hr", 165)),
-                "ut": 1 if profile_data.get("use_treadmill") else 0,
                 "gak": profile_data.get("gemini_api_key"),
                 "z2min": profile_data.get("zone2_pace_min", "6:30"),
                 "z2max": profile_data.get("zone2_pace_max", "5:45"),
@@ -838,16 +851,13 @@ def update_onboarding_profile(user_id: int, data: dict[str, Any]) -> bool:
                 preferred_run_days = :preferred_run_days,
                 long_run_day = :long_run_day,
                 days_per_week = :days_per_week,
-                has_gym_access = :has_gym_access,
-                use_treadmill = :use_treadmill,
                 current_weekly_km = :current_weekly_km,
                 max_hr = :max_hr,
                 resting_hr = :resting_hr,
                 aet_hr = :aet_hr,
                 ant_hr = :ant_hr,
                 zone2_pace_min = :zone2_pace_min,
-                zone2_pace_max = :zone2_pace_max,
-                double_session_days = :double_session_days
+                zone2_pace_max = :zone2_pace_max
             WHERE id = :id
         """),
             {
@@ -858,8 +868,6 @@ def update_onboarding_profile(user_id: int, data: dict[str, Any]) -> bool:
                 "preferred_run_days": json.dumps(data.get("preferred_run_days", [])),
                 "long_run_day": data.get("long_run_day"),
                 "days_per_week": data.get("days_per_week", 4),
-                "has_gym_access": data.get("has_gym_access", False),
-                "use_treadmill": 1 if data.get("has_gym_access") else 0,
                 "current_weekly_km": float(data.get("current_weekly_km", 30.0)),
                 "max_hr": int(data.get("max_hr", 185)),
                 "resting_hr": int(data.get("resting_hr", 60)),

@@ -54,7 +54,7 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
             resting_hr: user?.resting_hr ?? 60,
             aet_hr: user?.aet_hr ?? 135,
             ant_hr: user?.ant_hr ?? 165,
-            use_treadmill: user?.use_treadmill === 1,
+            use_treadmill: activePlan?.use_treadmill === true,
             gemini_api_key: user?.gemini_api_key ?? "",
             zone2_pace_min: user?.zone2_pace_min ?? "6:30",
             zone2_pace_max: user?.zone2_pace_max ?? "5:45",
