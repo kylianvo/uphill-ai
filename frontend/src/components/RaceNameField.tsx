@@ -101,7 +101,7 @@ export function RaceNameField({
         >
           {candidates.map((candidate, index) => (
             <li
-              key={`${candidate.race_name}-${candidate.distance_label ?? ""}`}
+              key={`${index}-${candidate.race_name}-${candidate.distance_label ?? ""}`}
               role="option"
               aria-selected={index === activeIndex}
               style={{
