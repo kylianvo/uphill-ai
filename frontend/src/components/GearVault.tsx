@@ -3,8 +3,9 @@
 
 import React, { useState } from "react";
 import { useAnalytics } from '@/hooks/useAnalytics';
-import { useRaceMatch, RaceMatch } from '@/hooks/useRaceMatch';
+import { RaceMatch } from '@/hooks/useRaceMatch';
 import { RaceMatchChip } from '@/components/RaceMatchChip';
+import { RaceNameField } from '@/components/RaceNameField';
 import { Sneaker, XCircle, Target, CaretDown, WarningCircle, CheckCircle, Ruler, Path, RocketLaunch, Scales } from "@phosphor-icons/react";
 
 interface ShoeRecommendation {
@@ -49,7 +50,6 @@ export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang, use
   const [shoeUseCase, setShoeUseCase] = useState("daily training"); // For road
   const [shoeDistance, setShoeDistance] = useState(""); // For racing/trail
   const [shoeRaceName, setShoeRaceName] = useState("");
-  const raceMatch = useRaceMatch(shoeRaceName, { distanceLabel: shoeDistance });
 
   const [gearPlan, setGearPlan] = useState<GearPlanResponse | null>(null);
   const [gearLoading, setGearLoading] = useState(false);
@@ -217,9 +217,14 @@ export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang, use
           {(shoeSurface === "trail" || (shoeSurface === "road" && shoeUseCase === "racing")) && (
             <div style={{ background: "rgba(0,0,0,0.03)", padding: "16px", borderRadius: "16px", border: "1px solid rgba(0,0,0,0.05)" }}>
               <label style={{ display: "block", fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)", marginBottom: "8px", fontWeight: 600 }}>{lang === "en" ? "Race Name (optional)" : "Tên giải (tùy chọn)"}</label>
-              <input type="text" placeholder="e.g. UTMB, VMM" value={shoeRaceName} onChange={(e) => setShoeRaceName(e.target.value)}
-                style={{ width: "100%", background: "transparent", border: "none", fontSize: "16px", fontWeight: 600, color: "var(--text-primary)", outline: "none" }} />
-              <RaceMatchChip match={raceMatch} lang={lang} />
+              <RaceNameField
+                placeholder="e.g. UTMB, VMM"
+                value={shoeRaceName}
+                onChange={setShoeRaceName}
+                distanceLabel={shoeDistance}
+                lang={lang}
+                style={{ width: "100%", background: "transparent", border: "none", fontSize: "16px", fontWeight: 600, color: "var(--text-primary)", outline: "none" }}
+              />
             </div>
           )}
 
