@@ -46,7 +46,7 @@ export function useRaceMatch(
     if (trimmed.length < MIN_NAME_LENGTH) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedMatch(null);
-
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCandidates([]);
       lastCandidatesRef.current = [];
       return;
