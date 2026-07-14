@@ -202,3 +202,39 @@ def match_race(
     enrichment call sites (_resolve_course_match, gear_planner) that always
     want the top match regardless of how close the runner-up scored."""
     return match_race_candidates(name, distance_km=distance_km, distance_label=distance_label).top
+
+
+def race_benchmarks(name: str | None, distance_km: float | None = None) -> dict[str, Any] | None:
+    """Course-results benchmarks for the Pace Strategy finish-time slider.
+
+    Matches `name` against the KB, reads the hand-curated per-year `results`
+    block from the race payload, and (when distance_km is given) keeps only
+    entries within ~15% of that distance. Returns None when the race is
+    unknown or has no curated results yet."""
+    if not name or len(name.strip()) < _MIN_NAME_LENGTH:
+        return None
+
+    import db
+
+    try:
+        chunks = db.get_kb_chunks("race_courses", kind="race_profile")
+    except Exception as e:
+        print(f"[RaceMatcher] Failed to load race_courses KB: {e}")
+        return None
+    if not chunks:
+        return None
+
+    scored = _score_chunks(name.strip().lower(), chunks)
+    if not scored or scored[0][1] < _FUZZY_THRESHOLD:
+        return None
+
+    chunk = scored[0][0]
+    payload = _payload_as_dict(chunk.get("payload"))
+    results = payload.get("results") or []
+    if distance_km is not None:
+        results = [
+            r for r in results if r.get("distance_km") and abs(r["distance_km"] - distance_km) / distance_km <= 0.15
+        ]
+    if not results:
+        return None
+    return {"race_name": payload.get("race_name", chunk.get("title", "")), "results": results}

@@ -7,6 +7,7 @@ import {
   addClockEtas,
   sliderBoundsMins,
   tempBucket,
+  parseDurationToMinutes,
 } from "./paceStrategy";
 
 describe("parsePaceToMinutes", () => {
@@ -72,6 +73,20 @@ describe("synthesizeCourse", () => {
     const course = synthesizeCourse(10, 500);
     expect(course[course.length - 1].elevation_meters).toBeCloseTo(course[0].elevation_meters);
   });
+
+  it("supports 5k and 10k split intervals with totals preserved", () => {
+    const five = synthesizeCourse(42.2, 1000, 1000, 0, 5);
+    // start + ceil(42.2/5)=9 markers
+    expect(five).toHaveLength(10);
+    expect(five[1].distance_meters).toBe(5000);
+    expect(five[five.length - 1].distance_meters).toBeCloseTo(42200);
+    const totalGain = five.reduce((s, c) => s + c.segment_gain_meters, 0);
+    expect(totalGain).toBeCloseTo(1000);
+
+    const ten = synthesizeCourse(100, 5000, 5000, 0, 10);
+    expect(ten).toHaveLength(11);
+    expect(ten[1].name).toBe("KM 10");
+  });
 });
 
 describe("addClockEtas", () => {
@@ -95,6 +110,22 @@ describe("addClockEtas", () => {
   it("returns elapsed durations when no start time given", () => {
     const etas = addClockEtas(paced, [0, 0, 0]);
     expect(etas[1]).toBe("1:00");
+  });
+});
+
+describe("parseDurationToMinutes", () => {
+  it("parses h:mm:ss race times", () => {
+    expect(parseDurationToMinutes("9:10:58")).toBeCloseTo(550.97, 1);
+    expect(parseDurationToMinutes("11:52:42")).toBeCloseTo(712.7, 1);
+  });
+
+  it("parses h:mm times", () => {
+    expect(parseDurationToMinutes("2:30")).toBe(150);
+  });
+
+  it("returns null for garbage", () => {
+    expect(parseDurationToMinutes("dnf")).toBeNull();
+    expect(parseDurationToMinutes("")).toBeNull();
   });
 });
 

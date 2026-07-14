@@ -1880,6 +1880,20 @@ def match_race_course(name: str, distance_km: float | None = None, distance_labe
     return response
 
 
+@app.get("/api/coach/pace-strategy/benchmarks")
+def pace_strategy_benchmarks(name: str, distance_km: float | None = None):
+    """Hand-curated past-results benchmarks (winner times, finisher counts,
+    cutoffs, percentiles where curated) for a race in the courses KB.
+    Read-only, no auth — rendered as context bands under the Pace Strategy
+    finish-time slider."""
+    from services.race_matcher import race_benchmarks
+
+    bench = race_benchmarks(name, distance_km=distance_km)
+    if not bench:
+        return {"matched": False}
+    return {"matched": True, **bench}
+
+
 # ─── Workout Types ────────────────────────────────────────────────────────────
 
 

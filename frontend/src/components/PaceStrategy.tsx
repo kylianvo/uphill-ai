@@ -12,6 +12,7 @@ import {
   addClockEtas,
   formatDurationHM,
   parsePaceToMinutes,
+  parseDurationToMinutes,
   sliderBoundsMins,
   synthesizeCourse,
   tempBucket,
@@ -241,10 +242,21 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
   const [startClock, setStartClock] = useState("");
   const [raceDate, setRaceDate] = useState("");
   const [weightKg, setWeightKg] = useState("68");
+  const [splitInterval, setSplitInterval] = useState<1 | 5 | 10>(1);
   const [restMins, setRestMins] = useState<Record<number, number>>({});
 
   const [paced, setPaced] = useState<PacedCheckpoint[]>([]);
   const [pacingLoading, setPacingLoading] = useState(false);
+
+  interface RaceResult {
+    year: number;
+    finishers?: number;
+    winner_time?: string;
+    winner_time_women?: string;
+    conditions_note?: string;
+    percentiles?: Record<string, string>;
+  }
+  const [benchmarks, setBenchmarks] = useState<RaceResult[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -262,8 +274,8 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
     const dist = raceMatch?.distance_km ?? parseFloat(manualDistance);
     if (!dist || dist <= 0) return [];
     const gain = raceMatch?.elevation_gain_m ?? (parseFloat(manualGain) || 0);
-    return synthesizeCourse(dist, gain);
-  }, [courseSource, gpxCheckpoints, raceMatch, manualDistance, manualGain]);
+    return synthesizeCourse(dist, gain, gain, 0, splitInterval);
+  }, [courseSource, gpxCheckpoints, raceMatch, manualDistance, manualGain, splitInterval]);
 
   const courseStats = useMemo(() => {
     if (checkpoints.length < 2) return null;
@@ -338,6 +350,22 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [isOpen, effectiveTargetMins, splitBias, checkpoints, raceStartIso, weightKg, recalc]);
+
+  // Curated past-results benchmarks for the picked race (winner times, field size)
+  useEffect(() => {
+    if (courseSource !== "race" || !raceMatch?.distance_km) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setBenchmarks([]);
+      return;
+    }
+    const controller = new AbortController();
+    const params = new URLSearchParams({ name: raceMatch.race_name, distance_km: String(raceMatch.distance_km) });
+    fetch(`${getBaseUrl()}/api/coach/pace-strategy/benchmarks?${params.toString()}`, { signal: controller.signal })
+      .then((r) => (r.ok ? r.json() : { matched: false }))
+      .then((data) => setBenchmarks(data.matched ? data.results : []))
+      .catch(() => setBenchmarks([]));
+    return () => controller.abort();
+  }, [courseSource, raceMatch]);
 
   const handleGpxFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -573,6 +601,46 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
                 <span>{formatDurationHM(bounds.min)}</span>
                 <span>{formatDurationHM(bounds.max)}</span>
               </div>
+              {benchmarks.length > 0 && (
+                <div style={{ marginTop: "10px", borderTop: "1px dashed var(--border-color)", paddingTop: "8px" }}>
+                  <div style={{ position: "relative", height: "18px" }}>
+                    {[
+                      { label: t("Winner", "Vô địch"), time: benchmarks[0].winner_time },
+                      { label: t("Winner (F)", "Vô địch nữ"), time: benchmarks[0].winner_time_women },
+                      ...Object.entries(benchmarks[0].percentiles || {}).map(([p, v]) => ({
+                        label: p.toUpperCase(),
+                        time: v,
+                      })),
+                    ]
+                      .map((mk) => ({ ...mk, mins: mk.time ? parseDurationToMinutes(mk.time) : null }))
+                      .filter((mk) => mk.mins !== null && mk.mins >= bounds.min && mk.mins <= bounds.max)
+                      .map((mk, i) => (
+                        <div
+                          key={i}
+                          title={`${mk.label}: ${mk.time}`}
+                          style={{
+                            position: "absolute",
+                            left: `${(((mk.mins as number) - bounds.min) / (bounds.max - bounds.min)) * 100}%`,
+                            transform: "translateX(-50%)",
+                            fontSize: "9.5px",
+                            fontWeight: 700,
+                            color: "var(--accent-primary)",
+                            textAlign: "center",
+                            lineHeight: 1.1,
+                          }}
+                        >
+                          ▲<br />
+                          {mk.label}
+                        </div>
+                      ))}
+                  </div>
+                  <div style={{ fontSize: "10.5px", color: "var(--text-muted)", marginTop: "2px" }}>
+                    {benchmarks[0].year}: {benchmarks[0].finishers} {t("finishers", "người hoàn thành")}
+                    {benchmarks[0].winner_time ? ` · ${t("winner", "vô địch")} ${benchmarks[0].winner_time}` : ""}
+                    {benchmarks[0].conditions_note ? ` · ${benchmarks[0].conditions_note}` : ""}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px", marginBottom: "20px" }}>
@@ -592,6 +660,17 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
                   <span>{t("Even", "Đều")}</span>
                   <span>{t("Fast finish", "Về đích nhanh")}</span>
                 </div>
+                <div style={{ fontSize: "10.5px", color: "var(--text-muted)", marginTop: "6px" }}>
+                  {courseStats.gain / courseStats.dist < 15
+                    ? t(
+                        "Tip: flat courses reward a slightly negative split — start conservative.",
+                        "Gợi ý: đường bằng phẳng nên chia sức âm nhẹ — xuất phát thận trọng.",
+                      )
+                    : t(
+                        "Tip: on mountain courses hold even effort and let terrain set the pace.",
+                        "Gợi ý: đường núi nên giữ sức đều, để địa hình quyết định pace.",
+                      )}
+                </div>
               </div>
               <div style={boxStyle}>
                 <label style={labelStyle}>{t("Race start time (optional)", "Giờ xuất phát (tùy chọn)")}</label>
@@ -602,6 +681,34 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
                   style={{ width: "100%", background: "transparent", border: "none", fontSize: "16px", fontWeight: 600, color: "var(--text-primary)", outline: "none" }}
                 />
               </div>
+              {courseSource === "race" && (
+                <div style={boxStyle}>
+                  <label style={labelStyle}>{t("Split every", "Chia mỗi")}</label>
+                  <div style={{ display: "flex", gap: "6px" }}>
+                    {([1, 5, 10] as const).map((iv) => (
+                      <button
+                        key={iv}
+                        onClick={() => {
+                          setSplitInterval(iv);
+                          setRestMins({});
+                        }}
+                        style={{
+                          padding: "6px 14px",
+                          borderRadius: "16px",
+                          border: splitInterval === iv ? "none" : "1px solid var(--border-color)",
+                          background: splitInterval === iv ? "var(--text-primary)" : "transparent",
+                          color: splitInterval === iv ? "white" : "var(--text-primary)",
+                          fontSize: "13px",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                        }}
+                      >
+                        {iv}k
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div style={boxStyle}>
                 <label style={labelStyle}>{t("Runner weight (kg)", "Cân nặng (kg)")}</label>
                 <input

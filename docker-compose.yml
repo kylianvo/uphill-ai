@@ -98,6 +98,10 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        # next static export bakes NEXT_PUBLIC_* at build time; the runtime
+        # environment entry below has no effect on the exported bundle
+        - NEXT_PUBLIC_API_URL=http://localhost:8000
     restart: unless-stopped
     ports:
       - "127.0.0.1:8080:3000"

@@ -1,2531 +1,2544 @@
 {
-  "domain": "race_courses",
-  "chunks": [
-    {
-      "domain": "race_courses",
-      "kind": "race_profile",
-      "title": "Vietnam Mountain Marathon (VMM) — Sa Pa, Vietnam",
-      "content": "The Vietnam Mountain Marathon (VMM), organized by Topas as part of the Vietnam Trail Series, runs each September through Sa Pa in Lao Cai Province, northern Vietnam. Distances span 10km (570m D+), 21km (1200m D+), 50km (46.7km/2800m D+), 70km (69.5km/4000m D+), 100km (5500m D+) and a 100-mile distance (161km/8800m D+). The course winds through terraced rice paddies, bamboo forest, and ethnic-minority villages, with water buffalo and rice terrace views throughout. Footing is frequently muddy and river-like on singletrack sections, and the final climbs on the longer distances are highly technical hands-and-knees scrambles where running is impossible. September weather in Sa Pa averages 18-27°C with 80-87% humidity and roughly 22 rainy days in the month; conditions can flip from bright sun to dense fog within minutes. Runners repeatedly describe the humidity as a major limiter even on short sections, and VMM's 100km/100mi climbing totals (5,500-8,800m) rank among the largest in the ASEAN trail-running calendar.",
-      "payload": {
-        "race_name": "Vietnam Mountain Marathon",
-        "aliases": [
-          "VMM",
-          "Sapa Marathon",
-          "Vietnam Trail Series VMM"
-        ],
-        "location": "Sa Pa, Lao Cai Province, Vietnam",
-        "country": "Vietnam",
-        "region": "ASEAN",
-        "race_type": "mountain_trail",
-        "month_held": "September",
-        "distances": [
-          {
-            "label": "10km",
-            "distance_km": 10.8,
-            "elevation_gain_m": 570
-          },
-          {
-            "label": "21km",
-            "distance_km": 21.5,
-            "elevation_gain_m": 1200
-          },
-          {
-            "label": "50km",
-            "distance_km": 46.7,
-            "elevation_gain_m": 2800
-          },
-          {
-            "label": "70km",
-            "distance_km": 69.5,
-            "elevation_gain_m": 4000
-          },
-          {
-            "label": "100km",
-            "distance_km": 100.0,
-            "elevation_gain_m": 5500
-          },
-          {
-            "label": "100 miles",
-            "distance_km": 161.0,
-            "elevation_gain_m": 8800
-          }
-        ],
-        "terrain": [
-          "rice terraces",
-          "bamboo forest",
-          "singletrack village trails",
-          "muddy river-like trail sections",
-          "technical hand-and-knees scrambles on final climbs"
-        ],
-        "key_climbs": [
-          {
-            "name": "Final climb of the 100km/100mi course",
-            "notes": "Described by finishers as an unrelenting, highly technical vertical scramble where running is impossible; hands-and-knees terrain."
-          }
-        ],
-        "climate": {
-          "season": "September (SE Asia early autumn, tail of wet season)",
-          "avg_temp_c": "18-27",
-          "humidity_pct": "80-87",
-          "notes": "Fickle mountain weather — can swing from blazing sun to thick fog within minutes; frequent rain (~22 days/month) makes footing slick."
-        },
-        "runner_reviews": [
-          "Bodies unused to heat and humidity leave even short sections dripping in sweat.",
-          "Muddy, river-like singletrack causes multiple falls in the first 5km for many runners.",
-          "The 100km's 4,300-5,500m of gain is among the largest total climbing of any race in the region."
-        ],
-        "matching_hints": {
-          "name_keywords": [
-            "vmm",
-            "vietnam mountain marathon",
-            "sapa",
-            "sa pa"
-          ],
-          "distance_km_options": [
-            10.8,
-            21.5,
-            46.7,
-            69.5,
-            100.0,
-            161.0
-          ]
-        }
-      },
-      "source_label": "Web research (2026-07)"
+ "domain": "race_courses",
+ "chunks": [
+  {
+   "domain": "race_courses",
+   "kind": "race_profile",
+   "title": "Vietnam Mountain Marathon (VMM) — Sa Pa, Vietnam",
+   "content": "The Vietnam Mountain Marathon (VMM), organized by Topas as part of the Vietnam Trail Series, runs each September through Sa Pa in Lao Cai Province, northern Vietnam. Distances span 10km (570m D+), 21km (1200m D+), 50km (46.7km/2800m D+), 70km (69.5km/4000m D+), 100km (5500m D+) and a 100-mile distance (161km/8800m D+). The course winds through terraced rice paddies, bamboo forest, and ethnic-minority villages, with water buffalo and rice terrace views throughout. Footing is frequently muddy and river-like on singletrack sections, and the final climbs on the longer distances are highly technical hands-and-knees scrambles where running is impossible. September weather in Sa Pa averages 18-27°C with 80-87% humidity and roughly 22 rainy days in the month; conditions can flip from bright sun to dense fog within minutes. Runners repeatedly describe the humidity as a major limiter even on short sections, and VMM's 100km/100mi climbing totals (5,500-8,800m) rank among the largest in the ASEAN trail-running calendar.",
+   "payload": {
+    "race_name": "Vietnam Mountain Marathon",
+    "aliases": [
+     "VMM",
+     "Sapa Marathon",
+     "Vietnam Trail Series VMM"
+    ],
+    "location": "Sa Pa, Lao Cai Province, Vietnam",
+    "country": "Vietnam",
+    "region": "ASEAN",
+    "race_type": "mountain_trail",
+    "month_held": "September",
+    "distances": [
+     {
+      "label": "10km",
+      "distance_km": 10.8,
+      "elevation_gain_m": 570
+     },
+     {
+      "label": "21km",
+      "distance_km": 21.5,
+      "elevation_gain_m": 1200
+     },
+     {
+      "label": "50km",
+      "distance_km": 46.7,
+      "elevation_gain_m": 2800
+     },
+     {
+      "label": "70km",
+      "distance_km": 69.5,
+      "elevation_gain_m": 4000
+     },
+     {
+      "label": "100km",
+      "distance_km": 100.0,
+      "elevation_gain_m": 5500
+     },
+     {
+      "label": "100 miles",
+      "distance_km": 161.0,
+      "elevation_gain_m": 8800
+     }
+    ],
+    "terrain": [
+     "rice terraces",
+     "bamboo forest",
+     "singletrack village trails",
+     "muddy river-like trail sections",
+     "technical hand-and-knees scrambles on final climbs"
+    ],
+    "key_climbs": [
+     {
+      "name": "Final climb of the 100km/100mi course",
+      "notes": "Described by finishers as an unrelenting, highly technical vertical scramble where running is impossible; hands-and-knees terrain."
+     }
+    ],
+    "climate": {
+     "season": "September (SE Asia early autumn, tail of wet season)",
+     "avg_temp_c": "18-27",
+     "humidity_pct": "80-87",
+     "notes": "Fickle mountain weather — can swing from blazing sun to thick fog within minutes; frequent rain (~22 days/month) makes footing slick."
     },
-    {
-      "domain": "race_courses",
-      "kind": "race_profile",
-      "title": "Dalat Ultra Trail (DUT) — Đà Lạt, Vietnam",
-      "content": "Dalat Ultra Trail (DUT) takes place each March in Đà Lạt, Lâm Đồng Province — Vietnam's cool, high-altitude Central Highlands city known as the 'city of eternal spring'. Distances range from 5km up to a 100km/100PRO ultra with as much as ~2,079m of elevation gain and grades up to 17%. The signature feature is Lang Biang Peak (~2,167m), the highest point of the Lam Vien Highland; a standalone hike to the summit is about 10.6km with roughly 685m of gain and is rated a hard trail. The course otherwise winds through pine forests, rolling highland hills, valleys, and lakeside trail near Tuyền Lâm Lake. March falls in Đà Lạt's dry season (Dec-Mar), giving cooler temperatures (16-24°C) and far less rain than lowland Vietnam races — a notably more temperate, lower-humidity race environment than Sa Pa or Pu Luong events.",
-      "payload": {
-        "race_name": "Dalat Ultra Trail",
-        "aliases": [
-          "DUT",
-          "Da Lat Ultra Trail"
-        ],
-        "location": "Đà Lạt, Lâm Đồng Province, Vietnam",
-        "country": "Vietnam",
-        "region": "ASEAN",
-        "race_type": "mountain_trail",
-        "month_held": "March",
-        "distances": [
-          {
-            "label": "5km",
-            "distance_km": 5.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "15km",
-            "distance_km": 15.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "21km",
-            "distance_km": 21.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "50km",
-            "distance_km": 50.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "75km",
-            "distance_km": 75.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "100km",
-            "distance_km": 100.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "100PRO",
-            "distance_km": 100.0,
-            "elevation_gain_m": 2079
-          }
-        ],
-        "terrain": [
-          "pine forest",
-          "rolling highland hills",
-          "highland valleys",
-          "lakeside trail",
-          "Lang Biang peak singletrack"
-        ],
-        "key_climbs": [
-          {
-            "name": "Lang Biang Peak",
-            "elevation_m": 2167,
-            "notes": "The signature climb of DUT — Lam Vien Highland's highest mountain; standalone hiking route to the peak is ~10.6km with roughly 685m gain, considered a hard hike."
-          }
-        ],
-        "climate": {
-          "season": "March (dry season)",
-          "avg_temp_c": "16-24",
-          "humidity_pct": "moderate",
-          "notes": "Đà Lạt is Vietnam's mildest-climate city ('city of eternal spring') at ~1,500m altitude; dry season (Dec-Mar) is the best window for trail running with fewer rainy days and cooler temps than lowland Vietnam."
-        },
-        "runner_reviews": [
-          "The course's highest single-course elevation gain (100PRO) reaches ~2,079m with grades up to 17%.",
-          "Route guides runners through Đà Lạt's most iconic landscapes: pine forests, rolling hills, Tuyền Lâm-area valleys, and Lang Biang Peak."
-        ],
-        "matching_hints": {
-          "name_keywords": [
-            "dalat ultra trail",
-            "dut",
-            "da lat",
-            "đà lạt",
-            "lang biang"
-          ],
-          "distance_km_options": [
-            5.0,
-            15.0,
-            21.0,
-            50.0,
-            75.0,
-            100.0
-          ]
-        }
-      },
-      "source_label": "Web research (2026-07)"
+    "runner_reviews": [
+     "Bodies unused to heat and humidity leave even short sections dripping in sweat.",
+     "Muddy, river-like singletrack causes multiple falls in the first 5km for many runners.",
+     "The 100km's 4,300-5,500m of gain is among the largest total climbing of any race in the region."
+    ],
+    "matching_hints": {
+     "name_keywords": [
+      "vmm",
+      "vietnam mountain marathon",
+      "sapa",
+      "sa pa"
+     ],
+     "distance_km_options": [
+      10.8,
+      21.5,
+      46.7,
+      69.5,
+      100.0,
+      161.0
+     ]
     },
-    {
-      "domain": "race_courses",
-      "kind": "race_profile",
-      "title": "Vietnam Trail Marathon (VTM) — Mộc Châu, Vietnam",
-      "content": "Vietnam Trail Marathon (VTM) is held each January in Mộc Châu, Sơn La Province, in Vietnam's northwestern highlands, timed to coincide with peach-blossom season. Distances include 5/10/21/42/50/70km, with the 21km (21.9km/1200m D+), 42km (41.2km/2150m D+) and 70km (67.6km, +2858m/-2799m) being the headline distances. The course crosses tea plantations, fruit orchards, and remote highland villages. January is the coolest and driest month in the region (roughly 10-18°C), making it one of the more temperate trail races on the Vietnamese calendar compared to the humid VMM (September) or Vietnam Jungle Marathon (October).",
-      "payload": {
-        "race_name": "Vietnam Trail Marathon",
-        "aliases": [
-          "VTM",
-          "Moc Chau Trail Marathon"
-        ],
-        "location": "Mộc Châu, Sơn La Province, Vietnam",
-        "country": "Vietnam",
-        "region": "ASEAN",
-        "race_type": "mountain_trail",
-        "month_held": "January",
-        "distances": [
-          {
-            "label": "5km",
-            "distance_km": 5.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "10km",
-            "distance_km": 10.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "21km",
-            "distance_km": 21.9,
-            "elevation_gain_m": 1200
-          },
-          {
-            "label": "42km",
-            "distance_km": 41.2,
-            "elevation_gain_m": 2150
-          },
-          {
-            "label": "50km",
-            "distance_km": 50.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "70km",
-            "distance_km": 67.6,
-            "elevation_gain_m": 2858,
-            "elevation_loss_m": 2799
-          }
-        ],
-        "terrain": [
-          "tea plantations",
-          "orchards",
-          "remote highland villages",
-          "rolling ridge trail"
-        ],
-        "key_climbs": [],
-        "climate": {
-          "season": "January (peach/plum blossom season, dry season)",
-          "avg_temp_c": "10-18",
-          "humidity_pct": "moderate",
-          "notes": "Mộc Châu sits at altitude in the northwest highlands; January is the coolest, driest window of the year and coincides with peach blossom season."
-        },
-        "runner_reviews": [],
-        "matching_hints": {
-          "name_keywords": [
-            "vtm",
-            "vietnam trail marathon",
-            "moc chau",
-            "mộc châu"
-          ],
-          "distance_km_options": [
-            5.0,
-            10.0,
-            21.9,
-            41.2,
-            50.0,
-            67.6
-          ]
-        }
-      },
-      "source_label": "Web research (2026-07)"
+    "results": [
+     {
+      "year": 2025,
+      "distance_label": "70km",
+      "distance_km": 69.5,
+      "finishers": 289,
+      "winner_time": "9:10:58",
+      "winner_time_women": "11:52:42",
+      "cutoff_clock": "00:00 (midnight finish cutoff)",
+      "conditions_note": "perfect weather year",
+      "source": "my.raceresult.com/323529 + utmb.world index, VMM 2025 official results"
+     }
+    ]
+   },
+   "source_label": "Web research (2026-07)"
+  },
+  {
+   "domain": "race_courses",
+   "kind": "race_profile",
+   "title": "Dalat Ultra Trail (DUT) — Đà Lạt, Vietnam",
+   "content": "Dalat Ultra Trail (DUT) takes place each March in Đà Lạt, Lâm Đồng Province — Vietnam's cool, high-altitude Central Highlands city known as the 'city of eternal spring'. Distances range from 5km up to a 100km/100PRO ultra with as much as ~2,079m of elevation gain and grades up to 17%. The signature feature is Lang Biang Peak (~2,167m), the highest point of the Lam Vien Highland; a standalone hike to the summit is about 10.6km with roughly 685m of gain and is rated a hard trail. The course otherwise winds through pine forests, rolling highland hills, valleys, and lakeside trail near Tuyền Lâm Lake. March falls in Đà Lạt's dry season (Dec-Mar), giving cooler temperatures (16-24°C) and far less rain than lowland Vietnam races — a notably more temperate, lower-humidity race environment than Sa Pa or Pu Luong events.",
+   "payload": {
+    "race_name": "Dalat Ultra Trail",
+    "aliases": [
+     "DUT",
+     "Da Lat Ultra Trail"
+    ],
+    "location": "Đà Lạt, Lâm Đồng Province, Vietnam",
+    "country": "Vietnam",
+    "region": "ASEAN",
+    "race_type": "mountain_trail",
+    "month_held": "March",
+    "distances": [
+     {
+      "label": "5km",
+      "distance_km": 5.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "15km",
+      "distance_km": 15.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "21km",
+      "distance_km": 21.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "50km",
+      "distance_km": 50.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "75km",
+      "distance_km": 75.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "100km",
+      "distance_km": 100.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "100PRO",
+      "distance_km": 100.0,
+      "elevation_gain_m": 2079
+     }
+    ],
+    "terrain": [
+     "pine forest",
+     "rolling highland hills",
+     "highland valleys",
+     "lakeside trail",
+     "Lang Biang peak singletrack"
+    ],
+    "key_climbs": [
+     {
+      "name": "Lang Biang Peak",
+      "elevation_m": 2167,
+      "notes": "The signature climb of DUT — Lam Vien Highland's highest mountain; standalone hiking route to the peak is ~10.6km with roughly 685m gain, considered a hard hike."
+     }
+    ],
+    "climate": {
+     "season": "March (dry season)",
+     "avg_temp_c": "16-24",
+     "humidity_pct": "moderate",
+     "notes": "Đà Lạt is Vietnam's mildest-climate city ('city of eternal spring') at ~1,500m altitude; dry season (Dec-Mar) is the best window for trail running with fewer rainy days and cooler temps than lowland Vietnam."
     },
-    {
-      "domain": "race_courses",
-      "kind": "race_profile",
-      "title": "Vietnam Jungle Marathon (VJM) — Pù Luông, Vietnam",
-      "content": "The Vietnam Jungle Marathon (VJM) is run each October through Pù Luông Nature Reserve in Bá Thước District, Thanh Hóa Province — a few hours from Hanoi. Distances span 10km (11.4km/270m D+), 25km (25.1km/700m D+), 50km (49km/1860m D+) and 70km (3000m+ D+). The course crosses jungle canopy trail, limestone karst ridgelines, rice terraces, and remote villages. October sits at the tail of the wet season, so humidity is high (20-28°C) and limestone/root-covered singletrack can be slick after rain — runners should expect similar humid, muddy conditions to VMM but on more jungle-canopy, karst-influenced terrain rather than open mountain ridgeline.",
-      "payload": {
-        "race_name": "Vietnam Jungle Marathon",
-        "aliases": [
-          "VJM",
-          "Pu Luong Jungle Marathon"
-        ],
-        "location": "Bá Thước District, Pù Luông Nature Reserve, Thanh Hóa Province, Vietnam",
-        "country": "Vietnam",
-        "region": "ASEAN",
-        "race_type": "jungle_trail",
-        "month_held": "October",
-        "distances": [
-          {
-            "label": "10km",
-            "distance_km": 11.4,
-            "elevation_gain_m": 270
-          },
-          {
-            "label": "25km",
-            "distance_km": 25.1,
-            "elevation_gain_m": 700
-          },
-          {
-            "label": "50km",
-            "distance_km": 49.0,
-            "elevation_gain_m": 1860
-          },
-          {
-            "label": "70km",
-            "distance_km": 70.0,
-            "elevation_gain_m": 3000
-          }
-        ],
-        "terrain": [
-          "jungle canopy trail",
-          "limestone karst ridges",
-          "rice terraces",
-          "remote village paths"
-        ],
-        "key_climbs": [],
-        "climate": {
-          "season": "October (tail of wet season)",
-          "avg_temp_c": "20-28",
-          "humidity_pct": "high",
-          "notes": "Pù Luông Nature Reserve is humid, jungle-canopy terrain; October rains can leave limestone and root-covered singletrack slick."
-        },
-        "runner_reviews": [],
-        "matching_hints": {
-          "name_keywords": [
-            "vjm",
-            "vietnam jungle marathon",
-            "pu luong",
-            "pù luông"
-          ],
-          "distance_km_options": [
-            11.4,
-            25.1,
-            49.0,
-            70.0
-          ]
-        }
-      },
-      "source_label": "Web research (2026-07)"
-    },
-    {
-      "domain": "race_courses",
-      "kind": "race_profile",
-      "title": "Vietnam Ultra Marathon (VUM) — Mai Châu, Vietnam",
-      "content": "The Vietnam Ultra Marathon (VUM) 55km race, run in Mai Châu, Hòa Bình Province, covers 49.4km with 2,450m of elevation gain. It starts at the abandoned Hmong village of Bản Cang at almost 1,000m altitude, climbing through singletrack trail from one remote valley to the next, including technical sections.",
-      "payload": {
-        "race_name": "Vietnam Ultra Marathon",
-        "aliases": [
-          "VUM",
-          "Mai Chau Ultra"
-        ],
-        "location": "Mai Châu, Hòa Bình Province, Vietnam",
-        "country": "Vietnam",
-        "region": "ASEAN",
-        "race_type": "mountain_trail",
-        "month_held": "varies (organizer: Vietnam Trail Series)",
-        "distances": [
-          {
-            "label": "55km",
-            "distance_km": 49.4,
-            "elevation_gain_m": 2450
-          }
-        ],
-        "terrain": [
-          "single track",
-          "remote valley trail",
-          "technical sections",
-          "abandoned Hmong village trail (Bản Cang)"
-        ],
-        "key_climbs": [
-          {
-            "name": "Climb out of Bản Cang",
-            "notes": "Start is at the abandoned Hmong village of Bản Cang (~1,000m altitude); route climbs on singletrack from one remote valley to the next."
-          }
-        ],
-        "climate": {
-          "season": "varies",
-          "avg_temp_c": "unknown",
-          "humidity_pct": "unknown",
-          "notes": "Hòa Bình highlands climate — cooler and drier than lowland Vietnam."
-        },
-        "runner_reviews": [],
-        "matching_hints": {
-          "name_keywords": [
-            "vum",
-            "vietnam ultra marathon",
-            "mai chau",
-            "mai châu"
-          ],
-          "distance_km_options": [
-            49.4
-          ]
-        }
-      },
-      "source_label": "Web research (2026-07)"
-    },
-    {
-      "domain": "race_courses",
-      "kind": "race_profile",
-      "title": "Vietnam Highlands Trail by UTMB — Đà Lạt, Vietnam",
-      "content": "Vietnam Highlands Trail by UTMB, held each January in Đà Lạt, is Vietnam's first UTMB World Series race and connects four iconic Central Highlands peaks: Langbiang (panoramic alpine landscape), Bidoup (untouched primary forest), Pinhatt (ridgeline over Tuyền Lâm Lake) and Elephant Mountain (denser, technical trail). Distances run from 5km up to a 104km/5,533m D+ ultra, with the 20km Pinhatt 25 course carrying 1,300m D+ and the 55.4km Elephant 50 carrying 3,200m D+. January is Đà Lạt's dry season, offering a cooler, lower-humidity mountain environment (15-24°C) relative to most Vietnamese lowland or monsoon-season trail races.",
-      "payload": {
-        "race_name": "Vietnam Highlands Trail by UTMB",
-        "aliases": [
-          "VHT",
-          "UTMB Da Lat",
-          "Vietnam Highlands"
-        ],
-        "location": "Đà Lạt, Lâm Đồng Province, Vietnam",
-        "country": "Vietnam",
-        "region": "ASEAN",
-        "race_type": "mountain_trail",
-        "month_held": "January",
-        "distances": [
-          {
-            "label": "5km",
-            "distance_km": 5.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "10km",
-            "distance_km": 10.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "20km / Pinhatt 25",
-            "distance_km": 20.0,
-            "elevation_gain_m": 1300
-          },
-          {
-            "label": "50km / Elephant 50",
-            "distance_km": 55.4,
-            "elevation_gain_m": 3200
-          },
-          {
-            "label": "100km",
-            "distance_km": 104.0,
-            "elevation_gain_m": 5533
-          }
-        ],
-        "terrain": [
-          "alpine ridgeline",
-          "primary forest",
-          "ridgeline overlooking Tuyền Lâm Lake",
-          "technical Elephant Mountain singletrack"
-        ],
-        "key_climbs": [
-          {
-            "name": "Langbiang",
-            "notes": "Panoramic alpine landscape."
-          },
-          {
-            "name": "Bidoup",
-            "notes": "Untouched primary forest climb."
-          },
-          {
-            "name": "Pinhatt",
-            "notes": "Ridgeline overlooking Tuyền Lâm Lake."
-          },
-          {
-            "name": "Elephant Mountain",
-            "notes": "Denser, more technical trail."
-          }
-        ],
-        "climate": {
-          "season": "January (dry season)",
-          "avg_temp_c": "15-24",
-          "humidity_pct": "moderate",
-          "notes": "First-ever UTMB World Series race in Vietnam; Đà Lạt's mild highland climate in the dry season."
-        },
-        "runner_reviews": [],
-        "matching_hints": {
-          "name_keywords": [
-            "vietnam highlands trail",
-            "utmb da lat",
-            "vht",
-            "langbiang",
-            "bidoup",
-            "pinhatt"
-          ],
-          "distance_km_options": [
-            5.0,
-            10.0,
-            20.0,
-            55.4,
-            104.0
-          ]
-        }
-      },
-      "source_label": "Web research (2026-07)"
-    },
-    {
-      "domain": "race_courses",
-      "kind": "race_profile",
-      "title": "Techcombank Ho Chi Minh City International Marathon — Vietnam (road)",
-      "content": "The Techcombank Ho Chi Minh City International Marathon runs each December through 5 districts and Thu Duc City, starting at Lê Duẩn - Nguyễn Bỉnh Khiêm (Gate of the Zoo and Botanical Garden) and finishing at Empire City. It is a flat urban road course (5/10/21/42km). December marks the start of HCMC's dry season, with temperatures of 20-28°C and comparatively low humidity/rainfall — the most favorable window in the city's road-racing calendar, though still tropically warm and humid versus temperate-climate marathons.",
-      "payload": {
-        "race_name": "Techcombank Ho Chi Minh City International Marathon",
-        "aliases": [
-          "HCMC Marathon",
-          "Techcombank HCMC Marathon"
-        ],
-        "location": "Ho Chi Minh City, Vietnam",
-        "country": "Vietnam",
-        "region": "ASEAN",
-        "race_type": "road_marathon",
-        "month_held": "December",
-        "distances": [
-          {
-            "label": "5km",
-            "distance_km": 5.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "10km",
-            "distance_km": 10.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "21km",
-            "distance_km": 21.1,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "42km",
-            "distance_km": 42.195,
-            "elevation_gain_m": null
-          }
-        ],
-        "terrain": [
-          "urban road",
-          "flat city streets across 5 districts and Thu Duc City"
-        ],
-        "key_climbs": [],
-        "climate": {
-          "season": "December (start of dry season)",
-          "avg_temp_c": "20-28",
-          "humidity_pct": "lower than wet season, but still tropically humid",
-          "notes": "December is one of the most favorable HCMC racing windows — dry season onset, lower humidity and minimal rain versus the rest of the year."
-        },
-        "runner_reviews": [],
-        "matching_hints": {
-          "name_keywords": [
-            "techcombank",
-            "hcmc marathon",
-            "ho chi minh city marathon"
-          ],
-          "distance_km_options": [
-            5.0,
-            10.0,
-            21.1,
-            42.195
-          ]
-        }
-      },
-      "source_label": "Web research (2026-07)"
-    },
-    {
-      "domain": "race_courses",
-      "kind": "race_profile",
-      "title": "VnExpress Marathon series (Quy Nhơn / Huế / Đà Nẵng / Hải Phòng) — Vietnam (road)",
-      "content": "The VnExpress Marathon (VM) system runs road races of 5/10/21/42km across several Vietnamese cities, including Quy Nhơn (the oldest and original VM race, run in June along Ky Co, Eo Gio and Hon Kho coastal scenery), Huế (starting at Phú Văn Lâu on Lê Duẩn Street), Đà Nẵng, and Hải Phòng. Courses are flat-to-gently-rolling paved coastal/urban roads — runners describe the Quy Nhơn course as paved and very easy to run. Because most VM races fall in Vietnam's hot season (Quy Nhơn in June sees 26-34°C with high coastal humidity), heat and humidity management is the dominant race-day concern rather than terrain difficulty.",
-      "payload": {
-        "race_name": "VnExpress Marathon",
-        "aliases": [
-          "VM Quy Nhon",
-          "VM Hue",
-          "VnExpress Marathon Da Nang",
-          "VnExpress Marathon Hai Phong"
-        ],
-        "location": "Multiple Vietnamese coastal/central cities (Quy Nhơn, Huế, Đà Nẵng, Hải Phòng)",
-        "country": "Vietnam",
-        "region": "ASEAN",
-        "race_type": "road_marathon",
-        "month_held": "varies by city (Quy Nhơn ~June, Huế/Đà Nẵng ~ Q2, Hải Phòng varies)",
-        "distances": [
-          {
-            "label": "5km",
-            "distance_km": 5.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "10km",
-            "distance_km": 10.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "21km",
-            "distance_km": 21.1,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "42km",
-            "distance_km": 42.195,
-            "elevation_gain_m": null
-          }
-        ],
-        "terrain": [
-          "coastal road",
-          "urban streets",
-          "flat-to-gently-rolling"
-        ],
-        "key_climbs": [],
-        "climate": {
-          "season": "varies by leg; Quy Nhơn (June) is hot coastal summer",
-          "avg_temp_c": "26-34 (Quy Nhon, June)",
-          "humidity_pct": "high coastal humidity",
-          "notes": "Quy Nhơn is the oldest race in the VnExpress Marathon system; roads up to 25km are paved and described by runners as 'very easy to run' — pancake flat coastal course. Heat/humidity is the dominant limiter more than terrain."
-        },
-        "runner_reviews": [
-          "Course up to 25km is paved and very easy to run (Quy Nhơn)."
-        ],
-        "matching_hints": {
-          "name_keywords": [
-            "vnexpress marathon",
-            "vm quy nhon",
-            "vm hue",
-            "vm da nang",
-            "vm hai phong"
-          ],
-          "distance_km_options": [
-            5.0,
-            10.0,
-            21.1,
-            42.195
-          ]
-        }
-      },
-      "source_label": "Web research (2026-07)"
-    },
-    {
-      "domain": "race_courses",
-      "kind": "race_profile",
-      "title": "Ultra-Trail Australia by UTMB (UTA) — Blue Mountains, Australia",
-      "content": "Ultra-Trail Australia by UTMB (UTA) is held each May in the Blue Mountains National Park near Katoomba, NSW, starting and finishing at Scenic World. Distances are UTA11 (11km/477m D+), UTA22 (21.6km/910m D+, featuring the Golden Stairs and the final section of Furber Steps), UTA50 (50km/2450m D+, the back half of the UTA100 course), UTA100 (100.4km/4460m D+) and the UTA Miler (161km/~7290m D+). Every distance finishes with a climb of the famous 951 Furber Steps (~220m gain over ~1km) into Scenic World — UTA11 covers all 951 steps. The route also passes Golden Stairs, Leura Forest and Wentworth Falls. May is Blue Mountains autumn: cool (8-18°C), with fog, rain, and cold overnight temperatures a real factor for Miler finishers running through the night.",
-      "payload": {
-        "race_name": "Ultra-Trail Australia by UTMB",
-        "aliases": [
-          "UTA",
-          "UTA100",
-          "UTA50",
-          "UTA22",
-          "UTA11",
-          "UTA Blue Mountains"
-        ],
-        "location": "Katoomba, Blue Mountains National Park, New South Wales, Australia",
-        "country": "Australia",
-        "region": "Australia",
-        "race_type": "mountain_trail",
-        "month_held": "May",
-        "distances": [
-          {
-            "label": "UTA11",
-            "distance_km": 11.0,
-            "elevation_gain_m": 477
-          },
-          {
-            "label": "UTA22",
-            "distance_km": 21.6,
-            "elevation_gain_m": 910
-          },
-          {
-            "label": "UTA50",
-            "distance_km": 50.0,
-            "elevation_gain_m": 2450
-          },
-          {
-            "label": "UTA100",
-            "distance_km": 100.4,
-            "elevation_gain_m": 4460
-          },
-          {
-            "label": "UTA Miler (100mi)",
-            "distance_km": 161.0,
-            "elevation_gain_m": 7290
-          }
-        ],
-        "terrain": [
-          "Golden Stairs walking track",
-          "Leura Forest",
-          "Wentworth Falls",
-          "the 951 Furber Steps"
-        ],
-        "key_climbs": [
-          {
-            "name": "Furber Steps",
-            "steps": 951,
-            "elevation_m": 220,
-            "notes": "Final 1km climb of every UTA distance before the Scenic World finish; UTA11 covers all 951 steps, UTA22 only the final section (via the Golden Stairs)."
-          }
-        ],
-        "climate": {
-          "season": "May (Southern Hemisphere autumn)",
-          "avg_temp_c": "8-18",
-          "humidity_pct": "moderate",
-          "notes": "Blue Mountains autumn — cool mountain temperatures, can include fog, rain and cold nights especially for overnight 100mi finishers."
-        },
-        "runner_reviews": [],
-        "matching_hints": {
-          "name_keywords": [
-            "uta",
-            "ultra-trail australia",
-            "blue mountains",
-            "furber steps",
-            "katoomba"
-          ],
-          "distance_km_options": [
-            11.0,
-            21.6,
-            50.0,
-            100.4,
-            161.0
-          ]
-        }
-      },
-      "source_label": "Web research (2026-07)"
-    },
-    {
-      "domain": "race_courses",
-      "kind": "race_profile",
-      "title": "Ultra-Trail Kosciuszko by UTMB — Thredbo/Jindabyne, Australia",
-      "content": "Ultra-Trail Kosciuszko by UTMB runs each March through the Snowy Mountains around Thredbo/Jindabyne, NSW. Distances are Kosci30 (32km/600m D+), Kosci50 (50km/1350m D+), Kosci100 (102km/3196m D+) and KosciMiler (164km/5185m D+). Courses wind through snow gum forest and alpine meadows past granite outcrops, with the longer distances summiting Mount Kosciuszko (2,228m), Australia's highest peak. Unlike the short, brutal climbs of UTA, Kosci's courses are built around sustained gain and long runnable ridgeline segments. March alpine weather is generally dry (5-18°C) but exposed above the treeline, so wind and rapid weather changes remain a real risk.",
-      "payload": {
-        "race_name": "Ultra-Trail Kosciuszko by UTMB",
-        "aliases": [
-          "Kosci",
-          "Kosci100",
-          "Kosci50",
-          "Kosci30",
-          "KosciMiler"
-        ],
-        "location": "Thredbo / Jindabyne, Snowy Mountains, New South Wales, Australia",
-        "country": "Australia",
-        "region": "Australia",
-        "race_type": "alpine_trail",
-        "month_held": "March",
-        "distances": [
-          {
-            "label": "Kosci30",
-            "distance_km": 32.0,
-            "elevation_gain_m": 600
-          },
-          {
-            "label": "Kosci50",
-            "distance_km": 50.0,
-            "elevation_gain_m": 1350
-          },
-          {
-            "label": "Kosci100",
-            "distance_km": 102.0,
-            "elevation_gain_m": 3196
-          },
-          {
-            "label": "KosciMiler",
-            "distance_km": 164.0,
-            "elevation_gain_m": 5185
-          }
-        ],
-        "terrain": [
-          "snow gum forest",
-          "alpine meadow",
-          "granite outcrops",
-          "long runnable ridgeline"
-        ],
-        "key_climbs": [
-          {
-            "name": "Mount Kosciuszko summit",
-            "elevation_m": 2228,
-            "notes": "Ascent to Australia's highest point; courses are designed around sustained gain with long runnable segments rather than short brutal walls."
-          }
-        ],
-        "climate": {
-          "season": "March (late Southern Hemisphere summer/early autumn)",
-          "avg_temp_c": "5-18 (alpine, can drop lower at altitude/night)",
-          "humidity_pct": "low, dry alpine air",
-          "notes": "Alpine high-country weather can change fast — exposure above the treeline means wind and cold are a real risk even in March."
-        },
-        "runner_reviews": [],
-        "matching_hints": {
-          "name_keywords": [
-            "kosciuszko",
-            "kosci",
-            "kosci100",
-            "snowy mountains",
-            "thredbo"
-          ],
-          "distance_km_options": [
-            32.0,
-            50.0,
-            102.0,
-            164.0
-          ]
-        }
-      },
-      "source_label": "Web research (2026-07)"
-    },
-    {
-      "domain": "race_courses",
-      "kind": "race_profile",
-      "title": "Buffalo Stampede — Bright, Victoria, Australia",
-      "content": "Buffalo Stampede, Australia's original sky-running festival, is held each March in Bright, Victoria. Distances include 10km (1000m D+ in the first 10km alone), the 20km Sky Run (1260m D+/D-), a 42km, and the flagship 100km (101.6km/5131m D+) which runs from Bright to The Horn — the highest point of Mount Buffalo National Park — and back. The 100km's early leg-breaker is Emily's Spur, a 1.7km/440m+ climb to the Mystic summit. Terrain is technical alpine sky-running: granite outcrops and exposed summit ridgeline. March is Victorian High Country autumn — mild in the valley (8-20°C) but cold and exposed at altitude.",
-      "payload": {
-        "race_name": "Buffalo Stampede",
-        "aliases": [
-          "Buffalo Stampede Festival",
-          "Bright Sky Run"
-        ],
-        "location": "Bright, Victorian Alps, Victoria, Australia",
-        "country": "Australia",
-        "region": "Australia",
-        "race_type": "alpine_sky_running",
-        "month_held": "March",
-        "distances": [
-          {
-            "label": "10km",
-            "distance_km": 10.0,
-            "elevation_gain_m": 1000
-          },
-          {
-            "label": "20km / Sky Run",
-            "distance_km": 20.0,
-            "elevation_gain_m": 1260,
-            "elevation_loss_m": 1260
-          },
-          {
-            "label": "42km",
-            "distance_km": 42.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "100km",
-            "distance_km": 101.6,
-            "elevation_gain_m": 5131
-          }
-        ],
-        "terrain": [
-          "alpine sky-running ridgeline",
-          "technical summit trail",
-          "Mount Buffalo National Park granite"
-        ],
-        "key_climbs": [
-          {
-            "name": "Emily's Spur to Mystic summit",
-            "distance_km": 1.7,
-            "elevation_gain_m": 440,
-            "notes": "Early leg-breaker climb on the 100km course."
-          },
-          {
-            "name": "The Horn, Mount Buffalo",
-            "notes": "Highest point of Mount Buffalo National Park; 100km turnaround point."
-          }
-        ],
-        "climate": {
-          "season": "March (Southern Hemisphere autumn)",
-          "avg_temp_c": "8-20",
-          "humidity_pct": "moderate",
-          "notes": "Victorian High Country autumn — can be warm in the valley at Bright but cold and exposed on the alpine summits."
-        },
-        "runner_reviews": [],
-        "matching_hints": {
-          "name_keywords": [
-            "buffalo stampede",
-            "bright",
-            "mount buffalo",
-            "sky run"
-          ],
-          "distance_km_options": [
-            10.0,
-            20.0,
-            42.0,
-            101.6
-          ]
-        }
-      },
-      "source_label": "Web research (2026-07)"
-    },
-    {
-      "domain": "race_courses",
-      "kind": "race_profile",
-      "title": "Six Foot Track Marathon — Blue Mountains, Australia",
-      "content": "The Six Foot Track Marathon runs 45km point-to-point across the Blue Mountains from Katoomba to Jenolan Caves, with 1,778m of total climbing and 2,031m of descent (max elevation 1,213m, min 267m). It opens with a steep descent through Nellie's Glen before climbing the Black Range, mostly on fire trail through eucalypt forest. Held every March since 1984, it's one of Australia's oldest and most iconic trail marathons; elite runners finish under 4 hours, with a 7-hour cutoff for the field. March conditions are mild Blue Mountains autumn (10-22°C).",
-      "payload": {
-        "race_name": "Six Foot Track Marathon",
-        "aliases": [
-          "Six Foot Track"
-        ],
-        "location": "Katoomba to Jenolan Caves, Blue Mountains, New South Wales, Australia",
-        "country": "Australia",
-        "region": "Australia",
-        "race_type": "trail_marathon",
-        "month_held": "March",
-        "distances": [
-          {
-            "label": "marathon",
-            "distance_km": 45.0,
-            "elevation_gain_m": 1778,
-            "elevation_loss_m": 2031
-          }
-        ],
-        "terrain": [
-          "fire trail",
-          "Nellie's Glen steep descent",
-          "Black Range climb",
-          "eucalypt forest"
-        ],
-        "key_climbs": [
-          {
-            "name": "Black Range",
-            "notes": "Ascended after the steep early descent through Nellie's Glen."
-          }
-        ],
-        "climate": {
-          "season": "March (Southern Hemisphere autumn)",
-          "avg_temp_c": "10-22",
-          "humidity_pct": "moderate",
-          "notes": "Point-to-point course from Katoomba to Jenolan Caves; started in 1984, one of Australia's oldest trail races."
-        },
-        "runner_reviews": [],
-        "matching_hints": {
-          "name_keywords": [
-            "six foot track",
-            "sixfoot",
-            "jenolan caves",
-            "katoomba marathon"
-          ],
-          "distance_km_options": [
-            45.0
-          ]
-        }
-      },
-      "source_label": "Web research (2026-07)"
-    },
-    {
-      "domain": "race_courses",
-      "kind": "race_profile",
-      "title": "Sydney Marathon — Sydney, Australia (road)",
-      "content": "The Sydney Marathon (a World Marathon Majors race) is run each September with +313m gain / -396m loss (net -83m, net downhill). The course's first major ascent crosses the Sydney Harbour Bridge, followed by a ~60m descent through Pyrmont Street, then a second climb on Oxford Street around the 15km mark before a steadier final stretch. September humidity averages ~65% with low rainfall — a moderately hilly but net-downhill course considered favorable for fast times, run in comfortable spring conditions (13-20°C).",
-      "payload": {
-        "race_name": "Sydney Marathon",
-        "aliases": [
-          "TCS Sydney Marathon"
-        ],
-        "location": "Sydney, New South Wales, Australia",
-        "country": "Australia",
-        "region": "Australia",
-        "race_type": "road_marathon",
-        "month_held": "September (World Marathon Majors member)",
-        "distances": [
-          {
-            "label": "42km",
-            "distance_km": 42.195,
-            "elevation_gain_m": 313,
-            "elevation_loss_m": 396
-          }
-        ],
-        "terrain": [
-          "Sydney Harbour Bridge climb",
-          "Pyrmont Street descent",
-          "Oxford Street climb at 15km",
-          "urban road"
-        ],
-        "key_climbs": [
-          {
-            "name": "Sydney Harbour Bridge",
-            "notes": "First major ascent of the course, early miles."
-          },
-          {
-            "name": "Oxford Street",
-            "notes": "Course tilts upward again at the 15km mark."
-          }
-        ],
-        "climate": {
-          "season": "September (Southern Hemisphere spring)",
-          "avg_temp_c": "13-20",
-          "humidity_pct": "~65%",
-          "notes": "Low rainfall, moderate humidity — one of the more favorable World Marathon Majors weather windows."
-        },
-        "runner_reviews": [],
-        "matching_hints": {
-          "name_keywords": [
-            "sydney marathon",
-            "tcs sydney marathon"
-          ],
-          "distance_km_options": [
-            42.195
-          ]
-        }
-      },
-      "source_label": "Web research (2026-07)"
-    },
-    {
-      "domain": "race_courses",
-      "kind": "race_profile",
-      "title": "Great Ocean Road Marathon — Lorne to Apollo Bay, Australia (road)",
-      "content": "The Great Ocean Road Running Festival Marathon runs 44km point-to-point from Lorne to Apollo Bay, Victoria along the Great Ocean Road, with ~488m of total elevation gain. Two named climbs define the course: Mount Defiance (from Cumberland River at 5km to the lookout at ~9km) and Cape Patton (from Kennett River just after 21km). The final 10km is relatively flat. Held in May (Southern Hemisphere autumn, ~10-18°C), it is a scenic, moderately hilly coastal road marathon.",
-      "payload": {
-        "race_name": "Great Ocean Road Running Festival Marathon",
-        "aliases": [
-          "Great Ocean Road Marathon",
-          "GORMarathon"
-        ],
-        "location": "Lorne to Apollo Bay, Victoria, Australia",
-        "country": "Australia",
-        "region": "Australia",
-        "race_type": "road_marathon",
-        "month_held": "May",
-        "distances": [
-          {
-            "label": "marathon",
-            "distance_km": 44.0,
-            "elevation_gain_m": 488
-          }
-        ],
-        "terrain": [
-          "coastal highway road",
-          "Mount Defiance climb",
-          "Cape Patton climb"
-        ],
-        "key_climbs": [
-          {
-            "name": "Mount Defiance",
-            "notes": "Climb from Cumberland River (5km) to Mount Defiance lookout (~9km); ~54m gain over 2.5km within that stretch."
-          },
-          {
-            "name": "Cape Patton",
-            "notes": "Second major incline just after the 21km mark, from Kennett River to Cape Patton."
-          }
-        ],
-        "climate": {
-          "season": "May (Southern Hemisphere autumn)",
-          "avg_temp_c": "10-18",
-          "humidity_pct": "moderate, coastal",
-          "notes": "Point-to-point coastal road course along the Great Ocean Road."
-        },
-        "runner_reviews": [],
-        "matching_hints": {
-          "name_keywords": [
-            "great ocean road marathon",
-            "gor marathon",
-            "lorne",
-            "apollo bay"
-          ],
-          "distance_km_options": [
-            44.0
-          ]
-        }
-      },
-      "source_label": "Web research (2026-07)"
-    },
-    {
-      "domain": "race_courses",
-      "kind": "race_profile",
-      "title": "Melbourne Marathon — Melbourne, Australia (road)",
-      "content": "The Melbourne Marathon is a largely flat, fast road course (~136m total gain) through the Yarra River path, Albert Park Lake and the Royal Botanic Gardens. Held each October (Southern Hemisphere spring, 10-20°C), it is regarded as one of Australia's PB-friendly majors; a 2026 course revision removed the Birdwood Avenue to Domain Road climb near the 36km mark, reducing total elevation gain by roughly 20%.",
-      "payload": {
-        "race_name": "Melbourne Marathon",
-        "aliases": [
-          "Nike Melbourne Marathon"
-        ],
-        "location": "Melbourne, Victoria, Australia",
-        "country": "Australia",
-        "region": "Australia",
-        "race_type": "road_marathon",
-        "month_held": "October",
-        "distances": [
-          {
-            "label": "42km",
-            "distance_km": 42.195,
-            "elevation_gain_m": 136
-          }
-        ],
-        "terrain": [
-          "Yarra River path",
-          "Albert Park Lake",
-          "Royal Botanic Gardens",
-          "flat urban road"
-        ],
-        "key_climbs": [],
-        "climate": {
-          "season": "October (Southern Hemisphere spring)",
-          "avg_temp_c": "10-20",
-          "humidity_pct": "moderate",
-          "notes": "Course revised in 2026 to reduce gain by ~20% by removing the Birdwood Ave to Domain Rd climb near 36km — now one of Australia's flattest, fastest-rated majors."
-        },
-        "runner_reviews": [],
-        "matching_hints": {
-          "name_keywords": [
-            "melbourne marathon",
-            "nike melbourne marathon"
-          ],
-          "distance_km_options": [
-            42.195
-          ]
-        }
-      },
-      "source_label": "Web research (2026-07)"
-    },
-    {
-      "domain": "race_courses",
-      "kind": "race_profile",
-      "title": "Thailand by UTMB (Chiang Mai) — Doi Inthanon, Thailand",
-      "content": "Thailand by UTMB is held each December around Doi Inthanon National Park, Chiang Mai — Thailand's highest mountain. Distances include a 3km (100m D+), Suthep 20 (26km/1100m D+), 63km (3000m D+), Elephant 100 (100km/5500m D+) and Chiang Dao 160 (173km/9800m D+). The course crosses rivers, chases waterfalls, and passes royal burial grounds, with elevation ranging from 400m to 2,100m asl and forest cover changing accordingly. Despite December being Thailand's official cool/dry season, finishers report midday mountain temperatures exceeding 30°C at the race start, making heat management as important as the climbing itself.",
-      "payload": {
-        "race_name": "Thailand by UTMB",
-        "aliases": [
-          "Chiang Mai by UTMB",
-          "Doi Inthanon UTMB",
-          "Elephant 100",
-          "Chiang Dao 160",
-          "Suthep 20"
-        ],
-        "location": "Doi Inthanon National Park, Chiang Mai, Thailand",
-        "country": "Thailand",
-        "region": "Asia",
-        "race_type": "mountain_trail",
-        "month_held": "December",
-        "distances": [
-          {
-            "label": "Suthep 20",
-            "distance_km": 26.0,
-            "elevation_gain_m": 1100
-          },
-          {
-            "label": "63km",
-            "distance_km": 63.0,
-            "elevation_gain_m": 3000
-          },
-          {
-            "label": "Elephant 100",
-            "distance_km": 100.0,
-            "elevation_gain_m": 5500
-          },
-          {
-            "label": "Chiang Dao 160",
-            "distance_km": 173.0,
-            "elevation_gain_m": 9800
-          },
-          {
-            "label": "3km",
-            "distance_km": 3.0,
-            "elevation_gain_m": 100
-          }
-        ],
-        "terrain": [
-          "Doi Inthanon national park forest",
-          "river crossings",
-          "waterfalls",
-          "royal burial grounds",
-          "elevation gain from 400m to 2,100m asl"
-        ],
-        "key_climbs": [
-          {
-            "name": "Doi Inthanon",
-            "notes": "Thailand's highest mountain; course elevation ranges from 400m to 2,100m asl as forest cover changes with altitude."
-          }
-        ],
-        "climate": {
-          "season": "December (Thai cool/dry season)",
-          "avg_temp_c": "hot in the mountains at midday — exceeding 30°C at race start reported by finishers, cooler at night/altitude",
-          "humidity_pct": "moderate to high",
-          "notes": "Despite December being Thailand's cool season, midday heat in the mountains combined with the climbing terrain is reported by finishers as physically draining."
-        },
-        "runner_reviews": [
-          "Temperature exceeded 30°C at the start even in December; 'the heat peculiar to Thailand... deprives runners of physical strength.'"
-        ],
-        "matching_hints": {
-          "name_keywords": [
-            "thailand by utmb",
-            "chiang mai",
-            "doi inthanon",
-            "elephant 100",
-            "chiang dao 160"
-          ],
-          "distance_km_options": [
-            26.0,
-            63.0,
-            100.0,
-            173.0
-          ]
-        }
-      },
-      "source_label": "Web research (2026-07)"
-    },
-    {
-      "domain": "race_courses",
-      "kind": "race_profile",
-      "title": "Malaysia by UTMB — Taiping/Maxwell Hill, Malaysia",
-      "content": "Malaysia by UTMB (Malaysia Ultra-Trail by UTMB) is centered on Taiping Lake Gardens and Maxwell Hill (Bukit Larut), Perak. Distances are MYVK (a ~5km vertical-kilometre time trial, ~1000m gain), MY13 (13.9km/382m D+), MY25 (25km/1252m D+), MY50 (50km/1977m D+ as of a 2025 course revision) and MY100 (97.7km/4802m D+). The longer distances traverse Virgin Jungle Reserve tropical rainforest around Maxwell Hill and pass historical pre-war railway tunnels near Taiping. Being equatorial tropical rainforest, heat and humidity (25-33°C, high humidity) are constant regardless of season.",
-      "payload": {
-        "race_name": "Malaysia by UTMB",
-        "aliases": [
-          "Malaysia Ultra-Trail by UTMB",
-          "MY100",
-          "MY50",
-          "MY25",
-          "MY13",
-          "MYVK"
-        ],
-        "location": "Taiping Lake Gardens & Maxwell Hill (Bukit Larut), Perak, Malaysia",
-        "country": "Malaysia",
-        "region": "ASEAN",
-        "race_type": "jungle_trail",
-        "month_held": "varies",
-        "distances": [
-          {
-            "label": "MYVK",
-            "distance_km": 5.0,
-            "elevation_gain_m": 1000
-          },
-          {
-            "label": "MY13",
-            "distance_km": 13.9,
-            "elevation_gain_m": 382
-          },
-          {
-            "label": "MY25",
-            "distance_km": 25.0,
-            "elevation_gain_m": 1252
-          },
-          {
-            "label": "MY50",
-            "distance_km": 50.0,
-            "elevation_gain_m": 1977
-          },
-          {
-            "label": "MY100",
-            "distance_km": 97.7,
-            "elevation_gain_m": 4802
-          }
-        ],
-        "terrain": [
-          "Virgin Jungle Reserve tropical rainforest",
-          "pre-war railway tunnels",
-          "technical and non-technical mixed trail"
-        ],
-        "key_climbs": [
-          {
-            "name": "Maxwell Hill (Bukit Larut)",
-            "notes": "Longer distances traverse the Virgin Jungle Reserves surrounding Maxwell Hill."
-          }
-        ],
-        "climate": {
-          "season": "tropical rainforest, year-round heat and humidity",
-          "avg_temp_c": "25-33",
-          "humidity_pct": "high",
-          "notes": "Dense tropical jungle canopy provides some shade but humidity remains a major factor."
-        },
-        "runner_reviews": [],
-        "matching_hints": {
-          "name_keywords": [
-            "malaysia by utmb",
-            "my100",
-            "my50",
-            "taiping",
-            "maxwell hill",
-            "bukit larut"
-          ],
-          "distance_km_options": [
-            5.0,
-            13.9,
-            25.0,
-            50.0,
-            97.7
-          ]
-        }
-      },
-      "source_label": "Web research (2026-07)"
-    },
-    {
-      "domain": "race_courses",
-      "kind": "race_profile",
-      "title": "Amazean Jungle Thailand by UTMB — Betong, Thailand",
-      "content": "Amazean Jungle Thailand by UTMB is held in Betong, Yala Province — a mountain town on the Thai-Malaysian border known for the Aiyerweng Sea of Mist and Hala-Bala rainforest. Distances are Betong 10 (15.8km/470m D+), Betong 25 (27.9km/1208m D+), Betong 50 (53.9km/2108m D+), Betong 100 (98.3km/5779m D+) and Betong 160 (165.7km/8911m D+). The course runs through Hala-Bala rainforest and past ASEAN's longest skywalk. Deep southern Thailand rainforest brings very high year-round humidity (24-32°C).",
-      "payload": {
-        "race_name": "Amazean Jungle Thailand by UTMB",
-        "aliases": [
-          "Betong 160",
-          "Betong 100",
-          "Betong 50",
-          "Betong 25",
-          "Betong 10"
-        ],
-        "location": "Betong, Yala Province, Thailand (Thai-Malaysian border)",
-        "country": "Thailand",
-        "region": "ASEAN",
-        "race_type": "jungle_trail",
-        "month_held": "varies",
-        "distances": [
-          {
-            "label": "Betong 10",
-            "distance_km": 15.8,
-            "elevation_gain_m": 470
-          },
-          {
-            "label": "Betong 25",
-            "distance_km": 27.9,
-            "elevation_gain_m": 1208
-          },
-          {
-            "label": "Betong 50",
-            "distance_km": 53.9,
-            "elevation_gain_m": 2108
-          },
-          {
-            "label": "Betong 100",
-            "distance_km": 98.3,
-            "elevation_gain_m": 5779
-          },
-          {
-            "label": "Betong 160",
-            "distance_km": 165.7,
-            "elevation_gain_m": 8911
-          }
-        ],
-        "terrain": [
-          "Hala-Bala rainforest",
-          "Aiyerweng Sea of Mist ridgeline",
-          "ASEAN's longest skywalk",
-          "deep jungle singletrack"
-        ],
-        "key_climbs": [],
-        "climate": {
-          "season": "equatorial rainforest, year-round heat/humidity",
-          "avg_temp_c": "24-32",
-          "humidity_pct": "very high",
-          "notes": "Deep southern Thailand near the Malaysian border — dense Hala-Bala rainforest with high humidity even at altitude."
-        },
-        "runner_reviews": [],
-        "matching_hints": {
-          "name_keywords": [
-            "amazean jungle",
-            "betong",
-            "hala-bala",
-            "aiyerweng"
-          ],
-          "distance_km_options": [
-            15.8,
-            27.9,
-            53.9,
-            98.3,
-            165.7
-          ]
-        }
-      },
-      "source_label": "Web research (2026-07)"
-    },
-    {
-      "domain": "race_courses",
-      "kind": "race_profile",
-      "title": "Rinjani 100 — Lombok, Indonesia",
-      "content": "Rinjani 100, held each May on Lombok, Indonesia, is a 100km ultramarathon with roughly 9,660m of cumulative elevation gain — one of the highest D+ totals of any 100km race worldwide. The course tours Lombok's highest peaks and summits Mount Rinjani (3,726m), Indonesia's second-highest volcano. Terrain is severe: loose volcanic ash and scree, exposed roots, and rock scrambling, with runners describing it as feeling like every step forward is a step back on the ash sections. The 40-hour cutoff reflects the combined severity of altitude, technicality, and volcanic footing.",
-      "payload": {
-        "race_name": "Rinjani 100",
-        "aliases": [
-          "Mandala Trail Rinjani",
-          "Rinjani Ultra"
-        ],
-        "location": "Mount Rinjani, Lombok, West Nusa Tenggara, Indonesia",
-        "country": "Indonesia",
-        "region": "Asia",
-        "race_type": "volcano_mountain_trail",
-        "month_held": "May",
-        "distances": [
-          {
-            "label": "100km",
-            "distance_km": 100.0,
-            "elevation_gain_m": 9660
-          }
-        ],
-        "terrain": [
-          "volcanic ash and scree",
-          "exposed tree roots",
-          "rock scrambling",
-          "high-altitude summit trail"
-        ],
-        "key_climbs": [
-          {
-            "name": "Mount Rinjani summit",
-            "elevation_m": 3726,
-            "notes": "Second-highest volcano in Indonesia; loose volcanic ash makes upward progress feel like 'every step forward takes you a step back.'"
-          }
-        ],
-        "climate": {
-          "season": "May (dry season)",
-          "avg_temp_c": "cool at altitude, hot at lower elevations",
-          "humidity_pct": "moderate",
-          "notes": "40-hour cutoff reflects the severity of combined altitude, technical scrambling, and volcanic scree."
-        },
-        "runner_reviews": [
-          "Gnarled exposed roots, loose scree, and scrambling over piles of rocks; on loose volcanic ash every step forward can feel like a step back.",
-          "Considered one of the toughest ultras globally, combining extreme elevation gain (~9,660m) with difficult volcanic terrain."
-        ],
-        "matching_hints": {
-          "name_keywords": [
-            "rinjani 100",
-            "mandala trail",
-            "mount rinjani",
-            "lombok"
-          ],
-          "distance_km_options": [
-            100.0
-          ]
-        }
-      },
-      "source_label": "Web research (2026-07)"
-    },
-    {
-      "domain": "race_courses",
-      "kind": "race_profile",
-      "title": "HK100 (Hong Kong 100 Ultra) — Hong Kong",
-      "content": "HK100 (Hong Kong 100) runs each January from Pak Tam Chung on the east side of the New Territories, following much of the famous MacLehose Trail west to finish after descending Tai Mo Shan (957m), Hong Kong's highest peak. The flagship distance is 103km/5300m D+, with shorter options 'The Half' (50km/2118m D+) and 'The Third' (31km/1395m D+). The course delivers relentless rolling terrain with very few flat sections — short, frequent climbs and technical, steep descents — crossing beaches, ancient forests, and villages with South China Sea views. Much of the total climbing is concentrated in the second half, so runners are advised to pace conservatively early. January is Hong Kong's cool, dry season (12-20°C).",
-      "payload": {
-        "race_name": "Hong Kong 100",
-        "aliases": [
-          "HK100",
-          "Vibram Hong Kong 100"
-        ],
-        "location": "Pak Tam Chung to Tai Mo Shan, New Territories, Hong Kong",
-        "country": "Hong Kong",
-        "region": "Asia",
-        "race_type": "coastal_mountain_trail",
-        "month_held": "January",
-        "distances": [
-          {
-            "label": "The Third",
-            "distance_km": 31.0,
-            "elevation_gain_m": 1395
-          },
-          {
-            "label": "The Half",
-            "distance_km": 50.0,
-            "elevation_gain_m": 2118
-          },
-          {
-            "label": "HK100",
-            "distance_km": 103.0,
-            "elevation_gain_m": 5300
-          }
-        ],
-        "terrain": [
-          "MacLehose Trail",
-          "coastal beaches",
-          "ancient forests",
-          "steep rolling hills",
-          "Tai Mo Shan descent"
-        ],
-        "key_climbs": [
-          {
-            "name": "Tai Mo Shan",
-            "elevation_m": 957,
-            "notes": "Hong Kong's highest peak; the course finishes after descending it."
-          }
-        ],
-        "climate": {
-          "season": "January (Hong Kong dry, cool season)",
-          "avg_temp_c": "12-20",
-          "humidity_pct": "moderate",
-          "notes": "Much of the climbing is concentrated in the second half of the course, so pacing reserve is critical."
-        },
-        "runner_reviews": [
-          "Relentless rolling terrain with very few flat sections, short but frequent climbs, and technical, often steep descents."
-        ],
-        "matching_hints": {
-          "name_keywords": [
-            "hk100",
-            "hong kong 100",
-            "maclehose trail",
-            "tai mo shan"
-          ],
-          "distance_km_options": [
-            31.0,
-            50.0,
-            103.0
-          ]
-        }
-      },
-      "source_label": "Web research (2026-07)"
-    },
-    {
-      "domain": "race_courses",
-      "kind": "race_profile",
-      "title": "TNF100 Philippines — Baguio, Philippines",
-      "content": "The North Face 100 Philippines (TNF100), first run in 2008 as the country's original 100km trail ultra, is historically centered on Baguio City in the Cordillera mountains — the cooler 'City of Pines'. Distances include 11/22/50/100km, with the 100km carrying roughly 2,900m of elevation gain (comparable to a route similar to Mt. Sto. Tomas to Mt. Pulag). Editions run during the Philippine rainy season bring muddy, slippery mountain trail conditions on top of the climbing.",
-      "payload": {
-        "race_name": "The North Face 100 Philippines",
-        "aliases": [
-          "TNF100",
-          "TNF100 Philippines"
-        ],
-        "location": "Baguio City, Benguet Province, Philippines (historically; some editions in Camsur/other regions)",
-        "country": "Philippines",
-        "region": "Asia",
-        "race_type": "mountain_trail",
-        "month_held": "varies (historically April)",
-        "distances": [
-          {
-            "label": "11km",
-            "distance_km": 11.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "22km",
-            "distance_km": 22.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "50km",
-            "distance_km": 50.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "100km",
-            "distance_km": 100.0,
-            "elevation_gain_m": 2900
-          }
-        ],
-        "terrain": [
-          "Cordillera mountain trail",
-          "pine forest ('City of Pines')",
-          "muddy rainy-season terrain"
-        ],
-        "key_climbs": [],
-        "climate": {
-          "season": "varies; historically overlaps rainy season",
-          "avg_temp_c": "15-25 (Baguio, elevated)",
-          "humidity_pct": "high in rainy season",
-          "notes": "Baguio is the cooler 'City of Pines' in the Cordillera; races run in the rainy season bring muddy, slippery trail conditions."
-        },
-        "runner_reviews": [],
-        "matching_hints": {
-          "name_keywords": [
-            "tnf100",
-            "north face 100",
-            "baguio",
-            "philippines"
-          ],
-          "distance_km_options": [
-            11.0,
-            22.0,
-            50.0,
-            100.0
-          ]
-        }
-      },
-      "source_label": "Web research (2026-07)"
-    },
-    {
-      "domain": "race_courses",
-      "kind": "race_profile",
-      "title": "Ultra-Trail Mt. Fuji (UTMF / Mt. Fuji 100) — Yamanashi/Shizuoka, Japan",
-      "content": "Ultra-Trail Mt. Fuji (UTMF, renamed Mt. Fuji 100 for its 10th edition) circles Mount Fuji across Yamanashi and Shizuoka Prefectures each April. The flagship FUJI 100mi course is 166.6km with 7,038m of cumulative gain and a 44.5-hour cutoff; shorter options are KAI 70k (~3,052-3,500m D+, 21-hour cutoff) and ASUMI 40k (~1,445m D+). The course is forest trail on volcanic terrain circling the base of Fuji, known for a midnight/pre-dawn start on the longer distance and cold night-time temperatures at altitude (~5-15°C in April).",
-      "payload": {
-        "race_name": "Ultra-Trail Mt. Fuji",
-        "aliases": [
-          "UTMF",
-          "Mt. Fuji 100",
-          "FUJI 100mi",
-          "KAI 70k",
-          "ASUMI 40k"
-        ],
-        "location": "Yamanashi Prefecture and Shizuoka Prefecture, Japan (around Mount Fuji)",
-        "country": "Japan",
-        "region": "Asia",
-        "race_type": "mountain_trail",
-        "month_held": "April",
-        "distances": [
-          {
-            "label": "ASUMI 40k",
-            "distance_km": 40.0,
-            "elevation_gain_m": 1445
-          },
-          {
-            "label": "KAI 70k",
-            "distance_km": 70.0,
-            "elevation_gain_m": 3052
-          },
-          {
-            "label": "FUJI 100mi",
-            "distance_km": 166.6,
-            "elevation_gain_m": 7038
-          }
-        ],
-        "terrain": [
-          "forest trail circling Mount Fuji",
-          "volcanic terrain",
-          "long climbs and descents around the base of Fuji"
-        ],
-        "key_climbs": [],
-        "climate": {
-          "season": "April (Japanese spring)",
-          "avg_temp_c": "5-15",
-          "humidity_pct": "moderate",
-          "notes": "44.5-hour time limit for the full 166.6km course reflects the scale of continuous climbing circling Mount Fuji; night-time cold at altitude is a factor."
-        },
-        "runner_reviews": [],
-        "matching_hints": {
-          "name_keywords": [
-            "utmf",
-            "mt fuji 100",
-            "mount fuji",
-            "kai 70k",
-            "asumi 40k"
-          ],
-          "distance_km_options": [
-            40.0,
-            70.0,
-            166.6
-          ]
-        }
-      },
-      "source_label": "Web research (2026-07)"
-    },
-    {
-      "domain": "race_courses",
-      "kind": "race_profile",
-      "title": "Hasetsune Cup (Japan Mountain Endurance Race) — Tokyo, Japan",
-      "content": "The Hasetsune Cup (Japan Mountain Endurance Race), run every October since 1992 in the Okutama mountains west of Tokyo, covers 71.5km with 4,582m of cumulative gain and a 24-hour cutoff. The course traverses a chain of peaks — Mt. Mito (1527m), Mt. Gozen (1405m), Mt. Ohtake (1266m), Mitake Shrine (929m) and Mt. Hinode (902m) — starting at Itsukaichi. Aid stations are minimal, demanding genuine self-sufficiency. October brings mild Japanese autumn conditions (10-20°C).",
-      "payload": {
-        "race_name": "Hasetsune Cup",
-        "aliases": [
-          "Japan Mountain Endurance Race",
-          "Hasegawa Tsuneo Cup"
-        ],
-        "location": "Okutama mountains, west of Tokyo, Japan",
-        "country": "Japan",
-        "region": "Asia",
-        "race_type": "self_sufficient_mountain_trail",
-        "month_held": "October",
-        "distances": [
-          {
-            "label": "race",
-            "distance_km": 71.5,
-            "elevation_gain_m": 4582
-          }
-        ],
-        "terrain": [
-          "Okutama mountain ridgeline",
-          "minimal aid stations, near-full self-sufficiency required"
-        ],
-        "key_climbs": [
-          {
-            "name": "Mt. Mito",
-            "elevation_m": 1527
-          },
-          {
-            "name": "Mt. Gozen",
-            "elevation_m": 1405
-          },
-          {
-            "name": "Mt. Ohtake",
-            "elevation_m": 1266
-          },
-          {
-            "name": "Mitake Shrine",
-            "elevation_m": 929
-          },
-          {
-            "name": "Mt. Hinode",
-            "elevation_m": 902
-          }
-        ],
-        "climate": {
-          "season": "October (Japanese autumn)",
-          "avg_temp_c": "10-20",
-          "humidity_pct": "moderate",
-          "notes": "24-hour time limit; run since 1992 to commemorate alpinist Tsuneo Hasegawa."
-        },
-        "runner_reviews": [],
-        "matching_hints": {
-          "name_keywords": [
-            "hasetsune",
-            "japan mountain endurance race",
-            "okutama"
-          ],
-          "distance_km_options": [
-            71.5
-          ]
-        }
-      },
-      "source_label": "Web research (2026-07)"
-    },
-    {
-      "domain": "race_courses",
-      "kind": "race_profile",
-      "title": "Bromo Marathon — East Java, Indonesia",
-      "content": "The Bromo Marathon, held each September in Bromo Tengger Semeru National Park, East Java, starts at 1,840m altitude and offers 2.5/5/10/21/42km distances. The half marathon (977m D+) is one of Southeast Asia's more demanding halves, while the full marathon has a comparatively modest 193m D+ (max elevation 2,491m) since it favors distance over climbing. Terrain is roughly 50% paved village road and 50% volcanic sand/rocky dirt trail through Tenggerese villages with caldera views. High-altitude start gives cool highland air distinct from typical lowland Indonesian heat and humidity.",
-      "payload": {
-        "race_name": "Bromo Marathon",
-        "aliases": [
-          "Mount Bromo Marathon"
-        ],
-        "location": "Bromo Tengger Semeru National Park, East Java, Indonesia",
-        "country": "Indonesia",
-        "region": "Asia",
-        "race_type": "volcano_road_trail_mixed",
-        "month_held": "September",
-        "distances": [
-          {
-            "label": "2.5km",
-            "distance_km": 2.5,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "5km",
-            "distance_km": 5.0,
-            "elevation_gain_m": 241
-          },
-          {
-            "label": "10km",
-            "distance_km": 10.0,
-            "elevation_gain_m": 426
-          },
-          {
-            "label": "21km",
-            "distance_km": 21.0,
-            "elevation_gain_m": 977
-          },
-          {
-            "label": "42km",
-            "distance_km": 42.0,
-            "elevation_gain_m": 193
-          }
-        ],
-        "terrain": [
-          "volcanic sand",
-          "rocky paths",
-          "paved village roads (~50% asphalt / 50% dirt trail)",
-          "Tenggerese villages",
-          "caldera views"
-        ],
-        "key_climbs": [],
-        "climate": {
-          "season": "September (Indonesian dry season)",
-          "avg_temp_c": "cool highland air, starting altitude 1,840m asl",
-          "humidity_pct": "moderate",
-          "notes": "Course starts at 1,840m asl with max elevation 2,491m on the marathon; high-altitude coolness contrasts with typical lowland Indonesian heat."
-        },
-        "runner_reviews": [],
-        "matching_hints": {
-          "name_keywords": [
-            "bromo marathon",
-            "mount bromo",
-            "bromo tengger semeru"
-          ],
-          "distance_km_options": [
-            2.5,
-            5.0,
-            10.0,
-            21.0,
-            42.0
-          ]
-        }
-      },
-      "source_label": "Web research (2026-07)"
-    },
-    {
-      "domain": "race_courses",
-      "kind": "race_profile",
-      "title": "XTERRA Zhangjiajie Wulingyuan Trail Run — Hunan, China",
-      "content": "The XTERRA Zhangjiajie Wulingyuan Trail Run, the first international trail run hosted in this UNESCO World Heritage karst region ('Avatar Mountains') of Hunan Province, China, offers 15K, 25K half marathon (1,400m D+), 42K marathon (2,400m+ D+) and 88K distances. The course weaves through towering sandstone pillar formations, dense singletrack forest, technical rocky ascents/descents and waterfalls. Subtropical Hunan climate brings high humidity year-round.",
-      "payload": {
-        "race_name": "XTERRA Zhangjiajie Wulingyuan Trail Run",
-        "aliases": [
-          "Zhangjiajie Trail Run",
-          "Avatar Mountain Trail Run"
-        ],
-        "location": "Wulingyuan, Zhangjiajie, Hunan Province, China",
-        "country": "China",
-        "region": "Asia",
-        "race_type": "karst_forest_trail",
-        "month_held": "varies",
-        "distances": [
-          {
-            "label": "15K",
-            "distance_km": 15.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "21K half marathon",
-            "distance_km": 25.0,
-            "elevation_gain_m": 1400
-          },
-          {
-            "label": "marathon",
-            "distance_km": 42.0,
-            "elevation_gain_m": 2400
-          },
-          {
-            "label": "88K",
-            "distance_km": 88.0,
-            "elevation_gain_m": null
-          }
-        ],
-        "terrain": [
-          "karst sandstone pillar formations ('Avatar Mountains')",
-          "dense singletrack forest floor",
-          "technical rocky ascents/descents",
-          "waterfalls"
-        ],
-        "key_climbs": [],
-        "climate": {
-          "season": "varies",
-          "avg_temp_c": "subtropical Hunan climate",
-          "humidity_pct": "high",
-          "notes": "UNESCO World Heritage site famed for towering sandstone pillars; first international trail run hosted in this location."
-        },
-        "runner_reviews": [],
-        "matching_hints": {
-          "name_keywords": [
-            "zhangjiajie",
-            "wulingyuan",
-            "xterra china",
-            "avatar mountain"
-          ],
-          "distance_km_options": [
-            15.0,
-            25.0,
-            42.0,
-            88.0
-          ]
-        }
-      },
-      "source_label": "Web research (2026-07)"
-    },
-    {
-      "domain": "race_courses",
-      "kind": "race_profile",
-      "title": "Angkor Wat International Half Marathon — Siem Reap, Cambodia (road)",
-      "content": "The Angkor Wat International Half Marathon starts and finishes in front of Angkor Wat Temple, Siem Reap, Cambodia, each December, passing roughly 14 ancient temples on a flat, mixed-surface course (road, gravel, parkland, boardwalk) shaded by ancient trees. Despite being December's dry season, temperatures still range 18-32°C with moderate-to-high humidity; the 6am start is designed to manage heat, which remains the dominant race-day variable given the flat terrain.",
-      "payload": {
-        "race_name": "Angkor Wat International Half Marathon",
-        "aliases": [
-          "Angkor Wat Half Marathon"
-        ],
-        "location": "Siem Reap, Cambodia (starts/finishes at Angkor Wat Temple)",
-        "country": "Cambodia",
-        "region": "ASEAN",
-        "race_type": "road_marathon",
-        "month_held": "December",
-        "distances": [
-          {
-            "label": "21km",
-            "distance_km": 21.1,
-            "elevation_gain_m": null
-          }
-        ],
-        "terrain": [
-          "flat mixed-surface course",
-          "road, gravel paths, parkland, boardwalks",
-          "past ~14 ancient temples"
-        ],
-        "key_climbs": [],
-        "climate": {
-          "season": "December (Cambodian dry season)",
-          "avg_temp_c": "18-32 (sources vary; hot by midday)",
-          "humidity_pct": "moderate-high",
-          "notes": "Race starts at 6am to manage heat; flat course but heat remains the dominant factor — roughly 1-2% pace slowdown per °C above 15°C."
-        },
-        "runner_reviews": [],
-        "matching_hints": {
-          "name_keywords": [
-            "angkor wat half marathon",
-            "angkor wat international half marathon",
-            "siem reap"
-          ],
-          "distance_km_options": [
-            21.1
-          ]
-        }
-      },
-      "source_label": "Web research (2026-07)"
-    },
-    {
-      "domain": "race_courses",
-      "kind": "race_profile",
-      "title": "Standard Chartered Singapore Marathon — Singapore (road)",
-      "content": "The Standard Chartered Singapore Marathon (SCSM), run each December, is flat and fast (~215m total elevation gain over 42.195km) with no rhythm-breaking climbs, passing the F1 Pit Building, National Stadium, Esplanade, Merlion Park, Marina Bay Sands, Gardens by the Bay and East Coast Park. Despite the flat course, it is considered one of the hardest major marathons weather-wise: temperatures of 26-28°C combined with humidity near 90% — even at the 4:30am start — commonly cost runners 10-20 minutes versus cool-weather performances. It is a useful reference case for heat/humidity pacing strategy in equatorial road racing.",
-      "payload": {
-        "race_name": "Standard Chartered Singapore Marathon",
-        "aliases": [
-          "SCSM",
-          "Singapore Marathon"
-        ],
-        "location": "Singapore",
-        "country": "Singapore",
-        "region": "ASEAN",
-        "race_type": "road_marathon",
-        "month_held": "December",
-        "distances": [
-          {
-            "label": "42km",
-            "distance_km": 42.195,
-            "elevation_gain_m": 215
-          }
-        ],
-        "terrain": [
-          "F1 Pit Building start",
-          "National Stadium",
-          "Esplanade",
-          "Merlion Park",
-          "Marina Bay Sands",
-          "Gardens by the Bay",
-          "East Coast Park",
-          "flat urban/waterfront road"
-        ],
-        "key_climbs": [],
-        "climate": {
-          "season": "December",
-          "avg_temp_c": "26-28",
-          "humidity_pct": "close to 90%, even at the 4:30am start",
-          "notes": "Flat and technically fast course, but heat and humidity are severe — runners commonly report finishing 10-20 minutes slower than in cool-weather conditions."
-        },
-        "runner_reviews": [
-          "Course records have fallen despite extreme heat and humidity, showing elite depth, but average finishers lose significant time to conditions."
-        ],
-        "matching_hints": {
-          "name_keywords": [
-            "standard chartered singapore marathon",
-            "scsm",
-            "singapore marathon"
-          ],
-          "distance_km_options": [
-            42.195
-          ]
-        }
-      },
-      "source_label": "Web research (2026-07)"
-    },
-    {
-      "domain": "race_courses",
-      "kind": "race_profile",
-      "title": "Gold Coast Marathon — Queensland, Australia (road)",
-      "content": "The Gold Coast Marathon, run each July along an oceanfront out-and-back route in Queensland, is Australia's flattest major road marathon at just ~62m of total elevation change across 42.195km. Combined with cool, dry, often windless July winter mornings, it's regarded as one of the world's premier PB and qualifying courses — roughly 60% of finishers report personal bests. A strong contrast case to hot, humid ASEAN road races: minimal terrain difficulty and favorable weather make pacing plans closer to pure fitness-limited than heat-limited.",
-      "payload": {
-        "race_name": "Gold Coast Marathon",
-        "aliases": [
-          "ASICS Gold Coast Marathon",
-          "GCM"
-        ],
-        "location": "Gold Coast, Queensland, Australia",
-        "country": "Australia",
-        "region": "Australia",
-        "race_type": "road_marathon",
-        "month_held": "July",
-        "distances": [
-          {
-            "label": "42km",
-            "distance_km": 42.195,
-            "elevation_gain_m": 62
-          }
-        ],
-        "terrain": [
-          "oceanfront out-and-back",
-          "flat urban coastal road"
-        ],
-        "key_climbs": [],
-        "climate": {
-          "season": "July (Southern Hemisphere winter)",
-          "avg_temp_c": "cool, dry, often windless winter mornings",
-          "humidity_pct": "low",
-          "notes": "Regarded as one of the world's premier PB/qualifying courses — ~60% of finishers report personal bests."
-        },
-        "runner_reviews": [],
-        "matching_hints": {
-          "name_keywords": [
-            "gold coast marathon",
-            "gcm",
-            "asics gold coast marathon"
-          ],
-          "distance_km_options": [
-            42.195
-          ]
-        }
-      },
-      "source_label": "Web research (2026-07)"
-    },
-    {
-      "domain": "race_courses",
-      "kind": "race_profile",
-      "title": "VnExpress Marathon Đà Nẵng — Đà Nẵng, Vietnam (road)",
-      "content": "The VnExpress Marathon Đà Nẵng (and the separately organized Đà Nẵng International Marathon in March) offers 5/10/21/42km distances along the Hàn River, over the Dragon, Trần Thị Lý and Thuận Phước bridges, and past Mỹ Khê beach — a flat, scenic coastal/urban road course. The July VnExpress edition uses a pre-dawn start both for sunrise views and to mitigate central Vietnam's hot, humid summer conditions.",
-      "payload": {
-        "race_name": "VnExpress Marathon Da Nang",
-        "aliases": [
-          "Da Nang International Marathon",
-          "VM Da Nang"
-        ],
-        "location": "Đà Nẵng, Vietnam",
-        "country": "Vietnam",
-        "region": "ASEAN",
-        "race_type": "road_marathon",
-        "month_held": "July (VnExpress edition) / March (separate Danang International Marathon)",
-        "distances": [
-          {
-            "label": "5km",
-            "distance_km": 5.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "10km",
-            "distance_km": 10.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "21km",
-            "distance_km": 21.1,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "42km",
-            "distance_km": 42.195,
-            "elevation_gain_m": null
-          }
-        ],
-        "terrain": [
-          "Hàn River",
-          "Dragon Bridge",
-          "Trần Thị Lý bridge",
-          "Thuận Phước bridge",
-          "Mỹ Khê beach",
-          "coastal/urban road"
-        ],
-        "key_climbs": [],
-        "climate": {
-          "season": "July (hot, humid central Vietnam summer)",
-          "avg_temp_c": "high 20s-30s C",
-          "humidity_pct": "high coastal humidity",
-          "notes": "Pre-dawn start used to let runners experience sunrise over the ocean and mitigate peak heat."
-        },
-        "runner_reviews": [],
-        "matching_hints": {
-          "name_keywords": [
-            "vnexpress marathon da nang",
-            "da nang international marathon",
-            "danang marathon"
-          ],
-          "distance_km_options": [
-            5.0,
-            10.0,
-            21.1,
-            42.195
-          ]
-        }
-      },
-      "source_label": "Web research (2026-07)"
-    },
-    {
-      "domain": "race_courses",
-      "kind": "race_profile",
-      "title": "Prenn Trail (Challenge/Summit) — Đà Lạt, Vietnam",
-      "content": "Prenn Trail (run as Prenn Trail Challenge / Prenn Trail Summit) is based at Tea Resort Prenn at the foot of Prenn Pass, Đà Lạt, Lâm Đồng Province. It offers one of Vietnam's widest distance spreads, from 25km ('The Leaders') up through 55km/2,127m D+ ('The Challengers'), 75km/3,800m D+ ('The Warriors'), 103km ('The Heroes'), 187km ('The Legends') to a 246km/~11,500m D+ ultra-extreme category ('The Gods'). As with other Đà Lạt-area races, the ~1,500m plateau altitude keeps temperatures cool for most of the day relative to lowland Vietnam.",
-      "payload": {
-        "race_name": "Prenn Trail",
-        "aliases": [
-          "Prenn Trail Challenge",
-          "Prenn Trail Summit",
-          "The Leaders",
-          "The Challengers",
-          "The Warriors",
-          "The Heroes",
-          "The Legends",
-          "The Gods"
-        ],
-        "location": "Prenn Pass, Đà Lạt, Lâm Đồng Province, Vietnam",
-        "country": "Vietnam",
-        "region": "ASEAN",
-        "race_type": "mountain_trail",
-        "month_held": "varies (organizer: Tea Resort Prenn)",
-        "distances": [
-          {
-            "label": "25km / The Leaders",
-            "distance_km": 25.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "55km / The Challengers",
-            "distance_km": 51.43,
-            "elevation_gain_m": 2127
-          },
-          {
-            "label": "75km / The Warriors",
-            "distance_km": 75.0,
-            "elevation_gain_m": 3800
-          },
-          {
-            "label": "103km / The Heroes",
-            "distance_km": 103.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "187km / The Legends",
-            "distance_km": 187.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "250km / The Gods",
-            "distance_km": 246.04,
-            "elevation_gain_m": 11496
-          }
-        ],
-        "terrain": [
-          "Prenn Pass foothills",
-          "Đà Lạt highland pine forest and ridgeline"
-        ],
-        "key_climbs": [],
-        "climate": {
-          "season": "varies",
-          "avg_temp_c": "cool for most of the day given ~1,500m plateau altitude",
-          "humidity_pct": "moderate",
-          "notes": "Hosted at Tea Resort Prenn, Prenn Pass foot, Đà Lạt City — one of Vietnam's most extreme distance offerings, up to a 246km 'Gods' category with ~11,500m D+."
-        },
-        "runner_reviews": [],
-        "matching_hints": {
-          "name_keywords": [
-            "prenn trail",
-            "prenn pass",
-            "the challengers",
-            "the warriors",
-            "the gods"
-          ],
-          "distance_km_options": [
-            25.0,
-            51.43,
-            75.0,
-            103.0,
-            187.0,
-            246.04
-          ]
-        }
-      },
-      "source_label": "Web research (2026-07)"
-    },
-    {
-      "domain": "race_courses",
-      "kind": "race_profile",
-      "title": "Lâm Đồng Trail — Đà Lạt, Vietnam",
-      "content": "Lâm Đồng Trail is held each November in Đà Lạt, Lâm Đồng Province, with a 3km Kidstrail plus 15/25/45/75km adult distances. Elevation gain scales steeply with distance: 25km carries 1,041m D+, 45km carries 2,329m D+, and the 75km ultra carries 3,805m D+ — runners note it is by no means an easy flat run despite Đà Lạt's gentler reputation. As with other Central Highlands races, the ~1,500m plateau altitude keeps conditions cooler than lowland Vietnam.",
-      "payload": {
-        "race_name": "Lam Dong Trail",
-        "aliases": [
-          "Lam Dong Ultra Trail",
-          "Lâm Đồng Trail"
-        ],
-        "location": "Đà Lạt, Lâm Đồng Province, Vietnam",
-        "country": "Vietnam",
-        "region": "ASEAN",
-        "race_type": "mountain_trail",
-        "month_held": "November",
-        "distances": [
-          {
-            "label": "3km Kidstrail",
-            "distance_km": 3.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "15km",
-            "distance_km": 15.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "25km",
-            "distance_km": 25.0,
-            "elevation_gain_m": 1041
-          },
-          {
-            "label": "45km",
-            "distance_km": 45.0,
-            "elevation_gain_m": 2329
-          },
-          {
-            "label": "75km",
-            "distance_km": 75.0,
-            "elevation_gain_m": 3805
-          }
-        ],
-        "terrain": [
-          "Lâm Đồng highland pine forest and hill trail"
-        ],
-        "key_climbs": [],
-        "climate": {
-          "season": "November",
-          "avg_temp_c": "cool highland (~1,500m altitude)",
-          "humidity_pct": "moderate",
-          "notes": "'By no means an easy flat run in the park' — over 4,000m of cumulative D+ across the longer distances."
-        },
-        "runner_reviews": [],
-        "matching_hints": {
-          "name_keywords": [
-            "lam dong trail",
-            "lam dong ultra trail",
-            "lâm đồng"
-          ],
-          "distance_km_options": [
-            3.0,
-            15.0,
-            25.0,
-            45.0,
-            75.0
-          ]
-        }
-      },
-      "source_label": "Web research (2026-07)"
-    },
-    {
-      "domain": "race_courses",
-      "kind": "race_profile",
-      "title": "Phong Nha Wild Trail / Quảng Bình Discovery Marathon — Phong Nha-Kẻ Bàng, Vietnam",
-      "content": "Phong Nha Wild Trail (organized alongside the Quảng Bình Discovery Marathon) runs through Phong Nha-Kẻ Bàng National Park, Quảng Bình Province — a UNESCO World Heritage karst landscape with over 300 explored caves including Sơn Đoòng, the world's largest cave passage. Distances span 5/10/20/50/70km (Wild Trail) alongside a 6/10/21km Discovery Marathon program with a 42km planned. The terrain is forested limestone karst rather than in-cave running, held in March under mild central-Vietnam spring conditions with the high humidity typical of karst/jungle microclimates.",
-      "payload": {
-        "race_name": "Phong Nha Wild Trail",
-        "aliases": [
-          "Quang Binh Discovery Marathon",
-          "Phong Nha Marathon"
-        ],
-        "location": "Phong Nha-Kẻ Bàng National Park, Quảng Bình Province, Vietnam",
-        "country": "Vietnam",
-        "region": "ASEAN",
-        "race_type": "karst_jungle_trail",
-        "month_held": "March",
-        "distances": [
-          {
-            "label": "5km",
-            "distance_km": 5.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "10km",
-            "distance_km": 10.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "20km",
-            "distance_km": 20.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "21km (Discovery)",
-            "distance_km": 21.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "50km",
-            "distance_km": 50.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "70km",
-            "distance_km": 70.0,
-            "elevation_gain_m": null
-          }
-        ],
-        "terrain": [
-          "limestone karst national park",
-          "cave-system-adjacent trail",
-          "jungle singletrack"
-        ],
-        "key_climbs": [],
-        "climate": {
-          "season": "March",
-          "avg_temp_c": "central Vietnam spring, mild",
-          "humidity_pct": "high (karst/jungle microclimate)",
-          "notes": "Phong Nha-Kẻ Bàng is a UNESCO World Heritage karst park with over 300 explored caves (incl. Sơn Đoòng, the world's largest cave passage); race trails run through the park's forested karst terrain rather than inside the caves themselves."
-        },
-        "runner_reviews": [],
-        "matching_hints": {
-          "name_keywords": [
-            "phong nha wild trail",
-            "quang binh discovery marathon",
-            "phong nha marathon",
-            "phong nha ke bang"
-          ],
-          "distance_km_options": [
-            5.0,
-            10.0,
-            20.0,
-            21.0,
-            50.0,
-            70.0
-          ]
-        }
-      },
-      "source_label": "Web research (2026-07)"
-    },
-    {
-      "domain": "race_courses",
-      "kind": "race_profile",
-      "title": "Cúc Phương Jungle Paths — Cúc Phương National Park, Vietnam",
-      "content": "Cúc Phương Jungle Paths is held in Cúc Phương National Park, Ninh Bình Province — Vietnam's oldest national park, known for limestone forest and karst wildlife valleys. Distances span 10/25/42/75/100km, with the 100km carrying roughly 2,600m D+, most of it concentrated in the second half deep in the jungle where trails turn continuously treacherous, slippery and dark. The 42km shares its tougher second half with the 100km/75km courses but is otherwise considered the more 'runnable' distance, with over 30km inside Cúc Phương's primary forest. High jungle-canopy humidity is a factor regardless of the April or December edition.",
-      "payload": {
-        "race_name": "Cuc Phuong Jungle Paths",
-        "aliases": [
-          "Cúc Phương Jungle Paths"
-        ],
-        "location": "Cúc Phương National Park, Ninh Bình Province, Vietnam",
-        "country": "Vietnam",
-        "region": "ASEAN",
-        "race_type": "jungle_trail",
-        "month_held": "April (also Dec editions)",
-        "distances": [
-          {
-            "label": "10km",
-            "distance_km": 10.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "25km",
-            "distance_km": 25.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "42km",
-            "distance_km": 42.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "75km",
-            "distance_km": 75.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "100km",
-            "distance_km": 100.0,
-            "elevation_gain_m": 2600
-          }
-        ],
-        "terrain": [
-          "limestone forest",
-          "primary jungle singletrack (>30km inside Cúc Phương primary forest on the 42km)",
-          "wildlife-rich karst valleys",
-          "continuously slippery, dark single trail deep in the jungle"
-        ],
-        "key_climbs": [],
-        "climate": {
-          "season": "April / December",
-          "avg_temp_c": "varies by edition",
-          "humidity_pct": "high, dense jungle canopy",
-          "notes": "Most of the 100km's elevation gain is concentrated in the second half, deep in the jungle, where trails are described as continuously treacherous, slippery and dark. The 42km is the more 'runnable' option, sharing its second half with the 100km/75km courses."
-        },
-        "runner_reviews": [
-          "The 100km is very tough; hills deep in the jungle are continuously treacherous, slippery and dark.",
-          "42km caters to trail runners who prefer more runnable trails; 100km and 70/75km are tough."
-        ],
-        "matching_hints": {
-          "name_keywords": [
-            "cuc phuong",
-            "cúc phương",
-            "jungle paths"
-          ],
-          "distance_km_options": [
-            10.0,
-            25.0,
-            42.0,
-            75.0,
-            100.0
-          ]
-        }
-      },
-      "source_label": "Web research (2026-07)"
-    },
-    {
-      "domain": "race_courses",
-      "kind": "race_profile",
-      "title": "Ultra Trail Cao Bằng (UTCB) — Cao Bằng, Vietnam",
-      "content": "Ultra Trail Cao Bằng (UTCB), held each November, showcases the Cao Bằng UNESCO Global Geopark near Vietnam's northern border with distances from 10km up to a 160km ultra (10/25/42/70/100/160km); the UTCB70 (67km) carries 1,100m D+. The course crosses bamboo forest, terraced rice fields, and riverside trail along the Bằng and Quây Sơn rivers, and passes major landmarks including the Pắc Bó relic site, Mắt Thần Mountain, Thang Hen and Bản Viết lakes, and Bản Giốc Waterfall. The northern-border highland location gives cooler conditions than central/southern Vietnam races.",
-      "payload": {
-        "race_name": "Ultra Trail Cao Bang",
-        "aliases": [
-          "UTCB",
-          "Cao Bang Trail"
-        ],
-        "location": "Cao Bằng Province, Vietnam (Cao Bằng Global Geopark)",
-        "country": "Vietnam",
-        "region": "ASEAN",
-        "race_type": "mountain_trail",
-        "month_held": "November",
-        "distances": [
-          {
-            "label": "10km",
-            "distance_km": 10.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "25km",
-            "distance_km": 25.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "42km",
-            "distance_km": 42.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "70km / UTCB70",
-            "distance_km": 67.0,
-            "elevation_gain_m": 1100
-          },
-          {
-            "label": "100km",
-            "distance_km": 100.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "160km",
-            "distance_km": 160.0,
-            "elevation_gain_m": null
-          }
-        ],
-        "terrain": [
-          "bamboo forest",
-          "terraced rice fields",
-          "riverside trail along the Bằng and Quây Sơn rivers",
-          "pine hills",
-          "UNESCO Global Geopark limestone landscape"
-        ],
-        "key_climbs": [],
-        "climate": {
-          "season": "November",
-          "avg_temp_c": "cooler northern-border highland climate",
-          "humidity_pct": "moderate",
-          "notes": "Passes cultural-historical landmarks including the Pắc Bó relic site, Mắt Thần Mountain, Thang Hen and Bản Viết lakes, and Bản Giốc Waterfall."
-        },
-        "runner_reviews": [],
-        "matching_hints": {
-          "name_keywords": [
-            "ultra trail cao bang",
-            "utcb",
-            "cao bang trail",
-            "cao bằng"
-          ],
-          "distance_km_options": [
-            10.0,
-            25.0,
-            42.0,
-            67.0,
-            100.0,
-            160.0
-          ]
-        }
-      },
-      "source_label": "Web research (2026-07)"
-    },
-    {
-      "domain": "race_courses",
-      "kind": "race_profile",
-      "title": "Mù Cang Chải Ultra Trail — Mù Cang Chải, Vietnam",
-      "content": "The Mù Cang Chải Ultra Trail runs each October through Mù Cang Chải District, Yên Bái Province — famed for its golden terraced rice fields (2,200 hectares, 500 of which are recognized national heritage). Distances span 12/25/55/75/100/160km. Over 80% of the terrain is mountainous mixed-soil trail with strength-challenging slopes; the district sits at ~1,000m average altitude with the highest peak, Lũng Cung, reaching 2,913m. The race is timed to the golden rice-terrace season, giving misty, cool highland running conditions.",
-      "payload": {
-        "race_name": "Mucangchai Ultra Trail",
-        "aliases": [
-          "Mu Cang Chai Ultra Trail",
-          "MCC Ultra Trail"
-        ],
-        "location": "Mù Cang Chải District, Yên Bái Province, Vietnam",
-        "country": "Vietnam",
-        "region": "ASEAN",
-        "race_type": "mountain_trail",
-        "month_held": "October",
-        "distances": [
-          {
-            "label": "12km",
-            "distance_km": 12.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "25km",
-            "distance_km": 25.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "55km",
-            "distance_km": 55.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "75km",
-            "distance_km": 75.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "100km",
-            "distance_km": 100.0,
-            "elevation_gain_m": null
-          },
-          {
-            "label": "160km",
-            "distance_km": 160.0,
-            "elevation_gain_m": null
-          }
-        ],
-        "terrain": [
-          "terraced rice field ridgeline (2,200 hectares of terraces, 500 ha national heritage)",
-          "mixed-soil mountain trail (>80% mountainous terrain)",
-          "misty ridges"
-        ],
-        "key_climbs": [
-          {
-            "name": "Lũng Cung",
-            "elevation_m": 2913,
-            "notes": "Highest peak in Mù Cang Chải; the district sits at an average altitude of ~1,000m."
-          }
-        ],
-        "climate": {
-          "season": "October (rice-terrace golden season)",
-          "avg_temp_c": "cool highland, misty",
-          "humidity_pct": "moderate-high",
-          "notes": "Timed to coincide with the golden ripening of Mù Cang Chải's terraced rice fields, a major visual draw of the race."
-        },
-        "runner_reviews": [],
-        "matching_hints": {
-          "name_keywords": [
-            "mucangchai",
-            "mu cang chai",
-            "mù cang chải"
-          ],
-          "distance_km_options": [
-            12.0,
-            25.0,
-            55.0,
-            75.0,
-            100.0,
-            160.0
-          ]
-        }
-      },
-      "source_label": "Web research (2026-07)"
+    "runner_reviews": [
+     "The course's highest single-course elevation gain (100PRO) reaches ~2,079m with grades up to 17%.",
+     "Route guides runners through Đà Lạt's most iconic landscapes: pine forests, rolling hills, Tuyền Lâm-area valleys, and Lang Biang Peak."
+    ],
+    "matching_hints": {
+     "name_keywords": [
+      "dalat ultra trail",
+      "dut",
+      "da lat",
+      "đà lạt",
+      "lang biang"
+     ],
+     "distance_km_options": [
+      5.0,
+      15.0,
+      21.0,
+      50.0,
+      75.0,
+      100.0
+     ]
     }
-  ]
+   },
+   "source_label": "Web research (2026-07)"
+  },
+  {
+   "domain": "race_courses",
+   "kind": "race_profile",
+   "title": "Vietnam Trail Marathon (VTM) — Mộc Châu, Vietnam",
+   "content": "Vietnam Trail Marathon (VTM) is held each January in Mộc Châu, Sơn La Province, in Vietnam's northwestern highlands, timed to coincide with peach-blossom season. Distances include 5/10/21/42/50/70km, with the 21km (21.9km/1200m D+), 42km (41.2km/2150m D+) and 70km (67.6km, +2858m/-2799m) being the headline distances. The course crosses tea plantations, fruit orchards, and remote highland villages. January is the coolest and driest month in the region (roughly 10-18°C), making it one of the more temperate trail races on the Vietnamese calendar compared to the humid VMM (September) or Vietnam Jungle Marathon (October).",
+   "payload": {
+    "race_name": "Vietnam Trail Marathon",
+    "aliases": [
+     "VTM",
+     "Moc Chau Trail Marathon"
+    ],
+    "location": "Mộc Châu, Sơn La Province, Vietnam",
+    "country": "Vietnam",
+    "region": "ASEAN",
+    "race_type": "mountain_trail",
+    "month_held": "January",
+    "distances": [
+     {
+      "label": "5km",
+      "distance_km": 5.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "10km",
+      "distance_km": 10.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "21km",
+      "distance_km": 21.9,
+      "elevation_gain_m": 1200
+     },
+     {
+      "label": "42km",
+      "distance_km": 41.2,
+      "elevation_gain_m": 2150
+     },
+     {
+      "label": "50km",
+      "distance_km": 50.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "70km",
+      "distance_km": 67.6,
+      "elevation_gain_m": 2858,
+      "elevation_loss_m": 2799
+     }
+    ],
+    "terrain": [
+     "tea plantations",
+     "orchards",
+     "remote highland villages",
+     "rolling ridge trail"
+    ],
+    "key_climbs": [],
+    "climate": {
+     "season": "January (peach/plum blossom season, dry season)",
+     "avg_temp_c": "10-18",
+     "humidity_pct": "moderate",
+     "notes": "Mộc Châu sits at altitude in the northwest highlands; January is the coolest, driest window of the year and coincides with peach blossom season."
+    },
+    "runner_reviews": [],
+    "matching_hints": {
+     "name_keywords": [
+      "vtm",
+      "vietnam trail marathon",
+      "moc chau",
+      "mộc châu"
+     ],
+     "distance_km_options": [
+      5.0,
+      10.0,
+      21.9,
+      41.2,
+      50.0,
+      67.6
+     ]
+    }
+   },
+   "source_label": "Web research (2026-07)"
+  },
+  {
+   "domain": "race_courses",
+   "kind": "race_profile",
+   "title": "Vietnam Jungle Marathon (VJM) — Pù Luông, Vietnam",
+   "content": "The Vietnam Jungle Marathon (VJM) is run each October through Pù Luông Nature Reserve in Bá Thước District, Thanh Hóa Province — a few hours from Hanoi. Distances span 10km (11.4km/270m D+), 25km (25.1km/700m D+), 50km (49km/1860m D+) and 70km (3000m+ D+). The course crosses jungle canopy trail, limestone karst ridgelines, rice terraces, and remote villages. October sits at the tail of the wet season, so humidity is high (20-28°C) and limestone/root-covered singletrack can be slick after rain — runners should expect similar humid, muddy conditions to VMM but on more jungle-canopy, karst-influenced terrain rather than open mountain ridgeline.",
+   "payload": {
+    "race_name": "Vietnam Jungle Marathon",
+    "aliases": [
+     "VJM",
+     "Pu Luong Jungle Marathon"
+    ],
+    "location": "Bá Thước District, Pù Luông Nature Reserve, Thanh Hóa Province, Vietnam",
+    "country": "Vietnam",
+    "region": "ASEAN",
+    "race_type": "jungle_trail",
+    "month_held": "October",
+    "distances": [
+     {
+      "label": "10km",
+      "distance_km": 11.4,
+      "elevation_gain_m": 270
+     },
+     {
+      "label": "25km",
+      "distance_km": 25.1,
+      "elevation_gain_m": 700
+     },
+     {
+      "label": "50km",
+      "distance_km": 49.0,
+      "elevation_gain_m": 1860
+     },
+     {
+      "label": "70km",
+      "distance_km": 70.0,
+      "elevation_gain_m": 3000
+     }
+    ],
+    "terrain": [
+     "jungle canopy trail",
+     "limestone karst ridges",
+     "rice terraces",
+     "remote village paths"
+    ],
+    "key_climbs": [],
+    "climate": {
+     "season": "October (tail of wet season)",
+     "avg_temp_c": "20-28",
+     "humidity_pct": "high",
+     "notes": "Pù Luông Nature Reserve is humid, jungle-canopy terrain; October rains can leave limestone and root-covered singletrack slick."
+    },
+    "runner_reviews": [],
+    "matching_hints": {
+     "name_keywords": [
+      "vjm",
+      "vietnam jungle marathon",
+      "pu luong",
+      "pù luông"
+     ],
+     "distance_km_options": [
+      11.4,
+      25.1,
+      49.0,
+      70.0
+     ]
+    }
+   },
+   "source_label": "Web research (2026-07)"
+  },
+  {
+   "domain": "race_courses",
+   "kind": "race_profile",
+   "title": "Vietnam Ultra Marathon (VUM) — Mai Châu, Vietnam",
+   "content": "The Vietnam Ultra Marathon (VUM) 55km race, run in Mai Châu, Hòa Bình Province, covers 49.4km with 2,450m of elevation gain. It starts at the abandoned Hmong village of Bản Cang at almost 1,000m altitude, climbing through singletrack trail from one remote valley to the next, including technical sections.",
+   "payload": {
+    "race_name": "Vietnam Ultra Marathon",
+    "aliases": [
+     "VUM",
+     "Mai Chau Ultra"
+    ],
+    "location": "Mai Châu, Hòa Bình Province, Vietnam",
+    "country": "Vietnam",
+    "region": "ASEAN",
+    "race_type": "mountain_trail",
+    "month_held": "varies (organizer: Vietnam Trail Series)",
+    "distances": [
+     {
+      "label": "55km",
+      "distance_km": 49.4,
+      "elevation_gain_m": 2450
+     }
+    ],
+    "terrain": [
+     "single track",
+     "remote valley trail",
+     "technical sections",
+     "abandoned Hmong village trail (Bản Cang)"
+    ],
+    "key_climbs": [
+     {
+      "name": "Climb out of Bản Cang",
+      "notes": "Start is at the abandoned Hmong village of Bản Cang (~1,000m altitude); route climbs on singletrack from one remote valley to the next."
+     }
+    ],
+    "climate": {
+     "season": "varies",
+     "avg_temp_c": "unknown",
+     "humidity_pct": "unknown",
+     "notes": "Hòa Bình highlands climate — cooler and drier than lowland Vietnam."
+    },
+    "runner_reviews": [],
+    "matching_hints": {
+     "name_keywords": [
+      "vum",
+      "vietnam ultra marathon",
+      "mai chau",
+      "mai châu"
+     ],
+     "distance_km_options": [
+      49.4
+     ]
+    }
+   },
+   "source_label": "Web research (2026-07)"
+  },
+  {
+   "domain": "race_courses",
+   "kind": "race_profile",
+   "title": "Vietnam Highlands Trail by UTMB — Đà Lạt, Vietnam",
+   "content": "Vietnam Highlands Trail by UTMB, held each January in Đà Lạt, is Vietnam's first UTMB World Series race and connects four iconic Central Highlands peaks: Langbiang (panoramic alpine landscape), Bidoup (untouched primary forest), Pinhatt (ridgeline over Tuyền Lâm Lake) and Elephant Mountain (denser, technical trail). Distances run from 5km up to a 104km/5,533m D+ ultra, with the 20km Pinhatt 25 course carrying 1,300m D+ and the 55.4km Elephant 50 carrying 3,200m D+. January is Đà Lạt's dry season, offering a cooler, lower-humidity mountain environment (15-24°C) relative to most Vietnamese lowland or monsoon-season trail races.",
+   "payload": {
+    "race_name": "Vietnam Highlands Trail by UTMB",
+    "aliases": [
+     "VHT",
+     "UTMB Da Lat",
+     "Vietnam Highlands"
+    ],
+    "location": "Đà Lạt, Lâm Đồng Province, Vietnam",
+    "country": "Vietnam",
+    "region": "ASEAN",
+    "race_type": "mountain_trail",
+    "month_held": "January",
+    "distances": [
+     {
+      "label": "5km",
+      "distance_km": 5.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "10km",
+      "distance_km": 10.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "20km / Pinhatt 25",
+      "distance_km": 20.0,
+      "elevation_gain_m": 1300
+     },
+     {
+      "label": "50km / Elephant 50",
+      "distance_km": 55.4,
+      "elevation_gain_m": 3200
+     },
+     {
+      "label": "100km",
+      "distance_km": 104.0,
+      "elevation_gain_m": 5533
+     }
+    ],
+    "terrain": [
+     "alpine ridgeline",
+     "primary forest",
+     "ridgeline overlooking Tuyền Lâm Lake",
+     "technical Elephant Mountain singletrack"
+    ],
+    "key_climbs": [
+     {
+      "name": "Langbiang",
+      "notes": "Panoramic alpine landscape."
+     },
+     {
+      "name": "Bidoup",
+      "notes": "Untouched primary forest climb."
+     },
+     {
+      "name": "Pinhatt",
+      "notes": "Ridgeline overlooking Tuyền Lâm Lake."
+     },
+     {
+      "name": "Elephant Mountain",
+      "notes": "Denser, more technical trail."
+     }
+    ],
+    "climate": {
+     "season": "January (dry season)",
+     "avg_temp_c": "15-24",
+     "humidity_pct": "moderate",
+     "notes": "First-ever UTMB World Series race in Vietnam; Đà Lạt's mild highland climate in the dry season."
+    },
+    "runner_reviews": [],
+    "matching_hints": {
+     "name_keywords": [
+      "vietnam highlands trail",
+      "utmb da lat",
+      "vht",
+      "langbiang",
+      "bidoup",
+      "pinhatt"
+     ],
+     "distance_km_options": [
+      5.0,
+      10.0,
+      20.0,
+      55.4,
+      104.0
+     ]
+    }
+   },
+   "source_label": "Web research (2026-07)"
+  },
+  {
+   "domain": "race_courses",
+   "kind": "race_profile",
+   "title": "Techcombank Ho Chi Minh City International Marathon — Vietnam (road)",
+   "content": "The Techcombank Ho Chi Minh City International Marathon runs each December through 5 districts and Thu Duc City, starting at Lê Duẩn - Nguyễn Bỉnh Khiêm (Gate of the Zoo and Botanical Garden) and finishing at Empire City. It is a flat urban road course (5/10/21/42km). December marks the start of HCMC's dry season, with temperatures of 20-28°C and comparatively low humidity/rainfall — the most favorable window in the city's road-racing calendar, though still tropically warm and humid versus temperate-climate marathons.",
+   "payload": {
+    "race_name": "Techcombank Ho Chi Minh City International Marathon",
+    "aliases": [
+     "HCMC Marathon",
+     "Techcombank HCMC Marathon"
+    ],
+    "location": "Ho Chi Minh City, Vietnam",
+    "country": "Vietnam",
+    "region": "ASEAN",
+    "race_type": "road_marathon",
+    "month_held": "December",
+    "distances": [
+     {
+      "label": "5km",
+      "distance_km": 5.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "10km",
+      "distance_km": 10.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "21km",
+      "distance_km": 21.1,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "42km",
+      "distance_km": 42.195,
+      "elevation_gain_m": null
+     }
+    ],
+    "terrain": [
+     "urban road",
+     "flat city streets across 5 districts and Thu Duc City"
+    ],
+    "key_climbs": [],
+    "climate": {
+     "season": "December (start of dry season)",
+     "avg_temp_c": "20-28",
+     "humidity_pct": "lower than wet season, but still tropically humid",
+     "notes": "December is one of the most favorable HCMC racing windows — dry season onset, lower humidity and minimal rain versus the rest of the year."
+    },
+    "runner_reviews": [],
+    "matching_hints": {
+     "name_keywords": [
+      "techcombank",
+      "hcmc marathon",
+      "ho chi minh city marathon"
+     ],
+     "distance_km_options": [
+      5.0,
+      10.0,
+      21.1,
+      42.195
+     ]
+    }
+   },
+   "source_label": "Web research (2026-07)"
+  },
+  {
+   "domain": "race_courses",
+   "kind": "race_profile",
+   "title": "VnExpress Marathon series (Quy Nhơn / Huế / Đà Nẵng / Hải Phòng) — Vietnam (road)",
+   "content": "The VnExpress Marathon (VM) system runs road races of 5/10/21/42km across several Vietnamese cities, including Quy Nhơn (the oldest and original VM race, run in June along Ky Co, Eo Gio and Hon Kho coastal scenery), Huế (starting at Phú Văn Lâu on Lê Duẩn Street), Đà Nẵng, and Hải Phòng. Courses are flat-to-gently-rolling paved coastal/urban roads — runners describe the Quy Nhơn course as paved and very easy to run. Because most VM races fall in Vietnam's hot season (Quy Nhơn in June sees 26-34°C with high coastal humidity), heat and humidity management is the dominant race-day concern rather than terrain difficulty.",
+   "payload": {
+    "race_name": "VnExpress Marathon",
+    "aliases": [
+     "VM Quy Nhon",
+     "VM Hue",
+     "VnExpress Marathon Da Nang",
+     "VnExpress Marathon Hai Phong"
+    ],
+    "location": "Multiple Vietnamese coastal/central cities (Quy Nhơn, Huế, Đà Nẵng, Hải Phòng)",
+    "country": "Vietnam",
+    "region": "ASEAN",
+    "race_type": "road_marathon",
+    "month_held": "varies by city (Quy Nhơn ~June, Huế/Đà Nẵng ~ Q2, Hải Phòng varies)",
+    "distances": [
+     {
+      "label": "5km",
+      "distance_km": 5.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "10km",
+      "distance_km": 10.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "21km",
+      "distance_km": 21.1,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "42km",
+      "distance_km": 42.195,
+      "elevation_gain_m": null
+     }
+    ],
+    "terrain": [
+     "coastal road",
+     "urban streets",
+     "flat-to-gently-rolling"
+    ],
+    "key_climbs": [],
+    "climate": {
+     "season": "varies by leg; Quy Nhơn (June) is hot coastal summer",
+     "avg_temp_c": "26-34 (Quy Nhon, June)",
+     "humidity_pct": "high coastal humidity",
+     "notes": "Quy Nhơn is the oldest race in the VnExpress Marathon system; roads up to 25km are paved and described by runners as 'very easy to run' — pancake flat coastal course. Heat/humidity is the dominant limiter more than terrain."
+    },
+    "runner_reviews": [
+     "Course up to 25km is paved and very easy to run (Quy Nhơn)."
+    ],
+    "matching_hints": {
+     "name_keywords": [
+      "vnexpress marathon",
+      "vm quy nhon",
+      "vm hue",
+      "vm da nang",
+      "vm hai phong"
+     ],
+     "distance_km_options": [
+      5.0,
+      10.0,
+      21.1,
+      42.195
+     ]
+    }
+   },
+   "source_label": "Web research (2026-07)"
+  },
+  {
+   "domain": "race_courses",
+   "kind": "race_profile",
+   "title": "Ultra-Trail Australia by UTMB (UTA) — Blue Mountains, Australia",
+   "content": "Ultra-Trail Australia by UTMB (UTA) is held each May in the Blue Mountains National Park near Katoomba, NSW, starting and finishing at Scenic World. Distances are UTA11 (11km/477m D+), UTA22 (21.6km/910m D+, featuring the Golden Stairs and the final section of Furber Steps), UTA50 (50km/2450m D+, the back half of the UTA100 course), UTA100 (100.4km/4460m D+) and the UTA Miler (161km/~7290m D+). Every distance finishes with a climb of the famous 951 Furber Steps (~220m gain over ~1km) into Scenic World — UTA11 covers all 951 steps. The route also passes Golden Stairs, Leura Forest and Wentworth Falls. May is Blue Mountains autumn: cool (8-18°C), with fog, rain, and cold overnight temperatures a real factor for Miler finishers running through the night.",
+   "payload": {
+    "race_name": "Ultra-Trail Australia by UTMB",
+    "aliases": [
+     "UTA",
+     "UTA100",
+     "UTA50",
+     "UTA22",
+     "UTA11",
+     "UTA Blue Mountains"
+    ],
+    "location": "Katoomba, Blue Mountains National Park, New South Wales, Australia",
+    "country": "Australia",
+    "region": "Australia",
+    "race_type": "mountain_trail",
+    "month_held": "May",
+    "distances": [
+     {
+      "label": "UTA11",
+      "distance_km": 11.0,
+      "elevation_gain_m": 477
+     },
+     {
+      "label": "UTA22",
+      "distance_km": 21.6,
+      "elevation_gain_m": 910
+     },
+     {
+      "label": "UTA50",
+      "distance_km": 50.0,
+      "elevation_gain_m": 2450
+     },
+     {
+      "label": "UTA100",
+      "distance_km": 100.4,
+      "elevation_gain_m": 4460
+     },
+     {
+      "label": "UTA Miler (100mi)",
+      "distance_km": 161.0,
+      "elevation_gain_m": 7290
+     }
+    ],
+    "terrain": [
+     "Golden Stairs walking track",
+     "Leura Forest",
+     "Wentworth Falls",
+     "the 951 Furber Steps"
+    ],
+    "key_climbs": [
+     {
+      "name": "Furber Steps",
+      "steps": 951,
+      "elevation_m": 220,
+      "notes": "Final 1km climb of every UTA distance before the Scenic World finish; UTA11 covers all 951 steps, UTA22 only the final section (via the Golden Stairs)."
+     }
+    ],
+    "climate": {
+     "season": "May (Southern Hemisphere autumn)",
+     "avg_temp_c": "8-18",
+     "humidity_pct": "moderate",
+     "notes": "Blue Mountains autumn — cool mountain temperatures, can include fog, rain and cold nights especially for overnight 100mi finishers."
+    },
+    "runner_reviews": [],
+    "matching_hints": {
+     "name_keywords": [
+      "uta",
+      "ultra-trail australia",
+      "blue mountains",
+      "furber steps",
+      "katoomba"
+     ],
+     "distance_km_options": [
+      11.0,
+      21.6,
+      50.0,
+      100.4,
+      161.0
+     ]
+    }
+   },
+   "source_label": "Web research (2026-07)"
+  },
+  {
+   "domain": "race_courses",
+   "kind": "race_profile",
+   "title": "Ultra-Trail Kosciuszko by UTMB — Thredbo/Jindabyne, Australia",
+   "content": "Ultra-Trail Kosciuszko by UTMB runs each March through the Snowy Mountains around Thredbo/Jindabyne, NSW. Distances are Kosci30 (32km/600m D+), Kosci50 (50km/1350m D+), Kosci100 (102km/3196m D+) and KosciMiler (164km/5185m D+). Courses wind through snow gum forest and alpine meadows past granite outcrops, with the longer distances summiting Mount Kosciuszko (2,228m), Australia's highest peak. Unlike the short, brutal climbs of UTA, Kosci's courses are built around sustained gain and long runnable ridgeline segments. March alpine weather is generally dry (5-18°C) but exposed above the treeline, so wind and rapid weather changes remain a real risk.",
+   "payload": {
+    "race_name": "Ultra-Trail Kosciuszko by UTMB",
+    "aliases": [
+     "Kosci",
+     "Kosci100",
+     "Kosci50",
+     "Kosci30",
+     "KosciMiler"
+    ],
+    "location": "Thredbo / Jindabyne, Snowy Mountains, New South Wales, Australia",
+    "country": "Australia",
+    "region": "Australia",
+    "race_type": "alpine_trail",
+    "month_held": "March",
+    "distances": [
+     {
+      "label": "Kosci30",
+      "distance_km": 32.0,
+      "elevation_gain_m": 600
+     },
+     {
+      "label": "Kosci50",
+      "distance_km": 50.0,
+      "elevation_gain_m": 1350
+     },
+     {
+      "label": "Kosci100",
+      "distance_km": 102.0,
+      "elevation_gain_m": 3196
+     },
+     {
+      "label": "KosciMiler",
+      "distance_km": 164.0,
+      "elevation_gain_m": 5185
+     }
+    ],
+    "terrain": [
+     "snow gum forest",
+     "alpine meadow",
+     "granite outcrops",
+     "long runnable ridgeline"
+    ],
+    "key_climbs": [
+     {
+      "name": "Mount Kosciuszko summit",
+      "elevation_m": 2228,
+      "notes": "Ascent to Australia's highest point; courses are designed around sustained gain with long runnable segments rather than short brutal walls."
+     }
+    ],
+    "climate": {
+     "season": "March (late Southern Hemisphere summer/early autumn)",
+     "avg_temp_c": "5-18 (alpine, can drop lower at altitude/night)",
+     "humidity_pct": "low, dry alpine air",
+     "notes": "Alpine high-country weather can change fast — exposure above the treeline means wind and cold are a real risk even in March."
+    },
+    "runner_reviews": [],
+    "matching_hints": {
+     "name_keywords": [
+      "kosciuszko",
+      "kosci",
+      "kosci100",
+      "snowy mountains",
+      "thredbo"
+     ],
+     "distance_km_options": [
+      32.0,
+      50.0,
+      102.0,
+      164.0
+     ]
+    }
+   },
+   "source_label": "Web research (2026-07)"
+  },
+  {
+   "domain": "race_courses",
+   "kind": "race_profile",
+   "title": "Buffalo Stampede — Bright, Victoria, Australia",
+   "content": "Buffalo Stampede, Australia's original sky-running festival, is held each March in Bright, Victoria. Distances include 10km (1000m D+ in the first 10km alone), the 20km Sky Run (1260m D+/D-), a 42km, and the flagship 100km (101.6km/5131m D+) which runs from Bright to The Horn — the highest point of Mount Buffalo National Park — and back. The 100km's early leg-breaker is Emily's Spur, a 1.7km/440m+ climb to the Mystic summit. Terrain is technical alpine sky-running: granite outcrops and exposed summit ridgeline. March is Victorian High Country autumn — mild in the valley (8-20°C) but cold and exposed at altitude.",
+   "payload": {
+    "race_name": "Buffalo Stampede",
+    "aliases": [
+     "Buffalo Stampede Festival",
+     "Bright Sky Run"
+    ],
+    "location": "Bright, Victorian Alps, Victoria, Australia",
+    "country": "Australia",
+    "region": "Australia",
+    "race_type": "alpine_sky_running",
+    "month_held": "March",
+    "distances": [
+     {
+      "label": "10km",
+      "distance_km": 10.0,
+      "elevation_gain_m": 1000
+     },
+     {
+      "label": "20km / Sky Run",
+      "distance_km": 20.0,
+      "elevation_gain_m": 1260,
+      "elevation_loss_m": 1260
+     },
+     {
+      "label": "42km",
+      "distance_km": 42.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "100km",
+      "distance_km": 101.6,
+      "elevation_gain_m": 5131
+     }
+    ],
+    "terrain": [
+     "alpine sky-running ridgeline",
+     "technical summit trail",
+     "Mount Buffalo National Park granite"
+    ],
+    "key_climbs": [
+     {
+      "name": "Emily's Spur to Mystic summit",
+      "distance_km": 1.7,
+      "elevation_gain_m": 440,
+      "notes": "Early leg-breaker climb on the 100km course."
+     },
+     {
+      "name": "The Horn, Mount Buffalo",
+      "notes": "Highest point of Mount Buffalo National Park; 100km turnaround point."
+     }
+    ],
+    "climate": {
+     "season": "March (Southern Hemisphere autumn)",
+     "avg_temp_c": "8-20",
+     "humidity_pct": "moderate",
+     "notes": "Victorian High Country autumn — can be warm in the valley at Bright but cold and exposed on the alpine summits."
+    },
+    "runner_reviews": [],
+    "matching_hints": {
+     "name_keywords": [
+      "buffalo stampede",
+      "bright",
+      "mount buffalo",
+      "sky run"
+     ],
+     "distance_km_options": [
+      10.0,
+      20.0,
+      42.0,
+      101.6
+     ]
+    }
+   },
+   "source_label": "Web research (2026-07)"
+  },
+  {
+   "domain": "race_courses",
+   "kind": "race_profile",
+   "title": "Six Foot Track Marathon — Blue Mountains, Australia",
+   "content": "The Six Foot Track Marathon runs 45km point-to-point across the Blue Mountains from Katoomba to Jenolan Caves, with 1,778m of total climbing and 2,031m of descent (max elevation 1,213m, min 267m). It opens with a steep descent through Nellie's Glen before climbing the Black Range, mostly on fire trail through eucalypt forest. Held every March since 1984, it's one of Australia's oldest and most iconic trail marathons; elite runners finish under 4 hours, with a 7-hour cutoff for the field. March conditions are mild Blue Mountains autumn (10-22°C).",
+   "payload": {
+    "race_name": "Six Foot Track Marathon",
+    "aliases": [
+     "Six Foot Track"
+    ],
+    "location": "Katoomba to Jenolan Caves, Blue Mountains, New South Wales, Australia",
+    "country": "Australia",
+    "region": "Australia",
+    "race_type": "trail_marathon",
+    "month_held": "March",
+    "distances": [
+     {
+      "label": "marathon",
+      "distance_km": 45.0,
+      "elevation_gain_m": 1778,
+      "elevation_loss_m": 2031
+     }
+    ],
+    "terrain": [
+     "fire trail",
+     "Nellie's Glen steep descent",
+     "Black Range climb",
+     "eucalypt forest"
+    ],
+    "key_climbs": [
+     {
+      "name": "Black Range",
+      "notes": "Ascended after the steep early descent through Nellie's Glen."
+     }
+    ],
+    "climate": {
+     "season": "March (Southern Hemisphere autumn)",
+     "avg_temp_c": "10-22",
+     "humidity_pct": "moderate",
+     "notes": "Point-to-point course from Katoomba to Jenolan Caves; started in 1984, one of Australia's oldest trail races."
+    },
+    "runner_reviews": [],
+    "matching_hints": {
+     "name_keywords": [
+      "six foot track",
+      "sixfoot",
+      "jenolan caves",
+      "katoomba marathon"
+     ],
+     "distance_km_options": [
+      45.0
+     ]
+    }
+   },
+   "source_label": "Web research (2026-07)"
+  },
+  {
+   "domain": "race_courses",
+   "kind": "race_profile",
+   "title": "Sydney Marathon — Sydney, Australia (road)",
+   "content": "The Sydney Marathon (a World Marathon Majors race) is run each September with +313m gain / -396m loss (net -83m, net downhill). The course's first major ascent crosses the Sydney Harbour Bridge, followed by a ~60m descent through Pyrmont Street, then a second climb on Oxford Street around the 15km mark before a steadier final stretch. September humidity averages ~65% with low rainfall — a moderately hilly but net-downhill course considered favorable for fast times, run in comfortable spring conditions (13-20°C).",
+   "payload": {
+    "race_name": "Sydney Marathon",
+    "aliases": [
+     "TCS Sydney Marathon"
+    ],
+    "location": "Sydney, New South Wales, Australia",
+    "country": "Australia",
+    "region": "Australia",
+    "race_type": "road_marathon",
+    "month_held": "September (World Marathon Majors member)",
+    "distances": [
+     {
+      "label": "42km",
+      "distance_km": 42.195,
+      "elevation_gain_m": 313,
+      "elevation_loss_m": 396
+     }
+    ],
+    "terrain": [
+     "Sydney Harbour Bridge climb",
+     "Pyrmont Street descent",
+     "Oxford Street climb at 15km",
+     "urban road"
+    ],
+    "key_climbs": [
+     {
+      "name": "Sydney Harbour Bridge",
+      "notes": "First major ascent of the course, early miles."
+     },
+     {
+      "name": "Oxford Street",
+      "notes": "Course tilts upward again at the 15km mark."
+     }
+    ],
+    "climate": {
+     "season": "September (Southern Hemisphere spring)",
+     "avg_temp_c": "13-20",
+     "humidity_pct": "~65%",
+     "notes": "Low rainfall, moderate humidity — one of the more favorable World Marathon Majors weather windows."
+    },
+    "runner_reviews": [],
+    "matching_hints": {
+     "name_keywords": [
+      "sydney marathon",
+      "tcs sydney marathon"
+     ],
+     "distance_km_options": [
+      42.195
+     ]
+    }
+   },
+   "source_label": "Web research (2026-07)"
+  },
+  {
+   "domain": "race_courses",
+   "kind": "race_profile",
+   "title": "Great Ocean Road Marathon — Lorne to Apollo Bay, Australia (road)",
+   "content": "The Great Ocean Road Running Festival Marathon runs 44km point-to-point from Lorne to Apollo Bay, Victoria along the Great Ocean Road, with ~488m of total elevation gain. Two named climbs define the course: Mount Defiance (from Cumberland River at 5km to the lookout at ~9km) and Cape Patton (from Kennett River just after 21km). The final 10km is relatively flat. Held in May (Southern Hemisphere autumn, ~10-18°C), it is a scenic, moderately hilly coastal road marathon.",
+   "payload": {
+    "race_name": "Great Ocean Road Running Festival Marathon",
+    "aliases": [
+     "Great Ocean Road Marathon",
+     "GORMarathon"
+    ],
+    "location": "Lorne to Apollo Bay, Victoria, Australia",
+    "country": "Australia",
+    "region": "Australia",
+    "race_type": "road_marathon",
+    "month_held": "May",
+    "distances": [
+     {
+      "label": "marathon",
+      "distance_km": 44.0,
+      "elevation_gain_m": 488
+     }
+    ],
+    "terrain": [
+     "coastal highway road",
+     "Mount Defiance climb",
+     "Cape Patton climb"
+    ],
+    "key_climbs": [
+     {
+      "name": "Mount Defiance",
+      "notes": "Climb from Cumberland River (5km) to Mount Defiance lookout (~9km); ~54m gain over 2.5km within that stretch."
+     },
+     {
+      "name": "Cape Patton",
+      "notes": "Second major incline just after the 21km mark, from Kennett River to Cape Patton."
+     }
+    ],
+    "climate": {
+     "season": "May (Southern Hemisphere autumn)",
+     "avg_temp_c": "10-18",
+     "humidity_pct": "moderate, coastal",
+     "notes": "Point-to-point coastal road course along the Great Ocean Road."
+    },
+    "runner_reviews": [],
+    "matching_hints": {
+     "name_keywords": [
+      "great ocean road marathon",
+      "gor marathon",
+      "lorne",
+      "apollo bay"
+     ],
+     "distance_km_options": [
+      44.0
+     ]
+    }
+   },
+   "source_label": "Web research (2026-07)"
+  },
+  {
+   "domain": "race_courses",
+   "kind": "race_profile",
+   "title": "Melbourne Marathon — Melbourne, Australia (road)",
+   "content": "The Melbourne Marathon is a largely flat, fast road course (~136m total gain) through the Yarra River path, Albert Park Lake and the Royal Botanic Gardens. Held each October (Southern Hemisphere spring, 10-20°C), it is regarded as one of Australia's PB-friendly majors; a 2026 course revision removed the Birdwood Avenue to Domain Road climb near the 36km mark, reducing total elevation gain by roughly 20%.",
+   "payload": {
+    "race_name": "Melbourne Marathon",
+    "aliases": [
+     "Nike Melbourne Marathon"
+    ],
+    "location": "Melbourne, Victoria, Australia",
+    "country": "Australia",
+    "region": "Australia",
+    "race_type": "road_marathon",
+    "month_held": "October",
+    "distances": [
+     {
+      "label": "42km",
+      "distance_km": 42.195,
+      "elevation_gain_m": 136
+     }
+    ],
+    "terrain": [
+     "Yarra River path",
+     "Albert Park Lake",
+     "Royal Botanic Gardens",
+     "flat urban road"
+    ],
+    "key_climbs": [],
+    "climate": {
+     "season": "October (Southern Hemisphere spring)",
+     "avg_temp_c": "10-20",
+     "humidity_pct": "moderate",
+     "notes": "Course revised in 2026 to reduce gain by ~20% by removing the Birdwood Ave to Domain Rd climb near 36km — now one of Australia's flattest, fastest-rated majors."
+    },
+    "runner_reviews": [],
+    "matching_hints": {
+     "name_keywords": [
+      "melbourne marathon",
+      "nike melbourne marathon"
+     ],
+     "distance_km_options": [
+      42.195
+     ]
+    }
+   },
+   "source_label": "Web research (2026-07)"
+  },
+  {
+   "domain": "race_courses",
+   "kind": "race_profile",
+   "title": "Thailand by UTMB (Chiang Mai) — Doi Inthanon, Thailand",
+   "content": "Thailand by UTMB is held each December around Doi Inthanon National Park, Chiang Mai — Thailand's highest mountain. Distances include a 3km (100m D+), Suthep 20 (26km/1100m D+), 63km (3000m D+), Elephant 100 (100km/5500m D+) and Chiang Dao 160 (173km/9800m D+). The course crosses rivers, chases waterfalls, and passes royal burial grounds, with elevation ranging from 400m to 2,100m asl and forest cover changing accordingly. Despite December being Thailand's official cool/dry season, finishers report midday mountain temperatures exceeding 30°C at the race start, making heat management as important as the climbing itself.",
+   "payload": {
+    "race_name": "Thailand by UTMB",
+    "aliases": [
+     "Chiang Mai by UTMB",
+     "Doi Inthanon UTMB",
+     "Elephant 100",
+     "Chiang Dao 160",
+     "Suthep 20"
+    ],
+    "location": "Doi Inthanon National Park, Chiang Mai, Thailand",
+    "country": "Thailand",
+    "region": "Asia",
+    "race_type": "mountain_trail",
+    "month_held": "December",
+    "distances": [
+     {
+      "label": "Suthep 20",
+      "distance_km": 26.0,
+      "elevation_gain_m": 1100
+     },
+     {
+      "label": "63km",
+      "distance_km": 63.0,
+      "elevation_gain_m": 3000
+     },
+     {
+      "label": "Elephant 100",
+      "distance_km": 100.0,
+      "elevation_gain_m": 5500
+     },
+     {
+      "label": "Chiang Dao 160",
+      "distance_km": 173.0,
+      "elevation_gain_m": 9800
+     },
+     {
+      "label": "3km",
+      "distance_km": 3.0,
+      "elevation_gain_m": 100
+     }
+    ],
+    "terrain": [
+     "Doi Inthanon national park forest",
+     "river crossings",
+     "waterfalls",
+     "royal burial grounds",
+     "elevation gain from 400m to 2,100m asl"
+    ],
+    "key_climbs": [
+     {
+      "name": "Doi Inthanon",
+      "notes": "Thailand's highest mountain; course elevation ranges from 400m to 2,100m asl as forest cover changes with altitude."
+     }
+    ],
+    "climate": {
+     "season": "December (Thai cool/dry season)",
+     "avg_temp_c": "hot in the mountains at midday — exceeding 30°C at race start reported by finishers, cooler at night/altitude",
+     "humidity_pct": "moderate to high",
+     "notes": "Despite December being Thailand's cool season, midday heat in the mountains combined with the climbing terrain is reported by finishers as physically draining."
+    },
+    "runner_reviews": [
+     "Temperature exceeded 30°C at the start even in December; 'the heat peculiar to Thailand... deprives runners of physical strength.'"
+    ],
+    "matching_hints": {
+     "name_keywords": [
+      "thailand by utmb",
+      "chiang mai",
+      "doi inthanon",
+      "elephant 100",
+      "chiang dao 160"
+     ],
+     "distance_km_options": [
+      26.0,
+      63.0,
+      100.0,
+      173.0
+     ]
+    }
+   },
+   "source_label": "Web research (2026-07)"
+  },
+  {
+   "domain": "race_courses",
+   "kind": "race_profile",
+   "title": "Malaysia by UTMB — Taiping/Maxwell Hill, Malaysia",
+   "content": "Malaysia by UTMB (Malaysia Ultra-Trail by UTMB) is centered on Taiping Lake Gardens and Maxwell Hill (Bukit Larut), Perak. Distances are MYVK (a ~5km vertical-kilometre time trial, ~1000m gain), MY13 (13.9km/382m D+), MY25 (25km/1252m D+), MY50 (50km/1977m D+ as of a 2025 course revision) and MY100 (97.7km/4802m D+). The longer distances traverse Virgin Jungle Reserve tropical rainforest around Maxwell Hill and pass historical pre-war railway tunnels near Taiping. Being equatorial tropical rainforest, heat and humidity (25-33°C, high humidity) are constant regardless of season.",
+   "payload": {
+    "race_name": "Malaysia by UTMB",
+    "aliases": [
+     "Malaysia Ultra-Trail by UTMB",
+     "MY100",
+     "MY50",
+     "MY25",
+     "MY13",
+     "MYVK"
+    ],
+    "location": "Taiping Lake Gardens & Maxwell Hill (Bukit Larut), Perak, Malaysia",
+    "country": "Malaysia",
+    "region": "ASEAN",
+    "race_type": "jungle_trail",
+    "month_held": "varies",
+    "distances": [
+     {
+      "label": "MYVK",
+      "distance_km": 5.0,
+      "elevation_gain_m": 1000
+     },
+     {
+      "label": "MY13",
+      "distance_km": 13.9,
+      "elevation_gain_m": 382
+     },
+     {
+      "label": "MY25",
+      "distance_km": 25.0,
+      "elevation_gain_m": 1252
+     },
+     {
+      "label": "MY50",
+      "distance_km": 50.0,
+      "elevation_gain_m": 1977
+     },
+     {
+      "label": "MY100",
+      "distance_km": 97.7,
+      "elevation_gain_m": 4802
+     }
+    ],
+    "terrain": [
+     "Virgin Jungle Reserve tropical rainforest",
+     "pre-war railway tunnels",
+     "technical and non-technical mixed trail"
+    ],
+    "key_climbs": [
+     {
+      "name": "Maxwell Hill (Bukit Larut)",
+      "notes": "Longer distances traverse the Virgin Jungle Reserves surrounding Maxwell Hill."
+     }
+    ],
+    "climate": {
+     "season": "tropical rainforest, year-round heat and humidity",
+     "avg_temp_c": "25-33",
+     "humidity_pct": "high",
+     "notes": "Dense tropical jungle canopy provides some shade but humidity remains a major factor."
+    },
+    "runner_reviews": [],
+    "matching_hints": {
+     "name_keywords": [
+      "malaysia by utmb",
+      "my100",
+      "my50",
+      "taiping",
+      "maxwell hill",
+      "bukit larut"
+     ],
+     "distance_km_options": [
+      5.0,
+      13.9,
+      25.0,
+      50.0,
+      97.7
+     ]
+    }
+   },
+   "source_label": "Web research (2026-07)"
+  },
+  {
+   "domain": "race_courses",
+   "kind": "race_profile",
+   "title": "Amazean Jungle Thailand by UTMB — Betong, Thailand",
+   "content": "Amazean Jungle Thailand by UTMB is held in Betong, Yala Province — a mountain town on the Thai-Malaysian border known for the Aiyerweng Sea of Mist and Hala-Bala rainforest. Distances are Betong 10 (15.8km/470m D+), Betong 25 (27.9km/1208m D+), Betong 50 (53.9km/2108m D+), Betong 100 (98.3km/5779m D+) and Betong 160 (165.7km/8911m D+). The course runs through Hala-Bala rainforest and past ASEAN's longest skywalk. Deep southern Thailand rainforest brings very high year-round humidity (24-32°C).",
+   "payload": {
+    "race_name": "Amazean Jungle Thailand by UTMB",
+    "aliases": [
+     "Betong 160",
+     "Betong 100",
+     "Betong 50",
+     "Betong 25",
+     "Betong 10"
+    ],
+    "location": "Betong, Yala Province, Thailand (Thai-Malaysian border)",
+    "country": "Thailand",
+    "region": "ASEAN",
+    "race_type": "jungle_trail",
+    "month_held": "varies",
+    "distances": [
+     {
+      "label": "Betong 10",
+      "distance_km": 15.8,
+      "elevation_gain_m": 470
+     },
+     {
+      "label": "Betong 25",
+      "distance_km": 27.9,
+      "elevation_gain_m": 1208
+     },
+     {
+      "label": "Betong 50",
+      "distance_km": 53.9,
+      "elevation_gain_m": 2108
+     },
+     {
+      "label": "Betong 100",
+      "distance_km": 98.3,
+      "elevation_gain_m": 5779
+     },
+     {
+      "label": "Betong 160",
+      "distance_km": 165.7,
+      "elevation_gain_m": 8911
+     }
+    ],
+    "terrain": [
+     "Hala-Bala rainforest",
+     "Aiyerweng Sea of Mist ridgeline",
+     "ASEAN's longest skywalk",
+     "deep jungle singletrack"
+    ],
+    "key_climbs": [],
+    "climate": {
+     "season": "equatorial rainforest, year-round heat/humidity",
+     "avg_temp_c": "24-32",
+     "humidity_pct": "very high",
+     "notes": "Deep southern Thailand near the Malaysian border — dense Hala-Bala rainforest with high humidity even at altitude."
+    },
+    "runner_reviews": [],
+    "matching_hints": {
+     "name_keywords": [
+      "amazean jungle",
+      "betong",
+      "hala-bala",
+      "aiyerweng"
+     ],
+     "distance_km_options": [
+      15.8,
+      27.9,
+      53.9,
+      98.3,
+      165.7
+     ]
+    }
+   },
+   "source_label": "Web research (2026-07)"
+  },
+  {
+   "domain": "race_courses",
+   "kind": "race_profile",
+   "title": "Rinjani 100 — Lombok, Indonesia",
+   "content": "Rinjani 100, held each May on Lombok, Indonesia, is a 100km ultramarathon with roughly 9,660m of cumulative elevation gain — one of the highest D+ totals of any 100km race worldwide. The course tours Lombok's highest peaks and summits Mount Rinjani (3,726m), Indonesia's second-highest volcano. Terrain is severe: loose volcanic ash and scree, exposed roots, and rock scrambling, with runners describing it as feeling like every step forward is a step back on the ash sections. The 40-hour cutoff reflects the combined severity of altitude, technicality, and volcanic footing.",
+   "payload": {
+    "race_name": "Rinjani 100",
+    "aliases": [
+     "Mandala Trail Rinjani",
+     "Rinjani Ultra"
+    ],
+    "location": "Mount Rinjani, Lombok, West Nusa Tenggara, Indonesia",
+    "country": "Indonesia",
+    "region": "Asia",
+    "race_type": "volcano_mountain_trail",
+    "month_held": "May",
+    "distances": [
+     {
+      "label": "100km",
+      "distance_km": 100.0,
+      "elevation_gain_m": 9660
+     }
+    ],
+    "terrain": [
+     "volcanic ash and scree",
+     "exposed tree roots",
+     "rock scrambling",
+     "high-altitude summit trail"
+    ],
+    "key_climbs": [
+     {
+      "name": "Mount Rinjani summit",
+      "elevation_m": 3726,
+      "notes": "Second-highest volcano in Indonesia; loose volcanic ash makes upward progress feel like 'every step forward takes you a step back.'"
+     }
+    ],
+    "climate": {
+     "season": "May (dry season)",
+     "avg_temp_c": "cool at altitude, hot at lower elevations",
+     "humidity_pct": "moderate",
+     "notes": "40-hour cutoff reflects the severity of combined altitude, technical scrambling, and volcanic scree."
+    },
+    "runner_reviews": [
+     "Gnarled exposed roots, loose scree, and scrambling over piles of rocks; on loose volcanic ash every step forward can feel like a step back.",
+     "Considered one of the toughest ultras globally, combining extreme elevation gain (~9,660m) with difficult volcanic terrain."
+    ],
+    "matching_hints": {
+     "name_keywords": [
+      "rinjani 100",
+      "mandala trail",
+      "mount rinjani",
+      "lombok"
+     ],
+     "distance_km_options": [
+      100.0
+     ]
+    }
+   },
+   "source_label": "Web research (2026-07)"
+  },
+  {
+   "domain": "race_courses",
+   "kind": "race_profile",
+   "title": "HK100 (Hong Kong 100 Ultra) — Hong Kong",
+   "content": "HK100 (Hong Kong 100) runs each January from Pak Tam Chung on the east side of the New Territories, following much of the famous MacLehose Trail west to finish after descending Tai Mo Shan (957m), Hong Kong's highest peak. The flagship distance is 103km/5300m D+, with shorter options 'The Half' (50km/2118m D+) and 'The Third' (31km/1395m D+). The course delivers relentless rolling terrain with very few flat sections — short, frequent climbs and technical, steep descents — crossing beaches, ancient forests, and villages with South China Sea views. Much of the total climbing is concentrated in the second half, so runners are advised to pace conservatively early. January is Hong Kong's cool, dry season (12-20°C).",
+   "payload": {
+    "race_name": "Hong Kong 100",
+    "aliases": [
+     "HK100",
+     "Vibram Hong Kong 100"
+    ],
+    "location": "Pak Tam Chung to Tai Mo Shan, New Territories, Hong Kong",
+    "country": "Hong Kong",
+    "region": "Asia",
+    "race_type": "coastal_mountain_trail",
+    "month_held": "January",
+    "distances": [
+     {
+      "label": "The Third",
+      "distance_km": 31.0,
+      "elevation_gain_m": 1395
+     },
+     {
+      "label": "The Half",
+      "distance_km": 50.0,
+      "elevation_gain_m": 2118
+     },
+     {
+      "label": "HK100",
+      "distance_km": 103.0,
+      "elevation_gain_m": 5300
+     }
+    ],
+    "terrain": [
+     "MacLehose Trail",
+     "coastal beaches",
+     "ancient forests",
+     "steep rolling hills",
+     "Tai Mo Shan descent"
+    ],
+    "key_climbs": [
+     {
+      "name": "Tai Mo Shan",
+      "elevation_m": 957,
+      "notes": "Hong Kong's highest peak; the course finishes after descending it."
+     }
+    ],
+    "climate": {
+     "season": "January (Hong Kong dry, cool season)",
+     "avg_temp_c": "12-20",
+     "humidity_pct": "moderate",
+     "notes": "Much of the climbing is concentrated in the second half of the course, so pacing reserve is critical."
+    },
+    "runner_reviews": [
+     "Relentless rolling terrain with very few flat sections, short but frequent climbs, and technical, often steep descents."
+    ],
+    "matching_hints": {
+     "name_keywords": [
+      "hk100",
+      "hong kong 100",
+      "maclehose trail",
+      "tai mo shan"
+     ],
+     "distance_km_options": [
+      31.0,
+      50.0,
+      103.0
+     ]
+    }
+   },
+   "source_label": "Web research (2026-07)"
+  },
+  {
+   "domain": "race_courses",
+   "kind": "race_profile",
+   "title": "TNF100 Philippines — Baguio, Philippines",
+   "content": "The North Face 100 Philippines (TNF100), first run in 2008 as the country's original 100km trail ultra, is historically centered on Baguio City in the Cordillera mountains — the cooler 'City of Pines'. Distances include 11/22/50/100km, with the 100km carrying roughly 2,900m of elevation gain (comparable to a route similar to Mt. Sto. Tomas to Mt. Pulag). Editions run during the Philippine rainy season bring muddy, slippery mountain trail conditions on top of the climbing.",
+   "payload": {
+    "race_name": "The North Face 100 Philippines",
+    "aliases": [
+     "TNF100",
+     "TNF100 Philippines"
+    ],
+    "location": "Baguio City, Benguet Province, Philippines (historically; some editions in Camsur/other regions)",
+    "country": "Philippines",
+    "region": "Asia",
+    "race_type": "mountain_trail",
+    "month_held": "varies (historically April)",
+    "distances": [
+     {
+      "label": "11km",
+      "distance_km": 11.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "22km",
+      "distance_km": 22.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "50km",
+      "distance_km": 50.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "100km",
+      "distance_km": 100.0,
+      "elevation_gain_m": 2900
+     }
+    ],
+    "terrain": [
+     "Cordillera mountain trail",
+     "pine forest ('City of Pines')",
+     "muddy rainy-season terrain"
+    ],
+    "key_climbs": [],
+    "climate": {
+     "season": "varies; historically overlaps rainy season",
+     "avg_temp_c": "15-25 (Baguio, elevated)",
+     "humidity_pct": "high in rainy season",
+     "notes": "Baguio is the cooler 'City of Pines' in the Cordillera; races run in the rainy season bring muddy, slippery trail conditions."
+    },
+    "runner_reviews": [],
+    "matching_hints": {
+     "name_keywords": [
+      "tnf100",
+      "north face 100",
+      "baguio",
+      "philippines"
+     ],
+     "distance_km_options": [
+      11.0,
+      22.0,
+      50.0,
+      100.0
+     ]
+    }
+   },
+   "source_label": "Web research (2026-07)"
+  },
+  {
+   "domain": "race_courses",
+   "kind": "race_profile",
+   "title": "Ultra-Trail Mt. Fuji (UTMF / Mt. Fuji 100) — Yamanashi/Shizuoka, Japan",
+   "content": "Ultra-Trail Mt. Fuji (UTMF, renamed Mt. Fuji 100 for its 10th edition) circles Mount Fuji across Yamanashi and Shizuoka Prefectures each April. The flagship FUJI 100mi course is 166.6km with 7,038m of cumulative gain and a 44.5-hour cutoff; shorter options are KAI 70k (~3,052-3,500m D+, 21-hour cutoff) and ASUMI 40k (~1,445m D+). The course is forest trail on volcanic terrain circling the base of Fuji, known for a midnight/pre-dawn start on the longer distance and cold night-time temperatures at altitude (~5-15°C in April).",
+   "payload": {
+    "race_name": "Ultra-Trail Mt. Fuji",
+    "aliases": [
+     "UTMF",
+     "Mt. Fuji 100",
+     "FUJI 100mi",
+     "KAI 70k",
+     "ASUMI 40k"
+    ],
+    "location": "Yamanashi Prefecture and Shizuoka Prefecture, Japan (around Mount Fuji)",
+    "country": "Japan",
+    "region": "Asia",
+    "race_type": "mountain_trail",
+    "month_held": "April",
+    "distances": [
+     {
+      "label": "ASUMI 40k",
+      "distance_km": 40.0,
+      "elevation_gain_m": 1445
+     },
+     {
+      "label": "KAI 70k",
+      "distance_km": 70.0,
+      "elevation_gain_m": 3052
+     },
+     {
+      "label": "FUJI 100mi",
+      "distance_km": 166.6,
+      "elevation_gain_m": 7038
+     }
+    ],
+    "terrain": [
+     "forest trail circling Mount Fuji",
+     "volcanic terrain",
+     "long climbs and descents around the base of Fuji"
+    ],
+    "key_climbs": [],
+    "climate": {
+     "season": "April (Japanese spring)",
+     "avg_temp_c": "5-15",
+     "humidity_pct": "moderate",
+     "notes": "44.5-hour time limit for the full 166.6km course reflects the scale of continuous climbing circling Mount Fuji; night-time cold at altitude is a factor."
+    },
+    "runner_reviews": [],
+    "matching_hints": {
+     "name_keywords": [
+      "utmf",
+      "mt fuji 100",
+      "mount fuji",
+      "kai 70k",
+      "asumi 40k"
+     ],
+     "distance_km_options": [
+      40.0,
+      70.0,
+      166.6
+     ]
+    }
+   },
+   "source_label": "Web research (2026-07)"
+  },
+  {
+   "domain": "race_courses",
+   "kind": "race_profile",
+   "title": "Hasetsune Cup (Japan Mountain Endurance Race) — Tokyo, Japan",
+   "content": "The Hasetsune Cup (Japan Mountain Endurance Race), run every October since 1992 in the Okutama mountains west of Tokyo, covers 71.5km with 4,582m of cumulative gain and a 24-hour cutoff. The course traverses a chain of peaks — Mt. Mito (1527m), Mt. Gozen (1405m), Mt. Ohtake (1266m), Mitake Shrine (929m) and Mt. Hinode (902m) — starting at Itsukaichi. Aid stations are minimal, demanding genuine self-sufficiency. October brings mild Japanese autumn conditions (10-20°C).",
+   "payload": {
+    "race_name": "Hasetsune Cup",
+    "aliases": [
+     "Japan Mountain Endurance Race",
+     "Hasegawa Tsuneo Cup"
+    ],
+    "location": "Okutama mountains, west of Tokyo, Japan",
+    "country": "Japan",
+    "region": "Asia",
+    "race_type": "self_sufficient_mountain_trail",
+    "month_held": "October",
+    "distances": [
+     {
+      "label": "race",
+      "distance_km": 71.5,
+      "elevation_gain_m": 4582
+     }
+    ],
+    "terrain": [
+     "Okutama mountain ridgeline",
+     "minimal aid stations, near-full self-sufficiency required"
+    ],
+    "key_climbs": [
+     {
+      "name": "Mt. Mito",
+      "elevation_m": 1527
+     },
+     {
+      "name": "Mt. Gozen",
+      "elevation_m": 1405
+     },
+     {
+      "name": "Mt. Ohtake",
+      "elevation_m": 1266
+     },
+     {
+      "name": "Mitake Shrine",
+      "elevation_m": 929
+     },
+     {
+      "name": "Mt. Hinode",
+      "elevation_m": 902
+     }
+    ],
+    "climate": {
+     "season": "October (Japanese autumn)",
+     "avg_temp_c": "10-20",
+     "humidity_pct": "moderate",
+     "notes": "24-hour time limit; run since 1992 to commemorate alpinist Tsuneo Hasegawa."
+    },
+    "runner_reviews": [],
+    "matching_hints": {
+     "name_keywords": [
+      "hasetsune",
+      "japan mountain endurance race",
+      "okutama"
+     ],
+     "distance_km_options": [
+      71.5
+     ]
+    }
+   },
+   "source_label": "Web research (2026-07)"
+  },
+  {
+   "domain": "race_courses",
+   "kind": "race_profile",
+   "title": "Bromo Marathon — East Java, Indonesia",
+   "content": "The Bromo Marathon, held each September in Bromo Tengger Semeru National Park, East Java, starts at 1,840m altitude and offers 2.5/5/10/21/42km distances. The half marathon (977m D+) is one of Southeast Asia's more demanding halves, while the full marathon has a comparatively modest 193m D+ (max elevation 2,491m) since it favors distance over climbing. Terrain is roughly 50% paved village road and 50% volcanic sand/rocky dirt trail through Tenggerese villages with caldera views. High-altitude start gives cool highland air distinct from typical lowland Indonesian heat and humidity.",
+   "payload": {
+    "race_name": "Bromo Marathon",
+    "aliases": [
+     "Mount Bromo Marathon"
+    ],
+    "location": "Bromo Tengger Semeru National Park, East Java, Indonesia",
+    "country": "Indonesia",
+    "region": "Asia",
+    "race_type": "volcano_road_trail_mixed",
+    "month_held": "September",
+    "distances": [
+     {
+      "label": "2.5km",
+      "distance_km": 2.5,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "5km",
+      "distance_km": 5.0,
+      "elevation_gain_m": 241
+     },
+     {
+      "label": "10km",
+      "distance_km": 10.0,
+      "elevation_gain_m": 426
+     },
+     {
+      "label": "21km",
+      "distance_km": 21.0,
+      "elevation_gain_m": 977
+     },
+     {
+      "label": "42km",
+      "distance_km": 42.0,
+      "elevation_gain_m": 193
+     }
+    ],
+    "terrain": [
+     "volcanic sand",
+     "rocky paths",
+     "paved village roads (~50% asphalt / 50% dirt trail)",
+     "Tenggerese villages",
+     "caldera views"
+    ],
+    "key_climbs": [],
+    "climate": {
+     "season": "September (Indonesian dry season)",
+     "avg_temp_c": "cool highland air, starting altitude 1,840m asl",
+     "humidity_pct": "moderate",
+     "notes": "Course starts at 1,840m asl with max elevation 2,491m on the marathon; high-altitude coolness contrasts with typical lowland Indonesian heat."
+    },
+    "runner_reviews": [],
+    "matching_hints": {
+     "name_keywords": [
+      "bromo marathon",
+      "mount bromo",
+      "bromo tengger semeru"
+     ],
+     "distance_km_options": [
+      2.5,
+      5.0,
+      10.0,
+      21.0,
+      42.0
+     ]
+    }
+   },
+   "source_label": "Web research (2026-07)"
+  },
+  {
+   "domain": "race_courses",
+   "kind": "race_profile",
+   "title": "XTERRA Zhangjiajie Wulingyuan Trail Run — Hunan, China",
+   "content": "The XTERRA Zhangjiajie Wulingyuan Trail Run, the first international trail run hosted in this UNESCO World Heritage karst region ('Avatar Mountains') of Hunan Province, China, offers 15K, 25K half marathon (1,400m D+), 42K marathon (2,400m+ D+) and 88K distances. The course weaves through towering sandstone pillar formations, dense singletrack forest, technical rocky ascents/descents and waterfalls. Subtropical Hunan climate brings high humidity year-round.",
+   "payload": {
+    "race_name": "XTERRA Zhangjiajie Wulingyuan Trail Run",
+    "aliases": [
+     "Zhangjiajie Trail Run",
+     "Avatar Mountain Trail Run"
+    ],
+    "location": "Wulingyuan, Zhangjiajie, Hunan Province, China",
+    "country": "China",
+    "region": "Asia",
+    "race_type": "karst_forest_trail",
+    "month_held": "varies",
+    "distances": [
+     {
+      "label": "15K",
+      "distance_km": 15.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "21K half marathon",
+      "distance_km": 25.0,
+      "elevation_gain_m": 1400
+     },
+     {
+      "label": "marathon",
+      "distance_km": 42.0,
+      "elevation_gain_m": 2400
+     },
+     {
+      "label": "88K",
+      "distance_km": 88.0,
+      "elevation_gain_m": null
+     }
+    ],
+    "terrain": [
+     "karst sandstone pillar formations ('Avatar Mountains')",
+     "dense singletrack forest floor",
+     "technical rocky ascents/descents",
+     "waterfalls"
+    ],
+    "key_climbs": [],
+    "climate": {
+     "season": "varies",
+     "avg_temp_c": "subtropical Hunan climate",
+     "humidity_pct": "high",
+     "notes": "UNESCO World Heritage site famed for towering sandstone pillars; first international trail run hosted in this location."
+    },
+    "runner_reviews": [],
+    "matching_hints": {
+     "name_keywords": [
+      "zhangjiajie",
+      "wulingyuan",
+      "xterra china",
+      "avatar mountain"
+     ],
+     "distance_km_options": [
+      15.0,
+      25.0,
+      42.0,
+      88.0
+     ]
+    }
+   },
+   "source_label": "Web research (2026-07)"
+  },
+  {
+   "domain": "race_courses",
+   "kind": "race_profile",
+   "title": "Angkor Wat International Half Marathon — Siem Reap, Cambodia (road)",
+   "content": "The Angkor Wat International Half Marathon starts and finishes in front of Angkor Wat Temple, Siem Reap, Cambodia, each December, passing roughly 14 ancient temples on a flat, mixed-surface course (road, gravel, parkland, boardwalk) shaded by ancient trees. Despite being December's dry season, temperatures still range 18-32°C with moderate-to-high humidity; the 6am start is designed to manage heat, which remains the dominant race-day variable given the flat terrain.",
+   "payload": {
+    "race_name": "Angkor Wat International Half Marathon",
+    "aliases": [
+     "Angkor Wat Half Marathon"
+    ],
+    "location": "Siem Reap, Cambodia (starts/finishes at Angkor Wat Temple)",
+    "country": "Cambodia",
+    "region": "ASEAN",
+    "race_type": "road_marathon",
+    "month_held": "December",
+    "distances": [
+     {
+      "label": "21km",
+      "distance_km": 21.1,
+      "elevation_gain_m": null
+     }
+    ],
+    "terrain": [
+     "flat mixed-surface course",
+     "road, gravel paths, parkland, boardwalks",
+     "past ~14 ancient temples"
+    ],
+    "key_climbs": [],
+    "climate": {
+     "season": "December (Cambodian dry season)",
+     "avg_temp_c": "18-32 (sources vary; hot by midday)",
+     "humidity_pct": "moderate-high",
+     "notes": "Race starts at 6am to manage heat; flat course but heat remains the dominant factor — roughly 1-2% pace slowdown per °C above 15°C."
+    },
+    "runner_reviews": [],
+    "matching_hints": {
+     "name_keywords": [
+      "angkor wat half marathon",
+      "angkor wat international half marathon",
+      "siem reap"
+     ],
+     "distance_km_options": [
+      21.1
+     ]
+    }
+   },
+   "source_label": "Web research (2026-07)"
+  },
+  {
+   "domain": "race_courses",
+   "kind": "race_profile",
+   "title": "Standard Chartered Singapore Marathon — Singapore (road)",
+   "content": "The Standard Chartered Singapore Marathon (SCSM), run each December, is flat and fast (~215m total elevation gain over 42.195km) with no rhythm-breaking climbs, passing the F1 Pit Building, National Stadium, Esplanade, Merlion Park, Marina Bay Sands, Gardens by the Bay and East Coast Park. Despite the flat course, it is considered one of the hardest major marathons weather-wise: temperatures of 26-28°C combined with humidity near 90% — even at the 4:30am start — commonly cost runners 10-20 minutes versus cool-weather performances. It is a useful reference case for heat/humidity pacing strategy in equatorial road racing.",
+   "payload": {
+    "race_name": "Standard Chartered Singapore Marathon",
+    "aliases": [
+     "SCSM",
+     "Singapore Marathon"
+    ],
+    "location": "Singapore",
+    "country": "Singapore",
+    "region": "ASEAN",
+    "race_type": "road_marathon",
+    "month_held": "December",
+    "distances": [
+     {
+      "label": "42km",
+      "distance_km": 42.195,
+      "elevation_gain_m": 215
+     }
+    ],
+    "terrain": [
+     "F1 Pit Building start",
+     "National Stadium",
+     "Esplanade",
+     "Merlion Park",
+     "Marina Bay Sands",
+     "Gardens by the Bay",
+     "East Coast Park",
+     "flat urban/waterfront road"
+    ],
+    "key_climbs": [],
+    "climate": {
+     "season": "December",
+     "avg_temp_c": "26-28",
+     "humidity_pct": "close to 90%, even at the 4:30am start",
+     "notes": "Flat and technically fast course, but heat and humidity are severe — runners commonly report finishing 10-20 minutes slower than in cool-weather conditions."
+    },
+    "runner_reviews": [
+     "Course records have fallen despite extreme heat and humidity, showing elite depth, but average finishers lose significant time to conditions."
+    ],
+    "matching_hints": {
+     "name_keywords": [
+      "standard chartered singapore marathon",
+      "scsm",
+      "singapore marathon"
+     ],
+     "distance_km_options": [
+      42.195
+     ]
+    }
+   },
+   "source_label": "Web research (2026-07)"
+  },
+  {
+   "domain": "race_courses",
+   "kind": "race_profile",
+   "title": "Gold Coast Marathon — Queensland, Australia (road)",
+   "content": "The Gold Coast Marathon, run each July along an oceanfront out-and-back route in Queensland, is Australia's flattest major road marathon at just ~62m of total elevation change across 42.195km. Combined with cool, dry, often windless July winter mornings, it's regarded as one of the world's premier PB and qualifying courses — roughly 60% of finishers report personal bests. A strong contrast case to hot, humid ASEAN road races: minimal terrain difficulty and favorable weather make pacing plans closer to pure fitness-limited than heat-limited.",
+   "payload": {
+    "race_name": "Gold Coast Marathon",
+    "aliases": [
+     "ASICS Gold Coast Marathon",
+     "GCM"
+    ],
+    "location": "Gold Coast, Queensland, Australia",
+    "country": "Australia",
+    "region": "Australia",
+    "race_type": "road_marathon",
+    "month_held": "July",
+    "distances": [
+     {
+      "label": "42km",
+      "distance_km": 42.195,
+      "elevation_gain_m": 62
+     }
+    ],
+    "terrain": [
+     "oceanfront out-and-back",
+     "flat urban coastal road"
+    ],
+    "key_climbs": [],
+    "climate": {
+     "season": "July (Southern Hemisphere winter)",
+     "avg_temp_c": "cool, dry, often windless winter mornings",
+     "humidity_pct": "low",
+     "notes": "Regarded as one of the world's premier PB/qualifying courses — ~60% of finishers report personal bests."
+    },
+    "runner_reviews": [],
+    "matching_hints": {
+     "name_keywords": [
+      "gold coast marathon",
+      "gcm",
+      "asics gold coast marathon"
+     ],
+     "distance_km_options": [
+      42.195
+     ]
+    }
+   },
+   "source_label": "Web research (2026-07)"
+  },
+  {
+   "domain": "race_courses",
+   "kind": "race_profile",
+   "title": "VnExpress Marathon Đà Nẵng — Đà Nẵng, Vietnam (road)",
+   "content": "The VnExpress Marathon Đà Nẵng (and the separately organized Đà Nẵng International Marathon in March) offers 5/10/21/42km distances along the Hàn River, over the Dragon, Trần Thị Lý and Thuận Phước bridges, and past Mỹ Khê beach — a flat, scenic coastal/urban road course. The July VnExpress edition uses a pre-dawn start both for sunrise views and to mitigate central Vietnam's hot, humid summer conditions.",
+   "payload": {
+    "race_name": "VnExpress Marathon Da Nang",
+    "aliases": [
+     "Da Nang International Marathon",
+     "VM Da Nang"
+    ],
+    "location": "Đà Nẵng, Vietnam",
+    "country": "Vietnam",
+    "region": "ASEAN",
+    "race_type": "road_marathon",
+    "month_held": "July (VnExpress edition) / March (separate Danang International Marathon)",
+    "distances": [
+     {
+      "label": "5km",
+      "distance_km": 5.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "10km",
+      "distance_km": 10.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "21km",
+      "distance_km": 21.1,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "42km",
+      "distance_km": 42.195,
+      "elevation_gain_m": null
+     }
+    ],
+    "terrain": [
+     "Hàn River",
+     "Dragon Bridge",
+     "Trần Thị Lý bridge",
+     "Thuận Phước bridge",
+     "Mỹ Khê beach",
+     "coastal/urban road"
+    ],
+    "key_climbs": [],
+    "climate": {
+     "season": "July (hot, humid central Vietnam summer)",
+     "avg_temp_c": "high 20s-30s C",
+     "humidity_pct": "high coastal humidity",
+     "notes": "Pre-dawn start used to let runners experience sunrise over the ocean and mitigate peak heat."
+    },
+    "runner_reviews": [],
+    "matching_hints": {
+     "name_keywords": [
+      "vnexpress marathon da nang",
+      "da nang international marathon",
+      "danang marathon"
+     ],
+     "distance_km_options": [
+      5.0,
+      10.0,
+      21.1,
+      42.195
+     ]
+    }
+   },
+   "source_label": "Web research (2026-07)"
+  },
+  {
+   "domain": "race_courses",
+   "kind": "race_profile",
+   "title": "Prenn Trail (Challenge/Summit) — Đà Lạt, Vietnam",
+   "content": "Prenn Trail (run as Prenn Trail Challenge / Prenn Trail Summit) is based at Tea Resort Prenn at the foot of Prenn Pass, Đà Lạt, Lâm Đồng Province. It offers one of Vietnam's widest distance spreads, from 25km ('The Leaders') up through 55km/2,127m D+ ('The Challengers'), 75km/3,800m D+ ('The Warriors'), 103km ('The Heroes'), 187km ('The Legends') to a 246km/~11,500m D+ ultra-extreme category ('The Gods'). As with other Đà Lạt-area races, the ~1,500m plateau altitude keeps temperatures cool for most of the day relative to lowland Vietnam.",
+   "payload": {
+    "race_name": "Prenn Trail",
+    "aliases": [
+     "Prenn Trail Challenge",
+     "Prenn Trail Summit",
+     "The Leaders",
+     "The Challengers",
+     "The Warriors",
+     "The Heroes",
+     "The Legends",
+     "The Gods"
+    ],
+    "location": "Prenn Pass, Đà Lạt, Lâm Đồng Province, Vietnam",
+    "country": "Vietnam",
+    "region": "ASEAN",
+    "race_type": "mountain_trail",
+    "month_held": "varies (organizer: Tea Resort Prenn)",
+    "distances": [
+     {
+      "label": "25km / The Leaders",
+      "distance_km": 25.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "55km / The Challengers",
+      "distance_km": 51.43,
+      "elevation_gain_m": 2127
+     },
+     {
+      "label": "75km / The Warriors",
+      "distance_km": 75.0,
+      "elevation_gain_m": 3800
+     },
+     {
+      "label": "103km / The Heroes",
+      "distance_km": 103.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "187km / The Legends",
+      "distance_km": 187.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "250km / The Gods",
+      "distance_km": 246.04,
+      "elevation_gain_m": 11496
+     }
+    ],
+    "terrain": [
+     "Prenn Pass foothills",
+     "Đà Lạt highland pine forest and ridgeline"
+    ],
+    "key_climbs": [],
+    "climate": {
+     "season": "varies",
+     "avg_temp_c": "cool for most of the day given ~1,500m plateau altitude",
+     "humidity_pct": "moderate",
+     "notes": "Hosted at Tea Resort Prenn, Prenn Pass foot, Đà Lạt City — one of Vietnam's most extreme distance offerings, up to a 246km 'Gods' category with ~11,500m D+."
+    },
+    "runner_reviews": [],
+    "matching_hints": {
+     "name_keywords": [
+      "prenn trail",
+      "prenn pass",
+      "the challengers",
+      "the warriors",
+      "the gods"
+     ],
+     "distance_km_options": [
+      25.0,
+      51.43,
+      75.0,
+      103.0,
+      187.0,
+      246.04
+     ]
+    }
+   },
+   "source_label": "Web research (2026-07)"
+  },
+  {
+   "domain": "race_courses",
+   "kind": "race_profile",
+   "title": "Lâm Đồng Trail — Đà Lạt, Vietnam",
+   "content": "Lâm Đồng Trail is held each November in Đà Lạt, Lâm Đồng Province, with a 3km Kidstrail plus 15/25/45/75km adult distances. Elevation gain scales steeply with distance: 25km carries 1,041m D+, 45km carries 2,329m D+, and the 75km ultra carries 3,805m D+ — runners note it is by no means an easy flat run despite Đà Lạt's gentler reputation. As with other Central Highlands races, the ~1,500m plateau altitude keeps conditions cooler than lowland Vietnam.",
+   "payload": {
+    "race_name": "Lam Dong Trail",
+    "aliases": [
+     "Lam Dong Ultra Trail",
+     "Lâm Đồng Trail"
+    ],
+    "location": "Đà Lạt, Lâm Đồng Province, Vietnam",
+    "country": "Vietnam",
+    "region": "ASEAN",
+    "race_type": "mountain_trail",
+    "month_held": "November",
+    "distances": [
+     {
+      "label": "3km Kidstrail",
+      "distance_km": 3.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "15km",
+      "distance_km": 15.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "25km",
+      "distance_km": 25.0,
+      "elevation_gain_m": 1041
+     },
+     {
+      "label": "45km",
+      "distance_km": 45.0,
+      "elevation_gain_m": 2329
+     },
+     {
+      "label": "75km",
+      "distance_km": 75.0,
+      "elevation_gain_m": 3805
+     }
+    ],
+    "terrain": [
+     "Lâm Đồng highland pine forest and hill trail"
+    ],
+    "key_climbs": [],
+    "climate": {
+     "season": "November",
+     "avg_temp_c": "cool highland (~1,500m altitude)",
+     "humidity_pct": "moderate",
+     "notes": "'By no means an easy flat run in the park' — over 4,000m of cumulative D+ across the longer distances."
+    },
+    "runner_reviews": [],
+    "matching_hints": {
+     "name_keywords": [
+      "lam dong trail",
+      "lam dong ultra trail",
+      "lâm đồng"
+     ],
+     "distance_km_options": [
+      3.0,
+      15.0,
+      25.0,
+      45.0,
+      75.0
+     ]
+    }
+   },
+   "source_label": "Web research (2026-07)"
+  },
+  {
+   "domain": "race_courses",
+   "kind": "race_profile",
+   "title": "Phong Nha Wild Trail / Quảng Bình Discovery Marathon — Phong Nha-Kẻ Bàng, Vietnam",
+   "content": "Phong Nha Wild Trail (organized alongside the Quảng Bình Discovery Marathon) runs through Phong Nha-Kẻ Bàng National Park, Quảng Bình Province — a UNESCO World Heritage karst landscape with over 300 explored caves including Sơn Đoòng, the world's largest cave passage. Distances span 5/10/20/50/70km (Wild Trail) alongside a 6/10/21km Discovery Marathon program with a 42km planned. The terrain is forested limestone karst rather than in-cave running, held in March under mild central-Vietnam spring conditions with the high humidity typical of karst/jungle microclimates.",
+   "payload": {
+    "race_name": "Phong Nha Wild Trail",
+    "aliases": [
+     "Quang Binh Discovery Marathon",
+     "Phong Nha Marathon"
+    ],
+    "location": "Phong Nha-Kẻ Bàng National Park, Quảng Bình Province, Vietnam",
+    "country": "Vietnam",
+    "region": "ASEAN",
+    "race_type": "karst_jungle_trail",
+    "month_held": "March",
+    "distances": [
+     {
+      "label": "5km",
+      "distance_km": 5.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "10km",
+      "distance_km": 10.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "20km",
+      "distance_km": 20.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "21km (Discovery)",
+      "distance_km": 21.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "50km",
+      "distance_km": 50.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "70km",
+      "distance_km": 70.0,
+      "elevation_gain_m": null
+     }
+    ],
+    "terrain": [
+     "limestone karst national park",
+     "cave-system-adjacent trail",
+     "jungle singletrack"
+    ],
+    "key_climbs": [],
+    "climate": {
+     "season": "March",
+     "avg_temp_c": "central Vietnam spring, mild",
+     "humidity_pct": "high (karst/jungle microclimate)",
+     "notes": "Phong Nha-Kẻ Bàng is a UNESCO World Heritage karst park with over 300 explored caves (incl. Sơn Đoòng, the world's largest cave passage); race trails run through the park's forested karst terrain rather than inside the caves themselves."
+    },
+    "runner_reviews": [],
+    "matching_hints": {
+     "name_keywords": [
+      "phong nha wild trail",
+      "quang binh discovery marathon",
+      "phong nha marathon",
+      "phong nha ke bang"
+     ],
+     "distance_km_options": [
+      5.0,
+      10.0,
+      20.0,
+      21.0,
+      50.0,
+      70.0
+     ]
+    }
+   },
+   "source_label": "Web research (2026-07)"
+  },
+  {
+   "domain": "race_courses",
+   "kind": "race_profile",
+   "title": "Cúc Phương Jungle Paths — Cúc Phương National Park, Vietnam",
+   "content": "Cúc Phương Jungle Paths is held in Cúc Phương National Park, Ninh Bình Province — Vietnam's oldest national park, known for limestone forest and karst wildlife valleys. Distances span 10/25/42/75/100km, with the 100km carrying roughly 2,600m D+, most of it concentrated in the second half deep in the jungle where trails turn continuously treacherous, slippery and dark. The 42km shares its tougher second half with the 100km/75km courses but is otherwise considered the more 'runnable' distance, with over 30km inside Cúc Phương's primary forest. High jungle-canopy humidity is a factor regardless of the April or December edition.",
+   "payload": {
+    "race_name": "Cuc Phuong Jungle Paths",
+    "aliases": [
+     "Cúc Phương Jungle Paths"
+    ],
+    "location": "Cúc Phương National Park, Ninh Bình Province, Vietnam",
+    "country": "Vietnam",
+    "region": "ASEAN",
+    "race_type": "jungle_trail",
+    "month_held": "April (also Dec editions)",
+    "distances": [
+     {
+      "label": "10km",
+      "distance_km": 10.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "25km",
+      "distance_km": 25.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "42km",
+      "distance_km": 42.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "75km",
+      "distance_km": 75.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "100km",
+      "distance_km": 100.0,
+      "elevation_gain_m": 2600
+     }
+    ],
+    "terrain": [
+     "limestone forest",
+     "primary jungle singletrack (>30km inside Cúc Phương primary forest on the 42km)",
+     "wildlife-rich karst valleys",
+     "continuously slippery, dark single trail deep in the jungle"
+    ],
+    "key_climbs": [],
+    "climate": {
+     "season": "April / December",
+     "avg_temp_c": "varies by edition",
+     "humidity_pct": "high, dense jungle canopy",
+     "notes": "Most of the 100km's elevation gain is concentrated in the second half, deep in the jungle, where trails are described as continuously treacherous, slippery and dark. The 42km is the more 'runnable' option, sharing its second half with the 100km/75km courses."
+    },
+    "runner_reviews": [
+     "The 100km is very tough; hills deep in the jungle are continuously treacherous, slippery and dark.",
+     "42km caters to trail runners who prefer more runnable trails; 100km and 70/75km are tough."
+    ],
+    "matching_hints": {
+     "name_keywords": [
+      "cuc phuong",
+      "cúc phương",
+      "jungle paths"
+     ],
+     "distance_km_options": [
+      10.0,
+      25.0,
+      42.0,
+      75.0,
+      100.0
+     ]
+    }
+   },
+   "source_label": "Web research (2026-07)"
+  },
+  {
+   "domain": "race_courses",
+   "kind": "race_profile",
+   "title": "Ultra Trail Cao Bằng (UTCB) — Cao Bằng, Vietnam",
+   "content": "Ultra Trail Cao Bằng (UTCB), held each November, showcases the Cao Bằng UNESCO Global Geopark near Vietnam's northern border with distances from 10km up to a 160km ultra (10/25/42/70/100/160km); the UTCB70 (67km) carries 1,100m D+. The course crosses bamboo forest, terraced rice fields, and riverside trail along the Bằng and Quây Sơn rivers, and passes major landmarks including the Pắc Bó relic site, Mắt Thần Mountain, Thang Hen and Bản Viết lakes, and Bản Giốc Waterfall. The northern-border highland location gives cooler conditions than central/southern Vietnam races.",
+   "payload": {
+    "race_name": "Ultra Trail Cao Bang",
+    "aliases": [
+     "UTCB",
+     "Cao Bang Trail"
+    ],
+    "location": "Cao Bằng Province, Vietnam (Cao Bằng Global Geopark)",
+    "country": "Vietnam",
+    "region": "ASEAN",
+    "race_type": "mountain_trail",
+    "month_held": "November",
+    "distances": [
+     {
+      "label": "10km",
+      "distance_km": 10.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "25km",
+      "distance_km": 25.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "42km",
+      "distance_km": 42.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "70km / UTCB70",
+      "distance_km": 67.0,
+      "elevation_gain_m": 1100
+     },
+     {
+      "label": "100km",
+      "distance_km": 100.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "160km",
+      "distance_km": 160.0,
+      "elevation_gain_m": null
+     }
+    ],
+    "terrain": [
+     "bamboo forest",
+     "terraced rice fields",
+     "riverside trail along the Bằng and Quây Sơn rivers",
+     "pine hills",
+     "UNESCO Global Geopark limestone landscape"
+    ],
+    "key_climbs": [],
+    "climate": {
+     "season": "November",
+     "avg_temp_c": "cooler northern-border highland climate",
+     "humidity_pct": "moderate",
+     "notes": "Passes cultural-historical landmarks including the Pắc Bó relic site, Mắt Thần Mountain, Thang Hen and Bản Viết lakes, and Bản Giốc Waterfall."
+    },
+    "runner_reviews": [],
+    "matching_hints": {
+     "name_keywords": [
+      "ultra trail cao bang",
+      "utcb",
+      "cao bang trail",
+      "cao bằng"
+     ],
+     "distance_km_options": [
+      10.0,
+      25.0,
+      42.0,
+      67.0,
+      100.0,
+      160.0
+     ]
+    }
+   },
+   "source_label": "Web research (2026-07)"
+  },
+  {
+   "domain": "race_courses",
+   "kind": "race_profile",
+   "title": "Mù Cang Chải Ultra Trail — Mù Cang Chải, Vietnam",
+   "content": "The Mù Cang Chải Ultra Trail runs each October through Mù Cang Chải District, Yên Bái Province — famed for its golden terraced rice fields (2,200 hectares, 500 of which are recognized national heritage). Distances span 12/25/55/75/100/160km. Over 80% of the terrain is mountainous mixed-soil trail with strength-challenging slopes; the district sits at ~1,000m average altitude with the highest peak, Lũng Cung, reaching 2,913m. The race is timed to the golden rice-terrace season, giving misty, cool highland running conditions.",
+   "payload": {
+    "race_name": "Mucangchai Ultra Trail",
+    "aliases": [
+     "Mu Cang Chai Ultra Trail",
+     "MCC Ultra Trail"
+    ],
+    "location": "Mù Cang Chải District, Yên Bái Province, Vietnam",
+    "country": "Vietnam",
+    "region": "ASEAN",
+    "race_type": "mountain_trail",
+    "month_held": "October",
+    "distances": [
+     {
+      "label": "12km",
+      "distance_km": 12.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "25km",
+      "distance_km": 25.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "55km",
+      "distance_km": 55.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "75km",
+      "distance_km": 75.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "100km",
+      "distance_km": 100.0,
+      "elevation_gain_m": null
+     },
+     {
+      "label": "160km",
+      "distance_km": 160.0,
+      "elevation_gain_m": null
+     }
+    ],
+    "terrain": [
+     "terraced rice field ridgeline (2,200 hectares of terraces, 500 ha national heritage)",
+     "mixed-soil mountain trail (>80% mountainous terrain)",
+     "misty ridges"
+    ],
+    "key_climbs": [
+     {
+      "name": "Lũng Cung",
+      "elevation_m": 2913,
+      "notes": "Highest peak in Mù Cang Chải; the district sits at an average altitude of ~1,000m."
+     }
+    ],
+    "climate": {
+     "season": "October (rice-terrace golden season)",
+     "avg_temp_c": "cool highland, misty",
+     "humidity_pct": "moderate-high",
+     "notes": "Timed to coincide with the golden ripening of Mù Cang Chải's terraced rice fields, a major visual draw of the race."
+    },
+    "runner_reviews": [],
+    "matching_hints": {
+     "name_keywords": [
+      "mucangchai",
+      "mu cang chai",
+      "mù cang chải"
+     ],
+     "distance_km_options": [
+      12.0,
+      25.0,
+      55.0,
+      75.0,
+      100.0,
+      160.0
+     ]
+    }
+   },
+   "source_label": "Web research (2026-07)"
+  }
+ ]
 }

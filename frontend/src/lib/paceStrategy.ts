@@ -57,8 +57,9 @@ export function synthesizeCourse(
   gainM: number,
   lossM: number = gainM,
   baseElevationM: number = 0,
+  intervalKm: number = 1,
 ): CourseCheckpoint[] {
-  const n = Math.max(1, Math.ceil(distanceKm));
+  const n = Math.max(1, Math.ceil(distanceKm / intervalKm));
   const checkpoints: CourseCheckpoint[] = [
     {
       name: "Start",
@@ -72,12 +73,12 @@ export function synthesizeCourse(
   // distribute by actual km so totals are preserved on fractional distances
   const gainPerKm = gainM / distanceKm;
   const lossPerKm = lossM / distanceKm;
-  for (let km = 1; km <= n; km++) {
-    const distM = Math.min(km * 1000, distanceKm * 1000);
-    const frac = (distM - checkpoints[km - 1].distance_meters) / 1000;
+  for (let i = 1; i <= n; i++) {
+    const distM = Math.min(i * intervalKm * 1000, distanceKm * 1000);
+    const frac = (distM - checkpoints[i - 1].distance_meters) / 1000;
     elevation += (gainPerKm - lossPerKm) * frac;
     // symmetric bump peaking mid-course, so profiles aren't a flat line
-    const bump = Math.sin((Math.min(km, n) / n) * Math.PI) * Math.min(gainM, lossM) * 0.25;
+    const bump = Math.sin((Math.min(i, n) / n) * Math.PI) * Math.min(gainM, lossM) * 0.25;
     checkpoints.push({
       name: `KM ${Math.round(distM / 1000)}`,
       distance_meters: distM,
@@ -112,6 +113,13 @@ export function addClockEtas(
     const clock = Math.round(startOffset + arrival) % (24 * 60);
     return `${String(Math.floor(clock / 60)).padStart(2, "0")}:${String(clock % 60).padStart(2, "0")}`;
   });
+}
+
+/** Parses "9:10:58" or "2:30" race times to decimal minutes. */
+export function parseDurationToMinutes(time: string): number | null {
+  const m = time.trim().match(/^(\d{1,2}):([0-5]\d)(?::([0-5]\d))?$/);
+  if (!m) return null;
+  return parseInt(m[1], 10) * 60 + parseInt(m[2], 10) + (m[3] ? parseInt(m[3], 10) / 60 : 0);
 }
 
 /** Maps a forecast temperature to the Nutrition Lab's weather buckets. */
