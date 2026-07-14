@@ -2,12 +2,12 @@
 import { useAppContext } from "../contexts/AppContext";
 import { useTools } from "../hooks/useTools";
 import { translations } from "../app/translations";
-import { BowlFood, Sneaker, UploadSimple, FileArrowUp, Path, MapPin, Footprints, Clock, ArrowsMerge, PlayCircle, CheckCircle, Fire, Info } from '@phosphor-icons/react';
+import { BowlFood, Sneaker, Gauge } from '@phosphor-icons/react';
 
 export default function ToolsView({ isMobile }: { isMobile: boolean }) {
   const ctx = useAppContext();
-  const { lang, parserLoading, parserErrorMsg, parsedSummary, gpxCheckpoints, pacedCheckpoints, uploadedFileName, setIsNutritionLabOpen, setIsGearVaultOpen, targetFlatPace, setTargetFlatPace, pacingLoading } = ctx;
-  const { handleDropzoneClick, handleFileChange, fileInputRef, handleCalculatePacing } = useTools();
+  const { lang, parserLoading, parserErrorMsg, parsedSummary, uploadedFileName, setIsNutritionLabOpen, setIsGearVaultOpen, setIsPaceStrategyOpen } = ctx;
+  const { handleDropzoneClick, handleFileChange, fileInputRef } = useTools();
   const t = (key: keyof typeof translations.en) => translations[lang]?.[key] || translations.en[key] || key;
 
     return (
@@ -38,13 +38,26 @@ export default function ToolsView({ isMobile }: { isMobile: boolean }) {
           </p>
         </div>
 
-        {/* Card 3: GPX Checkpoint Pacer */}
+        {/* Card 3: Pace Strategy (Launch Button) */}
+        <div className="card" style={{ padding: isMobile ? "16px" : "24px", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", cursor: "pointer", border: "1px solid var(--accent-primary)" }} onClick={() => setIsPaceStrategyOpen(true)}>
+          <Gauge size={48} color="var(--accent-primary)" weight="duotone" style={{ marginBottom: "16px" }} />
+          <h3 style={{ fontSize: isMobile ? "18px" : "20px", marginBottom: "8px", color: "var(--text-primary)" }}>
+            Pace Strategy
+          </h3>
+          <p style={{ color: "var(--text-secondary)", fontSize: "13px", marginBottom: "0" }}>
+            {lang === "en"
+              ? "Turn a target finish time into a segment-by-segment race pacing plan."
+              : "Biến thời gian về đích mục tiêu thành kế hoạch pacing theo từng đoạn."}
+          </p>
+        </div>
+
+        {/* Card 4: File Inspector (FIT/GPX telemetry) */}
         <div className="card" style={{ padding: isMobile ? "16px" : "24px" }}>
-          <h3 style={{ fontSize: isMobile ? "16px" : "18px", marginBottom: "8px", color: "var(--accent-primary)" }}>GPX Checkpoint Pacer</h3>
+          <h3 style={{ fontSize: isMobile ? "16px" : "18px", marginBottom: "8px", color: "var(--accent-primary)" }}>{lang === "en" ? "File Inspector" : "Kiểm tra Tệp"}</h3>
           <p style={{ color: "var(--text-secondary)", fontSize: "12.5px", marginBottom: "16px" }}>
             {lang === "en"
-              ? "Upload a course GPX file to parse checkpoint metrics, or a workout FIT file to view telemetry."
-              : "Tải lên tệp GPX đường chạy để phân tích thông số checkpoint, hoặc tệp FIT buổi tập để xem dữ liệu đo lường."}
+              ? "Upload a course GPX or workout FIT file to view its telemetry."
+              : "Tải lên tệp GPX đường chạy hoặc tệp FIT buổi tập để xem dữ liệu đo lường."}
           </p>
 
           <div className="dropzone" onClick={handleDropzoneClick} style={{ padding: "12px 10px", gap: "4px", marginBottom: "16px", cursor: "pointer" }}>
@@ -105,60 +118,6 @@ export default function ToolsView({ isMobile }: { isMobile: boolean }) {
             </div>
           )}
 
-          <div style={{ marginBottom: "12px" }}>
-            <label style={{ display: "block", fontSize: "11.5px", color: "var(--text-muted)", marginBottom: "4px" }}>
-              {lang === "en" ? "Target Flat Pace (min/km)" : "Flat Pace Mục tiêu (min/km)"}
-            </label>
-            <input
-              type="number"
-              step="0.1"
-              className="chat-input"
-              style={{ borderRadius: "8px", width: "100%", padding: "8px" }}
-              value={targetFlatPace}
-              onChange={(e) => setTargetFlatPace(e.target.value)}
-            />
-          </div>
-
-          <button
-            className="btn btn-primary"
-            style={{
-              width: "100%", marginBottom: "12px", height: "36px", fontSize: "12.5px",
-              ...(gpxCheckpoints.length === 0 ? { filter: "blur(3px)", opacity: 0.7, pointerEvents: "none" } : {})
-            }}
-            onClick={handleCalculatePacing}
-            disabled={gpxCheckpoints.length === 0 || pacingLoading}
-          >
-            {pacingLoading
-              ? (lang === "en" ? "Calculating Splits..." : "Đang tính toán checkpoint...")
-              : gpxCheckpoints.length === 0
-                ? (lang === "en" ? "Upload GPX First" : "Cần tải lên GPX trước")
-                : (lang === "en" ? "Generate Splits" : "Tạo Checkpoint Pace")}
-          </button>
-
-          {pacedCheckpoints.length > 0 && (
-            <div style={{ maxHeight: "160px", overflowY: "auto", border: "1px solid var(--border-color)", borderRadius: "8px", background: "rgba(255, 255, 255, 0.2)" }}>
-              <table style={{ width: "100%", fontSize: "11px", borderCollapse: "collapse", textAlign: "left" }}>
-                <thead>
-                  <tr style={{ borderBottom: "1px solid var(--border-color)", color: "var(--text-muted)" }}>
-                    <th style={{ padding: "6px" }}>{lang === "en" ? "Name" : "Tên"}</th>
-                    <th style={{ padding: "6px" }}>{lang === "en" ? "Dist" : "Cự ly"}</th>
-                    <th style={{ padding: "6px" }}>Pace</th>
-                    <th style={{ padding: "6px" }}>{lang === "en" ? "Split" : "Tách (Split)"}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pacedCheckpoints.map((cp: any, idx: any) => (
-                    <tr key={idx} style={{ borderBottom: "1px solid rgba(0,0,0,0.02)" }}>
-                      <td style={{ padding: "6px", fontWeight: "600" }}>{cp.name}</td>
-                      <td style={{ padding: "6px" }}>{cp.distance_km}k</td>
-                      <td style={{ padding: "6px" }}>{cp.target_pace}/k</td>
-                      <td style={{ padding: "700", fontWeight: "700" }}>{cp.split_time}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
         </div>
 
       </div>

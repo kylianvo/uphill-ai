@@ -13,6 +13,7 @@ import ToolsView from "@/views/ToolsView";
 import KnowledgeView from "@/views/KnowledgeView";
 import { NutritionLab } from "../components/NutritionLab";
 import { GearVault } from "../components/GearVault";
+import { PaceStrategy } from "../components/PaceStrategy";
 import { translations } from "./translations";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import {
@@ -462,10 +463,12 @@ export default function Home() {
   const {
     isNutritionLabOpen,
     isGearVaultOpen,
+    isPaceStrategyOpen,
     activeTab,
     lang,
     setIsNutritionLabOpen,
     setIsGearVaultOpen,
+    setIsPaceStrategyOpen,
     setActiveTab,
     setLang,
     startBtnHovered,
@@ -3249,6 +3252,13 @@ export default function Home() {
       <GearVault
         isOpen={isGearVaultOpen}
         onClose={() => setIsGearVaultOpen(false)}
+        lang={lang}
+        user={user}
+        activePlan={activePlan}
+      />
+      <PaceStrategy
+        isOpen={isPaceStrategyOpen}
+        onClose={() => setIsPaceStrategyOpen(false)}
         lang={lang}
         user={user}
         activePlan={activePlan}

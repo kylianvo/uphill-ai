@@ -10,6 +10,8 @@ interface AppContextType {
   setIsNutritionLabOpen: any;
   isGearVaultOpen: any;
   setIsGearVaultOpen: any;
+  isPaceStrategyOpen: any;
+  setIsPaceStrategyOpen: any;
   activeTab: any;
   setActiveTab: any;
   lang: "en" | "vi";
@@ -208,6 +210,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider = ({ children }: { children: ReactNode }) => {
     const [isNutritionLabOpen, setIsNutritionLabOpen] = useState(false);
   const [isGearVaultOpen, setIsGearVaultOpen] = useState(false);
+  const [isPaceStrategyOpen, setIsPaceStrategyOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"home" | "about" | "chat" | "planner" | "tools" | "knowledge">("home");
   const [lang, setLang] = useState<"en" | "vi">("en");
   const [startBtnHovered, setStartBtnHovered] = useState(false);
@@ -375,6 +378,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     <AppContext.Provider value={{
       isNutritionLabOpen, setIsNutritionLabOpen,
       isGearVaultOpen, setIsGearVaultOpen,
+      isPaceStrategyOpen, setIsPaceStrategyOpen,
       activeTab, setActiveTab,
       lang, setLang,
       startBtnHovered, setStartBtnHovered,
