@@ -14,6 +14,7 @@ import KnowledgeView from "@/views/KnowledgeView";
 import { NutritionLab } from "../components/NutritionLab";
 import { GearVault } from "../components/GearVault";
 import { PaceStrategy } from "../components/PaceStrategy";
+import { GoalDeterminer } from "../components/GoalDeterminer";
 import { translations } from "./translations";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import {
@@ -464,6 +465,8 @@ export default function Home() {
     isNutritionLabOpen,
     isGearVaultOpen,
     isPaceStrategyOpen,
+    isGoalDeterminerOpen,
+    setIsGoalDeterminerOpen,
     activeTab,
     lang,
     setIsNutritionLabOpen,
@@ -3265,6 +3268,13 @@ export default function Home() {
       <PaceStrategy
         isOpen={isPaceStrategyOpen}
         onClose={() => setIsPaceStrategyOpen(false)}
+        lang={lang}
+        user={user}
+        activePlan={activePlan}
+      />
+      <GoalDeterminer
+        isOpen={isGoalDeterminerOpen}
+        onClose={() => setIsGoalDeterminerOpen(false)}
         lang={lang}
         user={user}
         activePlan={activePlan}

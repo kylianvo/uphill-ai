@@ -2,11 +2,11 @@
 import { useAppContext } from "../contexts/AppContext";
 import { useTools } from "../hooks/useTools";
 import { translations } from "../app/translations";
-import { BowlFood, Sneaker, Gauge } from '@phosphor-icons/react';
+import { BowlFood, Sneaker, Gauge, Crosshair } from '@phosphor-icons/react';
 
 export default function ToolsView({ isMobile }: { isMobile: boolean }) {
   const ctx = useAppContext();
-  const { lang, parserLoading, parserErrorMsg, parsedSummary, uploadedFileName, setIsNutritionLabOpen, setIsGearVaultOpen, setIsPaceStrategyOpen } = ctx;
+  const { lang, parserLoading, parserErrorMsg, parsedSummary, uploadedFileName, setIsNutritionLabOpen, setIsGearVaultOpen, setIsPaceStrategyOpen, setIsGoalDeterminerOpen } = ctx;
   const { handleDropzoneClick, handleFileChange, fileInputRef } = useTools();
   const t = (key: keyof typeof translations.en) => translations[lang]?.[key] || translations.en[key] || key;
 
@@ -51,7 +51,20 @@ export default function ToolsView({ isMobile }: { isMobile: boolean }) {
           </p>
         </div>
 
-        {/* Card 4: File Inspector (FIT/GPX telemetry) */}
+        {/* Card 4: Goal Determiner (Launch Button) */}
+        <div className="card" style={{ padding: isMobile ? "16px" : "24px", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", cursor: "pointer", border: "1px solid var(--accent-primary)" }} onClick={() => setIsGoalDeterminerOpen(true)}>
+          <Crosshair size={48} color="var(--accent-primary)" weight="duotone" style={{ marginBottom: "16px" }} />
+          <h3 style={{ fontSize: isMobile ? "18px" : "20px", marginBottom: "8px", color: "var(--text-primary)" }}>
+            Goal Determiner
+          </h3>
+          <p style={{ color: "var(--text-secondary)", fontSize: "13px", marginBottom: "0" }}>
+            {lang === "en"
+              ? "Find out what finish time you could realistically target at your next race."
+              : "Tìm ra thời gian về đích thực tế cho giải chạy sắp tới của bạn."}
+          </p>
+        </div>
+
+        {/* Card 5: File Inspector (FIT/GPX telemetry) */}
         <div className="card" style={{ padding: isMobile ? "16px" : "24px" }}>
           <h3 style={{ fontSize: isMobile ? "16px" : "18px", marginBottom: "8px", color: "var(--accent-primary)" }}>{lang === "en" ? "File Inspector" : "Kiểm tra Tệp"}</h3>
           <p style={{ color: "var(--text-secondary)", fontSize: "12.5px", marginBottom: "16px" }}>

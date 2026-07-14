@@ -28,6 +28,34 @@ test('pace strategy: race pick produces a segment plan', async ({ page }) => {
   await expect(page.getByText(/finishers/)).toBeVisible({ timeout: 10000 });
 });
 
+test('goal determiner: reference result produces A/B/C goals and hands off to pace strategy', async ({ page }) => {
+  await page.goto('/');
+
+  await page.getByRole('button', { name: 'Tools', exact: true }).click();
+  await page.getByText('Find out what finish time').click();
+
+  // target: VMM 70k from the KB
+  await page.locator('[role="combobox"]').first().pressSequentially('vmm', { delay: 60 });
+  await page.locator('input[placeholder="e.g. 70"]').fill('70');
+  await page.locator('input[placeholder="e.g. 16"]').fill('16');
+
+  // fitness: a manual 50k / 2500m in 7:30
+  await page.locator('input[placeholder="e.g. 50"]').fill('50');
+  await page.locator('input[placeholder="e.g. 2500"]').fill('2500');
+  await page.locator('input[placeholder="e.g. 7:30:00"]').fill('7:30:00');
+
+  await page.getByRole('button', { name: /Estimate my goal/ }).click();
+
+  await expect(page.getByText('Ambitious', { exact: true })).toBeVisible({ timeout: 15000 });
+  await expect(page.getByText('Realistic', { exact: true })).toBeVisible();
+  await expect(page.getByText('Safe', { exact: true })).toBeVisible();
+
+  // hand the realistic goal into Pace Strategy: modal opens with a plan
+  await page.getByRole('button', { name: 'Plan pacing' }).nth(1).click();
+  await expect(page.getByRole('heading', { name: 'Pace Strategy', level: 2 })).toBeVisible();
+  await expect(page.getByText('Moving:')).toBeVisible({ timeout: 20000 });
+});
+
 test('pace strategy: manual distance works without a race match', async ({ page }) => {
   await page.goto('/');
 

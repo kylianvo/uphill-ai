@@ -14,6 +14,8 @@ interface AppContextType {
   setIsPaceStrategyOpen: any;
   paceHandoff: any;
   setPaceHandoff: any;
+  isGoalDeterminerOpen: any;
+  setIsGoalDeterminerOpen: any;
   activeTab: any;
   setActiveTab: any;
   lang: "en" | "vi";
@@ -213,12 +215,16 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     const [isNutritionLabOpen, setIsNutritionLabOpen] = useState(false);
   const [isGearVaultOpen, setIsGearVaultOpen] = useState(false);
   const [isPaceStrategyOpen, setIsPaceStrategyOpen] = useState(false);
-  // Race context handed from Pace Strategy to Nutrition Lab / Gear Finder
+  const [isGoalDeterminerOpen, setIsGoalDeterminerOpen] = useState(false);
+  // Race context handed between tools (Pace Strategy → Nutrition/Gear,
+  // Goal Determiner → Pace Strategy)
   const [paceHandoff, setPaceHandoff] = useState<{
     duration_hours?: number;
     weather_temp?: "cool" | "moderate" | "hot";
     race_name?: string;
     distance_label?: string;
+    distance_km?: number;
+    target_time_mins?: number;
   } | null>(null);
   const [activeTab, setActiveTab] = useState<"home" | "about" | "chat" | "planner" | "tools" | "knowledge">("home");
   const [lang, setLang] = useState<"en" | "vi">("en");
@@ -389,6 +395,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       isGearVaultOpen, setIsGearVaultOpen,
       isPaceStrategyOpen, setIsPaceStrategyOpen,
       paceHandoff, setPaceHandoff,
+      isGoalDeterminerOpen, setIsGoalDeterminerOpen,
       activeTab, setActiveTab,
       lang, setLang,
       startBtnHovered, setStartBtnHovered,

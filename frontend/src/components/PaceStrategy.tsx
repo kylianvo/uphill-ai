@@ -262,7 +262,20 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const { trackEvent } = useAnalytics();
-  const { setPaceHandoff, setIsNutritionLabOpen, setIsGearVaultOpen } = useAppContext();
+  const { paceHandoff, setPaceHandoff, setIsNutritionLabOpen, setIsGearVaultOpen } = useAppContext();
+
+  // Goal Determiner hands a race + target time into the slider
+  useEffect(() => {
+    if (!isOpen || !paceHandoff?.target_time_mins) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCourseSource("race");
+    if (paceHandoff.race_name) setRaceName(paceHandoff.race_name);
+    if (paceHandoff.distance_km) setManualDistance(String(paceHandoff.distance_km));
+    setTargetTimeMins(paceHandoff.target_time_mins);
+    setRestMins({});
+    setPaceHandoff(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   // Weather needs per-checkpoint coordinates, which only GPX courses have.
   const raceStartIso =

@@ -1880,6 +1880,107 @@ def match_race_course(name: str, distance_km: float | None = None, distance_labe
     return response
 
 
+class GoalEstimateRequest(BaseModel):
+    # target course: a KB race name and/or explicit numbers
+    race_name: str | None = None
+    distance_km: float | None = None
+    elevation_gain_m: float | None = None
+    # fitness: a flat base pace OR a past race result
+    flat_pace_min_km: float | None = None
+    reference_race_name: str | None = None
+    reference_distance_km: float | None = None
+    reference_elevation_gain_m: float | None = None
+    reference_time: str | None = None  # "h:mm:ss" or "h:mm"
+    weeks_to_race: float | None = None
+
+
+def _parse_hms_to_mins(time_str: str | None) -> float | None:
+    if not time_str:
+        return None
+    parts = time_str.strip().split(":")
+    if len(parts) not in (2, 3) or not all(p.isdigit() for p in parts):
+        return None
+    h, m = int(parts[0]), int(parts[1])
+    s = int(parts[2]) if len(parts) == 3 else 0
+    return h * 60 + m + s / 60
+
+
+@app.post("/api/coach/goal-estimate")
+def goal_estimate(request: GoalEstimateRequest):
+    """Goal Determiner: predicted finish time + A/B/C goals for a target
+    course, from either a flat base pace or a past race result. Course
+    numbers are backfilled from the race KB when only a name is given, and
+    an UltraSignup-style rank-transfer estimate is added when winner times
+    are curated for both races."""
+    from services.race_estimator import RaceEstimator
+    from services.race_matcher import match_race, race_benchmarks
+
+    distance_km = request.distance_km
+    elevation_gain_m = request.elevation_gain_m
+    matched_target = None
+    if request.race_name:
+        matched_target = match_race(request.race_name, distance_km=distance_km)
+        if matched_target:
+            distance_km = distance_km or matched_target.distance_km
+            # 0 counts as missing: a UI race pick may fire before the match
+            # resolves, and the KB's climb number beats a silent flat course
+            elevation_gain_m = elevation_gain_m or matched_target.elevation_gain_m
+    if not distance_km or distance_km <= 0:
+        raise HTTPException(status_code=422, detail="Target course needs a distance (km)")
+    elevation_gain_m = elevation_gain_m or 0.0
+
+    ref_distance = request.reference_distance_km
+    ref_gain = request.reference_elevation_gain_m
+    matched_ref = None
+    if request.reference_race_name:
+        matched_ref = match_race(request.reference_race_name, distance_km=ref_distance)
+        if matched_ref:
+            ref_distance = ref_distance or matched_ref.distance_km
+            ref_gain = ref_gain or matched_ref.elevation_gain_m
+
+    ref_time_mins = _parse_hms_to_mins(request.reference_time)
+    reference = None
+    if ref_time_mins and ref_distance:
+        reference = {
+            "distance_km": ref_distance,
+            "elevation_gain_m": ref_gain or 0.0,
+            "finish_time_mins": ref_time_mins,
+        }
+
+    try:
+        estimate = RaceEstimator.estimate(
+            distance_km=distance_km,
+            elevation_gain_m=elevation_gain_m,
+            base_flat_pace_min_km=request.flat_pace_min_km,
+            reference=reference,
+            weeks_to_race=request.weeks_to_race,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    response: dict[str, Any] = {
+        **estimate,
+        "distance_km": distance_km,
+        "elevation_gain_m": elevation_gain_m,
+        "race_name": matched_target.race_name if matched_target else request.race_name,
+    }
+
+    # field-history cross-check (plan §8 layer 3) when winner times are curated
+    target_bench = race_benchmarks(request.race_name, distance_km=distance_km) if request.race_name else None
+    if target_bench:
+        response["benchmarks"] = target_bench["results"]
+        target_winner = _parse_hms_to_mins((target_bench["results"][0] or {}).get("winner_time"))
+        if target_winner and ref_time_mins and request.reference_race_name:
+            ref_bench = race_benchmarks(request.reference_race_name, distance_km=ref_distance)
+            ref_winner = _parse_hms_to_mins((ref_bench["results"][0] or {}).get("winner_time")) if ref_bench else None
+            if ref_winner:
+                response["rank_transfer_mins"] = round(
+                    RaceEstimator.rank_transfer_mins(ref_winner, ref_time_mins, target_winner), 1
+                )
+
+    return response
+
+
 @app.get("/api/coach/pace-strategy/benchmarks")
 def pace_strategy_benchmarks(name: str, distance_km: float | None = None):
     """Hand-curated past-results benchmarks (winner times, finisher counts,
