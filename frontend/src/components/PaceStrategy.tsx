@@ -3,6 +3,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAnalytics } from "@/hooks/useAnalytics";
+import { useAppContext } from "@/contexts/AppContext";
 import { RaceMatch } from "@/hooks/useRaceMatch";
 import { RaceNameField } from "@/components/RaceNameField";
 import {
@@ -13,8 +14,21 @@ import {
   parsePaceToMinutes,
   sliderBoundsMins,
   synthesizeCourse,
+  tempBucket,
 } from "@/lib/paceStrategy";
-import { Gauge, XCircle, UploadSimple, MapPin, PersonSimpleHike, Clock, MoonStars, Thermometer } from "@phosphor-icons/react";
+import {
+  Gauge,
+  XCircle,
+  UploadSimple,
+  MapPin,
+  PersonSimpleHike,
+  Clock,
+  MoonStars,
+  Thermometer,
+  Fire,
+  BowlFood,
+  Sneaker,
+} from "@phosphor-icons/react";
 
 interface PaceStrategyProps {
   isOpen: boolean;
@@ -226,6 +240,7 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
   const [splitBias, setSplitBias] = useState(0);
   const [startClock, setStartClock] = useState("");
   const [raceDate, setRaceDate] = useState("");
+  const [weightKg, setWeightKg] = useState("68");
   const [restMins, setRestMins] = useState<Record<number, number>>({});
 
   const [paced, setPaced] = useState<PacedCheckpoint[]>([]);
@@ -235,6 +250,7 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const { trackEvent } = useAnalytics();
+  const { setPaceHandoff, setIsNutritionLabOpen, setIsGearVaultOpen } = useAppContext();
 
   // Weather needs per-checkpoint coordinates, which only GPX courses have.
   const raceStartIso =
@@ -276,7 +292,7 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
   }, [courseStats, bounds, targetTimeMins, user]);
 
   const recalc = useCallback(
-    (timeMins: number, bias: number, cps: CourseCheckpoint[], startIso: string | null) => {
+    (timeMins: number, bias: number, cps: CourseCheckpoint[], startIso: string | null, weight: string) => {
       if (cps.length < 2) return;
       abortRef.current?.abort();
       const controller = new AbortController();
@@ -290,6 +306,7 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
           target_time_mins: timeMins,
           split_bias: bias,
           race_start_iso: startIso,
+          runner_weight_kg: parseFloat(weight) || null,
         }),
         signal: controller.signal,
       })
@@ -313,11 +330,14 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
   useEffect(() => {
     if (!isOpen || effectiveTargetMins === null || checkpoints.length < 2) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => recalc(effectiveTargetMins, splitBias, checkpoints, raceStartIso), 250);
+    debounceRef.current = setTimeout(
+      () => recalc(effectiveTargetMins, splitBias, checkpoints, raceStartIso, weightKg),
+      250,
+    );
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [isOpen, effectiveTargetMins, splitBias, checkpoints, raceStartIso, recalc]);
+  }, [isOpen, effectiveTargetMins, splitBias, checkpoints, raceStartIso, weightKg, recalc]);
 
   const handleGpxFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -359,6 +379,22 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
 
   const hasWeather = paced.some((p) => p.temp_c != null);
   const restArray = paced.map((_, idx) => restMins[idx] || 0);
+
+  const handleHandoff = (target: "nutrition" | "gear") => {
+    const last = paced[paced.length - 1];
+    const totalRestMins = restArray.reduce((s, r) => s + r, 0);
+    const peak = hasWeather ? Math.max(...paced.map((p) => p.temp_c ?? -99)) : null;
+    setPaceHandoff({
+      duration_hours: last ? Math.round(((last.cumulative_time_mins + totalRestMins) / 60) * 10) / 10 : undefined,
+      weather_temp: tempBucket(peak),
+      race_name: courseSource === "race" ? raceName : gpxFileName.replace(/\.gpx$/i, ""),
+      distance_label: courseStats ? `${Math.round(courseStats.dist)}k` : undefined,
+    });
+    onClose();
+    if (target === "nutrition") setIsNutritionLabOpen(true);
+    else setIsGearVaultOpen(true);
+    trackEvent("pace_strategy_handoff", { target });
+  };
   const etas = paced.length > 0 ? addClockEtas(paced, restArray, startClock || undefined) : [];
   const totalRest = restArray.reduce((s, r) => s + r, 0);
   const finishMins = paced.length > 0 ? paced[paced.length - 1].cumulative_time_mins + totalRest : null;
@@ -566,6 +602,17 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
                   style={{ width: "100%", background: "transparent", border: "none", fontSize: "16px", fontWeight: 600, color: "var(--text-primary)", outline: "none" }}
                 />
               </div>
+              <div style={boxStyle}>
+                <label style={labelStyle}>{t("Runner weight (kg)", "Cân nặng (kg)")}</label>
+                <input
+                  type="number"
+                  min="30"
+                  max="150"
+                  value={weightKg}
+                  onChange={(e) => setWeightKg(e.target.value)}
+                  style={{ width: "100%", background: "transparent", border: "none", fontSize: "16px", fontWeight: 600, color: "var(--text-primary)", outline: "none" }}
+                />
+              </div>
               {courseSource === "gpx" && (
                 <div style={boxStyle}>
                   <label style={labelStyle}>{t("Race date (for weather)", "Ngày đua (dự báo thời tiết)")}</label>
@@ -605,6 +652,11 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
               <span style={{ display: "flex", alignItems: "center", gap: "4px", background: "rgba(0,0,0,0.04)", padding: "6px 12px", borderRadius: "10px", fontSize: "13px", fontWeight: 600, color: "var(--text-secondary)" }}>
                 <PersonSimpleHike size={15} /> {t("Hike sections", "Đoạn leo bộ")}: {paced.filter((p) => p.effort === "hike").length}
               </span>
+              {(paced[paced.length - 1].energy_kcal ?? 0) > 0 && (
+                <span style={{ display: "flex", alignItems: "center", gap: "4px", background: "rgba(0,0,0,0.04)", padding: "6px 12px", borderRadius: "10px", fontSize: "13px", fontWeight: 600, color: "var(--text-secondary)" }}>
+                  <Fire size={15} /> ~{paced[paced.length - 1].energy_kcal} kcal
+                </span>
+              )}
               {hasWeather && (
                 <span style={{ display: "flex", alignItems: "center", gap: "4px", background: "rgba(0,0,0,0.04)", padding: "6px 12px", borderRadius: "10px", fontSize: "13px", fontWeight: 600, color: "var(--text-secondary)" }}>
                   <Thermometer size={15} /> {t("Peak heat", "Nóng nhất")}: {Math.max(...paced.map((p) => p.temp_c ?? -99))}°C
@@ -687,6 +739,21 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
                     "Dựa trên đường cong năng lượng Minetti với hiệu chỉnh độ cao, độ bền và chiến thuật chia sức.",
                   )}
             </p>
+
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginTop: "16px" }}>
+              <button
+                onClick={() => handleHandoff("nutrition")}
+                style={{ flex: 1, minWidth: "200px", padding: "12px", borderRadius: "12px", background: "var(--text-primary)", color: "white", fontSize: "14px", fontWeight: 600, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
+              >
+                <BowlFood size={17} /> {t("Plan fueling for this race", "Lên kế hoạch dinh dưỡng")}
+              </button>
+              <button
+                onClick={() => handleHandoff("gear")}
+                style={{ flex: 1, minWidth: "200px", padding: "12px", borderRadius: "12px", background: "transparent", color: "var(--text-primary)", fontSize: "14px", fontWeight: 600, border: "1px solid var(--border-color)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
+              >
+                <Sneaker size={17} /> {t("Find shoes for this race", "Tìm giày cho giải này")}
+              </button>
+            </div>
           </div>
         )}
 

@@ -174,6 +174,33 @@ class TestWeather:
         assert cold_r[1]["cumulative_time_mins"] == plain_r[1]["cumulative_time_mins"]
 
 
+class TestEnergyCost:
+    def test_flat_course_energy_matches_minetti_flat_cost(self):
+        # 10 km flat at C(0)=3.6 J/kg/m and 68 kg -> 3.6*68*10000/4184 ≈ 585 kcal
+        checkpoints = [make_checkpoint("Start", 0), make_checkpoint("KM 10", 10_000)]
+        result = PacingCalculator.calculate_checkpoint_paces(
+            checkpoints, target_flat_pace_min_km=6.0, runner_weight_kg=68.0
+        )
+        assert abs(result[1]["energy_kcal"] - 585) < 10
+
+    def test_climbing_costs_more_energy_than_flat(self):
+        flat = [make_checkpoint("Start", 0), make_checkpoint("KM 10", 10_000)]
+        climb = [make_checkpoint("Start", 0), make_checkpoint("KM 10", 10_000, gain_m=800.0)]
+        flat_r = PacingCalculator.calculate_checkpoint_paces(flat, target_flat_pace_min_km=6.0)
+        climb_r = PacingCalculator.calculate_checkpoint_paces(climb, target_flat_pace_min_km=6.0)
+        assert climb_r[1]["energy_kcal"] > flat_r[1]["energy_kcal"]
+
+    def test_energy_accumulates_across_checkpoints(self):
+        checkpoints = [
+            make_checkpoint("Start", 0),
+            make_checkpoint("KM 5", 5000),
+            make_checkpoint("KM 10", 10_000),
+        ]
+        result = PacingCalculator.calculate_checkpoint_paces(checkpoints, target_flat_pace_min_km=6.0)
+        assert result[2]["energy_kcal"] > result[1]["energy_kcal"] > 0
+        assert result[0]["energy_kcal"] == 0
+
+
 class TestSolveBasePace:
     def make_hilly_course(self):
         cps = [make_checkpoint("Start", 0)]

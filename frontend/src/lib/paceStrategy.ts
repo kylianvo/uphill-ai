@@ -20,6 +20,7 @@ export interface PacedCheckpoint {
   effort: "run" | "hike";
   temp_c?: number | null;
   after_sunset?: boolean;
+  energy_kcal?: number;
 }
 
 /** Parses "5:30", "6", "6.5" or a range like "6:30-5:45" (first value wins) to decimal min/km. */
@@ -111,6 +112,14 @@ export function addClockEtas(
     const clock = Math.round(startOffset + arrival) % (24 * 60);
     return `${String(Math.floor(clock / 60)).padStart(2, "0")}:${String(clock % 60).padStart(2, "0")}`;
   });
+}
+
+/** Maps a forecast temperature to the Nutrition Lab's weather buckets. */
+export function tempBucket(tempC: number | null | undefined): "cool" | "moderate" | "hot" {
+  if (tempC == null) return "moderate";
+  if (tempC < 12) return "cool";
+  if (tempC > 25) return "hot";
+  return "moderate";
 }
 
 /** Finish-time slider range: base flat paces 3.5–12 min/km over a rough flat-equivalent distance. */

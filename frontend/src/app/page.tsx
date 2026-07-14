@@ -469,6 +469,8 @@ export default function Home() {
     setIsNutritionLabOpen,
     setIsGearVaultOpen,
     setIsPaceStrategyOpen,
+    paceHandoff,
+    setPaceHandoff,
     setActiveTab,
     setLang,
     startBtnHovered,
@@ -3248,6 +3250,8 @@ export default function Home() {
         lang={lang}
         user={user}
         activePlan={activePlan}
+        prefill={paceHandoff}
+        onPrefillConsumed={() => setPaceHandoff(null)}
       />
       <GearVault
         isOpen={isGearVaultOpen}
@@ -3255,6 +3259,8 @@ export default function Home() {
         lang={lang}
         user={user}
         activePlan={activePlan}
+        prefill={paceHandoff}
+        onPrefillConsumed={() => setPaceHandoff(null)}
       />
       <PaceStrategy
         isOpen={isPaceStrategyOpen}

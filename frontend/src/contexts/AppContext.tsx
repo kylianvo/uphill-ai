@@ -12,6 +12,8 @@ interface AppContextType {
   setIsGearVaultOpen: any;
   isPaceStrategyOpen: any;
   setIsPaceStrategyOpen: any;
+  paceHandoff: any;
+  setPaceHandoff: any;
   activeTab: any;
   setActiveTab: any;
   lang: "en" | "vi";
@@ -211,6 +213,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     const [isNutritionLabOpen, setIsNutritionLabOpen] = useState(false);
   const [isGearVaultOpen, setIsGearVaultOpen] = useState(false);
   const [isPaceStrategyOpen, setIsPaceStrategyOpen] = useState(false);
+  // Race context handed from Pace Strategy to Nutrition Lab / Gear Finder
+  const [paceHandoff, setPaceHandoff] = useState<{
+    duration_hours?: number;
+    weather_temp?: "cool" | "moderate" | "hot";
+    race_name?: string;
+    distance_label?: string;
+  } | null>(null);
   const [activeTab, setActiveTab] = useState<"home" | "about" | "chat" | "planner" | "tools" | "knowledge">("home");
   const [lang, setLang] = useState<"en" | "vi">("en");
   const [startBtnHovered, setStartBtnHovered] = useState(false);
@@ -379,6 +388,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       isNutritionLabOpen, setIsNutritionLabOpen,
       isGearVaultOpen, setIsGearVaultOpen,
       isPaceStrategyOpen, setIsPaceStrategyOpen,
+      paceHandoff, setPaceHandoff,
       activeTab, setActiveTab,
       lang, setLang,
       startBtnHovered, setStartBtnHovered,

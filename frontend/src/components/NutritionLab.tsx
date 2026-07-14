@@ -34,11 +34,13 @@ interface NutritionLabProps {
   lang: "en" | "vi";
   user?: any;
   activePlan?: any;
+  prefill?: { duration_hours?: number; weather_temp?: string } | null;
+  onPrefillConsumed?: () => void;
 }
 
 type ResultTab = "products" | "timeline" | "tips";
 
-export const NutritionLab: React.FC<NutritionLabProps> = ({ isOpen, onClose, lang, user, activePlan }) => {
+export const NutritionLab: React.FC<NutritionLabProps> = ({ isOpen, onClose, lang, user, activePlan, prefill, onPrefillConsumed }) => {
   const [fuelDuration, setFuelDuration] = useState("4.0");
   const [fuelTemp, setFuelTemp] = useState("moderate");
   const [fuelFormats, setFuelFormats] = useState<string[]>(["gel"]);
@@ -49,6 +51,18 @@ export const NutritionLab: React.FC<NutritionLabProps> = ({ isOpen, onClose, lan
   const [targetSodium, setTargetSodium] = useState("500");
 
   const { trackEvent } = useAnalytics();
+
+  // Apply race context handed over from Pace Strategy when the modal opens
+  React.useEffect(() => {
+    if (!isOpen || !prefill) return;
+    if (prefill.duration_hours) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setFuelDuration(String(prefill.duration_hours));
+    }
+    if (prefill.weather_temp) setFuelTemp(prefill.weather_temp);
+    onPrefillConsumed?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   const [plan, setPlan] = useState<NutritionPlan | null>(null);
   const [fuelLoading, setFuelLoading] = useState(false);

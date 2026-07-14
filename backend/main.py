@@ -208,6 +208,7 @@ class PacingRequest(BaseModel):
     target_time_mins: float | None = None  # alternative input: solve base pace from finish time
     split_bias: float = 0.0  # -1..1, positive = negative split (start easier)
     race_start_iso: str | None = None  # e.g. "2026-09-19T05:00" — enables per-segment weather
+    runner_weight_kg: float | None = None  # for the energy-cost estimate
     climb_coef: float | None = 10.0  # legacy, ignored by the v2 engine
     descent_coef: float | None = 2.0
 
@@ -1540,6 +1541,7 @@ def calculate_pacing(request: PacingRequest):
             checkpoints=request.checkpoints,
             target_flat_pace_min_km=solve_pace(),
             split_bias=request.split_bias,
+            runner_weight_kg=request.runner_weight_kg,
         )
     except HTTPException:
         raise
@@ -1558,6 +1560,7 @@ def calculate_pacing(request: PacingRequest):
                     checkpoints=request.checkpoints,
                     target_flat_pace_min_km=solve_pace(),
                     split_bias=request.split_bias,
+                    runner_weight_kg=request.runner_weight_kg,
                 )
         except HTTPException:
             raise

@@ -28,6 +28,8 @@ class PacingCalculator:
     HEAT_FLOOR_C = 15.0
     HEAT_PENALTY_PER_C = 0.003
     SPLIT_BIAS_MAX = 0.05  # ±5% pace swing between start and finish at |bias| = 1
+    DEFAULT_WEIGHT_KG = 68.0
+    JOULES_PER_KCAL = 4184.0
 
     @classmethod
     def _minetti_cost(cls, grade: float) -> float:
@@ -75,6 +77,15 @@ class PacingCalculator:
         return sum(d * cls.grade_pace_multiplier(g) for d, g in parts) / dist_m
 
     @classmethod
+    def _segment_energy_kcal(cls, dist_m: float, gain_m: float, loss_m: float, weight_kg: float) -> float:
+        """Metabolic energy for a segment from the raw Minetti cost (J/kg/m).
+        Uses the undamped curve: descents still save energy even though they
+        don't yield proportional pace."""
+        parts = cls._segment_parts(dist_m, gain_m, loss_m)
+        joules = sum(d * cls._minetti_cost(g) * weight_kg for d, g in parts)
+        return joules / cls.JOULES_PER_KCAL
+
+    @classmethod
     def altitude_multiplier(cls, elevation_m: float) -> float:
         excess = max(0.0, elevation_m - cls.ALTITUDE_FLOOR_M)
         return 1.0 + cls.ALTITUDE_PENALTY_PER_100M * excess / 100.0
@@ -107,6 +118,7 @@ class PacingCalculator:
         climb_coef: float | None = None,  # legacy flat-equivalent params, ignored by v2
         descent_coef: float | None = None,
         split_bias: float = 0.0,
+        runner_weight_kg: float | None = None,
     ) -> list[dict[str, Any]]:
         """Calculates paced checkpoint splits from a base flat pace.
 
@@ -117,6 +129,8 @@ class PacingCalculator:
         prev_dist = 0.0
         cumulative_time_mins = 0.0
         cumulative_flat_eq_km = 0.0
+        cumulative_kcal = 0.0
+        weight_kg = runner_weight_kg or cls.DEFAULT_WEIGHT_KG
         total_dist_m = max((cp["distance_meters"] for cp in checkpoints), default=0.0)
 
         for idx, cp in enumerate(checkpoints):
@@ -141,6 +155,7 @@ class PacingCalculator:
                         "effort": "run",
                         "temp_c": cp.get("temp_c"),
                         "after_sunset": bool(cp.get("after_sunset")),
+                        "energy_kcal": 0,
                     }
                 )
                 prev_dist = cp_dist
@@ -167,6 +182,7 @@ class PacingCalculator:
             seg_duration_mins = (seg_dist_m / 1000.0) * adjusted_pace_decimal
             cumulative_time_mins += seg_duration_mins
             cumulative_flat_eq_km += flat_eq_km
+            cumulative_kcal += cls._segment_energy_kcal(seg_dist_m, seg_gain_m, seg_loss_m, weight_kg)
 
             total_secs = round(adjusted_pace_decimal * 60)
             formatted_pace = f"{total_secs // 60}:{total_secs % 60:02d}"
@@ -190,6 +206,7 @@ class PacingCalculator:
                     "effort": effort,
                     "temp_c": cp.get("temp_c"),
                     "after_sunset": bool(cp.get("after_sunset")),
+                    "energy_kcal": round(cumulative_kcal),
                 }
             )
 

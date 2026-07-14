@@ -34,9 +34,11 @@ interface GearVaultProps {
   lang: "en" | "vi";
   user?: any;
   activePlan?: any;
+  prefill?: { race_name?: string; distance_label?: string } | null;
+  onPrefillConsumed?: () => void;
 }
 
-export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang, user, activePlan }) => {
+export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang, user, activePlan, prefill, onPrefillConsumed }) => {
   const [shoeSurface, setShoeSurface] = useState("trail");
   const [shoeCushion, setShoeCushion] = useState("balanced");
   const [shoeWidth, setShoeWidth] = useState("normal");
@@ -56,6 +58,19 @@ export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang, use
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
 
 
+
+  // Apply race context handed over from Pace Strategy when the modal opens
+  React.useEffect(() => {
+    if (!isOpen || !prefill) return;
+    if (prefill.race_name) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setShoeRaceName(prefill.race_name);
+      setShoeSurface("trail");
+    }
+    if (prefill.distance_label) setShoeDistance(prefill.distance_label);
+    onPrefillConsumed?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   const { trackEvent } = useAnalytics();
 

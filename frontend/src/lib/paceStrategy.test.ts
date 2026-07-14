@@ -6,6 +6,7 @@ import {
   synthesizeCourse,
   addClockEtas,
   sliderBoundsMins,
+  tempBucket,
 } from "./paceStrategy";
 
 describe("parsePaceToMinutes", () => {
@@ -94,6 +95,19 @@ describe("addClockEtas", () => {
   it("returns elapsed durations when no start time given", () => {
     const etas = addClockEtas(paced, [0, 0, 0]);
     expect(etas[1]).toBe("1:00");
+  });
+});
+
+describe("tempBucket", () => {
+  it("maps forecast temperature to Nutrition Lab buckets", () => {
+    expect(tempBucket(8)).toBe("cool");
+    expect(tempBucket(20)).toBe("moderate");
+    expect(tempBucket(29)).toBe("hot");
+  });
+
+  it("defaults to moderate when no forecast", () => {
+    expect(tempBucket(null)).toBe("moderate");
+    expect(tempBucket(undefined)).toBe("moderate");
   });
 });
 
