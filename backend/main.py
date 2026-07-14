@@ -203,8 +203,10 @@ class GenerateNextBlockRequest(BaseModel):
 # Phase 3 Request Models
 class PacingRequest(BaseModel):
     checkpoints: list[dict[str, Any]]
-    target_flat_pace_min_km: float
-    climb_coef: float | None = 10.0
+    target_flat_pace_min_km: float | None = None
+    target_time_mins: float | None = None  # alternative input: solve base pace from finish time
+    split_bias: float = 0.0  # -1..1, positive = negative split (start easier)
+    climb_coef: float | None = 10.0  # legacy, ignored by the v2 engine
     descent_coef: float | None = 2.0
 
 
@@ -1509,13 +1511,29 @@ def export_ics(
 
 @app.post("/api/coach/calculate-pacing")
 def calculate_pacing(request: PacingRequest):
-    """Calculates GPX checkpoint splits and times adjusted for climbing and thin air."""
+    """Calculates GPX checkpoint splits and times adjusted for grade, altitude,
+    fatigue, heat, and split strategy. Accepts either a base flat pace or a
+    target finish time (solved to a base pace)."""
+    base_pace = request.target_flat_pace_min_km
+    if base_pace is None:
+        if request.target_time_mins is None:
+            raise HTTPException(
+                status_code=422,
+                detail="Provide target_flat_pace_min_km or target_time_mins",
+            )
+        try:
+            base_pace = PacingCalculator.solve_base_pace(
+                checkpoints=request.checkpoints,
+                target_time_mins=request.target_time_mins,
+                split_bias=request.split_bias,
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=422, detail=str(e))
     try:
         paced_cps = PacingCalculator.calculate_checkpoint_paces(
             checkpoints=request.checkpoints,
-            target_flat_pace_min_km=request.target_flat_pace_min_km,
-            climb_coef=request.climb_coef,
-            descent_coef=request.descent_coef,
+            target_flat_pace_min_km=base_pace,
+            split_bias=request.split_bias,
         )
         return paced_cps
     except Exception as e:
