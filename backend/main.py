@@ -59,6 +59,7 @@ from services.pacing_calculator import PacingCalculator
 from services.plan_generator import PlanGenerator
 from services.rag_service import RagService
 from services.training_rules import TrainingRules
+from services.weather_service import WeatherService
 
 _is_prod = os.getenv("ENVIRONMENT", "development") == "production"
 app = FastAPI(
@@ -206,6 +207,7 @@ class PacingRequest(BaseModel):
     target_flat_pace_min_km: float | None = None
     target_time_mins: float | None = None  # alternative input: solve base pace from finish time
     split_bias: float = 0.0  # -1..1, positive = negative split (start easier)
+    race_start_iso: str | None = None  # e.g. "2026-09-19T05:00" — enables per-segment weather
     climb_coef: float | None = 10.0  # legacy, ignored by the v2 engine
     descent_coef: float | None = 2.0
 
@@ -1513,31 +1515,56 @@ def export_ics(
 def calculate_pacing(request: PacingRequest):
     """Calculates GPX checkpoint splits and times adjusted for grade, altitude,
     fatigue, heat, and split strategy. Accepts either a base flat pace or a
-    target finish time (solved to a base pace)."""
-    base_pace = request.target_flat_pace_min_km
-    if base_pace is None:
-        if request.target_time_mins is None:
-            raise HTTPException(
-                status_code=422,
-                detail="Provide target_flat_pace_min_km or target_time_mins",
-            )
+    target finish time (solved to a base pace). With race_start_iso, checkpoints
+    that carry coordinates get per-segment forecast heat and sunset flags."""
+    if request.target_flat_pace_min_km is None and request.target_time_mins is None:
+        raise HTTPException(
+            status_code=422,
+            detail="Provide target_flat_pace_min_km or target_time_mins",
+        )
+
+    def solve_pace() -> float:
+        if request.target_flat_pace_min_km is not None:
+            return request.target_flat_pace_min_km
         try:
-            base_pace = PacingCalculator.solve_base_pace(
+            return PacingCalculator.solve_base_pace(
                 checkpoints=request.checkpoints,
                 target_time_mins=request.target_time_mins,
                 split_bias=request.split_bias,
             )
         except ValueError as e:
             raise HTTPException(status_code=422, detail=str(e))
+
     try:
         paced_cps = PacingCalculator.calculate_checkpoint_paces(
             checkpoints=request.checkpoints,
-            target_flat_pace_min_km=base_pace,
+            target_flat_pace_min_km=solve_pace(),
             split_bias=request.split_bias,
         )
-        return paced_cps
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to calculate pacing: {str(e)}")
+
+    if request.race_start_iso:
+        try:
+            from datetime import datetime as dt
+
+            race_start = dt.fromisoformat(request.race_start_iso)
+            info = WeatherService.annotate_checkpoints(request.checkpoints, paced_cps, race_start)
+            if info["applied"]:
+                # heat changes the effort distribution; re-solve so the target stands
+                paced_cps = PacingCalculator.calculate_checkpoint_paces(
+                    checkpoints=request.checkpoints,
+                    target_flat_pace_min_km=solve_pace(),
+                    split_bias=request.split_bias,
+                )
+        except HTTPException:
+            raise
+        except Exception as e:
+            print(f"Warning: weather annotation skipped: {e}")
+
+    return paced_cps
 
 
 @app.post("/api/coach/calculate-fueling")

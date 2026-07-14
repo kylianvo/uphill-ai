@@ -155,6 +155,17 @@ class TestWeather:
         hot_r = PacingCalculator.calculate_checkpoint_paces(hot, target_flat_pace_min_km=6.0)
         assert hot_r[1]["cumulative_time_mins"] > cool_r[1]["cumulative_time_mins"]
 
+    def test_weather_fields_pass_through_to_output(self):
+        checkpoints = [
+            make_checkpoint("Start", 0),
+            {**make_checkpoint("KM 5", 5000), "temp_c": 31.5, "after_sunset": True},
+        ]
+        result = PacingCalculator.calculate_checkpoint_paces(checkpoints, target_flat_pace_min_km=6.0)
+        assert result[1]["temp_c"] == 31.5
+        assert result[1]["after_sunset"] is True
+        assert result[0]["temp_c"] is None
+        assert result[0]["after_sunset"] is False
+
     def test_cool_temperature_is_not_a_bonus(self):
         plain = [make_checkpoint("Start", 0), make_checkpoint("KM 5", 5000)]
         cold = [make_checkpoint("Start", 0), {**make_checkpoint("KM 5", 5000), "temp_c": 5.0}]

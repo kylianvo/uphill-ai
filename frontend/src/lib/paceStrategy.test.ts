@@ -59,6 +59,14 @@ describe("synthesizeCourse", () => {
     expect(course[course.length - 1].distance_meters).toBeCloseTo(10500);
   });
 
+  it("preserves total gain and loss for fractional distances", () => {
+    const course = synthesizeCourse(5.3, 1000);
+    const totalGain = course.reduce((s, c) => s + c.segment_gain_meters, 0);
+    const totalLoss = course.reduce((s, c) => s + c.segment_loss_meters, 0);
+    expect(totalGain).toBeCloseTo(1000);
+    expect(totalLoss).toBeCloseTo(1000);
+  });
+
   it("builds an out-and-back style elevation profile that returns to start", () => {
     const course = synthesizeCourse(10, 500);
     expect(course[course.length - 1].elevation_meters).toBeCloseTo(course[0].elevation_meters);

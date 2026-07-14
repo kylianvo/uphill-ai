@@ -18,6 +18,8 @@ export interface PacedCheckpoint {
   flat_equivalent_km: number;
   grade_pct: number;
   effort: "run" | "hike";
+  temp_c?: number | null;
+  after_sunset?: boolean;
 }
 
 /** Parses "5:30", "6", "6.5" or a range like "6:30-5:45" (first value wins) to decimal min/km. */
@@ -66,19 +68,21 @@ export function synthesizeCourse(
     },
   ];
   let elevation = baseElevationM;
-  const netPerKm = (gainM - lossM) / n;
+  // distribute by actual km so totals are preserved on fractional distances
+  const gainPerKm = gainM / distanceKm;
+  const lossPerKm = lossM / distanceKm;
   for (let km = 1; km <= n; km++) {
     const distM = Math.min(km * 1000, distanceKm * 1000);
     const frac = (distM - checkpoints[km - 1].distance_meters) / 1000;
-    elevation += netPerKm * frac;
+    elevation += (gainPerKm - lossPerKm) * frac;
     // symmetric bump peaking mid-course, so profiles aren't a flat line
     const bump = Math.sin((Math.min(km, n) / n) * Math.PI) * Math.min(gainM, lossM) * 0.25;
     checkpoints.push({
       name: `KM ${Math.round(distM / 1000)}`,
       distance_meters: distM,
       elevation_meters: Math.round(elevation + bump),
-      segment_gain_meters: (gainM / n) * frac,
-      segment_loss_meters: (lossM / n) * frac,
+      segment_gain_meters: gainPerKm * frac,
+      segment_loss_meters: lossPerKm * frac,
     });
   }
   return checkpoints;

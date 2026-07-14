@@ -139,6 +139,8 @@ class PacingCalculator:
                         "flat_equivalent_km": 0.0,
                         "grade_pct": 0.0,
                         "effort": "run",
+                        "temp_c": cp.get("temp_c"),
+                        "after_sunset": bool(cp.get("after_sunset")),
                     }
                 )
                 prev_dist = cp_dist
@@ -186,6 +188,8 @@ class PacingCalculator:
                     "flat_equivalent_km": round(flat_eq_km, 2),
                     "grade_pct": round(grade_pct, 1),
                     "effort": effort,
+                    "temp_c": cp.get("temp_c"),
+                    "after_sunset": bool(cp.get("after_sunset")),
                 }
             )
 

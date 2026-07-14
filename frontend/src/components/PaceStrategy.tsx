@@ -14,7 +14,7 @@ import {
   sliderBoundsMins,
   synthesizeCourse,
 } from "@/lib/paceStrategy";
-import { Gauge, XCircle, UploadSimple, MapPin, PersonSimpleHike, Clock } from "@phosphor-icons/react";
+import { Gauge, XCircle, UploadSimple, MapPin, PersonSimpleHike, Clock, MoonStars, Thermometer } from "@phosphor-icons/react";
 
 interface PaceStrategyProps {
   isOpen: boolean;
@@ -225,6 +225,7 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
   const [targetTimeMins, setTargetTimeMins] = useState<number | null>(null);
   const [splitBias, setSplitBias] = useState(0);
   const [startClock, setStartClock] = useState("");
+  const [raceDate, setRaceDate] = useState("");
   const [restMins, setRestMins] = useState<Record<number, number>>({});
 
   const [paced, setPaced] = useState<PacedCheckpoint[]>([]);
@@ -232,7 +233,12 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const { trackEvent } = useAnalytics();
+
+  // Weather needs per-checkpoint coordinates, which only GPX courses have.
+  const raceStartIso =
+    courseSource === "gpx" && raceDate ? `${raceDate}T${startClock || "05:00"}` : null;
 
   // Course checkpoints from whichever source is active
   const checkpoints = useMemo<CourseCheckpoint[]>(() => {
@@ -270,21 +276,35 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
   }, [courseStats, bounds, targetTimeMins, user]);
 
   const recalc = useCallback(
-    (timeMins: number, bias: number, cps: CourseCheckpoint[]) => {
+    (timeMins: number, bias: number, cps: CourseCheckpoint[], startIso: string | null) => {
       if (cps.length < 2) return;
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
       setPacingLoading(true);
       fetch(`${getBaseUrl()}/api/coach/calculate-pacing`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ checkpoints: cps, target_time_mins: timeMins, split_bias: bias }),
+        body: JSON.stringify({
+          checkpoints: cps,
+          target_time_mins: timeMins,
+          split_bias: bias,
+          race_start_iso: startIso,
+        }),
+        signal: controller.signal,
       })
         .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
         .then((rows: PacedCheckpoint[]) => {
           setPaced(rows);
           setErrorMsg("");
         })
-        .catch(() => setErrorMsg(lang === "en" ? "Failed to calculate the plan." : "Không thể tính toán kế hoạch."))
-        .finally(() => setPacingLoading(false));
+        .catch((err) => {
+          if (err?.name === "AbortError") return; // superseded by a newer request
+          setErrorMsg(lang === "en" ? "Failed to calculate the plan." : "Không thể tính toán kế hoạch.");
+        })
+        .finally(() => {
+          if (abortRef.current === controller) setPacingLoading(false);
+        });
     },
     [lang],
   );
@@ -293,11 +313,11 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
   useEffect(() => {
     if (!isOpen || effectiveTargetMins === null || checkpoints.length < 2) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => recalc(effectiveTargetMins, splitBias, checkpoints), 250);
+    debounceRef.current = setTimeout(() => recalc(effectiveTargetMins, splitBias, checkpoints, raceStartIso), 250);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [isOpen, effectiveTargetMins, splitBias, checkpoints, recalc]);
+  }, [isOpen, effectiveTargetMins, splitBias, checkpoints, raceStartIso, recalc]);
 
   const handleGpxFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -337,6 +357,7 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
     }
   };
 
+  const hasWeather = paced.some((p) => p.temp_c != null);
   const restArray = paced.map((_, idx) => restMins[idx] || 0);
   const etas = paced.length > 0 ? addClockEtas(paced, restArray, startClock || undefined) : [];
   const totalRest = restArray.reduce((s, r) => s + r, 0);
@@ -432,7 +453,10 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
                   placeholder="e.g. VMM 70k, UTMB"
                   value={raceName}
                   onChange={setRaceName}
-                  onMatchChange={setRaceMatch}
+                  onMatchChange={(m) => {
+                    setRaceMatch(m);
+                    setRestMins({});
+                  }}
                   distanceKm={manualDistance}
                   lang={lang}
                   style={{ width: "100%", background: "transparent", border: "none", fontSize: "16px", fontWeight: 600, color: "var(--text-primary)", outline: "none" }}
@@ -447,7 +471,10 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
                       min="1"
                       placeholder="e.g. 70"
                       value={manualDistance}
-                      onChange={(e) => setManualDistance(e.target.value)}
+                      onChange={(e) => {
+                        setManualDistance(e.target.value);
+                        setRestMins({});
+                      }}
                       style={{ width: "100%", background: "transparent", border: "none", fontSize: "16px", fontWeight: 600, color: "var(--text-primary)", outline: "none" }}
                     />
                   </div>
@@ -458,7 +485,10 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
                       min="0"
                       placeholder="e.g. 4000"
                       value={manualGain}
-                      onChange={(e) => setManualGain(e.target.value)}
+                      onChange={(e) => {
+                        setManualGain(e.target.value);
+                        setRestMins({});
+                      }}
                       style={{ width: "100%", background: "transparent", border: "none", fontSize: "16px", fontWeight: 600, color: "var(--text-primary)", outline: "none" }}
                     />
                   </div>
@@ -536,6 +566,20 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
                   style={{ width: "100%", background: "transparent", border: "none", fontSize: "16px", fontWeight: 600, color: "var(--text-primary)", outline: "none" }}
                 />
               </div>
+              {courseSource === "gpx" && (
+                <div style={boxStyle}>
+                  <label style={labelStyle}>{t("Race date (for weather)", "Ngày đua (dự báo thời tiết)")}</label>
+                  <input
+                    type="date"
+                    value={raceDate}
+                    onChange={(e) => setRaceDate(e.target.value)}
+                    style={{ width: "100%", background: "transparent", border: "none", fontSize: "16px", fontWeight: 600, color: "var(--text-primary)", outline: "none" }}
+                  />
+                  <div style={{ fontSize: "10.5px", color: "var(--text-muted)", marginTop: "4px" }}>
+                    {t("Forecast covers ~16 days ahead", "Dự báo trong khoảng ~16 ngày tới")}
+                  </div>
+                </div>
+              )}
             </div>
           </>
         )}
@@ -561,6 +605,16 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
               <span style={{ display: "flex", alignItems: "center", gap: "4px", background: "rgba(0,0,0,0.04)", padding: "6px 12px", borderRadius: "10px", fontSize: "13px", fontWeight: 600, color: "var(--text-secondary)" }}>
                 <PersonSimpleHike size={15} /> {t("Hike sections", "Đoạn leo bộ")}: {paced.filter((p) => p.effort === "hike").length}
               </span>
+              {hasWeather && (
+                <span style={{ display: "flex", alignItems: "center", gap: "4px", background: "rgba(0,0,0,0.04)", padding: "6px 12px", borderRadius: "10px", fontSize: "13px", fontWeight: 600, color: "var(--text-secondary)" }}>
+                  <Thermometer size={15} /> {t("Peak heat", "Nóng nhất")}: {Math.max(...paced.map((p) => p.temp_c ?? -99))}°C
+                </span>
+              )}
+              {paced.some((p) => p.after_sunset) && (
+                <span style={{ display: "flex", alignItems: "center", gap: "4px", background: "rgba(0,0,0,0.04)", padding: "6px 12px", borderRadius: "10px", fontSize: "13px", fontWeight: 600, color: "var(--text-primary)" }}>
+                  <MoonStars size={15} /> {t("Headlamp needed", "Cần đèn đội đầu")}
+                </span>
+              )}
             </div>
 
             <ProfileChart paced={paced} lang={lang} />
@@ -575,6 +629,7 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
                       <th style={{ padding: "8px 10px" }}>{t("Grade", "Dốc")}</th>
                       <th style={{ padding: "8px 10px" }}>Pace</th>
                       <th style={{ padding: "8px 10px" }}>{t("Rest (min)", "Nghỉ (phút)")}</th>
+                      {hasWeather && <th style={{ padding: "8px 10px" }}>{t("Weather", "Thời tiết")}</th>}
                       <th style={{ padding: "8px 10px" }}>ETA</th>
                     </tr>
                   </thead>
@@ -607,6 +662,12 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
                             />
                           )}
                         </td>
+                        {hasWeather && (
+                          <td style={{ padding: "8px 10px" }}>
+                            {cp.temp_c != null ? `${cp.temp_c}°C` : "—"}
+                            {cp.after_sunset && <MoonStars size={13} style={{ marginLeft: "4px", verticalAlign: "-2px" }} />}
+                          </td>
+                        )}
                         <td style={{ padding: "8px 10px", fontFamily: "var(--font-mono)", fontWeight: 700 }}>{etas[idx]}</td>
                       </tr>
                     ))}
