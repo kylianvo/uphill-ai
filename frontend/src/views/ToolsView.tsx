@@ -1,14 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useAppContext } from "../contexts/AppContext";
-import { useTools } from "../hooks/useTools";
-import { translations } from "../app/translations";
 import { BowlFood, Sneaker, Gauge, Crosshair } from '@phosphor-icons/react';
 
 export default function ToolsView({ isMobile }: { isMobile: boolean }) {
   const ctx = useAppContext();
-  const { lang, parserLoading, parserErrorMsg, parsedSummary, uploadedFileName, setIsNutritionLabOpen, setIsGearVaultOpen, setIsPaceStrategyOpen, setIsGoalDeterminerOpen } = ctx;
-  const { handleDropzoneClick, handleFileChange, fileInputRef } = useTools();
-  const t = (key: keyof typeof translations.en) => translations[lang]?.[key] || translations.en[key] || key;
+  const { lang, setIsNutritionLabOpen, setIsGearVaultOpen, setIsPaceStrategyOpen, setIsGoalDeterminerOpen } = ctx;
 
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
@@ -62,75 +58,6 @@ export default function ToolsView({ isMobile }: { isMobile: boolean }) {
               ? "Find out what finish time you could realistically target at your next race."
               : "Tìm ra thời gian về đích thực tế cho giải chạy sắp tới của bạn."}
           </p>
-        </div>
-
-        {/* Card 5: File Inspector (FIT/GPX telemetry) */}
-        <div className="card" style={{ padding: isMobile ? "16px" : "24px" }}>
-          <h3 style={{ fontSize: isMobile ? "16px" : "18px", marginBottom: "8px", color: "var(--accent-primary)" }}>{lang === "en" ? "File Inspector" : "Kiểm tra Tệp"}</h3>
-          <p style={{ color: "var(--text-secondary)", fontSize: "12.5px", marginBottom: "16px" }}>
-            {lang === "en"
-              ? "Upload a course GPX or workout FIT file to view its telemetry."
-              : "Tải lên tệp GPX đường chạy hoặc tệp FIT buổi tập để xem dữ liệu đo lường."}
-          </p>
-
-          <div className="dropzone" onClick={handleDropzoneClick} style={{ padding: "12px 10px", gap: "4px", marginBottom: "16px", cursor: "pointer" }}>
-            <div className="dropzone-icon" style={{ fontSize: "18px" }}>📥</div>
-            <div className="dropzone-title" style={{ fontSize: "12px" }}>
-              {lang === "en" ? "Upload GPX or FIT" : "Tải lên tệp GPX hoặc FIT"}
-            </div>
-            <div className="dropzone-subtitle" style={{ fontSize: "10px", color: "var(--text-muted)" }}>
-              {lang === "en" ? "Drag or tap here" : "Kéo hoặc chạm vào đây"}
-            </div>
-            {uploadedFileName && (
-              <div style={{ color: "var(--accent-primary)", fontSize: "11px", fontWeight: "600", marginTop: "2px" }}>
-                {uploadedFileName}
-              </div>
-            )}
-          </div>
-
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileChange}
-            className="hidden-file-input"
-            accept=".fit,.gpx"
-            style={{ display: "none" }}
-          />
-
-          {parserLoading && (
-            <div style={{ textTransform: "lowercase", textAlign: "center", color: "var(--accent-secondary)", fontSize: "11px", marginBottom: "12px" }}>
-              {lang === "en" ? "Extracting telemetry..." : "Đang trích xuất dữ liệu đo lường..."}
-            </div>
-          )}
-
-          {parserErrorMsg && (
-            <div style={{ color: "var(--accent-alert)", fontSize: "11px", padding: "8px", background: "rgba(239, 68, 68, 0.08)", borderRadius: "6px", marginBottom: "12px" }}>
-              {parserErrorMsg}
-            </div>
-          )}
-
-          {parsedSummary && (
-            <div style={{ padding: "10px", background: "rgba(255,255,255,0.15)", border: "1px solid var(--border-color)", borderRadius: "8px", marginBottom: "16px" }}>
-              <div style={{ fontWeight: "700", fontSize: "11.5px", color: "var(--accent-secondary)", marginBottom: "6px" }}>
-                {lang === "en" ? "Parsed Telemetry" : "Dữ liệu Đo lường đã Phân tích"}
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-                <div className="metric-item" style={{ padding: "6px" }}>
-                  <div className="metric-label" style={{ fontSize: "9px" }}>
-                    {lang === "en" ? "Distance" : "Cự ly"}
-                  </div>
-                  <div className="metric-value" style={{ fontSize: "12px" }}>{parsedSummary.distance_km} km</div>
-                </div>
-                <div className="metric-item" style={{ padding: "6px" }}>
-                  <div className="metric-label" style={{ fontSize: "9px" }}>
-                    {lang === "en" ? "Elevation" : "Độ cao"}
-                  </div>
-                  <div className="metric-value" style={{ fontSize: "12px" }}>{parsedSummary.elevation_gain_m} m</div>
-                </div>
-              </div>
-            </div>
-          )}
-
         </div>
 
       </div>

@@ -122,11 +122,23 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      if (!response.ok) {
+        const detail = await response.json().catch(() => null);
+        throw new Error(typeof detail?.detail === "string" ? detail.detail : `HTTP ${response.status}`);
+      }
       setEstimate(await response.json());
       trackEvent("goal_determiner_used", { fitness_mode: fitnessMode });
-    } catch {
-      setErrorMsg(t("Could not estimate a goal — check the inputs.", "Không thể ước tính mục tiêu — kiểm tra lại thông tin."));
+    } catch (err: any) {
+      const detail = `${err?.message || "network error"} · ${getBaseUrl()}`;
+      const overrideHint = localStorage.getItem("UPHILL_API_URL_OVERRIDE")
+        ? t(
+            " An ?api= override is active — visit ?api=clear to use the default backend.",
+            " Đang có ghi đè ?api= — truy cập ?api=clear để dùng backend mặc định.",
+          )
+        : "";
+      setErrorMsg(
+        t(`Could not estimate a goal (${detail}).`, `Không thể ước tính mục tiêu (${detail}).`) + overrideHint,
+      );
     } finally {
       setLoading(false);
     }

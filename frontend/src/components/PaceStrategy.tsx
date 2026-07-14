@@ -342,7 +342,17 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
         })
         .catch((err) => {
           if (err?.name === "AbortError") return; // superseded by a newer request
-          setErrorMsg(lang === "en" ? "Failed to calculate the plan." : "Không thể tính toán kế hoạch.");
+          const detail = `${err?.message || "network error"} · ${getBaseUrl()}`;
+          const overrideHint = localStorage.getItem("UPHILL_API_URL_OVERRIDE")
+            ? lang === "en"
+              ? " An ?api= override is active — visit ?api=clear to use the default backend."
+              : " Đang có ghi đè ?api= — truy cập ?api=clear để dùng backend mặc định."
+            : "";
+          setErrorMsg(
+            (lang === "en"
+              ? `Failed to calculate the plan (${detail}).`
+              : `Không thể tính toán kế hoạch (${detail}).`) + overrideHint,
+          );
         })
         .finally(() => {
           if (abortRef.current === controller) setPacingLoading(false);
