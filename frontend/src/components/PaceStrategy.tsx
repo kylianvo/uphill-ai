@@ -281,12 +281,13 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
   const raceStartIso =
     courseSource === "gpx" && raceDate ? `${raceDate}T${startClock || "05:00"}` : null;
 
-  // Course checkpoints from whichever source is active
+  // Course checkpoints from whichever source is active. Typed numbers beat
+  // the KB match — some races change their course every year.
   const checkpoints = useMemo<CourseCheckpoint[]>(() => {
     if (courseSource === "gpx") return gpxCheckpoints;
-    const dist = raceMatch?.distance_km ?? parseFloat(manualDistance);
-    if (!dist || dist <= 0) return [];
-    const gain = raceMatch?.elevation_gain_m ?? (parseFloat(manualGain) || 0);
+    const dist = parseFloat(manualDistance) || raceMatch?.distance_km || 0;
+    if (dist <= 0) return [];
+    const gain = parseFloat(manualGain) || raceMatch?.elevation_gain_m || 0;
     return synthesizeCourse(dist, gain, gain, 0, splitInterval);
   }, [courseSource, gpxCheckpoints, raceMatch, manualDistance, manualGain, splitInterval]);
 
@@ -549,38 +550,42 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
                   style={{ width: "100%", background: "transparent", border: "none", fontSize: "16px", fontWeight: 600, color: "var(--text-primary)", outline: "none" }}
                 />
               </div>
-              {!raceMatch?.distance_km && (
-                <>
-                  <div style={boxStyle}>
-                    <label style={labelStyle}>{t("Distance (km)", "Cự ly (km)")}</label>
-                    <input
-                      type="number"
-                      min="1"
-                      placeholder="e.g. 70"
-                      value={manualDistance}
-                      onChange={(e) => {
-                        setManualDistance(e.target.value);
-                        setRestMins({});
-                      }}
-                      style={{ width: "100%", background: "transparent", border: "none", fontSize: "16px", fontWeight: 600, color: "var(--text-primary)", outline: "none" }}
-                    />
-                  </div>
-                  <div style={boxStyle}>
-                    <label style={labelStyle}>{t("Elevation gain (m)", "Tổng leo (m)")}</label>
-                    <input
-                      type="number"
-                      min="0"
-                      placeholder="e.g. 4000"
-                      value={manualGain}
-                      onChange={(e) => {
-                        setManualGain(e.target.value);
-                        setRestMins({});
-                      }}
-                      style={{ width: "100%", background: "transparent", border: "none", fontSize: "16px", fontWeight: 600, color: "var(--text-primary)", outline: "none" }}
-                    />
-                  </div>
-                </>
-              )}
+              {/* Always editable: typed values override the KB match, since
+                  some races change their course every year */}
+              <div style={boxStyle}>
+                <label style={labelStyle}>
+                  {t("Distance (km)", "Cự ly (km)")}
+                  {raceMatch?.distance_km && !manualDistance ? ` · ${t("from race DB", "theo dữ liệu giải")}` : ""}
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  placeholder={raceMatch?.distance_km ? String(raceMatch.distance_km) : "e.g. 70"}
+                  value={manualDistance}
+                  onChange={(e) => {
+                    setManualDistance(e.target.value);
+                    setRestMins({});
+                  }}
+                  style={{ width: "100%", background: "transparent", border: "none", fontSize: "16px", fontWeight: 600, color: "var(--text-primary)", outline: "none" }}
+                />
+              </div>
+              <div style={boxStyle}>
+                <label style={labelStyle}>
+                  {t("Elevation gain (m)", "Tổng leo (m)")}
+                  {raceMatch?.elevation_gain_m && !manualGain ? ` · ${t("from race DB", "theo dữ liệu giải")}` : ""}
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder={raceMatch?.elevation_gain_m ? String(raceMatch.elevation_gain_m) : "e.g. 4000"}
+                  value={manualGain}
+                  onChange={(e) => {
+                    setManualGain(e.target.value);
+                    setRestMins({});
+                  }}
+                  style={{ width: "100%", background: "transparent", border: "none", fontSize: "16px", fontWeight: 600, color: "var(--text-primary)", outline: "none" }}
+                />
+              </div>
             </>
           )}
 

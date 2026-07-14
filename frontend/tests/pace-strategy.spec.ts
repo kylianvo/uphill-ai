@@ -12,7 +12,8 @@ test('pace strategy: race pick produces a segment plan', async ({ page }) => {
 
   // Pick a race from the KB and give the matcher a distance
   await page.locator('[role="combobox"]').pressSequentially('vmm', { delay: 60 });
-  await page.locator('input[placeholder="e.g. 70"]').fill('70');
+  // number inputs keep rendering after a match (typed values override the KB)
+  await page.locator('input[type="number"]').first().fill('70');
 
   // Plan renders: headline chips, chart, table
   await expect(page.getByText('Moving:')).toBeVisible({ timeout: 20000 });
@@ -36,12 +37,13 @@ test('goal determiner: reference result produces A/B/C goals and hands off to pa
 
   // target: VMM 70k from the KB
   await page.locator('[role="combobox"]').first().pressSequentially('vmm', { delay: 60 });
-  await page.locator('input[placeholder="e.g. 70"]').fill('70');
-  await page.locator('input[placeholder="e.g. 16"]').fill('16');
+  const numberInputs = page.locator('input[type="number"]');
+  await numberInputs.nth(0).fill('70'); // target distance
+  await numberInputs.nth(2).fill('16'); // weeks until race
 
   // fitness: a manual 50k / 2500m in 7:30
-  await page.locator('input[placeholder="e.g. 50"]').fill('50');
-  await page.locator('input[placeholder="e.g. 2500"]').fill('2500');
+  await numberInputs.nth(3).fill('50'); // reference distance
+  await numberInputs.nth(4).fill('2500'); // reference gain
   await page.locator('input[placeholder="e.g. 7:30:00"]').fill('7:30:00');
 
   await page.getByRole('button', { name: /Estimate my goal/ }).click();
@@ -62,8 +64,8 @@ test('pace strategy: manual distance works without a race match', async ({ page 
   await page.getByRole('button', { name: 'Tools', exact: true }).click();
   await page.getByText('Turn a target finish time').click();
 
-  await page.locator('input[placeholder="e.g. 70"]').fill('21');
-  await page.locator('input[placeholder="e.g. 4000"]').fill('1000');
+  await page.locator('input[type="number"]').nth(0).fill('21');
+  await page.locator('input[type="number"]').nth(1).fill('1000');
 
   await expect(page.getByText('Moving:')).toBeVisible({ timeout: 20000 });
   const rows = page.locator('table tbody tr');

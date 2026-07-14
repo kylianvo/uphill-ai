@@ -90,13 +90,13 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
 
   const t = (en: string, vi: string) => (lang === "en" ? en : vi);
 
-  const targetDistance = raceMatch?.distance_km ?? (parseFloat(distance) || null);
-  const targetGain = raceMatch?.elevation_gain_m ?? (parseFloat(gain) || 0);
+  // Typed numbers override the KB match — some races change course yearly
+  const targetDistance = parseFloat(distance) || raceMatch?.distance_km || null;
+  const targetGain = parseFloat(gain) || raceMatch?.elevation_gain_m || 0;
+  const refDistanceKm = parseFloat(refDistance) || refMatch?.distance_km || null;
+  const refGainM = parseFloat(refGain) || refMatch?.elevation_gain_m || 0;
   const canEstimate =
-    !!targetDistance &&
-    (fitnessMode === "pace"
-      ? !!parseFloat(flatPace)
-      : !!refTime && !!(refMatch?.distance_km ?? parseFloat(refDistance)));
+    !!targetDistance && (fitnessMode === "pace" ? !!parseFloat(flatPace) : !!refTime && !!refDistanceKm);
 
   const handleEstimate = async () => {
     setLoading(true);
@@ -113,8 +113,8 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
         payload.flat_pace_min_km = parseFloat(flatPace);
       } else {
         payload.reference_race_name = refRaceName || null;
-        payload.reference_distance_km = refMatch?.distance_km ?? (parseFloat(refDistance) || null);
-        payload.reference_elevation_gain_m = refMatch?.elevation_gain_m ?? (parseFloat(refGain) || 0);
+        payload.reference_distance_km = refDistanceKm;
+        payload.reference_elevation_gain_m = refGainM;
         payload.reference_time = refTime;
       }
       const response = await fetch(`${getBaseUrl()}/api/coach/goal-estimate`, {
@@ -244,18 +244,35 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
               style={inputStyle}
             />
           </div>
-          {!raceMatch?.distance_km && (
-            <>
-              <div style={boxStyle}>
-                <label style={labelStyle}>{t("Distance (km)", "Cự ly (km)")}</label>
-                <input type="number" min="1" placeholder="e.g. 70" value={distance} onChange={(e) => setDistance(e.target.value)} style={inputStyle} />
-              </div>
-              <div style={boxStyle}>
-                <label style={labelStyle}>{t("Elevation gain (m)", "Tổng leo (m)")}</label>
-                <input type="number" min="0" placeholder="e.g. 4000" value={gain} onChange={(e) => setGain(e.target.value)} style={inputStyle} />
-              </div>
-            </>
-          )}
+          {/* Always editable: typed values override the KB match */}
+          <div style={boxStyle}>
+            <label style={labelStyle}>
+              {t("Distance (km)", "Cự ly (km)")}
+              {raceMatch?.distance_km && !distance ? ` · ${t("from race DB", "theo dữ liệu giải")}` : ""}
+            </label>
+            <input
+              type="number"
+              min="1"
+              placeholder={raceMatch?.distance_km ? String(raceMatch.distance_km) : "e.g. 70"}
+              value={distance}
+              onChange={(e) => setDistance(e.target.value)}
+              style={inputStyle}
+            />
+          </div>
+          <div style={boxStyle}>
+            <label style={labelStyle}>
+              {t("Elevation gain (m)", "Tổng leo (m)")}
+              {raceMatch?.elevation_gain_m && !gain ? ` · ${t("from race DB", "theo dữ liệu giải")}` : ""}
+            </label>
+            <input
+              type="number"
+              min="0"
+              placeholder={raceMatch?.elevation_gain_m ? String(raceMatch.elevation_gain_m) : "e.g. 4000"}
+              value={gain}
+              onChange={(e) => setGain(e.target.value)}
+              style={inputStyle}
+            />
+          </div>
           <div style={boxStyle}>
             <label style={labelStyle}>{t("Weeks until race", "Số tuần tới giải")}</label>
             <input type="number" min="0" max="52" placeholder="e.g. 16" value={weeks} onChange={(e) => setWeeks(e.target.value)} style={inputStyle} />
@@ -299,18 +316,34 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
                   style={inputStyle}
                 />
               </div>
-              {!refMatch?.distance_km && (
-                <>
-                  <div style={boxStyle}>
-                    <label style={labelStyle}>{t("Its distance (km)", "Cự ly (km)")}</label>
-                    <input type="number" min="1" placeholder="e.g. 50" value={refDistance} onChange={(e) => setRefDistance(e.target.value)} style={inputStyle} />
-                  </div>
-                  <div style={boxStyle}>
-                    <label style={labelStyle}>{t("Its elevation gain (m)", "Tổng leo (m)")}</label>
-                    <input type="number" min="0" placeholder="e.g. 2500" value={refGain} onChange={(e) => setRefGain(e.target.value)} style={inputStyle} />
-                  </div>
-                </>
-              )}
+              <div style={boxStyle}>
+                <label style={labelStyle}>
+                  {t("Its distance (km)", "Cự ly (km)")}
+                  {refMatch?.distance_km && !refDistance ? ` · ${t("from race DB", "theo dữ liệu giải")}` : ""}
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  placeholder={refMatch?.distance_km ? String(refMatch.distance_km) : "e.g. 50"}
+                  value={refDistance}
+                  onChange={(e) => setRefDistance(e.target.value)}
+                  style={inputStyle}
+                />
+              </div>
+              <div style={boxStyle}>
+                <label style={labelStyle}>
+                  {t("Its elevation gain (m)", "Tổng leo (m)")}
+                  {refMatch?.elevation_gain_m && !refGain ? ` · ${t("from race DB", "theo dữ liệu giải")}` : ""}
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder={refMatch?.elevation_gain_m ? String(refMatch.elevation_gain_m) : "e.g. 2500"}
+                  value={refGain}
+                  onChange={(e) => setRefGain(e.target.value)}
+                  style={inputStyle}
+                />
+              </div>
               <div style={boxStyle}>
                 <label style={labelStyle}>{t("Your finish time", "Thời gian hoàn thành")}</label>
                 <input type="text" placeholder="e.g. 7:30:00" value={refTime} onChange={(e) => setRefTime(e.target.value)} style={inputStyle} />
