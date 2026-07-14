@@ -230,3 +230,42 @@ def test_no_match_returns_empty_result():
     assert result.auto_apply is False
     assert result.top is None
     assert result.candidates == []
+
+
+def test_single_distance_race_resolves_without_distance_hint():
+    # Sydney-Marathon-style entry: exactly one distance on offer
+    single = {
+        "title": "Sydney Marathon — Sydney, Australia",
+        "content": "Road marathon through Sydney...",
+        "payload": {
+            "race_name": "Sydney Marathon",
+            "aliases": ["TCS Sydney Marathon"],
+            "terrain": ["road"],
+            "distances": [{"label": "42km", "distance_km": 42.195, "elevation_gain_m": 313}],
+            "matching_hints": {"name_keywords": ["sydney marathon"], "distance_km_options": [42.195]},
+        },
+    }
+    with patch("db.get_kb_chunks", return_value=[single, VMM_CHUNK]):
+        matched = match_race("sydney marathon")
+    assert matched is not None
+    assert matched.distance_km == 42.195
+    assert matched.elevation_gain_m == 313
+
+
+def test_hyphenated_race_names_match_unhyphenated_queries():
+    uta = {
+        "title": "UTA — Blue Mountains, Australia",
+        "content": "Ultra-Trail Australia runs through the Blue Mountains...",
+        "payload": {
+            "race_name": "Ultra-Trail Australia by UTMB",
+            "aliases": ["UTA"],
+            "terrain": ["stairs"],
+            "distances": [{"label": "UTA100", "distance_km": 100.4, "elevation_gain_m": 4460}],
+            "matching_hints": {"name_keywords": ["uta", "ultra-trail australia"], "distance_km_options": [100.4]},
+        },
+    }
+    with patch("db.get_kb_chunks", return_value=[uta, VMM_CHUNK]):
+        matched = match_race("ultra trail australia", distance_km=100)
+    assert matched is not None
+    assert matched.race_name == "Ultra-Trail Australia by UTMB"
+    assert matched.elevation_gain_m == 4460

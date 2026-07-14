@@ -87,6 +87,12 @@ def _closest_distance_entry(distances: list[dict[str, Any]], distance_km: float)
     return min(distances, key=lambda d: abs((d.get("distance_km") or 0) - distance_km))
 
 
+def _normalize(text: str) -> str:
+    """Lowercase and treat hyphens/en-dashes as spaces so 'Ultra-Trail
+    Australia' matches the 'ultra trail australia' a runner actually types."""
+    return re.sub(r"[-\u2013]+", " ", text.lower()).strip()
+
+
 def _keyword_hit(keyword: str, query: str) -> bool:
     """Word/phrase-boundary match: True if `keyword` appears in `query` as a
     whole word or phrase (not merely as a substring), or vice versa."""
@@ -112,17 +118,18 @@ def _score_chunks(query: str, chunks: list[dict[str, Any]]) -> list[tuple[dict[s
     """Scores every chunk against `query` (exact keyword hits score 100.0,
     otherwise the best rapidfuzz WRatio across race_name + aliases), sorted
     highest score first."""
+    query = _normalize(query)
     scored: list[tuple[dict[str, Any], float]] = []
     for chunk in chunks:
         payload = _payload_as_dict(chunk.get("payload"))
         keywords = payload.get("matching_hints", {}).get("name_keywords", [])
-        if any(_keyword_hit(kw.lower(), query) for kw in keywords if kw):
+        if any(_keyword_hit(_normalize(kw), query) for kw in keywords if kw):
             scored.append((chunk, 100.0))
             continue
 
         candidates = [payload.get("race_name", "")] + list(payload.get("aliases", []))
         score = max(
-            (fuzz.WRatio(query, c.lower()) for c in candidates if c and not _lopsided_short_candidate(query, c)),
+            (fuzz.WRatio(query, _normalize(c)) for c in candidates if c and not _lopsided_short_candidate(query, c)),
             default=0.0,
         )
         scored.append((chunk, score))
@@ -133,9 +140,13 @@ def _score_chunks(query: str, chunks: list[dict[str, Any]]) -> list[tuple[dict[s
 
 def _to_matched_race(chunk: dict[str, Any], score: float, resolved_distance_km: float | None) -> MatchedRace:
     payload = _payload_as_dict(chunk.get("payload"))
+    distances = payload.get("distances", [])
     distance_entry = None
     if resolved_distance_km is not None:
-        distance_entry = _closest_distance_entry(payload.get("distances", []), resolved_distance_km)
+        distance_entry = _closest_distance_entry(distances, resolved_distance_km)
+    elif len(distances) == 1:
+        # single-distance races (road marathons etc.) need no disambiguation
+        distance_entry = distances[0]
 
     return MatchedRace(
         race_name=payload.get("race_name", chunk.get("title", "")),

@@ -727,7 +727,19 @@
       100.4,
       161.0
      ]
-    }
+    },
+    "results": [
+     {
+      "year": 2025,
+      "distance_label": "UTA100",
+      "distance_km": 100.4,
+      "finishers": 1280,
+      "dnf_rate": 0.19,
+      "winner_time": "9:26:02",
+      "winner_time_women": "10:55:19",
+      "source": "itra.run UTA100 2025 + multisportaustralia finisher stats"
+     }
+    ]
    },
    "source_label": "Web research (2026-07)"
   },
@@ -1000,7 +1012,19 @@
      "distance_km_options": [
       42.195
      ]
-    }
+    },
+    "results": [
+     {
+      "year": 2025,
+      "distance_label": "42km",
+      "distance_km": 42.195,
+      "finishers": 32959,
+      "winner_time": "2:06:06",
+      "winner_time_women": "2:18:22",
+      "conditions_note": "first year as a World Marathon Major; both course records",
+      "source": "olympics.com / Wikipedia 2025 Sydney Marathon"
+     }
+    ]
    },
    "source_label": "Web research (2026-07)"
   },
