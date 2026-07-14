@@ -45,7 +45,7 @@ class WeatherService:
                 params={
                     "latitude": round(lat, 3),
                     "longitude": round(lon, 3),
-                    "hourly": "temperature_2m,relative_humidity_2m",
+                    "hourly": "temperature_2m,relative_humidity_2m,precipitation",
                     "daily": "sunset",
                     "timezone": "auto",
                     "start_date": start_date,
@@ -115,6 +115,10 @@ class WeatherService:
             except (KeyError, IndexError, TypeError, ValueError):
                 continue
             cp["temp_c"] = cls.apparent_temp_c(temp, humidity)
+            try:
+                cp["rain_mm"] = float((hourly.get("precipitation") or [0.0] * len(times))[idx])
+            except (IndexError, TypeError, ValueError):
+                cp["rain_mm"] = 0.0
             sunset = cls._sunset_for(forecast, eta.strftime("%Y-%m-%d"))
             cp["after_sunset"] = bool(sunset and eta > sunset)
             applied = True

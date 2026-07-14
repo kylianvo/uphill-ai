@@ -6,13 +6,19 @@ from datetime import datetime
 from services.weather_service import WeatherService
 
 
-def make_forecast(temps_by_hour: dict[str, float], humidity: float = 50.0, sunset: str = "2026-07-20T18:30"):
+def make_forecast(
+    temps_by_hour: dict[str, float],
+    humidity: float = 50.0,
+    sunset: str = "2026-07-20T18:30",
+    rain_mm: float = 0.0,
+):
     times = sorted(temps_by_hour)
     return {
         "hourly": {
             "time": times,
             "temperature_2m": [temps_by_hour[t] for t in times],
             "relative_humidity_2m": [humidity] * len(times),
+            "precipitation": [rain_mm] * len(times),
         },
         "daily": {"time": [times[0][:10]], "sunset": [sunset]},
     }
@@ -68,6 +74,19 @@ class TestAnnotateCheckpoints:
         assert cps[0]["after_sunset"] is False
         assert cps[1]["after_sunset"] is False
         assert cps[2]["after_sunset"] is True
+
+    def test_annotates_rain_at_eta_hour(self):
+        forecast = make_forecast({f"2026-07-20T{h:02d}:00": 20.0 for h in range(5, 12)}, rain_mm=2.5)
+        cps = make_checkpoints()
+        WeatherService.annotate_checkpoints(cps, make_paced(), datetime(2026, 7, 20, 5, 0), fetcher=lambda *a: forecast)
+        assert cps[1]["rain_mm"] == 2.5
+
+    def test_missing_precipitation_field_defaults_to_zero(self):
+        forecast = make_forecast({f"2026-07-20T{h:02d}:00": 20.0 for h in range(5, 12)})
+        del forecast["hourly"]["precipitation"]
+        cps = make_checkpoints()
+        WeatherService.annotate_checkpoints(cps, make_paced(), datetime(2026, 7, 20, 5, 0), fetcher=lambda *a: forecast)
+        assert cps[1]["rain_mm"] == 0.0
 
     def test_failed_fetch_leaves_checkpoints_untouched(self):
         cps = make_checkpoints()

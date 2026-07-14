@@ -27,6 +27,10 @@ class PacingCalculator:
     FATIGUE_PER_KM = 0.0015
     HEAT_FLOOR_C = 15.0
     HEAT_PENALTY_PER_C = 0.003
+    # Rain slows trail running (wet rock/mud, cautious descents): ~0.5%/mm/h,
+    # capped at 4% in a downpour. Conservative — terrain-specific data is thin.
+    RAIN_PENALTY_PER_MM = 0.005
+    RAIN_PENALTY_CAP = 0.04
     SPLIT_BIAS_MAX = 0.05  # ±5% pace swing between start and finish at |bias| = 1
     DEFAULT_WEIGHT_KG = 68.0
     JOULES_PER_KCAL = 4184.0
@@ -95,10 +99,10 @@ class PacingCalculator:
         return 1.0 + cls.FATIGUE_PER_KM * max(0.0, cumulative_flat_eq_km - cls.FATIGUE_FREE_KM)
 
     @classmethod
-    def weather_multiplier(cls, temp_c: float | None) -> float:
-        if temp_c is None:
-            return 1.0
-        return 1.0 + cls.HEAT_PENALTY_PER_C * max(0.0, temp_c - cls.HEAT_FLOOR_C)
+    def weather_multiplier(cls, temp_c: float | None, rain_mm: float | None = None) -> float:
+        heat = cls.HEAT_PENALTY_PER_C * max(0.0, temp_c - cls.HEAT_FLOOR_C) if temp_c is not None else 0.0
+        rain = min(cls.RAIN_PENALTY_CAP, cls.RAIN_PENALTY_PER_MM * max(0.0, rain_mm or 0.0))
+        return 1.0 + heat + rain
 
     @classmethod
     def split_bias_multiplier(cls, split_bias: float, progress: float) -> float:
@@ -154,6 +158,7 @@ class PacingCalculator:
                         "grade_pct": 0.0,
                         "effort": "run",
                         "temp_c": cp.get("temp_c"),
+                        "rain_mm": cp.get("rain_mm"),
                         "after_sunset": bool(cp.get("after_sunset")),
                         "energy_kcal": 0,
                     }
@@ -174,7 +179,7 @@ class PacingCalculator:
                 grade_mult
                 * cls.altitude_multiplier(cp_elev)
                 * cls.fatigue_multiplier(cumulative_flat_eq_km)
-                * cls.weather_multiplier(cp.get("temp_c"))
+                * cls.weather_multiplier(cp.get("temp_c"), cp.get("rain_mm"))
                 * cls.split_bias_multiplier(split_bias, progress)
             )
             adjusted_pace_decimal = target_flat_pace_min_km * multiplier
@@ -205,6 +210,7 @@ class PacingCalculator:
                     "grade_pct": round(grade_pct, 1),
                     "effort": effort,
                     "temp_c": cp.get("temp_c"),
+                    "rain_mm": cp.get("rain_mm"),
                     "after_sunset": bool(cp.get("after_sunset")),
                     "energy_kcal": round(cumulative_kcal),
                 }
@@ -247,7 +253,7 @@ class PacingCalculator:
                 grade_mult
                 * cls.altitude_multiplier(cp_elev)
                 * cls.fatigue_multiplier(cumulative_flat_eq_km)
-                * cls.weather_multiplier(cp.get("temp_c"))
+                * cls.weather_multiplier(cp.get("temp_c"), cp.get("rain_mm"))
                 * cls.split_bias_multiplier(split_bias, progress)
             )
             unit_time += (seg_dist_m / 1000.0) * multiplier

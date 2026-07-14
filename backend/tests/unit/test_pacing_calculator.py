@@ -173,6 +173,21 @@ class TestWeather:
         cold_r = PacingCalculator.calculate_checkpoint_paces(cold, target_flat_pace_min_km=6.0)
         assert cold_r[1]["cumulative_time_mins"] == plain_r[1]["cumulative_time_mins"]
 
+    def test_rain_slows_segment_and_heavier_rain_slows_more(self):
+        dry = [make_checkpoint("Start", 0), make_checkpoint("KM 5", 5000)]
+        light = [make_checkpoint("Start", 0), {**make_checkpoint("KM 5", 5000), "rain_mm": 1.0}]
+        heavy = [make_checkpoint("Start", 0), {**make_checkpoint("KM 5", 5000), "rain_mm": 6.0}]
+        dry_r = PacingCalculator.calculate_checkpoint_paces(dry, target_flat_pace_min_km=6.0)
+        light_r = PacingCalculator.calculate_checkpoint_paces(light, target_flat_pace_min_km=6.0)
+        heavy_r = PacingCalculator.calculate_checkpoint_paces(heavy, target_flat_pace_min_km=6.0)
+        assert dry_r[1]["cumulative_time_mins"] < light_r[1]["cumulative_time_mins"]
+        assert light_r[1]["cumulative_time_mins"] < heavy_r[1]["cumulative_time_mins"]
+
+    def test_rain_passes_through_to_output(self):
+        cps = [make_checkpoint("Start", 0), {**make_checkpoint("KM 5", 5000), "rain_mm": 2.5}]
+        result = PacingCalculator.calculate_checkpoint_paces(cps, target_flat_pace_min_km=6.0)
+        assert result[1]["rain_mm"] == 2.5
+
 
 class TestEnergyCost:
     def test_flat_course_energy_matches_minetti_flat_cost(self):

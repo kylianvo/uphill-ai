@@ -19,6 +19,7 @@ export interface PacedCheckpoint {
   grade_pct: number;
   effort: "run" | "hike";
   temp_c?: number | null;
+  rain_mm?: number | null;
   after_sunset?: boolean;
   energy_kcal?: number;
 }

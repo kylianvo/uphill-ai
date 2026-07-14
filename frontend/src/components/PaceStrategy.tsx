@@ -26,6 +26,7 @@ import {
   Clock,
   MoonStars,
   Thermometer,
+  CloudRain,
   Fire,
   BowlFood,
   Sneaker,
@@ -90,8 +91,9 @@ function ProfileChart({ paced, lang }: { paced: PacedCheckpoint[]; lang: "en" | 
   const x = (km: number) => padL + (km / maxDist) * (width - padL - padR);
   const yElev = (e: number) => 10 + (1 - (e - minElev) / (maxElev - minElev)) * (elevH - 10);
   const paceTop = elevH + gap;
+  // faster pace (smaller min/km) sits higher on the panel
   const yPace = (p: number) =>
-    paceTop + (1 - (p - minPace * 0.9) / (maxPace - minPace * 0.9 || 1)) * (paceH - 10);
+    paceTop + ((p - minPace * 0.9) / (maxPace - minPace * 0.9 || 1)) * (paceH - 10);
 
   const elevPath =
     `M ${x(rows[0].distance_km)} ${yElev(rows[0].elevation_m)} ` +
@@ -226,7 +228,6 @@ function ProfileChart({ paced, lang }: { paced: PacedCheckpoint[]; lang: "en" | 
 }
 
 export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lang, user, activePlan }) => {
-  const [courseSource, setCourseSource] = useState<"gpx" | "race">("race");
   const [raceName, setRaceName] = useState("");
   const [raceMatch, setRaceMatch] = useState<RaceMatch | null>(null);
   const [manualDistance, setManualDistance] = useState("");
@@ -267,9 +268,10 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
   // Goal Determiner hands a race + target time into the slider
   useEffect(() => {
     if (!isOpen || !paceHandoff?.target_time_mins) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setCourseSource("race");
-    if (paceHandoff.race_name) setRaceName(paceHandoff.race_name);
+    if (paceHandoff.race_name) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setRaceName(paceHandoff.race_name);
+    }
     if (paceHandoff.distance_km) setManualDistance(String(paceHandoff.distance_km));
     setTargetTimeMins(paceHandoff.target_time_mins);
     setRestMins({});
@@ -278,18 +280,20 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
   }, [isOpen]);
 
   // Weather needs per-checkpoint coordinates, which only GPX courses have.
-  const raceStartIso =
-    courseSource === "gpx" && raceDate ? `${raceDate}T${startClock || "05:00"}` : null;
+  const hasGpx = gpxCheckpoints.length > 0;
+  const raceStartIso = hasGpx && raceDate ? `${raceDate}T${startClock || "05:00"}` : null;
 
-  // Course checkpoints from whichever source is active. Typed numbers beat
-  // the KB match — some races change their course every year.
+  // One flow: an uploaded GPX supplies the real profile; otherwise the course
+  // is synthesized from the numbers. Typed numbers beat the KB match — some
+  // races change their course every year. The race pick keeps adding context
+  // (benchmarks, name for handoffs) either way.
   const checkpoints = useMemo<CourseCheckpoint[]>(() => {
-    if (courseSource === "gpx") return gpxCheckpoints;
+    if (gpxCheckpoints.length > 0) return gpxCheckpoints;
     const dist = parseFloat(manualDistance) || raceMatch?.distance_km || 0;
     if (dist <= 0) return [];
     const gain = parseFloat(manualGain) || raceMatch?.elevation_gain_m || 0;
     return synthesizeCourse(dist, gain, gain, 0, splitInterval);
-  }, [courseSource, gpxCheckpoints, raceMatch, manualDistance, manualGain, splitInterval]);
+  }, [gpxCheckpoints, raceMatch, manualDistance, manualGain, splitInterval]);
 
   const courseStats = useMemo(() => {
     if (checkpoints.length < 2) return null;
@@ -375,21 +379,23 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
     };
   }, [isOpen, effectiveTargetMins, splitBias, checkpoints, raceStartIso, weightKg, recalc]);
 
-  // Curated past-results benchmarks for the picked race (winner times, field size)
+  // Curated past-results benchmarks for the picked race (winner times, field
+  // size). With a GPX loaded, the GPX's distance selects the right variant.
+  const benchmarkDistance = raceMatch?.distance_km || courseStats?.dist || null;
   useEffect(() => {
-    if (courseSource !== "race" || !raceMatch?.distance_km) {
+    if (!raceMatch?.race_name || !benchmarkDistance) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setBenchmarks([]);
       return;
     }
     const controller = new AbortController();
-    const params = new URLSearchParams({ name: raceMatch.race_name, distance_km: String(raceMatch.distance_km) });
+    const params = new URLSearchParams({ name: raceMatch.race_name, distance_km: String(benchmarkDistance) });
     fetch(`${getBaseUrl()}/api/coach/pace-strategy/benchmarks?${params.toString()}`, { signal: controller.signal })
       .then((r) => (r.ok ? r.json() : { matched: false }))
       .then((data) => setBenchmarks(data.matched ? data.results : []))
       .catch(() => setBenchmarks([]));
     return () => controller.abort();
-  }, [courseSource, raceMatch]);
+  }, [raceMatch, benchmarkDistance]);
 
   const handleGpxFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -439,7 +445,7 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
     setPaceHandoff({
       duration_hours: last ? Math.round(((last.cumulative_time_mins + totalRestMins) / 60) * 10) / 10 : undefined,
       weather_temp: tempBucket(peak),
-      race_name: courseSource === "race" ? raceName : gpxFileName.replace(/\.gpx$/i, ""),
+      race_name: raceName || gpxFileName.replace(/\.gpx$/i, ""),
       distance_label: courseStats ? `${Math.round(courseStats.dist)}k` : undefined,
     });
     onClose();
@@ -502,40 +508,8 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
           )}
         </p>
 
-        {/* Course source */}
-        <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
-          {(["race", "gpx"] as const).map((mode) => (
-            <button
-              key={mode}
-              onClick={() => {
-                setCourseSource(mode);
-                setPaced([]);
-                setRestMins({});
-              }}
-              style={{
-                padding: "8px 20px",
-                borderRadius: "20px",
-                border: courseSource === mode ? "none" : "1px solid var(--border-color)",
-                background: courseSource === mode ? "var(--text-primary)" : "transparent",
-                color: courseSource === mode ? "white" : "var(--text-primary)",
-                fontSize: "14px",
-                fontWeight: 600,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-              }}
-            >
-              {mode === "race" ? <MapPin size={16} /> : <UploadSimple size={16} />}
-              {mode === "race" ? t("Pick a race", "Chọn giải chạy") : t("Upload GPX", "Tải lên GPX")}
-            </button>
-          ))}
-        </div>
-
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px", marginBottom: "20px" }}>
-          {courseSource === "race" && (
-            <>
-              <div style={{ ...boxStyle, gridColumn: "1 / -1" }}>
+          <div style={{ ...boxStyle, gridColumn: "1 / -1" }}>
                 <label style={labelStyle}>{t("Race", "Giải chạy")}</label>
                 <RaceNameField
                   placeholder="e.g. VMM 70k, UTMB"
@@ -550,9 +524,9 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
                   style={{ width: "100%", background: "transparent", border: "none", fontSize: "16px", fontWeight: 600, color: "var(--text-primary)", outline: "none" }}
                 />
               </div>
-              {/* Always editable: typed values override the KB match, since
-                  some races change their course every year */}
-              <div style={boxStyle}>
+          {/* Always editable: typed values override the KB match, since
+              some races change their course every year */}
+          <div style={{ ...boxStyle, opacity: hasGpx ? 0.45 : 1 }}>
                 <label style={labelStyle}>
                   {t("Distance (km)", "Cự ly (km)")}
                   {raceMatch?.distance_km && !manualDistance ? ` · ${t("from race DB", "theo dữ liệu giải")}` : ""}
@@ -569,7 +543,7 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
                   style={{ width: "100%", background: "transparent", border: "none", fontSize: "16px", fontWeight: 600, color: "var(--text-primary)", outline: "none" }}
                 />
               </div>
-              <div style={boxStyle}>
+          <div style={{ ...boxStyle, opacity: hasGpx ? 0.45 : 1 }}>
                 <label style={labelStyle}>
                   {t("Elevation gain (m)", "Tổng leo (m)")}
                   {raceMatch?.elevation_gain_m && !manualGain ? ` · ${t("from race DB", "theo dữ liệu giải")}` : ""}
@@ -586,24 +560,42 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
                   style={{ width: "100%", background: "transparent", border: "none", fontSize: "16px", fontWeight: 600, color: "var(--text-primary)", outline: "none" }}
                 />
               </div>
-            </>
-          )}
-
-          {courseSource === "gpx" && (
-            <div
-              style={{ ...boxStyle, gridColumn: "1 / -1", textAlign: "center", cursor: "pointer" }}
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <UploadSimple size={28} color="var(--accent-primary)" weight="duotone" />
-              <div style={{ fontSize: "14px", fontWeight: 600, color: "var(--text-primary)" }}>
-                {gpxLoading
-                  ? t("Parsing route…", "Đang phân tích tuyến đường…")
-                  : gpxFileName || t("Upload a course GPX", "Tải lên tệp GPX đường chạy")}
-              </div>
-              <input type="file" ref={fileInputRef} onChange={handleGpxFile} accept=".gpx" style={{ display: "none" }} />
+          <div
+            style={{ ...boxStyle, textAlign: "center", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "4px" }}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <UploadSimple size={22} color="var(--accent-primary)" weight="duotone" />
+            <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-primary)" }}>
+              {gpxLoading
+                ? t("Parsing route…", "Đang phân tích tuyến đường…")
+                : gpxFileName || t("GPX (optional, exact profile)", "GPX (tùy chọn, biểu đồ chính xác)")}
             </div>
-          )}
+            {hasGpx && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setGpxCheckpoints([]);
+                  setGpxFileName("");
+                  setRestMins({});
+                }}
+                style={{ background: "none", border: "none", color: "var(--text-muted)", fontSize: "11px", cursor: "pointer", textDecoration: "underline" }}
+              >
+                {t("remove — use race numbers", "xóa — dùng số liệu giải")}
+              </button>
+            )}
+            <input type="file" ref={fileInputRef} onChange={handleGpxFile} accept=".gpx" style={{ display: "none" }} />
+          </div>
         </div>
+
+        {raceMatch?.terrain && raceMatch.terrain.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "-8px", marginBottom: "20px" }}>
+            {raceMatch.terrain.slice(0, 5).map((tag) => (
+              <span key={tag} style={{ background: "rgba(0,0,0,0.04)", padding: "3px 10px", borderRadius: "8px", fontSize: "11px", fontWeight: 600, color: "var(--text-secondary)" }}>
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
 
         {courseStats && bounds && effectiveTargetMins !== null && (
           <>
@@ -625,9 +617,20 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
                 onChange={(e) => setTargetTimeMins(parseInt(e.target.value, 10))}
                 style={{ width: "100%", accentColor: "var(--accent-primary)" }}
               />
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "var(--text-muted)" }}>
-                <span>{formatDurationHM(bounds.min)}</span>
-                <span>{formatDurationHM(bounds.max)}</span>
+              <div
+                style={{
+                  height: "5px",
+                  borderRadius: "3px",
+                  marginTop: "2px",
+                  background: "linear-gradient(90deg, var(--accent-alert, #ef4444), var(--accent-primary) 55%, var(--border-color))",
+                  opacity: 0.55,
+                }}
+              />
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "var(--text-muted)", marginTop: "3px" }}>
+                <span>
+                  {formatDurationHM(bounds.min)} · {t("harder effort", "gắng sức hơn")}
+                </span>
+                <span>{t("cruising", "thoải mái")} · {formatDurationHM(bounds.max)}</span>
               </div>
               {benchmarks.length > 0 && (
                 <div style={{ marginTop: "10px", borderTop: "1px dashed var(--border-color)", paddingTop: "8px" }}>
@@ -709,7 +712,7 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
                   style={{ width: "100%", background: "transparent", border: "none", fontSize: "16px", fontWeight: 600, color: "var(--text-primary)", outline: "none" }}
                 />
               </div>
-              {courseSource === "race" && (
+              {!hasGpx && (
                 <div style={boxStyle}>
                   <label style={labelStyle}>{t("Split every", "Chia mỗi")}</label>
                   <div style={{ display: "flex", gap: "6px" }}>
@@ -748,7 +751,7 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
                   style={{ width: "100%", background: "transparent", border: "none", fontSize: "16px", fontWeight: 600, color: "var(--text-primary)", outline: "none" }}
                 />
               </div>
-              {courseSource === "gpx" && (
+              {hasGpx && (
                 <div style={boxStyle}>
                   <label style={labelStyle}>{t("Race date (for weather)", "Ngày đua (dự báo thời tiết)")}</label>
                   <input
@@ -794,7 +797,12 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
               )}
               {hasWeather && (
                 <span style={{ display: "flex", alignItems: "center", gap: "4px", background: "rgba(0,0,0,0.04)", padding: "6px 12px", borderRadius: "10px", fontSize: "13px", fontWeight: 600, color: "var(--text-secondary)" }}>
-                  <Thermometer size={15} /> {t("Peak heat", "Nóng nhất")}: {Math.max(...paced.map((p) => p.temp_c ?? -99))}°C
+                  <Thermometer size={15} /> {t("Peak heat (race hours)", "Nóng nhất (khi chạy)")}: {Math.max(...paced.map((p) => p.temp_c ?? -99))}°C
+                </span>
+              )}
+              {paced.some((p) => (p.rain_mm ?? 0) >= 0.3) && (
+                <span style={{ display: "flex", alignItems: "center", gap: "4px", background: "rgba(0,0,0,0.04)", padding: "6px 12px", borderRadius: "10px", fontSize: "13px", fontWeight: 600, color: "var(--text-secondary)" }}>
+                  <CloudRain size={15} /> {t("Rain expected", "Dự báo mưa")}: {Math.max(...paced.map((p) => p.rain_mm ?? 0)).toFixed(1)}mm/h
                 </span>
               )}
               {paced.some((p) => p.after_sunset) && (
@@ -852,6 +860,9 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
                         {hasWeather && (
                           <td style={{ padding: "8px 10px" }}>
                             {cp.temp_c != null ? `${cp.temp_c}°C` : "—"}
+                            {(cp.rain_mm ?? 0) >= 0.1 && (
+                              <span style={{ color: "var(--text-muted)" }}> · {cp.rain_mm}mm</span>
+                            )}
                             {cp.after_sunset && <MoonStars size={13} style={{ marginLeft: "4px", verticalAlign: "-2px" }} />}
                           </td>
                         )}
@@ -864,7 +875,7 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
             </div>
 
             <p style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "12px" }}>
-              {courseSource === "race"
+              {!hasGpx
                 ? t(
                     "Course profile is estimated from total distance and climb — upload the official GPX for segment-accurate pacing.",
                     "Biểu đồ đường chạy được ước tính từ tổng cự ly và tổng leo — tải lên GPX chính thức để có pacing chính xác theo từng đoạn.",
@@ -892,7 +903,7 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
           </div>
         )}
 
-        {activePlan?.race_name && courseSource === "race" && !raceName && (
+        {activePlan?.race_name && !raceName && (
           <button
             onClick={() => setRaceName(activePlan.race_name)}
             style={{ marginTop: "4px", background: "none", border: "1px dashed var(--border-color)", borderRadius: "10px", padding: "8px 14px", fontSize: "12.5px", color: "var(--text-secondary)", cursor: "pointer" }}
