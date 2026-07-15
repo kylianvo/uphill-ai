@@ -12,12 +12,13 @@ import ToolsView from "./ToolsView";
 import { UploadSimple, FileArrowUp, Heart, Clock, Mountains, MapPin, Footprints, ArrowsMerge, PlayCircle, CheckCircle, Fire, Path, RoadHorizon, Info, Check, Question, WarningCircle, Plus, Trash, Archive, LockKey, LockKeyOpen, Trophy, Target, Sneaker, PersonSimpleRun, Bed, XCircle, DownloadSimple } from '@phosphor-icons/react';
 import { RaceMatch } from "../hooks/useRaceMatch";
 import { RaceNameField } from "../components/RaceNameField";
+import { minsToHms } from "../lib/planHandoff";
 
 export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   const ctx = useAppContext();
   const { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, handleSwapWorkouts, swapDays, handleToggleComplete, handleLogWorkout, getWeekWorkouts, getWorkoutDate, getWorkoutDateObj, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller } = usePlanner();
   const [planViewMode, setPlanViewMode] = useState<"list" | "calendar">("list");
-  const { lang, activePlan, planLoading, planErrorMsg, planForm, setPlanForm, targetTimeH, setTargetTimeH, targetTimeM, setTargetTimeM, targetTimeS, setTargetTimeS, cutoffTimeH, setCutoffTimeH, cutoffTimeM, setCutoffTimeM, cutoffTimeS, setCutoffTimeS, recentPlans, selectedWeek, setSelectedWeek, swapDay1, setSwapDay1, swapDay2, setSwapDay2, setWorkouts, setBackupWorkouts, setActivePlan, workouts, backupWorkouts, backupActivePlan, setBackupActivePlan, courseInputMode, setCourseInputMode, plannerGpxLoading, plannerGpxFile, plannerGpxError, showExportOptions, setShowExportOptions, exportTimePref, setExportTimePref, setIsGoalDeterminerOpen } = ctx;
+  const { lang, activePlan, planLoading, planErrorMsg, planForm, setPlanForm, targetTimeH, setTargetTimeH, targetTimeM, setTargetTimeM, targetTimeS, setTargetTimeS, cutoffTimeH, setCutoffTimeH, cutoffTimeM, setCutoffTimeM, cutoffTimeS, setCutoffTimeS, recentPlans, selectedWeek, setSelectedWeek, swapDay1, setSwapDay1, swapDay2, setSwapDay2, setWorkouts, setBackupWorkouts, setActivePlan, workouts, backupWorkouts, backupActivePlan, setBackupActivePlan, courseInputMode, setCourseInputMode, plannerGpxLoading, plannerGpxFile, plannerGpxError, showExportOptions, setShowExportOptions, exportTimePref, setExportTimePref, setIsGoalDeterminerOpen, settingsHandoff, setSettingsHandoff } = ctx;
   const t = (key: keyof typeof translations.en) => translations[lang]?.[key] || translations.en[key] || key;
   const totalWeeks = activePlan ? (activePlan.total_weeks || activePlan.plan_duration_weeks || 1) : 0;
 
@@ -67,6 +68,21 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
       .catch(() => setContextCard(null));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedWeek, activePlan?.id, lang]);
+
+  // ── Goal Determiner → Plan Settings target hand-off ──────────────────────
+  const [targetTimeHintLabel, setTargetTimeHintLabel] = useState<string | null>(null);
+  useEffect(() => {
+    if (!settingsHandoff?.target_time_mins) return;
+    const { h, m, s } = minsToHms(settingsHandoff.target_time_mins);
+    setPlanForm((prev: any) => ({ ...prev, goal_type: "time" }));
+    setTargetTimeH(h);
+    setTargetTimeM(m);
+    setTargetTimeS(s);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setTargetTimeHintLabel(settingsHandoff.source_label || null);
+    setSettingsHandoff(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settingsHandoff]);
 
   // ── Coach contextual message ─────────────────────────────────────────────
   const getCoachMessage = () => {
@@ -399,10 +415,15 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                       {lang === "en" ? "Not sure? Use the Goal Determiner →" : "Chưa chắc? Dùng công cụ Xác định Mục tiêu →"}
                     </button>
                   </div>
+                  {targetTimeHintLabel && (
+                    <div style={{ fontSize: "11px", color: "var(--accent-primary)", marginBottom: "6px" }}>
+                      {lang === "en" ? `Auto-filled from Goal Determiner (${targetTimeHintLabel})` : `Tự động điền từ Xác định Mục tiêu (${targetTimeHintLabel})`}
+                    </div>
+                  )}
                   <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr 1.1fr", gap: "8px" }}>
-                    <div><label style={{ display: "block", fontSize: "11px", color: "var(--text-secondary)", marginBottom: "4px" }}>{lang === "en" ? "Hours" : "Giờ"}</label><input type="number" min="0" max="99" className="chat-input" style={{ borderRadius: "8px", width: "100%", padding: "8px", textAlign: "center" }} placeholder="0" value={targetTimeH} onChange={(e) => setTargetTimeH(e.target.value)} /></div>
-                    <div><label style={{ display: "block", fontSize: "11px", color: "var(--text-secondary)", marginBottom: "4px" }}>{lang === "en" ? "Minutes" : "Phút"}</label><input type="number" min="0" max="59" className="chat-input" style={{ borderRadius: "8px", width: "100%", padding: "8px", textAlign: "center" }} placeholder="0" value={targetTimeM} onChange={(e) => setTargetTimeM(e.target.value)} /></div>
-                    <div><label style={{ display: "block", fontSize: "11px", color: "var(--text-secondary)", marginBottom: "4px" }}>{lang === "en" ? "Seconds" : "Giây"}</label><input type="number" min="0" max="59" className="chat-input" style={{ borderRadius: "8px", width: "100%", padding: "8px", textAlign: "center" }} placeholder="0" value={targetTimeS} onChange={(e) => setTargetTimeS(e.target.value)} /></div>
+                    <div><label style={{ display: "block", fontSize: "11px", color: "var(--text-secondary)", marginBottom: "4px" }}>{lang === "en" ? "Hours" : "Giờ"}</label><input type="number" min="0" max="99" className="chat-input" style={{ borderRadius: "8px", width: "100%", padding: "8px", textAlign: "center" }} placeholder="0" value={targetTimeH} onChange={(e) => { setTargetTimeH(e.target.value); setTargetTimeHintLabel(null); }} /></div>
+                    <div><label style={{ display: "block", fontSize: "11px", color: "var(--text-secondary)", marginBottom: "4px" }}>{lang === "en" ? "Minutes" : "Phút"}</label><input type="number" min="0" max="59" className="chat-input" style={{ borderRadius: "8px", width: "100%", padding: "8px", textAlign: "center" }} placeholder="0" value={targetTimeM} onChange={(e) => { setTargetTimeM(e.target.value); setTargetTimeHintLabel(null); }} /></div>
+                    <div><label style={{ display: "block", fontSize: "11px", color: "var(--text-secondary)", marginBottom: "4px" }}>{lang === "en" ? "Seconds" : "Giây"}</label><input type="number" min="0" max="59" className="chat-input" style={{ borderRadius: "8px", width: "100%", padding: "8px", textAlign: "center" }} placeholder="0" value={targetTimeS} onChange={(e) => { setTargetTimeS(e.target.value); setTargetTimeHintLabel(null); }} /></div>
                   </div>
                 </div>
               )}
