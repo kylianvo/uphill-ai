@@ -96,11 +96,104 @@
       "distance_label": "70km",
       "distance_km": 69.5,
       "finishers": 289,
+      "finishers_men": 218,
+      "finishers_women": 71,
       "winner_time": "9:10:58",
       "winner_time_women": "11:52:42",
+      "percentiles": {
+       "overall": {
+        "p10": "13:47:50",
+        "p25": "16:40:50",
+        "p50": "18:59:26",
+        "p75": "20:10:52",
+        "p90": "20:32:16"
+       },
+       "men": {
+        "p10": "13:40:34",
+        "p25": "16:21:49",
+        "p50": "18:44:54",
+        "p75": "20:07:25",
+        "p90": "20:30:16"
+       },
+       "women": {
+        "p10": "14:06:22",
+        "p25": "16:54:58",
+        "p50": "19:28:30",
+        "p75": "20:20:20",
+        "p90": "20:37:35"
+       }
+      },
       "cutoff_clock": "00:00 (midnight finish cutoff)",
       "conditions_note": "perfect weather year",
-      "source": "my.raceresult.com/323529 + utmb.world index, VMM 2025 official results"
+      "source": "statistik.d-u-v.org event 114900; percentiles computed from the full DUV finisher list (rank ceil(q*N))"
+     },
+     {
+      "year": 2025,
+      "distance_label": "50km",
+      "distance_km": 46.7,
+      "finishers": 752,
+      "finishers_men": 487,
+      "finishers_women": 265,
+      "winner_time": "4:53:38",
+      "winner_time_women": "5:41:10",
+      "percentiles": {
+       "overall": {
+        "p10": "9:58:52",
+        "p25": "11:58:30",
+        "p50": "14:40:12",
+        "p75": "16:39:45",
+        "p90": "17:54:58"
+       },
+       "men": {
+        "p10": "9:54:05",
+        "p25": "11:52:44",
+        "p50": "14:32:58",
+        "p75": "16:36:35",
+        "p90": "17:48:48"
+       },
+       "women": {
+        "p10": "10:19:16",
+        "p25": "12:24:38",
+        "p50": "14:52:23",
+        "p75": "16:58:13",
+        "p90": "17:57:48"
+       }
+      },
+      "source": "statistik.d-u-v.org event 114896; percentiles computed from the full DUV finisher list (rank ceil(q*N))"
+     },
+     {
+      "year": 2025,
+      "distance_label": "100km",
+      "distance_km": 100.0,
+      "finishers": 298,
+      "finishers_men": 253,
+      "finishers_women": 45,
+      "winner_time": "13:00:10",
+      "winner_time_women": "17:24:33",
+      "percentiles": {
+       "overall": {
+        "p10": "20:40:33",
+        "p25": "23:41:39",
+        "p50": "25:52:22",
+        "p75": "27:17:23",
+        "p90": "27:37:32"
+       },
+       "men": {
+        "p10": "20:40:33",
+        "p25": "23:31:15",
+        "p50": "25:47:35",
+        "p75": "27:13:27",
+        "p90": "27:37:32"
+       },
+       "women": {
+        "p10": "21:49:08",
+        "p25": "24:09:11",
+        "p50": "26:23:15",
+        "p75": "27:22:41",
+        "p90": "27:37:25"
+       }
+      },
+      "source": "statistik.d-u-v.org event 114899; percentiles computed from the full DUV finisher list (rank ceil(q*N))"
      }
     ]
    },
@@ -733,11 +826,35 @@
       "year": 2025,
       "distance_label": "UTA100",
       "distance_km": 100.4,
-      "finishers": 1280,
-      "dnf_rate": 0.19,
+      "finishers": 1282,
+      "finishers_men": 1013,
+      "finishers_women": 269,
       "winner_time": "9:26:02",
       "winner_time_women": "10:55:19",
-      "source": "itra.run UTA100 2025 + multisportaustralia finisher stats"
+      "percentiles": {
+       "overall": {
+        "p10": "14:02:12",
+        "p25": "16:08:40",
+        "p50": "18:56:22",
+        "p75": "22:22:40",
+        "p90": "25:17:05"
+       },
+       "men": {
+        "p10": "13:58:00",
+        "p25": "15:49:59",
+        "p50": "18:38:57",
+        "p75": "21:39:17",
+        "p90": "24:53:28"
+       },
+       "women": {
+        "p10": "14:53:00",
+        "p25": "17:41:16",
+        "p50": "20:27:09",
+        "p75": "23:34:12",
+        "p90": "26:38:07"
+       }
+      },
+      "source": "statistik.d-u-v.org event 110215 (cross-checked vs itra.run); percentiles computed from the full DUV finisher list (rank ceil(q*N))"
      }
     ]
    },

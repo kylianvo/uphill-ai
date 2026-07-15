@@ -52,6 +52,10 @@ test('goal determiner: reference result produces A/B/C goals and hands off to pa
   await expect(page.getByText('Realistic', { exact: true })).toBeVisible();
   await expect(page.getByText('Safe', { exact: true })).toBeVisible();
 
+  // field curve renders from curated percentiles, with the gender filter
+  await expect(page.getByText('Where your goals land', { exact: false })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Women', exact: true })).toBeVisible();
+
   // hand the realistic goal into Pace Strategy: modal opens with a plan
   await page.getByRole('button', { name: 'Plan pacing' }).nth(1).click();
   await expect(page.getByRole('heading', { name: 'Pace Strategy', level: 2 })).toBeVisible();

@@ -123,6 +123,56 @@ export function parseDurationToMinutes(time: string): number | null {
   return parseInt(m[1], 10) * 60 + parseInt(m[2], 10) + (m[3] ? parseInt(m[3], 10) / 60 : 0);
 }
 
+export interface PercentileSet {
+  p10?: string;
+  p25?: string;
+  p50?: string;
+  p75?: string;
+  p90?: string;
+}
+
+/** Hand-curated percentile anchors parsed to {q: percent, mins}, sorted by q. */
+export function percentilePoints(ps: PercentileSet): { q: number; mins: number }[] {
+  return Object.entries(ps)
+    .map(([key, time]) => ({ q: parseInt(key.slice(1), 10), mins: time ? parseDurationToMinutes(time) : null }))
+    .filter((p): p is { q: number; mins: number } => !Number.isNaN(p.q) && p.mins !== null)
+    .sort((a, b) => a.q - b.q);
+}
+
+/**
+ * Where a finish time lands in the field: linear interpolation between the
+ * verified percentile anchors, clamped at the ends (never extrapolated).
+ * A winner time, when given, anchors the fast end at 0%.
+ */
+export function percentileForTime(
+  ps: PercentileSet,
+  timeMins: number,
+  winnerMins?: number | null,
+): { pct: number; clamped: "fast" | "slow" | null } | null {
+  const pts = percentilePoints(ps);
+  if (pts.length < 2) return null;
+  const anchors = winnerMins && winnerMins < pts[0].mins ? [{ q: 0, mins: winnerMins }, ...pts] : pts;
+
+  if (timeMins <= anchors[0].mins) {
+    return timeMins === anchors[0].mins
+      ? { pct: anchors[0].q, clamped: null }
+      : { pct: anchors[0].q, clamped: "fast" };
+  }
+  const last = anchors[anchors.length - 1];
+  if (timeMins >= last.mins) {
+    return timeMins === last.mins ? { pct: last.q, clamped: null } : { pct: last.q, clamped: "slow" };
+  }
+  for (let i = 1; i < anchors.length; i++) {
+    if (timeMins <= anchors[i].mins) {
+      const a = anchors[i - 1];
+      const b = anchors[i];
+      const frac = (timeMins - a.mins) / (b.mins - a.mins);
+      return { pct: a.q + frac * (b.q - a.q), clamped: null };
+    }
+  }
+  return null;
+}
+
 /** Maps a forecast temperature to the Nutrition Lab's weather buckets. */
 export function tempBucket(tempC: number | null | undefined): "cool" | "moderate" | "hot" {
   if (tempC == null) return "moderate";

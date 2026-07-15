@@ -8,6 +8,8 @@ import {
   sliderBoundsMins,
   tempBucket,
   parseDurationToMinutes,
+  percentilePoints,
+  percentileForTime,
 } from "./paceStrategy";
 
 describe("parsePaceToMinutes", () => {
@@ -139,6 +141,44 @@ describe("tempBucket", () => {
   it("defaults to moderate when no forecast", () => {
     expect(tempBucket(null)).toBe("moderate");
     expect(tempBucket(undefined)).toBe("moderate");
+  });
+});
+
+describe("percentilePoints / percentileForTime", () => {
+  const ps = { p10: "14:00:00", p25: "16:00:00", p50: "19:00:00", p75: "22:00:00", p90: "25:00:00" };
+
+  it("parses and sorts percentile anchor points", () => {
+    const pts = percentilePoints(ps);
+    expect(pts).toHaveLength(5);
+    expect(pts[0]).toEqual({ q: 10, mins: 840 });
+    expect(pts[4]).toEqual({ q: 90, mins: 1500 });
+  });
+
+  it("returns the exact percentile on an anchor hit", () => {
+    expect(percentileForTime(ps, 19 * 60)).toEqual({ pct: 50, clamped: null });
+  });
+
+  it("interpolates linearly between anchors", () => {
+    // halfway between p25 (16h) and p50 (19h) -> 37.5%
+    expect(percentileForTime(ps, 17.5 * 60)?.pct).toBeCloseTo(37.5);
+  });
+
+  it("clamps faster than p10 without a winner anchor", () => {
+    expect(percentileForTime(ps, 12 * 60)).toEqual({ pct: 10, clamped: "fast" });
+  });
+
+  it("interpolates between winner and p10 when the winner time is given", () => {
+    // winner 10h (0%), p10 14h -> 12h is 5%
+    expect(percentileForTime(ps, 12 * 60, 600)?.pct).toBeCloseTo(5);
+  });
+
+  it("clamps slower than p90", () => {
+    expect(percentileForTime(ps, 27 * 60)).toEqual({ pct: 90, clamped: "slow" });
+  });
+
+  it("returns null with fewer than two valid anchors", () => {
+    expect(percentileForTime({ p50: "19:00:00" }, 1000)).toBeNull();
+    expect(percentileForTime({}, 1000)).toBeNull();
   });
 });
 

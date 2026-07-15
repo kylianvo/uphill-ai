@@ -6,7 +6,14 @@ import { useAnalytics } from "@/hooks/useAnalytics";
 import { useAppContext } from "@/contexts/AppContext";
 import { RaceMatch } from "@/hooks/useRaceMatch";
 import { RaceNameField } from "@/components/RaceNameField";
-import { formatDurationHM, parsePaceToMinutes } from "@/lib/paceStrategy";
+import {
+  formatDurationHM,
+  parsePaceToMinutes,
+  parseDurationToMinutes,
+  percentilePoints,
+  percentileForTime,
+  PercentileSet,
+} from "@/lib/paceStrategy";
 import { Crosshair, XCircle, Gauge, TrendUp, ShieldCheck, Lightning } from "@phosphor-icons/react";
 
 interface GoalDeterminerProps {
@@ -26,8 +33,19 @@ interface GoalEstimate {
   distance_km: number;
   elevation_gain_m: number;
   race_name?: string;
-  benchmarks?: { year: number; finishers?: number; winner_time?: string; conditions_note?: string }[];
+  benchmarks?: RaceBenchmark[];
   rank_transfer_mins?: number;
+}
+
+interface RaceBenchmark {
+  year: number;
+  finishers?: number;
+  finishers_men?: number;
+  finishers_women?: number;
+  winner_time?: string;
+  winner_time_women?: string;
+  conditions_note?: string;
+  percentiles?: Record<string, PercentileSet>;
 }
 
 function getBaseUrl(): string {
@@ -65,6 +83,177 @@ const inputStyle: React.CSSProperties = {
   color: "var(--text-primary)",
   outline: "none",
 };
+
+
+/** Cumulative field curve: straight lines between hand-verified percentile
+ *  anchors (never a fitted density — we only plot what was measured). */
+function FieldCurve({
+  bench,
+  goals,
+  rankTransferMins,
+  lang,
+}: {
+  bench: RaceBenchmark;
+  goals: { label: string; short: string; mins: number }[];
+  rankTransferMins?: number | null;
+  lang: "en" | "vi";
+}) {
+  const groups = (["overall", "men", "women"] as const).filter(
+    (g) => percentilePoints(bench.percentiles?.[g] || {}).length >= 2,
+  );
+  const [group, setGroup] = useState<(typeof groups)[number]>("overall");
+  const [hover, setHover] = useState<{ x: number; mins: number; pct: number } | null>(null);
+  const t = (en: string, vi: string) => (lang === "en" ? en : vi);
+  if (groups.length === 0) return null;
+  const active = groups.includes(group) ? group : groups[0];
+
+  const ps = bench.percentiles![active];
+  const winnerStr = active === "women" ? bench.winner_time_women : bench.winner_time;
+  const winnerMins = winnerStr ? parseDurationToMinutes(winnerStr) : null;
+  const pts = percentilePoints(ps);
+  const anchors = winnerMins && winnerMins < pts[0].mins ? [{ q: 0, mins: winnerMins }, ...pts] : pts;
+
+  const width = 720;
+  const height = 210;
+  const padL = 40;
+  const padR = 14;
+  const padT = 16;
+  const padB = 30;
+  const tMin = anchors[0].mins;
+  const tMax = Math.max(anchors[anchors.length - 1].mins, ...goals.map((g) => g.mins)) * 1.02;
+  const x = (mins: number) => padL + ((mins - tMin) / (tMax - tMin)) * (width - padL - padR);
+  const y = (pct: number) => padT + (1 - pct / 100) * (height - padT - padB);
+
+  const path = anchors.map((a, i) => `${i === 0 ? "M" : "L"} ${x(a.mins)} ${y(a.q)}`).join(" ");
+  const finisherCount =
+    active === "men" ? bench.finishers_men : active === "women" ? bench.finishers_women : bench.finishers;
+
+  const goalMarks = goals
+    .map((g) => {
+      const res = percentileForTime(ps, g.mins, winnerMins);
+      if (!res) return null;
+      const label =
+        res.clamped === "fast"
+          ? `${t("top", "top")} ${res.pct}%+`
+          : res.clamped === "slow"
+            ? t("back of field", "cuối đoàn")
+            : `${t("top", "top")} ${Math.round(res.pct)}%`;
+      return { ...g, pct: res.pct, note: label };
+    })
+    .filter(Boolean) as { label: string; short: string; mins: number; pct: number; note: string }[];
+
+  const rankMark =
+    rankTransferMins && rankTransferMins <= tMax ? percentileForTime(ps, rankTransferMins, winnerMins) : null;
+
+  const handleMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const px = ((e.clientX - rect.left) / rect.width) * width;
+    const mins = tMin + ((px - padL) / (width - padL - padR)) * (tMax - tMin);
+    if (mins < tMin || mins > tMax) return setHover(null);
+    const res = percentileForTime(ps, mins, winnerMins);
+    if (res && !res.clamped) setHover({ x: px, mins, pct: res.pct });
+    else setHover(null);
+  };
+
+  return (
+    <div style={{ marginTop: "20px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
+        <div style={{ fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 700, color: "var(--text-primary)" }}>
+          {t("Where your goals land in the field", "Vị trí mục tiêu của bạn trong đoàn đua")} · {bench.year}
+        </div>
+        {groups.length > 1 && (
+          <div style={{ display: "flex", gap: "4px" }}>
+            {groups.map((g) => (
+              <button
+                key={g}
+                onClick={() => setGroup(g)}
+                style={{
+                  padding: "4px 12px",
+                  borderRadius: "12px",
+                  border: active === g ? "none" : "1px solid var(--border-color)",
+                  background: active === g ? "var(--text-primary)" : "transparent",
+                  color: active === g ? "white" : "var(--text-secondary)",
+                  fontSize: "11.5px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                {g === "overall" ? t("Overall", "Tổng") : g === "men" ? t("Men", "Nam") : t("Women", "Nữ")}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        style={{ width: "100%", display: "block", marginTop: "6px" }}
+        onMouseMove={handleMove}
+        onMouseLeave={() => setHover(null)}
+      >
+        {[0, 25, 50, 75, 100].map((pct) => (
+          <g key={pct}>
+            <line x1={padL} x2={width - padR} y1={y(pct)} y2={y(pct)} stroke="var(--border-color)" strokeWidth={0.5} opacity={0.6} />
+            <text x={padL - 5} y={y(pct) + 3} fontSize={8.5} fill="var(--text-muted)" textAnchor="end">
+              {pct}%
+            </text>
+          </g>
+        ))}
+        <path d={path} fill="none" stroke="var(--accent-primary)" strokeWidth={2} />
+        {anchors.map((a) => (
+          <circle key={a.q} cx={x(a.mins)} cy={y(a.q)} r={3} fill="var(--accent-primary)">
+            <title>{a.q === 0 ? `${t("winner", "vô địch")} ${formatDurationHM(a.mins)}` : `p${a.q}: ${formatDurationHM(a.mins)}`}</title>
+          </circle>
+        ))}
+        {goalMarks.map((g, i) => (
+          <g key={g.short}>
+            {/* dashed guide from a fixed label lane down to the baseline */}
+            <line x1={x(g.mins)} x2={x(g.mins)} y1={14 + i * 12} y2={height - padB} stroke="var(--text-primary)" strokeWidth={1} strokeDasharray="3 2" opacity={0.45} />
+            <circle cx={x(g.mins)} cy={y(g.pct)} r={4.5} fill="var(--text-primary)" stroke="white" strokeWidth={1.5} />
+            <text
+              x={Math.min(x(g.mins) + 5, width - 118)}
+              y={14 + i * 12}
+              fontSize={9.5}
+              fontWeight={700}
+              fill="var(--text-primary)"
+            >
+              {g.short} {formatDurationHM(g.mins)} · {g.note}
+            </text>
+          </g>
+        ))}
+        {rankMark && rankTransferMins && !rankMark.clamped && (
+          <circle cx={x(rankTransferMins)} cy={y(rankMark.pct)} r={4} fill="none" stroke="var(--text-muted)" strokeWidth={1.5}>
+            <title>
+              {t("field-history estimate", "ước tính theo lịch sử")}: {formatDurationHM(rankTransferMins)}
+            </title>
+          </circle>
+        )}
+        {hover && (
+          <g pointerEvents="none">
+            <line x1={hover.x} x2={hover.x} y1={padT} y2={height - padB} stroke="var(--text-muted)" strokeDasharray="2 2" />
+            <rect x={Math.min(hover.x + 6, width - 150)} y={padT} width={144} height={17} rx={5} fill="var(--bg-primary, white)" stroke="var(--border-color)" />
+            <text x={Math.min(hover.x + 12, width - 144)} y={padT + 12} fontSize={9.5} fill="var(--text-secondary)">
+              {formatDurationHM(hover.mins)} ≈ {t("top", "top")} {Math.round(hover.pct)}%
+            </text>
+          </g>
+        )}
+        {[0, 0.25, 0.5, 0.75, 1].map((f) => {
+          const mins = tMin + f * (tMax - tMin);
+          return (
+            <text key={f} x={x(mins)} y={height - padB + 14} fontSize={9} fill="var(--text-muted)" textAnchor="middle">
+              {formatDurationHM(mins)}
+            </text>
+          );
+        })}
+      </svg>
+      <div style={{ fontSize: "10.5px", color: "var(--text-muted)", marginTop: "2px" }}>
+        {t(
+          `Straight lines between verified anchors only (winner + p10/p25/p50/p75/p90 of ${finisherCount} finishers) — no fitted curve.`,
+          `Chỉ nối các mốc đã kiểm chứng (vô địch + p10/p25/p50/p75/p90 của ${finisherCount} người hoàn thành) — không vẽ đường cong ước lượng.`,
+        )}
+      </div>
+    </div>
+  );
+}
 
 export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose, lang, user }) => {
   const [raceName, setRaceName] = useState("");
@@ -448,7 +637,27 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
                       return `${Math.floor(paceSecs / 60)}:${String(paceSecs % 60).padStart(2, "0")}/km ${t("average", "trung bình")}`;
                     })()}
                   </div>
-                  <div style={{ fontSize: "11.5px", color: "var(--text-muted)", marginBottom: "10px" }}>{g.note}</div>
+                  <div style={{ fontSize: "11.5px", color: "var(--text-muted)", marginBottom: "10px" }}>
+                    {g.note}
+                    {(() => {
+                      const ps = estimate.benchmarks?.[0]?.percentiles?.overall;
+                      const winner = estimate.benchmarks?.[0]?.winner_time;
+                      if (!ps) return null;
+                      const res = percentileForTime(ps, g.mins, winner ? parseDurationToMinutes(winner) : null);
+                      if (!res) return null;
+                      const label =
+                        res.clamped === "fast"
+                          ? `top ${res.pct}%+`
+                          : res.clamped === "slow"
+                            ? t("back of field", "cuối đoàn")
+                            : `top ${Math.round(res.pct)}%`;
+                      return (
+                        <span style={{ display: "inline-block", marginLeft: "6px", background: "rgba(0,0,0,0.05)", padding: "1px 8px", borderRadius: "8px", fontWeight: 700, color: "var(--text-secondary)" }}>
+                          ≈ {label}
+                        </span>
+                      );
+                    })()}
+                  </div>
                   <button
                     onClick={() => handlePlanPacing(g.mins)}
                     style={{ width: "100%", padding: "8px", borderRadius: "10px", background: "transparent", border: "1px solid var(--border-color)", color: "var(--text-primary)", fontSize: "12.5px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "5px" }}
@@ -458,6 +667,15 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
                 </div>
               ))}
             </div>
+
+            {estimate.benchmarks?.[0]?.percentiles && (
+              <FieldCurve
+                bench={estimate.benchmarks[0]}
+                goals={goalCards.map((g) => ({ label: g.label, short: g.label[0], mins: g.mins }))}
+                rankTransferMins={estimate.rank_transfer_mins}
+                lang={lang}
+              />
+            )}
 
             <div style={{ marginTop: "16px", background: "rgba(0,0,0,0.02)", border: "1px dashed rgba(0,0,0,0.1)", borderRadius: "14px", padding: "14px", fontSize: "12px", color: "var(--text-secondary)", lineHeight: 1.55 }}>
               <div style={{ fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", fontSize: "11px", color: "var(--text-primary)", marginBottom: "6px" }}>

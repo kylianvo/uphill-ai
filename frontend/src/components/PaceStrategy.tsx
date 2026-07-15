@@ -255,7 +255,7 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
     winner_time?: string;
     winner_time_women?: string;
     conditions_note?: string;
-    percentiles?: Record<string, string>;
+    percentiles?: Record<string, Record<string, string>>;
   }
   const [benchmarks, setBenchmarks] = useState<RaceResult[]>([]);
 
@@ -638,7 +638,7 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
                     {[
                       { label: t("Winner", "Vô địch"), time: benchmarks[0].winner_time },
                       { label: t("Winner (F)", "Vô địch nữ"), time: benchmarks[0].winner_time_women },
-                      ...Object.entries(benchmarks[0].percentiles || {}).map(([p, v]) => ({
+                      ...Object.entries(benchmarks[0].percentiles?.overall || {}).map(([p, v]) => ({
                         label: p.toUpperCase(),
                         time: v,
                       })),
