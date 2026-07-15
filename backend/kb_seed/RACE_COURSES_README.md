@@ -12,11 +12,11 @@ It follows the same `{"domain", "chunks": [{"domain", "kind", "title", "content"
 4. **Prompt injection point.** Once matched, feed the single matched chunk's `content` (dense prose) into the Scheduler's plan-generation prompt (for terrain/climate-aware workout design — e.g. heat acclimation, technical-descent conditioning, vert-matched hill repeats) and into the Gear Finder prompt (terrain/climate → shoe traction, drainage, and toe-box needs).
 5. **Freshness**: elevation/distance figures for UTMB-affiliated races (Thailand, Malaysia, Amazean, Vietnam Highlands) can shift between seasons as courses get re-routed — worth re-verifying before a season's onboarding cohort relies on them, same caveat that applies to any hand-curated seed.
 
-## Coverage (35 races)
+## Coverage (37 races)
 
-Vietnam trail: VMM (Sa Pa), Dalat Ultra Trail, Vietnam Trail Marathon (Mộc Châu), Vietnam Jungle Marathon (Pù Luông), Vietnam Ultra Marathon (Mai Châu), Vietnam Highlands Trail by UTMB (Đà Lạt), Prenn Trail (Đà Lạt), Lâm Đồng Trail (Đà Lạt), Phong Nha Wild Trail/Quảng Bình Discovery Marathon, Cúc Phương Jungle Paths, Ultra Trail Cao Bằng, Mù Cang Chải Ultra Trail.
+Vietnam trail: VMM (Sa Pa), Dalat Ultra Trail, Vietnam Trail Marathon (Mộc Châu), Vietnam Jungle Marathon (Pù Luông), Vietnam Ultra Marathon (Mai Châu), Vietnam Highlands Trail by UTMB (Đà Lạt), Prenn Trail (Đà Lạt), Lâm Đồng Trail (Đà Lạt), Phong Nha Wild Trail/Quảng Bình Discovery Marathon, Cúc Phương Jungle Paths, Ultra Trail Cao Bằng, Mù Cang Chải Ultra Trail, Mang Den LaLa Trail.
 Vietnam road: Techcombank HCMC Marathon, VnExpress Marathon (Quy Nhơn/Huế/Hải Phòng), VnExpress Marathon Đà Nẵng.
-Australia trail: UTA (Blue Mountains/Furber Steps), Ultra-Trail Kosciuszko, Buffalo Stampede, Six Foot Track.
+Australia trail: UTA (Blue Mountains/Furber Steps), Ultra-Trail Kosciuszko, Buffalo Stampede, Six Foot Track, Bondi to Manly Ultra (coastal).
 Australia road: Sydney Marathon, Great Ocean Road Marathon, Melbourne Marathon, Gold Coast Marathon.
 ASEAN/Asia trail: Thailand by UTMB (Chiang Mai), Malaysia by UTMB, Amazean Jungle Thailand by UTMB (Betong), Rinjani 100 (Lombok), HK100, TNF100 (Philippines), UTMF (Mt. Fuji), Hasetsune Cup (Japan), Bromo Marathon (Java), XTERRA Zhangjiajie (China).
 ASEAN road: Angkor Wat International Half Marathon (Cambodia), Standard Chartered Singapore Marathon.
