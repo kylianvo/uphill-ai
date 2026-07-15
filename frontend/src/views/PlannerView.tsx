@@ -9,16 +9,16 @@ import { KnowledgeCard } from "../components/KnowledgeCard";
 import { DndContext, DragEndEvent, DragOverEvent, useDraggable, useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import ToolsView from "./ToolsView";
-import { UploadSimple, FileArrowUp, Heart, Clock, Mountains, MapPin, Footprints, ArrowsMerge, PlayCircle, CheckCircle, Fire, Path, RoadHorizon, Info, Check, Question, WarningCircle, Plus, Trash, Archive, LockKey, LockKeyOpen, Trophy, Target, Sneaker, PersonSimpleRun, Bed, XCircle, DownloadSimple } from '@phosphor-icons/react';
+import { UploadSimple, FileArrowUp, Heart, Clock, Mountains, MapPin, Footprints, ArrowsMerge, PlayCircle, CheckCircle, Fire, Path, RoadHorizon, Info, Check, Question, WarningCircle, Plus, Trash, Archive, LockKey, LockKeyOpen, Trophy, Target, Sneaker, PersonSimpleRun, Bed, XCircle, DownloadSimple, Gauge } from '@phosphor-icons/react';
 import { RaceMatch } from "../hooks/useRaceMatch";
 import { RaceNameField } from "../components/RaceNameField";
-import { minsToHms } from "../lib/planHandoff";
+import { minsToHms, isTaperPhase, buildPaceHandoffFromPlan } from "../lib/planHandoff";
 
 export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   const ctx = useAppContext();
   const { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, handleSwapWorkouts, swapDays, handleToggleComplete, handleLogWorkout, getWeekWorkouts, getWorkoutDate, getWorkoutDateObj, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller } = usePlanner();
   const [planViewMode, setPlanViewMode] = useState<"list" | "calendar">("list");
-  const { lang, activePlan, planLoading, planErrorMsg, planForm, setPlanForm, targetTimeH, setTargetTimeH, targetTimeM, setTargetTimeM, targetTimeS, setTargetTimeS, cutoffTimeH, setCutoffTimeH, cutoffTimeM, setCutoffTimeM, cutoffTimeS, setCutoffTimeS, recentPlans, selectedWeek, setSelectedWeek, swapDay1, setSwapDay1, swapDay2, setSwapDay2, setWorkouts, setBackupWorkouts, setActivePlan, workouts, backupWorkouts, backupActivePlan, setBackupActivePlan, courseInputMode, setCourseInputMode, plannerGpxLoading, plannerGpxFile, plannerGpxError, showExportOptions, setShowExportOptions, exportTimePref, setExportTimePref, setIsGoalDeterminerOpen, settingsHandoff, setSettingsHandoff } = ctx;
+  const { lang, activePlan, planLoading, planErrorMsg, planForm, setPlanForm, targetTimeH, setTargetTimeH, targetTimeM, setTargetTimeM, targetTimeS, setTargetTimeS, cutoffTimeH, setCutoffTimeH, cutoffTimeM, setCutoffTimeM, cutoffTimeS, setCutoffTimeS, recentPlans, selectedWeek, setSelectedWeek, swapDay1, setSwapDay1, swapDay2, setSwapDay2, setWorkouts, setBackupWorkouts, setActivePlan, workouts, backupWorkouts, backupActivePlan, setBackupActivePlan, courseInputMode, setCourseInputMode, plannerGpxLoading, plannerGpxFile, plannerGpxError, showExportOptions, setShowExportOptions, exportTimePref, setExportTimePref, setIsGoalDeterminerOpen, settingsHandoff, setSettingsHandoff, setPaceHandoff, setIsPaceStrategyOpen } = ctx;
   const t = (key: keyof typeof translations.en) => translations[lang]?.[key] || translations.en[key] || key;
   const totalWeeks = activePlan ? (activePlan.total_weeks || activePlan.plan_duration_weeks || 1) : 0;
 
@@ -1037,6 +1037,24 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 );
               })}
             </div>
+
+            {(() => {
+              const weekWorkouts = getWeekWorkouts(selectedWeek);
+              if (!isTaperPhase(weekWorkouts[0]?.phase)) return null;
+              return (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPaceHandoff(buildPaceHandoffFromPlan(activePlan));
+                    setIsPaceStrategyOpen(true);
+                    trackEvent("plan_taper_to_pace_strategy", { plan_id: activePlan.id });
+                  }}
+                  style={{ display: "flex", alignItems: "center", gap: "5px", background: "none", border: "none", padding: "0 0 12px", fontSize: "12px", fontWeight: 600, color: "var(--accent-primary)", cursor: "pointer" }}
+                >
+                  <Gauge size={14} /> {lang === "en" ? "Plan your pace →" : "Lên pace →"}
+                </button>
+              );
+            })()}
 
             {/* Weekly Volume Stats */}
             {(() => {
