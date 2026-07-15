@@ -14,7 +14,7 @@ import {
   percentileForAnchors,
   PercentileSet,
 } from "@/lib/paceStrategy";
-import { Crosshair, XCircle, Gauge, TrendUp, ShieldCheck, Lightning } from "@phosphor-icons/react";
+import { Crosshair, XCircle, Gauge, Target, TrendUp, ShieldCheck, Lightning } from "@phosphor-icons/react";
 
 interface GoalDeterminerProps {
   isOpen: boolean;
@@ -297,7 +297,7 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
   const [errorMsg, setErrorMsg] = useState("");
 
   const { trackEvent } = useAnalytics();
-  const { setPaceHandoff, setIsPaceStrategyOpen } = useAppContext();
+  const { setPaceHandoff, setIsPaceStrategyOpen, setSettingsHandoff } = useAppContext();
 
   const t = (en: string, vi: string) => (lang === "en" ? en : vi);
 
@@ -372,6 +372,15 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
     onClose();
     setIsPaceStrategyOpen(true);
     trackEvent("goal_determiner_to_pace_strategy", {});
+  };
+
+  const handlePlanTarget = (targetTimeMins: number, sourceLabel: string) => {
+    setSettingsHandoff({
+      target_time_mins: Math.round(targetTimeMins),
+      source_label: sourceLabel,
+    });
+    onClose();
+    trackEvent("goal_determiner_to_plan_settings", {});
   };
 
   if (!isOpen) return null;
@@ -681,12 +690,20 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
                       );
                     })()}
                   </div>
-                  <button
-                    onClick={() => handlePlanPacing(g.mins)}
-                    style={{ width: "100%", padding: "8px", borderRadius: "10px", background: "transparent", border: "1px solid var(--border-color)", color: "var(--text-primary)", fontSize: "12.5px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "5px" }}
-                  >
-                    <Gauge size={15} /> {t("Plan pacing", "Lên pacing")}
-                  </button>
+                  <div style={{ display: "flex", gap: "6px" }}>
+                    <button
+                      onClick={() => handlePlanPacing(g.mins)}
+                      style={{ flex: 1, padding: "8px", borderRadius: "10px", background: "transparent", border: "1px solid var(--border-color)", color: "var(--text-primary)", fontSize: "12.5px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "5px" }}
+                    >
+                      <Gauge size={15} /> {t("Plan pacing", "Lên pacing")}
+                    </button>
+                    <button
+                      onClick={() => handlePlanTarget(g.mins, g.label)}
+                      style={{ flex: 1, padding: "8px", borderRadius: "10px", background: "transparent", border: "1px solid var(--border-color)", color: "var(--text-primary)", fontSize: "12.5px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "5px" }}
+                    >
+                      <Target size={15} /> {t("Use for plan", "Dùng cho kế hoạch")}
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
