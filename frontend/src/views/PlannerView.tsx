@@ -17,7 +17,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   const ctx = useAppContext();
   const { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, handleSwapWorkouts, swapDays, handleToggleComplete, handleLogWorkout, getWeekWorkouts, getWorkoutDate, getWorkoutDateObj, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller } = usePlanner();
   const [planViewMode, setPlanViewMode] = useState<"list" | "calendar">("list");
-  const { lang, activePlan, planLoading, planErrorMsg, planForm, setPlanForm, targetTimeH, setTargetTimeH, targetTimeM, setTargetTimeM, targetTimeS, setTargetTimeS, cutoffTimeH, setCutoffTimeH, cutoffTimeM, setCutoffTimeM, cutoffTimeS, setCutoffTimeS, recentPlans, selectedWeek, setSelectedWeek, swapDay1, setSwapDay1, swapDay2, setSwapDay2, setWorkouts, setBackupWorkouts, setActivePlan, workouts, backupWorkouts, backupActivePlan, setBackupActivePlan, courseInputMode, setCourseInputMode, plannerGpxLoading, plannerGpxFile, plannerGpxError, showExportOptions, setShowExportOptions, exportTimePref, setExportTimePref } = ctx;
+  const { lang, activePlan, planLoading, planErrorMsg, planForm, setPlanForm, targetTimeH, setTargetTimeH, targetTimeM, setTargetTimeM, targetTimeS, setTargetTimeS, cutoffTimeH, setCutoffTimeH, cutoffTimeM, setCutoffTimeM, cutoffTimeS, setCutoffTimeS, recentPlans, selectedWeek, setSelectedWeek, swapDay1, setSwapDay1, swapDay2, setSwapDay2, setWorkouts, setBackupWorkouts, setActivePlan, workouts, backupWorkouts, backupActivePlan, setBackupActivePlan, courseInputMode, setCourseInputMode, plannerGpxLoading, plannerGpxFile, plannerGpxError, showExportOptions, setShowExportOptions, exportTimePref, setExportTimePref, setIsGoalDeterminerOpen } = ctx;
   const t = (key: keyof typeof translations.en) => translations[lang]?.[key] || translations.en[key] || key;
   const totalWeeks = activePlan ? (activePlan.total_weeks || activePlan.plan_duration_weeks || 1) : 0;
 
@@ -249,6 +249,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
           block_number: nextBlockNum,
           overall_rpe: blockReviewRpe || null,
           notes: blockReviewNotes || null,
+          lang,
         }),
       });
       const data = await resp.json();
@@ -391,7 +392,13 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
               {/* Target time */}
               {planForm.goal_type === "time" && (
                 <div style={{ marginBottom: "16px" }}>
-                  <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px", color: "var(--text-secondary)" }}>{t("plan_target_time")}</label>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px", flexWrap: "wrap", gap: "6px" }}>
+                    <label style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "var(--text-secondary)" }}>{t("plan_target_time")}</label>
+                    <button type="button" onClick={() => setIsGoalDeterminerOpen(true)}
+                      style={{ background: "none", border: "none", padding: 0, fontSize: "11.5px", fontWeight: "600", color: "var(--accent-primary)", cursor: "pointer", textDecoration: "underline" }}>
+                      {lang === "en" ? "Not sure? Use the Goal Determiner →" : "Chưa chắc? Dùng công cụ Xác định Mục tiêu →"}
+                    </button>
+                  </div>
                   <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr 1.1fr", gap: "8px" }}>
                     <div><label style={{ display: "block", fontSize: "11px", color: "var(--text-secondary)", marginBottom: "4px" }}>{lang === "en" ? "Hours" : "Giờ"}</label><input type="number" min="0" max="99" className="chat-input" style={{ borderRadius: "8px", width: "100%", padding: "8px", textAlign: "center" }} placeholder="0" value={targetTimeH} onChange={(e) => setTargetTimeH(e.target.value)} /></div>
                     <div><label style={{ display: "block", fontSize: "11px", color: "var(--text-secondary)", marginBottom: "4px" }}>{lang === "en" ? "Minutes" : "Phút"}</label><input type="number" min="0" max="59" className="chat-input" style={{ borderRadius: "8px", width: "100%", padding: "8px", textAlign: "center" }} placeholder="0" value={targetTimeM} onChange={(e) => setTargetTimeM(e.target.value)} /></div>
@@ -487,51 +494,6 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                   <h4 style={{ margin: 0, fontSize: "14px", fontWeight: "700", color: "var(--text-bright)" }}>
                     {lang === "en" ? "🔄 Return to Running" : "🔄 Tập luyện trở lại"}
                   </h4>
-                  <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px" }}>
-                    <select
-                      className="btn btn-secondary"
-                      style={{
-                        fontSize: "12px",
-                        height: "36px",
-                        padding: "0 16px",
-                        cursor: "pointer",
-                        outline: "none",
-                        border: "1px solid rgba(0, 0, 0, 0.1)",
-                        background: "rgba(0, 0, 0, 0.06)",
-                        color: "#111111",
-                        textAlignLast: "center",
-                        WebkitAppearance: "none",
-                        MozAppearance: "none",
-                        appearance: "none",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        borderRadius: "9999px",
-                        width: "auto",
-                        maxWidth: "220px"
-                      }}
-                      value=""
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (val) handleSelectPlan(Number(val));
-                      }}
-                    >
-                      <option value="" style={{ color: "var(--text-primary)" }}>
-                        {lang === "en" ? "Load Recent Plan..." : "Tải lịch tập gần đây..."}
-                      </option>
-                      {recentPlans.length === 0 ? (
-                        <option value="" disabled style={{ color: "var(--text-muted)" }}>
-                          {lang === "en" ? "— No plans available —" : "— Không có lịch tập —"}
-                        </option>
-                      ) : (
-                        recentPlans.slice(0, 3).map((p: any) => (
-                          <option key={p.id} value={p.id} style={{ color: "var(--text-primary)" }}>
-                            {formatPlanName(p)}
-                          </option>
-                        ))
-                      )}
-                    </select>
-                  </div>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
                   <div>

@@ -270,7 +270,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [planForm, setPlanForm] = useState({
     race_name: "",
     race_date: "",
-    goal_type: "finish",
+    goal_type: "time",
     terrain: "trail",
     course_distance_km: "",
     course_elevation_gain_m: "",

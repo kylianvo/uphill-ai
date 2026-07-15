@@ -199,6 +199,7 @@ class GenerateNextBlockRequest(BaseModel):
     block_number: int  # the next block to generate (1-indexed)
     overall_rpe: int | None = None  # optional pre-submission of RPE for current block
     notes: str | None = None
+    lang: str | None = None  # current UI language at click time; falls back to the user's saved lang
 
 
 # Phase 3 Request Models
@@ -1355,7 +1356,7 @@ async def generate_next_block(request: GenerateNextBlockRequest, user: dict[str,
         "use_treadmill": plan.get("use_treadmill", False),
         "training_environment": plan.get("training_environment") or "flat",
         "plan_start_date": plan.get("start_date"),
-        "lang": fresh_user.get("lang", "en"),
+        "lang": request.lang or fresh_user.get("lang", "en"),
     }
 
     model_api_key = fresh_user.get("gemini_api_key") or settings.GEMINI_API_KEY
