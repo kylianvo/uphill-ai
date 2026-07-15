@@ -6,8 +6,9 @@ set -e
 # Skips the full backend rsync, preflight test suite, and container restart —
 # none of which matter when the only thing that changed is seed data.
 #
-# Usage: ./deploy_kb.sh [--domain gear|nutrition|scheduler|all]
-# Defaults to --domain all.
+# Usage: ./deploy_kb.sh [--domain gear|nutrition|scheduler|race_courses|all]
+# Defaults to --domain all. race_courses is hand-curated (no NotebookLM
+# notebook) and excluded from "all" — deploy it explicitly.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ -f "$SCRIPT_DIR/deploy.env" ]; then
@@ -26,16 +27,16 @@ while [ $# -gt 0 ]; do
       shift 2
       ;;
     *)
-      echo "ERROR: unknown argument '$1'. Usage: ./deploy_kb.sh [--domain gear|nutrition|scheduler|all]" >&2
+      echo "ERROR: unknown argument '$1'. Usage: ./deploy_kb.sh [--domain gear|nutrition|scheduler|race_courses|all]" >&2
       exit 1
       ;;
   esac
 done
 
 case "$DOMAIN" in
-  gear|nutrition|scheduler|all) ;;
+  gear|nutrition|scheduler|race_courses|all) ;;
   *)
-    echo "ERROR: invalid --domain '$DOMAIN'. Must be one of: gear, nutrition, scheduler, all." >&2
+    echo "ERROR: invalid --domain '$DOMAIN'. Must be one of: gear, nutrition, scheduler, race_courses, all." >&2
     exit 1
     ;;
 esac

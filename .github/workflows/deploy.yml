@@ -56,6 +56,11 @@ jobs:
           echo "Backend did not become healthy in time" >&2
           docker compose logs backend
           exit 1
+      - name: Load race_courses KB seed
+        # A fresh CI Postgres has no KB data; pace-strategy.spec.ts exercises
+        # the race-DB pick and benchmark curve, which need real kb_chunks
+        # rows. Mirrors the prod path (deploy_kb.sh -> load_kb.py).
+        run: docker compose exec -T backend python scripts/load_kb.py --domain race_courses
       - name: Build frontend for e2e (static export, pointed at the local backend)
         run: cd frontend && npx next build
         env:
