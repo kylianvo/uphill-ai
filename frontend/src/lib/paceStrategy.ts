@@ -139,20 +139,54 @@ export function percentilePoints(ps: PercentileSet): { q: number; mins: number }
     .sort((a, b) => a.q - b.q);
 }
 
-/**
- * Where a finish time lands in the field: linear interpolation between the
- * verified percentile anchors, clamped at the ends (never extrapolated).
- * A winner time, when given, anchors the fast end at 0%.
- */
-export function percentileForTime(
-  ps: PercentileSet,
-  timeMins: number,
-  winnerMins?: number | null,
-): { pct: number; clamped: "fast" | "slow" | null } | null {
-  const pts = percentilePoints(ps);
-  if (pts.length < 2) return null;
-  const anchors = winnerMins && winnerMins < pts[0].mins ? [{ q: 0, mins: winnerMins }, ...pts] : pts;
+export interface FieldAnchor {
+  q: number; // percent of the group's field at or ahead of this time
+  mins: number;
+}
 
+/**
+ * Combines every verified anchor a race-year offers into one sorted list:
+ * winner (rank 1), top-N rank times converted to percentiles via the group's
+ * finisher count, and the pN percentiles. Anchors that would break
+ * monotonicity (bad data) are dropped rather than reordered.
+ */
+export function fieldAnchors(opts: {
+  percentiles?: PercentileSet;
+  topTimes?: Record<string, string>;
+  winner?: string | null;
+  finishers?: number | null;
+}): FieldAnchor[] {
+  const raw: FieldAnchor[] = [];
+  const winnerMins = opts.winner ? parseDurationToMinutes(opts.winner) : null;
+  if (winnerMins !== null) {
+    raw.push({ q: opts.finishers ? 100 / opts.finishers : 0, mins: winnerMins });
+  }
+  if (opts.finishers) {
+    for (const [key, time] of Object.entries(opts.topTimes || {})) {
+      const rank = parseInt(key.replace(/^top/, ""), 10);
+      const mins = time ? parseDurationToMinutes(time) : null;
+      if (!Number.isNaN(rank) && rank > 0 && mins !== null) {
+        raw.push({ q: (100 * rank) / opts.finishers, mins });
+      }
+    }
+  }
+  raw.push(...percentilePoints(opts.percentiles || {}));
+  raw.sort((a, b) => a.q - b.q);
+
+  const anchors: FieldAnchor[] = [];
+  for (const a of raw) {
+    const prev = anchors[anchors.length - 1];
+    if (!prev || (a.q > prev.q && a.mins > prev.mins)) anchors.push(a);
+  }
+  return anchors;
+}
+
+/** Where a finish time lands among sorted anchors: piecewise-linear, clamped. */
+export function percentileForAnchors(
+  anchors: FieldAnchor[],
+  timeMins: number,
+): { pct: number; clamped: "fast" | "slow" | null } | null {
+  if (anchors.length < 2) return null;
   if (timeMins <= anchors[0].mins) {
     return timeMins === anchors[0].mins
       ? { pct: anchors[0].q, clamped: null }
@@ -171,6 +205,22 @@ export function percentileForTime(
     }
   }
   return null;
+}
+
+/**
+ * Where a finish time lands in the field: linear interpolation between the
+ * verified percentile anchors, clamped at the ends (never extrapolated).
+ * A winner time, when given, anchors the fast end at 0%.
+ */
+export function percentileForTime(
+  ps: PercentileSet,
+  timeMins: number,
+  winnerMins?: number | null,
+): { pct: number; clamped: "fast" | "slow" | null } | null {
+  const pts = percentilePoints(ps);
+  if (pts.length < 2) return null;
+  const anchors = winnerMins && winnerMins < pts[0].mins ? [{ q: 0, mins: winnerMins }, ...pts] : pts;
+  return percentileForAnchors(anchors, timeMins);
 }
 
 /** Maps a forecast temperature to the Nutrition Lab's weather buckets. */

@@ -10,6 +10,8 @@ import {
   parseDurationToMinutes,
   percentilePoints,
   percentileForTime,
+  fieldAnchors,
+  percentileForAnchors,
 } from "./paceStrategy";
 
 describe("parsePaceToMinutes", () => {
@@ -179,6 +181,42 @@ describe("percentilePoints / percentileForTime", () => {
   it("returns null with fewer than two valid anchors", () => {
     expect(percentileForTime({ p50: "19:00:00" }, 1000)).toBeNull();
     expect(percentileForTime({}, 1000)).toBeNull();
+  });
+});
+
+describe("fieldAnchors / percentileForAnchors", () => {
+  const ps = { p10: "14:00:00", p50: "19:00:00", p90: "25:00:00" };
+  const tops = { top3: "10:30:00", top10: "11:00:00", top20: "12:00:00" };
+
+  it("converts top-N ranks to percentiles using the finisher count", () => {
+    const anchors = fieldAnchors({ percentiles: ps, topTimes: tops, winner: "10:00:00", finishers: 1000 });
+    // winner rank 1 -> 0.1%, top10 -> 1%, top20 -> 2%, then p10/p50/p90
+    expect(anchors.map((a) => a.q)).toEqual([0.1, 0.3, 1, 2, 10, 50, 90]);
+    expect(anchors[0].mins).toBe(600);
+  });
+
+  it("skips top-N anchors without a finisher count and keeps winner at 0", () => {
+    const anchors = fieldAnchors({ percentiles: ps, topTimes: tops, winner: "10:00:00" });
+    expect(anchors.map((a) => a.q)).toEqual([0, 10, 50, 90]);
+  });
+
+  it("drops anchors that break monotonicity", () => {
+    // corrupt: top20 slower than p10 — the later, larger-q anchor wins
+    const anchors = fieldAnchors({
+      percentiles: { p10: "11:30:00", p50: "19:00:00" },
+      topTimes: { top20: "12:00:00" },
+      winner: "10:00:00",
+      finishers: 1000,
+    });
+    const mins = anchors.map((a) => a.mins);
+    expect([...mins].sort((a, b) => a - b)).toEqual(mins); // strictly increasing kept set
+  });
+
+  it("interpolates through the elite end with rank anchors", () => {
+    const anchors = fieldAnchors({ percentiles: ps, topTimes: tops, winner: "10:00:00", finishers: 1000 });
+    // halfway between top10 (11h, 1%) and top20 (12h, 2%) -> 1.5%
+    expect(percentileForAnchors(anchors, 11.5 * 60)?.pct).toBeCloseTo(1.5);
+    expect(percentileForAnchors(anchors, 9 * 60)).toEqual({ pct: 0.1, clamped: "fast" });
   });
 });
 

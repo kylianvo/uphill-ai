@@ -20,3 +20,40 @@ Australia trail: UTA (Blue Mountains/Furber Steps), Ultra-Trail Kosciuszko, Buff
 Australia road: Sydney Marathon, Great Ocean Road Marathon, Melbourne Marathon, Gold Coast Marathon.
 ASEAN/Asia trail: Thailand by UTMB (Chiang Mai), Malaysia by UTMB, Amazean Jungle Thailand by UTMB (Betong), Rinjani 100 (Lombok), HK100, TNF100 (Philippines), UTMF (Mt. Fuji), Hasetsune Cup (Japan), Bromo Marathon (Java), XTERRA Zhangjiajie (China).
 ASEAN road: Angkor Wat International Half Marathon (Cambodia), Standard Chartered Singapore Marathon.
+
+## `results` block schema (past-results benchmarks)
+
+Optional per-race, hand-verified (or verified-scrape) past results consumed by
+the Pace Strategy benchmark markers and the Goal Determiner field curve. One
+entry per year × distance:
+
+```json
+"results": [{
+  "year": 2025,
+  "distance_label": "UTA100", "distance_km": 100.4,
+  "finishers": 1282, "finishers_men": 1013, "finishers_women": 269,
+  "winner_time": "9:26:02", "winner_time_women": "10:55:19",
+  "top_times": {
+    "overall": {"top3": "h:mm:ss", "top5": "…", "top10": "…", "top20": "…"},
+    "men": {"…"}, "women": {"…"}
+  },
+  "percentiles": {
+    "overall": {"p5": "h:mm:ss", "p10": "…", "p25": "…", "p50": "…", "p75": "…", "p90": "…"},
+    "men": {"…"}, "women": {"…"}
+  },
+  "cutoff_clock": "optional free text",
+  "conditions_note": "optional free text",
+  "source": "where the numbers were verified"
+}]
+```
+
+Conventions (keep scrapers consistent with these):
+- `topN` = the finish time of the rank-N finisher **within that group** (so
+  `women.top3` is the 3rd woman). Omit `topN` keys when the group has fewer
+  than N finishers.
+- `pN` = the finish time of the finisher at rank `ceil(N% × group size)`.
+- Times are `h:mm:ss` strings; groups are exactly `overall`/`men`/`women`;
+  omit any group or field you could not verify — the UI degrades gracefully,
+  and **no value may ever be estimated or interpolated at curation time**.
+- Store per-year entries; don't average across years (weather and course
+  changes make the variance informative).

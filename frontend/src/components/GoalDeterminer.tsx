@@ -9,9 +9,9 @@ import { RaceNameField } from "@/components/RaceNameField";
 import {
   formatDurationHM,
   parsePaceToMinutes,
-  parseDurationToMinutes,
   percentilePoints,
-  percentileForTime,
+  fieldAnchors,
+  percentileForAnchors,
   PercentileSet,
 } from "@/lib/paceStrategy";
 import { Crosshair, XCircle, Gauge, TrendUp, ShieldCheck, Lightning } from "@phosphor-icons/react";
@@ -46,6 +46,7 @@ interface RaceBenchmark {
   winner_time_women?: string;
   conditions_note?: string;
   percentiles?: Record<string, PercentileSet>;
+  top_times?: Record<string, Record<string, string>>;
 }
 
 function getBaseUrl(): string {
@@ -109,9 +110,10 @@ function FieldCurve({
 
   const ps = bench.percentiles![active];
   const winnerStr = active === "women" ? bench.winner_time_women : bench.winner_time;
-  const winnerMins = winnerStr ? parseDurationToMinutes(winnerStr) : null;
-  const pts = percentilePoints(ps);
-  const anchors = winnerMins && winnerMins < pts[0].mins ? [{ q: 0, mins: winnerMins }, ...pts] : pts;
+  const finisherCount =
+    active === "men" ? bench.finishers_men : active === "women" ? bench.finishers_women : bench.finishers;
+  const topTimes = bench.top_times?.[active];
+  const anchors = fieldAnchors({ percentiles: ps, topTimes, winner: winnerStr, finishers: finisherCount });
 
   const width = 720;
   const height = 210;
@@ -125,32 +127,31 @@ function FieldCurve({
   const y = (pct: number) => padT + (1 - pct / 100) * (height - padT - padB);
 
   const path = anchors.map((a, i) => `${i === 0 ? "M" : "L"} ${x(a.mins)} ${y(a.q)}`).join(" ");
-  const finisherCount =
-    active === "men" ? bench.finishers_men : active === "women" ? bench.finishers_women : bench.finishers;
 
+  const fmtPct = (pct: number) => (pct < 5 ? pct.toFixed(1) : String(Math.round(pct)));
   const goalMarks = goals
     .map((g) => {
-      const res = percentileForTime(ps, g.mins, winnerMins);
+      const res = percentileForAnchors(anchors, g.mins);
       if (!res) return null;
       const label =
         res.clamped === "fast"
           ? `${t("top", "top")} ${res.pct}%+`
           : res.clamped === "slow"
             ? t("back of field", "cuối đoàn")
-            : `${t("top", "top")} ${Math.round(res.pct)}%`;
+            : `${t("top", "top")} ${fmtPct(res.pct)}%`;
       return { ...g, pct: res.pct, note: label };
     })
     .filter(Boolean) as { label: string; short: string; mins: number; pct: number; note: string }[];
 
   const rankMark =
-    rankTransferMins && rankTransferMins <= tMax ? percentileForTime(ps, rankTransferMins, winnerMins) : null;
+    rankTransferMins && rankTransferMins <= tMax ? percentileForAnchors(anchors, rankTransferMins) : null;
 
   const handleMove = (e: React.MouseEvent<SVGSVGElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const px = ((e.clientX - rect.left) / rect.width) * width;
     const mins = tMin + ((px - padL) / (width - padL - padR)) * (tMax - tMin);
     if (mins < tMin || mins > tMax) return setHover(null);
-    const res = percentileForTime(ps, mins, winnerMins);
+    const res = percentileForAnchors(anchors, mins);
     if (res && !res.clamped) setHover({ x: px, mins, pct: res.pct });
     else setHover(null);
   };
@@ -200,8 +201,8 @@ function FieldCurve({
         ))}
         <path d={path} fill="none" stroke="var(--accent-primary)" strokeWidth={2} />
         {anchors.map((a) => (
-          <circle key={a.q} cx={x(a.mins)} cy={y(a.q)} r={3} fill="var(--accent-primary)">
-            <title>{a.q === 0 ? `${t("winner", "vô địch")} ${formatDurationHM(a.mins)}` : `p${a.q}: ${formatDurationHM(a.mins)}`}</title>
+          <circle key={a.q} cx={x(a.mins)} cy={y(a.q)} r={a.q < 5 ? 2.4 : 3} fill="var(--accent-primary)">
+            <title>{`${t("top", "top")} ${fmtPct(a.q)}%: ${formatDurationHM(a.mins)}`}</title>
           </circle>
         ))}
         {goalMarks.map((g, i) => (
@@ -232,7 +233,7 @@ function FieldCurve({
             <line x1={hover.x} x2={hover.x} y1={padT} y2={height - padB} stroke="var(--text-muted)" strokeDasharray="2 2" />
             <rect x={Math.min(hover.x + 6, width - 150)} y={padT} width={144} height={17} rx={5} fill="var(--bg-primary, white)" stroke="var(--border-color)" />
             <text x={Math.min(hover.x + 12, width - 144)} y={padT + 12} fontSize={9.5} fill="var(--text-secondary)">
-              {formatDurationHM(hover.mins)} ≈ {t("top", "top")} {Math.round(hover.pct)}%
+              {formatDurationHM(hover.mins)} ≈ {t("top", "top")} {fmtPct(hover.pct)}%
             </text>
           </g>
         )}
@@ -245,10 +246,26 @@ function FieldCurve({
           );
         })}
       </svg>
-      <div style={{ fontSize: "10.5px", color: "var(--text-muted)", marginTop: "2px" }}>
+      {topTimes && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "8px" }}>
+          {[
+            { key: "top3", label: t("Podium", "Bục vinh quang") },
+            { key: "top5", label: "Top 5" },
+            { key: "top10", label: "Top 10" },
+            { key: "top20", label: "Top 20" },
+          ]
+            .filter((c) => topTimes[c.key])
+            .map((c) => (
+              <span key={c.key} style={{ background: "rgba(0,0,0,0.04)", padding: "3px 10px", borderRadius: "8px", fontSize: "11px", fontWeight: 600, color: "var(--text-secondary)" }}>
+                {c.label} ≤ {topTimes[c.key]}
+              </span>
+            ))}
+        </div>
+      )}
+      <div style={{ fontSize: "10.5px", color: "var(--text-muted)", marginTop: "6px" }}>
         {t(
-          `Straight lines between verified anchors only (winner + p10/p25/p50/p75/p90 of ${finisherCount} finishers) — no fitted curve.`,
-          `Chỉ nối các mốc đã kiểm chứng (vô địch + p10/p25/p50/p75/p90 của ${finisherCount} người hoàn thành) — không vẽ đường cong ước lượng.`,
+          `Straight lines between ${anchors.length} verified anchors (winner, top-N ranks, percentiles of ${finisherCount} finishers) — no fitted curve.`,
+          `Chỉ nối ${anchors.length} mốc đã kiểm chứng (vô địch, top-N, percentile của ${finisherCount} người hoàn thành) — không vẽ đường cong ước lượng.`,
         )}
       </div>
     </div>
@@ -640,17 +657,23 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
                   <div style={{ fontSize: "11.5px", color: "var(--text-muted)", marginBottom: "10px" }}>
                     {g.note}
                     {(() => {
-                      const ps = estimate.benchmarks?.[0]?.percentiles?.overall;
-                      const winner = estimate.benchmarks?.[0]?.winner_time;
-                      if (!ps) return null;
-                      const res = percentileForTime(ps, g.mins, winner ? parseDurationToMinutes(winner) : null);
+                      const bench0 = estimate.benchmarks?.[0];
+                      if (!bench0?.percentiles?.overall) return null;
+                      const anchors = fieldAnchors({
+                        percentiles: bench0.percentiles.overall,
+                        topTimes: bench0.top_times?.overall,
+                        winner: bench0.winner_time,
+                        finishers: bench0.finishers,
+                      });
+                      const res = percentileForAnchors(anchors, g.mins);
                       if (!res) return null;
+                      const fmt = (pct: number) => (pct < 5 ? pct.toFixed(1) : String(Math.round(pct)));
                       const label =
                         res.clamped === "fast"
-                          ? `top ${res.pct}%+`
+                          ? `top ${fmt(res.pct)}%+`
                           : res.clamped === "slow"
                             ? t("back of field", "cuối đoàn")
-                            : `top ${Math.round(res.pct)}%`;
+                            : `top ${fmt(res.pct)}%`;
                       return (
                         <span style={{ display: "inline-block", marginLeft: "6px", background: "rgba(0,0,0,0.05)", padding: "1px 8px", borderRadius: "8px", fontWeight: 700, color: "var(--text-secondary)" }}>
                           ≈ {label}
