@@ -13,12 +13,13 @@ import { UploadSimple, FileArrowUp, Heart, Clock, Mountains, MapPin, Footprints,
 import { RaceMatch } from "../hooks/useRaceMatch";
 import { RaceNameField } from "../components/RaceNameField";
 import { minsToHms, isTaperPhase, buildPaceHandoffFromPlan } from "../lib/planHandoff";
+import { parsePaceToMinutes, formatDurationHM } from "../lib/paceStrategy";
 
 export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   const ctx = useAppContext();
   const { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, handleSwapWorkouts, swapDays, handleToggleComplete, handleLogWorkout, getWeekWorkouts, getWorkoutDate, getWorkoutDateObj, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller } = usePlanner();
   const [planViewMode, setPlanViewMode] = useState<"list" | "calendar">("list");
-  const { lang, activePlan, planLoading, planErrorMsg, planForm, setPlanForm, targetTimeH, setTargetTimeH, targetTimeM, setTargetTimeM, targetTimeS, setTargetTimeS, cutoffTimeH, setCutoffTimeH, cutoffTimeM, setCutoffTimeM, cutoffTimeS, setCutoffTimeS, recentPlans, selectedWeek, setSelectedWeek, swapDay1, setSwapDay1, swapDay2, setSwapDay2, setWorkouts, setBackupWorkouts, setActivePlan, workouts, backupWorkouts, backupActivePlan, setBackupActivePlan, courseInputMode, setCourseInputMode, plannerGpxLoading, plannerGpxFile, plannerGpxError, showExportOptions, setShowExportOptions, exportTimePref, setExportTimePref, setIsGoalDeterminerOpen, settingsHandoff, setSettingsHandoff, setPaceHandoff, setIsPaceStrategyOpen } = ctx;
+  const { lang, activePlan, planLoading, planErrorMsg, planForm, setPlanForm, targetTimeH, setTargetTimeH, targetTimeM, setTargetTimeM, targetTimeS, setTargetTimeS, cutoffTimeH, setCutoffTimeH, cutoffTimeM, setCutoffTimeM, cutoffTimeS, setCutoffTimeS, recentPlans, selectedWeek, setSelectedWeek, swapDay1, setSwapDay1, swapDay2, setSwapDay2, setWorkouts, setBackupWorkouts, setActivePlan, workouts, backupWorkouts, backupActivePlan, setBackupActivePlan, courseInputMode, setCourseInputMode, plannerGpxLoading, plannerGpxFile, plannerGpxError, showExportOptions, setShowExportOptions, exportTimePref, setExportTimePref, setIsGoalDeterminerOpen, settingsHandoff, setSettingsHandoff, setPaceHandoff, setIsPaceStrategyOpen, user } = ctx;
   const t = (key: keyof typeof translations.en) => translations[lang]?.[key] || translations.en[key] || key;
   const totalWeeks = activePlan ? (activePlan.total_weeks || activePlan.plan_duration_weeks || 1) : 0;
 
@@ -83,6 +84,47 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
     setSettingsHandoff(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settingsHandoff]);
+
+  // ── "Optimal Performance": show (don't auto-apply) a computed target ────
+  const [optimalEstimateMins, setOptimalEstimateMins] = useState<number | null>(null);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setOptimalEstimateMins(null);
+    if (planForm.goal_type !== "optimal") return;
+    if (!(planForm.plan_goal_category === "race" || planForm.plan_goal_category === "distance")) return;
+    const distanceKm = parseFloat(planForm.course_distance_km) || null;
+    if (!distanceKm || !planForm.race_date) return;
+
+    const profileZonePace = parsePaceToMinutes(user?.zone2_pace_max || "") ?? parsePaceToMinutes(user?.zone2_pace_min || "") ?? null;
+    const profileBasePace = profileZonePace ? Math.round(profileZonePace * 0.95 * 100) / 100 : null;
+    if (!profileBasePace) return;
+
+    let weeksToRace: number | null = null;
+    try {
+      const [y, m, d] = planForm.race_date.split("-").map(Number);
+      const days = (new Date(y, m - 1, d).getTime() - new Date().getTime()) / 86400000;
+      weeksToRace = Math.max(0, Math.round(days / 7));
+    } catch { /* ignore */ }
+
+    const timer = setTimeout(() => {
+      fetch(`${API_BASE_URL}/api/coach/goal-estimate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          race_name: planForm.race_name || null,
+          distance_km: distanceKm,
+          elevation_gain_m: parseFloat(planForm.course_elevation_gain_m) || 0,
+          weeks_to_race: weeksToRace,
+          flat_pace_min_km: profileBasePace,
+        }),
+      })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => setOptimalEstimateMins(data?.goals?.realistic ?? null))
+        .catch(() => setOptimalEstimateMins(null));
+    }, 500);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planForm.goal_type, planForm.plan_goal_category, planForm.course_distance_km, planForm.course_elevation_gain_m, planForm.race_date, planForm.race_name, user]);
 
   // ── Coach contextual message ─────────────────────────────────────────────
   const getCoachMessage = () => {
@@ -404,6 +446,18 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                   </select>
                 </div>
               </div>
+
+              {planForm.goal_type === "optimal" && optimalEstimateMins && (
+                <div style={{ marginBottom: "16px", fontSize: "12px", color: "var(--text-secondary)" }}>
+                  {lang === "en"
+                    ? `We'll target ~${formatDurationHM(optimalEstimateMins)} based on your current fitness.`
+                    : `Chúng tôi sẽ nhắm mục tiêu ~${formatDurationHM(optimalEstimateMins)} dựa trên thể lực hiện tại của bạn.`}{" "}
+                  <button type="button" onClick={() => setIsGoalDeterminerOpen(true)}
+                    style={{ background: "none", border: "none", padding: 0, fontSize: "12px", fontWeight: 600, color: "var(--accent-primary)", cursor: "pointer", textDecoration: "underline" }}>
+                    {lang === "en" ? "Refine in Goal Determiner →" : "Tinh chỉnh trong Xác định Mục tiêu →"}
+                  </button>
+                </div>
+              )}
 
               {/* Target time */}
               {planForm.goal_type === "time" && (
