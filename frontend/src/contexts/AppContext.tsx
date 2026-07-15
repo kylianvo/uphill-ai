@@ -14,6 +14,8 @@ interface AppContextType {
   setIsPaceStrategyOpen: any;
   paceHandoff: any;
   setPaceHandoff: any;
+  settingsHandoff: any;
+  setSettingsHandoff: any;
   isGoalDeterminerOpen: any;
   setIsGoalDeterminerOpen: any;
   activeTab: any;
@@ -226,6 +228,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     distance_km?: number;
     target_time_mins?: number;
   } | null>(null);
+  // Goal Determiner → Plan Settings: hands a chosen goal's target time back
+  // into the create-plan form, one-shot like paceHandoff above.
+  const [settingsHandoff, setSettingsHandoff] = useState<{
+    target_time_mins?: number;
+    source_label?: string;
+  } | null>(null);
   const [activeTab, setActiveTab] = useState<"home" | "about" | "chat" | "planner" | "tools" | "knowledge">("home");
   const [lang, setLang] = useState<"en" | "vi">("en");
   const [startBtnHovered, setStartBtnHovered] = useState(false);
@@ -395,6 +403,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       isGearVaultOpen, setIsGearVaultOpen,
       isPaceStrategyOpen, setIsPaceStrategyOpen,
       paceHandoff, setPaceHandoff,
+      settingsHandoff, setSettingsHandoff,
       isGoalDeterminerOpen, setIsGoalDeterminerOpen,
       activeTab, setActiveTab,
       lang, setLang,
