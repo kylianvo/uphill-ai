@@ -265,15 +265,15 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
   const { trackEvent } = useAnalytics();
   const { paceHandoff, setPaceHandoff, setIsNutritionLabOpen, setIsGearVaultOpen } = useAppContext();
 
-  // Goal Determiner hands a race + target time into the slider
+  // Goal Determiner / plan-view taper link hand a race (± target time) into the slider
   useEffect(() => {
-    if (!isOpen || !paceHandoff?.target_time_mins) return;
+    if (!isOpen || !paceHandoff) return;
     if (paceHandoff.race_name) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setRaceName(paceHandoff.race_name);
     }
     if (paceHandoff.distance_km) setManualDistance(String(paceHandoff.distance_km));
-    setTargetTimeMins(paceHandoff.target_time_mins);
+    if (paceHandoff.target_time_mins) setTargetTimeMins(paceHandoff.target_time_mins);
     setRestMins({});
     setPaceHandoff(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
