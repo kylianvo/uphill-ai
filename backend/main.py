@@ -793,7 +793,10 @@ def get_pace_zones(user: dict[str, Any] = Depends(get_current_user)):
         user.get("ant_hr"),
     )
     hr_zones = TrainingRules.calculate_heart_rate_zones(
-        int(user.get("max_hr") or 185), int(user.get("resting_hr") or 60)
+        int(user.get("max_hr") or 185),
+        int(user.get("resting_hr") or 60),
+        user.get("aet_hr"),
+        user.get("ant_hr"),
     )
     return {
         "zone1_pace": zones["zone1_pace"],

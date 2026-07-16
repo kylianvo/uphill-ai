@@ -25,7 +25,7 @@ class TestPaceZonesEndpoint:
         body = resp.json()
 
         expected_pace = PlanGenerator.estimate_pace_zones("6:20", "5:30", 140, 165)
-        expected_hr = TrainingRules.calculate_heart_rate_zones(190, 50)
+        expected_hr = TrainingRules.calculate_heart_rate_zones(190, 50, 140, 165)
         assert body == {
             "zone1_pace": expected_pace["zone1_pace"],
             "zone2_pace": expected_pace["zone2_pace"],

@@ -342,7 +342,7 @@ class PlanGenerator:
         ant_hr = int(user_profile.get("ant_hr", resting_hr + int((max_hr - resting_hr) * 0.85)))
 
         # Calculate Heart Rate Zones
-        hr_zones = TrainingRules.calculate_heart_rate_zones(max_hr, resting_hr)
+        hr_zones = TrainingRules.calculate_heart_rate_zones(max_hr, resting_hr, aet_hr, ant_hr)
         z1_range = f"{hr_zones['Zone 1']['min']}-{hr_zones['Zone 1']['max']} bpm"
         z2_range = f"{hr_zones['Zone 2']['min']}-{hr_zones['Zone 2']['max']} bpm"
         z3_range = f"{hr_zones['Zone 3']['min']}-{hr_zones['Zone 3']['max']} bpm"

@@ -3,30 +3,40 @@ from typing import Any
 
 class TrainingRules:
     @staticmethod
-    def calculate_heart_rate_zones(max_hr: int, resting_hr: int) -> dict[str, dict[str, int]]:
+    def calculate_heart_rate_zones(
+        max_hr: int, resting_hr: int, aet_hr: int | None = None, ant_hr: int | None = None
+    ) -> dict[str, dict[str, int]]:
         """
-        Calculates five heart rate zones using the Karvonen formula (Heart Rate Reserve).
-        Zone 1: 50% - 60%
-        Zone 2: 60% - 70%
-        Zone 3: 70% - 80%
-        Zone 4: 80% - 90%
-        Zone 5: 90% - 100%
-        """
-        hrr = max_hr - resting_hr
+        Calculates five heart rate zones anchored on aerobic (AeT) and anaerobic (AnT)
+        threshold heart rates, per Training for the Uphill Athlete's zone model.
+        Zone 1 (Recovery):  resting_hr - mid1
+        Zone 2 (Aerobic):   mid1 - AeT
+        Zone 3 (Tempo):     AeT - mid2
+        Zone 4 (Threshold): mid2 - AnT
+        Zone 5 (Anaerobic): AnT - max_hr
+        where mid1 is the midpoint between resting_hr and AeT, and mid2 is the
+        midpoint between AeT and AnT.
 
-        zones = {}
-        thresholds = [
-            ("Zone 1", 0.50, 0.60),
-            ("Zone 2", 0.60, 0.70),
-            ("Zone 3", 0.70, 0.80),
-            ("Zone 4", 0.80, 0.90),
-            ("Zone 5", 0.90, 1.00),
+        If aet_hr/ant_hr are not supplied, they are estimated from max_hr using the
+        same ratios used elsewhere for auto-derivation (73% / 89% of max_hr).
+        """
+        if aet_hr is None:
+            aet_hr = round(max_hr * 0.73)
+        if ant_hr is None:
+            ant_hr = round(max_hr * 0.89)
+
+        mid1 = resting_hr + 0.5 * (aet_hr - resting_hr)
+        mid2 = aet_hr + 0.5 * (ant_hr - aet_hr)
+
+        bounds = [
+            ("Zone 1", resting_hr, mid1),
+            ("Zone 2", mid1, aet_hr),
+            ("Zone 3", aet_hr, mid2),
+            ("Zone 4", mid2, ant_hr),
+            ("Zone 5", ant_hr, max_hr),
         ]
 
-        for name, low_pct, high_pct in thresholds:
-            zones[name] = {"min": int(resting_hr + (hrr * low_pct)), "max": int(resting_hr + (hrr * high_pct))}
-
-        return zones
+        return {name: {"min": int(low), "max": int(high)} for name, low, high in bounds}
 
     @staticmethod
     def audit_80_20(weekly_workouts: list[dict[str, Any]]) -> dict[str, Any]:
