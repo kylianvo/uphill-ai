@@ -8,14 +8,18 @@ class TrainingRules:
     ) -> dict[str, dict[str, int]]:
         """
         Calculates five heart rate zones anchored on aerobic (AeT) and anaerobic (AnT)
-        threshold heart rates, per Training for the Uphill Athlete's zone model.
-        Zone 1 (Recovery):  resting_hr - mid1
-        Zone 2 (Aerobic):   mid1 - AeT
-        Zone 3 (Tempo):     AeT - mid2
-        Zone 4 (Threshold): mid2 - AnT
-        Zone 5 (Anaerobic): AnT - max_hr
-        where mid1 is the midpoint between resting_hr and AeT, and mid2 is the
-        midpoint between AeT and AnT.
+        threshold heart rates, per the Uphill Athlete training zone calculator
+        (https://uphillathlete.com/aerobic-training/uphill-athlete-training-zones-heart-rate-calculator/):
+        Zone 1 (Recovery):            AeT - 20% -> AeT - 10%
+        Zone 2 (Aerobic):             AeT - 10% -> AeT
+        Zone 3 (Tempo):               AeT -> AnT
+        Zone 4 (Threshold/Anaerobic): AnT -> midpoint(AnT, max_hr)
+        Zone 5 (VO2max):              midpoint(AnT, max_hr) -> max_hr
+        The site describes Zone 5 only loosely as "the top portion of Zone 4, near
+        max HR" without a fixed formula; the midpoint of AnT and max_hr is used
+        here to split Zone 4/Zone 5 into non-overlapping display ranges.
+
+        resting_hr is accepted for API compatibility but not used in this model.
 
         If aet_hr/ant_hr are not supplied, they are estimated from max_hr using the
         same ratios used elsewhere for auto-derivation (73% / 89% of max_hr).
@@ -25,15 +29,16 @@ class TrainingRules:
         if ant_hr is None:
             ant_hr = round(max_hr * 0.89)
 
-        mid1 = resting_hr + 0.5 * (aet_hr - resting_hr)
-        mid2 = aet_hr + 0.5 * (ant_hr - aet_hr)
+        z1_min = aet_hr * 0.8
+        z1_max = aet_hr * 0.9
+        z4_z5_split = ant_hr + 0.5 * (max_hr - ant_hr)
 
         bounds = [
-            ("Zone 1", resting_hr, mid1),
-            ("Zone 2", mid1, aet_hr),
-            ("Zone 3", aet_hr, mid2),
-            ("Zone 4", mid2, ant_hr),
-            ("Zone 5", ant_hr, max_hr),
+            ("Zone 1", z1_min, z1_max),
+            ("Zone 2", z1_max, aet_hr),
+            ("Zone 3", aet_hr, ant_hr),
+            ("Zone 4", ant_hr, z4_z5_split),
+            ("Zone 5", z4_z5_split, max_hr),
         ]
 
         return {name: {"min": int(low), "max": int(high)} for name, low, high in bounds}
