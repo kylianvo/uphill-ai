@@ -6,12 +6,13 @@ import { translations } from "../app/translations";
 import { Calendar, PersonSimpleRun, Mountains, Watch, Target, CaretRight, CaretLeft, CaretDown, CaretUp, Plus, Info, X, Footprints, Lightning, Heartbeat , Trophy, Sneaker, Bed } from '@phosphor-icons/react';
 import { RaceMatch } from "../hooks/useRaceMatch";
 import { RaceNameField } from "../components/RaceNameField";
+import { parsePaceToMinutes, formatDurationHM } from "../lib/paceStrategy";
 
 export default function OnboardingWizard() {
   const ctx = useAppContext();
   const { startPlanJobPoller, fetchRecentPlansWithToken } = usePlanner();
   const fetchActivePlanWithToken = fetchRecentPlansWithToken; // just alias if needed or handle properly.
-  const { activeTab, setActiveTab, lang, setLang, user, setUser, setActivePlan, setAuthErrorMsg, onboardingOpen, setOnboardingOpen, onboardingAnswers, setOnboardingAnswers, onboardingStep, setOnboardingStep, onboardingGenerating, setOnboardingGenerating } = ctx;
+  const { activeTab, setActiveTab, lang, setLang, user, setUser, setActivePlan, setAuthErrorMsg, onboardingOpen, setOnboardingOpen, onboardingAnswers, setOnboardingAnswers, onboardingStep, setOnboardingStep, onboardingGenerating, setOnboardingGenerating, setIsGoalDeterminerOpen } = ctx;
   const [showFitnessWarning, setShowFitnessWarning] = React.useState(false);
   const handleRaceMatchChange = (match: RaceMatch | null) => {
     if (match?.elevation_gain_m && !onboardingAnswers.course_elevation_gain_m) {
@@ -21,6 +22,57 @@ export default function OnboardingWizard() {
   const trackEvent = (name: string, props?: any) => { if (typeof window !== "undefined" && (window as any).posthog) { (window as any).posthog.capture(name, props); } };
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
   const t = (key: keyof typeof translations.en) => translations[lang]?.[key] || translations.en[key] || key;
+
+  // ── "Optimal Performance": show (don't auto-apply) a computed target ────
+  const [optimalEstimateMins, setOptimalEstimateMins] = React.useState<number | null>(null);
+  const optimalEstimateAbortRef = React.useRef<AbortController | null>(null);
+  React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setOptimalEstimateMins(null);
+    if (onboardingAnswers.race_goal !== "optimal") return;
+    const distanceKm = parseFloat(onboardingAnswers.course_distance_km) || null;
+    if (!distanceKm || !onboardingAnswers.race_date) return;
+
+    const profileZonePace = parsePaceToMinutes(onboardingAnswers.zone2_pace_max || "") ?? parsePaceToMinutes(onboardingAnswers.zone2_pace_min || "") ?? null;
+    const profileBasePace = profileZonePace ? Math.round(profileZonePace * 0.95 * 100) / 100 : null;
+    if (!profileBasePace) return;
+
+    let weeksToRace: number | null = null;
+    try {
+      const [y, m, d] = onboardingAnswers.race_date.split("-").map(Number);
+      const days = (new Date(y, m - 1, d).getTime() - new Date().getTime()) / 86400000;
+      weeksToRace = Math.max(0, Math.round(days / 7));
+    } catch { /* ignore */ }
+
+    const timer = setTimeout(() => {
+      optimalEstimateAbortRef.current?.abort();
+      const controller = new AbortController();
+      optimalEstimateAbortRef.current = controller;
+      fetch(`${API_BASE_URL}/api/coach/goal-estimate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          race_name: onboardingAnswers.race_name || null,
+          distance_km: distanceKm,
+          elevation_gain_m: parseFloat(onboardingAnswers.course_elevation_gain_m) || 0,
+          weeks_to_race: weeksToRace,
+          flat_pace_min_km: profileBasePace,
+        }),
+        signal: controller.signal,
+      })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => setOptimalEstimateMins(data?.goals?.realistic ?? null))
+        .catch((err) => {
+          if (err?.name === "AbortError") return; // superseded by a newer request
+          setOptimalEstimateMins(null);
+        });
+    }, 500);
+    return () => {
+      clearTimeout(timer);
+      optimalEstimateAbortRef.current?.abort();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onboardingAnswers.race_goal, onboardingAnswers.course_distance_km, onboardingAnswers.course_elevation_gain_m, onboardingAnswers.race_date, onboardingAnswers.race_name, onboardingAnswers.zone2_pace_min, onboardingAnswers.zone2_pace_max]);
 
   const handleCompleteOnboarding = async () => {
 
@@ -118,7 +170,7 @@ export default function OnboardingWizard() {
 
       // Race goals
 
-      payload.race_goal = onboardingAnswers.race_goal || "finish";
+      payload.race_goal = onboardingAnswers.race_goal || "time";
 
       if (onboardingAnswers.race_goal === "time") {
 
@@ -356,13 +408,17 @@ export default function OnboardingWizard() {
                   min="1924-01-01" max={new Date(new Date().getFullYear() - 10, 11, 31).toISOString().slice(0, 10)}
                   value={onboardingAnswers.dob}
                   onChange={e => {
+                    setAns("dob", e.target.value);
+                    setAns("dob_error", "");
+                  }}
+                  onBlur={e => {
                     const val = e.target.value;
+                    const maxYear = new Date().getFullYear() - 10;
                     const year = val ? parseInt(val.slice(0, 4), 10) : 0;
-                    if (!val || (year >= 1924 && year <= new Date().getFullYear() - 10)) {
-                      setAns("dob", val);
-                      setAns("dob_error", "");
+                    if (val && (year < 1924 || year > maxYear)) {
+                      setAns("dob_error", lang === "en" ? `Please enter a valid birth year (1924–${maxYear})` : `Vui lòng nhập năm sinh hợp lệ (1924–${maxYear})`);
                     } else {
-                      setAns("dob_error", lang === "en" ? "Please enter a valid birth year (1924–2015)" : "Vui lòng nhập năm sinh hợp lệ (1924–2015)");
+                      setAns("dob_error", "");
                     }
                   }} />
 
@@ -729,13 +785,15 @@ export default function OnboardingWizard() {
 
                     { val: "finish", label: lang === "en" ? "Just Finish" : "Hoàn thành" },
 
-                    { val: "time", label: lang === "en" ? "Time Target" : "Đạt mốc thời gian" }
+                    { val: "time", label: lang === "en" ? "Time Target" : "Đạt mốc thời gian" },
+
+                    { val: "optimal", label: t("plan_goal_optimal") }
 
                   ].map(({ val, label }) => (
 
                     <button key={val} type="button" onClick={() => setAns("race_goal", val)}
 
-                      style={{ flex: 1, height: "30px", fontSize: "12px", borderRadius: "8px", border: "none", background: (onboardingAnswers.race_goal || "finish") === val ? "var(--accent-primary)" : "transparent", color: (onboardingAnswers.race_goal || "finish") === val ? "#fff" : "var(--text-secondary)", fontWeight: "600", cursor: "pointer" }}>
+                      style={{ flex: 1, height: "30px", fontSize: "12px", borderRadius: "8px", border: "none", background: (onboardingAnswers.race_goal || "time") === val ? "var(--accent-primary)" : "transparent", color: (onboardingAnswers.race_goal || "time") === val ? "#fff" : "var(--text-secondary)", fontWeight: "600", cursor: "pointer" }}>
 
                       {label}
 
@@ -749,11 +807,33 @@ export default function OnboardingWizard() {
 
 
 
+              {(onboardingAnswers.race_goal === "optimal") && optimalEstimateMins && (
+
+                <div style={{ marginTop: "10px", fontSize: "12px", color: "var(--text-secondary)" }}>
+                  {lang === "en"
+                    ? `We'll target ~${formatDurationHM(optimalEstimateMins)} based on your current fitness.`
+                    : `Chúng tôi sẽ nhắm mục tiêu ~${formatDurationHM(optimalEstimateMins)} dựa trên thể lực hiện tại của bạn.`}{" "}
+                  <button type="button" onClick={() => setIsGoalDeterminerOpen(true)}
+                    style={{ background: "none", border: "none", padding: 0, fontSize: "12px", fontWeight: 600, color: "var(--accent-primary)", cursor: "pointer", textDecoration: "underline" }}>
+                    {lang === "en" ? "Refine in Goal Determiner →" : "Tinh chỉnh trong Xác định Mục tiêu →"}
+                  </button>
+                </div>
+
+              )}
+
+
+
               {(onboardingAnswers.race_goal === "time") && (
 
                 <div style={{ marginTop: "10px" }}>
 
-                  <label style={labelS}>{lang === "en" ? "Expected Finish Time" : "Thời gian hoàn thành mục tiêu"}</label>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "6px" }}>
+                    <label style={labelS}>{lang === "en" ? "Expected Finish Time" : "Thời gian hoàn thành mục tiêu"}</label>
+                    <button type="button" onClick={() => setIsGoalDeterminerOpen(true)}
+                      style={{ background: "none", border: "none", padding: 0, fontSize: "11.5px", fontWeight: "600", color: "var(--accent-primary)", cursor: "pointer", textDecoration: "underline" }}>
+                      {lang === "en" ? "Not sure? Use the Goal Determiner →" : "Chưa chắc? Dùng công cụ Xác định Mục tiêu →"}
+                    </button>
+                  </div>
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
 
