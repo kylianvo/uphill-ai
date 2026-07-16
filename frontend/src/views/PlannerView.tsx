@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useAppContext } from "../contexts/AppContext";
 import { usePlanner } from "../hooks/usePlanner";
 import { translations } from "../app/translations";
@@ -29,7 +29,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
     if (daysToRace !== null && daysToRace < 0 && daysToRace >= -14) return "Recovery";
     if (daysToRace !== null && daysToRace >= 0 && daysToRace <= 14) return "Nutrition";
     if (p.includes("peak")) return "Mindset";
-    if (p.includes("taper")) return "Pacing";
+    if (isTaperPhase(phase)) return "Pacing";
     if (p.includes("build")) return "Training";
     if (p.includes("base")) return "Training";
     if (p.includes("recovery")) return "Recovery";
@@ -87,6 +87,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
 
   // ── "Optimal Performance": show (don't auto-apply) a computed target ────
   const [optimalEstimateMins, setOptimalEstimateMins] = useState<number | null>(null);
+  const optimalEstimateAbortRef = useRef<AbortController | null>(null);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setOptimalEstimateMins(null);
@@ -107,6 +108,9 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
     } catch { /* ignore */ }
 
     const timer = setTimeout(() => {
+      optimalEstimateAbortRef.current?.abort();
+      const controller = new AbortController();
+      optimalEstimateAbortRef.current = controller;
       fetch(`${API_BASE_URL}/api/coach/goal-estimate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -117,12 +121,19 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
           weeks_to_race: weeksToRace,
           flat_pace_min_km: profileBasePace,
         }),
+        signal: controller.signal,
       })
         .then((r) => (r.ok ? r.json() : null))
         .then((data) => setOptimalEstimateMins(data?.goals?.realistic ?? null))
-        .catch(() => setOptimalEstimateMins(null));
+        .catch((err) => {
+          if (err?.name === "AbortError") return; // superseded by a newer request
+          setOptimalEstimateMins(null);
+        });
     }, 500);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      optimalEstimateAbortRef.current?.abort();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [planForm.goal_type, planForm.plan_goal_category, planForm.course_distance_km, planForm.course_elevation_gain_m, planForm.race_date, planForm.race_name, user]);
 
@@ -984,6 +995,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                       setBackupActivePlan(activePlan);
                       setBackupWorkouts(workouts);
                       setActivePlan(null);
+                      setTargetTimeHintLabel(null);
                     }}
                   >
                     <Plus size={16} weight="bold" />
