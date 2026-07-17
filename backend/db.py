@@ -539,10 +539,12 @@ def save_workouts(plan_id: int, workouts: list[dict[str, Any]]):
                 INSERT INTO workouts (plan_id, week_number, day_of_week, phase, title, type,
                     duration_minutes, distance_km, target_zone, target_hr_range, target_pace,
                     treadmill_incline, treadmill_speed, elevation_gain_m, grade_percent,
+                    interval_reps, interval_rep_value, interval_rep_unit,
                     description, fueling_tip, session_slot)
                 VALUES (:plan_id, :week_number, :day_of_week, :phase, :title, :type,
                     :duration_minutes, :distance_km, :target_zone, :target_hr_range, :target_pace,
                     :treadmill_incline, :treadmill_speed, :elevation_gain_m, :grade_percent,
+                    :interval_reps, :interval_rep_value, :interval_rep_unit,
                     :description, :fueling_tip, :session_slot)
             """),
                 {
@@ -564,6 +566,9 @@ def save_workouts(plan_id: int, workouts: list[dict[str, Any]]):
                     "treadmill_speed": str(wo.get("treadmill_speed") if wo.get("treadmill_speed") is not None else "0"),
                     "elevation_gain_m": wo.get("elevation_gain_m", 0.0),
                     "grade_percent": wo.get("grade_percent", 0.0),
+                    "interval_reps": wo.get("interval_reps"),
+                    "interval_rep_value": wo.get("interval_rep_value"),
+                    "interval_rep_unit": wo.get("interval_rep_unit"),
                     "description": _flatten_llm_text(wo.get("description")),
                     "fueling_tip": _flatten_llm_text(wo.get("fueling_tip")),
                     "session_slot": _flatten_llm_text(wo.get("session_slot", "main")),

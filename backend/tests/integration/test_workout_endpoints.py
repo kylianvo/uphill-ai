@@ -90,6 +90,66 @@ def test_save_workouts_flattens_nested_llm_fields(client, auth_headers):
     assert wo["fueling_tip"] == "Water only. Gel if hungry."
 
 
+def test_save_workouts_round_trips_interval_fields(client, auth_headers):
+    with patch(
+        "services.plan_generator.PlanGenerator.generate_plan_workouts",
+        new_callable=AsyncMock,
+        return_value=[],
+    ):
+        resp = client.post(
+            "/api/coach/generate-plan",
+            headers=auth_headers["headers"],
+            json={
+                "goal_type": "finish",
+                "race_name": "Interval Fields 50K",
+                "race_date": "2027-05-01",
+                "plan_start_date": "2027-03-15",
+                "days_per_week": 4,
+            },
+        )
+    plan_id = resp.json()["plan"]["id"]
+
+    save_workouts(
+        plan_id,
+        [
+            {
+                "week_number": 1,
+                "day_of_week": "Wednesday",
+                "phase": "Base",
+                "title": "Hill Sprints",
+                "type": "Interval",
+                "duration_minutes": 30,
+                "target_zone": "Zone 4",
+                "description": "8 x 12s hill sprints.",
+                "interval_reps": 8,
+                "interval_rep_value": 12.0,
+                "interval_rep_unit": "s",
+            },
+            {
+                "week_number": 1,
+                "day_of_week": "Thursday",
+                "phase": "Base",
+                "title": "Pyramid Intervals",
+                "type": "Interval",
+                "duration_minutes": 40,
+                "target_zone": "Zone 4",
+                "description": "1x1min, 1x2min, 1x3min, 1x2min, 1x1min pyramid.",
+            },
+        ],
+    )
+    saved = get_plan_workouts(plan_id)
+    clean_block = next(w for w in saved if w["title"] == "Hill Sprints")
+    pyramid = next(w for w in saved if w["title"] == "Pyramid Intervals")
+
+    assert clean_block["interval_reps"] == 8
+    assert clean_block["interval_rep_value"] == 12.0
+    assert clean_block["interval_rep_unit"] == "s"
+
+    assert pyramid["interval_reps"] is None
+    assert pyramid["interval_rep_value"] is None
+    assert pyramid["interval_rep_unit"] is None
+
+
 class TestLogWorkout:
     def test_marks_a_workout_completed_with_rpe_and_notes(self, client, auth_headers):
         _plan_id, workout_id = _create_plan_with_one_workout(client, auth_headers["headers"])
