@@ -135,6 +135,9 @@ def init_db():
             treadmill_speed     TEXT DEFAULT '0',    -- range string, e.g. "8.2-9.2" (kph)
             elevation_gain_m    REAL DEFAULT 0.0,
             grade_percent       REAL DEFAULT 0.0,
+            interval_reps       INTEGER,
+            interval_rep_value  REAL,
+            interval_rep_unit   TEXT,
             description         TEXT,
             fueling_tip         TEXT,
             is_completed        INTEGER DEFAULT 0
@@ -275,6 +278,9 @@ def init_db():
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS session_slot TEXT DEFAULT 'main'",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS elevation_gain_m REAL DEFAULT 0.0",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS grade_percent REAL DEFAULT 0.0",
+            "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS interval_reps INTEGER",
+            "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS interval_rep_value REAL",
+            "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS interval_rep_unit TEXT",
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS preferred_run_days TEXT",
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS long_run_day TEXT",
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS days_per_week INTEGER DEFAULT 4",
