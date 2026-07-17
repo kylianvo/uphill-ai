@@ -454,6 +454,43 @@ class TestResolveElevationAndGrade:
         assert result == (0.0, 0.0)
 
 
+class TestResolveIntervalSummary:
+    def test_non_interval_type_returns_all_none(self):
+        wo = {"interval_reps": 8, "interval_rep_value": 12, "interval_rep_unit": "s"}
+        result = PlanGenerator.resolve_interval_summary(wo, w_type="Tempo")
+        assert result == (None, None, None)
+
+    def test_clean_single_block_seconds(self):
+        wo = {"interval_reps": 8, "interval_rep_value": 12, "interval_rep_unit": "s"}
+        result = PlanGenerator.resolve_interval_summary(wo, w_type="Interval")
+        assert result == (8, 12.0, "s")
+
+    def test_clean_single_block_meters(self):
+        wo = {"interval_reps": 5, "interval_rep_value": 400, "interval_rep_unit": "m"}
+        result = PlanGenerator.resolve_interval_summary(wo, w_type="Interval")
+        assert result == (5, 400.0, "m")
+
+    def test_missing_fields_return_all_none(self):
+        wo = {"interval_reps": 8}
+        result = PlanGenerator.resolve_interval_summary(wo, w_type="Interval")
+        assert result == (None, None, None)
+
+    def test_invalid_unit_returns_all_none(self):
+        wo = {"interval_reps": 8, "interval_rep_value": 12, "interval_rep_unit": "laps"}
+        result = PlanGenerator.resolve_interval_summary(wo, w_type="Interval")
+        assert result == (None, None, None)
+
+    def test_non_numeric_reps_returns_all_none(self):
+        wo = {"interval_reps": "several", "interval_rep_value": 12, "interval_rep_unit": "s"}
+        result = PlanGenerator.resolve_interval_summary(wo, w_type="Interval")
+        assert result == (None, None, None)
+
+    def test_zero_or_negative_values_return_all_none(self):
+        wo = {"interval_reps": 0, "interval_rep_value": 12, "interval_rep_unit": "s"}
+        result = PlanGenerator.resolve_interval_summary(wo, w_type="Interval")
+        assert result == (None, None, None)
+
+
 class TestParsePaceRange:
     def test_range_string(self):
         assert PlanGenerator.parse_pace_range("6:30 - 5:45 /km") == (6.5, 5.75)
@@ -596,6 +633,29 @@ class TestPostProcessWorkoutsElevation:
         assert non_run_types
         assert all(w["elevation_gain_m"] == 0.0 for w in non_run_types)
         assert all(w["grade_percent"] == 0.0 for w in non_run_types)
+
+
+class TestPostProcessWorkoutsIntervalFields:
+    def test_interval_workout_gets_populated_reps_fields(self, monkeypatch):
+        workouts = TestPostProcessWorkoutsElevation()._run_rule_based(
+            monkeypatch, terrain="trail", course_distance_km=50.0, course_elevation_gain_m=2000.0
+        )
+        intervals = [w for w in workouts if w["type"] == "Interval"]
+        assert intervals, "expected at least one Interval workout in weeks 1-2"
+        for w in intervals:
+            assert isinstance(w["interval_reps"], int) and w["interval_reps"] > 0
+            assert isinstance(w["interval_rep_value"], float) and w["interval_rep_value"] > 0
+            assert w["interval_rep_unit"] == "min"
+
+    def test_non_interval_workouts_get_none_interval_fields(self, monkeypatch):
+        workouts = TestPostProcessWorkoutsElevation()._run_rule_based(
+            monkeypatch, terrain="trail", course_distance_km=50.0, course_elevation_gain_m=2000.0
+        )
+        non_intervals = [w for w in workouts if w["type"] != "Interval"]
+        assert non_intervals
+        assert all(w["interval_reps"] is None for w in non_intervals)
+        assert all(w["interval_rep_value"] is None for w in non_intervals)
+        assert all(w["interval_rep_unit"] is None for w in non_intervals)
 
 
 class TestNotebookLmCompactPromptContent:

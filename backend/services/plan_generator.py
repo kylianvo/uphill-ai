@@ -188,6 +188,37 @@ class PlanGenerator:
 
         return round(elevation_gain_m, 1), round(grade_percent, 1)
 
+    INTERVAL_REP_UNITS = ("s", "m", "min", "km")
+
+    @staticmethod
+    def resolve_interval_summary(wo: dict[str, Any], w_type: str) -> tuple[int | None, float | None, str | None]:
+        """Resolves (interval_reps, interval_rep_value, interval_rep_unit) for a
+        single workout — a single primary rep block (e.g. 8 reps x 12 seconds,
+        rendered as "8x12s"). Returns (None, None, None) whenever the workout
+        isn't a clean single-block Interval: wrong type, a missing field, an
+        unparseable/non-positive value, or an unrecognized unit. Callers fall
+        back to the existing distance_km display in that case — multi-block or
+        pyramid workouts are expected to leave these fields unset and keep
+        relying on the free-text description, same as before this field existed.
+        """
+        if w_type != "Interval":
+            return None, None, None
+
+        raw_reps = wo.get("interval_reps")
+        raw_value = wo.get("interval_rep_value")
+        unit = wo.get("interval_rep_unit")
+
+        try:
+            reps = int(raw_reps)
+            value = float(raw_value)
+        except (TypeError, ValueError):
+            return None, None, None
+
+        if reps <= 0 or value <= 0 or unit not in PlanGenerator.INTERVAL_REP_UNITS:
+            return None, None, None
+
+        return reps, value, unit
+
     # Title substrings (case-insensitive) that identify a true hill-sprint/hill-repeat
     # session — short, near-maximal efforts that require a steep grade by design,
     # regardless of the race's average grade or this workout's own grade_percent.
@@ -458,6 +489,10 @@ class PlanGenerator:
                 # (Hill Sprints get the non-negotiable 10-15% band).
                 wo["treadmill_incline"], wo["treadmill_speed"] = PlanGenerator.resolve_treadmill_settings(
                     wo, wo["target_pace"], use_treadmill
+                )
+
+                wo["interval_reps"], wo["interval_rep_value"], wo["interval_rep_unit"] = (
+                    PlanGenerator.resolve_interval_summary(wo, w_type)
                 )
             return wos
 
@@ -1126,21 +1161,24 @@ class PlanGenerator:
                 desc = f"Warmup {warmup}m. Run at moderate tempo pace (Zone 3) for {main_minutes} minutes. Cooldown {cooldown}m."
                 fuel_tip = "Consume electrolytes during the workout. Take 1 gel mid-session."
 
-            workouts.append(
-                {
-                    "week_number": week,
-                    "day_of_week": "Wednesday",
-                    "phase": phase,
-                    "title": title,
-                    "type": w_type,
-                    "duration_minutes": round(wed_dur),
-                    "target_zone": zone,
-                    "target_hr_range": hr_range,
-                    "target_pace": pace,
-                    "description": desc,
-                    "fueling_tip": fuel_tip,
-                }
-            )
+            wo = {
+                "week_number": week,
+                "day_of_week": "Wednesday",
+                "phase": phase,
+                "title": title,
+                "type": w_type,
+                "duration_minutes": round(wed_dur),
+                "target_zone": zone,
+                "target_hr_range": hr_range,
+                "target_pace": pace,
+                "description": desc,
+                "fueling_tip": fuel_tip,
+            }
+            if is_interval:
+                wo["interval_reps"] = reps
+                wo["interval_rep_value"] = float(work_per_rep)
+                wo["interval_rep_unit"] = "min"
+            workouts.append(wo)
 
             # Day 4: Thursday
             thu_dur = easy_minutes * 0.25
