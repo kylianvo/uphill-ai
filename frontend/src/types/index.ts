@@ -40,6 +40,9 @@ export interface Workout {
   treadmill_speed: number | string;
   elevation_gain_m: number;
   grade_percent: number;
+  interval_reps?: number;
+  interval_rep_value?: number;
+  interval_rep_unit?: "s" | "m" | "min" | "km";
   description?: string;
   fueling_tip?: string;
   is_completed: number;
