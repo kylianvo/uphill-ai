@@ -33,6 +33,19 @@ import {
 } from "../utils/workoutDescription";
 import { getTreadmillGuide, leadingNumber } from "../utils/treadmill";
 
+export function formatIntervalSummary(wo: {
+  type?: string;
+  interval_reps?: number;
+  interval_rep_value?: number;
+  interval_rep_unit?: string;
+}): string | null {
+  if (wo.type?.toLowerCase() !== "interval") return null;
+  const { interval_reps: reps, interval_rep_value: value, interval_rep_unit: unit } = wo;
+  if (!reps || !value || !unit) return null;
+  const formattedValue = Number.isInteger(value) ? value : value.toFixed(1);
+  return `${reps}x${formattedValue}${unit}`;
+}
+
 interface WorkoutCardProps {
   wo: any;
   isMobile: boolean;
@@ -241,26 +254,49 @@ export default function WorkoutCard({
                     {wo.duration_minutes}m
                   </span>
                 )}
-                {wo.distance_km > 0 && (
-                  <span
-                    title={
-                      lang === "en"
-                        ? "Estimated from time and pace — follow the clock, not the distance"
-                        : "Ước tính từ thời gian và pace — theo dõi đồng hồ, không phải quãng đường"
-                    }
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "3px",
-                      fontSize: "11px",
-                      color: "var(--text-muted)",
-                      fontWeight: "500",
-                    }}
-                  >
-                    <MapPin size={11} weight="regular" />
-                    ~{wo.distance_km}km
-                  </span>
-                )}
+                {(() => {
+                  const intervalSummary = formatIntervalSummary(wo);
+                  if (intervalSummary) {
+                    return (
+                      <span
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "3px",
+                          fontSize: "11px",
+                          color: "var(--text-muted)",
+                          fontWeight: "500",
+                        }}
+                      >
+                        <MapPin size={11} weight="regular" />
+                        {intervalSummary}
+                      </span>
+                    );
+                  }
+                  if (wo.distance_km > 0) {
+                    return (
+                      <span
+                        title={
+                          lang === "en"
+                            ? "Estimated from time and pace — follow the clock, not the distance"
+                            : "Ước tính từ thời gian và pace — theo dõi đồng hồ, không phải quãng đường"
+                        }
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "3px",
+                          fontSize: "11px",
+                          color: "var(--text-muted)",
+                          fontWeight: "500",
+                        }}
+                      >
+                        <MapPin size={11} weight="regular" />
+                        ~{wo.distance_km}km
+                      </span>
+                    );
+                  }
+                  return null;
+                })()}
                 {wo.target_pace && wo.target_pace.trim() && (
                   <span
                     style={{
@@ -1010,7 +1046,12 @@ function WorkoutLibrarySection({
   if (wo.target_pace?.trim()) targets.push({ label: lang === "en" ? "Pace" : "Pace", value: wo.target_pace, color: zoneColor, icon: <Footprints size={10} /> });
   if (wo.target_hr_range) targets.push({ label: "HR", value: wo.target_hr_range, color: "#ef4444", icon: <Heart size={10} /> });
   if (mainMinutes > 0) targets.push({ label: lang === "en" ? "Duration" : "Thời gian", value: `${mainMinutes} min`, color: "var(--text-secondary)", icon: <Timer size={10} /> });
-  if (wo.distance_km > 0) targets.push({ label: lang === "en" ? "Est. distance" : "Cự ly ước tính", value: `~${wo.distance_km} km`, color: "var(--text-secondary)", icon: <MapPin size={10} /> });
+  const intervalSummary = formatIntervalSummary(wo);
+  if (intervalSummary) {
+    targets.push({ label: lang === "en" ? "Reps" : "Số lượt", value: intervalSummary, color: "var(--text-secondary)", icon: <MapPin size={10} /> });
+  } else if (wo.distance_km > 0) {
+    targets.push({ label: lang === "en" ? "Est. distance" : "Cự ly ước tính", value: `~${wo.distance_km} km`, color: "var(--text-secondary)", icon: <MapPin size={10} /> });
+  }
 
   return (
     <div style={{ marginBottom: "14px" }}>
