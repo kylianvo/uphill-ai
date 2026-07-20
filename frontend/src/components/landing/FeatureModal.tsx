@@ -133,8 +133,6 @@ export function FeatureModal({
             ))}
           </div>
         </div>
-
-        <p style={{ fontSize: "12px", color: "var(--text-muted)", fontStyle: "italic" }}>{copy.alwaysUpdated}</p>
       </div>
     </div>
   );
