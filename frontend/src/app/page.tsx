@@ -3154,7 +3154,7 @@ export default function Home() {
                 style={{
                   height: "100%",
                   overflowY: "auto",
-                  justifyContent: "center",
+                  justifyContent: "flex-start",
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
