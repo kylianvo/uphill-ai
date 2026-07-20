@@ -27,7 +27,7 @@ export const LANDING_FEATURES: FeatureContent[] = [
       cardBlurb: "Structured weekly training grounded in Training for the Uphill Athlete — adapted to your own thresholds, injury history, and goal race.",
       overview: "Coach Uphill builds your week around the aerobic-first philosophy of Training for the Uphill Athlete, co-written by Kilian Jornet, Scott Johnston, and Steve House — every session is generated against your own numbers, not a generic template.",
       howItWorks: [
-        "5-zone heart rate model anchored on your own {{term:aet}}AeT{{/term}} and {{term:ant}}AnT{{/term}}, not age-predicted max HR.",
+        "{{term:zones}}5-zone heart rate model{{/term}} anchored on your own {{term:aet}}AeT{{/term}} and {{term:ant}}AnT{{/term}}, not age-predicted max HR.",
         "Automatic {{term:eighty_twenty}}80/20{{/term}} audit keeps every week at least ~80% easy.",
         "{{term:muscular_endurance}}Muscular endurance{{/term}} blocks — hill sprints, weighted step-ups — for legs that don't give out on descents.",
         "Treadmill mode converts any session into an exact grade-adjusted speed/incline pair.",
@@ -41,7 +41,7 @@ export const LANDING_FEATURES: FeatureContent[] = [
       cardBlurb: "Giáo án tập luyện hàng tuần bài bản dựa trên Training for the Uphill Athlete — điều chỉnh theo ngưỡng thể lực, tiền sử chấn thương và giải đấu mục tiêu của bạn.",
       overview: "Coach Uphill xây dựng tuần tập dựa trên triết lý aerobic-first của Training for the Uphill Athlete — đồng tác giả bởi Kilian Jornet, Scott Johnston và Steve House — mỗi buổi tập được tạo dựa trên chỉ số thật của bạn, không phải mẫu chung.",
       howItWorks: [
-        "Mô hình 5 vùng nhịp tim neo theo {{term:aet}}AeT{{/term}} và {{term:ant}}AnT{{/term}} của chính bạn, không chỉ nhịp tim tối đa theo tuổi.",
+        "{{term:zones}}Mô hình 5 vùng nhịp tim{{/term}} neo theo {{term:aet}}AeT{{/term}} và {{term:ant}}AnT{{/term}} của chính bạn, không chỉ nhịp tim tối đa theo tuổi.",
         "Tự động kiểm tra nguyên tắc {{term:eighty_twenty}}80/20{{/term}} mỗi tuần.",
         "Bài tập {{term:muscular_endurance}}sức bền cơ bắp{{/term}} — hill sprints, weighted step-ups — cho đôi chân không \"hết pin\" khi xuống dốc.",
         "Chế độ treadmill chuyển đổi buổi tập ngoài trời thành cặp tốc độ/độ dốc chính xác.",

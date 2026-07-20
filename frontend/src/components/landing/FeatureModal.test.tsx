@@ -5,8 +5,15 @@ import { FeatureModal } from "./FeatureModal";
 import { LANDING_FEATURES } from "../../data/landingFeatures";
 
 const scheduler = LANDING_FEATURES.find((f) => f.id === "scheduler")!;
+const chatbot = LANDING_FEATURES.find((f) => f.id === "chatbot")!;
 
 describe("FeatureModal", () => {
+  it("renders glossary tooltips in the overview text instead of literal template syntax", () => {
+    render(<FeatureModal feature={chatbot} lang="en" onClose={() => {}} />);
+    expect(screen.queryByText(/\{\{term:/)).not.toBeInTheDocument();
+    expect(screen.getByText("RAG")).toBeInTheDocument();
+  });
+
   it("renders the tagline, overview, and every how-it-works bullet for the given language", () => {
     render(<FeatureModal feature={scheduler} lang="en" onClose={() => {}} />);
     expect(screen.getByText(scheduler.en.tagline)).toBeInTheDocument();

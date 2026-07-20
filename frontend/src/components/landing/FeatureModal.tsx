@@ -80,7 +80,7 @@ export function FeatureModal({
         </h3>
 
         <p style={{ fontSize: "14px", lineHeight: 1.6, color: "var(--text-secondary)", marginBottom: "20px" }}>
-          {copy.overview}
+          {renderWithTerms(copy.overview, lang)}
         </p>
 
         <h4
