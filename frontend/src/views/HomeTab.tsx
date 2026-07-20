@@ -3,8 +3,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { useAppContext } from "../contexts/AppContext";
 import { translations } from "../app/translations";
 import { WarningCircle, Trophy, Barbell, Clock, Lightning, Sneaker, Target, Calendar, House, Plant, Code, Plus, Trash } from "@phosphor-icons/react";
-import { TrustBanner } from "../components/landing/TrustBanner";
-import { ProfileExplainer } from "../components/landing/ProfileExplainer";
 import { FeatureGrid } from "../components/landing/FeatureGrid";
 
 export default function HomeTab({ isMobile }: { isMobile: boolean }) {
@@ -147,14 +145,6 @@ export default function HomeTab({ isMobile }: { isMobile: boolean }) {
           </button>
 
         </div>
-
-        <div style={{ display: "flex", justifyContent: "center", marginTop: "8px" }}>
-
-          <TrustBanner lang={lang as "en" | "vi"} />
-
-        </div>
-
-        <ProfileExplainer lang={lang as "en" | "vi"} />
 
       </div>
 
