@@ -647,6 +647,51 @@ def get_draft_plan_for_athlete(athlete_id: int) -> dict[str, Any] | None:
     return _row_to_dict(row) if row else None
 
 
+def get_workout_by_id(workout_id: int) -> dict[str, Any] | None:
+    with engine.connect() as conn:
+        row = conn.execute(text("SELECT * FROM workouts WHERE id = :id"), {"id": workout_id}).fetchone()
+    return _row_to_dict(row) if row else None
+
+
+def coach_update_workout(workout_id: int, editor_user_id: int, fields: dict[str, Any]) -> dict[str, Any] | None:
+    """Partial-updates the given workout (only keys present and non-None in
+    `fields` are applied), and always stamps source='coach_edited' +
+    last_edited_by_user_id. Returns None if the workout doesn't exist.
+    `_EDITABLE_WORKOUT_COLUMNS` is a fixed tuple hardcoded in this function
+    -- never derived from `fields`'s own keys -- so building a per-column
+    UPDATE in the loop below carries no SQL-injection risk."""
+    _EDITABLE_WORKOUT_COLUMNS = (
+        "day_of_week",
+        "phase",
+        "title",
+        "type",
+        "duration_minutes",
+        "distance_km",
+        "target_zone",
+        "target_hr_range",
+        "target_pace",
+        "description",
+        "fueling_tip",
+    )
+    with engine.connect() as conn:
+        row = conn.execute(text("SELECT id FROM workouts WHERE id = :id"), {"id": workout_id}).fetchone()
+        if not row:
+            return None
+        for column in _EDITABLE_WORKOUT_COLUMNS:
+            if fields.get(column) is not None:
+                conn.execute(
+                    text(f"UPDATE workouts SET {column} = :v WHERE id = :id"),
+                    {"v": fields[column], "id": workout_id},
+                )
+        conn.execute(
+            text("UPDATE workouts SET source = 'coach_edited', last_edited_by_user_id = :editor WHERE id = :id"),
+            {"editor": editor_user_id, "id": workout_id},
+        )
+        conn.commit()
+        updated = conn.execute(text("SELECT * FROM workouts WHERE id = :id"), {"id": workout_id}).fetchone()
+    return _row_to_dict(updated)
+
+
 def set_plan_active(user_id: int, plan_id: int) -> bool:
     with engine.connect() as conn:
         result = conn.execute(

@@ -312,3 +312,102 @@ class TestDraftReviewEndpoint:
         coach_headers, _ = _make_coach(client, "draft-coach4@uphill.ai")
         resp = client.get(f"/api/coaching/athletes/{auth_headers['user_id']}/plans/draft", headers=coach_headers)
         assert resp.status_code == 403
+
+
+def _seed_workout(plan_id: int, **overrides) -> int:
+    fields = {
+        "week_number": 1,
+        "day_of_week": "Monday",
+        "phase": "Base",
+        "title": "Easy Run",
+        "type": "run",
+        "duration_minutes": 45,
+        "target_zone": "zone2",
+    }
+    fields.update(overrides)
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("""
+                INSERT INTO workouts (plan_id, week_number, day_of_week, phase, title, type,
+                    duration_minutes, target_zone)
+                VALUES (:pid, :week_number, :day_of_week, :phase, :title, :type,
+                    :duration_minutes, :target_zone)
+                RETURNING id
+            """),
+            {"pid": plan_id, **fields},
+        )
+        conn.commit()
+        return row.scalar()
+
+
+class TestEditWorkoutEndpoint:
+    def test_coach_can_edit_a_workout_on_the_athletes_plan(self, client):
+        coach_headers, coach_id = _make_coach(client, "editwo-coach1@uphill.ai")
+        _, athlete_id = _link_coach_and_athlete(client, coach_headers, "editwo-athlete1@uphill.ai")
+        plan_id = create_plan(
+            user_id=athlete_id,
+            race_name="Edit Target",
+            race_date="2027-05-01",
+            goal_type="finish",
+            target_time_hours=None,
+            total_weeks=8,
+        )
+        workout_id = _seed_workout(plan_id)
+
+        resp = client.put(
+            f"/api/coaching/athletes/{athlete_id}/plans/{plan_id}/workouts/{workout_id}",
+            json={"title": "Coach-Adjusted Long Run", "duration_minutes": 90},
+            headers=coach_headers,
+        )
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["title"] == "Coach-Adjusted Long Run"
+        assert body["duration_minutes"] == 90
+        assert body["source"] == "coach_edited"
+        assert body["last_edited_by_user_id"] == coach_id
+
+    def test_edit_404s_when_workout_does_not_belong_to_the_plan(self, client):
+        coach_headers, _ = _make_coach(client, "editwo-coach2@uphill.ai")
+        _, athlete_id = _link_coach_and_athlete(client, coach_headers, "editwo-athlete2@uphill.ai")
+        plan_id = create_plan(
+            user_id=athlete_id,
+            race_name="Plan A",
+            race_date="2027-05-01",
+            goal_type="finish",
+            target_time_hours=None,
+            total_weeks=8,
+        )
+        other_plan_id = create_plan(
+            user_id=athlete_id,
+            race_name="Plan B",
+            race_date="2027-05-01",
+            goal_type="finish",
+            target_time_hours=None,
+            total_weeks=8,
+        )
+        workout_id = _seed_workout(other_plan_id)
+
+        resp = client.put(
+            f"/api/coaching/athletes/{athlete_id}/plans/{plan_id}/workouts/{workout_id}",
+            json={"title": "Should Not Apply"},
+            headers=coach_headers,
+        )
+        assert resp.status_code == 404
+
+    def test_coach_without_a_link_is_forbidden(self, client, auth_headers):
+        coach_headers, _ = _make_coach(client, "editwo-coach3@uphill.ai")
+        plan_id = create_plan(
+            user_id=auth_headers["user_id"],
+            race_name="No Link",
+            race_date="2027-05-01",
+            goal_type="finish",
+            target_time_hours=None,
+            total_weeks=8,
+        )
+        workout_id = _seed_workout(plan_id)
+        resp = client.put(
+            f"/api/coaching/athletes/{auth_headers['user_id']}/plans/{plan_id}/workouts/{workout_id}",
+            json={"title": "Nope"},
+            headers=coach_headers,
+        )
+        assert resp.status_code == 403

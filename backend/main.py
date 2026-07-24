@@ -13,6 +13,7 @@ from config import settings
 from db import (
     accept_coach_invite,
     add_source,
+    coach_update_workout,
     create_coach_invite,
     create_or_get_user,
     create_plan,
@@ -40,6 +41,7 @@ from db import (
     get_roster_for_coach,
     get_user_by_email,
     get_user_by_id,
+    get_workout_by_id,
     get_workout_type_count,
     get_workout_types,
     has_active_coach_link,
@@ -327,6 +329,20 @@ class SetCoachStatusRequest(BaseModel):
 
 class CoachInviteRequest(BaseModel):
     athlete_email: str
+
+
+class CoachWorkoutUpdateRequest(BaseModel):
+    day_of_week: str | None = None
+    phase: str | None = None
+    title: str | None = None
+    type: str | None = None
+    duration_minutes: float | None = None
+    distance_km: float | None = None
+    target_zone: str | None = None
+    target_hr_range: str | None = None
+    target_pace: str | None = None
+    description: str | None = None
+    fueling_tip: str | None = None
 
 
 def format_user_response(user: dict[str, Any]) -> dict[str, Any]:
@@ -958,6 +974,24 @@ def get_athlete_draft_plan(athlete_id: int, acting_user: dict[str, Any] = Depend
     if not plan:
         return {"draft": False}
     return {"draft": True, "plan": plan, "workouts": get_plan_workouts(plan["id"])}
+
+
+@app.put("/api/coaching/athletes/{athlete_id}/plans/{plan_id}/workouts/{workout_id}")
+def edit_athlete_workout(
+    athlete_id: int,
+    plan_id: int,
+    workout_id: int,
+    request: CoachWorkoutUpdateRequest,
+    acting_user: dict[str, Any] = Depends(require_athlete_access),
+):
+    plan = get_plan_by_id(plan_id)
+    if not plan or plan["user_id"] != athlete_id:
+        raise HTTPException(status_code=404, detail="Plan not found.")
+    workout = get_workout_by_id(workout_id)
+    if not workout or workout["plan_id"] != plan_id:
+        raise HTTPException(status_code=404, detail="Workout not found.")
+    updated = coach_update_workout(workout_id, acting_user["id"], request.dict(exclude_unset=True))
+    return updated
 
 
 # --- Telemetry Parsers ---
