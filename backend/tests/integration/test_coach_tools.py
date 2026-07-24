@@ -101,3 +101,29 @@ class TestCoachCalculatePacingEndpoint:
             headers=coach_headers,
         )
         assert resp.status_code == 403
+
+
+_FUELING_PAYLOAD = {"distance_km": 50, "target_time_hours": 8}
+
+
+class TestCoachCalculateFuelingEndpoint:
+    def test_self_serve_calculate_fueling_is_unaffected(self, client):
+        resp = client.post("/api/coach/calculate-fueling", json=_FUELING_PAYLOAD)
+        assert resp.status_code == 200, resp.text
+
+    def test_coach_can_calculate_fueling_for_an_athlete(self, client):
+        coach_headers, _ = _make_coach(client, "fueling-coach1@uphill.ai")
+        _, athlete_id = _link_coach_and_athlete(client, coach_headers, "fueling-athlete1@uphill.ai")
+        resp = client.post(
+            f"/api/coaching/athletes/{athlete_id}/calculate-fueling", json=_FUELING_PAYLOAD, headers=coach_headers
+        )
+        assert resp.status_code == 200, resp.text
+
+    def test_coach_without_a_link_is_forbidden(self, client, auth_headers):
+        coach_headers, _ = _make_coach(client, "fueling-coach2@uphill.ai")
+        resp = client.post(
+            f"/api/coaching/athletes/{auth_headers['user_id']}/calculate-fueling",
+            json=_FUELING_PAYLOAD,
+            headers=coach_headers,
+        )
+        assert resp.status_code == 403

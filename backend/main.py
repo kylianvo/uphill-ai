@@ -1850,14 +1850,28 @@ def coach_calculate_pacing(
     return _calculate_pacing_core(request)
 
 
-@app.post("/api/coach/calculate-fueling")
-async def calculate_fueling(request: NutritionParams):
-    """Calculates Precision Hydration targets and gel product recipes via NotebookLM."""
+async def _calculate_fueling_core(request: NutritionParams) -> dict[str, Any]:
+    """Calculates Precision Hydration targets and gel product recipes.
+    Shared by the self-serve /api/coach/calculate-fueling and the
+    coach-triggered /api/coaching/athletes/{athlete_id}/calculate-fueling.
+    nutrition_planner always uses the server-level Gemini key regardless of
+    caller (see CLAUDE.md) -- unaffected by this phase."""
     try:
-        strategy = await nutrition_planner.generate_plan(user_profile="", params=request)
-        return strategy
+        return await nutrition_planner.generate_plan(user_profile="", params=request)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to compile fueling plan: {str(e)}")
+
+
+@app.post("/api/coach/calculate-fueling")
+async def calculate_fueling(request: NutritionParams):
+    return await _calculate_fueling_core(request)
+
+
+@app.post("/api/coaching/athletes/{athlete_id}/calculate-fueling")
+async def coach_calculate_fueling(
+    athlete_id: int, request: NutritionParams, coach: dict[str, Any] = Depends(require_athlete_access)
+):
+    return await _calculate_fueling_core(request)
 
 
 @app.post("/api/coach/recommend-shoes")
