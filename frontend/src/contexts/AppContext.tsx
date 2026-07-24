@@ -238,7 +238,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     target_time_mins?: number;
     source_label?: string;
   } | null>(null);
-  const [activeTab, setActiveTab] = useState<"home" | "about" | "chat" | "planner" | "tools" | "knowledge">("home");
+  const [activeTab, setActiveTab] = useState<"home" | "about" | "chat" | "planner" | "tools" | "knowledge" | "coach">("home");
   const [lang, setLang] = useState<"en" | "vi">("en");
   const [startBtnHovered, setStartBtnHovered] = useState(false);
   const [viewportWidth, setViewportWidth] = useState<number>(1024);

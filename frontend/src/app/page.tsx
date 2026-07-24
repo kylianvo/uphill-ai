@@ -11,6 +11,7 @@ import ProfileSettingsModal from "@/views/ProfileSettingsModal";
 import PlannerView from "@/views/PlannerView";
 import ToolsView from "@/views/ToolsView";
 import KnowledgeView from "@/views/KnowledgeView";
+import CoachDashboardView from "@/views/CoachDashboardView";
 import { NutritionLab } from "../components/NutritionLab";
 import { GearVault } from "../components/GearVault";
 import { PaceStrategy } from "../components/PaceStrategy";
@@ -33,6 +34,7 @@ import {
   CaretUp,
   Book,
   House,
+  Users,
 } from "@phosphor-icons/react";
 if (typeof window !== "undefined") {
   // Check for api query parameter to override API URL
@@ -664,7 +666,7 @@ export default function Home() {
     setZone2Max,
   } = useAppContext();
   const handleTabSwitch = (
-    tab: "home" | "about" | "chat" | "planner" | "tools" | "knowledge",
+    tab: "home" | "about" | "chat" | "planner" | "tools" | "knowledge" | "coach",
   ) => {
     if ((tab === "chat" || tab === "planner") && !user) {
       setAuthModalOpen(true);
@@ -2237,6 +2239,8 @@ export default function Home() {
         return <Calculator size={size} color={color} weight={weight} />;
       case "knowledge":
         return <BookOpen size={size} color={color} weight={weight} />;
+      case "coach":
+        return <Users size={size} color={color} weight={weight} />;
       default:
         return null;
     }
@@ -2255,6 +2259,8 @@ export default function Home() {
         return <ToolsView isMobile={isMobile} />;
       case "knowledge":
         return <KnowledgeView isMobile={isMobile} />;
+      case "coach":
+        return <CoachDashboardView isMobile={isMobile} />;
       default:
         return <HomeTab isMobile={isMobile} />;
     }
@@ -2486,6 +2492,7 @@ export default function Home() {
                     "planner",
                     "tools",
                     "knowledge",
+                    ...(user?.is_coach ? (["coach"] as const) : []),
                   ] as const
                 ).map((tab) => {
                   const active = activeTab === tab;
@@ -2505,9 +2512,11 @@ export default function Home() {
                               ? t("tab_scheduler")
                               : tab === "knowledge"
                                 ? t("tab_knowledge")
-                                : tab === "about"
-                                  ? t("tab_about")
-                                  : t("tab_tools")}
+                                : tab === "coach"
+                                  ? t("tab_coach")
+                                  : tab === "about"
+                                    ? t("tab_about")
+                                    : t("tab_tools")}
                       </span>
                     </li>
                   );
@@ -2622,9 +2631,11 @@ export default function Home() {
                           ? t("tab_scheduler")
                           : activeTab === "knowledge"
                             ? t("tab_knowledge")
-                            : activeTab === "about"
-                              ? t("tab_about")
-                              : t("tab_tools")}
+                            : activeTab === "coach"
+                              ? t("tab_coach")
+                              : activeTab === "about"
+                                ? t("tab_about")
+                                : t("tab_tools")}
                   </span>
                 </span>
               </div>
@@ -2798,6 +2809,8 @@ export default function Home() {
                           <CalendarBlank size={28} weight="duotone" />
                         ) : activeTab === "knowledge" ? (
                           <BookOpen size={28} weight="duotone" />
+                        ) : activeTab === "coach" ? (
+                          <Users size={28} weight="duotone" />
                         ) : activeTab === "tools" ? (
                           <Calculator size={28} weight="duotone" />
                         ) : (
@@ -2812,9 +2825,11 @@ export default function Home() {
                               ? t("plan_setup")
                               : activeTab === "knowledge"
                                 ? t("know_title")
-                                : activeTab === "tools"
-                                  ? t("tab_tools")
-                                  : t("tab_about")}
+                                : activeTab === "coach"
+                                  ? t("tab_coach")
+                                  : activeTab === "tools"
+                                    ? t("tab_tools")
+                                    : t("tab_about")}
                         </h2>
                         <p>
                           {activeTab === "chat"
@@ -2823,9 +2838,11 @@ export default function Home() {
                               ? t("header_planner_desc")
                               : activeTab === "knowledge"
                                 ? t("header_knowledge_desc")
-                                : activeTab === "tools"
-                                  ? t("header_tools_desc")
-                                  : t("header_about_desc")}
+                                : activeTab === "coach"
+                                  ? t("header_coach_desc")
+                                  : activeTab === "tools"
+                                    ? t("header_tools_desc")
+                                    : t("header_about_desc")}
                         </p>
                       </div>
                     </div>
@@ -2968,6 +2985,7 @@ export default function Home() {
                   "planner",
                   "tools",
                   "knowledge",
+                  ...(user?.is_coach ? (["coach"] as const) : []),
                 ] as const
               ).map((tab) => {
                 const active = activeTab === tab;
@@ -2980,9 +2998,13 @@ export default function Home() {
                         ? "Planner"
                         : tab === "knowledge"
                           ? "Hub"
-                          : tab === "tools"
-                            ? "Calculators"
-                            : "Philosophy";
+                          : tab === "coach"
+                            ? lang === "en"
+                              ? "Coach Dashboard"
+                              : "HLV"
+                            : tab === "tools"
+                              ? "Calculators"
+                              : "Philosophy";
                 return (
                   <div
                     key={tab}
@@ -3052,6 +3074,7 @@ export default function Home() {
                   "knowledge",
                   "tools",
                   "about",
+                  ...(user?.is_coach ? (["coach"] as const) : []),
                 ] as const
               ).map((tab) => {
                 const label =
@@ -3063,9 +3086,11 @@ export default function Home() {
                         ? `${t("tab_scheduler")}`
                         : tab === "knowledge"
                           ? `${t("tab_knowledge")}`
-                          : tab === "about"
-                            ? `${t("tab_about")}`
-                            : `${t("tab_tools")}`;
+                          : tab === "coach"
+                            ? `${t("tab_coach")}`
+                            : tab === "about"
+                              ? `${t("tab_about")}`
+                              : `${t("tab_tools")}`;
                 return (
                   <button
                     key={tab}
@@ -3210,6 +3235,7 @@ export default function Home() {
                 "knowledge",
                 "tools",
                 "about",
+                ...(user?.is_coach ? (["coach"] as const) : []),
               ] as const
             ).map((tab) => {
               const active = activeTab === tab;
@@ -3222,9 +3248,11 @@ export default function Home() {
                       ? t("tab_scheduler")
                       : tab === "knowledge"
                         ? t("tab_knowledge")
-                        : tab === "tools"
-                          ? t("tab_tools")
-                          : t("tab_about");
+                        : tab === "coach"
+                          ? t("tab_coach")
+                          : tab === "tools"
+                            ? t("tab_tools")
+                            : t("tab_about");
               return (
                 <button
                   key={tab}
