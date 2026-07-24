@@ -692,6 +692,40 @@ def coach_update_workout(workout_id: int, editor_user_id: int, fields: dict[str,
     return _row_to_dict(updated)
 
 
+def create_coach_workout(plan_id: int, creator_user_id: int, fields: dict[str, Any]) -> dict[str, Any]:
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("""
+                INSERT INTO workouts (plan_id, week_number, day_of_week, phase, title, type,
+                    duration_minutes, distance_km, target_zone, target_hr_range, target_pace,
+                    description, fueling_tip, session_slot, source, last_edited_by_user_id)
+                VALUES (:plan_id, :week_number, :day_of_week, :phase, :title, :type,
+                    :duration_minutes, :distance_km, :target_zone, :target_hr_range, :target_pace,
+                    :description, :fueling_tip, :session_slot, 'coach_created', :creator)
+                RETURNING *
+            """),
+            {
+                "plan_id": plan_id,
+                "week_number": fields["week_number"],
+                "day_of_week": fields["day_of_week"],
+                "phase": fields["phase"],
+                "title": fields["title"],
+                "type": fields["type"],
+                "duration_minutes": fields["duration_minutes"],
+                "distance_km": fields.get("distance_km"),
+                "target_zone": fields["target_zone"],
+                "target_hr_range": fields.get("target_hr_range"),
+                "target_pace": fields.get("target_pace"),
+                "description": fields.get("description"),
+                "fueling_tip": fields.get("fueling_tip"),
+                "session_slot": fields.get("session_slot") or "main",
+                "creator": creator_user_id,
+            },
+        ).fetchone()
+        conn.commit()
+    return _row_to_dict(row)
+
+
 def set_plan_active(user_id: int, plan_id: int) -> bool:
     with engine.connect() as conn:
         result = conn.execute(

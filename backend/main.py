@@ -15,6 +15,7 @@ from db import (
     add_source,
     coach_update_workout,
     create_coach_invite,
+    create_coach_workout,
     create_or_get_user,
     create_plan,
     create_session,
@@ -343,6 +344,22 @@ class CoachWorkoutUpdateRequest(BaseModel):
     target_pace: str | None = None
     description: str | None = None
     fueling_tip: str | None = None
+
+
+class CoachWorkoutCreateRequest(BaseModel):
+    week_number: int
+    day_of_week: str
+    phase: str
+    title: str
+    type: str
+    duration_minutes: float
+    target_zone: str
+    distance_km: float | None = None
+    target_hr_range: str | None = None
+    target_pace: str | None = None
+    description: str | None = None
+    fueling_tip: str | None = None
+    session_slot: str | None = "main"
 
 
 def format_user_response(user: dict[str, Any]) -> dict[str, Any]:
@@ -992,6 +1009,19 @@ def edit_athlete_workout(
         raise HTTPException(status_code=404, detail="Workout not found.")
     updated = coach_update_workout(workout_id, acting_user["id"], request.dict(exclude_unset=True))
     return updated
+
+
+@app.post("/api/coaching/athletes/{athlete_id}/plans/{plan_id}/workouts")
+def add_athlete_workout(
+    athlete_id: int,
+    plan_id: int,
+    request: CoachWorkoutCreateRequest,
+    acting_user: dict[str, Any] = Depends(require_athlete_access),
+):
+    plan = get_plan_by_id(plan_id)
+    if not plan or plan["user_id"] != athlete_id:
+        raise HTTPException(status_code=404, detail="Plan not found.")
+    return create_coach_workout(plan_id, acting_user["id"], request.dict())
 
 
 # --- Telemetry Parsers ---

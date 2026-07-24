@@ -411,3 +411,95 @@ class TestEditWorkoutEndpoint:
             headers=coach_headers,
         )
         assert resp.status_code == 403
+
+
+class TestAddWorkoutEndpoint:
+    def test_coach_can_add_a_new_workout_to_the_athletes_plan(self, client):
+        coach_headers, coach_id = _make_coach(client, "addwo-coach1@uphill.ai")
+        _, athlete_id = _link_coach_and_athlete(client, coach_headers, "addwo-athlete1@uphill.ai")
+        plan_id = create_plan(
+            user_id=athlete_id,
+            race_name="Add Target",
+            race_date="2027-05-01",
+            goal_type="finish",
+            target_time_hours=None,
+            total_weeks=8,
+        )
+
+        resp = client.post(
+            f"/api/coaching/athletes/{athlete_id}/plans/{plan_id}/workouts",
+            json={
+                "week_number": 2,
+                "day_of_week": "Wednesday",
+                "phase": "Base",
+                "title": "Hill Repeats",
+                "type": "interval",
+                "duration_minutes": 60,
+                "target_zone": "zone4",
+            },
+            headers=coach_headers,
+        )
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["title"] == "Hill Repeats"
+        assert body["source"] == "coach_created"
+        assert body["last_edited_by_user_id"] == coach_id
+        assert body["plan_id"] == plan_id
+
+        workouts = client.get(
+            f"/api/coaching/athletes/{athlete_id}/plans/{plan_id}/workouts", headers=coach_headers
+        ).json()["workouts"]
+        assert any(w["title"] == "Hill Repeats" for w in workouts)
+
+    def test_add_404s_when_plan_does_not_belong_to_athlete(self, client):
+        coach_headers, _ = _make_coach(client, "addwo-coach2@uphill.ai")
+        _, athlete_id = _link_coach_and_athlete(client, coach_headers, "addwo-athlete2@uphill.ai")
+        other_athlete_id = _create_user("addwo-other-athlete@uphill.ai")
+        other_plan_id = create_plan(
+            user_id=other_athlete_id,
+            race_name="Not This Athlete",
+            race_date="2027-05-01",
+            goal_type="finish",
+            target_time_hours=None,
+            total_weeks=8,
+        )
+
+        resp = client.post(
+            f"/api/coaching/athletes/{athlete_id}/plans/{other_plan_id}/workouts",
+            json={
+                "week_number": 1,
+                "day_of_week": "Monday",
+                "phase": "Base",
+                "title": "Should Not Insert",
+                "type": "run",
+                "duration_minutes": 30,
+                "target_zone": "zone2",
+            },
+            headers=coach_headers,
+        )
+        assert resp.status_code == 404
+
+    def test_coach_without_a_link_is_forbidden(self, client, auth_headers):
+        coach_headers, _ = _make_coach(client, "addwo-coach3@uphill.ai")
+        plan_id = create_plan(
+            user_id=auth_headers["user_id"],
+            race_name="No Link",
+            race_date="2027-05-01",
+            goal_type="finish",
+            target_time_hours=None,
+            total_weeks=8,
+        )
+        resp = client.post(
+            f"/api/coaching/athletes/{auth_headers['user_id']}/plans/{plan_id}/workouts",
+            json={
+                "week_number": 1,
+                "day_of_week": "Monday",
+                "phase": "Base",
+                "title": "Nope",
+                "type": "run",
+                "duration_minutes": 30,
+                "target_zone": "zone2",
+            },
+            headers=coach_headers,
+        )
+        assert resp.status_code == 403
