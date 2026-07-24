@@ -148,6 +148,10 @@ interface AppContextType {
   setShoesLoading: any;
   user: any;
   setUser: any;
+  actingAsAthleteId: number | null;
+  setActingAsAthleteId: any;
+  actingAsAthleteName: string;
+  setActingAsAthleteName: any;
   authModalOpen: any;
   setAuthModalOpen: any;
   mockEmailInput: any;
@@ -326,6 +330,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [recommendedShoes, setRecommendedShoes] = useState<Shoe[]>([]);
   const [shoesLoading, setShoesLoading] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  // Coach "acting as athlete" mode -- persistent for as long as the coach is
+  // browsing a given athlete's data (not a one-shot handoff like
+  // paceHandoff/settingsHandoff above, which are consumed once and cleared).
+  // null means "acting as myself" (the normal, non-coach case).
+  const [actingAsAthleteId, setActingAsAthleteId] = useState<number | null>(null);
+  const [actingAsAthleteName, setActingAsAthleteName] = useState<string>("");
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [mockEmailInput, setMockEmailInput] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
@@ -395,6 +405,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     setWorkouts([]);
     setSources([]);
     setProfileSettingsOpen(false);
+    setActingAsAthleteId(null);
+    setActingAsAthleteName("");
   };
 
   return (
@@ -470,6 +482,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       recommendedShoes, setRecommendedShoes,
       shoesLoading, setShoesLoading,
       user, setUser,
+      actingAsAthleteId, setActingAsAthleteId,
+      actingAsAthleteName, setActingAsAthleteName,
       authModalOpen, setAuthModalOpen,
       mockEmailInput, setMockEmailInput,
       authLoading, setAuthLoading,
