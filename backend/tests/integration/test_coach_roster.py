@@ -399,3 +399,78 @@ class TestRosterEndpoint:
         resp_b = client.get("/api/coaching/roster", headers=coach_b_headers)
         assert len(resp_a.json()) == 1
         assert resp_b.json() == []
+
+
+def _link_coach_and_athlete(client, coach_headers, athlete_email):
+    """Logs in as `athlete_email` (creating the user), sends + accepts an
+    invite from the already-promoted coach behind `coach_headers`. Returns
+    (athlete_headers, athlete_id)."""
+    athlete_resp = client.post("/api/auth/mock-login", json={"email": athlete_email})
+    athlete_headers = {"Authorization": f"Bearer {athlete_resp.json()['session_token']}"}
+    athlete_id = athlete_resp.json()["user"]["id"]
+    invite = client.post("/api/coaching/invite", json={"athlete_email": athlete_email}, headers=coach_headers).json()
+    client.post(f"/api/coaching/invites/{invite['id']}/accept", headers=athlete_headers)
+    return athlete_headers, athlete_id
+
+
+class TestAthleteActivePlanEndpoint:
+    def test_athlete_can_view_their_own_active_plan(self, client, auth_headers):
+        resp = client.get(
+            f"/api/coaching/athletes/{auth_headers['user_id']}/active-plan", headers=auth_headers["headers"]
+        )
+        assert resp.status_code == 200
+        assert resp.json() == {"active": False}
+
+    def test_admin_can_view_any_athletes_active_plan(self, client, auth_headers):
+        admin_headers = _admin_headers(client)
+        resp = client.get(f"/api/coaching/athletes/{auth_headers['user_id']}/active-plan", headers=admin_headers)
+        assert resp.status_code == 200
+
+    def test_coach_with_active_link_can_view_athletes_active_plan(self, client):
+        coach_headers, _ = _make_coach(client, "access-coach1@uphill.ai")
+        _, athlete_id = _link_coach_and_athlete(client, coach_headers, "access-athlete1@uphill.ai")
+        resp = client.get(f"/api/coaching/athletes/{athlete_id}/active-plan", headers=coach_headers)
+        assert resp.status_code == 200
+        assert resp.json() == {"active": False}
+
+    def test_coach_without_a_link_is_forbidden(self, client, auth_headers):
+        coach_headers, _ = _make_coach(client, "access-coach2@uphill.ai")
+        resp = client.get(f"/api/coaching/athletes/{auth_headers['user_id']}/active-plan", headers=coach_headers)
+        assert resp.status_code == 403
+
+    def test_coach_with_only_a_pending_invite_is_forbidden(self, client):
+        coach_headers, _ = _make_coach(client, "access-coach3@uphill.ai")
+        athlete_resp = client.post("/api/auth/mock-login", json={"email": "access-athlete3@uphill.ai"})
+        athlete_id = athlete_resp.json()["user"]["id"]
+        client.post("/api/coaching/invite", json={"athlete_email": "access-athlete3@uphill.ai"}, headers=coach_headers)
+        resp = client.get(f"/api/coaching/athletes/{athlete_id}/active-plan", headers=coach_headers)
+        assert resp.status_code == 403
+
+    def test_a_random_authenticated_user_is_forbidden(self, client, auth_headers):
+        stranger_resp = client.post("/api/auth/mock-login", json={"email": "access-stranger1@uphill.ai"})
+        stranger_headers = {"Authorization": f"Bearer {stranger_resp.json()['session_token']}"}
+        resp = client.get(f"/api/coaching/athletes/{auth_headers['user_id']}/active-plan", headers=stranger_headers)
+        assert resp.status_code == 403
+
+    def test_coach_sees_the_athletes_actual_active_plan_and_workouts(self, client, mock_plan_generation):
+        coach_headers, _ = _make_coach(client, "access-coach4@uphill.ai")
+        athlete_headers, athlete_id = _link_coach_and_athlete(client, coach_headers, "access-athlete4@uphill.ai")
+        gen = client.post(
+            "/api/coach/generate-plan",
+            json={
+                "goal_type": "finish",
+                "race_name": "Test 50K",
+                "race_date": "2027-05-01",
+                "plan_start_date": "2027-03-15",
+                "days_per_week": 4,
+            },
+            headers=athlete_headers,
+        )
+        assert gen.status_code == 200, gen.text
+
+        resp = client.get(f"/api/coaching/athletes/{athlete_id}/active-plan", headers=coach_headers)
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["active"] is True
+        assert body["plan"]["race_name"] == "Test 50K"
+        assert isinstance(body["workouts"], list)

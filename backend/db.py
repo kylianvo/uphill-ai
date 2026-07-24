@@ -939,6 +939,11 @@ def get_active_coach_link_for_athlete(athlete_id: int) -> dict[str, Any] | None:
     return _row_to_dict(row) if row else None
 
 
+def has_active_coach_link(coach_id: int, athlete_id: int) -> bool:
+    link = get_active_coach_link_for_athlete(athlete_id)
+    return link is not None and link["coach_id"] == coach_id
+
+
 def get_coach_athlete_link(coach_id: int, athlete_id: int) -> dict[str, Any] | None:
     with engine.connect() as conn:
         row = conn.execute(

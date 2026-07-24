@@ -39,6 +39,7 @@ from db import (
     get_user_by_id,
     get_workout_type_count,
     get_workout_types,
+    has_active_coach_link,
     init_db,
     list_sources,
     mark_onboarding_complete,
@@ -373,6 +374,16 @@ async def require_coach(user: dict[str, Any] = Depends(get_current_user)) -> dic
     if not user.get("is_coach"):
         raise HTTPException(status_code=403, detail="Coach access required.")
     return user
+
+
+async def require_athlete_access(athlete_id: int, user: dict[str, Any] = Depends(get_current_user)) -> dict[str, Any]:
+    """Returns the acting user if they may act on athlete_id's data: the
+    athlete themself, an admin, or a coach with an active roster link."""
+    if user["id"] == athlete_id or user.get("role") == "admin":
+        return user
+    if user.get("is_coach") and has_active_coach_link(user["id"], athlete_id):
+        return user
+    raise HTTPException(status_code=403, detail="Not authorized for this athlete.")
 
 
 COACH_SYSTEM_INSTRUCTION = """
@@ -888,6 +899,15 @@ def accept_invite(invite_id: int, user: dict[str, Any] = Depends(get_current_use
 @app.get("/api/coaching/roster")
 def get_roster(coach: dict[str, Any] = Depends(require_coach)):
     return get_roster_for_coach(coach["id"])
+
+
+@app.get("/api/coaching/athletes/{athlete_id}/active-plan")
+def get_athlete_active_plan(athlete_id: int, acting_user: dict[str, Any] = Depends(require_athlete_access)):
+    plan = get_active_plan(athlete_id)
+    if not plan:
+        return {"active": False}
+    workouts = get_plan_workouts(plan["id"])
+    return {"active": True, "plan": plan, "workouts": workouts}
 
 
 # --- Telemetry Parsers ---
