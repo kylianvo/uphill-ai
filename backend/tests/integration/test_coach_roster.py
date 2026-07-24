@@ -196,3 +196,206 @@ class TestDbHelpers:
         assert statuses[active_athlete] == "active"
         assert statuses[pending_athlete] == "invited"
         assert all("athlete_email" in r and "athlete_name" in r for r in roster)
+
+
+def _admin_headers(client):
+    resp = client.post("/api/auth/mock-login", json={"email": "admin@uphill.ai"})
+    assert resp.status_code == 200, resp.text
+    return {"Authorization": f"Bearer {resp.json()['session_token']}"}
+
+
+def _make_coach(client, email="make-coach@uphill.ai"):
+    """Logs in as `email` (creating the user via mock-login), then promotes
+    it to coach status via the admin endpoint. Returns (headers, user_id)."""
+    resp = client.post("/api/auth/mock-login", json={"email": email})
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    user_id = data["user"]["id"]
+    headers = {"Authorization": f"Bearer {data['session_token']}"}
+    promote = client.post(
+        f"/api/admin/users/{user_id}/coach-status", json={"is_coach": True}, headers=_admin_headers(client)
+    )
+    assert promote.status_code == 200, promote.text
+    return headers, user_id
+
+
+class TestCoachStatusEndpoint:
+    def test_me_reports_is_coach_false_by_default(self, client, auth_headers):
+        resp = client.get("/api/auth/me", headers=auth_headers["headers"])
+        assert resp.status_code == 200
+        assert resp.json()["is_coach"] is False
+
+    def test_admin_can_grant_coach_status(self, client):
+        headers, user_id = _make_coach(client)
+        resp = client.get("/api/auth/me", headers=headers)
+        assert resp.status_code == 200
+        assert resp.json()["is_coach"] is True
+
+    def test_admin_can_revoke_coach_status(self, client):
+        headers, user_id = _make_coach(client)
+        revoke = client.post(
+            f"/api/admin/users/{user_id}/coach-status", json={"is_coach": False}, headers=_admin_headers(client)
+        )
+        assert revoke.status_code == 200
+        assert revoke.json()["is_coach"] is False
+
+    def test_non_admin_cannot_grant_coach_status(self, client, auth_headers):
+        resp = client.post(
+            f"/api/admin/users/{auth_headers['user_id']}/coach-status",
+            json={"is_coach": True},
+            headers=auth_headers["headers"],
+        )
+        assert resp.status_code == 403
+
+    def test_coach_status_endpoint_404s_for_unknown_user(self, client):
+        resp = client.post(
+            "/api/admin/users/999999/coach-status", json={"is_coach": True}, headers=_admin_headers(client)
+        )
+        assert resp.status_code == 404
+
+
+class TestInviteEndpoint:
+    def test_coach_can_invite_an_existing_athlete(self, client):
+        coach_headers, _ = _make_coach(client, "invite-coach1@uphill.ai")
+        client.post("/api/auth/mock-login", json={"email": "invite-athlete1@uphill.ai"})
+        resp = client.post(
+            "/api/coaching/invite", json={"athlete_email": "invite-athlete1@uphill.ai"}, headers=coach_headers
+        )
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["status"] == "invited"
+
+    def test_non_coach_cannot_invite(self, client, auth_headers):
+        client.post("/api/auth/mock-login", json={"email": "invite-athlete2@uphill.ai"})
+        resp = client.post(
+            "/api/coaching/invite",
+            json={"athlete_email": "invite-athlete2@uphill.ai"},
+            headers=auth_headers["headers"],
+        )
+        assert resp.status_code == 403
+
+    def test_invite_404s_for_unregistered_email(self, client):
+        coach_headers, _ = _make_coach(client, "invite-coach3@uphill.ai")
+        resp = client.post(
+            "/api/coaching/invite", json={"athlete_email": "nobody-registered@uphill.ai"}, headers=coach_headers
+        )
+        assert resp.status_code == 404
+
+    def test_coach_cannot_invite_self(self, client):
+        coach_headers, _ = _make_coach(client, "invite-coach4@uphill.ai")
+        resp = client.post(
+            "/api/coaching/invite", json={"athlete_email": "invite-coach4@uphill.ai"}, headers=coach_headers
+        )
+        assert resp.status_code == 400
+
+    def test_invite_conflicts_when_athlete_has_a_different_active_coach(self, client):
+        first_coach_headers, _ = _make_coach(client, "invite-coach5a@uphill.ai")
+        second_coach_headers, _ = _make_coach(client, "invite-coach5b@uphill.ai")
+        athlete_resp = client.post("/api/auth/mock-login", json={"email": "invite-athlete5@uphill.ai"})
+        athlete_headers = {"Authorization": f"Bearer {athlete_resp.json()['session_token']}"}
+
+        invite_resp = client.post(
+            "/api/coaching/invite", json={"athlete_email": "invite-athlete5@uphill.ai"}, headers=first_coach_headers
+        )
+        invite_id = invite_resp.json()["id"]
+        client.post(f"/api/coaching/invites/{invite_id}/accept", headers=athlete_headers)
+
+        conflict = client.post(
+            "/api/coaching/invite", json={"athlete_email": "invite-athlete5@uphill.ai"}, headers=second_coach_headers
+        )
+        assert conflict.status_code == 409
+
+
+class TestAcceptEndpoint:
+    def test_athlete_can_accept_their_invite(self, client):
+        coach_headers, _ = _make_coach(client, "accept-coach1@uphill.ai")
+        athlete_resp = client.post("/api/auth/mock-login", json={"email": "accept-athlete1@uphill.ai"})
+        athlete_headers = {"Authorization": f"Bearer {athlete_resp.json()['session_token']}"}
+
+        invite = client.post(
+            "/api/coaching/invite", json={"athlete_email": "accept-athlete1@uphill.ai"}, headers=coach_headers
+        ).json()
+        resp = client.post(f"/api/coaching/invites/{invite['id']}/accept", headers=athlete_headers)
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["status"] == "active"
+
+    def test_accept_404s_for_someone_else_s_invite(self, client):
+        coach_headers, _ = _make_coach(client, "accept-coach2@uphill.ai")
+        client.post("/api/auth/mock-login", json={"email": "accept-athlete2@uphill.ai"})
+        other_resp = client.post("/api/auth/mock-login", json={"email": "accept-someone-else2@uphill.ai"})
+        other_headers = {"Authorization": f"Bearer {other_resp.json()['session_token']}"}
+
+        invite = client.post(
+            "/api/coaching/invite", json={"athlete_email": "accept-athlete2@uphill.ai"}, headers=coach_headers
+        ).json()
+        resp = client.post(f"/api/coaching/invites/{invite['id']}/accept", headers=other_headers)
+        assert resp.status_code == 404
+
+    def test_accept_404s_for_unknown_invite_id(self, client, auth_headers):
+        resp = client.post("/api/coaching/invites/999999/accept", headers=auth_headers["headers"])
+        assert resp.status_code == 404
+
+    def test_accept_conflicts_when_athlete_already_has_a_different_active_coach(self, client):
+        # Both invites are created while the athlete has no active coach yet
+        # (so invite-creation's own conflict check doesn't block either one);
+        # only accepting the second one, after the first is already active,
+        # should hit accept_invite's conflict check.
+        first_coach_headers, _ = _make_coach(client, "accept-coach3a@uphill.ai")
+        second_coach_headers, _ = _make_coach(client, "accept-coach3b@uphill.ai")
+        athlete_resp = client.post("/api/auth/mock-login", json={"email": "accept-athlete3@uphill.ai"})
+        athlete_headers = {"Authorization": f"Bearer {athlete_resp.json()['session_token']}"}
+
+        first_invite = client.post(
+            "/api/coaching/invite", json={"athlete_email": "accept-athlete3@uphill.ai"}, headers=first_coach_headers
+        ).json()
+        second_invite = client.post(
+            "/api/coaching/invite", json={"athlete_email": "accept-athlete3@uphill.ai"}, headers=second_coach_headers
+        ).json()
+
+        client.post(f"/api/coaching/invites/{first_invite['id']}/accept", headers=athlete_headers)
+        resp = client.post(f"/api/coaching/invites/{second_invite['id']}/accept", headers=athlete_headers)
+        assert resp.status_code == 409
+
+
+class TestRosterEndpoint:
+    def test_roster_starts_empty(self, client):
+        coach_headers, _ = _make_coach(client, "roster-coach1@uphill.ai")
+        resp = client.get("/api/coaching/roster", headers=coach_headers)
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    def test_roster_includes_invited_and_active_athletes(self, client):
+        coach_headers, _ = _make_coach(client, "roster-coach2@uphill.ai")
+        athlete_resp = client.post("/api/auth/mock-login", json={"email": "roster-athlete2a@uphill.ai"})
+        athlete_headers = {"Authorization": f"Bearer {athlete_resp.json()['session_token']}"}
+        client.post("/api/auth/mock-login", json={"email": "roster-athlete2b@uphill.ai"})
+
+        invite_a = client.post(
+            "/api/coaching/invite", json={"athlete_email": "roster-athlete2a@uphill.ai"}, headers=coach_headers
+        ).json()
+        client.post(f"/api/coaching/invites/{invite_a['id']}/accept", headers=athlete_headers)
+        client.post("/api/coaching/invite", json={"athlete_email": "roster-athlete2b@uphill.ai"}, headers=coach_headers)
+
+        resp = client.get("/api/coaching/roster", headers=coach_headers)
+        assert resp.status_code == 200
+        body = resp.json()
+        assert len(body) == 2
+        statuses = {row["athlete_email"]: row["status"] for row in body}
+        assert statuses["roster-athlete2a@uphill.ai"] == "active"
+        assert statuses["roster-athlete2b@uphill.ai"] == "invited"
+
+    def test_non_coach_cannot_read_a_roster(self, client, auth_headers):
+        resp = client.get("/api/coaching/roster", headers=auth_headers["headers"])
+        assert resp.status_code == 403
+
+    def test_roster_is_scoped_to_the_requesting_coach(self, client):
+        coach_a_headers, _ = _make_coach(client, "roster-coach3a@uphill.ai")
+        coach_b_headers, _ = _make_coach(client, "roster-coach3b@uphill.ai")
+        client.post("/api/auth/mock-login", json={"email": "roster-athlete3@uphill.ai"})
+        client.post(
+            "/api/coaching/invite", json={"athlete_email": "roster-athlete3@uphill.ai"}, headers=coach_a_headers
+        )
+
+        resp_a = client.get("/api/coaching/roster", headers=coach_a_headers)
+        resp_b = client.get("/api/coaching/roster", headers=coach_b_headers)
+        assert len(resp_a.json()) == 1
+        assert resp_b.json() == []

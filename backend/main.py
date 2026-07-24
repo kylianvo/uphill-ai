@@ -11,18 +11,22 @@ from pydantic import BaseModel
 
 from config import settings
 from db import (
+    accept_coach_invite,
     add_source,
+    create_coach_invite,
     create_or_get_user,
     create_plan,
     create_session,
     create_user_with_password,
     delete_session,
     delete_source,
+    get_active_coach_link_for_athlete,
     get_active_plan,
     get_all_grounding_content,
     get_all_knowledge_cards,
     get_block_completion,
     get_block_reviews,
+    get_coach_athlete_by_id,
     get_kb_chunk_count,
     get_knowledge_card_count,
     get_knowledge_topics,
@@ -30,6 +34,7 @@ from db import (
     get_plan_workouts,
     get_random_knowledge_cards,
     get_recent_plans,
+    get_roster_for_coach,
     get_user_by_email,
     get_user_by_id,
     get_workout_type_count,
@@ -41,6 +46,7 @@ from db import (
     save_block_review,
     save_workouts,
     set_plan_active,
+    set_user_is_coach,
     set_user_password,
     swap_workouts,
     update_onboarding_profile,
@@ -310,6 +316,14 @@ class UpdateProfileRequest(BaseModel):
     zone2_pace_max: str | None = None
 
 
+class SetCoachStatusRequest(BaseModel):
+    is_coach: bool
+
+
+class CoachInviteRequest(BaseModel):
+    athlete_email: str
+
+
 def format_user_response(user: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": user["id"],
@@ -334,6 +348,7 @@ def format_user_response(user: dict[str, Any]) -> dict[str, Any]:
         "gemini_api_key": user.get("gemini_api_key") or "",
         "zone2_pace_min": user.get("zone2_pace_min") or "6:30",
         "zone2_pace_max": user.get("zone2_pace_max") or "5:45",
+        "is_coach": bool(user.get("is_coach", False)),
     }
 
 
@@ -351,6 +366,12 @@ async def get_current_user(authorization: str | None = Header(None)) -> dict[str
 async def require_admin(user: dict[str, Any] = Depends(get_current_user)) -> dict[str, Any]:
     if user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Access denied. Administrator privileges required.")
+    return user
+
+
+async def require_coach(user: dict[str, Any] = Depends(get_current_user)) -> dict[str, Any]:
+    if not user.get("is_coach"):
+        raise HTTPException(status_code=403, detail="Coach access required.")
     return user
 
 
@@ -818,6 +839,55 @@ def auth_logout(authorization: str | None = Header(None)):
         token = authorization.split(" ")[1]
         delete_session(token)
     return {"message": "Logged out successfully."}
+
+
+# --- Human Coach Roster (Phase 1) ---
+# "Coach" here means a human who coaches other users -- distinct from
+# "Coach Uphill", the AI persona served by the /api/coach/* endpoints above.
+# See docs/superpowers/specs/2026-07-20-coach-role-design.md.
+
+
+@app.post("/api/admin/users/{user_id}/coach-status")
+def set_coach_status(user_id: int, request: SetCoachStatusRequest, admin_user: dict[str, Any] = Depends(require_admin)):
+    target = get_user_by_id(user_id)
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found.")
+    set_user_is_coach(user_id, request.is_coach)
+    return format_user_response(get_user_by_id(user_id))
+
+
+@app.post("/api/coaching/invite")
+def invite_athlete(request: CoachInviteRequest, coach: dict[str, Any] = Depends(require_coach)):
+    athlete = get_user_by_email(request.athlete_email)
+    if not athlete:
+        raise HTTPException(
+            status_code=404, detail="No account found for that email. Ask the athlete to sign up first."
+        )
+    if athlete["id"] == coach["id"]:
+        raise HTTPException(status_code=400, detail="You cannot invite yourself.")
+    existing_active = get_active_coach_link_for_athlete(athlete["id"])
+    if existing_active and existing_active["coach_id"] != coach["id"]:
+        raise HTTPException(status_code=409, detail="This athlete already has an active coach.")
+    return create_coach_invite(coach["id"], athlete["id"])
+
+
+@app.post("/api/coaching/invites/{invite_id}/accept")
+def accept_invite(invite_id: int, user: dict[str, Any] = Depends(get_current_user)):
+    invite = get_coach_athlete_by_id(invite_id)
+    if not invite or invite["athlete_id"] != user["id"] or invite["status"] != "invited":
+        raise HTTPException(status_code=404, detail="Invite not found.")
+    existing_active = get_active_coach_link_for_athlete(user["id"])
+    if existing_active and existing_active["coach_id"] != invite["coach_id"]:
+        raise HTTPException(status_code=409, detail="You already have an active coach.")
+    updated = accept_coach_invite(invite_id, user["id"])
+    if not updated:
+        raise HTTPException(status_code=404, detail="Invite not found.")
+    return updated
+
+
+@app.get("/api/coaching/roster")
+def get_roster(coach: dict[str, Any] = Depends(require_coach)):
+    return get_roster_for_coach(coach["id"])
 
 
 # --- Telemetry Parsers ---
