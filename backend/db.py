@@ -66,6 +66,8 @@ def init_db():
             days_per_week           INTEGER DEFAULT 4,
             -- api keys
             gemini_api_key          TEXT,
+            -- coaching
+            is_coach                BOOLEAN NOT NULL DEFAULT FALSE,
             created_at              TIMESTAMPTZ DEFAULT NOW()
         )
         """)
@@ -112,6 +114,21 @@ def init_db():
             use_treadmill           BOOLEAN DEFAULT FALSE,
             training_environment    TEXT DEFAULT 'flat',
             created_at              TIMESTAMPTZ DEFAULT NOW()
+        )
+        """)
+        )
+
+        conn.execute(
+            text("""
+        CREATE TABLE IF NOT EXISTS coach_athletes (
+            id              SERIAL PRIMARY KEY,
+            coach_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            athlete_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            status          TEXT NOT NULL DEFAULT 'invited',  -- 'invited' | 'active' | 'paused' | 'removed'
+            invited_at      TIMESTAMPTZ DEFAULT NOW(),
+            responded_at    TIMESTAMPTZ,
+            removed_at      TIMESTAMPTZ,
+            UNIQUE (coach_id, athlete_id)
         )
         """)
         )
@@ -292,6 +309,7 @@ def init_db():
             "ALTER TABLE users DROP COLUMN IF EXISTS has_gym_access",
             "ALTER TABLE users DROP COLUMN IF EXISTS use_treadmill",
             "ALTER TABLE users DROP COLUMN IF EXISTS double_session_days",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_coach BOOLEAN NOT NULL DEFAULT FALSE",
         ]:
             try:
                 conn.execute(text(col_sql))
