@@ -545,3 +545,24 @@ class TestAthletePlanWorkoutsEndpoint:
             f"/api/coaching/athletes/{auth_headers['user_id']}/plans/{plan_id}/workouts", headers=coach_headers
         )
         assert resp.status_code == 403
+
+
+class TestAthleteProfileEndpoint:
+    def test_coach_can_view_athletes_profile(self, client):
+        coach_headers, _ = _make_coach(client, "profile-coach1@uphill.ai")
+        _, athlete_id = _link_coach_and_athlete(client, coach_headers, "profile-athlete1@uphill.ai")
+        resp = client.get(f"/api/coaching/athletes/{athlete_id}/profile", headers=coach_headers)
+        assert resp.status_code == 200
+        assert resp.json()["email"] == "profile-athlete1@uphill.ai"
+        assert "current_weekly_km" in resp.json()
+        assert "zone2_pace_min" in resp.json()
+
+    def test_coach_without_a_link_is_forbidden_from_profile(self, client, auth_headers):
+        coach_headers, _ = _make_coach(client, "profile-coach2@uphill.ai")
+        resp = client.get(f"/api/coaching/athletes/{auth_headers['user_id']}/profile", headers=coach_headers)
+        assert resp.status_code == 403
+
+    def test_profile_404s_for_unknown_athlete_id(self, client):
+        coach_headers, _ = _make_coach(client, "profile-coach3@uphill.ai")
+        resp = client.get("/api/coaching/athletes/999999/profile", headers=coach_headers)
+        assert resp.status_code in (403, 404)

@@ -924,6 +924,14 @@ def get_athlete_plan_workouts(
     return {"workouts": get_plan_workouts(plan_id)}
 
 
+@app.get("/api/coaching/athletes/{athlete_id}/profile")
+def get_athlete_profile(athlete_id: int, acting_user: dict[str, Any] = Depends(require_athlete_access)):
+    athlete = get_user_by_id(athlete_id)
+    if not athlete:
+        raise HTTPException(status_code=404, detail="Athlete not found.")
+    return format_user_response(athlete)
+
+
 # --- Telemetry Parsers ---
 
 
