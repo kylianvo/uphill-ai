@@ -54,6 +54,10 @@ interface WorkoutCardProps {
   onLogWorkout: (id: number, rpe: number | null, notes: string) => Promise<void>;
   getWorkoutDate: (wo: any) => string;
   defaultExpanded?: boolean;
+  // True when a coach is viewing this workout on an assigned athlete's
+  // plan -- completion/RPE/notes stay athlete-only (no coach-scoped
+  // backend endpoint for those), so those controls are disabled here.
+  isCoachActingAsAthlete?: boolean;
 }
 
 const RACE_COACH_MESSAGES: Record<string, string[]> = {
@@ -104,6 +108,7 @@ export default function WorkoutCard({
   onLogWorkout,
   getWorkoutDate,
   defaultExpanded,
+  isCoachActingAsAthlete,
 }: WorkoutCardProps) {
   const isRest = wo.type === "Rest";
   const isRaceDay = wo.type?.toLowerCase() === "race";
@@ -225,6 +230,29 @@ export default function WorkoutCard({
                   }}
                 >
                   {woTypeLabel}
+                </span>
+              )}
+              {!isRest && wo.source && wo.source !== "ai_generated" && (
+                <span
+                  style={{
+                    fontSize: "9px",
+                    fontWeight: "700",
+                    padding: "2px 7px",
+                    borderRadius: "20px",
+                    letterSpacing: "0.04em",
+                    background: "rgba(59,130,246,0.14)",
+                    color: "#3b82f6",
+                    flexShrink: 0,
+                  }}
+                  title={lang === "en" ? "Edited by your coach" : "Được huấn luyện viên chỉnh sửa"}
+                >
+                  {wo.source === "coach_created"
+                    ? lang === "en"
+                      ? "Coach-added"
+                      : "HLV thêm"
+                    : lang === "en"
+                      ? "Coach-edited"
+                      : "HLV chỉnh sửa"}
                 </span>
               )}
             </div>
@@ -354,7 +382,7 @@ export default function WorkoutCard({
 
           {/* Completion + expand */}
           <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
-            {!isRest && (
+            {!isRest && !isCoachActingAsAthlete && (
               <button
                 onClick={() => onToggleComplete(wo.id, !wo.is_completed)}
                 style={{
@@ -571,6 +599,14 @@ export default function WorkoutCard({
 
             {/* ── RPE + Notes ── */}
             <div style={{ marginTop: "16px", paddingTop: "14px", borderTop: "1px solid rgba(0,0,0,0.06)" }}>
+            {isCoachActingAsAthlete ? (
+              <p style={{ fontSize: "12px", color: "var(--text-muted)", margin: 0, fontStyle: "italic" }}>
+                {lang === "en"
+                  ? "The athlete logs their own completion and RPE."
+                  : "Vận động viên tự ghi nhận hoàn thành và RPE."}
+              </p>
+            ) : (
+              <>
               <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px" }}>
                 <span
                   style={{
@@ -719,6 +755,8 @@ export default function WorkoutCard({
                   </button>
                 </div>
               )}
+              </>
+            )}
             </div>
           </div>
         )}

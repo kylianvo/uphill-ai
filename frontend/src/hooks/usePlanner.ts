@@ -6,15 +6,26 @@ import { ActivePlan, Workout } from "../types";
 export function usePlanner() {
   const ctx = useAppContext();
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-  const { planForm, setPlanForm, setPlanErrorMsg, setPlanLoading, lang, targetTimeH, targetTimeM, targetTimeS, cutoffTimeH, cutoffTimeM, cutoffTimeS, activePlan, selectedWeek, swapDay1, swapDay2, setSwapDay1, setSwapDay2, setActivePlan, setBackupActivePlan, setBackupWorkouts, setSelectedWeek, setWorkouts, workouts, setPlannerGpxLoading, setPlannerGpxFile, setPlannerGpxError, setCourseInputMode, setRecentPlans } = ctx;
+  const { planForm, setPlanForm, setPlanErrorMsg, setPlanLoading, lang, targetTimeH, targetTimeM, targetTimeS, cutoffTimeH, cutoffTimeM, cutoffTimeS, activePlan, selectedWeek, swapDay1, swapDay2, setSwapDay1, setSwapDay2, setActivePlan, setBackupActivePlan, setBackupWorkouts, setSelectedWeek, setWorkouts, workouts, setPlannerGpxLoading, setPlannerGpxFile, setPlannerGpxError, setCourseInputMode, setRecentPlans, actingAsAthleteId } = ctx;
   const trackEvent = (name: string, props?: any) => { if (typeof window !== "undefined" && (window as any).posthog) { (window as any).posthog.capture(name, props); } };
   const plannerGpxInputRef = React.useRef<HTMLInputElement>(null);
   const planJobPollerRef = React.useRef<any>(null);
+  const [draftPlan, setDraftPlan] = React.useState<ActivePlan | null>(null);
+  const [draftWorkouts, setDraftWorkouts] = React.useState<Workout[]>([]);
 
+  // When acting as a coach browsing an assigned athlete's data, every
+  // read/generate/draft/approve/edit call goes through the athlete-scoped
+  // /api/coaching/athletes/{id}/... routes instead of /api/coach/... .
+  // Deliberately NOT applied to select-plan, modify-calendar, or
+  // workouts/log below -- those have no coach-scoped backend equivalent
+  // (see the Phase 5 plan's Global Constraints) and stay self-serve-only;
+  // the UI disables those specific controls in acting-as-athlete mode
+  // instead of pointing them at the wrong data.
+  const coachPrefix = actingAsAthleteId ? `/api/coaching/athletes/${actingAsAthleteId}` : "/api/coach";
 
   const fetchRecentPlansWithToken = async (token: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/coach/recent-plans`, {
+      const response = await fetch(`${API_BASE_URL}${coachPrefix}/recent-plans`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       if (response.ok) {
@@ -24,6 +35,84 @@ export function usePlanner() {
     } catch (err) {
       console.error("Failed to fetch recent plans:", err);
     }
+  };
+
+  // Fetches the acting-as athlete's active plan + workouts into the shared
+  // activePlan/workouts context state, mirroring page.tsx's
+  // fetchActivePlanWithToken (used for the self-serve login flow) but
+  // scoped to the athlete the coach is currently viewing.
+  const fetchActivePlanForActing = async () => {
+    if (!actingAsAthleteId) return;
+    const token = localStorage.getItem("uphill_session_token");
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/coaching/athletes/${actingAsAthleteId}/active-plan`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.active) {
+          setActivePlan(data.plan);
+          setWorkouts(data.workouts);
+        } else {
+          setActivePlan(null);
+          setWorkouts([]);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch athlete's active plan:", err);
+    }
+    await fetchRecentPlansWithToken(token!);
+  };
+
+  const fetchDraftPlan = async () => {
+    if (!actingAsAthleteId) return;
+    const token = localStorage.getItem("uphill_session_token");
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/coaching/athletes/${actingAsAthleteId}/plans/draft`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDraftPlan(data.draft ? data.plan : null);
+        setDraftWorkouts(data.draft ? data.workouts : []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch draft plan:", err);
+    }
+  };
+
+  const handleApproveDraftPlan = async (planId: number) => {
+    if (!actingAsAthleteId) return false;
+    const token = localStorage.getItem("uphill_session_token");
+    const res = await fetch(
+      `${API_BASE_URL}/api/coaching/athletes/${actingAsAthleteId}/plans/${planId}/approve`,
+      { method: "POST", headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (res.ok) {
+      setDraftPlan(null);
+      setDraftWorkouts([]);
+      await fetchRecentPlansWithToken(token!);
+    }
+    return res.ok;
+  };
+
+  const handleCoachEditWorkout = async (planId: number, workoutId: number, fields: Record<string, any>) => {
+    if (!actingAsAthleteId) return false;
+    const token = localStorage.getItem("uphill_session_token");
+    const res = await fetch(
+      `${API_BASE_URL}/api/coaching/athletes/${actingAsAthleteId}/plans/${planId}/workouts/${workoutId}`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(fields),
+      }
+    );
+    if (res.ok) {
+      const updated = await res.json();
+      setWorkouts((prev: any) => prev.map((w: any) => (w.id === workoutId ? updated : w)));
+      setDraftWorkouts((prev: any) => prev.map((w: any) => (w.id === workoutId ? updated : w)));
+    }
+    return res.ok;
   };
 
   const startPlanJobPoller = (jobId: string, token: string) => {
@@ -171,7 +260,7 @@ export function usePlanner() {
         if (total > 0) body.cutoff_time_hours = total;
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/coach/generate-plan`, {
+      const response = await fetch(`${API_BASE_URL}${coachPrefix}/generate-plan`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -438,5 +527,5 @@ export function usePlanner() {
     return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
-  return { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, handleSwapWorkouts, swapDays, handleToggleComplete, handleLogWorkout, getWeekWorkouts, getWorkoutDate, getWorkoutDateObj, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller };
+  return { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, handleSwapWorkouts, swapDays, handleToggleComplete, handleLogWorkout, getWeekWorkouts, getWorkoutDate, getWorkoutDateObj, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller, fetchDraftPlan, draftPlan, draftWorkouts, handleApproveDraftPlan, handleCoachEditWorkout, fetchActivePlanForActing };
 }

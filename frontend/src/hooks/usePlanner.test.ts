@@ -131,3 +131,79 @@ describe("usePlanner.getWorkoutDate", () => {
     expect(date).toBe("Dec 6");
   });
 });
+
+describe("usePlanner acting-as-athlete endpoint scoping", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn());
+    localStorage.setItem("uphill_session_token", "tok-abc");
+  });
+
+  it("uses the self-serve endpoint when actingAsAthleteId is null", async () => {
+    const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>;
+    fetchMock.mockResolvedValueOnce(jsonResponse({ plans: [] }));
+
+    const { result } = renderHookWithApp(() => usePlanner());
+
+    await act(async () => {
+      await result.current.fetchRecentPlansWithToken("tok");
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("/api/coach/recent-plans"), expect.anything());
+  });
+
+  it("uses the coach-scoped endpoint when actingAsAthleteId is set", async () => {
+    const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>;
+    fetchMock.mockResolvedValueOnce(jsonResponse({ plans: [] }));
+
+    const { result } = renderHookWithApp(() => {
+      const ctx = useAppContext();
+      const planner = usePlanner();
+      return { ctx, planner };
+    });
+
+    act(() => result.current.ctx.setActingAsAthleteId(42));
+
+    await act(async () => {
+      await result.current.planner.fetchRecentPlansWithToken("tok");
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/api/coaching/athletes/42/recent-plans"),
+      expect.anything()
+    );
+  });
+
+  it("fetchDraftPlan hits the draft endpoint for the acting-as athlete", async () => {
+    const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>;
+    fetchMock.mockResolvedValueOnce(jsonResponse({ draft: false }));
+
+    const { result } = renderHookWithApp(() => {
+      const ctx = useAppContext();
+      const planner = usePlanner();
+      return { ctx, planner };
+    });
+
+    act(() => result.current.ctx.setActingAsAthleteId(42));
+
+    await act(async () => {
+      await result.current.planner.fetchDraftPlan();
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/api/coaching/athletes/42/plans/draft"),
+      expect.anything()
+    );
+  });
+
+  it("fetchDraftPlan is a no-op when actingAsAthleteId is null", async () => {
+    const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>;
+
+    const { result } = renderHookWithApp(() => usePlanner());
+
+    await act(async () => {
+      await result.current.fetchDraftPlan();
+    });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});

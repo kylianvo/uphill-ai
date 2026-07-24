@@ -17,9 +17,21 @@ import { parsePaceToMinutes, formatDurationHM } from "../lib/paceStrategy";
 
 export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   const ctx = useAppContext();
-  const { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, handleSwapWorkouts, swapDays, handleToggleComplete, handleLogWorkout, getWeekWorkouts, getWorkoutDate, getWorkoutDateObj, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller } = usePlanner();
+  const { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, handleSwapWorkouts, swapDays, handleToggleComplete, handleLogWorkout, getWeekWorkouts, getWorkoutDate, getWorkoutDateObj, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller, fetchDraftPlan, draftPlan, handleApproveDraftPlan, fetchActivePlanForActing } = usePlanner();
   const [planViewMode, setPlanViewMode] = useState<"list" | "calendar">("list");
-  const { lang, activePlan, planLoading, planErrorMsg, planForm, setPlanForm, targetTimeH, setTargetTimeH, targetTimeM, setTargetTimeM, targetTimeS, setTargetTimeS, cutoffTimeH, setCutoffTimeH, cutoffTimeM, setCutoffTimeM, cutoffTimeS, setCutoffTimeS, recentPlans, selectedWeek, setSelectedWeek, swapDay1, setSwapDay1, swapDay2, setSwapDay2, setWorkouts, setBackupWorkouts, setActivePlan, workouts, backupWorkouts, backupActivePlan, setBackupActivePlan, courseInputMode, setCourseInputMode, plannerGpxLoading, plannerGpxFile, plannerGpxError, showExportOptions, setShowExportOptions, exportTimePref, setExportTimePref, setIsGoalDeterminerOpen, settingsHandoff, setSettingsHandoff, setPaceHandoff, setIsPaceStrategyOpen, user } = ctx;
+  const { lang, activePlan, planLoading, planErrorMsg, planForm, setPlanForm, targetTimeH, setTargetTimeH, targetTimeM, setTargetTimeM, targetTimeS, setTargetTimeS, cutoffTimeH, setCutoffTimeH, cutoffTimeM, setCutoffTimeM, cutoffTimeS, setCutoffTimeS, recentPlans, selectedWeek, setSelectedWeek, swapDay1, setSwapDay1, swapDay2, setSwapDay2, setWorkouts, setBackupWorkouts, setActivePlan, workouts, backupWorkouts, backupActivePlan, setBackupActivePlan, courseInputMode, setCourseInputMode, plannerGpxLoading, plannerGpxFile, plannerGpxError, showExportOptions, setShowExportOptions, exportTimePref, setExportTimePref, setIsGoalDeterminerOpen, settingsHandoff, setSettingsHandoff, setPaceHandoff, setIsPaceStrategyOpen, user, actingAsAthleteId, actingAsAthleteName, setActingAsAthleteId, setActingAsAthleteName } = ctx;
+  const isCoachActingAsAthlete = !!actingAsAthleteId;
+
+  // When entering/leaving "acting as athlete" mode, load that athlete's
+  // active plan + draft (instead of whatever the coach's own self-serve
+  // state happened to hold).
+  useEffect(() => {
+    if (actingAsAthleteId) {
+      fetchActivePlanForActing();
+      fetchDraftPlan();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [actingAsAthleteId]);
   const t = (key: keyof typeof translations.en) => translations[lang]?.[key] || translations.en[key] || key;
   const totalWeeks = activePlan ? (activePlan.total_weeks || activePlan.plan_duration_weeks || 1) : 0;
 
@@ -374,6 +386,53 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
 
     return (
       <div>
+        {actingAsAthleteId && (
+          <div
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px",
+              padding: "8px 14px", marginBottom: "12px", borderRadius: "8px",
+              background: "rgba(59,130,246,0.08)", border: "1px solid var(--border-color)", fontSize: "12px",
+            }}
+          >
+            <span>
+              {lang === "en" ? `Viewing: ${actingAsAthleteName}` : `Đang xem: ${actingAsAthleteName}`}
+            </span>
+            <button
+              onClick={() => {
+                setActingAsAthleteId(null);
+                setActingAsAthleteName("");
+              }}
+              style={{
+                background: "none", border: "none", cursor: "pointer", color: "var(--accent-primary)",
+                fontSize: "12px", fontWeight: 700, textDecoration: "underline",
+              }}
+            >
+              {lang === "en" ? "Back to my plan" : "Về kế hoạch của tôi"}
+            </button>
+          </div>
+        )}
+        {actingAsAthleteId && draftPlan && (
+          <div
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px",
+              padding: "10px 14px", marginBottom: "12px", borderRadius: "8px",
+              background: "rgba(234,179,8,0.1)", border: "1px solid rgba(234,179,8,0.35)", fontSize: "12.5px",
+            }}
+          >
+            <span>
+              {lang === "en"
+                ? `Draft — pending your review (${draftPlan.race_name})`
+                : `Bản nháp — đang chờ bạn duyệt (${draftPlan.race_name})`}
+            </span>
+            <button
+              className="btn btn-primary"
+              style={{ padding: "6px 14px", fontSize: "12px" }}
+              onClick={() => handleApproveDraftPlan(draftPlan.id)}
+            >
+              {lang === "en" ? "Approve" : "Duyệt"}
+            </button>
+          </div>
+        )}
         {!activePlan ? (
           <form onSubmit={handleGeneratePlan} style={{ background: "rgba(255, 255, 255, 0.95)", border: "1px solid var(--border-color)", padding: isMobile ? "20px" : "32px", borderRadius: "16px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "8px" }}>
@@ -1225,6 +1284,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 onSwapDays={swapDays}
                 onToggleComplete={handleToggleCompleteWithRefresh}
                 onLogWorkout={handleLogWorkout}
+                isCoachActingAsAthlete={isCoachActingAsAthlete}
               />
             ) : (
               /* Week Workouts — grouped by day with drag-and-drop swap */
@@ -1250,6 +1310,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 onToggleComplete={handleToggleCompleteWithRefresh}
                 onLogWorkout={handleLogWorkout}
                 getWorkoutDate={getWorkoutDate}
+                isCoachActingAsAthlete={isCoachActingAsAthlete}
               />
             )}
 
@@ -1446,9 +1507,10 @@ interface DayGroupProps {
   onToggleComplete: (id: number, completed: boolean) => void;
   onLogWorkout: (id: number, rpe: number | null, notes: string) => Promise<void>;
   getWorkoutDate: (wo: any) => string;
+  isCoachActingAsAthlete?: boolean;
 }
 
-function DayGroup({ day, dayIndex, dayWos, lang, isMobile, isOver, onToggleComplete, onLogWorkout, getWorkoutDate }: DayGroupProps) {
+function DayGroup({ day, dayIndex, dayWos, lang, isMobile, isOver, onToggleComplete, onLogWorkout, getWorkoutDate, isCoachActingAsAthlete }: DayGroupProps) {
   const { attributes, listeners, setNodeRef: setDragRef, transform, isDragging } = useDraggable({ id: day });
   const { setNodeRef: setDropRef } = useDroppable({ id: day });
 
@@ -1538,6 +1600,7 @@ function DayGroup({ day, dayIndex, dayWos, lang, isMobile, isOver, onToggleCompl
                 onToggleComplete={onToggleComplete}
                 onLogWorkout={onLogWorkout}
                 getWorkoutDate={getWorkoutDate}
+                isCoachActingAsAthlete={isCoachActingAsAthlete}
               />
             </div>
           );
@@ -1555,9 +1618,10 @@ interface WeekDayListProps {
   onToggleComplete: (id: number, completed: boolean) => void;
   onLogWorkout: (id: number, rpe: number | null, notes: string) => Promise<void>;
   getWorkoutDate: (wo: any) => string;
+  isCoachActingAsAthlete?: boolean;
 }
 
-function WeekDayList({ weekWos, lang, isMobile, onSwapDays, onToggleComplete, onLogWorkout, getWorkoutDate }: WeekDayListProps) {
+function WeekDayList({ weekWos, lang, isMobile, onSwapDays, onToggleComplete, onLogWorkout, getWorkoutDate, isCoachActingAsAthlete }: WeekDayListProps) {
   const [overId, setOverId] = React.useState<string | null>(null);
 
   const byDay: Record<string, any[]> = {};
@@ -1601,6 +1665,7 @@ function WeekDayList({ weekWos, lang, isMobile, onSwapDays, onToggleComplete, on
               onToggleComplete={onToggleComplete}
               onLogWorkout={onLogWorkout}
               getWorkoutDate={getWorkoutDate}
+              isCoachActingAsAthlete={isCoachActingAsAthlete}
             />
           );
         })}

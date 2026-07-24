@@ -40,11 +40,12 @@ interface PlanCalendarViewProps {
   onSwapDays: (day1: string, day2: string, weekNumberOverride?: number) => void;
   onToggleComplete: (id: number, completed: boolean) => void;
   onLogWorkout: (id: number, rpe: number | null, notes: string) => Promise<void>;
+  isCoachActingAsAthlete?: boolean;
 }
 
 export default function PlanCalendarView({
   workouts, lang, isMobile, getWorkoutDateObj, getWorkoutDate,
-  onSwapDays, onToggleComplete, onLogWorkout,
+  onSwapDays, onToggleComplete, onLogWorkout, isCoachActingAsAthlete,
 }: PlanCalendarViewProps) {
   const dbTypes = useWorkoutTypes(lang);
   const zoneColorOf = (wo: any) =>
@@ -216,6 +217,7 @@ export default function PlanCalendarView({
                     onLogWorkout={onLogWorkout}
                     getWorkoutDate={getWorkoutDate}
                     defaultExpanded
+                    isCoachActingAsAthlete={isCoachActingAsAthlete}
                   />
                 ))}
               </div>
