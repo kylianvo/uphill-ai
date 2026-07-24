@@ -628,3 +628,57 @@ class TestDeclineInviteEndpoint:
 
         resp = client.post(f"/api/coaching/invites/{link_id}/decline", headers=athlete_headers)
         assert resp.status_code == 404
+
+
+class TestRemoveFromRosterEndpoint:
+    def test_coach_can_remove_an_active_athlete(self, client):
+        coach_headers, _ = _make_coach(client, "remove-coach1@uphill.ai")
+        _, athlete_id = _link_coach_and_athlete(client, coach_headers, "remove-athlete1@uphill.ai")
+        link_id = client.get("/api/coaching/roster", headers=coach_headers).json()[0]["id"]
+
+        resp = client.delete(f"/api/coaching/roster/{link_id}", headers=coach_headers)
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["status"] == "removed"
+        assert client.get("/api/coaching/roster", headers=coach_headers).json() == []
+
+    def test_athlete_can_remove_their_own_coach(self, client):
+        coach_headers, _ = _make_coach(client, "remove-coach2@uphill.ai")
+        athlete_headers, _ = _link_coach_and_athlete(client, coach_headers, "remove-athlete2@uphill.ai")
+        link_id = client.get("/api/coaching/roster", headers=coach_headers).json()[0]["id"]
+
+        resp = client.delete(f"/api/coaching/roster/{link_id}", headers=athlete_headers)
+        assert resp.status_code == 200
+        assert client.get("/api/coaching/roster", headers=coach_headers).json() == []
+
+    def test_a_stranger_cannot_remove_someone_elses_link(self, client):
+        coach_headers, _ = _make_coach(client, "remove-coach3@uphill.ai")
+        _, _ = _link_coach_and_athlete(client, coach_headers, "remove-athlete3@uphill.ai")
+        link_id = client.get("/api/coaching/roster", headers=coach_headers).json()[0]["id"]
+        stranger_resp = client.post("/api/auth/mock-login", json={"email": "remove-stranger3@uphill.ai"})
+        stranger_headers = {"Authorization": f"Bearer {stranger_resp.json()['session_token']}"}
+
+        resp = client.delete(f"/api/coaching/roster/{link_id}", headers=stranger_headers)
+        assert resp.status_code == 404
+        assert len(client.get("/api/coaching/roster", headers=coach_headers).json()) == 1
+
+    def test_removing_an_already_removed_link_404s(self, client):
+        coach_headers, _ = _make_coach(client, "remove-coach4@uphill.ai")
+        _, _ = _link_coach_and_athlete(client, coach_headers, "remove-athlete4@uphill.ai")
+        link_id = client.get("/api/coaching/roster", headers=coach_headers).json()[0]["id"]
+        client.delete(f"/api/coaching/roster/{link_id}", headers=coach_headers)
+
+        resp = client.delete(f"/api/coaching/roster/{link_id}", headers=coach_headers)
+        assert resp.status_code == 404
+
+    def test_removed_athlete_can_be_reinvited_by_a_new_coach(self, client):
+        first_coach_headers, _ = _make_coach(client, "remove-coach5a@uphill.ai")
+        second_coach_headers, _ = _make_coach(client, "remove-coach5b@uphill.ai")
+        _, athlete_id = _link_coach_and_athlete(client, first_coach_headers, "remove-athlete5@uphill.ai")
+        link_id = client.get("/api/coaching/roster", headers=first_coach_headers).json()[0]["id"]
+        client.delete(f"/api/coaching/roster/{link_id}", headers=first_coach_headers)
+
+        reinvite = client.post(
+            "/api/coaching/invite", json={"athlete_email": "remove-athlete5@uphill.ai"}, headers=second_coach_headers
+        )
+        assert reinvite.status_code == 200
+        assert reinvite.json()["status"] == "invited"

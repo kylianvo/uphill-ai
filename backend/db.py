@@ -1040,6 +1040,25 @@ def get_roster_for_coach(coach_id: int) -> list[dict[str, Any]]:
     return [_row_to_dict(r) for r in rows]
 
 
+def remove_coach_athlete_link(link_id: int, actor_user_id: int) -> dict[str, Any] | None:
+    """Ends an existing (non-removed) relationship. Either the coach or the
+    athlete on the link may end it. Returns None if no such link exists for
+    this actor, or it's already 'removed'."""
+    with engine.connect() as conn:
+        result = conn.execute(
+            text("""
+                UPDATE coach_athletes SET status = 'removed', removed_at = NOW()
+                WHERE id = :id AND (coach_id = :actor OR athlete_id = :actor) AND status != 'removed'
+            """),
+            {"id": link_id, "actor": actor_user_id},
+        )
+        conn.commit()
+        if result.rowcount == 0:
+            return None
+        row = conn.execute(text("SELECT * FROM coach_athletes WHERE id = :id"), {"id": link_id}).fetchone()
+    return _row_to_dict(row)
+
+
 # ─── Sessions (JWT-based, stored for revocation) ─────────────────────────────
 
 

@@ -45,6 +45,7 @@ from db import (
     list_sources,
     mark_onboarding_complete,
     query_nutrition_catalog,
+    remove_coach_athlete_link,
     save_block_review,
     save_workouts,
     set_plan_active,
@@ -902,6 +903,14 @@ def decline_invite(invite_id: int, user: dict[str, Any] = Depends(get_current_us
     updated = decline_coach_invite(invite_id, user["id"])
     if not updated:
         raise HTTPException(status_code=404, detail="Invite not found.")
+    return updated
+
+
+@app.delete("/api/coaching/roster/{link_id}")
+def remove_from_roster(link_id: int, user: dict[str, Any] = Depends(get_current_user)):
+    updated = remove_coach_athlete_link(link_id, user["id"])
+    if not updated:
+        raise HTTPException(status_code=404, detail="Roster link not found.")
     return updated
 
 
