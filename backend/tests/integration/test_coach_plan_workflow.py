@@ -5,7 +5,7 @@ docs/superpowers/plans/2026-07-20-coach-role-phase3-plan-workflow.md."""
 
 from sqlalchemy import text
 
-from db import create_plan, engine, get_active_plan, get_recent_plans
+from db import create_plan, engine, get_active_plan, get_plan_by_id, get_recent_plans
 
 
 def _create_user(email: str) -> int:
@@ -142,3 +142,23 @@ class TestSchemaAndPlanStatusFilter:
             ).fetchone()
         assert row.source == "ai_generated"
         assert row.last_edited_by_user_id is None
+
+
+class TestGetPlanById:
+    def test_returns_the_plan_regardless_of_status(self):
+        athlete_id = _create_user("planbyid-athlete@uphill.ai")
+        draft_id = create_plan(
+            user_id=athlete_id,
+            race_name="Draft Lookup",
+            race_date="2027-05-01",
+            goal_type="finish",
+            target_time_hours=None,
+            total_weeks=8,
+            plan_status="draft",
+        )
+        plan = get_plan_by_id(draft_id)
+        assert plan["id"] == draft_id
+        assert plan["plan_status"] == "draft"
+
+    def test_returns_none_for_unknown_id(self):
+        assert get_plan_by_id(999999) is None

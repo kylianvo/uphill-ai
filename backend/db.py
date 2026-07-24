@@ -629,6 +629,12 @@ def get_active_plan(user_id: int) -> dict[str, Any] | None:
     return _row_to_dict(row) if row else None
 
 
+def get_plan_by_id(plan_id: int) -> dict[str, Any] | None:
+    with engine.connect() as conn:
+        row = conn.execute(text("SELECT * FROM plans WHERE id = :id"), {"id": plan_id}).fetchone()
+    return _row_to_dict(row) if row else None
+
+
 def set_plan_active(user_id: int, plan_id: int) -> bool:
     with engine.connect() as conn:
         result = conn.execute(

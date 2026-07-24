@@ -32,6 +32,7 @@ from db import (
     get_knowledge_card_count,
     get_knowledge_topics,
     get_max_generated_week,
+    get_plan_by_id,
     get_plan_workouts,
     get_random_knowledge_cards,
     get_recent_plans,
@@ -1258,9 +1259,13 @@ async def get_plan_generation_status(job_id: str, user: dict[str, Any] = Depends
         "plan_id": job["plan_id"],
     }
     if job["status"] == "done":
-        # Return fresh workouts from DB (job store may be large; DB is authoritative)
+        # Return fresh workouts from DB (job store may be large; DB is authoritative).
+        # Fetched by the job's own plan_id, not the poller's "active plan" -- the
+        # poller may be a coach reviewing a draft they generated for someone else,
+        # in which case get_active_plan(poller_id) would return the wrong plan (or
+        # none at all).
         response["workouts"] = get_plan_workouts(job["plan_id"])
-        response["plan"] = get_active_plan(user["id"])
+        response["plan"] = get_plan_by_id(job["plan_id"])
     if job["status"] == "error":
         response["error"] = job["error"]
     return response
