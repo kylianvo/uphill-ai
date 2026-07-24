@@ -566,3 +566,65 @@ class TestAthleteProfileEndpoint:
         coach_headers, _ = _make_coach(client, "profile-coach3@uphill.ai")
         resp = client.get("/api/coaching/athletes/999999/profile", headers=coach_headers)
         assert resp.status_code in (403, 404)
+
+
+class TestDeclineInviteEndpoint:
+    def test_athlete_can_decline_a_pending_invite(self, client):
+        coach_headers, _ = _make_coach(client, "decline-coach1@uphill.ai")
+        athlete_resp = client.post("/api/auth/mock-login", json={"email": "decline-athlete1@uphill.ai"})
+        athlete_headers = {"Authorization": f"Bearer {athlete_resp.json()['session_token']}"}
+        invite = client.post(
+            "/api/coaching/invite", json={"athlete_email": "decline-athlete1@uphill.ai"}, headers=coach_headers
+        ).json()
+
+        resp = client.post(f"/api/coaching/invites/{invite['id']}/decline", headers=athlete_headers)
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["status"] == "removed"
+
+    def test_declined_invite_no_longer_appears_on_the_roster(self, client):
+        coach_headers, _ = _make_coach(client, "decline-coach2@uphill.ai")
+        athlete_resp = client.post("/api/auth/mock-login", json={"email": "decline-athlete2@uphill.ai"})
+        athlete_headers = {"Authorization": f"Bearer {athlete_resp.json()['session_token']}"}
+        invite = client.post(
+            "/api/coaching/invite", json={"athlete_email": "decline-athlete2@uphill.ai"}, headers=coach_headers
+        ).json()
+        client.post(f"/api/coaching/invites/{invite['id']}/decline", headers=athlete_headers)
+
+        roster = client.get("/api/coaching/roster", headers=coach_headers).json()
+        assert roster == []
+
+    def test_declined_athlete_can_be_reinvited(self, client):
+        coach_headers, _ = _make_coach(client, "decline-coach3@uphill.ai")
+        athlete_resp = client.post("/api/auth/mock-login", json={"email": "decline-athlete3@uphill.ai"})
+        athlete_headers = {"Authorization": f"Bearer {athlete_resp.json()['session_token']}"}
+        first_invite = client.post(
+            "/api/coaching/invite", json={"athlete_email": "decline-athlete3@uphill.ai"}, headers=coach_headers
+        ).json()
+        client.post(f"/api/coaching/invites/{first_invite['id']}/decline", headers=athlete_headers)
+
+        second_invite = client.post(
+            "/api/coaching/invite", json={"athlete_email": "decline-athlete3@uphill.ai"}, headers=coach_headers
+        )
+        assert second_invite.status_code == 200
+        assert second_invite.json()["status"] == "invited"
+
+    def test_decline_404s_for_someone_else_s_invite(self, client):
+        coach_headers, _ = _make_coach(client, "decline-coach4@uphill.ai")
+        client.post("/api/auth/mock-login", json={"email": "decline-athlete4@uphill.ai"})
+        other_resp = client.post("/api/auth/mock-login", json={"email": "decline-someone-else4@uphill.ai"})
+        other_headers = {"Authorization": f"Bearer {other_resp.json()['session_token']}"}
+        invite = client.post(
+            "/api/coaching/invite", json={"athlete_email": "decline-athlete4@uphill.ai"}, headers=coach_headers
+        ).json()
+
+        resp = client.post(f"/api/coaching/invites/{invite['id']}/decline", headers=other_headers)
+        assert resp.status_code == 404
+
+    def test_decline_404s_for_an_already_active_link(self, client):
+        coach_headers, _ = _make_coach(client, "decline-coach5@uphill.ai")
+        athlete_headers, _ = _link_coach_and_athlete(client, coach_headers, "decline-athlete5@uphill.ai")
+        roster = client.get("/api/coaching/roster", headers=coach_headers).json()
+        link_id = roster[0]["id"]
+
+        resp = client.post(f"/api/coaching/invites/{link_id}/decline", headers=athlete_headers)
+        assert resp.status_code == 404

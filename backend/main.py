@@ -18,6 +18,7 @@ from db import (
     create_plan,
     create_session,
     create_user_with_password,
+    decline_coach_invite,
     delete_session,
     delete_source,
     get_active_coach_link_for_athlete,
@@ -891,6 +892,14 @@ def accept_invite(invite_id: int, user: dict[str, Any] = Depends(get_current_use
     if existing_active and existing_active["coach_id"] != invite["coach_id"]:
         raise HTTPException(status_code=409, detail="You already have an active coach.")
     updated = accept_coach_invite(invite_id, user["id"])
+    if not updated:
+        raise HTTPException(status_code=404, detail="Invite not found.")
+    return updated
+
+
+@app.post("/api/coaching/invites/{invite_id}/decline")
+def decline_invite(invite_id: int, user: dict[str, Any] = Depends(get_current_user)):
+    updated = decline_coach_invite(invite_id, user["id"])
     if not updated:
         raise HTTPException(status_code=404, detail="Invite not found.")
     return updated

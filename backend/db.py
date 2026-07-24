@@ -1003,6 +1003,25 @@ def accept_coach_invite(link_id: int, athlete_id: int) -> dict[str, Any] | None:
     return _row_to_dict(row)
 
 
+def decline_coach_invite(link_id: int, athlete_id: int) -> dict[str, Any] | None:
+    """Ends a pending invite without it ever becoming active. Returns None
+    if no 'invited' row with this id belongs to this athlete (wrong
+    athlete, already responded/removed, or doesn't exist)."""
+    with engine.connect() as conn:
+        result = conn.execute(
+            text("""
+                UPDATE coach_athletes SET status = 'removed', responded_at = NOW(), removed_at = NOW()
+                WHERE id = :id AND athlete_id = :aid AND status = 'invited'
+            """),
+            {"id": link_id, "aid": athlete_id},
+        )
+        conn.commit()
+        if result.rowcount == 0:
+            return None
+        row = conn.execute(text("SELECT * FROM coach_athletes WHERE id = :id"), {"id": link_id}).fetchone()
+    return _row_to_dict(row)
+
+
 def get_roster_for_coach(coach_id: int) -> list[dict[str, Any]]:
     """Active + pending-invite athletes for a coach, newest-invited first.
     Removed relationships are excluded -- they're history, not roster."""
