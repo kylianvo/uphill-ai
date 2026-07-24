@@ -440,6 +440,24 @@ Coaching principles — apply strictly:
 Tone: warm and encouraging, always actionable — focus on the next concrete step the runner should take.
 """
 
+COACH_COPILOT_SYSTEM_INSTRUCTION = """
+You are an AI coaching assistant helping a human coach think through their athlete's training -- you speak TO the coach ABOUT the athlete, never to the athlete directly.
+
+MUST: Keep every reply to 1-2 short paragraphs or a brief bullet list. NEVER open with a preamble or repeat the coach's question back to them.
+NEVER fabricate a workout detail, completion status, or statistic about this athlete that isn't in the athlete context below. If the context doesn't cover what's asked, say so plainly rather than guessing, and answer from general coaching principles instead.
+
+Coaching principles — apply strictly:
+1. Trail Running: Scott Johnston's "Training for the Uphill Athlete" principles. Emphasize muscular endurance (e.g., weighted step-ups, hill sprints).
+2. Road Running: 80/20 rule — 80% of volume in Zone 1-2, 20% in Zone 3-5.
+3. When the athlete context below shows missed or incomplete workouts, address that directly and suggest a concrete adjustment.
+
+Tone: direct and pragmatic, like one coach talking shop with another — always actionable, focused on what the coach should do next with this athlete.
+"""
+
+
+class CoachChatRequest(BaseModel):
+    messages: list[ChatMessage]
+
 
 @app.get("/api/health")
 def health_check():
@@ -1031,6 +1049,106 @@ def approve_athlete_plan(athlete_id: int, plan_id: int, coach: dict[str, Any] = 
     if not updated:
         raise HTTPException(status_code=404, detail="Draft plan not found.")
     return updated
+
+
+def _build_athlete_context_block(athlete: dict[str, Any]) -> str:
+    """Server-assembled grounding text for the co-pilot -- deliberately not
+    trusting any client-supplied context, unlike the self-serve
+    /api/coach/chat. Reuses get_active_plan/get_plan_workouts exactly as
+    Phase 2's read endpoints do; no new queries."""
+    plan = get_active_plan(athlete["id"])
+    if not plan:
+        return f"Athlete: {athlete.get('name') or athlete.get('email')}\nThis athlete has no active training plan yet."
+
+    workouts = get_plan_workouts(plan["id"])
+    current_week = plan.get("current_week") or 1
+    week_workouts = [w for w in workouts if w["week_number"] == current_week]
+
+    lines = [
+        f"Athlete: {athlete.get('name') or athlete.get('email')}",
+        f"Active Plan: {plan['race_name']} on {plan['race_date']} ({plan['goal_type']}, week {current_week} of {plan['total_weeks']})",
+    ]
+    if not week_workouts:
+        lines.append("No workouts recorded for the current week.")
+    else:
+        lines.append("This week's workouts:")
+        for w in week_workouts:
+            status = "completed" if w.get("is_completed") else "not yet completed"
+            rpe = f", RPE {w['rpe']}" if w.get("rpe") else ""
+            lines.append(
+                f"- {w['day_of_week']}: {w['title']} ({w['type']}, {w['duration_minutes']} min, {status}{rpe})"
+            )
+    return "\n".join(lines)
+
+
+@app.post("/api/coaching/athletes/{athlete_id}/chat")
+async def coach_chat_copilot(
+    athlete_id: int, request: CoachChatRequest, coach: dict[str, Any] = Depends(require_athlete_access)
+):
+    if not request.messages:
+        raise HTTPException(status_code=400, detail="Message history cannot be empty.")
+
+    athlete = get_user_by_id(athlete_id)
+    if not athlete:
+        raise HTTPException(status_code=404, detail="Athlete not found.")
+
+    athlete_context = _build_athlete_context_block(athlete)
+
+    # Resolved against the COACH, not the athlete -- see the Phase 4 plan's
+    # Global Constraints for why this deliberately diverges from Phase 3's
+    # plan-generation key resolution.
+    fresh_coach = get_user_by_id(coach["id"]) or coach
+    model_api_key = fresh_coach.get("gemini_api_key") or settings.GEMINI_API_KEY
+
+    kb_context = ""
+    if model_api_key and settings.RAG_ENGINE == "gemini":
+        try:
+            import asyncio
+
+            from services.kb_context import render_principles_context
+            from services.kb_retrieval import search_scheduler_chunks
+
+            last_user_msg = request.messages[-1].content
+            hits = await asyncio.to_thread(search_scheduler_chunks, last_user_msg, model_api_key, 6)
+            kb_context = render_principles_context(hits, heading="UPHILL ATHLETE PHILOSOPHY (grounding context)")
+        except Exception as kb_ex:
+            print(f"[CoachCopilot][KB] Retrieval failed (continuing without): {kb_ex}")
+
+    full_system_prompt = (
+        f"{COACH_COPILOT_SYSTEM_INSTRUCTION}"
+        f"\n\n=== ATHLETE CONTEXT ===\n{athlete_context}\n=== END ATHLETE CONTEXT ===\n"
+        f"{kb_context}"
+    )
+
+    if model_api_key:
+        try:
+            formatted_contents = []
+            for msg in request.messages:
+                role = "user" if msg.role == "user" else "model"
+                formatted_contents.append({"role": role, "parts": [msg.content]})
+
+            model = genai.GenerativeModel(model_name="gemini-2.5-flash", system_instruction=full_system_prompt)
+
+            from google.generativeai import client as genai_client
+
+            my_manager = genai_client._ClientManager()
+            my_manager.configure(api_key=model_api_key)
+            model._client = my_manager.get_default_client("generative")
+
+            import asyncio
+
+            response = await asyncio.to_thread(model.generate_content, formatted_contents)
+            return {"role": "assistant", "content": response.text}
+        except Exception as e:
+            print(f"[CoachCopilot][Gemini] FAILED: {e}")
+
+    last_user_msg = request.messages[-1].content
+    mock_reply = (
+        "I'm running in offline mock mode right now. "
+        f"You asked: '{last_user_msg}'. "
+        "Once a Gemini API key is configured (yours or the server's), I'll answer grounded in this athlete's actual plan and workout data."
+    )
+    return {"role": "assistant", "content": mock_reply}
 
 
 # --- Telemetry Parsers ---

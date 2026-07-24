@@ -153,3 +153,55 @@ class TestCoachRecommendShoesEndpoint:
             headers=coach_headers,
         )
         assert resp.status_code == 403
+
+
+class TestCoachChatEndpoint:
+    def test_coach_can_chat_about_an_athlete_with_no_active_plan(self, client):
+        coach_headers, _ = _make_coach(client, "chat-coach1@uphill.ai")
+        _, athlete_id = _link_coach_and_athlete(client, coach_headers, "chat-athlete1@uphill.ai")
+        resp = client.post(
+            f"/api/coaching/athletes/{athlete_id}/chat",
+            json={"messages": [{"role": "user", "content": "How is this athlete doing?"}]},
+            headers=coach_headers,
+        )
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["role"] == "assistant"
+        assert isinstance(resp.json()["content"], str)
+        assert len(resp.json()["content"]) > 0
+
+    def test_coach_can_chat_about_an_athlete_with_an_active_plan(self, client, mock_plan_generation):
+        coach_headers, _ = _make_coach(client, "chat-coach2@uphill.ai")
+        athlete_headers, athlete_id = _link_coach_and_athlete(client, coach_headers, "chat-athlete2@uphill.ai")
+        client.post(
+            "/api/coach/generate-plan",
+            json={
+                "goal_type": "finish",
+                "race_name": "Chat Context 50K",
+                "race_date": "2027-05-01",
+                "plan_start_date": "2027-03-15",
+                "days_per_week": 4,
+            },
+            headers=athlete_headers,
+        )
+        resp = client.post(
+            f"/api/coaching/athletes/{athlete_id}/chat",
+            json={"messages": [{"role": "user", "content": "What's their current training block?"}]},
+            headers=coach_headers,
+        )
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["role"] == "assistant"
+
+    def test_empty_messages_is_rejected(self, client):
+        coach_headers, _ = _make_coach(client, "chat-coach3@uphill.ai")
+        _, athlete_id = _link_coach_and_athlete(client, coach_headers, "chat-athlete3@uphill.ai")
+        resp = client.post(f"/api/coaching/athletes/{athlete_id}/chat", json={"messages": []}, headers=coach_headers)
+        assert resp.status_code == 400
+
+    def test_coach_without_a_link_is_forbidden(self, client, auth_headers):
+        coach_headers, _ = _make_coach(client, "chat-coach4@uphill.ai")
+        resp = client.post(
+            f"/api/coaching/athletes/{auth_headers['user_id']}/chat",
+            json={"messages": [{"role": "user", "content": "Hi"}]},
+            headers=coach_headers,
+        )
+        assert resp.status_code == 403
