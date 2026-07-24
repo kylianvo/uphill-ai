@@ -67,3 +67,37 @@ class TestCoachGoalEstimateEndpoint:
             headers=auth_headers["headers"],
         )
         assert resp.status_code == 200
+
+
+_PACING_PAYLOAD = {
+    "checkpoints": [
+        {"name": "Start", "distance_meters": 0, "elevation_m": 100},
+        {"name": "Finish", "distance_meters": 10000, "elevation_m": 100},
+    ],
+    "target_flat_pace_min_km": 6.0,
+}
+
+
+class TestCoachCalculatePacingEndpoint:
+    def test_self_serve_calculate_pacing_is_unaffected(self, client):
+        resp = client.post("/api/coach/calculate-pacing", json=_PACING_PAYLOAD)
+        assert resp.status_code == 200, resp.text
+        assert isinstance(resp.json(), list)
+
+    def test_coach_can_calculate_pacing_for_an_athlete(self, client):
+        coach_headers, _ = _make_coach(client, "pacing-coach1@uphill.ai")
+        _, athlete_id = _link_coach_and_athlete(client, coach_headers, "pacing-athlete1@uphill.ai")
+        resp = client.post(
+            f"/api/coaching/athletes/{athlete_id}/calculate-pacing", json=_PACING_PAYLOAD, headers=coach_headers
+        )
+        assert resp.status_code == 200, resp.text
+        assert isinstance(resp.json(), list)
+
+    def test_coach_without_a_link_is_forbidden(self, client, auth_headers):
+        coach_headers, _ = _make_coach(client, "pacing-coach2@uphill.ai")
+        resp = client.post(
+            f"/api/coaching/athletes/{auth_headers['user_id']}/calculate-pacing",
+            json=_PACING_PAYLOAD,
+            headers=coach_headers,
+        )
+        assert resp.status_code == 403

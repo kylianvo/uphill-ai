@@ -1777,12 +1777,15 @@ def export_ics(
 # --- Phase 3 Specialized Routes ---
 
 
-@app.post("/api/coach/calculate-pacing")
-def calculate_pacing(request: PacingRequest):
+def _calculate_pacing_core(request: PacingRequest):
     """Calculates GPX checkpoint splits and times adjusted for grade, altitude,
     fatigue, heat, and split strategy. Accepts either a base flat pace or a
     target finish time (solved to a base pace). With race_start_iso, checkpoints
-    that carry coordinates get per-segment forecast heat and sunset flags."""
+    that carry coordinates get per-segment forecast heat and sunset flags.
+    Shared by the self-serve /api/coach/calculate-pacing and the
+    coach-triggered /api/coaching/athletes/{athlete_id}/calculate-pacing --
+    pure computation over the request body, nothing athlete-specific to
+    resolve."""
     if request.target_flat_pace_min_km is None and request.target_time_mins is None:
         raise HTTPException(
             status_code=422,
@@ -1833,6 +1836,18 @@ def calculate_pacing(request: PacingRequest):
             print(f"Warning: weather annotation skipped: {e}")
 
     return paced_cps
+
+
+@app.post("/api/coach/calculate-pacing")
+def calculate_pacing(request: PacingRequest):
+    return _calculate_pacing_core(request)
+
+
+@app.post("/api/coaching/athletes/{athlete_id}/calculate-pacing")
+def coach_calculate_pacing(
+    athlete_id: int, request: PacingRequest, coach: dict[str, Any] = Depends(require_athlete_access)
+):
+    return _calculate_pacing_core(request)
 
 
 @app.post("/api/coach/calculate-fueling")
