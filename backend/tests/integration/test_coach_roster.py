@@ -474,3 +474,29 @@ class TestAthleteActivePlanEndpoint:
         assert body["active"] is True
         assert body["plan"]["race_name"] == "Test 50K"
         assert isinstance(body["workouts"], list)
+
+
+class TestAthleteRecentPlansEndpoint:
+    def test_coach_can_view_athletes_recent_plans(self, client, mock_plan_generation):
+        coach_headers, _ = _make_coach(client, "recent-coach1@uphill.ai")
+        athlete_headers, athlete_id = _link_coach_and_athlete(client, coach_headers, "recent-athlete1@uphill.ai")
+        client.post(
+            "/api/coach/generate-plan",
+            json={
+                "goal_type": "finish",
+                "race_name": "Recent 50K",
+                "race_date": "2027-05-01",
+                "plan_start_date": "2027-03-15",
+                "days_per_week": 4,
+            },
+            headers=athlete_headers,
+        )
+        resp = client.get(f"/api/coaching/athletes/{athlete_id}/recent-plans", headers=coach_headers)
+        assert resp.status_code == 200
+        assert len(resp.json()["plans"]) == 1
+        assert resp.json()["plans"][0]["race_name"] == "Recent 50K"
+
+    def test_coach_without_a_link_is_forbidden_from_recent_plans(self, client, auth_headers):
+        coach_headers, _ = _make_coach(client, "recent-coach2@uphill.ai")
+        resp = client.get(f"/api/coaching/athletes/{auth_headers['user_id']}/recent-plans", headers=coach_headers)
+        assert resp.status_code == 403
