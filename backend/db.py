@@ -113,6 +113,10 @@ def init_db():
             has_gym_access          BOOLEAN DEFAULT FALSE,
             use_treadmill           BOOLEAN DEFAULT FALSE,
             training_environment    TEXT DEFAULT 'flat',
+            created_by_user_id      INTEGER REFERENCES users(id),
+            plan_status             TEXT NOT NULL DEFAULT 'active',  -- 'draft' | 'active'
+            approved_by_user_id     INTEGER REFERENCES users(id),
+            approved_at             TIMESTAMPTZ,
             created_at              TIMESTAMPTZ DEFAULT NOW()
         )
         """)
@@ -157,6 +161,8 @@ def init_db():
             interval_rep_unit   TEXT,
             description         TEXT,
             fueling_tip         TEXT,
+            source              TEXT NOT NULL DEFAULT 'ai_generated',  -- 'ai_generated' | 'coach_edited' | 'coach_created'
+            last_edited_by_user_id INTEGER REFERENCES users(id),
             is_completed        INTEGER DEFAULT 0
         )
         """)
@@ -310,6 +316,13 @@ def init_db():
             "ALTER TABLE users DROP COLUMN IF EXISTS use_treadmill",
             "ALTER TABLE users DROP COLUMN IF EXISTS double_session_days",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_coach BOOLEAN NOT NULL DEFAULT FALSE",
+            "ALTER TABLE plans ADD COLUMN IF NOT EXISTS created_by_user_id INTEGER REFERENCES users(id)",
+            "ALTER TABLE plans ADD COLUMN IF NOT EXISTS plan_status TEXT NOT NULL DEFAULT 'active'",
+            "ALTER TABLE plans ADD COLUMN IF NOT EXISTS approved_by_user_id INTEGER REFERENCES users(id)",
+            "ALTER TABLE plans ADD COLUMN IF NOT EXISTS approved_at TIMESTAMPTZ",
+            "UPDATE plans SET created_by_user_id = user_id WHERE created_by_user_id IS NULL",
+            "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'ai_generated'",
+            "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS last_edited_by_user_id INTEGER REFERENCES users(id)",
         ]:
             try:
                 conn.execute(text(col_sql))
@@ -475,6 +488,8 @@ def create_plan(
     has_gym_access: bool = False,
     use_treadmill: bool | None = None,
     training_environment: str = "flat",
+    created_by_user_id: int | None = None,
+    plan_status: str = "active",
 ) -> int:
     with engine.connect() as conn:
         result = conn.execute(
@@ -483,11 +498,13 @@ def create_plan(
                                target_time_hours, total_weeks, course_distance_km,
                                course_elevation_gain_m, preferred_run_days, long_run_day,
                                days_per_week, double_session_days, start_date,
-                               has_gym_access, use_treadmill, training_environment)
+                               has_gym_access, use_treadmill, training_environment,
+                               created_by_user_id, plan_status)
             VALUES (:user_id, :race_name, :race_date, :goal_type,
                     :tth, :total_weeks, :dist_km, :elev_m, :preferred_run_days,
                     :long_run_day, :days_per_week, :double_session_days, :start_date,
-                    :has_gym_access, :use_treadmill, :training_environment)
+                    :has_gym_access, :use_treadmill, :training_environment,
+                    :created_by_user_id, :plan_status)
             RETURNING id
         """),
             {
@@ -507,6 +524,8 @@ def create_plan(
                 "has_gym_access": has_gym_access,
                 "use_treadmill": use_treadmill if use_treadmill is not None else has_gym_access,
                 "training_environment": training_environment or "flat",
+                "created_by_user_id": created_by_user_id if created_by_user_id is not None else user_id,
+                "plan_status": plan_status,
             },
         )
         conn.commit()
@@ -516,7 +535,10 @@ def create_plan(
 def get_recent_plans(user_id: int, limit: int = 3) -> list[dict[str, Any]]:
     with engine.connect() as conn:
         rows = conn.execute(
-            text("SELECT * FROM plans WHERE user_id = :uid " "ORDER BY created_at DESC, id DESC LIMIT :lim"),
+            text(
+                "SELECT * FROM plans WHERE user_id = :uid AND plan_status = 'active' "
+                "ORDER BY created_at DESC, id DESC LIMIT :lim"
+            ),
             {"uid": user_id, "lim": limit},
         ).fetchall()
     return [_row_to_dict(r) for r in rows]
@@ -598,7 +620,10 @@ def save_workouts(plan_id: int, workouts: list[dict[str, Any]]):
 def get_active_plan(user_id: int) -> dict[str, Any] | None:
     with engine.connect() as conn:
         row = conn.execute(
-            text("SELECT * FROM plans WHERE user_id = :uid " "ORDER BY created_at DESC, id DESC LIMIT 1"),
+            text(
+                "SELECT * FROM plans WHERE user_id = :uid AND plan_status = 'active' "
+                "ORDER BY created_at DESC, id DESC LIMIT 1"
+            ),
             {"uid": user_id},
         ).fetchone()
     return _row_to_dict(row) if row else None
