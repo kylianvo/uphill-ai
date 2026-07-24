@@ -162,3 +162,105 @@ class TestGetPlanById:
 
     def test_returns_none_for_unknown_id(self):
         assert get_plan_by_id(999999) is None
+
+
+def _admin_headers(client):
+    resp = client.post("/api/auth/mock-login", json={"email": "admin@uphill.ai"})
+    assert resp.status_code == 200, resp.text
+    return {"Authorization": f"Bearer {resp.json()['session_token']}"}
+
+
+def _make_coach(client, email="make-coach@uphill.ai"):
+    resp = client.post("/api/auth/mock-login", json={"email": email})
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    user_id = data["user"]["id"]
+    headers = {"Authorization": f"Bearer {data['session_token']}"}
+    promote = client.post(
+        f"/api/admin/users/{user_id}/coach-status", json={"is_coach": True}, headers=_admin_headers(client)
+    )
+    assert promote.status_code == 200, promote.text
+    return headers, user_id
+
+
+def _link_coach_and_athlete(client, coach_headers, athlete_email):
+    athlete_resp = client.post("/api/auth/mock-login", json={"email": athlete_email})
+    athlete_headers = {"Authorization": f"Bearer {athlete_resp.json()['session_token']}"}
+    athlete_id = athlete_resp.json()["user"]["id"]
+    invite = client.post("/api/coaching/invite", json={"athlete_email": athlete_email}, headers=coach_headers).json()
+    client.post(f"/api/coaching/invites/{invite['id']}/accept", headers=athlete_headers)
+    return athlete_headers, athlete_id
+
+
+def _generate_plan_payload(race_name="Test 50K"):
+    return {
+        "goal_type": "finish",
+        "race_name": race_name,
+        "race_date": "2027-05-01",
+        "plan_start_date": "2027-03-15",
+        "days_per_week": 4,
+    }
+
+
+class TestCoachGeneratePlanEndpoint:
+    def test_self_serve_generate_plan_is_unaffected(self, client, mock_plan_generation, auth_headers):
+        """Regression guard for the _generate_plan_for_athlete extraction:
+        the self-serve endpoint's response shape and plan_status must be
+        byte-for-byte the same as before the refactor."""
+        resp = client.post("/api/coach/generate-plan", json=_generate_plan_payload(), headers=auth_headers["headers"])
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["active"] is True
+        assert body["plan"]["race_name"] == "Test 50K"
+        assert "job_id" in body
+
+        with engine.connect() as conn:
+            row = conn.execute(
+                text("SELECT plan_status, created_by_user_id FROM plans WHERE id = :id"), {"id": body["plan"]["id"]}
+            ).fetchone()
+        assert row.plan_status == "active"
+        assert row.created_by_user_id == auth_headers["user_id"]
+
+    def test_coach_can_generate_a_draft_plan_for_an_athlete(self, client, mock_plan_generation):
+        coach_headers, coach_id = _make_coach(client, "genplan-coach1@uphill.ai")
+        _, athlete_id = _link_coach_and_athlete(client, coach_headers, "genplan-athlete1@uphill.ai")
+
+        resp = client.post(
+            f"/api/coaching/athletes/{athlete_id}/generate-plan",
+            json=_generate_plan_payload("Coach Draft 50K"),
+            headers=coach_headers,
+        )
+        assert resp.status_code == 200, resp.text
+        plan_id = resp.json()["plan"]["id"]
+
+        with engine.connect() as conn:
+            row = conn.execute(
+                text("SELECT plan_status, created_by_user_id, user_id FROM plans WHERE id = :id"), {"id": plan_id}
+            ).fetchone()
+        assert row.plan_status == "draft"
+        assert row.created_by_user_id == coach_id
+        assert row.user_id == athlete_id
+
+    def test_draft_plan_does_not_appear_as_the_athletes_active_plan(self, client, mock_plan_generation):
+        coach_headers, _ = _make_coach(client, "genplan-coach2@uphill.ai")
+        athlete_headers, athlete_id = _link_coach_and_athlete(client, coach_headers, "genplan-athlete2@uphill.ai")
+        client.post(
+            f"/api/coaching/athletes/{athlete_id}/generate-plan",
+            json=_generate_plan_payload("Hidden Draft"),
+            headers=coach_headers,
+        )
+
+        self_serve = client.get("/api/coach/active-plan", headers=athlete_headers)
+        assert self_serve.json() == {"active": False}
+
+        coach_view = client.get(f"/api/coaching/athletes/{athlete_id}/active-plan", headers=coach_headers)
+        assert coach_view.json() == {"active": False}
+
+    def test_non_coach_without_a_link_is_forbidden(self, client, auth_headers):
+        coach_headers, _ = _make_coach(client, "genplan-coach3@uphill.ai")
+        resp = client.post(
+            f"/api/coaching/athletes/{auth_headers['user_id']}/generate-plan",
+            json=_generate_plan_payload(),
+            headers=coach_headers,
+        )
+        assert resp.status_code == 403

@@ -1067,174 +1067,218 @@ def get_current_active_plan(user: dict[str, Any] = Depends(get_current_user)):
     return {"active": True, "plan": plan, "workouts": workouts}
 
 
+async def _generate_plan_for_athlete(
+    request: PlanGenerateRequest,
+    athlete_id: int,
+    created_by_user_id: int,
+    plan_status: str,
+    job_owner_user_id: int,
+) -> dict[str, Any]:
+    """Shared core of plan generation, used by both the self-serve
+    /api/coach/generate-plan (athlete_id == created_by_user_id ==
+    job_owner_user_id, plan_status='active') and the coach-triggered
+    /api/coaching/athletes/{athlete_id}/generate-plan (created_by_user_id =
+    coach.id, plan_status='draft', job_owner_user_id = coach.id so only the
+    coach -- not yet the athlete -- can poll the job)."""
+    import asyncio
+    from datetime import datetime, timedelta
+
+    goal = request.goal_type
+    is_race_or_dist = goal in ["finish", "time", "optimal"]
+
+    # Parse plan start date (default to today if missing)
+    start_date_str = request.plan_start_date or datetime.now().strftime("%Y-%m-%d")
+    try:
+        start_date_parsed = datetime.strptime(start_date_str, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid plan_start_date format. Expected YYYY-MM-DD.")
+
+    if is_race_or_dist:
+        if not request.race_date:
+            raise HTTPException(status_code=400, detail="Race Date is required for race/distance goals.")
+        try:
+            race_date_parsed = datetime.strptime(request.race_date, "%Y-%m-%d").date()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format. Expected YYYY-MM-DD.")
+
+        # Find Mondays
+        monday_start = start_date_parsed - timedelta(days=start_date_parsed.weekday())
+        monday_race = race_date_parsed - timedelta(days=race_date_parsed.weekday())
+
+        weeks_to_race = (monday_race - monday_start).days // 7
+        total_weeks = max(3, weeks_to_race + 2)
+        race_date_str = request.race_date
+        race_name_str = request.race_name or "Target Event"
+    else:
+        # Non-race goals
+        total_weeks = request.plan_duration_weeks or 8
+        # Calculate a synthetic race date at the end of the block
+        race_date_parsed = start_date_parsed + timedelta(weeks=total_weeks - 1)
+        race_date_str = race_date_parsed.strftime("%Y-%m-%d")
+
+        # Clear race-specific parameters for non-race plans
+        request.course_distance_km = None
+        request.course_elevation_gain_m = None
+
+        if goal == "start_running":
+            race_name_str = "Base Building"
+        elif goal == "return":
+            race_name_str = "Return to Running"
+        elif goal == "recovery":
+            race_name_str = "Post-Race Recovery"
+        else:
+            race_name_str = request.race_name or "Training Block"
+
+    course_context = None
+    if is_race_or_dist:
+        request.course_distance_km, request.course_elevation_gain_m, course_context = _resolve_course_match(
+            race_name_str, request.course_distance_km, request.course_elevation_gain_m
+        )
+
+    plan_id = create_plan(
+        user_id=athlete_id,
+        race_name=race_name_str,
+        race_date=race_date_str,
+        goal_type=goal,
+        target_time_hours=request.target_time_hours,
+        total_weeks=total_weeks,
+        course_distance_km=request.course_distance_km,
+        course_elevation_gain_m=request.course_elevation_gain_m,
+        preferred_run_days=request.preferred_days or [],
+        long_run_day=request.long_run_day,
+        days_per_week=request.days_per_week or 4,
+        double_session_days=request.double_session_days or [],
+        start_date=start_date_str,
+        has_gym_access=request.has_gym_access or False,
+        use_treadmill=request.use_treadmill,
+        training_environment=request.training_environment or "flat",
+        created_by_user_id=created_by_user_id,
+        plan_status=plan_status,
+    )
+
+    race_info = {
+        "name": race_name_str,
+        "date": race_date_str,
+        "terrain": request.terrain,
+        "goal_type": request.goal_type,
+        "target_time_hours": request.target_time_hours,
+        "course_distance_km": request.course_distance_km,
+        "course_elevation_gain_m": request.course_elevation_gain_m,
+        "course_context": course_context,
+        # Scheduling preferences (plan-level)
+        "preferred_days": request.preferred_days,
+        "long_run_day": request.long_run_day,
+        "days_per_week": request.days_per_week,
+        "double_session_days": request.double_session_days or [],
+        "has_gym_access": request.has_gym_access or False,
+        "use_treadmill": request.use_treadmill
+        if request.use_treadmill is not None
+        else (request.has_gym_access or False),
+        "training_environment": request.training_environment or "flat",
+        # Start date
+        "plan_start_date": start_date_str,
+        "lang": request.lang or "en",
+    }
+
+    # Fetch latest athlete details from database to ensure fresh physiological values
+    fresh_user = get_user_by_id(athlete_id) or {"id": athlete_id}
+
+    # Merge onboarding/non-race context fields into fresh_user dict for plan generator
+    fresh_user = dict(fresh_user)
+    fresh_user.update(
+        {
+            "time_away": request.time_away,
+            "fitness_feel": request.fitness_feel,
+            "race_distance_completed": request.race_distance_completed,
+            "days_since_race": request.days_since_race,
+            "recovery_feel": request.recovery_feel,
+        }
+    )
+
+    # Resolve Gemini API Key (per-user key with global settings fallback)
+    model_api_key = fresh_user.get("gemini_api_key") or settings.GEMINI_API_KEY
+    cutoff = request.cutoff_time_hours
+
+    # Create job entry and fire plan generation in the background
+    job_id = str(_uuid.uuid4())
+    plan_jobs[job_id] = {
+        "status": "generating",
+        "user_id": job_owner_user_id,
+        "plan_id": plan_id,
+        "workouts": None,
+        "error": None,
+    }
+
+    async def _run_gen():
+        try:
+            workouts = await PlanGenerator.generate_plan_workouts(
+                plan_id,
+                fresh_user,
+                race_info,
+                total_weeks,
+                api_key=model_api_key,
+                cutoff_time_hours=cutoff,
+                block_number=1,
+                weeks_per_block=2,
+            )
+            save_workouts(plan_id, workouts)
+            plan_jobs[job_id]["workouts"] = workouts
+            plan_jobs[job_id]["status"] = "done"
+            print(f"[PlanJob][{job_id}] generate-plan complete — {len(workouts)} workouts saved.")
+        except Exception as ex:
+            plan_jobs[job_id]["status"] = "error"
+            plan_jobs[job_id]["error"] = str(ex)
+            print(f"[PlanJob][{job_id}] generate-plan FAILED: {ex}")
+
+    asyncio.create_task(_run_gen())
+
+    return {
+        "job_id": job_id,
+        "active": True,
+        "plan": {
+            "id": plan_id,
+            "race_name": race_name_str,
+            "race_date": race_date_str,
+            "goal_type": request.goal_type,
+            "target_time_hours": request.target_time_hours,
+            "total_weeks": total_weeks,
+            "course_distance_km": request.course_distance_km,
+            "course_elevation_gain_m": request.course_elevation_gain_m,
+        },
+        "workouts": [],
+    }
+
+
 @app.post("/api/coach/generate-plan")
 async def generate_training_plan(request: PlanGenerateRequest, user: dict[str, Any] = Depends(get_current_user)):
     try:
-        import asyncio
-        from datetime import datetime, timedelta
-
-        goal = request.goal_type
-        is_race_or_dist = goal in ["finish", "time", "optimal"]
-
-        # Parse plan start date (default to today if missing)
-        start_date_str = request.plan_start_date or datetime.now().strftime("%Y-%m-%d")
-        try:
-            start_date_parsed = datetime.strptime(start_date_str, "%Y-%m-%d").date()
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid plan_start_date format. Expected YYYY-MM-DD.")
-
-        if is_race_or_dist:
-            if not request.race_date:
-                raise HTTPException(status_code=400, detail="Race Date is required for race/distance goals.")
-            try:
-                race_date_parsed = datetime.strptime(request.race_date, "%Y-%m-%d").date()
-            except ValueError:
-                raise HTTPException(status_code=400, detail="Invalid date format. Expected YYYY-MM-DD.")
-
-            # Find Mondays
-            monday_start = start_date_parsed - timedelta(days=start_date_parsed.weekday())
-            monday_race = race_date_parsed - timedelta(days=race_date_parsed.weekday())
-
-            weeks_to_race = (monday_race - monday_start).days // 7
-            total_weeks = max(3, weeks_to_race + 2)
-            race_date_str = request.race_date
-            race_name_str = request.race_name or "Target Event"
-        else:
-            # Non-race goals
-            total_weeks = request.plan_duration_weeks or 8
-            # Calculate a synthetic race date at the end of the block
-            race_date_parsed = start_date_parsed + timedelta(weeks=total_weeks - 1)
-            race_date_str = race_date_parsed.strftime("%Y-%m-%d")
-
-            # Clear race-specific parameters for non-race plans
-            request.course_distance_km = None
-            request.course_elevation_gain_m = None
-
-            if goal == "start_running":
-                race_name_str = "Base Building"
-            elif goal == "return":
-                race_name_str = "Return to Running"
-            elif goal == "recovery":
-                race_name_str = "Post-Race Recovery"
-            else:
-                race_name_str = request.race_name or "Training Block"
-
-        course_context = None
-        if is_race_or_dist:
-            request.course_distance_km, request.course_elevation_gain_m, course_context = _resolve_course_match(
-                race_name_str, request.course_distance_km, request.course_elevation_gain_m
-            )
-
-        plan_id = create_plan(
-            user_id=user["id"],
-            race_name=race_name_str,
-            race_date=race_date_str,
-            goal_type=goal,
-            target_time_hours=request.target_time_hours,
-            total_weeks=total_weeks,
-            course_distance_km=request.course_distance_km,
-            course_elevation_gain_m=request.course_elevation_gain_m,
-            preferred_run_days=request.preferred_days or [],
-            long_run_day=request.long_run_day,
-            days_per_week=request.days_per_week or 4,
-            double_session_days=request.double_session_days or [],
-            start_date=start_date_str,
-            has_gym_access=request.has_gym_access or False,
-            use_treadmill=request.use_treadmill,
-            training_environment=request.training_environment or "flat",
+        return await _generate_plan_for_athlete(
+            request,
+            athlete_id=user["id"],
+            created_by_user_id=user["id"],
+            plan_status="active",
+            job_owner_user_id=user["id"],
         )
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Failed to generate plan: {str(e)}")
 
-        race_info = {
-            "name": race_name_str,
-            "date": race_date_str,
-            "terrain": request.terrain,
-            "goal_type": request.goal_type,
-            "target_time_hours": request.target_time_hours,
-            "course_distance_km": request.course_distance_km,
-            "course_elevation_gain_m": request.course_elevation_gain_m,
-            "course_context": course_context,
-            # Scheduling preferences (plan-level)
-            "preferred_days": request.preferred_days,
-            "long_run_day": request.long_run_day,
-            "days_per_week": request.days_per_week,
-            "double_session_days": request.double_session_days or [],
-            "has_gym_access": request.has_gym_access or False,
-            "use_treadmill": request.use_treadmill
-            if request.use_treadmill is not None
-            else (request.has_gym_access or False),
-            "training_environment": request.training_environment or "flat",
-            # Start date
-            "plan_start_date": start_date_str,
-            "lang": request.lang or "en",
-        }
 
-        # Fetch latest user details from database to ensure fresh physiological values
-        fresh_user = get_user_by_id(user["id"]) or user
-
-        # Merge onboarding/non-race context fields into fresh_user dict for plan generator
-        fresh_user = dict(fresh_user)
-        fresh_user.update(
-            {
-                "time_away": request.time_away,
-                "fitness_feel": request.fitness_feel,
-                "race_distance_completed": request.race_distance_completed,
-                "days_since_race": request.days_since_race,
-                "recovery_feel": request.recovery_feel,
-            }
+@app.post("/api/coaching/athletes/{athlete_id}/generate-plan")
+async def coach_generate_plan(
+    athlete_id: int, request: PlanGenerateRequest, coach: dict[str, Any] = Depends(require_athlete_access)
+):
+    if not get_user_by_id(athlete_id):
+        raise HTTPException(status_code=404, detail="Athlete not found.")
+    try:
+        return await _generate_plan_for_athlete(
+            request,
+            athlete_id=athlete_id,
+            created_by_user_id=coach["id"],
+            plan_status="draft",
+            job_owner_user_id=coach["id"],
         )
-
-        # Resolve Gemini API Key (per-user key with global settings fallback)
-        model_api_key = fresh_user.get("gemini_api_key") or settings.GEMINI_API_KEY
-        cutoff = request.cutoff_time_hours
-
-        # Create job entry and fire plan generation in the background
-        job_id = str(_uuid.uuid4())
-        plan_jobs[job_id] = {
-            "status": "generating",
-            "user_id": user["id"],
-            "plan_id": plan_id,
-            "workouts": None,
-            "error": None,
-        }
-
-        async def _run_gen():
-            try:
-                workouts = await PlanGenerator.generate_plan_workouts(
-                    plan_id,
-                    fresh_user,
-                    race_info,
-                    total_weeks,
-                    api_key=model_api_key,
-                    cutoff_time_hours=cutoff,
-                    block_number=1,
-                    weeks_per_block=2,
-                )
-                save_workouts(plan_id, workouts)
-                plan_jobs[job_id]["workouts"] = workouts
-                plan_jobs[job_id]["status"] = "done"
-                print(f"[PlanJob][{job_id}] generate-plan complete — {len(workouts)} workouts saved.")
-            except Exception as ex:
-                plan_jobs[job_id]["status"] = "error"
-                plan_jobs[job_id]["error"] = str(ex)
-                print(f"[PlanJob][{job_id}] generate-plan FAILED: {ex}")
-
-        asyncio.create_task(_run_gen())
-
-        return {
-            "job_id": job_id,
-            "active": True,
-            "plan": {
-                "id": plan_id,
-                "race_name": race_name_str,
-                "race_date": race_date_str,
-                "goal_type": request.goal_type,
-                "target_time_hours": request.target_time_hours,
-                "total_weeks": total_weeks,
-                "course_distance_km": request.course_distance_km,
-                "course_elevation_gain_m": request.course_elevation_gain_m,
-            },
-            "workouts": [],
-        }
     except Exception as e:
         if isinstance(e, HTTPException):
             raise e
