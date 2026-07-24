@@ -12,6 +12,7 @@ import ToolsView from "./ToolsView";
 import { UploadSimple, FileArrowUp, Heart, Clock, Mountains, MapPin, Footprints, ArrowsMerge, PlayCircle, CheckCircle, Fire, Path, RoadHorizon, Info, Check, Question, WarningCircle, Plus, Trash, Archive, LockKey, LockKeyOpen, Trophy, Target, Sneaker, PersonSimpleRun, Bed, XCircle, DownloadSimple, Gauge } from '@phosphor-icons/react';
 import { RaceMatch } from "../hooks/useRaceMatch";
 import { RaceNameField } from "../components/RaceNameField";
+import { CoachNoteThread } from "../components/CoachNoteThread";
 import { minsToHms, isTaperPhase, buildPaceHandoffFromPlan } from "../lib/planHandoff";
 import { parsePaceToMinutes, formatDurationHM } from "../lib/paceStrategy";
 
@@ -970,6 +971,13 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                         ? (lang === "en" ? "Optimal Performance" : "Hiệu suất Tối ưu")
                         : activePlan.goal_type.toUpperCase().replace("_", " ")}
                 </p>
+                <CoachNoteThread
+                  athleteId={actingAsAthleteId ?? (user?.id ?? null)}
+                  targetType="plan"
+                  targetId={null}
+                  lang={lang}
+                  canAdd={isCoachActingAsAthlete}
+                />
               </div>
 
               <div style={{ display: "flex", background: "rgba(0,0,0,0.05)", border: "1px solid var(--border-color)", borderRadius: "999px", padding: "3px", gap: "2px", alignSelf: "flex-start" }}>
