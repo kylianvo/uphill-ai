@@ -2170,13 +2170,16 @@ def _parse_hms_to_mins(time_str: str | None) -> float | None:
     return h * 60 + m + s / 60
 
 
-@app.post("/api/coach/goal-estimate")
-def goal_estimate(request: GoalEstimateRequest):
+def _goal_estimate_core(request: GoalEstimateRequest) -> dict[str, Any]:
     """Goal Determiner: predicted finish time + A/B/C goals for a target
     course, from either a flat base pace or a past race result. Course
     numbers are backfilled from the race KB when only a name is given, and
     an UltraSignup-style rank-transfer estimate is added when winner times
-    are curated for both races."""
+    are curated for both races. Shared by the self-serve
+    /api/coach/goal-estimate and the coach-triggered
+    /api/coaching/athletes/{athlete_id}/goal-estimate -- this function
+    reads nothing from the database keyed by a user id, so there is no
+    athlete-vs-coach resolution to get right here."""
     from services.race_estimator import RaceEstimator
     from services.race_matcher import match_race, race_benchmarks
 
@@ -2244,6 +2247,18 @@ def goal_estimate(request: GoalEstimateRequest):
                 )
 
     return response
+
+
+@app.post("/api/coach/goal-estimate")
+def goal_estimate(request: GoalEstimateRequest):
+    return _goal_estimate_core(request)
+
+
+@app.post("/api/coaching/athletes/{athlete_id}/goal-estimate")
+def coach_goal_estimate(
+    athlete_id: int, request: GoalEstimateRequest, coach: dict[str, Any] = Depends(require_athlete_access)
+):
+    return _goal_estimate_core(request)
 
 
 @app.get("/api/coach/pace-strategy/benchmarks")
