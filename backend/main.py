@@ -16,6 +16,7 @@ from db import (
     approve_plan,
     coach_update_workout,
     create_coach_invite,
+    create_coach_note,
     create_coach_workout,
     create_or_get_user,
     create_plan,
@@ -31,11 +32,13 @@ from db import (
     get_block_completion,
     get_block_reviews,
     get_coach_athlete_by_id,
+    get_coach_notes,
     get_draft_plan_for_athlete,
     get_kb_chunk_count,
     get_knowledge_card_count,
     get_knowledge_topics,
     get_max_generated_week,
+    get_pending_invites_for_athlete,
     get_plan_by_id,
     get_plan_workouts,
     get_random_knowledge_cards,
@@ -361,6 +364,12 @@ class CoachWorkoutCreateRequest(BaseModel):
     description: str | None = None
     fueling_tip: str | None = None
     session_slot: str | None = "main"
+
+
+class CoachNoteCreateRequest(BaseModel):
+    target_type: str  # 'plan' | 'workout' | 'gear' | 'nutrition' | 'general'
+    target_id: int | None = None
+    note: str
 
 
 def format_user_response(user: dict[str, Any]) -> dict[str, Any]:
@@ -973,6 +982,11 @@ def get_roster(coach: dict[str, Any] = Depends(require_coach)):
     return get_roster_for_coach(coach["id"])
 
 
+@app.get("/api/coaching/my-invites")
+def get_my_pending_invites(user: dict[str, Any] = Depends(get_current_user)):
+    return get_pending_invites_for_athlete(user["id"])
+
+
 @app.get("/api/coaching/athletes/{athlete_id}/active-plan")
 def get_athlete_active_plan(athlete_id: int, acting_user: dict[str, Any] = Depends(require_athlete_access)):
     plan = get_active_plan(athlete_id)
@@ -1149,6 +1163,28 @@ async def coach_chat_copilot(
         "Once a Gemini API key is configured (yours or the server's), I'll answer grounded in this athlete's actual plan and workout data."
     )
     return {"role": "assistant", "content": mock_reply}
+
+
+_VALID_NOTE_TARGET_TYPES = {"plan", "workout", "gear", "nutrition", "general"}
+
+
+@app.post("/api/coaching/athletes/{athlete_id}/notes")
+def create_athlete_note(
+    athlete_id: int, request: CoachNoteCreateRequest, acting_user: dict[str, Any] = Depends(require_athlete_access)
+):
+    if request.target_type not in _VALID_NOTE_TARGET_TYPES:
+        raise HTTPException(status_code=422, detail=f"target_type must be one of {sorted(_VALID_NOTE_TARGET_TYPES)}")
+    return create_coach_note(acting_user["id"], athlete_id, request.target_type, request.target_id, request.note)
+
+
+@app.get("/api/coaching/athletes/{athlete_id}/notes")
+def get_athlete_notes(
+    athlete_id: int,
+    target_type: str | None = None,
+    target_id: int | None = None,
+    acting_user: dict[str, Any] = Depends(require_athlete_access),
+):
+    return {"notes": get_coach_notes(athlete_id, target_type, target_id)}
 
 
 # --- Telemetry Parsers ---

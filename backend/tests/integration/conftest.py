@@ -23,6 +23,7 @@ ALL_TABLES = [
     "plans",
     "sessions",
     "sources",
+    "coach_notes",
     "coach_athletes",
     "users",
 ]

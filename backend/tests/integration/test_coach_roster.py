@@ -682,3 +682,36 @@ class TestRemoveFromRosterEndpoint:
         )
         assert reinvite.status_code == 200
         assert reinvite.json()["status"] == "invited"
+
+
+class TestMyInvitesEndpoint:
+    def test_returns_pending_invites_for_the_authenticated_athlete(self, client):
+        coach_headers, _ = _make_coach(client, "myinv-coach1@uphill.ai")
+        athlete_resp = client.post("/api/auth/mock-login", json={"email": "myinv-athlete1@uphill.ai"})
+        athlete_headers = {"Authorization": f"Bearer {athlete_resp.json()['session_token']}"}
+        client.post("/api/coaching/invite", json={"athlete_email": "myinv-athlete1@uphill.ai"}, headers=coach_headers)
+
+        resp = client.get("/api/coaching/my-invites", headers=athlete_headers)
+        assert resp.status_code == 200
+        invites = resp.json()
+        assert len(invites) == 1
+        assert invites[0]["coach_email"] == "myinv-coach1@uphill.ai"
+        assert invites[0]["status"] == "invited"
+
+    def test_excludes_accepted_and_declined_invites(self, client):
+        coach_headers, _ = _make_coach(client, "myinv-coach2@uphill.ai")
+        athlete_resp = client.post("/api/auth/mock-login", json={"email": "myinv-athlete2@uphill.ai"})
+        athlete_headers = {"Authorization": f"Bearer {athlete_resp.json()['session_token']}"}
+        invite = client.post(
+            "/api/coaching/invite", json={"athlete_email": "myinv-athlete2@uphill.ai"}, headers=coach_headers
+        ).json()
+        client.post(f"/api/coaching/invites/{invite['id']}/accept", headers=athlete_headers)
+
+        resp = client.get("/api/coaching/my-invites", headers=athlete_headers)
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    def test_returns_empty_list_with_no_invites(self, client, auth_headers):
+        resp = client.get("/api/coaching/my-invites", headers=auth_headers["headers"])
+        assert resp.status_code == 200
+        assert resp.json() == []

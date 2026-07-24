@@ -139,6 +139,20 @@ def init_db():
 
         conn.execute(
             text("""
+        CREATE TABLE IF NOT EXISTS coach_notes (
+            id              SERIAL PRIMARY KEY,
+            coach_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            athlete_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            target_type     TEXT NOT NULL,   -- 'plan' | 'workout' | 'gear' | 'nutrition' | 'general'
+            target_id       INTEGER,
+            note            TEXT NOT NULL,
+            created_at      TIMESTAMPTZ DEFAULT NOW()
+        )
+        """)
+        )
+
+        conn.execute(
+            text("""
         CREATE TABLE IF NOT EXISTS workouts (
             id                  SERIAL PRIMARY KEY,
             plan_id             INTEGER NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
@@ -1198,6 +1212,63 @@ def remove_coach_athlete_link(link_id: int, actor_user_id: int) -> dict[str, Any
             return None
         row = conn.execute(text("SELECT * FROM coach_athletes WHERE id = :id"), {"id": link_id}).fetchone()
     return _row_to_dict(row)
+
+
+def create_coach_note(
+    coach_id: int, athlete_id: int, target_type: str, target_id: int | None, note: str
+) -> dict[str, Any]:
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("""
+                INSERT INTO coach_notes (coach_id, athlete_id, target_type, target_id, note)
+                VALUES (:coach_id, :athlete_id, :target_type, :target_id, :note)
+                RETURNING *
+            """),
+            {
+                "coach_id": coach_id,
+                "athlete_id": athlete_id,
+                "target_type": target_type,
+                "target_id": target_id,
+                "note": note,
+            },
+        ).fetchone()
+        conn.commit()
+    return _row_to_dict(row)
+
+
+def get_coach_notes(
+    athlete_id: int, target_type: str | None = None, target_id: int | None = None
+) -> list[dict[str, Any]]:
+    query = "SELECT * FROM coach_notes WHERE athlete_id = :aid"
+    params: dict[str, Any] = {"aid": athlete_id}
+    if target_type is not None:
+        query += " AND target_type = :tt"
+        params["tt"] = target_type
+    if target_id is not None:
+        query += " AND target_id = :tid"
+        params["tid"] = target_id
+    query += " ORDER BY created_at DESC"
+    with engine.connect() as conn:
+        rows = conn.execute(text(query), params).fetchall()
+    return [_row_to_dict(r) for r in rows]
+
+
+def get_pending_invites_for_athlete(athlete_id: int) -> list[dict[str, Any]]:
+    """The athlete-side mirror of get_roster_for_coach: pending invites this
+    athlete hasn't responded to yet, for the accept/decline UI."""
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("""
+                SELECT ca.id, ca.coach_id, ca.status, ca.invited_at,
+                       u.email AS coach_email, u.name AS coach_name
+                FROM coach_athletes ca
+                JOIN users u ON u.id = ca.coach_id
+                WHERE ca.athlete_id = :aid AND ca.status = 'invited'
+                ORDER BY ca.invited_at DESC
+            """),
+            {"aid": athlete_id},
+        ).fetchall()
+    return [_row_to_dict(r) for r in rows]
 
 
 # ─── Sessions (JWT-based, stored for revocation) ─────────────────────────────
