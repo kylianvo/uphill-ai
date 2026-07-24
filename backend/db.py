@@ -726,6 +726,25 @@ def create_coach_workout(plan_id: int, creator_user_id: int, fields: dict[str, A
     return _row_to_dict(row)
 
 
+def approve_plan(plan_id: int, athlete_id: int, coach_id: int) -> dict[str, Any] | None:
+    """Flips a draft plan to active. Returns None if no 'draft' plan with
+    this id belongs to this athlete (wrong athlete, already active, or
+    doesn't exist)."""
+    with engine.connect() as conn:
+        result = conn.execute(
+            text("""
+                UPDATE plans SET plan_status = 'active', approved_by_user_id = :coach_id, approved_at = NOW()
+                WHERE id = :id AND user_id = :aid AND plan_status = 'draft'
+            """),
+            {"id": plan_id, "aid": athlete_id, "coach_id": coach_id},
+        )
+        conn.commit()
+        if result.rowcount == 0:
+            return None
+        row = conn.execute(text("SELECT * FROM plans WHERE id = :id"), {"id": plan_id}).fetchone()
+    return _row_to_dict(row)
+
+
 def set_plan_active(user_id: int, plan_id: int) -> bool:
     with engine.connect() as conn:
         result = conn.execute(

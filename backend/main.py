@@ -13,6 +13,7 @@ from config import settings
 from db import (
     accept_coach_invite,
     add_source,
+    approve_plan,
     coach_update_workout,
     create_coach_invite,
     create_coach_workout,
@@ -1022,6 +1023,14 @@ def add_athlete_workout(
     if not plan or plan["user_id"] != athlete_id:
         raise HTTPException(status_code=404, detail="Plan not found.")
     return create_coach_workout(plan_id, acting_user["id"], request.dict())
+
+
+@app.post("/api/coaching/athletes/{athlete_id}/plans/{plan_id}/approve")
+def approve_athlete_plan(athlete_id: int, plan_id: int, coach: dict[str, Any] = Depends(require_athlete_access)):
+    updated = approve_plan(plan_id, athlete_id, coach["id"])
+    if not updated:
+        raise HTTPException(status_code=404, detail="Draft plan not found.")
+    return updated
 
 
 # --- Telemetry Parsers ---

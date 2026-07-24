@@ -503,3 +503,115 @@ class TestAddWorkoutEndpoint:
             headers=coach_headers,
         )
         assert resp.status_code == 403
+
+
+class TestApprovePlanEndpoint:
+    def test_coach_can_approve_a_draft(self, client, mock_plan_generation):
+        coach_headers, coach_id = _make_coach(client, "approve-coach1@uphill.ai")
+        _, athlete_id = _link_coach_and_athlete(client, coach_headers, "approve-athlete1@uphill.ai")
+        client.post(
+            f"/api/coaching/athletes/{athlete_id}/generate-plan",
+            json=_generate_plan_payload("Approve Me"),
+            headers=coach_headers,
+        )
+        plan_id = client.get(f"/api/coaching/athletes/{athlete_id}/plans/draft", headers=coach_headers).json()["plan"][
+            "id"
+        ]
+
+        resp = client.post(f"/api/coaching/athletes/{athlete_id}/plans/{plan_id}/approve", headers=coach_headers)
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["plan_status"] == "active"
+        assert body["approved_by_user_id"] == coach_id
+        assert body["approved_at"] is not None
+
+    def test_approved_plan_becomes_visible_everywhere(self, client, mock_plan_generation):
+        coach_headers, _ = _make_coach(client, "approve-coach2@uphill.ai")
+        athlete_headers, athlete_id = _link_coach_and_athlete(client, coach_headers, "approve-athlete2@uphill.ai")
+        client.post(
+            f"/api/coaching/athletes/{athlete_id}/generate-plan",
+            json=_generate_plan_payload("Now Visible"),
+            headers=coach_headers,
+        )
+        plan_id = client.get(f"/api/coaching/athletes/{athlete_id}/plans/draft", headers=coach_headers).json()["plan"][
+            "id"
+        ]
+        client.post(f"/api/coaching/athletes/{athlete_id}/plans/{plan_id}/approve", headers=coach_headers)
+
+        self_serve = client.get("/api/coach/active-plan", headers=athlete_headers)
+        assert self_serve.json()["active"] is True
+        assert self_serve.json()["plan"]["race_name"] == "Now Visible"
+
+        coach_view = client.get(f"/api/coaching/athletes/{athlete_id}/active-plan", headers=coach_headers)
+        assert coach_view.json()["active"] is True
+
+        draft_now = client.get(f"/api/coaching/athletes/{athlete_id}/plans/draft", headers=coach_headers)
+        assert draft_now.json() == {"draft": False}
+
+    def test_approving_a_draft_that_was_already_approved_404s(self, client, mock_plan_generation):
+        coach_headers, _ = _make_coach(client, "approve-coach3@uphill.ai")
+        _, athlete_id = _link_coach_and_athlete(client, coach_headers, "approve-athlete3@uphill.ai")
+        client.post(
+            f"/api/coaching/athletes/{athlete_id}/generate-plan",
+            json=_generate_plan_payload("Double Approve"),
+            headers=coach_headers,
+        )
+        plan_id = client.get(f"/api/coaching/athletes/{athlete_id}/plans/draft", headers=coach_headers).json()["plan"][
+            "id"
+        ]
+        client.post(f"/api/coaching/athletes/{athlete_id}/plans/{plan_id}/approve", headers=coach_headers)
+
+        resp = client.post(f"/api/coaching/athletes/{athlete_id}/plans/{plan_id}/approve", headers=coach_headers)
+        assert resp.status_code == 404
+
+    def test_select_plan_404s_on_an_unapproved_draft(self, client, mock_plan_generation):
+        """Proves the set_plan_active/select-plan interaction documented in
+        Global Constraints: a draft plan_id is invisible to
+        get_recent_plans (the membership check select-plan runs first), so
+        it 404s before set_plan_active is ever reached -- no bypass path."""
+        coach_headers, _ = _make_coach(client, "approve-coach4@uphill.ai")
+        athlete_headers, athlete_id = _link_coach_and_athlete(client, coach_headers, "approve-athlete4@uphill.ai")
+        client.post(
+            f"/api/coaching/athletes/{athlete_id}/generate-plan",
+            json=_generate_plan_payload("Not Selectable Yet"),
+            headers=coach_headers,
+        )
+        plan_id = client.get(f"/api/coaching/athletes/{athlete_id}/plans/draft", headers=coach_headers).json()["plan"][
+            "id"
+        ]
+
+        resp = client.post("/api/coach/select-plan", json={"plan_id": plan_id}, headers=athlete_headers)
+        assert resp.status_code == 404
+
+    def test_approve_404s_for_a_plan_belonging_to_a_different_athlete(self, client, mock_plan_generation):
+        coach_headers, _ = _make_coach(client, "approve-coach5@uphill.ai")
+        _, athlete_id = _link_coach_and_athlete(client, coach_headers, "approve-athlete5@uphill.ai")
+        other_athlete_id = _create_user("approve-other-athlete5@uphill.ai")
+        other_plan_id = create_plan(
+            user_id=other_athlete_id,
+            race_name="Not This Athlete",
+            race_date="2027-05-01",
+            goal_type="finish",
+            target_time_hours=None,
+            total_weeks=8,
+            plan_status="draft",
+        )
+
+        resp = client.post(f"/api/coaching/athletes/{athlete_id}/plans/{other_plan_id}/approve", headers=coach_headers)
+        assert resp.status_code == 404
+
+    def test_coach_without_a_link_is_forbidden(self, client, auth_headers):
+        coach_headers, _ = _make_coach(client, "approve-coach6@uphill.ai")
+        plan_id = create_plan(
+            user_id=auth_headers["user_id"],
+            race_name="No Link",
+            race_date="2027-05-01",
+            goal_type="finish",
+            target_time_hours=None,
+            total_weeks=8,
+            plan_status="draft",
+        )
+        resp = client.post(
+            f"/api/coaching/athletes/{auth_headers['user_id']}/plans/{plan_id}/approve", headers=coach_headers
+        )
+        assert resp.status_code == 403
