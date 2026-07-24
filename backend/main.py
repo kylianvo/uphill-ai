@@ -28,6 +28,7 @@ from db import (
     get_block_completion,
     get_block_reviews,
     get_coach_athlete_by_id,
+    get_draft_plan_for_athlete,
     get_kb_chunk_count,
     get_knowledge_card_count,
     get_knowledge_topics,
@@ -949,6 +950,14 @@ def get_athlete_profile(athlete_id: int, acting_user: dict[str, Any] = Depends(r
     if not athlete:
         raise HTTPException(status_code=404, detail="Athlete not found.")
     return format_user_response(athlete)
+
+
+@app.get("/api/coaching/athletes/{athlete_id}/plans/draft")
+def get_athlete_draft_plan(athlete_id: int, acting_user: dict[str, Any] = Depends(require_athlete_access)):
+    plan = get_draft_plan_for_athlete(athlete_id)
+    if not plan:
+        return {"draft": False}
+    return {"draft": True, "plan": plan, "workouts": get_plan_workouts(plan["id"])}
 
 
 # --- Telemetry Parsers ---

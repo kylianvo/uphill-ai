@@ -264,3 +264,51 @@ class TestCoachGeneratePlanEndpoint:
             headers=coach_headers,
         )
         assert resp.status_code == 403
+
+
+class TestDraftReviewEndpoint:
+    def test_returns_no_draft_when_none_exists(self, client):
+        coach_headers, _ = _make_coach(client, "draft-coach1@uphill.ai")
+        _, athlete_id = _link_coach_and_athlete(client, coach_headers, "draft-athlete1@uphill.ai")
+        resp = client.get(f"/api/coaching/athletes/{athlete_id}/plans/draft", headers=coach_headers)
+        assert resp.status_code == 200
+        assert resp.json() == {"draft": False}
+
+    def test_coach_can_review_the_draft_they_generated(self, client, mock_plan_generation):
+        coach_headers, _ = _make_coach(client, "draft-coach2@uphill.ai")
+        _, athlete_id = _link_coach_and_athlete(client, coach_headers, "draft-athlete2@uphill.ai")
+        client.post(
+            f"/api/coaching/athletes/{athlete_id}/generate-plan",
+            json=_generate_plan_payload("Review Me"),
+            headers=coach_headers,
+        )
+
+        resp = client.get(f"/api/coaching/athletes/{athlete_id}/plans/draft", headers=coach_headers)
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["draft"] is True
+        assert body["plan"]["race_name"] == "Review Me"
+        assert isinstance(body["workouts"], list)
+
+    def test_athlete_can_also_see_their_own_draft_via_this_endpoint(self, client, mock_plan_generation):
+        """Athletes are technically allowed to call athlete-scoped coaching
+        routes on themselves (require_athlete_access grants self-access) --
+        and a draft they didn't create and hasn't been approved still shows
+        up here if they do, since 'draft' status alone (not who created it)
+        is what this endpoint surfaces. Documenting the intentional
+        behavior rather than leaving it untested."""
+        coach_headers, _ = _make_coach(client, "draft-coach3@uphill.ai")
+        athlete_headers, athlete_id = _link_coach_and_athlete(client, coach_headers, "draft-athlete3@uphill.ai")
+        client.post(
+            f"/api/coaching/athletes/{athlete_id}/generate-plan",
+            json=_generate_plan_payload("Self View"),
+            headers=coach_headers,
+        )
+        resp = client.get(f"/api/coaching/athletes/{athlete_id}/plans/draft", headers=athlete_headers)
+        assert resp.status_code == 200
+        assert resp.json()["draft"] is True
+
+    def test_coach_without_a_link_is_forbidden(self, client, auth_headers):
+        coach_headers, _ = _make_coach(client, "draft-coach4@uphill.ai")
+        resp = client.get(f"/api/coaching/athletes/{auth_headers['user_id']}/plans/draft", headers=coach_headers)
+        assert resp.status_code == 403
