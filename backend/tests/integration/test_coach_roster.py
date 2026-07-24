@@ -500,3 +500,48 @@ class TestAthleteRecentPlansEndpoint:
         coach_headers, _ = _make_coach(client, "recent-coach2@uphill.ai")
         resp = client.get(f"/api/coaching/athletes/{auth_headers['user_id']}/recent-plans", headers=coach_headers)
         assert resp.status_code == 403
+
+
+def _generate_plan(client, headers, race_name="Workouts 50K"):
+    resp = client.post(
+        "/api/coach/generate-plan",
+        json={
+            "goal_type": "finish",
+            "race_name": race_name,
+            "race_date": "2027-05-01",
+            "plan_start_date": "2027-03-15",
+            "days_per_week": 4,
+        },
+        headers=headers,
+    )
+    assert resp.status_code == 200, resp.text
+    return resp.json()["plan"]["id"]
+
+
+class TestAthletePlanWorkoutsEndpoint:
+    def test_coach_can_view_workouts_for_a_specific_athlete_plan(self, client, mock_plan_generation):
+        coach_headers, _ = _make_coach(client, "workouts-coach1@uphill.ai")
+        athlete_headers, athlete_id = _link_coach_and_athlete(client, coach_headers, "workouts-athlete1@uphill.ai")
+        plan_id = _generate_plan(client, athlete_headers)
+
+        resp = client.get(f"/api/coaching/athletes/{athlete_id}/plans/{plan_id}/workouts", headers=coach_headers)
+        assert resp.status_code == 200
+        assert isinstance(resp.json()["workouts"], list)
+
+    def test_404s_when_plan_does_not_belong_to_athlete(self, client, mock_plan_generation):
+        coach_headers, _ = _make_coach(client, "workouts-coach2@uphill.ai")
+        athlete_headers, athlete_id = _link_coach_and_athlete(client, coach_headers, "workouts-athlete2@uphill.ai")
+        other_resp = client.post("/api/auth/mock-login", json={"email": "workouts-someone-else@uphill.ai"})
+        other_headers = {"Authorization": f"Bearer {other_resp.json()['session_token']}"}
+        other_plan_id = _generate_plan(client, other_headers, race_name="Someone Else's Plan")
+
+        resp = client.get(f"/api/coaching/athletes/{athlete_id}/plans/{other_plan_id}/workouts", headers=coach_headers)
+        assert resp.status_code == 404
+
+    def test_coach_without_a_link_is_forbidden_from_plan_workouts(self, client, auth_headers, mock_plan_generation):
+        coach_headers, _ = _make_coach(client, "workouts-coach3@uphill.ai")
+        plan_id = _generate_plan(client, auth_headers["headers"], race_name="No Link 50K")
+        resp = client.get(
+            f"/api/coaching/athletes/{auth_headers['user_id']}/plans/{plan_id}/workouts", headers=coach_headers
+        )
+        assert resp.status_code == 403

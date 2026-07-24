@@ -916,6 +916,14 @@ def get_athlete_recent_plans(athlete_id: int, acting_user: dict[str, Any] = Depe
     return {"plans": plans}
 
 
+@app.get("/api/coaching/athletes/{athlete_id}/plans/{plan_id}/workouts")
+def get_athlete_plan_workouts(
+    athlete_id: int, plan_id: int, acting_user: dict[str, Any] = Depends(require_athlete_access)
+):
+    _verify_plan_ownership(plan_id, athlete_id)
+    return {"workouts": get_plan_workouts(plan_id)}
+
+
 # --- Telemetry Parsers ---
 
 
