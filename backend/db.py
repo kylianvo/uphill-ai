@@ -919,6 +919,103 @@ def mark_onboarding_complete(user_id: int) -> bool:
     return result.rowcount > 0
 
 
+# ─── Coaching (human coach roster) ───────────────────────────────────────────
+# "Coach" here means a human coaching other users -- distinct from "Coach
+# Uphill", the AI persona served by the plan/chat/pacing functions above.
+
+
+def set_user_is_coach(user_id: int, is_coach: bool) -> bool:
+    with engine.connect() as conn:
+        result = conn.execute(text("UPDATE users SET is_coach = :v WHERE id = :id"), {"v": is_coach, "id": user_id})
+        conn.commit()
+    return result.rowcount > 0
+
+
+def get_active_coach_link_for_athlete(athlete_id: int) -> dict[str, Any] | None:
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("SELECT * FROM coach_athletes WHERE athlete_id = :aid AND status = 'active'"), {"aid": athlete_id}
+        ).fetchone()
+    return _row_to_dict(row) if row else None
+
+
+def get_coach_athlete_link(coach_id: int, athlete_id: int) -> dict[str, Any] | None:
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("SELECT * FROM coach_athletes WHERE coach_id = :cid AND athlete_id = :aid"),
+            {"cid": coach_id, "aid": athlete_id},
+        ).fetchone()
+    return _row_to_dict(row) if row else None
+
+
+def get_coach_athlete_by_id(link_id: int) -> dict[str, Any] | None:
+    with engine.connect() as conn:
+        row = conn.execute(text("SELECT * FROM coach_athletes WHERE id = :id"), {"id": link_id}).fetchone()
+    return _row_to_dict(row) if row else None
+
+
+def create_coach_invite(coach_id: int, athlete_id: int) -> dict[str, Any]:
+    """Inserts a new 'invited' roster row, or -- if a prior relationship
+    between this coach/athlete pair was 'removed' -- reopens it as a fresh
+    invite. An existing 'invited'/'active'/'paused' row for this pair is
+    left untouched; the endpoint layer decides what that means for the
+    caller."""
+    with engine.connect() as conn:
+        conn.execute(
+            text("""
+                INSERT INTO coach_athletes (coach_id, athlete_id, status, invited_at, responded_at, removed_at)
+                VALUES (:cid, :aid, 'invited', NOW(), NULL, NULL)
+                ON CONFLICT (coach_id, athlete_id) DO UPDATE SET
+                    status = 'invited', invited_at = NOW(), responded_at = NULL, removed_at = NULL
+                WHERE coach_athletes.status = 'removed'
+            """),
+            {"cid": coach_id, "aid": athlete_id},
+        )
+        conn.commit()
+        row = conn.execute(
+            text("SELECT * FROM coach_athletes WHERE coach_id = :cid AND athlete_id = :aid"),
+            {"cid": coach_id, "aid": athlete_id},
+        ).fetchone()
+    return _row_to_dict(row)
+
+
+def accept_coach_invite(link_id: int, athlete_id: int) -> dict[str, Any] | None:
+    """Flips a pending invite to 'active'. Returns None if no 'invited' row
+    with this id belongs to this athlete (wrong athlete, already responded,
+    or doesn't exist) -- the endpoint layer maps that to a 404."""
+    with engine.connect() as conn:
+        result = conn.execute(
+            text("""
+                UPDATE coach_athletes SET status = 'active', responded_at = NOW()
+                WHERE id = :id AND athlete_id = :aid AND status = 'invited'
+            """),
+            {"id": link_id, "aid": athlete_id},
+        )
+        conn.commit()
+        if result.rowcount == 0:
+            return None
+        row = conn.execute(text("SELECT * FROM coach_athletes WHERE id = :id"), {"id": link_id}).fetchone()
+    return _row_to_dict(row)
+
+
+def get_roster_for_coach(coach_id: int) -> list[dict[str, Any]]:
+    """Active + pending-invite athletes for a coach, newest-invited first.
+    Removed relationships are excluded -- they're history, not roster."""
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("""
+                SELECT ca.id, ca.athlete_id, ca.status, ca.invited_at, ca.responded_at,
+                       u.email AS athlete_email, u.name AS athlete_name
+                FROM coach_athletes ca
+                JOIN users u ON u.id = ca.athlete_id
+                WHERE ca.coach_id = :cid AND ca.status != 'removed'
+                ORDER BY ca.invited_at DESC
+            """),
+            {"cid": coach_id},
+        ).fetchall()
+    return [_row_to_dict(r) for r in rows]
+
+
 # ─── Sessions (JWT-based, stored for revocation) ─────────────────────────────
 
 
