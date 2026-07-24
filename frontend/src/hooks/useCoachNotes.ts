@@ -1,8 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from "react";
 
+function getBackendUrl(): string {
+  if (typeof window !== "undefined") {
+    const override = localStorage.getItem("UPHILL_API_URL_OVERRIDE");
+    if (override) return override;
+  }
+  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+}
+
 export function useCoachNotes(athleteId: number | null, targetType: string, targetId: number | null) {
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  const API_BASE_URL = getBackendUrl();
   const [notes, setNotes] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 

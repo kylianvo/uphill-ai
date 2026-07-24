@@ -283,6 +283,10 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
 
   const fetchBlockCompletion = React.useCallback(() => {
     if (!activePlan) return;
+    // No coach-scoped equivalent exists for block-completion (same
+    // documented gap as select-plan/modify-calendar/workouts-log) --
+    // skip rather than 404 against the coach's own plan history.
+    if (isCoachActingAsAthlete) return;
     const token = typeof window !== "undefined" ? localStorage.getItem("uphill_session_token") : null;
     if (!token) return;
     fetch(`${API_BASE_URL}/api/coach/block-completion/${activePlan.id}`, {
@@ -292,7 +296,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
       .then(data => { if (data) setBlockData(data); })
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activePlan?.id, API_BASE_URL]);
+  }, [activePlan?.id, API_BASE_URL, isCoachActingAsAthlete]);
 
   useEffect(() => {
     if (!activePlan) { Promise.resolve().then(() => setBlockData(null)); return; }

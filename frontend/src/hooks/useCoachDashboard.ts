@@ -2,9 +2,17 @@
 import { useState } from "react";
 import { useAppContext } from "../contexts/AppContext";
 
+function getBackendUrl(): string {
+  if (typeof window !== "undefined") {
+    const override = localStorage.getItem("UPHILL_API_URL_OVERRIDE");
+    if (override) return override;
+  }
+  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+}
+
 export function useCoachDashboard() {
   const { setActingAsAthleteId, setActingAsAthleteName, setActiveTab } = useAppContext();
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  const API_BASE_URL = getBackendUrl();
 
   const [roster, setRoster] = useState<any[]>([]);
   const [pendingInvites, setPendingInvites] = useState<any[]>([]);

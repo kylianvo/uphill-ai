@@ -12,6 +12,7 @@ import PlannerView from "@/views/PlannerView";
 import ToolsView from "@/views/ToolsView";
 import KnowledgeView from "@/views/KnowledgeView";
 import CoachDashboardView from "@/views/CoachDashboardView";
+import PendingInviteBanner from "@/components/PendingInviteBanner";
 import { NutritionLab } from "../components/NutritionLab";
 import { GearVault } from "../components/GearVault";
 import { PaceStrategy } from "../components/PaceStrategy";
@@ -2288,6 +2289,7 @@ export default function Home() {
         overflow: "hidden",
       }}
     >
+      <PendingInviteBanner />
       {/* ── Video Background: Two stacked videos for seamless crossfade ── */}
       <div className="video-bg-container">
         {/* Video A */}
