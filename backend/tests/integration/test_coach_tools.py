@@ -127,3 +127,29 @@ class TestCoachCalculateFuelingEndpoint:
             headers=coach_headers,
         )
         assert resp.status_code == 403
+
+
+_GEAR_PAYLOAD = {"surface": "trail", "use_case": "training"}
+
+
+class TestCoachRecommendShoesEndpoint:
+    def test_self_serve_recommend_shoes_is_unaffected(self, client):
+        resp = client.post("/api/coach/recommend-shoes", json=_GEAR_PAYLOAD)
+        assert resp.status_code == 200, resp.text
+
+    def test_coach_can_recommend_shoes_for_an_athlete(self, client):
+        coach_headers, _ = _make_coach(client, "shoes-coach1@uphill.ai")
+        _, athlete_id = _link_coach_and_athlete(client, coach_headers, "shoes-athlete1@uphill.ai")
+        resp = client.post(
+            f"/api/coaching/athletes/{athlete_id}/recommend-shoes", json=_GEAR_PAYLOAD, headers=coach_headers
+        )
+        assert resp.status_code == 200, resp.text
+
+    def test_coach_without_a_link_is_forbidden(self, client, auth_headers):
+        coach_headers, _ = _make_coach(client, "shoes-coach2@uphill.ai")
+        resp = client.post(
+            f"/api/coaching/athletes/{auth_headers['user_id']}/recommend-shoes",
+            json=_GEAR_PAYLOAD,
+            headers=coach_headers,
+        )
+        assert resp.status_code == 403

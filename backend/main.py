@@ -1874,14 +1874,28 @@ async def coach_calculate_fueling(
     return await _calculate_fueling_core(request)
 
 
-@app.post("/api/coach/recommend-shoes")
-async def recommend_shoes(request: GearParams):
-    """Matches athlete profiles with suitable shoe catalogs via NotebookLM."""
+async def _recommend_shoes_core(request: GearParams) -> dict[str, Any]:
+    """Matches athlete profiles with suitable shoe catalogs. Shared by the
+    self-serve /api/coach/recommend-shoes and the coach-triggered
+    /api/coaching/athletes/{athlete_id}/recommend-shoes. gear_planner
+    always uses the server-level Gemini key regardless of caller (see
+    CLAUDE.md) -- unaffected by this phase."""
     try:
-        recs = await gear_planner.generate_plan(user_profile="", params=request)
-        return recs
+        return await gear_planner.generate_plan(user_profile="", params=request)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to match shoes: {str(e)}")
+
+
+@app.post("/api/coach/recommend-shoes")
+async def recommend_shoes(request: GearParams):
+    return await _recommend_shoes_core(request)
+
+
+@app.post("/api/coaching/athletes/{athlete_id}/recommend-shoes")
+async def coach_recommend_shoes(
+    athlete_id: int, request: GearParams, coach: dict[str, Any] = Depends(require_athlete_access)
+):
+    return await _recommend_shoes_core(request)
 
 
 @app.get("/api/coach/nutrition-catalog")
