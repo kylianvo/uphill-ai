@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { useAppContext } from "@/contexts/AppContext";
 import { RaceMatch } from "@/hooks/useRaceMatch";
@@ -279,12 +279,44 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
   const [gain, setGain] = useState("");
   const [weeks, setWeeks] = useState("");
 
+  const { setPaceHandoff, setIsPaceStrategyOpen, setSettingsHandoff, actingAsAthleteId, actingAsAthleteName } =
+    useAppContext();
+
+  // When a coach is acting as an athlete, "the profile" means the athlete's
+  // stored zones, not the coach's own — fetch it fresh rather than reading
+  // the coach's `user` prop.
+  const [athleteProfile, setAthleteProfile] = useState<any>(null);
+  useEffect(() => {
+    if (!isOpen || !actingAsAthleteId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setAthleteProfile(null);
+      return;
+    }
+    const token = typeof window !== "undefined" ? localStorage.getItem("uphill_session_token") : null;
+    fetch(`${getBaseUrl()}/api/coaching/athletes/${actingAsAthleteId}/profile`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => setAthleteProfile(data))
+      .catch(() => setAthleteProfile(null));
+  }, [isOpen, actingAsAthleteId]);
+
+  const effectiveProfile = actingAsAthleteId ? athleteProfile : user;
+
   // Stored aerobic zone pace from onboarding/profile — the zero-input default
   const profileZonePace =
-    parsePaceToMinutes(user?.zone2_pace_max || "") ?? parsePaceToMinutes(user?.zone2_pace_min || "") ?? null;
+    parsePaceToMinutes(effectiveProfile?.zone2_pace_max || "") ??
+    parsePaceToMinutes(effectiveProfile?.zone2_pace_min || "") ??
+    null;
   const [fitnessMode, setFitnessMode] = useState<"profile" | "result" | "pace">(
     profileZonePace ? "profile" : "result",
   );
+  // Re-evaluate the default once the athlete's profile finishes loading —
+  // it arrives async, after the initial "result" default above is chosen.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (profileZonePace) setFitnessMode("profile");
+  }, [profileZonePace]);
   const [refRaceName, setRefRaceName] = useState("");
   const [refMatch, setRefMatch] = useState<RaceMatch | null>(null);
   const [refDistance, setRefDistance] = useState("");
@@ -297,7 +329,6 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
   const [errorMsg, setErrorMsg] = useState("");
 
   const { trackEvent } = useAnalytics();
-  const { setPaceHandoff, setIsPaceStrategyOpen, setSettingsHandoff } = useAppContext();
 
   const t = (en: string, vi: string) => (lang === "en" ? en : vi);
 
@@ -336,9 +367,17 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
         payload.reference_elevation_gain_m = refGainM;
         payload.reference_time = refTime;
       }
-      const response = await fetch(`${getBaseUrl()}/api/coach/goal-estimate`, {
+      const url = actingAsAthleteId
+        ? `${getBaseUrl()}/api/coaching/athletes/${actingAsAthleteId}/goal-estimate`
+        : `${getBaseUrl()}/api/coach/goal-estimate`;
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (actingAsAthleteId) {
+        const token = typeof window !== "undefined" ? localStorage.getItem("uphill_session_token") : null;
+        headers.Authorization = `Bearer ${token}`;
+      }
+      const response = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify(payload),
       });
       if (!response.ok) {
@@ -451,12 +490,30 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
           <Crosshair size={32} color="var(--accent-primary)" weight="duotone" />
           Goal Determiner
         </h2>
-        <p style={{ color: "var(--text-secondary)", marginBottom: "28px", fontSize: "15px" }}>
+        <p style={{ color: "var(--text-secondary)", marginBottom: actingAsAthleteId ? "8px" : "28px", fontSize: "15px" }}>
           {t(
             "What could you realistically run at your target race? Grounded in the same physics as Pace Strategy, anchored by real field history.",
             "Bạn có thể chạy được bao nhiêu ở giải mục tiêu? Dựa trên cùng mô hình vật lý với Pace Strategy, đối chiếu với kết quả thực tế.",
           )}
         </p>
+        {actingAsAthleteId && (
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "4px 12px",
+              borderRadius: "999px",
+              background: "rgba(16,185,129,0.1)",
+              color: "var(--accent-primary)",
+              fontSize: "12.5px",
+              fontWeight: 700,
+              marginBottom: "20px",
+            }}
+          >
+            {t(`Calculating for ${actingAsAthleteName}`, `Đang tính cho ${actingAsAthleteName}`)}
+          </div>
+        )}
 
         {/* Target race */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "16px", marginBottom: "24px" }}>
@@ -516,7 +573,13 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
                 key={mode}
                 onClick={() => !disabled && setFitnessMode(mode)}
                 disabled={disabled}
-                title={disabled ? t("Sign in and set your pace zones first", "Đăng nhập và thiết lập vùng pace trước") : undefined}
+                title={
+                  disabled
+                    ? actingAsAthleteId
+                      ? t("This athlete hasn't set pace zones yet", "Vận động viên này chưa thiết lập vùng pace")
+                      : t("Sign in and set your pace zones first", "Đăng nhập và thiết lập vùng pace trước")
+                    : undefined
+                }
                 style={{
                   padding: "8px 20px",
                   borderRadius: "20px",
@@ -530,10 +593,14 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
                 }}
               >
                 {mode === "profile"
-                  ? t("My current fitness", "Thể lực hiện tại")
+                  ? actingAsAthleteId
+                    ? t("Their current fitness", "Thể lực hiện tại của họ")
+                    : t("My current fitness", "Thể lực hiện tại")
                   : mode === "result"
                     ? t("A recent race result", "Kết quả giải gần đây")
-                    : t("My flat pace", "Pace đường bằng")}
+                    : actingAsAthleteId
+                      ? t("Their flat pace", "Pace đường bằng của họ")
+                      : t("My flat pace", "Pace đường bằng")}
               </button>
             );
           })}
@@ -542,16 +609,25 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "16px", marginBottom: "24px" }}>
           {fitnessMode === "profile" ? (
             <div style={{ ...boxStyle, gridColumn: "1 / -1" }}>
-              <label style={labelStyle}>{t("From your profile", "Từ hồ sơ của bạn")}</label>
+              <label style={labelStyle}>
+                {actingAsAthleteId
+                  ? t(`From ${actingAsAthleteName}'s profile`, `Từ hồ sơ của ${actingAsAthleteName}`)
+                  : t("From your profile", "Từ hồ sơ của bạn")}
+              </label>
               <div style={{ fontSize: "14.5px", color: "var(--text-primary)", fontWeight: 600 }}>
                 {t("Aerobic zone pace", "Pace vùng hiếu khí")}: {profileZonePace?.toFixed(1)} min/km →{" "}
                 {t("race-effort base", "pace nền khi đua")} {profileBasePace?.toFixed(1)} min/km
               </div>
               <div style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "4px" }}>
-                {t(
-                  "Same seeding as Pace Strategy. Update your zones in Profile Settings to refine it.",
-                  "Cùng cách tính với Pace Strategy. Cập nhật vùng pace trong Cài đặt hồ sơ để chính xác hơn.",
-                )}
+                {actingAsAthleteId
+                  ? t(
+                      "Same seeding as Pace Strategy. Update their zones in the athlete's Profile Settings to refine it.",
+                      "Cùng cách tính với Pace Strategy. Cập nhật vùng pace trong Cài đặt hồ sơ của vận động viên để chính xác hơn.",
+                    )
+                  : t(
+                      "Same seeding as Pace Strategy. Update your zones in Profile Settings to refine it.",
+                      "Cùng cách tính với Pace Strategy. Cập nhật vùng pace trong Cài đặt hồ sơ để chính xác hơn.",
+                    )}
               </div>
             </div>
           ) : fitnessMode === "result" ? (
