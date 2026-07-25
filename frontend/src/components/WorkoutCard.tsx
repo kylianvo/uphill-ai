@@ -33,6 +33,7 @@ import {
 } from "../utils/workoutDescription";
 import { getTreadmillGuide, leadingNumber } from "../utils/treadmill";
 import { CoachNoteThread } from "./CoachNoteThread";
+import { WorkoutTypeSelect } from "./WorkoutTypeSelect";
 import { PencilSimple, Check, X as XIcon, ClockCounterClockwise } from "@phosphor-icons/react";
 
 export function formatIntervalSummary(wo: {
@@ -144,8 +145,11 @@ export default function WorkoutCard({
     title: wo.title || "",
     type: wo.type || "",
     duration_minutes: String(wo.duration_minutes ?? ""),
-    target_zone: wo.target_zone || "",
+    target_zone: wo.target_zone || "Zone 2",
     description: wo.description || "",
+    interval_reps: String(wo.interval_reps ?? ""),
+    interval_rep_value: String(wo.interval_rep_value ?? ""),
+    interval_rep_unit: wo.interval_rep_unit || "m",
   });
 
   const dayShort =
@@ -173,12 +177,16 @@ export default function WorkoutCard({
   };
 
   const handleEditSave = () => {
+    const isInterval = editFields.type === "Interval";
     onEditWorkout?.(wo.id, {
       title: editFields.title,
       type: editFields.type,
       duration_minutes: parseFloat(editFields.duration_minutes) || 0,
       target_zone: editFields.target_zone,
       description: editFields.description,
+      interval_reps: isInterval ? parseInt(editFields.interval_reps, 10) || null : null,
+      interval_rep_value: isInterval ? parseFloat(editFields.interval_rep_value) || null : null,
+      interval_rep_unit: isInterval ? editFields.interval_rep_unit : null,
     });
     setEditing(false);
   };
@@ -550,15 +558,12 @@ export default function WorkoutCard({
               onChange={(e) => setEditFields({ ...editFields, title: e.target.value })}
               style={{ borderRadius: "8px", padding: "8px 10px", fontSize: "12.5px" }}
             />
+            <WorkoutTypeSelect
+              value={editFields.type}
+              onChange={(v) => setEditFields({ ...editFields, type: v })}
+              lang={lang}
+            />
             <div style={{ display: "flex", gap: "8px" }}>
-              <input
-                type="text"
-                className="chat-input"
-                placeholder={lang === "en" ? "Type (e.g. Tempo)" : "Loại bài (vd. Tempo)"}
-                value={editFields.type}
-                onChange={(e) => setEditFields({ ...editFields, type: e.target.value })}
-                style={{ flex: 1, borderRadius: "8px", padding: "8px 10px", fontSize: "12.5px" }}
-              />
               <input
                 type="number"
                 className="chat-input"
@@ -567,15 +572,57 @@ export default function WorkoutCard({
                 onChange={(e) => setEditFields({ ...editFields, duration_minutes: e.target.value })}
                 style={{ width: "90px", borderRadius: "8px", padding: "8px 10px", fontSize: "12.5px" }}
               />
-              <input
-                type="text"
-                className="chat-input"
-                placeholder={lang === "en" ? "Zone (e.g. Zone 2)" : "Vùng (vd. Zone 2)"}
-                value={editFields.target_zone}
-                onChange={(e) => setEditFields({ ...editFields, target_zone: e.target.value })}
-                style={{ width: "120px", borderRadius: "8px", padding: "8px 10px", fontSize: "12.5px" }}
-              />
+              {editFields.type !== "Rest" && editFields.type !== "Strength" && editFields.type !== "Muscular Endurance" && (
+                <select
+                  className="chat-input"
+                  value={editFields.target_zone}
+                  onChange={(e) => setEditFields({ ...editFields, target_zone: e.target.value })}
+                  style={{ width: "120px", borderRadius: "8px", padding: "8px 10px", fontSize: "12.5px" }}
+                >
+                  {["Zone 1", "Zone 2", "Zone 3", "Zone 4", "Zone 5"].map((z) => (
+                    <option key={z} value={z}>{z}</option>
+                  ))}
+                </select>
+              )}
             </div>
+            {editFields.type !== "Rest" && editFields.type !== "Strength" && editFields.type !== "Muscular Endurance" && (
+              <p style={{ fontSize: "10.5px", color: "var(--text-muted)", margin: "-4px 0 0 0" }}>
+                {lang === "en"
+                  ? "Pace and HR are recalculated from this zone for the athlete's own profile."
+                  : "Pace và nhịp tim sẽ được tính lại theo vùng này dựa trên hồ sơ vận động viên."}
+              </p>
+            )}
+            {editFields.type === "Interval" && (
+              <div style={{ display: "flex", gap: "8px" }}>
+                <input
+                  type="number"
+                  className="chat-input"
+                  placeholder={lang === "en" ? "Laps" : "Số lượt"}
+                  value={editFields.interval_reps}
+                  onChange={(e) => setEditFields({ ...editFields, interval_reps: e.target.value })}
+                  style={{ flex: 1, borderRadius: "8px", padding: "8px 10px", fontSize: "12.5px" }}
+                />
+                <input
+                  type="number"
+                  className="chat-input"
+                  placeholder={lang === "en" ? "Lap duration" : "Thời lượng/lượt"}
+                  value={editFields.interval_rep_value}
+                  onChange={(e) => setEditFields({ ...editFields, interval_rep_value: e.target.value })}
+                  style={{ flex: 1, borderRadius: "8px", padding: "8px 10px", fontSize: "12.5px" }}
+                />
+                <select
+                  className="chat-input"
+                  value={editFields.interval_rep_unit}
+                  onChange={(e) => setEditFields({ ...editFields, interval_rep_unit: e.target.value })}
+                  style={{ width: "80px", borderRadius: "8px", padding: "8px 10px", fontSize: "12.5px" }}
+                >
+                  <option value="m">m</option>
+                  <option value="km">km</option>
+                  <option value="s">s</option>
+                  <option value="min">min</option>
+                </select>
+              </div>
+            )}
             <textarea
               value={editFields.description}
               onChange={(e) => setEditFields({ ...editFields, description: e.target.value })}

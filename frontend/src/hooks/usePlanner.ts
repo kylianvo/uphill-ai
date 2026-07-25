@@ -130,7 +130,18 @@ export function usePlanner() {
 
   const handleAiCreateWorkout = async (
     planId: number,
-    fields: { week_number: number; day_of_week: string; workout_type: string; duration_minutes: number; intent?: string },
+    fields: {
+      week_number: number;
+      day_of_week: string;
+      workout_type: string;
+      duration_minutes: number;
+      intent?: string;
+      target_zone?: string;
+      target_pace?: string;
+      interval_reps?: number;
+      interval_rep_value?: number;
+      interval_rep_unit?: string;
+    },
   ) => {
     if (!actingAsAthleteId) return false;
     const token = localStorage.getItem("uphill_session_token");
@@ -143,9 +154,12 @@ export function usePlanner() {
       }
     );
     if (res.ok) {
-      const created = await res.json();
-      setWorkouts((prev: any) => [...prev, created]);
-      setDraftWorkouts((prev: any) => [...prev, created]);
+      // Not an optimistic append: adding to a day that only had a Rest
+      // placeholder replaces that row server-side, so the client's prior
+      // workouts array is stale (still holds the now-deleted rest row) --
+      // a full re-fetch is the only way to stay correct.
+      const hasActive = await fetchActivePlanForActing();
+      await fetchDraftPlan(hasActive);
     }
     return res.ok;
   };
