@@ -701,6 +701,38 @@ class TestGenerateSingleWorkout:
         assert wo["target_hr_range"] is None
 
     @pytest.mark.asyncio
+    async def test_deterministic_fallback_zone_default_is_type_aware(self):
+        """No api_key -> deterministic path. An Interval/Tempo session
+        defaulting to Zone 2 (an easy-run zone) would look wrong to a coach
+        even though nothing downstream is technically broken."""
+        interval = await PlanGenerator.generate_single_workout(
+            user_profile=self._PROFILE,
+            workout_type="Interval",
+            duration_minutes=20,
+            day_of_week="Thursday",
+            week_number=1,
+        )
+        assert interval["target_zone"] == "Zone 4"
+
+        tempo = await PlanGenerator.generate_single_workout(
+            user_profile=self._PROFILE,
+            workout_type="Tempo",
+            duration_minutes=30,
+            day_of_week="Wednesday",
+            week_number=1,
+        )
+        assert tempo["target_zone"] == "Zone 3"
+
+        easy = await PlanGenerator.generate_single_workout(
+            user_profile=self._PROFILE,
+            workout_type="Easy",
+            duration_minutes=30,
+            day_of_week="Monday",
+            week_number=1,
+        )
+        assert easy["target_zone"] == "Zone 2"
+
+    @pytest.mark.asyncio
     async def test_coach_supplied_zone_is_never_overridden(self):
         wo = await PlanGenerator.generate_single_workout(
             user_profile=self._PROFILE,

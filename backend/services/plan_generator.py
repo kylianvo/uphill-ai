@@ -364,7 +364,9 @@ class PlanGenerator:
         is_rest_or_strength = workout_type in ("Rest", "Strength", "Muscular Endurance")
         is_interval = workout_type == "Interval"
         zone_locked = target_zone is not None  # coach chose a zone -- AI must not override it
-        resolved_zone = target_zone or ("Zone 1" if is_rest_or_strength else "Zone 2")
+        _DEFAULT_ZONE_BY_TYPE = {"Tempo": "Zone 3", "Threshold": "Zone 3", "Interval": "Zone 4"}
+        default_zone = "Zone 1" if is_rest_or_strength else _DEFAULT_ZONE_BY_TYPE.get(workout_type, "Zone 2")
+        resolved_zone = target_zone or default_zone
 
         title = workout_type
         description = details
