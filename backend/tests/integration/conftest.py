@@ -143,3 +143,32 @@ def mock_plan_generation():
         return_value=[],
     ) as mock_fn:
         yield mock_fn
+
+
+@pytest.fixture
+def mock_single_workout_generation():
+    """Neutralizes PlanGenerator.generate_single_workout (the AI co-create
+    path) -- unlike generate_plan_workouts, this one is awaited directly in
+    the request handler, so no fire-and-forget background-task concern."""
+    from unittest.mock import AsyncMock, patch
+
+    with patch(
+        "services.plan_generator.PlanGenerator.generate_single_workout",
+        new_callable=AsyncMock,
+        return_value={
+            "week_number": 1,
+            "day_of_week": "Wednesday",
+            "phase": "Training",
+            "title": "Rolling Tempo",
+            "type": "Tempo",
+            "duration_minutes": 40,
+            "distance_km": 7.0,
+            "target_zone": "Zone 3",
+            "target_hr_range": "150-160 bpm",
+            "target_pace": "5:30 - 5:10 /km",
+            "description": "Warm up, then 25 min steady at Zone 3, cool down.",
+            "fueling_tip": None,
+            "session_slot": "main",
+        },
+    ) as mock_fn:
+        yield mock_fn

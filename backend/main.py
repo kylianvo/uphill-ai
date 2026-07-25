@@ -13,7 +13,7 @@ from config import settings
 from db import (
     accept_coach_invite,
     add_source,
-    approve_plan,
+    approve_workout,
     coach_update_workout,
     create_coach_invite,
     create_coach_note,
@@ -52,6 +52,7 @@ from db import (
     has_active_coach_link,
     init_db,
     list_sources,
+    make_rest_day,
     mark_onboarding_complete,
     query_nutrition_catalog,
     remove_coach_athlete_link,
@@ -364,6 +365,14 @@ class CoachWorkoutCreateRequest(BaseModel):
     description: str | None = None
     fueling_tip: str | None = None
     session_slot: str | None = "main"
+
+
+class CoachWorkoutAiCreateRequest(BaseModel):
+    week_number: int
+    day_of_week: str
+    workout_type: str
+    duration_minutes: float
+    intent: str | None = None
 
 
 class CoachNoteCreateRequest(BaseModel):
@@ -1057,12 +1066,64 @@ def add_athlete_workout(
     return create_coach_workout(plan_id, acting_user["id"], request.dict())
 
 
-@app.post("/api/coaching/athletes/{athlete_id}/plans/{plan_id}/approve")
-def approve_athlete_plan(athlete_id: int, plan_id: int, coach: dict[str, Any] = Depends(require_athlete_access)):
-    updated = approve_plan(plan_id, athlete_id, coach["id"])
+@app.post("/api/coaching/athletes/{athlete_id}/plans/{plan_id}/workouts/{workout_id}/approve")
+def approve_athlete_workout(
+    athlete_id: int, plan_id: int, workout_id: int, coach: dict[str, Any] = Depends(require_athlete_access)
+):
+    """Approves one workout. If this is the first approval on a still-draft
+    plan, the plan also flips to 'active' -- there is no separate
+    whole-plan-approve action; a draft plan goes live the moment its first
+    workout is approved."""
+    updated = approve_workout(workout_id, plan_id, athlete_id, coach["id"])
     if not updated:
-        raise HTTPException(status_code=404, detail="Draft plan not found.")
+        raise HTTPException(status_code=404, detail="Workout not found.")
     return updated
+
+
+@app.post("/api/coaching/athletes/{athlete_id}/plans/{plan_id}/workouts/{workout_id}/remove")
+def remove_athlete_workout(
+    athlete_id: int, plan_id: int, workout_id: int, acting_user: dict[str, Any] = Depends(require_athlete_access)
+):
+    """'Removes' a workout by converting it to a rest day in place (no
+    delete endpoint exists -- see make_rest_day's docstring for why)."""
+    plan = get_plan_by_id(plan_id)
+    if not plan or plan["user_id"] != athlete_id:
+        raise HTTPException(status_code=404, detail="Plan not found.")
+    workout = get_workout_by_id(workout_id)
+    if not workout or workout["plan_id"] != plan_id:
+        raise HTTPException(status_code=404, detail="Workout not found.")
+    return make_rest_day(workout_id, acting_user["id"])
+
+
+@app.post("/api/coaching/athletes/{athlete_id}/plans/{plan_id}/workouts/ai-create")
+async def ai_create_athlete_workout(
+    athlete_id: int,
+    plan_id: int,
+    request: CoachWorkoutAiCreateRequest,
+    acting_user: dict[str, Any] = Depends(require_athlete_access),
+):
+    """Coach co-creation: the coach supplies type/duration/day/intent, Gemini
+    fills in the physiological detail grounded in the athlete's own profile.
+    The resulting workout is inserted via the same path as a fully-manual
+    add (create_coach_workout) -- it starts pending, same as any other new
+    or edited workout, and needs its own approve step."""
+    plan = get_plan_by_id(plan_id)
+    if not plan or plan["user_id"] != athlete_id:
+        raise HTTPException(status_code=404, detail="Plan not found.")
+    athlete = get_user_by_id(athlete_id)
+    if not athlete:
+        raise HTTPException(status_code=404, detail="Athlete not found.")
+    model_api_key = athlete.get("gemini_api_key") or settings.GEMINI_API_KEY
+    generated = await PlanGenerator.generate_single_workout(
+        user_profile=athlete,
+        workout_type=request.workout_type,
+        duration_minutes=request.duration_minutes,
+        day_of_week=request.day_of_week,
+        week_number=request.week_number,
+        intent=request.intent,
+        api_key=model_api_key,
+    )
+    return create_coach_workout(plan_id, acting_user["id"], generated)
 
 
 def _build_athlete_context_block(athlete: dict[str, Any]) -> str:
@@ -1457,7 +1518,7 @@ async def _generate_plan_for_athlete(
                 block_number=1,
                 weeks_per_block=2,
             )
-            save_workouts(plan_id, workouts)
+            save_workouts(plan_id, workouts, auto_approve=(plan_status != "draft"))
             plan_jobs[job_id]["workouts"] = workouts
             plan_jobs[job_id]["status"] = "done"
             print(f"[PlanJob][{job_id}] generate-plan complete — {len(workouts)} workouts saved.")

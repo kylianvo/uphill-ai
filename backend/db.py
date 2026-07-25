@@ -177,7 +177,8 @@ def init_db():
             fueling_tip         TEXT,
             source              TEXT NOT NULL DEFAULT 'ai_generated',  -- 'ai_generated' | 'coach_edited' | 'coach_created'
             last_edited_by_user_id INTEGER REFERENCES users(id),
-            is_completed        INTEGER DEFAULT 0
+            is_completed        INTEGER DEFAULT 0,
+            approved_at         TIMESTAMPTZ  -- NULL = pending coach review; set on insert for self-serve plans
         )
         """)
         )
@@ -337,6 +338,12 @@ def init_db():
             "UPDATE plans SET created_by_user_id = user_id WHERE created_by_user_id IS NULL",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'ai_generated'",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS last_edited_by_user_id INTEGER REFERENCES users(id)",
+            "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS approved_at TIMESTAMPTZ",
+            # Backfill: workouts that predate per-workout approval, on plans already
+            # active, are implicitly approved -- only draft-plan workouts (and any
+            # newly-inserted coach workout going forward) should read as pending.
+            "UPDATE workouts SET approved_at = NOW() WHERE approved_at IS NULL "
+            "AND plan_id IN (SELECT id FROM plans WHERE plan_status = 'active')",
         ]:
             try:
                 conn.execute(text(col_sql))
@@ -572,7 +579,10 @@ def _flatten_llm_text(value: Any) -> Any:
     return value
 
 
-def save_workouts(plan_id: int, workouts: list[dict[str, Any]]):
+def save_workouts(plan_id: int, workouts: list[dict[str, Any]], auto_approve: bool = True):
+    """`auto_approve=False` for coach-drafted plans: workouts start pending
+    (approved_at NULL) until the coach reviews each one. Self-serve plans
+    have no coach in the loop, so their workouts are approved on arrival."""
     if not workouts:
         return
     week_numbers = [wo["week_number"] for wo in workouts]
@@ -594,14 +604,15 @@ def save_workouts(plan_id: int, workouts: list[dict[str, Any]]):
                     duration_minutes, distance_km, target_zone, target_hr_range, target_pace,
                     treadmill_incline, treadmill_speed, elevation_gain_m, grade_percent,
                     interval_reps, interval_rep_value, interval_rep_unit,
-                    description, fueling_tip, session_slot)
+                    description, fueling_tip, session_slot, approved_at)
                 VALUES (:plan_id, :week_number, :day_of_week, :phase, :title, :type,
                     :duration_minutes, :distance_km, :target_zone, :target_hr_range, :target_pace,
                     :treadmill_incline, :treadmill_speed, :elevation_gain_m, :grade_percent,
                     :interval_reps, :interval_rep_value, :interval_rep_unit,
-                    :description, :fueling_tip, :session_slot)
+                    :description, :fueling_tip, :session_slot, :approved_at)
             """),
                 {
+                    "approved_at": datetime.datetime.now(datetime.UTC) if auto_approve else None,
                     "plan_id": plan_id,
                     "week_number": wo["week_number"],
                     "day_of_week": _flatten_llm_text(wo["day_of_week"]),
@@ -670,7 +681,9 @@ def get_workout_by_id(workout_id: int) -> dict[str, Any] | None:
 def coach_update_workout(workout_id: int, editor_user_id: int, fields: dict[str, Any]) -> dict[str, Any] | None:
     """Partial-updates the given workout (only keys present and non-None in
     `fields` are applied), and always stamps source='coach_edited' +
-    last_edited_by_user_id. Returns None if the workout doesn't exist.
+    last_edited_by_user_id, and resets approved_at to NULL -- an edited
+    workout needs the coach's review again before it's approved for the
+    athlete. Returns None if the workout doesn't exist.
     `_EDITABLE_WORKOUT_COLUMNS` is a fixed tuple hardcoded in this function
     -- never derived from `fields`'s own keys -- so building a per-column
     UPDATE in the loop below carries no SQL-injection risk."""
@@ -698,7 +711,10 @@ def coach_update_workout(workout_id: int, editor_user_id: int, fields: dict[str,
                     {"v": fields[column], "id": workout_id},
                 )
         conn.execute(
-            text("UPDATE workouts SET source = 'coach_edited', last_edited_by_user_id = :editor WHERE id = :id"),
+            text(
+                "UPDATE workouts SET source = 'coach_edited', last_edited_by_user_id = :editor, "
+                "approved_at = NULL WHERE id = :id"
+            ),
             {"editor": editor_user_id, "id": workout_id},
         )
         conn.commit()
@@ -707,15 +723,18 @@ def coach_update_workout(workout_id: int, editor_user_id: int, fields: dict[str,
 
 
 def create_coach_workout(plan_id: int, creator_user_id: int, fields: dict[str, Any]) -> dict[str, Any]:
+    """New workouts (manual or AI co-created) always start pending
+    (approved_at NULL) -- the coach must approve before the athlete sees
+    it as finalized."""
     with engine.connect() as conn:
         row = conn.execute(
             text("""
                 INSERT INTO workouts (plan_id, week_number, day_of_week, phase, title, type,
                     duration_minutes, distance_km, target_zone, target_hr_range, target_pace,
-                    description, fueling_tip, session_slot, source, last_edited_by_user_id)
+                    description, fueling_tip, session_slot, source, last_edited_by_user_id, approved_at)
                 VALUES (:plan_id, :week_number, :day_of_week, :phase, :title, :type,
                     :duration_minutes, :distance_km, :target_zone, :target_hr_range, :target_pace,
-                    :description, :fueling_tip, :session_slot, 'coach_created', :creator)
+                    :description, :fueling_tip, :session_slot, 'coach_created', :creator, NULL)
                 RETURNING *
             """),
             {
@@ -743,7 +762,9 @@ def create_coach_workout(plan_id: int, creator_user_id: int, fields: dict[str, A
 def approve_plan(plan_id: int, athlete_id: int, coach_id: int) -> dict[str, Any] | None:
     """Flips a draft plan to active. Returns None if no 'draft' plan with
     this id belongs to this athlete (wrong athlete, already active, or
-    doesn't exist)."""
+    doesn't exist). Called internally by approve_workout the moment the
+    first workout on a draft plan is approved -- there is no standalone
+    whole-plan-approve action anymore; approval happens per workout."""
     with engine.connect() as conn:
         result = conn.execute(
             text("""
@@ -757,6 +778,63 @@ def approve_plan(plan_id: int, athlete_id: int, coach_id: int) -> dict[str, Any]
             return None
         row = conn.execute(text("SELECT * FROM plans WHERE id = :id"), {"id": plan_id}).fetchone()
     return _row_to_dict(row)
+
+
+def approve_workout(workout_id: int, plan_id: int, athlete_id: int, coach_id: int) -> dict[str, Any] | None:
+    """Approves a single workout on the given athlete's plan. If the plan
+    is still 'draft' (i.e. this is the first approval on it), also flips
+    the plan to 'active' so it becomes visible to the athlete. Returns
+    None if the workout doesn't belong to that plan/athlete."""
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("""
+                SELECT w.id FROM workouts w
+                JOIN plans p ON p.id = w.plan_id
+                WHERE w.id = :wid AND w.plan_id = :pid AND p.user_id = :aid
+            """),
+            {"wid": workout_id, "pid": plan_id, "aid": athlete_id},
+        ).fetchone()
+        if not row:
+            return None
+        conn.execute(
+            text("UPDATE workouts SET approved_at = NOW() WHERE id = :id"),
+            {"id": workout_id},
+        )
+        conn.commit()
+        updated = conn.execute(text("SELECT * FROM workouts WHERE id = :id"), {"id": workout_id}).fetchone()
+    approve_plan(plan_id, athlete_id, coach_id)
+    return _row_to_dict(updated)
+
+
+def make_rest_day(workout_id: int, editor_user_id: int) -> dict[str, Any] | None:
+    """'Removes' a workout by converting it to a rest day in place, rather
+    than deleting the row -- keeps the week's day structure intact. Fully
+    overwrites the row (not a partial update like coach_update_workout,
+    since every field needs clearing to a canonical rest-day shape) and
+    resets approved_at to NULL: a converted day is a material change the
+    coach must sign off on again."""
+    with engine.connect() as conn:
+        row = conn.execute(text("SELECT id FROM workouts WHERE id = :id"), {"id": workout_id}).fetchone()
+        if not row:
+            return None
+        conn.execute(
+            text("""
+                UPDATE workouts SET
+                    title = 'Rest & Regeneration', type = 'Rest', phase = 'Recovery',
+                    duration_minutes = 0, distance_km = NULL, target_zone = 'Zone 1',
+                    target_hr_range = NULL, target_pace = NULL,
+                    treadmill_incline = '0', treadmill_speed = '0',
+                    elevation_gain_m = 0, grade_percent = 0,
+                    interval_reps = NULL, interval_rep_value = NULL, interval_rep_unit = NULL,
+                    description = NULL, fueling_tip = NULL,
+                    source = 'coach_edited', last_edited_by_user_id = :editor, approved_at = NULL
+                WHERE id = :id
+            """),
+            {"editor": editor_user_id, "id": workout_id},
+        )
+        conn.commit()
+        updated = conn.execute(text("SELECT * FROM workouts WHERE id = :id"), {"id": workout_id}).fetchone()
+    return _row_to_dict(updated)
 
 
 def set_plan_active(user_id: int, plan_id: int) -> bool:

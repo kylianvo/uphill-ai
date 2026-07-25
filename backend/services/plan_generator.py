@@ -317,6 +317,108 @@ class PlanGenerator:
         )
 
     @staticmethod
+    async def generate_single_workout(
+        user_profile: dict[str, Any],
+        workout_type: str,
+        duration_minutes: float,
+        day_of_week: str,
+        week_number: int,
+        intent: str | None = None,
+        api_key: str | None = None,
+    ) -> dict[str, Any]:
+        """Coach co-creation: the coach supplies type/duration/day (and
+        optionally a free-text intent), and this fills in the physiological
+        detail (zone, pace, HR, description) grounded in the athlete's own
+        profile -- same zone/pace math as the full-plan generator, scoped to
+        one workout rather than a whole periodized block. Falls back to a
+        deterministic, un-narrated construction if Gemini is unavailable or
+        fails, so the coach always gets a usable workout rather than an
+        error."""
+        age = int(user_profile.get("age", 30))
+        max_hr = int(user_profile.get("max_hr", 220 - age))
+        resting_hr = int(user_profile.get("resting_hr", 60))
+        aet_hr = int(user_profile.get("aet_hr", resting_hr + int((max_hr - resting_hr) * 0.65)))
+        ant_hr = int(user_profile.get("ant_hr", resting_hr + int((max_hr - resting_hr) * 0.85)))
+        hr_zones = TrainingRules.calculate_heart_rate_zones(max_hr, resting_hr, aet_hr, ant_hr)
+
+        z2_min = user_profile.get("zone2_pace_min") or "6:30"
+        z2_max = user_profile.get("zone2_pace_max") or "5:45"
+        est_zones = PlanGenerator.estimate_pace_zones(z2_min, z2_max, aet_hr, ant_hr)
+
+        is_rest_or_strength = workout_type in ("Rest", "Strength", "Muscular Endurance")
+        default_zone = "Zone 1" if is_rest_or_strength else "Zone 2"
+
+        title = workout_type
+        description = None
+        fueling_tip = None
+        target_zone = default_zone
+
+        if api_key and not is_rest_or_strength:
+            try:
+                import json as _json
+
+                import google.generativeai as _genai
+
+                prompt = f"""You are Coach Uphill, an expert trail-running coach following Scott Johnston's
+"Training for the Uphill Athlete" principles. A human coach is manually adding ONE workout to an
+athlete's training week and wants you to fill in the physiological detail. Do not invent a whole
+week -- just this one session.
+
+Athlete zones: Zone 1 {est_zones["zone1_pace"]} /km, Zone 2 {est_zones["zone2_pace"]} /km,
+Zone 3 {est_zones["zone3_pace"]} /km, Zone 4 {est_zones["zone4_pace"]} /km, Zone 5 {est_zones["zone5_pace"]} /km.
+AeT {aet_hr} bpm, AnT {ant_hr} bpm, max HR {max_hr} bpm.
+
+Workout type: {workout_type}
+Duration: {int(duration_minutes)} minutes
+Day: {day_of_week}, week {week_number}
+{f"Coach's intent: {intent}" if intent else ""}
+
+Return ONLY a single JSON object (no markdown fences, no prose) with exactly these keys:
+{{"title": "short session title", "target_zone": "Zone 1|Zone 2|Zone 3|Zone 4|Zone 5",
+"description": "warm-up, main set (with any intervals), cool-down as one paragraph",
+"fueling_tip": "one sentence, or null if not applicable"}}"""
+
+                _genai.configure(api_key=api_key)
+                _model = _genai.GenerativeModel("gemini-2.5-flash")
+                import asyncio
+
+                _response = await asyncio.to_thread(_model.generate_content, prompt)
+                _text = _response.text.strip()
+                _start, _end = _text.find("{"), _text.rfind("}")
+                if _start != -1 and _end != -1:
+                    parsed = _json.loads(_text[_start : _end + 1])
+                    title = parsed.get("title") or title
+                    target_zone = parsed.get("target_zone") or target_zone
+                    description = parsed.get("description")
+                    fueling_tip = parsed.get("fueling_tip")
+            except Exception as ex:
+                print(f"[PlanGen][SingleWorkout] Gemini FAILED: {ex}. Using deterministic fallback.")
+
+        target_pace, distance_km = (
+            (None, None)
+            if is_rest_or_strength
+            else PlanGenerator.pace_and_distance_for_zone(target_zone, duration_minutes, est_zones)
+        )
+        zone_key = target_zone if target_zone in hr_zones else "Zone 2"
+        hr_range = None if is_rest_or_strength else f"{hr_zones[zone_key]['min']}-{hr_zones[zone_key]['max']} bpm"
+
+        return {
+            "week_number": week_number,
+            "day_of_week": day_of_week,
+            "phase": "Training",
+            "title": title,
+            "type": workout_type,
+            "duration_minutes": duration_minutes,
+            "distance_km": distance_km,
+            "target_zone": target_zone,
+            "target_hr_range": hr_range,
+            "target_pace": target_pace,
+            "description": description,
+            "fueling_tip": fueling_tip,
+            "session_slot": "main",
+        }
+
+    @staticmethod
     async def generate_plan_workouts(
         plan_id: int,
         user_profile: dict[str, Any],
