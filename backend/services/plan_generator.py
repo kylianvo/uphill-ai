@@ -317,6 +317,15 @@ class PlanGenerator:
         )
 
     @staticmethod
+    def _wu_cd_minutes(main_minutes: float) -> int:
+        """Warm-up/cool-down minutes on each end of a coach-specified MAIN SET
+        duration -- proportional to the main set, clamped to a sane range.
+        Mirrors the spirit of _warmup_cooldown_minutes but inverted: that one
+        derives wu/cd from a known TOTAL; this derives them from a known
+        MAIN SET, since the coach's duration input never includes wu/cd."""
+        return max(3, min(10, round(main_minutes * 0.15)))
+
+    @staticmethod
     async def generate_single_workout(
         user_profile: dict[str, Any],
         workout_type: str,
@@ -325,15 +334,22 @@ class PlanGenerator:
         week_number: int,
         intent: str | None = None,
         api_key: str | None = None,
+        target_zone: str | None = None,
+        target_pace: str | None = None,
+        interval_reps: int | None = None,
+        interval_rep_value: float | None = None,
+        interval_rep_unit: str | None = None,
+        details: str | None = None,
     ) -> dict[str, Any]:
-        """Coach co-creation: the coach supplies type/duration/day (and
-        optionally a free-text intent), and this fills in the physiological
-        detail (zone, pace, HR, description) grounded in the athlete's own
-        profile -- same zone/pace math as the full-plan generator, scoped to
-        one workout rather than a whole periodized block. Falls back to a
-        deterministic, un-narrated construction if Gemini is unavailable or
-        fails, so the coach always gets a usable workout rather than an
-        error."""
+        """Coach co-creation: the coach supplies type/duration/day, and
+        optionally overrides (zone, pace, interval structure, details/intent)
+        -- this fills in whatever's left, grounded in the athlete's own
+        profile (same zone/pace math as the full-plan generator, scoped to
+        one workout). `duration_minutes` is the MAIN SET only -- warm-up and
+        cool-down are added on top, never counted against it, matching how
+        coaches think about session length. Falls back to a deterministic,
+        un-narrated construction if Gemini is unavailable or fails, so the
+        coach always gets a usable workout rather than an error."""
         age = int(user_profile.get("age", 30))
         max_hr = int(user_profile.get("max_hr", 220 - age))
         resting_hr = int(user_profile.get("resting_hr", 60))
@@ -346,22 +362,34 @@ class PlanGenerator:
         est_zones = PlanGenerator.estimate_pace_zones(z2_min, z2_max, aet_hr, ant_hr)
 
         is_rest_or_strength = workout_type in ("Rest", "Strength", "Muscular Endurance")
-        default_zone = "Zone 1" if is_rest_or_strength else "Zone 2"
+        is_interval = workout_type == "Interval"
+        zone_locked = target_zone is not None  # coach chose a zone -- AI must not override it
+        resolved_zone = target_zone or ("Zone 1" if is_rest_or_strength else "Zone 2")
 
         title = workout_type
-        description = None
+        description = details
         fueling_tip = None
-        target_zone = default_zone
 
-        if api_key and not is_rest_or_strength:
+        if api_key and not is_rest_or_strength and not details:
             try:
                 import json as _json
 
                 import google.generativeai as _genai
 
+                zone_instruction = (
+                    f"Use exactly this zone (the coach already chose it): {resolved_zone}."
+                    if zone_locked
+                    else "Choose the single most appropriate zone: Zone 1|Zone 2|Zone 3|Zone 4|Zone 5."
+                )
+                interval_instruction = (
+                    f"This is an interval session: {interval_reps}x{interval_rep_value}{interval_rep_unit} "
+                    "(already fixed by the coach -- describe the session around this structure, don't invent a different one)."
+                    if is_interval and interval_reps
+                    else ""
+                )
                 prompt = f"""You are Coach Uphill, an expert trail-running coach following Scott Johnston's
 "Training for the Uphill Athlete" principles. A human coach is manually adding ONE workout to an
-athlete's training week and wants you to fill in the physiological detail. Do not invent a whole
+athlete's training week and wants you to fill in the remaining detail. Do not invent a whole
 week -- just this one session.
 
 Athlete zones: Zone 1 {est_zones["zone1_pace"]} /km, Zone 2 {est_zones["zone2_pace"]} /km,
@@ -369,8 +397,10 @@ Zone 3 {est_zones["zone3_pace"]} /km, Zone 4 {est_zones["zone4_pace"]} /km, Zone
 AeT {aet_hr} bpm, AnT {ant_hr} bpm, max HR {max_hr} bpm.
 
 Workout type: {workout_type}
-Duration: {int(duration_minutes)} minutes
+Main set duration: {int(duration_minutes)} minutes (warm-up/cool-down are separate, don't fold them into this number)
 Day: {day_of_week}, week {week_number}
+{zone_instruction}
+{interval_instruction}
 {f"Coach's intent: {intent}" if intent else ""}
 
 Return ONLY a single JSON object (no markdown fences, no prose) with exactly these keys:
@@ -388,19 +418,34 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                 if _start != -1 and _end != -1:
                     parsed = _json.loads(_text[_start : _end + 1])
                     title = parsed.get("title") or title
-                    target_zone = parsed.get("target_zone") or target_zone
+                    if not zone_locked:
+                        resolved_zone = parsed.get("target_zone") or resolved_zone
                     description = parsed.get("description")
                     fueling_tip = parsed.get("fueling_tip")
             except Exception as ex:
                 print(f"[PlanGen][SingleWorkout] Gemini FAILED: {ex}. Using deterministic fallback.")
 
-        target_pace, distance_km = (
+        computed_pace, distance_km = (
             (None, None)
             if is_rest_or_strength
-            else PlanGenerator.pace_and_distance_for_zone(target_zone, duration_minutes, est_zones)
+            else PlanGenerator.pace_and_distance_for_zone(resolved_zone, duration_minutes, est_zones)
         )
-        zone_key = target_zone if target_zone in hr_zones else "Zone 2"
+        resolved_pace = target_pace or computed_pace
+        # A coach-supplied pace overrides the zone's default, but distance is
+        # still estimated off it so "est. distance" stays consistent with pace.
+        if target_pace and not is_rest_or_strength:
+            pace_dec = PlanGenerator.parse_pace_to_decimal(target_pace.split("/")[0].split("-")[0].strip())
+            if pace_dec > 0:
+                distance_km = round(duration_minutes / pace_dec, 1)
+
+        zone_key = resolved_zone if resolved_zone in hr_zones else "Zone 2"
         hr_range = None if is_rest_or_strength else f"{hr_zones[zone_key]['min']}-{hr_zones[zone_key]['max']} bpm"
+
+        if is_rest_or_strength:
+            total_duration = duration_minutes
+        else:
+            wu_cd = PlanGenerator._wu_cd_minutes(duration_minutes)
+            total_duration = duration_minutes + wu_cd * 2
 
         return {
             "week_number": week_number,
@@ -408,14 +453,17 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
             "phase": "Training",
             "title": title,
             "type": workout_type,
-            "duration_minutes": duration_minutes,
+            "duration_minutes": total_duration,
             "distance_km": distance_km,
-            "target_zone": target_zone,
+            "target_zone": resolved_zone,
             "target_hr_range": hr_range,
-            "target_pace": target_pace,
+            "target_pace": resolved_pace,
             "description": description,
             "fueling_tip": fueling_tip,
             "session_slot": "main",
+            "interval_reps": interval_reps if is_interval else None,
+            "interval_rep_value": interval_rep_value if is_interval else None,
+            "interval_rep_unit": interval_rep_unit if is_interval else None,
         }
 
     @staticmethod

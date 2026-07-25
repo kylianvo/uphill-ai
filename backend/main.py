@@ -337,6 +337,27 @@ class CoachInviteRequest(BaseModel):
     athlete_email: str
 
 
+def _resolve_zone_pace_and_hr(
+    athlete: dict[str, Any], target_zone: str, duration_minutes: float
+) -> tuple[str | None, str | None]:
+    """Same zone -> pace/HR math as PlanGenerator.generate_single_workout,
+    factored out so coach_update_workout's zone edits use the identical
+    computation instead of drifting from it over time."""
+    age = int(athlete.get("age", 30))
+    max_hr = int(athlete.get("max_hr", 220 - age))
+    resting_hr = int(athlete.get("resting_hr", 60))
+    aet_hr = int(athlete.get("aet_hr", resting_hr + int((max_hr - resting_hr) * 0.65)))
+    ant_hr = int(athlete.get("ant_hr", resting_hr + int((max_hr - resting_hr) * 0.85)))
+    hr_zones = TrainingRules.calculate_heart_rate_zones(max_hr, resting_hr, aet_hr, ant_hr)
+    est_zones = PlanGenerator.estimate_pace_zones(
+        athlete.get("zone2_pace_min") or "6:30", athlete.get("zone2_pace_max") or "5:45", aet_hr, ant_hr
+    )
+    pace, _distance_km = PlanGenerator.pace_and_distance_for_zone(target_zone, duration_minutes or 30, est_zones)
+    zone_key = target_zone if target_zone in hr_zones else "Zone 2"
+    hr_range = f"{hr_zones[zone_key]['min']}-{hr_zones[zone_key]['max']} bpm"
+    return pace, hr_range
+
+
 class CoachWorkoutUpdateRequest(BaseModel):
     day_of_week: str | None = None
     phase: str | None = None
@@ -345,10 +366,14 @@ class CoachWorkoutUpdateRequest(BaseModel):
     duration_minutes: float | None = None
     distance_km: float | None = None
     target_zone: str | None = None
-    target_hr_range: str | None = None
-    target_pace: str | None = None
+    # target_hr_range/target_pace are intentionally NOT accepted here --
+    # edit_athlete_workout recomputes both from target_zone server-side so
+    # they can never drift from the athlete's actual zones (see its docstring).
     description: str | None = None
     fueling_tip: str | None = None
+    interval_reps: int | None = None
+    interval_rep_value: float | None = None
+    interval_rep_unit: str | None = None
 
 
 class CoachWorkoutCreateRequest(BaseModel):
@@ -371,8 +396,13 @@ class CoachWorkoutAiCreateRequest(BaseModel):
     week_number: int
     day_of_week: str
     workout_type: str
-    duration_minutes: float
-    intent: str | None = None
+    duration_minutes: float  # main set only -- warm-up/cool-down are added on top
+    intent: str | None = None  # AI guidance for run types, or literal details for Strength/ME
+    target_zone: str | None = None
+    target_pace: str | None = None
+    interval_reps: int | None = None
+    interval_rep_value: float | None = None
+    interval_rep_unit: str | None = None
 
 
 class CoachNoteCreateRequest(BaseModel):
@@ -1043,13 +1073,23 @@ def edit_athlete_workout(
     request: CoachWorkoutUpdateRequest,
     acting_user: dict[str, Any] = Depends(require_athlete_access),
 ):
+    """Whenever target_zone is part of the edit, target_pace/target_hr_range
+    are recomputed from the ATHLETE's own zones (never trusted from the
+    client) so an edited workout's pace/HR can never drift from the zone the
+    coach actually picked -- see CoachWorkoutUpdateRequest's docstring."""
     plan = get_plan_by_id(plan_id)
     if not plan or plan["user_id"] != athlete_id:
         raise HTTPException(status_code=404, detail="Plan not found.")
     workout = get_workout_by_id(workout_id)
     if not workout or workout["plan_id"] != plan_id:
         raise HTTPException(status_code=404, detail="Workout not found.")
-    updated = coach_update_workout(workout_id, acting_user["id"], request.dict(exclude_unset=True))
+    fields = request.dict(exclude_unset=True)
+    if request.target_zone and request.target_zone not in ("Rest",):
+        athlete = get_user_by_id(athlete_id)
+        fields["target_pace"], fields["target_hr_range"] = _resolve_zone_pace_and_hr(
+            athlete, request.target_zone, fields.get("duration_minutes") or workout["duration_minutes"]
+        )
+    updated = coach_update_workout(workout_id, acting_user["id"], fields)
     return updated
 
 
@@ -1114,6 +1154,7 @@ async def ai_create_athlete_workout(
     if not athlete:
         raise HTTPException(status_code=404, detail="Athlete not found.")
     model_api_key = athlete.get("gemini_api_key") or settings.GEMINI_API_KEY
+    is_details_only_type = request.workout_type in ("Strength", "Muscular Endurance")
     generated = await PlanGenerator.generate_single_workout(
         user_profile=athlete,
         workout_type=request.workout_type,
@@ -1122,6 +1163,12 @@ async def ai_create_athlete_workout(
         week_number=request.week_number,
         intent=request.intent,
         api_key=model_api_key,
+        target_zone=request.target_zone,
+        target_pace=request.target_pace,
+        interval_reps=request.interval_reps,
+        interval_rep_value=request.interval_rep_value,
+        interval_rep_unit=request.interval_rep_unit,
+        details=request.intent if is_details_only_type else None,
     )
     return create_coach_workout(plan_id, acting_user["id"], generated)
 

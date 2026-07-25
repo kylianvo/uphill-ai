@@ -699,6 +699,9 @@ def coach_update_workout(workout_id: int, editor_user_id: int, fields: dict[str,
         "target_pace",
         "description",
         "fueling_tip",
+        "interval_reps",
+        "interval_rep_value",
+        "interval_rep_unit",
     )
     with engine.connect() as conn:
         row = conn.execute(text("SELECT id FROM workouts WHERE id = :id"), {"id": workout_id}).fetchone()
@@ -725,22 +728,50 @@ def coach_update_workout(workout_id: int, editor_user_id: int, fields: dict[str,
 def create_coach_workout(plan_id: int, creator_user_id: int, fields: dict[str, Any]) -> dict[str, Any]:
     """New workouts (manual or AI co-created) always start pending
     (approved_at NULL) -- the coach must approve before the athlete sees
-    it as finalized."""
+    it as finalized.
+
+    A new workout on a given day either replaces that day's rest placeholder
+    (the common case -- every day has a Rest row until something real is
+    scheduled) or, if the day already has a real session, becomes a second
+    session for that day (double-session day), picking the next open
+    morning/afternoon slot rather than colliding with the existing one."""
+    week_number = fields["week_number"]
+    day_of_week = fields["day_of_week"]
     with engine.connect() as conn:
+        existing = conn.execute(
+            text("""
+                SELECT id, type, session_slot FROM workouts
+                WHERE plan_id = :pid AND week_number = :wn AND day_of_week = :dow
+            """),
+            {"pid": plan_id, "wn": week_number, "dow": day_of_week},
+        ).fetchall()
+
+        session_slot = "main"
+        if len(existing) == 1 and existing[0].type == "Rest":
+            conn.execute(text("DELETE FROM workouts WHERE id = :id"), {"id": existing[0].id})
+        elif existing:
+            taken_slots = {row.session_slot for row in existing}
+            for candidate in ("main", "afternoon", "morning"):
+                if candidate not in taken_slots:
+                    session_slot = candidate
+                    break
+
         row = conn.execute(
             text("""
                 INSERT INTO workouts (plan_id, week_number, day_of_week, phase, title, type,
                     duration_minutes, distance_km, target_zone, target_hr_range, target_pace,
-                    description, fueling_tip, session_slot, source, last_edited_by_user_id, approved_at)
+                    description, fueling_tip, session_slot, source, last_edited_by_user_id, approved_at,
+                    interval_reps, interval_rep_value, interval_rep_unit)
                 VALUES (:plan_id, :week_number, :day_of_week, :phase, :title, :type,
                     :duration_minutes, :distance_km, :target_zone, :target_hr_range, :target_pace,
-                    :description, :fueling_tip, :session_slot, 'coach_created', :creator, NULL)
+                    :description, :fueling_tip, :session_slot, 'coach_created', :creator, NULL,
+                    :interval_reps, :interval_rep_value, :interval_rep_unit)
                 RETURNING *
             """),
             {
                 "plan_id": plan_id,
-                "week_number": fields["week_number"],
-                "day_of_week": fields["day_of_week"],
+                "week_number": week_number,
+                "day_of_week": day_of_week,
                 "phase": fields["phase"],
                 "title": fields["title"],
                 "type": fields["type"],
@@ -751,8 +782,11 @@ def create_coach_workout(plan_id: int, creator_user_id: int, fields: dict[str, A
                 "target_pace": fields.get("target_pace"),
                 "description": fields.get("description"),
                 "fueling_tip": fields.get("fueling_tip"),
-                "session_slot": fields.get("session_slot") or "main",
+                "session_slot": session_slot,
                 "creator": creator_user_id,
+                "interval_reps": fields.get("interval_reps"),
+                "interval_rep_value": fields.get("interval_rep_value"),
+                "interval_rep_unit": fields.get("interval_rep_unit"),
             },
         ).fetchone()
         conn.commit()

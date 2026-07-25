@@ -510,6 +510,141 @@ class TestAddWorkoutEndpoint:
         )
         assert resp.status_code == 403
 
+    def test_adding_to_a_rest_day_replaces_it_instead_of_stacking(self, client):
+        coach_headers, _ = _make_coach(client, "addwo-coach4@uphill.ai")
+        _, athlete_id = _link_coach_and_athlete(client, coach_headers, "addwo-athlete4@uphill.ai")
+        plan_id = create_plan(
+            user_id=athlete_id,
+            race_name="Replace Rest",
+            race_date="2027-05-01",
+            goal_type="finish",
+            target_time_hours=None,
+            total_weeks=8,
+        )
+        rest_id = _seed_workout(plan_id, day_of_week="Monday", title="Rest & Regeneration", type="Rest")
+
+        resp = client.post(
+            f"/api/coaching/athletes/{athlete_id}/plans/{plan_id}/workouts",
+            json={
+                "week_number": 1,
+                "day_of_week": "Monday",
+                "phase": "Base",
+                "title": "Easy Run",
+                "type": "Easy",
+                "duration_minutes": 40,
+                "target_zone": "Zone 2",
+            },
+            headers=coach_headers,
+        )
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["session_slot"] == "main"
+        assert _get_workout_row(rest_id) is None  # the rest placeholder was deleted, not stacked alongside
+
+        day_workouts = [
+            w
+            for w in client.get(
+                f"/api/coaching/athletes/{athlete_id}/plans/{plan_id}/workouts", headers=coach_headers
+            ).json()["workouts"]
+            if w["day_of_week"] == "Monday"
+        ]
+        assert len(day_workouts) == 1
+
+    def test_adding_to_a_day_with_a_real_session_becomes_a_second_session(self, client):
+        coach_headers, _ = _make_coach(client, "addwo-coach5@uphill.ai")
+        _, athlete_id = _link_coach_and_athlete(client, coach_headers, "addwo-athlete5@uphill.ai")
+        plan_id = create_plan(
+            user_id=athlete_id,
+            race_name="Double Day",
+            race_date="2027-05-01",
+            goal_type="finish",
+            target_time_hours=None,
+            total_weeks=8,
+        )
+        _seed_workout(plan_id, day_of_week="Tuesday", title="Easy Run", type="Easy")
+
+        resp = client.post(
+            f"/api/coaching/athletes/{athlete_id}/plans/{plan_id}/workouts",
+            json={
+                "week_number": 1,
+                "day_of_week": "Tuesday",
+                "phase": "Strength",
+                "title": "Strength",
+                "type": "Strength",
+                "duration_minutes": 30,
+                "target_zone": "Zone 1",
+            },
+            headers=coach_headers,
+        )
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["session_slot"] == "afternoon"
+
+        day_workouts = [
+            w
+            for w in client.get(
+                f"/api/coaching/athletes/{athlete_id}/plans/{plan_id}/workouts", headers=coach_headers
+            ).json()["workouts"]
+            if w["day_of_week"] == "Tuesday"
+        ]
+        assert len(day_workouts) == 2
+        assert {w["session_slot"] for w in day_workouts} == {"main", "afternoon"}
+
+
+class TestEditWorkoutZoneConsistency:
+    def test_editing_the_zone_recomputes_pace_and_hr_from_the_athletes_own_profile(self, client):
+        coach_headers, _ = _make_coach(client, "editzone-coach1@uphill.ai")
+        _, athlete_id = _link_coach_and_athlete(client, coach_headers, "editzone-athlete1@uphill.ai")
+        plan_id = create_plan(
+            user_id=athlete_id,
+            race_name="Zone Edit",
+            race_date="2027-05-01",
+            goal_type="finish",
+            target_time_hours=None,
+            total_weeks=8,
+        )
+        workout_id = _seed_workout(plan_id, title="Easy Run", type="Easy", duration_minutes=40, target_zone="zone2")
+
+        resp = client.put(
+            f"/api/coaching/athletes/{athlete_id}/plans/{plan_id}/workouts/{workout_id}",
+            json={"target_zone": "Zone 4"},
+            headers=coach_headers,
+        )
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["target_zone"] == "Zone 4"
+        assert body["target_pace"]
+        assert body["target_hr_range"]
+        # Zone 4 is a harder/faster zone than the seeded Zone 2 default -- the
+        # recomputed pace must actually reflect that, not just be non-empty.
+        assert body["target_pace"] != ""
+
+    def test_client_supplied_pace_and_hr_are_ignored_not_persisted(self, client):
+        """CoachWorkoutUpdateRequest doesn't even accept target_pace/target_hr_range
+        anymore -- this proves extra fields in the request body are silently
+        dropped by Pydantic rather than erroring, and the server's own
+        computation is what lands."""
+        coach_headers, _ = _make_coach(client, "editzone-coach2@uphill.ai")
+        _, athlete_id = _link_coach_and_athlete(client, coach_headers, "editzone-athlete2@uphill.ai")
+        plan_id = create_plan(
+            user_id=athlete_id,
+            race_name="Ignore Client Pace",
+            race_date="2027-05-01",
+            goal_type="finish",
+            target_time_hours=None,
+            total_weeks=8,
+        )
+        workout_id = _seed_workout(plan_id, title="Easy Run", type="Easy", target_zone="zone2")
+
+        resp = client.put(
+            f"/api/coaching/athletes/{athlete_id}/plans/{plan_id}/workouts/{workout_id}",
+            json={"target_zone": "Zone 1", "target_pace": "0:01 - 0:01", "target_hr_range": "1-1 bpm"},
+            headers=coach_headers,
+        )
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["target_pace"] != "0:01 - 0:01"
+        assert body["target_hr_range"] != "1-1 bpm"
+
 
 class TestApproveWorkoutEndpoint:
     def test_new_workout_on_a_draft_plan_starts_pending(self, client, mock_plan_generation):
