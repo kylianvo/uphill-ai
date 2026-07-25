@@ -41,9 +41,10 @@ export function usePlanner() {
   // activePlan/workouts context state, mirroring page.tsx's
   // fetchActivePlanWithToken (used for the self-serve login flow) but
   // scoped to the athlete the coach is currently viewing.
-  const fetchActivePlanForActing = async () => {
-    if (!actingAsAthleteId) return;
+  const fetchActivePlanForActing = async (): Promise<boolean> => {
+    if (!actingAsAthleteId) return false;
     const token = localStorage.getItem("uphill_session_token");
+    let hasActive = false;
     try {
       const res = await fetch(`${API_BASE_URL}/api/coaching/athletes/${actingAsAthleteId}/active-plan`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -53,6 +54,7 @@ export function usePlanner() {
         if (data.active) {
           setActivePlan(data.plan);
           setWorkouts(data.workouts);
+          hasActive = true;
         } else {
           setActivePlan(null);
           setWorkouts([]);
@@ -62,9 +64,14 @@ export function usePlanner() {
       console.error("Failed to fetch athlete's active plan:", err);
     }
     await fetchRecentPlansWithToken(token!);
+    return hasActive;
   };
 
-  const fetchDraftPlan = async () => {
+  // `hasActivePlan` is threaded through explicitly (rather than read back
+  // off `activePlan` state) because this always runs right after
+  // fetchActivePlanForActing in the same effect, and React state from that
+  // call isn't guaranteed to have committed yet when this runs.
+  const fetchDraftPlan = async (hasActivePlan: boolean = false) => {
     if (!actingAsAthleteId) return;
     const token = localStorage.getItem("uphill_session_token");
     try {
@@ -75,23 +82,70 @@ export function usePlanner() {
         const data = await res.json();
         setDraftPlan(data.draft ? data.plan : null);
         setDraftWorkouts(data.draft ? data.workouts : []);
+        // No active plan yet at all (first workout not approved) -- render
+        // the draft's own workouts through the same active-plan view so the
+        // coach can review and approve them one at a time, rather than
+        // approving blind from a banner with no workout list underneath it.
+        if (data.draft && !hasActivePlan) {
+          setActivePlan(data.plan);
+          setWorkouts(data.workouts);
+        }
       }
     } catch (err) {
       console.error("Failed to fetch draft plan:", err);
     }
   };
 
-  const handleApproveDraftPlan = async (planId: number) => {
+  const handleApproveWorkout = async (planId: number, workoutId: number) => {
     if (!actingAsAthleteId) return false;
     const token = localStorage.getItem("uphill_session_token");
     const res = await fetch(
-      `${API_BASE_URL}/api/coaching/athletes/${actingAsAthleteId}/plans/${planId}/approve`,
+      `${API_BASE_URL}/api/coaching/athletes/${actingAsAthleteId}/plans/${planId}/workouts/${workoutId}/approve`,
       { method: "POST", headers: { Authorization: `Bearer ${token}` } }
     );
     if (res.ok) {
-      setDraftPlan(null);
-      setDraftWorkouts([]);
-      await fetchRecentPlansWithToken(token!);
+      // Re-fetch from scratch rather than patch state in place: the first
+      // approval on a draft plan flips plan_status server-side, and there's
+      // no cheap way to know that from this response alone.
+      const hasActive = await fetchActivePlanForActing();
+      await fetchDraftPlan(hasActive);
+    }
+    return res.ok;
+  };
+
+  const handleRemoveWorkout = async (planId: number, workoutId: number) => {
+    if (!actingAsAthleteId) return false;
+    const token = localStorage.getItem("uphill_session_token");
+    const res = await fetch(
+      `${API_BASE_URL}/api/coaching/athletes/${actingAsAthleteId}/plans/${planId}/workouts/${workoutId}/remove`,
+      { method: "POST", headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (res.ok) {
+      const updated = await res.json();
+      setWorkouts((prev: any) => prev.map((w: any) => (w.id === workoutId ? updated : w)));
+      setDraftWorkouts((prev: any) => prev.map((w: any) => (w.id === workoutId ? updated : w)));
+    }
+    return res.ok;
+  };
+
+  const handleAiCreateWorkout = async (
+    planId: number,
+    fields: { week_number: number; day_of_week: string; workout_type: string; duration_minutes: number; intent?: string },
+  ) => {
+    if (!actingAsAthleteId) return false;
+    const token = localStorage.getItem("uphill_session_token");
+    const res = await fetch(
+      `${API_BASE_URL}/api/coaching/athletes/${actingAsAthleteId}/plans/${planId}/workouts/ai-create`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(fields),
+      }
+    );
+    if (res.ok) {
+      const created = await res.json();
+      setWorkouts((prev: any) => [...prev, created]);
+      setDraftWorkouts((prev: any) => [...prev, created]);
     }
     return res.ok;
   };
@@ -527,5 +581,5 @@ export function usePlanner() {
     return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
-  return { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, handleSwapWorkouts, swapDays, handleToggleComplete, handleLogWorkout, getWeekWorkouts, getWorkoutDate, getWorkoutDateObj, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller, fetchDraftPlan, draftPlan, draftWorkouts, handleApproveDraftPlan, handleCoachEditWorkout, fetchActivePlanForActing };
+  return { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, handleSwapWorkouts, swapDays, handleToggleComplete, handleLogWorkout, getWeekWorkouts, getWorkoutDate, getWorkoutDateObj, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller, fetchDraftPlan, draftPlan, draftWorkouts, handleApproveWorkout, handleRemoveWorkout, handleAiCreateWorkout, handleCoachEditWorkout, fetchActivePlanForActing };
 }

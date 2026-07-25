@@ -18,18 +18,22 @@ import { parsePaceToMinutes, formatDurationHM } from "../lib/paceStrategy";
 
 export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   const ctx = useAppContext();
-  const { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, handleSwapWorkouts, swapDays, handleToggleComplete, handleLogWorkout, getWeekWorkouts, getWorkoutDate, getWorkoutDateObj, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller, fetchDraftPlan, draftPlan, handleApproveDraftPlan, fetchActivePlanForActing } = usePlanner();
+  const { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, handleSwapWorkouts, swapDays, handleToggleComplete, handleLogWorkout, getWeekWorkouts, getWorkoutDate, getWorkoutDateObj, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller, fetchDraftPlan, draftPlan, handleApproveWorkout, handleRemoveWorkout, handleAiCreateWorkout, handleCoachEditWorkout, fetchActivePlanForActing } = usePlanner();
   const [planViewMode, setPlanViewMode] = useState<"list" | "calendar">("list");
+  const [showAiCreateModal, setShowAiCreateModal] = useState(false);
   const { lang, activePlan, planLoading, planErrorMsg, planForm, setPlanForm, targetTimeH, setTargetTimeH, targetTimeM, setTargetTimeM, targetTimeS, setTargetTimeS, cutoffTimeH, setCutoffTimeH, cutoffTimeM, setCutoffTimeM, cutoffTimeS, setCutoffTimeS, recentPlans, selectedWeek, setSelectedWeek, swapDay1, setSwapDay1, swapDay2, setSwapDay2, setWorkouts, setBackupWorkouts, setActivePlan, workouts, backupWorkouts, backupActivePlan, setBackupActivePlan, courseInputMode, setCourseInputMode, plannerGpxLoading, plannerGpxFile, plannerGpxError, showExportOptions, setShowExportOptions, exportTimePref, setExportTimePref, setIsGoalDeterminerOpen, settingsHandoff, setSettingsHandoff, setPaceHandoff, setIsPaceStrategyOpen, user, actingAsAthleteId, actingAsAthleteName, setActingAsAthleteId, setActingAsAthleteName } = ctx;
   const isCoachActingAsAthlete = !!actingAsAthleteId;
+  const workoutAthleteId: number | null = actingAsAthleteId ?? (user?.id ?? null);
 
   // When entering/leaving "acting as athlete" mode, load that athlete's
   // active plan + draft (instead of whatever the coach's own self-serve
   // state happened to hold).
   useEffect(() => {
     if (actingAsAthleteId) {
-      fetchActivePlanForActing();
-      fetchDraftPlan();
+      (async () => {
+        const hasActive = await fetchActivePlanForActing();
+        await fetchDraftPlan(hasActive);
+      })();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actingAsAthleteId]);
@@ -321,6 +325,19 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
     fetchBlockCompletion();
   };
 
+  // activePlan doubles as the draft plan while reviewing a not-yet-approved
+  // draft (see usePlanner's fetchDraftPlan) -- either way, its id is the
+  // right plan_id for these per-workout coach actions.
+  const handleApproveWorkoutClick = (workoutId: number) => {
+    if (activePlan?.id) handleApproveWorkout(activePlan.id, workoutId);
+  };
+  const handleRemoveWorkoutClick = (workoutId: number) => {
+    if (activePlan?.id) handleRemoveWorkout(activePlan.id, workoutId);
+  };
+  const handleEditWorkoutClick = (workoutId: number, fields: Record<string, any>) => {
+    if (activePlan?.id) handleCoachEditWorkout(activePlan.id, workoutId, fields);
+  };
+
   const handleGenerateNextBlock = async () => {
     if (!activePlan) return;
     setNextBlockLoading(true);
@@ -419,23 +436,13 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
         {actingAsAthleteId && draftPlan && (
           <div
             style={{
-              display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px",
               padding: "10px 14px", marginBottom: "12px", borderRadius: "8px",
               background: "rgba(234,179,8,0.1)", border: "1px solid rgba(234,179,8,0.35)", fontSize: "12.5px",
             }}
           >
-            <span>
-              {lang === "en"
-                ? `Draft — pending your review (${draftPlan.race_name})`
-                : `Bản nháp — đang chờ bạn duyệt (${draftPlan.race_name})`}
-            </span>
-            <button
-              className="btn btn-primary"
-              style={{ padding: "6px 14px", fontSize: "12px" }}
-              onClick={() => handleApproveDraftPlan(draftPlan.id)}
-            >
-              {lang === "en" ? "Approve" : "Duyệt"}
-            </button>
+            {lang === "en"
+              ? `Draft — review each workout below and approve it individually (${draftPlan.race_name}). The plan goes live for the athlete as soon as its first workout is approved.`
+              : `Bản nháp — xem lại từng bài tập bên dưới và duyệt riêng từng bài (${draftPlan.race_name}). Kế hoạch sẽ hiển thị cho vận động viên ngay khi bài tập đầu tiên được duyệt.`}
           </div>
         )}
         {!activePlan ? (
@@ -1004,6 +1011,17 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 ))}
               </div>
 
+              {isCoachActingAsAthlete && (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  style={{ fontSize: "12px", height: "36px", padding: "0 14px", alignSelf: "flex-start" }}
+                  onClick={() => setShowAiCreateModal(true)}
+                >
+                  {lang === "en" ? "+ Add workout" : "+ Thêm bài tập"}
+                </button>
+              )}
+
               {!showExportOptions ? (
                 <div style={{ display: "flex", gap: "10px", width: "100%", flexWrap: "wrap" }}>
                   <button
@@ -1297,6 +1315,10 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 onToggleComplete={handleToggleCompleteWithRefresh}
                 onLogWorkout={handleLogWorkout}
                 isCoachActingAsAthlete={isCoachActingAsAthlete}
+                athleteId={workoutAthleteId}
+                onApproveWorkout={handleApproveWorkoutClick}
+                onRemoveWorkout={handleRemoveWorkoutClick}
+                onEditWorkout={handleEditWorkoutClick}
               />
             ) : (
               /* Week Workouts — grouped by day with drag-and-drop swap */
@@ -1323,6 +1345,10 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 onLogWorkout={handleLogWorkout}
                 getWorkoutDate={getWorkoutDate}
                 isCoachActingAsAthlete={isCoachActingAsAthlete}
+                athleteId={workoutAthleteId}
+                onApproveWorkout={handleApproveWorkoutClick}
+                onRemoveWorkout={handleRemoveWorkoutClick}
+                onEditWorkout={handleEditWorkoutClick}
               />
             )}
 
@@ -1497,6 +1523,19 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
             </div>
           </div>
         )}
+
+        {showAiCreateModal && (
+          <AiCreateWorkoutModal
+            lang={lang}
+            defaultWeek={selectedWeek}
+            onClose={() => setShowAiCreateModal(false)}
+            onCreate={async (fields) => {
+              if (!activePlan?.id) return;
+              await handleAiCreateWorkout(activePlan.id, fields);
+              setShowAiCreateModal(false);
+            }}
+          />
+        )}
       </div>
     );
   };
@@ -1509,6 +1548,168 @@ const DAY_ORDER = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Satu
 const DAY_VI = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy", "Chủ Nhật"];
 const SLOT_ORDER: Record<string, number> = { morning: 0, main: 1, afternoon: 2 };
 
+// ─── Coach co-creation: type + duration + intent, AI fills the rest ───────────
+function AiCreateWorkoutModal({
+  lang,
+  defaultWeek,
+  onClose,
+  onCreate,
+}: {
+  lang: string;
+  defaultWeek: number;
+  onClose: () => void;
+  onCreate: (fields: {
+    week_number: number;
+    day_of_week: string;
+    workout_type: string;
+    duration_minutes: number;
+    intent?: string;
+  }) => Promise<void>;
+}) {
+  const [weekNumber, setWeekNumber] = useState(defaultWeek || 1);
+  const [dayOfWeek, setDayOfWeek] = useState("Monday");
+  const [workoutType, setWorkoutType] = useState("Tempo");
+  const [duration, setDuration] = useState("40");
+  const [intent, setIntent] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const canSubmit = !!workoutType.trim() && parseFloat(duration) > 0;
+
+  const handleSubmit = async () => {
+    if (!canSubmit) return;
+    setSubmitting(true);
+    await onCreate({
+      week_number: weekNumber,
+      day_of_week: dayOfWeek,
+      workout_type: workoutType.trim(),
+      duration_minutes: parseFloat(duration),
+      intent: intent.trim() || undefined,
+    });
+    setSubmitting(false);
+  };
+
+  return (
+    <div
+      style={{ position: "fixed", inset: 0, zIndex: 1200, background: "rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ width: "100%", maxWidth: "420px", background: "rgba(255,255,255,0.98)", borderRadius: "16px", padding: "24px", border: "1px solid var(--border-color)" }}
+      >
+        <h3 style={{ margin: "0 0 4px 0", fontSize: "16px", fontWeight: 800 }}>
+          {lang === "en" ? "Add a workout" : "Thêm bài tập"}
+        </h3>
+        <p style={{ fontSize: "12px", color: "var(--text-muted)", margin: "0 0 16px 0" }}>
+          {lang === "en"
+            ? "Give the type, duration, and any intent — AI fills in the pace/HR/zone detail grounded in this athlete's profile."
+            : "Nhập loại bài, thời lượng, và ý định của bạn — AI sẽ điền chi tiết pace/nhịp tim/vùng dựa trên hồ sơ vận động viên."}
+        </p>
+
+        <div style={{ display: "flex", gap: "8px", marginBottom: "10px" }}>
+          <div style={{ flex: 1 }}>
+            <label style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)" }}>
+              {lang === "en" ? "Week" : "Tuần"}
+            </label>
+            <input
+              type="number"
+              min={1}
+              className="chat-input"
+              value={weekNumber}
+              onChange={(e) => setWeekNumber(parseInt(e.target.value, 10) || 1)}
+              style={{ width: "100%", borderRadius: "8px", padding: "8px 10px", fontSize: "13px", marginTop: "4px" }}
+            />
+          </div>
+          <div style={{ flex: 2 }}>
+            <label style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)" }}>
+              {lang === "en" ? "Day" : "Thứ"}
+            </label>
+            <select
+              className="chat-input"
+              value={dayOfWeek}
+              onChange={(e) => setDayOfWeek(e.target.value)}
+              style={{ width: "100%", borderRadius: "8px", padding: "8px 10px", fontSize: "13px", marginTop: "4px" }}
+            >
+              {DAY_ORDER.map((d, i) => (
+                <option key={d} value={d}>
+                  {lang === "en" ? d : DAY_VI[i]}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: "8px", marginBottom: "10px" }}>
+          <div style={{ flex: 1 }}>
+            <label style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)" }}>
+              {lang === "en" ? "Type" : "Loại bài"}
+            </label>
+            <input
+              type="text"
+              className="chat-input"
+              placeholder={lang === "en" ? "e.g. Tempo, Long Run, Interval" : "vd. Tempo, Long Run, Interval"}
+              value={workoutType}
+              onChange={(e) => setWorkoutType(e.target.value)}
+              style={{ width: "100%", borderRadius: "8px", padding: "8px 10px", fontSize: "13px", marginTop: "4px" }}
+            />
+          </div>
+          <div style={{ width: "100px" }}>
+            <label style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)" }}>
+              {lang === "en" ? "Minutes" : "Số phút"}
+            </label>
+            <input
+              type="number"
+              min={1}
+              className="chat-input"
+              value={duration}
+              onChange={(e) => setDuration(e.target.value)}
+              style={{ width: "100%", borderRadius: "8px", padding: "8px 10px", fontSize: "13px", marginTop: "4px" }}
+            />
+          </div>
+        </div>
+
+        <label style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)" }}>
+          {lang === "en" ? "Intent (optional)" : "Ý định (không bắt buộc)"}
+        </label>
+        <textarea
+          value={intent}
+          onChange={(e) => setIntent(e.target.value)}
+          placeholder={
+            lang === "en"
+              ? "e.g. Build confidence on rolling terrain before the race"
+              : "vd. Xây dựng sự tự tin trên địa hình gợn sóng trước giải đấu"
+          }
+          rows={2}
+          style={{ width: "100%", borderRadius: "8px", padding: "8px 10px", fontSize: "13px", marginTop: "4px", border: "1.5px solid rgba(0,0,0,0.1)", background: "rgba(255,255,255,0.6)", resize: "vertical", fontFamily: "inherit", boxSizing: "border-box" }}
+        />
+
+        <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", marginTop: "18px" }}>
+          <button
+            onClick={onClose}
+            style={{ padding: "8px 16px", fontSize: "12.5px", borderRadius: "8px", border: "1px solid var(--border-color)", background: "transparent", cursor: "pointer" }}
+          >
+            {lang === "en" ? "Cancel" : "Huỷ"}
+          </button>
+          <button
+            className="btn btn-primary"
+            disabled={!canSubmit || submitting}
+            onClick={handleSubmit}
+            style={{ padding: "8px 16px", fontSize: "12.5px" }}
+          >
+            {submitting
+              ? lang === "en"
+                ? "Creating…"
+                : "Đang tạo…"
+              : lang === "en"
+                ? "Create with AI"
+                : "Tạo bằng AI"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 interface DayGroupProps {
   day: string;
   dayIndex: number;
@@ -1520,9 +1721,13 @@ interface DayGroupProps {
   onLogWorkout: (id: number, rpe: number | null, notes: string) => Promise<void>;
   getWorkoutDate: (wo: any) => string;
   isCoachActingAsAthlete?: boolean;
+  athleteId?: number | null;
+  onApproveWorkout?: (id: number) => void;
+  onRemoveWorkout?: (id: number) => void;
+  onEditWorkout?: (id: number, fields: Record<string, any>) => void;
 }
 
-function DayGroup({ day, dayIndex, dayWos, lang, isMobile, isOver, onToggleComplete, onLogWorkout, getWorkoutDate, isCoachActingAsAthlete }: DayGroupProps) {
+function DayGroup({ day, dayIndex, dayWos, lang, isMobile, isOver, onToggleComplete, onLogWorkout, getWorkoutDate, isCoachActingAsAthlete, athleteId, onApproveWorkout, onRemoveWorkout, onEditWorkout }: DayGroupProps) {
   const { attributes, listeners, setNodeRef: setDragRef, transform, isDragging } = useDraggable({ id: day });
   const { setNodeRef: setDropRef } = useDroppable({ id: day });
 
@@ -1613,6 +1818,10 @@ function DayGroup({ day, dayIndex, dayWos, lang, isMobile, isOver, onToggleCompl
                 onLogWorkout={onLogWorkout}
                 getWorkoutDate={getWorkoutDate}
                 isCoachActingAsAthlete={isCoachActingAsAthlete}
+                athleteId={athleteId}
+                onApproveWorkout={onApproveWorkout}
+                onRemoveWorkout={onRemoveWorkout}
+                onEditWorkout={onEditWorkout}
               />
             </div>
           );
@@ -1631,9 +1840,13 @@ interface WeekDayListProps {
   onLogWorkout: (id: number, rpe: number | null, notes: string) => Promise<void>;
   getWorkoutDate: (wo: any) => string;
   isCoachActingAsAthlete?: boolean;
+  athleteId?: number | null;
+  onApproveWorkout?: (id: number) => void;
+  onRemoveWorkout?: (id: number) => void;
+  onEditWorkout?: (id: number, fields: Record<string, any>) => void;
 }
 
-function WeekDayList({ weekWos, lang, isMobile, onSwapDays, onToggleComplete, onLogWorkout, getWorkoutDate, isCoachActingAsAthlete }: WeekDayListProps) {
+function WeekDayList({ weekWos, lang, isMobile, onSwapDays, onToggleComplete, onLogWorkout, getWorkoutDate, isCoachActingAsAthlete, athleteId, onApproveWorkout, onRemoveWorkout, onEditWorkout }: WeekDayListProps) {
   const [overId, setOverId] = React.useState<string | null>(null);
 
   const byDay: Record<string, any[]> = {};
@@ -1678,6 +1891,10 @@ function WeekDayList({ weekWos, lang, isMobile, onSwapDays, onToggleComplete, on
               onLogWorkout={onLogWorkout}
               getWorkoutDate={getWorkoutDate}
               isCoachActingAsAthlete={isCoachActingAsAthlete}
+              athleteId={athleteId}
+              onApproveWorkout={onApproveWorkout}
+              onRemoveWorkout={onRemoveWorkout}
+              onEditWorkout={onEditWorkout}
             />
           );
         })}
