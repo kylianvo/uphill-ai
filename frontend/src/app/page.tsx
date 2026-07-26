@@ -665,19 +665,8 @@ export default function Home() {
     setZone2Min,
     zone2Max,
     setZone2Max,
+    handleTabSwitch,
   } = useAppContext();
-  const handleTabSwitch = (
-    tab: "home" | "about" | "chat" | "planner" | "tools" | "knowledge" | "coach",
-  ) => {
-    if ((tab === "chat" || tab === "planner") && !user) {
-      setAuthModalOpen(true);
-      return;
-    }
-    setActiveTab(tab);
-    if (tab === "planner") {
-      setPlanJobStatus("idle");
-    }
-  };
   // Language State & Persistence
   // State for homepage CTA button hover effect
   useEffect(() => {

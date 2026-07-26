@@ -20,6 +20,7 @@ interface AppContextType {
   setIsGoalDeterminerOpen: any;
   activeTab: any;
   setActiveTab: any;
+  handleTabSwitch: (tab: "home" | "about" | "chat" | "planner" | "tools" | "knowledge" | "coach") => void;
   lang: "en" | "vi";
   setLang: any;
   startBtnHovered: any;
@@ -409,6 +410,19 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     setActingAsAthleteName("");
   };
 
+  const handleTabSwitch = (
+    tab: "home" | "about" | "chat" | "planner" | "tools" | "knowledge" | "coach",
+  ) => {
+    if ((tab === "chat" || tab === "planner") && !user) {
+      setAuthModalOpen(true);
+      return;
+    }
+    setActiveTab(tab);
+    if (tab === "planner") {
+      setPlanJobStatus("idle");
+    }
+  };
+
   return (
     <AppContext.Provider value={{
       isNutritionLabOpen, setIsNutritionLabOpen,
@@ -417,7 +431,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       paceHandoff, setPaceHandoff,
       settingsHandoff, setSettingsHandoff,
       isGoalDeterminerOpen, setIsGoalDeterminerOpen,
-      activeTab, setActiveTab,
+      activeTab, setActiveTab, handleTabSwitch,
       lang, setLang,
       startBtnHovered, setStartBtnHovered,
       viewportWidth, setViewportWidth,
