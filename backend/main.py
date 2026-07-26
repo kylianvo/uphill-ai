@@ -314,6 +314,9 @@ class OnboardingRequest(BaseModel):
     next_goal: str | None = None
     # Double session preference
     double_session_days: list[str] | None = None
+    # Skip generating a plan right now -- save the profile and let the user
+    # into the app; they can start a plan later from the Planner tab.
+    skip_plan: bool = False
     plan_start_date: str | None = None  # YYYY-MM-DD
 
 
@@ -742,6 +745,12 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         "zone2_pace_max": zone2_max,
     }
     update_onboarding_profile(user["id"], onboarding_data)
+
+    if request.skip_plan:
+        # Profile saved, no plan row created -- the user starts one later
+        # from the Planner tab's own "New Plan" form when they're ready.
+        mark_onboarding_complete(user["id"])
+        return {"user": format_user_response(get_user_by_id(user["id"]) or user)}
 
     # Build a plan request from onboarding context
     race_name = request.race_name or _default_plan_name(request.goal_type)
