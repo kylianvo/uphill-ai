@@ -14,13 +14,22 @@
 # docker-compose.yml would resolve empty. Generating a small, git-ignored
 # airflow/.env from backend/.env's actual values sidesteps both problems.
 #
-# Run this once (and again whenever backend/.env's Airflow-relevant values
-# change) before `docker compose up airflow-webserver airflow-scheduler`.
+# This now also runs automatically as the first step of the `airflow-init`
+# compose service (which airflow-webserver/airflow-scheduler both wait on
+# via `depends_on: condition: service_completed_successfully`), with
+# backend/ and airflow/ bind-mounted in so it can read/write across the
+# container boundary — see docker-compose.yml. It remains safe (and
+# supported) to run by hand on the host too: `./airflow/render-env.sh`.
+#
+# Usage: render-env.sh [SRC_ENV_FILE] [OUT_ENV_FILE]
+#   Defaults (host invocation): backend/.env -> airflow/.env, relative to
+#   the repo root. Pass absolute paths when invoking from inside a
+#   container with different mount points.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-SRC="backend/.env"
-OUT="airflow/.env"
+SRC="${1:-backend/.env}"
+OUT="${2:-airflow/.env}"
 VARS=(
   GEMINI_API_KEY
   TAVILY_API_KEY
@@ -31,10 +40,14 @@ VARS=(
 )
 
 if [ ! -f "$SRC" ]; then
-  echo "error: $SRC not found — copy backend/.env.example or set it up first" >&2
+  echo "error: render-env.sh: '$SRC' not found." >&2
+  echo "       Set up backend/.env first (see deploy.env.example / README) — airflow/.env" >&2
+  echo "       cannot be generated without it, and airflow-webserver/airflow-scheduler" >&2
+  echo "       will fail to start without airflow/.env." >&2
   exit 1
 fi
 
+mkdir -p "$(dirname "$OUT")"
 : > "$OUT"
 found=0
 for v in "${VARS[@]}"; do
