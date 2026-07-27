@@ -74,3 +74,30 @@ def test_replace_kb_chunks_swaps_domain_content(_init_test_database):
     gear = get_kb_chunks("gear")
     assert [c["title"] for c in gear] == ["Tecton X 3"]
     assert get_kb_chunk_count("scheduler") == 1  # other domains untouched
+
+
+def test_add_kb_chunks_skips_existing_titles_case_insensitively(_init_test_database):
+    from db import add_kb_chunks
+
+    save_kb_chunks(_sample_chunks())  # seeds "Speedgoat 7" under gear
+    inserted = add_kb_chunks(
+        "gear",
+        [
+            {"domain": "gear", "kind": "catalog_item", "title": "speedgoat 7", "content": "dup", "payload": None},
+            {"domain": "gear", "kind": "catalog_item", "title": "Tecton X 3", "content": "new", "payload": None},
+        ],
+    )
+    assert inserted == 1
+    titles = sorted(c["title"] for c in get_kb_chunks("gear"))
+    assert titles == ["Speedgoat 7", "Tecton X 3"]  # original row untouched, only the new one added
+
+
+def test_add_kb_chunks_never_deletes_other_domains(_init_test_database):
+    from db import add_kb_chunks
+
+    save_kb_chunks(_sample_chunks())  # gear=1, scheduler=1
+    add_kb_chunks(
+        "gear", [{"domain": "gear", "kind": "catalog_item", "title": "New Row", "content": "c", "payload": None}]
+    )
+    assert get_kb_chunk_count("gear") == 2
+    assert get_kb_chunk_count("scheduler") == 1

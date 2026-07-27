@@ -1687,3 +1687,41 @@ def replace_kb_chunks(domain: str, chunks: list[dict[str, Any]]) -> int:
             )
         conn.commit()
     return len(chunks)
+
+
+def add_kb_chunks(domain: str, chunks: list[dict[str, Any]]) -> int:
+    """Insert-only append: skip any chunk whose (domain, title) already exists
+    (case-insensitive), else INSERT. Unlike replace_kb_chunks, never deletes —
+    used by sources that discover new items incrementally instead of re-sweeping
+    a full catalog each run."""
+    inserted = 0
+    with engine.connect() as conn:
+        existing_titles = {
+            row[0].lower()
+            for row in conn.execute(text("SELECT title FROM kb_chunks WHERE domain = :d"), {"d": domain}).all()
+        }
+        for chunk in chunks:
+            title = chunk.get("title", "")
+            if title.lower() in existing_titles:
+                continue
+            content = chunk.get("content", "")
+            payload = chunk.get("payload")
+            conn.execute(
+                text("""
+                INSERT INTO kb_chunks (domain, kind, title, content, payload, source_label, content_hash)
+                VALUES (:domain, :kind, :title, :content, CAST(:payload AS JSONB), :source_label, :content_hash)
+            """),
+                {
+                    "domain": chunk["domain"],
+                    "kind": chunk.get("kind", "catalog_item"),
+                    "title": title,
+                    "content": content,
+                    "payload": json.dumps(payload, ensure_ascii=False) if payload is not None else None,
+                    "source_label": chunk.get("source_label", "web discovery"),
+                    "content_hash": chunk.get("content_hash") or hashlib.md5(content.encode("utf-8")).hexdigest(),
+                },
+            )
+            existing_titles.add(title.lower())  # guard against dupes within the same batch
+            inserted += 1
+        conn.commit()
+    return inserted
