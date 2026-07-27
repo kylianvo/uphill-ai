@@ -7,188 +7,143 @@ import pytest
 from services import kb_distiller
 
 
-def test_distill_gear_sweeps_whitelisted_brands_and_builds_catalog_rows(monkeypatch):
-    # Gear sweeps the operator whitelist directly — no brand-enumeration query
-    monkeypatch.setattr(kb_distiller, "GEAR_BRANDS", ["Hoka", "Salomon"])
-    nlm_answers = ["hoka shoes text...", "salomon shoes text..."]
-    structured_answers = [
+def test_discover_gear_web_skips_known_shoes_and_structures_new_ones(monkeypatch):
+    monkeypatch.setattr(kb_distiller, "GEAR_BRANDS", ["Hoka"])
+    existing_rows = [
         {
-            "shoes": [
-                {
-                    "model": "Speedgoat 7",
-                    "brand": "HOKA ONE ONE",  # restyled name → coerced to the queried brand
-                    "foam_material": "CMEVA (EVA)",
-                    "outsole_compound": "Vibram Megagrip",
-                    "lug_depth": "5mm",
-                    "drop": "4mm",
-                    "stack": "40mm/36mm",
-                    "price": "$155",
-                    "pros": "Grippy, plush, reliable on technical terrain.",
-                    "cons": "Heavy for racing.",
-                    "best_for": "Long technical trail days and ultras.",
-                },
-                {
-                    "model": "Ultraventure 4",
-                    "brand": "Topo Athletic",  # competitor mentioned in a review — must be dropped
-                    "foam_material": "ZipFoam (EVA)",
-                    "outsole_compound": "Vibram",
-                    "lug_depth": "4mm",
-                    "drop": "5mm",
-                    "stack": "35mm/30mm",
-                    "price": "$150",
-                    "pros": "Roomy toe box.",
-                    "cons": "Soft upper.",
-                    "best_for": "Wide-footed runners.",
-                },
-            ]
-        },
-        {
-            "shoes": [
-                {
-                    "model": "Salomon Genesis",  # brand repeated inside model → deduped in title
-                    "brand": "Salomon",
-                    "foam_material": "EnergyCell (EVA)",
-                    "outsole_compound": "Contagrip",
-                    "lug_depth": "4mm",
-                    "drop": "8mm",
-                    "stack": "31mm/23mm",
-                    "price": "$140",
-                    "pros": "Secure fit, versatile.",
-                    "cons": "Firm ride.",
-                    "best_for": "All-round mountain running.",
-                }
-            ]
-        },
+            "domain": "gear",
+            "kind": "catalog_item",
+            "title": "Hoka Speedgoat 6",
+            "content": "c",
+            "payload": {"brand": "Hoka", "model": "Speedgoat 6"},
+        }
     ]
+    tavily_response = {
+        "results": [
+            {
+                "title": "Hoka Speedgoat 6 Review",
+                "url": "https://runrepeat.com/hoka-speedgoat-6",
+                "content": "old shoe",
+            },
+            {
+                "title": "Hoka Speedgoat 7 Review",
+                "url": "https://believeintherun.com/hoka-speedgoat-7",
+                "content": "new shoe article text...",
+            },
+        ]
+    }
+    structured = {
+        "shoes": [
+            {
+                "model": "Speedgoat 7",
+                "brand": "Hoka",
+                "foam_material": "CMEVA (EVA)",
+                "outsole_compound": "Vibram Megagrip",
+                "lug_depth": "5mm",
+                "drop": "4mm",
+                "stack": "40mm/36mm",
+                "price": "$155",
+                "pros": "Grippy.",
+                "cons": "Heavy.",
+                "best_for": "Ultras.",
+            }
+        ]
+    }
     with (
-        patch(
-            "services.notebooklm_service.NotebookLmService.query_notebook",
-            new_callable=AsyncMock,
-            side_effect=nlm_answers,
-        ) as nlm,
-        patch.object(kb_distiller, "_gemini_structured", new_callable=AsyncMock, side_effect=structured_answers),
+        patch.object(kb_distiller, "TavilyClient") as tavily_cls,
+        patch("db.get_kb_chunks", return_value=existing_rows),
+        patch.object(kb_distiller, "_gemini_structured", new_callable=AsyncMock, return_value=structured),
         patch("asyncio.sleep", new_callable=AsyncMock),
     ):
-        rows = asyncio.run(kb_distiller._distill_gear("nb-gear", '{"tok":1}', "test-key", {}))
+        tavily_cls.return_value.search.return_value = tavily_response
+        rows = asyncio.run(kb_distiller.discover_gear_web("test-key", "tvly-test", {}))
 
-    assert nlm.call_count == 2  # one query per whitelisted brand, no enumeration query
-    assert len(rows) == 2  # Topo Athletic row filtered out
-    assert rows[0]["domain"] == "gear"
-    assert rows[0]["kind"] == "catalog_item"
-    assert rows[0]["title"] == "Hoka Speedgoat 7"  # brand coerced from "HOKA ONE ONE"
+    assert len(rows) == 1  # "Speedgoat 6" result skipped (already known), "Speedgoat 7" structured
+    assert rows[0]["title"] == "Hoka Speedgoat 7"
     assert rows[0]["payload"]["brand"] == "Hoka"
-    assert rows[0]["payload"]["cons"] == "Heavy for racing."  # qualitative fields captured
-    assert rows[0]["payload"]["best_for"].startswith("Long technical")
-    assert rows[1]["title"] == "Salomon Genesis"
-    assert rows[1]["payload"]["model"] == "Genesis"  # brand stripped from payload model too
+    assert rows[0]["source_label"] == "believeintherun.com"
 
 
-def _thin_shoe(model):
-    return {
-        "model": model,
-        "brand": "Salomon",
-        "foam_material": "",
-        "outsole_compound": "",
-        "lug_depth": "",
-        "drop": "",
-        "stack": "",
-        "price": "",
-        "pros": "",
-        "cons": "",
-        "best_for": "",
-    }
-
-
-def _rich_shoe(model):
-    return {
-        "model": model,
-        "brand": "Salomon",
-        "foam_material": "EnergyFoam (EVA)",
-        "outsole_compound": "Contagrip",
-        "lug_depth": "4mm",
-        "drop": "8mm",
-        "stack": "31mm/23mm",
-        "price": "$140",
-        "pros": "Secure fit.",
-        "cons": "Firm.",
-        "best_for": "Mountain running.",
-    }
-
-
-def test_thin_sweep_is_retried_and_richer_result_kept(monkeypatch):
-    monkeypatch.setattr(kb_distiller, "GEAR_BRANDS", ["Salomon"])
+def test_discover_gear_web_returns_empty_when_nothing_new(monkeypatch):
+    monkeypatch.setattr(kb_distiller, "GEAR_BRANDS", ["Hoka"])
     with (
-        patch(
-            "services.notebooklm_service.NotebookLmService.query_notebook",
-            new_callable=AsyncMock,
-            side_effect=["thin answer", "rich answer"],
-        ) as nlm,
-        patch.object(
-            kb_distiller,
-            "_gemini_structured",
-            new_callable=AsyncMock,
-            side_effect=[
-                {"shoes": [_thin_shoe("Aero Glide series"), _thin_shoe("S/Lab racing line")]},
-                {"shoes": [_rich_shoe("Genesis"), _rich_shoe("S/Lab Ultra Glide 2")]},
-            ],
-        ),
+        patch.object(kb_distiller, "TavilyClient") as tavily_cls,
+        patch("db.get_kb_chunks", return_value=[]),
         patch("asyncio.sleep", new_callable=AsyncMock),
     ):
-        rows = asyncio.run(kb_distiller._distill_gear("nb-gear", '{"tok":1}', "test-key", {}))
-    assert nlm.call_count == 2  # thin first sweep triggered exactly one re-sweep
-    assert [r["title"] for r in rows] == ["Salomon Genesis", "Salomon S/Lab Ultra Glide 2"]
-    assert rows[0]["payload"]["price"] == "$140"  # the rich result won
+        tavily_cls.return_value.search.return_value = {"results": []}
+        rows = asyncio.run(kb_distiller.discover_gear_web("test-key", "tvly-test", {}))
+    assert rows == []
 
 
-def test_overflowing_brand_answer_splits_into_trail_and_road(monkeypatch):
-    calls = []
+def test_validate_domain_rows_gear_drops_thin_rows_but_allows_empty():
+    assert kb_distiller.validate_domain_rows("gear", []) == []  # 0 new shoes this week is valid
+    thin = {
+        "domain": "gear",
+        "kind": "catalog_item",
+        "title": "X",
+        "content": "c",
+        "payload": {
+            "foam_material": "",
+            "outsole_compound": "",
+            "lug_depth": "",
+            "drop": "",
+            "stack": "",
+            "price": "",
+            "pros": "",
+            "cons": "",
+            "best_for": "",
+            "cushioning": "",
+            "foot_shape": "",
+            "carbon_plate": "",
+            "arch_support": "",
+            "terrain": [],
+            "intended_use": "",
+            "overview": "",
+            "highlights": "",
+            "suitability": "",
+        },
+    }
+    rich = {
+        "domain": "gear",
+        "kind": "catalog_item",
+        "title": "Y",
+        "content": "c",
+        "payload": {
+            "foam_material": "PEBA",
+            "outsole_compound": "Vibram",
+            "lug_depth": "5mm",
+            "drop": "4mm",
+            "stack": "40mm",
+            "price": "$150",
+            "pros": "Fast.",
+            "cons": "Narrow.",
+            "best_for": "Racing.",
+            "cushioning": "max",
+            "foot_shape": "standard",
+            "carbon_plate": "no",
+            "arch_support": "neutral",
+            "terrain": ["road"],
+            "intended_use": "race day",
+            "overview": "Fast shoe.",
+            "highlights": "Plate.",
+            "suitability": "Racers.",
+        },
+    }
+    result = kb_distiller.validate_domain_rows("gear", [thin, rich])
+    assert result == [rich]
 
-    async def fake_query(notebook_id, auth_json, query, attempts=3):
-        calls.append(query)
-        if len(calls) == 1:
-            raise Exception("RPC response exceeded 52428800 bytes")
-        return f"answer {len(calls)}"
 
+def test_save_domain_gear_uses_insert_only_append(tmp_path, monkeypatch):
+    monkeypatch.setattr(kb_distiller, "SEED_DIR", str(tmp_path))  # don't clobber the real committed seed file
+    rows = [{"domain": "gear", "kind": "catalog_item", "title": "Hoka Speedgoat 7", "content": "c", "payload": None}]
     with (
-        patch.object(kb_distiller, "_query_with_retries", side_effect=fake_query),
-        patch.object(
-            kb_distiller,
-            "_gemini_structured",
-            new_callable=AsyncMock,
-            side_effect=[
-                {"shoes": [_rich_shoe("Pegasus Trail 5"), _rich_shoe("Zegama 2")]},
-                {"shoes": [_rich_shoe("Pegasus Trail 5"), _rich_shoe("Vaporfly 4")]},  # dup deduped
-            ],
-        ),
-        patch("asyncio.sleep", new_callable=AsyncMock),
+        patch("db.add_kb_chunks", return_value=1) as add_mock,
+        patch("db.get_kb_chunks", return_value=rows),  # export_seed reads full current catalog
     ):
-        shoes = asyncio.run(kb_distiller._sweep_gear_brand("nb-gear", '{"tok":1}', "test-key", "Nike"))
-    assert len(calls) == 3  # full sweep + trail + road
-    assert "trail running" in calls[1] and "road running" in calls[2]
-    assert sorted(s["model"] for s in shoes) == ["Pegasus Trail 5", "Vaporfly 4", "Zegama 2"]
-
-
-def _row(payload):
-    title = f"{payload['brand']} {payload['model']}"
-    return {"domain": "gear", "kind": "catalog_item", "title": title, "content": title, "payload": payload}
-
-
-def test_merge_gear_ratchet_backfills_only_holed_brands():
-    existing = [
-        _row(_rich_shoe("Gel-Trabuco 12") | {"brand": "Asics"}),
-        _row(_rich_shoe("Speedgoat 7") | {"brand": "Hoka"}),
-        _row(_rich_shoe("Speedcross 6") | {"brand": "Hoka"}),
-    ]
-    new_rows = [
-        # Asics present in the new sweep (even if smaller/curated) → new wins outright
-        _row(_rich_shoe("Novablast 5") | {"brand": "Asics"}),
-        _row(_rich_shoe("005") | {"brand": "Norda"}),  # brand new to the catalog
-        # Hoka absent from the new sweep entirely → previous rows kept
-    ]
-    with patch("db.get_kb_chunks", return_value=existing):
-        merged = kb_distiller._merge_gear_ratchet(new_rows)
-    titles = sorted(r["title"] for r in merged)
-    assert titles == ["Asics Novablast 5", "Hoka Speedcross 6", "Hoka Speedgoat 7", "Norda 005"]
+        saved = asyncio.run(kb_distiller.save_domain("gear", rows, "test-key"))
+    add_mock.assert_called_once_with("gear", rows)
+    assert saved == 1
 
 
 def test_query_with_retries_does_not_retry_stream_overflow():

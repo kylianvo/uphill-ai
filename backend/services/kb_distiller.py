@@ -12,9 +12,11 @@ import json
 import os
 import re
 from typing import Any
+from urllib.parse import urlparse
 
 import google.generativeai as genai
 from pydantic import BaseModel
+from tavily import TavilyClient
 
 from config import settings
 from services.notebooklm_service import NotebookLmService
@@ -233,111 +235,84 @@ def _sweep_richness(shoes: list[dict]) -> int:
     return sum(_shoe_richness(s) for s in shoes)
 
 
-_GEAR_SPEC_ASK = (
-    "ONLY include shoes that are properly reviewed in your documents — a dedicated review, lab data, "
-    "or detailed testing/fit notes. EXCLUDE shoes that are merely mentioned in passing, as a comparison "
-    "point, or as a historical reference. For each properly-reviewed shoe give: exact model name; foam "
-    "material with its type in parentheses (e.g. ZoomX (PEBA)); outsole compound; lug depth in mm; drop "
-    "in mm; stack height; price; cushioning level (max/moderate/firm); toe box / fit width (narrow, "
-    "standard, wide, roomy toe box); carbon plate or rods (yes/no + detail); arch support (neutral, "
-    "stability, motion control); recommended terrain (muddy, technical, rocky, runnable, road…); its "
-    "intended use (daily trainer, race day, tempo/workouts, recovery, ultras…); a 1-2 sentence overview "
-    "of the shoe's character; any standout tech or special highlight; who it suits or doesn't (e.g. "
-    "heavier runners, injury-prone/stability needs, beginners); what it is best for and its strengths "
-    "(pros); and its drawbacks or who shouldn't buy it (cons). If the documents don't state a detail, "
-    "skip that detail rather than guessing. Answer as a COMPACT plain-text list right here in chat, at "
-    "most 7 short lines per shoe — do NOT compile a guide, table document, note, or file."
+_GEAR_ARTICLE_ASK = (
+    "Structure every properly-reviewed shoe in this article into the schema. ONLY include shoes with "
+    "real spec/testing detail in the text — skip shoes merely mentioned in passing. For each: exact model "
+    "name; foam material with type in parentheses; outsole compound; lug depth in mm; drop in mm; stack "
+    "height; price; cushioning level (max/moderate/firm); toe box/fit width; carbon plate or rods (yes/no "
+    "+ detail); arch support; recommended terrain; intended use; a 1-2 sentence overview; standout tech; "
+    "who it suits/doesn't; pros; cons. If the article doesn't state a detail, skip that detail rather than "
+    "guessing. NEVER add a shoe, spec, or price not present in the text. Write every field in clear English "
+    "only — never any other language.\n\nArticle:\n"
 )
 
 
-async def _sweep_gear_brand(notebook_id: str, auth_json: str, api_key: str, brand: str) -> list[dict]:
-    async def sweep_query(query_text: str) -> list[dict]:
-        answer = await _query_with_retries(notebook_id, auth_json, query_text)
-        structured = await _gemini_structured(
-            api_key,
-            "Structure every shoe in this text into the schema. NEVER add a shoe, spec, or price "
-            "that is not present in the text. If the text marks a shoe as only briefly mentioned, "
-            "referenced historically, or not fully reviewed, SKIP it. Write every field in clear "
-            "English only — never any other language.\n\n" + answer,
-            ShoeList,
-        )
-        return structured.get("shoes", [])
+def _known_gear_titles() -> set[str]:
+    import db
 
-    try:
-        return await sweep_query(f"List EVERY {brand} shoe in your documents. {_GEAR_SPEC_ASK}")
-    except Exception as e:
-        if "RPC response exceeded" not in str(e):
-            raise
-        # The brand's full answer overflows the NotebookLM client's stream cap
-        # (seen with Nike and Altra) — split the sweep into narrower scopes.
-        print(f"[KBDistiller][gear] Brand '{brand}' answer overflowed the stream cap — splitting trail/road.")
-        shoes: list[dict] = []
-        for scope in ("trail running", "road running"):
-            try:
-                shoes += await sweep_query(
-                    f"List EVERY {brand} {scope} shoe in your documents. Keep each shoe brief. {_GEAR_SPEC_ASK}"
-                )
-            except Exception as scope_e:
-                print(f"[KBDistiller][gear] '{brand}' {scope} split failed, continuing: {scope_e}")
-            await asyncio.sleep(1.5)
-        seen: set[str] = set()
-        unique: list[dict] = []
-        for shoe in shoes:
-            key = (shoe.get("model") or "").strip().lower()
-            if key and key not in seen:
-                seen.add(key)
-                unique.append(shoe)
-        return unique
+    return {row["title"].lower() for row in db.get_kb_chunks("gear", kind="catalog_item")}
 
 
-async def _distill_gear(notebook_id: str, auth_json: str, api_key: str, status: dict) -> list[dict]:
-    brands = GEAR_BRANDS
+async def discover_gear_web(api_key: str, tavily_api_key: str, status_holder: dict) -> list[dict]:
+    """Search RunRepeat/BelieveInTheRun for new reviews of whitelisted gear brands, skip
+    results matching an already-known shoe, structure the rest with Gemini. Incremental —
+    an empty result (no new shoes this week) is a normal, valid outcome."""
+    client = TavilyClient(api_key=tavily_api_key)
+    known_titles = _known_gear_titles()
     rows: list[dict] = []
 
-    for i, brand in enumerate(brands):
-        status.update({"current_topic": f"gear: {brand}", "progress": i, "total": len(brands)})
+    for i, brand in enumerate(GEAR_BRANDS):
+        status_holder.update({"current_topic": f"gear web: {brand}", "progress": i, "total": len(GEAR_BRANDS)})
         try:
-            shoes = await _sweep_gear_brand(notebook_id, auth_json, api_key, brand)
-            if not shoes or _sweep_richness(shoes) / max(len(shoes), 1) < _MIN_AVG_RICHNESS:
-                # Under load NotebookLM sometimes "succeeds" with a refusal or a
-                # thin series-level summary (model names, no specs) — either way
-                # the catalog entry would be useless. Re-sweep once and keep the
-                # richer of the two results.
-                print(
-                    f"[KBDistiller][gear] Brand '{brand}' sweep was empty/thin "
-                    f"({len(shoes)} shoes, richness {_sweep_richness(shoes)}) — retrying the sweep once."
-                )
-                await asyncio.sleep(10)
-                second = await _sweep_gear_brand(notebook_id, auth_json, api_key, brand)
-                if _sweep_richness(second) > _sweep_richness(shoes):
-                    shoes = second
-            kept = 0
-            for shoe in shoes:
+            response = await asyncio.to_thread(
+                client.search,
+                f"{brand} new trail running shoe review 2026",
+                include_domains=["runrepeat.com", "believeintherun.com"],
+                max_results=5,
+                include_raw_content="markdown",
+            )
+        except Exception as e:
+            print(f"[KBDistiller][gear-web] Search failed for '{brand}', continuing: {e}")
+            await asyncio.sleep(1.5)
+            continue
+
+        for result in response.get("results", []):
+            title_lower = (result.get("title") or "").lower()
+            if any(known in title_lower for known in known_titles) or title_lower in known_titles:
+                continue  # pre-filter: cheap skip before spending a Gemini call
+            content = result.get("raw_content") or result.get("content") or ""
+            if not content.strip():
+                continue
+            try:
+                structured = await _gemini_structured(api_key, _GEAR_ARTICLE_ASK + content, ShoeList)
+            except Exception as e:
+                print(f"[KBDistiller][gear-web] Structuring failed for '{result.get('url')}', continuing: {e}")
+                continue
+            source_label = urlparse(result.get("url", "")).netloc.removeprefix("www.")
+            for shoe in structured.get("shoes", []):
                 brand_final = _whitelisted_brand(shoe.get("brand", brand), brand)
                 if brand_final is None:
-                    print(f"[KBDistiller][gear] Skipping non-whitelisted brand row: {shoe.get('brand')!r}")
                     continue
                 shoe["brand"] = brand_final
                 model = (shoe.get("model") or "").strip()
                 if model.lower().startswith(brand_final.lower() + " "):
-                    # Gemini sometimes repeats the brand inside the model name
                     model = model[len(brand_final) :].strip()
-                shoe["model"] = model  # keep payload consistent so UIs don't show "Kailas Kailas Fuga"
-                title = f"{brand_final} {model}".strip()
+                shoe["model"] = model
+                shoe_title = f"{brand_final} {model}".strip()
+                if shoe_title.lower() in known_titles:
+                    continue  # post-structure dedup: article title didn't match, structured model did
+                known_titles.add(shoe_title.lower())
                 rows.append(
                     {
                         "domain": "gear",
                         "kind": "catalog_item",
-                        "title": title,
-                        "content": f"{title}: {shoe.get('pros', '')} Cons: {shoe.get('cons', '')}",
+                        "title": shoe_title,
+                        "content": f"{shoe_title}: {shoe.get('pros', '')} Cons: {shoe.get('cons', '')}",
                         "payload": shoe,
+                        "source_label": source_label,
                     }
                 )
-                kept += 1
-            print(f"[KBDistiller][gear] Brand '{brand}': {kept} shoes")
-        except Exception as e:
-            print(f"[KBDistiller][gear] Brand '{brand}' failed, continuing: {e}")
-        await asyncio.sleep(1.5)  # NotebookLM rate-limit courtesy (same as knowledge_extractor)
+        await asyncio.sleep(1.5)  # search-API rate-limit courtesy, same pacing as the NotebookLM sweeps
     return rows
 
 
@@ -452,59 +427,13 @@ def _notebook_id(domain: str) -> str:
     }[domain]
 
 
-def _rows_by_brand(rows: list[dict]) -> dict[str, list[dict]]:
-    grouped: dict[str, list[dict]] = {}
-    for row in rows:
-        payload = row.get("payload") or {}
-        if isinstance(payload, str):
-            payload = json.loads(payload)
-        brand = (payload.get("brand") or "").strip()
-        grouped.setdefault(brand, []).append(row)
-    return grouped
-
-
-def _merge_gear_ratchet(new_rows: list[dict]) -> list[dict]:
-    """Keep the previous catalog's rows for a brand ONLY when the new sweep
-    came back empty for it (NotebookLM outage/refusal holed the brand). When
-    the new sweep produced anything, it wins outright — sweep criteria evolve
-    (schema fields, major-review-only curation), and comparing 'richness'
-    across criteria generations would let stale noisy rows veto intentional
-    refinements."""
-    import db
-
-    existing = _rows_by_brand(db.get_kb_chunks("gear", kind="catalog_item"))
-    fresh = _rows_by_brand(new_rows)
-    merged: list[dict] = []
-    for brand in sorted(set(existing) | set(fresh)):
-        old_rows, new_brand_rows = existing.get(brand, []), fresh.get(brand, [])
-        if new_brand_rows:
-            kept = new_brand_rows
-        else:
-            print(
-                f"[KBDistiller][gear] Ratchet: new sweep holed '{brand}' — "
-                f"keeping its previous {len(old_rows)} rows."
-            )
-            kept = old_rows
-        for row in kept:
-            merged.append(
-                {
-                    "domain": "gear",
-                    "kind": "catalog_item",
-                    "title": row["title"],
-                    "content": row["content"],
-                    "payload": row["payload"]
-                    if not isinstance(row.get("payload"), str)
-                    else json.loads(row["payload"]),
-                    "source_label": row.get("source_label", "NotebookLM distillation"),
-                }
-            )
-    return merged
-
-
 def validate_domain_rows(domain: str, rows: list[dict]) -> list[dict]:
-    """Batch-level gate before a sweep's rows reach Postgres/Qdrant. nutrition/scheduler
-    (full-replace domains): below-floor row counts mean the sweep likely hit a broad
-    NotebookLM outage/refusal — raise rather than replace a working KB with junk."""
+    """Batch-level gate before a sweep's rows reach Postgres/Qdrant.
+    gear (incremental): 0 new rows is a normal outcome — just drop any individual thin row.
+    nutrition/scheduler (full-replace): below-floor row counts mean the sweep likely hit a
+    broad NotebookLM outage/refusal — raise rather than replace a working KB with junk."""
+    if domain == "gear":
+        return [r for r in rows if _shoe_richness(r.get("payload") or {}) >= _MIN_AVG_RICHNESS]
     floor = _MIN_ROWS.get(domain)
     if floor is not None and len(rows) < floor:
         raise RuntimeError(
@@ -514,13 +443,12 @@ def validate_domain_rows(domain: str, rows: list[dict]) -> list[dict]:
 
 
 async def sweep_domain(domain: str, api_key: str, status_holder: dict) -> list[dict]:
-    """Dispatch to this domain's data source. gear currently still uses the NotebookLM
-    sweep here — Task 5 swaps this branch to discover_gear_web()."""
+    """Dispatch to this domain's data source. gear discovers from the live web
+    (RunRepeat/BelieveInTheRun via Tavily); nutrition/scheduler still sweep NotebookLM."""
     if domain == "gear":
-        notebook_id, auth_json = _notebook_id(domain), settings.NOTEBOOKLM_AUTH_JSON
-        if not notebook_id or not auth_json:
-            raise RuntimeError(f"NotebookLM is not configured for domain '{domain}'.")
-        return await _distill_gear(notebook_id, auth_json, api_key, status_holder)
+        if not settings.TAVILY_API_KEY:
+            raise RuntimeError("TAVILY_API_KEY is not configured.")
+        return await discover_gear_web(api_key, settings.TAVILY_API_KEY, status_holder)
     notebook_id, auth_json = _notebook_id(domain), settings.NOTEBOOKLM_AUTH_JSON
     if not notebook_id or not auth_json:
         raise RuntimeError(f"NotebookLM is not configured for domain '{domain}'.")
@@ -529,12 +457,16 @@ async def sweep_domain(domain: str, api_key: str, status_holder: dict) -> list[d
 
 
 async def save_domain(domain: str, rows: list[dict], api_key: str) -> int:
-    """Persist validated rows: gear ratchet-merges + replaces (Task 5 changes this to
-    an insert-only append); nutrition/scheduler fully replace; scheduler also reindexes Qdrant."""
+    """Persist validated rows. gear appends new rows without touching existing ones (its
+    source is incremental discovery, not a full catalog sweep); nutrition/scheduler fully
+    replace; scheduler also reindexes Qdrant."""
     import db
 
     if domain == "gear":
-        rows = _merge_gear_ratchet(rows)
+        saved = db.add_kb_chunks(domain, rows)
+        export_seed(domain, db.get_kb_chunks(domain, kind="catalog_item"))  # full current catalog, not just new rows
+        print(f"[KBDistiller] 'gear' web discovery: {saved} new chunks added, seed exported.")
+        return saved
     saved = db.replace_kb_chunks(domain, rows)
     export_seed(domain, rows)
     if domain == "scheduler":
@@ -549,7 +481,7 @@ async def distill_domain(domain: str, api_key: str, status_holder: dict) -> int:
     """Sweep one domain's source -> validate -> save. Thin composition used by both
     the FastAPI admin endpoint and the Airflow DAG."""
     rows = await sweep_domain(domain, api_key, status_holder)
-    if not rows:
+    if not rows and domain != "gear":
         raise RuntimeError(f"Distillation produced an empty result for '{domain}' — keeping existing KB.")
     rows = validate_domain_rows(domain, rows)
     return await save_domain(domain, rows, api_key)
