@@ -513,20 +513,25 @@ def validate_domain_rows(domain: str, rows: list[dict]) -> list[dict]:
     return rows
 
 
-async def distill_domain(domain: str, api_key: str, status_holder: dict) -> int:
-    """Sweep one notebook → replace that domain's kb_chunks → export seed → (scheduler) reindex."""
-    import db
-
-    notebook_id = _notebook_id(domain)
-    auth_json = settings.NOTEBOOKLM_AUTH_JSON
+async def sweep_domain(domain: str, api_key: str, status_holder: dict) -> list[dict]:
+    """Dispatch to this domain's data source. gear currently still uses the NotebookLM
+    sweep here — Task 5 swaps this branch to discover_gear_web()."""
+    if domain == "gear":
+        notebook_id, auth_json = _notebook_id(domain), settings.NOTEBOOKLM_AUTH_JSON
+        if not notebook_id or not auth_json:
+            raise RuntimeError(f"NotebookLM is not configured for domain '{domain}'.")
+        return await _distill_gear(notebook_id, auth_json, api_key, status_holder)
+    notebook_id, auth_json = _notebook_id(domain), settings.NOTEBOOKLM_AUTH_JSON
     if not notebook_id or not auth_json:
         raise RuntimeError(f"NotebookLM is not configured for domain '{domain}'.")
-
     distiller = globals()[f"_distill_{domain}"]
-    rows = await distiller(notebook_id, auth_json, api_key, status_holder)
-    if not rows:
-        # A failed sweep must never wipe a working KB.
-        raise RuntimeError(f"Distillation produced an empty result for '{domain}' — keeping existing KB.")
+    return await distiller(notebook_id, auth_json, api_key, status_holder)
+
+
+async def save_domain(domain: str, rows: list[dict], api_key: str) -> int:
+    """Persist validated rows: gear ratchet-merges + replaces (Task 5 changes this to
+    an insert-only append); nutrition/scheduler fully replace; scheduler also reindexes Qdrant."""
+    import db
 
     if domain == "gear":
         rows = _merge_gear_ratchet(rows)
@@ -538,6 +543,16 @@ async def distill_domain(domain: str, api_key: str, status_holder: dict) -> int:
         await asyncio.to_thread(reindex_scheduler_chunks, rows, api_key)
     print(f"[KBDistiller] '{domain}' distilled: {saved} chunks saved, seed exported.")
     return saved
+
+
+async def distill_domain(domain: str, api_key: str, status_holder: dict) -> int:
+    """Sweep one domain's source -> validate -> save. Thin composition used by both
+    the FastAPI admin endpoint and the Airflow DAG."""
+    rows = await sweep_domain(domain, api_key, status_holder)
+    if not rows:
+        raise RuntimeError(f"Distillation produced an empty result for '{domain}' — keeping existing KB.")
+    rows = validate_domain_rows(domain, rows)
+    return await save_domain(domain, rows, api_key)
 
 
 # ─── Seed export / import (distill once, use in dev AND prod) ────────────────

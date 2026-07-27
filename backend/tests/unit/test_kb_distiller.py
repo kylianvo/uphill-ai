@@ -240,18 +240,39 @@ def test_whitelisted_brand_word_boundary():
     assert kb_distiller._whitelisted_brand("On Running", "On") == "On"
 
 
-def test_distill_domain_refuses_to_wipe_on_empty_sweep(monkeypatch):
+def test_distill_domain_composes_sweep_validate_save(monkeypatch, tmp_path):
     from config import settings
 
-    monkeypatch.setattr(settings, "NOTEBOOKLM_GEAR_ID", "nb-gear")
+    monkeypatch.setattr(settings, "NOTEBOOKLM_NOTEBOOK_ID", "nb-sched")
+    monkeypatch.setattr(settings, "NOTEBOOKLM_AUTH_JSON", '{"tok":1}')
+    monkeypatch.setattr(kb_distiller, "SEED_DIR", str(tmp_path))  # don't clobber the real committed seed file
+    rows = [
+        {"domain": "scheduler", "kind": "principle", "title": f"p{i}", "content": "c", "payload": None}
+        for i in range(15)
+    ]
+    with (
+        patch.object(kb_distiller, "_distill_scheduler", new_callable=AsyncMock, return_value=rows),
+        patch("db.replace_kb_chunks", return_value=15) as replace_mock,
+        patch("services.kb_retrieval.reindex_scheduler_chunks") as reindex_mock,
+    ):
+        saved = asyncio.run(kb_distiller.distill_domain("scheduler", "test-key", {}))
+    assert saved == 15
+    replace_mock.assert_called_once_with("scheduler", rows)
+    reindex_mock.assert_called_once()
+
+
+def test_distill_domain_still_refuses_to_wipe_on_below_floor_sweep(monkeypatch):
+    from config import settings
+
+    monkeypatch.setattr(settings, "NOTEBOOKLM_NOTEBOOK_ID", "nb-sched")
     monkeypatch.setattr(settings, "NOTEBOOKLM_AUTH_JSON", '{"tok":1}')
     with (
-        patch.object(kb_distiller, "_distill_gear", new_callable=AsyncMock, return_value=[]),
+        patch.object(kb_distiller, "_distill_scheduler", new_callable=AsyncMock, return_value=[]),
         patch("db.replace_kb_chunks") as replace_mock,
     ):
-        with pytest.raises(RuntimeError, match="empty"):
-            asyncio.run(kb_distiller.distill_domain("gear", "test-key", {}))
-    replace_mock.assert_not_called()  # existing KB must survive a failed sweep
+        with pytest.raises(RuntimeError, match="scheduler"):
+            asyncio.run(kb_distiller.distill_domain("scheduler", "test-key", {}))
+    replace_mock.assert_not_called()
 
 
 def test_export_and_load_seed_roundtrip(tmp_path, monkeypatch):
