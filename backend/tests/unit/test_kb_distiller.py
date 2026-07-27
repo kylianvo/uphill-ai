@@ -277,3 +277,13 @@ def test_load_seed_missing_file_raises(tmp_path, monkeypatch):
 def test_hand_curated_domains_excludes_race_courses_from_distillable_domains():
     assert "race_courses" in kb_distiller.HAND_CURATED_DOMAINS
     assert "race_courses" not in kb_distiller.DOMAINS
+
+
+def test_validate_domain_rows_raises_below_floor_for_nutrition():
+    with pytest.raises(RuntimeError, match="nutrition"):
+        kb_distiller.validate_domain_rows("nutrition", [{"title": "x"}] * 4)  # floor is 5
+
+
+def test_validate_domain_rows_passes_at_or_above_floor_for_scheduler():
+    rows = [{"title": f"p{i}"} for i in range(15)]  # floor is 15
+    assert kb_distiller.validate_domain_rows("scheduler", rows) == rows

@@ -215,6 +215,7 @@ _SPEC_FIELDS = (
     "suitability",
 )
 _MIN_AVG_RICHNESS = 4
+_MIN_ROWS = {"nutrition": 5, "scheduler": 15}
 
 
 def _shoe_richness(shoe: dict) -> int:
@@ -498,6 +499,18 @@ def _merge_gear_ratchet(new_rows: list[dict]) -> list[dict]:
                 }
             )
     return merged
+
+
+def validate_domain_rows(domain: str, rows: list[dict]) -> list[dict]:
+    """Batch-level gate before a sweep's rows reach Postgres/Qdrant. nutrition/scheduler
+    (full-replace domains): below-floor row counts mean the sweep likely hit a broad
+    NotebookLM outage/refusal — raise rather than replace a working KB with junk."""
+    floor = _MIN_ROWS.get(domain)
+    if floor is not None and len(rows) < floor:
+        raise RuntimeError(
+            f"Distillation produced only {len(rows)} rows for '{domain}' (floor {floor}) — keeping existing KB."
+        )
+    return rows
 
 
 async def distill_domain(domain: str, api_key: str, status_holder: dict) -> int:
