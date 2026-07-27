@@ -1689,6 +1689,36 @@ def replace_kb_chunks(domain: str, chunks: list[dict[str, Any]]) -> int:
     return len(chunks)
 
 
+def replace_kb_chunks_by_kind(domain: str, kind: str, chunks: list[dict[str, Any]]) -> int:
+    """Like replace_kb_chunks, but scoped to one (domain, kind) pair: only rows of
+    that kind are deleted before the new ones are inserted. Used by domains that mix
+    a fully-resweepable source (e.g. nutrition's NotebookLM-sourced principles) with
+    an incrementally-appended one (e.g. nutrition's web-discovered products) — a plain
+    replace_kb_chunks would wipe the incrementally-appended rows too."""
+    with engine.connect() as conn:
+        conn.execute(text("DELETE FROM kb_chunks WHERE domain = :d AND kind = :k"), {"d": domain, "k": kind})
+        for chunk in chunks:
+            content = chunk.get("content", "")
+            payload = chunk.get("payload")
+            conn.execute(
+                text("""
+                INSERT INTO kb_chunks (domain, kind, title, content, payload, source_label, content_hash)
+                VALUES (:domain, :kind, :title, :content, CAST(:payload AS JSONB), :source_label, :content_hash)
+            """),
+                {
+                    "domain": chunk["domain"],
+                    "kind": chunk.get("kind", kind),
+                    "title": chunk.get("title", ""),
+                    "content": content,
+                    "payload": json.dumps(payload, ensure_ascii=False) if payload is not None else None,
+                    "source_label": chunk.get("source_label", "NotebookLM distillation"),
+                    "content_hash": chunk.get("content_hash") or hashlib.md5(content.encode("utf-8")).hexdigest(),
+                },
+            )
+        conn.commit()
+    return len(chunks)
+
+
 def add_kb_chunks(domain: str, chunks: list[dict[str, Any]]) -> int:
     """Insert-only append: skip any chunk whose (domain, title) already exists
     (case-insensitive), else INSERT. Unlike replace_kb_chunks, never deletes —

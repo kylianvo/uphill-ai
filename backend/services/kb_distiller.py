@@ -1,10 +1,14 @@
-"""Distills the three NotebookLM notebooks into kb_chunks rows + committed seed files.
+"""Distills gear/nutrition/scheduler content into kb_chunks rows + committed seed files.
 
-Offline batch job — NotebookLM's 2-minute latency is irrelevant here; it runs when an
-operator adds sources to a notebook and hits POST /api/kb/distill. Sweep queries pull
-notebook content out; Gemini structures each response (temperature 0); rows land in
-Postgres (kb_chunks), get exported to backend/kb_seed/<domain>.json (committed so prod
-imports without re-distilling), and scheduler chunks are embedded into Qdrant.
+Offline batch job, triggered by POST /api/kb/distill or the Airflow kb_distill DAG. Two
+source types feed it: NotebookLM sweeps (operator-curated notebooks, still used for
+scheduler's training-philosophy principles and nutrition's science principles) and live
+web discovery via Tavily (gear's shoe catalog, nutrition's product catalog) -- both are
+structured through Gemini (temperature 0) into the same row shape. Rows land in Postgres
+(kb_chunks), get exported to backend/kb_seed/<domain>.json (committed so prod imports
+without re-distilling), and scheduler chunks are embedded into Qdrant. NotebookLM-sourced
+content fully replaces its (domain, kind) on each run; web-discovered content only appends
+new rows, since a search naturally surfaces what's new rather than a full catalog.
 """
 
 import asyncio
@@ -30,10 +34,6 @@ HAND_CURATED_DOMAINS = ("race_courses",)
 
 
 # ─── Gemini structuring schemas ──────────────────────────────────────────────
-
-
-class BrandList(BaseModel):
-    brands: list[str]
 
 
 class ShoeEntry(BaseModel):
@@ -144,18 +144,6 @@ async def _query_with_retries(notebook_id: str, auth_json: str, query: str, atte
             await asyncio.sleep(wait_s)
 
 
-async def _sweep_brands(notebook_id: str, auth_json: str, api_key: str, thing: str) -> list[str]:
-    brands_text = await _query_with_retries(
-        notebook_id,
-        auth_json,
-        f"List every {thing} brand covered in your documents. Output one brand name per line, nothing else.",
-    )
-    parsed = await _gemini_structured(
-        api_key, f"Extract the list of brand names from this text:\n{brands_text}", BrandList
-    )
-    return parsed.get("brands", [])
-
-
 # Gear sweeps use this operator-curated whitelist instead of a NotebookLM brand
 # enumeration — the sources mention many competitor brands in passing (review
 # sites compare shoes), and sweeping every mentioned brand adds noise. Add a
@@ -179,13 +167,14 @@ GEAR_BRANDS = [
 ]
 
 
-def _whitelisted_brand(returned_brand: str, queried_brand: str) -> str | None:
+def _whitelisted_brand(returned_brand: str, queried_brand: str, allowed_brands: list[str] = GEAR_BRANDS) -> str | None:
     """Keep only whitelisted brands. The per-brand sweep text may mention
     competitors (review comparisons), and Gemini may restyle the brand name
     (e.g. 'HOKA ONE ONE' for the 'Hoka' query) — coerce those to the queried
-    brand; drop anything else."""
+    brand; drop anything else. `allowed_brands` defaults to GEAR_BRANDS but any
+    domain with its own whitelist (e.g. nutrition) passes its own list."""
     returned = (returned_brand or "").strip()
-    allowed = {b.lower(): b for b in GEAR_BRANDS}
+    allowed = {b.lower(): b for b in allowed_brands}
     if returned.lower() in allowed:
         return allowed[returned.lower()]
     if re.search(rf"\b{re.escape(queried_brand.lower())}\b", returned.lower()):
@@ -217,7 +206,10 @@ _SPEC_FIELDS = (
     "suitability",
 )
 _MIN_AVG_RICHNESS = 4
-_MIN_ROWS = {"nutrition": 5, "scheduler": 15}
+# Floors apply only to each domain's fully-resweepable source: nutrition's floor
+# checks its NotebookLM-sourced principle rows (3 topics -> ~3-9 principle rows
+# expected), not its incrementally-appended web-discovered product rows.
+_MIN_ROWS = {"nutrition": 3, "scheduler": 15}
 
 
 def _shoe_richness(shoe: dict) -> int:
@@ -247,10 +239,10 @@ _GEAR_ARTICLE_ASK = (
 )
 
 
-def _known_gear_titles() -> set[str]:
+def _known_titles(domain: str, kind: str) -> set[str]:
     import db
 
-    return {row["title"].lower() for row in db.get_kb_chunks("gear", kind="catalog_item")}
+    return {row["title"].lower() for row in db.get_kb_chunks(domain, kind=kind)}
 
 
 async def discover_gear_web(api_key: str, tavily_api_key: str, status_holder: dict) -> list[dict]:
@@ -258,7 +250,7 @@ async def discover_gear_web(api_key: str, tavily_api_key: str, status_holder: di
     results matching an already-known shoe, structure the rest with Gemini. Incremental —
     an empty result (no new shoes this week) is a normal, valid outcome."""
     client = TavilyClient(api_key=tavily_api_key)
-    known_titles = _known_gear_titles()
+    known_titles = _known_titles("gear", "catalog_item")
     rows: list[dict] = []
 
     for i, brand in enumerate(GEAR_BRANDS):
@@ -316,33 +308,106 @@ async def discover_gear_web(api_key: str, tavily_api_key: str, status_holder: di
     return rows
 
 
-async def _distill_nutrition(notebook_id: str, auth_json: str, api_key: str, status: dict) -> list[dict]:
-    brands = await _sweep_brands(notebook_id, auth_json, api_key, "sports nutrition")
+# Operator-curated whitelist, same role as GEAR_BRANDS: scopes web search to brands
+# already trusted in this KB and coerces Gemini's brand restyling back to a canonical
+# name. Sourced from the brands already present in the committed nutrition seed.
+NUTRITION_BRANDS = [
+    "GU",
+    "Maurten",
+    "Tailwind Nutrition",
+    "Hammer Nutrition",
+    "Science in Sport (SiS)",
+    "Precision Fuel & Hydration",
+    "Näak",
+    "Bix",
+]
+
+
+# Nutrition brands' official sites vary (no fixed include_domains list is possible,
+# unlike gear's two review sites) -- exclude social/UGC platforms instead, since a
+# brand announcement there is unreliable/unverifiable compared to a retailer, review
+# site, or the brand's own site, all of which Tavily naturally surfaces higher anyway.
+_NUTRITION_EXCLUDED_DOMAINS = [
+    "facebook.com",
+    "instagram.com",
+    "twitter.com",
+    "x.com",
+    "reddit.com",
+    "youtube.com",
+    "pinterest.com",
+    "tiktok.com",
+]
+
+
+_NUTRITION_PRODUCT_ASK = (
+    "Structure every properly-described sports nutrition product (gel, drink mix, chew, bar) in this "
+    "text into the schema. ONLY include products with real detail in the text — skip products merely "
+    "mentioned in passing. For each: exact product name; format; carbs per unit (g); sodium per unit "
+    "(mg); protein per unit (g); any technology/science notes. If the text doesn't state a numeric "
+    "value, use 0 rather than guessing. NEVER add a product or macro figure not present in the text. "
+    "Write every field in clear English only — never any other language.\n\nArticle:\n"
+)
+
+
+async def discover_nutrition_web(api_key: str, tavily_api_key: str, status_holder: dict) -> list[dict]:
+    """Search the web for new products from whitelisted nutrition brands, skip results
+    matching an already-known product, structure the rest with Gemini. Incremental --
+    an empty result (no new products this week) is a normal, valid outcome. Unlike
+    gear's discover_gear_web, this doesn't restrict to a fixed set of review sites --
+    nutrition brands publish new products on their own (varied) official sites, so
+    search only excludes low-reliability social/UGC platforms (_NUTRITION_EXCLUDED_DOMAINS)
+    rather than allowlisting specific sites, and relies on the brand whitelist + per-row
+    brand coercion below to keep results on-topic."""
+    client = TavilyClient(api_key=tavily_api_key)
+    known_titles = _known_titles("nutrition", "catalog_item")
     rows: list[dict] = []
-    total = len(brands) + len(NUTRITION_PRINCIPLE_TOPICS)
-    for i, brand in enumerate(brands):
-        status.update({"current_topic": f"nutrition: {brand}", "progress": i, "total": total})
+
+    for i, brand in enumerate(NUTRITION_BRANDS):
+        status_holder.update(
+            {"current_topic": f"nutrition web: {brand}", "progress": i, "total": len(NUTRITION_BRANDS)}
+        )
         try:
-            answer = await _query_with_retries(
-                notebook_id,
-                auth_json,
-                (
-                    f"List EVERY {brand} product in your documents (gels, drink mixes, chews, bars). "
-                    "For each give: exact product name, format, carbs per unit (g), sodium per unit (mg), "
-                    "protein per unit (g), and any technology/science notes. Include every product mentioned. "
-                    "Answer as a COMPACT plain-text list right here in chat, at most 3 short lines per "
-                    "product — do NOT compile a guide, table document, note, or file."
-                ),
+            response = await asyncio.to_thread(
+                client.search,
+                f"{brand} new sports nutrition product 2026",
+                exclude_domains=_NUTRITION_EXCLUDED_DOMAINS,
+                max_results=5,
+                include_raw_content="markdown",
             )
-            structured = await _gemini_structured(
-                api_key,
-                "Structure every product in this text into the schema. NEVER add a product or macro "
-                "figure that is not present in the text. Write every field in clear English only — "
-                "never any other language.\n\n" + answer,
-                ProductList,
-            )
+        except Exception as e:
+            print(f"[KBDistiller][nutrition-web] Search failed for '{brand}', continuing: {e}")
+            await asyncio.sleep(1.5)
+            continue
+
+        for result in response.get("results", []):
+            title_lower = (result.get("title") or "").lower()
+            if any(known in title_lower for known in known_titles) or title_lower in known_titles:
+                continue  # pre-filter: cheap skip before spending a Gemini call
+            content = result.get("raw_content") or result.get("content") or ""
+            if not content.strip():
+                continue
+            try:
+                structured = await _gemini_structured(api_key, _NUTRITION_PRODUCT_ASK + content, ProductList)
+            except Exception as e:
+                print(f"[KBDistiller][nutrition-web] Structuring failed for '{result.get('url')}', continuing: {e}")
+                continue
+            source_label = urlparse(result.get("url", "")).netloc.removeprefix("www.")
             for product in structured.get("products", []):
-                title = f"{product.get('brand', brand)} {product.get('name', '')}".strip()
+                brand_final = _whitelisted_brand(product.get("brand", brand), brand, allowed_brands=NUTRITION_BRANDS)
+                if brand_final is None:
+                    continue
+                product["brand"] = brand_final
+                name = (product.get("name") or "").strip()
+                if not name:
+                    continue
+                if name.lower().startswith(brand_final.lower() + " "):
+                    # Gemini sometimes repeats the brand inside the product name
+                    name = name[len(brand_final) :].strip()
+                product["name"] = name  # keep payload consistent so UIs don't show "GU GU Roctane"
+                title = f"{brand_final} {name}".strip()
+                if title.lower() in known_titles:
+                    continue  # post-structure dedup: article title didn't match, structured name did
+                known_titles.add(title.lower())
                 rows.append(
                     {
                         "domain": "nutrition",
@@ -350,13 +415,22 @@ async def _distill_nutrition(notebook_id: str, auth_json: str, api_key: str, sta
                         "title": title,
                         "content": f"{title}: {product.get('tech_notes', '')}",
                         "payload": product,
+                        "source_label": source_label,
                     }
                 )
-        except Exception as e:
-            print(f"[KBDistiller][nutrition] Brand '{brand}' failed, continuing: {e}")
-        await asyncio.sleep(1.5)
+        await asyncio.sleep(1.5)  # search-API rate-limit courtesy, same pacing as the NotebookLM sweeps
+    return rows
+
+
+# Nutrition products are now sourced by discover_nutrition_web (live web search) --
+# this function only sweeps NotebookLM for the nutrition-science principle topics
+# (carb/sodium/pre-race guidance), which is curated philosophy content rather than
+# a product catalog and stays on the operator-curated NotebookLM path.
+async def _distill_nutrition(notebook_id: str, auth_json: str, api_key: str, status: dict) -> list[dict]:
+    rows: list[dict] = []
+    total = len(NUTRITION_PRINCIPLE_TOPICS)
     for j, topic in enumerate(NUTRITION_PRINCIPLE_TOPICS):
-        status.update({"current_topic": f"nutrition principle {j + 1}", "progress": len(brands) + j, "total": total})
+        status.update({"current_topic": f"nutrition principle {j + 1}", "progress": j, "total": total})
         try:
             answer = await _query_with_retries(
                 notebook_id,
@@ -430,10 +504,23 @@ def _notebook_id(domain: str) -> str:
 def validate_domain_rows(domain: str, rows: list[dict]) -> list[dict]:
     """Batch-level gate before a sweep's rows reach Postgres/Qdrant.
     gear (incremental): 0 new rows is a normal outcome — just drop any individual thin row.
-    nutrition/scheduler (full-replace): below-floor row counts mean the sweep likely hit a
+    nutrition (hybrid): the floor applies only to its NotebookLM-sourced principle rows
+    (a broad-sweep-failure signal); its web-discovered catalog_item rows pass through
+    unfiltered — 0 new products this week is a normal, valid outcome, same as gear.
+    scheduler (full-replace): below-floor row counts mean the sweep likely hit a
     broad NotebookLM outage/refusal — raise rather than replace a working KB with junk."""
     if domain == "gear":
         return [r for r in rows if _shoe_richness(r.get("payload") or {}) >= _MIN_AVG_RICHNESS]
+    if domain == "nutrition":
+        principle_rows = [r for r in rows if r.get("kind") == "principle"]
+        catalog_rows = [r for r in rows if r.get("kind") == "catalog_item"]
+        floor = _MIN_ROWS["nutrition"]
+        if len(principle_rows) < floor:
+            raise RuntimeError(
+                f"Distillation produced only {len(principle_rows)} principle rows for 'nutrition' "
+                f"(floor {floor}) — keeping existing KB."
+            )
+        return principle_rows + catalog_rows
     floor = _MIN_ROWS.get(domain)
     if floor is not None and len(rows) < floor:
         raise RuntimeError(
@@ -443,12 +530,25 @@ def validate_domain_rows(domain: str, rows: list[dict]) -> list[dict]:
 
 
 async def sweep_domain(domain: str, api_key: str, status_holder: dict) -> list[dict]:
-    """Dispatch to this domain's data source. gear discovers from the live web
-    (RunRepeat/BelieveInTheRun via Tavily); nutrition/scheduler still sweep NotebookLM."""
+    """Dispatch to this domain's data source(s). gear discovers from the live web
+    (RunRepeat/BelieveInTheRun via Tavily). nutrition combines both: NotebookLM for its
+    curated principle rows, plus live web discovery (Tavily) for new products -- if
+    TAVILY_API_KEY isn't configured, nutrition still proceeds with principles alone.
+    scheduler still sweeps NotebookLM only."""
     if domain == "gear":
         if not settings.TAVILY_API_KEY:
             raise RuntimeError("TAVILY_API_KEY is not configured.")
         return await discover_gear_web(api_key, settings.TAVILY_API_KEY, status_holder)
+    if domain == "nutrition":
+        notebook_id, auth_json = _notebook_id(domain), settings.NOTEBOOKLM_AUTH_JSON
+        if not notebook_id or not auth_json:
+            raise RuntimeError("NotebookLM is not configured for domain 'nutrition'.")
+        principle_rows = await _distill_nutrition(notebook_id, auth_json, api_key, status_holder)
+        if not settings.TAVILY_API_KEY:
+            print("[KBDistiller][nutrition] TAVILY_API_KEY not configured — skipping web product discovery.")
+            return principle_rows
+        web_rows = await discover_nutrition_web(api_key, settings.TAVILY_API_KEY, status_holder)
+        return principle_rows + web_rows
     notebook_id, auth_json = _notebook_id(domain), settings.NOTEBOOKLM_AUTH_JSON
     if not notebook_id or not auth_json:
         raise RuntimeError(f"NotebookLM is not configured for domain '{domain}'.")
@@ -456,10 +556,15 @@ async def sweep_domain(domain: str, api_key: str, status_holder: dict) -> list[d
     return await distiller(notebook_id, auth_json, api_key, status_holder)
 
 
+_SEED_KEYS = ("domain", "kind", "title", "content", "payload", "source_label")
+
+
 async def save_domain(domain: str, rows: list[dict], api_key: str) -> int:
     """Persist validated rows. gear appends new rows without touching existing ones (its
-    source is incremental discovery, not a full catalog sweep); nutrition/scheduler fully
-    replace; scheduler also reindexes Qdrant."""
+    source is incremental discovery, not a full catalog sweep). nutrition is hybrid: its
+    principle rows fully replace (NotebookLM re-sweep), its catalog_item rows append
+    (web discovery) -- neither wipes the other. scheduler fully replaces and reindexes
+    Qdrant."""
     import db
 
     if domain == "gear":
@@ -467,12 +572,19 @@ async def save_domain(domain: str, rows: list[dict], api_key: str) -> int:
         # full current catalog, not just new rows — project down to the six clean seed
         # fields so machine-specific id/content_hash/created_at never leak into the
         # committed, human-editable seed file.
-        clean_rows = [
-            {k: row[k] for k in ("domain", "kind", "title", "content", "payload", "source_label")}
-            for row in db.get_kb_chunks(domain, kind="catalog_item")
-        ]
+        clean_rows = [{k: row[k] for k in _SEED_KEYS} for row in db.get_kb_chunks(domain, kind="catalog_item")]
         export_seed(domain, clean_rows)
         print(f"[KBDistiller] 'gear' web discovery: {saved} new chunks added, seed exported.")
+        return saved
+    if domain == "nutrition":
+        principle_rows = [r for r in rows if r.get("kind") == "principle"]
+        catalog_rows = [r for r in rows if r.get("kind") == "catalog_item"]
+        saved = db.replace_kb_chunks_by_kind(domain, "principle", principle_rows)
+        saved += db.add_kb_chunks(domain, catalog_rows)
+        # full current catalog (principles + products), same clean-projection reasoning as gear
+        clean_rows = [{k: row[k] for k in _SEED_KEYS} for row in db.get_kb_chunks(domain)]
+        export_seed(domain, clean_rows)
+        print(f"[KBDistiller] 'nutrition': {saved} chunks saved (principles replaced, products appended).")
         return saved
     saved = db.replace_kb_chunks(domain, rows)
     export_seed(domain, rows)

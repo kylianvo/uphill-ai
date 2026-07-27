@@ -277,11 +277,198 @@ def test_hand_curated_domains_excludes_race_courses_from_distillable_domains():
     assert "race_courses" not in kb_distiller.DOMAINS
 
 
-def test_validate_domain_rows_raises_below_floor_for_nutrition():
+def test_validate_domain_rows_raises_below_floor_for_nutrition_principles():
+    principle_rows = [{"kind": "principle", "title": f"p{i}"} for i in range(2)]  # floor is 3
     with pytest.raises(RuntimeError, match="nutrition"):
-        kb_distiller.validate_domain_rows("nutrition", [{"title": "x"}] * 4)  # floor is 5
+        kb_distiller.validate_domain_rows("nutrition", principle_rows)
+
+
+def test_validate_domain_rows_nutrition_passes_through_catalog_rows_regardless_of_count():
+    # 0 new web-discovered products is a normal outcome -- only the principle floor can raise.
+    principle_rows = [{"kind": "principle", "title": f"p{i}"} for i in range(3)]  # at floor
+    catalog_rows = [{"kind": "catalog_item", "title": "GU Roctane"}]
+    result = kb_distiller.validate_domain_rows("nutrition", principle_rows + catalog_rows)
+    assert result == principle_rows + catalog_rows
+
+    # Even zero catalog rows must not raise once the principle floor is met.
+    result_no_products = kb_distiller.validate_domain_rows("nutrition", principle_rows)
+    assert result_no_products == principle_rows
 
 
 def test_validate_domain_rows_passes_at_or_above_floor_for_scheduler():
     rows = [{"title": f"p{i}"} for i in range(15)]  # floor is 15
     assert kb_distiller.validate_domain_rows("scheduler", rows) == rows
+
+
+def test_discover_nutrition_web_skips_known_products_and_structures_new_ones(monkeypatch):
+    monkeypatch.setattr(kb_distiller, "NUTRITION_BRANDS", ["GU"])
+    existing_rows = [
+        {
+            "domain": "nutrition",
+            "kind": "catalog_item",
+            "title": "GU Roctane",
+            "content": "c",
+            "payload": {"brand": "GU", "name": "Roctane"},
+        }
+    ]
+    tavily_response = {
+        "results": [
+            {"title": "GU Roctane Review", "url": "https://guenergy.com/roctane", "content": "old product"},
+            {
+                "title": "GU Announces New Gel",
+                "url": "https://guenergy.com/new-gel",
+                "content": "new product article text...",
+            },
+        ]
+    }
+    structured = {
+        "products": [
+            {
+                "brand": "GU",
+                "name": "Mini Gel",
+                "format": "gel",
+                "carbs_per_unit": 15.0,
+                "sodium_per_unit": 50.0,
+                "protein_per_unit": 0.0,
+                "tech_notes": "Smaller single-serve packet.",
+            }
+        ]
+    }
+    with (
+        patch.object(kb_distiller, "TavilyClient") as tavily_cls,
+        patch("db.get_kb_chunks", return_value=existing_rows),
+        patch.object(kb_distiller, "_gemini_structured", new_callable=AsyncMock, return_value=structured),
+        patch("asyncio.sleep", new_callable=AsyncMock),
+    ):
+        tavily_cls.return_value.search.return_value = tavily_response
+        rows = asyncio.run(kb_distiller.discover_nutrition_web("test-key", "tvly-test", {}))
+
+    assert len(rows) == 1  # "Roctane" result skipped (already known), "Mini Gel" structured
+    assert rows[0]["title"] == "GU Mini Gel"
+    assert rows[0]["domain"] == "nutrition"
+    assert rows[0]["kind"] == "catalog_item"
+    assert rows[0]["payload"]["brand"] == "GU"
+    assert rows[0]["source_label"] == "guenergy.com"
+    search_kwargs = tavily_cls.return_value.search.call_args.kwargs
+    assert "facebook.com" in search_kwargs["exclude_domains"]  # low-reliability UGC platforms excluded
+
+
+def test_discover_nutrition_web_strips_repeated_brand_from_product_name(monkeypatch):
+    monkeypatch.setattr(kb_distiller, "NUTRITION_BRANDS", ["Maurten"])
+    tavily_response = {
+        "results": [
+            {"title": "Maurten Drink Mix Review", "url": "https://fleetfeet.com/maurten", "content": "text"},
+        ]
+    }
+    structured = {
+        "products": [
+            {
+                "brand": "Maurten",
+                "name": "Maurten Drink Mix",  # brand repeated inside the product name
+                "format": "drink mix",
+                "carbs_per_unit": 80.0,
+                "sodium_per_unit": 500.0,
+                "protein_per_unit": 0.0,
+                "tech_notes": "Hydrogel technology.",
+            }
+        ]
+    }
+    with (
+        patch.object(kb_distiller, "TavilyClient") as tavily_cls,
+        patch("db.get_kb_chunks", return_value=[]),
+        patch.object(kb_distiller, "_gemini_structured", new_callable=AsyncMock, return_value=structured),
+        patch("asyncio.sleep", new_callable=AsyncMock),
+    ):
+        tavily_cls.return_value.search.return_value = tavily_response
+        rows = asyncio.run(kb_distiller.discover_nutrition_web("test-key", "tvly-test", {}))
+
+    assert rows[0]["title"] == "Maurten Drink Mix"  # not "Maurten Maurten Drink Mix"
+    assert rows[0]["payload"]["name"] == "Drink Mix"  # brand stripped from payload name too
+
+
+def test_discover_nutrition_web_returns_empty_when_nothing_new(monkeypatch):
+    monkeypatch.setattr(kb_distiller, "NUTRITION_BRANDS", ["GU"])
+    with (
+        patch.object(kb_distiller, "TavilyClient") as tavily_cls,
+        patch("db.get_kb_chunks", return_value=[]),
+        patch("asyncio.sleep", new_callable=AsyncMock),
+    ):
+        tavily_cls.return_value.search.return_value = {"results": []}
+        rows = asyncio.run(kb_distiller.discover_nutrition_web("test-key", "tvly-test", {}))
+    assert rows == []
+
+
+def test_sweep_domain_nutrition_combines_principles_and_web_products(monkeypatch):
+    from config import settings
+
+    monkeypatch.setattr(settings, "NOTEBOOKLM_NUTRITION_ID", "nb-nutrition")
+    monkeypatch.setattr(settings, "NOTEBOOKLM_AUTH_JSON", '{"tok":1}')
+    monkeypatch.setattr(settings, "TAVILY_API_KEY", "tvly-test")
+    principle_rows = [{"domain": "nutrition", "kind": "principle", "title": "Carb targets", "content": "c"}]
+    product_rows = [{"domain": "nutrition", "kind": "catalog_item", "title": "GU Mini Gel", "content": "c"}]
+    with (
+        patch.object(kb_distiller, "_distill_nutrition", new_callable=AsyncMock, return_value=principle_rows),
+        patch.object(kb_distiller, "discover_nutrition_web", new_callable=AsyncMock, return_value=product_rows),
+    ):
+        rows = asyncio.run(kb_distiller.sweep_domain("nutrition", "test-key", {}))
+    assert rows == principle_rows + product_rows
+
+
+def test_sweep_domain_nutrition_skips_web_discovery_without_tavily_key(monkeypatch):
+    from config import settings
+
+    monkeypatch.setattr(settings, "NOTEBOOKLM_NUTRITION_ID", "nb-nutrition")
+    monkeypatch.setattr(settings, "NOTEBOOKLM_AUTH_JSON", '{"tok":1}')
+    monkeypatch.setattr(settings, "TAVILY_API_KEY", "")
+    principle_rows = [{"domain": "nutrition", "kind": "principle", "title": "Carb targets", "content": "c"}]
+    with (
+        patch.object(kb_distiller, "_distill_nutrition", new_callable=AsyncMock, return_value=principle_rows),
+        patch.object(kb_distiller, "discover_nutrition_web", new_callable=AsyncMock) as web_mock,
+    ):
+        rows = asyncio.run(kb_distiller.sweep_domain("nutrition", "test-key", {}))
+    assert rows == principle_rows
+    web_mock.assert_not_called()
+
+
+def test_save_domain_nutrition_replaces_principles_and_appends_products(tmp_path, monkeypatch):
+    monkeypatch.setattr(kb_distiller, "SEED_DIR", str(tmp_path))
+    principle_rows = [{"domain": "nutrition", "kind": "principle", "title": "Carb targets", "content": "c"}]
+    catalog_rows = [{"domain": "nutrition", "kind": "catalog_item", "title": "GU Mini Gel", "content": "c"}]
+    full_catalog_after_save = [
+        {
+            "id": 1,
+            "domain": "nutrition",
+            "kind": "principle",
+            "title": "Carb targets",
+            "content": "c",
+            "payload": None,
+            "source_label": "NotebookLM distillation",
+            "content_hash": "h1",
+            "created_at": "2026-07-27T00:00:00",
+        },
+        {
+            "id": 2,
+            "domain": "nutrition",
+            "kind": "catalog_item",
+            "title": "GU Mini Gel",
+            "content": "c",
+            "payload": None,
+            "source_label": "guenergy.com",
+            "content_hash": "h2",
+            "created_at": "2026-07-27T00:00:00",
+        },
+    ]
+    with (
+        patch("db.replace_kb_chunks_by_kind", return_value=1) as replace_mock,
+        patch("db.add_kb_chunks", return_value=1) as add_mock,
+        patch("db.get_kb_chunks", return_value=full_catalog_after_save),
+    ):
+        saved = asyncio.run(kb_distiller.save_domain("nutrition", principle_rows + catalog_rows, "test-key"))
+    replace_mock.assert_called_once_with("nutrition", "principle", principle_rows)
+    add_mock.assert_called_once_with("nutrition", catalog_rows)
+    assert saved == 2
+
+    with open(f"{tmp_path}/nutrition.json", encoding="utf-8") as f:
+        exported = json.load(f)
+    for row in exported["chunks"]:
+        assert set(row) == {"domain", "kind", "title", "content", "payload", "source_label"}

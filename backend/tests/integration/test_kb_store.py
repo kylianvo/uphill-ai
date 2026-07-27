@@ -101,3 +101,47 @@ def test_add_kb_chunks_never_deletes_other_domains(_init_test_database):
     )
     assert get_kb_chunk_count("gear") == 2
     assert get_kb_chunk_count("scheduler") == 1
+
+
+def test_replace_kb_chunks_by_kind_only_touches_that_kind(_init_test_database):
+    from db import replace_kb_chunks_by_kind
+
+    save_kb_chunks(
+        [
+            {"domain": "nutrition", "kind": "principle", "title": "Carb targets", "content": "c", "payload": None},
+            {
+                "domain": "nutrition",
+                "kind": "catalog_item",
+                "title": "GU Roctane",
+                "content": "c",
+                "payload": {"brand": "GU"},
+            },
+        ]
+    )
+    replace_kb_chunks_by_kind(
+        "nutrition",
+        "principle",
+        [{"domain": "nutrition", "kind": "principle", "title": "Sodium strategy", "content": "c", "payload": None}],
+    )
+    principles = get_kb_chunks("nutrition", kind="principle")
+    catalog = get_kb_chunks("nutrition", kind="catalog_item")
+    assert [p["title"] for p in principles] == ["Sodium strategy"]  # old principle replaced
+    assert [c["title"] for c in catalog] == ["GU Roctane"]  # catalog_item row untouched
+
+
+def test_replace_kb_chunks_by_kind_is_atomic(_init_test_database):
+    import pytest
+
+    from db import replace_kb_chunks_by_kind
+
+    save_kb_chunks(
+        [{"domain": "nutrition", "kind": "principle", "title": "Carb targets", "content": "c", "payload": None}]
+    )
+    bad_batch = [
+        {"domain": "nutrition", "kind": "principle", "title": "New Principle", "content": "c", "payload": None},
+        {"domain": None, "kind": "principle", "title": "Broken", "content": "c", "payload": None},
+    ]
+    with pytest.raises(Exception):
+        replace_kb_chunks_by_kind("nutrition", "principle", bad_batch)
+    principles = get_kb_chunks("nutrition", kind="principle")
+    assert [p["title"] for p in principles] == ["Carb targets"]  # failed replace left the original row intact
