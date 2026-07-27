@@ -19,6 +19,8 @@ passlib[bcrypt]>=1.7.4
 PyJWT>=2.8.0
 # NotebookLM
 notebooklm-py>=0.7.0
+# Web search (gear KB discovery)
+tavily-python>=0.5.0
 # Telemetry
 prometheus-client>=0.20.0
 prometheus-fastapi-instrumentator>=7.0.0
