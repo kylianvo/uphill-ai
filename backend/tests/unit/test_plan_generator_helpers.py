@@ -658,6 +658,151 @@ class TestPostProcessWorkoutsIntervalFields:
         assert all(w["interval_rep_unit"] is None for w in non_intervals)
 
 
+class TestGenerateSingleWorkout:
+    """Coach co-creation (Phase 6 feedback): duration is main-set-only,
+    warm-up/cool-down are added on top; an explicit target_zone or
+    target_pace from the coach must never be overridden by the AI; interval
+    fields pass straight through untouched. No api_key is passed in these
+    tests -- deterministic path only, no network."""
+
+    _PROFILE = {
+        "age": 30,
+        "max_hr": 190,
+        "resting_hr": 50,
+        "aet_hr": 150,
+        "ant_hr": 172,
+        "zone2_pace_min": "6:30",
+        "zone2_pace_max": "5:45",
+    }
+
+    @pytest.mark.asyncio
+    async def test_duration_excludes_warmup_and_cooldown_for_run_types(self):
+        wo = await PlanGenerator.generate_single_workout(
+            user_profile=self._PROFILE,
+            workout_type="Tempo",
+            duration_minutes=30,
+            day_of_week="Wednesday",
+            week_number=1,
+        )
+        # main (30) + wu + cd, each clamped [3, 10] -> proportional wu/cd = round(30*0.15) = round(4.5) = 4 each.
+        assert wo["duration_minutes"] == 30 + 4 + 4
+
+    @pytest.mark.asyncio
+    async def test_strength_and_rest_types_get_no_warmup_cooldown_added(self):
+        wo = await PlanGenerator.generate_single_workout(
+            user_profile=self._PROFILE,
+            workout_type="Strength",
+            duration_minutes=45,
+            day_of_week="Sunday",
+            week_number=1,
+        )
+        assert wo["duration_minutes"] == 45
+        assert wo["target_pace"] is None
+        assert wo["target_hr_range"] is None
+
+    @pytest.mark.asyncio
+    async def test_deterministic_fallback_zone_default_is_type_aware(self):
+        """No api_key -> deterministic path. An Interval/Tempo session
+        defaulting to Zone 2 (an easy-run zone) would look wrong to a coach
+        even though nothing downstream is technically broken."""
+        interval = await PlanGenerator.generate_single_workout(
+            user_profile=self._PROFILE,
+            workout_type="Interval",
+            duration_minutes=20,
+            day_of_week="Thursday",
+            week_number=1,
+        )
+        assert interval["target_zone"] == "Zone 4"
+
+        tempo = await PlanGenerator.generate_single_workout(
+            user_profile=self._PROFILE,
+            workout_type="Tempo",
+            duration_minutes=30,
+            day_of_week="Wednesday",
+            week_number=1,
+        )
+        assert tempo["target_zone"] == "Zone 3"
+
+        easy = await PlanGenerator.generate_single_workout(
+            user_profile=self._PROFILE,
+            workout_type="Easy",
+            duration_minutes=30,
+            day_of_week="Monday",
+            week_number=1,
+        )
+        assert easy["target_zone"] == "Zone 2"
+
+    @pytest.mark.asyncio
+    async def test_coach_supplied_zone_is_never_overridden(self):
+        wo = await PlanGenerator.generate_single_workout(
+            user_profile=self._PROFILE,
+            workout_type="Easy",
+            duration_minutes=40,
+            day_of_week="Monday",
+            week_number=1,
+            target_zone="Zone 4",
+        )
+        assert wo["target_zone"] == "Zone 4"
+
+    @pytest.mark.asyncio
+    async def test_coach_supplied_pace_is_used_verbatim(self):
+        wo = await PlanGenerator.generate_single_workout(
+            user_profile=self._PROFILE,
+            workout_type="Tempo",
+            duration_minutes=30,
+            day_of_week="Wednesday",
+            week_number=1,
+            target_pace="5:00 - 4:50",
+        )
+        assert wo["target_pace"] == "5:00 - 4:50"
+
+    @pytest.mark.asyncio
+    async def test_interval_fields_pass_through_and_are_null_for_other_types(self):
+        wo = await PlanGenerator.generate_single_workout(
+            user_profile=self._PROFILE,
+            workout_type="Interval",
+            duration_minutes=20,
+            day_of_week="Thursday",
+            week_number=1,
+            interval_reps=8,
+            interval_rep_value=400.0,
+            interval_rep_unit="m",
+        )
+        assert (wo["interval_reps"], wo["interval_rep_value"], wo["interval_rep_unit"]) == (8, 400.0, "m")
+
+        non_interval = await PlanGenerator.generate_single_workout(
+            user_profile=self._PROFILE,
+            workout_type="Easy",
+            duration_minutes=20,
+            day_of_week="Thursday",
+            week_number=1,
+            interval_reps=8,
+            interval_rep_value=400.0,
+            interval_rep_unit="m",
+        )
+        assert (
+            non_interval["interval_reps"],
+            non_interval["interval_rep_value"],
+            non_interval["interval_rep_unit"],
+        ) == (
+            None,
+            None,
+            None,
+        )
+
+    @pytest.mark.asyncio
+    async def test_details_is_used_verbatim_as_description_when_supplied(self):
+        wo = await PlanGenerator.generate_single_workout(
+            user_profile=self._PROFILE,
+            workout_type="Strength",
+            duration_minutes=45,
+            day_of_week="Sunday",
+            week_number=1,
+            details="3x12 lunges, 3x12 step-ups.",
+        )
+        assert wo["description"] == "3x12 lunges, 3x12 step-ups."
+
+
 class TestNotebookLmCompactPromptContent:
     """The NotebookLM path builds its own compact prompt (nb_prompt_head) separate from
     the full Gemini prompt, historically kept short for a query length limit that turned

@@ -131,3 +131,164 @@ describe("usePlanner.getWorkoutDate", () => {
     expect(date).toBe("Dec 6");
   });
 });
+
+describe("usePlanner acting-as-athlete endpoint scoping", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn());
+    localStorage.setItem("uphill_session_token", "tok-abc");
+  });
+
+  it("uses the self-serve endpoint when actingAsAthleteId is null", async () => {
+    const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>;
+    fetchMock.mockResolvedValueOnce(jsonResponse({ plans: [] }));
+
+    const { result } = renderHookWithApp(() => usePlanner());
+
+    await act(async () => {
+      await result.current.fetchRecentPlansWithToken("tok");
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("/api/coach/recent-plans"), expect.anything());
+  });
+
+  it("uses the coach-scoped endpoint when actingAsAthleteId is set", async () => {
+    const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>;
+    fetchMock.mockResolvedValueOnce(jsonResponse({ plans: [] }));
+
+    const { result } = renderHookWithApp(() => {
+      const ctx = useAppContext();
+      const planner = usePlanner();
+      return { ctx, planner };
+    });
+
+    act(() => result.current.ctx.setActingAsAthleteId(42));
+
+    await act(async () => {
+      await result.current.planner.fetchRecentPlansWithToken("tok");
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/api/coaching/athletes/42/recent-plans"),
+      expect.anything()
+    );
+  });
+
+  it("fetchDraftPlan hits the draft endpoint for the acting-as athlete", async () => {
+    const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>;
+    fetchMock.mockResolvedValueOnce(jsonResponse({ draft: false }));
+
+    const { result } = renderHookWithApp(() => {
+      const ctx = useAppContext();
+      const planner = usePlanner();
+      return { ctx, planner };
+    });
+
+    act(() => result.current.ctx.setActingAsAthleteId(42));
+
+    await act(async () => {
+      await result.current.planner.fetchDraftPlan();
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/api/coaching/athletes/42/plans/draft"),
+      expect.anything()
+    );
+  });
+
+  it("fetchDraftPlan is a no-op when actingAsAthleteId is null", async () => {
+    const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>;
+
+    const { result } = renderHookWithApp(() => usePlanner());
+
+    await act(async () => {
+      await result.current.fetchDraftPlan();
+    });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("handleApproveWorkout posts to the per-workout approve endpoint, then re-fetches active+draft state", async () => {
+    const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>;
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({ id: 7, approved_at: "2026-07-26T00:00:00Z" })) // approve
+      .mockResolvedValueOnce(jsonResponse({ active: false })) // fetchActivePlanForActing
+      .mockResolvedValueOnce(jsonResponse({ plans: [] })) // fetchRecentPlansWithToken
+      .mockResolvedValueOnce(jsonResponse({ draft: false })); // fetchDraftPlan
+
+    const { result } = renderHookWithApp(() => {
+      const ctx = useAppContext();
+      const planner = usePlanner();
+      return { ctx, planner };
+    });
+
+    act(() => result.current.ctx.setActingAsAthleteId(42));
+
+    await act(async () => {
+      await result.current.planner.handleApproveWorkout(3, 7);
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/api/coaching/athletes/42/plans/3/workouts/7/approve"),
+      expect.objectContaining({ method: "POST" })
+    );
+  });
+
+  it("handleRemoveWorkout posts to the per-workout remove endpoint and patches workouts state", async () => {
+    const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>;
+    fetchMock.mockResolvedValueOnce(jsonResponse({ id: 7, type: "Rest", duration_minutes: 0 }));
+
+    const { result } = renderHookWithApp(() => {
+      const ctx = useAppContext();
+      const planner = usePlanner();
+      return { ctx, planner };
+    });
+
+    act(() => result.current.ctx.setActingAsAthleteId(42));
+
+    await act(async () => {
+      await result.current.planner.handleRemoveWorkout(3, 7);
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/api/coaching/athletes/42/plans/3/workouts/7/remove"),
+      expect.objectContaining({ method: "POST" })
+    );
+  });
+
+  it("handleAiCreateWorkout posts to the ai-create endpoint with the coach's inputs", async () => {
+    const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>;
+    fetchMock.mockResolvedValueOnce(jsonResponse({ id: 9, type: "Tempo", day_of_week: "Wednesday" }));
+
+    const { result } = renderHookWithApp(() => {
+      const ctx = useAppContext();
+      const planner = usePlanner();
+      return { ctx, planner };
+    });
+
+    act(() => result.current.ctx.setActingAsAthleteId(42));
+
+    await act(async () => {
+      await result.current.planner.handleAiCreateWorkout(3, {
+        week_number: 1,
+        day_of_week: "Wednesday",
+        workout_type: "Tempo",
+        duration_minutes: 40,
+        intent: "Build confidence",
+      });
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/api/coaching/athletes/42/plans/3/workouts/ai-create"),
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          week_number: 1,
+          day_of_week: "Wednesday",
+          workout_type: "Tempo",
+          duration_minutes: 40,
+          intent: "Build confidence",
+        }),
+      })
+    );
+  });
+});

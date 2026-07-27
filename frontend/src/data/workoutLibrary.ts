@@ -187,6 +187,30 @@ export function getZoneColor(targetZone: string, title: string, type: string): s
   return "#6b7280";
 }
 
+// Coach-facing workout type picker (add/edit workout forms) -- `value` is
+// the literal string stored in workouts.type and sent to the backend
+// (PlanGenerator.generate_single_workout matches on these verbatim for
+// Rest/Strength/Muscular Endurance/Interval special-casing), `color`
+// mirrors the same LIBRARY entry's tag color used everywhere else a
+// workout's type is color-coded.
+export const COACH_WORKOUT_TYPE_OPTIONS: Array<{
+  value: string;
+  labelEn: string;
+  labelVi: string;
+  color: string;
+}> = [
+  { value: "Easy", labelEn: "Easy", labelVi: "Nhẹ nhàng", color: "#3b82f6" },
+  { value: "Recovery", labelEn: "Recovery", labelVi: "Phục hồi", color: "#3b82f6" },
+  { value: "Long Run", labelEn: "Long Run", labelVi: "Chạy dài", color: "#10b981" },
+  { value: "Aerobic Capacity", labelEn: "Aerobic Capacity", labelVi: "Sức bền hiếu khí", color: "#3b82f6" },
+  { value: "Tempo", labelEn: "Tempo", labelVi: "Tempo", color: "#f59e0b" },
+  { value: "Threshold", labelEn: "Threshold", labelVi: "Ngưỡng", color: "#f59e0b" },
+  { value: "Interval", labelEn: "Interval", labelVi: "Interval", color: "#ef4444" },
+  { value: "Muscular Endurance", labelEn: "Muscular Endurance", labelVi: "Sức bền cơ", color: "#8b5cf6" },
+  { value: "Strength", labelEn: "Strength", labelVi: "Sức mạnh", color: "#8b5cf6" },
+  { value: "Cross-Training", labelEn: "Cross-Training", labelVi: "Cross-Training", color: "#14b8a6" },
+];
+
 export const RPE_DESCRIPTORS: Record<number, { label: string; color: string }> = {
   1: { label: "Very easy — barely moving", color: "#3b82f6" },
   2: { label: "Easy — could go all day", color: "#3b82f6" },

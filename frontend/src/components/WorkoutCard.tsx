@@ -32,6 +32,9 @@ import {
   mainDurationMinutes,
 } from "../utils/workoutDescription";
 import { getTreadmillGuide, leadingNumber } from "../utils/treadmill";
+import { CoachNoteThread } from "./CoachNoteThread";
+import { WorkoutTypeSelect } from "./WorkoutTypeSelect";
+import { PencilSimple, Check, X as XIcon, ClockCounterClockwise } from "@phosphor-icons/react";
 
 export function formatIntervalSummary(wo: {
   type?: string;
@@ -54,6 +57,16 @@ interface WorkoutCardProps {
   onLogWorkout: (id: number, rpe: number | null, notes: string) => Promise<void>;
   getWorkoutDate: (wo: any) => string;
   defaultExpanded?: boolean;
+  // True when a coach is viewing this workout on an assigned athlete's
+  // plan -- completion/RPE/notes stay athlete-only (no coach-scoped
+  // backend endpoint for those), so those controls are disabled here.
+  isCoachActingAsAthlete?: boolean;
+  // The athlete this workout belongs to (acting-as-athlete mode) or the
+  // logged-in user themself (self-serve) -- threaded to CoachNoteThread.
+  athleteId?: number | null;
+  onApproveWorkout?: (id: number) => void;
+  onRemoveWorkout?: (id: number) => void;
+  onEditWorkout?: (id: number, fields: Record<string, any>) => void;
 }
 
 const RACE_COACH_MESSAGES: Record<string, string[]> = {
@@ -104,9 +117,15 @@ export default function WorkoutCard({
   onLogWorkout,
   getWorkoutDate,
   defaultExpanded,
+  isCoachActingAsAthlete,
+  athleteId,
+  onApproveWorkout,
+  onRemoveWorkout,
+  onEditWorkout,
 }: WorkoutCardProps) {
   const isRest = wo.type === "Rest";
   const isRaceDay = wo.type?.toLowerCase() === "race";
+  const isPending = !wo.approved_at;
   const dbTypes = useWorkoutTypes(lang);
   const libraryInfo = resolveWorkoutInfo(wo.title || "", wo.type || "", dbTypes);
   const zoneColor = libraryInfo?.color || getZoneColor(wo.target_zone || "", wo.title || "", wo.type || "");
@@ -121,6 +140,17 @@ export default function WorkoutCard({
   const [saved, setSaved] = useState(false);
   const [showRpeInfo, setShowRpeInfo] = useState(false);
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [editFields, setEditFields] = useState({
+    title: wo.title || "",
+    type: wo.type || "",
+    duration_minutes: String(wo.duration_minutes ?? ""),
+    target_zone: wo.target_zone || "Zone 2",
+    description: wo.description || "",
+    interval_reps: String(wo.interval_reps ?? ""),
+    interval_rep_value: String(wo.interval_rep_value ?? ""),
+    interval_rep_unit: wo.interval_rep_unit || "m",
+  });
 
   const dayShort =
     lang === "vi"
@@ -144,6 +174,21 @@ export default function WorkoutCard({
     setSaved(true);
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
     saveTimeout.current = setTimeout(() => setSaved(false), 2000);
+  };
+
+  const handleEditSave = () => {
+    const isInterval = editFields.type === "Interval";
+    onEditWorkout?.(wo.id, {
+      title: editFields.title,
+      type: editFields.type,
+      duration_minutes: parseFloat(editFields.duration_minutes) || 0,
+      target_zone: editFields.target_zone,
+      description: editFields.description,
+      interval_reps: isInterval ? parseInt(editFields.interval_reps, 10) || null : null,
+      interval_rep_value: isInterval ? parseFloat(editFields.interval_rep_value) || null : null,
+      interval_rep_unit: isInterval ? editFields.interval_rep_unit : null,
+    });
+    setEditing(false);
   };
 
   const zoneInfo = libraryInfo ? ZONE_LABELS[libraryInfo.zone] : wo.target_zone || "";
@@ -225,6 +270,50 @@ export default function WorkoutCard({
                   }}
                 >
                   {woTypeLabel}
+                </span>
+              )}
+              {!isRest && wo.source && wo.source !== "ai_generated" && (
+                <span
+                  style={{
+                    fontSize: "9px",
+                    fontWeight: "700",
+                    padding: "2px 7px",
+                    borderRadius: "20px",
+                    letterSpacing: "0.04em",
+                    background: "rgba(59,130,246,0.14)",
+                    color: "#3b82f6",
+                    flexShrink: 0,
+                  }}
+                  title={lang === "en" ? "Edited by your coach" : "Được huấn luyện viên chỉnh sửa"}
+                >
+                  {wo.source === "coach_created"
+                    ? lang === "en"
+                      ? "Coach-added"
+                      : "HLV thêm"
+                    : lang === "en"
+                      ? "Coach-edited"
+                      : "HLV chỉnh sửa"}
+                </span>
+              )}
+              {isPending && (
+                <span
+                  style={{
+                    fontSize: "9px",
+                    fontWeight: "700",
+                    padding: "2px 7px",
+                    borderRadius: "20px",
+                    letterSpacing: "0.04em",
+                    background: "rgba(234,179,8,0.16)",
+                    color: "#b45309",
+                    flexShrink: 0,
+                  }}
+                  title={
+                    lang === "en"
+                      ? "Waiting on the coach's approval before it counts as final"
+                      : "Đang chờ huấn luyện viên duyệt trước khi được xem là chính thức"
+                  }
+                >
+                  {lang === "en" ? "Pending review" : "Đang chờ duyệt"}
                 </span>
               )}
             </div>
@@ -354,7 +443,63 @@ export default function WorkoutCard({
 
           {/* Completion + expand */}
           <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
-            {!isRest && (
+            {isCoachActingAsAthlete && (
+              <>
+                {isPending && (
+                  <button
+                    onClick={() => onApproveWorkout?.(wo.id)}
+                    title={lang === "en" ? "Approve" : "Duyệt"}
+                    style={{
+                      background: "rgba(16,185,129,0.12)",
+                      border: "none",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      padding: "4px",
+                      display: "flex",
+                      alignItems: "center",
+                      color: "#10b981",
+                    }}
+                  >
+                    <Check size={16} weight="bold" />
+                  </button>
+                )}
+                {!isRest && (
+                  <button
+                    onClick={() => setEditing(!editing)}
+                    title={lang === "en" ? "Edit" : "Chỉnh sửa"}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      padding: "4px",
+                      display: "flex",
+                      alignItems: "center",
+                      color: "var(--text-muted)",
+                    }}
+                  >
+                    <PencilSimple size={15} weight="bold" />
+                  </button>
+                )}
+                {!isRest && (
+                  <button
+                    onClick={() => onRemoveWorkout?.(wo.id)}
+                    title={lang === "en" ? "Remove (convert to rest day)" : "Xoá (chuyển thành ngày nghỉ)"}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      padding: "4px",
+                      display: "flex",
+                      alignItems: "center",
+                      color: "var(--text-muted)",
+                    }}
+                  >
+                    <ClockCounterClockwise size={15} weight="bold" />
+                  </button>
+                )}
+              </>
+            )}
+            {!isRest && !isCoachActingAsAthlete && (
               <button
                 onClick={() => onToggleComplete(wo.id, !wo.is_completed)}
                 style={{
@@ -392,6 +537,137 @@ export default function WorkoutCard({
             )}
           </div>
         </div>
+
+        {/* ── Coach edit form ── */}
+        {editing && (
+          <div
+            style={{
+              marginTop: "12px",
+              paddingTop: "12px",
+              borderTop: "1px solid rgba(0,0,0,0.06)",
+              display: "flex",
+              flexDirection: "column",
+              gap: "8px",
+            }}
+          >
+            <input
+              type="text"
+              className="chat-input"
+              placeholder={lang === "en" ? "Title" : "Tiêu đề"}
+              value={editFields.title}
+              onChange={(e) => setEditFields({ ...editFields, title: e.target.value })}
+              style={{ borderRadius: "8px", padding: "8px 10px", fontSize: "12.5px" }}
+            />
+            <WorkoutTypeSelect
+              value={editFields.type}
+              onChange={(v) => setEditFields({ ...editFields, type: v })}
+              lang={lang}
+            />
+            <div style={{ display: "flex", gap: "8px" }}>
+              <input
+                type="number"
+                className="chat-input"
+                placeholder={lang === "en" ? "Minutes" : "Số phút"}
+                value={editFields.duration_minutes}
+                onChange={(e) => setEditFields({ ...editFields, duration_minutes: e.target.value })}
+                style={{ width: "90px", borderRadius: "8px", padding: "8px 10px", fontSize: "12.5px" }}
+              />
+              {editFields.type !== "Rest" && editFields.type !== "Strength" && editFields.type !== "Muscular Endurance" && (
+                <select
+                  className="chat-input"
+                  value={editFields.target_zone}
+                  onChange={(e) => setEditFields({ ...editFields, target_zone: e.target.value })}
+                  style={{ width: "120px", borderRadius: "8px", padding: "8px 10px", fontSize: "12.5px" }}
+                >
+                  {["Zone 1", "Zone 2", "Zone 3", "Zone 4", "Zone 5"].map((z) => (
+                    <option key={z} value={z}>{z}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+            {editFields.type !== "Rest" && editFields.type !== "Strength" && editFields.type !== "Muscular Endurance" && (
+              <p style={{ fontSize: "10.5px", color: "var(--text-muted)", margin: "-4px 0 0 0" }}>
+                {lang === "en"
+                  ? "Pace and HR are recalculated from this zone for the athlete's own profile."
+                  : "Pace và nhịp tim sẽ được tính lại theo vùng này dựa trên hồ sơ vận động viên."}
+              </p>
+            )}
+            {editFields.type === "Interval" && (
+              <div style={{ display: "flex", gap: "8px" }}>
+                <input
+                  type="number"
+                  className="chat-input"
+                  placeholder={lang === "en" ? "Laps" : "Số lượt"}
+                  value={editFields.interval_reps}
+                  onChange={(e) => setEditFields({ ...editFields, interval_reps: e.target.value })}
+                  style={{ flex: 1, borderRadius: "8px", padding: "8px 10px", fontSize: "12.5px" }}
+                />
+                <input
+                  type="number"
+                  className="chat-input"
+                  placeholder={lang === "en" ? "Lap duration" : "Thời lượng/lượt"}
+                  value={editFields.interval_rep_value}
+                  onChange={(e) => setEditFields({ ...editFields, interval_rep_value: e.target.value })}
+                  style={{ flex: 1, borderRadius: "8px", padding: "8px 10px", fontSize: "12.5px" }}
+                />
+                <select
+                  className="chat-input"
+                  value={editFields.interval_rep_unit}
+                  onChange={(e) => setEditFields({ ...editFields, interval_rep_unit: e.target.value })}
+                  style={{ width: "80px", borderRadius: "8px", padding: "8px 10px", fontSize: "12.5px" }}
+                >
+                  <option value="m">m</option>
+                  <option value="km">km</option>
+                  <option value="s">s</option>
+                  <option value="min">min</option>
+                </select>
+              </div>
+            )}
+            <textarea
+              value={editFields.description}
+              onChange={(e) => setEditFields({ ...editFields, description: e.target.value })}
+              placeholder={lang === "en" ? "Description / instructions" : "Mô tả / hướng dẫn"}
+              rows={3}
+              style={{
+                width: "100%",
+                padding: "8px 10px",
+                borderRadius: "8px",
+                border: "1.5px solid rgba(0,0,0,0.1)",
+                background: "rgba(255,255,255,0.6)",
+                fontSize: "12.5px",
+                resize: "vertical",
+                fontFamily: "inherit",
+                boxSizing: "border-box",
+              }}
+            />
+            <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+              <button
+                onClick={() => setEditing(false)}
+                style={{
+                  padding: "6px 14px",
+                  fontSize: "12px",
+                  borderRadius: "8px",
+                  border: "1px solid var(--border-color)",
+                  background: "transparent",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                }}
+              >
+                <XIcon size={12} weight="bold" />
+                {lang === "en" ? "Cancel" : "Huỷ"}
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={handleEditSave}
+                style={{ padding: "6px 14px", fontSize: "12px" }}
+              >
+                {lang === "en" ? "Save" : "Lưu"}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* ── Expanded content ── */}
         {expanded && !isRest && (
@@ -569,8 +845,27 @@ export default function WorkoutCard({
               </div>
             )}
 
+            {/* ── Per-workout coach notes ── */}
+            {athleteId && (
+              <CoachNoteThread
+                athleteId={athleteId}
+                targetType="workout"
+                targetId={wo.id}
+                lang={lang as "en" | "vi"}
+                canAdd={!!isCoachActingAsAthlete}
+              />
+            )}
+
             {/* ── RPE + Notes ── */}
             <div style={{ marginTop: "16px", paddingTop: "14px", borderTop: "1px solid rgba(0,0,0,0.06)" }}>
+            {isCoachActingAsAthlete ? (
+              <p style={{ fontSize: "12px", color: "var(--text-muted)", margin: 0, fontStyle: "italic" }}>
+                {lang === "en"
+                  ? "The athlete logs their own completion and RPE."
+                  : "Vận động viên tự ghi nhận hoàn thành và RPE."}
+              </p>
+            ) : (
+              <>
               <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px" }}>
                 <span
                   style={{
@@ -719,6 +1014,8 @@ export default function WorkoutCard({
                   </button>
                 </div>
               )}
+              </>
+            )}
             </div>
           </div>
         )}

@@ -112,6 +112,7 @@ export interface User {
   email: string;
   name: string;
   role: "admin" | "user";
+  is_coach?: boolean;
   age?: number;
   current_weekly_km?: number;
   max_hr?: number;

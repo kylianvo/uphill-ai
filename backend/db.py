@@ -66,6 +66,8 @@ def init_db():
             days_per_week           INTEGER DEFAULT 4,
             -- api keys
             gemini_api_key          TEXT,
+            -- coaching
+            is_coach                BOOLEAN NOT NULL DEFAULT FALSE,
             created_at              TIMESTAMPTZ DEFAULT NOW()
         )
         """)
@@ -111,7 +113,40 @@ def init_db():
             has_gym_access          BOOLEAN DEFAULT FALSE,
             use_treadmill           BOOLEAN DEFAULT FALSE,
             training_environment    TEXT DEFAULT 'flat',
+            created_by_user_id      INTEGER REFERENCES users(id),
+            plan_status             TEXT NOT NULL DEFAULT 'active',  -- 'draft' | 'active'
+            approved_by_user_id     INTEGER REFERENCES users(id),
+            approved_at             TIMESTAMPTZ,
             created_at              TIMESTAMPTZ DEFAULT NOW()
+        )
+        """)
+        )
+
+        conn.execute(
+            text("""
+        CREATE TABLE IF NOT EXISTS coach_athletes (
+            id              SERIAL PRIMARY KEY,
+            coach_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            athlete_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            status          TEXT NOT NULL DEFAULT 'invited',  -- 'invited' | 'active' | 'paused' | 'removed'
+            invited_at      TIMESTAMPTZ DEFAULT NOW(),
+            responded_at    TIMESTAMPTZ,
+            removed_at      TIMESTAMPTZ,
+            UNIQUE (coach_id, athlete_id)
+        )
+        """)
+        )
+
+        conn.execute(
+            text("""
+        CREATE TABLE IF NOT EXISTS coach_notes (
+            id              SERIAL PRIMARY KEY,
+            coach_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            athlete_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            target_type     TEXT NOT NULL,   -- 'plan' | 'workout' | 'gear' | 'nutrition' | 'general'
+            target_id       INTEGER,
+            note            TEXT NOT NULL,
+            created_at      TIMESTAMPTZ DEFAULT NOW()
         )
         """)
         )
@@ -140,7 +175,10 @@ def init_db():
             interval_rep_unit   TEXT,
             description         TEXT,
             fueling_tip         TEXT,
-            is_completed        INTEGER DEFAULT 0
+            source              TEXT NOT NULL DEFAULT 'ai_generated',  -- 'ai_generated' | 'coach_edited' | 'coach_created'
+            last_edited_by_user_id INTEGER REFERENCES users(id),
+            is_completed        INTEGER DEFAULT 0,
+            approved_at         TIMESTAMPTZ  -- NULL = pending coach review; set on insert for self-serve plans
         )
         """)
         )
@@ -292,6 +330,20 @@ def init_db():
             "ALTER TABLE users DROP COLUMN IF EXISTS has_gym_access",
             "ALTER TABLE users DROP COLUMN IF EXISTS use_treadmill",
             "ALTER TABLE users DROP COLUMN IF EXISTS double_session_days",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_coach BOOLEAN NOT NULL DEFAULT FALSE",
+            "ALTER TABLE plans ADD COLUMN IF NOT EXISTS created_by_user_id INTEGER REFERENCES users(id)",
+            "ALTER TABLE plans ADD COLUMN IF NOT EXISTS plan_status TEXT NOT NULL DEFAULT 'active'",
+            "ALTER TABLE plans ADD COLUMN IF NOT EXISTS approved_by_user_id INTEGER REFERENCES users(id)",
+            "ALTER TABLE plans ADD COLUMN IF NOT EXISTS approved_at TIMESTAMPTZ",
+            "UPDATE plans SET created_by_user_id = user_id WHERE created_by_user_id IS NULL",
+            "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'ai_generated'",
+            "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS last_edited_by_user_id INTEGER REFERENCES users(id)",
+            "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS approved_at TIMESTAMPTZ",
+            # Backfill: workouts that predate per-workout approval, on plans already
+            # active, are implicitly approved -- only draft-plan workouts (and any
+            # newly-inserted coach workout going forward) should read as pending.
+            "UPDATE workouts SET approved_at = NOW() WHERE approved_at IS NULL "
+            "AND plan_id IN (SELECT id FROM plans WHERE plan_status = 'active')",
         ]:
             try:
                 conn.execute(text(col_sql))
@@ -457,6 +509,8 @@ def create_plan(
     has_gym_access: bool = False,
     use_treadmill: bool | None = None,
     training_environment: str = "flat",
+    created_by_user_id: int | None = None,
+    plan_status: str = "active",
 ) -> int:
     with engine.connect() as conn:
         result = conn.execute(
@@ -465,11 +519,13 @@ def create_plan(
                                target_time_hours, total_weeks, course_distance_km,
                                course_elevation_gain_m, preferred_run_days, long_run_day,
                                days_per_week, double_session_days, start_date,
-                               has_gym_access, use_treadmill, training_environment)
+                               has_gym_access, use_treadmill, training_environment,
+                               created_by_user_id, plan_status)
             VALUES (:user_id, :race_name, :race_date, :goal_type,
                     :tth, :total_weeks, :dist_km, :elev_m, :preferred_run_days,
                     :long_run_day, :days_per_week, :double_session_days, :start_date,
-                    :has_gym_access, :use_treadmill, :training_environment)
+                    :has_gym_access, :use_treadmill, :training_environment,
+                    :created_by_user_id, :plan_status)
             RETURNING id
         """),
             {
@@ -489,6 +545,8 @@ def create_plan(
                 "has_gym_access": has_gym_access,
                 "use_treadmill": use_treadmill if use_treadmill is not None else has_gym_access,
                 "training_environment": training_environment or "flat",
+                "created_by_user_id": created_by_user_id if created_by_user_id is not None else user_id,
+                "plan_status": plan_status,
             },
         )
         conn.commit()
@@ -498,7 +556,10 @@ def create_plan(
 def get_recent_plans(user_id: int, limit: int = 3) -> list[dict[str, Any]]:
     with engine.connect() as conn:
         rows = conn.execute(
-            text("SELECT * FROM plans WHERE user_id = :uid " "ORDER BY created_at DESC, id DESC LIMIT :lim"),
+            text(
+                "SELECT * FROM plans WHERE user_id = :uid AND plan_status = 'active' "
+                "ORDER BY created_at DESC, id DESC LIMIT :lim"
+            ),
             {"uid": user_id, "lim": limit},
         ).fetchall()
     return [_row_to_dict(r) for r in rows]
@@ -518,7 +579,10 @@ def _flatten_llm_text(value: Any) -> Any:
     return value
 
 
-def save_workouts(plan_id: int, workouts: list[dict[str, Any]]):
+def save_workouts(plan_id: int, workouts: list[dict[str, Any]], auto_approve: bool = True):
+    """`auto_approve=False` for coach-drafted plans: workouts start pending
+    (approved_at NULL) until the coach reviews each one. Self-serve plans
+    have no coach in the loop, so their workouts are approved on arrival."""
     if not workouts:
         return
     week_numbers = [wo["week_number"] for wo in workouts]
@@ -540,14 +604,15 @@ def save_workouts(plan_id: int, workouts: list[dict[str, Any]]):
                     duration_minutes, distance_km, target_zone, target_hr_range, target_pace,
                     treadmill_incline, treadmill_speed, elevation_gain_m, grade_percent,
                     interval_reps, interval_rep_value, interval_rep_unit,
-                    description, fueling_tip, session_slot)
+                    description, fueling_tip, session_slot, approved_at)
                 VALUES (:plan_id, :week_number, :day_of_week, :phase, :title, :type,
                     :duration_minutes, :distance_km, :target_zone, :target_hr_range, :target_pace,
                     :treadmill_incline, :treadmill_speed, :elevation_gain_m, :grade_percent,
                     :interval_reps, :interval_rep_value, :interval_rep_unit,
-                    :description, :fueling_tip, :session_slot)
+                    :description, :fueling_tip, :session_slot, :approved_at)
             """),
                 {
+                    "approved_at": datetime.datetime.now(datetime.UTC) if auto_approve else None,
                     "plan_id": plan_id,
                     "week_number": wo["week_number"],
                     "day_of_week": _flatten_llm_text(wo["day_of_week"]),
@@ -580,10 +645,230 @@ def save_workouts(plan_id: int, workouts: list[dict[str, Any]]):
 def get_active_plan(user_id: int) -> dict[str, Any] | None:
     with engine.connect() as conn:
         row = conn.execute(
-            text("SELECT * FROM plans WHERE user_id = :uid " "ORDER BY created_at DESC, id DESC LIMIT 1"),
+            text(
+                "SELECT * FROM plans WHERE user_id = :uid AND plan_status = 'active' "
+                "ORDER BY created_at DESC, id DESC LIMIT 1"
+            ),
             {"uid": user_id},
         ).fetchone()
     return _row_to_dict(row) if row else None
+
+
+def get_plan_by_id(plan_id: int) -> dict[str, Any] | None:
+    with engine.connect() as conn:
+        row = conn.execute(text("SELECT * FROM plans WHERE id = :id"), {"id": plan_id}).fetchone()
+    return _row_to_dict(row) if row else None
+
+
+def get_draft_plan_for_athlete(athlete_id: int) -> dict[str, Any] | None:
+    with engine.connect() as conn:
+        row = conn.execute(
+            text(
+                "SELECT * FROM plans WHERE user_id = :uid AND plan_status = 'draft' "
+                "ORDER BY created_at DESC, id DESC LIMIT 1"
+            ),
+            {"uid": athlete_id},
+        ).fetchone()
+    return _row_to_dict(row) if row else None
+
+
+def get_workout_by_id(workout_id: int) -> dict[str, Any] | None:
+    with engine.connect() as conn:
+        row = conn.execute(text("SELECT * FROM workouts WHERE id = :id"), {"id": workout_id}).fetchone()
+    return _row_to_dict(row) if row else None
+
+
+def coach_update_workout(workout_id: int, editor_user_id: int, fields: dict[str, Any]) -> dict[str, Any] | None:
+    """Partial-updates the given workout (only keys present and non-None in
+    `fields` are applied), and always stamps source='coach_edited' +
+    last_edited_by_user_id, and resets approved_at to NULL -- an edited
+    workout needs the coach's review again before it's approved for the
+    athlete. Returns None if the workout doesn't exist.
+    `_EDITABLE_WORKOUT_COLUMNS` is a fixed tuple hardcoded in this function
+    -- never derived from `fields`'s own keys -- so building a per-column
+    UPDATE in the loop below carries no SQL-injection risk."""
+    _EDITABLE_WORKOUT_COLUMNS = (
+        "day_of_week",
+        "phase",
+        "title",
+        "type",
+        "duration_minutes",
+        "distance_km",
+        "target_zone",
+        "target_hr_range",
+        "target_pace",
+        "description",
+        "fueling_tip",
+        "interval_reps",
+        "interval_rep_value",
+        "interval_rep_unit",
+    )
+    with engine.connect() as conn:
+        row = conn.execute(text("SELECT id FROM workouts WHERE id = :id"), {"id": workout_id}).fetchone()
+        if not row:
+            return None
+        for column in _EDITABLE_WORKOUT_COLUMNS:
+            if fields.get(column) is not None:
+                conn.execute(
+                    text(f"UPDATE workouts SET {column} = :v WHERE id = :id"),
+                    {"v": fields[column], "id": workout_id},
+                )
+        conn.execute(
+            text(
+                "UPDATE workouts SET source = 'coach_edited', last_edited_by_user_id = :editor, "
+                "approved_at = NULL WHERE id = :id"
+            ),
+            {"editor": editor_user_id, "id": workout_id},
+        )
+        conn.commit()
+        updated = conn.execute(text("SELECT * FROM workouts WHERE id = :id"), {"id": workout_id}).fetchone()
+    return _row_to_dict(updated)
+
+
+def create_coach_workout(plan_id: int, creator_user_id: int, fields: dict[str, Any]) -> dict[str, Any]:
+    """New workouts (manual or AI co-created) always start pending
+    (approved_at NULL) -- the coach must approve before the athlete sees
+    it as finalized.
+
+    A new workout on a given day either replaces that day's rest placeholder
+    (the common case -- every day has a Rest row until something real is
+    scheduled) or, if the day already has a real session, becomes a second
+    session for that day (double-session day), picking the next open
+    morning/afternoon slot rather than colliding with the existing one."""
+    week_number = fields["week_number"]
+    day_of_week = fields["day_of_week"]
+    with engine.connect() as conn:
+        existing = conn.execute(
+            text("""
+                SELECT id, type, session_slot FROM workouts
+                WHERE plan_id = :pid AND week_number = :wn AND day_of_week = :dow
+            """),
+            {"pid": plan_id, "wn": week_number, "dow": day_of_week},
+        ).fetchall()
+
+        session_slot = "main"
+        if len(existing) == 1 and existing[0].type == "Rest":
+            conn.execute(text("DELETE FROM workouts WHERE id = :id"), {"id": existing[0].id})
+        elif existing:
+            taken_slots = {row.session_slot for row in existing}
+            for candidate in ("main", "afternoon", "morning"):
+                if candidate not in taken_slots:
+                    session_slot = candidate
+                    break
+
+        row = conn.execute(
+            text("""
+                INSERT INTO workouts (plan_id, week_number, day_of_week, phase, title, type,
+                    duration_minutes, distance_km, target_zone, target_hr_range, target_pace,
+                    description, fueling_tip, session_slot, source, last_edited_by_user_id, approved_at,
+                    interval_reps, interval_rep_value, interval_rep_unit)
+                VALUES (:plan_id, :week_number, :day_of_week, :phase, :title, :type,
+                    :duration_minutes, :distance_km, :target_zone, :target_hr_range, :target_pace,
+                    :description, :fueling_tip, :session_slot, 'coach_created', :creator, NULL,
+                    :interval_reps, :interval_rep_value, :interval_rep_unit)
+                RETURNING *
+            """),
+            {
+                "plan_id": plan_id,
+                "week_number": week_number,
+                "day_of_week": day_of_week,
+                "phase": fields["phase"],
+                "title": fields["title"],
+                "type": fields["type"],
+                "duration_minutes": fields["duration_minutes"],
+                "distance_km": fields.get("distance_km"),
+                "target_zone": fields["target_zone"],
+                "target_hr_range": fields.get("target_hr_range"),
+                "target_pace": fields.get("target_pace"),
+                "description": fields.get("description"),
+                "fueling_tip": fields.get("fueling_tip"),
+                "session_slot": session_slot,
+                "creator": creator_user_id,
+                "interval_reps": fields.get("interval_reps"),
+                "interval_rep_value": fields.get("interval_rep_value"),
+                "interval_rep_unit": fields.get("interval_rep_unit"),
+            },
+        ).fetchone()
+        conn.commit()
+    return _row_to_dict(row)
+
+
+def approve_plan(plan_id: int, athlete_id: int, coach_id: int) -> dict[str, Any] | None:
+    """Flips a draft plan to active. Returns None if no 'draft' plan with
+    this id belongs to this athlete (wrong athlete, already active, or
+    doesn't exist). Called internally by approve_workout the moment the
+    first workout on a draft plan is approved -- there is no standalone
+    whole-plan-approve action anymore; approval happens per workout."""
+    with engine.connect() as conn:
+        result = conn.execute(
+            text("""
+                UPDATE plans SET plan_status = 'active', approved_by_user_id = :coach_id, approved_at = NOW()
+                WHERE id = :id AND user_id = :aid AND plan_status = 'draft'
+            """),
+            {"id": plan_id, "aid": athlete_id, "coach_id": coach_id},
+        )
+        conn.commit()
+        if result.rowcount == 0:
+            return None
+        row = conn.execute(text("SELECT * FROM plans WHERE id = :id"), {"id": plan_id}).fetchone()
+    return _row_to_dict(row)
+
+
+def approve_workout(workout_id: int, plan_id: int, athlete_id: int, coach_id: int) -> dict[str, Any] | None:
+    """Approves a single workout on the given athlete's plan. If the plan
+    is still 'draft' (i.e. this is the first approval on it), also flips
+    the plan to 'active' so it becomes visible to the athlete. Returns
+    None if the workout doesn't belong to that plan/athlete."""
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("""
+                SELECT w.id FROM workouts w
+                JOIN plans p ON p.id = w.plan_id
+                WHERE w.id = :wid AND w.plan_id = :pid AND p.user_id = :aid
+            """),
+            {"wid": workout_id, "pid": plan_id, "aid": athlete_id},
+        ).fetchone()
+        if not row:
+            return None
+        conn.execute(
+            text("UPDATE workouts SET approved_at = NOW() WHERE id = :id"),
+            {"id": workout_id},
+        )
+        conn.commit()
+        updated = conn.execute(text("SELECT * FROM workouts WHERE id = :id"), {"id": workout_id}).fetchone()
+    approve_plan(plan_id, athlete_id, coach_id)
+    return _row_to_dict(updated)
+
+
+def make_rest_day(workout_id: int, editor_user_id: int) -> dict[str, Any] | None:
+    """'Removes' a workout by converting it to a rest day in place, rather
+    than deleting the row -- keeps the week's day structure intact. Fully
+    overwrites the row (not a partial update like coach_update_workout,
+    since every field needs clearing to a canonical rest-day shape) and
+    resets approved_at to NULL: a converted day is a material change the
+    coach must sign off on again."""
+    with engine.connect() as conn:
+        row = conn.execute(text("SELECT id FROM workouts WHERE id = :id"), {"id": workout_id}).fetchone()
+        if not row:
+            return None
+        conn.execute(
+            text("""
+                UPDATE workouts SET
+                    title = 'Rest & Regeneration', type = 'Rest', phase = 'Recovery',
+                    duration_minutes = 0, distance_km = NULL, target_zone = 'Zone 1',
+                    target_hr_range = NULL, target_pace = NULL,
+                    treadmill_incline = '0', treadmill_speed = '0',
+                    elevation_gain_m = 0, grade_percent = 0,
+                    interval_reps = NULL, interval_rep_value = NULL, interval_rep_unit = NULL,
+                    description = NULL, fueling_tip = NULL,
+                    source = 'coach_edited', last_edited_by_user_id = :editor, approved_at = NULL
+                WHERE id = :id
+            """),
+            {"editor": editor_user_id, "id": workout_id},
+        )
+        conn.commit()
+        updated = conn.execute(text("SELECT * FROM workouts WHERE id = :id"), {"id": workout_id}).fetchone()
+    return _row_to_dict(updated)
 
 
 def set_plan_active(user_id: int, plan_id: int) -> bool:
@@ -899,6 +1184,203 @@ def mark_onboarding_complete(user_id: int) -> bool:
         result = conn.execute(text("UPDATE users SET onboarding_complete = TRUE WHERE id = :id"), {"id": user_id})
         conn.commit()
     return result.rowcount > 0
+
+
+# ─── Coaching (human coach roster) ───────────────────────────────────────────
+# "Coach" here means a human coaching other users -- distinct from "Coach
+# Uphill", the AI persona served by the plan/chat/pacing functions above.
+
+
+def set_user_is_coach(user_id: int, is_coach: bool) -> bool:
+    with engine.connect() as conn:
+        result = conn.execute(text("UPDATE users SET is_coach = :v WHERE id = :id"), {"v": is_coach, "id": user_id})
+        conn.commit()
+    return result.rowcount > 0
+
+
+def get_active_coach_link_for_athlete(athlete_id: int) -> dict[str, Any] | None:
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("SELECT * FROM coach_athletes WHERE athlete_id = :aid AND status = 'active'"), {"aid": athlete_id}
+        ).fetchone()
+    return _row_to_dict(row) if row else None
+
+
+def has_active_coach_link(coach_id: int, athlete_id: int) -> bool:
+    link = get_active_coach_link_for_athlete(athlete_id)
+    return link is not None and link["coach_id"] == coach_id
+
+
+def get_coach_athlete_link(coach_id: int, athlete_id: int) -> dict[str, Any] | None:
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("SELECT * FROM coach_athletes WHERE coach_id = :cid AND athlete_id = :aid"),
+            {"cid": coach_id, "aid": athlete_id},
+        ).fetchone()
+    return _row_to_dict(row) if row else None
+
+
+def get_coach_athlete_by_id(link_id: int) -> dict[str, Any] | None:
+    with engine.connect() as conn:
+        row = conn.execute(text("SELECT * FROM coach_athletes WHERE id = :id"), {"id": link_id}).fetchone()
+    return _row_to_dict(row) if row else None
+
+
+def create_coach_invite(coach_id: int, athlete_id: int) -> dict[str, Any]:
+    """Inserts a new 'invited' roster row, or -- if a prior relationship
+    between this coach/athlete pair was 'removed' -- reopens it as a fresh
+    invite. An existing 'invited'/'active'/'paused' row for this pair is
+    left untouched; the endpoint layer decides what that means for the
+    caller."""
+    with engine.connect() as conn:
+        conn.execute(
+            text("""
+                INSERT INTO coach_athletes (coach_id, athlete_id, status, invited_at, responded_at, removed_at)
+                VALUES (:cid, :aid, 'invited', NOW(), NULL, NULL)
+                ON CONFLICT (coach_id, athlete_id) DO UPDATE SET
+                    status = 'invited', invited_at = NOW(), responded_at = NULL, removed_at = NULL
+                WHERE coach_athletes.status = 'removed'
+            """),
+            {"cid": coach_id, "aid": athlete_id},
+        )
+        conn.commit()
+        row = conn.execute(
+            text("SELECT * FROM coach_athletes WHERE coach_id = :cid AND athlete_id = :aid"),
+            {"cid": coach_id, "aid": athlete_id},
+        ).fetchone()
+    return _row_to_dict(row)
+
+
+def accept_coach_invite(link_id: int, athlete_id: int) -> dict[str, Any] | None:
+    """Flips a pending invite to 'active'. Returns None if no 'invited' row
+    with this id belongs to this athlete (wrong athlete, already responded,
+    or doesn't exist) -- the endpoint layer maps that to a 404."""
+    with engine.connect() as conn:
+        result = conn.execute(
+            text("""
+                UPDATE coach_athletes SET status = 'active', responded_at = NOW()
+                WHERE id = :id AND athlete_id = :aid AND status = 'invited'
+            """),
+            {"id": link_id, "aid": athlete_id},
+        )
+        conn.commit()
+        if result.rowcount == 0:
+            return None
+        row = conn.execute(text("SELECT * FROM coach_athletes WHERE id = :id"), {"id": link_id}).fetchone()
+    return _row_to_dict(row)
+
+
+def decline_coach_invite(link_id: int, athlete_id: int) -> dict[str, Any] | None:
+    """Ends a pending invite without it ever becoming active. Returns None
+    if no 'invited' row with this id belongs to this athlete (wrong
+    athlete, already responded/removed, or doesn't exist)."""
+    with engine.connect() as conn:
+        result = conn.execute(
+            text("""
+                UPDATE coach_athletes SET status = 'removed', responded_at = NOW(), removed_at = NOW()
+                WHERE id = :id AND athlete_id = :aid AND status = 'invited'
+            """),
+            {"id": link_id, "aid": athlete_id},
+        )
+        conn.commit()
+        if result.rowcount == 0:
+            return None
+        row = conn.execute(text("SELECT * FROM coach_athletes WHERE id = :id"), {"id": link_id}).fetchone()
+    return _row_to_dict(row)
+
+
+def get_roster_for_coach(coach_id: int) -> list[dict[str, Any]]:
+    """Active + pending-invite athletes for a coach, newest-invited first.
+    Removed relationships are excluded -- they're history, not roster."""
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("""
+                SELECT ca.id, ca.athlete_id, ca.status, ca.invited_at, ca.responded_at,
+                       u.email AS athlete_email, u.name AS athlete_name
+                FROM coach_athletes ca
+                JOIN users u ON u.id = ca.athlete_id
+                WHERE ca.coach_id = :cid AND ca.status != 'removed'
+                ORDER BY ca.invited_at DESC
+            """),
+            {"cid": coach_id},
+        ).fetchall()
+    return [_row_to_dict(r) for r in rows]
+
+
+def remove_coach_athlete_link(link_id: int, actor_user_id: int) -> dict[str, Any] | None:
+    """Ends an existing (non-removed) relationship. Either the coach or the
+    athlete on the link may end it. Returns None if no such link exists for
+    this actor, or it's already 'removed'."""
+    with engine.connect() as conn:
+        result = conn.execute(
+            text("""
+                UPDATE coach_athletes SET status = 'removed', removed_at = NOW()
+                WHERE id = :id AND (coach_id = :actor OR athlete_id = :actor) AND status != 'removed'
+            """),
+            {"id": link_id, "actor": actor_user_id},
+        )
+        conn.commit()
+        if result.rowcount == 0:
+            return None
+        row = conn.execute(text("SELECT * FROM coach_athletes WHERE id = :id"), {"id": link_id}).fetchone()
+    return _row_to_dict(row)
+
+
+def create_coach_note(
+    coach_id: int, athlete_id: int, target_type: str, target_id: int | None, note: str
+) -> dict[str, Any]:
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("""
+                INSERT INTO coach_notes (coach_id, athlete_id, target_type, target_id, note)
+                VALUES (:coach_id, :athlete_id, :target_type, :target_id, :note)
+                RETURNING *
+            """),
+            {
+                "coach_id": coach_id,
+                "athlete_id": athlete_id,
+                "target_type": target_type,
+                "target_id": target_id,
+                "note": note,
+            },
+        ).fetchone()
+        conn.commit()
+    return _row_to_dict(row)
+
+
+def get_coach_notes(
+    athlete_id: int, target_type: str | None = None, target_id: int | None = None
+) -> list[dict[str, Any]]:
+    query = "SELECT * FROM coach_notes WHERE athlete_id = :aid"
+    params: dict[str, Any] = {"aid": athlete_id}
+    if target_type is not None:
+        query += " AND target_type = :tt"
+        params["tt"] = target_type
+    if target_id is not None:
+        query += " AND target_id = :tid"
+        params["tid"] = target_id
+    query += " ORDER BY created_at DESC"
+    with engine.connect() as conn:
+        rows = conn.execute(text(query), params).fetchall()
+    return [_row_to_dict(r) for r in rows]
+
+
+def get_pending_invites_for_athlete(athlete_id: int) -> list[dict[str, Any]]:
+    """The athlete-side mirror of get_roster_for_coach: pending invites this
+    athlete hasn't responded to yet, for the accept/decline UI."""
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("""
+                SELECT ca.id, ca.coach_id, ca.status, ca.invited_at,
+                       u.email AS coach_email, u.name AS coach_name
+                FROM coach_athletes ca
+                JOIN users u ON u.id = ca.coach_id
+                WHERE ca.athlete_id = :aid AND ca.status = 'invited'
+                ORDER BY ca.invited_at DESC
+            """),
+            {"aid": athlete_id},
+        ).fetchall()
+    return [_row_to_dict(r) for r in rows]
 
 
 # ─── Sessions (JWT-based, stored for revocation) ─────────────────────────────

@@ -11,36 +11,55 @@ from pydantic import BaseModel
 
 from config import settings
 from db import (
+    accept_coach_invite,
     add_source,
+    approve_workout,
+    coach_update_workout,
+    create_coach_invite,
+    create_coach_note,
+    create_coach_workout,
     create_or_get_user,
     create_plan,
     create_session,
     create_user_with_password,
+    decline_coach_invite,
     delete_session,
     delete_source,
+    get_active_coach_link_for_athlete,
     get_active_plan,
     get_all_grounding_content,
     get_all_knowledge_cards,
     get_block_completion,
     get_block_reviews,
+    get_coach_athlete_by_id,
+    get_coach_notes,
+    get_draft_plan_for_athlete,
     get_kb_chunk_count,
     get_knowledge_card_count,
     get_knowledge_topics,
     get_max_generated_week,
+    get_pending_invites_for_athlete,
+    get_plan_by_id,
     get_plan_workouts,
     get_random_knowledge_cards,
     get_recent_plans,
+    get_roster_for_coach,
     get_user_by_email,
     get_user_by_id,
+    get_workout_by_id,
     get_workout_type_count,
     get_workout_types,
+    has_active_coach_link,
     init_db,
     list_sources,
+    make_rest_day,
     mark_onboarding_complete,
     query_nutrition_catalog,
+    remove_coach_athlete_link,
     save_block_review,
     save_workouts,
     set_plan_active,
+    set_user_is_coach,
     set_user_password,
     swap_workouts,
     update_onboarding_profile,
@@ -295,6 +314,9 @@ class OnboardingRequest(BaseModel):
     next_goal: str | None = None
     # Double session preference
     double_session_days: list[str] | None = None
+    # Skip generating a plan right now -- save the profile and let the user
+    # into the app; they can start a plan later from the Planner tab.
+    skip_plan: bool = False
     plan_start_date: str | None = None  # YYYY-MM-DD
 
 
@@ -308,6 +330,88 @@ class UpdateProfileRequest(BaseModel):
     gemini_api_key: str | None = None
     zone2_pace_min: str | None = None
     zone2_pace_max: str | None = None
+
+
+class SetCoachStatusRequest(BaseModel):
+    is_coach: bool
+
+
+class CoachInviteRequest(BaseModel):
+    athlete_email: str
+
+
+def _resolve_zone_pace_and_hr(
+    athlete: dict[str, Any], target_zone: str, duration_minutes: float
+) -> tuple[str | None, str | None]:
+    """Same zone -> pace/HR math as PlanGenerator.generate_single_workout,
+    factored out so coach_update_workout's zone edits use the identical
+    computation instead of drifting from it over time."""
+    age = int(athlete.get("age", 30))
+    max_hr = int(athlete.get("max_hr", 220 - age))
+    resting_hr = int(athlete.get("resting_hr", 60))
+    aet_hr = int(athlete.get("aet_hr", resting_hr + int((max_hr - resting_hr) * 0.65)))
+    ant_hr = int(athlete.get("ant_hr", resting_hr + int((max_hr - resting_hr) * 0.85)))
+    hr_zones = TrainingRules.calculate_heart_rate_zones(max_hr, resting_hr, aet_hr, ant_hr)
+    est_zones = PlanGenerator.estimate_pace_zones(
+        athlete.get("zone2_pace_min") or "6:30", athlete.get("zone2_pace_max") or "5:45", aet_hr, ant_hr
+    )
+    pace, _distance_km = PlanGenerator.pace_and_distance_for_zone(target_zone, duration_minutes or 30, est_zones)
+    zone_key = target_zone if target_zone in hr_zones else "Zone 2"
+    hr_range = f"{hr_zones[zone_key]['min']}-{hr_zones[zone_key]['max']} bpm"
+    return pace, hr_range
+
+
+class CoachWorkoutUpdateRequest(BaseModel):
+    day_of_week: str | None = None
+    phase: str | None = None
+    title: str | None = None
+    type: str | None = None
+    duration_minutes: float | None = None
+    distance_km: float | None = None
+    target_zone: str | None = None
+    # target_hr_range/target_pace are intentionally NOT accepted here --
+    # edit_athlete_workout recomputes both from target_zone server-side so
+    # they can never drift from the athlete's actual zones (see its docstring).
+    description: str | None = None
+    fueling_tip: str | None = None
+    interval_reps: int | None = None
+    interval_rep_value: float | None = None
+    interval_rep_unit: str | None = None
+
+
+class CoachWorkoutCreateRequest(BaseModel):
+    week_number: int
+    day_of_week: str
+    phase: str
+    title: str
+    type: str
+    duration_minutes: float
+    target_zone: str
+    distance_km: float | None = None
+    target_hr_range: str | None = None
+    target_pace: str | None = None
+    description: str | None = None
+    fueling_tip: str | None = None
+    session_slot: str | None = "main"
+
+
+class CoachWorkoutAiCreateRequest(BaseModel):
+    week_number: int
+    day_of_week: str
+    workout_type: str
+    duration_minutes: float  # main set only -- warm-up/cool-down are added on top
+    intent: str | None = None  # AI guidance for run types, or literal details for Strength/ME
+    target_zone: str | None = None
+    target_pace: str | None = None
+    interval_reps: int | None = None
+    interval_rep_value: float | None = None
+    interval_rep_unit: str | None = None
+
+
+class CoachNoteCreateRequest(BaseModel):
+    target_type: str  # 'plan' | 'workout' | 'gear' | 'nutrition' | 'general'
+    target_id: int | None = None
+    note: str
 
 
 def format_user_response(user: dict[str, Any]) -> dict[str, Any]:
@@ -334,6 +438,7 @@ def format_user_response(user: dict[str, Any]) -> dict[str, Any]:
         "gemini_api_key": user.get("gemini_api_key") or "",
         "zone2_pace_min": user.get("zone2_pace_min") or "6:30",
         "zone2_pace_max": user.get("zone2_pace_max") or "5:45",
+        "is_coach": bool(user.get("is_coach", False)),
     }
 
 
@@ -354,6 +459,22 @@ async def require_admin(user: dict[str, Any] = Depends(get_current_user)) -> dic
     return user
 
 
+async def require_coach(user: dict[str, Any] = Depends(get_current_user)) -> dict[str, Any]:
+    if not user.get("is_coach"):
+        raise HTTPException(status_code=403, detail="Coach access required.")
+    return user
+
+
+async def require_athlete_access(athlete_id: int, user: dict[str, Any] = Depends(get_current_user)) -> dict[str, Any]:
+    """Returns the acting user if they may act on athlete_id's data: the
+    athlete themself, an admin, or a coach with an active roster link."""
+    if user["id"] == athlete_id or user.get("role") == "admin":
+        return user
+    if user.get("is_coach") and has_active_coach_link(user["id"], athlete_id):
+        return user
+    raise HTTPException(status_code=403, detail="Not authorized for this athlete.")
+
+
 COACH_SYSTEM_INSTRUCTION = """
 You are Coach Uphill, an elite running coach speaking directly to your athlete — natural, warm, and direct, never robotic.
 
@@ -369,6 +490,24 @@ Coaching principles — apply strictly:
 
 Tone: warm and encouraging, always actionable — focus on the next concrete step the runner should take.
 """
+
+COACH_COPILOT_SYSTEM_INSTRUCTION = """
+You are an AI coaching assistant helping a human coach think through their athlete's training -- you speak TO the coach ABOUT the athlete, never to the athlete directly.
+
+MUST: Keep every reply to 1-2 short paragraphs or a brief bullet list. NEVER open with a preamble or repeat the coach's question back to them.
+NEVER fabricate a workout detail, completion status, or statistic about this athlete that isn't in the athlete context below. If the context doesn't cover what's asked, say so plainly rather than guessing, and answer from general coaching principles instead.
+
+Coaching principles — apply strictly:
+1. Trail Running: Scott Johnston's "Training for the Uphill Athlete" principles. Emphasize muscular endurance (e.g., weighted step-ups, hill sprints).
+2. Road Running: 80/20 rule — 80% of volume in Zone 1-2, 20% in Zone 3-5.
+3. When the athlete context below shows missed or incomplete workouts, address that directly and suggest a concrete adjustment.
+
+Tone: direct and pragmatic, like one coach talking shop with another — always actionable, focused on what the coach should do next with this athlete.
+"""
+
+
+class CoachChatRequest(BaseModel):
+    messages: list[ChatMessage]
 
 
 @app.get("/api/health")
@@ -607,6 +746,12 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
     }
     update_onboarding_profile(user["id"], onboarding_data)
 
+    if request.skip_plan:
+        # Profile saved, no plan row created -- the user starts one later
+        # from the Planner tab's own "New Plan" form when they're ready.
+        mark_onboarding_complete(user["id"])
+        return {"user": format_user_response(get_user_by_id(user["id"]) or user)}
+
     # Build a plan request from onboarding context
     race_name = request.race_name or _default_plan_name(request.goal_type)
     race_date = request.race_date or (today + timedelta(weeks=_default_weeks(request.goal_type))).strftime("%Y-%m-%d")
@@ -820,6 +965,345 @@ def auth_logout(authorization: str | None = Header(None)):
     return {"message": "Logged out successfully."}
 
 
+# --- Human Coach Roster (Phase 1) ---
+# "Coach" here means a human who coaches other users -- distinct from
+# "Coach Uphill", the AI persona served by the /api/coach/* endpoints above.
+# See docs/superpowers/specs/2026-07-20-coach-role-design.md.
+
+
+@app.post("/api/admin/users/{user_id}/coach-status")
+def set_coach_status(user_id: int, request: SetCoachStatusRequest, admin_user: dict[str, Any] = Depends(require_admin)):
+    target = get_user_by_id(user_id)
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found.")
+    set_user_is_coach(user_id, request.is_coach)
+    return format_user_response(get_user_by_id(user_id))
+
+
+@app.post("/api/coaching/invite")
+def invite_athlete(request: CoachInviteRequest, coach: dict[str, Any] = Depends(require_coach)):
+    athlete = get_user_by_email(request.athlete_email)
+    if not athlete:
+        raise HTTPException(
+            status_code=404, detail="No account found for that email. Ask the athlete to sign up first."
+        )
+    if athlete["id"] == coach["id"]:
+        raise HTTPException(status_code=400, detail="You cannot invite yourself.")
+    existing_active = get_active_coach_link_for_athlete(athlete["id"])
+    if existing_active and existing_active["coach_id"] != coach["id"]:
+        raise HTTPException(status_code=409, detail="This athlete already has an active coach.")
+    return create_coach_invite(coach["id"], athlete["id"])
+
+
+@app.post("/api/coaching/invites/{invite_id}/accept")
+def accept_invite(invite_id: int, user: dict[str, Any] = Depends(get_current_user)):
+    invite = get_coach_athlete_by_id(invite_id)
+    if not invite or invite["athlete_id"] != user["id"] or invite["status"] != "invited":
+        raise HTTPException(status_code=404, detail="Invite not found.")
+    existing_active = get_active_coach_link_for_athlete(user["id"])
+    if existing_active and existing_active["coach_id"] != invite["coach_id"]:
+        raise HTTPException(status_code=409, detail="You already have an active coach.")
+    updated = accept_coach_invite(invite_id, user["id"])
+    if not updated:
+        raise HTTPException(status_code=404, detail="Invite not found.")
+    return updated
+
+
+@app.post("/api/coaching/invites/{invite_id}/decline")
+def decline_invite(invite_id: int, user: dict[str, Any] = Depends(get_current_user)):
+    updated = decline_coach_invite(invite_id, user["id"])
+    if not updated:
+        raise HTTPException(status_code=404, detail="Invite not found.")
+    return updated
+
+
+@app.delete("/api/coaching/roster/{link_id}")
+def remove_from_roster(link_id: int, user: dict[str, Any] = Depends(get_current_user)):
+    updated = remove_coach_athlete_link(link_id, user["id"])
+    if not updated:
+        raise HTTPException(status_code=404, detail="Roster link not found.")
+    return updated
+
+
+@app.get("/api/coaching/roster")
+def get_roster(coach: dict[str, Any] = Depends(require_coach)):
+    return get_roster_for_coach(coach["id"])
+
+
+@app.get("/api/coaching/my-invites")
+def get_my_pending_invites(user: dict[str, Any] = Depends(get_current_user)):
+    return get_pending_invites_for_athlete(user["id"])
+
+
+@app.get("/api/coaching/athletes/{athlete_id}/active-plan")
+def get_athlete_active_plan(athlete_id: int, acting_user: dict[str, Any] = Depends(require_athlete_access)):
+    plan = get_active_plan(athlete_id)
+    if not plan:
+        return {"active": False}
+    workouts = get_plan_workouts(plan["id"])
+    return {"active": True, "plan": plan, "workouts": workouts}
+
+
+@app.get("/api/coaching/athletes/{athlete_id}/recent-plans")
+def get_athlete_recent_plans(athlete_id: int, acting_user: dict[str, Any] = Depends(require_athlete_access)):
+    plans = get_recent_plans(athlete_id, limit=3)
+    return {"plans": plans}
+
+
+@app.get("/api/coaching/athletes/{athlete_id}/plans/{plan_id}/workouts")
+def get_athlete_plan_workouts(
+    athlete_id: int, plan_id: int, acting_user: dict[str, Any] = Depends(require_athlete_access)
+):
+    _verify_plan_ownership(plan_id, athlete_id)
+    return {"workouts": get_plan_workouts(plan_id)}
+
+
+@app.get("/api/coaching/athletes/{athlete_id}/profile")
+def get_athlete_profile(athlete_id: int, acting_user: dict[str, Any] = Depends(require_athlete_access)):
+    athlete = get_user_by_id(athlete_id)
+    if not athlete:
+        raise HTTPException(status_code=404, detail="Athlete not found.")
+    return format_user_response(athlete)
+
+
+@app.get("/api/coaching/athletes/{athlete_id}/plans/draft")
+def get_athlete_draft_plan(athlete_id: int, acting_user: dict[str, Any] = Depends(require_athlete_access)):
+    plan = get_draft_plan_for_athlete(athlete_id)
+    if not plan:
+        return {"draft": False}
+    return {"draft": True, "plan": plan, "workouts": get_plan_workouts(plan["id"])}
+
+
+@app.put("/api/coaching/athletes/{athlete_id}/plans/{plan_id}/workouts/{workout_id}")
+def edit_athlete_workout(
+    athlete_id: int,
+    plan_id: int,
+    workout_id: int,
+    request: CoachWorkoutUpdateRequest,
+    acting_user: dict[str, Any] = Depends(require_athlete_access),
+):
+    """Whenever target_zone is part of the edit, target_pace/target_hr_range
+    are recomputed from the ATHLETE's own zones (never trusted from the
+    client) so an edited workout's pace/HR can never drift from the zone the
+    coach actually picked -- see CoachWorkoutUpdateRequest's docstring."""
+    plan = get_plan_by_id(plan_id)
+    if not plan or plan["user_id"] != athlete_id:
+        raise HTTPException(status_code=404, detail="Plan not found.")
+    workout = get_workout_by_id(workout_id)
+    if not workout or workout["plan_id"] != plan_id:
+        raise HTTPException(status_code=404, detail="Workout not found.")
+    fields = request.dict(exclude_unset=True)
+    if request.target_zone and request.target_zone not in ("Rest",):
+        athlete = get_user_by_id(athlete_id)
+        fields["target_pace"], fields["target_hr_range"] = _resolve_zone_pace_and_hr(
+            athlete, request.target_zone, fields.get("duration_minutes") or workout["duration_minutes"]
+        )
+    updated = coach_update_workout(workout_id, acting_user["id"], fields)
+    return updated
+
+
+@app.post("/api/coaching/athletes/{athlete_id}/plans/{plan_id}/workouts")
+def add_athlete_workout(
+    athlete_id: int,
+    plan_id: int,
+    request: CoachWorkoutCreateRequest,
+    acting_user: dict[str, Any] = Depends(require_athlete_access),
+):
+    plan = get_plan_by_id(plan_id)
+    if not plan or plan["user_id"] != athlete_id:
+        raise HTTPException(status_code=404, detail="Plan not found.")
+    return create_coach_workout(plan_id, acting_user["id"], request.dict())
+
+
+@app.post("/api/coaching/athletes/{athlete_id}/plans/{plan_id}/workouts/{workout_id}/approve")
+def approve_athlete_workout(
+    athlete_id: int, plan_id: int, workout_id: int, coach: dict[str, Any] = Depends(require_athlete_access)
+):
+    """Approves one workout. If this is the first approval on a still-draft
+    plan, the plan also flips to 'active' -- there is no separate
+    whole-plan-approve action; a draft plan goes live the moment its first
+    workout is approved."""
+    updated = approve_workout(workout_id, plan_id, athlete_id, coach["id"])
+    if not updated:
+        raise HTTPException(status_code=404, detail="Workout not found.")
+    return updated
+
+
+@app.post("/api/coaching/athletes/{athlete_id}/plans/{plan_id}/workouts/{workout_id}/remove")
+def remove_athlete_workout(
+    athlete_id: int, plan_id: int, workout_id: int, acting_user: dict[str, Any] = Depends(require_athlete_access)
+):
+    """'Removes' a workout by converting it to a rest day in place (no
+    delete endpoint exists -- see make_rest_day's docstring for why)."""
+    plan = get_plan_by_id(plan_id)
+    if not plan or plan["user_id"] != athlete_id:
+        raise HTTPException(status_code=404, detail="Plan not found.")
+    workout = get_workout_by_id(workout_id)
+    if not workout or workout["plan_id"] != plan_id:
+        raise HTTPException(status_code=404, detail="Workout not found.")
+    return make_rest_day(workout_id, acting_user["id"])
+
+
+@app.post("/api/coaching/athletes/{athlete_id}/plans/{plan_id}/workouts/ai-create")
+async def ai_create_athlete_workout(
+    athlete_id: int,
+    plan_id: int,
+    request: CoachWorkoutAiCreateRequest,
+    acting_user: dict[str, Any] = Depends(require_athlete_access),
+):
+    """Coach co-creation: the coach supplies type/duration/day/intent, Gemini
+    fills in the physiological detail grounded in the athlete's own profile.
+    The resulting workout is inserted via the same path as a fully-manual
+    add (create_coach_workout) -- it starts pending, same as any other new
+    or edited workout, and needs its own approve step."""
+    plan = get_plan_by_id(plan_id)
+    if not plan or plan["user_id"] != athlete_id:
+        raise HTTPException(status_code=404, detail="Plan not found.")
+    athlete = get_user_by_id(athlete_id)
+    if not athlete:
+        raise HTTPException(status_code=404, detail="Athlete not found.")
+    model_api_key = athlete.get("gemini_api_key") or settings.GEMINI_API_KEY
+    is_details_only_type = request.workout_type in ("Strength", "Muscular Endurance")
+    generated = await PlanGenerator.generate_single_workout(
+        user_profile=athlete,
+        workout_type=request.workout_type,
+        duration_minutes=request.duration_minutes,
+        day_of_week=request.day_of_week,
+        week_number=request.week_number,
+        intent=request.intent,
+        api_key=model_api_key,
+        target_zone=request.target_zone,
+        target_pace=request.target_pace,
+        interval_reps=request.interval_reps,
+        interval_rep_value=request.interval_rep_value,
+        interval_rep_unit=request.interval_rep_unit,
+        details=request.intent if is_details_only_type else None,
+    )
+    return create_coach_workout(plan_id, acting_user["id"], generated)
+
+
+def _build_athlete_context_block(athlete: dict[str, Any]) -> str:
+    """Server-assembled grounding text for the co-pilot -- deliberately not
+    trusting any client-supplied context, unlike the self-serve
+    /api/coach/chat. Reuses get_active_plan/get_plan_workouts exactly as
+    Phase 2's read endpoints do; no new queries."""
+    plan = get_active_plan(athlete["id"])
+    if not plan:
+        return f"Athlete: {athlete.get('name') or athlete.get('email')}\nThis athlete has no active training plan yet."
+
+    workouts = get_plan_workouts(plan["id"])
+    current_week = plan.get("current_week") or 1
+    week_workouts = [w for w in workouts if w["week_number"] == current_week]
+
+    lines = [
+        f"Athlete: {athlete.get('name') or athlete.get('email')}",
+        f"Active Plan: {plan['race_name']} on {plan['race_date']} ({plan['goal_type']}, week {current_week} of {plan['total_weeks']})",
+    ]
+    if not week_workouts:
+        lines.append("No workouts recorded for the current week.")
+    else:
+        lines.append("This week's workouts:")
+        for w in week_workouts:
+            status = "completed" if w.get("is_completed") else "not yet completed"
+            rpe = f", RPE {w['rpe']}" if w.get("rpe") else ""
+            lines.append(
+                f"- {w['day_of_week']}: {w['title']} ({w['type']}, {w['duration_minutes']} min, {status}{rpe})"
+            )
+    return "\n".join(lines)
+
+
+@app.post("/api/coaching/athletes/{athlete_id}/chat")
+async def coach_chat_copilot(
+    athlete_id: int, request: CoachChatRequest, coach: dict[str, Any] = Depends(require_athlete_access)
+):
+    if not request.messages:
+        raise HTTPException(status_code=400, detail="Message history cannot be empty.")
+
+    athlete = get_user_by_id(athlete_id)
+    if not athlete:
+        raise HTTPException(status_code=404, detail="Athlete not found.")
+
+    athlete_context = _build_athlete_context_block(athlete)
+
+    # Resolved against the COACH, not the athlete -- see the Phase 4 plan's
+    # Global Constraints for why this deliberately diverges from Phase 3's
+    # plan-generation key resolution.
+    fresh_coach = get_user_by_id(coach["id"]) or coach
+    model_api_key = fresh_coach.get("gemini_api_key") or settings.GEMINI_API_KEY
+
+    kb_context = ""
+    if model_api_key and settings.RAG_ENGINE == "gemini":
+        try:
+            import asyncio
+
+            from services.kb_context import render_principles_context
+            from services.kb_retrieval import search_scheduler_chunks
+
+            last_user_msg = request.messages[-1].content
+            hits = await asyncio.to_thread(search_scheduler_chunks, last_user_msg, model_api_key, 6)
+            kb_context = render_principles_context(hits, heading="UPHILL ATHLETE PHILOSOPHY (grounding context)")
+        except Exception as kb_ex:
+            print(f"[CoachCopilot][KB] Retrieval failed (continuing without): {kb_ex}")
+
+    full_system_prompt = (
+        f"{COACH_COPILOT_SYSTEM_INSTRUCTION}"
+        f"\n\n=== ATHLETE CONTEXT ===\n{athlete_context}\n=== END ATHLETE CONTEXT ===\n"
+        f"{kb_context}"
+    )
+
+    if model_api_key:
+        try:
+            formatted_contents = []
+            for msg in request.messages:
+                role = "user" if msg.role == "user" else "model"
+                formatted_contents.append({"role": role, "parts": [msg.content]})
+
+            model = genai.GenerativeModel(model_name="gemini-2.5-flash", system_instruction=full_system_prompt)
+
+            from google.generativeai import client as genai_client
+
+            my_manager = genai_client._ClientManager()
+            my_manager.configure(api_key=model_api_key)
+            model._client = my_manager.get_default_client("generative")
+
+            import asyncio
+
+            response = await asyncio.to_thread(model.generate_content, formatted_contents)
+            return {"role": "assistant", "content": response.text}
+        except Exception as e:
+            print(f"[CoachCopilot][Gemini] FAILED: {e}")
+
+    last_user_msg = request.messages[-1].content
+    mock_reply = (
+        "I'm running in offline mock mode right now. "
+        f"You asked: '{last_user_msg}'. "
+        "Once a Gemini API key is configured (yours or the server's), I'll answer grounded in this athlete's actual plan and workout data."
+    )
+    return {"role": "assistant", "content": mock_reply}
+
+
+_VALID_NOTE_TARGET_TYPES = {"plan", "workout", "gear", "nutrition", "general"}
+
+
+@app.post("/api/coaching/athletes/{athlete_id}/notes")
+def create_athlete_note(
+    athlete_id: int, request: CoachNoteCreateRequest, acting_user: dict[str, Any] = Depends(require_athlete_access)
+):
+    if request.target_type not in _VALID_NOTE_TARGET_TYPES:
+        raise HTTPException(status_code=422, detail=f"target_type must be one of {sorted(_VALID_NOTE_TARGET_TYPES)}")
+    return create_coach_note(acting_user["id"], athlete_id, request.target_type, request.target_id, request.note)
+
+
+@app.get("/api/coaching/athletes/{athlete_id}/notes")
+def get_athlete_notes(
+    athlete_id: int,
+    target_type: str | None = None,
+    target_id: int | None = None,
+    acting_user: dict[str, Any] = Depends(require_athlete_access),
+):
+    return {"notes": get_coach_notes(athlete_id, target_type, target_id)}
+
+
 # --- Telemetry Parsers ---
 
 
@@ -936,174 +1420,218 @@ def get_current_active_plan(user: dict[str, Any] = Depends(get_current_user)):
     return {"active": True, "plan": plan, "workouts": workouts}
 
 
+async def _generate_plan_for_athlete(
+    request: PlanGenerateRequest,
+    athlete_id: int,
+    created_by_user_id: int,
+    plan_status: str,
+    job_owner_user_id: int,
+) -> dict[str, Any]:
+    """Shared core of plan generation, used by both the self-serve
+    /api/coach/generate-plan (athlete_id == created_by_user_id ==
+    job_owner_user_id, plan_status='active') and the coach-triggered
+    /api/coaching/athletes/{athlete_id}/generate-plan (created_by_user_id =
+    coach.id, plan_status='draft', job_owner_user_id = coach.id so only the
+    coach -- not yet the athlete -- can poll the job)."""
+    import asyncio
+    from datetime import datetime, timedelta
+
+    goal = request.goal_type
+    is_race_or_dist = goal in ["finish", "time", "optimal"]
+
+    # Parse plan start date (default to today if missing)
+    start_date_str = request.plan_start_date or datetime.now().strftime("%Y-%m-%d")
+    try:
+        start_date_parsed = datetime.strptime(start_date_str, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid plan_start_date format. Expected YYYY-MM-DD.")
+
+    if is_race_or_dist:
+        if not request.race_date:
+            raise HTTPException(status_code=400, detail="Race Date is required for race/distance goals.")
+        try:
+            race_date_parsed = datetime.strptime(request.race_date, "%Y-%m-%d").date()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format. Expected YYYY-MM-DD.")
+
+        # Find Mondays
+        monday_start = start_date_parsed - timedelta(days=start_date_parsed.weekday())
+        monday_race = race_date_parsed - timedelta(days=race_date_parsed.weekday())
+
+        weeks_to_race = (monday_race - monday_start).days // 7
+        total_weeks = max(3, weeks_to_race + 2)
+        race_date_str = request.race_date
+        race_name_str = request.race_name or "Target Event"
+    else:
+        # Non-race goals
+        total_weeks = request.plan_duration_weeks or 8
+        # Calculate a synthetic race date at the end of the block
+        race_date_parsed = start_date_parsed + timedelta(weeks=total_weeks - 1)
+        race_date_str = race_date_parsed.strftime("%Y-%m-%d")
+
+        # Clear race-specific parameters for non-race plans
+        request.course_distance_km = None
+        request.course_elevation_gain_m = None
+
+        if goal == "start_running":
+            race_name_str = "Base Building"
+        elif goal == "return":
+            race_name_str = "Return to Running"
+        elif goal == "recovery":
+            race_name_str = "Post-Race Recovery"
+        else:
+            race_name_str = request.race_name or "Training Block"
+
+    course_context = None
+    if is_race_or_dist:
+        request.course_distance_km, request.course_elevation_gain_m, course_context = _resolve_course_match(
+            race_name_str, request.course_distance_km, request.course_elevation_gain_m
+        )
+
+    plan_id = create_plan(
+        user_id=athlete_id,
+        race_name=race_name_str,
+        race_date=race_date_str,
+        goal_type=goal,
+        target_time_hours=request.target_time_hours,
+        total_weeks=total_weeks,
+        course_distance_km=request.course_distance_km,
+        course_elevation_gain_m=request.course_elevation_gain_m,
+        preferred_run_days=request.preferred_days or [],
+        long_run_day=request.long_run_day,
+        days_per_week=request.days_per_week or 4,
+        double_session_days=request.double_session_days or [],
+        start_date=start_date_str,
+        has_gym_access=request.has_gym_access or False,
+        use_treadmill=request.use_treadmill,
+        training_environment=request.training_environment or "flat",
+        created_by_user_id=created_by_user_id,
+        plan_status=plan_status,
+    )
+
+    race_info = {
+        "name": race_name_str,
+        "date": race_date_str,
+        "terrain": request.terrain,
+        "goal_type": request.goal_type,
+        "target_time_hours": request.target_time_hours,
+        "course_distance_km": request.course_distance_km,
+        "course_elevation_gain_m": request.course_elevation_gain_m,
+        "course_context": course_context,
+        # Scheduling preferences (plan-level)
+        "preferred_days": request.preferred_days,
+        "long_run_day": request.long_run_day,
+        "days_per_week": request.days_per_week,
+        "double_session_days": request.double_session_days or [],
+        "has_gym_access": request.has_gym_access or False,
+        "use_treadmill": request.use_treadmill
+        if request.use_treadmill is not None
+        else (request.has_gym_access or False),
+        "training_environment": request.training_environment or "flat",
+        # Start date
+        "plan_start_date": start_date_str,
+        "lang": request.lang or "en",
+    }
+
+    # Fetch latest athlete details from database to ensure fresh physiological values
+    fresh_user = get_user_by_id(athlete_id) or {"id": athlete_id}
+
+    # Merge onboarding/non-race context fields into fresh_user dict for plan generator
+    fresh_user = dict(fresh_user)
+    fresh_user.update(
+        {
+            "time_away": request.time_away,
+            "fitness_feel": request.fitness_feel,
+            "race_distance_completed": request.race_distance_completed,
+            "days_since_race": request.days_since_race,
+            "recovery_feel": request.recovery_feel,
+        }
+    )
+
+    # Resolve Gemini API Key (per-user key with global settings fallback)
+    model_api_key = fresh_user.get("gemini_api_key") or settings.GEMINI_API_KEY
+    cutoff = request.cutoff_time_hours
+
+    # Create job entry and fire plan generation in the background
+    job_id = str(_uuid.uuid4())
+    plan_jobs[job_id] = {
+        "status": "generating",
+        "user_id": job_owner_user_id,
+        "plan_id": plan_id,
+        "workouts": None,
+        "error": None,
+    }
+
+    async def _run_gen():
+        try:
+            workouts = await PlanGenerator.generate_plan_workouts(
+                plan_id,
+                fresh_user,
+                race_info,
+                total_weeks,
+                api_key=model_api_key,
+                cutoff_time_hours=cutoff,
+                block_number=1,
+                weeks_per_block=2,
+            )
+            save_workouts(plan_id, workouts, auto_approve=(plan_status != "draft"))
+            plan_jobs[job_id]["workouts"] = workouts
+            plan_jobs[job_id]["status"] = "done"
+            print(f"[PlanJob][{job_id}] generate-plan complete — {len(workouts)} workouts saved.")
+        except Exception as ex:
+            plan_jobs[job_id]["status"] = "error"
+            plan_jobs[job_id]["error"] = str(ex)
+            print(f"[PlanJob][{job_id}] generate-plan FAILED: {ex}")
+
+    asyncio.create_task(_run_gen())
+
+    return {
+        "job_id": job_id,
+        "active": True,
+        "plan": {
+            "id": plan_id,
+            "race_name": race_name_str,
+            "race_date": race_date_str,
+            "goal_type": request.goal_type,
+            "target_time_hours": request.target_time_hours,
+            "total_weeks": total_weeks,
+            "course_distance_km": request.course_distance_km,
+            "course_elevation_gain_m": request.course_elevation_gain_m,
+        },
+        "workouts": [],
+    }
+
+
 @app.post("/api/coach/generate-plan")
 async def generate_training_plan(request: PlanGenerateRequest, user: dict[str, Any] = Depends(get_current_user)):
     try:
-        import asyncio
-        from datetime import datetime, timedelta
-
-        goal = request.goal_type
-        is_race_or_dist = goal in ["finish", "time", "optimal"]
-
-        # Parse plan start date (default to today if missing)
-        start_date_str = request.plan_start_date or datetime.now().strftime("%Y-%m-%d")
-        try:
-            start_date_parsed = datetime.strptime(start_date_str, "%Y-%m-%d").date()
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid plan_start_date format. Expected YYYY-MM-DD.")
-
-        if is_race_or_dist:
-            if not request.race_date:
-                raise HTTPException(status_code=400, detail="Race Date is required for race/distance goals.")
-            try:
-                race_date_parsed = datetime.strptime(request.race_date, "%Y-%m-%d").date()
-            except ValueError:
-                raise HTTPException(status_code=400, detail="Invalid date format. Expected YYYY-MM-DD.")
-
-            # Find Mondays
-            monday_start = start_date_parsed - timedelta(days=start_date_parsed.weekday())
-            monday_race = race_date_parsed - timedelta(days=race_date_parsed.weekday())
-
-            weeks_to_race = (monday_race - monday_start).days // 7
-            total_weeks = max(3, weeks_to_race + 2)
-            race_date_str = request.race_date
-            race_name_str = request.race_name or "Target Event"
-        else:
-            # Non-race goals
-            total_weeks = request.plan_duration_weeks or 8
-            # Calculate a synthetic race date at the end of the block
-            race_date_parsed = start_date_parsed + timedelta(weeks=total_weeks - 1)
-            race_date_str = race_date_parsed.strftime("%Y-%m-%d")
-
-            # Clear race-specific parameters for non-race plans
-            request.course_distance_km = None
-            request.course_elevation_gain_m = None
-
-            if goal == "start_running":
-                race_name_str = "Base Building"
-            elif goal == "return":
-                race_name_str = "Return to Running"
-            elif goal == "recovery":
-                race_name_str = "Post-Race Recovery"
-            else:
-                race_name_str = request.race_name or "Training Block"
-
-        course_context = None
-        if is_race_or_dist:
-            request.course_distance_km, request.course_elevation_gain_m, course_context = _resolve_course_match(
-                race_name_str, request.course_distance_km, request.course_elevation_gain_m
-            )
-
-        plan_id = create_plan(
-            user_id=user["id"],
-            race_name=race_name_str,
-            race_date=race_date_str,
-            goal_type=goal,
-            target_time_hours=request.target_time_hours,
-            total_weeks=total_weeks,
-            course_distance_km=request.course_distance_km,
-            course_elevation_gain_m=request.course_elevation_gain_m,
-            preferred_run_days=request.preferred_days or [],
-            long_run_day=request.long_run_day,
-            days_per_week=request.days_per_week or 4,
-            double_session_days=request.double_session_days or [],
-            start_date=start_date_str,
-            has_gym_access=request.has_gym_access or False,
-            use_treadmill=request.use_treadmill,
-            training_environment=request.training_environment or "flat",
+        return await _generate_plan_for_athlete(
+            request,
+            athlete_id=user["id"],
+            created_by_user_id=user["id"],
+            plan_status="active",
+            job_owner_user_id=user["id"],
         )
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Failed to generate plan: {str(e)}")
 
-        race_info = {
-            "name": race_name_str,
-            "date": race_date_str,
-            "terrain": request.terrain,
-            "goal_type": request.goal_type,
-            "target_time_hours": request.target_time_hours,
-            "course_distance_km": request.course_distance_km,
-            "course_elevation_gain_m": request.course_elevation_gain_m,
-            "course_context": course_context,
-            # Scheduling preferences (plan-level)
-            "preferred_days": request.preferred_days,
-            "long_run_day": request.long_run_day,
-            "days_per_week": request.days_per_week,
-            "double_session_days": request.double_session_days or [],
-            "has_gym_access": request.has_gym_access or False,
-            "use_treadmill": request.use_treadmill
-            if request.use_treadmill is not None
-            else (request.has_gym_access or False),
-            "training_environment": request.training_environment or "flat",
-            # Start date
-            "plan_start_date": start_date_str,
-            "lang": request.lang or "en",
-        }
 
-        # Fetch latest user details from database to ensure fresh physiological values
-        fresh_user = get_user_by_id(user["id"]) or user
-
-        # Merge onboarding/non-race context fields into fresh_user dict for plan generator
-        fresh_user = dict(fresh_user)
-        fresh_user.update(
-            {
-                "time_away": request.time_away,
-                "fitness_feel": request.fitness_feel,
-                "race_distance_completed": request.race_distance_completed,
-                "days_since_race": request.days_since_race,
-                "recovery_feel": request.recovery_feel,
-            }
+@app.post("/api/coaching/athletes/{athlete_id}/generate-plan")
+async def coach_generate_plan(
+    athlete_id: int, request: PlanGenerateRequest, coach: dict[str, Any] = Depends(require_athlete_access)
+):
+    if not get_user_by_id(athlete_id):
+        raise HTTPException(status_code=404, detail="Athlete not found.")
+    try:
+        return await _generate_plan_for_athlete(
+            request,
+            athlete_id=athlete_id,
+            created_by_user_id=coach["id"],
+            plan_status="draft",
+            job_owner_user_id=coach["id"],
         )
-
-        # Resolve Gemini API Key (per-user key with global settings fallback)
-        model_api_key = fresh_user.get("gemini_api_key") or settings.GEMINI_API_KEY
-        cutoff = request.cutoff_time_hours
-
-        # Create job entry and fire plan generation in the background
-        job_id = str(_uuid.uuid4())
-        plan_jobs[job_id] = {
-            "status": "generating",
-            "user_id": user["id"],
-            "plan_id": plan_id,
-            "workouts": None,
-            "error": None,
-        }
-
-        async def _run_gen():
-            try:
-                workouts = await PlanGenerator.generate_plan_workouts(
-                    plan_id,
-                    fresh_user,
-                    race_info,
-                    total_weeks,
-                    api_key=model_api_key,
-                    cutoff_time_hours=cutoff,
-                    block_number=1,
-                    weeks_per_block=2,
-                )
-                save_workouts(plan_id, workouts)
-                plan_jobs[job_id]["workouts"] = workouts
-                plan_jobs[job_id]["status"] = "done"
-                print(f"[PlanJob][{job_id}] generate-plan complete — {len(workouts)} workouts saved.")
-            except Exception as ex:
-                plan_jobs[job_id]["status"] = "error"
-                plan_jobs[job_id]["error"] = str(ex)
-                print(f"[PlanJob][{job_id}] generate-plan FAILED: {ex}")
-
-        asyncio.create_task(_run_gen())
-
-        return {
-            "job_id": job_id,
-            "active": True,
-            "plan": {
-                "id": plan_id,
-                "race_name": race_name_str,
-                "race_date": race_date_str,
-                "goal_type": request.goal_type,
-                "target_time_hours": request.target_time_hours,
-                "total_weeks": total_weeks,
-                "course_distance_km": request.course_distance_km,
-                "course_elevation_gain_m": request.course_elevation_gain_m,
-            },
-            "workouts": [],
-        }
     except Exception as e:
         if isinstance(e, HTTPException):
             raise e
@@ -1128,9 +1656,13 @@ async def get_plan_generation_status(job_id: str, user: dict[str, Any] = Depends
         "plan_id": job["plan_id"],
     }
     if job["status"] == "done":
-        # Return fresh workouts from DB (job store may be large; DB is authoritative)
+        # Return fresh workouts from DB (job store may be large; DB is authoritative).
+        # Fetched by the job's own plan_id, not the poller's "active plan" -- the
+        # poller may be a coach reviewing a draft they generated for someone else,
+        # in which case get_active_plan(poller_id) would return the wrong plan (or
+        # none at all).
         response["workouts"] = get_plan_workouts(job["plan_id"])
-        response["plan"] = get_active_plan(user["id"])
+        response["plan"] = get_plan_by_id(job["plan_id"])
     if job["status"] == "error":
         response["error"] = job["error"]
     return response
@@ -1516,12 +2048,15 @@ def export_ics(
 # --- Phase 3 Specialized Routes ---
 
 
-@app.post("/api/coach/calculate-pacing")
-def calculate_pacing(request: PacingRequest):
+def _calculate_pacing_core(request: PacingRequest):
     """Calculates GPX checkpoint splits and times adjusted for grade, altitude,
     fatigue, heat, and split strategy. Accepts either a base flat pace or a
     target finish time (solved to a base pace). With race_start_iso, checkpoints
-    that carry coordinates get per-segment forecast heat and sunset flags."""
+    that carry coordinates get per-segment forecast heat and sunset flags.
+    Shared by the self-serve /api/coach/calculate-pacing and the
+    coach-triggered /api/coaching/athletes/{athlete_id}/calculate-pacing --
+    pure computation over the request body, nothing athlete-specific to
+    resolve."""
     if request.target_flat_pace_min_km is None and request.target_time_mins is None:
         raise HTTPException(
             status_code=422,
@@ -1574,24 +2109,64 @@ def calculate_pacing(request: PacingRequest):
     return paced_cps
 
 
-@app.post("/api/coach/calculate-fueling")
-async def calculate_fueling(request: NutritionParams):
-    """Calculates Precision Hydration targets and gel product recipes via NotebookLM."""
+@app.post("/api/coach/calculate-pacing")
+def calculate_pacing(request: PacingRequest):
+    return _calculate_pacing_core(request)
+
+
+@app.post("/api/coaching/athletes/{athlete_id}/calculate-pacing")
+def coach_calculate_pacing(
+    athlete_id: int, request: PacingRequest, coach: dict[str, Any] = Depends(require_athlete_access)
+):
+    return _calculate_pacing_core(request)
+
+
+async def _calculate_fueling_core(request: NutritionParams) -> dict[str, Any]:
+    """Calculates Precision Hydration targets and gel product recipes.
+    Shared by the self-serve /api/coach/calculate-fueling and the
+    coach-triggered /api/coaching/athletes/{athlete_id}/calculate-fueling.
+    nutrition_planner always uses the server-level Gemini key regardless of
+    caller (see CLAUDE.md) -- unaffected by this phase."""
     try:
-        strategy = await nutrition_planner.generate_plan(user_profile="", params=request)
-        return strategy
+        return await nutrition_planner.generate_plan(user_profile="", params=request)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to compile fueling plan: {str(e)}")
 
 
-@app.post("/api/coach/recommend-shoes")
-async def recommend_shoes(request: GearParams):
-    """Matches athlete profiles with suitable shoe catalogs via NotebookLM."""
+@app.post("/api/coach/calculate-fueling")
+async def calculate_fueling(request: NutritionParams):
+    return await _calculate_fueling_core(request)
+
+
+@app.post("/api/coaching/athletes/{athlete_id}/calculate-fueling")
+async def coach_calculate_fueling(
+    athlete_id: int, request: NutritionParams, coach: dict[str, Any] = Depends(require_athlete_access)
+):
+    return await _calculate_fueling_core(request)
+
+
+async def _recommend_shoes_core(request: GearParams) -> dict[str, Any]:
+    """Matches athlete profiles with suitable shoe catalogs. Shared by the
+    self-serve /api/coach/recommend-shoes and the coach-triggered
+    /api/coaching/athletes/{athlete_id}/recommend-shoes. gear_planner
+    always uses the server-level Gemini key regardless of caller (see
+    CLAUDE.md) -- unaffected by this phase."""
     try:
-        recs = await gear_planner.generate_plan(user_profile="", params=request)
-        return recs
+        return await gear_planner.generate_plan(user_profile="", params=request)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to match shoes: {str(e)}")
+
+
+@app.post("/api/coach/recommend-shoes")
+async def recommend_shoes(request: GearParams):
+    return await _recommend_shoes_core(request)
+
+
+@app.post("/api/coaching/athletes/{athlete_id}/recommend-shoes")
+async def coach_recommend_shoes(
+    athlete_id: int, request: GearParams, coach: dict[str, Any] = Depends(require_athlete_access)
+):
+    return await _recommend_shoes_core(request)
 
 
 @app.get("/api/coach/nutrition-catalog")
@@ -1909,13 +2484,16 @@ def _parse_hms_to_mins(time_str: str | None) -> float | None:
     return h * 60 + m + s / 60
 
 
-@app.post("/api/coach/goal-estimate")
-def goal_estimate(request: GoalEstimateRequest):
+def _goal_estimate_core(request: GoalEstimateRequest) -> dict[str, Any]:
     """Goal Determiner: predicted finish time + A/B/C goals for a target
     course, from either a flat base pace or a past race result. Course
     numbers are backfilled from the race KB when only a name is given, and
     an UltraSignup-style rank-transfer estimate is added when winner times
-    are curated for both races."""
+    are curated for both races. Shared by the self-serve
+    /api/coach/goal-estimate and the coach-triggered
+    /api/coaching/athletes/{athlete_id}/goal-estimate -- this function
+    reads nothing from the database keyed by a user id, so there is no
+    athlete-vs-coach resolution to get right here."""
     from services.race_estimator import RaceEstimator
     from services.race_matcher import match_race, race_benchmarks
 
@@ -1983,6 +2561,18 @@ def goal_estimate(request: GoalEstimateRequest):
                 )
 
     return response
+
+
+@app.post("/api/coach/goal-estimate")
+def goal_estimate(request: GoalEstimateRequest):
+    return _goal_estimate_core(request)
+
+
+@app.post("/api/coaching/athletes/{athlete_id}/goal-estimate")
+def coach_goal_estimate(
+    athlete_id: int, request: GoalEstimateRequest, coach: dict[str, Any] = Depends(require_athlete_access)
+):
+    return _goal_estimate_core(request)
 
 
 @app.get("/api/coach/pace-strategy/benchmarks")

@@ -15,7 +15,7 @@ fixtures.
 from datetime import date
 from unittest.mock import patch
 
-from db import get_active_plan
+from db import get_active_plan, get_user_by_id
 from services.race_matcher import MatchedRace
 
 FAR_FUTURE_START_DATE = "2027-03-15"  # deliberately far from "today" so a regression is unmistakable
@@ -116,3 +116,44 @@ def test_onboarding_non_race_goal_never_calls_race_matcher(client, auth_headers,
     assert plan is not None
     assert plan["course_distance_km"] is None
     assert plan["course_elevation_gain_m"] is None
+
+
+class TestSkipPlanOnboarding:
+    def test_skip_plan_saves_profile_and_completes_onboarding_without_a_plan(self, client, auth_headers):
+        resp = client.post(
+            "/api/auth/onboarding",
+            headers=auth_headers["headers"],
+            json={
+                "goal_type": "race",
+                "race_name": "Test 50K",
+                "race_date": "2027-05-01",
+                "days_per_week": 4,
+                "skip_plan": True,
+            },
+        )
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert "job_id" not in body
+        assert "plan" not in body
+        assert body["user"]["onboarding_complete"] is True
+
+        assert get_active_plan(auth_headers["user_id"]) is None
+
+        saved_user = get_user_by_id(auth_headers["user_id"])
+        assert saved_user["onboarding_complete"] is True
+        assert saved_user["goal_type"] == "race"
+
+    def test_skip_plan_defaults_to_false_and_generates_normally(self, client, auth_headers, mock_plan_generation):
+        resp = client.post(
+            "/api/auth/onboarding",
+            headers=auth_headers["headers"],
+            json={
+                "goal_type": "race",
+                "race_name": "Test 50K",
+                "race_date": "2027-05-01",
+                "days_per_week": 4,
+            },
+        )
+        assert resp.status_code == 200, resp.text
+        assert "job_id" in resp.json()
+        assert get_active_plan(auth_headers["user_id"]) is not None

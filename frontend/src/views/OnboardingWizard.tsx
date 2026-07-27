@@ -74,7 +74,7 @@ export default function OnboardingWizard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onboardingAnswers.race_goal, onboardingAnswers.course_distance_km, onboardingAnswers.course_elevation_gain_m, onboardingAnswers.race_date, onboardingAnswers.race_name, onboardingAnswers.zone2_pace_min, onboardingAnswers.zone2_pace_max]);
 
-  const handleCompleteOnboarding = async () => {
+  const handleCompleteOnboarding = async (skipPlan: boolean = false) => {
 
     const token = localStorage.getItem("uphill_session_token");
 
@@ -141,6 +141,8 @@ export default function OnboardingWizard() {
         double_session_days: onboardingAnswers.double_session_days || [],
 
         lang: lang,
+
+        skip_plan: skipPlan,
 
       };
 
@@ -212,7 +214,7 @@ export default function OnboardingWizard() {
 
       setOnboardingOpen(false);
 
-      setActiveTab("planner");
+      setActiveTab(skipPlan ? "home" : "planner");
 
       // Start polling for plan generation in the background
 
@@ -1601,10 +1603,18 @@ export default function OnboardingWizard() {
 
                   </div>
 
-                  <button className="btn btn-primary" style={{ width: "100%", height: "44px", fontSize: "14px", fontWeight: "700" }} onClick={handleCompleteOnboarding}>
+                  <button className="btn btn-primary" style={{ width: "100%", height: "44px", fontSize: "14px", fontWeight: "700" }} onClick={() => handleCompleteOnboarding(false)}>
 
                     🚀 {lang === "en" ? "Generate My Training Plan" : "Khởi tạo Kế hoạch Tập luyện Của Tôi"}
 
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleCompleteOnboarding(true)}
+                    style={{ width: "100%", height: "38px", marginTop: "10px", background: "transparent", border: "none", cursor: "pointer", fontSize: "13px", color: "var(--text-secondary)", fontWeight: "600", textDecoration: "underline" }}
+                  >
+                    {lang === "en" ? "Skip for now — explore the app first" : "Bỏ qua — khám phá ứng dụng trước"}
                   </button>
 
                 </>

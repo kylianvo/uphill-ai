@@ -19,6 +19,7 @@ export const translations = {
     tab_knowledge: "Knowledge Hub",
     tab_about: "About Us",
     tab_tools: "Tools",
+    tab_coach: "Coach",
 
     // Authentication Screen
     auth_sign_in: "Sign In",
@@ -219,7 +220,8 @@ export const translations = {
     header_planner_desc: "Periodized training blocks for your next race",
     header_knowledge_desc: "Knowledge cards extracted from your indexed podcasts",
     header_tools_desc: "Data-driven insights to optimize your training and gear.",
-    header_about_desc: "The story, engine, and philosophy behind Uphill.AI"
+    header_about_desc: "The story, engine, and philosophy behind Uphill.AI",
+    header_coach_desc: "Manage your athlete roster and their training plans."
   },
   vi: {
     // Brand & App General
@@ -241,6 +243,7 @@ export const translations = {
     tab_knowledge: "Knowledge Hub",
     tab_about: "About Us",
     tab_tools: "Tools",
+    tab_coach: "Coach",
 
     // Authentication Screen
     auth_sign_in: "Đăng nhập",
@@ -441,6 +444,7 @@ export const translations = {
     header_planner_desc: "Các chu kỳ huấn luyện (Periodized blocks) cho giải chạy sắp tới",
     header_knowledge_desc: "Các thẻ kiến thức được trích xuất từ tài liệu đã lưu trữ",
     header_tools_desc: "Tính toán nhịp độ, dinh dưỡng, thiết bị — tất cả tại một nơi",
-    header_about_desc: "Câu chuyện, nền tảng công nghệ, và triết lý của Uphill.AI"
+    header_about_desc: "Câu chuyện, nền tảng công nghệ, và triết lý của Uphill.AI",
+    header_coach_desc: "Quản lý danh sách vận động viên và kế hoạch huấn luyện của họ."
   }
 };
