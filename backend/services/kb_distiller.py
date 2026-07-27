@@ -464,7 +464,14 @@ async def save_domain(domain: str, rows: list[dict], api_key: str) -> int:
 
     if domain == "gear":
         saved = db.add_kb_chunks(domain, rows)
-        export_seed(domain, db.get_kb_chunks(domain, kind="catalog_item"))  # full current catalog, not just new rows
+        # full current catalog, not just new rows — project down to the six clean seed
+        # fields so machine-specific id/content_hash/created_at never leak into the
+        # committed, human-editable seed file.
+        clean_rows = [
+            {k: row[k] for k in ("domain", "kind", "title", "content", "payload", "source_label")}
+            for row in db.get_kb_chunks(domain, kind="catalog_item")
+        ]
+        export_seed(domain, clean_rows)
         print(f"[KBDistiller] 'gear' web discovery: {saved} new chunks added, seed exported.")
         return saved
     saved = db.replace_kb_chunks(domain, rows)
@@ -478,8 +485,8 @@ async def save_domain(domain: str, rows: list[dict], api_key: str) -> int:
 
 
 async def distill_domain(domain: str, api_key: str, status_holder: dict) -> int:
-    """Sweep one domain's source -> validate -> save. Thin composition used by both
-    the FastAPI admin endpoint and the Airflow DAG."""
+    """Sweep one domain's source -> validate -> save. Thin composition used by the FastAPI
+    admin endpoint; the Airflow DAG reimplements this same composition across its own tasks."""
     rows = await sweep_domain(domain, api_key, status_holder)
     if not rows and domain != "gear":
         raise RuntimeError(f"Distillation produced an empty result for '{domain}' — keeping existing KB.")

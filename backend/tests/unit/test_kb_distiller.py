@@ -137,13 +137,35 @@ def test_validate_domain_rows_gear_drops_thin_rows_but_allows_empty():
 def test_save_domain_gear_uses_insert_only_append(tmp_path, monkeypatch):
     monkeypatch.setattr(kb_distiller, "SEED_DIR", str(tmp_path))  # don't clobber the real committed seed file
     rows = [{"domain": "gear", "kind": "catalog_item", "title": "Hoka Speedgoat 7", "content": "c", "payload": None}]
+    # db.get_kb_chunks does SELECT * — mock the raw row shape it actually returns (id/
+    # content_hash/created_at plus source_label) so this test catches those leaking into
+    # the exported seed file.
+    raw_catalog_rows = [
+        {
+            "id": 42,
+            "domain": "gear",
+            "kind": "catalog_item",
+            "title": "Hoka Speedgoat 7",
+            "content": "c",
+            "payload": None,
+            "source_label": "web discovery",
+            "content_hash": "abc123",
+            "created_at": "2026-07-27T00:00:00",
+        }
+    ]
     with (
         patch("db.add_kb_chunks", return_value=1) as add_mock,
-        patch("db.get_kb_chunks", return_value=rows),  # export_seed reads full current catalog
+        patch("db.get_kb_chunks", return_value=raw_catalog_rows),  # export_seed reads full current catalog
     ):
         saved = asyncio.run(kb_distiller.save_domain("gear", rows, "test-key"))
     add_mock.assert_called_once_with("gear", rows)
     assert saved == 1
+
+    with open(f"{tmp_path}/gear.json", encoding="utf-8") as f:
+        exported = json.load(f)
+    exported_row = exported["chunks"][0]
+    assert set(exported_row) == {"domain", "kind", "title", "content", "payload", "source_label"}
+    assert "id" not in exported_row and "content_hash" not in exported_row and "created_at" not in exported_row
 
 
 def test_query_with_retries_does_not_retry_stream_overflow():

@@ -6,7 +6,6 @@ import asyncio
 from datetime import datetime
 
 from airflow import DAG
-from airflow.models import Variable
 from airflow.operators.python import PythonOperator
 from airflow.utils.task_group import TaskGroup
 
@@ -16,9 +15,10 @@ default_args = {"owner": "uphill-ai", "retries": 1}
 
 
 def _sweep(domain: str, **context):
+    from config import settings
     from services.kb_distiller import sweep_domain
 
-    api_key = Variable.get("GEMINI_API_KEY")
+    api_key = settings.GEMINI_API_KEY
     rows = asyncio.run(sweep_domain(domain, api_key, {}))
     if not rows and domain != "gear":
         raise RuntimeError(f"Distillation produced an empty result for '{domain}' — keeping existing KB.")
@@ -34,11 +34,12 @@ def _validate(domain: str, **context):
 
 
 def _embed(domain: str, **context):
+    from config import settings
     from services.kb_distiller import save_domain
 
     ti = context["ti"]
     rows = ti.xcom_pull(task_ids=f"{domain}.validate_{domain}")
-    api_key = Variable.get("GEMINI_API_KEY")
+    api_key = settings.GEMINI_API_KEY
     return asyncio.run(save_domain(domain, rows, api_key))
 
 
