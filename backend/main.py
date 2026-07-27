@@ -2346,6 +2346,51 @@ async def trigger_knowledge_extraction(user: dict[str, Any] = Depends(get_curren
     return {"status": "started"}
 
 
+podcast_discovery_status: dict[str, Any] = {"status": "idle"}
+podcast_discovery_task = None
+
+
+@app.post("/api/knowledge/discover-podcast")
+async def trigger_podcast_discovery(user: dict[str, Any] = Depends(require_admin)):
+    """Discover new Evoke Endurance podcast episodes and append their knowledge cards
+    (admin, background job). Distinct from /api/knowledge/trigger's NotebookLM sweep
+    (which does a full clear+rebuild on 8 fixed topics): this incrementally appends
+    cards from newly-found episodes, never touching the existing library."""
+    import asyncio
+
+    from services.knowledge_extractor import discover_podcast_knowledge_web, save_podcast_knowledge_cards
+
+    global podcast_discovery_task
+    if podcast_discovery_task is not None and not podcast_discovery_task.done():
+        return {"status": "already_discovering"}
+    if not settings.TAVILY_API_KEY:
+        raise HTTPException(status_code=400, detail="TAVILY_API_KEY is not configured")
+
+    fresh_user = get_user_by_id(user["id"]) or user
+    api_key = fresh_user.get("gemini_api_key") or settings.GEMINI_API_KEY
+    if not api_key:
+        raise HTTPException(status_code=400, detail="No Gemini API key configured")
+
+    async def run_podcast_discovery():
+        try:
+            cards = await discover_podcast_knowledge_web(api_key, settings.TAVILY_API_KEY, podcast_discovery_status)
+            saved = await save_podcast_knowledge_cards(cards, api_key)
+            podcast_discovery_status.update({"status": "done", "cards_found": len(cards), "cards_saved": saved})
+        except Exception as e:
+            podcast_discovery_status.update({"status": "error", "message": str(e)})
+            print(f"[Knowledge] Podcast discovery failed: {e}")
+
+    podcast_discovery_status.clear()
+    podcast_discovery_status.update({"status": "discovering"})
+    podcast_discovery_task = asyncio.create_task(run_podcast_discovery())
+    return {"status": "started"}
+
+
+@app.get("/api/knowledge/discover-podcast/status")
+def get_podcast_discovery_status(user: dict[str, Any] = Depends(get_current_user)):
+    return dict(podcast_discovery_status)
+
+
 # ─── KB Distillation (NotebookLM → kb_chunks) ────────────────────────────────
 
 kb_distill_status: dict[str, Any] = {"status": "idle"}

@@ -1532,6 +1532,16 @@ def get_knowledge_topics() -> list[str]:
     return [r[0] for r in rows]
 
 
+def get_knowledge_card_source_labels() -> set[str]:
+    """Distinct source_label values already in the table. Web-discovered podcast
+    knowledge cards use each episode's YouTube URL as source_label (distinct from the
+    shared 'Uphill Athlete Podcasts' label the NotebookLM sweep uses), so this doubles
+    as the 'has this episode already been processed' check for that incremental source."""
+    with engine.connect() as conn:
+        rows = conn.execute(text("SELECT DISTINCT source_label FROM knowledge_cards")).fetchall()
+    return {r[0] for r in rows if r[0]}
+
+
 def clear_knowledge_cards() -> None:
     with engine.connect() as conn:
         conn.execute(text("DELETE FROM knowledge_cards"))

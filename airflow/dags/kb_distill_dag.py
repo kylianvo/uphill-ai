@@ -5,7 +5,11 @@ hand-curated race_courses KB with newly-discovered result-year stats (winner tim
 finisher counts, percentiles) for races that already have a curated `results` block --
 it doesn't fit the sweep/validate/embed shape (race_courses is hand-curated, not one of
 the three DOMAINS distilled via distill_domain) so it calls kb_distiller's dedicated
-discover_race_results_web/save_race_results functions directly.
+discover_race_results_web/save_race_results functions directly. A fourth podcast_knowledge
+task group discovers new Evoke Endurance podcast episodes and appends their knowledge
+cards (knowledge_cards table, not kb_chunks) via knowledge_extractor's dedicated
+discover_podcast_knowledge_web/save_podcast_knowledge_cards functions -- same reasoning:
+knowledge_cards isn't one of the three DOMAINS either.
 See docs/superpowers/specs/2026-07-27-airflow-kb-distill-design.md for the full design."""
 
 import asyncio
@@ -64,6 +68,22 @@ def _save_race_results(**context):
     return save_race_results(updates)
 
 
+def _discover_podcast_knowledge(**context):
+    from config import settings
+    from services.knowledge_extractor import discover_podcast_knowledge_web
+
+    return asyncio.run(discover_podcast_knowledge_web(settings.GEMINI_API_KEY, settings.TAVILY_API_KEY, {}))
+
+
+def _save_podcast_knowledge(**context):
+    from config import settings
+    from services.knowledge_extractor import save_podcast_knowledge_cards
+
+    ti = context["ti"]
+    cards = ti.xcom_pull(task_ids="podcast_knowledge.discover_podcast_knowledge")
+    return asyncio.run(save_podcast_knowledge_cards(cards, settings.GEMINI_API_KEY))
+
+
 with DAG(
     dag_id="kb_distill",
     default_args=default_args,
@@ -103,3 +123,15 @@ with DAG(
             python_callable=_save_race_results,
         )
         discover_task >> save_task
+
+    with TaskGroup(group_id="podcast_knowledge") as podcast_knowledge_tg:
+        discover_podcast_task = PythonOperator(
+            task_id="discover_podcast_knowledge",
+            python_callable=_discover_podcast_knowledge,
+            execution_timeout=None,  # Tavily + transcript fetch + Gemini per episode can run several minutes
+        )
+        save_podcast_task = PythonOperator(
+            task_id="save_podcast_knowledge",
+            python_callable=_save_podcast_knowledge,
+        )
+        discover_podcast_task >> save_podcast_task
