@@ -145,3 +145,46 @@ def test_replace_kb_chunks_by_kind_is_atomic(_init_test_database):
         replace_kb_chunks_by_kind("nutrition", "principle", bad_batch)
     principles = get_kb_chunks("nutrition", kind="principle")
     assert [p["title"] for p in principles] == ["Carb targets"]  # failed replace left the original row intact
+
+
+def test_update_kb_chunk_payload_updates_matched_row_only(_init_test_database):
+    from db import update_kb_chunk_payload
+
+    save_kb_chunks(
+        [
+            {
+                "domain": "race_courses",
+                "kind": "race_profile",
+                "title": "Vietnam Mountain Marathon",
+                "content": "narrative unaffected by payload updates",
+                "payload": {"race_name": "Vietnam Mountain Marathon", "results": []},
+            },
+            {
+                "domain": "race_courses",
+                "kind": "race_profile",
+                "title": "Dalat Ultra Trail",
+                "content": "other race",
+                "payload": {"race_name": "Dalat Ultra Trail", "results": []},
+            },
+        ]
+    )
+    new_payload = {
+        "race_name": "Vietnam Mountain Marathon",
+        "results": [{"year": 2026, "distance_label": "70km", "winner_time": "9:00:00"}],
+    }
+    updated = update_kb_chunk_payload("race_courses", "race_profile", "Vietnam Mountain Marathon", new_payload)
+    assert updated is True
+
+    rows = get_kb_chunks("race_courses", kind="race_profile")
+    vmm = next(r for r in rows if r["title"] == "Vietnam Mountain Marathon")
+    dalat = next(r for r in rows if r["title"] == "Dalat Ultra Trail")
+    assert vmm["payload"]["results"] == new_payload["results"]
+    assert vmm["content"] == "narrative unaffected by payload updates"  # content untouched
+    assert dalat["payload"]["results"] == []  # other race's row untouched
+
+
+def test_update_kb_chunk_payload_returns_false_when_no_match(_init_test_database):
+    from db import update_kb_chunk_payload
+
+    updated = update_kb_chunk_payload("race_courses", "race_profile", "Nonexistent Race", {"results": []})
+    assert updated is False

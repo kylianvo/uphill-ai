@@ -15,6 +15,7 @@ import asyncio
 import json
 import os
 import re
+from datetime import datetime
 from typing import Any
 from urllib.parse import urlparse
 
@@ -86,6 +87,57 @@ class PrincipleChunk(BaseModel):
 
 class PrincipleList(BaseModel):
     principles: list[PrincipleChunk]
+
+
+# Mirrors the hand-curated `results` entry shape already in backend/kb_seed/race_courses.json
+# (sourced today from statistik.d-u-v.org) -- see RACE_COURSES_README.md and race_matcher.py's
+# race_benchmarks()/rank_transfer_mins() consumers for how these fields are used downstream.
+class PercentileSet(BaseModel):
+    p5: str
+    p10: str
+    p25: str
+    p50: str
+    p75: str
+    p90: str
+
+
+class TopTimesSet(BaseModel):
+    top3: str
+    top5: str
+    top10: str
+    top20: str
+
+
+class RacePercentiles(BaseModel):
+    overall: PercentileSet
+    men: PercentileSet
+    women: PercentileSet
+
+
+class RaceTopTimes(BaseModel):
+    overall: TopTimesSet
+    men: TopTimesSet
+    women: TopTimesSet
+
+
+class RaceResultEntry(BaseModel):
+    year: int
+    distance_label: str
+    distance_km: float
+    finishers: int
+    finishers_men: int
+    finishers_women: int
+    winner_time: str
+    winner_time_women: str
+    percentiles: RacePercentiles
+    top_times: RaceTopTimes
+    cutoff_clock: str
+    conditions_note: str
+    source: str
+
+
+class RaceResultList(BaseModel):
+    results: list[RaceResultEntry]
 
 
 # ─── Sweep queries ───────────────────────────────────────────────────────────
@@ -491,6 +543,166 @@ async def _distill_scheduler(notebook_id: str, auth_json: str, api_key: str, sta
             print(f"[KBDistiller][scheduler] Topic failed, continuing: {e}")
         await asyncio.sleep(1.5)
     return rows
+
+
+# ─── Race-result stats (race_courses payload enrichment) ─────────────────────
+# race_courses is hand-curated (HAND_CURATED_DOMAINS) -- its qualitative content
+# (location, terrain, climate, key_climbs, runner_reviews, aliases) is never
+# auto-generated. This section only enriches the numeric `results` stats block
+# already present on races an operator has chosen to track, sourced from DUV
+# (statistik.d-u-v.org), the same source the existing curated entries cite. It
+# never adds results for a race with none yet -- deciding a race is worth
+# tracking stays a curation decision -- and never overwrites an existing
+# (year, distance_label) entry, since a manually-verified entry always wins.
+
+_RACE_RESULT_ASK = (
+    "This is a page from statistik.d-u-v.org (DUV Ultra Marathon Statistics) or a similar "
+    "results database for the race '{race_name}'. Structure every distinct (year, distance) "
+    "result-year entry into the schema: year, distance label as shown (e.g. '70km'), distance "
+    "in km, finisher counts (overall/men/women), winner time and women's winner time (H:MM:SS), "
+    "percentile finish times (p5/p10/p25/p50/p75/p90 overall/men/women) if shown, top-N finisher "
+    "times (top3/top5/top10/top20 overall/men/women) if shown, any cutoff/course-closure time "
+    "noted, any note about conditions that year, and the site name as source. If a field isn't "
+    "in the text, leave it as an empty string/0 rather than guessing -- these are official race "
+    "statistics, not review commentary, and a wrong number is worse than a missing one. NEVER "
+    "invent a year, distance, or time not present in the text.\n\nPage content:\n"
+)
+
+
+def _existing_result_keys(existing_results: list[dict]) -> set[tuple]:
+    return {(r.get("year"), r.get("distance_label")) for r in existing_results}
+
+
+# A live search sometimes returns a generic events-calendar/listing page instead of a
+# specific race's results page (e.g. DUV's geteventlist.php) rather than the results
+# page actually asked for -- Gemini can then "structure" a scheduled-but-unrun future
+# event into something that parses as a result-shaped entry with an empty winner
+# time. A completed race result always has a winner time; reject anything that
+# doesn't, and reject implausible years (this KB tracks completed results, not
+# future race calendars). Checked per-call, not a module-level constant, so a
+# long-running Airflow scheduler process doesn't hold a stale year across a
+# calendar-year boundary.
+def _looks_like_a_real_result(entry: dict) -> bool:
+    winner_time = (entry.get("winner_time") or "").strip()
+    year = entry.get("year")
+    if not winner_time or not re.match(r"^\d{1,3}:\d{2}(:\d{2})?$", winner_time):
+        return False
+    if not isinstance(year, int) or year < 1990 or year > datetime.now().year:
+        return False
+    return True
+
+
+def _race_titles_with_results() -> list[tuple[str, str, list[dict]]]:
+    """(title, race_name, existing results) for every race_courses row that already
+    carries a curated `results` block -- the only races eligible for web enrichment."""
+    import db
+
+    tracked = []
+    for chunk in db.get_kb_chunks("race_courses", kind="race_profile"):
+        payload = chunk.get("payload") or {}
+        if isinstance(payload, str):
+            payload = json.loads(payload)
+        existing = payload.get("results") or []
+        if existing:
+            tracked.append((chunk["title"], payload.get("race_name", chunk["title"]), existing))
+    return tracked
+
+
+async def discover_race_results_web(api_key: str, tavily_api_key: str, status_holder: dict) -> dict[str, list[dict]]:
+    """Search DUV for new result-year stats for races that already have a curated
+    `results` block. Returns {race_title: [new_result_entries]}, only for races where
+    something genuinely new was found -- an empty dict (no race found anything new)
+    is a normal, valid outcome, same incremental posture as gear/nutrition.
+
+    Known limitation (confirmed live, not just theoretical): DUV's individual-race
+    results pages aren't reliably surfaced by a generic web search -- statistik.d-u-v.org
+    indexes better for its event-calendar/runner-profile pages than a specific race's
+    year-by-year results table, so this frequently finds nothing even for well-tracked
+    races. That's fine given _looks_like_a_real_result's strict gate (never merge a
+    plausible-looking but ungrounded entry) -- but if hit rate matters more later,
+    the fix is a DUV-specific event-ID lookup rather than a generic search, which is
+    out of scope here."""
+    client = TavilyClient(api_key=tavily_api_key)
+    tracked = _race_titles_with_results()
+    updates: dict[str, list[dict]] = {}
+
+    for i, (title, race_name, existing_results) in enumerate(tracked):
+        status_holder.update({"current_topic": f"race results: {race_name}", "progress": i, "total": len(tracked)})
+        known_keys = _existing_result_keys(existing_results)
+        try:
+            response = await asyncio.to_thread(
+                client.search,
+                f"{race_name} race results finishers winner time statistics",
+                include_domains=["statistik.d-u-v.org"],
+                max_results=3,
+                include_raw_content="markdown",
+            )
+        except Exception as e:
+            print(f"[KBDistiller][race-results-web] Search failed for '{race_name}', continuing: {e}")
+            await asyncio.sleep(1.5)
+            continue
+
+        new_entries: list[dict] = []
+        for result in response.get("results", []):
+            content = result.get("raw_content") or result.get("content") or ""
+            if not content.strip():
+                continue
+            try:
+                structured = await _gemini_structured(
+                    api_key, _RACE_RESULT_ASK.format(race_name=race_name) + content, RaceResultList
+                )
+            except Exception as e:
+                print(f"[KBDistiller][race-results-web] Structuring failed for '{result.get('url')}', continuing: {e}")
+                continue
+            for entry in structured.get("results", []):
+                key = (entry.get("year"), entry.get("distance_label"))
+                if not entry.get("distance_label") or key in known_keys or not _looks_like_a_real_result(entry):
+                    continue
+                entry["source"] = entry.get("source") or urlparse(result.get("url", "")).netloc.removeprefix("www.")
+                known_keys.add(key)
+                new_entries.append(entry)
+        if new_entries:
+            updates[title] = new_entries
+        await asyncio.sleep(1.5)  # search-API rate-limit courtesy, same pacing as the other sweeps
+    return updates
+
+
+def save_race_results(results_by_race: dict[str, list[dict]]) -> int:
+    """Merge newly-discovered result-year entries into each race's existing payload
+    in place -- never overwrites an existing (year, distance_label) entry, since
+    curated/previously-merged data always wins -- then re-exports the full
+    race_courses catalog to the seed file. Returns the total count of new
+    result-year entries actually merged across all races."""
+    import db
+
+    total = 0
+    for title, new_entries in results_by_race.items():
+        chunk = next((c for c in db.get_kb_chunks("race_courses", kind="race_profile") if c["title"] == title), None)
+        if chunk is None:
+            continue
+        payload = chunk.get("payload") or {}
+        if isinstance(payload, str):
+            payload = json.loads(payload)
+        existing_results = payload.get("results") or []
+        known_keys = _existing_result_keys(existing_results)
+        merged = list(existing_results)
+        added_this_race = 0
+        for entry in new_entries:
+            key = (entry.get("year"), entry.get("distance_label"))
+            if key in known_keys:
+                continue
+            merged.append(entry)
+            known_keys.add(key)
+            added_this_race += 1
+        if added_this_race:
+            payload["results"] = merged
+            db.update_kb_chunk_payload("race_courses", "race_profile", title, payload)
+            total += added_this_race
+
+    clean_rows = [{k: row[k] for k in _SEED_KEYS} for row in db.get_kb_chunks("race_courses")]
+    export_seed("race_courses", clean_rows)
+    print(f"[KBDistiller] race results: {total} new result-year entries merged across {len(results_by_race)} races.")
+    return total
 
 
 def _notebook_id(domain: str) -> str:

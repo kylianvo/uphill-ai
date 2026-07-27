@@ -2413,6 +2413,54 @@ def get_kb_distill_status(user: dict[str, Any] = Depends(get_current_user)):
     return status
 
 
+race_results_distill_status: dict[str, Any] = {"status": "idle"}
+race_results_distill_task = None
+
+
+@app.post("/api/kb/distill-race-results")
+async def trigger_race_results_distill(user: dict[str, Any] = Depends(require_admin)):
+    """Merge newly-discovered race-result stats (winner times, finisher counts,
+    percentiles) into the hand-curated race_courses KB. Only enriches races that
+    already have a curated `results` block -- never invents results for an
+    untracked race, and never overwrites an already-curated (year, distance) entry.
+    Background job, same pattern as /api/kb/distill."""
+    import asyncio
+
+    from services.kb_distiller import discover_race_results_web, save_race_results
+
+    global race_results_distill_task
+    if race_results_distill_task is not None and not race_results_distill_task.done():
+        return {"status": "already_distilling"}
+    if not settings.TAVILY_API_KEY:
+        raise HTTPException(status_code=400, detail="TAVILY_API_KEY is not configured")
+
+    fresh_user = get_user_by_id(user["id"]) or user
+    api_key = fresh_user.get("gemini_api_key") or settings.GEMINI_API_KEY
+    if not api_key:
+        raise HTTPException(status_code=400, detail="No Gemini API key configured")
+
+    async def run_race_results_distillation():
+        try:
+            updates = await discover_race_results_web(api_key, settings.TAVILY_API_KEY, race_results_distill_status)
+            merged = save_race_results(updates)
+            race_results_distill_status.update(
+                {"status": "done", "races_updated": len(updates), "entries_merged": merged}
+            )
+        except Exception as e:
+            race_results_distill_status.update({"status": "error", "message": str(e)})
+            print(f"[KB] Race results distillation failed: {e}")
+
+    race_results_distill_status.clear()
+    race_results_distill_status.update({"status": "distilling"})
+    race_results_distill_task = asyncio.create_task(run_race_results_distillation())
+    return {"status": "started"}
+
+
+@app.get("/api/kb/distill-race-results/status")
+def get_race_results_distill_status(user: dict[str, Any] = Depends(get_current_user)):
+    return dict(race_results_distill_status)
+
+
 @app.post("/api/kb/import")
 async def import_kb_seed(domain: str = "all", user: dict[str, Any] = Depends(require_admin)):
     """Load committed backend/kb_seed/<domain>.json files into this environment's

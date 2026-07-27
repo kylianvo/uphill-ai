@@ -472,3 +472,145 @@ def test_save_domain_nutrition_replaces_principles_and_appends_products(tmp_path
         exported = json.load(f)
     for row in exported["chunks"]:
         assert set(row) == {"domain", "kind", "title", "content", "payload", "source_label"}
+
+
+def _race_chunk(title, race_name, results):
+    return {
+        "domain": "race_courses",
+        "kind": "race_profile",
+        "title": title,
+        "content": f"{title} narrative",
+        "payload": {"race_name": race_name, "results": results},
+        "source_label": "curated",
+    }
+
+
+def test_race_titles_with_results_only_returns_tracked_races():
+    chunks = [
+        _race_chunk("Vietnam Mountain Marathon (VMM) — Sa Pa, Vietnam", "Vietnam Mountain Marathon", [{"year": 2025}]),
+        _race_chunk("Some Untracked Race", "Some Untracked Race", []),  # no results yet -- not eligible
+    ]
+    with patch("db.get_kb_chunks", return_value=chunks):
+        tracked = kb_distiller._race_titles_with_results()
+    assert len(tracked) == 1
+    assert tracked[0][0] == "Vietnam Mountain Marathon (VMM) — Sa Pa, Vietnam"
+    assert tracked[0][1] == "Vietnam Mountain Marathon"
+
+
+def test_discover_race_results_web_skips_known_year_distance_and_structures_new(monkeypatch):
+    existing_results = [{"year": 2025, "distance_label": "70km", "winner_time": "9:10:58"}]
+    tracked_chunk = _race_chunk("Vietnam Mountain Marathon", "Vietnam Mountain Marathon", existing_results)
+    tavily_response = {
+        "results": [
+            {"title": "VMM 70km 2025", "url": "https://statistik.d-u-v.org/vmm-2025", "content": "2025 results page"},
+        ]
+    }
+    structured = {
+        "results": [
+            {
+                "year": 2025,
+                "distance_label": "70km",  # already known -- must be skipped
+                "winner_time": "9:10:58",
+            },
+            {
+                "year": 2026,
+                "distance_label": "70km",  # genuinely new
+                "winner_time": "9:05:00",
+                "distance_km": 69.5,
+                "finishers": 300,
+            },
+        ]
+    }
+    with (
+        patch("db.get_kb_chunks", return_value=[tracked_chunk]),
+        patch.object(kb_distiller, "TavilyClient") as tavily_cls,
+        patch.object(kb_distiller, "_gemini_structured", new_callable=AsyncMock, return_value=structured),
+        patch("asyncio.sleep", new_callable=AsyncMock),
+    ):
+        tavily_cls.return_value.search.return_value = tavily_response
+        updates = asyncio.run(kb_distiller.discover_race_results_web("test-key", "tvly-test", {}))
+
+    assert list(updates.keys()) == ["Vietnam Mountain Marathon"]
+    new_entries = updates["Vietnam Mountain Marathon"]
+    assert len(new_entries) == 1  # the 2025/70km duplicate was dropped
+    assert new_entries[0]["year"] == 2026
+    assert new_entries[0]["winner_time"] == "9:05:00"
+    assert new_entries[0]["source"] == "statistik.d-u-v.org"
+
+    search_kwargs = tavily_cls.return_value.search.call_args.kwargs
+    assert search_kwargs["include_domains"] == ["statistik.d-u-v.org"]
+
+
+def test_discover_race_results_web_returns_empty_dict_when_nothing_new():
+    existing_results = [{"year": 2025, "distance_label": "70km"}]
+    tracked_chunk = _race_chunk("Vietnam Mountain Marathon", "Vietnam Mountain Marathon", existing_results)
+    with (
+        patch("db.get_kb_chunks", return_value=[tracked_chunk]),
+        patch.object(kb_distiller, "TavilyClient") as tavily_cls,
+        patch("asyncio.sleep", new_callable=AsyncMock),
+    ):
+        tavily_cls.return_value.search.return_value = {"results": []}
+        updates = asyncio.run(kb_distiller.discover_race_results_web("test-key", "tvly-test", {}))
+    assert updates == {}
+
+
+def test_discover_race_results_web_rejects_entries_without_a_real_winner_time():
+    # Reproduces a real bug: a generic DUV events-calendar page structured into a
+    # future, not-yet-run "result" with no winner time -- must be rejected outright.
+    existing_results = [{"year": 2024, "distance_label": "70km", "winner_time": "9:15:00"}]
+    tracked_chunk = _race_chunk("Vietnam Mountain Marathon", "Vietnam Mountain Marathon", existing_results)
+    tavily_response = {
+        "results": [{"title": "DUV events list", "url": "https://statistik.d-u-v.org/geteventlist.php", "content": "x"}]
+    }
+    structured = {
+        "results": [
+            {"year": 2099, "distance_label": "30h", "winner_time": ""},  # bogus future event, no winner time
+            {"year": 2025, "distance_label": "70km", "winner_time": "9:10:58"},  # genuine result
+        ]
+    }
+    with (
+        patch("db.get_kb_chunks", return_value=[tracked_chunk]),
+        patch.object(kb_distiller, "TavilyClient") as tavily_cls,
+        patch.object(kb_distiller, "_gemini_structured", new_callable=AsyncMock, return_value=structured),
+        patch("asyncio.sleep", new_callable=AsyncMock),
+    ):
+        tavily_cls.return_value.search.return_value = tavily_response
+        updates = asyncio.run(kb_distiller.discover_race_results_web("test-key", "tvly-test", {}))
+    new_entries = updates["Vietnam Mountain Marathon"]
+    assert len(new_entries) == 1  # only the genuine result survives
+    assert new_entries[0]["year"] == 2025
+
+
+def test_save_race_results_merges_only_genuinely_new_entries_per_race(tmp_path, monkeypatch):
+    monkeypatch.setattr(kb_distiller, "SEED_DIR", str(tmp_path))
+    vmm_existing = [{"year": 2025, "distance_label": "70km", "winner_time": "9:10:58"}]
+    dalat_existing = [{"year": 2025, "distance_label": "100km", "winner_time": "20:00:00"}]
+    vmm_chunk = _race_chunk("VMM", "Vietnam Mountain Marathon", vmm_existing)
+    dalat_chunk = _race_chunk("Dalat Ultra Trail", "Dalat Ultra Trail", dalat_existing)
+    full_catalog = [vmm_chunk, dalat_chunk]
+
+    updates = {
+        "VMM": [
+            {"year": 2025, "distance_label": "70km", "winner_time": "9:10:58"},  # dup -- must be dropped
+            {"year": 2026, "distance_label": "70km", "winner_time": "9:05:00"},  # new
+        ],
+        "Dalat Ultra Trail": [],  # nothing new for this race
+    }
+
+    with (
+        patch("db.get_kb_chunks", side_effect=lambda *a, **k: full_catalog),
+        patch("db.update_kb_chunk_payload", return_value=True) as update_mock,
+    ):
+        total = kb_distiller.save_race_results(updates)
+
+    assert total == 1  # only the 2026 entry was genuinely new
+    update_mock.assert_called_once()
+    called_domain, called_kind, called_title, called_payload = update_mock.call_args[0]
+    assert called_title == "VMM"
+    assert {"year": 2026, "distance_label": "70km", "winner_time": "9:05:00"} in called_payload["results"]
+    assert len(called_payload["results"]) == 2  # existing entry kept alongside the new one
+
+    with open(f"{tmp_path}/race_courses.json", encoding="utf-8") as f:
+        exported = json.load(f)
+    for row in exported["chunks"]:
+        assert set(row) == {"domain", "kind", "title", "content", "payload", "source_label"}

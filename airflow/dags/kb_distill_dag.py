@@ -1,5 +1,11 @@
 """Weekly KB distillation: sweep -> validate -> embed, per domain, in parallel.
-gear sources from live web discovery (Tavily); nutrition/scheduler still sweep NotebookLM.
+gear/nutrition-products source from live web discovery (Tavily); nutrition-principles/
+scheduler still sweep NotebookLM. A separate race_results task group enriches the
+hand-curated race_courses KB with newly-discovered result-year stats (winner times,
+finisher counts, percentiles) for races that already have a curated `results` block --
+it doesn't fit the sweep/validate/embed shape (race_courses is hand-curated, not one of
+the three DOMAINS distilled via distill_domain) so it calls kb_distiller's dedicated
+discover_race_results_web/save_race_results functions directly.
 See docs/superpowers/specs/2026-07-27-airflow-kb-distill-design.md for the full design."""
 
 import asyncio
@@ -43,6 +49,21 @@ def _embed(domain: str, **context):
     return asyncio.run(save_domain(domain, rows, api_key))
 
 
+def _discover_race_results(**context):
+    from config import settings
+    from services.kb_distiller import discover_race_results_web
+
+    return asyncio.run(discover_race_results_web(settings.GEMINI_API_KEY, settings.TAVILY_API_KEY, {}))
+
+
+def _save_race_results(**context):
+    from services.kb_distiller import save_race_results
+
+    ti = context["ti"]
+    updates = ti.xcom_pull(task_ids="race_results.discover_race_results")
+    return save_race_results(updates)
+
+
 with DAG(
     dag_id="kb_distill",
     default_args=default_args,
@@ -70,3 +91,15 @@ with DAG(
                 op_kwargs={"domain": domain},
             )
             sweep_task >> validate_task >> embed_task
+
+    with TaskGroup(group_id="race_results") as race_results_tg:
+        discover_task = PythonOperator(
+            task_id="discover_race_results",
+            python_callable=_discover_race_results,
+            execution_timeout=None,  # Tavily+Gemini per tracked race can run several minutes
+        )
+        save_task = PythonOperator(
+            task_id="save_race_results",
+            python_callable=_save_race_results,
+        )
+        discover_task >> save_task

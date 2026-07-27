@@ -1647,6 +1647,24 @@ def get_kb_chunks(domain: str, kind: str | None = None) -> list[dict[str, Any]]:
     return [dict(r) for r in rows]
 
 
+def update_kb_chunk_payload(domain: str, kind: str, title: str, payload: dict[str, Any]) -> bool:
+    """Update one existing chunk's payload in place, matched by (domain, kind, title).
+    Used when a source enriches an existing row's structured data (e.g. merging
+    newly-discovered race-result years into a hand-curated race profile) rather than
+    adding or replacing whole rows. content/content_hash are untouched since only the
+    payload changed. Returns True if a row was updated, False if no matching row exists."""
+    with engine.connect() as conn:
+        result = conn.execute(
+            text("""
+                UPDATE kb_chunks SET payload = CAST(:payload AS JSONB)
+                WHERE domain = :domain AND kind = :kind AND title = :title
+            """),
+            {"payload": json.dumps(payload, ensure_ascii=False), "domain": domain, "kind": kind, "title": title},
+        )
+        conn.commit()
+        return result.rowcount > 0
+
+
 def clear_kb_chunks(domain: str) -> None:
     with engine.connect() as conn:
         conn.execute(text("DELETE FROM kb_chunks WHERE domain = :d"), {"d": domain})
