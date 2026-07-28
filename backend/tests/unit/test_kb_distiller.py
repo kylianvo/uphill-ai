@@ -134,6 +134,30 @@ def test_validate_domain_rows_gear_drops_thin_rows_but_allows_empty():
     assert result == [rich]
 
 
+def test_validate_domain_rows_gear_rejects_spec_table_row_with_no_review_substance():
+    # Reproduces a real bug: a comparison-chart article row with just price/stack/
+    # terrain/suitability clears the richness score (4 fields) but has zero actual
+    # review content -- and in practice these turned out to be misattributed to the
+    # wrong brand entirely. Must be rejected even though richness alone would pass.
+    spec_table_row = {
+        "domain": "gear",
+        "kind": "catalog_item",
+        "title": "adidas Cadi",
+        "content": "adidas Cadi:  Cons: ",
+        "payload": {
+            "brand": "adidas",
+            "model": "Cadi",
+            "price": "$165",
+            "stack": "35 mm in heel, 29 mm in the forefoot",
+            "terrain": ["All trail", "Gravel", "Pavement"],
+            "suitability": "All trail, door-to-trail, runners seeking comfort and durability",
+        },
+    }
+    assert kb_distiller._shoe_richness(spec_table_row["payload"]) >= kb_distiller._MIN_AVG_RICHNESS
+    result = kb_distiller.validate_domain_rows("gear", [spec_table_row])
+    assert result == []
+
+
 def test_save_domain_gear_uses_insert_only_append(tmp_path, monkeypatch):
     monkeypatch.setattr(kb_distiller, "SEED_DIR", str(tmp_path))  # don't clobber the real committed seed file
     rows = [{"domain": "gear", "kind": "catalog_item", "title": "Hoka Speedgoat 7", "content": "c", "payload": None}]

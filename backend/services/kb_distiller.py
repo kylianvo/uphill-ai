@@ -279,15 +279,32 @@ def _sweep_richness(shoes: list[dict]) -> int:
     return sum(_shoe_richness(s) for s in shoes)
 
 
+# A shoe with only spec-table fields (price/stack/terrain/suitability -- exactly the
+# kind of columns a multi-brand comparison-chart article carries) can clear
+# _MIN_AVG_RICHNESS on numbers alone while carrying zero actual review commentary.
+# Confirmed in practice: several such rows (bare price/stack/terrain, no pros/cons/
+# overview) slipped through from a roundup article and turned out to be misattributed
+# to the wrong brand entirely. Require at least one genuinely qualitative field too.
+_REVIEW_SUBSTANCE_FIELDS = ("pros", "cons", "overview", "best_for", "highlights")
+
+
+def _has_review_substance(shoe: dict) -> bool:
+    return any((shoe.get(field) or "").strip() for field in _REVIEW_SUBSTANCE_FIELDS)
+
+
 _GEAR_ARTICLE_ASK = (
-    "Structure every properly-reviewed shoe in this article into the schema. ONLY include shoes with "
-    "real spec/testing detail in the text — skip shoes merely mentioned in passing. For each: exact model "
-    "name; foam material with type in parentheses; outsole compound; lug depth in mm; drop in mm; stack "
-    "height; price; cushioning level (max/moderate/firm); toe box/fit width; carbon plate or rods (yes/no "
-    "+ detail); arch support; recommended terrain; intended use; a 1-2 sentence overview; standout tech; "
-    "who it suits/doesn't; pros; cons. If the article doesn't state a detail, skip that detail rather than "
-    "guessing. NEVER add a shoe, spec, or price not present in the text. Write every field in clear English "
-    "only — never any other language.\n\nArticle:\n"
+    "This article may be a roundup or comparison piece covering multiple brands. ONLY structure shoes "
+    "that are genuinely made by {brand} — skip every shoe from a different brand entirely, even if it's "
+    "mentioned right alongside a {brand} shoe for comparison. For each qualifying shoe with real "
+    "spec/testing detail (skip anything merely mentioned in passing): exact model name; foam material "
+    "with type in parentheses; outsole compound; lug depth in mm; drop in mm; stack height; price; "
+    "cushioning level (max/moderate/firm); toe box/fit width; carbon plate or rods (yes/no + detail); "
+    "arch support; recommended terrain; intended use; a 1-2 sentence overview of the shoe's character; "
+    "standout tech; who it suits/doesn't; pros; cons. A real review has both a pros/cons or overview "
+    "section, not just a spec table -- if the article only gives bare numbers for a shoe with no actual "
+    "review commentary, skip that shoe rather than including a hollow entry. If the article doesn't state "
+    "a detail, skip that detail rather than guessing. NEVER add a shoe, spec, or price not present in the "
+    "text. Write every field in clear English only — never any other language.\n\nArticle:\n"
 )
 
 
@@ -328,7 +345,9 @@ async def discover_gear_web(api_key: str, tavily_api_key: str, status_holder: di
             if not content.strip():
                 continue
             try:
-                structured = await _gemini_structured(api_key, _GEAR_ARTICLE_ASK + content, ShoeList)
+                structured = await _gemini_structured(
+                    api_key, _GEAR_ARTICLE_ASK.format(brand=brand) + content, ShoeList
+                )
             except Exception as e:
                 print(f"[KBDistiller][gear-web] Structuring failed for '{result.get('url')}', continuing: {e}")
                 continue
@@ -722,7 +741,12 @@ def validate_domain_rows(domain: str, rows: list[dict]) -> list[dict]:
     scheduler (full-replace): below-floor row counts mean the sweep likely hit a
     broad NotebookLM outage/refusal — raise rather than replace a working KB with junk."""
     if domain == "gear":
-        return [r for r in rows if _shoe_richness(r.get("payload") or {}) >= _MIN_AVG_RICHNESS]
+        return [
+            r
+            for r in rows
+            if _shoe_richness(r.get("payload") or {}) >= _MIN_AVG_RICHNESS
+            and _has_review_substance(r.get("payload") or {})
+        ]
     if domain == "nutrition":
         principle_rows = [r for r in rows if r.get("kind") == "principle"]
         catalog_rows = [r for r in rows if r.get("kind") == "catalog_item"]
