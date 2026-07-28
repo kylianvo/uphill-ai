@@ -53,7 +53,13 @@ found=0
 for v in "${VARS[@]}"; do
   line=$(grep -E "^${v}=" "$SRC" || true)
   if [ -n "$line" ]; then
-    echo "$line" >> "$OUT"
+    # Docker Compose interpolates `$VAR`/`${VAR}` in env_file values unless
+    # escaped as `$$` -- NOTEBOOKLM_AUTH_JSON is an opaque cookie-session JSON
+    # blob that can contain literal `$` characters (confirmed in practice: an
+    # unescaped `$` here gets silently replaced with an empty string, corrupting
+    # the JSON). Escape every `$` in the value before writing it out.
+    value="${line#*=}"
+    echo "${v}=${value//\$/\$\$}" >> "$OUT"
     found=$((found + 1))
   fi
 done

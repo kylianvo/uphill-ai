@@ -23,6 +23,12 @@ engine = create_engine(
     max_overflow=20,
     pool_pre_ping=True,
     echo=False,
+    # future=True: this module is imported both by the backend (SQLAlchemy 2.0,
+    # where 2.0-style Connection.commit() is the only mode) and by Airflow
+    # (SQLAlchemy <2.0, pinned by Airflow itself) -- future=True opts SQLAlchemy
+    # 1.4 into the same 2.0-style Connection API (including .commit()) so this
+    # file's engine.connect()+conn.commit() pattern works identically under both.
+    future=True,
 )
 
 

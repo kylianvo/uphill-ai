@@ -24,8 +24,17 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:8000:8000"
-    env_file:
-      - ./backend/.env
+    # Deliberately no env_file here (unlike the other services in this file):
+    # Docker Compose's env_file loading applies ${VAR}/$VAR interpolation to
+    # the file's content, which silently corrupts any value containing a
+    # literal `$` (confirmed in practice with NOTEBOOKLM_AUTH_JSON, an opaque
+    # cookie-session JSON blob) unless every `$` is escaped as `$$` in the
+    # source file -- which backend/.env can't require, since it's also read
+    # directly (correctly, no interpolation) by config.py's load_dotenv() for
+    # local non-Docker dev and by scripts/tooling. The backend/:/app volume
+    # mount below already gives this container backend/.env on disk, and
+    # config.py's own load_dotenv() call reads it directly via Python at
+    # import time -- no Compose interpolation involved, no corruption risk.
     environment:
       DATABASE_URL: postgresql://uphill:uphill_secret@db:5432/uphill_ai
       PYTHONUNBUFFERED: "1"
@@ -98,6 +107,10 @@ services:
       PYTHONPATH: /opt/airflow/backend
     volumes:
       - ./backend:/opt/airflow/backend:ro
+      # backend/kb_seed is the one part of backend/ the DAG's save/embed steps
+      # legitimately write to (export_seed()) -- overlay it read-write while
+      # the rest of the backend code stays read-only.
+      - ./backend/kb_seed:/opt/airflow/backend/kb_seed
       - ./airflow/dags:/opt/airflow/dags
     command: webserver
 
@@ -118,6 +131,10 @@ services:
       PYTHONPATH: /opt/airflow/backend
     volumes:
       - ./backend:/opt/airflow/backend:ro
+      # backend/kb_seed is the one part of backend/ the DAG's save/embed steps
+      # legitimately write to (export_seed()) -- overlay it read-write while
+      # the rest of the backend code stays read-only.
+      - ./backend/kb_seed:/opt/airflow/backend/kb_seed
       - ./airflow/dags:/opt/airflow/dags
     command: scheduler
 
