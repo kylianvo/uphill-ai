@@ -31,8 +31,16 @@ ALL_TABLES = [
 
 @pytest.fixture(scope="session", autouse=True)
 def _init_test_database():
-    """Creates the schema once per test session against uphill_ai_test."""
+    """Creates the schema once per test session against uphill_ai_test.
+
+    Also truncates once here, since init_db() seeds default rows (e.g. two
+    default users) that would otherwise leak into whichever test happens to
+    run first in the session.
+    """
     init_db()
+    with engine.connect() as conn:
+        conn.execute(text(f"TRUNCATE TABLE {', '.join(ALL_TABLES)} RESTART IDENTITY CASCADE"))
+        conn.commit()
     yield
 
 
