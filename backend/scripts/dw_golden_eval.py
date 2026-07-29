@@ -52,6 +52,9 @@ def main() -> None:
     if fct_workout_count != pg_workout_count:
         failures.append(f"fct_workout: {fct_workout_count} rows, Postgres workouts has {pg_workout_count}")
 
+    # Note: this only catches non-null-but-unresolved user_key values (a dangling FK). It does NOT
+    # catch a regression back to 100%-null user_key -- that's the exact bug fixed earlier in this
+    # project, and it's covered instead by dbt's own not_null test on fct_workout.user_key, not here.
     orphan_users = conn.execute(
         "SELECT COUNT(*) FROM marts.fct_workout w "
         "LEFT JOIN marts.dim_user du ON du.user_key = w.user_key "
@@ -70,7 +73,8 @@ def main() -> None:
 
     print(
         f"Golden check passed: {len(SOURCE_TABLES)} raw tables + fct_plan_generation + "
-        "fct_workout match Postgres, no orphan dim_user joins."
+        "fct_workout match Postgres, and no fct_workout rows have a non-null user_key that fails "
+        "to resolve to dim_user (100%-null user_key is separately covered by dbt's not_null test)."
     )
 
 

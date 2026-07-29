@@ -20,7 +20,12 @@ SOURCE_TABLES = (
 
 
 def _pg_conninfo(database_url: str) -> str:
-    """Convert a SQLAlchemy-style postgresql:// URL into a libpq keyword/value conninfo string."""
+    """Convert a SQLAlchemy-style postgresql:// URL into a libpq keyword/value conninfo string.
+
+    Assumes a "simple" username/password (no spaces or single quotes) -- fine for this project's
+    trusted, operator-controlled DATABASE_URL, but would need proper libpq escaping if ever used
+    against untrusted credentials.
+    """
     parsed = urlparse(database_url)
     parts = [
         f"host={parsed.hostname}",

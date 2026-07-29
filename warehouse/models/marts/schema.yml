@@ -45,6 +45,12 @@ models:
               field: plan_id
       - name: user_key
         tests: [not_null]
+      - name: workout_type_key
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_workout_type')
+              field: type_key
   - name: fct_block_review
     columns:
       - name: block_review_id

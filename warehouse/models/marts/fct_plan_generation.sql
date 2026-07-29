@@ -1,3 +1,5 @@
+-- Deliberately joins stg_users directly (not dim_user's point-in-time range) -- plan-generation-time
+-- user state isn't meaningfully historical here, and days_to_first_plan already needs stg_users.created_at.
 with plans as (
     select * from {{ ref('stg_plans') }}
 ),
