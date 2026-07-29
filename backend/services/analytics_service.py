@@ -37,3 +37,21 @@ class AnalyticsService:
                         "url": url,
                     },
                 )
+
+    @staticmethod
+    def save_events_from_kafka(event: dict[str, Any]) -> None:
+        """
+        Write a single consumed Kafka clickstream message to Postgres, reusing
+        the same insert path as the direct-write fallback.
+        """
+        AnalyticsService.track_events(
+            [
+                {
+                    "event_name": event.get("event_name"),
+                    "properties": event.get("properties", {}),
+                    "url": event.get("url"),
+                }
+            ],
+            user_id=event.get("user_id"),
+            session_id=event.get("session_id"),
+        )
