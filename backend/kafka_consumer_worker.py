@@ -32,12 +32,16 @@ def process_message(raw_value: bytes) -> None:
         logger.warning("Skipping malformed Kafka message: %s", exc)
         return
 
+    if not event.get("event_name"):
+        logger.warning("Skipping Kafka message with missing event_name: %s", event)
+        return
+
     AnalyticsService.save_events_from_kafka(event)
 
 
 def run_consumer_loop(consumer: Consumer, max_messages: int | None = None) -> int:
     """Poll loop: commits the offset only after a successful Postgres write. A DB
-    failure is retried (with backoff) on the SAME message rather than skipped --
+    failure is retried with a fixed delay on the SAME message rather than skipped --
     `max_messages` stops the loop after N successfully processed messages, used
     by tests; production usage (see __main__ below) passes None to run forever."""
     processed = 0
