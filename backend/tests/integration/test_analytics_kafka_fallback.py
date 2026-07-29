@@ -6,11 +6,13 @@ this file only proves the router wires success/failure to the right write path."
 
 from unittest.mock import patch
 
+import pytest
 from sqlalchemy import text
 
 from db import engine
 
 
+@pytest.mark.integration
 def test_track_batch_falls_back_to_postgres_when_kafka_publish_fails(client, _init_test_database):
     with patch("routers.analytics.kafka_producer_service.publish_batch", return_value=False):
         resp = client.post(
@@ -34,6 +36,7 @@ def test_track_batch_falls_back_to_postgres_when_kafka_publish_fails(client, _in
     assert row.event_name == "page_view"
 
 
+@pytest.mark.integration
 def test_track_batch_skips_postgres_write_when_kafka_publish_succeeds(client, _init_test_database):
     with (
         patch("routers.analytics.kafka_producer_service.publish_batch", return_value=True),
