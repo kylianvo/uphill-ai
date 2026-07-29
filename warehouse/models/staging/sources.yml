@@ -1,0 +1,12 @@
+version: 2
+
+sources:
+  - name: raw
+    schema: raw
+    tables:
+      - name: users
+      - name: plans
+      - name: workouts
+      - name: analytics_events
+      - name: block_reviews
+      - name: workout_types

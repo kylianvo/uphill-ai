@@ -1,0 +1,7 @@
+uphill_warehouse:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "{{ env_var('DBT_DUCKDB_PATH', 'uphill_dw.duckdb') }}"
+      threads: 4
