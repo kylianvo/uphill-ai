@@ -18,6 +18,7 @@ venv/
 *.db
 *.sqlite3
 *.sql
+!warehouse/**/*.sql
 *.conf
 
 # Python cache
