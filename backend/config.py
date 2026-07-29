@@ -38,5 +38,10 @@ class Config:
         "QDRANT_URL", "http://qdrant:6333" if os.path.exists("/.dockerenv") else "http://localhost:6333"
     )
 
+    # Kafka clickstream pipeline
+    KAFKA_BOOTSTRAP_SERVERS: str = os.getenv(
+        "KAFKA_BOOTSTRAP_SERVERS", "kafka:9092" if os.path.exists("/.dockerenv") else "localhost:9092"
+    )
+
 
 settings = Config()
