@@ -2,7 +2,7 @@ with workouts as (
     select * from {{ ref('stg_workouts') }}
 ),
 plans as (
-    select plan_id, user_id from {{ ref('stg_plans') }}
+    select plan_id, user_id, created_at from {{ ref('stg_plans') }}
 ),
 workout_events as (
     select
@@ -14,7 +14,7 @@ workout_events as (
         w.distance_km,
         w.is_completed,
         w.rpe,
-        coalesce(w.approved_at, current_timestamp) as event_timestamp
+        coalesce(w.approved_at, p.created_at) as event_timestamp
     from workouts w
     join plans p on p.plan_id = w.plan_id
 )
