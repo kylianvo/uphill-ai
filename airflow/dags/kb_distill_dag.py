@@ -20,6 +20,17 @@ from airflow.operators.python import PythonOperator
 from airflow.utils.task_group import TaskGroup
 
 DOMAINS = ("gear", "nutrition", "scheduler")
+# Paused 2026-07-29: gear/nutrition web discovery surfaced too many rare/niche
+# models compared to the previous hand-curated catalog -- there's no popularity
+# signal available from the review sites the discovery pipeline searches, only
+# "is this a real review" (which _has_review_substance already filters for).
+# scheduler's task group never completed a run locally either (NotebookLM auth
+# expired both attempts). The underlying code (sweep_domain/validate_domain_rows/
+# save_domain in kb_distiller.py, and the task-building loop below) is untouched
+# -- remove a domain from this set to re-enable its TaskGroup. race_results and
+# podcast_knowledge are unaffected and keep running.
+PAUSED_DOMAINS = {"gear", "nutrition", "scheduler"}
+ACTIVE_DOMAINS = tuple(d for d in DOMAINS if d not in PAUSED_DOMAINS)
 
 default_args = {"owner": "uphill-ai", "retries": 1}
 
@@ -92,7 +103,7 @@ with DAG(
     catchup=False,
     tags=["kb", "uphill-ai"],
 ) as dag:
-    for domain in DOMAINS:
+    for domain in ACTIVE_DOMAINS:
         with TaskGroup(group_id=domain) as tg:
             sweep_task = PythonOperator(
                 task_id=f"sweep_{domain}",
