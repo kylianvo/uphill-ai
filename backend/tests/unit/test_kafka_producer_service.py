@@ -3,6 +3,8 @@ broker needed."""
 
 from unittest.mock import MagicMock, patch
 
+from confluent_kafka import KafkaException
+
 from services import kafka_producer_service
 
 
@@ -73,3 +75,19 @@ def test_publish_batch_empty_list_returns_true():
     _reset_producer()
     result = kafka_producer_service.publish_batch([], user_id=1, session_id="sess-1")
     assert result is True
+
+
+def test_publish_batch_returns_false_when_producer_construction_raises():
+    _reset_producer()
+
+    with patch(
+        "services.kafka_producer_service.Producer",
+        side_effect=KafkaException("connection refused"),
+    ):
+        result = kafka_producer_service.publish_batch(
+            [{"event_name": "page_view", "properties": {}, "url": "/"}],
+            user_id=1,
+            session_id="sess-1",
+        )
+
+    assert result is False

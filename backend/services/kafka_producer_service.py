@@ -34,7 +34,6 @@ def publish_batch(
     if not events:
         return True
 
-    producer = _get_producer()
     delivery_failed = False
 
     def _on_delivery(err, _msg):
@@ -44,6 +43,7 @@ def publish_batch(
             logger.warning("Kafka delivery failed: %s", err)
 
     try:
+        producer = _get_producer()
         for event in events:
             message = {
                 "user_id": user_id,
@@ -60,7 +60,7 @@ def publish_batch(
                 callback=_on_delivery,
             )
         remaining = producer.flush(timeout=timeout)
-    except (KafkaException, BufferError) as exc:
+    except (KafkaException, BufferError, TypeError) as exc:
         logger.warning("Kafka publish raised, falling back to Postgres: %s", exc)
         return False
 
