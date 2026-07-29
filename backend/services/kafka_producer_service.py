@@ -42,6 +42,7 @@ def publish_batch(
             delivery_failed = True
             logger.warning("Kafka delivery failed: %s", err)
 
+    producer = None
     try:
         producer = _get_producer()
         for event in events:
@@ -62,10 +63,17 @@ def publish_batch(
         remaining = producer.flush(timeout=timeout)
     except (KafkaException, BufferError, TypeError) as exc:
         logger.warning("Kafka publish raised, falling back to Postgres: %s", exc)
+        if producer is not None:
+            producer.purge(in_queue=True, in_flight=True, blocking=True)
         return False
 
     if remaining > 0:
         logger.warning("Kafka flush timed out with %d message(s) undelivered", remaining)
+        producer.purge(in_queue=True, in_flight=True, blocking=True)
         return False
 
-    return not delivery_failed
+    if delivery_failed:
+        producer.purge(in_queue=True, in_flight=True, blocking=True)
+        return False
+
+    return True

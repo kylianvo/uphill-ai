@@ -54,6 +54,7 @@ def test_publish_batch_returns_false_when_delivery_fails():
         )
 
     assert result is False
+    fake_producer.purge.assert_called_once_with(in_queue=True, in_flight=True, blocking=True)
 
 
 def test_publish_batch_returns_false_when_flush_times_out():
@@ -69,6 +70,24 @@ def test_publish_batch_returns_false_when_flush_times_out():
         )
 
     assert result is False
+    fake_producer.purge.assert_called_once_with(in_queue=True, in_flight=True, blocking=True)
+
+
+def test_publish_batch_purges_queue_when_produce_raises():
+    _reset_producer()
+    fake_producer = MagicMock()
+    fake_producer.flush.return_value = 0
+    fake_producer.produce.side_effect = BufferError("queue full")
+
+    with patch("services.kafka_producer_service.Producer", return_value=fake_producer):
+        result = kafka_producer_service.publish_batch(
+            [{"event_name": "page_view", "properties": {}, "url": "/"}],
+            user_id=1,
+            session_id="sess-1",
+        )
+
+    assert result is False
+    fake_producer.purge.assert_called_once_with(in_queue=True, in_flight=True, blocking=True)
 
 
 def test_publish_batch_empty_list_returns_true():
