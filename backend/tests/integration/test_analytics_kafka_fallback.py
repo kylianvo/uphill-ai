@@ -14,7 +14,8 @@ from db import engine
 
 @pytest.mark.integration
 def test_track_batch_falls_back_to_postgres_when_kafka_publish_fails(client, _init_test_database):
-    with patch("routers.analytics.kafka_producer_service.publish_batch", return_value=False):
+    unconfirmed = [{"event_name": "page_view", "properties": {"path": "/"}, "url": "/"}]
+    with patch("routers.analytics.kafka_producer_service.publish_batch", return_value=unconfirmed):
         resp = client.post(
             "/api/analytics/track_batch",
             json={
@@ -39,7 +40,7 @@ def test_track_batch_falls_back_to_postgres_when_kafka_publish_fails(client, _in
 @pytest.mark.integration
 def test_track_batch_skips_postgres_write_when_kafka_publish_succeeds(client, _init_test_database):
     with (
-        patch("routers.analytics.kafka_producer_service.publish_batch", return_value=True),
+        patch("routers.analytics.kafka_producer_service.publish_batch", return_value=[]),
         patch("routers.analytics.AnalyticsService.track_events") as mock_track_events,
     ):
         resp = client.post(

@@ -55,11 +55,11 @@ def get_optional_user(request: Request) -> int | None:
 async def track_batch(batch: AnalyticsBatch, user_id: int | None = Depends(get_optional_user)):
     """
     Receive a batch of analytics events from the frontend and publish them to
-    Kafka; falls back to a direct Postgres write if the Kafka publish fails (see
-    docs/superpowers/specs/2026-07-29-kafka-clickstream-design.md).
+    Kafka; falls back to a direct Postgres write for whichever events did not
+    confirm delivery (see docs/superpowers/specs/2026-07-29-kafka-clickstream-design.md).
     """
     events_list = [{"event_name": e.event_name, "properties": e.properties, "url": e.url} for e in batch.events]
-    published = kafka_producer_service.publish_batch(events_list, user_id, batch.session_id)
-    if not published:
-        AnalyticsService.track_events(events_list, user_id, batch.session_id)
+    unconfirmed = kafka_producer_service.publish_batch(events_list, user_id, batch.session_id)
+    if unconfirmed:
+        AnalyticsService.track_events(unconfirmed, user_id, batch.session_id)
     return {"status": "success", "recorded": len(events_list)}
