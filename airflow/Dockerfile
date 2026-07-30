@@ -10,3 +10,4 @@ RUN pip install --no-cache-dir -r /tmp/backend-requirements.txt \
     # import time. Backend code only uses SQLAlchemy Core (engine/text()),
     # which is unaffected by the downgrade, so re-pin to Airflow's range.
     && pip install --no-cache-dir "sqlalchemy>=1.4.36,<2.0"
+RUN pip install --no-cache-dir dbt-duckdb==1.9.4

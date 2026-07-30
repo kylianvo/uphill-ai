@@ -1,0 +1,33 @@
+version: 2
+
+models:
+  - name: stg_users
+    columns:
+      - name: user_id
+        tests: [not_null, unique]
+  - name: stg_plans
+    columns:
+      - name: plan_id
+        tests: [not_null, unique]
+      - name: user_id
+        tests: [not_null]
+  - name: stg_workouts
+    columns:
+      - name: workout_id
+        tests: [not_null, unique]
+      - name: plan_id
+        tests: [not_null]
+  - name: stg_analytics_events
+    columns:
+      - name: event_id
+        tests: [not_null, unique]
+  - name: stg_block_reviews
+    columns:
+      - name: block_review_id
+        tests: [not_null, unique]
+      - name: plan_id
+        tests: [not_null]
+  - name: stg_workout_types
+    columns:
+      - name: type_key
+        tests: [not_null, unique]

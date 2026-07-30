@@ -30,3 +30,4 @@ qdrant-client>=1.10.0
 rapidfuzz>=3.0.0
 # Kafka clickstream pipeline
 confluent-kafka>=2.3,<3.0
+duckdb

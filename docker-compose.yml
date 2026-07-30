@@ -160,6 +160,9 @@ services:
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       DATABASE_URL: postgresql://uphill:uphill_secret@db:5432/uphill_ai
       PYTHONPATH: /opt/airflow/backend
+      DUCKDB_PATH: /opt/airflow/warehouse/uphill_dw.duckdb
+      DBT_PROJECT_DIR: /opt/airflow/warehouse
+      DBT_PROFILES_DIR: /opt/airflow/warehouse
     volumes:
       - ./backend:/opt/airflow/backend:ro
       # backend/kb_seed is the one part of backend/ the DAG's save/embed steps
@@ -167,6 +170,7 @@ services:
       # the rest of the backend code stays read-only.
       - ./backend/kb_seed:/opt/airflow/backend/kb_seed
       - ./airflow/dags:/opt/airflow/dags
+      - ./warehouse:/opt/airflow/warehouse
     command: webserver
 
   airflow-scheduler:
@@ -184,6 +188,9 @@ services:
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       DATABASE_URL: postgresql://uphill:uphill_secret@db:5432/uphill_ai
       PYTHONPATH: /opt/airflow/backend
+      DUCKDB_PATH: /opt/airflow/warehouse/uphill_dw.duckdb
+      DBT_PROJECT_DIR: /opt/airflow/warehouse
+      DBT_PROFILES_DIR: /opt/airflow/warehouse
     volumes:
       - ./backend:/opt/airflow/backend:ro
       # backend/kb_seed is the one part of backend/ the DAG's save/embed steps
@@ -191,6 +198,7 @@ services:
       # the rest of the backend code stays read-only.
       - ./backend/kb_seed:/opt/airflow/backend/kb_seed
       - ./airflow/dags:/opt/airflow/dags
+      - ./warehouse:/opt/airflow/warehouse
     command: scheduler
 
   prometheus:

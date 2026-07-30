@@ -1,0 +1,67 @@
+version: 2
+
+models:
+  - name: dim_date
+    columns:
+      - name: date_key
+        tests: [not_null, unique]
+  - name: dim_user
+    columns:
+      - name: user_key
+        tests: [not_null, unique]
+      - name: user_id
+        tests: [not_null]
+  - name: dim_plan
+    columns:
+      - name: plan_id
+        tests: [not_null, unique]
+  - name: dim_workout_type
+    columns:
+      - name: type_key
+        tests: [not_null, unique]
+  - name: dim_event
+    columns:
+      - name: event_name
+        tests: [not_null, unique]
+  - name: fct_plan_generation
+    columns:
+      - name: plan_id
+        tests: [not_null, unique]
+      - name: user_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_user')
+              field: user_id
+  - name: fct_workout
+    columns:
+      - name: workout_id
+        tests: [not_null, unique]
+      - name: plan_key
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_plan')
+              field: plan_id
+      - name: user_key
+        tests: [not_null]
+      - name: workout_type_key
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_workout_type')
+              field: type_key
+  - name: fct_block_review
+    columns:
+      - name: block_review_id
+        tests: [not_null, unique]
+      - name: plan_key
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_plan')
+              field: plan_id
+  - name: fct_analytics_event
+    columns:
+      - name: event_id
+        tests: [not_null, unique]
