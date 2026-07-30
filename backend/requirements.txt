@@ -29,4 +29,4 @@ qdrant-client>=1.10.0
 # Race course matching
 rapidfuzz>=3.0.0
 # Kafka clickstream pipeline
-confluent-kafka
+confluent-kafka>=2.3,<3.0

@@ -1,7 +1,7 @@
 """Integration test for kafka_consumer_worker -- requires both live Postgres
 (uphill_ai_test, via tests/integration/conftest.py) AND a live local Kafka broker
 (docker compose up -d kafka) reachable via KAFKA_BOOTSTRAP_SERVERS
-(defaults to localhost:9092 for a host-run pytest).
+(defaults to 127.0.0.1:9092 for a host-run pytest).
 
 The three tests below `test_consumer_writes_produced_message_to_postgres` don't
 need a live broker -- they exercise `process_message`/`run_consumer_loop`
@@ -24,7 +24,7 @@ from sqlalchemy import text
 from db import engine
 from kafka_consumer_worker import process_message, run_consumer_loop
 
-BOOTSTRAP = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
+BOOTSTRAP = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "127.0.0.1:9092")
 TOPIC = "clickstream-events"
 
 

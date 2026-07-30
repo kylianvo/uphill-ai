@@ -57,6 +57,12 @@ def run_consumer_loop(consumer: Consumer, max_messages: int | None = None) -> in
             try:
                 process_message(msg.value())
             except Exception as exc:
+                # No dead-letter queue / give-up threshold -- a permanently failing
+                # message (e.g. a real DB constraint violation, not a transient
+                # outage) wedges this consumer indefinitely, since we retry forever
+                # rather than skip. Acceptable for this project's scope; a real
+                # production version would need a retry-count cap and a
+                # dead-letter topic.
                 logger.error("Failed to persist Kafka message, will retry: %s", exc)
                 time.sleep(1.0)
                 continue

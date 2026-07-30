@@ -63,29 +63,41 @@ services:
       KAFKA_PROCESS_ROLES: broker,controller
       # Two PLAINTEXT-protocol listeners, not the brief's one: containers on the
       # compose network (kafka-consumer) dial the broker as "kafka:9092", but a
-      # host-run pytest (KAFKA_BOOTSTRAP_SERVERS=localhost:9092, per the brief's
+      # host-run pytest (KAFKA_BOOTSTRAP_SERVERS=127.0.0.1:9092, per the brief's
       # own test instructions) can't resolve "kafka" -- with only one advertised
-      # listener, the client's initial bootstrap connection to localhost:9092
+      # listener, the client's initial bootstrap connection to 127.0.0.1:9092
       # succeeds, but the metadata response then hands back "kafka:9092" as the
       # broker address, which the host can't reach, and the client hangs forever
-      # re-querying. EXTERNAL advertises "localhost:9092" (the host-mapped port)
-      # so a host client's subsequent connections resolve correctly too.
+      # re-querying. EXTERNAL advertises "127.0.0.1:9092" (the host-mapped port)
+      # so a host client's subsequent connections resolve correctly too. Using
+      # "127.0.0.1" rather than "localhost" here is deliberate: the port below is
+      # published ipv4-only (127.0.0.1:9092:9094), but on macOS/Docker Desktop
+      # "localhost" resolves to ipv6 (::1) first, which that mapping doesn't
+      # cover -- an advertised "localhost:9092" causes host clients to get
+      # "Connection refused" against the ipv6 address instead of ever trying v4.
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093,EXTERNAL://0.0.0.0:9094
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://127.0.0.1:9092
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_NUM_PARTITIONS: 3
       CLUSTER_ID: uphill-ai-kafka-cluster-01
     volumes:
       - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
 
   kafka-consumer:
     image: uphill-backend:latest
     restart: unless-stopped
     depends_on:
       kafka:
-        condition: service_started
+        condition: service_healthy
       db:
         condition: service_healthy
     environment:

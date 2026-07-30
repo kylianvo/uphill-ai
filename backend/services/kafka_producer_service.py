@@ -49,7 +49,11 @@ def publish_batch(
     Any event whose delivery is still unconfirmed (explicit failure, or pending
     when the flush timeout is hit) is purged from the producer's internal queue
     so it can never be delivered later out-of-band -- e.g. after the broker
-    recovers -- which would otherwise double-write it."""
+    recovers -- which would otherwise double-write it. This closes the
+    broker-outage-then-recovery duplicate specifically; it is not a general
+    exactly-once guarantee -- a message that the broker actually persisted but
+    whose ack raced past `timeout` will still be written by both this fallback
+    and the consumer. See the design doc's Non-goals / Error handling sections."""
     if not events:
         return []
 
