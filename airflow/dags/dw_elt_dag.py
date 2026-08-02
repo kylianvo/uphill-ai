@@ -55,10 +55,16 @@ def _record_run_metadata(**context):
     from services.warehouse_pipeline_metadata import parse_dbt_run_results, record_pipeline_run
 
     ti = context["ti"]
-    raw_row_counts = ti.xcom_pull(task_ids="extract")
+    raw_row_counts = ti.xcom_pull(task_ids="extract") or {}
     run_results_path = os.path.join(DBT_PROJECT_DIR, "target", "run_results.json")
     dbt_test_counts = parse_dbt_run_results(run_results_path)
     record_pipeline_run(DUCKDB_PATH, raw_row_counts, dbt_test_counts)
+
+    if dbt_test_counts["failed"] > 0 or dbt_test_counts["errored"] > 0:
+        raise RuntimeError(
+            f"dbt test had {dbt_test_counts['failed']} failure(s) and {dbt_test_counts['errored']} error(s) "
+            "(recorded to meta.pipeline_runs before re-raising)"
+        )
 
 
 with DAG(
@@ -73,6 +79,16 @@ with DAG(
     snapshot_task = PythonOperator(task_id="dbt_snapshot", python_callable=_dbt_snapshot)
     run_task = PythonOperator(task_id="dbt_run", python_callable=_dbt_run)
     test_task = PythonOperator(task_id="dbt_test", python_callable=_dbt_test)
-    record_metadata_task = PythonOperator(task_id="record_run_metadata", python_callable=_record_run_metadata)
+    # trigger_rule="all_done": must run even when dbt_test fails, so a real test
+    # regression lands a status="failed" row instead of leaving meta.pipeline_runs
+    # stale. Known residual gap: if extract/dbt_snapshot/dbt_run fail instead of
+    # dbt_test, this task still runs (all_done) and reads whatever run_results.json
+    # happens to be on disk -- missing raises loud (fine), but a stale file from a
+    # prior successful run would be misreported as this run's result.
+    record_metadata_task = PythonOperator(
+        task_id="record_run_metadata",
+        python_callable=_record_run_metadata,
+        trigger_rule="all_done",
+    )
 
     extract_task >> snapshot_task >> run_task >> test_task >> record_metadata_task
