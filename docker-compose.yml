@@ -250,6 +250,23 @@ services:
       chmod -R a+rwX /plugins &&
       echo 'DuckDB driver downloaded successfully'"
 
+  metabase-db-init:
+    # Creates the metabase_app Postgres database (see the `metabase` service's
+    # MB_DB_DBNAME comment below for why it's separate from uphill_ai) if it
+    # doesn't already exist. Without this, a fresh `docker compose up` against
+    # a brand-new Postgres volume crash-loops the `metabase` service with
+    # `FATAL: database "metabase_app" does not exist` -- mirrors the
+    # airflow-init idiom of creating its own `airflow` database.
+    image: postgres:16-alpine
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    entrypoint: /bin/sh
+    command: >
+      -c "PGPASSWORD=${POSTGRES_PASSWORD:-uphill_secret} psql -h db -U uphill -d postgres -tc \"SELECT 1 FROM pg_database WHERE datname = 'metabase_app'\" | grep -q 1 ||
+      PGPASSWORD=${POSTGRES_PASSWORD:-uphill_secret} psql -h db -U uphill -d postgres -c \"CREATE DATABASE metabase_app\""
+
   metabase:
     # The official metabase/metabase image is Alpine (musl libc) on BOTH
     # arm64 and amd64. The motherduck DuckDB driver's bundled native lib
@@ -289,6 +306,8 @@ services:
       db:
         condition: service_healthy
       metabase-driver-init:
+        condition: service_completed_successfully
+      metabase-db-init:
         condition: service_completed_successfully
 
 
