@@ -51,6 +51,16 @@ def _dbt_test(**context):
     _run_dbt(["test"])
 
 
+def _record_run_metadata(**context):
+    from services.warehouse_pipeline_metadata import parse_dbt_run_results, record_pipeline_run
+
+    ti = context["ti"]
+    raw_row_counts = ti.xcom_pull(task_ids="extract")
+    run_results_path = os.path.join(DBT_PROJECT_DIR, "target", "run_results.json")
+    dbt_test_counts = parse_dbt_run_results(run_results_path)
+    record_pipeline_run(DUCKDB_PATH, raw_row_counts, dbt_test_counts)
+
+
 with DAG(
     dag_id="dw_elt",
     default_args=default_args,
@@ -63,5 +73,6 @@ with DAG(
     snapshot_task = PythonOperator(task_id="dbt_snapshot", python_callable=_dbt_snapshot)
     run_task = PythonOperator(task_id="dbt_run", python_callable=_dbt_run)
     test_task = PythonOperator(task_id="dbt_test", python_callable=_dbt_test)
+    record_metadata_task = PythonOperator(task_id="record_run_metadata", python_callable=_record_run_metadata)
 
-    extract_task >> snapshot_task >> run_task >> test_task
+    extract_task >> snapshot_task >> run_task >> test_task >> record_metadata_task
