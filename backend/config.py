@@ -43,5 +43,11 @@ class Config:
         "KAFKA_BOOTSTRAP_SERVERS", "kafka:9092" if os.path.exists("/.dockerenv") else "127.0.0.1:9092"
     )
 
+    # Warehouse dashboards (Metabase)
+    METABASE_URL: str = os.getenv("METABASE_URL", "http://localhost:3001")
+    METABASE_ADMIN_EMAIL: str = os.getenv("METABASE_ADMIN_EMAIL", "admin@uphill.ai")
+    METABASE_ADMIN_PASSWORD: str = os.getenv("METABASE_ADMIN_PASSWORD", "")
+    API_BASE_URL: str = os.getenv("API_BASE_URL", "http://localhost:8000")
+
 
 settings = Config()
