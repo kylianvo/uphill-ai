@@ -26,6 +26,20 @@ def _extract(**context):
 
 
 def _run_dbt(subcommand: list[str]):
+    # NOTE on the DuckDB single-writer lock conflict (see
+    # backend/services/warehouse_extractor.py's module docstring and
+    # docs/superpowers/specs/2026-08-02-warehouse-dashboards-design.md): unlike
+    # `extract` and `record_run_metadata`, the three tasks that call this
+    # (dbt_snapshot/dbt_run/dbt_test) are NOT covered by the bespoke
+    # `_connect_with_retry` lock-conflict retry. Each `dbt` invocation opens
+    # its own read-write DuckDB connection internally as a subprocess, and dbt
+    # doesn't expose a lock-conflict-specific retry hook -- blindly retrying a
+    # failed `subprocess.run` on any non-zero exit would mask real dbt
+    # failures (a broken model, a failing test) as well as lock conflicts,
+    # which is worse than not retrying. These three tasks rely solely on
+    # Airflow's own `default_args={"retries": 1}` (a single retry after ~5
+    # min) as their backstop against a Metabase-held lock. This is a known,
+    # accepted scope boundary, not an oversight.
     env = dict(os.environ, DBT_DUCKDB_PATH=DUCKDB_PATH)
     result = subprocess.run(
         ["dbt", *subcommand, "--project-dir", DBT_PROJECT_DIR, "--profiles-dir", DBT_PROFILES_DIR],
@@ -51,14 +65,43 @@ def _dbt_test(**context):
     _run_dbt(["test"])
 
 
+def _upstream_tasks_ran(context) -> bool:
+    """True if extract/dbt_snapshot/dbt_run all succeeded, meaning dbt_test
+    actually got to run and target/run_results.json reflects THIS run rather
+    than being a stale leftover from a previous successful run.
+
+    Deliberately does NOT check dbt_test's own task state here: `dbt test`
+    exits non-zero (Airflow-"failed") whenever any test fails, which is a
+    legitimate, freshly-written result in run_results.json -- not a reason to
+    distrust the file. Only a failure in an *earlier* task means dbt_test was
+    skipped (default trigger_rule="all_success") and never wrote a fresh file.
+    """
+    dag_run = context["dag_run"]
+    for task_id in ("extract", "dbt_snapshot", "dbt_run"):
+        ti = dag_run.get_task_instance(task_id)
+        if ti is None or ti.state != "success":
+            return False
+    return True
+
+
 def _record_run_metadata(**context):
     from services.warehouse_pipeline_metadata import parse_dbt_run_results, record_pipeline_run
 
     ti = context["ti"]
     raw_row_counts = ti.xcom_pull(task_ids="extract") or {}
+
+    if not _upstream_tasks_ran(context):
+        # extract/dbt_snapshot/dbt_run didn't all succeed, so dbt_test was
+        # skipped and run_results.json (if it exists at all) is stale --
+        # recording anything derived from it as 'success' would be a lie.
+        # The earlier task's own failure already fails this DAG run; nothing
+        # further to raise here.
+        record_pipeline_run(DUCKDB_PATH, raw_row_counts, dbt_test_counts=None, upstream_ok=False)
+        return
+
     run_results_path = os.path.join(DBT_PROJECT_DIR, "target", "run_results.json")
     dbt_test_counts = parse_dbt_run_results(run_results_path)
-    record_pipeline_run(DUCKDB_PATH, raw_row_counts, dbt_test_counts)
+    record_pipeline_run(DUCKDB_PATH, raw_row_counts, dbt_test_counts, upstream_ok=True)
 
     if dbt_test_counts["failed"] > 0 or dbt_test_counts["errored"] > 0:
         raise RuntimeError(
@@ -81,10 +124,10 @@ with DAG(
     test_task = PythonOperator(task_id="dbt_test", python_callable=_dbt_test)
     # trigger_rule="all_done": must run even when dbt_test fails, so a real test
     # regression lands a status="failed" row instead of leaving meta.pipeline_runs
-    # stale. Known residual gap: if extract/dbt_snapshot/dbt_run fail instead of
-    # dbt_test, this task still runs (all_done) and reads whatever run_results.json
-    # happens to be on disk -- missing raises loud (fine), but a stale file from a
-    # prior successful run would be misreported as this run's result.
+    # stale. If extract/dbt_snapshot/dbt_run fail instead of dbt_test,
+    # _upstream_tasks_ran() detects that dbt_test never got to run and records
+    # status="incomplete" instead of trusting a possibly-stale run_results.json --
+    # see _upstream_tasks_ran's docstring.
     record_metadata_task = PythonOperator(
         task_id="record_run_metadata",
         python_callable=_record_run_metadata,

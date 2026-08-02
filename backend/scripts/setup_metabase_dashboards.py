@@ -126,6 +126,27 @@ def _create_card(token: str, database_id: int, name: str, sql: str, display: str
     return resp.json()["id"]
 
 
+def _update_card(token: str, card_id: int, database_id: int, name: str, sql: str, display: str) -> None:
+    """Push this script's current SQL/display for an already-existing card
+    (matched by name) so editing DASHBOARDS and re-running actually updates
+    the card in place, instead of silently leaving the old query live."""
+    resp = httpx.put(
+        f"{settings.METABASE_URL}/api/card/{card_id}",
+        headers=_headers(token),
+        json={
+            "dataset_query": {
+                "type": "native",
+                "native": {"query": sql},
+                "database": database_id,
+            },
+            "display": display,
+        },
+    )
+    if resp.status_code >= 400:
+        print(f"/api/card update failed for '{name}' (id {card_id}): {resp.status_code} {resp.text}")
+    resp.raise_for_status()
+
+
 def _ensure_dashboard(token: str, name: str) -> int:
     resp = httpx.get(f"{settings.METABASE_URL}/api/dashboard", headers=_headers(token))
     resp.raise_for_status()
@@ -340,7 +361,8 @@ def main():
             # here mirroring _ensure_database/_ensure_dashboard's pattern).
             if name in existing_cards:
                 card_id = existing_cards[name]
-                print(f"  card '{name}' already exists -> id {card_id}")
+                _update_card(token, card_id, database_id, name, sql, display)
+                print(f"  card '{name}' already exists -> id {card_id} (SQL/display refreshed)")
             else:
                 card_id = _create_card(token, database_id, name, sql, display)
                 existing_cards[name] = card_id

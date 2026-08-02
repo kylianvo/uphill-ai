@@ -7,7 +7,7 @@ docs/superpowers/specs/2026-08-02-warehouse-dashboards-design.md for the full de
 import json
 from datetime import UTC, datetime
 
-import duckdb
+from services.warehouse_extractor import _connect_with_retry
 
 
 def parse_dbt_run_results(run_results_path: str) -> dict[str, int]:
@@ -31,12 +31,29 @@ def parse_dbt_run_results(run_results_path: str) -> dict[str, int]:
 def record_pipeline_run(
     duckdb_path: str,
     raw_row_counts: dict[str, int],
-    dbt_test_counts: dict[str, int],
+    dbt_test_counts: dict[str, int] | None,
+    upstream_ok: bool = True,
 ) -> None:
-    """Write one row to meta.pipeline_runs summarizing this DAG run."""
-    status = "success" if dbt_test_counts["failed"] == 0 and dbt_test_counts["errored"] == 0 else "failed"
+    """Write one row to meta.pipeline_runs summarizing this DAG run.
 
-    conn = duckdb.connect(duckdb_path)
+    `upstream_ok=False` means an earlier task (extract/dbt_snapshot/dbt_run)
+    failed before dbt_test ever ran, so `target/run_results.json` -- if present
+    at all -- is stale (left over from a prior successful run), not this run's
+    result. In that case `dbt_test_counts` is ignored/may be None and the row
+    is recorded with status='incomplete' rather than deriving a (possibly
+    false) 'success' from stale file contents. See dw_elt_dag.py's
+    `_upstream_tasks_ran` for how the caller determines this.
+    """
+    if not upstream_ok:
+        status = "incomplete"
+        dbt_test_counts = {"passed": 0, "failed": 0, "errored": 0}
+    else:
+        status = "success" if dbt_test_counts["failed"] == 0 and dbt_test_counts["errored"] == 0 else "failed"
+
+    # Same DuckDB single-writer lock conflict as extract_raw_tables (see
+    # warehouse_extractor.py's module docstring) -- reuse its retry helper
+    # rather than duplicating the retry loop here.
+    conn = _connect_with_retry(duckdb_path)
     try:
         conn.execute("CREATE SCHEMA IF NOT EXISTS meta")
         conn.execute("CREATE SEQUENCE IF NOT EXISTS meta.pipeline_runs_run_id_seq")

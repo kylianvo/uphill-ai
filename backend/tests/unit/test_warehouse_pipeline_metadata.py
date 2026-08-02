@@ -67,3 +67,26 @@ def test_record_pipeline_run_marks_failed_status_on_test_failures():
         conn.close()
 
     assert status == "failed"
+
+
+def test_record_pipeline_run_marks_incomplete_status_when_upstream_failed():
+    """A DAG run where extract/dbt_snapshot/dbt_run failed before dbt_test ever
+    ran must never be recorded as 'success' by trusting a stale
+    run_results.json -- see dw_elt_dag.py's _upstream_tasks_ran."""
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        duckdb_path = os.path.join(tmp_dir, "test.duckdb")
+
+        record_pipeline_run(
+            duckdb_path,
+            raw_row_counts={"users": 10},
+            dbt_test_counts=None,
+            upstream_ok=False,
+        )
+
+        conn = duckdb.connect(duckdb_path, read_only=True)
+        row = conn.execute(
+            "SELECT dbt_tests_passed, dbt_tests_failed, dbt_tests_errored, status FROM meta.pipeline_runs"
+        ).fetchone()
+        conn.close()
+
+    assert row == (0, 0, 0, "incomplete")
