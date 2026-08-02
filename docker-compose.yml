@@ -232,6 +232,24 @@ services:
     ports:
       - "127.0.0.1:9100:9100"
 
+  metabase-driver-init:
+    image: curlimages/curl:latest
+    restart: "no"
+    # curlimages/curl runs as a non-root user by default (curl_user); the
+    # named metabase_plugins volume is created root-owned on first use, so
+    # without this the download succeeds but the write to /plugins fails
+    # with "curl: (23) client returned ERROR on write" (permission denied).
+    user: "0:0"
+    volumes:
+      - metabase_plugins:/plugins
+    entrypoint: /bin/sh
+    command: >
+      -c "JAR_URL=$$(curl -sSL https://api.github.com/repos/motherduckdb/metabase_duckdb_driver/releases/latest | grep browser_download_url | grep '.jar' | cut -d '\"' -f 4) &&
+      echo \"Downloading $$JAR_URL\" &&
+      curl -sSL -o /plugins/duckdb.metabase-driver.jar \"$$JAR_URL\" &&
+      chmod -R a+rwX /plugins &&
+      echo 'DuckDB driver downloaded successfully'"
+
   metabase:
     image: metabase/metabase:latest
     restart: unless-stopped
@@ -245,9 +263,14 @@ services:
       MB_DB_PASS: ${POSTGRES_PASSWORD:-uphill_secret}
       MB_DB_HOST: db
       JAVA_OPTS: "-Xmx512m -Xms256m"
+    volumes:
+      - metabase_plugins:/plugins
+      - ./warehouse:/warehouse:ro
     depends_on:
       db:
         condition: service_healthy
+      metabase-driver-init:
+        condition: service_completed_successfully
 
 
   frontend:
@@ -270,3 +293,4 @@ volumes:
   prometheus_data:
   grafana_data:
   kafka_data:
+  metabase_plugins:
