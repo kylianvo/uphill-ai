@@ -36,33 +36,46 @@ URLS = ["/dashboard", "/plan", "/workouts", "/gear", "/nutrition", "/knowledge"]
 ANONYMOUS_SESSION_RATIO = 0.3
 
 
-def _load_user_pool(limit: int = 50) -> list[int]:
+def _load_user_pool(limit: int = 50) -> list[tuple[int, str]]:
     with engine.connect() as conn:
-        rows = conn.execute(text("SELECT id FROM users ORDER BY random() LIMIT :limit"), {"limit": limit}).fetchall()
-    return [row[0] for row in rows]
+        rows = conn.execute(
+            text("SELECT id, email FROM users ORDER BY random() LIMIT :limit"), {"limit": limit}
+        ).fetchall()
+    return [(row[0], row[1]) for row in rows]
 
 
-def _generate_event(user_pool: list[int], session_ids: dict[int, str]) -> tuple[dict, str, int | None]:
+def _mock_login_token(email: str) -> str | None:
+    resp = httpx.post(f"{settings.API_BASE_URL}/api/auth/mock-login", json={"email": email})
+    if resp.status_code != 200:
+        print(f"  WARN: mock-login failed for {email} ({resp.status_code}): {resp.text[:200]}")
+        return None
+    return resp.json()["session_token"]
+
+
+def _generate_event(
+    user_pool: list[tuple[int, str]], session_ids: dict[int, str]
+) -> tuple[dict, str, int | None, str | None]:
     is_anonymous = random.random() < ANONYMOUS_SESSION_RATIO or not user_pool
-    if is_anonymous:
-        session_id = f"anon-{uuid.uuid4()}"
-        user_id = None
-    else:
-        user_id = random.choice(user_pool)
-        session_id = session_ids.setdefault(user_id, f"user-{user_id}-{uuid.uuid4()}")
-
     event_name = random.choices(list(EVENT_WEIGHTS.keys()), weights=list(EVENT_WEIGHTS.values()), k=1)[0]
     event = {
         "event_name": event_name,
         "properties": {"simulated": True},
         "url": random.choice(URLS),
     }
-    return event, session_id, user_id
+
+    if is_anonymous:
+        session_id = f"anon-{uuid.uuid4()}"
+        return event, session_id, None, None
+
+    user_id, email = random.choice(user_pool)
+    session_id = session_ids.setdefault(user_id, f"user-{user_id}-{uuid.uuid4()}")
+    return event, session_id, user_id, email
 
 
 def run(rate: float, duration: float | None, count: int | None, burst: bool) -> int:
     user_pool = _load_user_pool()
     session_ids: dict[int, str] = {}
+    tokens: dict[int, str] = {}
     sent = 0
     failed = 0
     start = time.time()
@@ -73,10 +86,21 @@ def run(rate: float, duration: float | None, count: int | None, burst: bool) -> 
         if duration is not None and (time.time() - start) >= duration:
             break
 
-        event, session_id, _user_id = _generate_event(user_pool, session_ids)
+        event, session_id, user_id, email = _generate_event(user_pool, session_ids)
+
+        headers = None
+        if user_id is not None:
+            if user_id not in tokens:
+                token = _mock_login_token(email)
+                if token is not None:
+                    tokens[user_id] = token
+            if user_id in tokens:
+                headers = {"Authorization": f"Bearer {tokens[user_id]}"}
+
         resp = httpx.post(
             f"{settings.API_BASE_URL}/api/analytics/track_batch",
             json={"events": [event], "session_id": session_id},
+            headers=headers,
         )
         if resp.status_code == 200:
             sent += 1
