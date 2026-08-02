@@ -11,11 +11,26 @@ separate watermark-tracking table needed, the watermark lives in the data
 itself. Known limitation: if a row were ever deleted upstream in one of these
 two tables, the raw copy would drift (deletes never propagate). Acceptable here
 since neither table is ever deleted from in practice.
+
+DuckDB single-writer note: a read-write connect() here conflicts with ANY other
+open connection to the same file, including Metabase's idle pooled read-only
+connection to the warehouse database (`setup_metabase_dashboards.py`). Metabase's
+JDBC connection pool has a minimum size of 0, so it does release the connection
+on its own once idle -- but empirically that takes on the order of 5-7 minutes
+(c3p0's `maxIdleTimeExcessConnections` default), not seconds. `_connect_with_retry`
+retries the initial connect for up to ~10 minutes to reliably outlast that window
+instead of failing the whole task the first time Metabase happens to be querying
+the warehouse. See docs/superpowers/specs/2026-08-02-warehouse-dashboards-design.md.
 """
 
+import time
 from urllib.parse import urlparse
 
 import duckdb
+
+_LOCK_CONFLICT_MARKER = "Conflicting lock is held"
+_CONNECT_RETRY_ATTEMPTS = 40
+_CONNECT_RETRY_DELAY_SECONDS = 15.0
 
 SOURCE_TABLES = (
     "users",
@@ -32,6 +47,23 @@ INCREMENTAL_WATERMARK_COLUMNS = {
     "analytics_events": "timestamp",
     "block_reviews": "created_at",
 }
+
+
+def _connect_with_retry(duckdb_path: str) -> duckdb.DuckDBPyConnection:
+    """Open a read-write DuckDB connection, retrying past transient single-writer
+    lock conflicts (see the module docstring) instead of failing on the first one."""
+    for attempt in range(1, _CONNECT_RETRY_ATTEMPTS + 1):
+        try:
+            return duckdb.connect(duckdb_path)
+        except duckdb.IOException as exc:
+            if _LOCK_CONFLICT_MARKER not in str(exc) or attempt == _CONNECT_RETRY_ATTEMPTS:
+                raise
+            print(
+                f"DuckDB lock conflict on attempt {attempt}/{_CONNECT_RETRY_ATTEMPTS}, "
+                f"retrying in {_CONNECT_RETRY_DELAY_SECONDS}s..."
+            )
+            time.sleep(_CONNECT_RETRY_DELAY_SECONDS)
+    raise AssertionError("unreachable")
 
 
 def _pg_conninfo(database_url: str) -> str:
@@ -83,7 +115,7 @@ def extract_raw_tables(duckdb_path: str, database_url: str) -> dict[str, int]:
     Returns table_name -> row_count, for the caller (Airflow task log / golden
     check) to report.
     """
-    conn = duckdb.connect(duckdb_path)
+    conn = _connect_with_retry(duckdb_path)
     try:
         conn.execute("INSTALL postgres")
         conn.execute("LOAD postgres")

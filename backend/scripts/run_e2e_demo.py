@@ -37,7 +37,11 @@ def _row_counts() -> dict[str, int]:
         conn.close()
 
 
-def _trigger_dag_and_wait(dag_id: str = "dw_elt", timeout: float = 300.0) -> None:
+def _trigger_dag_and_wait(dag_id: str = "dw_elt", timeout: float = 900.0) -> None:
+    # 900s (15 min), not the more typical 300s (5 min): the extract task retries
+    # past Metabase's idle DuckDB connection for up to ~10 min on its own (see
+    # services/warehouse_extractor.py's _connect_with_retry) before it would ever
+    # actually fail, so this wait has to comfortably outlast that worst case too.
     # A paused DAG accepts manual triggers but the scheduler never runs their tasks
     # (the run just sits in "queued" forever), so unpause first.
     subprocess.run(
