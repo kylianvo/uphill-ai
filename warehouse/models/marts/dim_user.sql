@@ -15,6 +15,7 @@ select
     days_per_week,
     current_weekly_km,
     onboarding_complete,
+    created_at,
     case when version_number = 1 then timestamp '1900-01-01' else dbt_valid_from end as valid_from,
     coalesce(dbt_valid_to, timestamp '2999-12-31') as valid_to,
     dbt_valid_to is null as is_current

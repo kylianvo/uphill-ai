@@ -4,6 +4,7 @@ select
     du.user_key,
     e.event_name,
     e.session_id,
+    e.url,
     e.event_timestamp
 from {{ ref('stg_analytics_events') }} e
 left join {{ ref('dim_user') }} du

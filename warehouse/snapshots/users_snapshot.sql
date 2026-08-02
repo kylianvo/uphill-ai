@@ -18,7 +18,8 @@ select
     goal_type,
     days_per_week,
     current_weekly_km,
-    onboarding_complete
+    onboarding_complete,
+    created_at
 from {{ source('raw', 'users') }}
 
 {% endsnapshot %}
