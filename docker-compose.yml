@@ -108,6 +108,12 @@ services:
       - ./backend:/app
     command: python kafka_consumer_worker.py
 
+  # `bitnami/spark` moved off Docker Hub in August 2025 (Bitnami/Broadcom restructured
+  # their free container catalog); `bitnamilegacy/spark:3.5` is their official archive
+  # namespace for the old versioned tags (not an unofficial fork), but it's a frozen
+  # snapshot -- no further updates or security patches will land on it. Fine for this
+  # project's local dev/demo scope; revisit before reusing this image for any long-lived
+  # production deployment.
   spark-master:
     image: bitnamilegacy/spark:3.5
     restart: unless-stopped
