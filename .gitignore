@@ -39,6 +39,9 @@ __pycache__/
 # Qdrant
 qdrant_storage/
 
+# Spark Delta Lake output (generated data)
+spark/delta/
+
 # Deploy secrets (never commit)
 deploy.env
 
