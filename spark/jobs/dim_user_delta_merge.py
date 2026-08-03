@@ -61,6 +61,14 @@ def merge_scd2(spark: SparkSession, source_df, run_ts: datetime) -> None:
     target = DeltaTable.forPath(spark, DELTA_TABLE_PATH)
     change_condition = build_change_condition(TRACKED_COLUMNS)
 
+    # NOTE: steps 1 and 2 below are two INDEPENDENT MERGE transactions, not one.
+    # Each .execute() is individually atomic per Delta's guarantees, but the
+    # composite two-step SCD2 update is NOT atomic as a whole -- a crash between
+    # them leaves a changed user with zero current rows. This relies on
+    # idempotency (step 1 no-ops on re-run, step 2 fills in the missing current
+    # row) plus Airflow's automatic retry to self-heal, not on cross-transaction
+    # atomicity. See "Error handling" in the design doc for the full writeup.
+
     # Step 1: close out current rows whose tracked columns changed.
     target.alias("t").merge(
         source_df.alias("s"),
