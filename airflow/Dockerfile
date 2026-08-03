@@ -1,6 +1,16 @@
 FROM apache/airflow:2.10.4-python3.12
 
 USER root
+# pyspark/delta-spark's spark-submit needs a JVM on PATH -- this image has
+# none by default.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends openjdk-17-jdk-headless \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    # arch-portable JAVA_HOME (arm64 vs amd64 differ in the openjdk package
+    # path) -- symlink to whichever one apt actually installed.
+    && ln -s "$(dirname "$(dirname "$(readlink -f "$(which java)")")")" /usr/lib/jvm/default-java
+ENV JAVA_HOME=/usr/lib/jvm/default-java
 COPY backend/requirements.txt /tmp/backend-requirements.txt
 USER airflow
 RUN pip install --no-cache-dir -r /tmp/backend-requirements.txt \
