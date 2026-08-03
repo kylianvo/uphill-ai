@@ -28,7 +28,7 @@ def main() -> None:
     conn.execute("LOAD delta")
 
     current_count = conn.execute(
-        f"SELECT COUNT(*) FROM delta_scan('{DELTA_TABLE_PATH}') WHERE is_current = true"
+        "SELECT COUNT(*) FROM delta_scan(?) WHERE is_current = true", [DELTA_TABLE_PATH]
     ).fetchone()[0]
     conn.close()
 
