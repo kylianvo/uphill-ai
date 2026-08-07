@@ -219,6 +219,7 @@ class GenerateNextBlockRequest(BaseModel):
     overall_rpe: int | None = None  # optional pre-submission of RPE for current block
     notes: str | None = None
     lang: str | None = None  # current UI language at click time; falls back to the user's saved lang
+    override_gate: bool = False  # explicit athlete confirmation to bypass the 70% completion gate
 
 
 # Phase 3 Request Models
@@ -1745,14 +1746,18 @@ async def generate_next_block(request: GenerateNextBlockRequest, user: dict[str,
 
     prev_block = request.block_number - 1
 
-    # Enforce 80% completion gate on the preceding block
+    # Enforce 70% completion gate on the preceding block, unless the athlete
+    # has explicitly confirmed they want to proceed anyway.
+    override_used = False
     if prev_block >= 1:
         completion = get_block_completion(request.plan_id, prev_block)
         if not completion["unlocked"]:
-            raise HTTPException(
-                status_code=403,
-                detail=f"Block {prev_block} is {completion['completion_pct']}% complete. Need ≥70% to unlock the next block.",
-            )
+            if not request.override_gate:
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"Block {prev_block} is {completion['completion_pct']}% complete. Need ≥70% to unlock the next block.",
+                )
+            override_used = True  # noqa: F841 -- consumed by Task 3's prompt-annotation change
 
     # If the caller passes RPE/notes, save them as the review for the previous block
     if prev_block >= 1 and (request.overall_rpe is not None or request.notes):
