@@ -39,6 +39,7 @@ interface PlanCalendarViewProps {
   getWorkoutDate: (wo: any) => string;
   onSwapDays: (day1: string, day2: string, weekNumberOverride?: number) => void;
   onToggleComplete: (id: number, completed: boolean) => void;
+  onMarkMissed?: (id: number, missed: boolean) => void;
   onLogWorkout: (id: number, rpe: number | null, notes: string) => Promise<void>;
   isCoachActingAsAthlete?: boolean;
   athleteId?: number | null;
@@ -49,7 +50,7 @@ interface PlanCalendarViewProps {
 
 export default function PlanCalendarView({
   workouts, lang, isMobile, getWorkoutDateObj, getWorkoutDate,
-  onSwapDays, onToggleComplete, onLogWorkout, isCoachActingAsAthlete,
+  onSwapDays, onToggleComplete, onMarkMissed, onLogWorkout, isCoachActingAsAthlete,
   athleteId, onApproveWorkout, onRemoveWorkout, onEditWorkout,
 }: PlanCalendarViewProps) {
   const dbTypes = useWorkoutTypes(lang);
@@ -219,6 +220,7 @@ export default function PlanCalendarView({
                     isMobile={isMobile}
                     lang={lang}
                     onToggleComplete={onToggleComplete}
+                    onMarkMissed={onMarkMissed}
                     onLogWorkout={onLogWorkout}
                     getWorkoutDate={getWorkoutDate}
                     defaultExpanded
@@ -439,9 +441,9 @@ function CalendarDayCell({
             const color = zoneColorOf(w);
             const isRaceWo = w.type?.toLowerCase() === "race";
             return (
-              <div key={w.id} style={{ display: "flex", alignItems: "center", gap: "4px", borderRadius: "7px", padding: "4px 6px", background: `${color}22`, borderLeft: `3px solid ${color}` }}>
+              <div key={w.id} style={{ display: "flex", alignItems: "center", gap: "4px", borderRadius: "7px", padding: "4px 6px", background: w.is_missed ? "rgba(239,68,68,0.10)" : `${color}22`, borderLeft: `3px solid ${w.is_missed ? "#ef4444" : color}` }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-primary)" }}>
+                  <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-primary)", textDecoration: w.is_missed ? "line-through" : "none" }}>
                     {isRaceWo ? `🏁 ${lang === "en" ? "Race Day" : "Ngày đua"}` : w.title}
                   </div>
                   <div style={{ fontSize: "9.5px", color: "var(--text-secondary)", fontVariantNumeric: "tabular-nums" }}>
@@ -462,6 +464,8 @@ function CalendarDayCell({
                 >
                   {w.is_completed ? (
                     <CheckCircle size={15} weight="fill" color="#10b981" />
+                  ) : w.is_missed ? (
+                    <X size={15} weight="bold" color="#ef4444" />
                   ) : (
                     <Circle size={15} weight="regular" color="var(--text-muted)" />
                   )}

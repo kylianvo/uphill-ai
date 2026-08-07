@@ -19,7 +19,7 @@ import { parsePaceToMinutes, formatDurationHM } from "../lib/paceStrategy";
 
 export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   const ctx = useAppContext();
-  const { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, handleSwapWorkouts, swapDays, handleToggleComplete, handleLogWorkout, getWeekWorkouts, getWorkoutDate, getWorkoutDateObj, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller, fetchDraftPlan, draftPlan, handleApproveWorkout, handleRemoveWorkout, handleAiCreateWorkout, handleCoachEditWorkout, fetchActivePlanForActing } = usePlanner();
+  const { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, handleSwapWorkouts, swapDays, handleToggleComplete, handleMarkMissed, handleLogWorkout, getWeekWorkouts, getWorkoutDate, getWorkoutDateObj, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller, fetchDraftPlan, draftPlan, handleApproveWorkout, handleRemoveWorkout, handleAiCreateWorkout, handleCoachEditWorkout, fetchActivePlanForActing } = usePlanner();
   const [planViewMode, setPlanViewMode] = useState<"list" | "calendar">("list");
   const [addWorkoutTarget, setAddWorkoutTarget] = useState<{ week: number; day: string } | null>(null);
   const { lang, activePlan, planLoading, planErrorMsg, planForm, setPlanForm, targetTimeH, setTargetTimeH, targetTimeM, setTargetTimeM, targetTimeS, setTargetTimeS, cutoffTimeH, setCutoffTimeH, cutoffTimeM, setCutoffTimeM, cutoffTimeS, setCutoffTimeS, recentPlans, selectedWeek, setSelectedWeek, swapDay1, setSwapDay1, swapDay2, setSwapDay2, setWorkouts, setBackupWorkouts, setActivePlan, workouts, backupWorkouts, backupActivePlan, setBackupActivePlan, courseInputMode, setCourseInputMode, plannerGpxLoading, plannerGpxFile, plannerGpxError, showExportOptions, setShowExportOptions, exportTimePref, setExportTimePref, setIsGoalDeterminerOpen, settingsHandoff, setSettingsHandoff, setPaceHandoff, setIsPaceStrategyOpen, user, actingAsAthleteId, actingAsAthleteName, setActingAsAthleteId, setActingAsAthleteName } = ctx;
@@ -1303,6 +1303,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 getWorkoutDate={getWorkoutDate}
                 onSwapDays={swapDays}
                 onToggleComplete={handleToggleCompleteWithRefresh}
+                onMarkMissed={handleMarkMissed}
                 onLogWorkout={handleLogWorkout}
                 isCoachActingAsAthlete={isCoachActingAsAthlete}
                 athleteId={workoutAthleteId}
@@ -1332,6 +1333,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 isMobile={isMobile}
                 onSwapDays={swapDays}
                 onToggleComplete={handleToggleCompleteWithRefresh}
+                onMarkMissed={handleMarkMissed}
                 onLogWorkout={handleLogWorkout}
                 getWorkoutDate={getWorkoutDate}
                 isCoachActingAsAthlete={isCoachActingAsAthlete}
@@ -1800,6 +1802,7 @@ interface DayGroupProps {
   isMobile: boolean;
   isOver: boolean;
   onToggleComplete: (id: number, completed: boolean) => void;
+  onMarkMissed?: (id: number, missed: boolean) => void;
   onLogWorkout: (id: number, rpe: number | null, notes: string) => Promise<void>;
   getWorkoutDate: (wo: any) => string;
   isCoachActingAsAthlete?: boolean;
@@ -1810,7 +1813,7 @@ interface DayGroupProps {
   onAddWorkout?: (weekNumber: number, dayOfWeek: string) => void;
 }
 
-function DayGroup({ day, dayIndex, dayWos, lang, isMobile, isOver, onToggleComplete, onLogWorkout, getWorkoutDate, isCoachActingAsAthlete, athleteId, onApproveWorkout, onRemoveWorkout, onEditWorkout, onAddWorkout }: DayGroupProps) {
+function DayGroup({ day, dayIndex, dayWos, lang, isMobile, isOver, onToggleComplete, onMarkMissed, onLogWorkout, getWorkoutDate, isCoachActingAsAthlete, athleteId, onApproveWorkout, onRemoveWorkout, onEditWorkout, onAddWorkout }: DayGroupProps) {
   const { attributes, listeners, setNodeRef: setDragRef, transform, isDragging } = useDraggable({ id: day });
   const { setNodeRef: setDropRef } = useDroppable({ id: day });
 
@@ -1916,6 +1919,7 @@ function DayGroup({ day, dayIndex, dayWos, lang, isMobile, isOver, onToggleCompl
                 isMobile={isMobile}
                 lang={lang}
                 onToggleComplete={onToggleComplete}
+                onMarkMissed={onMarkMissed}
                 onLogWorkout={onLogWorkout}
                 getWorkoutDate={getWorkoutDate}
                 isCoachActingAsAthlete={isCoachActingAsAthlete}
@@ -1938,6 +1942,7 @@ interface WeekDayListProps {
   isMobile: boolean;
   onSwapDays: (day1: string, day2: string) => void;
   onToggleComplete: (id: number, completed: boolean) => void;
+  onMarkMissed?: (id: number, missed: boolean) => void;
   onLogWorkout: (id: number, rpe: number | null, notes: string) => Promise<void>;
   getWorkoutDate: (wo: any) => string;
   isCoachActingAsAthlete?: boolean;
@@ -1948,7 +1953,7 @@ interface WeekDayListProps {
   onAddWorkout?: (weekNumber: number, dayOfWeek: string) => void;
 }
 
-function WeekDayList({ weekWos, lang, isMobile, onSwapDays, onToggleComplete, onLogWorkout, getWorkoutDate, isCoachActingAsAthlete, athleteId, onApproveWorkout, onRemoveWorkout, onEditWorkout, onAddWorkout }: WeekDayListProps) {
+function WeekDayList({ weekWos, lang, isMobile, onSwapDays, onToggleComplete, onMarkMissed, onLogWorkout, getWorkoutDate, isCoachActingAsAthlete, athleteId, onApproveWorkout, onRemoveWorkout, onEditWorkout, onAddWorkout }: WeekDayListProps) {
   const [overId, setOverId] = React.useState<string | null>(null);
 
   const byDay: Record<string, any[]> = {};
@@ -1990,6 +1995,7 @@ function WeekDayList({ weekWos, lang, isMobile, onSwapDays, onToggleComplete, on
               isMobile={isMobile}
               isOver={overId === day}
               onToggleComplete={onToggleComplete}
+              onMarkMissed={onMarkMissed}
               onLogWorkout={onLogWorkout}
               getWorkoutDate={getWorkoutDate}
               isCoachActingAsAthlete={isCoachActingAsAthlete}
