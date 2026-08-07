@@ -54,6 +54,7 @@ interface WorkoutCardProps {
   isMobile: boolean;
   lang: string;
   onToggleComplete: (id: number, completed: boolean) => void;
+  onMarkMissed?: (id: number, missed: boolean) => void;
   onLogWorkout: (id: number, rpe: number | null, notes: string) => Promise<void>;
   getWorkoutDate: (wo: any) => string;
   defaultExpanded?: boolean;
@@ -114,6 +115,7 @@ export default function WorkoutCard({
   isMobile,
   lang,
   onToggleComplete,
+  onMarkMissed,
   onLogWorkout,
   getWorkoutDate,
   defaultExpanded,
@@ -249,7 +251,7 @@ export default function WorkoutCard({
                   fontSize: isMobile ? "14px" : "15px",
                   fontWeight: "700",
                   margin: 0,
-                  color: wo.is_completed ? "var(--text-muted)" : "var(--text-primary)",
+                  color: (wo.is_completed || wo.is_missed) ? "var(--text-muted)" : "var(--text-primary)",
                   textDecoration: wo.is_completed ? "line-through" : "none",
                   lineHeight: 1.3,
                 }}
@@ -500,24 +502,46 @@ export default function WorkoutCard({
               </>
             )}
             {!isRest && !isCoachActingAsAthlete && (
-              <button
-                onClick={() => onToggleComplete(wo.id, !wo.is_completed)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  padding: "2px",
-                  display: "flex",
-                  alignItems: "center",
-                }}
-                title={wo.is_completed ? "Mark incomplete" : "Mark complete"}
-              >
-                {wo.is_completed ? (
-                  <CheckCircle size={22} weight="fill" color="#10b981" />
-                ) : (
-                  <Circle size={22} weight="regular" color="var(--text-muted)" />
+              <>
+                {onMarkMissed && (
+                  <button
+                    onClick={() => onMarkMissed(wo.id, !wo.is_missed)}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      padding: "2px",
+                      display: "flex",
+                      alignItems: "center",
+                    }}
+                    title={
+                      wo.is_missed
+                        ? lang === "en" ? "Unmark missed" : "Bỏ đánh dấu bỏ lỡ"
+                        : lang === "en" ? "Mark missed" : "Đánh dấu bỏ lỡ"
+                    }
+                  >
+                    <XIcon size={20} weight={wo.is_missed ? "bold" : "regular"} color={wo.is_missed ? "#ef4444" : "var(--text-muted)"} />
+                  </button>
                 )}
-              </button>
+                <button
+                  onClick={() => onToggleComplete(wo.id, !wo.is_completed)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: "2px",
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                  title={wo.is_completed ? "Mark incomplete" : "Mark complete"}
+                >
+                  {wo.is_completed ? (
+                    <CheckCircle size={22} weight="fill" color="#10b981" />
+                  ) : (
+                    <Circle size={22} weight="regular" color="var(--text-muted)" />
+                  )}
+                </button>
+              </>
             )}
             {!isRest && (
               <button
