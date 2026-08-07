@@ -495,7 +495,9 @@ export function usePlanner() {
 
   const handleToggleComplete = async (woId: number, isCompleted: boolean) => {
     setWorkouts((prev: any) =>
-      prev.map((wo: any) => (wo.id === woId ? { ...wo, is_completed: isCompleted ? 1 : 0 } : wo))
+      prev.map((wo: any) =>
+        wo.id === woId ? { ...wo, is_completed: isCompleted ? 1 : 0, is_missed: isCompleted ? 0 : wo.is_missed } : wo
+      )
     );
     try {
       const token = typeof window !== "undefined" ? localStorage.getItem("uphill_session_token") : null;
@@ -504,6 +506,25 @@ export function usePlanner() {
         method: "PATCH",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify({ workout_id: woId, is_completed: isCompleted ? 1 : 0 }),
+      });
+    } catch {
+      // optimistic update already applied — failure is silent
+    }
+  };
+
+  const handleMarkMissed = async (woId: number, isMissed: boolean) => {
+    setWorkouts((prev: any) =>
+      prev.map((wo: any) =>
+        wo.id === woId ? { ...wo, is_missed: isMissed ? 1 : 0, is_completed: isMissed ? 0 : wo.is_completed } : wo
+      )
+    );
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("uphill_session_token") : null;
+      if (!token) return;
+      await fetch(`${API_BASE_URL}/api/coach/workouts/log`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({ workout_id: woId, is_missed: isMissed ? 1 : 0 }),
       });
     } catch {
       // optimistic update already applied — failure is silent
@@ -595,5 +616,5 @@ export function usePlanner() {
     return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
-  return { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, handleSwapWorkouts, swapDays, handleToggleComplete, handleLogWorkout, getWeekWorkouts, getWorkoutDate, getWorkoutDateObj, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller, fetchDraftPlan, draftPlan, draftWorkouts, handleApproveWorkout, handleRemoveWorkout, handleAiCreateWorkout, handleCoachEditWorkout, fetchActivePlanForActing };
+  return { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, handleSwapWorkouts, swapDays, handleToggleComplete, handleMarkMissed, handleLogWorkout, getWeekWorkouts, getWorkoutDate, getWorkoutDateObj, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller, fetchDraftPlan, draftPlan, draftWorkouts, handleApproveWorkout, handleRemoveWorkout, handleAiCreateWorkout, handleCoachEditWorkout, fetchActivePlanForActing };
 }
