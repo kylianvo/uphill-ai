@@ -1,6 +1,6 @@
 from unittest.mock import patch
 
-from main import _resolve_course_match
+from main import _resolve_course_match, _session_review_status
 from services.race_matcher import MatchedRace
 
 
@@ -46,3 +46,19 @@ def test_never_raises_even_if_match_race_raises_unexpectedly():
     assert distance == 50.0
     assert elevation is None
     assert context is None
+
+
+def test_session_review_status_completed():
+    assert _session_review_status({"is_completed": 1, "is_missed": 0}) == "completed"
+
+
+def test_session_review_status_explicit_missed():
+    assert _session_review_status({"is_completed": 0, "is_missed": 1}) == "MISSED"
+
+
+def test_session_review_status_not_logged():
+    assert _session_review_status({"is_completed": 0, "is_missed": 0}) == "not logged"
+
+
+def test_session_review_status_defaults_missing_keys_to_not_logged():
+    assert _session_review_status({}) == "not logged"

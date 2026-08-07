@@ -1,5 +1,8 @@
 """Integration tests for POST /api/coach/generate-next-block's 70% completion gate."""
 
+import time
+from unittest.mock import AsyncMock, patch
+
 from db import get_plan_workouts, save_workouts
 
 
@@ -46,6 +49,58 @@ def _create_plan_with_two_weeks_of_workouts(client, headers):
     )
     workouts = get_plan_workouts(plan_id)
     return plan_id, workouts[0]["id"]
+
+
+def _create_plan_with_two_weeks_of_workouts_no_mock(client, headers):
+    """Same as _create_plan_with_two_weeks_of_workouts, but for tests that
+    install their own long-lived patch on generate_plan_workouts (to capture
+    call args from the later generate-next-block background task) instead of
+    the mock_plan_generation fixture."""
+    with patch(
+        "services.plan_generator.PlanGenerator.generate_plan_workouts",
+        new_callable=AsyncMock,
+        return_value=[],
+    ):
+        return _create_plan_with_two_weeks_of_workouts(client, headers)
+
+
+class TestGenerateNextBlockOverrideAnnotation:
+    def test_override_annotation_reaches_the_generation_prompt(self, client, auth_headers):
+        plan_id, workout_id = _create_plan_with_two_weeks_of_workouts_no_mock(client, auth_headers["headers"])
+        client.patch(
+            "/api/coach/workouts/log",
+            headers=auth_headers["headers"],
+            json={"workout_id": workout_id, "is_completed": 1},
+        )
+
+        captured = {}
+
+        async def _capture(*args, **kwargs):
+            captured["block_context"] = kwargs.get("block_context")
+            return []
+
+        with patch(
+            "services.plan_generator.PlanGenerator.generate_plan_workouts",
+            new=AsyncMock(side_effect=_capture),
+        ):
+            resp = client.post(
+                "/api/coach/generate-next-block",
+                headers=auth_headers["headers"],
+                json={"plan_id": plan_id, "block_number": 2, "override_gate": True},
+            )
+            assert resp.status_code == 200, resp.text
+            job_id = resp.json()["job_id"]
+
+            status = None
+            for _ in range(20):
+                poll = client.get(f"/api/coach/plan-status/{job_id}", headers=auth_headers["headers"])
+                status = poll.json()["status"]
+                if status == "done":
+                    break
+                time.sleep(0.05)
+            assert status == "done"
+
+        assert "generated via override at 50%" in (captured.get("block_context") or "")
 
 
 class TestGenerateNextBlockGate:

@@ -887,6 +887,17 @@ def _default_weeks(goal_type: str) -> int:
     }.get(goal_type, 12)
 
 
+def _session_review_status(w: dict[str, Any]) -> str:
+    """Three-way status label used in the next-block-generation prompt:
+    completed (checked off), MISSED (athlete explicitly confirmed), or
+    not logged (ambiguous -- may have happened but was never checked off)."""
+    if w.get("is_completed") == 1:
+        return "completed"
+    if w.get("is_missed") == 1:
+        return "MISSED"
+    return "not logged"
+
+
 def _resolve_course_match(
     race_name: str | None, course_distance_km: float | None, course_elevation_gain_m: float | None
 ) -> tuple[float | None, float | None, str | None]:
@@ -1757,7 +1768,7 @@ async def generate_next_block(request: GenerateNextBlockRequest, user: dict[str,
                     status_code=403,
                     detail=f"Block {prev_block} is {completion['completion_pct']}% complete. Need ≥70% to unlock the next block.",
                 )
-            override_used = True  # noqa: F841 -- consumed by Task 3's prompt-annotation change
+            override_used = True
 
     # If the caller passes RPE/notes, save them as the review for the previous block
     if prev_block >= 1 and (request.overall_rpe is not None or request.notes):
@@ -1824,11 +1835,17 @@ async def generate_next_block(request: GenerateNextBlockRequest, user: dict[str,
             if w.get("notes")
         ]
 
-        # Identify missed sessions (not completed, not Rest)
+        # block_wos is already filtered to non-Rest workouts (see its
+        # definition above, earlier in this loop) -- classify by review status.
         missed = [
             f'{w.get("day_of_week","?")} {w.get("title") or w.get("type","?")}'
             for w in block_wos
-            if w.get("is_completed") != 1
+            if _session_review_status(w) == "MISSED"
+        ]
+        not_logged = [
+            f'{w.get("day_of_week","?")} {w.get("title") or w.get("type","?")}'
+            for w in block_wos
+            if _session_review_status(w) == "not logged"
         ]
 
         # Compose the compact summary line
@@ -1844,6 +1861,12 @@ async def generate_next_block(request: GenerateNextBlockRequest, user: dict[str,
         if block_note:
             context_lines.append(f'  Athlete note: "{block_note}"')
 
+        if blk == prev_block and override_used:
+            context_lines.append(
+                f"  ⚠ Block {blk} generated via override at {completion['completion_pct']}% "
+                f"(below the 70% threshold)."
+            )
+
         if blk == request.block_number - 1:
             # Most recent block: one line per session — performance, feedback,
             # RPE — so the next block reacts to specific sessions, not averages.
@@ -1852,14 +1875,15 @@ async def generate_next_block(request: GenerateNextBlockRequest, user: dict[str,
                 dur = w.get("duration_minutes") or 0
                 km = w.get("distance_km") or 0
                 planned = f"{w.get('title') or w.get('type', '?')} ({dur:.0f}min" + (f"/{km:.1f}km)" if km else ")")
-                if w.get("is_completed") == 1:
+                status = _session_review_status(w)
+                if status == "completed":
                     detail = "completed"
                     if w.get("rpe"):
                         detail += f", RPE {w['rpe']}/10"
                     if w.get("notes"):
                         detail += f', feedback: "{w["notes"]}"'
                 else:
-                    detail = "MISSED"
+                    detail = status
                 context_lines.append(
                     f"    W{w.get('week_number', '?')} {w.get('day_of_week', '?')} — {planned}: {detail}"
                 )
@@ -1871,6 +1895,11 @@ async def generate_next_block(request: GenerateNextBlockRequest, user: dict[str,
                 context_lines.append(
                     f"  Missed: {', '.join(missed[:3])}"
                     + (" +" + str(len(missed) - 3) + " more" if len(missed) > 3 else "")
+                )
+            if not_logged:
+                context_lines.append(
+                    f"  Not logged: {', '.join(not_logged[:3])}"
+                    + (" +" + str(len(not_logged) - 3) + " more" if len(not_logged) > 3 else "")
                 )
 
     if context_lines:
