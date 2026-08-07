@@ -184,6 +184,7 @@ def init_db():
             source              TEXT NOT NULL DEFAULT 'ai_generated',  -- 'ai_generated' | 'coach_edited' | 'coach_created'
             last_edited_by_user_id INTEGER REFERENCES users(id),
             is_completed        INTEGER DEFAULT 0,
+            is_missed           INTEGER DEFAULT 0,
             approved_at         TIMESTAMPTZ  -- NULL = pending coach review; set on insert for self-serve plans
         )
         """)
@@ -345,6 +346,7 @@ def init_db():
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'ai_generated'",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS last_edited_by_user_id INTEGER REFERENCES users(id)",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS approved_at TIMESTAMPTZ",
+            "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS is_missed INTEGER DEFAULT 0",
             # Backfill: workouts that predate per-workout approval, on plans already
             # active, are implicitly approved -- only draft-plan workouts (and any
             # newly-inserted coach workout going forward) should read as pending.
@@ -909,9 +911,17 @@ def get_plan_workouts(plan_id: int) -> list[dict[str, Any]]:
 
 
 def update_workout_log(
-    workout_id: int, is_completed: int | None = None, rpe: int | None = None, notes: str | None = None
+    workout_id: int,
+    is_completed: int | None = None,
+    rpe: int | None = None,
+    notes: str | None = None,
+    is_missed: int | None = None,
 ) -> bool:
-    """Update is_completed, rpe, and/or notes for a workout."""
+    """Update is_completed, is_missed, rpe, and/or notes for a workout.
+
+    is_completed and is_missed are mutually exclusive: setting one to 1
+    clears the other to 0, regardless of what the caller passed for it.
+    """
     with engine.connect() as conn:
         row = conn.execute(text("SELECT id FROM workouts WHERE id = :id"), {"id": workout_id}).fetchone()
         if not row:
@@ -920,6 +930,12 @@ def update_workout_log(
             conn.execute(
                 text("UPDATE workouts SET is_completed = :v WHERE id = :id"), {"v": is_completed, "id": workout_id}
             )
+            if is_completed == 1:
+                conn.execute(text("UPDATE workouts SET is_missed = 0 WHERE id = :id"), {"id": workout_id})
+        if is_missed is not None:
+            conn.execute(text("UPDATE workouts SET is_missed = :v WHERE id = :id"), {"v": is_missed, "id": workout_id})
+            if is_missed == 1:
+                conn.execute(text("UPDATE workouts SET is_completed = 0 WHERE id = :id"), {"id": workout_id})
         if rpe is not None:
             conn.execute(text("UPDATE workouts SET rpe = :v WHERE id = :id"), {"v": rpe, "id": workout_id})
         if notes is not None:

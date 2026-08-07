@@ -193,3 +193,52 @@ class TestLogWorkout:
             json={"workout_id": workout_id, "is_completed": 1},
         )
         assert resp.status_code in (403, 404)
+
+    def test_marks_a_workout_missed(self, client, auth_headers):
+        _plan_id, workout_id = _create_plan_with_one_workout(client, auth_headers["headers"])
+
+        resp = client.patch(
+            "/api/coach/workouts/log",
+            headers=auth_headers["headers"],
+            json={"workout_id": workout_id, "is_missed": 1},
+        )
+        assert resp.status_code == 200, resp.text
+        updated = next(w for w in resp.json()["workouts"] if w["id"] == workout_id)
+        assert updated["is_missed"] == 1
+        assert updated["is_completed"] == 0
+
+    def test_marking_completed_clears_missed(self, client, auth_headers):
+        _plan_id, workout_id = _create_plan_with_one_workout(client, auth_headers["headers"])
+
+        client.patch(
+            "/api/coach/workouts/log",
+            headers=auth_headers["headers"],
+            json={"workout_id": workout_id, "is_missed": 1},
+        )
+        resp = client.patch(
+            "/api/coach/workouts/log",
+            headers=auth_headers["headers"],
+            json={"workout_id": workout_id, "is_completed": 1},
+        )
+        assert resp.status_code == 200, resp.text
+        updated = next(w for w in resp.json()["workouts"] if w["id"] == workout_id)
+        assert updated["is_completed"] == 1
+        assert updated["is_missed"] == 0
+
+    def test_marking_missed_clears_completed(self, client, auth_headers):
+        _plan_id, workout_id = _create_plan_with_one_workout(client, auth_headers["headers"])
+
+        client.patch(
+            "/api/coach/workouts/log",
+            headers=auth_headers["headers"],
+            json={"workout_id": workout_id, "is_completed": 1},
+        )
+        resp = client.patch(
+            "/api/coach/workouts/log",
+            headers=auth_headers["headers"],
+            json={"workout_id": workout_id, "is_missed": 1},
+        )
+        assert resp.status_code == 200, resp.text
+        updated = next(w for w in resp.json()["workouts"] if w["id"] == workout_id)
+        assert updated["is_missed"] == 1
+        assert updated["is_completed"] == 0

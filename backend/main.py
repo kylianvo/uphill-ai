@@ -1982,6 +1982,7 @@ def modify_calendar_swap(request: ModifyCalendarRequest, user: dict[str, Any] = 
 class WorkoutLogRequest(BaseModel):
     workout_id: int
     is_completed: int | None = None
+    is_missed: int | None = None
     rpe: int | None = None
     notes: str | None = None
 
@@ -1996,7 +1997,7 @@ def log_workout(request: WorkoutLogRequest, user: dict[str, Any] = Depends(get_c
     wo_ids = {w["id"] for w in workouts}
     if request.workout_id not in wo_ids:
         raise HTTPException(status_code=403, detail="Workout not in your active plan.")
-    ok = update_workout_log(request.workout_id, request.is_completed, request.rpe, request.notes)
+    ok = update_workout_log(request.workout_id, request.is_completed, request.rpe, request.notes, request.is_missed)
     if not ok:
         raise HTTPException(status_code=404, detail="Workout not found.")
     updated = get_plan_workouts(active_plan["id"])
