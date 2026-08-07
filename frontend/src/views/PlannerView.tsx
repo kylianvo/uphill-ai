@@ -285,6 +285,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   const [blockReviewRpe, setBlockReviewRpe] = useState(5);
   const [blockReviewNotes, setBlockReviewNotes] = useState("");
   const [nextBlockLoading, setNextBlockLoading] = useState(false);
+  const [overrideConfirmed, setOverrideConfirmed] = useState(false);
 
   const fetchBlockCompletion = React.useCallback(() => {
     if (!activePlan) return;
@@ -354,6 +355,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
           overall_rpe: blockReviewRpe || null,
           notes: blockReviewNotes || null,
           lang,
+          override_gate: overrideConfirmed,
         }),
       });
       const data = await resp.json();
@@ -361,6 +363,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
       setShowBlockReview(false);
       setBlockReviewNotes("");
       setBlockReviewRpe(5);
+      setOverrideConfirmed(false);
       // nextBlockLoading stays true until the job finishes
       startPlanJobPoller(data.job_id, token);
       const repoll = setInterval(() => {
@@ -1399,6 +1402,34 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 )}
               </div>
             )}
+
+            {/* Below-70% Override Banner */}
+            {!blockUnlocked && !planLoading && !allBlocksGenerated && currentBlockCompletion && (
+              <div style={{
+                marginTop: "20px",
+                padding: "16px 20px",
+                borderRadius: "14px",
+                background: "linear-gradient(135deg, rgba(239,68,68,0.10), rgba(239,68,68,0.05))",
+                border: "1.5px solid rgba(239,68,68,0.25)",
+                display: "flex",
+                flexDirection: "column",
+                gap: "10px",
+              }}>
+                <div style={{ fontWeight: "800", fontSize: "14px", color: "#ef4444" }}>
+                  {lang === "en"
+                    ? `Block ${currentBlockNum} is ${currentBlockCompletion.completion_pct}% complete (need 70% to unlock)`
+                    : `Block ${currentBlockNum} đã hoàn thành ${currentBlockCompletion.completion_pct}% (cần 70% để mở khoá)`}
+                </div>
+                <button
+                  className="btn"
+                  style={{ alignSelf: "flex-start", fontSize: "13px", height: "38px", paddingLeft: "20px", paddingRight: "20px", border: "1px solid rgba(239,68,68,0.35)", background: "none", color: "#ef4444", cursor: "pointer", borderRadius: "8px" }}
+                  onClick={() => { setOverrideConfirmed(true); setShowBlockReview(true); }}
+                  disabled={nextBlockLoading}
+                >
+                  {lang === "en" ? "Generate anyway" : "Vẫn tạo tiếp"}
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -1453,6 +1484,18 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                   : "Phản hồi của bạn sẽ định hình 2 tuần tập tiếp theo."}
               </p>
 
+              {overrideConfirmed && (
+                <div style={{
+                  fontSize: "12px", fontWeight: 700, color: "#ef4444",
+                  background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)",
+                  borderRadius: "8px", padding: "8px 10px", marginBottom: "16px",
+                }}>
+                  {lang === "en"
+                    ? `Generating below 70% completion. Add a note below if you'd like the coach to know why (illness, travel, etc.) — it's optional.`
+                    : `Đang tạo khi chưa đạt 70%. Có thể thêm ghi chú bên dưới nếu muốn coach biết lý do (ốm, đi công tác, v.v.) — không bắt buộc.`}
+                </div>
+              )}
+
               <label style={{ display: "block", fontSize: "12px", fontWeight: "700", color: "var(--text-secondary)", marginBottom: "8px" }}>
                 {lang === "en" ? `Overall Effort (RPE ${blockReviewRpe}/10)` : `Cảm giác chung (RPE ${blockReviewRpe}/10)`}
               </label>
@@ -1496,7 +1539,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
               <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
                 <button
                   type="button"
-                  onClick={() => setShowBlockReview(false)}
+                  onClick={() => { setShowBlockReview(false); setOverrideConfirmed(false); }}
                   style={{ flex: 1, height: "42px", borderRadius: "10px", border: "1px solid var(--border-color)", background: "rgba(0,0,0,0.04)", cursor: "pointer", fontSize: "13px" }}
                 >
                   {lang === "en" ? "Cancel" : "Hủy"}
