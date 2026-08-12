@@ -31,6 +31,20 @@ TOPIC = "clickstream-events"
 @pytest.mark.integration
 @pytest.mark.kafka
 def test_consumer_writes_produced_message_to_postgres(_init_test_database, _truncate_tables):
+    # A dedicated, uniquely-named topic per run -- not the shared `TOPIC` the
+    # real app uses -- so a fresh consumer group with auto.offset.reset:
+    # earliest always starts empty and reads back exactly the message this
+    # test just produced. The real (long-lived, dev/prod-shared) topic
+    # accumulates backlog across every local/CI run that has ever produced to
+    # it; a new group there reads whatever's oldest first, not what this run
+    # just sent, so this test previously failed nondeterministically once the
+    # topic had any backlog at all. process_message/run_consumer_loop are
+    # topic-agnostic (the topic name is only ever used for subscribe/produce,
+    # never inspected by the code under test), so this doesn't change what's
+    # being verified. Kafka auto-creates topics on first produce by default
+    # (confirmed via this broker's config -- auto.create.topics.enable is
+    # unset, which defaults to true).
+    test_topic = f"clickstream-events-test-{uuid.uuid4()}"
     session_id = f"test-{uuid.uuid4()}"
     producer = Producer({"bootstrap.servers": BOOTSTRAP})
     message = {
@@ -40,7 +54,7 @@ def test_consumer_writes_produced_message_to_postgres(_init_test_database, _trun
         "properties": {"path": "/test"},
         "url": "/test",
     }
-    producer.produce(TOPIC, key=session_id.encode("utf-8"), value=json.dumps(message).encode("utf-8"))
+    producer.produce(test_topic, key=session_id.encode("utf-8"), value=json.dumps(message).encode("utf-8"))
     producer.flush(timeout=5.0)
 
     consumer = Consumer(
@@ -51,7 +65,7 @@ def test_consumer_writes_produced_message_to_postgres(_init_test_database, _trun
             "enable.auto.commit": False,
         }
     )
-    consumer.subscribe([TOPIC])
+    consumer.subscribe([test_topic])
     try:
         run_consumer_loop(consumer, max_messages=1)
     finally:
