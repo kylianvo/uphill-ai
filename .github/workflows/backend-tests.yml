@@ -42,4 +42,11 @@ jobs:
       - name: Run unit tests
         run: cd backend && pytest tests/unit -q
       - name: Run integration tests
-        run: cd backend && pytest tests/integration -q --cov=. --cov-report=term-missing
+        # -m "not kafka" excludes tests/integration/test_kafka_consumer_worker.py's
+        # broker-dependent test (pytest.ini documents the `kafka` marker as "requires
+        # a live local Kafka broker"). This job only stands up Postgres -- with no
+        # broker reachable, that test's consumer poll loop has no overall timeout and
+        # hung every run since the Kafka feature merged, silently burning the full
+        # 6h GitHub Actions job cap before being force-cancelled (confirmed via run
+        # history: every push since then shows "cancelled" at exactly 6h0m).
+        run: cd backend && pytest tests/integration -q -m "not kafka" --cov=. --cov-report=term-missing
