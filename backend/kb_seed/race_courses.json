@@ -627,6 +627,360 @@
             "conditions_note": "",
             "finishers_women": 0,
             "winner_time_women": ""
+          },
+          {
+            "year": 2019,
+            "source": "DUV Ultra Marathon Statistics",
+            "finishers": 95,
+            "top_times": {
+              "men": {
+                "top3": "",
+                "top5": "",
+                "top10": "",
+                "top20": ""
+              },
+              "women": {
+                "top3": "",
+                "top5": "",
+                "top10": "",
+                "top20": ""
+              },
+              "overall": {
+                "top3": "",
+                "top5": "",
+                "top10": "",
+                "top20": ""
+              }
+            },
+            "distance_km": 75,
+            "percentiles": {
+              "men": {
+                "p5": "",
+                "p10": "",
+                "p25": "",
+                "p50": "",
+                "p75": "",
+                "p90": ""
+              },
+              "women": {
+                "p5": "",
+                "p10": "",
+                "p25": "",
+                "p50": "",
+                "p75": "",
+                "p90": ""
+              },
+              "overall": {
+                "p5": "",
+                "p10": "",
+                "p25": "",
+                "p50": "",
+                "p75": "",
+                "p90": ""
+              }
+            },
+            "winner_time": "09:00:39",
+            "cutoff_clock": "",
+            "finishers_men": 76,
+            "distance_label": "75km",
+            "conditions_note": "",
+            "finishers_women": 19,
+            "winner_time_women": "11:11:17"
+          },
+          {
+            "year": 2018,
+            "source": "DUV Ultra Marathon Statistics",
+            "finishers": 51,
+            "top_times": {
+              "men": {
+                "top3": "",
+                "top5": "",
+                "top10": "",
+                "top20": ""
+              },
+              "women": {
+                "top3": "",
+                "top5": "",
+                "top10": "",
+                "top20": ""
+              },
+              "overall": {
+                "top3": "",
+                "top5": "",
+                "top10": "",
+                "top20": ""
+              }
+            },
+            "distance_km": 75,
+            "percentiles": {
+              "men": {
+                "p5": "",
+                "p10": "",
+                "p25": "",
+                "p50": "",
+                "p75": "",
+                "p90": ""
+              },
+              "women": {
+                "p5": "",
+                "p10": "",
+                "p25": "",
+                "p50": "",
+                "p75": "",
+                "p90": ""
+              },
+              "overall": {
+                "p5": "",
+                "p10": "",
+                "p25": "",
+                "p50": "",
+                "p75": "",
+                "p90": ""
+              }
+            },
+            "winner_time": "08:55:02",
+            "cutoff_clock": "",
+            "finishers_men": 47,
+            "distance_label": "75km",
+            "conditions_note": "",
+            "finishers_women": 4,
+            "winner_time_women": "10:37:19"
+          },
+          {
+            "year": 2017,
+            "source": "DUV Ultra Marathon Statistics",
+            "finishers": 98,
+            "top_times": {
+              "men": {
+                "top3": "",
+                "top5": "",
+                "top10": "",
+                "top20": ""
+              },
+              "women": {
+                "top3": "",
+                "top5": "",
+                "top10": "",
+                "top20": ""
+              },
+              "overall": {
+                "top3": "",
+                "top5": "",
+                "top10": "",
+                "top20": ""
+              }
+            },
+            "distance_km": 75,
+            "percentiles": {
+              "men": {
+                "p5": "",
+                "p10": "",
+                "p25": "",
+                "p50": "",
+                "p75": "",
+                "p90": ""
+              },
+              "women": {
+                "p5": "",
+                "p10": "",
+                "p25": "",
+                "p50": "",
+                "p75": "",
+                "p90": ""
+              },
+              "overall": {
+                "p5": "",
+                "p10": "",
+                "p25": "",
+                "p50": "",
+                "p75": "",
+                "p90": ""
+              }
+            },
+            "winner_time": "08:22:23",
+            "cutoff_clock": "",
+            "finishers_men": 80,
+            "distance_label": "75km",
+            "conditions_note": "",
+            "finishers_women": 18,
+            "winner_time_women": "11:29:34"
+          },
+          {
+            "year": 2016,
+            "source": "DUV Ultra Marathon Statistics",
+            "finishers": 119,
+            "top_times": {
+              "men": {
+                "top3": "",
+                "top5": "",
+                "top10": "",
+                "top20": ""
+              },
+              "women": {
+                "top3": "",
+                "top5": "",
+                "top10": "",
+                "top20": ""
+              },
+              "overall": {
+                "top3": "",
+                "top5": "",
+                "top10": "",
+                "top20": ""
+              }
+            },
+            "distance_km": 75,
+            "percentiles": {
+              "men": {
+                "p5": "",
+                "p10": "",
+                "p25": "",
+                "p50": "",
+                "p75": "",
+                "p90": ""
+              },
+              "women": {
+                "p5": "",
+                "p10": "",
+                "p25": "",
+                "p50": "",
+                "p75": "",
+                "p90": ""
+              },
+              "overall": {
+                "p5": "",
+                "p10": "",
+                "p25": "",
+                "p50": "",
+                "p75": "",
+                "p90": ""
+              }
+            },
+            "winner_time": "08:24:52",
+            "cutoff_clock": "",
+            "finishers_men": 97,
+            "distance_label": "75km",
+            "conditions_note": "",
+            "finishers_women": 22,
+            "winner_time_women": "09:51:07"
+          },
+          {
+            "year": 2015,
+            "source": "DUV Ultra Marathon Statistics",
+            "finishers": 146,
+            "top_times": {
+              "men": {
+                "top3": "",
+                "top5": "",
+                "top10": "",
+                "top20": ""
+              },
+              "women": {
+                "top3": "",
+                "top5": "",
+                "top10": "",
+                "top20": ""
+              },
+              "overall": {
+                "top3": "",
+                "top5": "",
+                "top10": "",
+                "top20": ""
+              }
+            },
+            "distance_km": 75.5,
+            "percentiles": {
+              "men": {
+                "p5": "",
+                "p10": "",
+                "p25": "",
+                "p50": "",
+                "p75": "",
+                "p90": ""
+              },
+              "women": {
+                "p5": "",
+                "p10": "",
+                "p25": "",
+                "p50": "",
+                "p75": "",
+                "p90": ""
+              },
+              "overall": {
+                "p5": "",
+                "p10": "",
+                "p25": "",
+                "p50": "",
+                "p75": "",
+                "p90": ""
+              }
+            },
+            "winner_time": "08:17:02",
+            "cutoff_clock": "",
+            "finishers_men": 112,
+            "distance_label": "75.5km",
+            "conditions_note": "",
+            "finishers_women": 34,
+            "winner_time_women": "09:40:42"
+          },
+          {
+            "year": 2014,
+            "source": "DUV Ultra Marathon Statistics",
+            "finishers": 98,
+            "top_times": {
+              "men": {
+                "top3": "",
+                "top5": "",
+                "top10": "",
+                "top20": ""
+              },
+              "women": {
+                "top3": "",
+                "top5": "",
+                "top10": "",
+                "top20": ""
+              },
+              "overall": {
+                "top3": "",
+                "top5": "",
+                "top10": "",
+                "top20": ""
+              }
+            },
+            "distance_km": 75.5,
+            "percentiles": {
+              "men": {
+                "p5": "",
+                "p10": "",
+                "p25": "",
+                "p50": "",
+                "p75": "",
+                "p90": ""
+              },
+              "women": {
+                "p5": "",
+                "p10": "",
+                "p25": "",
+                "p50": "",
+                "p75": "",
+                "p90": ""
+              },
+              "overall": {
+                "p5": "",
+                "p10": "",
+                "p25": "",
+                "p50": "",
+                "p75": "",
+                "p90": ""
+              }
+            },
+            "winner_time": "07:48:04",
+            "cutoff_clock": "17:30h",
+            "finishers_men": 79,
+            "distance_label": "75.5km",
+            "conditions_note": "",
+            "finishers_women": 19,
+            "winner_time_women": "10:48:00"
           }
         ],
         "terrain": [
@@ -2100,6 +2454,157 @@
             "distance_label": "100km",
             "finishers_women": 15,
             "winner_time_women": "19:48:47"
+          },
+          {
+            "year": 2026,
+            "source": "DUV Ultra Marathon Statistics",
+            "finishers": 12,
+            "top_times": {
+              "men": {},
+              "women": {},
+              "overall": {}
+            },
+            "distance_km": 160.934,
+            "percentiles": {
+              "men": {},
+              "women": {},
+              "overall": {}
+            },
+            "winner_time": "23:17:55",
+            "cutoff_clock": "",
+            "finishers_men": 10,
+            "distance_label": "100mi",
+            "conditions_note": "",
+            "finishers_women": 2,
+            "winner_time_women": "30:33:14"
+          },
+          {
+            "year": 2025,
+            "source": "DUV Ultra Marathon Statistics",
+            "finishers": 6,
+            "top_times": {
+              "men": {},
+              "women": {},
+              "overall": {}
+            },
+            "distance_km": 160.934,
+            "percentiles": {
+              "men": {},
+              "women": {},
+              "overall": {}
+            },
+            "winner_time": "26:31:54",
+            "cutoff_clock": "",
+            "finishers_men": 6,
+            "distance_label": "100mi",
+            "conditions_note": "",
+            "finishers_women": 0,
+            "winner_time_women": ""
+          },
+          {
+            "year": 2024,
+            "source": "DUV Ultra Marathon Statistics",
+            "finishers": 6,
+            "top_times": {
+              "men": {},
+              "women": {},
+              "overall": {}
+            },
+            "distance_km": 160.934,
+            "percentiles": {
+              "men": {},
+              "women": {},
+              "overall": {}
+            },
+            "winner_time": "25:42:01",
+            "cutoff_clock": "",
+            "finishers_men": 5,
+            "distance_label": "100mi",
+            "conditions_note": "",
+            "finishers_women": 1,
+            "winner_time_women": "29:54:20"
+          },
+          {
+            "year": 2023,
+            "source": "DUV Ultra Marathon Statistics",
+            "finishers": 3,
+            "top_times": {
+              "men": {},
+              "women": {},
+              "overall": {}
+            },
+            "distance_km": 160.934,
+            "percentiles": {
+              "men": {},
+              "women": {},
+              "overall": {}
+            },
+            "winner_time": "25:54:25",
+            "cutoff_clock": "",
+            "finishers_men": 2,
+            "distance_label": "100mi",
+            "conditions_note": "",
+            "finishers_women": 1,
+            "winner_time_women": "25:33:55"
+          },
+          {
+            "year": 2022,
+            "source": "statistik.d-u-v.org",
+            "finishers": 772,
+            "top_times": {
+              "men": {
+                "top3": "",
+                "top5": "",
+                "top10": "",
+                "top20": ""
+              },
+              "women": {
+                "top3": "",
+                "top5": "",
+                "top10": "",
+                "top20": ""
+              },
+              "overall": {
+                "top3": "",
+                "top5": "",
+                "top10": "",
+                "top20": ""
+              }
+            },
+            "distance_km": 49,
+            "percentiles": {
+              "men": {
+                "p5": "",
+                "p10": "",
+                "p25": "",
+                "p50": "",
+                "p75": "",
+                "p90": ""
+              },
+              "women": {
+                "p5": "",
+                "p10": "",
+                "p25": "",
+                "p50": "",
+                "p75": "",
+                "p90": ""
+              },
+              "overall": {
+                "p5": "",
+                "p10": "",
+                "p25": "",
+                "p50": "",
+                "p75": "",
+                "p90": ""
+              }
+            },
+            "winner_time": "3:47:53",
+            "cutoff_clock": "",
+            "finishers_men": 517,
+            "distance_label": "49km trail race",
+            "conditions_note": "",
+            "finishers_women": 255,
+            "winner_time_women": "4:21:37"
           }
         ],
         "terrain": [
@@ -5486,6 +5991,242 @@
             "conditions_note": "",
             "finishers_women": 189,
             "winner_time_women": "04:44:44"
+          },
+          {
+            "year": 2025,
+            "source": "DUV Ultra Marathon Statistics",
+            "finishers": 221,
+            "top_times": {
+              "men": {
+                "top3": "",
+                "top5": "",
+                "top10": "",
+                "top20": ""
+              },
+              "women": {
+                "top3": "",
+                "top5": "",
+                "top10": "",
+                "top20": ""
+              },
+              "overall": {
+                "top3": "",
+                "top5": "",
+                "top10": "",
+                "top20": ""
+              }
+            },
+            "distance_km": 161,
+            "percentiles": {
+              "men": {
+                "p5": "",
+                "p10": "",
+                "p25": "",
+                "p50": "",
+                "p75": "",
+                "p90": ""
+              },
+              "women": {
+                "p5": "",
+                "p10": "",
+                "p25": "",
+                "p50": "",
+                "p75": "",
+                "p90": ""
+              },
+              "overall": {
+                "p5": "",
+                "p10": "",
+                "p25": "",
+                "p50": "",
+                "p75": "",
+                "p90": ""
+              }
+            },
+            "winner_time": "17:38:25",
+            "cutoff_clock": "",
+            "finishers_men": 192,
+            "distance_label": "161km",
+            "conditions_note": "",
+            "finishers_women": 29,
+            "winner_time_women": "19:45:57"
+          },
+          {
+            "year": 2024,
+            "source": "DUV Ultra Marathon Statistics",
+            "finishers": 125,
+            "top_times": {
+              "men": {
+                "top3": "",
+                "top5": "",
+                "top10": "",
+                "top20": ""
+              },
+              "women": {
+                "top3": "",
+                "top5": "",
+                "top10": "",
+                "top20": ""
+              },
+              "overall": {
+                "top3": "",
+                "top5": "",
+                "top10": "",
+                "top20": ""
+              }
+            },
+            "distance_km": 139,
+            "percentiles": {
+              "men": {
+                "p5": "",
+                "p10": "",
+                "p25": "",
+                "p50": "",
+                "p75": "",
+                "p90": ""
+              },
+              "women": {
+                "p5": "",
+                "p10": "",
+                "p25": "",
+                "p50": "",
+                "p75": "",
+                "p90": ""
+              },
+              "overall": {
+                "p5": "",
+                "p10": "",
+                "p25": "",
+                "p50": "",
+                "p75": "",
+                "p90": ""
+              }
+            },
+            "winner_time": "20:09:02",
+            "cutoff_clock": "",
+            "finishers_men": 100,
+            "distance_label": "139km",
+            "conditions_note": "",
+            "finishers_women": 25,
+            "winner_time_women": "23:29:31"
+          },
+          {
+            "year": 2024,
+            "source": "DUV Ultra Marathon Statistics",
+            "finishers": 59,
+            "top_times": {
+              "men": {
+                "top3": "",
+                "top5": "",
+                "top10": "",
+                "top20": ""
+              },
+              "women": {
+                "top3": "",
+                "top5": "",
+                "top10": "",
+                "top20": ""
+              },
+              "overall": {
+                "top3": "",
+                "top5": "",
+                "top10": "",
+                "top20": ""
+              }
+            },
+            "distance_km": 166,
+            "percentiles": {
+              "men": {
+                "p5": "",
+                "p10": "",
+                "p25": "",
+                "p50": "",
+                "p75": "",
+                "p90": ""
+              },
+              "women": {
+                "p5": "",
+                "p10": "",
+                "p25": "",
+                "p50": "",
+                "p75": "",
+                "p90": ""
+              },
+              "overall": {
+                "p5": "",
+                "p10": "",
+                "p25": "",
+                "p50": "",
+                "p75": "",
+                "p90": ""
+              }
+            },
+            "winner_time": "16:38:59",
+            "cutoff_clock": "",
+            "finishers_men": 50,
+            "distance_label": "166km",
+            "conditions_note": "",
+            "finishers_women": 9,
+            "winner_time_women": "19:33:58"
+          },
+          {
+            "year": 2022,
+            "source": "DUV Ultra Marathon Statistics",
+            "finishers": 179,
+            "top_times": {
+              "men": {
+                "top3": "",
+                "top5": "",
+                "top10": "",
+                "top20": ""
+              },
+              "women": {
+                "top3": "",
+                "top5": "",
+                "top10": "",
+                "top20": ""
+              },
+              "overall": {
+                "top3": "",
+                "top5": "",
+                "top10": "",
+                "top20": ""
+              }
+            },
+            "distance_km": 161,
+            "percentiles": {
+              "men": {
+                "p5": "",
+                "p10": "",
+                "p25": "",
+                "p50": "",
+                "p75": "",
+                "p90": ""
+              },
+              "women": {
+                "p5": "",
+                "p10": "",
+                "p25": "",
+                "p50": "",
+                "p75": "",
+                "p90": ""
+              },
+              "overall": {
+                "p5": "",
+                "p10": "",
+                "p25": "",
+                "p50": "",
+                "p75": "",
+                "p90": ""
+              }
+            },
+            "winner_time": "14:07:42",
+            "cutoff_clock": "",
+            "finishers_men": 148,
+            "distance_label": "161km",
+            "conditions_note": "",
+            "finishers_women": 31,
+            "winner_time_women": "19:23:01"
           }
         ],
         "terrain": [
@@ -6207,6 +6948,65 @@
             "conditions_note": "",
             "finishers_women": 16,
             "winner_time_women": "10:36:33"
+          },
+          {
+            "year": 2015,
+            "source": "DUV Ultra Marathon Statistics",
+            "finishers": 110,
+            "top_times": {
+              "men": {
+                "top3": "",
+                "top5": "",
+                "top10": "",
+                "top20": ""
+              },
+              "women": {
+                "top3": "",
+                "top5": "",
+                "top10": "",
+                "top20": ""
+              },
+              "overall": {
+                "top3": "",
+                "top5": "",
+                "top10": "",
+                "top20": ""
+              }
+            },
+            "distance_km": 70.0,
+            "percentiles": {
+              "men": {
+                "p5": "",
+                "p10": "",
+                "p25": "",
+                "p50": "",
+                "p75": "",
+                "p90": ""
+              },
+              "women": {
+                "p5": "",
+                "p10": "",
+                "p25": "",
+                "p50": "",
+                "p75": "",
+                "p90": ""
+              },
+              "overall": {
+                "p5": "",
+                "p10": "",
+                "p25": "",
+                "p50": "",
+                "p75": "",
+                "p90": ""
+              }
+            },
+            "winner_time": "8:42:16",
+            "cutoff_clock": "",
+            "finishers_men": 94,
+            "distance_label": "70km trail race",
+            "conditions_note": "",
+            "finishers_women": 16,
+            "winner_time_women": "10:36:33"
           }
         ],
         "terrain": [
@@ -6354,6 +7154,65 @@
             "distance_label": "70km",
             "finishers_women": 160,
             "winner_time_women": "7:26:47"
+          },
+          {
+            "year": 2025,
+            "source": "DUV Ultra Marathon Statistics",
+            "finishers": 289,
+            "top_times": {
+              "men": {
+                "top3": "",
+                "top5": "",
+                "top10": "",
+                "top20": ""
+              },
+              "women": {
+                "top3": "",
+                "top5": "",
+                "top10": "",
+                "top20": ""
+              },
+              "overall": {
+                "top3": "",
+                "top5": "",
+                "top10": "",
+                "top20": ""
+              }
+            },
+            "distance_km": 70.0,
+            "percentiles": {
+              "men": {
+                "p5": "",
+                "p10": "",
+                "p25": "",
+                "p50": "",
+                "p75": "",
+                "p90": ""
+              },
+              "women": {
+                "p5": "",
+                "p10": "",
+                "p25": "",
+                "p50": "",
+                "p75": "",
+                "p90": ""
+              },
+              "overall": {
+                "p5": "",
+                "p10": "",
+                "p25": "",
+                "p50": "",
+                "p75": "",
+                "p90": ""
+              }
+            },
+            "winner_time": "9:10:58",
+            "cutoff_clock": "",
+            "finishers_men": 218,
+            "distance_label": "70km",
+            "conditions_note": "",
+            "finishers_women": 71,
+            "winner_time_women": "11:52:42"
           }
         ],
         "terrain": [
