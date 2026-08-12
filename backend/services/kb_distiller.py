@@ -21,7 +21,14 @@ from urllib.parse import urlparse
 
 import google.generativeai as genai
 from pydantic import BaseModel
-from tavily import TavilyClient
+
+try:
+    from tavily import TavilyClient
+except ModuleNotFoundError:
+    # tavily is only needed by the web-discovery functions (gear/nutrition/
+    # race-results). Keep the module importable without it so seed-only paths
+    # like load_kb.py work on images that predate the tavily dependency.
+    TavilyClient = None
 
 from config import settings
 from services.notebooklm_service import NotebookLmService
