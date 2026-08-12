@@ -31,3 +31,8 @@ rapidfuzz>=3.0.0
 # Kafka clickstream pipeline
 confluent-kafka>=2.3,<3.0
 duckdb
+# duckdb doesn't declare this as a hard dependency, but its SQL engine
+# lazily imports it for timezone-aware operations (services/warehouse_extractor.py's
+# incremental extraction hits this) -- without it, duckdb raises at query time
+# rather than at import time, so the gap doesn't surface until a specific query runs.
+pytz
