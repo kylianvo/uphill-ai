@@ -244,6 +244,13 @@ Uphill AI uses a **hybrid architecture**:
 
 ### System Architecture Diagram
 
+![Uphill AI System Architecture](assets/architecture/uphill_ai_architecture.png)
+
+*Interactive Excalidraw source file available at [`assets/architecture/uphill_ai_architecture.excalidraw`](assets/architecture/uphill_ai_architecture.excalidraw).*
+
+<details>
+<summary><b>Click to view textual Mermaid source</b></summary>
+
 ```mermaid
 flowchart TB
     subgraph CLIENT["Client Layer (Web & Mobile)"]
@@ -306,6 +313,7 @@ flowchart TB
     FASTAPI --> PROM
     PROM --> GRAFANA
 ```
+</details>
 
 ### Technology Breakdown
 
