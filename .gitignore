@@ -64,6 +64,7 @@ test-results/
 
 # Local IDE skill drop-ins
 .agents/skills/design-taste-frontend/
+.agents/skills/excalidraw-diagram/
 
 # Business/strategy & marketing docs (local only, not part of the shipped repo)
 strategy/
