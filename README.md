@@ -174,69 +174,71 @@ Uphill AI codifies the training methodologies of elite coaches and world-record 
 
 ## ⚡ Uphill AI vs. The Landscape
 
-### Feature & Science Comparison Matrix
+### 1. High-Level Comparison Matrix
 
-| Feature / Dimension | Uphill AI 🏔️ | Traditional Apps (Runna, Nike, Garmin Coach) | General LLMs (ChatGPT-4o, Claude 3.7, Gemini) |
+| Feature / Capability | Uphill AI 🏔️ | Traditional Apps (Runna, Nike, Garmin Coach) | General LLMs (ChatGPT-4o, Claude 3.7, Gemini) |
 | :--- | :--- | :--- | :--- |
-| **Primary Domain Focus** | **Trail, Mountain, Skyrunning, Ultras** | Road 5K to Marathon | General text generation |
-| **Scientific Training Foundation** | **House, Johnston & Jornet (*Uphill Athlete*) + Seiler 80/20** | Generic road templates & linear progression | Mixed internet training blogs (unverified) |
-| **Heart Rate Threshold Model** | **Individualized AeT & AnT (HR Drift Test)** | Generic $220 - \text{age}$ formulas or static pace bands | Vague generic heart rate percentages |
-| **Elevation & Terrain Physics** | **Minetti (2002) Curve + GPX Segment Splits** | ❌ None (assumes flat road running) | ❌ Cannot parse physics or GPX splits |
-| **Downhill & Muscular Endurance (ME)**| **✅ Dedicated ME circuits (weighted step-ups, hill bounds)**| ❌ Generic core/gym templates | ⚠️ Generic bodyweight suggestions |
-| **Race Checkpoint Pacing** | **Altitude + Grade + Fatigue Decay + Live Weather** | Flat splits / Simple pace targets | Basic arithmetic division (often buggy) |
-| **Goal Prediction Engine** | **ITRA Terrain Inversion + DUV Rank Transfer** | VDOT / Riegel formula (flat road only) | Hallucinated finish times |
-| **Gear Recommendation Accuracy** | **100% Grounded in Curated Shoe Catalog** | Static affiliate articles / Non-adaptive | ⚠️ High hallucination (invents fake models/specs) |
-| **Nutrition & Fueling Blueprint** | **Grounded in Real Products (Carb/Na+ hourly plan)** | Basic tips (e.g., "drink water, take a gel") | ⚠️ Rough generic estimates (no catalog check) |
-| **Hallucination Safeguards** | **Dual RAG + Hardcoded Scientific Guardrails** | N/A (Rules-based) | ❌ Frequent hallucinations & unsafe mileage jumps |
-| **Data Platform & Observability** | **Airflow + Spark + DuckDB/dbt + Kafka + Grafana** | Proprietary closed stack | Closed proprietary API |
+| **Primary Sport Domain** | **Trail, Mountain, Skyrunning & Ultras** | Road 5K, 10K, Half & Flat Marathon | General conversational text |
+| **Coaching Methodology** | **House, Johnston & Jornet (*Uphill Athlete*) + Seiler 80/20** | Generic road templates & linear progression | Mixed unverified internet training blogs |
+| **Threshold Anchor** | **Individualized AeT & AnT (HR Drift Test)** | Generic $220 - \text{age}$ formulas or static pace bands | Vague generic heart rate percentages |
+| **Elevation & Terrain Physics** | **Minetti (2002) Curve + GPX Route Profiling** | ❌ None (assumes 2D flat road running) | ❌ Cannot calculate grade-adjusted splits |
+| **Downhill & Muscular Endurance**| **✅ Dedicated ME circuits (weighted step-ups, hill bounds)**| ❌ Generic bodyweight/gym templates | ⚠️ Generic ungrounded exercise suggestions |
+| **Course Checkpoint Splits** | **Grade + Altitude + Weather + Fatigue Decay** | Flat splits / Simple pace targets | Buggy arithmetic division without physics |
+| **Race Goal Prediction** | **ITRA Terrain Inversion + DUV Rank Transfer** | VDOT / Riegel formula (flat road only) | Hallucinated finish times |
+| **Gear Recommendation** | **100% Grounded in Curated Shoe Catalog** | Static affiliate articles / Non-adaptive | ⚠️ High hallucination (invents fake models/specs) |
+| **Nutrition & Fueling Blueprint** | **Grounded in Real Products (Carb/Na+ hourly plan)** | Basic generic tips (e.g., "drink water") | ⚠️ Rough generic estimates (no catalog check) |
+| **Hallucination Safeguards** | **Dual RAG + Hardcoded Physiological Bounds** | N/A (Rules-based) | ❌ Frequent hallucinations & unsafe mileage jumps |
+| **Telemetry & Sensor Parsing** | **Garmin `.fit` activities & GPX route splits** | Closed ecosystem (e.g. Garmin only) | ❌ Cannot process telemetry streams |
+| **Data Platform & Analytics** | **Airflow + Spark + DuckDB/dbt + Kafka + Grafana** | Proprietary closed database | Closed proprietary API |
 | **Privacy & Self-Hosting** | **BYOK (Gemini API Key) + Dockerized Self-Host** | Closed subscription garden | Cloud-only subscription |
 | **Bilingual Localization** | **Native English & Tiếng Việt (Bilingual RAG & UI)** | English-only (or generic machine translation) | Multilingual text (no contextual grounding) |
 
 ---
 
-### Why Traditional Running Apps (e.g., Runna) Fall Short in the Mountains
+### 2. Deep-Dive: Uphill AI vs. Traditional Running Apps (Runna, NRC, Garmin Coach)
 
-```
- Traditional Road Apps (e.g. Runna)              Uphill AI Mountain Physics
- ┌─────────────────────────────────┐            ┌─────────────────────────────────┐
- │ • Linear weekly mileage ramp    │            │ • Vertical Gain + Distance load │
- │ • Flat-ground pacing formulas   │    VS.     │ • Minetti Grade Metabolic Curve │
- │ • Ignorant of eccentric fatigue │            │ • Muscular Endurance (ME) blocks│
- │ • No high-altitude adjustment   │            │ • Altitude + Weather degradation│
- └─────────────────────────────────┘            └─────────────────────────────────┘
-```
-
-1. **Failure of Flat-Pace Calculations**: Traditional running apps structure workouts by target pace per kilometer (e.g., "Run $5\text{km}$ at 4:30/km"). In mountain terrain with $15\text{--}30\%$ grades, pace is meaningless—metabolic cost, heart rate, and hiking transition thresholds dictate output.
-2. **The Zone 3 "Black Hole" Trap**: Without individualized Aerobic Threshold (AeT) calibration, apps push runners into moderate-intensity Zone 3. Over weeks, this triggers *Aerobic Deficiency Syndrome (ADS)*, chronic sympathetic fatigue, and plateaued fat-burning efficiency.
-3. **No Eccentric Load Preparation**: Road training relies almost entirely on concentric muscle action. When road-trained runners encounter a $-1,500\text{m}$ mountain descent, eccentric muscle contraction destroys unconditioned muscle fibers, resulting in severe quadriceps lockup and DNFs. Uphill AI’s Muscular Endurance routines directly eliminate this vulnerability.
+| Dimension | Uphill AI 🏔️ | Traditional Road Apps (Runna, Garmin Coach, NRC) | Why It Matters in Trail & Mountain Athletics |
+| :--- | :--- | :--- | :--- |
+| **Terrain & Grade Physics** | **Minetti (2002) Metabolic Model** calculates exponential climbing energy cost with downhill damping. | **Flat Pace / Distance Models** (e.g., "Run 5km @ 4:30/km"). | A 20% gradient increases metabolic cost by $>300\%$. Flat pacing in the mountains causes immediate anaerobic blowup. |
+| **Aerobic Base & Thresholds** | **AeT & AnT Individual Anchors** via Heart Rate Drift Testing. Strictly enforces $\ge 80\%$ volume below AeT. | **Age-Formula Max HR ($220 - \text{age}$)** or static road pace tables. | Prevents *Aerobic Deficiency Syndrome (ADS)* and avoids the fatiguing Zone 3 "black hole" trap. |
+| **Downhill Durability (ME)** | **Muscular Endurance (ME) Circuits**: Weighted box step-ups, steep uphill bounds, eccentric quad loading. | **None or Generic Core**: Basic planks, push-ups, or generic gym routines. | Mountain runners rarely fail aerobically; legs fail from eccentric quadriceps destruction during long technical descents. |
+| **Race Checkpoint Splits** | **5 Stacking Physics Multipliers**: Grade, altitude hypoxia ($>1,500\text{m}$), durability decay ($>15\text{km}$), and live weather. | **Linear Split Averages**: Total target time divided evenly by course distance. | Mountain races have irregular checkpoints with varying climbs; linear pacing leads to early bonking or missed cutoffs. |
+| **Precision Nutrition Planning** | **Hourly Blueprint**: Scales carbs ($60\text{--}90\text{g/hr}$) and sodium ($500\text{--}1,000\text{mg/hr}$) mapped to real verified products. | **Generic Advice**: High-level tips like "carry water and eat a gel every 45 minutes." | GI distress is the #1 cause of ultra DNFs. Fueling requires exact gut training and electrolyte replacement calibrated to heat. |
+| **Footwear & Gear Matching** | **100% Curated Catalog Grounding**: Filters on lug depth, stack, drop, plate, rockiness, and runner weight. | **Static Articles**: Affiliate link lists with no personalized course or biomechanical matching. | Mountain terrain demands specific outsole rubber, lug patterns, and protection (rock plates) matched to course surface. |
+| **Goal Prediction & Transfer** | **ITRA Terrain Inversion + DUV Rank Transfer**: Normalizes past races to flat pace, then projects asymmetric A/B/C goals. | **Flat VDOT / Riegel Formula**: Assumes flat road velocity and linear speed degradation. | Road formulas fail completely on courses with 5,000m+ of vertical gain; rank transfer provides empirical sanity checks. |
+| **Treadmill Mode** | **Deterministic Gradient Solver**: Calculates exact treadmill speed & incline pairs equivalent to outdoor trail sessions. | **Flat Treadmill Pacing**: Uses flat treadmill speed only. | Enables high-quality mountain training for athletes with flat topography or bad weather logistics. |
 
 ---
 
-### Why Generic AI Chatbots (ChatGPT, Claude, Gemini) Are Dangerous for Ultra Training
+### 3. Deep-Dive: Uphill AI vs. General AI Chatbots & Agents (ChatGPT, Claude, Gemini)
 
-```
- Generic Unconstrained LLM                        Uphill AI Grounded Agent
- ┌─────────────────────────────────┐            ┌─────────────────────────────────┐
- │ Prompt: "Plan a 100k ultra"     │            │ Prompt: "Plan a 100k ultra"     │
- │ ⚠️ Hallucinates 25% weekly jumps│    VS.     │ ✅ Audits AeT/AnT & weekly vol  │
- │ ⚠️ Invents non-existent shoes   │            │ ✅ Enforces 80/20 volume bounds │
- │ ⚠️ Guesses nutrition math       │            │ ✅ Verifies products in catalog │
- │ ⚠️ Ignores course topography    │            │ ✅ Runs Minetti physics on GPX  │
- └─────────────────────────────────┘            └─────────────────────────────────┘
-```
-
-1. **Hallucinated Progression Curves**: Unconstrained LLMs lack deterministic validation. They routinely recommend $20\text{--}30\%$ weekly volume jumps, violating the safe ceiling ($10\%$ max) and inviting patellofemoral syndrome, IT band friction, or bone stress injuries.
-2. **Mathematical Incompetence in Split Calculations**: LLMs struggle with multi-variable physics. Prompting a generic LLM for split times on a course with $4,000\text{m}$ elevation gain produces mathematically impossible splits that ignore metabolic cost decay and heat degradation.
-3. **Fake Gear and Nutritional Invented Specs**: General LLMs frequently hallucinate shoe models, misstate heel-to-toe drop numbers, or recommend dangerous sodium intake values ($>2,500\text{mg/hr}$).
-4. **Lack of State & Telemetry Awareness**: Generic chatbots do not connect to your actual training calendar, cannot parse Garmin `.fit` files or `.gpx` routes, and cannot adapt in real time to missed workouts.
+| Dimension | Uphill AI 🏔️ | General LLMs (ChatGPT-4o, Claude 3.7, Gemini 2.5 Pro) | The Danger of General LLMs in Ultra Athletics |
+| :--- | :--- | :--- | :--- |
+| **Progression Safety & Volume**| **Automated 80/20 & $<10\%$ Volume Audits**: Hardcoded deterministic safety ceilings. | **Unconstrained Generation**: Frequently generates $25\text{--}40\%$ weekly mileage jumps. | Rapid mileage jumps cause bone stress fractures, Achilles tendinopathy, and patellofemoral injury. |
+| **Multi-Variable Split Math** | **Deterministic Python Physics**: Mathematically exact time conservation across all segments. | **Stochastic Token Prediction**: Hallucinates split times that fail to add up to total finish time. | Unreliable race pacing plans that fail basic arithmetic and ignore physical energy decay. |
+| **Grounding & Refusal Guarantee**| **Dual-Engine RAG + Refusal Guard**: Refuses to answer if evidence is absent in curated knowledge base. | **Hallucination Risk**: Confidently invents non-existent shoes, fake drop specs, and unverified training methods. | Athlete receives fabricated advice masquerading as authoritative sports science. |
+| **Telemetry & Sensor Parsing** | **Direct Telemetry Parsers**: Native ingestion of GPX routes, Garmin `.fit` files, and live meteorological feeds. | **No Telemetry Integration**: Cannot parse binary FIT streams or calculate GPX elevation grade profiles. | Generic LLMs cannot evaluate actual workout execution, heart rate drift, or elevation cadence. |
+| **Calendar State & Adaptability**| **Persistent PostgreSQL State**: Tracks active plan, completed sessions, and adjusts future blocks. | **Stateless Ephemeral Chats**: Context lost across conversations; no persistent workout schedule. | Training requires multi-month longitudinal state tracking, not disconnected single-prompt interactions. |
+| **Nutrition & Hydration Safety** | **Grounded Product Catalog**: Verified macro/sodium counts and safe physiological intake caps. | **Ungrounded Guessing**: Recommends unsafe sodium doses ($>2,500\text{mg/hr}$) or impossible carb absorption rates. | Extreme sodium overdosing causes severe gastrointestinal distress, nausea, or hyponatremia. |
+| **Continuous Knowledge Updates**| **Automated Data Pipelines**: Airflow DAGs regularly scrape new *Evokecast* podcast transcripts and DUV race results. | **Static Knowledge Cutoff**: Knowledge is frozen at training date; unaware of newly released gear or race changes. | Outdated gear specs and lack of latest endurance sports science developments. |
+| **Data Privacy & Ownership** | **BYOK & Self-Hostable**: Local SQLite/PostgreSQL storage with Bring-Your-Own-Key Gemini API. | **Closed Cloud Subscription**: Training data retained by LLM vendor; monthly subscription lock-in. | Athlete health metrics and training logs remain completely private and self-hosted. |
 
 ---
 
-### The Uphill AI Solution: Deterministic Physics + Grounded Intelligence
+### 4. The Uphill AI Solution: Deterministic Physics + Grounded Intelligence
 
-Uphill AI uses a **hybrid architecture**:
-- **Deterministic Python Physics & Mathematical Engines**: Plan volume audits, Minetti metabolic curves, treadmill incline conversions, and A/B/C goal bounds run through rigorously tested, deterministic algorithms.
-- **RAG-Grounded Generative AI**: Gemini 2.5 Flash acts as an empathetic, multilingual synthesizer that communicates exclusively through verified knowledge chunks and structured product catalogs.
+```
+ ┌──────────────────────────────────────────────────────────────────────────┐
+ │                       HYBRID ARCHITECTURE DESIGN                         │
+ ├─────────────────────────────────────┬────────────────────────────────────┤
+ │ ⚙️ DETERMINISTIC PYTHON ENGINES     │ 🧠 GROUNDED GENERATIVE AI (RAG)    │
+ │ • Minetti (2002) Polynomial Physics │ • Gemini 2.5 Flash Synthesis       │
+ │ • 80/20 Weekly Volume Audits        │ • Qdrant Vector Retrieval Engine   │
+ │ • Individual AeT/AnT Zone Derivation│ • 100% Curated Gear & Nutrition KB │
+ │ • ITRA/DUV Rank Transfer Models     │ • Zero-Hallucination Refusal Policy│
+ │ • Deterministic Treadmill Solver    │ • Native Bilingual Output (EN/VI)  │
+ └─────────────────────────────────────┴────────────────────────────────────┘
+```
 
 ---
 
