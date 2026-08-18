@@ -1,0 +1,48 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+    relabel_configs:
+      - source_labels: ["__meta_docker_container_name"]
+        regex: "/(.*)"
+        target_label: "container"
+    pipeline_stages:
+      # Unwraps Docker's own {"log":"...","stream":"stdout","time":"..."}
+      # envelope around each line -- every container's stdout goes through
+      # this regardless of whether the app itself logs JSON.
+      - docker: {}
+      # backend/log_utils.py emits one JSON object per line (see its
+      # docstring) with service/engine/event/status fields -- promote the
+      # low-cardinality ones to Loki labels so LogQL can filter by them
+      # directly (e.g. {service="plan_generator", status="error"}) instead
+      # of full-text matching. Only applied to the backend container --
+      # other containers (postgres, grafana, nginx, ...) don't emit this
+      # JSON shape, and the json stage is a silent no-op when a line isn't
+      # valid JSON, so scoping it here just avoids wasted parsing.
+      - match:
+          selector: '{container=~".*-backend-[0-9]+"}'
+          stages:
+            - json:
+                expressions:
+                  level: level
+                  event: event
+                  service: service
+                  engine: engine
+                  status: status
+            - labels:
+                level:
+                event:
+                service:
+                engine:
+                status:

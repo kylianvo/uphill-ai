@@ -1,8 +1,10 @@
-import traceback
 from datetime import datetime, timedelta
 from typing import Any
 
+from log_utils import get_logger
 from services.training_rules import TrainingRules
+
+_logger = get_logger(__name__)
 
 
 class PlanGenerator:
@@ -1084,23 +1086,61 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
             try:
                 from services.notebooklm_service import NotebookLmService
 
-                print(
-                    f"[PlanGen][NotebookLM] Sending compact prompt to notebook {notebook_id[:8]}... "
-                    f"({len(_nb_query)} chars, full Gemini prompt is {len(_ai_prompt)} chars)"
+                _logger.info(
+                    "notebooklm prompt sent",
+                    extra={
+                        "fields": {
+                            "service": "plan_generator",
+                            "engine": "notebooklm",
+                            "event": "prompt_sent",
+                            "chars_sent": len(_nb_query),
+                            "gemini_prompt_chars": len(_ai_prompt),
+                        }
+                    },
                 )
                 response_text = await NotebookLmService.query_notebook(
                     notebook_id=notebook_id, auth_json=auth_json, query=_nb_query, service="plan_generator"
                 )
-                print(f"[PlanGen][NotebookLM] Response received ({len(response_text)} chars)")
+                _logger.info(
+                    "notebooklm response received",
+                    extra={
+                        "fields": {
+                            "service": "plan_generator",
+                            "engine": "notebooklm",
+                            "event": "response_received",
+                            "chars_received": len(response_text),
+                        }
+                    },
+                )
                 clean_text = _extract_json_array(response_text)
                 try:
                     ai_workouts = _json.loads(clean_text)
                 except _json.JSONDecodeError as json_err:
-                    print(f"[PlanGen][NotebookLM] JSON parsing failed: {json_err}. Raw snippet: {response_text[:200]}")
+                    _logger.warning(
+                        "notebooklm response failed JSON parsing",
+                        extra={
+                            "fields": {
+                                "service": "plan_generator",
+                                "engine": "notebooklm",
+                                "event": "parse_error",
+                                "error": str(json_err),
+                            }
+                        },
+                    )
                     ai_workouts = None
                 if isinstance(ai_workouts, list) and len(ai_workouts) > 0:
                     cleaned_wos = [wo for wo in ai_workouts if isinstance(wo, dict)]
-                    print(f"[PlanGen][NotebookLM] Parsed {len(cleaned_wos)} workouts")
+                    _logger.info(
+                        "notebooklm workouts parsed",
+                        extra={
+                            "fields": {
+                                "service": "plan_generator",
+                                "engine": "notebooklm",
+                                "event": "parsed",
+                                "workout_count": len(cleaned_wos),
+                            }
+                        },
+                    )
                     from telemetry import rag_attempts_total
 
                     _processed = post_process_workouts(cleaned_wos)
@@ -1110,17 +1150,44 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                     rag_attempts_total.labels(service="plan_generator", engine="notebooklm", status="used").inc()
                     return _processed
                 else:
-                    print("[PlanGen][NotebookLM] Empty or invalid list returned, trying Gemini fallback.")
+                    _logger.warning(
+                        "notebooklm returned empty or invalid list, trying gemini fallback",
+                        extra={
+                            "fields": {
+                                "service": "plan_generator",
+                                "engine": "notebooklm",
+                                "event": "empty_result",
+                            }
+                        },
+                    )
                     return None
             except Exception as ex:
                 err_str = str(ex)
                 if "No parseable chunks" in err_str or "empty" in err_str.lower():
-                    print(
-                        "[PlanGen][NotebookLM] Empty streaming response — prompt may still be too large, "
-                        "or auth token expired (update NOTEBOOKLM_AUTH_JSON). Falling back to Gemini."
+                    _logger.warning(
+                        "notebooklm empty streaming response, falling back to gemini",
+                        extra={
+                            "fields": {
+                                "service": "plan_generator",
+                                "engine": "notebooklm",
+                                "event": "empty_stream",
+                                "error": err_str,
+                            }
+                        },
                     )
                 else:
-                    print(f"[PlanGen][NotebookLM] FAILED: {ex}. Trying Gemini fallback.\n{traceback.format_exc()}")
+                    _logger.error(
+                        "notebooklm request failed, trying gemini fallback",
+                        extra={
+                            "fields": {
+                                "service": "plan_generator",
+                                "engine": "notebooklm",
+                                "event": "error",
+                                "error": err_str,
+                            }
+                        },
+                        exc_info=True,
+                    )
                 return None
 
         async def _try_gemini() -> list[dict[str, Any]] | None:
@@ -1158,34 +1225,109 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
 
                 _genai.configure(api_key=api_key)
                 _model = _genai.GenerativeModel("gemini-2.5-flash")
-                print(f"[PlanGen][Gemini] Sending prompt ({len(_gemini_prompt)} chars)...")
+                _logger.info(
+                    "gemini prompt sent",
+                    extra={
+                        "fields": {
+                            "service": "plan_generator",
+                            "engine": "gemini",
+                            "event": "prompt_sent",
+                            "chars_sent": len(_gemini_prompt),
+                        }
+                    },
+                )
 
                 rag_attempts_total.labels(service="plan_generator", engine="gemini", status="attempt").inc()
                 _start = time.time()
                 try:
                     _response = await asyncio.to_thread(_model.generate_content, _gemini_prompt)
-                    rag_latency_seconds.labels(service="plan_generator", engine="gemini").observe(time.time() - _start)
+                    _latency = time.time() - _start
+                    rag_latency_seconds.labels(service="plan_generator", engine="gemini").observe(_latency)
                     rag_attempts_total.labels(service="plan_generator", engine="gemini", status="success").inc()
-                except Exception:
+                    _logger.info(
+                        "gemini response received",
+                        extra={
+                            "fields": {
+                                "service": "plan_generator",
+                                "engine": "gemini",
+                                "event": "response_received",
+                                "chars_received": len(_response.text),
+                                "latency_ms": round(_latency * 1000),
+                            }
+                        },
+                    )
+                except Exception as _gemini_ex:
                     rag_attempts_total.labels(service="plan_generator", engine="gemini", status="error").inc()
+                    _logger.error(
+                        "gemini request failed",
+                        extra={
+                            "fields": {
+                                "service": "plan_generator",
+                                "engine": "gemini",
+                                "event": "error",
+                                "error": str(_gemini_ex),
+                            }
+                        },
+                        exc_info=True,
+                    )
                     raise
                 clean_text = _extract_json_array(_response.text)
                 try:
                     ai_workouts = _json.loads(clean_text)
                 except _json.JSONDecodeError as json_err:
-                    print(f"[PlanGen][Gemini] JSON parsing failed: {json_err}. Raw snippet: {_response.text[:200]}")
+                    _logger.warning(
+                        "gemini response failed JSON parsing",
+                        extra={
+                            "fields": {
+                                "service": "plan_generator",
+                                "engine": "gemini",
+                                "event": "parse_error",
+                                "error": str(json_err),
+                            }
+                        },
+                    )
                     ai_workouts = None
                 if isinstance(ai_workouts, list) and len(ai_workouts) > 0:
                     cleaned_wos = [wo for wo in ai_workouts if isinstance(wo, dict)]
-                    print(f"[PlanGen][Gemini] Parsed {len(cleaned_wos)} workouts")
+                    _logger.info(
+                        "gemini workouts parsed",
+                        extra={
+                            "fields": {
+                                "service": "plan_generator",
+                                "engine": "gemini",
+                                "event": "parsed",
+                                "workout_count": len(cleaned_wos),
+                            }
+                        },
+                    )
                     _processed = post_process_workouts(cleaned_wos)
                     rag_attempts_total.labels(service="plan_generator", engine="gemini", status="used").inc()
                     return _processed
                 else:
-                    print("[PlanGen][Gemini] Empty or invalid list returned, using rule-based fallback.")
+                    _logger.warning(
+                        "gemini returned empty or invalid list, using rule-based fallback",
+                        extra={
+                            "fields": {
+                                "service": "plan_generator",
+                                "engine": "gemini",
+                                "event": "empty_result",
+                            }
+                        },
+                    )
                     return None
             except Exception as ex:
-                print(f"[PlanGen][Gemini] FAILED: {ex}. Using rule-based fallback schedule.\n{traceback.format_exc()}")
+                _logger.error(
+                    "gemini attempt failed, using rule-based fallback schedule",
+                    extra={
+                        "fields": {
+                            "service": "plan_generator",
+                            "engine": "gemini",
+                            "event": "fallback",
+                            "error": str(ex),
+                        }
+                    },
+                    exc_info=True,
+                )
                 return None
 
         _engine_order = (

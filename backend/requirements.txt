@@ -36,3 +36,10 @@ duckdb
 # incremental extraction hits this) -- without it, duckdb raises at query time
 # rather than at import time, so the gap doesn't surface until a specific query runs.
 pytz
+# NOTE: dbt-duckdb is deliberately NOT listed here. dbt-core hard-requires
+# protobuf>=6.0, which conflicts with (deprecated but still in use)
+# google-generativeai's protobuf<6.0 pin -- installing it into this image's
+# global site-packages would silently bump protobuf and risk breaking every
+# Gemini call. scripts/run_dw_elt.py (the cron-driven prod DW pipeline, see
+# deploy_dw.sh) instead runs dbt from an isolated venv at ./warehouse/.venv,
+# kept fully separate from this file's dependency tree.

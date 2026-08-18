@@ -1,0 +1,44 @@
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+
+common:
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+schema_config:
+  configs:
+    - from: 2020-10-24
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+limits_config:
+  # Retention kept short deliberately -- prod runs on a small disk (48GB,
+  # already ~14GB free after routine image/build churn) and this is meant
+  # for recent debugging/monitoring, not long-term log archival. The DW
+  # warehouse (warehouse/uphill_dw.duckdb) is the durable analytics store;
+  # Loki is not.
+  retention_period: 168h
+  # Modest caps matched to this app's actual traffic (low hundreds of
+  # users) -- default Loki limits assume much higher volume.
+  ingestion_rate_mb: 4
+  ingestion_burst_size_mb: 8
+  per_stream_rate_limit: 3MB
+  per_stream_rate_limit_burst: 15MB
+
+compactor:
+  working_directory: /loki/compactor
+  retention_enabled: true
+  delete_request_store: filesystem

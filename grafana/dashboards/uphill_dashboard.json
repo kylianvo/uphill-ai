@@ -26,7 +26,7 @@
     },
     {
       "type": "stat",
-      "title": "Avg NotebookLM Latency",
+      "title": "Avg RAG Latency (Gemini)",
       "gridPos": {
         "x": 12,
         "y": 0,
@@ -35,8 +35,8 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(notebooklm_latency_seconds_sum[5m])) / sum(rate(notebooklm_latency_seconds_count[5m]))",
-          "legendFormat": "Global Avg Latency (5m)"
+          "expr": "sum(rate(rag_latency_seconds_sum{engine=\"gemini\"}[5m])) / sum(rate(rag_latency_seconds_count{engine=\"gemini\"}[5m]))",
+          "legendFormat": "Gemini Avg Latency (5m)"
         }
       ],
       "fieldConfig": {
@@ -63,7 +63,7 @@
     },
     {
       "type": "timeseries",
-      "title": "NotebookLM Latency (Excluding Cache)",
+      "title": "RAG Latency by Service (Gemini)",
       "gridPos": {
         "x": 12,
         "y": 4,
@@ -72,14 +72,14 @@
       },
       "targets": [
         {
-          "expr": "rate(notebooklm_latency_seconds_sum[1m]) / rate(notebooklm_latency_seconds_count[1m])",
+          "expr": "rate(rag_latency_seconds_sum{engine=\"gemini\"}[1m]) / rate(rag_latency_seconds_count{engine=\"gemini\"}[1m])",
           "legendFormat": "{{service}} Avg Latency"
         }
       ]
     },
     {
       "type": "stat",
-      "title": "Tokens Sent to NotebookLM",
+      "title": "RAG Success Rate (Gemini)",
       "gridPos": {
         "x": 0,
         "y": 12,
@@ -88,14 +88,21 @@
       },
       "targets": [
         {
-          "expr": "sum(notebooklm_tokens_sent_total)",
-          "legendFormat": "Sent Tokens"
+          "expr": "100 * sum(rag_attempts_total{engine=\"gemini\", status=\"success\"}) / sum(rag_attempts_total{engine=\"gemini\", status=\"attempt\"})",
+          "legendFormat": "Success Rate"
         }
-      ]
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "max": 100,
+          "min": 0
+        }
+      }
     },
     {
       "type": "stat",
-      "title": "Tokens Received from NotebookLM",
+      "title": "NotebookLM Fallback Uses",
       "gridPos": {
         "x": 6,
         "y": 12,
@@ -104,14 +111,14 @@
       },
       "targets": [
         {
-          "expr": "sum(notebooklm_tokens_received_total)",
-          "legendFormat": "Received Tokens"
+          "expr": "sum(rag_attempts_total{engine=\"notebooklm\"})",
+          "legendFormat": "Fallback Invocations"
         }
       ]
     },
     {
       "type": "timeseries",
-      "title": "Token Usage Rate (per sec)",
+      "title": "RAG Attempts & Errors by Service (rate)",
       "gridPos": {
         "x": 12,
         "y": 12,
@@ -120,12 +127,12 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(notebooklm_tokens_sent_total[1m])) by (service)",
-          "legendFormat": "{{service}} Sent"
+          "expr": "sum(rate(rag_attempts_total{engine=\"gemini\", status=\"attempt\"}[1m])) by (service)",
+          "legendFormat": "{{service}} Gemini Attempts"
         },
         {
-          "expr": "sum(rate(notebooklm_tokens_received_total[1m])) by (service)",
-          "legendFormat": "{{service}} Received"
+          "expr": "sum(rate(rag_attempts_total{status=\"error\"}[1m])) by (service, engine)",
+          "legendFormat": "{{service}} {{engine}} Errors"
         }
       ]
     },
@@ -162,7 +169,7 @@
       ]
     },
     {
-      "title": "NotebookLM Attempts",
+      "title": "RAG Attempts by Engine & Status",
       "type": "stat",
       "gridPos": {
         "x": 12,
@@ -200,18 +207,18 @@
       },
       "targets": [
         {
-          "expr": "sum(notebooklm_attempts_total{status=\"success\"})",
-          "legendFormat": "Success",
+          "expr": "sum(rag_attempts_total{engine=\"gemini\", status=\"success\"})",
+          "legendFormat": "Gemini Success",
           "refId": "A"
         },
         {
-          "expr": "sum(notebooklm_attempts_total{status=\"error\"})",
-          "legendFormat": "Error",
+          "expr": "sum(rag_attempts_total{engine=\"gemini\", status=\"error\"})",
+          "legendFormat": "Gemini Error",
           "refId": "B"
         },
         {
-          "expr": "sum(notebooklm_attempts_total{status=\"attempt\"})",
-          "legendFormat": "Attempted",
+          "expr": "sum(rag_attempts_total{engine=\"notebooklm\"})",
+          "legendFormat": "NotebookLM Fallback",
           "refId": "C"
         }
       ],
@@ -219,6 +226,87 @@
         "type": "prometheus",
         "uid": "prometheus"
       }
+    },
+    {
+      "type": "logs",
+      "title": "Gemini / NotebookLM Errors (live)",
+      "gridPos": {
+        "x": 0,
+        "y": 28,
+        "w": 24,
+        "h": 8
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "wrapLogMessages": true,
+        "sortOrder": "Descending"
+      },
+      "targets": [
+        {
+          "expr": "{container=~\".*-backend-[0-9]+\", status=\"error\"}",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          }
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "RAG Error Rate by Service (from logs)",
+      "gridPos": {
+        "x": 0,
+        "y": 36,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "targets": [
+        {
+          "expr": "sum(count_over_time({container=~\".*-backend-[0-9]+\", status=\"error\"}[5m])) by (service)",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          }
+        }
+      ]
+    },
+    {
+      "type": "logs",
+      "title": "Gemini Prompt/Response Activity (live)",
+      "gridPos": {
+        "x": 12,
+        "y": 36,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "wrapLogMessages": true,
+        "sortOrder": "Descending"
+      },
+      "targets": [
+        {
+          "expr": "{container=~\".*-backend-[0-9]+\", engine=\"gemini\"}",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          }
+        }
+      ]
     }
   ]
 }
