@@ -6,7 +6,7 @@ import { translations } from "../app/translations";
 import WorkoutCard from "../components/WorkoutCard";
 import PlanCalendarView from "../components/PlanCalendarView";
 import { KnowledgeCard } from "../components/KnowledgeCard";
-import { DndContext, DragEndEvent, DragOverEvent, useDraggable, useDroppable } from "@dnd-kit/core";
+import { DndContext, DragEndEvent, DragOverEvent, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, TouchSensor, KeyboardSensor } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import ToolsView from "./ToolsView";
 import { UploadSimple, FileArrowUp, Heart, Clock, Mountains, MapPin, Footprints, ArrowsMerge, PlayCircle, CheckCircle, Fire, Path, RoadHorizon, Info, Check, Question, WarningCircle, Plus, Trash, Archive, LockKey, LockKeyOpen, Trophy, Target, Sneaker, PersonSimpleRun, Bed, XCircle, DownloadSimple, Gauge } from '@phosphor-icons/react';
@@ -1999,6 +1999,18 @@ interface WeekDayListProps {
 function WeekDayList({ weekWos, lang, isMobile, onSwapDays, onToggleComplete, onMarkMissed, onLogWorkout, getWorkoutDate, isCoachActingAsAthlete, athleteId, onApproveWorkout, onRemoveWorkout, onEditWorkout, onAddWorkout }: WeekDayListProps) {
   const [overId, setOverId] = React.useState<string | null>(null);
 
+  // Default PointerSensor activates on the slightest movement, which on a
+  // touchscreen fights with normal vertical scrolling -- a small scroll
+  // gesture on a workout card gets misread as a drag start. A short
+  // press-and-hold delay (with a movement tolerance so the hold itself
+  // doesn't need to be perfectly still) lets a quick scroll pass through
+  // untouched while a deliberate long-press still starts a drag.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
+    useSensor(KeyboardSensor)
+  );
+
   const byDay: Record<string, any[]> = {};
   DAY_ORDER.forEach(d => { byDay[d] = []; });
   weekWos.forEach((wo: any) => {
@@ -2023,7 +2035,7 @@ function WeekDayList({ weekWos, lang, isMobile, onSwapDays, onToggleComplete, on
   };
 
   return (
-    <DndContext onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
+    <DndContext sensors={sensors} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
       <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
         {DAY_ORDER.map((day, di) => {
           const dayWos = byDay[day];

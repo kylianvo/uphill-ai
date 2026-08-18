@@ -3,6 +3,7 @@
 
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { Keyboard } from "@capacitor/keyboard";
 import { Message, ParsedSummary, RagSource, Workout, ActivePlan, PacedCheckpoint, FuelStrategy, Shoe, User } from "../types";
 import { isNativePlatform } from "../utils/native";
 import { hasNotificationPermission, scheduleDailyKnowledgeReminder, scheduleNotification, buildWorkoutReminderContent, DAILY_WORKOUT_REMINDER_ID } from "../utils/notifications";
@@ -454,6 +455,26 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activePlan, workouts]);
+
+  // The Keyboard plugin's `resize: 'body'` shrinks the webview viewport when
+  // the keyboard opens, but that alone doesn't scroll the focused field into
+  // view -- browsers only do that automatically for normal page scroll, not
+  // for content inside a fixed-position modal with its own overflow (all of
+  // this app's forms). Without this, the keyboard covers whatever field the
+  // user just tapped. keyboardDidShow fires after the resize has already
+  // happened, so scrollIntoView's target coordinates are correct.
+  useEffect(() => {
+    if (typeof window === "undefined" || !isNativePlatform()) return;
+    const sub = Keyboard.addListener("keyboardDidShow", () => {
+      const active = document.activeElement;
+      if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || active.tagName === "SELECT")) {
+        (active as HTMLElement).scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    });
+    return () => {
+      sub.then((handle) => handle.remove());
+    };
+  }, []);
 
   return (
     <AppContext.Provider value={{

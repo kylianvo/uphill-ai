@@ -35,6 +35,17 @@
 			</dict>
 		</dict>
 	</dict>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<!-- Reversed form of NEXT_PUBLIC_GOOGLE_IOS_CLIENT_ID -- Google's
+				     iOS Sign-In SDK redirects back into the app via this scheme. -->
+				<string>com.googleusercontent.apps.451637841654-ncj3jhv24t9rq665noctori05faajiej</string>
+			</array>
+		</dict>
+	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

@@ -16,6 +16,7 @@ export function FeatureModal({
 
   return (
     <div
+      onClick={onClose}
       style={{
         position: "fixed",
         inset: 0,
@@ -30,6 +31,7 @@ export function FeatureModal({
       }}
     >
       <div
+        onClick={(e) => e.stopPropagation()}
         style={{
           background: "var(--bg-card)",
           backdropFilter: "blur(30px)",
