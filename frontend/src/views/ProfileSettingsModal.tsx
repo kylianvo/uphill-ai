@@ -6,7 +6,15 @@ import { translations } from "../app/translations";
 import { usePaceZones } from "../hooks/usePaceZones";
 import { ZONE_NUMBER_COLORS } from "../data/workoutLibrary";
 import { X, User, Heartbeat, Watch, SignOut, Warning, Bell, CheckCircle } from '@phosphor-icons/react';
-import { scheduleDailyWorkoutReminder, scheduleNotification, cancelAllNotifications, requestNotificationPermission } from '../utils/notifications';
+import {
+  scheduleDailyWorkoutReminder,
+  scheduleDailyKnowledgeReminder,
+  scheduleNotification,
+  cancelNotification,
+  requestNotificationPermission,
+  DAILY_WORKOUT_REMINDER_ID,
+  DAILY_KNOWLEDGE_REMINDER_ID,
+} from '../utils/notifications';
 import { triggerHaptic } from '../utils/native';
 
 export default function ProfileSettingsModal() {
@@ -33,6 +41,13 @@ export default function ProfileSettingsModal() {
   });
   const [testNotifMsg, setTestNotifMsg] = useState<string>("");
 
+  const [knowledgeReminderEnabled, setKnowledgeReminderEnabled] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("uphill_knowledge_reminder_enabled") === "true";
+    }
+    return false;
+  });
+
   const handleToggleReminder = async (enabled: boolean) => {
     setReminderEnabled(enabled);
     if (typeof window !== "undefined") {
@@ -49,7 +64,22 @@ export default function ProfileSettingsModal() {
       );
       triggerHaptic();
     } else {
-      await cancelAllNotifications();
+      await cancelNotification(DAILY_WORKOUT_REMINDER_ID);
+    }
+  };
+
+  const handleToggleKnowledgeReminder = async (enabled: boolean) => {
+    setKnowledgeReminderEnabled(enabled);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("uphill_knowledge_reminder_enabled", String(enabled));
+    }
+    if (enabled) {
+      await requestNotificationPermission();
+      const [h, m] = reminderTime.split(":").map(Number);
+      await scheduleDailyKnowledgeReminder(h || 7, m || 0, lang);
+      triggerHaptic();
+    } else {
+      await cancelNotification(DAILY_KNOWLEDGE_REMINDER_ID);
     }
   };
 
@@ -2126,7 +2156,21 @@ export default function ProfileSettingsModal() {
                   : "Nhận thông báo nhắc nhở bài tập và dinh dưỡng hàng ngày trực tiếp trên thiết bị."}
               </div>
 
-              {reminderEnabled && (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: "6px", borderTop: "1px dashed rgba(25, 206, 139, 0.2)" }}>
+                <span style={{ fontSize: "12.5px", color: "var(--text-primary)", fontWeight: "600" }}>
+                  💡 {lang === "en" ? "Daily Knowledge" : "Kiến thức Hằng ngày"}
+                </span>
+                <label style={{ display: "flex", alignItems: "center", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={knowledgeReminderEnabled}
+                    onChange={(e) => handleToggleKnowledgeReminder(e.target.checked)}
+                    style={{ width: "18px", height: "18px", accentColor: "var(--color-green)", cursor: "pointer" }}
+                  />
+                </label>
+              </div>
+
+              {(reminderEnabled || knowledgeReminderEnabled) && (
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: "6px", borderTop: "1px dashed rgba(25, 206, 139, 0.2)" }}>
                   <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
                     {lang === "en" ? "Reminder Time" : "Giờ nhắc nhở"}:
@@ -2139,9 +2183,12 @@ export default function ProfileSettingsModal() {
                       if (typeof window !== "undefined") {
                         localStorage.setItem("uphill_reminder_time", e.target.value);
                       }
+                      const [h, m] = e.target.value.split(":").map(Number);
                       if (reminderEnabled) {
-                        const [h, m] = e.target.value.split(":").map(Number);
                         scheduleDailyWorkoutReminder(h || 7, m || 0);
+                      }
+                      if (knowledgeReminderEnabled) {
+                        scheduleDailyKnowledgeReminder(h || 7, m || 0, lang);
                       }
                     }}
                     style={{ background: "rgba(255,255,255,0.7)", border: "1px solid var(--border-color)", borderRadius: "6px", padding: "4px 8px", fontSize: "12px", color: "var(--text-primary)" }}

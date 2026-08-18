@@ -1,11 +1,16 @@
 import { LocalNotifications, LocalNotificationSchema } from '@capacitor/local-notifications';
-import { isNativePlatform } from './native';
+import { isNativePlatform, getApiBaseUrl } from './native';
+
+export const DAILY_WORKOUT_REMINDER_ID = 10001;
+export const DAILY_KNOWLEDGE_REMINDER_ID = 10002;
 
 export interface ScheduleNotificationOptions {
   id?: number;
   title: string;
   body: string;
   scheduleAt?: Date;
+  /** Recurs every day at this wall-clock time (persisted by the OS scheduler). */
+  repeatDailyAt?: { hour: number; minute: number };
   extra?: Record<string, unknown>;
 }
 
@@ -68,9 +73,11 @@ export const scheduleNotification = async (
         title: options.title,
         body: options.body,
         extra: options.extra,
-        schedule: options.scheduleAt
-          ? { at: options.scheduleAt, allowWhileIdle: true }
-          : undefined,
+        schedule: options.repeatDailyAt
+          ? { on: { hour: options.repeatDailyAt.hour, minute: options.repeatDailyAt.minute }, allowWhileIdle: true }
+          : options.scheduleAt
+            ? { at: options.scheduleAt, allowWhileIdle: true }
+            : undefined,
       };
 
       await LocalNotifications.schedule({
@@ -83,13 +90,23 @@ export const scheduleNotification = async (
     }
   }
 
-  // Web Browser fallback
+  // Web Browser fallback — the browser has no OS-level daily scheduler, so a
+  // repeatDailyAt request is best-effort: fire once at the next occurrence.
   if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-    if (!options.scheduleAt || options.scheduleAt.getTime() <= Date.now()) {
+    let fireAt: Date | undefined = options.scheduleAt;
+    if (options.repeatDailyAt) {
+      fireAt = new Date();
+      fireAt.setHours(options.repeatDailyAt.hour, options.repeatDailyAt.minute, 0, 0);
+      if (fireAt.getTime() <= Date.now()) {
+        fireAt.setDate(fireAt.getDate() + 1);
+      }
+    }
+
+    if (!fireAt || fireAt.getTime() <= Date.now()) {
       new Notification(options.title, { body: options.body });
       return true;
     } else {
-      const delay = Math.max(0, options.scheduleAt.getTime() - Date.now());
+      const delay = Math.max(0, fireAt.getTime() - Date.now());
       setTimeout(() => {
         if (Notification.permission === 'granted') {
           new Notification(options.title, { body: options.body });
@@ -108,20 +125,56 @@ export const scheduleDailyWorkoutReminder = async (
   title: string = "Today's Training | Uphill AI",
   body: string = "Check your planned workout and nutrition targets for today."
 ): Promise<boolean> => {
-  const now = new Date();
-  const scheduledTime = new Date();
-  scheduledTime.setHours(hour, minute, 0, 0);
-
-  if (scheduledTime.getTime() <= now.getTime()) {
-    scheduledTime.setDate(scheduledTime.getDate() + 1);
-  }
-
   return scheduleNotification({
-    id: 10001, // dedicated ID for daily reminder
+    id: DAILY_WORKOUT_REMINDER_ID,
     title,
     body,
-    scheduleAt: scheduledTime,
+    repeatDailyAt: { hour, minute },
     extra: { type: 'daily_workout_reminder' },
+  });
+};
+
+interface KnowledgeCardSnippet {
+  chapter_title?: string;
+  summary?: string;
+}
+
+const fetchRandomKnowledgeCard = async (lang: 'en' | 'vi'): Promise<KnowledgeCardSnippet | null> => {
+  if (typeof window === 'undefined') return null;
+  const token = window.localStorage.getItem('uphill_session_token');
+  if (!token) return null;
+  try {
+    const res = await fetch(`${getApiBaseUrl()}/api/knowledge/cards/random?n=1&lang=${lang}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.cards?.[0] ?? null;
+  } catch {
+    return null;
+  }
+};
+
+export const scheduleDailyKnowledgeReminder = async (
+  hour: number,
+  minute: number,
+  lang: 'en' | 'vi' = 'en'
+): Promise<boolean> => {
+  const card = await fetchRandomKnowledgeCard(lang);
+  const title = lang === 'vi' ? '💡 Kiến thức hôm nay | Uphill AI' : "💡 Today's Knowledge | Uphill AI";
+  const fallbackBody = lang === 'vi'
+    ? 'Có một mẹo huấn luyện mới đang chờ bạn trong Knowledge Hub.'
+    : 'A new coaching insight is waiting for you in the Knowledge Hub.';
+  const body = card?.chapter_title
+    ? `${card.chapter_title}${card.summary ? ` — ${card.summary}` : ''}`
+    : fallbackBody;
+
+  return scheduleNotification({
+    id: DAILY_KNOWLEDGE_REMINDER_ID,
+    title,
+    body: body.slice(0, 180),
+    repeatDailyAt: { hour, minute },
+    extra: { type: 'daily_knowledge_reminder' },
   });
 };
 
@@ -161,6 +214,16 @@ export const scheduleFuelingReminder = async (
   }
 
   return totalIntervals;
+};
+
+export const cancelNotification = async (id: number): Promise<void> => {
+  if (isNativePlatform()) {
+    try {
+      await LocalNotifications.cancel({ notifications: [{ id }] });
+    } catch (e) {
+      console.warn('Failed to cancel notification:', e);
+    }
+  }
 };
 
 export const cancelAllNotifications = async (): Promise<void> => {

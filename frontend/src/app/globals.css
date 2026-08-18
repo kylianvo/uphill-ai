@@ -130,7 +130,9 @@ html, body {
   z-index: 20;
   max-width: 1100px;
   width: calc(100% - 48px);
-  margin: 16px auto 0 auto;
+  /* --sat keeps the nav (and its top-right avatar) clear of the notch/Dynamic
+     Island on native iOS -- it resolves to 0px on web, so this is a no-op there. */
+  margin: calc(16px + var(--sat)) auto 0 auto;
   background: rgba(255, 255, 255, 0.65);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
@@ -1103,7 +1105,10 @@ label {
 
 @media (max-width: 900px) {
   .top-nav {
-    padding: 16px 20px;
+    /* padding-top (not margin) carries --sat here so it keeps the nav's own
+       background/blur behind the notch/Dynamic Island, while still pushing
+       the actual tap targets (avatar, Sign In) below it. */
+    padding: calc(16px + var(--sat)) 20px 16px 20px;
     width: 100%;
     max-width: none;
     margin: 0;

@@ -2,8 +2,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { Message, ParsedSummary, RagSource, Workout, ActivePlan, PacedCheckpoint, FuelStrategy, Shoe, User } from "../types";
+import { isNativePlatform } from "../utils/native";
+import { hasNotificationPermission, scheduleDailyWorkoutReminder, scheduleDailyKnowledgeReminder } from "../utils/notifications";
 
 interface AppContextType {
   isNutritionLabOpen: any;
@@ -422,6 +424,25 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       setPlanJobStatus("idle");
     }
   };
+
+  // Re-arm local notifications on cold start so their content stays fresh
+  // (the daily knowledge one is a snapshot fetched at schedule time) even
+  // though the OS itself persists the underlying daily-repeat schedule.
+  useEffect(() => {
+    if (typeof window === "undefined" || !isNativePlatform()) return;
+    const workoutEnabled = localStorage.getItem("uphill_reminder_enabled") === "true";
+    const knowledgeEnabled = localStorage.getItem("uphill_knowledge_reminder_enabled") === "true";
+    if (!workoutEnabled && !knowledgeEnabled) return;
+
+    (async () => {
+      const granted = await hasNotificationPermission();
+      if (!granted) return;
+      const [h, m] = (localStorage.getItem("uphill_reminder_time") || "07:00").split(":").map(Number);
+      if (workoutEnabled) await scheduleDailyWorkoutReminder(h || 7, m || 0);
+      if (knowledgeEnabled) await scheduleDailyKnowledgeReminder(h || 7, m || 0, lang);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <AppContext.Provider value={{

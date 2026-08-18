@@ -1,11 +1,14 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   requestNotificationPermission,
   hasNotificationPermission,
   scheduleNotification,
   scheduleDailyWorkoutReminder,
+  scheduleDailyKnowledgeReminder,
   scheduleFuelingReminder,
   cancelAllNotifications,
+  cancelNotification,
+  DAILY_KNOWLEDGE_REMINDER_ID,
 } from './notifications';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Capacitor } from '@capacitor/core';
@@ -109,14 +112,85 @@ describe('notification utilities', () => {
     it('cancels pending native notifications', async () => {
       vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
       vi.mocked(LocalNotifications.getPending).mockResolvedValue({
-        notifications: [{ id: 1 }, { id: 2 }],
+        notifications: [
+          { id: 1, title: 'A', body: 'A' },
+          { id: 2, title: 'B', body: 'B' },
+        ],
       });
       vi.mocked(LocalNotifications.cancel).mockResolvedValue();
 
       await cancelAllNotifications();
       expect(LocalNotifications.cancel).toHaveBeenCalledWith({
-        notifications: [{ id: 1 }, { id: 2 }],
+        notifications: [
+          { id: 1, title: 'A', body: 'A' },
+          { id: 2, title: 'B', body: 'B' },
+        ],
       });
+    });
+  });
+
+  describe('cancelNotification', () => {
+    it('cancels a single notification by id on native platform', async () => {
+      vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+      vi.mocked(LocalNotifications.cancel).mockResolvedValue();
+
+      await cancelNotification(DAILY_KNOWLEDGE_REMINDER_ID);
+      expect(LocalNotifications.cancel).toHaveBeenCalledWith({
+        notifications: [{ id: DAILY_KNOWLEDGE_REMINDER_ID }],
+      });
+    });
+  });
+
+  describe('scheduleDailyKnowledgeReminder', () => {
+    const originalFetch = global.fetch;
+
+    afterEach(() => {
+      global.fetch = originalFetch;
+      window.localStorage.clear();
+    });
+
+    it('schedules a daily knowledge notification using a fetched card', async () => {
+      vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+      vi.mocked(LocalNotifications.checkPermissions).mockResolvedValue({ display: 'granted' });
+      vi.mocked(LocalNotifications.schedule).mockResolvedValue({ notifications: [] });
+      window.localStorage.setItem('uphill_session_token', 'token-123');
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ cards: [{ chapter_title: 'Zone 2 Basics', summary: 'Train slow to race fast.' }] }),
+      }) as unknown as typeof fetch;
+
+      const success = await scheduleDailyKnowledgeReminder(8, 0, 'en');
+      expect(success).toBe(true);
+      expect(LocalNotifications.schedule).toHaveBeenCalledWith(
+        expect.objectContaining({
+          notifications: [
+            expect.objectContaining({
+              id: DAILY_KNOWLEDGE_REMINDER_ID,
+              body: expect.stringContaining('Zone 2 Basics'),
+            }),
+          ],
+        })
+      );
+    });
+
+    it('falls back to generic copy when no card is available', async () => {
+      vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+      vi.mocked(LocalNotifications.checkPermissions).mockResolvedValue({ display: 'granted' });
+      vi.mocked(LocalNotifications.schedule).mockResolvedValue({ notifications: [] });
+      window.localStorage.removeItem('uphill_session_token');
+
+      const success = await scheduleDailyKnowledgeReminder(8, 0, 'en');
+      expect(success).toBe(true);
+      expect(LocalNotifications.schedule).toHaveBeenCalledWith(
+        expect.objectContaining({
+          notifications: [
+            expect.objectContaining({
+              id: DAILY_KNOWLEDGE_REMINDER_ID,
+              body: expect.stringContaining('Knowledge Hub'),
+            }),
+          ],
+        })
+      );
     });
   });
 });
