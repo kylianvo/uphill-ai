@@ -5,7 +5,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { Message, ParsedSummary, RagSource, Workout, ActivePlan, PacedCheckpoint, FuelStrategy, Shoe, User } from "../types";
 import { isNativePlatform } from "../utils/native";
-import { hasNotificationPermission, scheduleDailyWorkoutReminder, scheduleDailyKnowledgeReminder } from "../utils/notifications";
+import { hasNotificationPermission, scheduleDailyKnowledgeReminder, scheduleNotification, buildWorkoutReminderContent, DAILY_WORKOUT_REMINDER_ID } from "../utils/notifications";
 
 interface AppContextType {
   isNutritionLabOpen: any;
@@ -425,9 +425,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Re-arm local notifications on cold start so their content stays fresh
-  // (the daily knowledge one is a snapshot fetched at schedule time) even
-  // though the OS itself persists the underlying daily-repeat schedule.
+  // Re-arm local notifications whenever activePlan/workouts change (including
+  // cold start) so their content stays fresh -- both the workout reminder's
+  // today's-workout summary and the daily knowledge card are snapshots taken
+  // at schedule time, not live at fire time, even though the OS itself
+  // persists the underlying daily-repeat schedule.
   useEffect(() => {
     if (typeof window === "undefined" || !isNativePlatform()) return;
     const workoutEnabled = localStorage.getItem("uphill_reminder_enabled") === "true";
@@ -438,11 +440,20 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       const granted = await hasNotificationPermission();
       if (!granted) return;
       const [h, m] = (localStorage.getItem("uphill_reminder_time") || "07:00").split(":").map(Number);
-      if (workoutEnabled) await scheduleDailyWorkoutReminder(h || 7, m || 0);
+      if (workoutEnabled) {
+        const { title, body } = buildWorkoutReminderContent(activePlan, workouts, lang);
+        await scheduleNotification({
+          id: DAILY_WORKOUT_REMINDER_ID,
+          title,
+          body,
+          repeatDailyAt: { hour: h || 7, minute: m || 0 },
+          extra: { type: "daily_workout_reminder" },
+        });
+      }
       if (knowledgeEnabled) await scheduleDailyKnowledgeReminder(h || 7, m || 0, lang);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [activePlan, workouts]);
 
   return (
     <AppContext.Provider value={{

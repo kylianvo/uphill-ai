@@ -53,6 +53,7 @@ export interface ActivePlan {
   id: number;
   race_name: string;
   race_date: string;
+  start_date?: string;
   goal_type: string;
   target_time_hours?: number;
   total_weeks: number;

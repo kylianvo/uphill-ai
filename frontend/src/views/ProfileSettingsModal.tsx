@@ -7,11 +7,11 @@ import { usePaceZones } from "../hooks/usePaceZones";
 import { ZONE_NUMBER_COLORS } from "../data/workoutLibrary";
 import { X, User, Heartbeat, Watch, SignOut, Warning, Bell, CheckCircle } from '@phosphor-icons/react';
 import {
-  scheduleDailyWorkoutReminder,
   scheduleDailyKnowledgeReminder,
   scheduleNotification,
   cancelNotification,
   requestNotificationPermission,
+  buildWorkoutReminderContent,
   DAILY_WORKOUT_REMINDER_ID,
   DAILY_KNOWLEDGE_REMINDER_ID,
 } from '../utils/notifications';
@@ -19,7 +19,7 @@ import { triggerHaptic } from '../utils/native';
 
 export default function ProfileSettingsModal() {
   const ctx = useAppContext();
-  const { lang, setLang, user, setUser, profileSettingsOpen, setProfileSettingsOpen, profileForm, setProfileForm, setActivePlan, setWorkouts, setSources, setAuthModalOpen, setOnboardingOpen, handleLogout } = ctx;
+  const { lang, setLang, user, setUser, profileSettingsOpen, setProfileSettingsOpen, profileForm, setProfileForm, activePlan, setActivePlan, workouts, setWorkouts, setSources, setAuthModalOpen, setOnboardingOpen, handleLogout } = ctx;
   const { zones: paceZones, fetchPaceZones } = usePaceZones();
   const [passwordFormOpen, setPasswordFormOpen] = useState(false);
   const [newPassword, setNewPassword] = useState("");
@@ -56,12 +56,14 @@ export default function ProfileSettingsModal() {
     if (enabled) {
       await requestNotificationPermission();
       const [h, m] = reminderTime.split(":").map(Number);
-      await scheduleDailyWorkoutReminder(
-        h || 7,
-        m || 0,
-        lang === "en" ? "Today's Training | Uphill AI" : "Kế hoạch tập luyện hôm nay | Uphill AI",
-        lang === "en" ? "Check your planned workout and nutrition targets for today." : "Xem bài tập và mục tiêu dinh dưỡng hôm nay của bạn."
-      );
+      const { title, body } = buildWorkoutReminderContent(activePlan, workouts, lang);
+      await scheduleNotification({
+        id: DAILY_WORKOUT_REMINDER_ID,
+        title,
+        body,
+        repeatDailyAt: { hour: h || 7, minute: m || 0 },
+        extra: { type: "daily_workout_reminder" },
+      });
       triggerHaptic();
     } else {
       await cancelNotification(DAILY_WORKOUT_REMINDER_ID);
@@ -2185,7 +2187,14 @@ export default function ProfileSettingsModal() {
                       }
                       const [h, m] = e.target.value.split(":").map(Number);
                       if (reminderEnabled) {
-                        scheduleDailyWorkoutReminder(h || 7, m || 0);
+                        const { title, body } = buildWorkoutReminderContent(activePlan, workouts, lang);
+                        scheduleNotification({
+                          id: DAILY_WORKOUT_REMINDER_ID,
+                          title,
+                          body,
+                          repeatDailyAt: { hour: h || 7, minute: m || 0 },
+                          extra: { type: "daily_workout_reminder" },
+                        });
                       }
                       if (knowledgeReminderEnabled) {
                         scheduleDailyKnowledgeReminder(h || 7, m || 0, lang);

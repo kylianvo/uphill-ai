@@ -8,8 +8,14 @@ import {
   scheduleFuelingReminder,
   cancelAllNotifications,
   cancelNotification,
+  findTodaysWorkout,
+  buildWorkoutReminderContent,
+  notifyPlanGenerated,
+  notifyGearPlanReady,
+  notifyNutritionPlanReady,
   DAILY_KNOWLEDGE_REMINDER_ID,
 } from './notifications';
+import type { ActivePlan, Workout } from '../types';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Capacitor } from '@capacitor/core';
 
@@ -189,6 +195,118 @@ describe('notification utilities', () => {
               body: expect.stringContaining('Knowledge Hub'),
             }),
           ],
+        })
+      );
+    });
+  });
+
+  describe('findTodaysWorkout / buildWorkoutReminderContent', () => {
+    const activePlan: ActivePlan = {
+      id: 1,
+      race_name: 'Test 50K',
+      race_date: '2026-12-01',
+      start_date: '2026-08-17', // a Monday
+      goal_type: 'race',
+      total_weeks: 12,
+    };
+
+    const mondayWorkout: Workout = {
+      id: 1,
+      plan_id: 1,
+      week_number: 1,
+      day_of_week: 'Monday',
+      phase: 'base',
+      title: 'Easy Run',
+      type: 'easy',
+      duration_minutes: 45,
+      distance_km: 8,
+      target_zone: 'Z2',
+      treadmill_incline: 0,
+      treadmill_speed: 0,
+      elevation_gain_m: 50,
+      grade_percent: 1,
+      is_completed: 0,
+      is_missed: 0,
+    };
+
+    const tuesdayWorkout: Workout = { ...mondayWorkout, id: 2, day_of_week: 'Tuesday', title: 'Rest' };
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date(2026, 7, 17)); // Monday, Aug 17 2026
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('finds the workout whose computed calendar date is today', () => {
+      const found = findTodaysWorkout(activePlan, [mondayWorkout, tuesdayWorkout]);
+      expect(found?.id).toBe(1);
+    });
+
+    it('returns null when no workout falls on today', () => {
+      const found = findTodaysWorkout(activePlan, [tuesdayWorkout]);
+      expect(found).toBeNull();
+    });
+
+    it('returns null with no active plan or no start_date', () => {
+      expect(findTodaysWorkout(null, [mondayWorkout])).toBeNull();
+      expect(findTodaysWorkout({ ...activePlan, start_date: undefined }, [mondayWorkout])).toBeNull();
+    });
+
+    it('builds dynamic content from today\'s workout', () => {
+      const { body } = buildWorkoutReminderContent(activePlan, [mondayWorkout], 'en');
+      expect(body).toContain('Easy Run');
+      expect(body).toContain('8km');
+      expect(body).toContain('45 min');
+    });
+
+    it('falls back to generic copy when no workout matches today', () => {
+      const { body } = buildWorkoutReminderContent(activePlan, [tuesdayWorkout], 'en');
+      expect(body).toBe('Check your planned workout and nutrition targets for today.');
+    });
+
+    it('falls back to generic Vietnamese copy', () => {
+      const { title, body } = buildWorkoutReminderContent(null, [], 'vi');
+      expect(title).toContain('Kế hoạch tập luyện');
+      expect(body).toContain('dinh dưỡng');
+    });
+  });
+
+  describe('event completion notifications', () => {
+    beforeEach(() => {
+      vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+      vi.mocked(LocalNotifications.schedule).mockResolvedValue({ notifications: [] });
+    });
+
+    it('notifyPlanGenerated fires immediately without prompting for permission', async () => {
+      vi.mocked(LocalNotifications.checkPermissions).mockResolvedValue({ display: 'granted' });
+      const result = await notifyPlanGenerated('en');
+      expect(result).toBe(true);
+      expect(LocalNotifications.requestPermissions).not.toHaveBeenCalled();
+      expect(LocalNotifications.schedule).toHaveBeenCalledWith(
+        expect.objectContaining({
+          notifications: [expect.objectContaining({ extra: { type: 'plan_generated' } })],
+        })
+      );
+    });
+
+    it('skips silently (no prompt) when permission was never granted', async () => {
+      vi.mocked(LocalNotifications.checkPermissions).mockResolvedValue({ display: 'prompt' });
+      const result = await notifyGearPlanReady('en');
+      expect(result).toBe(false);
+      expect(LocalNotifications.requestPermissions).not.toHaveBeenCalled();
+      expect(LocalNotifications.schedule).not.toHaveBeenCalled();
+    });
+
+    it('notifyNutritionPlanReady fires with Vietnamese copy', async () => {
+      vi.mocked(LocalNotifications.checkPermissions).mockResolvedValue({ display: 'granted' });
+      const result = await notifyNutritionPlanReady('vi');
+      expect(result).toBe(true);
+      expect(LocalNotifications.schedule).toHaveBeenCalledWith(
+        expect.objectContaining({
+          notifications: [expect.objectContaining({ extra: { type: 'nutrition_plan_ready' } })],
         })
       );
     });

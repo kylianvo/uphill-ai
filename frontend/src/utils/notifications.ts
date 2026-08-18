@@ -1,8 +1,47 @@
 import { LocalNotifications, LocalNotificationSchema } from '@capacitor/local-notifications';
 import { isNativePlatform, getApiBaseUrl } from './native';
+import type { ActivePlan, Workout } from '../types';
 
 export const DAILY_WORKOUT_REMINDER_ID = 10001;
 export const DAILY_KNOWLEDGE_REMINDER_ID = 10002;
+
+const DAY_OFFSETS: Record<string, number> = {
+  Monday: 0, Tuesday: 1, Wednesday: 2, Thursday: 3, Friday: 4, Saturday: 5, Sunday: 6,
+};
+
+const getMondayOf = (d: Date): Date => {
+  const offset = d.getDay() === 0 ? 6 : d.getDay() - 1;
+  const m = new Date(d);
+  m.setDate(d.getDate() - offset);
+  return m;
+};
+
+const isSameDate = (a: Date, b: Date): boolean =>
+  a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
+/** Mirrors usePlanner.ts's getWorkoutDateObj -- kept standalone here since it
+ *  only needs activePlan/workouts (already in AppContext), not the rest of
+ *  the usePlanner hook's state. */
+export const findTodaysWorkout = (activePlan: ActivePlan | null, workouts: Workout[]): Workout | null => {
+  if (!activePlan?.start_date || !workouts?.length) return null;
+  try {
+    const parts = activePlan.start_date.split('-');
+    const sd = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+    const startMonday = getMondayOf(sd);
+    const today = new Date();
+
+    return (
+      workouts.find((wo) => {
+        const offset = DAY_OFFSETS[wo.day_of_week] ?? 0;
+        const workoutDate = new Date(startMonday);
+        workoutDate.setDate(startMonday.getDate() + (wo.week_number - 1) * 7 + offset);
+        return isSameDate(workoutDate, today);
+      }) ?? null
+    );
+  } catch {
+    return null;
+  }
+};
 
 export interface ScheduleNotificationOptions {
   id?: number;
@@ -12,6 +51,9 @@ export interface ScheduleNotificationOptions {
   /** Recurs every day at this wall-clock time (persisted by the OS scheduler). */
   repeatDailyAt?: { hour: number; minute: number };
   extra?: Record<string, unknown>;
+  /** Default true. Set false for incidental/event notifications that shouldn't
+   *  surprise the user with a permission prompt outside an explicit opt-in flow. */
+  promptForPermission?: boolean;
 }
 
 export const hasNotificationPermission = async (): Promise<boolean> => {
@@ -56,12 +98,11 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
 export const scheduleNotification = async (
   options: ScheduleNotificationOptions
 ): Promise<boolean> => {
-  const granted = await hasNotificationPermission();
+  let granted = await hasNotificationPermission();
   if (!granted) {
-    const requested = await requestNotificationPermission();
-    if (!requested) {
-      return false;
-    }
+    if (options.promptForPermission === false) return false;
+    granted = await requestNotificationPermission();
+    if (!granted) return false;
   }
 
   const notifId = options.id ?? Math.floor(Math.random() * 1000000);
@@ -117,6 +158,36 @@ export const scheduleNotification = async (
   }
 
   return false;
+};
+
+/** Builds workout-reminder copy from today's actual planned workout when
+ *  available, falling back to generic copy otherwise (no active plan, rest
+ *  day with no matching workout row, etc). */
+export const buildWorkoutReminderContent = (
+  activePlan: ActivePlan | null,
+  workouts: Workout[],
+  lang: 'en' | 'vi' = 'en'
+): { title: string; body: string } => {
+  const title = lang === 'vi' ? "Kế hoạch tập luyện hôm nay | Uphill AI" : "Today's Training | Uphill AI";
+  const workout = findTodaysWorkout(activePlan, workouts);
+
+  if (!workout) {
+    return {
+      title,
+      body: lang === 'vi'
+        ? 'Xem bài tập và mục tiêu dinh dưỡng hôm nay của bạn.'
+        : 'Check your planned workout and nutrition targets for today.',
+    };
+  }
+
+  const distance = workout.distance_km ? `${workout.distance_km}km` : null;
+  const duration = workout.duration_minutes ? `${workout.duration_minutes} min` : null;
+  const detail = [distance, duration].filter(Boolean).join(' · ');
+
+  return {
+    title,
+    body: detail ? `${workout.title} — ${detail}` : workout.title,
+  };
 };
 
 export const scheduleDailyWorkoutReminder = async (
@@ -175,6 +246,39 @@ export const scheduleDailyKnowledgeReminder = async (
     body: body.slice(0, 180),
     repeatDailyAt: { hour, minute },
     extra: { type: 'daily_knowledge_reminder' },
+  });
+};
+
+export const notifyPlanGenerated = async (lang: 'en' | 'vi' = 'en'): Promise<boolean> => {
+  return scheduleNotification({
+    title: lang === 'vi' ? '🏔️ Kế hoạch của bạn đã sẵn sàng | Uphill AI' : "🏔️ Your Training Plan is Ready | Uphill AI",
+    body: lang === 'vi'
+      ? 'Coach Uphill đã hoàn thành kế hoạch tập luyện của bạn. Xem ngay!'
+      : "Coach Uphill has finished building your training plan. Take a look!",
+    extra: { type: 'plan_generated' },
+    promptForPermission: false,
+  });
+};
+
+export const notifyGearPlanReady = async (lang: 'en' | 'vi' = 'en'): Promise<boolean> => {
+  return scheduleNotification({
+    title: lang === 'vi' ? '👟 Gợi ý giày đã sẵn sàng | Uphill AI' : '👟 Your Shoe Recommendations are Ready | Uphill AI',
+    body: lang === 'vi'
+      ? 'Gợi ý giày chạy phù hợp với bạn đã có trong Gear Vault.'
+      : 'Your personalized shoe picks are waiting in the Gear Vault.',
+    extra: { type: 'gear_plan_ready' },
+    promptForPermission: false,
+  });
+};
+
+export const notifyNutritionPlanReady = async (lang: 'en' | 'vi' = 'en'): Promise<boolean> => {
+  return scheduleNotification({
+    title: lang === 'vi' ? '🍌 Kế hoạch dinh dưỡng đã sẵn sàng | Uphill AI' : '🍌 Your Fueling Plan is Ready | Uphill AI',
+    body: lang === 'vi'
+      ? 'Chiến lược tiếp nhiên liệu cho buổi tập của bạn đã sẵn sàng.'
+      : 'Your race/workout fueling strategy has been calculated.',
+    extra: { type: 'nutrition_plan_ready' },
+    promptForPermission: false,
   });
 };
 
