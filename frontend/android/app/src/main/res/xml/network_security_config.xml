@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <!-- Local dev/emulator only -- production traffic stays HTTPS-only
+    <!-- Local dev/emulator only. Production traffic stays HTTPS-only
          under the base-config default (cleartextTrafficPermitted=false). -->
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="false">localhost</domain>
