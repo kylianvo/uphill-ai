@@ -1,4 +1,5 @@
 import React from "react";
+import { createPortal } from "react-dom";
 import { XCircle } from "@phosphor-icons/react";
 import { FeatureContent } from "../../data/landingFeatures";
 import { renderWithTerms } from "./renderWithTerms";
@@ -14,7 +15,18 @@ export function FeatureModal({
 }) {
   const copy = feature[lang];
 
-  return (
+  // Rendered via a portal straight to document.body: FeatureGrid (and this
+  // modal with it) is nested several levels deep inside HomeTab, which has
+  // ancestors using backdrop-filter -- a stacking-context-creating property.
+  // That traps position:fixed descendants to that ancestor's box instead of
+  // the real viewport, so the modal rendered short/clipped and never
+  // actually covered the top nav bar the way ProfileSettingsModal/AuthModal
+  // do (those are mounted at the page root, outside any such ancestor, so
+  // they never hit this). A portal escapes the trap regardless of where in
+  // the tree this component is used from.
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <div
       onClick={onClose}
       style={{
@@ -145,6 +157,7 @@ export function FeatureModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
