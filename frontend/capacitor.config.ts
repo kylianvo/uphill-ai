@@ -20,7 +20,14 @@ const config: CapacitorConfig = {
       backgroundColor: '#ffffff',
     },
     Keyboard: {
-      resize: KeyboardResize.Body,
+      // 'Body' only sets document.body's CSS height via injected JS -- it
+      // never touches the WKWebView's actual native frame, so it's a no-op
+      // for position:fixed elements (every modal in this app uses fixed
+      // positioning), which stayed pinned to the full, un-shrunk viewport
+      // and kept the keyboard covering whatever was focused. 'Native'
+      // actually resizes the WKWebView's frame, which correctly shrinks
+      // the effective viewport for fixed layouts too.
+      resize: KeyboardResize.Native,
       resizeOnFullScreen: true,
     },
     SocialLogin: {

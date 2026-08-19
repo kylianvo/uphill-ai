@@ -27,7 +27,10 @@ export function FeatureModal({
         justifyContent: "center",
         alignItems: "center",
         zIndex: 1000,
-        padding: "20px",
+        // max() with the safe-area inset keeps the card clear of the notch/
+        // Dynamic Island and home indicator on native, where plain "20px"
+        // isn't enough -- it's a no-op (falls back to 20px) on web/desktop.
+        padding: "max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom)) 20px",
       }}
     >
       <div
@@ -41,8 +44,14 @@ export function FeatureModal({
           padding: "32px",
           width: "100%",
           maxWidth: "560px",
-          maxHeight: "90vh",
+          // dvh (dynamic viewport height), not vh -- vh is pinned to the
+          // largest possible viewport on mobile browsers/webviews, taller
+          // than what's actually visible, so 90vh let the card overflow off
+          // the bottom of the real screen with no way to scroll that part
+          // into view. dvh tracks the actual visible viewport.
+          maxHeight: "90dvh",
           overflowY: "auto",
+          WebkitOverflowScrolling: "touch",
           boxShadow: "0 20px 60px rgba(0,0,0,0.1)",
           position: "relative",
           color: "var(--text-primary)",
