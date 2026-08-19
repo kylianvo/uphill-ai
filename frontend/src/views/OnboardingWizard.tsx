@@ -1783,6 +1783,33 @@ export default function OnboardingWizard() {
 
           )}
 
+          {/* Once the fitness/physiology profile step is behind them, the
+              coach already has what it needs for a baseline plan -- offer
+              an early way out instead of making them run the rest of the
+              wizard (injury/target/schedule/double-session) just to reach
+              the one Skip button that used to live only on the final step. */}
+
+          {!onboardingGenerating && currentStepKey !== "generate" && (() => {
+            const fitnessStepIndex = steps.findIndex(s => s === "fitness" || s === "fitness_start" || s === "fitness_return");
+            return fitnessStepIndex !== -1 && onboardingStep > fitnessStepIndex;
+          })() && (
+
+            <button
+
+              type="button"
+
+              onClick={() => handleCompleteOnboarding(true)}
+
+              style={{ width: "100%", marginTop: "10px", background: "transparent", border: "none", color: "var(--text-muted)", fontSize: "12px", fontWeight: "600", cursor: "pointer", textAlign: "center" }}
+
+            >
+
+              {lang === "en" ? "Skip for now — explore the app first" : "Bỏ qua — khám phá ứng dụng trước"}
+
+            </button>
+
+          )}
+
         </div>
 
       </div>

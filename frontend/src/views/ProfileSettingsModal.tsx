@@ -5,17 +5,100 @@ import { useAppContext } from "../contexts/AppContext";
 import { translations } from "../app/translations";
 import { usePaceZones } from "../hooks/usePaceZones";
 import { ZONE_NUMBER_COLORS } from "../data/workoutLibrary";
-import { X, User, Heartbeat, Watch, SignOut, Warning } from '@phosphor-icons/react';
+import { X, User, Heartbeat, Watch, SignOut, Warning, Bell, CheckCircle } from '@phosphor-icons/react';
+import {
+  scheduleDailyKnowledgeReminder,
+  scheduleNotification,
+  cancelNotification,
+  requestNotificationPermission,
+  buildWorkoutReminderContent,
+  DAILY_WORKOUT_REMINDER_ID,
+  DAILY_KNOWLEDGE_REMINDER_ID,
+} from '../utils/notifications';
+import { triggerHaptic } from '../utils/native';
 
 export default function ProfileSettingsModal() {
   const ctx = useAppContext();
-  const { lang, setLang, user, setUser, profileSettingsOpen, setProfileSettingsOpen, profileForm, setProfileForm, setActivePlan, setWorkouts, setSources, setAuthModalOpen, setOnboardingOpen, handleLogout } = ctx;
+  const { lang, setLang, user, setUser, profileSettingsOpen, setProfileSettingsOpen, profileForm, setProfileForm, activePlan, setActivePlan, workouts, setWorkouts, setSources, setAuthModalOpen, setOnboardingOpen, handleLogout } = ctx;
   const { zones: paceZones, fetchPaceZones } = usePaceZones();
   const [passwordFormOpen, setPasswordFormOpen] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [passwordMsg, setPasswordMsg] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
+
+  const [reminderEnabled, setReminderEnabled] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("uphill_reminder_enabled") === "true";
+    }
+    return false;
+  });
+  const [reminderTime, setReminderTime] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("uphill_reminder_time") || "07:00";
+    }
+    return "07:00";
+  });
+  const [testNotifMsg, setTestNotifMsg] = useState<string>("");
+
+  const [knowledgeReminderEnabled, setKnowledgeReminderEnabled] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("uphill_knowledge_reminder_enabled") === "true";
+    }
+    return false;
+  });
+
+  const handleToggleReminder = async (enabled: boolean) => {
+    setReminderEnabled(enabled);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("uphill_reminder_enabled", String(enabled));
+    }
+    if (enabled) {
+      await requestNotificationPermission();
+      const [h, m] = reminderTime.split(":").map(Number);
+      const { title, body } = buildWorkoutReminderContent(activePlan, workouts, lang);
+      await scheduleNotification({
+        id: DAILY_WORKOUT_REMINDER_ID,
+        title,
+        body,
+        repeatDailyAt: { hour: h || 7, minute: m || 0 },
+        extra: { type: "daily_workout_reminder" },
+      });
+      triggerHaptic();
+    } else {
+      await cancelNotification(DAILY_WORKOUT_REMINDER_ID);
+    }
+  };
+
+  const handleToggleKnowledgeReminder = async (enabled: boolean) => {
+    setKnowledgeReminderEnabled(enabled);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("uphill_knowledge_reminder_enabled", String(enabled));
+    }
+    if (enabled) {
+      await requestNotificationPermission();
+      const [h, m] = reminderTime.split(":").map(Number);
+      await scheduleDailyKnowledgeReminder(h || 7, m || 0, lang);
+      triggerHaptic();
+    } else {
+      await cancelNotification(DAILY_KNOWLEDGE_REMINDER_ID);
+    }
+  };
+
+  const handleSendTestNotification = async () => {
+    setTestNotifMsg(lang === "en" ? "Sending..." : "Đang gửi...");
+    triggerHaptic();
+    const success = await scheduleNotification({
+      title: lang === "en" ? "🏃 Uphill AI Coach" : "🏃 Huấn luyện viên Uphill AI",
+      body: lang === "en" ? "Notifications are active! Your training reminders will appear here." : "Thông báo đã sẵn sàng! Lịch tập sẽ được nhắc nhở tại đây.",
+    });
+    if (success) {
+      setTestNotifMsg(lang === "en" ? "Notification sent!" : "Đã gửi thông báo!");
+    } else {
+      setTestNotifMsg(lang === "en" ? "Enable notifications in settings" : "Vui lòng cấp quyền thông báo");
+    }
+    setTimeout(() => setTestNotifMsg(""), 3000);
+  };
 
 
   React.useEffect(() => {
@@ -2042,6 +2125,100 @@ export default function ProfileSettingsModal() {
 
 
 
+            </div>
+
+
+
+
+
+
+
+            {/* Mobile Training Reminders & Notifications */}
+            <div style={{ background: "rgba(25, 206, 139, 0.04)", border: "1px solid rgba(25, 206, 139, 0.25)", borderRadius: "14px", padding: "16px", marginTop: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <Bell size={18} weight="duotone" style={{ color: "var(--color-green)" }} />
+                  <span style={{ fontWeight: "700", fontSize: "13.5px", color: "var(--text-bright)" }}>
+                    {lang === "en" ? "Training Reminders" : "Nhắc nhở Tập luyện"}
+                  </span>
+                </div>
+                <label style={{ display: "flex", alignItems: "center", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={reminderEnabled}
+                    onChange={(e) => handleToggleReminder(e.target.checked)}
+                    style={{ width: "18px", height: "18px", accentColor: "var(--color-green)", cursor: "pointer" }}
+                  />
+                </label>
+              </div>
+
+              <div style={{ fontSize: "12px", color: "var(--text-secondary)", lineHeight: "1.4" }}>
+                {lang === "en"
+                  ? "Receive daily reminders for planned workouts and fueling targets directly on your device."
+                  : "Nhận thông báo nhắc nhở bài tập và dinh dưỡng hàng ngày trực tiếp trên thiết bị."}
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: "6px", borderTop: "1px dashed rgba(25, 206, 139, 0.2)" }}>
+                <span style={{ fontSize: "12.5px", color: "var(--text-primary)", fontWeight: "600" }}>
+                  💡 {lang === "en" ? "Daily Knowledge" : "Kiến thức Hằng ngày"}
+                </span>
+                <label style={{ display: "flex", alignItems: "center", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={knowledgeReminderEnabled}
+                    onChange={(e) => handleToggleKnowledgeReminder(e.target.checked)}
+                    style={{ width: "18px", height: "18px", accentColor: "var(--color-green)", cursor: "pointer" }}
+                  />
+                </label>
+              </div>
+
+              {(reminderEnabled || knowledgeReminderEnabled) && (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: "6px", borderTop: "1px dashed rgba(25, 206, 139, 0.2)" }}>
+                  <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
+                    {lang === "en" ? "Reminder Time" : "Giờ nhắc nhở"}:
+                  </span>
+                  <input
+                    type="time"
+                    value={reminderTime}
+                    onChange={(e) => {
+                      setReminderTime(e.target.value);
+                      if (typeof window !== "undefined") {
+                        localStorage.setItem("uphill_reminder_time", e.target.value);
+                      }
+                      const [h, m] = e.target.value.split(":").map(Number);
+                      if (reminderEnabled) {
+                        const { title, body } = buildWorkoutReminderContent(activePlan, workouts, lang);
+                        scheduleNotification({
+                          id: DAILY_WORKOUT_REMINDER_ID,
+                          title,
+                          body,
+                          repeatDailyAt: { hour: h || 7, minute: m || 0 },
+                          extra: { type: "daily_workout_reminder" },
+                        });
+                      }
+                      if (knowledgeReminderEnabled) {
+                        scheduleDailyKnowledgeReminder(h || 7, m || 0, lang);
+                      }
+                    }}
+                    style={{ background: "rgba(255,255,255,0.7)", border: "1px solid var(--border-color)", borderRadius: "6px", padding: "4px 8px", fontSize: "12px", color: "var(--text-primary)" }}
+                  />
+                </div>
+              )}
+
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: "4px" }}>
+                <button
+                  type="button"
+                  onClick={handleSendTestNotification}
+                  style={{ background: "rgba(255,255,255,0.8)", border: "1px solid var(--border-color)", borderRadius: "8px", padding: "6px 12px", fontSize: "11.5px", fontWeight: "600", cursor: "pointer", color: "var(--text-primary)" }}
+                >
+                  ⚡ {lang === "en" ? "Test Notification" : "Thử Thông báo"}
+                </button>
+                {testNotifMsg && (
+                  <span style={{ fontSize: "11.5px", color: "var(--color-green)", fontWeight: "600", display: "flex", alignItems: "center", gap: "4px" }}>
+                    <CheckCircle size={14} weight="fill" /> {testNotifMsg}
+                  </span>
+                )}
+              </div>
             </div>
 
 

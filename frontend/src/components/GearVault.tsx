@@ -7,6 +7,7 @@ import { RaceMatch } from '@/hooks/useRaceMatch';
 import { RaceMatchChip } from '@/components/RaceMatchChip';
 import { RaceNameField } from '@/components/RaceNameField';
 import { Sneaker, XCircle, Target, CaretDown, WarningCircle, CheckCircle, Ruler, Path, RocketLaunch, Scales } from "@phosphor-icons/react";
+import { notifyGearPlanReady } from "@/utils/notifications";
 
 interface ShoeRecommendation {
   model: string;
@@ -136,6 +137,7 @@ export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang, use
             const result = await response.json();
             setGearPlan(result);
             success = true;
+            notifyGearPlanReady(lang);
           } else {
             console.warn(`Gear fetch attempt ${attempt + 1} failed with status: ${response.status}`);
             attempt++;

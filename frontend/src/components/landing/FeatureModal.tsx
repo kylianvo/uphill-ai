@@ -1,4 +1,5 @@
 import React from "react";
+import { createPortal } from "react-dom";
 import { XCircle } from "@phosphor-icons/react";
 import { FeatureContent } from "../../data/landingFeatures";
 import { renderWithTerms } from "./renderWithTerms";
@@ -14,8 +15,20 @@ export function FeatureModal({
 }) {
   const copy = feature[lang];
 
-  return (
+  // Rendered via a portal straight to document.body: FeatureGrid (and this
+  // modal with it) is nested several levels deep inside HomeTab, which has
+  // ancestors using backdrop-filter -- a stacking-context-creating property.
+  // That traps position:fixed descendants to that ancestor's box instead of
+  // the real viewport, so the modal rendered short/clipped and never
+  // actually covered the top nav bar the way ProfileSettingsModal/AuthModal
+  // do (those are mounted at the page root, outside any such ancestor, so
+  // they never hit this). A portal escapes the trap regardless of where in
+  // the tree this component is used from.
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <div
+      onClick={onClose}
       style={{
         position: "fixed",
         inset: 0,
@@ -26,10 +39,14 @@ export function FeatureModal({
         justifyContent: "center",
         alignItems: "center",
         zIndex: 1000,
-        padding: "20px",
+        // max() with the safe-area inset keeps the card clear of the notch/
+        // Dynamic Island and home indicator on native, where plain "20px"
+        // isn't enough -- it's a no-op (falls back to 20px) on web/desktop.
+        padding: "max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom)) 20px",
       }}
     >
       <div
+        onClick={(e) => e.stopPropagation()}
         style={{
           background: "var(--bg-card)",
           backdropFilter: "blur(30px)",
@@ -39,8 +56,14 @@ export function FeatureModal({
           padding: "32px",
           width: "100%",
           maxWidth: "560px",
-          maxHeight: "90vh",
+          // dvh (dynamic viewport height), not vh -- vh is pinned to the
+          // largest possible viewport on mobile browsers/webviews, taller
+          // than what's actually visible, so 90vh let the card overflow off
+          // the bottom of the real screen with no way to scroll that part
+          // into view. dvh tracks the actual visible viewport.
+          maxHeight: "90dvh",
           overflowY: "auto",
+          WebkitOverflowScrolling: "touch",
           boxShadow: "0 20px 60px rgba(0,0,0,0.1)",
           position: "relative",
           color: "var(--text-primary)",
@@ -134,6 +157,7 @@ export function FeatureModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

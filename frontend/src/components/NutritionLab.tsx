@@ -4,6 +4,7 @@
 import React, { useState } from "react";
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { BowlFood, XCircle, WarningCircle, Clock, Package } from "@phosphor-icons/react";
+import { notifyNutritionPlanReady } from "@/utils/notifications";
 
 interface NutritionProduct {
   brand: string;
@@ -128,6 +129,7 @@ export const NutritionLab: React.FC<NutritionLabProps> = ({ isOpen, onClose, lan
             const result = await response.json();
             setPlan(result);
             success = true;
+            notifyNutritionPlanReady(lang);
           } else {
             console.warn(`Nutrition fetch attempt ${attempt + 1} failed with status: ${response.status}`);
             attempt++;

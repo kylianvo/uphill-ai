@@ -1,0 +1,78 @@
+name: Mobile Build Sanity Check
+
+# No code signing is configured yet, so this can't produce an installable
+# .ipa/.apk — it only proves the Capacitor shells still compile after a web
+# or native-project change (a debug/simulator build needs no signing at all).
+# Wire up Fastlane/EAS-style signed builds once you're ready to ship to
+# TestFlight/Play Console.
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "frontend/src/**"
+      - "frontend/ios/**"
+      - "frontend/android/**"
+      - "frontend/capacitor.config.ts"
+      - "frontend/package.json"
+      - "frontend/package-lock.json"
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "frontend/src/**"
+      - "frontend/ios/**"
+      - "frontend/android/**"
+      - "frontend/capacitor.config.ts"
+      - "frontend/package.json"
+      - "frontend/package-lock.json"
+  workflow_dispatch:
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
+      - name: Build static export
+        run: cd frontend && npm run build
+      - name: Sync web assets into Android shell
+        run: cd frontend && npx cap sync android
+      - name: Gradle assembleDebug
+        run: cd frontend/android && ./gradlew assembleDebug --no-daemon
+
+  ios:
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
+      - name: Build static export
+        run: cd frontend && npm run build
+      - name: Sync web assets into iOS shell
+        run: cd frontend && npx cap sync ios
+      - name: Xcode build (simulator, unsigned)
+        run: |
+          cd frontend/ios/App
+          xcodebuild -project App.xcodeproj -scheme App \
+            -sdk iphonesimulator -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO build

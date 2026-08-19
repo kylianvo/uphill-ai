@@ -21,7 +21,15 @@ class Config:
     JWT_EXPIRE_DAYS: int = 7
 
     # CORS
-    ALLOWED_ORIGINS: list = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
+    # capacitor://localhost (iOS) and https://localhost (Android) are the fixed
+    # origins Capacitor's WKWebView/WebView send for every environment the mobile
+    # shell points at -- not just local dev -- so they're in the default alongside
+    # the web dev origins. Production deployments must also include them in their
+    # own ALLOWED_ORIGINS env var or the shipped app can never reach the API.
+    ALLOWED_ORIGINS: list = os.getenv(
+        "ALLOWED_ORIGINS",
+        "http://localhost:3000,http://127.0.0.1:3000,capacitor://localhost,https://localhost",
+    ).split(",")
 
     # NotebookLM — system-level config (not per-user)
     NOTEBOOKLM_NOTEBOOK_ID: str = os.getenv("NOTEBOOKLM_NOTEBOOK_ID", "")

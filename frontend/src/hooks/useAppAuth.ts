@@ -85,8 +85,62 @@ export function useAppAuth() {
     }
   };
 
+  // Shared by both the web GSI button (idToken from Google's embedded script)
+  // and the native SocialLogin plugin (idToken from Credential Manager/iOS
+  // GoogleSignIn SDK) -- the backend just validates any genuine Google ID
+  // token via tokeninfo, no audience/client-id check, so one endpoint call
+  // works for both paths.
+  const handleGoogleLogin = async (idToken: string) => {
+    setAuthLoading(true);
+    setAuthErrorMsg("");
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/google`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ credential: idToken }),
+      });
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.detail || "Google Login failed.");
+      }
+      const data = await response.json();
+      localStorage.setItem("uphill_session_token", data.session_token);
+      setUser(data.user);
+      if (!data.user.onboarding_complete) {
+        setOnboardingOpen(true);
+        setOnboardingStep(0);
+      }
+      setAuthModalOpen(false);
+      fetchRecentPlansWithToken(data.session_token);
+    } catch (err: any) {
+      setAuthErrorMsg(err.message || "Failed to sign in with Google.");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
 
-
+  const handleNativeGoogleSignIn = async () => {
+    setAuthErrorMsg("");
+    try {
+      const { SocialLogin } = await import("@capgo/capacitor-social-login");
+      await SocialLogin.initialize({
+        google: {
+          iOSClientId: process.env.NEXT_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+          webClientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+          iOSServerClientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+        },
+      });
+      const res = await SocialLogin.login({
+        provider: "google",
+        options: { scopes: ["email", "profile"] },
+      });
+      const idToken = "idToken" in res.result ? res.result.idToken : null;
+      if (!idToken) throw new Error("No credential returned from Google.");
+      await handleGoogleLogin(idToken);
+    } catch (err: any) {
+      setAuthErrorMsg(err.message || "Failed to sign in with Google.");
+    }
+  };
 
   return {
     emailInput, setEmailInput,
@@ -97,6 +151,8 @@ export function useAppAuth() {
     showPassword, setShowPassword,
     authLoading, setAuthLoading,
     handleRegister,
-    handleEmailLogin
+    handleEmailLogin,
+    handleGoogleLogin,
+    handleNativeGoogleSignIn
   };
 }

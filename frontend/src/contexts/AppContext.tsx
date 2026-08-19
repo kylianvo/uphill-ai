@@ -2,8 +2,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { Keyboard } from "@capacitor/keyboard";
 import { Message, ParsedSummary, RagSource, Workout, ActivePlan, PacedCheckpoint, FuelStrategy, Shoe, User } from "../types";
+import { isNativePlatform } from "../utils/native";
+import { hasNotificationPermission, scheduleDailyKnowledgeReminder, scheduleNotification, buildWorkoutReminderContent, DAILY_WORKOUT_REMINDER_ID } from "../utils/notifications";
 
 interface AppContextType {
   isNutritionLabOpen: any;
@@ -422,6 +425,56 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       setPlanJobStatus("idle");
     }
   };
+
+  // Re-arm local notifications whenever activePlan/workouts change (including
+  // cold start) so their content stays fresh -- both the workout reminder's
+  // today's-workout summary and the daily knowledge card are snapshots taken
+  // at schedule time, not live at fire time, even though the OS itself
+  // persists the underlying daily-repeat schedule.
+  useEffect(() => {
+    if (typeof window === "undefined" || !isNativePlatform()) return;
+    const workoutEnabled = localStorage.getItem("uphill_reminder_enabled") === "true";
+    const knowledgeEnabled = localStorage.getItem("uphill_knowledge_reminder_enabled") === "true";
+    if (!workoutEnabled && !knowledgeEnabled) return;
+
+    (async () => {
+      const granted = await hasNotificationPermission();
+      if (!granted) return;
+      const [h, m] = (localStorage.getItem("uphill_reminder_time") || "07:00").split(":").map(Number);
+      if (workoutEnabled) {
+        const { title, body } = buildWorkoutReminderContent(activePlan, workouts, lang);
+        await scheduleNotification({
+          id: DAILY_WORKOUT_REMINDER_ID,
+          title,
+          body,
+          repeatDailyAt: { hour: h || 7, minute: m || 0 },
+          extra: { type: "daily_workout_reminder" },
+        });
+      }
+      if (knowledgeEnabled) await scheduleDailyKnowledgeReminder(h || 7, m || 0, lang);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePlan, workouts]);
+
+  // The Keyboard plugin's `resize: 'body'` shrinks the webview viewport when
+  // the keyboard opens, but that alone doesn't scroll the focused field into
+  // view -- browsers only do that automatically for normal page scroll, not
+  // for content inside a fixed-position modal with its own overflow (all of
+  // this app's forms). Without this, the keyboard covers whatever field the
+  // user just tapped. keyboardDidShow fires after the resize has already
+  // happened, so scrollIntoView's target coordinates are correct.
+  useEffect(() => {
+    if (typeof window === "undefined" || !isNativePlatform()) return;
+    const sub = Keyboard.addListener("keyboardDidShow", () => {
+      const active = document.activeElement;
+      if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || active.tagName === "SELECT")) {
+        (active as HTMLElement).scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    });
+    return () => {
+      sub.then((handle) => handle.remove());
+    };
+  }, []);
 
   return (
     <AppContext.Provider value={{

@@ -13,6 +13,7 @@ import ToolsView from "@/views/ToolsView";
 import KnowledgeView from "@/views/KnowledgeView";
 import CoachDashboardView from "@/views/CoachDashboardView";
 import PendingInviteBanner from "@/components/PendingInviteBanner";
+import { notifyPlanGenerated } from "@/utils/notifications";
 import { NutritionLab } from "../components/NutritionLab";
 import { GearVault } from "../components/GearVault";
 import { PaceStrategy } from "../components/PaceStrategy";
@@ -1533,6 +1534,7 @@ export default function Home() {
           // Re-fetch active plan and workouts from database to guarantee complete state synchronization
           await fetchActivePlanWithToken(token);
           setSelectedWeek(1);
+          notifyPlanGenerated(lang);
           // Auto-dismiss banner after 10 seconds
           setTimeout(() => setPlanJobStatus("idle"), 10000);
         } else if (data.status === "error") {

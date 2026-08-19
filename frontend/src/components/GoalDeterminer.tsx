@@ -455,7 +455,10 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
       style={{
         position: "fixed",
         inset: 0,
-        zIndex: 1000,
+        // Above OnboardingWizard's overlay (1001) and its own confirm dialog
+        // (1200) -- GoalDeterminer can be opened from a link inside
+        // onboarding and must render on top of it, not behind it.
+        zIndex: 1250,
         background: "rgba(255, 255, 255, 0.4)",
         backdropFilter: "blur(30px)",
         WebkitBackdropFilter: "blur(30px)",
