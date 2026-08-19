@@ -1,14 +1,16 @@
 import asyncio
 import hashlib
 import json
-import traceback
 from typing import Any
 
 import google.generativeai as genai
 from pydantic import BaseModel
 
 from config import settings
+from log_utils import get_logger
 from services.notebooklm_service import NotebookLmService
+
+_logger = get_logger(__name__)
 
 
 class GearParams(BaseModel):
@@ -102,7 +104,22 @@ class GearPlannerService:
                     return await self._generate_with_gemini(params, cache_key, matched_course)
                 return await self._generate_with_notebooklm(params, cache_key, matched_course)
             except Exception as e:
-                print(f"[GearPlanner] {engine_name} engine failed: {e}\n{traceback.format_exc()}")
+                # Gemini's own request failures are already logged inside
+                # _generate_with_gemini (with exc_info) before it re-raises --
+                # this catch is the only place NotebookLM's request-level
+                # failures (network/auth, not just JSON parsing) get logged.
+                _logger.error(
+                    f"{engine_name} engine failed",
+                    extra={
+                        "fields": {
+                            "service": "gear_finder",
+                            "engine": engine_name,
+                            "event": "engine_failed",
+                            "error": str(e),
+                        }
+                    },
+                    exc_info=True,
+                )
                 last_error = e
         return {
             "recommendations": [],
@@ -137,7 +154,18 @@ MATCHING: weigh each catalog entry's own fields against the athlete's criteria â
 
 {self._criteria_block(params)}{self._course_context_block(matched_course)}"""
 
-        print(f"[GearPlanner][Gemini] Querying with {len(chunks)} catalog entries...")
+        _logger.info(
+            "gemini prompt sent",
+            extra={
+                "fields": {
+                    "service": "gear_finder",
+                    "engine": "gemini",
+                    "event": "prompt_sent",
+                    "chars_sent": len(prompt),
+                    "catalog_entries": len(chunks),
+                }
+            },
+        )
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel("gemini-2.5-flash")
 
@@ -151,16 +179,51 @@ MATCHING: weigh each catalog entry's own fields against the athlete's criteria â
                     response_mime_type="application/json", response_schema=GearResponse, temperature=0.2
                 ),
             )
-            rag_latency_seconds.labels(service="gear_finder", engine="gemini").observe(time.time() - _start)
+            _latency = time.time() - _start
+            rag_latency_seconds.labels(service="gear_finder", engine="gemini").observe(_latency)
             rag_attempts_total.labels(service="gear_finder", engine="gemini", status="success").inc()
-        except Exception:
+            _logger.info(
+                "gemini response received",
+                extra={
+                    "fields": {
+                        "service": "gear_finder",
+                        "engine": "gemini",
+                        "event": "response_received",
+                        "chars_received": len(response.text),
+                        "latency_ms": round(_latency * 1000),
+                    }
+                },
+            )
+        except Exception as _gemini_ex:
             rag_attempts_total.labels(service="gear_finder", engine="gemini", status="error").inc()
+            _logger.error(
+                "gemini request failed",
+                extra={
+                    "fields": {
+                        "service": "gear_finder",
+                        "engine": "gemini",
+                        "event": "error",
+                        "error": str(_gemini_ex),
+                    }
+                },
+                exc_info=True,
+            )
             raise
 
         parsed = json.loads(response.text)
         parsed["matched_race"] = matched_course.to_dict() if matched_course else None
         _GEAR_CACHE[cache_key] = json.dumps(parsed)
-        print(f"[GearPlanner][Gemini] OK â€” {len(parsed.get('recommendations', []))} recommendations")
+        _logger.info(
+            "gemini recommendations parsed",
+            extra={
+                "fields": {
+                    "service": "gear_finder",
+                    "engine": "gemini",
+                    "event": "parsed",
+                    "recommendation_count": len(parsed.get("recommendations", [])),
+                }
+            },
+        )
         return parsed
 
     async def _generate_with_notebooklm(
@@ -202,7 +265,17 @@ Schema:
 
 {self._criteria_block(params)}{self._course_context_block(matched_course)}"""
 
-        print(f"[GearPlanner] Querying NotebookLM ({self.notebook_id})...")
+        _logger.info(
+            "notebooklm prompt sent",
+            extra={
+                "fields": {
+                    "service": "gear_finder",
+                    "engine": "notebooklm",
+                    "event": "prompt_sent",
+                    "chars_sent": len(nlm_query),
+                }
+            },
+        )
         nlm_response = await NotebookLmService.query_notebook(
             notebook_id=self.notebook_id, auth_json=auth_json, query=nlm_query, service="gear_finder"
         )
@@ -219,8 +292,18 @@ Schema:
 
         try:
             parsed_json = json.loads(cleaned_response)
-        except json.JSONDecodeError:
-            print("[GearPlanner] WARNING: Could not parse response as JSON. Returning fallback.")
+        except json.JSONDecodeError as json_err:
+            _logger.warning(
+                "notebooklm response failed JSON parsing",
+                extra={
+                    "fields": {
+                        "service": "gear_finder",
+                        "engine": "notebooklm",
+                        "event": "parse_error",
+                        "error": str(json_err),
+                    }
+                },
+            )
             parsed_json = {
                 "recommendations": [],
                 "tips": ["Could not parse recommendations from NotebookLM. Please try again."],

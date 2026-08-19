@@ -38,11 +38,18 @@ services:
     environment:
       DATABASE_URL: postgresql://uphill:uphill_secret@db:5432/uphill_ai
       PYTHONUNBUFFERED: "1"
+      # Lets scripts/run_dw_elt.py (cron-driven DW pipeline, no Airflow needed
+      # -- see deploy_dw.sh) find the same warehouse/ project Airflow's dw_elt
+      # DAG uses, mounted below at /warehouse instead of Airflow's /opt/airflow/warehouse.
+      DUCKDB_PATH: /warehouse/uphill_dw.duckdb
+      DBT_PROJECT_DIR: /warehouse
+      DBT_PROFILES_DIR: /warehouse
     depends_on:
       db:
         condition: service_healthy
     volumes:
       - ./backend:/app
+      - ./warehouse:/warehouse
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
   qdrant:
@@ -272,6 +279,41 @@ services:
     ports:
       - "127.0.0.1:9100:9100"
 
+  loki:
+    image: grafana/loki:latest
+    restart: unless-stopped
+    # Explicit cap -- this box runs close to its memory ceiling already
+    # (see prod-server-constraints notes); Loki at this app's log volume
+    # (low hundreds of users) needs nowhere near this once steady-state,
+    # but the box has no room for a runaway process to go unbounded.
+    # 128m measured as too tight: the one-time backfill Promtail does on
+    # first start (reading each container's full existing log history
+    # before settling into live-tailing) pushed Loki to ~99% of a 128m cap
+    # just processing the ingest/index work, even though nothing crashed
+    # (verified live, 2026-08-19). 256m leaves real headroom for that
+    # startup spike without being a large ask of the box.
+    mem_limit: 256m
+    ports:
+      - "127.0.0.1:3100:3100"
+    volumes:
+      - ./loki/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+
+  promtail:
+    image: grafana/promtail:latest
+    restart: unless-stopped
+    mem_limit: 64m
+    depends_on:
+      - loki
+    volumes:
+      - ./promtail/promtail-config.yml:/etc/promtail/config.yml:ro
+      # Read-only access to the Docker daemon to discover running
+      # containers and tail their stdout -- Promtail's standard
+      # docker_sd_configs pattern, no host log-file mount needed.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: -config.file=/etc/promtail/config.yml
+
   metabase-driver-init:
     image: curlimages/curl:latest
     restart: "no"
@@ -372,3 +414,4 @@ volumes:
   grafana_data:
   kafka_data:
   metabase_plugins:
+  loki_data:

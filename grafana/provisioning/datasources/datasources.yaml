@@ -21,3 +21,11 @@ datasources:
       database: uphill_ai
       postgresVersion: 1600
       sslmode: disable
+
+  - name: Loki
+    uid: loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    jsonData:
+      maxLines: 1000

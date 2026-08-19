@@ -4,3 +4,7 @@ logs/
 *.duckdb
 *.duckdb.wal
 .user.yml
+# The dbt venv deploy_dw.sh creates on prod (isolated from the backend
+# image's global site-packages, see backend/scripts/run_dw_elt.py's
+# docstring) -- never committed, never rsynced from a dev machine.
+.venv/

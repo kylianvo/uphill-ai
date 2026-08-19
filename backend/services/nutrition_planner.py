@@ -1,14 +1,16 @@
 import asyncio
 import hashlib
 import json
-import traceback
 from typing import Any
 
 import google.generativeai as genai
 from pydantic import BaseModel
 
 from config import settings
+from log_utils import get_logger
 from services.notebooklm_service import NotebookLmService
+
+_logger = get_logger(__name__)
 
 
 class NutritionParams(BaseModel):
@@ -105,7 +107,18 @@ Nutrition Goals:
                     return await self._generate_with_gemini(user_profile, params, cache_key)
                 return await self._generate_with_notebooklm(user_profile, params, cache_key)
             except Exception as e:
-                print(f"[NutritionPlanner] {engine_name} engine failed: {e}\n{traceback.format_exc()}")
+                _logger.error(
+                    f"{engine_name} engine failed",
+                    extra={
+                        "fields": {
+                            "service": "nutrition_lab",
+                            "engine": engine_name,
+                            "event": "engine_failed",
+                            "error": str(e),
+                        }
+                    },
+                    exc_info=True,
+                )
                 last_error = e
         return {
             "products": [],
@@ -142,8 +155,18 @@ Pick specific products from the knowledge base matching the requested brands/for
 
 {self._race_profile_block(user_profile, params, target_carb, target_sodium)}"""
 
-        print(
-            f"[NutritionPlanner][Gemini] Querying with {len(catalog_chunks)} products, {len(principle_chunks)} principles..."
+        _logger.info(
+            "gemini prompt sent",
+            extra={
+                "fields": {
+                    "service": "nutrition_lab",
+                    "engine": "gemini",
+                    "event": "prompt_sent",
+                    "chars_sent": len(prompt),
+                    "catalog_entries": len(catalog_chunks),
+                    "principle_entries": len(principle_chunks),
+                }
+            },
         )
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel("gemini-2.5-flash")
@@ -158,15 +181,50 @@ Pick specific products from the knowledge base matching the requested brands/for
                     response_mime_type="application/json", response_schema=NutritionResponse, temperature=0.2
                 ),
             )
-            rag_latency_seconds.labels(service="nutrition_lab", engine="gemini").observe(time.time() - _start)
+            _latency = time.time() - _start
+            rag_latency_seconds.labels(service="nutrition_lab", engine="gemini").observe(_latency)
             rag_attempts_total.labels(service="nutrition_lab", engine="gemini", status="success").inc()
-        except Exception:
+            _logger.info(
+                "gemini response received",
+                extra={
+                    "fields": {
+                        "service": "nutrition_lab",
+                        "engine": "gemini",
+                        "event": "response_received",
+                        "chars_received": len(response.text),
+                        "latency_ms": round(_latency * 1000),
+                    }
+                },
+            )
+        except Exception as _gemini_ex:
             rag_attempts_total.labels(service="nutrition_lab", engine="gemini", status="error").inc()
+            _logger.error(
+                "gemini request failed",
+                extra={
+                    "fields": {
+                        "service": "nutrition_lab",
+                        "engine": "gemini",
+                        "event": "error",
+                        "error": str(_gemini_ex),
+                    }
+                },
+                exc_info=True,
+            )
             raise
 
         parsed = json.loads(response.text)
         _NUTRITION_CACHE[cache_key] = json.dumps(parsed)
-        print(f"[NutritionPlanner][Gemini] OK — {len(parsed.get('products', []))} products")
+        _logger.info(
+            "gemini products parsed",
+            extra={
+                "fields": {
+                    "service": "nutrition_lab",
+                    "engine": "gemini",
+                    "event": "parsed",
+                    "product_count": len(parsed.get("products", [])),
+                }
+            },
+        )
         return parsed
 
     async def _generate_with_notebooklm(
@@ -215,7 +273,17 @@ Search your documents for specific products matching these brands/formats, calcu
 
 {self._race_profile_block(user_profile, params, target_carb, target_sodium)}"""
 
-        print(f"[NutritionPlanner] Querying NotebookLM ({self.notebook_id})...")
+        _logger.info(
+            "notebooklm prompt sent",
+            extra={
+                "fields": {
+                    "service": "nutrition_lab",
+                    "engine": "notebooklm",
+                    "event": "prompt_sent",
+                    "chars_sent": len(nlm_query),
+                }
+            },
+        )
         nlm_response = await NotebookLmService.query_notebook(
             notebook_id=self.notebook_id, auth_json=auth_json, query=nlm_query, service="nutrition_lab"
         )
@@ -232,8 +300,18 @@ Search your documents for specific products matching these brands/formats, calcu
 
         try:
             parsed = json.loads(cleaned)
-        except json.JSONDecodeError:
-            print("[NutritionPlanner] WARNING: Could not parse response as JSON. Returning fallback.")
+        except json.JSONDecodeError as json_err:
+            _logger.warning(
+                "notebooklm response failed JSON parsing",
+                extra={
+                    "fields": {
+                        "service": "nutrition_lab",
+                        "engine": "notebooklm",
+                        "event": "parse_error",
+                        "error": str(json_err),
+                    }
+                },
+            )
             parsed = {
                 "products": [],
                 "hourly_plan": [],

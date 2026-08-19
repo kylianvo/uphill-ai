@@ -19,6 +19,13 @@ from config import settings  # noqa: E402
 DB_NAME = "Warehouse (DuckDB)"
 DUCKDB_FILE_PATH_IN_METABASE = "/warehouse/uphill_dw.duckdb"
 
+# httpx's 5s default timeout is too short on this box: the DuckDB driver's
+# first JVM classload/native-lib init routinely takes >10s, and Metabase's
+# background sync/fingerprinting of a newly-added database competes with
+# this script for the same single CPU core, slowing down ordinary dashboard/
+# card API calls too (verified live, 2026-08-19).
+httpx = httpx.Client(timeout=60.0)
+
 
 def _session_token() -> str:
     """Bootstrap Metabase's first admin account if it hasn't been set up yet,

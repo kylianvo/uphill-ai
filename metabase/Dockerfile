@@ -21,10 +21,17 @@
 # connection-pool-type" on every single query and even the initial
 # "add database" test-connection call. The upstream fix
 # (motherduckdb/metabase_duckdb_driver#104) is merged to their main branch
-# but not yet in a tagged release (latest tag at the time of writing,
-# 1.5.4.0, predates the fix). v0.60.15 predates the offending Metabase
-# architecture change entirely, so it isn't affected.
-FROM metabase/metabase:v0.60.15 AS metabase-src
+# but not yet in a tagged release.
+#
+# Pinned specifically to v0.62.3.3 (not just "any pre-0.63 tag" like the
+# earlier v0.60.15 pin) because prod's Metabase app-db schema was created by
+# that exact version -- Metabase's own migration system refuses to boot an
+# older binary against a newer schema ("Downgrade detected", verified live
+# 2026-08-19). Both v0.62.3.3 and v0.60.15 predate the 0.63 architecture
+# change, so the driver-compatibility reasoning above still holds; the schema
+# match is the only reason this pin is more specific than "any pre-0.63 tag".
+# If prod's Metabase is ever upgraded, this pin must move with it.
+FROM metabase/metabase:v0.62.3.3 AS metabase-src
 
 FROM eclipse-temurin:21-jre-jammy
 RUN apt-get update \
