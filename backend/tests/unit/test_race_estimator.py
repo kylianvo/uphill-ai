@@ -429,6 +429,41 @@ class TestEstimateGpxProfile:
         est = RaceEstimator.estimate(distance_km=50, elevation_gain_m=2000, base_flat_pace_min_km=6.0)
         assert est["reference_profile_source"] is None
 
+    def test_reference_checkpoints_ignored_when_base_pace_given_directly(self):
+        checkpoints = [
+            {
+                "name": "Start",
+                "distance_meters": 0,
+                "elevation_meters": 1500.0,
+                "segment_gain_meters": 0.0,
+                "segment_loss_meters": 0.0,
+            },
+            {
+                "name": "Finish",
+                "distance_meters": 10000.0,
+                "elevation_meters": 2000.0,
+                "segment_gain_meters": 500.0,
+                "segment_loss_meters": 0.0,
+            },
+        ]
+        est = RaceEstimator.estimate(
+            distance_km=50,
+            elevation_gain_m=2000,
+            base_flat_pace_min_km=6.0,
+            reference={
+                "distance_km": 10,
+                "elevation_gain_m": 500,
+                "finish_time_mins": 60.0,
+                "checkpoints": checkpoints,
+                "terrain_tags": ["technical rocky"],
+            },
+        )
+        # reference is present but never actually used (base_flat_pace_min_km
+        # was given directly), so reference_profile_source must be None --
+        # not "synthetic", which would falsely imply the reference was consulted
+        assert est["reference_profile_source"] is None
+        assert est["terrain_multiplier_reference"] is None
+
     def test_omitting_target_checkpoints_matches_pre_gpx_behavior(self):
         with_none = RaceEstimator.estimate(distance_km=50, elevation_gain_m=2000, base_flat_pace_min_km=6.0)
         explicit_none = RaceEstimator.estimate(

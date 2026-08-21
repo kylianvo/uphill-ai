@@ -614,3 +614,121 @@ class TestGoalEstimateGpxProfile:
         resp = client.post("/api/coach/goal-estimate", json=payload)
         assert resp.status_code == 200, resp.text
         assert resp.json()["target_profile_source"] == "synthetic"
+
+    def test_reference_curated_profile_reported_through_endpoint(self, client):
+        with patch("db.get_kb_chunks", return_value=[_GPX_RACE_CHUNK]):
+            resp = client.post(
+                "/api/coach/goal-estimate",
+                json={
+                    "race_name": "High Altitude Ultra",
+                    "reference_race_name": "High Altitude Ultra",
+                    "reference_distance_km": 20.0,
+                    "reference_time": "3:00:00",
+                },
+            )
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["reference_profile_source"] == "gpx"
+
+    def test_all_three_signals_compose_without_interference(self, client):
+        # target+reference are DIFFERENT curated races so their percentile
+        # curves diverge (a same-race target/reference pair makes the percentile
+        # transfer trivially reproduce the raw physics prediction, which would
+        # hide a real blending bug). Both races carry: a curated GPX profile,
+        # terrain tags with a difficulty keyword, and curated percentile
+        # results -- confirms none of the three sub-projects silently
+        # overrides or double-counts another.
+        target_chunk = {
+            "title": "Triple Signal Target Ultra",
+            "content": "A race with everything curated...",
+            "payload": {
+                "race_name": "Triple Signal Target Ultra",
+                "aliases": [],
+                "distances": [{"label": "20km", "distance_km": 20.0, "elevation_gain_m": 1500}],
+                "matching_hints": {"name_keywords": ["triple signal target ultra"]},
+                "terrain": ["technical hand-and-knees scrambles"],
+                "course_profiles": {
+                    "20km": {
+                        "checkpoints": _GPX_PROFILE_CHECKPOINTS,
+                        "source": "gpx_upload",
+                        "curated_at": "2026-08-22",
+                    }
+                },
+                "results": [
+                    {
+                        "year": 2025,
+                        "distance_label": "20km",
+                        "distance_km": 20.0,
+                        "winner_time": "2:30:00",
+                        "percentiles": {
+                            "overall": {
+                                "p5": "2:45:00",
+                                "p10": "3:00:00",
+                                "p25": "3:30:00",
+                                "p50": "4:00:00",
+                                "p75": "4:45:00",
+                                "p90": "5:30:00",
+                            }
+                        },
+                    }
+                ],
+            },
+        }
+        reference_chunk = {
+            "title": "Triple Signal Reference Ultra",
+            "content": "A different race with everything curated...",
+            "payload": {
+                "race_name": "Triple Signal Reference Ultra",
+                "aliases": [],
+                "distances": [{"label": "20km", "distance_km": 20.0, "elevation_gain_m": 1500}],
+                "matching_hints": {"name_keywords": ["triple signal reference ultra"]},
+                "terrain": ["technical hand-and-knees scrambles"],
+                "course_profiles": {
+                    "20km": {
+                        "checkpoints": _GPX_PROFILE_CHECKPOINTS,
+                        "source": "gpx_upload",
+                        "curated_at": "2026-08-22",
+                    }
+                },
+                # a noticeably faster field than the target race's, so the
+                # percentile-rank transfer pulls the prediction away from the
+                # raw physics number instead of trivially reproducing it
+                "results": [
+                    {
+                        "year": 2025,
+                        "distance_label": "20km",
+                        "distance_km": 20.0,
+                        "winner_time": "1:30:00",
+                        "percentiles": {
+                            "overall": {
+                                "p5": "1:40:00",
+                                "p10": "1:50:00",
+                                "p25": "2:05:00",
+                                "p50": "2:20:00",
+                                "p75": "2:40:00",
+                                "p90": "3:00:00",
+                            }
+                        },
+                    }
+                ],
+            },
+        }
+        with patch("db.get_kb_chunks", return_value=[target_chunk, reference_chunk]):
+            resp = client.post(
+                "/api/coach/goal-estimate",
+                json={
+                    "race_name": "Triple Signal Target Ultra",
+                    "reference_race_name": "Triple Signal Reference Ultra",
+                    "reference_distance_km": 20.0,
+                    "reference_time": "2:20:00",
+                },
+            )
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["target_profile_source"] == "gpx"
+        assert body["reference_profile_source"] == "gpx"
+        assert body["terrain_multiplier_target"] > 1.0
+        assert body["terrain_multiplier_reference"] > 1.0
+        assert body["percentile_transfer_mins"] is not None
+        # adjusted_time_mins must be the blend, not the raw physics number,
+        # confirming percentile calibration still ran on top of the GPX+terrain result
+        assert body["adjusted_time_mins"] != body["predicted_time_mins"]

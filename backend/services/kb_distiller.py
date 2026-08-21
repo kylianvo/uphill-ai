@@ -752,12 +752,20 @@ def save_course_profile(race_name: str, distance_label: str, checkpoints: list[d
     if isinstance(payload, str):
         payload = json.loads(payload)
 
-    distance_labels = {d.get("label") for d in payload.get("distances", [])}
-    if distance_label not in distance_labels:
+    distance_entry = next((d for d in payload.get("distances", []) if d.get("label") == distance_label), None)
+    if distance_entry is None:
         raise ValueError(f"{race_name!r} has no distance labeled {distance_label!r}")
 
     if not checkpoints or any(cp.get("distance_meters") is None for cp in checkpoints):
         raise ValueError("checkpoints must be a non-empty list with distance_meters on every entry")
+
+    declared_km = distance_entry.get("distance_km")
+    checkpoint_km = max(cp["distance_meters"] for cp in checkpoints) / 1000.0
+    if declared_km and abs(checkpoint_km - declared_km) / declared_km > 0.15:
+        raise ValueError(
+            f"checkpoints total distance ({checkpoint_km:.1f}km) doesn't match "
+            f"{distance_label!r}'s declared distance ({declared_km}km) -- wrong GPX file?"
+        )
 
     course_profiles = payload.get("course_profiles") or {}
     course_profiles[distance_label] = {

@@ -45,8 +45,8 @@ _CHECKPOINTS = [
         "segment_loss_meters": 0.0,
     },
     {
-        "name": "KM 5.0",
-        "distance_meters": 5000.0,
+        "name": "KM 48.0",
+        "distance_meters": 48000.0,
         "elevation_meters": 2000.0,
         "segment_gain_meters": 500.0,
         "segment_loss_meters": 0.0,
@@ -135,7 +135,14 @@ def test_reupload_overwrites_existing_profile(client, monkeypatch, tmp_path):
             "elevation_meters": 1600.0,
             "segment_gain_meters": 0.0,
             "segment_loss_meters": 0.0,
-        }
+        },
+        {
+            "name": "Finish",
+            "distance_meters": 49000.0,
+            "elevation_meters": 2100.0,
+            "segment_gain_meters": 500.0,
+            "segment_loss_meters": 0.0,
+        },
     ]
     resp = client.post(
         "/api/kb/race-courses/course-profile",
@@ -145,3 +152,66 @@ def test_reupload_overwrites_existing_profile(client, monkeypatch, tmp_path):
     assert resp.status_code == 200, resp.text
     chunk = next(c for c in get_kb_chunks("race_courses", kind="race_profile") if c["title"] == "Reupload Ultra")
     assert chunk["payload"]["course_profiles"]["50km"]["checkpoints"] == new_checkpoints
+
+
+def test_mismatched_distance_returns_422(client):
+    _seed_race("Wrong Distance GPX Ultra")  # seeds a "50km" distance entry at distance_km=50.0
+    headers = _admin_headers(client)
+    # checkpoints totaling ~100km posted against the race's curated "50km" label
+    wrong_distance_checkpoints = [
+        {
+            "name": "Start",
+            "distance_meters": 0,
+            "elevation_meters": 1500.0,
+            "segment_gain_meters": 0.0,
+            "segment_loss_meters": 0.0,
+        },
+        {
+            "name": "Finish",
+            "distance_meters": 100000.0,
+            "elevation_meters": 2000.0,
+            "segment_gain_meters": 500.0,
+            "segment_loss_meters": 0.0,
+        },
+    ]
+    resp = client.post(
+        "/api/kb/race-courses/course-profile",
+        json={
+            "race_name": "Wrong Distance GPX Ultra",
+            "distance_label": "50km",
+            "checkpoints": wrong_distance_checkpoints,
+        },
+        headers=headers,
+    )
+    assert resp.status_code == 422
+
+
+def test_close_enough_distance_is_accepted(client, monkeypatch, tmp_path):
+    from services import kb_distiller
+
+    monkeypatch.setattr(kb_distiller, "SEED_DIR", str(tmp_path))
+    _seed_race("Close Enough Distance Ultra")  # "50km" distance entry at distance_km=50.0
+    headers = _admin_headers(client)
+    # within 15% tolerance -- 52km checkpoints against a 50km label should pass
+    close_checkpoints = [
+        {
+            "name": "Start",
+            "distance_meters": 0,
+            "elevation_meters": 1500.0,
+            "segment_gain_meters": 0.0,
+            "segment_loss_meters": 0.0,
+        },
+        {
+            "name": "Finish",
+            "distance_meters": 52000.0,
+            "elevation_meters": 2000.0,
+            "segment_gain_meters": 500.0,
+            "segment_loss_meters": 0.0,
+        },
+    ]
+    resp = client.post(
+        "/api/kb/race-courses/course-profile",
+        json={"race_name": "Close Enough Distance Ultra", "distance_label": "50km", "checkpoints": close_checkpoints},
+        headers=headers,
+    )
+    assert resp.status_code == 200, resp.text

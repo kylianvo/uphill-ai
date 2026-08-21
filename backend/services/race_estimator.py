@@ -309,7 +309,9 @@ class RaceEstimator:
             "terrain_multiplier_target": round(target_terrain_mult, 3),
             "terrain_multiplier_reference": round(ref_terrain_mult, 3) if ref_terrain_mult is not None else None,
             "target_profile_source": "gpx" if target_checkpoints else "synthetic",
-            "reference_profile_source": ("gpx" if ref_checkpoints else "synthetic") if reference else None,
+            "reference_profile_source": None
+            if ref_terrain_mult is None
+            else ("gpx" if ref_checkpoints else "synthetic"),
             "goals": {
                 "ambitious": round(adjusted * AMBITIOUS_FACTOR, 1),
                 "realistic": round(adjusted, 1),

@@ -57,3 +57,46 @@ Conventions (keep scrapers consistent with these):
   and **no value may ever be estimated or interpolated at curation time**.
 - Store per-year entries; don't average across years (weather and course
   changes make the variance informative).
+
+## `course_profiles` block schema (curated GPX elevation profiles)
+
+Optional per-distance, admin-curated checkpoint list derived from a real GPX
+track, consumed by the Goal Determiner's `RaceEstimator` to replace its
+synthetic uniform-grade course assumption for that `(race, distance_label)`
+when available:
+
+```json
+"course_profiles": {
+  "<distance_label>": {
+    "checkpoints": [
+      {"name": "Start", "distance_meters": 0, "elevation_meters": 1500.0, "segment_gain_meters": 0.0, "segment_loss_meters": 0.0},
+      {"name": "CP1", "distance_meters": 5000.0, "elevation_meters": 1850.0, "segment_gain_meters": 350.0, "segment_loss_meters": 0.0},
+      "…"
+    ],
+    "source": "gpx_upload",
+    "curated_at": "YYYY-MM-DD"
+  }
+}
+```
+
+`<distance_label>` must exactly match one of that race's `distances[].label`
+entries — the endpoint validates this, and also rejects a checkpoint list
+whose total distance is more than 15% off that distance's declared
+`distance_km` (a wrong-GPX-file safeguard, since races often publish several
+similarly-named tracks).
+
+**Curation workflow (no UI yet — two admin API calls):**
+1. POST the race's GPX file to `POST /api/parser/gpx` to get back a
+   `checkpoints` array. Pass `checkpoint_interval_meters=1000` (finer than
+   the endpoint's 5000m default) for better grade resolution — `RaceEstimator`
+   still applies `ASSUMED_HILL_GRADE` uniformly within whatever interval the
+   checkpoints use, so a coarser interval smooths over real terrain changes
+   the GPX actually captured.
+2. POST that `checkpoints` array, together with the race's `race_name` and
+   the target `distance_label`, to
+   `POST /api/kb/race-courses/course-profile` (admin-only).
+
+Like `results`, this is hand-curated per race and never auto-generated —
+only the numeric result-year stats in the `results` block are
+auto-enriched (see the "race-results enrichment" note in the repo's
+`CLAUDE.md`).
