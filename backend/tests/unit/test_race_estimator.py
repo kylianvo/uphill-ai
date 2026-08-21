@@ -190,6 +190,22 @@ class TestInterpolatePercentile:
         time_mins = RaceEstimator.interpolate_percentile(self.CURVE, percentile=95.0)
         assert time_mins > 990.0
 
+    def test_extrapolation_survives_a_tied_low_end_bucket(self):
+        # p5 == p10 in minutes (small field / coarse rounding) -- the low-end
+        # extrapolation segment has zero width and must not divide by zero.
+        curve = [(5.0, 550.0), (10.0, 550.0), (25.0, 650.0), (50.0, 770.0), (75.0, 870.0), (90.0, 990.0)]
+        rank = RaceEstimator.interpolate_percentile(curve, time_mins=500.0)
+        assert rank == rank  # finite, not NaN
+        assert isinstance(rank, float)
+
+    def test_extrapolation_survives_a_tied_high_end_bucket(self):
+        # p75 == p90 in minutes -- the high-end extrapolation segment has
+        # zero width and must not divide by zero.
+        curve = [(5.0, 550.0), (10.0, 580.0), (25.0, 650.0), (50.0, 770.0), (75.0, 990.0), (90.0, 990.0)]
+        time_mins = RaceEstimator.interpolate_percentile(curve, percentile=95.0)
+        assert time_mins == time_mins  # finite, not NaN
+        assert isinstance(time_mins, float)
+
     def test_requires_exactly_one_of_time_or_percentile(self):
         raised = False
         try:

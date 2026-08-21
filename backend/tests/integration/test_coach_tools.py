@@ -64,6 +64,76 @@ _UTMB_WITH_PERCENTILES_CHUNK = {
 }
 
 
+_UTMB_NO_PERCENTILES_CHUNK = {
+    "title": "UTMB — Chamonix, France",
+    "content": "UTMB circles Mont Blanc...",
+    "payload": {
+        "race_name": "UTMB",
+        "aliases": [],
+        "distances": [{"label": "170km", "distance_km": 171.0, "elevation_gain_m": 10000}],
+        "matching_hints": {"name_keywords": ["utmb"]},
+        "results": [
+            {
+                "year": 2025,
+                "distance_label": "170km",
+                "distance_km": 171.0,
+                "winner_time": "19:30:00",
+                # no "percentiles" key -- reference race resolves but has no
+                # percentile data curated yet
+            }
+        ],
+    },
+}
+
+_MULTI_DISTANCE_CHUNK = {
+    "title": "Tarawera Ultramarathon — Rotorua, New Zealand",
+    "content": "Tarawera runs through the Redwoods...",
+    "payload": {
+        "race_name": "Tarawera Ultramarathon",
+        "aliases": [],
+        "distances": [
+            {"label": "100km", "distance_km": 102.0, "elevation_gain_m": 2900},
+            {"label": "50km", "distance_km": 50.0, "elevation_gain_m": 1500},
+        ],
+        "matching_hints": {"name_keywords": ["tarawera", "tarawera ultramarathon"]},
+        "results": [
+            {
+                "year": 2025,
+                "distance_label": "100km",
+                "distance_km": 102.0,
+                "winner_time": "8:30:00",
+                "percentiles": {
+                    "overall": {
+                        "p5": "9:00:00",
+                        "p10": "9:30:00",
+                        "p25": "10:30:00",
+                        "p50": "12:00:00",
+                        "p75": "14:00:00",
+                        "p90": "16:00:00",
+                    }
+                },
+            },
+            {
+                "year": 2025,
+                "distance_label": "50km",
+                "distance_km": 50.0,
+                "winner_time": "4:00:00",
+                "percentiles": {
+                    "overall": {
+                        "p5": "4:30:00",
+                        "p10": "4:45:00",
+                        "p25": "5:15:00",
+                        "p50": "6:00:00",
+                        "p75": "7:00:00",
+                        "p90": "8:00:00",
+                    }
+                },
+            },
+        ],
+    },
+}
+
+
 def _admin_headers(client):
     resp = client.post("/api/auth/mock-login", json={"email": "admin@uphill.ai"})
     assert resp.status_code == 200, resp.text
@@ -301,3 +371,81 @@ class TestGoalEstimatePercentileBlend:
         body = resp.json()
         assert body.get("percentile_transfer_mins") is None
         assert body["adjusted_time_mins"] == body["predicted_time_mins"]
+
+    def test_implausible_transfer_faster_than_target_winner_does_not_move_blend(self, client):
+        # An unusually fast VMM reference time extrapolates, via the
+        # percentile transfer, to a UTMB time faster than UTMB's own
+        # curated winner (19:30:00 = 1170 mins) -- physically impossible.
+        # The blend must not move adjusted_time_mins/goals in that case,
+        # while percentile_transfer_mins is still reported for transparency.
+        payload = {
+            "race_name": "UTMB",
+            "reference_race_name": "VMM",
+            "reference_distance_km": 69.5,
+            "reference_time": "8:00:00",
+        }
+        with patch("db.get_kb_chunks", return_value=[_VMM_WITH_PERCENTILES_CHUNK, _UTMB_WITH_PERCENTILES_CHUNK]):
+            resp = client.post("/api/coach/goal-estimate", json=payload)
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["percentile_transfer_mins"] is not None
+        assert body["percentile_transfer_mins"] < 1170.0  # faster than UTMB's curated winner time
+        assert body["adjusted_time_mins"] == body["predicted_time_mins"]
+        assert body["goals"]["realistic"] == body["predicted_time_mins"]
+
+    def test_no_blend_when_reference_distance_cannot_be_resolved(self, client):
+        # reference_race_name matches a multi-distance KB entry but no
+        # reference_distance_km is given, so match_race can't resolve a
+        # single distance. The percentile-blend gate must not fall back to
+        # an unfiltered (distance-mixed) percentile curve.
+        payload = {
+            "race_name": "UTMB",
+            "reference_race_name": "Tarawera Ultramarathon",
+            "reference_time": "10:00:00",
+            "flat_pace_min_km": 6.0,
+        }
+        with patch("db.get_kb_chunks", return_value=[_UTMB_WITH_PERCENTILES_CHUNK, _MULTI_DISTANCE_CHUNK]):
+            resp = client.post("/api/coach/goal-estimate", json=payload)
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body.get("percentile_transfer_mins") is None
+        assert body["adjusted_time_mins"] == body["predicted_time_mins"]
+
+    def test_rank_transfer_present_through_endpoint(self, client):
+        # Minor #5: regression guard for rank_transfer_mins reaching the
+        # endpoint response when both races have curated winner_time.
+        payload = {
+            "race_name": "UTMB",
+            "reference_race_name": "VMM",
+            "reference_distance_km": 69.5,
+            "reference_time": "13:00:00",
+        }
+        with patch("db.get_kb_chunks", return_value=[_VMM_WITH_PERCENTILES_CHUNK, _UTMB_WITH_PERCENTILES_CHUNK]):
+            resp = client.post("/api/coach/goal-estimate", json=payload)
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        # rank = 550.9667(VMM winner) / 780(reference time) ; target = 1170 / rank
+        ref_winner = 9 * 60 + 10 + 58 / 60
+        target_winner = 19 * 60 + 30
+        rank = ref_winner / 780.0
+        expected = round(target_winner / rank, 1)
+        assert body["rank_transfer_mins"] == expected
+
+    def test_no_blend_when_reference_race_resolves_but_lacks_percentiles(self, client):
+        # Minor #6: target has percentiles, reference race resolves in the
+        # KB (has a results entry) but that entry has no "percentiles" key.
+        # The blend must not activate, but rank_transfer_mins (which only
+        # needs winner_time) should still be computed.
+        payload = {
+            "race_name": "VMM",
+            "reference_race_name": "UTMB",
+            "reference_distance_km": 171.0,
+            "reference_time": "20:00:00",
+        }
+        with patch("db.get_kb_chunks", return_value=[_VMM_WITH_PERCENTILES_CHUNK, _UTMB_NO_PERCENTILES_CHUNK]):
+            resp = client.post("/api/coach/goal-estimate", json=payload)
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body.get("percentile_transfer_mins") is None
+        assert body["adjusted_time_mins"] == body["predicted_time_mins"]
+        assert body.get("rank_transfer_mins") is not None

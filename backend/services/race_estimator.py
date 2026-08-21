@@ -136,10 +136,20 @@ class RaceEstimator:
 
         n = len(xs)
         if query <= xs[0]:
-            slope = (ys[1] - ys[0]) / (xs[1] - xs[0])
+            slope = 0.0
+            for i in range(n - 1):
+                width = xs[i + 1] - xs[i]
+                if width != 0:
+                    slope = (ys[i + 1] - ys[i]) / width
+                    break
             return ys[0] + slope * (query - xs[0])
         if query >= xs[-1]:
-            slope = (ys[-1] - ys[-2]) / (xs[-1] - xs[-2])
+            slope = 0.0
+            for i in range(n - 1, 0, -1):
+                width = xs[i] - xs[i - 1]
+                if width != 0:
+                    slope = (ys[i] - ys[i - 1]) / width
+                    break
             return ys[-1] + slope * (query - xs[-1])
         for i in range(n - 1):
             if xs[i] <= query <= xs[i + 1]:

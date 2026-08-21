@@ -2680,8 +2680,16 @@ def _goal_estimate_core(request: GoalEstimateRequest) -> dict[str, Any]:
     # goal-determiner-percentile-calibration-design.md) blends into the
     # primary estimate, winner-time rank transfer stays a secondary field.
     target_bench = race_benchmarks(request.race_name, distance_km=distance_km) if request.race_name else None
+    # Only look up reference benchmarks when ref_distance resolved to a
+    # single value -- otherwise race_benchmarks(distance_km=None) returns
+    # ALL curated years unfiltered by distance, which can mix a
+    # multi-distance race's years into one meaningless percentile curve.
+    # Mirrors the physics reference path's existing `ref_time_mins and
+    # ref_distance` guard above.
     ref_bench = (
-        race_benchmarks(request.reference_race_name, distance_km=ref_distance) if request.reference_race_name else None
+        race_benchmarks(request.reference_race_name, distance_km=ref_distance)
+        if request.reference_race_name and ref_distance
+        else None
     )
     if target_bench:
         response["benchmarks"] = target_bench["results"]
@@ -2703,13 +2711,22 @@ def _goal_estimate_core(request: GoalEstimateRequest) -> dict[str, Any]:
             response["percentile_transfer_mins"] = round(percentile_transfer, 1)
             response["percentile_years_used"] = {"target": target_years, "reference": ref_years}
 
-            blended = (response["adjusted_time_mins"] + percentile_transfer) / 2.0
-            response["adjusted_time_mins"] = round(blended, 1)
-            response["goals"] = {
-                "ambitious": round(blended * AMBITIOUS_FACTOR, 1),
-                "realistic": round(blended, 1),
-                "safe": round(blended * SAFE_FACTOR, 1),
-            }
+            # Plausibility floor: an unbounded linear extrapolation (e.g. a
+            # mistyped or wildly mismatched reference time) can transfer to
+            # a target time faster than that race's own curated winner --
+            # physically impossible. Skip applying the blend in that case,
+            # but keep reporting percentile_transfer_mins for transparency.
+            # If the winner time isn't available/parseable, don't block the
+            # blend on it.
+            implausible = target_winner is not None and percentile_transfer < target_winner
+            if not implausible:
+                blended = (response["adjusted_time_mins"] + percentile_transfer) / 2.0
+                response["adjusted_time_mins"] = round(blended, 1)
+                response["goals"] = {
+                    "ambitious": round(blended * AMBITIOUS_FACTOR, 1),
+                    "realistic": round(blended, 1),
+                    "safe": round(blended * SAFE_FACTOR, 1),
+                }
 
     return response
 
