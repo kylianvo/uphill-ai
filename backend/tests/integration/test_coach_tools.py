@@ -540,3 +540,77 @@ class TestGoalEstimateTerrainDifficulty:
         resp = client.post("/api/coach/goal-estimate", json=payload)
         assert resp.status_code == 200, resp.text
         assert resp.json()["terrain_multiplier_target"] == 1.0
+
+
+_GPX_PROFILE_CHECKPOINTS = [
+    {
+        "name": "Start",
+        "distance_meters": 0,
+        "elevation_meters": 1500.0,
+        "segment_gain_meters": 0.0,
+        "segment_loss_meters": 0.0,
+    },
+    {
+        "name": "KM 10",
+        "distance_meters": 10000.0,
+        "elevation_meters": 3000.0,
+        "segment_gain_meters": 1500.0,
+        "segment_loss_meters": 0.0,
+    },
+    {
+        "name": "KM 20",
+        "distance_meters": 20000.0,
+        "elevation_meters": 3000.0,
+        "segment_gain_meters": 0.0,
+        "segment_loss_meters": 0.0,
+    },
+]
+
+_GPX_RACE_CHUNK = {
+    "title": "High Altitude Ultra",
+    "content": "A high mountain race...",
+    "payload": {
+        "race_name": "High Altitude Ultra",
+        "aliases": [],
+        "distances": [{"label": "20km", "distance_km": 20.0, "elevation_gain_m": 1500}],
+        "matching_hints": {"name_keywords": ["high altitude ultra"]},
+        "course_profiles": {
+            "20km": {"checkpoints": _GPX_PROFILE_CHECKPOINTS, "source": "gpx_upload", "curated_at": "2026-08-22"}
+        },
+    },
+}
+
+_NO_PROFILE_RACE_CHUNK = {
+    "title": "High Altitude Ultra No Profile",
+    "content": "A high mountain race with no curated GPX yet...",
+    "payload": {
+        "race_name": "High Altitude Ultra No Profile",
+        "aliases": [],
+        "distances": [{"label": "20km", "distance_km": 20.0, "elevation_gain_m": 1500}],
+        "matching_hints": {"name_keywords": ["high altitude ultra no profile"]},
+    },
+}
+
+
+class TestGoalEstimateGpxProfile:
+    def test_curated_profile_reported_and_slower_than_synthetic(self, client):
+        with patch("db.get_kb_chunks", return_value=[_GPX_RACE_CHUNK]):
+            gpx_resp = client.post(
+                "/api/coach/goal-estimate", json={"race_name": "High Altitude Ultra", "flat_pace_min_km": 6.0}
+            )
+        with patch("db.get_kb_chunks", return_value=[_NO_PROFILE_RACE_CHUNK]):
+            synthetic_resp = client.post(
+                "/api/coach/goal-estimate",
+                json={"race_name": "High Altitude Ultra No Profile", "flat_pace_min_km": 6.0},
+            )
+        assert gpx_resp.status_code == 200, gpx_resp.text
+        assert synthetic_resp.status_code == 200, synthetic_resp.text
+        assert gpx_resp.json()["target_profile_source"] == "gpx"
+        assert synthetic_resp.json()["target_profile_source"] == "synthetic"
+        assert gpx_resp.json()["predicted_time_mins"] > synthetic_resp.json()["predicted_time_mins"]
+
+    def test_no_race_name_gives_synthetic_profile_source(self, client):
+        payload = {"distance_km": 50, "elevation_gain_m": 2000, "flat_pace_min_km": 6.0}
+        resp = client.post("/api/coach/goal-estimate", json=payload)
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["target_profile_source"] == "synthetic"

@@ -2658,7 +2658,7 @@ def _goal_estimate_core(request: GoalEstimateRequest) -> dict[str, Any]:
     reads nothing from the database keyed by a user id, so there is no
     athlete-vs-coach resolution to get right here."""
     from services.race_estimator import AMBITIOUS_FACTOR, SAFE_FACTOR, RaceEstimator
-    from services.race_matcher import match_race, race_benchmarks
+    from services.race_matcher import course_profile, match_race, race_benchmarks
 
     distance_km = request.distance_km
     elevation_gain_m = request.elevation_gain_m
@@ -2673,6 +2673,12 @@ def _goal_estimate_core(request: GoalEstimateRequest) -> dict[str, Any]:
     if not distance_km or distance_km <= 0:
         raise HTTPException(status_code=422, detail="Target course needs a distance (km)")
     elevation_gain_m = elevation_gain_m or 0.0
+
+    target_checkpoints = (
+        course_profile(request.race_name, matched_target.distance_label)
+        if matched_target and matched_target.distance_label
+        else None
+    )
 
     ref_distance = request.reference_distance_km
     ref_gain = request.reference_elevation_gain_m
@@ -2691,6 +2697,11 @@ def _goal_estimate_core(request: GoalEstimateRequest) -> dict[str, Any]:
             "elevation_gain_m": ref_gain or 0.0,
             "finish_time_mins": ref_time_mins,
             "terrain_tags": matched_ref.terrain if matched_ref else None,
+            "checkpoints": (
+                course_profile(request.reference_race_name, matched_ref.distance_label)
+                if matched_ref and matched_ref.distance_label
+                else None
+            ),
         }
 
     try:
@@ -2703,6 +2714,7 @@ def _goal_estimate_core(request: GoalEstimateRequest) -> dict[str, Any]:
             if request.weeks_to_race is not None
             else _weeks_until(request.race_date),
             terrain_tags=matched_target.terrain if matched_target else None,
+            target_checkpoints=target_checkpoints,
         )
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
