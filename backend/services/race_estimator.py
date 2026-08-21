@@ -8,6 +8,7 @@ stops Goal Determiner and Pace Strategy from disagreeing about the same
 runner on the same course.
 """
 
+import re
 from typing import Any
 
 from services.pacing_calculator import PacingCalculator
@@ -25,6 +26,40 @@ SAFE_FACTOR = 1.08
 
 _PERCENTILE_KEYS = ("p5", "p10", "p25", "p50", "p75", "p90")
 _PERCENTILE_VALUES = (5.0, 10.0, 25.0, 50.0, 75.0, 90.0)
+
+# Difficulty-signal substrings matched against a race's free-text KB terrain
+# tags (not a controlled vocabulary -- see docs/superpowers/specs/2026-08-22-
+# goal-determiner-terrain-difficulty-design.md for how these weights were
+# picked against the actual curated corpus). Each matched keyword counts
+# once regardless of how many tags or occurrences; total capped below.
+_TERRAIN_KEYWORDS: dict[str, float] = {
+    "technical": 0.07,
+    "scramb": 0.08,  # scramble / scrambling / scrambles
+    "scree": 0.06,
+    "slippery": 0.06,
+    "muddy": 0.05,
+    "rocky": 0.05,
+    "river crossing": 0.05,
+    "steep": 0.04,
+    "volcanic": 0.05,  # volcanic ash / volcanic sand / volcanic terrain
+    "karst": 0.03,
+    "exposed root": 0.03,
+    "staircase": 0.03,
+    "singletrack": 0.02,
+    "single track": 0.02,
+    "sand": 0.02,
+    "steps": 0.02,
+    "jungle": 0.02,
+}
+TERRAIN_CAP = 0.30
+
+# Pre-compiled regex patterns for word-boundary matching. "scramb" matches at
+# word start only (no trailing \b) to match scramble/scrambling/scrambles;
+# all other keywords require full word boundaries on both ends.
+_TERRAIN_KEYWORD_PATTERNS: dict[str, re.Pattern[str]] = {
+    keyword: re.compile(r"\b" + re.escape(keyword) + ("" if keyword == "scramb" else r"\b"))
+    for keyword in _TERRAIN_KEYWORDS
+}
 
 
 def _parse_hms_to_mins(time_str: str | None) -> float | None:
@@ -64,6 +99,20 @@ class RaceEstimator:
             )
             prev = dist_m
         return checkpoints
+
+    @staticmethod
+    def terrain_multiplier(terrain_tags: list[str] | None) -> float:
+        """Scores a race's free-text KB terrain tags for difficulty signals
+        via keyword-substring matching (the field is not a controlled
+        vocabulary). One-directional: only confirmed difficulty signals add
+        time, capped at TERRAIN_CAP."""
+        if not terrain_tags:
+            return 1.0
+        joined = " ".join(terrain_tags).lower()
+        total = sum(
+            weight for keyword, weight in _TERRAIN_KEYWORDS.items() if _TERRAIN_KEYWORD_PATTERNS[keyword].search(joined)
+        )
+        return 1.0 + min(total, TERRAIN_CAP)
 
     @staticmethod
     def predict_time_mins(checkpoints: list[dict[str, Any]], base_flat_pace_min_km: float) -> float:

@@ -236,3 +236,44 @@ class TestPercentileTransfer:
         fast = RaceEstimator.percentile_transfer_mins(reference_curve, 600.0, target_curve)
         slow = RaceEstimator.percentile_transfer_mins(reference_curve, 950.0, target_curve)
         assert fast < slow
+
+
+class TestTerrainMultiplier:
+    def test_no_tags_returns_one(self):
+        assert RaceEstimator.terrain_multiplier(None) == 1.0
+        assert RaceEstimator.terrain_multiplier([]) == 1.0
+
+    def test_pure_landmark_tags_return_one(self):
+        # place names / landmarks with no difficulty keyword should not match
+        tags = ["dragon bridge", "marina bay sands", "national stadium"]
+        assert RaceEstimator.terrain_multiplier(tags) == 1.0
+
+    def test_single_keyword_match(self):
+        mult = RaceEstimator.terrain_multiplier(["muddy rainy-season terrain"])
+        assert abs(mult - 1.05) < 0.001
+
+    def test_multiple_keywords_sum(self):
+        # "technical hand-and-knees scrambles on final climbs" -> technical (0.07) + scramb (0.08)
+        mult = RaceEstimator.terrain_multiplier(["technical hand-and-knees scrambles on final climbs"])
+        assert abs(mult - 1.15) < 0.001
+
+    def test_repeated_keyword_across_tags_counts_once(self):
+        # "steep" appears in both tags but must only be counted once
+        tags = ["steep rolling hills", "steep climb to the summit"]
+        assert abs(RaceEstimator.terrain_multiplier(tags) - 1.04) < 0.001
+
+    def test_vmm_worked_example_from_spec(self):
+        tags = [
+            "technical hand-and-knees scrambles on final climbs",
+            "continuously slippery, dark single trail deep in the jungle",
+        ]
+        # technical (0.07) + scramb (0.08) + slippery (0.06) + jungle (0.02) = 0.23
+        assert abs(RaceEstimator.terrain_multiplier(tags) - 1.23) < 0.001
+
+    def test_cap_never_exceeded(self):
+        # every keyword at once would sum well past 0.30 without the cap
+        tags = [
+            "technical scrambling scree slippery muddy rocky river crossing steep "
+            "volcanic karst exposed root staircase singletrack single track sand steps jungle"
+        ]
+        assert RaceEstimator.terrain_multiplier(tags) <= 1.30 + 1e-9
