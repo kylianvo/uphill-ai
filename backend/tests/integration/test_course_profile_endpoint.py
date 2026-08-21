@@ -1,0 +1,147 @@
+"""Tests for POST /api/kb/race-courses/course-profile -- the admin endpoint
+that attaches a curated GPX-derived checkpoint list to a race_courses KB
+entry. Uses the real test DB (save_kb_chunks / engine), following
+test_kb_endpoints.py's pattern, since this endpoint writes to the KB."""
+
+from sqlalchemy import text
+
+from db import engine, get_kb_chunks, save_kb_chunks
+
+
+def _admin_headers(client):
+    client.post("/api/auth/mock-login", json={"email": "profile-admin@uphill.ai"})
+    with engine.connect() as conn:
+        conn.execute(text("UPDATE users SET role = 'admin' WHERE email = 'profile-admin@uphill.ai'"))
+        conn.commit()
+    resp = client.post("/api/auth/mock-login", json={"email": "profile-admin@uphill.ai"})
+    return {"Authorization": f"Bearer {resp.json()['session_token']}"}
+
+
+def _seed_race(title="Sapa Jungle Ultra"):
+    save_kb_chunks(
+        [
+            {
+                "domain": "race_courses",
+                "kind": "race_profile",
+                "title": title,
+                "content": "A jungle ultra...",
+                "payload": {
+                    "race_name": title,
+                    "aliases": [],
+                    "distances": [{"label": "50km", "distance_km": 50.0, "elevation_gain_m": 2000}],
+                    "matching_hints": {"name_keywords": [title.lower()]},
+                },
+            }
+        ]
+    )
+
+
+_CHECKPOINTS = [
+    {
+        "name": "Start",
+        "distance_meters": 0,
+        "elevation_meters": 1500.0,
+        "segment_gain_meters": 0.0,
+        "segment_loss_meters": 0.0,
+    },
+    {
+        "name": "KM 5.0",
+        "distance_meters": 5000.0,
+        "elevation_meters": 2000.0,
+        "segment_gain_meters": 500.0,
+        "segment_loss_meters": 0.0,
+    },
+]
+
+
+def test_requires_admin(client, auth_headers):
+    _seed_race()
+    resp = client.post(
+        "/api/kb/race-courses/course-profile",
+        json={"race_name": "Sapa Jungle Ultra", "distance_label": "50km", "checkpoints": _CHECKPOINTS},
+        headers=auth_headers["headers"],
+    )
+    assert resp.status_code == 403
+
+
+def test_unknown_race_returns_404(client):
+    headers = _admin_headers(client)
+    resp = client.post(
+        "/api/kb/race-courses/course-profile",
+        json={"race_name": "Totally Unknown Race", "distance_label": "50km", "checkpoints": _CHECKPOINTS},
+        headers=headers,
+    )
+    assert resp.status_code == 404
+
+
+def test_unknown_distance_label_returns_422(client):
+    _seed_race("Distance Mismatch Ultra")
+    headers = _admin_headers(client)
+    resp = client.post(
+        "/api/kb/race-courses/course-profile",
+        json={"race_name": "Distance Mismatch Ultra", "distance_label": "100km", "checkpoints": _CHECKPOINTS},
+        headers=headers,
+    )
+    assert resp.status_code == 422
+
+
+def test_empty_checkpoints_returns_422(client):
+    _seed_race("Empty Checkpoints Ultra")
+    headers = _admin_headers(client)
+    resp = client.post(
+        "/api/kb/race-courses/course-profile",
+        json={"race_name": "Empty Checkpoints Ultra", "distance_label": "50km", "checkpoints": []},
+        headers=headers,
+    )
+    assert resp.status_code == 422
+
+
+def test_valid_request_saves_profile(client, monkeypatch, tmp_path):
+    from services import kb_distiller
+
+    monkeypatch.setattr(kb_distiller, "SEED_DIR", str(tmp_path))
+    _seed_race("Saved Profile Ultra")
+    headers = _admin_headers(client)
+    resp = client.post(
+        "/api/kb/race-courses/course-profile",
+        json={"race_name": "Saved Profile Ultra", "distance_label": "50km", "checkpoints": _CHECKPOINTS},
+        headers=headers,
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body == {"race_name": "Saved Profile Ultra", "distance_label": "50km", "checkpoint_count": 2}
+
+    chunk = next(c for c in get_kb_chunks("race_courses", kind="race_profile") if c["title"] == "Saved Profile Ultra")
+    saved_profile = chunk["payload"]["course_profiles"]["50km"]
+    assert saved_profile["checkpoints"] == _CHECKPOINTS
+    assert saved_profile["source"] == "gpx_upload"
+
+
+def test_reupload_overwrites_existing_profile(client, monkeypatch, tmp_path):
+    from services import kb_distiller
+
+    monkeypatch.setattr(kb_distiller, "SEED_DIR", str(tmp_path))
+    _seed_race("Reupload Ultra")
+    headers = _admin_headers(client)
+    client.post(
+        "/api/kb/race-courses/course-profile",
+        json={"race_name": "Reupload Ultra", "distance_label": "50km", "checkpoints": _CHECKPOINTS},
+        headers=headers,
+    )
+    new_checkpoints = [
+        {
+            "name": "Start",
+            "distance_meters": 0,
+            "elevation_meters": 1600.0,
+            "segment_gain_meters": 0.0,
+            "segment_loss_meters": 0.0,
+        }
+    ]
+    resp = client.post(
+        "/api/kb/race-courses/course-profile",
+        json={"race_name": "Reupload Ultra", "distance_label": "50km", "checkpoints": new_checkpoints},
+        headers=headers,
+    )
+    assert resp.status_code == 200, resp.text
+    chunk = next(c for c in get_kb_chunks("race_courses", kind="race_profile") if c["title"] == "Reupload Ultra")
+    assert chunk["payload"]["course_profiles"]["50km"]["checkpoints"] == new_checkpoints

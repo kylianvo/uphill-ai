@@ -731,6 +731,49 @@ def save_race_results(results_by_race: dict[str, list[dict]]) -> int:
     return total
 
 
+def save_course_profile(race_name: str, distance_label: str, checkpoints: list[dict[str, Any]]) -> dict[str, Any]:
+    """Attaches a curated GPX-derived checkpoint list to an existing
+    race_courses chunk, matched by exact title, then re-exports the seed
+    file so the profile is portable across environments (same pattern as
+    save_race_results). Unlike save_race_results, a re-upload for the same
+    (race_name, distance_label) OVERWRITES the existing entry -- a
+    re-uploaded GPX is a deliberate correction, not a duplicate to dedupe
+    against. Raises ValueError for an unknown race, a distance_label the
+    race doesn't have, or an empty/malformed checkpoint list."""
+    from datetime import date
+
+    import db
+
+    chunk = next((c for c in db.get_kb_chunks("race_courses", kind="race_profile") if c["title"] == race_name), None)
+    if chunk is None:
+        raise ValueError(f"No race_courses KB entry titled {race_name!r}")
+
+    payload = chunk.get("payload") or {}
+    if isinstance(payload, str):
+        payload = json.loads(payload)
+
+    distance_labels = {d.get("label") for d in payload.get("distances", [])}
+    if distance_label not in distance_labels:
+        raise ValueError(f"{race_name!r} has no distance labeled {distance_label!r}")
+
+    if not checkpoints or any(cp.get("distance_meters") is None for cp in checkpoints):
+        raise ValueError("checkpoints must be a non-empty list with distance_meters on every entry")
+
+    course_profiles = payload.get("course_profiles") or {}
+    course_profiles[distance_label] = {
+        "checkpoints": checkpoints,
+        "source": "gpx_upload",
+        "curated_at": date.today().isoformat(),
+    }
+    payload["course_profiles"] = course_profiles
+    db.update_kb_chunk_payload("race_courses", "race_profile", race_name, payload)
+
+    clean_rows = [{k: row[k] for k in _SEED_KEYS} for row in db.get_kb_chunks("race_courses")]
+    export_seed("race_courses", clean_rows)
+
+    return {"race_name": race_name, "distance_label": distance_label, "checkpoint_count": len(checkpoints)}
+
+
 def _notebook_id(domain: str) -> str:
     return {
         "gear": settings.NOTEBOOKLM_GEAR_ID,
