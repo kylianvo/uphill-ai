@@ -2599,6 +2599,19 @@ class GoalEstimateRequest(BaseModel):
     reference_elevation_gain_m: float | None = None
     reference_time: str | None = None  # "h:mm:ss" or "h:mm"
     weeks_to_race: float | None = None
+    race_date: str | None = None  # "YYYY-MM-DD"; derives weeks_to_race when weeks_to_race isn't given directly
+
+
+def _weeks_until(date_str: str | None) -> float | None:
+    if not date_str:
+        return None
+    from datetime import date as _date
+
+    try:
+        race_date = _date.fromisoformat(date_str)
+    except ValueError:
+        return None
+    return (race_date - _date.today()).days / 7.0
 
 
 def _parse_hms_to_mins(time_str: str | None) -> float | None:
@@ -2664,7 +2677,9 @@ def _goal_estimate_core(request: GoalEstimateRequest) -> dict[str, Any]:
             elevation_gain_m=elevation_gain_m,
             base_flat_pace_min_km=request.flat_pace_min_km,
             reference=reference,
-            weeks_to_race=request.weeks_to_race,
+            weeks_to_race=request.weeks_to_race
+            if request.weeks_to_race is not None
+            else _weeks_until(request.race_date),
             terrain_tags=matched_target.terrain if matched_target else None,
         )
     except ValueError as e:

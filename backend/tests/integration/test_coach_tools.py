@@ -199,6 +199,37 @@ class TestCoachGoalEstimateEndpoint:
         assert resp.status_code == 200
 
 
+class TestGoalEstimateRaceDate:
+    def test_race_date_derives_weeks_to_race(self, client):
+        from datetime import date, timedelta
+
+        far_future = (date.today() + timedelta(weeks=24)).isoformat()
+        soon = (date.today() + timedelta(weeks=1)).isoformat()
+        far_resp = client.post("/api/coach/goal-estimate", json={**_GOAL_ESTIMATE_PAYLOAD, "race_date": far_future})
+        soon_resp = client.post("/api/coach/goal-estimate", json={**_GOAL_ESTIMATE_PAYLOAD, "race_date": soon})
+        assert far_resp.status_code == 200, far_resp.text
+        assert soon_resp.status_code == 200, soon_resp.text
+        # 0.25%/week caps at 5% by week 20; 24 weeks out hits the cap, 1 week out doesn't
+        assert far_resp.json()["improvement_pct"] == 5.0
+        assert 0 < soon_resp.json()["improvement_pct"] < 5.0
+
+    def test_explicit_weeks_to_race_takes_precedence_over_race_date(self, client):
+        from datetime import date, timedelta
+
+        far_future = (date.today() + timedelta(weeks=52)).isoformat()
+        resp = client.post(
+            "/api/coach/goal-estimate",
+            json={**_GOAL_ESTIMATE_PAYLOAD, "race_date": far_future, "weeks_to_race": 0},
+        )
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["improvement_pct"] == 0.0
+
+    def test_malformed_race_date_is_ignored(self, client):
+        resp = client.post("/api/coach/goal-estimate", json={**_GOAL_ESTIMATE_PAYLOAD, "race_date": "not-a-date"})
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["improvement_pct"] == 0.0
+
+
 _PACING_PAYLOAD = {
     "checkpoints": [
         {"name": "Start", "distance_meters": 0, "elevation_m": 100},

@@ -277,7 +277,7 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
   const [raceMatch, setRaceMatch] = useState<RaceMatch | null>(null);
   const [distance, setDistance] = useState("");
   const [gain, setGain] = useState("");
-  const [weeks, setWeeks] = useState("");
+  const [raceDate, setRaceDate] = useState("");
 
   const { setPaceHandoff, setIsPaceStrategyOpen, setSettingsHandoff, actingAsAthleteId, actingAsAthleteName } =
     useAppContext();
@@ -355,7 +355,7 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
         race_name: raceName || null,
         distance_km: targetDistance,
         elevation_gain_m: targetGain,
-        weeks_to_race: parseFloat(weeks) || null,
+        race_date: raceDate || null,
       };
       if (fitnessMode === "pace") {
         payload.flat_pace_min_km = parseFloat(flatPace);
@@ -562,8 +562,8 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
             />
           </div>
           <div style={boxStyle}>
-            <label style={labelStyle}>{t("Weeks until race", "Số tuần tới giải")}</label>
-            <input type="number" min="0" max="52" placeholder="e.g. 16" value={weeks} onChange={(e) => setWeeks(e.target.value)} style={inputStyle} />
+            <label style={labelStyle}>{t("Race date", "Ngày thi đấu")}</label>
+            <input type="date" value={raceDate} onChange={(e) => setRaceDate(e.target.value)} style={inputStyle} />
           </div>
         </div>
 
