@@ -3,6 +3,66 @@ tool wrappers and the AI co-pilot chat. See
 docs/superpowers/specs/2026-07-20-coach-role-design.md and
 docs/superpowers/plans/2026-07-20-coach-role-phase4-coach-tools.md."""
 
+from unittest.mock import patch
+
+_VMM_WITH_PERCENTILES_CHUNK = {
+    "title": "Vietnam Mountain Marathon (VMM) — Sa Pa, Vietnam",
+    "content": "The VMM runs through Sa Pa...",
+    "payload": {
+        "race_name": "Vietnam Mountain Marathon",
+        "aliases": ["VMM"],
+        "distances": [{"label": "70km", "distance_km": 69.5, "elevation_gain_m": 4000}],
+        "matching_hints": {"name_keywords": ["vmm", "vietnam mountain marathon"]},
+        "results": [
+            {
+                "year": 2025,
+                "distance_label": "70km",
+                "distance_km": 69.5,
+                "winner_time": "9:10:58",
+                "percentiles": {
+                    "overall": {
+                        "p5": "9:30:00",
+                        "p10": "10:00:00",
+                        "p25": "11:00:00",
+                        "p50": "13:00:00",
+                        "p75": "15:00:00",
+                        "p90": "17:00:00",
+                    }
+                },
+            }
+        ],
+    },
+}
+
+_UTMB_WITH_PERCENTILES_CHUNK = {
+    "title": "UTMB — Chamonix, France",
+    "content": "UTMB circles Mont Blanc...",
+    "payload": {
+        "race_name": "UTMB",
+        "aliases": [],
+        "distances": [{"label": "170km", "distance_km": 171.0, "elevation_gain_m": 10000}],
+        "matching_hints": {"name_keywords": ["utmb"]},
+        "results": [
+            {
+                "year": 2025,
+                "distance_label": "170km",
+                "distance_km": 171.0,
+                "winner_time": "19:30:00",
+                "percentiles": {
+                    "overall": {
+                        "p5": "21:00:00",
+                        "p10": "22:00:00",
+                        "p25": "24:00:00",
+                        "p50": "28:00:00",
+                        "p75": "32:00:00",
+                        "p90": "38:00:00",
+                    }
+                },
+            }
+        ],
+    },
+}
+
 
 def _admin_headers(client):
     resp = client.post("/api/auth/mock-login", json={"email": "admin@uphill.ai"})
@@ -205,3 +265,39 @@ class TestCoachChatEndpoint:
             headers=coach_headers,
         )
         assert resp.status_code == 403
+
+
+class TestGoalEstimatePercentileBlend:
+    def test_blends_adjusted_time_when_both_races_have_curated_percentiles(self, client):
+        payload = {
+            "race_name": "UTMB",
+            "reference_race_name": "VMM",
+            "reference_distance_km": 69.5,
+            "reference_time": "13:00:00",  # exactly the VMM p50
+        }
+        with patch("db.get_kb_chunks", return_value=[_VMM_WITH_PERCENTILES_CHUNK, _UTMB_WITH_PERCENTILES_CHUNK]):
+            resp = client.post("/api/coach/goal-estimate", json=payload)
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["percentile_transfer_mins"] is not None
+        # runner at VMM's p50 should transfer to roughly UTMB's p50 (28:00:00 = 1680 mins)
+        assert abs(body["percentile_transfer_mins"] - 1680.0) < 5.0
+        assert body["percentile_years_used"] == {"target": 1, "reference": 1}
+        # adjusted_time_mins must be the 50/50 blend, not the raw physics prediction
+        assert body["adjusted_time_mins"] != body["predicted_time_mins"]
+        expected_blend = (body["predicted_time_mins"] + body["percentile_transfer_mins"]) / 2.0
+        assert abs(body["adjusted_time_mins"] - round(expected_blend, 1)) < 0.15
+        assert body["goals"]["realistic"] == body["adjusted_time_mins"]
+
+    def test_no_blend_when_reference_race_lacks_percentiles(self, client):
+        payload = {
+            "race_name": "UTMB",
+            "distance_km": 171.0,
+            "flat_pace_min_km": 6.0,
+        }
+        with patch("db.get_kb_chunks", return_value=[_UTMB_WITH_PERCENTILES_CHUNK]):
+            resp = client.post("/api/coach/goal-estimate", json=payload)
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body.get("percentile_transfer_mins") is None
+        assert body["adjusted_time_mins"] == body["predicted_time_mins"]

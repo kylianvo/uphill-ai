@@ -2622,7 +2622,7 @@ def _goal_estimate_core(request: GoalEstimateRequest) -> dict[str, Any]:
     /api/coaching/athletes/{athlete_id}/goal-estimate -- this function
     reads nothing from the database keyed by a user id, so there is no
     athlete-vs-coach resolution to get right here."""
-    from services.race_estimator import RaceEstimator
+    from services.race_estimator import AMBITIOUS_FACTOR, SAFE_FACTOR, RaceEstimator
     from services.race_matcher import match_race, race_benchmarks
 
     distance_km = request.distance_km
@@ -2675,18 +2675,41 @@ def _goal_estimate_core(request: GoalEstimateRequest) -> dict[str, Any]:
         "race_name": matched_target.race_name if matched_target else request.race_name,
     }
 
-    # field-history cross-check (plan §8 layer 3) when winner times are curated
+    # field-history cross-check (plan §8 layer 3) when results are curated for
+    # both races; percentile calibration (docs/superpowers/specs/2026-08-21-
+    # goal-determiner-percentile-calibration-design.md) blends into the
+    # primary estimate, winner-time rank transfer stays a secondary field.
     target_bench = race_benchmarks(request.race_name, distance_km=distance_km) if request.race_name else None
+    ref_bench = (
+        race_benchmarks(request.reference_race_name, distance_km=ref_distance) if request.reference_race_name else None
+    )
     if target_bench:
         response["benchmarks"] = target_bench["results"]
+
+    if target_bench and ref_bench and ref_time_mins:
         target_winner = _parse_hms_to_mins((target_bench["results"][0] or {}).get("winner_time"))
-        if target_winner and ref_time_mins and request.reference_race_name:
-            ref_bench = race_benchmarks(request.reference_race_name, distance_km=ref_distance)
-            ref_winner = _parse_hms_to_mins((ref_bench["results"][0] or {}).get("winner_time")) if ref_bench else None
-            if ref_winner:
-                response["rank_transfer_mins"] = round(
-                    RaceEstimator.rank_transfer_mins(ref_winner, ref_time_mins, target_winner), 1
-                )
+        ref_winner = _parse_hms_to_mins((ref_bench["results"][0] or {}).get("winner_time"))
+        if target_winner and ref_winner:
+            response["rank_transfer_mins"] = round(
+                RaceEstimator.rank_transfer_mins(ref_winner, ref_time_mins, target_winner), 1
+            )
+
+        target_pct = RaceEstimator.percentile_curve(target_bench["results"])
+        ref_pct = RaceEstimator.percentile_curve(ref_bench["results"])
+        if target_pct and ref_pct:
+            target_curve, target_years = target_pct
+            ref_curve, ref_years = ref_pct
+            percentile_transfer = RaceEstimator.percentile_transfer_mins(ref_curve, ref_time_mins, target_curve)
+            response["percentile_transfer_mins"] = round(percentile_transfer, 1)
+            response["percentile_years_used"] = {"target": target_years, "reference": ref_years}
+
+            blended = (response["adjusted_time_mins"] + percentile_transfer) / 2.0
+            response["adjusted_time_mins"] = round(blended, 1)
+            response["goals"] = {
+                "ambitious": round(blended * AMBITIOUS_FACTOR, 1),
+                "realistic": round(blended, 1),
+                "safe": round(blended * SAFE_FACTOR, 1),
+            }
 
     return response
 
