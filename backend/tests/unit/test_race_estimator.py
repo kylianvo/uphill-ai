@@ -77,3 +77,85 @@ class TestRankTransfer:
             reference_winner_mins=540.0, reference_time_mins=720.0, target_winner_mins=600.0
         )
         assert abs(predicted - 800.0) < 0.1
+
+
+class TestPercentileCurve:
+    def test_averages_percentiles_across_valid_years(self):
+        results = [
+            {
+                "year": 2024,
+                "percentiles": {
+                    "overall": {
+                        "p5": "9:30:00",
+                        "p10": "10:00:00",
+                        "p25": "11:00:00",
+                        "p50": "13:00:00",
+                        "p75": "15:00:00",
+                        "p90": "17:00:00",
+                    }
+                },
+            },
+            {
+                "year": 2025,
+                "percentiles": {
+                    "overall": {
+                        "p5": "9:10:00",
+                        "p10": "9:50:00",
+                        "p25": "10:50:00",
+                        "p50": "12:40:00",
+                        "p75": "14:30:00",
+                        "p90": "16:30:00",
+                    }
+                },
+            },
+        ]
+        curve, years_used = RaceEstimator.percentile_curve(results)
+        assert years_used == 2
+        as_dict = dict(curve)
+        # p5 average: (570 + 550) / 2 = 560 mins = 9:20:00
+        assert abs(as_dict[5.0] - 560.0) < 0.01
+        # p50 average: (780 + 760) / 2 = 770 mins = 12:50:00
+        assert abs(as_dict[50.0] - 770.0) < 0.01
+        assert [pt[0] for pt in curve] == [5.0, 10.0, 25.0, 50.0, 75.0, 90.0]
+
+    def test_skips_non_monotonic_year(self):
+        results = [
+            {
+                "year": 2024,
+                "percentiles": {
+                    "overall": {
+                        # p50 faster than p25 -- invalid, must be skipped
+                        "p5": "9:30:00",
+                        "p10": "10:00:00",
+                        "p25": "11:00:00",
+                        "p50": "10:30:00",
+                        "p75": "15:00:00",
+                        "p90": "17:00:00",
+                    }
+                },
+            },
+            {
+                "year": 2025,
+                "percentiles": {
+                    "overall": {
+                        "p5": "9:10:00",
+                        "p10": "9:50:00",
+                        "p25": "10:50:00",
+                        "p50": "12:40:00",
+                        "p75": "14:30:00",
+                        "p90": "16:30:00",
+                    }
+                },
+            },
+        ]
+        curve, years_used = RaceEstimator.percentile_curve(results)
+        assert years_used == 1
+        as_dict = dict(curve)
+        assert abs(as_dict[5.0] - 550.0) < 0.01  # only the 2025 year counted
+
+    def test_returns_none_when_no_valid_years(self):
+        results = [{"year": 2024, "percentiles": {}}, {"year": 2025}]
+        assert RaceEstimator.percentile_curve(results) is None
+
+    def test_returns_none_for_empty_results(self):
+        assert RaceEstimator.percentile_curve([]) is None

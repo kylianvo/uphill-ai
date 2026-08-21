@@ -23,6 +23,22 @@ IMPROVEMENT_CAP = 0.05
 AMBITIOUS_FACTOR = 0.95
 SAFE_FACTOR = 1.08
 
+_PERCENTILE_KEYS = ("p5", "p10", "p25", "p50", "p75", "p90")
+_PERCENTILE_VALUES = (5.0, 10.0, 25.0, 50.0, 75.0, 90.0)
+
+
+def _parse_hms_to_mins(time_str: str | None) -> float | None:
+    """Parses 'h:mm:ss' or 'h:mm' into minutes. Mirrors main.py's request-time
+    parser; kept local so services/ doesn't import from main.py."""
+    if not time_str:
+        return None
+    parts = time_str.strip().split(":")
+    if len(parts) not in (2, 3) or not all(p.isdigit() for p in parts):
+        return None
+    h, m = int(parts[0]), int(parts[1])
+    s = int(parts[2]) if len(parts) == 3 else 0
+    return h * 60 + m + s / 60
+
 
 class RaceEstimator:
     @staticmethod
@@ -63,6 +79,37 @@ class RaceEstimator:
         """ITRA-style normalization: the flat base pace that reproduces a past
         result on that course's profile."""
         return PacingCalculator.solve_base_pace(checkpoints, target_time_mins=finish_time_mins)
+
+    @classmethod
+    def percentile_curve(cls, results: list[dict[str, Any]]) -> tuple[list[tuple[float, float]], int] | None:
+        """Averages each race-year's `percentiles.overall` (p5..p90) into a
+        single 6-point (percentile, minutes) curve. Years with missing or
+        non-monotonic percentile data are excluded. Returns
+        (curve, valid_year_count), or None if no year is usable."""
+        buckets: dict[float, list[float]] = {v: [] for v in _PERCENTILE_VALUES}
+        valid_years = 0
+        for entry in results:
+            overall = ((entry.get("percentiles") or {}).get("overall")) or {}
+            parsed: list[float] = []
+            ok = True
+            for key in _PERCENTILE_KEYS:
+                mins = _parse_hms_to_mins(overall.get(key))
+                if mins is None:
+                    ok = False
+                    break
+                parsed.append(mins)
+            if not ok:
+                continue
+            if any(parsed[i] > parsed[i + 1] for i in range(len(parsed) - 1)):
+                continue
+            valid_years += 1
+            for pct, mins in zip(_PERCENTILE_VALUES, parsed):
+                buckets[pct].append(mins)
+
+        if valid_years == 0:
+            return None
+        curve = [(pct, sum(buckets[pct]) / len(buckets[pct])) for pct in _PERCENTILE_VALUES]
+        return curve, valid_years
 
     @staticmethod
     def rank_transfer_mins(
