@@ -27,7 +27,20 @@ climbs"`, `"muddy rainy-season terrain"`, `"river crossings"`,
 field were an enum like `["muddy", "technical", "rocky", "runnable",
 "road"]`, as the schema comment optimistically suggests) would only match a
 small fraction of real entries. This spec instead scans for
-difficulty-signal **substrings** anywhere in the tag text.
+difficulty-signal keywords matched on **whole-word boundaries** (with an
+optional trailing plural `s`) anywhere in the tag text.
+
+Plain substring matching was tried first and rejected: against the actual
+curated corpus, the `"sand"` keyword matched inside the landmark tag
+`"Marina Bay Sands"`, wrongly scoring a race that has no sand terrain at
+all. Switching to strict word-boundary matching (`\bsand\b`) fixes that,
+but a naive word-boundary implementation requiring an exact trailing
+boundary on every keyword then silently stopped matching genuine plural
+forms already present in the KB — `"river crossings"` and `"long
+staircases"` — since the keywords are singular (`river crossing`,
+`staircase`). The corrected approach is word-boundary matching with an
+optional plural suffix (`s?`) on every keyword except `"sand"`, which stays
+exact-boundary-only so it doesn't re-match "Sands".
 
 This is sub-project 2 of 3 for Goal Determiner accuracy (sub-project 1,
 percentile-based calibration, is implemented and on branch
@@ -69,9 +82,13 @@ the KB — no new ingestion, no new schema.
 `RaceEstimator.terrain_multiplier(terrain_tags: list[str] | None) -> float`:
 
 - Join all tags into one lowercase string (space-separated).
-- For each keyword below present as a substring anywhere in that joined
-  string, add its weight once (regardless of how many tags or how many
-  times it appears).
+- For each keyword below present as a whole word anywhere in that joined
+  string — matched on word boundaries, with an optional trailing plural
+  `s` (except `"sand"`, which requires an exact trailing boundary so it
+  doesn't match "Sands"), and `"scramb"` as a deliberate prefix-only
+  exception with no trailing boundary at all (so it covers scramble/
+  scrambling/scrambles) — add its weight once (regardless of how many tags
+  or how many times it appears).
 - Sum the matched weights, cap the sum at `TERRAIN_CAP = 0.30`, return
   `1.0 + capped_sum`.
 - Empty/`None` input returns `1.0` (no-op).

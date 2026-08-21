@@ -298,12 +298,25 @@ class TestTerrainMultiplier:
         assert abs(RaceEstimator.terrain_multiplier(tags) - 1.23) < 0.001
 
     def test_cap_never_exceeded(self):
-        # every keyword at once would sum well past 0.30 without the cap
+        # every keyword at once would sum well past 0.30 without the cap;
+        # equality (not <=) proves the cap is actually being exercised
         tags = [
             "technical scrambling scree slippery muddy rocky river crossing steep "
             "volcanic karst exposed root staircase singletrack single track sand steps jungle"
         ]
-        assert RaceEstimator.terrain_multiplier(tags) <= 1.30 + 1e-9
+        assert abs(RaceEstimator.terrain_multiplier(tags) - 1.30) < 1e-9
+
+    def test_plural_river_crossings_still_matches(self):
+        mult = RaceEstimator.terrain_multiplier(["river crossings"])
+        assert abs(mult - 1.05) < 0.001
+
+    def test_plural_staircases_still_matches(self):
+        mult = RaceEstimator.terrain_multiplier(["long staircases (spit to manly, north head)"])
+        assert abs(mult - 1.03) < 0.001
+
+    def test_sand_plural_still_excluded(self):
+        # "Marina Bay Sands" is a landmark, not a terrain signal -- must not match even with the s? fix elsewhere
+        assert RaceEstimator.terrain_multiplier(["marina bay sands"]) == 1.0
 
 
 class TestEstimateTerrain:

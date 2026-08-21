@@ -27,11 +27,13 @@ SAFE_FACTOR = 1.08
 _PERCENTILE_KEYS = ("p5", "p10", "p25", "p50", "p75", "p90")
 _PERCENTILE_VALUES = (5.0, 10.0, 25.0, 50.0, 75.0, 90.0)
 
-# Difficulty-signal substrings matched against a race's free-text KB terrain
-# tags (not a controlled vocabulary -- see docs/superpowers/specs/2026-08-22-
-# goal-determiner-terrain-difficulty-design.md for how these weights were
-# picked against the actual curated corpus). Each matched keyword counts
-# once regardless of how many tags or occurrences; total capped below.
+# Difficulty-signal keywords matched (word-boundary, with an optional plural
+# "s") against a race's free-text KB terrain tags (not a controlled
+# vocabulary -- see docs/superpowers/specs/2026-08-22-goal-determiner-
+# terrain-difficulty-design.md for how these weights were picked against the
+# actual curated corpus, and why plain substring matching was rejected).
+# Each matched keyword counts once regardless of how many tags or
+# occurrences; total capped below.
 _TERRAIN_KEYWORDS: dict[str, float] = {
     "technical": 0.07,
     "scramb": 0.08,  # scramble / scrambling / scrambles
@@ -55,11 +57,23 @@ TERRAIN_CAP = 0.30
 
 # Pre-compiled regex patterns for word-boundary matching. "scramb" matches at
 # word start only (no trailing \b) to match scramble/scrambling/scrambles;
-# all other keywords require full word boundaries on both ends.
-_TERRAIN_KEYWORD_PATTERNS: dict[str, re.Pattern[str]] = {
-    keyword: re.compile(r"\b" + re.escape(keyword) + ("" if keyword == "scramb" else r"\b"))
-    for keyword in _TERRAIN_KEYWORDS
-}
+# all other keywords require full word boundaries and allow an optional
+# trailing "s" so plural forms (e.g. "river crossings", "staircases") still
+# match. "sand" is the one exception kept singular-only: pluralizing it would
+# re-match "Marina Bay Sands" (a landmark, not a terrain signal), which is
+# exactly the false positive that motivated word-boundary matching.
+_TERRAIN_NO_PLURAL = {"sand"}
+
+
+def _build_terrain_pattern(keyword: str) -> re.Pattern[str]:
+    if keyword == "scramb":
+        return re.compile(r"\bscramb")
+    if keyword in _TERRAIN_NO_PLURAL:
+        return re.compile(r"\b" + re.escape(keyword) + r"\b")
+    return re.compile(r"\b" + re.escape(keyword) + r"s?\b")
+
+
+_TERRAIN_KEYWORD_PATTERNS: dict[str, re.Pattern[str]] = {kw: _build_terrain_pattern(kw) for kw in _TERRAIN_KEYWORDS}
 
 
 def _parse_hms_to_mins(time_str: str | None) -> float | None:
@@ -103,7 +117,7 @@ class RaceEstimator:
     @staticmethod
     def terrain_multiplier(terrain_tags: list[str] | None) -> float:
         """Scores a race's free-text KB terrain tags for difficulty signals
-        via keyword-substring matching (the field is not a controlled
+        via word-boundary keyword matching (the field is not a controlled
         vocabulary). One-directional: only confirmed difficulty signals add
         time, capped at TERRAIN_CAP."""
         if not terrain_tags:
