@@ -147,6 +147,18 @@ class RaceEstimator:
                 return ys[i] + frac * (ys[i + 1] - ys[i])
         raise ValueError("Unreachable: query not bracketed by curve bounds")
 
+    @classmethod
+    def percentile_transfer_mins(
+        cls,
+        reference_curve: list[tuple[float, float]],
+        reference_time_mins: float,
+        target_curve: list[tuple[float, float]],
+    ) -> float:
+        """Finds the runner's percentile rank on the reference race's curve,
+        then maps that rank onto the target race's curve."""
+        rank = cls.interpolate_percentile(reference_curve, time_mins=reference_time_mins)
+        return cls.interpolate_percentile(target_curve, percentile=rank)
+
     @staticmethod
     def rank_transfer_mins(
         reference_winner_mins: float, reference_time_mins: float, target_winner_mins: float

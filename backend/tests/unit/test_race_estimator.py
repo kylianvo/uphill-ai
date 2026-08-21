@@ -204,3 +204,19 @@ class TestInterpolatePercentile:
         except ValueError:
             raised = True
         assert raised
+
+
+class TestPercentileTransfer:
+    def test_transfers_rank_from_reference_to_target_curve(self):
+        reference_curve = [(5.0, 550.0), (10.0, 580.0), (25.0, 650.0), (50.0, 770.0), (75.0, 870.0), (90.0, 990.0)]
+        target_curve = [(5.0, 600.0), (10.0, 640.0), (25.0, 720.0), (50.0, 860.0), (75.0, 980.0), (90.0, 1120.0)]
+        # runner ran exactly the reference p50 (770 mins) -> should land near target p50 (860 mins)
+        predicted = RaceEstimator.percentile_transfer_mins(reference_curve, 770.0, target_curve)
+        assert abs(predicted - 860.0) < 0.01
+
+    def test_faster_reference_time_transfers_to_faster_target_time(self):
+        reference_curve = [(5.0, 550.0), (10.0, 580.0), (25.0, 650.0), (50.0, 770.0), (75.0, 870.0), (90.0, 990.0)]
+        target_curve = [(5.0, 600.0), (10.0, 640.0), (25.0, 720.0), (50.0, 860.0), (75.0, 980.0), (90.0, 1120.0)]
+        fast = RaceEstimator.percentile_transfer_mins(reference_curve, 600.0, target_curve)
+        slow = RaceEstimator.percentile_transfer_mins(reference_curve, 950.0, target_curve)
+        assert fast < slow
