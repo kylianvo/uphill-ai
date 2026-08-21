@@ -249,3 +249,33 @@ def race_benchmarks(name: str | None, distance_km: float | None = None) -> dict[
     if not results:
         return None
     return {"race_name": payload.get("race_name", chunk.get("title", "")), "results": results}
+
+
+def course_profile(name: str | None, distance_label: str | None) -> list[dict[str, Any]] | None:
+    """Curated GPX-derived checkpoints for a race+distance, if an admin has
+    uploaded one via /api/kb/race-courses/course-profile. Returns None when
+    the race is unknown, has no curated profile, or distance_label doesn't
+    match a curated entry -- callers fall back to synthesize_course()."""
+    if not name or len(name.strip()) < _MIN_NAME_LENGTH or not distance_label:
+        return None
+
+    import db
+
+    try:
+        chunks = db.get_kb_chunks("race_courses", kind="race_profile")
+    except Exception as e:
+        print(f"[RaceMatcher] Failed to load race_courses KB: {e}")
+        return None
+    if not chunks:
+        return None
+
+    scored = _score_chunks(name.strip().lower(), chunks)
+    if not scored or scored[0][1] < _FUZZY_THRESHOLD:
+        return None
+
+    chunk = scored[0][0]
+    payload = _payload_as_dict(chunk.get("payload"))
+    profile = (payload.get("course_profiles") or {}).get(distance_label)
+    if not profile:
+        return None
+    return profile.get("checkpoints") or None
