@@ -115,19 +115,31 @@ class RaceEstimator:
         return 1.0 + min(total, TERRAIN_CAP)
 
     @staticmethod
-    def predict_time_mins(checkpoints: list[dict[str, Any]], base_flat_pace_min_km: float) -> float:
+    def predict_time_mins(
+        checkpoints: list[dict[str, Any]], base_flat_pace_min_km: float, terrain_multiplier: float = 1.0
+    ) -> float:
         """Forward physics: course time at a given flat base pace. Time is
-        linear in pace, so one unit-pace solve is exact."""
+        linear in pace, so one unit-pace solve is exact. terrain_multiplier
+        scales the result directly -- a harder course takes proportionally
+        longer regardless of pace."""
         unit_time = PacingCalculator.solve_base_pace(checkpoints, target_time_mins=1.0)
         # solve_base_pace returns pace for a 1-minute finish => unit course
         # time at 1.0 min/km base pace is 1/pace.
-        return base_flat_pace_min_km / unit_time
+        return (base_flat_pace_min_km / unit_time) * terrain_multiplier
 
     @classmethod
-    def base_pace_from_result(cls, checkpoints: list[dict[str, Any]], finish_time_mins: float) -> float:
+    def base_pace_from_result(
+        cls, checkpoints: list[dict[str, Any]], finish_time_mins: float, terrain_multiplier: float = 1.0
+    ) -> float:
         """ITRA-style normalization: the flat base pace that reproduces a past
-        result on that course's profile."""
-        return PacingCalculator.solve_base_pace(checkpoints, target_time_mins=finish_time_mins)
+        result on that course's profile. terrain_multiplier folds in
+        algebraically: since solve_base_pace(checkpoints, X) is linear in X
+        (X / physics_unit_time), dividing the target time by
+        terrain_multiplier before solving is equivalent to inflating the
+        course's physics unit-time by that multiplier -- a result on a
+        harder course implies a faster (lower min/km) underlying base pace
+        than the untouched physics model would extract."""
+        return PacingCalculator.solve_base_pace(checkpoints, target_time_mins=finish_time_mins / terrain_multiplier)
 
     @classmethod
     def percentile_curve(cls, results: list[dict[str, Any]]) -> tuple[list[tuple[float, float]], int] | None:

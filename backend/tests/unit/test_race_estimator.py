@@ -238,6 +238,33 @@ class TestPercentileTransfer:
         assert fast < slow
 
 
+class TestTerrainInPaceConversion:
+    def test_predict_time_scales_multiplicatively_with_terrain(self):
+        course = RaceEstimator.synthesize_course(50, 2500)
+        base = RaceEstimator.predict_time_mins(course, base_flat_pace_min_km=6.0)
+        with_terrain = RaceEstimator.predict_time_mins(course, base_flat_pace_min_km=6.0, terrain_multiplier=1.2)
+        assert abs(with_terrain - base * 1.2) < 0.01
+
+    def test_predict_time_default_terrain_multiplier_is_noop(self):
+        course = RaceEstimator.synthesize_course(50, 2500)
+        base = RaceEstimator.predict_time_mins(course, base_flat_pace_min_km=6.0)
+        explicit = RaceEstimator.predict_time_mins(course, base_flat_pace_min_km=6.0, terrain_multiplier=1.0)
+        assert abs(base - explicit) < 1e-9
+
+    def test_base_pace_from_result_is_faster_with_terrain_multiplier(self):
+        course = RaceEstimator.synthesize_course(50, 2500)
+        base = RaceEstimator.base_pace_from_result(course, finish_time_mins=420.0)
+        with_terrain = RaceEstimator.base_pace_from_result(course, finish_time_mins=420.0, terrain_multiplier=1.2)
+        # a technical-course result implies stronger underlying (faster, lower min/km) fitness
+        assert with_terrain < base
+
+    def test_terrain_round_trips_through_predict_and_base_pace(self):
+        course = RaceEstimator.synthesize_course(50, 2500)
+        pace = RaceEstimator.base_pace_from_result(course, finish_time_mins=420.0, terrain_multiplier=1.2)
+        predicted = RaceEstimator.predict_time_mins(course, pace, terrain_multiplier=1.2)
+        assert abs(predicted - 420.0) < 0.5
+
+
 class TestTerrainMultiplier:
     def test_no_tags_returns_one(self):
         assert RaceEstimator.terrain_multiplier(None) == 1.0
