@@ -357,3 +357,81 @@ class TestEstimateTerrain:
             distance_km=50, elevation_gain_m=2000, base_flat_pace_min_km=6.0, terrain_tags=None
         )
         assert with_none == explicit_none
+
+
+class TestEstimateGpxProfile:
+    def test_target_checkpoints_used_instead_of_synthetic(self):
+        checkpoints = [
+            {
+                "name": "Start",
+                "distance_meters": 0,
+                "elevation_meters": 1500.0,
+                "segment_gain_meters": 0.0,
+                "segment_loss_meters": 0.0,
+            },
+            {
+                "name": "KM 10",
+                "distance_meters": 10000.0,
+                "elevation_meters": 3000.0,
+                "segment_gain_meters": 1500.0,
+                "segment_loss_meters": 0.0,
+            },
+            {
+                "name": "KM 20",
+                "distance_meters": 20000.0,
+                "elevation_meters": 3000.0,
+                "segment_gain_meters": 0.0,
+                "segment_loss_meters": 0.0,
+            },
+        ]
+        with_gpx = RaceEstimator.estimate(
+            distance_km=20, elevation_gain_m=1500, base_flat_pace_min_km=6.0, target_checkpoints=checkpoints
+        )
+        synthetic = RaceEstimator.estimate(distance_km=20, elevation_gain_m=1500, base_flat_pace_min_km=6.0)
+        assert with_gpx["target_profile_source"] == "gpx"
+        assert synthetic["target_profile_source"] == "synthetic"
+        # the real profile concentrates gain into one steep 10km climb (vs.
+        # synthetic's evenly-spread grade) AND carries elevation above the
+        # 1500m altitude floor -- both push predicted time up
+        assert with_gpx["predicted_time_mins"] > synthetic["predicted_time_mins"]
+
+    def test_reference_checkpoints_used_and_reported(self):
+        checkpoints = [
+            {
+                "name": "Start",
+                "distance_meters": 0,
+                "elevation_meters": 1500.0,
+                "segment_gain_meters": 0.0,
+                "segment_loss_meters": 0.0,
+            },
+            {
+                "name": "Finish",
+                "distance_meters": 10000.0,
+                "elevation_meters": 2000.0,
+                "segment_gain_meters": 500.0,
+                "segment_loss_meters": 0.0,
+            },
+        ]
+        est = RaceEstimator.estimate(
+            distance_km=50,
+            elevation_gain_m=2000,
+            reference={
+                "distance_km": 10,
+                "elevation_gain_m": 500,
+                "finish_time_mins": 60.0,
+                "checkpoints": checkpoints,
+            },
+        )
+        assert est["reference_profile_source"] == "gpx"
+        assert est["target_profile_source"] == "synthetic"
+
+    def test_no_reference_gives_none_reference_profile_source(self):
+        est = RaceEstimator.estimate(distance_km=50, elevation_gain_m=2000, base_flat_pace_min_km=6.0)
+        assert est["reference_profile_source"] is None
+
+    def test_omitting_target_checkpoints_matches_pre_gpx_behavior(self):
+        with_none = RaceEstimator.estimate(distance_km=50, elevation_gain_m=2000, base_flat_pace_min_km=6.0)
+        explicit_none = RaceEstimator.estimate(
+            distance_km=50, elevation_gain_m=2000, base_flat_pace_min_km=6.0, target_checkpoints=None
+        )
+        assert with_none == explicit_none
