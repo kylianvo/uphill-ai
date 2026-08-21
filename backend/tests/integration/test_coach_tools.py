@@ -449,3 +449,63 @@ class TestGoalEstimatePercentileBlend:
         assert body.get("percentile_transfer_mins") is None
         assert body["adjusted_time_mins"] == body["predicted_time_mins"]
         assert body.get("rank_transfer_mins") is not None
+
+
+_TECHNICAL_RACE_CHUNK = {
+    "title": "Sapa Jungle Ultra — Sa Pa, Vietnam",
+    "content": "A brutal jungle course...",
+    "payload": {
+        "race_name": "Sapa Jungle Ultra",
+        "aliases": [],
+        "distances": [{"label": "50km", "distance_km": 50.0, "elevation_gain_m": 2000}],
+        "matching_hints": {"name_keywords": ["sapa jungle ultra"]},
+        "terrain": ["technical hand-and-knees scrambles on final climbs", "muddy rainy-season terrain"],
+    },
+}
+
+_FLAT_RACE_CHUNK = {
+    "title": "Coastal City Marathon — Da Nang, Vietnam",
+    "content": "A flat coastal course...",
+    "payload": {
+        "race_name": "Coastal City Marathon",
+        "aliases": [],
+        "distances": [{"label": "50km", "distance_km": 50.0, "elevation_gain_m": 2000}],
+        "matching_hints": {"name_keywords": ["coastal city marathon"]},
+        "terrain": ["flat urban coastal road", "dragon bridge"],
+    },
+}
+
+
+class TestGoalEstimateTerrainDifficulty:
+    def test_technical_course_terrain_multiplier_reported_and_slower(self, client):
+        payload = {"race_name": "Sapa Jungle Ultra", "flat_pace_min_km": 6.0}
+        with patch("db.get_kb_chunks", return_value=[_TECHNICAL_RACE_CHUNK]):
+            resp = client.post("/api/coach/goal-estimate", json=payload)
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["terrain_multiplier_target"] > 1.0
+
+    def test_flat_course_terrain_multiplier_is_one(self, client):
+        payload = {"race_name": "Coastal City Marathon", "flat_pace_min_km": 6.0}
+        with patch("db.get_kb_chunks", return_value=[_FLAT_RACE_CHUNK]):
+            resp = client.post("/api/coach/goal-estimate", json=payload)
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["terrain_multiplier_target"] == 1.0
+
+    def test_technical_course_predicts_slower_than_flat_course_same_distance_elevation(self, client):
+        with patch("db.get_kb_chunks", return_value=[_TECHNICAL_RACE_CHUNK]):
+            technical_resp = client.post(
+                "/api/coach/goal-estimate", json={"race_name": "Sapa Jungle Ultra", "flat_pace_min_km": 6.0}
+            )
+        with patch("db.get_kb_chunks", return_value=[_FLAT_RACE_CHUNK]):
+            flat_resp = client.post(
+                "/api/coach/goal-estimate", json={"race_name": "Coastal City Marathon", "flat_pace_min_km": 6.0}
+            )
+        assert technical_resp.json()["predicted_time_mins"] > flat_resp.json()["predicted_time_mins"]
+
+    def test_no_race_name_gives_unchanged_terrain_multiplier(self, client):
+        payload = {"distance_km": 50, "elevation_gain_m": 2000, "flat_pace_min_km": 6.0}
+        resp = client.post("/api/coach/goal-estimate", json=payload)
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["terrain_multiplier_target"] == 1.0

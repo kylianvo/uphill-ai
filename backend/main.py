@@ -2655,6 +2655,7 @@ def _goal_estimate_core(request: GoalEstimateRequest) -> dict[str, Any]:
             "distance_km": ref_distance,
             "elevation_gain_m": ref_gain or 0.0,
             "finish_time_mins": ref_time_mins,
+            "terrain_tags": matched_ref.terrain if matched_ref else None,
         }
 
     try:
@@ -2664,6 +2665,7 @@ def _goal_estimate_core(request: GoalEstimateRequest) -> dict[str, Any]:
             base_flat_pace_min_km=request.flat_pace_min_km,
             reference=reference,
             weeks_to_race=request.weeks_to_race,
+            terrain_tags=matched_target.terrain if matched_target else None,
         )
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))

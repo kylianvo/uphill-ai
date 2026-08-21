@@ -304,3 +304,43 @@ class TestTerrainMultiplier:
             "volcanic karst exposed root staircase singletrack single track sand steps jungle"
         ]
         assert RaceEstimator.terrain_multiplier(tags) <= 1.30 + 1e-9
+
+
+class TestEstimateTerrain:
+    def test_target_terrain_slows_prediction_and_is_reported(self):
+        base = RaceEstimator.estimate(distance_km=50, elevation_gain_m=2000, base_flat_pace_min_km=6.0)
+        technical = RaceEstimator.estimate(
+            distance_km=50,
+            elevation_gain_m=2000,
+            base_flat_pace_min_km=6.0,
+            terrain_tags=["technical hand-and-knees scrambles"],
+        )
+        assert base["terrain_multiplier_target"] == 1.0
+        assert technical["terrain_multiplier_target"] > 1.0
+        assert technical["predicted_time_mins"] > base["predicted_time_mins"]
+
+    def test_reference_terrain_multiplier_reported_when_reference_used(self):
+        est = RaceEstimator.estimate(
+            distance_km=70,
+            elevation_gain_m=4000,
+            reference={
+                "distance_km": 50,
+                "elevation_gain_m": 2500,
+                "finish_time_mins": 420.0,
+                "terrain_tags": ["muddy rainy-season terrain"],
+            },
+        )
+        assert est["terrain_multiplier_reference"] is not None
+        assert est["terrain_multiplier_reference"] > 1.0
+
+    def test_reference_terrain_multiplier_none_without_reference(self):
+        est = RaceEstimator.estimate(distance_km=50, elevation_gain_m=2000, base_flat_pace_min_km=6.0)
+        assert est["terrain_multiplier_reference"] is None
+
+    def test_no_terrain_tags_matches_pre_terrain_behavior(self):
+        # regression guard: identical to calling estimate() with no terrain_tags at all
+        with_none = RaceEstimator.estimate(distance_km=50, elevation_gain_m=2000, base_flat_pace_min_km=6.0)
+        explicit_none = RaceEstimator.estimate(
+            distance_km=50, elevation_gain_m=2000, base_flat_pace_min_km=6.0, terrain_tags=None
+        )
+        assert with_none == explicit_none

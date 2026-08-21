@@ -247,21 +247,31 @@ class RaceEstimator:
         base_flat_pace_min_km: float | None = None,
         reference: dict[str, Any] | None = None,
         weeks_to_race: float | None = None,
+        terrain_tags: list[str] | None = None,
     ) -> dict[str, Any]:
         """Predicted finish time + A/B/C goals for a target course.
 
         Fitness comes from ``base_flat_pace_min_km`` or from ``reference``
-        ({distance_km, elevation_gain_m, finish_time_mins}) — a past result
-        inverted through the same physics. Raises ValueError without either.
+        ({distance_km, elevation_gain_m, finish_time_mins, terrain_tags}) — a
+        past result inverted through the same physics. ``terrain_tags``
+        scores the target course's KB terrain description for difficulty
+        signals; ``reference["terrain_tags"]`` does the same for the
+        reference course, symmetrically. Raises ValueError without either
+        base_flat_pace_min_km or a reference result.
         """
+        ref_terrain_mult = None
         if base_flat_pace_min_km is None:
             if not reference or not reference.get("finish_time_mins"):
                 raise ValueError("Provide base_flat_pace_min_km or a reference race result")
             ref_course = cls.synthesize_course(reference["distance_km"], reference.get("elevation_gain_m") or 0.0)
-            base_flat_pace_min_km = cls.base_pace_from_result(ref_course, reference["finish_time_mins"])
+            ref_terrain_mult = cls.terrain_multiplier(reference.get("terrain_tags"))
+            base_flat_pace_min_km = cls.base_pace_from_result(
+                ref_course, reference["finish_time_mins"], terrain_multiplier=ref_terrain_mult
+            )
 
+        target_terrain_mult = cls.terrain_multiplier(terrain_tags)
         course = cls.synthesize_course(distance_km, elevation_gain_m)
-        predicted = cls.predict_time_mins(course, base_flat_pace_min_km)
+        predicted = cls.predict_time_mins(course, base_flat_pace_min_km, terrain_multiplier=target_terrain_mult)
 
         improvement = 0.0
         if weeks_to_race:
@@ -273,6 +283,8 @@ class RaceEstimator:
             "predicted_time_mins": round(predicted, 1),
             "adjusted_time_mins": round(adjusted, 1),
             "improvement_pct": round(improvement * 100, 1),
+            "terrain_multiplier_target": round(target_terrain_mult, 3),
+            "terrain_multiplier_reference": round(ref_terrain_mult, 3) if ref_terrain_mult is not None else None,
             "goals": {
                 "ambitious": round(adjusted * AMBITIOUS_FACTOR, 1),
                 "realistic": round(adjusted, 1),
