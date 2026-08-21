@@ -159,3 +159,48 @@ class TestPercentileCurve:
 
     def test_returns_none_for_empty_results(self):
         assert RaceEstimator.percentile_curve([]) is None
+
+
+class TestInterpolatePercentile:
+    CURVE = [(5.0, 550.0), (10.0, 580.0), (25.0, 650.0), (50.0, 770.0), (75.0, 870.0), (90.0, 990.0)]
+
+    def test_exact_point_lookup_time_to_percentile(self):
+        assert abs(RaceEstimator.interpolate_percentile(self.CURVE, time_mins=770.0) - 50.0) < 0.01
+
+    def test_exact_point_lookup_percentile_to_time(self):
+        assert abs(RaceEstimator.interpolate_percentile(self.CURVE, percentile=50.0) - 770.0) < 0.01
+
+    def test_midpoint_interpolation_time_to_percentile(self):
+        # halfway between p25 (650) and p50 (770) in time -> halfway in percentile
+        mid_time = (650.0 + 770.0) / 2.0
+        rank = RaceEstimator.interpolate_percentile(self.CURVE, time_mins=mid_time)
+        assert abs(rank - 37.5) < 0.01
+
+    def test_midpoint_interpolation_percentile_to_time(self):
+        mid_pct = (25.0 + 50.0) / 2.0
+        time_mins = RaceEstimator.interpolate_percentile(self.CURVE, percentile=mid_pct)
+        assert abs(time_mins - 710.0) < 0.01
+
+    def test_extrapolates_faster_than_p5(self):
+        # elite time faster than p5 -- must extrapolate below 5, not clamp to 5
+        rank = RaceEstimator.interpolate_percentile(self.CURVE, time_mins=520.0)
+        assert rank < 5.0
+
+    def test_extrapolates_slower_than_p90(self):
+        time_mins = RaceEstimator.interpolate_percentile(self.CURVE, percentile=95.0)
+        assert time_mins > 990.0
+
+    def test_requires_exactly_one_of_time_or_percentile(self):
+        raised = False
+        try:
+            RaceEstimator.interpolate_percentile(self.CURVE)
+        except ValueError:
+            raised = True
+        assert raised
+
+        raised = False
+        try:
+            RaceEstimator.interpolate_percentile(self.CURVE, time_mins=600.0, percentile=50.0)
+        except ValueError:
+            raised = True
+        assert raised

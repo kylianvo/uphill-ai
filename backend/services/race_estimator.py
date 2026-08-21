@@ -112,6 +112,42 @@ class RaceEstimator:
         return curve, valid_years
 
     @staticmethod
+    def interpolate_percentile(
+        curve: list[tuple[float, float]],
+        *,
+        time_mins: float | None = None,
+        percentile: float | None = None,
+    ) -> float:
+        """Bidirectional piecewise-linear lookup on a (percentile, minutes)
+        curve. Extrapolates past the ends using the nearest segment's slope
+        instead of clamping, so an elite reference time still projects a
+        meaningfully fast rank rather than pinning to p5."""
+        if (time_mins is None) == (percentile is None):
+            raise ValueError("Provide exactly one of time_mins or percentile")
+
+        if time_mins is not None:
+            xs = [pt[1] for pt in curve]  # minutes, ascending
+            ys = [pt[0] for pt in curve]  # percentile, ascending
+            query = time_mins
+        else:
+            xs = [pt[0] for pt in curve]  # percentile, ascending
+            ys = [pt[1] for pt in curve]  # minutes, ascending
+            query = percentile
+
+        n = len(xs)
+        if query <= xs[0]:
+            slope = (ys[1] - ys[0]) / (xs[1] - xs[0])
+            return ys[0] + slope * (query - xs[0])
+        if query >= xs[-1]:
+            slope = (ys[-1] - ys[-2]) / (xs[-1] - xs[-2])
+            return ys[-1] + slope * (query - xs[-1])
+        for i in range(n - 1):
+            if xs[i] <= query <= xs[i + 1]:
+                frac = (query - xs[i]) / (xs[i + 1] - xs[i])
+                return ys[i] + frac * (ys[i + 1] - ys[i])
+        raise ValueError("Unreachable: query not bracketed by curve bounds")
+
+    @staticmethod
     def rank_transfer_mins(
         reference_winner_mins: float, reference_time_mins: float, target_winner_mins: float
     ) -> float:
