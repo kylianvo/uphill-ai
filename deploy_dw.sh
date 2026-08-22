@@ -25,7 +25,7 @@ fi
 SERVER="${DEPLOY_SERVER:-root@45.119.215.120}"
 TARGET_DIR="${DEPLOY_TARGET_DIR:-/opt/uphill-ai-backend}"
 BACKEND_CONTAINER="uphill-ai-backend-backend-1"
-CRON_SCHEDULE="17 2 * * *"
+CRON_SCHEDULE="*/15 * * * *"
 CRON_MARKER="# uphill-ai dw_elt (deploy_dw.sh)"
 
 INSTALL_CRON=true
