@@ -9,9 +9,13 @@ function getBackendUrl(): string {
   return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 }
 
+export type RunnerLevel = "beginner" | "intermediate" | "advanced" | "elite";
+
 export interface CoachOverviewAthlete {
   athlete_id: number;
   name: string;
+  runner_level: RunnerLevel;
+  needs_attention: boolean;
   active_plan: {
     plan_id: number;
     race_name: string;
