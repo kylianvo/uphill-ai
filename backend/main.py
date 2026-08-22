@@ -2651,6 +2651,20 @@ def _parse_hms_to_mins(time_str: str | None) -> float | None:
     return h * 60 + m + s / 60
 
 
+def _variant_filtered_results(
+    results: list[dict[str, Any]], variants: dict[int, str | None], target_variant: str | None
+) -> list[dict[str, Any]]:
+    """Only pool result-years whose curated course-profile variant matches
+    target_variant. A None target_variant means no route assertion for this
+    race -- pool everything, unchanged from pre-variant behavior. A
+    result-year with no curated course-profile entry at all is excluded
+    once filtering is active, since it's neither proven compatible nor
+    incompatible."""
+    if not target_variant:
+        return results
+    return [r for r in results if variants.get(r.get("year")) == target_variant]
+
+
 def _goal_estimate_core(request: GoalEstimateRequest) -> dict[str, Any]:
     """Goal Determiner: predicted finish time + A/B/C goals for a target
     course, from either a flat base pace or a past race result. Course
@@ -2662,7 +2676,7 @@ def _goal_estimate_core(request: GoalEstimateRequest) -> dict[str, Any]:
     reads nothing from the database keyed by a user id, so there is no
     athlete-vs-coach resolution to get right here."""
     from services.race_estimator import AMBITIOUS_FACTOR, SAFE_FACTOR, RaceEstimator
-    from services.race_matcher import course_profile, match_race, race_benchmarks
+    from services.race_matcher import course_profile, course_profile_variants, match_race, race_benchmarks
 
     distance_km = request.distance_km
     elevation_gain_m = request.elevation_gain_m
@@ -2678,11 +2692,14 @@ def _goal_estimate_core(request: GoalEstimateRequest) -> dict[str, Any]:
         raise HTTPException(status_code=422, detail="Target course needs a distance (km)")
     elevation_gain_m = elevation_gain_m or 0.0
 
-    target_checkpoints = (
+    target_profile = (
         course_profile(request.race_name, matched_target.distance_label)
         if matched_target and matched_target.distance_label
         else None
     )
+    target_checkpoints = target_profile["checkpoints"] if target_profile else None
+    target_variant = target_profile["variant"] if target_profile else None
+    target_course_year = target_profile["year"] if target_profile else None
 
     ref_distance = request.reference_distance_km
     ref_gain = request.reference_elevation_gain_m
@@ -2693,6 +2710,14 @@ def _goal_estimate_core(request: GoalEstimateRequest) -> dict[str, Any]:
             ref_distance = ref_distance or matched_ref.distance_km
             ref_gain = ref_gain or matched_ref.elevation_gain_m
 
+    ref_profile = (
+        course_profile(request.reference_race_name, matched_ref.distance_label)
+        if matched_ref and matched_ref.distance_label
+        else None
+    )
+    ref_variant = ref_profile["variant"] if ref_profile else None
+    ref_course_year = ref_profile["year"] if ref_profile else None
+
     ref_time_mins = _parse_hms_to_mins(request.reference_time)
     reference = None
     if ref_time_mins and ref_distance:
@@ -2701,11 +2726,7 @@ def _goal_estimate_core(request: GoalEstimateRequest) -> dict[str, Any]:
             "elevation_gain_m": ref_gain or 0.0,
             "finish_time_mins": ref_time_mins,
             "terrain_tags": matched_ref.terrain if matched_ref else None,
-            "checkpoints": (
-                course_profile(request.reference_race_name, matched_ref.distance_label)
-                if matched_ref and matched_ref.distance_label
-                else None
-            ),
+            "checkpoints": ref_profile["checkpoints"] if ref_profile else None,
         }
 
     try:
@@ -2728,6 +2749,8 @@ def _goal_estimate_core(request: GoalEstimateRequest) -> dict[str, Any]:
         "distance_km": distance_km,
         "elevation_gain_m": elevation_gain_m,
         "race_name": matched_target.race_name if matched_target else request.race_name,
+        "target_course_year": target_course_year,
+        "reference_course_year": ref_course_year if estimate.get("reference_profile_source") is not None else None,
     }
 
     # field-history cross-check (plan §8 layer 3) when results are curated for
@@ -2757,8 +2780,21 @@ def _goal_estimate_core(request: GoalEstimateRequest) -> dict[str, Any]:
                 RaceEstimator.rank_transfer_mins(ref_winner, ref_time_mins, target_winner), 1
             )
 
-        target_pct = RaceEstimator.percentile_curve(target_bench["results"])
-        ref_pct = RaceEstimator.percentile_curve(ref_bench["results"])
+        target_variants_by_year = (
+            course_profile_variants(request.race_name, matched_target.distance_label)
+            if matched_target and matched_target.distance_label
+            else {}
+        )
+        ref_variants_by_year = (
+            course_profile_variants(request.reference_race_name, matched_ref.distance_label)
+            if matched_ref and matched_ref.distance_label
+            else {}
+        )
+        target_results = _variant_filtered_results(target_bench["results"], target_variants_by_year, target_variant)
+        ref_results = _variant_filtered_results(ref_bench["results"], ref_variants_by_year, ref_variant)
+
+        target_pct = RaceEstimator.percentile_curve(target_results)
+        ref_pct = RaceEstimator.percentile_curve(ref_results)
         if target_pct and ref_pct:
             target_curve, target_years = target_pct
             ref_curve, ref_years = ref_pct

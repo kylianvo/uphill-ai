@@ -575,7 +575,14 @@ _GPX_RACE_CHUNK = {
         "distances": [{"label": "20km", "distance_km": 20.0, "elevation_gain_m": 1500}],
         "matching_hints": {"name_keywords": ["high altitude ultra"]},
         "course_profiles": {
-            "20km": {"checkpoints": _GPX_PROFILE_CHECKPOINTS, "source": "gpx_upload", "curated_at": "2026-08-22"}
+            "20km": {
+                "2026": {
+                    "checkpoints": _GPX_PROFILE_CHECKPOINTS,
+                    "variant": None,
+                    "source": "gpx_upload",
+                    "curated_at": "2026-08-22",
+                }
+            }
         },
     },
 }
@@ -648,9 +655,12 @@ class TestGoalEstimateGpxProfile:
                 "terrain": ["technical hand-and-knees scrambles"],
                 "course_profiles": {
                     "20km": {
-                        "checkpoints": _GPX_PROFILE_CHECKPOINTS,
-                        "source": "gpx_upload",
-                        "curated_at": "2026-08-22",
+                        "2026": {
+                            "checkpoints": _GPX_PROFILE_CHECKPOINTS,
+                            "variant": None,
+                            "source": "gpx_upload",
+                            "curated_at": "2026-08-22",
+                        }
                     }
                 },
                 "results": [
@@ -684,9 +694,12 @@ class TestGoalEstimateGpxProfile:
                 "terrain": ["technical hand-and-knees scrambles"],
                 "course_profiles": {
                     "20km": {
-                        "checkpoints": _GPX_PROFILE_CHECKPOINTS,
-                        "source": "gpx_upload",
-                        "curated_at": "2026-08-22",
+                        "2026": {
+                            "checkpoints": _GPX_PROFILE_CHECKPOINTS,
+                            "variant": None,
+                            "source": "gpx_upload",
+                            "curated_at": "2026-08-22",
+                        }
                     }
                 },
                 # a noticeably faster field than the target race's, so the
@@ -732,3 +745,175 @@ class TestGoalEstimateGpxProfile:
         # adjusted_time_mins must be the blend, not the raw physics number,
         # confirming percentile calibration still ran on top of the GPX+terrain result
         assert body["adjusted_time_mins"] != body["predicted_time_mins"]
+
+
+def test_percentile_pools_only_matching_variant_years(client):
+    two_year_chunk = {
+        "title": "Rerouted Ultra",
+        "content": "A race that reversed its climb direction in 2026...",
+        "payload": {
+            "race_name": "Rerouted Ultra",
+            "aliases": [],
+            "distances": [{"label": "20km", "distance_km": 20.0, "elevation_gain_m": 1500}],
+            "matching_hints": {"name_keywords": ["rerouted ultra"]},
+            "course_profiles": {
+                "20km": {
+                    "2025": {
+                        "checkpoints": _GPX_PROFILE_CHECKPOINTS,
+                        "variant": "standard",
+                        "source": "gpx_upload",
+                        "curated_at": "2025-09-01",
+                    },
+                    "2026": {
+                        "checkpoints": _GPX_PROFILE_CHECKPOINTS,
+                        "variant": "reversed-climb",
+                        "source": "gpx_upload",
+                        "curated_at": "2026-08-22",
+                    },
+                }
+            },
+            "results": [
+                {
+                    "year": 2024,
+                    "distance_label": "20km",
+                    "distance_km": 20.0,
+                    "winner_time": "1:30:00",
+                    "percentiles": {
+                        "overall": {
+                            "p5": "1:40:00",
+                            "p10": "1:50:00",
+                            "p25": "2:10:00",
+                            "p50": "2:40:00",
+                            "p75": "3:10:00",
+                            "p90": "3:50:00",
+                        }
+                    },
+                },
+                {
+                    "year": 2025,
+                    "distance_label": "20km",
+                    "distance_km": 20.0,
+                    "winner_time": "2:30:00",
+                    "percentiles": {
+                        "overall": {
+                            "p5": "2:45:00",
+                            "p10": "3:00:00",
+                            "p25": "3:30:00",
+                            "p50": "4:00:00",
+                            "p75": "4:45:00",
+                            "p90": "5:30:00",
+                        }
+                    },
+                },
+                {
+                    "year": 2026,
+                    "distance_label": "20km",
+                    "distance_km": 20.0,
+                    "winner_time": "3:30:00",
+                    "percentiles": {
+                        "overall": {
+                            "p5": "3:45:00",
+                            "p10": "4:00:00",
+                            "p25": "4:30:00",
+                            "p50": "5:00:00",
+                            "p75": "5:45:00",
+                            "p90": "6:30:00",
+                        }
+                    },
+                },
+            ],
+        },
+    }
+    with patch("db.get_kb_chunks", return_value=[two_year_chunk]):
+        resp = client.post(
+            "/api/coach/goal-estimate",
+            json={
+                "race_name": "Rerouted Ultra",
+                "reference_race_name": "Rerouted Ultra",
+                "reference_distance_km": 20.0,
+                "reference_time": "5:00:00",
+            },
+        )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    # target/reference both select the most-recently-curated year (2026,
+    # variant "reversed-climb") -- percentile pooling must exclude the 2024
+    # (no curated course-profile year at all) and 2025 ("standard" variant)
+    # result-years, leaving only 2026's single-year curve.
+    assert body["percentile_years_used"] == {"target": 1, "reference": 1}
+    assert body["target_course_year"] == 2026
+    assert body["reference_course_year"] == 2026
+
+
+def test_no_variant_pools_all_years_unchanged(client):
+    # regression guard: a race with two curated years but NEITHER carrying a
+    # variant tag must behave exactly as before this feature -- pool every
+    # curated result-year, not just the selected course-profile's year.
+    untagged_chunk = {
+        "title": "Stable Route Ultra",
+        "content": "A race whose route never changes...",
+        "payload": {
+            "race_name": "Stable Route Ultra",
+            "aliases": [],
+            "distances": [{"label": "20km", "distance_km": 20.0, "elevation_gain_m": 1500}],
+            "matching_hints": {"name_keywords": ["stable route ultra"]},
+            "course_profiles": {
+                "20km": {
+                    "2025": {
+                        "checkpoints": _GPX_PROFILE_CHECKPOINTS,
+                        "variant": None,
+                        "source": "gpx_upload",
+                        "curated_at": "2025-09-01",
+                    },
+                }
+            },
+            "results": [
+                {
+                    "year": 2024,
+                    "distance_label": "20km",
+                    "distance_km": 20.0,
+                    "winner_time": "1:30:00",
+                    "percentiles": {
+                        "overall": {
+                            "p5": "1:40:00",
+                            "p10": "1:50:00",
+                            "p25": "2:10:00",
+                            "p50": "2:40:00",
+                            "p75": "3:10:00",
+                            "p90": "3:50:00",
+                        }
+                    },
+                },
+                {
+                    "year": 2025,
+                    "distance_label": "20km",
+                    "distance_km": 20.0,
+                    "winner_time": "2:30:00",
+                    "percentiles": {
+                        "overall": {
+                            "p5": "2:45:00",
+                            "p10": "3:00:00",
+                            "p25": "3:30:00",
+                            "p50": "4:00:00",
+                            "p75": "4:45:00",
+                            "p90": "5:30:00",
+                        }
+                    },
+                },
+            ],
+        },
+    }
+    with patch("db.get_kb_chunks", return_value=[untagged_chunk]):
+        resp = client.post(
+            "/api/coach/goal-estimate",
+            json={
+                "race_name": "Stable Route Ultra",
+                "reference_race_name": "Stable Route Ultra",
+                "reference_distance_km": 20.0,
+                "reference_time": "3:00:00",
+            },
+        )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["percentile_years_used"] == {"target": 2, "reference": 2}
+    assert body["target_course_year"] == 2025
