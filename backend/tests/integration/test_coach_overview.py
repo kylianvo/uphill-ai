@@ -217,3 +217,45 @@ class TestGetRosterOverviewData:
             "phase_alerts": [],
             "workout_type_mix": [],
         }
+
+
+def _admin_headers(client):
+    resp = client.post("/api/auth/mock-login", json={"email": "admin@uphill.ai"})
+    assert resp.status_code == 200, resp.text
+    return {"Authorization": f"Bearer {resp.json()['session_token']}"}
+
+
+def _make_coach(client, email="overview-make-coach@uphill.ai"):
+    resp = client.post("/api/auth/mock-login", json={"email": email})
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    user_id = data["user"]["id"]
+    headers = {"Authorization": f"Bearer {data['session_token']}"}
+    promote = client.post(
+        f"/api/admin/users/{user_id}/coach-status", json={"is_coach": True}, headers=_admin_headers(client)
+    )
+    assert promote.status_code == 200, promote.text
+    return headers, user_id
+
+
+class TestOverviewEndpoint:
+    def test_returns_200_with_expected_top_level_shape(self, client):
+        coach_headers, coach_id = _make_coach(client, "overview-endpoint-coach1@uphill.ai")
+        athlete_id = _create_user("overview-endpoint-athlete1@uphill.ai")
+        _link_active(coach_id, athlete_id)
+
+        resp = client.get("/api/coaching/overview", headers=coach_headers)
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert set(body.keys()) == {"athletes", "action_items", "phase_alerts", "workout_type_mix"}
+        assert len(body["athletes"]) == 1
+        assert body["athletes"][0]["athlete_id"] == athlete_id
+
+    def test_non_coach_gets_403(self, client):
+        resp = client.post("/api/auth/mock-login", json={"email": "overview-endpoint-noncoach@uphill.ai"})
+        headers = {"Authorization": f"Bearer {resp.json()['session_token']}"}
+
+        resp = client.get("/api/coaching/overview", headers=headers)
+
+        assert resp.status_code == 403
