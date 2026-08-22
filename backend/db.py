@@ -1452,8 +1452,9 @@ def get_roster_overview_data(coach_id: int) -> dict[str, Any]:
         for w in reversed([w for w in wos_sorted if w["week_number"] <= current_week]):
             if w["is_missed"]:
                 missed_streak += 1
-            else:
+            elif w["is_completed"]:
                 break
+            # else: unresolved (not yet happened) -- skip, keep scanning back
 
         this_week_phases = {w["phase"] for w in wos_sorted if w["week_number"] == current_week}
         next_week_phases = {w["phase"] for w in wos_sorted if w["week_number"] == current_week + 1}

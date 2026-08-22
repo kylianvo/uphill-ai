@@ -105,6 +105,22 @@ class TestGetRosterOverviewData:
         data = get_roster_overview_data(coach_id)
         assert data["athletes"][0]["missed_streak"] == 2
 
+    def test_missed_streak_skips_unresolved_future_workout(self):
+        coach_id = _create_user("overview-coach3b@uphill.ai")
+        athlete_id = _create_user("overview-athlete3b@uphill.ai")
+        _link_active(coach_id, athlete_id)
+        plan_id = _make_plan_with_workouts(athlete_id, current_week=5)
+
+        past_workouts = [w for w in get_plan_workouts(plan_id) if w["week_number"] <= 5]
+        # Mark the two most recent as missed, but leave the very last (most
+        # recent, "hasn't happened yet") workout completely untouched --
+        # it should be skipped over, not treated as a streak-breaking resolution.
+        update_workout_log(past_workouts[-2]["id"], is_missed=1)
+        update_workout_log(past_workouts[-3]["id"], is_missed=1)
+
+        data = get_roster_overview_data(coach_id)
+        assert data["athletes"][0]["missed_streak"] == 2
+
     def test_last_completed_reports_most_recent_completed_workout(self):
         coach_id = _create_user("overview-coach4@uphill.ai")
         athlete_id = _create_user("overview-athlete4@uphill.ai")
@@ -206,6 +222,31 @@ class TestGetRosterOverviewData:
 
         data = get_roster_overview_data(coach_id)
         assert data["athletes"] == []
+
+    def test_roster_data_does_not_leak_across_coaches(self):
+        coach_a_id = _create_user("overview-coach10a@uphill.ai")
+        coach_b_id = _create_user("overview-coach10b@uphill.ai")
+        athlete_a_id = _create_user("overview-athlete10a@uphill.ai")
+        athlete_b_id = _create_user("overview-athlete10b@uphill.ai")
+        _link_active(coach_a_id, athlete_a_id)
+        _link_active(coach_b_id, athlete_b_id)
+
+        create_plan(
+            user_id=athlete_b_id,
+            race_name="Coach B Draft Race",
+            race_date="2027-01-01",
+            goal_type="finish",
+            target_time_hours=None,
+            total_weeks=10,
+            plan_status="draft",
+        )
+
+        data = get_roster_overview_data(coach_a_id)
+
+        assert len(data["athletes"]) == 1
+        assert data["athletes"][0]["athlete_id"] == athlete_a_id
+        assert all(a["athlete_id"] != athlete_b_id for a in data["athletes"])
+        assert all(p["race_name"] != "Coach B Draft Race" for p in data["action_items"]["draft_plans"])
 
     def test_empty_roster_returns_empty_shape(self):
         coach_id = _create_user("overview-coach9@uphill.ai")
