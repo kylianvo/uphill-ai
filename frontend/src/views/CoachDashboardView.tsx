@@ -487,15 +487,13 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
           {/* Prominent Insights Control Bar */}
           {overview && (
             <div
-              className="card"
+              className="snow-glass"
               style={{
-                padding: "16px 20px",
-                background: "var(--bg-surface)",
-                border: "1px solid var(--border-color)",
-                borderRadius: "12px",
+                padding: "18px 20px",
+                borderRadius: "16px",
                 display: "flex",
                 flexDirection: "column",
-                gap: "12px",
+                gap: "14px",
               }}
             >
               <div
@@ -508,8 +506,8 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <Funnel size={16} weight="bold" style={{ color: "var(--accent-primary)" }} />
-                  <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-primary)" }}>
+                  <Funnel size={18} weight="duotone" style={{ color: "var(--accent-primary)" }} />
+                  <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--text-primary)" }}>
                     {lang === "en" ? "Insights & Analytics Controls" : "Bộ lọc & Thống kê"}
                   </span>
                 </div>
@@ -520,18 +518,19 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
                     style={{
                       display: "flex",
                       alignItems: "center",
-                      gap: "4px",
+                      gap: "5px",
                       padding: "4px 10px",
                       fontSize: "11.5px",
                       fontWeight: 600,
                       borderRadius: "6px",
-                      border: "1px solid var(--border-color)",
-                      background: "transparent",
-                      color: "var(--text-muted)",
+                      border: "1px solid rgba(0, 0, 0, 0.1)",
+                      background: "rgba(255, 255, 255, 0.5)",
+                      color: "var(--text-primary)",
                       cursor: "pointer",
+                      boxShadow: "0 1px 2px rgba(0, 0, 0, 0.03)",
                     }}
                   >
-                    <ArrowCounterClockwise size={13} />
+                    <ArrowCounterClockwise size={13} weight="bold" />
                     {lang === "en" ? "Reset filters" : "Đặt lại"}
                   </button>
                 )}
@@ -548,7 +547,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
               >
                 {/* Time Window Segmented Control */}
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <span style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--text-secondary)" }}>
+                  <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)" }}>
                     {lang === "en" ? "Window:" : "Thời gian:"}
                   </span>
                   <div
@@ -556,8 +555,9 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
                       display: "inline-flex",
                       padding: "3px",
                       borderRadius: "8px",
-                      background: "var(--bg-secondary, rgba(255,255,255,0.05))",
-                      border: "1px solid var(--border-color)",
+                      background: "rgba(255, 255, 255, 0.45)",
+                      border: "1px solid rgba(0, 0, 0, 0.08)",
+                      boxShadow: "0 1px 3px rgba(0, 0, 0, 0.04)",
                       gap: "3px",
                     }}
                   >
@@ -582,7 +582,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
                             color: isActive ? "#ffffff" : "var(--text-secondary)",
                             cursor: "pointer",
                             transition: "all 0.15s ease",
-                            boxShadow: isActive ? "0 2px 6px rgba(99, 102, 241, 0.25)" : "none",
+                            boxShadow: isActive ? "0 2px 6px rgba(99, 102, 241, 0.3)" : "none",
                           }}
                         >
                           {btn.label}
@@ -594,7 +594,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
 
                 {/* Runner Selector Dropdown */}
                 <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: "1 1 200px" }}>
-                  <span style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--text-secondary)" }}>
+                  <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)" }}>
                     {lang === "en" ? "Athlete:" : "VĐV:"}
                   </span>
                   <select
@@ -602,14 +602,15 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
                     onChange={(e) => setInsightsAthleteId(e.target.value ? Number(e.target.value) : null)}
                     style={{
                       flex: 1,
-                      padding: "6px 10px",
-                      fontSize: "12px",
-                      fontWeight: 500,
+                      padding: "6px 12px",
+                      fontSize: "12.5px",
+                      fontWeight: 600,
                       borderRadius: "8px",
-                      border: "1px solid var(--border-color)",
-                      background: "var(--bg-card, rgba(255,255,255,0.03))",
+                      border: "1px solid rgba(0, 0, 0, 0.12)",
+                      background: "rgba(255, 255, 255, 0.65)",
                       color: "var(--text-primary)",
                       cursor: "pointer",
+                      boxShadow: "0 1px 3px rgba(0, 0, 0, 0.04)",
                     }}
                   >
                     <option value="">
@@ -627,7 +628,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
 
                 {/* Level Filter Chips */}
                 <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
-                  <span style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--text-secondary)" }}>
+                  <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)" }}>
                     {lang === "en" ? "Level:" : "Trình độ:"}
                   </span>
                   {(["all", "beginner", "intermediate", "advanced", "elite"] as const).map((lvl) => {
@@ -637,16 +638,17 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
                         key={lvl}
                         onClick={() => setInsightsLevel(lvl)}
                         style={{
-                          padding: "3px 9px",
+                          padding: "4px 10px",
                           fontSize: "11px",
                           fontWeight: isActive ? 700 : 500,
                           borderRadius: "6px",
-                          border: isActive ? "1px solid var(--accent-primary)" : "1px solid var(--border-color)",
-                          background: isActive ? "var(--accent-primary-subtle, rgba(99, 102, 241, 0.15))" : "transparent",
-                          color: isActive ? "var(--accent-primary)" : "var(--text-secondary)",
+                          border: isActive ? "1px solid var(--accent-primary)" : "1px solid rgba(0, 0, 0, 0.08)",
+                          background: isActive ? "var(--accent-primary)" : "rgba(255, 255, 255, 0.5)",
+                          color: isActive ? "#ffffff" : "var(--text-secondary)",
                           cursor: "pointer",
                           textTransform: "capitalize",
                           transition: "all 0.15s ease",
+                          boxShadow: isActive ? "0 2px 6px rgba(99, 102, 241, 0.3)" : "none",
                         }}
                       >
                         {lvl === "all" ? (lang === "en" ? "All" : "Tất cả") : lvl}

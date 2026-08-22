@@ -21,11 +21,10 @@ export default function RaceBreakdownCard({
 
   return (
     <div
+      className="snow-glass"
       style={{
-        background: "var(--bg-surface)",
-        border: "1px solid var(--border-color)",
-        borderRadius: "10px",
-        padding: "16px 20px",
+        borderRadius: "16px",
+        padding: "18px 20px",
         display: "flex",
         flexDirection: "column",
         gap: "14px",
@@ -33,19 +32,21 @@ export default function RaceBreakdownCard({
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <FlagBanner size={16} style={{ color: "var(--accent-primary)" }} />
-          <h4 style={{ margin: 0, fontSize: "14px", fontWeight: 600, color: "var(--text-primary)" }}>
+          <FlagBanner size={18} weight="duotone" style={{ color: "var(--accent-primary)" }} />
+          <h4 style={{ margin: 0, fontSize: "15px", fontWeight: 700, color: "var(--text-primary)" }}>
             {lang === "en" ? "Target Race Distribution" : "Phân bổ race mục tiêu"}
           </h4>
         </div>
         <span
           style={{
-            fontSize: "11px",
-            color: "var(--text-muted)",
-            background: "var(--bg-hover, rgba(255,255,255,0.05))",
-            padding: "2px 8px",
+            fontSize: "11.5px",
+            fontWeight: 600,
+            color: "var(--text-primary)",
+            background: "rgba(255, 255, 255, 0.5)",
+            padding: "3px 10px",
             borderRadius: "12px",
-            border: "1px solid var(--border-color)",
+            border: "1px solid rgba(0, 0, 0, 0.08)",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
           }}
         >
           {lang === "en"
@@ -71,26 +72,30 @@ export default function RaceBreakdownCard({
                 style={{
                   display: "flex",
                   flexDirection: "column",
-                  gap: "6px",
-                  padding: "10px 12px",
-                  borderRadius: "8px",
+                  gap: "8px",
+                  padding: "12px 14px",
+                  borderRadius: "10px",
                   background: isSelected
-                    ? "var(--accent-primary-subtle, rgba(99, 102, 241, 0.1))"
-                    : "var(--bg-card, rgba(255,255,255,0.02))",
-                  border: isSelected ? "1px solid var(--accent-primary)" : "1px solid var(--border-color)",
+                    ? "rgba(99, 102, 241, 0.14)"
+                    : "rgba(255, 255, 255, 0.4)",
+                  border: isSelected ? "1.5px solid var(--accent-primary)" : "1px solid rgba(0, 0, 0, 0.07)",
                   cursor: onSelectRace ? "pointer" : "default",
                   transition: "all 0.15s ease",
+                  boxShadow: isSelected
+                    ? "0 3px 12px rgba(99, 102, 241, 0.18)"
+                    : "0 1px 3px rgba(0, 0, 0, 0.03)",
                 }}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-primary)" }}>
+                    <span style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--text-primary)" }}>
                       {race.race_name}
                     </span>
                     {race.race_date && (
                       <span
                         style={{
                           fontSize: "11px",
+                          fontWeight: 500,
                           color: "var(--text-muted)",
                           display: "inline-flex",
                           alignItems: "center",
@@ -105,17 +110,18 @@ export default function RaceBreakdownCard({
                   <span
                     style={{
                       fontSize: "11.5px",
-                      fontWeight: 600,
-                      color: "var(--accent-primary)",
-                      background: "var(--accent-primary-subtle, rgba(99, 102, 241, 0.12))",
-                      padding: "2px 8px",
+                      fontWeight: 700,
+                      color: isSelected ? "#ffffff" : "var(--accent-primary)",
+                      background: isSelected ? "var(--accent-primary)" : "rgba(99, 102, 241, 0.12)",
+                      padding: "3px 9px",
                       borderRadius: "10px",
                       display: "inline-flex",
                       alignItems: "center",
                       gap: "4px",
+                      boxShadow: isSelected ? "0 2px 6px rgba(99, 102, 241, 0.3)" : "none",
                     }}
                   >
-                    <Users size={13} />
+                    <Users size={13} weight="bold" />
                     {lang === "en"
                       ? `${race.count} ${race.count === 1 ? "runner" : "runners"}`
                       : `${race.count} VĐV`}
@@ -129,10 +135,12 @@ export default function RaceBreakdownCard({
                         key={ath.athlete_id}
                         style={{
                           fontSize: "11px",
+                          fontWeight: 500,
                           color: "var(--text-secondary)",
-                          background: "var(--border-color)",
-                          padding: "1px 7px",
-                          borderRadius: "4px",
+                          background: "rgba(255, 255, 255, 0.65)",
+                          border: "1px solid rgba(0, 0, 0, 0.08)",
+                          padding: "2px 8px",
+                          borderRadius: "6px",
                         }}
                       >
                         {ath.name}
@@ -152,14 +160,14 @@ export default function RaceBreakdownCard({
             fontSize: "12px",
             color: "var(--text-muted)",
             borderTop: "1px dashed var(--border-color)",
-            paddingTop: "8px",
+            paddingTop: "10px",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
           }}
         >
           <span>{lang === "en" ? "Athletes without target race:" : "VĐV chưa có race mục tiêu:"}</span>
-          <span style={{ fontWeight: 600 }}>{athletesWithoutRace}</span>
+          <span style={{ fontWeight: 700, color: "var(--text-primary)" }}>{athletesWithoutRace}</span>
         </div>
       )}
     </div>
