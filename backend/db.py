@@ -1341,6 +1341,20 @@ _DAY_ORDER = {
 _PHASE_ALERT_SET = {"peak", "taper", "race"}
 
 
+def runner_level(current_weekly_km: float | None) -> str:
+    """Derived from users.current_weekly_km -- no manual override, no new
+    column. None falls back to the same 30.0 default every other read of
+    this field already uses (see the "ckm" default in update_user_profile)."""
+    km = current_weekly_km if current_weekly_km is not None else 30.0
+    if km < 20:
+        return "beginner"
+    if km < 50:
+        return "intermediate"
+    if km < 90:
+        return "advanced"
+    return "elite"
+
+
 def get_roster_overview_data(coach_id: int) -> dict[str, Any]:
     """Roster-wide progress, action items, phase alerts, and workout-type
     mix for a coach's active roster. Backs GET /api/coaching/overview.
@@ -1354,6 +1368,7 @@ def get_roster_overview_data(coach_id: int) -> dict[str, Any]:
         athlete_rows = conn.execute(
             text("""
                 SELECT ca.athlete_id, u.name AS athlete_name, u.email AS athlete_email,
+                       u.current_weekly_km,
                        p.id AS plan_id, p.race_name, p.race_date, p.current_week, p.total_weeks
                 FROM coach_athletes ca
                 JOIN users u ON u.id = ca.athlete_id
@@ -1410,6 +1425,9 @@ def get_roster_overview_data(coach_id: int) -> dict[str, Any]:
     draft_plans = [_row_to_dict(r) for r in draft_rows]
     pending_workout_approvals = [_row_to_dict(r) for r in pending_rows]
 
+    draft_athlete_ids = {r["athlete_id"] for r in draft_plans}
+    pending_athlete_ids = {r["athlete_id"] for r in pending_workout_approvals}
+
     athletes: list[dict[str, Any]] = []
     phase_alerts: list[dict[str, Any]] = []
     type_counts: dict[str, int] = {}
@@ -1423,6 +1441,10 @@ def get_roster_overview_data(coach_id: int) -> dict[str, Any]:
                 {
                     "athlete_id": row["athlete_id"],
                     "name": display_name,
+                    "runner_level": runner_level(row["current_weekly_km"]),
+                    "needs_attention": (
+                        row["athlete_id"] in draft_athlete_ids or row["athlete_id"] in pending_athlete_ids
+                    ),
                     "active_plan": None,
                     "adherence_pct_14d": None,
                     "last_completed": None,
@@ -1458,6 +1480,7 @@ def get_roster_overview_data(coach_id: int) -> dict[str, Any]:
 
         this_week_phases = {w["phase"] for w in wos_sorted if w["week_number"] == current_week}
         next_week_phases = {w["phase"] for w in wos_sorted if w["week_number"] == current_week + 1}
+        has_phase_alert = bool((this_week_phases | next_week_phases) & _PHASE_ALERT_SET)
         for phase in sorted(this_week_phases & _PHASE_ALERT_SET):
             phase_alerts.append(
                 {"athlete_id": row["athlete_id"], "athlete_name": display_name, "phase": phase, "starts": "this_week"}
@@ -1475,6 +1498,13 @@ def get_roster_overview_data(coach_id: int) -> dict[str, Any]:
             {
                 "athlete_id": row["athlete_id"],
                 "name": display_name,
+                "runner_level": runner_level(row["current_weekly_km"]),
+                "needs_attention": (
+                    has_phase_alert
+                    or row["athlete_id"] in draft_athlete_ids
+                    or row["athlete_id"] in pending_athlete_ids
+                    or missed_streak > 0
+                ),
                 "active_plan": {
                     "plan_id": plan_id,
                     "race_name": row["race_name"],

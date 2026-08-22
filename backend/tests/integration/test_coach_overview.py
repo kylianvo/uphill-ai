@@ -259,6 +259,130 @@ class TestGetRosterOverviewData:
             "workout_type_mix": [],
         }
 
+    def test_runner_level_boundaries(self):
+        from db import runner_level
+
+        assert runner_level(19.9) == "beginner"
+        assert runner_level(20.0) == "intermediate"
+        assert runner_level(49.9) == "intermediate"
+        assert runner_level(50.0) == "advanced"
+        assert runner_level(89.9) == "advanced"
+        assert runner_level(90.0) == "elite"
+        assert runner_level(None) == "intermediate"  # falls back to the 30.0 default
+
+    def test_athlete_entries_include_runner_level_and_needs_attention(self):
+        coach_id = _create_user("levels-coach1@uphill.ai")
+        athlete_id = _create_user("levels-athlete1@uphill.ai")
+        _link_active(coach_id, athlete_id)
+        with engine.connect() as conn:
+            conn.execute(text("UPDATE users SET current_weekly_km = 95 WHERE id = :id"), {"id": athlete_id})
+            conn.commit()
+
+        data = get_roster_overview_data(coach_id)
+        athlete = data["athletes"][0]
+        assert athlete["runner_level"] == "elite"
+        assert athlete["needs_attention"] is False  # no plan, no alerts, no action items
+
+    def test_needs_attention_true_for_draft_plan_only(self):
+        coach_id = _create_user("levels-coach2@uphill.ai")
+        athlete_id = _create_user("levels-athlete2@uphill.ai")
+        _link_active(coach_id, athlete_id)
+        create_plan(
+            user_id=athlete_id,
+            race_name="Draft Race",
+            race_date="2027-01-01",
+            goal_type="finish",
+            target_time_hours=None,
+            total_weeks=10,
+            plan_status="draft",
+        )
+
+        data = get_roster_overview_data(coach_id)
+        assert data["athletes"][0]["needs_attention"] is True
+
+    def test_needs_attention_true_for_pending_approval_only(self):
+        coach_id = _create_user("levels-coach3@uphill.ai")
+        athlete_id = _create_user("levels-athlete3@uphill.ai")
+        _link_active(coach_id, athlete_id)
+        plan_id = create_plan(
+            user_id=athlete_id,
+            race_name="Active Race",
+            race_date="2027-01-01",
+            goal_type="finish",
+            target_time_hours=None,
+            total_weeks=10,
+            plan_status="active",
+        )
+        save_workouts(
+            plan_id,
+            [
+                {
+                    "week_number": 1,
+                    "day_of_week": "Monday",
+                    "phase": "base",
+                    "title": "Long run",
+                    "type": "long_run",
+                    "duration_minutes": 60,
+                    "target_zone": "Z2",
+                }
+            ],
+            auto_approve=False,
+        )
+
+        data = get_roster_overview_data(coach_id)
+        assert data["athletes"][0]["needs_attention"] is True
+
+    def test_needs_attention_true_for_missed_streak_only(self):
+        coach_id = _create_user("levels-coach4@uphill.ai")
+        athlete_id = _create_user("levels-athlete4@uphill.ai")
+        _link_active(coach_id, athlete_id)
+        plan_id = _make_plan_with_workouts(athlete_id, current_week=5)
+        past_workouts = [w for w in get_plan_workouts(plan_id) if w["week_number"] <= 5]
+        update_workout_log(past_workouts[-1]["id"], is_missed=1)
+
+        data = get_roster_overview_data(coach_id)
+        assert data["athletes"][0]["needs_attention"] is True
+
+    def test_needs_attention_false_for_healthy_athlete(self):
+        # Deliberately does NOT use _make_plan_with_workouts: that helper always
+        # tags the current_week+1 week 'taper', which would always trip the
+        # phase-alert condition and make this test's own assertion wrong.
+        coach_id = _create_user("levels-coach5@uphill.ai")
+        athlete_id = _create_user("levels-athlete5@uphill.ai")
+        _link_active(coach_id, athlete_id)
+        plan_id = create_plan(
+            user_id=athlete_id,
+            race_name="Healthy Race",
+            race_date="2026-12-01",
+            goal_type="finish",
+            target_time_hours=8.0,
+            total_weeks=12,
+            plan_status="active",
+        )
+        with engine.connect() as conn:
+            conn.execute(text("UPDATE plans SET current_week = 5 WHERE id = :pid"), {"pid": plan_id})
+            conn.commit()
+        # All weeks in and around the window tagged 'build' -- no peak/taper/race phase anywhere.
+        workouts = [
+            {
+                "week_number": wk,
+                "day_of_week": d,
+                "phase": "build",
+                "title": "Run",
+                "type": "easy_run",
+                "duration_minutes": 45,
+                "target_zone": "Z2",
+            }
+            for wk in (4, 5, 6)
+            for d in ("Monday", "Tuesday", "Wednesday")
+        ]
+        save_workouts(plan_id, workouts, auto_approve=True)
+        for w in get_plan_workouts(plan_id):
+            update_workout_log(w["id"], is_completed=1)
+
+        data = get_roster_overview_data(coach_id)
+        assert data["athletes"][0]["needs_attention"] is False
+
 
 def _admin_headers(client):
     resp = client.post("/api/auth/mock-login", json={"email": "admin@uphill.ai"})
