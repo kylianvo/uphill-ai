@@ -6,6 +6,8 @@ import { useAppContext } from "../contexts/AppContext";
 import { useCoachDashboard } from "../hooks/useCoachDashboard";
 import { useCoachOverview } from "../hooks/useCoachOverview";
 import WorkoutTypeMixChart from "../components/WorkoutTypeMixChart";
+import AdherenceTrendChart from "../components/AdherenceTrendChart";
+import MissedByDayChart from "../components/MissedByDayChart";
 import { matchesFilters, type RosterFilters } from "../utils/coachRosterFilters";
 
 export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) {
@@ -17,6 +19,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
     needsAttentionOnly: false,
     raceSearch: "",
   });
+  const [insightsDays, setInsightsDays] = useState(14);
   const {
     roster,
     pendingInvites,
@@ -38,9 +41,14 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
   useEffect(() => {
     fetchRoster();
     fetchMyInvites();
-    fetchOverview();
+    fetchOverview(insightsDays);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    fetchOverview(insightsDays);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [insightsDays]);
 
   const activeAthletes = roster.filter((r: any) => r.status === "active");
   const invitedAthletes = roster.filter((r: any) => r.status === "invited");
@@ -488,14 +496,140 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
           )}
 
           {overview && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px" }}>
+              <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                {lang === "en" ? "Insights window:" : "Khoảng thời gian:"}
+              </span>
+              <select
+                value={insightsDays}
+                onChange={(e) => setInsightsDays(Number(e.target.value))}
+                style={{
+                  padding: "4px 8px",
+                  fontSize: "12px",
+                  borderRadius: "6px",
+                  border: "1px solid var(--border-color)",
+                  background: "var(--bg-secondary, transparent)",
+                }}
+              >
+                <option value={7}>{lang === "en" ? "7 days" : "7 ngày"}</option>
+                <option value={14}>{lang === "en" ? "14 days" : "14 ngày"}</option>
+                <option value={30}>{lang === "en" ? "30 days" : "30 ngày"}</option>
+                <option value={90}>{lang === "en" ? "90 days" : "90 ngày"}</option>
+              </select>
+            </div>
+          )}
+
+          {overview && (
             <div className="card" style={{ padding: isMobile ? "20px" : "28px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
                 <ChartBar size={20} weight="duotone" />
                 <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "800" }}>
-                  {lang === "en" ? "Workout type mix (last 2 weeks)" : "Loại buổi tập (2 tuần qua)"}
+                  {lang === "en" ? "Workout type mix" : "Loại buổi tập"}
                 </h3>
               </div>
               <WorkoutTypeMixChart mix={overview.workout_type_mix} lang={lang} />
+            </div>
+          )}
+
+          {overview && (
+            <div className="card" style={{ padding: isMobile ? "20px" : "28px" }}>
+              <h3 style={{ margin: "0 0 16px 0", fontSize: "16px", fontWeight: "800" }}>
+                {lang === "en" ? "Adherence trend" : "Xu hướng tuân thủ"}
+              </h3>
+              <AdherenceTrendChart trend={overview.adherence_trend} lang={lang} />
+            </div>
+          )}
+
+          {overview && (
+            <div className="card" style={{ padding: isMobile ? "20px" : "28px" }}>
+              <h3 style={{ margin: "0 0 16px 0", fontSize: "16px", fontWeight: "800" }}>
+                {lang === "en" ? "Missed workouts by day" : "Buổi tập bỏ lỡ theo ngày"}
+              </h3>
+              <MissedByDayChart missedByDay={overview.missed_by_day} lang={lang} />
+            </div>
+          )}
+
+          {overview && (
+            <div className="card" style={{ padding: isMobile ? "20px" : "28px" }}>
+              <h3 style={{ margin: "0 0 16px 0", fontSize: "16px", fontWeight: "800" }}>
+                {lang === "en" ? "Effort (RPE)" : "Mức độ gắng sức (RPE)"}
+              </h3>
+              {overview.rpe_distribution.avg_rpe === null ? (
+                <p style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
+                  {lang === "en" ? "No block reviews in this window." : "Chưa có đánh giá khối tập nào trong khoảng này."}
+                </p>
+              ) : (
+                <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
+                  <span style={{ fontSize: "28px", fontWeight: 800 }}>{overview.rpe_distribution.avg_rpe.toFixed(1)}</span>
+                  <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+                    {lang === "en" ? "average RPE" : "RPE trung bình"}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {overview && (
+            <div className="card" style={{ padding: isMobile ? "20px" : "28px" }}>
+              <h3 style={{ margin: "0 0 16px 0", fontSize: "16px", fontWeight: "800" }}>
+                {lang === "en" ? "Race readiness" : "Sẵn sàng cho giải đấu"}
+              </h3>
+              <div style={{ display: "flex", gap: "16px" }}>
+                <div>
+                  <div style={{ fontSize: "22px", fontWeight: 800, color: "#16a34a" }}>{overview.race_readiness.on_track}</div>
+                  <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>{lang === "en" ? "on track" : "đúng tiến độ"}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: "22px", fontWeight: 800, color: "#d97706" }}>{overview.race_readiness.at_risk}</div>
+                  <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>{lang === "en" ? "at risk" : "có rủi ro"}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: "22px", fontWeight: 800, color: "var(--accent-alert)" }}>{overview.race_readiness.behind}</div>
+                  <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>{lang === "en" ? "behind" : "chậm tiến độ"}</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {overview && (
+            <div className="card" style={{ padding: isMobile ? "20px" : "28px" }}>
+              <h3 style={{ margin: "0 0 16px 0", fontSize: "16px", fontWeight: "800" }}>
+                {lang === "en" ? "Roster totals" : "Tổng kết đội"}
+              </h3>
+              <div style={{ display: "flex", gap: "20px", flexWrap: "wrap" }}>
+                <div>
+                  <div style={{ fontSize: "20px", fontWeight: 800 }}>{overview.roster_totals.distance_km.toFixed(0)} km</div>
+                  <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>{lang === "en" ? "distance" : "quãng đường"}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: "20px", fontWeight: 800 }}>{overview.roster_totals.duration_hours.toFixed(1)}h</div>
+                  <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>{lang === "en" ? "training time" : "thời gian tập"}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: "20px", fontWeight: 800 }}>{Math.round(overview.roster_totals.elevation_gain_m)} m</div>
+                  <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>{lang === "en" ? "elevation" : "độ cao"}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: "20px", fontWeight: 800 }}>{overview.roster_totals.workout_count}</div>
+                  <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>{lang === "en" ? "workouts" : "buổi tập"}</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {overview && overview.most_consistent.length > 0 && (
+            <div className="card" style={{ padding: isMobile ? "20px" : "28px" }}>
+              <h3 style={{ margin: "0 0 16px 0", fontSize: "16px", fontWeight: "800" }}>
+                {lang === "en" ? "Most consistent" : "Đều đặn nhất"}
+              </h3>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                {overview.most_consistent.map((a, i) => (
+                  <div key={a.athlete_id} style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
+                    <span>{i + 1}. {a.name}</span>
+                    <span style={{ fontWeight: 700, color: "#16a34a" }}>{Math.round(a.adherence_pct * 100)}%</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </>
