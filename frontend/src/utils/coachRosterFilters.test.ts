@@ -15,7 +15,7 @@ function makeAthlete(overrides: Partial<CoachOverviewAthlete> = {}): CoachOvervi
       current_week: 9,
       total_weeks: 16,
     },
-    adherence_pct_14d: 0.8,
+    adherence_pct: 0.8,
     last_completed: { week_number: 9, day_of_week: "Monday" },
     missed_streak: 0,
     ...overrides,

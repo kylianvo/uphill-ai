@@ -6,6 +6,7 @@ All raw SQL uses %s-style placeholders via psycopg2 through SQLAlchemy.
 import datetime
 import hashlib
 import json
+import math
 import uuid
 from typing import Any
 
@@ -1355,15 +1356,17 @@ def runner_level(current_weekly_km: float | None) -> str:
     return "elite"
 
 
-def get_roster_overview_data(coach_id: int) -> dict[str, Any]:
-    """Roster-wide progress, action items, phase alerts, and workout-type
-    mix for a coach's active roster. Backs GET /api/coaching/overview.
+def get_roster_overview_data(coach_id: int, days: int = 14) -> dict[str, Any]:
+    """Roster-wide progress, action items, phase alerts, and insights for a
+    coach's active roster, over the last `days` days. Backs GET
+    /api/coaching/overview.
 
     'current week' trusts plans.current_week directly (no calendar-date
     derivation -- workouts have no completion timestamp or date column,
-    only week_number + day_of_week). The 14-day window for adherence and
-    workout-type mix is approximated as week_number in
-    {current_week - 1, current_week}."""
+    only week_number + day_of_week). `days` is converted to a week-count
+    window (window_weeks) rather than filtering by real dates, for the
+    same reason."""
+    window_weeks = max(1, math.ceil(days / 7))
     with engine.connect() as conn:
         athlete_rows = conn.execute(
             text("""
@@ -1432,6 +1435,7 @@ def get_roster_overview_data(coach_id: int) -> dict[str, Any]:
     phase_alerts: list[dict[str, Any]] = []
     type_counts: dict[str, int] = {}
     total_completed_in_window = 0
+    roster_window_wos: list[dict[str, Any]] = []
 
     for row in athlete_rows:
         display_name = row["athlete_name"] or row["athlete_email"]
@@ -1446,7 +1450,7 @@ def get_roster_overview_data(coach_id: int) -> dict[str, Any]:
                         row["athlete_id"] in draft_athlete_ids or row["athlete_id"] in pending_athlete_ids
                     ),
                     "active_plan": None,
-                    "adherence_pct_14d": None,
+                    "adherence_pct": None,
                     "last_completed": None,
                     "missed_streak": 0,
                 }
@@ -1459,7 +1463,8 @@ def get_roster_overview_data(coach_id: int) -> dict[str, Any]:
             key=lambda w: (w["week_number"], _DAY_ORDER.get(w["day_of_week"], 0)),
         )
 
-        window_wos = [w for w in wos_sorted if current_week - 1 <= w["week_number"] <= current_week]
+        window_wos = [w for w in wos_sorted if current_week - (window_weeks - 1) <= w["week_number"] <= current_week]
+        roster_window_wos.extend(window_wos)
         resolved = [w for w in window_wos if w["is_completed"] or w["is_missed"]]
         completed_in_window = [w for w in resolved if w["is_completed"]]
         adherence = (len(completed_in_window) / len(resolved)) if resolved else None
@@ -1512,7 +1517,7 @@ def get_roster_overview_data(coach_id: int) -> dict[str, Any]:
                     "current_week": current_week,
                     "total_weeks": row["total_weeks"],
                 },
-                "adherence_pct_14d": round(adherence, 3) if adherence is not None else None,
+                "adherence_pct": round(adherence, 3) if adherence is not None else None,
                 "last_completed": last_completed,
                 "missed_streak": missed_streak,
             }

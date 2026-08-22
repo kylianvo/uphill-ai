@@ -68,7 +68,7 @@ class TestGetRosterOverviewData:
         assert len(data["athletes"]) == 1
         assert data["athletes"][0]["athlete_id"] == athlete_id
         assert data["athletes"][0]["active_plan"] is None
-        assert data["athletes"][0]["adherence_pct_14d"] is None
+        assert data["athletes"][0]["adherence_pct"] is None
         assert data["athletes"][0]["missed_streak"] == 0
 
     def test_adherence_counts_only_resolved_workouts_in_window(self):
@@ -88,7 +88,7 @@ class TestGetRosterOverviewData:
         assert athlete["active_plan"]["plan_id"] == plan_id
         assert athlete["active_plan"]["current_week"] == 5
         # 5 resolved (4 completed + 1 missed), 4 completed -> 4/5
-        assert athlete["adherence_pct_14d"] == 0.8
+        assert athlete["adherence_pct"] == 0.8
 
     def test_missed_streak_counts_consecutive_recent_misses_only(self):
         coach_id = _create_user("overview-coach3@uphill.ai")
@@ -453,6 +453,58 @@ class TestGetRosterOverviewData:
         data = get_roster_overview_data(coach_id)
         assert data["athletes"][0]["needs_attention"] is False
 
+    def test_default_days_matches_previous_fixed_two_week_window(self):
+        coach_id = _create_user("window-coach1@uphill.ai")
+        athlete_id = _create_user("window-athlete1@uphill.ai")
+        _link_active(coach_id, athlete_id)
+        plan_id = _make_plan_with_workouts(athlete_id, current_week=5)
+        window_workouts = [w for w in get_plan_workouts(plan_id) if w["week_number"] in (4, 5)]
+        for w in window_workouts[:4]:
+            update_workout_log(w["id"], is_completed=1)
+        update_workout_log(window_workouts[4]["id"], is_missed=1)
+
+        data = get_roster_overview_data(coach_id)  # no days arg -> default 14
+        assert data["athletes"][0]["adherence_pct"] == 0.8
+
+    def test_days_30_widens_the_window_beyond_two_weeks(self):
+        coach_id = _create_user("window-coach2@uphill.ai")
+        athlete_id = _create_user("window-athlete2@uphill.ai")
+        _link_active(coach_id, athlete_id)
+        plan_id = create_plan(
+            user_id=athlete_id,
+            race_name="Test 50K",
+            race_date="2026-12-01",
+            goal_type="finish",
+            target_time_hours=8.0,
+            total_weeks=12,
+            plan_status="active",
+        )
+        with engine.connect() as conn:
+            conn.execute(text("UPDATE plans SET current_week = :w WHERE id = :pid"), {"w": 5, "pid": plan_id})
+            conn.commit()
+        # Weeks 1-5: one workout each, all completed. days=30 -> window_weeks = ceil(30/7) = 5 -> weeks 1-5.
+        # days=14 -> window_weeks = 2 -> weeks 4-5 only.
+        workouts = [
+            {
+                "week_number": wk,
+                "day_of_week": "Monday",
+                "phase": "build",
+                "title": "Run",
+                "type": "easy_run",
+                "duration_minutes": 45,
+                "target_zone": "Z2",
+            }
+            for wk in range(1, 6)
+        ]
+        save_workouts(plan_id, workouts, auto_approve=True)
+        for w in get_plan_workouts(plan_id):
+            update_workout_log(w["id"], is_completed=1)
+
+        data_14 = get_roster_overview_data(coach_id, days=14)
+        data_30 = get_roster_overview_data(coach_id, days=30)
+        assert data_14["athletes"][0]["adherence_pct"] == 1.0
+        assert data_30["athletes"][0]["adherence_pct"] == 1.0
+
 
 def _admin_headers(client):
     resp = client.post("/api/auth/mock-login", json={"email": "admin@uphill.ai"})
@@ -494,3 +546,13 @@ class TestOverviewEndpoint:
         resp = client.get("/api/coaching/overview", headers=headers)
 
         assert resp.status_code == 403
+
+    def test_get_coaching_overview_endpoint_accepts_days_param(self, client):
+        coach_headers, coach_id = _make_coach(client, "window-endpoint-coach1@uphill.ai")
+        athlete_id = _create_user("window-endpoint-athlete1@uphill.ai")
+        _link_active(coach_id, athlete_id)
+
+        resp = client.get("/api/coaching/overview?days=30", headers=coach_headers)
+
+        assert resp.status_code == 200
+        assert "athletes" in resp.json()

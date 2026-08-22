@@ -467,9 +467,9 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
                           </div>
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-                          {athlete.adherence_pct_14d !== null && (
+                          {athlete.adherence_pct !== null && (
                             <span style={{ fontSize: "12px", fontWeight: 700 }}>
-                              {Math.round(athlete.adherence_pct_14d * 100)}%
+                              {Math.round(athlete.adherence_pct * 100)}%
                             </span>
                           )}
                           {athlete.missed_streak > 0 && (

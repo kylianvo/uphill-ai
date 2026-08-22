@@ -1044,8 +1044,8 @@ def get_roster(coach: dict[str, Any] = Depends(require_coach)):
 
 
 @app.get("/api/coaching/overview")
-def get_coaching_overview(coach: dict[str, Any] = Depends(require_coach)):
-    return get_roster_overview_data(coach["id"])
+def get_coaching_overview(days: int = 14, coach: dict[str, Any] = Depends(require_coach)):
+    return get_roster_overview_data(coach["id"], days=days)
 
 
 @app.get("/api/coaching/my-invites")

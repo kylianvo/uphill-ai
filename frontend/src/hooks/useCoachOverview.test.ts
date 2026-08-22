@@ -12,8 +12,10 @@ const SAMPLE_OVERVIEW = {
     {
       athlete_id: 10,
       name: "Jane Runner",
+      runner_level: "advanced",
+      needs_attention: false,
       active_plan: { plan_id: 1, race_name: "VMM 70km", race_date: "2026-11-15", current_week: 9, total_weeks: 16 },
-      adherence_pct_14d: 0.83,
+      adherence_pct: 0.83,
       last_completed: { week_number: 9, day_of_week: "Wednesday" },
       missed_streak: 0,
     },

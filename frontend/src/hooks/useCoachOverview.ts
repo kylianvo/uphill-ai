@@ -23,7 +23,7 @@ export interface CoachOverviewAthlete {
     current_week: number;
     total_weeks: number;
   } | null;
-  adherence_pct_14d: number | null;
+  adherence_pct: number | null;
   last_completed: { week_number: number; day_of_week: string } | null;
   missed_streak: number;
 }
@@ -50,11 +50,12 @@ export function useCoachOverview() {
     return { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
   };
 
-  const fetchOverview = async () => {
+  const fetchOverview = async (days?: number) => {
     setOverviewLoading(true);
     setOverviewError("");
     try {
-      const res = await fetch(`${API_BASE_URL}/api/coaching/overview`, { headers: authHeaders() });
+      const url = days ? `${API_BASE_URL}/api/coaching/overview?days=${days}` : `${API_BASE_URL}/api/coaching/overview`;
+      const res = await fetch(url, { headers: authHeaders() });
       const body = await res.json();
       if (!res.ok) {
         throw new Error(body.detail || "Failed to load overview.");
