@@ -257,6 +257,8 @@ class TestGetRosterOverviewData:
             "action_items": {"draft_plans": [], "pending_workout_approvals": []},
             "phase_alerts": [],
             "workout_type_mix": [],
+            "adherence_trend": [],
+            "missed_by_day": [],
         }
 
     def test_runner_level_boundaries(self):
@@ -505,6 +507,40 @@ class TestGetRosterOverviewData:
         assert data_14["athletes"][0]["adherence_pct"] == 1.0
         assert data_30["athletes"][0]["adherence_pct"] == 1.0
 
+    def test_adherence_trend_has_one_entry_per_week_with_resolved_data(self):
+        coach_id = _create_user("trend-coach1@uphill.ai")
+        athlete_id = _create_user("trend-athlete1@uphill.ai")
+        _link_active(coach_id, athlete_id)
+        plan_id = _make_plan_with_workouts(athlete_id, current_week=5)
+        # Week 4: mark all 3 completed. Week 5: mark 1 completed, 1 missed, leave 1 unresolved.
+        by_week = {}
+        for w in get_plan_workouts(plan_id):
+            by_week.setdefault(w["week_number"], []).append(w)
+        for w in by_week[4]:
+            update_workout_log(w["id"], is_completed=1)
+        update_workout_log(by_week[5][0]["id"], is_completed=1)
+        update_workout_log(by_week[5][1]["id"], is_missed=1)
+
+        data = get_roster_overview_data(coach_id, days=14)
+        trend = {row["week_number"]: row["adherence_pct"] for row in data["adherence_trend"]}
+        assert trend[4] == 1.0
+        assert trend[5] == 0.5  # 1 completed / 2 resolved (1 unresolved excluded)
+
+    def test_missed_by_day_counts_only_missed_workouts_in_window(self):
+        coach_id = _create_user("missedday-coach1@uphill.ai")
+        athlete_id = _create_user("missedday-athlete1@uphill.ai")
+        _link_active(coach_id, athlete_id)
+        plan_id = _make_plan_with_workouts(athlete_id, current_week=5)
+        by_day = {(w["week_number"], w["day_of_week"]): w for w in get_plan_workouts(plan_id)}
+        update_workout_log(by_day[(5, "Monday")]["id"], is_missed=1)
+        update_workout_log(by_day[(4, "Monday")]["id"], is_missed=1)
+        update_workout_log(by_day[(5, "Wednesday")]["id"], is_completed=1)  # not missed -> excluded
+
+        data = get_roster_overview_data(coach_id, days=14)
+        by_day_result = {row["day_of_week"]: row["count"] for row in data["missed_by_day"]}
+        assert by_day_result["Monday"] == 2
+        assert "Wednesday" not in by_day_result
+
 
 def _admin_headers(client):
     resp = client.post("/api/auth/mock-login", json={"email": "admin@uphill.ai"})
@@ -535,7 +571,14 @@ class TestOverviewEndpoint:
 
         assert resp.status_code == 200
         body = resp.json()
-        assert set(body.keys()) == {"athletes", "action_items", "phase_alerts", "workout_type_mix"}
+        assert set(body.keys()) == {
+            "athletes",
+            "action_items",
+            "phase_alerts",
+            "workout_type_mix",
+            "adherence_trend",
+            "missed_by_day",
+        }
         assert len(body["athletes"]) == 1
         assert body["athletes"][0]["athlete_id"] == athlete_id
 

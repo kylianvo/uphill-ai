@@ -1532,6 +1532,24 @@ def get_roster_overview_data(coach_id: int, days: int = 14) -> dict[str, Any]:
         else []
     )
 
+    adherence_by_week: dict[int, list[dict[str, Any]]] = {}
+    missed_by_day_counts: dict[str, int] = {}
+    for w in roster_window_wos:
+        adherence_by_week.setdefault(w["week_number"], []).append(w)
+        if w["is_missed"]:
+            missed_by_day_counts[w["day_of_week"]] = missed_by_day_counts.get(w["day_of_week"], 0) + 1
+
+    adherence_trend = []
+    for week_number in sorted(adherence_by_week.keys()):
+        week_wos = adherence_by_week[week_number]
+        resolved = [w for w in week_wos if w["is_completed"] or w["is_missed"]]
+        if not resolved:
+            continue
+        completed = [w for w in resolved if w["is_completed"]]
+        adherence_trend.append({"week_number": week_number, "adherence_pct": round(len(completed) / len(resolved), 3)})
+
+    missed_by_day = [{"day_of_week": day, "count": count} for day, count in missed_by_day_counts.items()]
+
     return {
         "athletes": athletes,
         "action_items": {
@@ -1540,6 +1558,8 @@ def get_roster_overview_data(coach_id: int, days: int = 14) -> dict[str, Any]:
         },
         "phase_alerts": phase_alerts,
         "workout_type_mix": workout_type_mix,
+        "adherence_trend": adherence_trend,
+        "missed_by_day": missed_by_day,
     }
 
 
