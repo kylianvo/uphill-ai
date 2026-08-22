@@ -1356,7 +1356,12 @@ def runner_level(current_weekly_km: float | None) -> str:
     return "elite"
 
 
-def get_roster_overview_data(coach_id: int, days: int = 14) -> dict[str, Any]:
+def get_roster_overview_data(
+    coach_id: int,
+    days: int = 14,
+    athlete_id: int | None = None,
+    level: str | None = None,
+) -> dict[str, Any]:
     """Roster-wide progress, action items, phase alerts, and insights for a
     coach's active roster, over the last `days` days. Backs GET
     /api/coaching/overview.
@@ -1387,6 +1392,11 @@ def get_roster_overview_data(coach_id: int, days: int = 14) -> dict[str, Any]:
             {"cid": coach_id},
         ).fetchall()
         athlete_rows = [_row_to_dict(r) for r in athlete_rows]
+
+        if athlete_id is not None:
+            athlete_rows = [r for r in athlete_rows if r["athlete_id"] == athlete_id]
+        if level is not None and level != "all":
+            athlete_rows = [r for r in athlete_rows if runner_level(r["current_weekly_km"]) == level]
 
         plan_ids = [r["plan_id"] for r in athlete_rows if r["plan_id"] is not None]
         workouts_by_plan: dict[int, list[dict[str, Any]]] = {pid: [] for pid in plan_ids}
@@ -1428,7 +1438,7 @@ def get_roster_overview_data(coach_id: int, days: int = 14) -> dict[str, Any]:
 
         rpe_rows = conn.execute(
             text("""
-                SELECT br.overall_rpe
+                SELECT br.overall_rpe, p.user_id AS athlete_id
                 FROM block_reviews br
                 JOIN plans p ON p.id = br.plan_id
                 JOIN coach_athletes ca ON ca.athlete_id = p.user_id AND ca.coach_id = :cid AND ca.status = 'active'
@@ -1438,8 +1448,11 @@ def get_roster_overview_data(coach_id: int, days: int = 14) -> dict[str, Any]:
             {"cid": coach_id, "days": days},
         ).fetchall()
 
+    filtered_athlete_ids = {r["athlete_id"] for r in athlete_rows}
     draft_plans = [_row_to_dict(r) for r in draft_rows]
+    draft_plans = [d for d in draft_plans if d["athlete_id"] in filtered_athlete_ids]
     pending_workout_approvals = [_row_to_dict(r) for r in pending_rows]
+    pending_workout_approvals = [d for d in pending_workout_approvals if d["athlete_id"] in filtered_athlete_ids]
 
     draft_athlete_ids = {r["athlete_id"] for r in draft_plans}
     pending_athlete_ids = {r["athlete_id"] for r in pending_workout_approvals}
@@ -1450,18 +1463,44 @@ def get_roster_overview_data(coach_id: int, days: int = 14) -> dict[str, Any]:
     total_completed_in_window = 0
     roster_window_wos: list[dict[str, Any]] = []
 
+    races_dict: dict[str, dict[str, Any]] = {}
+    athletes_without_race = 0
+    for r in athlete_rows:
+        race_name = r.get("race_name")
+        if race_name:
+            if race_name not in races_dict:
+                races_dict[race_name] = {
+                    "race_name": race_name,
+                    "race_date": r.get("race_date"),
+                    "count": 0,
+                    "athletes": [],
+                }
+            races_dict[race_name]["count"] += 1
+            races_dict[race_name]["athletes"].append(
+                {
+                    "athlete_id": r["athlete_id"],
+                    "name": r["athlete_name"] or r["athlete_email"],
+                }
+            )
+        else:
+            athletes_without_race += 1
+
+    races = sorted(
+        races_dict.values(),
+        key=lambda x: (-x["count"], x["race_name"]),
+    )
+
     for row in athlete_rows:
         display_name = row["athlete_name"] or row["athlete_email"]
+        athlete_id = row["athlete_id"]
         plan_id = row["plan_id"]
         if plan_id is None:
             athletes.append(
                 {
-                    "athlete_id": row["athlete_id"],
+                    "athlete_id": athlete_id,
                     "name": display_name,
                     "runner_level": runner_level(row["current_weekly_km"]),
-                    "needs_attention": (
-                        row["athlete_id"] in draft_athlete_ids or row["athlete_id"] in pending_athlete_ids
-                    ),
+                    "needs_attention": (athlete_id in draft_athlete_ids or athlete_id in pending_athlete_ids),
                     "active_plan": None,
                     "adherence_pct": None,
                     "last_completed": None,
@@ -1501,11 +1540,11 @@ def get_roster_overview_data(coach_id: int, days: int = 14) -> dict[str, Any]:
         has_phase_alert = bool((this_week_phases | next_week_phases) & _PHASE_ALERT_SET)
         for phase in sorted(this_week_phases & _PHASE_ALERT_SET):
             phase_alerts.append(
-                {"athlete_id": row["athlete_id"], "athlete_name": display_name, "phase": phase, "starts": "this_week"}
+                {"athlete_id": athlete_id, "athlete_name": display_name, "phase": phase, "starts": "this_week"}
             )
         for phase in sorted(next_week_phases & _PHASE_ALERT_SET):
             phase_alerts.append(
-                {"athlete_id": row["athlete_id"], "athlete_name": display_name, "phase": phase, "starts": "next_week"}
+                {"athlete_id": athlete_id, "athlete_name": display_name, "phase": phase, "starts": "next_week"}
             )
 
         for w in completed_in_window:
@@ -1514,13 +1553,13 @@ def get_roster_overview_data(coach_id: int, days: int = 14) -> dict[str, Any]:
 
         athletes.append(
             {
-                "athlete_id": row["athlete_id"],
+                "athlete_id": athlete_id,
                 "name": display_name,
                 "runner_level": runner_level(row["current_weekly_km"]),
                 "needs_attention": (
                     has_phase_alert
-                    or row["athlete_id"] in draft_athlete_ids
-                    or row["athlete_id"] in pending_athlete_ids
+                    or athlete_id in draft_athlete_ids
+                    or athlete_id in pending_athlete_ids
                     or missed_streak > 0
                 ),
                 "active_plan": {
@@ -1547,6 +1586,7 @@ def get_roster_overview_data(coach_id: int, days: int = 14) -> dict[str, Any]:
 
     adherence_by_week: dict[int, list[dict[str, Any]]] = {}
     missed_by_day_counts: dict[str, int] = {}
+
     for w in roster_window_wos:
         adherence_by_week.setdefault(w["week_number"], []).append(w)
         if w["is_missed"]:
@@ -1563,7 +1603,7 @@ def get_roster_overview_data(coach_id: int, days: int = 14) -> dict[str, Any]:
 
     missed_by_day = [{"day_of_week": day, "count": count} for day, count in missed_by_day_counts.items()]
 
-    rpe_values = [r[0] for r in rpe_rows]
+    rpe_values = [r[0] for r in rpe_rows if r[1] in filtered_athlete_ids]
     rpe_counts: dict[int, int] = {}
     for v in rpe_values:
         rpe_counts[v] = rpe_counts.get(v, 0) + 1
@@ -1613,6 +1653,8 @@ def get_roster_overview_data(coach_id: int, days: int = 14) -> dict[str, Any]:
         "race_readiness": race_readiness,
         "roster_totals": roster_totals,
         "most_consistent": most_consistent,
+        "races": races,
+        "athletes_without_race": athletes_without_race,
     }
 
 

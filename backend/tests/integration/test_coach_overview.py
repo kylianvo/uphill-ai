@@ -263,6 +263,8 @@ class TestGetRosterOverviewData:
             "race_readiness": {"on_track": 0, "at_risk": 0, "behind": 0},
             "roster_totals": {"distance_km": 0.0, "duration_hours": 0.0, "elevation_gain_m": 0.0, "workout_count": 0},
             "most_consistent": [],
+            "races": [],
+            "athletes_without_race": 0,
         }
 
     def test_runner_level_boundaries(self):
@@ -708,6 +710,91 @@ class TestGetRosterOverviewData:
         assert all(row["adherence_pct"] == 1.0 for row in data["most_consistent"])
         assert a4_no_plan not in {row["athlete_id"] for row in data["most_consistent"]}
 
+    def test_races_breakdown_aggregates_active_plans_by_race_name(self):
+        coach_id = _create_user("races-breakdown-coach@uphill.ai")
+        a1 = _create_user("races-breakdown-a1@uphill.ai")
+        a2 = _create_user("races-breakdown-a2@uphill.ai")
+        a3 = _create_user("races-breakdown-a3@uphill.ai")
+        a4 = _create_user("races-breakdown-a4@uphill.ai")
+        for aid in (a1, a2, a3, a4):
+            _link_active(coach_id, aid)
+
+        create_plan(
+            user_id=a1,
+            race_name="VMM 50K",
+            race_date="2026-09-20",
+            goal_type="finish",
+            target_time_hours=8.0,
+            total_weeks=12,
+            plan_status="active",
+        )
+        create_plan(
+            user_id=a2,
+            race_name="VMM 50K",
+            race_date="2026-09-20",
+            goal_type="finish",
+            target_time_hours=9.0,
+            total_weeks=12,
+            plan_status="active",
+        )
+        create_plan(
+            user_id=a3,
+            race_name="Dalapa 70K",
+            race_date="2026-11-15",
+            goal_type="finish",
+            target_time_hours=12.0,
+            total_weeks=16,
+            plan_status="active",
+        )
+        # a4 has no plan
+
+        data = get_roster_overview_data(coach_id, days=14)
+        assert len(data["races"]) == 2
+        races_map = {r["race_name"]: r for r in data["races"]}
+        assert races_map["VMM 50K"]["count"] == 2
+        assert races_map["VMM 50K"]["race_date"] == "2026-09-20"
+        assert {a["athlete_id"] for a in races_map["VMM 50K"]["athletes"]} == {a1, a2}
+        assert races_map["Dalapa 70K"]["count"] == 1
+        assert {a["athlete_id"] for a in races_map["Dalapa 70K"]["athletes"]} == {a3}
+        assert data["athletes_without_race"] == 1
+
+    def test_get_roster_overview_data_filters_by_athlete_id(self):
+        coach_id = _create_user("filter-aid-coach@uphill.ai")
+        a1 = _create_user("filter-aid-a1@uphill.ai")
+        a2 = _create_user("filter-aid-a2@uphill.ai")
+        _link_active(coach_id, a1)
+        _link_active(coach_id, a2)
+
+        _make_plan_with_workouts(a1, current_week=5)
+        _make_plan_with_workouts(a2, current_week=5)
+
+        data = get_roster_overview_data(coach_id, days=14, athlete_id=a1)
+        assert len(data["athletes"]) == 1
+        assert data["athletes"][0]["athlete_id"] == a1
+
+    def test_get_roster_overview_data_filters_by_runner_level(self):
+        coach_id = _create_user("filter-lvl-coach@uphill.ai")
+        a_beg = _create_user("filter-lvl-beg@uphill.ai")
+        a_adv = _create_user("filter-lvl-adv@uphill.ai")
+        _link_active(coach_id, a_beg)
+        _link_active(coach_id, a_adv)
+
+        with engine.connect() as conn:
+            conn.execute(text("UPDATE users SET current_weekly_km = 10.0 WHERE id = :id"), {"id": a_beg})
+            conn.execute(text("UPDATE users SET current_weekly_km = 60.0 WHERE id = :id"), {"id": a_adv})
+            conn.commit()
+
+        _make_plan_with_workouts(a_beg, current_week=5)
+        _make_plan_with_workouts(a_adv, current_week=5)
+
+        data_beg = get_roster_overview_data(coach_id, days=14, level="beginner")
+        assert len(data_beg["athletes"]) == 1
+        assert data_beg["athletes"][0]["athlete_id"] == a_beg
+
+        data_adv = get_roster_overview_data(coach_id, days=14, level="advanced")
+        assert len(data_adv["athletes"]) == 1
+        assert data_adv["athletes"][0]["athlete_id"] == a_adv
+
 
 def _admin_headers(client):
     resp = client.post("/api/auth/mock-login", json={"email": "admin@uphill.ai"})
@@ -749,6 +836,8 @@ class TestOverviewEndpoint:
             "race_readiness",
             "roster_totals",
             "most_consistent",
+            "races",
+            "athletes_without_race",
         }
         assert len(body["athletes"]) == 1
         assert body["athletes"][0]["athlete_id"] == athlete_id
@@ -770,3 +859,16 @@ class TestOverviewEndpoint:
 
         assert resp.status_code == 200
         assert "athletes" in resp.json()
+
+    def test_get_coaching_overview_endpoint_accepts_athlete_id_and_level_params(self, client):
+        coach_headers, coach_id = _make_coach(client, "filter-endpoint-coach1@uphill.ai")
+        a1 = _create_user("filter-endpoint-a1@uphill.ai")
+        a2 = _create_user("filter-endpoint-a2@uphill.ai")
+        _link_active(coach_id, a1)
+        _link_active(coach_id, a2)
+
+        resp = client.get(f"/api/coaching/overview?athlete_id={a1}&level=all", headers=coach_headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data["athletes"]) == 1
+        assert data["athletes"][0]["athlete_id"] == a1
