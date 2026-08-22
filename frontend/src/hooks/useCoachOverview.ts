@@ -36,6 +36,12 @@ export interface CoachOverview {
   };
   phase_alerts: { athlete_id: number; athlete_name: string; phase: string; starts: "this_week" | "next_week" }[];
   workout_type_mix: { type: string; count: number; pct: number }[];
+  adherence_trend: { week_number: number; adherence_pct: number }[];
+  missed_by_day: { day_of_week: string; count: number }[];
+  rpe_distribution: { avg_rpe: number | null; by_value: { rpe: number; count: number }[] };
+  race_readiness: { on_track: number; at_risk: number; behind: number };
+  roster_totals: { distance_km: number; duration_hours: number; elevation_gain_m: number; workout_count: number };
+  most_consistent: { athlete_id: number; name: string; adherence_pct: number }[];
 }
 
 export function useCoachOverview() {
