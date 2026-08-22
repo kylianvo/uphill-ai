@@ -1392,7 +1392,8 @@ def get_roster_overview_data(coach_id: int, days: int = 14) -> dict[str, Any]:
         workouts_by_plan: dict[int, list[dict[str, Any]]] = {pid: [] for pid in plan_ids}
         if plan_ids:
             stmt = text("""
-                SELECT plan_id, week_number, day_of_week, phase, type, is_completed, is_missed
+                SELECT plan_id, week_number, day_of_week, phase, type, is_completed, is_missed,
+                       distance_km, duration_minutes, elevation_gain_m
                 FROM workouts
                 WHERE plan_id IN :plan_ids
             """).bindparams(bindparam("plan_ids", expanding=True))
@@ -1571,6 +1572,33 @@ def get_roster_overview_data(coach_id: int, days: int = 14) -> dict[str, Any]:
         "by_value": [{"rpe": rpe, "count": count} for rpe, count in sorted(rpe_counts.items())],
     }
 
+    on_track = at_risk = behind = 0
+    for a in athletes:
+        pct = a["adherence_pct"]
+        if pct is None:
+            continue
+        if pct >= 0.8:
+            on_track += 1
+        elif pct >= 0.5:
+            at_risk += 1
+        else:
+            behind += 1
+    race_readiness = {"on_track": on_track, "at_risk": at_risk, "behind": behind}
+
+    completed_window_wos = [w for w in roster_window_wos if w["is_completed"]]
+    roster_totals = {
+        "distance_km": round(sum(w["distance_km"] or 0 for w in completed_window_wos), 2),
+        "duration_hours": round(sum(w["duration_minutes"] or 0 for w in completed_window_wos) / 60, 2),
+        "elevation_gain_m": round(sum(w["elevation_gain_m"] or 0 for w in completed_window_wos), 1),
+        "workout_count": len(completed_window_wos),
+    }
+
+    eligible = [a for a in athletes if a["adherence_pct"] is not None]
+    most_consistent = [
+        {"athlete_id": a["athlete_id"], "name": a["name"], "adherence_pct": a["adherence_pct"]}
+        for a in sorted(eligible, key=lambda a: (-a["adherence_pct"], a["name"]))[:3]
+    ]
+
     return {
         "athletes": athletes,
         "action_items": {
@@ -1582,6 +1610,9 @@ def get_roster_overview_data(coach_id: int, days: int = 14) -> dict[str, Any]:
         "adherence_trend": adherence_trend,
         "missed_by_day": missed_by_day,
         "rpe_distribution": rpe_distribution,
+        "race_readiness": race_readiness,
+        "roster_totals": roster_totals,
+        "most_consistent": most_consistent,
     }
 
 

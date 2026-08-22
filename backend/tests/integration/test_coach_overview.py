@@ -260,6 +260,9 @@ class TestGetRosterOverviewData:
             "adherence_trend": [],
             "missed_by_day": [],
             "rpe_distribution": {"avg_rpe": None, "by_value": []},
+            "race_readiness": {"on_track": 0, "at_risk": 0, "behind": 0},
+            "roster_totals": {"distance_km": 0.0, "duration_hours": 0.0, "elevation_gain_m": 0.0, "workout_count": 0},
+            "most_consistent": [],
         }
 
     def test_runner_level_boundaries(self):
@@ -581,6 +584,130 @@ class TestGetRosterOverviewData:
         data = get_roster_overview_data(coach_id, days=14)
         assert data["rpe_distribution"] == {"avg_rpe": None, "by_value": []}
 
+    def test_race_readiness_buckets_by_adherence_boundaries(self):
+        coach_id = _create_user("readiness-coach1@uphill.ai")
+        on_track_id = _create_user("readiness-ontrack@uphill.ai")
+        at_risk_id = _create_user("readiness-atrisk@uphill.ai")
+        behind_id = _create_user("readiness-behind@uphill.ai")
+        no_data_id = _create_user("readiness-nodata@uphill.ai")
+        for aid in (on_track_id, at_risk_id, behind_id, no_data_id):
+            _link_active(coach_id, aid)
+
+        def make_athlete_with_adherence(athlete_id, pct_completed, pct_missed):
+            plan_id = create_plan(
+                user_id=athlete_id,
+                race_name="R",
+                race_date="2026-12-01",
+                goal_type="finish",
+                target_time_hours=8.0,
+                total_weeks=12,
+                plan_status="active",
+            )
+            with engine.connect() as conn:
+                conn.execute(text("UPDATE plans SET current_week = 5 WHERE id = :pid"), {"pid": plan_id})
+                conn.commit()
+            workouts = [
+                {
+                    "week_number": 5,
+                    "day_of_week": d,
+                    "phase": "build",
+                    "title": "Run",
+                    "type": "easy_run",
+                    "duration_minutes": 30,
+                    "target_zone": "Z2",
+                }
+                for d in ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+            ]
+            save_workouts(plan_id, workouts, auto_approve=True)
+            wos = get_plan_workouts(plan_id)
+            for w in wos[:pct_completed]:
+                update_workout_log(w["id"], is_completed=1)
+            for w in wos[pct_completed : pct_completed + pct_missed]:
+                update_workout_log(w["id"], is_missed=1)
+
+        make_athlete_with_adherence(on_track_id, 4, 1)  # 4/5 = 0.8 -> on_track
+        make_athlete_with_adherence(at_risk_id, 3, 2)  # 3/5 = 0.6 -> at_risk
+        make_athlete_with_adherence(behind_id, 1, 4)  # 1/5 = 0.2 -> behind
+        # no_data_id: no plan at all -> adherence_pct is null -> excluded
+
+        data = get_roster_overview_data(coach_id, days=14)
+        assert data["race_readiness"] == {"on_track": 1, "at_risk": 1, "behind": 1}
+
+    def test_roster_totals_sums_completed_workouts_and_tolerates_null_fields(self):
+        coach_id = _create_user("totals-coach1@uphill.ai")
+        athlete_id = _create_user("totals-athlete1@uphill.ai")
+        _link_active(coach_id, athlete_id)
+        plan_id = create_plan(
+            user_id=athlete_id,
+            race_name="R",
+            race_date="2026-12-01",
+            goal_type="finish",
+            target_time_hours=8.0,
+            total_weeks=12,
+            plan_status="active",
+        )
+        with engine.connect() as conn:
+            conn.execute(text("UPDATE plans SET current_week = 5 WHERE id = :pid"), {"pid": plan_id})
+            conn.commit()
+        save_workouts(
+            plan_id,
+            [
+                {
+                    "week_number": 5,
+                    "day_of_week": "Monday",
+                    "phase": "build",
+                    "title": "Run",
+                    "type": "easy_run",
+                    "duration_minutes": 60,
+                    "distance_km": 10.0,
+                    "elevation_gain_m": 200,
+                    "target_zone": "Z2",
+                },
+                {
+                    "week_number": 5,
+                    "day_of_week": "Tuesday",
+                    "phase": "build",
+                    "title": "Run (no distance logged)",
+                    "type": "easy_run",
+                    "duration_minutes": 30,
+                    "target_zone": "Z2",
+                },  # distance_km/elevation_gain_m omitted -> NULL/0 default
+            ],
+            auto_approve=True,
+        )
+        wos = get_plan_workouts(plan_id)
+        for w in wos:
+            update_workout_log(w["id"], is_completed=1)
+
+        data = get_roster_overview_data(coach_id, days=14)
+        totals = data["roster_totals"]
+        assert totals["distance_km"] == 10.0
+        assert totals["duration_hours"] == 1.5  # (60 + 30) / 60
+        assert totals["workout_count"] == 2
+
+    def test_most_consistent_returns_top_3_excluding_null_adherence(self):
+        coach_id = _create_user("consistent-coach1@uphill.ai")
+        a1 = _create_user("consistent-athlete1@uphill.ai")
+        a2 = _create_user("consistent-athlete2@uphill.ai")
+        a3 = _create_user("consistent-athlete3@uphill.ai")
+        a4_no_plan = _create_user("consistent-athlete4@uphill.ai")
+        for aid in (a1, a2, a3, a4_no_plan):
+            _link_active(coach_id, aid)
+
+        def full_adherence_athlete(athlete_id):
+            plan_id = _make_plan_with_workouts(athlete_id, current_week=5)
+            for w in [w for w in get_plan_workouts(plan_id) if w["week_number"] in (4, 5)]:
+                update_workout_log(w["id"], is_completed=1)
+
+        full_adherence_athlete(a1)
+        full_adherence_athlete(a2)
+        full_adherence_athlete(a3)
+
+        data = get_roster_overview_data(coach_id, days=14)
+        assert len(data["most_consistent"]) == 3
+        assert all(row["adherence_pct"] == 1.0 for row in data["most_consistent"])
+        assert a4_no_plan not in {row["athlete_id"] for row in data["most_consistent"]}
+
 
 def _admin_headers(client):
     resp = client.post("/api/auth/mock-login", json={"email": "admin@uphill.ai"})
@@ -619,6 +746,9 @@ class TestOverviewEndpoint:
             "adherence_trend",
             "missed_by_day",
             "rpe_distribution",
+            "race_readiness",
+            "roster_totals",
+            "most_consistent",
         }
         assert len(body["athletes"]) == 1
         assert body["athletes"][0]["athlete_id"] == athlete_id
