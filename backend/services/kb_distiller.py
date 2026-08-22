@@ -731,15 +731,23 @@ def save_race_results(results_by_race: dict[str, list[dict]]) -> int:
     return total
 
 
-def save_course_profile(race_name: str, distance_label: str, checkpoints: list[dict[str, Any]]) -> dict[str, Any]:
+def save_course_profile(
+    race_name: str, distance_label: str, checkpoints: list[dict[str, Any]], year: int, variant: str | None = None
+) -> dict[str, Any]:
     """Attaches a curated GPX-derived checkpoint list to an existing
-    race_courses chunk, matched by exact title, then re-exports the seed
-    file so the profile is portable across environments (same pattern as
-    save_race_results). Unlike save_race_results, a re-upload for the same
-    (race_name, distance_label) OVERWRITES the existing entry -- a
-    re-uploaded GPX is a deliberate correction, not a duplicate to dedupe
-    against. Raises ValueError for an unknown race, a distance_label the
-    race doesn't have, or an empty/malformed checkpoint list."""
+    race_courses chunk for a specific edition year, matched by exact title,
+    then re-exports the seed file so the profile is portable across
+    environments (same pattern as save_race_results). A re-upload for the
+    same (race_name, distance_label, year) OVERWRITES that year's entry --
+    a re-uploaded GPX is a deliberate correction -- but a DIFFERENT year is
+    added alongside existing years rather than replacing them, so a race
+    that changes route some years (e.g. a reversed climb direction) can
+    have multiple years curated at once. `variant` is an optional
+    curator-asserted route tag: years sharing a variant are treated as the
+    same route for percentile calibration; leaving it unset (the default)
+    makes no assertion either way. Raises ValueError for an unknown race,
+    a distance_label the race doesn't have, or an empty/malformed
+    checkpoint list."""
     from datetime import date
 
     import db
@@ -768,18 +776,26 @@ def save_course_profile(race_name: str, distance_label: str, checkpoints: list[d
         )
 
     course_profiles = payload.get("course_profiles") or {}
-    course_profiles[distance_label] = {
+    years = course_profiles.get(distance_label) or {}
+    years[str(year)] = {
         "checkpoints": checkpoints,
+        "variant": variant,
         "source": "gpx_upload",
         "curated_at": date.today().isoformat(),
     }
+    course_profiles[distance_label] = years
     payload["course_profiles"] = course_profiles
     db.update_kb_chunk_payload("race_courses", "race_profile", race_name, payload)
 
     clean_rows = [{k: row[k] for k in _SEED_KEYS} for row in db.get_kb_chunks("race_courses")]
     export_seed("race_courses", clean_rows)
 
-    return {"race_name": race_name, "distance_label": distance_label, "checkpoint_count": len(checkpoints)}
+    return {
+        "race_name": race_name,
+        "distance_label": distance_label,
+        "year": year,
+        "checkpoint_count": len(checkpoints),
+    }
 
 
 def _notebook_id(domain: str) -> str:

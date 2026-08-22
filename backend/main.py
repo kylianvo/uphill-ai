@@ -2545,18 +2545,22 @@ class CourseProfileRequest(BaseModel):
     race_name: str  # exact race_courses KB chunk title
     distance_label: str  # must match an entry in that race's distances[]
     checkpoints: list[dict[str, Any]]  # GpxParser.parse()["checkpoints"], verbatim
+    year: int  # the edition year this GPX is for -- required, never inferred
+    variant: str | None = None  # optional curator-asserted route tag
 
 
 @app.post("/api/kb/race-courses/course-profile")
 def save_course_profile_endpoint(request: CourseProfileRequest, user: dict[str, Any] = Depends(require_admin)):
-    """Attaches a curated GPX-derived elevation profile to a race+distance
-    in the race_courses KB. Reuses the already-parsed output of
+    """Attaches a curated GPX-derived elevation profile to a race+distance+
+    year in the race_courses KB. Reuses the already-parsed output of
     /api/parser/gpx -- the curator parses a GPX there first, then posts the
     resulting checkpoints here to attach them to the matching KB entry."""
     from services.kb_distiller import save_course_profile
 
     try:
-        return save_course_profile(request.race_name, request.distance_label, request.checkpoints)
+        return save_course_profile(
+            request.race_name, request.distance_label, request.checkpoints, request.year, request.variant
+        )
     except ValueError as e:
         detail = str(e)
         status_code = 404 if detail.startswith("No race_courses KB entry") else 422
