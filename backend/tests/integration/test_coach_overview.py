@@ -333,12 +333,82 @@ class TestGetRosterOverviewData:
         assert data["athletes"][0]["needs_attention"] is True
 
     def test_needs_attention_true_for_missed_streak_only(self):
+        # Do NOT use _make_plan_with_workouts: it always tags current_week+1 as 'taper',
+        # which would trip has_phase_alert and confound this test. Instead, build a plan
+        # directly with all weeks tagged 'build' (non-alert phase).
         coach_id = _create_user("levels-coach4@uphill.ai")
         athlete_id = _create_user("levels-athlete4@uphill.ai")
         _link_active(coach_id, athlete_id)
-        plan_id = _make_plan_with_workouts(athlete_id, current_week=5)
-        past_workouts = [w for w in get_plan_workouts(plan_id) if w["week_number"] <= 5]
+        plan_id = create_plan(
+            user_id=athlete_id,
+            race_name="Missed Streak Race",
+            race_date="2026-12-01",
+            goal_type="finish",
+            target_time_hours=8.0,
+            total_weeks=12,
+            plan_status="active",
+        )
+        with engine.connect() as conn:
+            conn.execute(text("UPDATE plans SET current_week = 5 WHERE id = :pid"), {"pid": plan_id})
+            conn.commit()
+        # All weeks in and around the window tagged 'build' -- no peak/taper/race phase anywhere.
+        workouts = [
+            {
+                "week_number": wk,
+                "day_of_week": d,
+                "phase": "build",
+                "title": "Run",
+                "type": "easy_run",
+                "duration_minutes": 45,
+                "target_zone": "Z2",
+            }
+            for wk in (4, 5, 6)
+            for d in ("Monday", "Tuesday", "Wednesday")
+        ]
+        save_workouts(plan_id, workouts, auto_approve=True)
+        # Mark the most recent workout from the past (week 5 or earlier) as missed.
+        all_workouts = get_plan_workouts(plan_id)
+        past_workouts = [w for w in all_workouts if w["week_number"] <= 5]
         update_workout_log(past_workouts[-1]["id"], is_missed=1)
+
+        data = get_roster_overview_data(coach_id)
+        assert data["athletes"][0]["needs_attention"] is True
+
+    def test_needs_attention_true_for_phase_alert_only(self):
+        # Test the phase-alert case directly: active plan with taper/peak/race phase
+        # this week or next week, but no draft plan, no pending approval, and no missed streak.
+        coach_id = _create_user("levels-coach4b@uphill.ai")
+        athlete_id = _create_user("levels-athlete4b@uphill.ai")
+        _link_active(coach_id, athlete_id)
+        plan_id = create_plan(
+            user_id=athlete_id,
+            race_name="Phase Alert Race",
+            race_date="2026-12-01",
+            goal_type="finish",
+            target_time_hours=8.0,
+            total_weeks=12,
+            plan_status="active",
+        )
+        with engine.connect() as conn:
+            conn.execute(text("UPDATE plans SET current_week = 5 WHERE id = :pid"), {"pid": plan_id})
+            conn.commit()
+        # Weeks 4 and 5 are 'build', but week 6 (next_week) is tagged 'taper' (alert phase).
+        workouts = [
+            {
+                "week_number": wk,
+                "day_of_week": d,
+                "phase": "taper" if wk == 6 else "build",
+                "title": "Run",
+                "type": "easy_run",
+                "duration_minutes": 45,
+                "target_zone": "Z2",
+            }
+            for wk in (4, 5, 6)
+            for d in ("Monday", "Tuesday", "Wednesday")
+        ]
+        save_workouts(plan_id, workouts, auto_approve=True)
+        for w in get_plan_workouts(plan_id):
+            update_workout_log(w["id"], is_completed=1)
 
         data = get_roster_overview_data(coach_id)
         assert data["athletes"][0]["needs_attention"] is True
