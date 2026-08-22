@@ -185,9 +185,15 @@ function FieldCurve({
           </div>
         )}
       </div>
+      {/* On narrow (mobile) viewports the container is much smaller than the
+          chart's natural 720px width — letting the SVG shrink to fill it would
+          also shrink the fixed-size axis/goal labels below legible size. Keep
+          the chart at (at least) its natural size and let it scroll
+          horizontally instead, so text stays readable on mobile. */}
+      <div style={{ overflowX: "auto", marginTop: "6px" }}>
       <svg
         viewBox={`0 0 ${width} ${height}`}
-        style={{ width: "100%", display: "block", marginTop: "6px" }}
+        style={{ width: "100%", minWidth: `${width}px`, display: "block" }}
         onMouseMove={handleMove}
         onMouseLeave={() => setHover(null)}
       >
@@ -246,6 +252,7 @@ function FieldCurve({
           );
         })}
       </svg>
+      </div>
       {topTimes && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "8px" }}>
           {[
@@ -279,8 +286,23 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
   const [gain, setGain] = useState("");
   const [raceDate, setRaceDate] = useState("");
 
-  const { setPaceHandoff, setIsPaceStrategyOpen, setSettingsHandoff, actingAsAthleteId, actingAsAthleteName } =
-    useAppContext();
+  const {
+    setPaceHandoff,
+    setIsPaceStrategyOpen,
+    setSettingsHandoff,
+    actingAsAthleteId,
+    actingAsAthleteName,
+    planForm,
+  } = useAppContext();
+
+  // Pre-fill from the race date already entered in Plan creation, so the
+  // user isn't asked to type it twice — but only while this modal hasn't
+  // been given its own value yet, so it never clobbers an in-progress edit.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (isOpen && !raceDate && planForm?.race_date) setRaceDate(planForm.race_date);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, planForm?.race_date]);
 
   // When a coach is acting as an athlete, "the profile" means the athlete's
   // stored zones, not the coach's own — fetch it fresh rather than reading

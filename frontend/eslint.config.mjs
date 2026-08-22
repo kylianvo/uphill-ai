@@ -16,6 +16,12 @@ const eslintConfig = defineConfig([
     // callback parameter false-positives against the react-hooks/rules-of-hooks
     // naming convention check.
     "tests/**",
+    // Capacitor native platform projects -- generated/vendored Gradle and
+    // Xcode project trees, plus their gitignored copies of the built web
+    // app (`npx cap sync`) that ESLint would otherwise try to lint as
+    // hand-authored source.
+    "android/**",
+    "ios/**",
   ]),
 ]);
 
