@@ -259,6 +259,7 @@ class TestGetRosterOverviewData:
             "workout_type_mix": [],
             "adherence_trend": [],
             "missed_by_day": [],
+            "rpe_distribution": {"avg_rpe": None, "by_value": []},
         }
 
     def test_runner_level_boundaries(self):
@@ -541,6 +542,45 @@ class TestGetRosterOverviewData:
         assert by_day_result["Monday"] == 2
         assert "Wednesday" not in by_day_result
 
+    def test_rpe_distribution_excludes_reviews_outside_window_and_null_rpe(self):
+        from db import save_block_review
+
+        coach_id = _create_user("rpe-coach1@uphill.ai")
+        athlete_id = _create_user("rpe-athlete1@uphill.ai")
+        _link_active(coach_id, athlete_id)
+        plan_id = create_plan(
+            user_id=athlete_id,
+            race_name="Test 50K",
+            race_date="2026-12-01",
+            goal_type="finish",
+            target_time_hours=8.0,
+            total_weeks=12,
+            plan_status="active",
+        )
+        save_block_review(plan_id, 1, overall_rpe=6, notes=None)
+        save_block_review(plan_id, 2, overall_rpe=8, notes=None)
+        old_review = save_block_review(plan_id, 3, overall_rpe=9, notes=None)
+        save_block_review(plan_id, 4, overall_rpe=None, notes="no rpe given")
+        with engine.connect() as conn:
+            conn.execute(
+                text("UPDATE block_reviews SET created_at = NOW() - INTERVAL '60 days' WHERE id = :id"),
+                {"id": old_review["id"]},
+            )
+            conn.commit()
+
+        data = get_roster_overview_data(coach_id, days=14)
+        assert data["rpe_distribution"]["avg_rpe"] == 7.0  # (6 + 8) / 2, excludes the 60-day-old and the null
+        by_value = {row["rpe"]: row["count"] for row in data["rpe_distribution"]["by_value"]}
+        assert by_value == {6: 1, 8: 1}
+
+    def test_rpe_distribution_empty_when_no_reviews_in_window(self):
+        coach_id = _create_user("rpe-coach2@uphill.ai")
+        athlete_id = _create_user("rpe-athlete2@uphill.ai")
+        _link_active(coach_id, athlete_id)
+
+        data = get_roster_overview_data(coach_id, days=14)
+        assert data["rpe_distribution"] == {"avg_rpe": None, "by_value": []}
+
 
 def _admin_headers(client):
     resp = client.post("/api/auth/mock-login", json={"email": "admin@uphill.ai"})
@@ -578,6 +618,7 @@ class TestOverviewEndpoint:
             "workout_type_mix",
             "adherence_trend",
             "missed_by_day",
+            "rpe_distribution",
         }
         assert len(body["athletes"]) == 1
         assert body["athletes"][0]["athlete_id"] == athlete_id

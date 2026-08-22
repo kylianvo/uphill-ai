@@ -1425,6 +1425,18 @@ def get_roster_overview_data(coach_id: int, days: int = 14) -> dict[str, Any]:
             {"cid": coach_id},
         ).fetchall()
 
+        rpe_rows = conn.execute(
+            text("""
+                SELECT br.overall_rpe
+                FROM block_reviews br
+                JOIN plans p ON p.id = br.plan_id
+                JOIN coach_athletes ca ON ca.athlete_id = p.user_id AND ca.coach_id = :cid AND ca.status = 'active'
+                WHERE br.overall_rpe IS NOT NULL
+                  AND br.created_at >= NOW() - (:days || ' days')::INTERVAL
+            """),
+            {"cid": coach_id, "days": days},
+        ).fetchall()
+
     draft_plans = [_row_to_dict(r) for r in draft_rows]
     pending_workout_approvals = [_row_to_dict(r) for r in pending_rows]
 
@@ -1550,6 +1562,15 @@ def get_roster_overview_data(coach_id: int, days: int = 14) -> dict[str, Any]:
 
     missed_by_day = [{"day_of_week": day, "count": count} for day, count in missed_by_day_counts.items()]
 
+    rpe_values = [r[0] for r in rpe_rows]
+    rpe_counts: dict[int, int] = {}
+    for v in rpe_values:
+        rpe_counts[v] = rpe_counts.get(v, 0) + 1
+    rpe_distribution = {
+        "avg_rpe": round(sum(rpe_values) / len(rpe_values), 3) if rpe_values else None,
+        "by_value": [{"rpe": rpe, "count": count} for rpe, count in sorted(rpe_counts.items())],
+    }
+
     return {
         "athletes": athletes,
         "action_items": {
@@ -1560,6 +1581,7 @@ def get_roster_overview_data(coach_id: int, days: int = 14) -> dict[str, Any]:
         "workout_type_mix": workout_type_mix,
         "adherence_trend": adherence_trend,
         "missed_by_day": missed_by_day,
+        "rpe_distribution": rpe_distribution,
     }
 
 
