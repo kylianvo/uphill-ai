@@ -28,6 +28,13 @@ export interface CoachOverviewAthlete {
   missed_streak: number;
 }
 
+export interface RaceBreakdownEntry {
+  race_name: string;
+  race_date: string | null;
+  count: number;
+  athletes: { athlete_id: number; name: string }[];
+}
+
 export interface CoachOverview {
   athletes: CoachOverviewAthlete[];
   action_items: {
@@ -42,6 +49,8 @@ export interface CoachOverview {
   race_readiness: { on_track: number; at_risk: number; behind: number };
   roster_totals: { distance_km: number; duration_hours: number; elevation_gain_m: number; workout_count: number };
   most_consistent: { athlete_id: number; name: string; adherence_pct: number }[];
+  races: RaceBreakdownEntry[];
+  athletes_without_race: number;
 }
 
 export function useCoachOverview() {
@@ -56,11 +65,16 @@ export function useCoachOverview() {
     return { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
   };
 
-  const fetchOverview = async (days?: number) => {
+  const fetchOverview = async (days?: number, athleteId?: number | null, level?: string | null) => {
     setOverviewLoading(true);
     setOverviewError("");
     try {
-      const url = days ? `${API_BASE_URL}/api/coaching/overview?days=${days}` : `${API_BASE_URL}/api/coaching/overview`;
+      const params = new URLSearchParams();
+      if (days) params.set("days", String(days));
+      if (athleteId) params.set("athlete_id", String(athleteId));
+      if (level && level !== "all") params.set("level", level);
+      const queryString = params.toString();
+      const url = queryString ? `${API_BASE_URL}/api/coaching/overview?${queryString}` : `${API_BASE_URL}/api/coaching/overview`;
       const res = await fetch(url, { headers: authHeaders() });
       const body = await res.json();
       if (!res.ok) {
