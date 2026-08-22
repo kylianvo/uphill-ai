@@ -35,6 +35,10 @@ interface GoalEstimate {
   race_name?: string;
   benchmarks?: RaceBenchmark[];
   rank_transfer_mins?: number;
+  target_profile_source?: "gpx" | "synthetic";
+  reference_profile_source?: "gpx" | "synthetic" | null;
+  target_course_year?: number | null;
+  reference_course_year?: number | null;
 }
 
 interface RaceBenchmark {
@@ -827,6 +831,29 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
                 {t("at a", "với")} {estimate.base_flat_pace_min_km.toFixed(1)} min/km{" "}
                 {t("flat base pace over", "pace nền trên")} {Math.round(estimate.distance_km)}k /{" "}
                 {Math.round(estimate.elevation_gain_m)}m D+ ({t("Minetti grade curve + fatigue", "đường cong Minetti + mệt mỏi")}).
+              </div>
+              <div>
+                {t("Course", "Đường đua")}:{" "}
+                {estimate.target_profile_source === "gpx"
+                  ? t(
+                      `Real curated route (${estimate.target_course_year} GPX)`,
+                      `Đường đua thực tế (GPX ${estimate.target_course_year})`,
+                    )
+                  : t(
+                      "Estimated from distance/elevation — no GPX curated for this race yet",
+                      "Ước tính từ khoảng cách/độ cao — chưa có GPX cho giải này",
+                    )}
+                {estimate.reference_profile_source && (
+                  <>
+                    {" · "}
+                    {estimate.reference_profile_source === "gpx"
+                      ? t(
+                          `reference race: real route (${estimate.reference_course_year} GPX)`,
+                          `giải tham chiếu: đường đua thực tế (GPX ${estimate.reference_course_year})`,
+                        )
+                      : t("reference race: estimated route", "giải tham chiếu: đường đua ước tính")}
+                  </>
+                )}
               </div>
               {estimate.improvement_pct > 0 && (
                 <div>
