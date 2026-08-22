@@ -9,7 +9,7 @@ import json
 import uuid
 from typing import Any
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import bindparam, create_engine, text
 from sqlalchemy.pool import QueuePool
 
 from config import settings
@@ -1327,6 +1327,184 @@ def get_roster_for_coach(coach_id: int) -> list[dict[str, Any]]:
             {"cid": coach_id},
         ).fetchall()
     return [_row_to_dict(r) for r in rows]
+
+
+_DAY_ORDER = {
+    "Monday": 0,
+    "Tuesday": 1,
+    "Wednesday": 2,
+    "Thursday": 3,
+    "Friday": 4,
+    "Saturday": 5,
+    "Sunday": 6,
+}
+_PHASE_ALERT_SET = {"peak", "taper", "race"}
+
+
+def get_roster_overview_data(coach_id: int) -> dict[str, Any]:
+    """Roster-wide progress, action items, phase alerts, and workout-type
+    mix for a coach's active roster. Backs GET /api/coaching/overview.
+
+    'current week' trusts plans.current_week directly (no calendar-date
+    derivation -- workouts have no completion timestamp or date column,
+    only week_number + day_of_week). The 14-day window for adherence and
+    workout-type mix is approximated as week_number in
+    {current_week - 1, current_week}."""
+    with engine.connect() as conn:
+        athlete_rows = conn.execute(
+            text("""
+                SELECT ca.athlete_id, u.name AS athlete_name, u.email AS athlete_email,
+                       p.id AS plan_id, p.race_name, p.race_date, p.current_week, p.total_weeks
+                FROM coach_athletes ca
+                JOIN users u ON u.id = ca.athlete_id
+                LEFT JOIN LATERAL (
+                    SELECT * FROM plans
+                    WHERE plans.user_id = ca.athlete_id AND plans.plan_status = 'active'
+                    ORDER BY plans.created_at DESC, plans.id DESC
+                    LIMIT 1
+                ) p ON true
+                WHERE ca.coach_id = :cid AND ca.status = 'active'
+                ORDER BY u.name
+            """),
+            {"cid": coach_id},
+        ).fetchall()
+        athlete_rows = [_row_to_dict(r) for r in athlete_rows]
+
+        plan_ids = [r["plan_id"] for r in athlete_rows if r["plan_id"] is not None]
+        workouts_by_plan: dict[int, list[dict[str, Any]]] = {pid: [] for pid in plan_ids}
+        if plan_ids:
+            stmt = text("""
+                SELECT plan_id, week_number, day_of_week, phase, type, is_completed, is_missed
+                FROM workouts
+                WHERE plan_id IN :plan_ids
+            """).bindparams(bindparam("plan_ids", expanding=True))
+            for r in conn.execute(stmt, {"plan_ids": plan_ids}).fetchall():
+                d = _row_to_dict(r)
+                workouts_by_plan[d["plan_id"]].append(d)
+
+        draft_rows = conn.execute(
+            text("""
+                SELECT p.id AS plan_id, p.user_id AS athlete_id, u.name AS athlete_name, p.race_name
+                FROM plans p
+                JOIN coach_athletes ca ON ca.athlete_id = p.user_id AND ca.coach_id = :cid AND ca.status = 'active'
+                JOIN users u ON u.id = p.user_id
+                WHERE p.plan_status = 'draft'
+                ORDER BY p.created_at DESC
+            """),
+            {"cid": coach_id},
+        ).fetchall()
+
+        pending_rows = conn.execute(
+            text("""
+                SELECT w.id AS workout_id, w.plan_id, p.user_id AS athlete_id, u.name AS athlete_name, w.title
+                FROM workouts w
+                JOIN plans p ON p.id = w.plan_id
+                JOIN coach_athletes ca ON ca.athlete_id = p.user_id AND ca.coach_id = :cid AND ca.status = 'active'
+                JOIN users u ON u.id = p.user_id
+                WHERE w.approved_at IS NULL
+                ORDER BY w.id
+            """),
+            {"cid": coach_id},
+        ).fetchall()
+
+    draft_plans = [_row_to_dict(r) for r in draft_rows]
+    pending_workout_approvals = [_row_to_dict(r) for r in pending_rows]
+
+    athletes: list[dict[str, Any]] = []
+    phase_alerts: list[dict[str, Any]] = []
+    type_counts: dict[str, int] = {}
+    total_completed_in_window = 0
+
+    for row in athlete_rows:
+        display_name = row["athlete_name"] or row["athlete_email"]
+        plan_id = row["plan_id"]
+        if plan_id is None:
+            athletes.append(
+                {
+                    "athlete_id": row["athlete_id"],
+                    "name": display_name,
+                    "active_plan": None,
+                    "adherence_pct_14d": None,
+                    "last_completed": None,
+                    "missed_streak": 0,
+                }
+            )
+            continue
+
+        current_week = row["current_week"] or 1
+        wos_sorted = sorted(
+            workouts_by_plan.get(plan_id, []),
+            key=lambda w: (w["week_number"], _DAY_ORDER.get(w["day_of_week"], 0)),
+        )
+
+        window_wos = [w for w in wos_sorted if current_week - 1 <= w["week_number"] <= current_week]
+        resolved = [w for w in window_wos if w["is_completed"] or w["is_missed"]]
+        completed_in_window = [w for w in resolved if w["is_completed"]]
+        adherence = (len(completed_in_window) / len(resolved)) if resolved else None
+
+        completed_all = [w for w in wos_sorted if w["is_completed"]]
+        last_completed = None
+        if completed_all:
+            last = completed_all[-1]  # wos_sorted is chronological, so the last completed entry is most recent
+            last_completed = {"week_number": last["week_number"], "day_of_week": last["day_of_week"]}
+
+        missed_streak = 0
+        for w in reversed([w for w in wos_sorted if w["week_number"] <= current_week]):
+            if w["is_missed"]:
+                missed_streak += 1
+            else:
+                break
+
+        this_week_phases = {w["phase"] for w in wos_sorted if w["week_number"] == current_week}
+        next_week_phases = {w["phase"] for w in wos_sorted if w["week_number"] == current_week + 1}
+        for phase in sorted(this_week_phases & _PHASE_ALERT_SET):
+            phase_alerts.append(
+                {"athlete_id": row["athlete_id"], "athlete_name": display_name, "phase": phase, "starts": "this_week"}
+            )
+        for phase in sorted(next_week_phases & _PHASE_ALERT_SET):
+            phase_alerts.append(
+                {"athlete_id": row["athlete_id"], "athlete_name": display_name, "phase": phase, "starts": "next_week"}
+            )
+
+        for w in completed_in_window:
+            type_counts[w["type"]] = type_counts.get(w["type"], 0) + 1
+            total_completed_in_window += 1
+
+        athletes.append(
+            {
+                "athlete_id": row["athlete_id"],
+                "name": display_name,
+                "active_plan": {
+                    "plan_id": plan_id,
+                    "race_name": row["race_name"],
+                    "race_date": row["race_date"],
+                    "current_week": current_week,
+                    "total_weeks": row["total_weeks"],
+                },
+                "adherence_pct_14d": round(adherence, 3) if adherence is not None else None,
+                "last_completed": last_completed,
+                "missed_streak": missed_streak,
+            }
+        )
+
+    workout_type_mix = (
+        [
+            {"type": t, "count": c, "pct": round(c / total_completed_in_window, 3)}
+            for t, c in sorted(type_counts.items(), key=lambda kv: -kv[1])
+        ]
+        if total_completed_in_window
+        else []
+    )
+
+    return {
+        "athletes": athletes,
+        "action_items": {
+            "draft_plans": draft_plans,
+            "pending_workout_approvals": pending_workout_approvals,
+        },
+        "phase_alerts": phase_alerts,
+        "workout_type_mix": workout_type_mix,
+    }
 
 
 def remove_coach_athlete_link(link_id: int, actor_user_id: int) -> dict[str, Any] | None:
