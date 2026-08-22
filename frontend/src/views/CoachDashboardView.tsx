@@ -1,15 +1,22 @@
 "use client";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useState } from "react";
-import { Users, PaperPlaneTilt, ArrowRight, X, ChartBar, Warning, ClipboardText } from "@phosphor-icons/react";
+import { Users, PaperPlaneTilt, ArrowRight, X, ChartBar, Warning, ClipboardText, MagnifyingGlass } from "@phosphor-icons/react";
 import { useAppContext } from "../contexts/AppContext";
 import { useCoachDashboard } from "../hooks/useCoachDashboard";
 import { useCoachOverview } from "../hooks/useCoachOverview";
 import WorkoutTypeMixChart from "../components/WorkoutTypeMixChart";
+import { matchesFilters, type RosterFilters } from "../utils/coachRosterFilters";
 
 export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) {
   const { lang } = useAppContext();
   const [activeSection, setActiveSection] = useState<"overview" | "roster">("overview");
+  const [rosterFilters, setRosterFilters] = useState<RosterFilters>({
+    search: "",
+    level: "all",
+    needsAttentionOnly: false,
+    raceSearch: "",
+  });
   const {
     roster,
     pendingInvites,
@@ -343,7 +350,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
             </div>
           )}
 
-          {overview && overview.athletes.length > 0 && (
+          {overview && (
             <div className="card" style={{ padding: isMobile ? "20px" : "28px", overflowX: "auto" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
                 <Users size={20} weight="duotone" />
@@ -351,47 +358,132 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
                   {lang === "en" ? "Roster progress" : "Tiến độ vận động viên"}
                 </h3>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                {overview.athletes.map((athlete) => (
-                  <div
-                    key={athlete.athlete_id}
-                    onClick={() => enterAthleteView(athlete.athlete_id, athlete.name)}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      padding: "12px 14px",
-                      borderRadius: "10px",
-                      border: "1px solid var(--border-color)",
-                      background: "rgba(255,255,255,0.4)",
-                      cursor: "pointer",
-                      gap: "12px",
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontSize: "13.5px", fontWeight: "700" }}>{athlete.name}</div>
-                      <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>
-                        {athlete.active_plan
-                          ? `${athlete.active_plan.race_name} — ${lang === "en" ? "Week" : "Tuần"} ${athlete.active_plan.current_week}/${athlete.active_plan.total_weeks}`
-                          : lang === "en" ? "No active plan" : "Chưa có kế hoạch"}
-                      </div>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-                      {athlete.adherence_pct_14d !== null && (
-                        <span style={{ fontSize: "12px", fontWeight: 700 }}>
-                          {Math.round(athlete.adherence_pct_14d * 100)}%
-                        </span>
-                      )}
-                      {athlete.missed_streak > 0 && (
-                        <span style={{ fontSize: "11px", color: "var(--accent-alert)", fontWeight: 700 }}>
-                          {athlete.missed_streak} {lang === "en" ? "missed in a row" : "buổi bỏ lỡ liên tiếp"}
-                        </span>
-                      )}
-                      <ArrowRight size={14} weight="bold" />
-                    </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "14px" }}>
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                  <div style={{ position: "relative", flex: "1 1 180px" }}>
+                    <MagnifyingGlass
+                      size={14}
+                      style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }}
+                    />
+                    <input
+                      type="text"
+                      className="chat-input"
+                      style={{ width: "100%", borderRadius: "8px", padding: "8px 10px 8px 30px", fontSize: "12.5px" }}
+                      placeholder={lang === "en" ? "Search by name" : "Tìm theo tên"}
+                      value={rosterFilters.search}
+                      onChange={(e) => setRosterFilters((f) => ({ ...f, search: e.target.value }))}
+                    />
                   </div>
-                ))}
+                  <input
+                    type="text"
+                    className="chat-input"
+                    style={{ flex: "1 1 180px", borderRadius: "8px", padding: "8px 10px", fontSize: "12.5px" }}
+                    placeholder={lang === "en" ? "Search by race" : "Tìm theo giải đấu"}
+                    value={rosterFilters.raceSearch}
+                    onChange={(e) => setRosterFilters((f) => ({ ...f, raceSearch: e.target.value }))}
+                  />
+                </div>
+                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", alignItems: "center" }}>
+                  {(["all", "beginner", "intermediate", "advanced", "elite"] as const).map((lvl) => (
+                    <button
+                      key={lvl}
+                      onClick={() => setRosterFilters((f) => ({ ...f, level: lvl }))}
+                      style={{
+                        padding: "4px 10px",
+                        fontSize: "11px",
+                        fontWeight: 700,
+                        borderRadius: "999px",
+                        border: "1px solid var(--border-color)",
+                        background: rosterFilters.level === lvl ? "var(--accent-primary)" : "transparent",
+                        color: rosterFilters.level === lvl ? "#fff" : "var(--text-secondary)",
+                        cursor: "pointer",
+                        textTransform: "capitalize",
+                      }}
+                    >
+                      {lvl === "all" ? (lang === "en" ? "All" : "Tất cả") : lvl}
+                    </button>
+                  ))}
+                  <label style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", color: "var(--text-secondary)", marginLeft: "8px", cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={rosterFilters.needsAttentionOnly}
+                      onChange={(e) => setRosterFilters((f) => ({ ...f, needsAttentionOnly: e.target.checked }))}
+                    />
+                    {lang === "en" ? "Needs attention only" : "Chỉ cần chú ý"}
+                  </label>
+                </div>
               </div>
+              {(() => {
+                const filteredAthletes = overview.athletes.filter((a) => matchesFilters(a, rosterFilters));
+                if (overview.athletes.length === 0) {
+                  return null; // handled by the separate "No athletes yet" empty state elsewhere in this tab
+                }
+                if (filteredAthletes.length === 0) {
+                  return (
+                    <p style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
+                      {lang === "en" ? "No runners match your filters." : "Không có vận động viên nào khớp bộ lọc."}
+                    </p>
+                  );
+                }
+                return (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                    {filteredAthletes.map((athlete) => (
+                      <div
+                        key={athlete.athlete_id}
+                        onClick={() => enterAthleteView(athlete.athlete_id, athlete.name)}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          padding: "12px 14px",
+                          borderRadius: "10px",
+                          border: "1px solid var(--border-color)",
+                          background: "rgba(255,255,255,0.4)",
+                          cursor: "pointer",
+                          gap: "12px",
+                        }}
+                      >
+                        <div>
+                          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                            <span style={{ fontSize: "13.5px", fontWeight: "700" }}>{athlete.name}</span>
+                            <span
+                              style={{
+                                fontSize: "9.5px",
+                                fontWeight: 700,
+                                padding: "1px 6px",
+                                borderRadius: "999px",
+                                background: "var(--border-color)",
+                                color: "var(--text-secondary)",
+                                textTransform: "capitalize",
+                              }}
+                            >
+                              {athlete.runner_level}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                            {athlete.active_plan
+                              ? `${athlete.active_plan.race_name} — ${lang === "en" ? "Week" : "Tuần"} ${athlete.active_plan.current_week}/${athlete.active_plan.total_weeks}`
+                              : lang === "en" ? "No active plan" : "Chưa có kế hoạch"}
+                          </div>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                          {athlete.adherence_pct_14d !== null && (
+                            <span style={{ fontSize: "12px", fontWeight: 700 }}>
+                              {Math.round(athlete.adherence_pct_14d * 100)}%
+                            </span>
+                          )}
+                          {athlete.missed_streak > 0 && (
+                            <span style={{ fontSize: "11px", color: "var(--accent-alert)", fontWeight: 700 }}>
+                              {athlete.missed_streak} {lang === "en" ? "missed in a row" : "buổi bỏ lỡ liên tiếp"}
+                            </span>
+                          )}
+                          <ArrowRight size={14} weight="bold" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
           )}
 
