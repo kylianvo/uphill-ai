@@ -36,7 +36,7 @@ export default function AdherenceTrendChart({
   if (points.length === 0) {
     return (
       <p style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
-        {lang === "en" ? "Not enough data yet." : "Chưa đủ dữ liệu."}
+        {lang === "en" ? "Not enough data yet." : "Chưa đủ dữ liệu biểu đồ."}
       </p>
     );
   }
@@ -72,7 +72,7 @@ export default function AdherenceTrendChart({
             gap: "5px",
           }}
         >
-          <span>{lang === "en" ? `Wk ${activeData.week_number}` : `T${activeData.week_number}`}</span>
+          <span>{lang === "en" ? `Wk ${activeData.week_number}` : `Tuần ${activeData.week_number}`}</span>
           <span style={{ color: "var(--accent-primary)" }}>{Math.round(activeData.adherence_pct * 100)}%</span>
         </div>
       )}

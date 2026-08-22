@@ -17,12 +17,12 @@ export function computeBarLayout(
 }
 
 const TYPE_LABELS: Record<string, { en: string; vi: string }> = {
-  long_run: { en: "Long run", vi: "Chạy dài" },
-  easy_run: { en: "Easy run", vi: "Chạy nhẹ" },
+  long_run: { en: "Long run", vi: "Long run" },
+  easy_run: { en: "Easy run", vi: "Easy run" },
   tempo: { en: "Tempo", vi: "Tempo" },
   interval: { en: "Interval", vi: "Interval" },
-  strength: { en: "Strength", vi: "Sức mạnh" },
-  hike: { en: "Hike", vi: "Đi bộ leo núi" },
+  strength: { en: "Strength", vi: "Strength" },
+  hike: { en: "Hike", vi: "Hike / Trekking" },
 };
 
 function labelFor(type: string, lang: "en" | "vi"): string {
@@ -36,7 +36,7 @@ export default function WorkoutTypeMixChart({ mix, lang }: { mix: WorkoutTypeMix
   if (layout.length === 0) {
     return (
       <p style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
-        {lang === "en" ? "No completed workouts in this window yet." : "Chưa có buổi tập nào hoàn thành trong khoảng này."}
+        {lang === "en" ? "No completed workouts in this window yet." : "Chưa có buổi tập nào hoàn thành trong khung thời gian này."}
       </p>
     );
   }

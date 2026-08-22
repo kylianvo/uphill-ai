@@ -35,7 +35,7 @@ export default function RaceBreakdownCard({
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
           <FlagBanner size={16} style={{ color: "var(--accent-primary)" }} />
           <h4 style={{ margin: 0, fontSize: "14px", fontWeight: 600, color: "var(--text-primary)" }}>
-            {lang === "en" ? "Target Race Distribution" : "Phân bổ theo giải đấu"}
+            {lang === "en" ? "Target Race Distribution" : "Phân bổ race mục tiêu"}
           </h4>
         </div>
         <span
@@ -50,7 +50,7 @@ export default function RaceBreakdownCard({
         >
           {lang === "en"
             ? `${races.length} ${races.length === 1 ? "race" : "races"} (${totalRacedAthletes} runners)`
-            : `${races.length} giải (${totalRacedAthletes} VĐV)`}
+            : `${races.length} race (${totalRacedAthletes} VĐV)`}
         </span>
       </div>
 
@@ -58,7 +58,7 @@ export default function RaceBreakdownCard({
         <p style={{ margin: 0, fontSize: "13px", color: "var(--text-secondary)" }}>
           {lang === "en"
             ? "No athletes currently have an active plan with a target race."
-            : "Chưa có vận động viên nào có kế hoạch với giải đấu mục tiêu."}
+            : "Chưa có VĐV nào có giáo án với race mục tiêu."}
         </p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
@@ -158,7 +158,7 @@ export default function RaceBreakdownCard({
             justifyContent: "space-between",
           }}
         >
-          <span>{lang === "en" ? "Athletes without target race:" : "VĐV chưa có giải mục tiêu:"}</span>
+          <span>{lang === "en" ? "Athletes without target race:" : "VĐV chưa có race mục tiêu:"}</span>
           <span style={{ fontWeight: 600 }}>{athletesWithoutRace}</span>
         </div>
       )}

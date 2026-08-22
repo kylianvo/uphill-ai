@@ -36,7 +36,7 @@ export default function MissedByDayChart({
   if (filled.every((d) => d.count === 0)) {
     return (
       <p style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
-        {lang === "en" ? "No missed workouts in this window." : "Không có buổi tập nào bị bỏ lỡ trong khoảng này."}
+        {lang === "en" ? "No missed workouts in this window." : "Không có buổi tập nào bị bỏ trong khung thời gian này."}
       </p>
     );
   }
@@ -74,7 +74,7 @@ export default function MissedByDayChart({
           <span style={{ color: activeEntry.count > 0 ? "var(--accent-alert, #ef4444)" : "var(--text-muted)" }}>
             {lang === "en"
               ? `${activeEntry.count} missed`
-              : `${activeEntry.count} buổi bỏ lỡ`}
+              : `${activeEntry.count} buổi bỏ`}
           </span>
         </div>
       )}

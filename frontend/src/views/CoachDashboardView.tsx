@@ -101,7 +101,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
           >
             {section === "overview"
               ? lang === "en" ? "Overview" : "Tổng quan"
-              : lang === "en" ? "Roster" : "Danh sách"}
+              : lang === "en" ? "Roster" : "Danh sách VĐV"}
           </button>
         ))}
       </div>
@@ -193,7 +193,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
             <p style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "8px" }}>
               {lang === "en"
                 ? "The athlete must already have an Uphill AI account."
-                : "Vận động viên phải đã có tài khoản Uphill AI."}
+                : "VĐV cần có sẵn tài khoản Uphill AI."}
             </p>
           </div>
 
@@ -202,7 +202,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
             <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
               <Users size={20} weight="duotone" />
               <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "800" }}>
-                {lang === "en" ? "Your athletes" : "Vận động viên của bạn"}
+                {lang === "en" ? "Your athletes" : "Danh sách học viên"}
               </h3>
             </div>
 
@@ -214,7 +214,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
               <p style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
                 {lang === "en"
                   ? "No athletes yet - send an invite above to get started."
-                  : "Chưa có vận động viên nào - gửi lời mời ở trên để bắt đầu."}
+                  : "Chưa có VĐV nào - gửi lời mời ở trên để bắt đầu."}
               </p>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
@@ -240,7 +240,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
                             : "Đang huấn luyện"
                           : lang === "en"
                             ? "Invite pending"
-                            : "Đang chờ chấp nhận"}
+                            : "Chờ chấp nhận"}
                       </div>
                     </div>
                     <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
@@ -261,12 +261,12 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
                             cursor: "pointer",
                           }}
                         >
-                          {lang === "en" ? "View plan" : "Xem kế hoạch"} <ArrowRight size={12} weight="bold" />
+                          {lang === "en" ? "View plan" : "Xem giáo án"} <ArrowRight size={12} weight="bold" />
                         </button>
                       )}
                       <button
                         onClick={() => removeFromRoster(row.id)}
-                        title={lang === "en" ? "Remove" : "Xoá"}
+                        title={lang === "en" ? "Remove" : "Gỡ bỏ"}
                         style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", padding: "4px" }}
                       >
                         <X size={16} weight="bold" />
@@ -295,7 +295,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
               <p style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
                 {lang === "en"
                   ? "No athletes yet - invite one from the Roster tab to get started."
-                  : "Chưa có vận động viên nào - mời một người từ tab Danh sách để bắt đầu."}
+                  : "Chưa có VĐV nào - mời một người từ tab Danh sách để bắt đầu."}
               </p>
             </div>
           )}
@@ -305,7 +305,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
               <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
                 <Warning size={20} weight="duotone" />
                 <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "800" }}>
-                  {lang === "en" ? "Phase alerts" : "Cảnh báo giai đoạn"}
+                  {lang === "en" ? "Phase alerts" : "Cảnh báo giai đoạn tập"}
                 </h3>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
@@ -324,7 +324,56 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
                   >
                     {lang === "en"
                       ? `${alert.athlete_name} enters ${alert.phase} ${alert.starts === "this_week" ? "this week" : "next week"}`
-                      : `${alert.athlete_name} bước vào giai đoạn ${alert.phase} ${alert.starts === "this_week" ? "tuần này" : "tuần tới"}`}
+                      : `${alert.athlete_name} bắt đầu phase ${alert.phase} ${alert.starts === "this_week" ? "tuần này" : "tuần tới"}`}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {overview && (
+            <div className="card" style={{ padding: isMobile ? "20px" : "28px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
+                <ClipboardText size={20} weight="duotone" />
+                <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "800" }}>
+                  {lang === "en" ? "Action items" : "Việc cần xử lý"}
+                </h3>
+              </div>
+              <div style={{ display: "flex", gap: "24px", marginBottom: overview.action_items.draft_plans.length || overview.action_items.pending_workout_approvals.length ? "12px" : 0 }}>
+                <div>
+                  <div style={{ fontSize: "22px", fontWeight: "800" }}>{overview.action_items.draft_plans.length}</div>
+                  <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                    {lang === "en" ? "draft plans to finish" : "giáo án nháp cần hoàn thiện"}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: "22px", fontWeight: "800" }}>{overview.action_items.pending_workout_approvals.length}</div>
+                  <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                    {lang === "en" ? "workouts pending approval" : "bài tập chờ duyệt"}
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                {overview.action_items.draft_plans.map((item) => (
+                  <div
+                    key={`draft-${item.plan_id}`}
+                    onClick={() => enterAthleteView(item.athlete_id, item.athlete_name)}
+                    style={{ fontSize: "12.5px", cursor: "pointer", color: "var(--text-secondary)" }}
+                  >
+                    {lang === "en"
+                      ? `${item.athlete_name}: "${item.race_name}" is still a draft`
+                      : `${item.athlete_name}: "${item.race_name}" vẫn là bản nháp`}
+                  </div>
+                ))}
+                {overview.action_items.pending_workout_approvals.map((item) => (
+                  <div
+                    key={`pending-${item.workout_id}`}
+                    onClick={() => enterAthleteView(item.athlete_id, item.athlete_name)}
+                    style={{ fontSize: "12.5px", cursor: "pointer", color: "var(--text-secondary)" }}
+                  >
+                    {lang === "en"
+                      ? `${item.athlete_name}: "${item.title}" needs your approval`
+                      : `${item.athlete_name}: "${item.title}" cần duyệt`}
                   </div>
                 ))}
               </div>
@@ -337,7 +386,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
               <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
                 <Users size={20} weight="duotone" />
                 <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "800" }}>
-                  {lang === "en" ? "Roster progress" : "Tiến độ vận động viên"}
+                  {lang === "en" ? "Roster progress" : "Tiến độ học viên"}
                 </h3>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "14px" }}>
@@ -351,7 +400,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
                       type="text"
                       className="chat-input"
                       style={{ width: "100%", borderRadius: "8px", padding: "8px 10px 8px 30px", fontSize: "12.5px" }}
-                      placeholder={lang === "en" ? "Search by name" : "Tìm theo tên"}
+                      placeholder={lang === "en" ? "Search by name" : "Tìm theo tên VĐV"}
                       value={rosterFilters.search}
                       onChange={(e) => setRosterFilters((f) => ({ ...f, search: e.target.value }))}
                     />
@@ -360,7 +409,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
                     type="text"
                     className="chat-input"
                     style={{ flex: "1 1 180px", borderRadius: "8px", padding: "8px 10px", fontSize: "12.5px" }}
-                    placeholder={lang === "en" ? "Search by race" : "Tìm theo giải đấu"}
+                    placeholder={lang === "en" ? "Search by race" : "Tìm theo race"}
                     value={rosterFilters.raceSearch}
                     onChange={(e) => setRosterFilters((f) => ({ ...f, raceSearch: e.target.value }))}
                   />
@@ -374,7 +423,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
                 if (filteredAthletes.length === 0) {
                   return (
                     <p style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
-                      {lang === "en" ? "No runners match your filters." : "Không có vận động viên nào khớp bộ lọc."}
+                      {lang === "en" ? "No runners match your filters." : "Không có VĐV nào khớp bộ lọc."}
                     </p>
                   );
                 }
@@ -416,7 +465,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
                           <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>
                             {athlete.active_plan
                               ? `${athlete.active_plan.race_name} - ${lang === "en" ? "Week" : "Tuần"} ${athlete.active_plan.current_week}/${athlete.active_plan.total_weeks}`
-                              : lang === "en" ? "No active plan" : "Chưa có kế hoạch"}
+                              : lang === "en" ? "No active plan" : "Chưa có giáo án"}
                           </div>
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
@@ -461,7 +510,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <Funnel size={16} weight="bold" style={{ color: "var(--accent-primary)" }} />
                   <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-primary)" }}>
-                    {lang === "en" ? "Insights & Analytics Controls" : "Bộ lọc phân tích & thông số"}
+                    {lang === "en" ? "Insights & Analytics Controls" : "Bộ lọc & Thống kê"}
                   </span>
                 </div>
 
@@ -500,7 +549,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
                 {/* Time Window Segmented Control */}
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <span style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--text-secondary)" }}>
-                    {lang === "en" ? "Window:" : "Khoảng:"}
+                    {lang === "en" ? "Window:" : "Thời gian:"}
                   </span>
                   <div
                     style={{
@@ -579,7 +628,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
                 {/* Level Filter Chips */}
                 <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
                   <span style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--text-secondary)" }}>
-                    {lang === "en" ? "Level:" : "Cấp độ:"}
+                    {lang === "en" ? "Level:" : "Trình độ:"}
                   </span>
                   {(["all", "beginner", "intermediate", "advanced", "elite"] as const).map((lvl) => {
                     const isActive = insightsLevel === lvl;
@@ -631,7 +680,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
                   <ChartBar size={18} weight="duotone" style={{ color: "var(--accent-primary)" }} />
                   <h3 style={{ margin: 0, fontSize: "15px", fontWeight: "800" }}>
-                    {lang === "en" ? "Workout type mix" : "Loại buổi tập"}
+                    {lang === "en" ? "Workout type mix" : "Phân bổ loại bài tập"}
                   </h3>
                 </div>
                 <WorkoutTypeMixChart mix={overview.workout_type_mix} lang={lang} />
@@ -642,7 +691,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
                   <TrendUp size={18} weight="duotone" style={{ color: "var(--accent-primary)" }} />
                   <h3 style={{ margin: 0, fontSize: "15px", fontWeight: "800" }}>
-                    {lang === "en" ? "Adherence trend" : "Xu hướng tuân thủ"}
+                    {lang === "en" ? "Adherence trend" : "Tỷ lệ tuân thủ giáo án"}
                   </h3>
                 </div>
                 <AdherenceTrendChart trend={overview.adherence_trend} lang={lang} />
@@ -653,7 +702,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
                   <CalendarCheck size={18} weight="duotone" style={{ color: "var(--accent-alert, #ef4444)" }} />
                   <h3 style={{ margin: 0, fontSize: "15px", fontWeight: "800" }}>
-                    {lang === "en" ? "Missed workouts by day" : "Buổi tập bỏ lỡ theo ngày"}
+                    {lang === "en" ? "Missed workouts by day" : "Buổi tập bị bỏ theo thứ"}
                   </h3>
                 </div>
                 <MissedByDayChart missedByDay={overview.missed_by_day} lang={lang} />
@@ -669,7 +718,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
                 </div>
                 {overview.rpe_distribution.avg_rpe === null ? (
                   <p style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
-                    {lang === "en" ? "No block reviews in this window." : "Chưa có đánh giá khối tập nào trong khoảng này."}
+                    {lang === "en" ? "No block reviews in this window." : "Chưa có đánh giá khối tập nào trong khung thời gian này."}
                   </p>
                 ) : (
                   <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
@@ -689,7 +738,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
               {/* Race Readiness */}
               <div className="card" style={{ padding: isMobile ? "20px" : "24px" }}>
                 <h3 style={{ margin: "0 0 14px 0", fontSize: "15px", fontWeight: "800" }}>
-                  {lang === "en" ? "Race readiness" : "Sẵn sàng cho giải đấu"}
+                  {lang === "en" ? "Race readiness" : "Độ sẵn sàng thi đấu"}
                 </h3>
                 <div style={{ display: "flex", gap: "16px" }}>
                   <div>
@@ -698,7 +747,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
                   </div>
                   <div>
                     <div style={{ fontSize: "22px", fontWeight: 800, color: "#d97706" }}>{overview.race_readiness.at_risk}</div>
-                    <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>{lang === "en" ? "at risk" : "có rủi ro"}</div>
+                    <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>{lang === "en" ? "at risk" : "cần lưu ý"}</div>
                   </div>
                   <div>
                     <div style={{ fontSize: "22px", fontWeight: 800, color: "var(--accent-alert)" }}>{overview.race_readiness.behind}</div>
@@ -710,7 +759,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
               {/* Roster Totals */}
               <div className="card" style={{ padding: isMobile ? "20px" : "24px" }}>
                 <h3 style={{ margin: "0 0 14px 0", fontSize: "15px", fontWeight: "800" }}>
-                  {lang === "en" ? "Roster totals" : "Tổng kết đội"}
+                  {lang === "en" ? "Roster totals" : "Tổng khối lượng toàn đội"}
                 </h3>
                 <div style={{ display: "flex", gap: "18px", flexWrap: "wrap" }}>
                   <div>
@@ -723,7 +772,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
                   </div>
                   <div>
                     <div style={{ fontSize: "19px", fontWeight: 800 }}>{Math.round(overview.roster_totals.elevation_gain_m)} m</div>
-                    <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>{lang === "en" ? "elevation" : "độ cao"}</div>
+                    <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>{lang === "en" ? "elevation" : "độ dốc (gain)"}</div>
                   </div>
                   <div>
                     <div style={{ fontSize: "19px", fontWeight: 800 }}>{overview.roster_totals.workout_count}</div>
@@ -736,7 +785,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
               {overview.most_consistent.length > 0 && (
                 <div className="card" style={{ padding: isMobile ? "20px" : "24px" }}>
                   <h3 style={{ margin: "0 0 14px 0", fontSize: "15px", fontWeight: "800" }}>
-                    {lang === "en" ? "Most consistent" : "Đều đặn nhất"}
+                    {lang === "en" ? "Most consistent" : "Chăm chỉ nhất"}
                   </h3>
                   <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                     {overview.most_consistent.map((a, i) => (
