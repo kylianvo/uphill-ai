@@ -279,6 +279,7 @@ def course_profile(name: str | None, distance_label: str | None, year: int | Non
     chunk = scored[0][0]
     payload = _payload_as_dict(chunk.get("payload"))
     years = (payload.get("course_profiles") or {}).get(distance_label) or {}
+    years = {k: v for k, v in years.items() if isinstance(v, dict) and k.isdigit()}
     if not years:
         return None
 
@@ -288,7 +289,7 @@ def course_profile(name: str | None, distance_label: str | None, year: int | Non
             return None
         return {"year": year, "variant": entry.get("variant"), "checkpoints": entry["checkpoints"]}
 
-    best_year_key, best_entry = max(years.items(), key=lambda kv: kv[1].get("curated_at") or "")
+    best_year_key, best_entry = max(years.items(), key=lambda kv: (kv[1].get("curated_at") or "", int(kv[0])))
     if not best_entry.get("checkpoints"):
         return None
     return {"year": int(best_year_key), "variant": best_entry.get("variant"), "checkpoints": best_entry["checkpoints"]}
@@ -319,4 +320,5 @@ def course_profile_variants(name: str | None, distance_label: str | None) -> dic
     chunk = scored[0][0]
     payload = _payload_as_dict(chunk.get("payload"))
     years = (payload.get("course_profiles") or {}).get(distance_label) or {}
+    years = {k: v for k, v in years.items() if isinstance(v, dict) and k.isdigit()}
     return {int(year_key): entry.get("variant") for year_key, entry in years.items()}
