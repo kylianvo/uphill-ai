@@ -39,11 +39,11 @@ test('goal determiner: reference result produces A/B/C goals and hands off to pa
   await page.locator('[role="combobox"]').first().pressSequentially('vmm', { delay: 60 });
   const numberInputs = page.locator('input[type="number"]');
   await numberInputs.nth(0).fill('70'); // target distance
-  await numberInputs.nth(2).fill('16'); // weeks until race
+  await page.locator('input[type="date"]').fill('2026-12-01'); // race date
 
   // fitness: a manual 50k / 2500m in 7:30
-  await numberInputs.nth(3).fill('50'); // reference distance
-  await numberInputs.nth(4).fill('2500'); // reference gain
+  await numberInputs.nth(2).fill('50'); // reference distance
+  await numberInputs.nth(3).fill('2500'); // reference gain
   await page.locator('input[placeholder="e.g. 7:30:00"]').fill('7:30:00');
 
   await page.getByRole('button', { name: /Estimate my goal/ }).click();
