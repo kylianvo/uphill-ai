@@ -195,3 +195,20 @@ year of the selected course profile, for UI transparency (e.g. "using the
 - Frontend still doesn't surface `target_course_year`/`reference_course_year`
   to users (same open gap as the other new response fields, tracked
   separately).
+- The reference race's `course_profile()` lookup always selects the
+  most-recently-curated year, same as the target side — there's no way for
+  a caller to say "the athlete's result was from the *2024* edition." For a
+  variant-tagged race this can narrow percentile pooling on the reference
+  side to a single, likely-wrong year (a real behavior change from the
+  pre-this-feature unfiltered pooling). `GoalEstimateRequest` would need a
+  `reference_year` field, threaded into the reference-side `course_profile`
+  call, to fix this properly. Flagged during this sub-project's final
+  review; deferred rather than expanding scope.
+- `rank_transfer_mins` (the winner-time-only secondary estimate, from the
+  percentile-calibration sub-project) still reads `results[0]` with no
+  variant filtering, so it can report a cross-variant winner-time
+  comparison in the same response as a correctly variant-filtered
+  `percentile_transfer_mins`. Extending variant-filtering to
+  `rank_transfer_mins` would need the filtered-results computation moved
+  above the rank-transfer block in `_goal_estimate_core`. Flagged during
+  this sub-project's final review; deferred rather than expanding scope.
