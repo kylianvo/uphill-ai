@@ -840,7 +840,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
               {/* Roster Totals */}
               <div className="card" style={{ padding: isMobile ? "20px" : "24px" }}>
                 <h3 style={{ margin: "0 0 14px 0", fontSize: "15px", fontWeight: "800" }}>
-                  {lang === "en" ? "Roster totals" : "Tổng khối lượng toàn đội"}
+                  {lang === "en" ? "Roster totals" : "Tổng khối lượng tập luyện"}
                 </h3>
                 <div style={{ display: "flex", gap: "18px", flexWrap: "wrap" }}>
                   <div>
