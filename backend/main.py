@@ -44,6 +44,7 @@ from db import (
     get_random_knowledge_cards,
     get_recent_plans,
     get_roster_for_coach,
+    get_roster_overview_data,
     get_user_by_email,
     get_user_by_id,
     get_workout_by_id,
@@ -1040,6 +1041,16 @@ def remove_from_roster(link_id: int, user: dict[str, Any] = Depends(get_current_
 @app.get("/api/coaching/roster")
 def get_roster(coach: dict[str, Any] = Depends(require_coach)):
     return get_roster_for_coach(coach["id"])
+
+
+@app.get("/api/coaching/overview")
+def get_coaching_overview(
+    days: int = 14,
+    athlete_id: int | None = None,
+    level: str | None = None,
+    coach: dict[str, Any] = Depends(require_coach),
+):
+    return get_roster_overview_data(coach["id"], days=days, athlete_id=athlete_id, level=level)
 
 
 @app.get("/api/coaching/my-invites")
