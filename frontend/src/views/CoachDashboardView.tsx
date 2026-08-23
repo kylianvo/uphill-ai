@@ -305,7 +305,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
               <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
                 <Warning size={20} weight="duotone" />
                 <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "800" }}>
-                  {lang === "en" ? "Phase alerts" : "Cảnh báo giai đoạn tập"}
+                  {lang === "en" ? "Phase alerts" : "Giai đoạn quan trọng sắp tới"}
                 </h3>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
@@ -324,7 +324,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
                   >
                     {lang === "en"
                       ? `${alert.athlete_name} enters ${alert.phase} ${alert.starts === "this_week" ? "this week" : "next week"}`
-                      : `${alert.athlete_name} bắt đầu phase ${alert.phase} ${alert.starts === "this_week" ? "tuần này" : "tuần tới"}`}
+                      : `${alert.athlete_name} bước vào phase ${alert.phase} ${alert.starts === "this_week" ? "tuần này" : "tuần tới"}`}
                   </div>
                 ))}
               </div>
