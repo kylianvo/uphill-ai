@@ -205,7 +205,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <Users size={20} weight="duotone" />
                 <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "800" }}>
-                  {lang === "en" ? "Your athletes" : "Danh sách học viên"}
+                  {lang === "en" ? "Your athletes" : "Danh sách VĐV"}
                 </h3>
               </div>
               {roster.length > 0 && (
@@ -237,7 +237,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
                   type="text"
                   className="chat-input"
                   style={{ width: "100%", borderRadius: "8px", padding: "8px 30px 8px 30px", fontSize: "12.5px" }}
-                  placeholder={lang === "en" ? "Search athletes by name or email…" : "Tìm học viên theo tên hoặc email…"}
+                  placeholder={lang === "en" ? "Search athletes by name or email…" : "Tìm VĐV theo tên hoặc email…"}
                   value={rosterTabSearch}
                   onChange={(e) => setRosterTabSearch(e.target.value)}
                 />
@@ -460,13 +460,13 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
             </div>
           )}
 
-          {/* Roster progress card */}
+            {/* Roster progress card */}
           {overview && (
             <div className="card" style={{ padding: isMobile ? "20px" : "28px", overflowX: "auto" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
                 <Users size={20} weight="duotone" />
-                <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "800" }}>
-                  {lang === "en" ? "Roster progress" : "Tiến độ học viên"}
+                <h3 style={{ margin: 0, fontSize: "15px", fontWeight: "800" }}>
+                  {lang === "en" ? "Roster progress" : "Tiến độ danh sách VĐV"}
                 </h3>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "14px" }}>
@@ -862,7 +862,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
                   <CalendarCheck size={18} weight="duotone" style={{ color: "var(--accent-alert, #ef4444)" }} />
                   <h3 style={{ margin: 0, fontSize: "15px", fontWeight: "800" }}>
-                    {lang === "en" ? "Missed workouts by day" : "Buổi tập bị bỏ theo thứ"}
+                    {lang === "en" ? "Missed workouts by day" : "Buổi tập bị bỏ theo thứ trong tuần"}
                   </h3>
                 </div>
                 <MissedByDayChart missedByDay={overview.missed_by_day} lang={lang} />

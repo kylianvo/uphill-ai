@@ -173,7 +173,7 @@ export default function KnowledgeView({ isMobile }: { isMobile: boolean }) {
             {/* Workout Type Descriptions */}
             <div style={{ marginTop: "20px", paddingTop: "20px", borderTop: "1px solid var(--border-color)" }}>
               <h4 style={{ fontSize: "13px", fontWeight: "700", marginBottom: "8px" }}>
-                {lang === "en" ? "Workout Type Descriptions" : "Mô tả loại bài tập"}
+                {lang === "en" ? "Workout Type Descriptions" : "Mô tả bài tập (Workout Types)"}
               </h4>
               <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginBottom: "12px" }}>
                 {lang === "en"
@@ -205,7 +205,7 @@ export default function KnowledgeView({ isMobile }: { isMobile: boolean }) {
                   ? (lang === "en" ? "Extracting…" : "Đang trích xuất…")
                   : woTypeStatus === "done"
                     ? (lang === "en" ? "✓ Done — Re-extract" : "✓ Xong — Trích xuất lại")
-                    : (lang === "en" ? "Extract Workout Types" : "Trích xuất loại bài tập")}
+                    : (lang === "en" ? "Extract Workout Types" : "Trích xuất định nghĩa Workout Types")}
               </button>
             </div>
           </div>

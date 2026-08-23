@@ -177,8 +177,8 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
         `Race complete. Whatever the result, you showed up and crossed the line. Take the next two weeks easy — recovery is training.`,
         `${raceName} is behind you now. Celebrate properly, sleep deeply, and eat well. The next chapter starts after real recovery.`,
       ] : [
-        `Bạn đã làm được — ${raceName} xong rồi. Nghỉ ngơi, suy ngẫm, và để cơ thể hấp thụ tất cả những gì bạn đã đầu tư.`,
-        `Đua xong rồi. Dù kết quả thế nào, bạn đã xuất hiện và về đích. Hãy nhẹ nhàng hai tuần tới — hồi phục là huấn luyện.`,
+        `Chúc mừng bạn đã hoàn thành xuất sắc giải ${raceName}! Hãy nghỉ ngơi, thả lỏng và để cơ thể phục hồi, hấp thụ thành quả sau chu kỳ tập luyện.`,
+        `Race hoàn thành! Dù kết quả ra sao, bạn đã nỗ lực hết mình và cán đích thành công. Hai tuần tới hãy tập thật nhẹ nhàng — phục hồi cũng là một phần thiết yếu của tập luyện.`,
       ];
       return { icon: "🎉", color: "#10b981", text: msgs[v % msgs.length] };
     }
@@ -188,7 +188,8 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
         `Race day. Everything you've done in training is already inside you. Go run your race.`,
         `Today is ${raceName}. Trust your preparation, run your own race, and enjoy every kilometre of it.`,
       ] : [
-        `Ngày thi đấu rồi. Tất cả những gì bạn đã tập luyện đã ở trong bạn rồi. Hãy ra đường chạy đua.`,
+        `Hôm nay là Ngày Đua! Mọi bài tập và nỗ lực chuẩn bị đã sẵn sàng trong bạn. Hãy tự tin sải bước và tận hưởng từng km đường đua!`,
+        `Hôm nay là giải đấu ${raceName}. Hãy tin tưởng vào quá trình tập luyện, giữ vững chiến thuật Pacing và tận hưởng trọn vẹn đường chạy.`,
       ];
       return { icon: "⚡", color: "#f59e0b", text: msgs[v % msgs.length] };
     }
@@ -199,8 +200,8 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
         `${raceName} is ${daysToRace} day${daysToRace > 1 ? "s" : ""} away. Short, easy sessions only. Let your legs fill with spring.`,
         `You've put in the work for ${raceName}. This week: sleep, eat, stay calm. The fitness is already there.`,
       ] : [
-        `Tuần đua ${raceName}. Công sức đã xong — giờ chỉ cần giữ người nhẹ nhàng, ngủ ngon, và tin vào quá trình.`,
-        `${raceName} còn ${daysToRace} ngày nữa. Bài tập ngắn và nhẹ thôi. Để chân đầy lực.`,
+        `Tuần thi đấu của giải ${raceName}. Khối lượng tập luyện đã hoàn tất — nhiệm vụ lúc này là giữ cơ thể thoải mái, ngủ đủ giấc và tin tưởng vào phong độ của bạn.`,
+        `Chỉ còn ${daysToRace} ngày nữa là đến ${raceName}. Chỉ tập các bài ngắn và nhẹ để cơ bắp tích lũy độ nảy và độ sung mãn tối đa.`,
       ];
       return { icon: "🏁", color: "#f59e0b", text: msgs[v % msgs.length] };
     }
@@ -210,7 +211,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
         `Two weeks to ${raceName}. The taper is working — trust the lighter load even when your legs feel restless.`,
         `${raceName} is close. Resist the urge to cram in extra sessions. Your body is peaking right now.`,
       ] : [
-        `Còn hai tuần đến ${raceName}. Giai đoạn taper đang có tác dụng — hãy tin vào lịch nhẹ hơn dù chân bứt rứt.`,
+        `Còn 2 tuần nữa tới ${raceName}. Giai đoạn Taper đang phát huy tác dụng — hãy duy trì khối lượng nhẹ và kiên nhẫn khi đôi chân bắt đầu tràn đầy năng lượng.`,
       ];
       return { icon: "🌊", color: "#3b82f6", text: msgs[v % msgs.length] };
     }
@@ -222,8 +223,8 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
         `Your hardest week of the block. Every session counts. Run hard, sleep harder.`,
         `Peak training week for ${raceName}. What you do here is what you'll feel on race day.`,
       ] : [
-        `Tuần đỉnh điểm. Đây là lúc thể lực được tôi luyện. Hết mình — rồi nghỉ thật sâu.`,
-        `Tuần khó nhất của block. Mỗi buổi tập đều quan trọng. Tập mạnh, ngủ nhiều hơn.`,
+        `Tuần đỉnh cao (Peak Week). Đây là giai đoạn tôi luyện thể lực và sức bền chuyên biệt trước giải. Hãy tập trung tối đa và ngủ nghỉ thật sâu sau mỗi bài tập.`,
+        `Tuần tập luyện khối lượng cao nhất của chu kỳ. Từng buổi tập đều có giá trị lớn. Hãy tập hết mình và ưu tiên phục hồi tối đa.`,
       ];
       return { icon: "🔥", color: "#ef4444", text: msgs[v % msgs.length] };
     }
@@ -233,7 +234,8 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
         `Taper week. The hard work is banked — adding more now only hurts you. Trust the process.`,
         `Your body is absorbing everything you built. Resist the urge to run extra. Rest IS the training right now.`,
       ] : [
-        `Tuần taper. Công sức đã tích lũy — thêm bài tập bây giờ chỉ gây hại. Hãy tin vào quá trình.`,
+        `Tuần Taper giảm tải. Khối lượng tập luyện quan trọng nhất đã được tích lũy — tập thêm lúc này chỉ gây mỏi cơ. Hãy tuân thủ lịch giảm tải và tin vào quá trình phục hồi.`,
+        `Cơ thể bạn đang hấp thụ toàn bộ khối lượng tập luyện vừa qua. Hãy kiềm chế thôi thúc tập thêm — nghỉ ngơi lúc này chính là bài tập quan trọng nhất.`,
       ];
       return { icon: "🌊", color: "#3b82f6", text: msgs[v % msgs.length] };
     }
@@ -244,7 +246,8 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
         `You're in the build. Intensity is rising. Make your hard days hard and your easy days truly easy.`,
         `Build phase, week ${selectedWeek}. The gap between easy and hard sessions matters more than ever now.`,
       ] : [
-        `Giai đoạn Build — nền tảng hiếu khí đã có, giờ thêm thể lực đặc thù. Chất lượng hơn số lượng.`,
+        `Giai đoạn Build — nền tảng hiếu khí (aerobic) đã vững chắc, giờ là lúc nâng cao thể lực chuyên biệt cho giải đấu. Ưu tiên chất lượng hơn số lượng.`,
+        `Bạn đang trong giai đoạn Build. Cường độ đang tăng dần — hãy đảm bảo các bài chạy nặng đạt đúng mục tiêu và các bài Easy Run thật sự nhẹ nhàng.`,
       ];
       return { icon: "📈", color: "#8b5cf6", text: msgs[v % msgs.length] };
     }
@@ -253,14 +256,15 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
       if (selectedWeek === 1) {
         const text = lang === "en"
           ? `Welcome to your ${activePlan.total_weeks}-week plan for ${raceName}. These first weeks build the aerobic foundation everything else sits on. Run easy, run often, and resist the urge to push.`
-          : `Chào mừng bạn đến với kế hoạch ${activePlan.total_weeks} tuần cho ${raceName}. Những tuần đầu xây nền tảng hiếu khí. Chạy nhẹ, chạy đều, và đừng ép bản thân.`;
+          : `Chào mừng bạn đến với giáo án ${activePlan.total_weeks} tuần cho giải ${raceName}. Những tuần đầu tiên này sẽ xây dựng nền tảng hiếu khí (aerobic base) vững chắc. Hãy chạy nhẹ nhàng, duy trì đều đặn và không cần vội vàng ép nhịp tim.`;
         return { icon: "🌱", color: "#10b981", text };
       }
       const msgs = lang === "en" ? [
         `Base phase — consistency beats intensity right now. Show up, run easy, let the aerobic engine grow.`,
         `You're building the engine. Zone 2 miles now mean faster miles later. Trust the boring work.`,
       ] : [
-        `Giai đoạn Base — sự đều đặn quan trọng hơn cường độ. Xuất hiện, chạy nhẹ, để động cơ hiếu khí lớn lên.`,
+        `Giai đoạn Base — sự đều đặn quan trọng hơn cường độ. Hãy duy trì lịch chạy Easy, tích lũy thời gian vận động để phát triển hệ thống hiếu khí.`,
+        `Bạn đang xây dựng động cơ hiếu khí. Những km chạy tích lũy trong Zone 2 hôm nay sẽ mang lại tốc độ bền bỉ trong ngày thi đấu.`,
       ];
       return { icon: "🌱", color: "#10b981", text: msgs[v % msgs.length] };
     }
@@ -270,7 +274,8 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
         `Recovery week. Adaptation happens during rest, not training. Honor the lighter load — it's doing real work.`,
         `Deload week. Your body is consolidating the fitness from last block. Don't add extra — let it happen.`,
       ] : [
-        `Tuần phục hồi. Thích nghi xảy ra khi nghỉ ngơi, không phải khi tập. Tôn trọng lịch nhẹ hơn.`,
+        `Tuần phục hồi (Recovery Week). Sự thích nghi và tiến bộ của cơ bắp diễn ra khi nghỉ ngơi. Hãy tôn trọng khối lượng giảm tải này để cơ thể nạp lại năng lượng.`,
+        `Tuần Deload xả tải. Cơ thể đang phục hồi và củng cố thể lực sau chu kỳ tập nặng vừa qua. Hãy thư giãn và để cơ thể tự tái tạo.`,
       ];
       return { icon: "💧", color: "#6b7280", text: msgs[v % msgs.length] };
     }
@@ -433,7 +438,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 fontSize: "12px", fontWeight: 700, textDecoration: "underline",
               }}
             >
-              {lang === "en" ? "Back to my plan" : "Về kế hoạch của tôi"}
+              {lang === "en" ? "Back to my plan" : "Về giáo án của tôi"}
             </button>
           </div>
         )}
@@ -453,7 +458,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
           <form onSubmit={handleGeneratePlan} style={{ background: "rgba(255, 255, 255, 0.95)", border: "1px solid var(--border-color)", padding: isMobile ? "20px" : "32px", borderRadius: "16px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "8px" }}>
               <h3 style={{ fontSize: isMobile ? "18px" : "22px", margin: 0, color: "var(--accent-primary)" }}>
-                {lang === "en" ? "Plan Settings" : "Cài đặt Kế hoạch"}
+                {lang === "en" ? "Plan Settings" : "Thiết lập Giáo án"}
               </h3>
             </div>
 
@@ -540,7 +545,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                     : `Chúng tôi sẽ nhắm mục tiêu ~${formatDurationHM(optimalEstimateMins)} dựa trên thể lực hiện tại của bạn.`}{" "}
                   <button type="button" onClick={() => setIsGoalDeterminerOpen(true)}
                     style={{ background: "none", border: "none", padding: 0, fontSize: "12px", fontWeight: 600, color: "var(--accent-primary)", cursor: "pointer", textDecoration: "underline" }}>
-                    {lang === "en" ? "Refine in Goal Determiner →" : "Tinh chỉnh trong Xác định Mục tiêu →"}
+                    {lang === "en" ? "Refine in Goal Determiner →" : "Xác định bằng Goal Determiner →"}
                   </button>
                 </div>
               )}
@@ -552,12 +557,12 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                     <label style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "var(--text-secondary)" }}>{t("plan_target_time")}</label>
                     <button type="button" onClick={() => setIsGoalDeterminerOpen(true)}
                       style={{ background: "none", border: "none", padding: 0, fontSize: "11.5px", fontWeight: "600", color: "var(--accent-primary)", cursor: "pointer", textDecoration: "underline" }}>
-                      {lang === "en" ? "Not sure? Use the Goal Determiner →" : "Chưa chắc? Dùng công cụ Xác định Mục tiêu →"}
+                      {lang === "en" ? "Not sure? Use the Goal Determiner →" : "Chưa rõ thời gian? Dùng Goal Determiner →"}
                     </button>
                   </div>
                   {targetTimeHintLabel && (
                     <div style={{ fontSize: "11px", color: "var(--accent-primary)", marginBottom: "6px" }}>
-                      {lang === "en" ? `Auto-filled from Goal Determiner (${targetTimeHintLabel})` : `Tự động điền từ Xác định Mục tiêu (${targetTimeHintLabel})`}
+                      {lang === "en" ? `Auto-filled from Goal Determiner (${targetTimeHintLabel})` : `Tự động điền từ Goal Determiner (${targetTimeHintLabel})`}
                     </div>
                   )}
                   <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr 1.1fr", gap: "8px" }}>
@@ -588,7 +593,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                     {lang === "en" ? "✍️ Manual" : "✍️ Thủ công"}
                   </button>
                   <button type="button" className={`btn ${courseInputMode === "gpx" ? "btn-primary" : "btn-secondary"}`} style={{ padding: "6px 12px", fontSize: "12px", borderRadius: "8px", height: "32px", flex: 1 }} onClick={() => setCourseInputMode("gpx")}>
-                    {lang === "en" ? "📂 GPX Route" : "📂 Tệp GPX"}
+                    {lang === "en" ? "📂 GPX Route" : "📂 File GPX"}
                   </button>
                 </div>
               </div>
@@ -603,7 +608,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                   </div>
                   <div>
                     <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px", color: "var(--text-secondary)" }}>
-                      {lang === "en" ? "Elevation Gain (m)" : "Độ cao lũy kế (m)"}
+                      {lang === "en" ? "Elevation Gain (m)" : "Elevation Gain (D+) (m)"}
                     </label>
                     <input type="number" className="chat-input" style={{ borderRadius: "8px", width: "100%", padding: "10px" }} placeholder="e.g. 1500" value={planForm.course_elevation_gain_m} onChange={(e) => setPlanForm({ ...planForm, course_elevation_gain_m: e.target.value })} />
                   </div>
@@ -612,7 +617,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 <div style={{ marginBottom: "20px", padding: "16px", background: "rgba(255,255,255,0.1)", border: "1px dashed var(--border-color)", borderRadius: "12px", textAlign: "center" }}>
                   <input type="file" accept=".gpx" style={{ display: "none" }} ref={plannerGpxInputRef} onChange={handlePlannerGpxFileChange} />
                   <button type="button" className="btn btn-secondary" style={{ fontSize: "12px", padding: "6px 12px", height: "32px", margin: "0 auto 8px auto" }} onClick={() => plannerGpxInputRef.current?.click()} disabled={plannerGpxLoading}>
-                    {plannerGpxLoading ? (lang === "en" ? "Parsing..." : "Đang đọc...") : (lang === "en" ? "Select GPX" : "Chọn tệp GPX")}
+                    {plannerGpxLoading ? (lang === "en" ? "Parsing..." : "Đang đọc...") : (lang === "en" ? "Select GPX" : "Chọn file GPX")}
                   </button>
                   {plannerGpxFile && <div style={{ marginTop: "6px", padding: "6px", background: "rgba(16, 185, 129, 0.05)", border: "1px solid var(--border-color)", borderRadius: "6px", fontSize: "11.5px" }}>✅ {planForm.course_distance_km}km, {planForm.course_elevation_gain_m}m</div>}
                   {plannerGpxError && <div style={{ marginTop: "6px", fontSize: "11px", color: "var(--accent-alert)" }}><XCircle weight="fill" style={{marginRight: "4px", verticalAlign: "middle"}}/> {plannerGpxError}</div>}

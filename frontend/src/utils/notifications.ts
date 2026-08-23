@@ -275,7 +275,7 @@ export const notifyNutritionPlanReady = async (lang: 'en' | 'vi' = 'en'): Promis
   return scheduleNotification({
     title: lang === 'vi' ? '🍌 Kế hoạch dinh dưỡng đã sẵn sàng | Uphill AI' : '🍌 Your Fueling Plan is Ready | Uphill AI',
     body: lang === 'vi'
-      ? 'Chiến lược tiếp nhiên liệu cho buổi tập của bạn đã sẵn sàng.'
+      ? 'Chiến lược Fueling & dinh dưỡng cho buổi tập của bạn đã sẵn sàng.'
       : 'Your race/workout fueling strategy has been calculated.',
     extra: { type: 'nutrition_plan_ready' },
     promptForPermission: false,

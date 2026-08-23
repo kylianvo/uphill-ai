@@ -522,7 +522,7 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
         <p style={{ color: "var(--text-secondary)", marginBottom: actingAsAthleteId ? "8px" : "28px", fontSize: "15px" }}>
           {t(
             "What could you realistically run at your target race? Grounded in the same physics as Pace Strategy, anchored by real field history.",
-            "Bạn có thể chạy được bao nhiêu ở giải mục tiêu? Dựa trên cùng mô hình vật lý với Pace Strategy, đối chiếu với kết quả thực tế.",
+            "Bạn có thể đạt thành tích nào ở giải mục tiêu? Dựa trên cùng mô hình thể chất với Pace Strategy, đối chiếu với dữ liệu thi đấu thực tế.",
           )}
         </p>
         {actingAsAthleteId && (
@@ -575,7 +575,7 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
           </div>
           <div style={boxStyle}>
             <label style={labelStyle}>
-              {t("Elevation gain (m)", "Tổng leo (m)")}
+              {t("Elevation gain (m)", "Elevation Gain (D+) (m)")}
               {raceMatch?.elevation_gain_m && !gain ? ` · ${t("from race DB", "theo dữ liệu giải")}` : ""}
             </label>
             <input
@@ -605,8 +605,8 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
                 title={
                   disabled
                     ? actingAsAthleteId
-                      ? t("This athlete hasn't set pace zones yet", "Vận động viên này chưa thiết lập vùng pace")
-                      : t("Sign in and set your pace zones first", "Đăng nhập và thiết lập vùng pace trước")
+                      ? t("This athlete hasn't set pace zones yet", "Vận động viên này chưa thiết lập vùng Pace")
+                      : t("Sign in and set your pace zones first", "Đăng nhập và thiết lập vùng Pace trước")
                     : undefined
                 }
                 style={{
@@ -644,18 +644,18 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
                   : t("From your profile", "Từ hồ sơ của bạn")}
               </label>
               <div style={{ fontSize: "14.5px", color: "var(--text-primary)", fontWeight: 600 }}>
-                {t("Aerobic zone pace", "Pace vùng hiếu khí")}: {profileZonePace?.toFixed(1)} min/km →{" "}
-                {t("race-effort base", "pace nền khi đua")} {profileBasePace?.toFixed(1)} min/km
+                {t("Aerobic zone pace", "Pace vùng hiếu khí (Zone 2)")}: {profileZonePace?.toFixed(1)} min/km →{" "}
+                {t("race-effort base", "Base Flat Pace khi đua")} {profileBasePace?.toFixed(1)} min/km
               </div>
               <div style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "4px" }}>
                 {actingAsAthleteId
                   ? t(
                       "Same seeding as Pace Strategy. Update their zones in the athlete's Profile Settings to refine it.",
-                      "Cùng cách tính với Pace Strategy. Cập nhật vùng pace trong Cài đặt hồ sơ của vận động viên để chính xác hơn.",
+                      "Cùng phương pháp tính với Pace Strategy. Cập nhật vùng Pace trong Cài đặt hồ sơ của vận động viên để chính xác hơn.",
                     )
                   : t(
                       "Same seeding as Pace Strategy. Update your zones in Profile Settings to refine it.",
-                      "Cùng cách tính với Pace Strategy. Cập nhật vùng pace trong Cài đặt hồ sơ để chính xác hơn.",
+                      "Cùng phương pháp tính với Pace Strategy. Cập nhật vùng Pace trong Cài đặt hồ sơ để chính xác hơn.",
                     )}
               </div>
             </div>
@@ -689,7 +689,7 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
               </div>
               <div style={boxStyle}>
                 <label style={labelStyle}>
-                  {t("Its elevation gain (m)", "Tổng leo (m)")}
+                  {t("Its elevation gain (m)", "Elevation Gain (D+) (m)")}
                   {refMatch?.elevation_gain_m && !refGain ? ` · ${t("from race DB", "theo dữ liệu giải")}` : ""}
                 </label>
                 <input
@@ -743,14 +743,14 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
         {estimate && (
           <div style={{ marginTop: "28px", paddingTop: "24px", borderTop: "1px solid rgba(0,0,0,0.1)" }}>
             <p style={{ fontSize: "13.5px", color: "var(--text-secondary)", marginBottom: "16px" }}>
-              {t("Current predicted time on", "Dự đoán hiện tại tại")}{" "}
+              {t("Current predicted time on", "Dự đoán thành tích hiện tại cho")}{" "}
               <strong>
                 {estimate.race_name || `${Math.round(estimate.distance_km)}k / ${Math.round(estimate.elevation_gain_m)}m D+`}
               </strong>
               : <strong style={{ fontFamily: "var(--font-mono)" }}>{formatDurationHM(estimate.predicted_time_mins)}</strong>
               {estimate.improvement_pct > 0 &&
                 ` · ${t("with your training block", "sau chu kỳ tập luyện")}: ${formatDurationHM(estimate.adjusted_time_mins)} (−${estimate.improvement_pct}%)`}
-              {` · ${t("base flat pace", "pace nền")} ${estimate.base_flat_pace_min_km.toFixed(1)} min/km`}
+              {` · ${t("base flat pace", "Base Flat Pace")} ${estimate.base_flat_pace_min_km.toFixed(1)} min/km`}
             </p>
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "12px" }}>
@@ -800,13 +800,13 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
                       onClick={() => handlePlanPacing(g.mins)}
                       style={{ flex: 1, padding: "8px", borderRadius: "10px", background: "transparent", border: "1px solid var(--border-color)", color: "var(--text-primary)", fontSize: "12.5px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "5px" }}
                     >
-                      <Gauge size={15} /> {t("Plan pacing", "Lên pacing")}
+                      <Gauge size={15} /> {t("Plan pacing", "Lên Pace Strategy")}
                     </button>
                     <button
                       onClick={() => handlePlanTarget(g.mins, g.label)}
                       style={{ flex: 1, padding: "8px", borderRadius: "10px", background: "transparent", border: "1px solid var(--border-color)", color: "var(--text-primary)", fontSize: "12.5px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "5px" }}
                     >
-                      <Target size={15} /> {t("Use for plan", "Dùng cho kế hoạch")}
+                      <Target size={15} /> {t("Use for plan", "Dùng cho giáo án")}
                     </button>
                   </div>
                 </div>

@@ -199,15 +199,15 @@ export const COACH_WORKOUT_TYPE_OPTIONS: Array<{
   labelVi: string;
   color: string;
 }> = [
-  { value: "Easy", labelEn: "Easy", labelVi: "Nhẹ nhàng", color: "#3b82f6" },
-  { value: "Recovery", labelEn: "Recovery", labelVi: "Phục hồi", color: "#3b82f6" },
-  { value: "Long Run", labelEn: "Long Run", labelVi: "Chạy dài", color: "#10b981" },
-  { value: "Aerobic Capacity", labelEn: "Aerobic Capacity", labelVi: "Sức bền hiếu khí", color: "#3b82f6" },
+  { value: "Easy", labelEn: "Easy", labelVi: "Easy Run", color: "#3b82f6" },
+  { value: "Recovery", labelEn: "Recovery", labelVi: "Recovery Run", color: "#3b82f6" },
+  { value: "Long Run", labelEn: "Long Run", labelVi: "Long Run", color: "#10b981" },
+  { value: "Aerobic Capacity", labelEn: "Aerobic Capacity", labelVi: "Aerobic Capacity", color: "#3b82f6" },
   { value: "Tempo", labelEn: "Tempo", labelVi: "Tempo", color: "#f59e0b" },
-  { value: "Threshold", labelEn: "Threshold", labelVi: "Ngưỡng", color: "#f59e0b" },
+  { value: "Threshold", labelEn: "Threshold", labelVi: "Threshold", color: "#f59e0b" },
   { value: "Interval", labelEn: "Interval", labelVi: "Interval", color: "#ef4444" },
-  { value: "Muscular Endurance", labelEn: "Muscular Endurance", labelVi: "Sức bền cơ", color: "#8b5cf6" },
-  { value: "Strength", labelEn: "Strength", labelVi: "Sức mạnh", color: "#8b5cf6" },
+  { value: "Muscular Endurance", labelEn: "Muscular Endurance", labelVi: "Muscular Endurance (ME)", color: "#8b5cf6" },
+  { value: "Strength", labelEn: "Strength", labelVi: "Strength", color: "#8b5cf6" },
   { value: "Cross-Training", labelEn: "Cross-Training", labelVi: "Cross-Training", color: "#14b8a6" },
 ];
 

@@ -154,7 +154,7 @@ export default function PlanCalendarView({
           </button>
         </div>
         <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-secondary)", background: "var(--bg-card)", border: "1px solid var(--border-color)", padding: "6px 12px", borderRadius: "999px" }}>
-          {lang === "en" ? "This month" : "Tháng này"}: <span style={{ color: "var(--accent-primary)" }}>~{monthKm.toFixed(0)} km</span> · {(monthMins / 60).toFixed(1)}{lang === "en" ? "h" : "g"}
+          {lang === "en" ? "This month" : "Tháng này"}: <span style={{ color: "var(--accent-primary)" }}>~{monthKm.toFixed(0)} km</span> · {(monthMins / 60).toFixed(1)}h
         </div>
       </div>
 
@@ -319,7 +319,7 @@ function CalendarWeekRow({
               {anchorWo?.phase ? phaseLabel(anchorWo.phase) : ""}
             </span>
             <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--text-muted)" }}>
-              <b style={{ color: "var(--text-secondary)" }}>~{weekKm.toFixed(0)} km</b> · {(weekMins / 60).toFixed(1)}{lang === "en" ? "h" : "g"}
+              <b style={{ color: "var(--text-secondary)" }}>~{weekKm.toFixed(0)} km</b> · {(weekMins / 60).toFixed(1)}h
             </span>
           </div>
           {!hasRaceInRow && (

@@ -504,7 +504,7 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
         <p style={{ color: "var(--text-secondary)", marginBottom: "28px", fontSize: "15px" }}>
           {t(
             "Pick a finish time — the engine distributes effort across every climb and descent, grounded in the physiology of grade.",
-            "Chọn thời gian về đích — công cụ sẽ phân bổ sức lực trên từng đoạn leo và đổ dốc theo sinh lý học của độ dốc.",
+            "Chọn thời gian về đích — hệ thống sẽ phân bổ nỗ lực trên từng đoạn leo và đổ dốc dựa trên mô hình thể chất về tác động của độ dốc.",
           )}
         </p>
 
@@ -545,7 +545,7 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
               </div>
           <div style={{ ...boxStyle, opacity: hasGpx ? 0.45 : 1 }}>
                 <label style={labelStyle}>
-                  {t("Elevation gain (m)", "Tổng leo (m)")}
+                  {t("Elevation gain (m)", "Elevation Gain (D+) (m)")}
                   {raceMatch?.elevation_gain_m && !manualGain ? ` · ${t("from race DB", "theo dữ liệu giải")}` : ""}
                 </label>
                 <input
@@ -676,7 +676,7 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px", marginBottom: "20px" }}>
               <div style={boxStyle}>
-                <label style={labelStyle}>{t("Split strategy", "Chiến thuật chia sức")}</label>
+                <label style={labelStyle}>{t("Split strategy", "Chiến thuật chia đoạn (Split Strategy)")}</label>
                 <input
                   type="range"
                   min={-1}
@@ -687,19 +687,19 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
                   style={{ width: "100%", accentColor: "var(--accent-primary)" }}
                 />
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "var(--text-muted)" }}>
-                  <span>{t("Fast start", "Xuất phát nhanh")}</span>
-                  <span>{t("Even", "Đều")}</span>
-                  <span>{t("Fast finish", "Về đích nhanh")}</span>
+                  <span>{t("Fast start", "Positive Split (Nhanh đầu)")}</span>
+                  <span>{t("Even", "Even Effort (Đều sức)")}</span>
+                  <span>{t("Fast finish", "Negative Split (Nhanh sau)")}</span>
                 </div>
                 <div style={{ fontSize: "10.5px", color: "var(--text-muted)", marginTop: "6px" }}>
                   {courseStats.gain / courseStats.dist < 15
                     ? t(
                         "Tip: flat courses reward a slightly negative split — start conservative.",
-                        "Gợi ý: đường bằng phẳng nên chia sức âm nhẹ — xuất phát thận trọng.",
+                        "Gợi ý: đường bằng phẳng nên chia sức Negative Split nhẹ — xuất phát thận trọng.",
                       )
                     : t(
                         "Tip: on mountain courses hold even effort and let terrain set the pace.",
-                        "Gợi ý: đường núi nên giữ sức đều, để địa hình quyết định pace.",
+                        "Gợi ý: đường núi nên giữ nỗ lực đều (Even Effort), để địa hình quyết định pace.",
                       )}
                 </div>
               </div>
@@ -878,11 +878,11 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
               {!hasGpx
                 ? t(
                     "Course profile is estimated from total distance and climb — upload the official GPX for segment-accurate pacing.",
-                    "Biểu đồ đường chạy được ước tính từ tổng cự ly và tổng leo — tải lên GPX chính thức để có pacing chính xác theo từng đoạn.",
+                    "Biểu đồ đường chạy được ước tính từ tổng cự ly và độ cao D+ — tải lên file GPX chính thức để có Pace Strategy chính xác theo từng đoạn.",
                   )
                 : t(
                     "Grounded in the Minetti energy-cost curve with altitude, durability and split-strategy adjustments.",
-                    "Dựa trên đường cong năng lượng Minetti với hiệu chỉnh độ cao, độ bền và chiến thuật chia sức.",
+                    "Dựa trên mô hình tiêu hao năng lượng Minetti kết hợp hệ số độ cao, mỏi cơ tích lũy và chiến thuật phân phối sức.",
                   )}
             </p>
 
@@ -891,7 +891,7 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
                 onClick={() => handleHandoff("nutrition")}
                 style={{ flex: 1, minWidth: "200px", padding: "12px", borderRadius: "12px", background: "var(--text-primary)", color: "white", fontSize: "14px", fontWeight: 600, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
               >
-                <BowlFood size={17} /> {t("Plan fueling for this race", "Lên kế hoạch dinh dưỡng")}
+                <BowlFood size={17} /> {t("Plan fueling for this race", "Lên kế hoạch Fueling & Dinh dưỡng")}
               </button>
               <button
                 onClick={() => handleHandoff("gear")}
@@ -908,7 +908,7 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
             onClick={() => setRaceName(activePlan.race_name)}
             style={{ marginTop: "4px", background: "none", border: "1px dashed var(--border-color)", borderRadius: "10px", padding: "8px 14px", fontSize: "12.5px", color: "var(--text-secondary)", cursor: "pointer" }}
           >
-            {t(`Use my plan's race: ${activePlan.race_name}`, `Dùng giải trong kế hoạch: ${activePlan.race_name}`)}
+            {t(`Use my plan's race: ${activePlan.race_name}`, `Dùng giải trong giáo án: ${activePlan.race_name}`)}
           </button>
         )}
       </div>

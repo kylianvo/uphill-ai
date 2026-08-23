@@ -192,7 +192,7 @@ export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang, use
           Gear Finder
         </h2>
         <p style={{ color: "var(--text-secondary)", marginBottom: "32px", fontSize: "15px" }}>
-          {lang === "en" ? "Technical equipment matching. Cross-references your biomechanics with our proprietary gear database." : "Tùy chỉnh trang bị kỹ thuật. So khớp cơ sinh học của bạn với cơ sở dữ liệu."}
+          {lang === "en" ? "Technical equipment matching. Cross-references your biomechanics with our proprietary gear database." : "Hệ thống gợi ý giày và trang bị kỹ thuật. Phân tích phom chân, địa hình đường đua và thông số kỹ thuật từ cơ sở dữ liệu."}
         </p>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "16px", marginBottom: "32px" }}>
@@ -308,7 +308,7 @@ export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang, use
           disabled={gearLoading}
           style={{ width: "100%", padding: "16px", borderRadius: "16px", background: "var(--text-primary)", color: "white", fontSize: "16px", fontWeight: 600, border: "none", cursor: gearLoading ? "not-allowed" : "pointer", opacity: gearLoading ? 0.7 : 1, transition: "0.2s" }}
         >
-          {gearLoading ? (lang === "en" ? "Analyzing..." : "Đang phân tích...") : (lang === "en" ? "Match Equipment" : "Tìm Trang Bị")}
+          {gearLoading ? (lang === "en" ? "Analyzing..." : "Đang phân tích...") : (lang === "en" ? "Match Equipment" : "Tìm Giày & Trang Bị")}
         </button>
 
         {gearPlan && (

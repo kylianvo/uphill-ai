@@ -462,15 +462,15 @@ export default function OnboardingWizard() {
 
                 {[
 
-                  { val: "race", Icon: Trophy, label: lang === "en" ? "Race (target event)" : "Giải chạy (sự kiện mục tiêu)" },
+                  { val: "race", Icon: Trophy, label: lang === "en" ? "Race (target event)" : "Race (Giải chạy mục tiêu)" },
 
-                  { val: "distance", Icon: Target, label: lang === "en" ? "Run a Specific Distance" : "Chạy một cự ly cụ thể" },
+                  { val: "distance", Icon: Target, label: lang === "en" ? "Run a Specific Distance" : "Chạy cự ly mục tiêu" },
 
                   { val: "start_running", Icon: Sneaker, label: lang === "en" ? "Start Running" : "Bắt đầu chạy bộ" },
 
-                  { val: "return", Icon: PersonSimpleRun, label: lang === "en" ? "Get Back to Running" : "Tập luyện chạy bộ trở lại" },
+                  { val: "return", Icon: PersonSimpleRun, label: lang === "en" ? "Get Back to Running" : "Tập luyện trở lại (Return to Running)" },
 
-                  { val: "recovery", Icon: Bed, label: lang === "en" ? "Post-Race Recovery" : "Phục hồi sau cuộc đua" },
+                  { val: "recovery", Icon: Bed, label: lang === "en" ? "Post-Race Recovery" : "Phục hồi sau giải chạy (Recovery)" },
 
                 ].map(({ val, Icon, label }) => (
 
@@ -522,13 +522,13 @@ export default function OnboardingWizard() {
 
               <div style={{ fontSize: "20px", fontWeight: "800", marginBottom: "6px" }}>
 
-                {lang === "en" ? "Current Fitness 💓" : "Thể trạng hiện tại 💓"}
+                {lang === "en" ? "Current Fitness 💓" : "Chỉ số thể chất 💓"}
 
               </div>
 
               <p style={{ color: "var(--text-muted)", fontSize: "13px", marginBottom: "16px" }}>
 
-                {lang === "en" ? "How would you like to input your heart rate zones?" : "Bạn muốn thiết lập các vùng nhịp tim của mình như thế nào?"}
+                {lang === "en" ? "How would you like to input your heart rate zones?" : "Bạn muốn thiết lập các vùng nhịp tim (Zones) như thế nào?"}
 
               </p>
 
@@ -544,7 +544,7 @@ export default function OnboardingWizard() {
 
                       ? (lang === "en" ? "⚡ Estimate from race" : "⚡ Ước tính từ giải chạy")
 
-                      : (lang === "en" ? "🧪 I know my zones" : "🧪 Tôi đã biết các vùng nhịp tim")}
+                      : (lang === "en" ? "🧪 I know my zones" : "🧪 Nhập thủ công các vùng tập (Zones)")}
 
                   </button>
 
@@ -596,7 +596,7 @@ export default function OnboardingWizard() {
 
                 <label style={{ ...labelS, marginBottom: "8px" }}>
 
-                  {lang === "en" ? "Zone 2 Pace Range (Aerobic Pacing)" : "Khoảng tốc độ Zone 2 (Tốc độ hiếu khí)"}
+                  {lang === "en" ? "Zone 2 Pace Range (Aerobic Pacing)" : "Khoảng Pace Zone 2 (Aerobic Pacing)"}
 
                 </label>
 
@@ -604,7 +604,7 @@ export default function OnboardingWizard() {
 
                   <div>
 
-                    <label style={{ ...labelS, fontSize: "11px", fontWeight: "normal" }}>{lang === "en" ? "Slowest Pace (min/km)" : "Tốc độ chậm nhất (phút/km)"}</label>
+                    <label style={{ ...labelS, fontSize: "11px", fontWeight: "normal" }}>{lang === "en" ? "Slowest Pace (min/km)" : "Pace chậm nhất (min/km)"}</label>
 
                     <input type="text" className="chat-input" style={inputS} placeholder="e.g. 6:30" value={onboardingAnswers.zone2_pace_min} onChange={e => setAns("zone2_pace_min", e.target.value)} />
 
@@ -612,7 +612,7 @@ export default function OnboardingWizard() {
 
                   <div>
 
-                    <label style={{ ...labelS, fontSize: "11px", fontWeight: "normal" }}>{lang === "en" ? "Fastest Pace (min/km)" : "Tốc độ nhanh nhất (phút/km)"}</label>
+                    <label style={{ ...labelS, fontSize: "11px", fontWeight: "normal" }}>{lang === "en" ? "Fastest Pace (min/km)" : "Pace nhanh nhất (min/km)"}</label>
 
                     <input type="text" className="chat-input" style={inputS} placeholder="e.g. 5:45" value={onboardingAnswers.zone2_pace_max} onChange={e => setAns("zone2_pace_max", e.target.value)} />
 
@@ -622,7 +622,7 @@ export default function OnboardingWizard() {
 
                 <p style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "6px", lineHeight: "1.3" }}>
 
-                  {lang === "en" ? "This is your conversational running pace range." : "Đây là khoảng tốc độ chạy mà bạn vẫn có thể nói chuyện thoải mái."}
+                  {lang === "en" ? "This is your conversational running pace range." : "Đây là khoảng Pace chạy thoải mái mà bạn vẫn có thể nói chuyện nguyên câu."}
 
                 </p>
 
@@ -654,11 +654,11 @@ export default function OnboardingWizard() {
 
                 {[
 
-                  { val: "rarely", label: lang === "en" ? "Rarely or never injured" : "Hiếm khi hoặc không bao giờ chấn thương", sub: lang === "en" ? "I bounce back quickly from hard efforts" : "Tôi phục hồi nhanh chóng sau những nỗ lực nặng" },
+                  { val: "rarely", label: lang === "en" ? "Rarely or never injured" : "Hiếm khi hoặc không bao giờ chấn thương", sub: lang === "en" ? "I bounce back quickly from hard efforts" : "Phục hồi rất nhanh sau các buổi tập nặng" },
 
-                  { val: "minor", label: lang === "en" ? "Minor or past significant injury" : "Chấn thương nhẹ hoặc từng bị chấn thương nặng", sub: lang === "en" ? "Mostly resolved, occasionally careful" : "Hầu như đã khỏi hoàn toàn, thỉnh thoảng cần lưu ý" },
+                  { val: "minor", label: lang === "en" ? "Minor or past significant injury" : "Chấn thương nhẹ hoặc từng chấn thương", sub: lang === "en" ? "Mostly resolved, occasionally careful" : "Đã hồi phục cơ bản, thỉnh thoảng cần lưu ý" },
 
-                  { val: "frequent", label: lang === "en" ? "Frequently or recently injured" : "Thường xuyên hoặc mới bị chấn thương", sub: lang === "en" ? "Need careful, conservative buildup" : "Cần tích lũy khối lượng cẩn thận và thận trọng" },
+                  { val: "frequent", label: lang === "en" ? "Frequently or recently injured" : "Thường xuyên hoặc vừa chấn thương", sub: lang === "en" ? "Need careful, conservative buildup" : "Cần tích lũy khối lượng cẩn thận và thận trọng" },
 
                   { val: "prefer_not", label: lang === "en" ? "Prefer not to say" : "Không muốn chia sẻ", sub: "" },
 
@@ -745,7 +745,7 @@ export default function OnboardingWizard() {
 
                 <div><label style={labelS}>{lang === "en" ? "Distance (km)" : "Cự ly (km)"}</label><input type="number" className="chat-input" style={inputS} placeholder="42" value={onboardingAnswers.course_distance_km} onChange={e => setAns("course_distance_km", e.target.value)} /></div>
 
-                <div><label style={labelS}>{lang === "en" ? "Elevation Gain (m)" : "Độ cao lũy kế (mét)"}</label><input type="number" className="chat-input" style={inputS} placeholder="1500" value={onboardingAnswers.course_elevation_gain_m} onChange={e => setAns("course_elevation_gain_m", e.target.value)} /></div>
+                <div><label style={labelS}>{lang === "en" ? "Elevation Gain (m)" : "Elevation Gain (D+) (m)"}</label><input type="number" className="chat-input" style={inputS} placeholder="1500" value={onboardingAnswers.course_elevation_gain_m} onChange={e => setAns("course_elevation_gain_m", e.target.value)} /></div>
 
               </div>
 
@@ -761,11 +761,11 @@ export default function OnboardingWizard() {
 
                       style={{ flex: 1, padding: "8px", borderRadius: "8px", border: `1.5px solid ${onboardingAnswers.terrain === t ? "var(--accent-primary)" : "var(--border-color)"}`, background: onboardingAnswers.terrain === t ? "rgba(16,185,129,0.08)" : "rgba(255,255,255,0.3)", color: onboardingAnswers.terrain === t ? "var(--accent-primary)" : "var(--text-primary)", fontWeight: "600", fontSize: "12px", cursor: "pointer" }}>
 
-                      {t === "trail" ? (lang === "en" ? "Trail" : "Địa hình") :
+                      {t === "trail" ? (lang === "en" ? "Trail" : "Trail") :
 
-                       t === "road" ? (lang === "en" ? "Road" : "Đường bằng") :
+                       t === "road" ? (lang === "en" ? "Road" : "Road") :
 
-                       (lang === "en" ? "Mixed" : "Hỗn hợp")}
+                       (lang === "en" ? "Mixed" : "Mixed (Kết hợp)")}
 
                     </button>
 
@@ -785,9 +785,9 @@ export default function OnboardingWizard() {
 
                   {[
 
-                    { val: "finish", label: lang === "en" ? "Just Finish" : "Hoàn thành" },
+                    { val: "finish", label: lang === "en" ? "Just Finish" : "Hoàn thành (Finish)" },
 
-                    { val: "time", label: lang === "en" ? "Time Target" : "Đạt mốc thời gian" },
+                    { val: "time", label: lang === "en" ? "Time Target" : "Mục tiêu thời gian (Target Time)" },
 
                     { val: "optimal", label: t("plan_goal_optimal") }
 
@@ -1595,7 +1595,7 @@ export default function OnboardingWizard() {
 
                       <div>{lang === "en" ? "Starts:" : "Bắt đầu:"} <strong>{onboardingAnswers.plan_start_date || "Today"}</strong> · {onboardingAnswers.days_per_week || 4} {lang === "en" ? "days/week" : "ngày/tuần"}</div>
 
-                      <div>🌙 {lang === "en" ? "Long run:" : "Chạy dài:"} <strong>{onboardingAnswers.long_run_day}</strong> · {lang === "en" ? "Volume:" : "Thể tích:"} <strong>{onboardingAnswers.current_weekly_km || 30} km/{lang === "en" ? "wk" : "tuần"}</strong></div>
+                      <div>🌙 {lang === "en" ? "Long run:" : "Long Run:"} <strong>{onboardingAnswers.long_run_day}</strong> · {lang === "en" ? "Volume:" : "Khối lượng (Volume):"} <strong>{onboardingAnswers.current_weekly_km || 30} km/{lang === "en" ? "wk" : "tuần"}</strong></div>
 
                       {onboardingAnswers.race_name && <div>🏁 {lang === "en" ? "Race:" : "Giải chạy:"} <strong>{onboardingAnswers.race_name}</strong></div>}
 
@@ -1605,7 +1605,7 @@ export default function OnboardingWizard() {
 
                   <button className="btn btn-primary" style={{ width: "100%", height: "44px", fontSize: "14px", fontWeight: "700" }} onClick={() => handleCompleteOnboarding(false)}>
 
-                    🚀 {lang === "en" ? "Generate My Training Plan" : "Khởi tạo Kế hoạch Tập luyện Của Tôi"}
+                    🚀 {lang === "en" ? "Generate My Training Plan" : "Tạo Giáo Án Tập Luyện Của Tôi"}
 
                   </button>
 

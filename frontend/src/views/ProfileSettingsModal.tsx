@@ -717,7 +717,7 @@ export default function ProfileSettingsModal() {
 
 
 
-              {lang === "en" ? "Manage your physiology parameters and security settings" : "Quản lý các thông số sinh lý và cài đặt bảo mật của bạn"}
+              {lang === "en" ? "Manage your physiology parameters and security settings" : "Quản lý các thông số thể chất và cài đặt bảo mật của bạn"}
 
 
 

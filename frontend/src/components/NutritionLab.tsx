@@ -204,7 +204,7 @@ export const NutritionLab: React.FC<NutritionLabProps> = ({ isOpen, onClose, lan
           Nutrition Lab
         </h2>
         <p style={{ color: "var(--text-secondary)", marginBottom: "32px", fontSize: "15px" }}>
-          {lang === "en" ? "Metabolic command center. Calibrate your hourly intake based on race conditions and exact product specs." : "Trung tâm điều khiển trao đổi chất. Tùy chỉnh lượng nạp dựa trên điều kiện đua."}
+          {lang === "en" ? "Metabolic command center. Calibrate your hourly intake based on race conditions and exact product specs." : "Trung tâm tính toán năng lượng và dinh dưỡng thi đấu. Tùy chỉnh lượng nạp (Carbs & Sodium) mỗi giờ dựa trên điều kiện đường đua và thông số sản phẩm."}
         </p>
 
         {/* Input Grid */}
@@ -230,20 +230,20 @@ export const NutritionLab: React.FC<NutritionLabProps> = ({ isOpen, onClose, lan
             <label style={{ display: "block", fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)", marginBottom: "8px", fontWeight: 600 }}>{lang === "en" ? "Temperature" : "Nhiệt độ"}</label>
             <select value={fuelTemp} onChange={(e) => setFuelTemp(e.target.value)}
               style={{ width: "100%", background: "transparent", border: "none", fontSize: "18px", fontWeight: 600, color: "var(--text-primary)", outline: "none", appearance: "none" }}>
-              <option value="cool">{lang === "en" ? "Cool" : "Lạnh"}</option>
+              <option value="cool">{lang === "en" ? "Cool" : "Mát mẻ"}</option>
               <option value="moderate">{lang === "en" ? "Moderate" : "Ôn hòa"}</option>
               <option value="hot">{lang === "en" ? "Hot" : "Nóng"}</option>
             </select>
           </div>
 
           <div style={{ background: "rgba(0,0,0,0.03)", padding: "16px", borderRadius: "16px", border: "1px solid rgba(0,0,0,0.05)" }}>
-            <label style={{ display: "block", fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)", marginBottom: "8px", fontWeight: 600 }}>{lang === "en" ? "Target Carbs (g/hr)" : "Mục tiêu Carbs (g/hr)"}</label>
+            <label style={{ display: "block", fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)", marginBottom: "8px", fontWeight: 600 }}>{lang === "en" ? "Target Carbs (g/hr)" : "Mục tiêu Carbs (g/h)"}</label>
             <input type="number" step="5" value={targetCarb} onChange={(e) => setTargetCarb(e.target.value)}
               style={{ width: "100%", background: "transparent", border: "none", fontSize: "18px", fontWeight: 700, color: "var(--text-primary)", outline: "none" }} />
           </div>
 
           <div style={{ background: "rgba(0,0,0,0.03)", padding: "16px", borderRadius: "16px", border: "1px solid rgba(0,0,0,0.05)" }}>
-            <label style={{ display: "block", fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)", marginBottom: "8px", fontWeight: 600 }}>{lang === "en" ? "Target Sodium (mg/hr)" : "Mục tiêu Natri (mg/hr)"}</label>
+            <label style={{ display: "block", fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)", marginBottom: "8px", fontWeight: 600 }}>{lang === "en" ? "Target Sodium (mg/hr)" : "Mục tiêu Sodium (mg/h)"}</label>
             <input type="number" step="50" value={targetSodium} onChange={(e) => setTargetSodium(e.target.value)}
               style={{ width: "100%", background: "transparent", border: "none", fontSize: "18px", fontWeight: 700, color: "var(--text-primary)", outline: "none" }} />
           </div>
@@ -255,7 +255,7 @@ export const NutritionLab: React.FC<NutritionLabProps> = ({ isOpen, onClose, lan
           </div>
 
           <div style={{ background: "rgba(0,0,0,0.03)", padding: "16px", borderRadius: "16px", border: "1px solid rgba(0,0,0,0.05)", gridColumn: "1 / -1" }}>
-            <label style={{ display: "block", fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)", marginBottom: "8px", fontWeight: 600 }}>{lang === "en" ? "Formats" : "Định dạng"}</label>
+            <label style={{ display: "block", fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)", marginBottom: "8px", fontWeight: 600 }}>{lang === "en" ? "Formats" : "Dạng sản phẩm"}</label>
             <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
               {["gel", "drink mix", "chew", "bar"].map(f => (
                 <button key={f} onClick={() => toggleFormat(f)} style={{ padding: "6px 16px", borderRadius: "20px", border: fuelFormats.includes(f) ? "none" : "1px solid var(--border-color)", background: fuelFormats.includes(f) ? "var(--text-primary)" : "transparent", color: fuelFormats.includes(f) ? "white" : "var(--text-primary)", fontSize: "14px", fontWeight: 600, cursor: "pointer", textTransform: "capitalize", transition: "0.2s" }}>
@@ -267,7 +267,7 @@ export const NutritionLab: React.FC<NutritionLabProps> = ({ isOpen, onClose, lan
 
           <div style={{ background: "rgba(0,0,0,0.03)", padding: "16px", borderRadius: "16px", border: "1px solid rgba(0,0,0,0.05)", gridColumn: "1 / -1" }}>
             <label style={{ display: "block", fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)", marginBottom: "8px", fontWeight: 600 }}>{lang === "en" ? "Additional Context" : "Ghi chú thêm"}</label>
-            <textarea placeholder={lang === "en" ? "Any stomach issues, preferred flavor, or strategy..." : "Vấn đề dạ dày, hương vị yêu thích..."} value={additionalContext} onChange={(e) => setAdditionalContext(e.target.value)}
+            <textarea placeholder={lang === "en" ? "Any stomach issues, preferred flavor, or strategy..." : "Tiền sử đau dạ dày, hương vị ưu tiên hoặc chiến thuật..."} value={additionalContext} onChange={(e) => setAdditionalContext(e.target.value)}
               style={{ width: "100%", background: "transparent", border: "none", fontSize: "15px", color: "var(--text-primary)", outline: "none", resize: "none", minHeight: "60px", fontFamily: "inherit" }} />
           </div>
 
@@ -278,7 +278,7 @@ export const NutritionLab: React.FC<NutritionLabProps> = ({ isOpen, onClose, lan
           disabled={fuelLoading}
           style={{ width: "100%", padding: "16px", borderRadius: "16px", background: "var(--text-primary)", color: "white", fontSize: "16px", fontWeight: 600, border: "none", cursor: fuelLoading ? "not-allowed" : "pointer", opacity: fuelLoading ? 0.7 : 1, transition: "0.2s" }}
         >
-          {fuelLoading ? (lang === "en" ? "Calculating Macros..." : "Đang tính toán...") : (lang === "en" ? "Synthesize Plan" : "Lên Kế Hoạch")}
+          {fuelLoading ? (lang === "en" ? "Calculating Macros..." : "Đang tính toán...") : (lang === "en" ? "Synthesize Plan" : "Lập kế hoạch Fueling")}
         </button>
 
         {/* ── Results ── */}
