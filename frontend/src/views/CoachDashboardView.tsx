@@ -39,6 +39,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
   const [insightsLevel, setInsightsLevel] = useState<string>("all");
   const [selectedRace, setSelectedRace] = useState<string | null>(null);
   const [rosterVisibleLimit, setRosterVisibleLimit] = useState(8);
+  const [rosterTabSearch, setRosterTabSearch] = useState("");
 
   const {
     roster,
@@ -200,12 +201,69 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
 
           {/* Roster */}
           <div className="card" style={{ padding: isMobile ? "20px" : "28px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
-              <Users size={20} weight="duotone" />
-              <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "800" }}>
-                {lang === "en" ? "Your athletes" : "Danh sách học viên"}
-              </h3>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "10px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <Users size={20} weight="duotone" />
+                <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "800" }}>
+                  {lang === "en" ? "Your athletes" : "Danh sách học viên"}
+                </h3>
+              </div>
+              {roster.length > 0 && (
+                <span
+                  style={{
+                    fontSize: "11.5px",
+                    fontWeight: 600,
+                    color: "var(--text-secondary)",
+                    background: "var(--bg-secondary, rgba(255,255,255,0.05))",
+                    padding: "2px 8px",
+                    borderRadius: "12px",
+                    border: "1px solid var(--border-color)",
+                  }}
+                >
+                  {lang === "en"
+                    ? `${activeAthletes.length + invitedAthletes.length} total (${activeAthletes.length} active)`
+                    : `${activeAthletes.length + invitedAthletes.length} VĐV (${activeAthletes.length} đang tập)`}
+                </span>
+              )}
             </div>
+
+            {roster.length > 0 && (
+              <div style={{ position: "relative", marginBottom: "14px" }}>
+                <MagnifyingGlass
+                  size={14}
+                  style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }}
+                />
+                <input
+                  type="text"
+                  className="chat-input"
+                  style={{ width: "100%", borderRadius: "8px", padding: "8px 30px 8px 30px", fontSize: "12.5px" }}
+                  placeholder={lang === "en" ? "Search athletes by name or email…" : "Tìm học viên theo tên hoặc email…"}
+                  value={rosterTabSearch}
+                  onChange={(e) => setRosterTabSearch(e.target.value)}
+                />
+                {rosterTabSearch && (
+                  <button
+                    onClick={() => setRosterTabSearch("")}
+                    aria-label="Clear search"
+                    style={{
+                      position: "absolute",
+                      right: "8px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      color: "var(--text-muted)",
+                      padding: "4px",
+                      display: "flex",
+                      alignItems: "center",
+                    }}
+                  >
+                    <X size={14} weight="bold" />
+                  </button>
+                )}
+              </div>
+            )}
 
             {rosterLoading && roster.length === 0 ? (
               <p style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
@@ -217,66 +275,87 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
                   ? "No athletes yet - send an invite above to get started."
                   : "Chưa có VĐV nào - gửi lời mời ở trên để bắt đầu."}
               </p>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                {[...activeAthletes, ...invitedAthletes].map((row: any) => (
-                  <div
-                    key={row.id}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      padding: "12px 14px",
-                      borderRadius: "10px",
-                      border: "1px solid var(--border-color)",
-                      background: "rgba(255,255,255,0.02)",
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontSize: "13.5px", fontWeight: "700" }}>{row.athlete_name || row.athlete_email}</div>
-                      <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>
-                        {row.status === "active"
-                          ? lang === "en"
-                            ? "Active"
-                            : "Đang huấn luyện"
-                          : lang === "en"
-                            ? "Invite pending"
-                            : "Chờ chấp nhận"}
+            ) : (() => {
+              const allAthletes = [...activeAthletes, ...invitedAthletes];
+              const query = rosterTabSearch.toLowerCase().trim();
+              const filtered = query
+                ? allAthletes.filter((row: any) =>
+                    (row.athlete_name || "").toLowerCase().includes(query) ||
+                    (row.athlete_email || "").toLowerCase().includes(query)
+                  )
+                : allAthletes;
+
+              if (filtered.length === 0) {
+                return (
+                  <p style={{ fontSize: "13px", color: "var(--text-secondary)", margin: "8px 0 0 0" }}>
+                    {lang === "en"
+                      ? `No athletes found matching "${rosterTabSearch}".`
+                      : `Không tìm thấy VĐV nào khớp với "${rosterTabSearch}".`}
+                  </p>
+                );
+              }
+
+              return (
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {filtered.map((row: any) => (
+                    <div
+                      key={row.id}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "12px 14px",
+                        borderRadius: "10px",
+                        border: "1px solid var(--border-color)",
+                        background: "rgba(255,255,255,0.02)",
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontSize: "13.5px", fontWeight: "700" }}>{row.athlete_name || row.athlete_email}</div>
+                        <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                          {row.status === "active"
+                            ? lang === "en"
+                              ? "Active"
+                              : "Đang huấn luyện"
+                            : lang === "en"
+                              ? "Invite pending"
+                              : "Chờ chấp nhận"}
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                        {row.status === "active" && (
+                          <button
+                            onClick={() => enterAthleteView(row.athlete_id, row.athlete_name || row.athlete_email)}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "5px",
+                              padding: "6px 12px",
+                              fontSize: "12px",
+                              fontWeight: "700",
+                              borderRadius: "8px",
+                              border: "none",
+                              background: "var(--accent-primary)",
+                              color: "#fff",
+                              cursor: "pointer",
+                            }}
+                          >
+                            {lang === "en" ? "View plan" : "Xem giáo án"} <ArrowRight size={12} weight="bold" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => removeFromRoster(row.id)}
+                          title={lang === "en" ? "Remove" : "Gỡ bỏ"}
+                          style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", padding: "4px" }}
+                        >
+                          <X size={16} weight="bold" />
+                        </button>
                       </div>
                     </div>
-                    <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                      {row.status === "active" && (
-                        <button
-                          onClick={() => enterAthleteView(row.athlete_id, row.athlete_name || row.athlete_email)}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "5px",
-                            padding: "6px 12px",
-                            fontSize: "12px",
-                            fontWeight: "700",
-                            borderRadius: "8px",
-                            border: "none",
-                            background: "var(--accent-primary)",
-                            color: "#fff",
-                            cursor: "pointer",
-                          }}
-                        >
-                          {lang === "en" ? "View plan" : "Xem giáo án"} <ArrowRight size={12} weight="bold" />
-                        </button>
-                      )}
-                      <button
-                        onClick={() => removeFromRoster(row.id)}
-                        title={lang === "en" ? "Remove" : "Gỡ bỏ"}
-                        style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", padding: "4px" }}
-                      >
-                        <X size={16} weight="bold" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         </>
       )}
