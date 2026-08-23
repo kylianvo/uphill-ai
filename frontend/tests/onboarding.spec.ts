@@ -19,7 +19,15 @@ import { test, expect } from "./fixtures/auth";
  * verify start_date via a direct API call right after submitting.
  */
 
-const CHOSEN_START_DATE = "2026-08-23"; // deliberately far from "today" so a regression is unmistakable
+// Computed relative to "today" (2 years out) rather than hardcoded, so this
+// never again coincides with the actual run date -- a fixed future date
+// eventually becomes "today" and silently breaks the `.not.toBe(today)`
+// assertion below, as happened with the previous hardcoded 2026-08-23.
+const CHOSEN_START_DATE = (() => {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() + 2);
+  return d.toISOString().split("T")[0];
+})();
 
 test("onboarding wizard sends the chosen Plan Start Date, not today", async ({ page, freshUserEmail }) => {
   void freshUserEmail; // fixture already logged in and waited for the wizard to open
