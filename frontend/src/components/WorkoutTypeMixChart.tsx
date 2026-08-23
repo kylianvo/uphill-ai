@@ -17,17 +17,58 @@ export function computeBarLayout(
   }));
 }
 
-const TYPE_LABELS: Record<string, { en: string; vi: string }> = {
-  long_run: { en: "Long run", vi: "Long run" },
-  easy_run: { en: "Easy run", vi: "Easy run" },
-  tempo: { en: "Tempo", vi: "Tempo" },
-  interval: { en: "Interval", vi: "Interval" },
+const CANONICAL_TYPES: Record<string, { en: string; vi: string }> = {
+  easy: { en: "Easy", vi: "Easy" },
+  easy_run: { en: "Easy", vi: "Easy" },
+  "easy run": { en: "Easy", vi: "Easy" },
   strength: { en: "Strength", vi: "Strength" },
+  tempo: { en: "Tempo", vi: "Tempo" },
+  tempo_run: { en: "Tempo", vi: "Tempo" },
+  "tempo run": { en: "Tempo", vi: "Tempo" },
+  threshold: { en: "Tempo", vi: "Tempo" },
+  long_run: { en: "Long Run", vi: "Long Run" },
+  "long run": { en: "Long Run", vi: "Long Run" },
+  long: { en: "Long Run", vi: "Long Run" },
+  muscular_endurance: { en: "Muscular Endurance", vi: "Muscular Endurance" },
+  "muscular endurance": { en: "Muscular Endurance", vi: "Muscular Endurance" },
+  me_session: { en: "Muscular Endurance", vi: "Muscular Endurance" },
+  me: { en: "Muscular Endurance", vi: "Muscular Endurance" },
+  interval: { en: "Interval", vi: "Interval" },
+  intervals: { en: "Interval", vi: "Interval" },
+  recovery: { en: "Recovery", vi: "Recovery" },
+  recovery_run: { en: "Recovery", vi: "Recovery" },
+  "recovery run": { en: "Recovery", vi: "Recovery" },
   hike: { en: "Hike", vi: "Hike / Trekking" },
+  hiking: { en: "Hike", vi: "Hike / Trekking" },
+  trekking: { en: "Hike", vi: "Hike / Trekking" },
+  trail_run: { en: "Trail Run", vi: "Trail Run" },
+  "trail run": { en: "Trail Run", vi: "Trail Run" },
+  hill_repeat: { en: "Hill Repeats", vi: "Hill Repeats" },
+  hill_repeats: { en: "Hill Repeats", vi: "Hill Repeats" },
+  "hill repeat": { en: "Hill Repeats", vi: "Hill Repeats" },
+  "hill repeats": { en: "Hill Repeats", vi: "Hill Repeats" },
+  hill_sprint: { en: "Hill Sprints", vi: "Hill Sprints" },
+  hill_sprints: { en: "Hill Sprints", vi: "Hill Sprints" },
+  "hill sprint": { en: "Hill Sprints", vi: "Hill Sprints" },
+  "hill sprints": { en: "Hill Sprints", vi: "Hill Sprints" },
+  fartlek: { en: "Fartlek", vi: "Fartlek" },
+  cross_training: { en: "Cross-Training", vi: "Cross-Training" },
+  "cross-training": { en: "Cross-Training", vi: "Cross-Training" },
+  race: { en: "Race", vi: "Race" },
+  race_day: { en: "Race", vi: "Race" },
+  "race day": { en: "Race", vi: "Race" },
+  rest: { en: "Rest", vi: "Rest" },
 };
 
-function labelFor(type: string, lang: "en" | "vi"): string {
-  return TYPE_LABELS[type]?.[lang] || type;
+export function labelFor(type: string, lang: "en" | "vi" = "en"): string {
+  if (!type) return "Other";
+  const normalizedKey = type.toLowerCase().trim();
+  if (CANONICAL_TYPES[normalizedKey]) {
+    return CANONICAL_TYPES[normalizedKey][lang] || CANONICAL_TYPES[normalizedKey].en;
+  }
+  return type
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 export default function WorkoutTypeMixChart({ mix, lang }: { mix: WorkoutTypeMixEntry[]; lang: "en" | "vi" }) {
@@ -107,7 +148,7 @@ export default function WorkoutTypeMixChart({ mix, lang }: { mix: WorkoutTypeMix
             >
               <span
                 style={{
-                  width: "110px",
+                  width: "135px",
                   fontSize: "12px",
                   color: isHovered ? "var(--text-primary)" : "var(--text-secondary)",
                   fontWeight: isHovered ? 600 : 400,

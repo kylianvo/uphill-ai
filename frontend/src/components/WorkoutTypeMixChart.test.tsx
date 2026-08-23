@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import WorkoutTypeMixChart, { computeBarLayout } from "./WorkoutTypeMixChart";
+import WorkoutTypeMixChart, { computeBarLayout, labelFor } from "./WorkoutTypeMixChart";
 
 describe("computeBarLayout", () => {
   it("calculates widthPct as true percentage out of 100", () => {
@@ -18,6 +18,19 @@ describe("computeBarLayout", () => {
   });
 });
 
+describe("labelFor canonical types", () => {
+  it("maps plan workout types to canonical display names", () => {
+    expect(labelFor("easy_run")).toBe("Easy");
+    expect(labelFor("easy")).toBe("Easy");
+    expect(labelFor("strength")).toBe("Strength");
+    expect(labelFor("tempo")).toBe("Tempo");
+    expect(labelFor("long_run")).toBe("Long Run");
+    expect(labelFor("muscular_endurance")).toBe("Muscular Endurance");
+    expect(labelFor("me_session")).toBe("Muscular Endurance");
+    expect(labelFor("interval")).toBe("Interval");
+  });
+});
+
 describe("WorkoutTypeMixChart Component", () => {
   it("shows tooltip on row hover", () => {
     render(
@@ -32,12 +45,12 @@ describe("WorkoutTypeMixChart Component", () => {
 
     expect(screen.queryByTestId("mix-tooltip")).toBeNull();
 
-    const row = screen.getByLabelText(/Easy run: 8 workouts/i);
+    const row = screen.getByLabelText(/Easy: 8 workouts/i);
     fireEvent.mouseEnter(row);
 
     const tooltip = screen.getByTestId("mix-tooltip");
     expect(tooltip).toBeDefined();
-    expect(tooltip.textContent).toContain("Easy run");
+    expect(tooltip.textContent).toContain("Easy");
     expect(tooltip.textContent).toContain("8 workouts (80%)");
 
     fireEvent.mouseLeave(row);
