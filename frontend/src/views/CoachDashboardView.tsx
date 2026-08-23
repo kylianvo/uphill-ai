@@ -38,6 +38,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
   const [insightsAthleteId, setInsightsAthleteId] = useState<number | null>(null);
   const [insightsLevel, setInsightsLevel] = useState<string>("all");
   const [selectedRace, setSelectedRace] = useState<string | null>(null);
+  const [rosterVisibleLimit, setRosterVisibleLimit] = useState(8);
 
   const {
     roster,
@@ -427,57 +428,135 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
                     </p>
                   );
                 }
+                const displayedAthletes = filteredAthletes.slice(0, rosterVisibleLimit);
+                const hasMore = filteredAthletes.length > rosterVisibleLimit;
+
                 return (
                   <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                    {filteredAthletes.map((athlete) => (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                      {displayedAthletes.map((athlete) => (
+                        <div
+                          key={athlete.athlete_id}
+                          onClick={() => enterAthleteView(athlete.athlete_id, athlete.name)}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            padding: "12px 14px",
+                            borderRadius: "10px",
+                            border: "1px solid var(--border-color)",
+                            background: "rgba(255,255,255,0.02)",
+                            cursor: "pointer",
+                            gap: "12px",
+                          }}
+                        >
+                          <div>
+                            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                              <span style={{ fontSize: "13.5px", fontWeight: "700" }}>{athlete.name}</span>
+                              <span
+                                style={{
+                                  fontSize: "9.5px",
+                                  fontWeight: 700,
+                                  padding: "1px 6px",
+                                  borderRadius: "999px",
+                                  background: "var(--border-color)",
+                                  color: "var(--text-secondary)",
+                                  textTransform: "capitalize",
+                                }}
+                              >
+                                {athlete.runner_level}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                              {athlete.active_plan
+                                ? `${athlete.active_plan.race_name} - ${lang === "en" ? "Week" : "Tuần"} ${athlete.active_plan.current_week}/${athlete.active_plan.total_weeks}`
+                                : lang === "en" ? "No active plan" : "Chưa có giáo án"}
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                            {athlete.adherence_pct !== null && (
+                              <span style={{ fontSize: "12px", fontWeight: 700 }}>
+                                {Math.round(athlete.adherence_pct * 100)}%
+                              </span>
+                            )}
+                            <ArrowRight size={14} weight="bold" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {filteredAthletes.length > 8 && (
                       <div
-                        key={athlete.athlete_id}
-                        onClick={() => enterAthleteView(athlete.athlete_id, athlete.name)}
                         style={{
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "space-between",
-                          padding: "12px 14px",
-                          borderRadius: "10px",
-                          border: "1px solid var(--border-color)",
-                          background: "rgba(255,255,255,0.02)",
-                          cursor: "pointer",
-                          gap: "12px",
+                          marginTop: "6px",
+                          paddingTop: "10px",
+                          borderTop: "1px solid var(--border-color)",
+                          flexWrap: "wrap",
+                          gap: "8px",
                         }}
                       >
-                        <div>
-                          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                            <span style={{ fontSize: "13.5px", fontWeight: "700" }}>{athlete.name}</span>
-                            <span
+                        <span style={{ fontSize: "12px", color: "var(--text-muted)", fontWeight: 500 }}>
+                          {lang === "en"
+                            ? `Showing ${displayedAthletes.length} of ${filteredAthletes.length} runners`
+                            : `Hiển thị ${displayedAthletes.length} / ${filteredAthletes.length} VĐV`}
+                        </span>
+                        <div style={{ display: "flex", gap: "8px" }}>
+                          {hasMore ? (
+                            <>
+                              <button
+                                onClick={() => setRosterVisibleLimit((prev) => prev + 10)}
+                                style={{
+                                  padding: "5px 12px",
+                                  fontSize: "12px",
+                                  fontWeight: 600,
+                                  borderRadius: "6px",
+                                  border: "1px solid var(--border-color)",
+                                  background: "transparent",
+                                  color: "var(--accent-primary)",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                {lang === "en" ? "+10 more" : "+10 VĐV"}
+                              </button>
+                              <button
+                                onClick={() => setRosterVisibleLimit(filteredAthletes.length)}
+                                style={{
+                                  padding: "5px 12px",
+                                  fontSize: "12px",
+                                  fontWeight: 600,
+                                  borderRadius: "6px",
+                                  border: "1px solid var(--border-color)",
+                                  background: "transparent",
+                                  color: "var(--text-secondary)",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                {lang === "en" ? "Show all" : "Xem tất cả"}
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              onClick={() => setRosterVisibleLimit(8)}
                               style={{
-                                fontSize: "9.5px",
-                                fontWeight: 700,
-                                padding: "1px 6px",
-                                borderRadius: "999px",
-                                background: "var(--border-color)",
-                                color: "var(--text-secondary)",
-                                textTransform: "capitalize",
+                                padding: "5px 12px",
+                                fontSize: "12px",
+                                fontWeight: 600,
+                                borderRadius: "6px",
+                                border: "1px solid var(--border-color)",
+                                background: "transparent",
+                                color: "var(--text-muted)",
+                                cursor: "pointer",
                               }}
                             >
-                              {athlete.runner_level}
-                            </span>
-                          </div>
-                          <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>
-                            {athlete.active_plan
-                              ? `${athlete.active_plan.race_name} - ${lang === "en" ? "Week" : "Tuần"} ${athlete.active_plan.current_week}/${athlete.active_plan.total_weeks}`
-                              : lang === "en" ? "No active plan" : "Chưa có giáo án"}
-                          </div>
-                        </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-                          {athlete.adherence_pct !== null && (
-                            <span style={{ fontSize: "12px", fontWeight: 700 }}>
-                              {Math.round(athlete.adherence_pct * 100)}%
-                            </span>
+                              {lang === "en" ? "Show less" : "Thu gọn"}
+                            </button>
                           )}
-                          <ArrowRight size={14} weight="bold" />
                         </div>
                       </div>
-                    ))}
+                    )}
                   </div>
                 );
               })()}

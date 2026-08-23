@@ -3,14 +3,14 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import WorkoutTypeMixChart, { computeBarLayout } from "./WorkoutTypeMixChart";
 
 describe("computeBarLayout", () => {
-  it("normalizes highest pct bar to widthPct 100", () => {
+  it("calculates widthPct as true percentage out of 100", () => {
     const layout = computeBarLayout([
       { type: "easy_run", count: 10, pct: 0.5 },
       { type: "long_run", count: 5, pct: 0.25 },
     ]);
     expect(layout).toHaveLength(2);
-    expect(layout[0].widthPct).toBe(100);
-    expect(layout[1].widthPct).toBe(50);
+    expect(layout[0].widthPct).toBe(50);
+    expect(layout[1].widthPct).toBe(25);
   });
 
   it("handles empty array gracefully", () => {

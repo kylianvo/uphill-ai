@@ -11,9 +11,10 @@ export function computeBarLayout(
   maxBars = 6
 ): (WorkoutTypeMixEntry & { widthPct: number })[] {
   const top = mix.slice(0, maxBars);
-  const maxPct = Math.max(...top.map((m) => m.pct), 0);
-  if (maxPct === 0) return top.map((m) => ({ ...m, widthPct: 0 }));
-  return top.map((m) => ({ ...m, widthPct: Math.round((m.pct / maxPct) * 100) }));
+  return top.map((m) => ({
+    ...m,
+    widthPct: m.count > 0 && m.pct > 0 ? Math.max(Math.round(m.pct * 100), 2) : 0,
+  }));
 }
 
 const TYPE_LABELS: Record<string, { en: string; vi: string }> = {
