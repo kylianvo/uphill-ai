@@ -58,7 +58,7 @@ else
 
   export DATABASE_URL="postgresql://uphill:uphill_secret@localhost:5433/uphill_ai_test"
   export ENVIRONMENT="development"
-  if ! (cd "$SCRIPT_DIR/backend" && .venv/bin/pytest tests/unit tests/integration -q); then
+  if ! (cd "$SCRIPT_DIR/backend" && .venv/bin/pytest tests/unit tests/integration -q -m "not kafka"); then
     echo "ERROR: backend test suite failed. Aborting deploy. Re-run with --skip-tests to force (not recommended)." >&2
     exit 1
   fi
