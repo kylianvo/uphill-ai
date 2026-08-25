@@ -1,7 +1,10 @@
+import path from 'path';
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
-  testDir: './tests',
+  testDir: path.resolve(__dirname, 'tests'),
+  testMatch: /.*\.spec\.ts$/,
+  testIgnore: ['**/.claude/**', '**/node_modules/**', '**/.next/**'],
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
