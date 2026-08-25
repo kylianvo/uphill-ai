@@ -1,5 +1,7 @@
 from unittest.mock import patch
 
+from google.genai import types as genai_types
+
 from main import _resolve_course_match, _session_review_status
 from services.race_matcher import MatchedRace
 
@@ -62,3 +64,25 @@ def test_session_review_status_not_logged():
 
 def test_session_review_status_defaults_missing_keys_to_not_logged():
     assert _session_review_status({}) == "not logged"
+
+
+def test_chat_formatted_contents_shape_is_valid_genai_content():
+    """The two /api/coach/chat endpoints build formatted_contents as
+    [{"role": ..., "parts": [{"text": ...}]}, ...] before passing it to
+    genai.Client.models.generate_content. Unlike the old google-generativeai
+    SDK, google-genai's real pydantic validation rejects a bare string in
+    "parts" (e.g. {"parts": ["hello"]}) -- it must be a Part-shaped dict.
+    Mocked tests can't catch this since they never touch real validation,
+    so this test builds contents the same way main.py does and validates
+    each item against the actual SDK type."""
+    messages = [
+        {"role": "user", "content": "How do I taper?"},
+        {"role": "assistant", "content": "Cut volume ~50% in the final week."},
+    ]
+    formatted_contents = []
+    for msg in messages:
+        role = "user" if msg["role"] == "user" else "model"
+        formatted_contents.append({"role": role, "parts": [{"text": msg["content"]}]})
+
+    for item in formatted_contents:
+        genai_types.Content.model_validate(item)

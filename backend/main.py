@@ -1277,7 +1277,7 @@ async def coach_chat_copilot(
             formatted_contents = []
             for msg in request.messages:
                 role = "user" if msg.role == "user" else "model"
-                formatted_contents.append({"role": role, "parts": [msg.content]})
+                formatted_contents.append({"role": role, "parts": [{"text": msg.content}]})
 
             client = genai.Client(api_key=model_api_key)
 
@@ -2273,7 +2273,7 @@ async def coach_chat(request: ChatRequest):
             formatted_contents = []
             for msg in request.messages:
                 role = "user" if msg.role == "user" else "model"
-                formatted_contents.append({"role": role, "parts": [msg.content]})
+                formatted_contents.append({"role": role, "parts": [{"text": msg.content}]})
 
             last_user = request.messages[-1].content
             print(
