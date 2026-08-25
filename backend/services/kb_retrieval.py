@@ -1,12 +1,13 @@
 """Qdrant semantic retrieval for scheduler-domain philosophy chunks.
 
 Sync functions (embedding + Qdrant calls are blocking) — async callers must wrap
-in asyncio.to_thread. Uses plain qdrant-client + genai.embed_content; see
-services/vector_service.py note in the implementation plan for why langchain
+in asyncio.to_thread. Uses plain qdrant-client + genai Client.models.embed_content;
+see services/vector_service.py note in the implementation plan for why langchain
 is intentionally avoided here.
 """
 
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, PointStruct, VectorParams
 
@@ -22,11 +23,13 @@ def _client() -> QdrantClient:
 
 
 def _embed(texts: list[str], api_key: str, task_type: str) -> list[list[float]]:
-    genai.configure(api_key=api_key)
+    client = genai.Client(api_key=api_key)
     vectors = []
     for t in texts:
-        result = genai.embed_content(model=EMBEDDING_MODEL, content=t, task_type=task_type)
-        vectors.append(result["embedding"])
+        result = client.models.embed_content(
+            model=EMBEDDING_MODEL, contents=t, config=types.EmbedContentConfig(task_type=task_type)
+        )
+        vectors.append(result.embeddings[0].values)
     return vectors
 
 

@@ -378,7 +378,10 @@ class PlanGenerator:
             try:
                 import json as _json
 
-                import google.generativeai as _genai
+                from google import genai as _genai
+                from google.genai import types as _genai_types
+
+                from config import settings
 
                 zone_instruction = (
                     f"Use exactly this zone (the coach already chose it): {resolved_zone}."
@@ -412,11 +415,17 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
 "description": "warm-up, main set (with any intervals), cool-down as one paragraph",
 "fueling_tip": "one sentence, or null if not applicable"}}"""
 
-                _genai.configure(api_key=api_key)
-                _model = _genai.GenerativeModel("gemini-2.5-flash")
+                _client = _genai.Client(api_key=api_key)
                 import asyncio
 
-                _response = await asyncio.to_thread(_model.generate_content, prompt)
+                _response = await asyncio.to_thread(
+                    _client.models.generate_content,
+                    model=settings.GEMINI_MODEL,
+                    contents=prompt,
+                    config=_genai_types.GenerateContentConfig(
+                        thinking_config=_genai_types.ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL)
+                    ),
+                )
                 _text = _response.text.strip()
                 _start, _end = _text.find("{"), _text.rfind("}")
                 if _start != -1 and _end != -1:
@@ -1224,12 +1233,12 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
             try:
                 import time
 
-                import google.generativeai as _genai
+                from google import genai as _genai
+                from google.genai import types as _genai_types
 
                 from telemetry import rag_attempts_total, rag_latency_seconds
 
-                _genai.configure(api_key=api_key)
-                _model = _genai.GenerativeModel("gemini-2.5-flash")
+                _client = _genai.Client(api_key=api_key)
                 _logger.info(
                     "gemini prompt sent",
                     extra={
@@ -1245,7 +1254,14 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                 rag_attempts_total.labels(service="plan_generator", engine="gemini", status="attempt").inc()
                 _start = time.time()
                 try:
-                    _response = await asyncio.to_thread(_model.generate_content, _gemini_prompt)
+                    _response = await asyncio.to_thread(
+                        _client.models.generate_content,
+                        model=settings.GEMINI_MODEL,
+                        contents=_gemini_prompt,
+                        config=_genai_types.GenerateContentConfig(
+                            thinking_config=_genai_types.ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL)
+                        ),
+                    )
                     _latency = time.time() - _start
                     rag_latency_seconds.labels(service="plan_generator", engine="gemini").observe(_latency)
                     rag_attempts_total.labels(service="plan_generator", engine="gemini", status="success").inc()

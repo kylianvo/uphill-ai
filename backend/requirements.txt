@@ -4,7 +4,7 @@ pydantic>=2.0.0
 python-dotenv>=1.0.0
 fitparse>=1.2.0
 gpxpy>=1.6.2
-google-generativeai>=0.4.0
+google-genai>=1.0.0
 python-multipart
 pypdf
 beautifulsoup4
@@ -36,10 +36,9 @@ duckdb
 # incremental extraction hits this) -- without it, duckdb raises at query time
 # rather than at import time, so the gap doesn't surface until a specific query runs.
 pytz
-# NOTE: dbt-duckdb is deliberately NOT listed here. dbt-core hard-requires
-# protobuf>=6.0, which conflicts with (deprecated but still in use)
-# google-generativeai's protobuf<6.0 pin -- installing it into this image's
-# global site-packages would silently bump protobuf and risk breaking every
-# Gemini call. scripts/run_dw_elt.py (the cron-driven prod DW pipeline, see
-# deploy_dw.sh) instead runs dbt from an isolated venv at ./warehouse/.venv,
-# kept fully separate from this file's dependency tree.
+# NOTE: dbt-duckdb is deliberately NOT listed here. It was originally kept out
+# because dbt-core's protobuf>=6.0 requirement conflicted with the (now-removed)
+# google-generativeai package's protobuf<6.0 pin -- google-genai (its replacement)
+# has no protobuf dependency, so that specific conflict is gone, but
+# scripts/run_dw_elt.py still runs dbt from an isolated venv at ./warehouse/.venv
+# and hasn't been re-evaluated for merging back into this file's dependency tree.

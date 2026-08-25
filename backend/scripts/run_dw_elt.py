@@ -7,11 +7,13 @@ plain script invoked by cron: `docker compose exec -T backend python scripts/run
 Dev keeps the full Airflow DAG for orchestration work -- this script is prod-only.
 
 dbt runs out of the isolated venv at DBT_BIN (default /warehouse/.venv/bin/dbt,
-created by deploy_dw.sh) rather than the container's global site-packages:
-dbt-core hard-requires protobuf>=6.0, which conflicts with (deprecated but
-still in use) google-generativeai's protobuf<6.0 pin -- installing dbt-duckdb
-globally would silently bump protobuf and risk breaking every Gemini call.
-The venv keeps dbt's dependency tree fully separate from the app's.
+created by deploy_dw.sh) rather than the container's global site-packages.
+This was originally needed because dbt-core's protobuf>=6.0 requirement
+conflicted with the (now-removed) google-generativeai package's protobuf<6.0
+pin; google-genai (its replacement) has no protobuf dependency, so that
+specific conflict is gone, but this hasn't been re-evaluated for merging
+dbt-duckdb back into the app's global dependency tree. The venv keeps dbt's
+dependency tree fully separate from the app's either way.
 
 Usage (from backend/): python scripts/run_dw_elt.py
 """

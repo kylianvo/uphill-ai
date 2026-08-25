@@ -10,10 +10,12 @@ import json
 import re
 from typing import Any
 
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from pydantic import BaseModel
 from tavily import TavilyClient
 
+from config import settings
 from services.kb_distiller import _gemini_structured
 
 # Topic queries sent to NotebookLM — each focuses on a distinct area
@@ -129,17 +131,13 @@ async def extract_knowledge_cards(
     from services.notebooklm_service import NotebookLmService
 
     try:
-        import google.generativeai as genai
-        from google.generativeai import client as genai_client
+        from google import genai
+        from google.genai import types
     except ImportError:
-        status_holder.update({"status": "error", "message": "google-generativeai not installed"})
+        status_holder.update({"status": "error", "message": "google-genai not installed"})
         return 0
 
-    # Configure Gemini
-    model = genai.GenerativeModel(model_name="gemini-2.5-flash")
-    mgr = genai_client._ClientManager()
-    mgr.configure(api_key=api_key)
-    model._client = mgr.get_default_client("generative")
+    client = genai.Client(api_key=api_key)
 
     # Clear existing cards before fresh extraction
     clear_knowledge_cards()
@@ -185,9 +183,13 @@ async def extract_knowledge_cards(
             import asyncio
 
             response = await asyncio.to_thread(
-                model.generate_content,
-                prompt,
-                generation_config={"response_mime_type": "application/json"},
+                client.models.generate_content,
+                model=settings.GEMINI_MODEL,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    thinking_config=types.ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL),
+                ),
             )
             raw = response.text.strip()
             print(f"[KnowledgeExtractor][Gemini] Response received ({len(raw)} chars) for {topic_name}")
@@ -215,7 +217,7 @@ async def extract_knowledge_cards(
 
             # Translate to Vietnamese and save
             try:
-                translated_cards = await translate_cards_to_vi_with_gemini(model, cards)
+                translated_cards = await translate_cards_to_vi_with_gemini(client, cards)
                 saved_vi = save_knowledge_cards(translated_cards, lang="vi")
                 print(f"[KnowledgeExtractor] Translated and saved {saved_vi} VI cards for {topic_name}")
             except Exception as tr_err:
@@ -247,7 +249,7 @@ async def extract_knowledge_cards(
     return total_saved
 
 
-async def translate_cards_to_vi_with_gemini(model, cards: list[dict[str, Any]]) -> list[dict[str, Any]]:
+async def translate_cards_to_vi_with_gemini(client, cards: list[dict[str, Any]]) -> list[dict[str, Any]]:
     translated = []
     for card in cards:
         prompt = f"""
@@ -267,7 +269,14 @@ Card to translate:
 """
         try:
             # Wrap the blocking generate_content call in an async thread to prevent blocking the async loop
-            response = await asyncio.to_thread(model.generate_content, prompt)
+            response = await asyncio.to_thread(
+                client.models.generate_content,
+                model=settings.GEMINI_MODEL,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    thinking_config=types.ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL)
+                ),
+            )
             text = response.text.strip()
             if text.startswith("```"):
                 lines = text.split("\n")
@@ -480,9 +489,8 @@ async def save_podcast_knowledge_cards(cards: list[dict], api_key: str) -> int:
         return 0
     saved_en = save_knowledge_cards(cards, lang="en")
     try:
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-2.5-flash")
-        translated_cards = await translate_cards_to_vi_with_gemini(model, cards)
+        client = genai.Client(api_key=api_key)
+        translated_cards = await translate_cards_to_vi_with_gemini(client, cards)
         save_knowledge_cards(translated_cards, lang="vi")
     except Exception as e:
         print(f"[KnowledgeExtractor][podcast-web] VI translation/save failed, EN cards still saved: {e}")

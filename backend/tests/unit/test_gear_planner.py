@@ -37,27 +37,26 @@ def clear_cache():
     gp._GEAR_CACHE.clear()
 
 
-def _mock_gemini_model(response_text):
+def _mock_gemini_client(response_text):
     fake_response = MagicMock()
     fake_response.text = response_text
-    fake_model = MagicMock()
-    fake_model.generate_content.return_value = fake_response
-    return fake_model
+    fake_client = MagicMock()
+    fake_client.models.generate_content.return_value = fake_response
+    return fake_client
 
 
 def test_gemini_engine_primary_uses_kb_catalog(monkeypatch):
     monkeypatch.setattr(settings, "RAG_ENGINE", "gemini")
     monkeypatch.setattr(settings, "GEMINI_API_KEY", "test-key")
-    fake_model = _mock_gemini_model(GEAR_JSON)
+    fake_client = _mock_gemini_client(GEAR_JSON)
     chunks = [{"title": "Speedgoat 7", "payload": {"brand": "Hoka", "price": "$155"}}]
     with (
         patch("db.get_kb_chunks", return_value=chunks),
-        patch("google.generativeai.GenerativeModel", return_value=fake_model),
-        patch("google.generativeai.configure"),
+        patch("google.genai.Client", return_value=fake_client),
     ):
         result = asyncio.run(gp.gear_planner.generate_plan("", GearParams(surface="trail")))
     assert result["recommendations"][0]["model"] == "Speedgoat 7"
-    prompt_sent = fake_model.generate_content.call_args[0][0]
+    prompt_sent = fake_client.models.generate_content.call_args.kwargs["contents"]
     assert "KNOWLEDGE BASE" in prompt_sent  # catalog context was injected
     assert "Speedgoat 7" in prompt_sent
     assert "BRAND CONSTRAINT" in prompt_sent  # constraint wording preserved
@@ -104,15 +103,14 @@ def test_gear_recommendation_schema_includes_weight():
 def test_gemini_prompt_includes_weight_field_guidance(monkeypatch):
     monkeypatch.setattr(settings, "RAG_ENGINE", "gemini")
     monkeypatch.setattr(settings, "GEMINI_API_KEY", "test-key")
-    fake_model = _mock_gemini_model(GEAR_JSON)
+    fake_client = _mock_gemini_client(GEAR_JSON)
     chunks = [{"title": "Speedgoat 7", "payload": {"brand": "Hoka", "weight": "9.6 oz / 272 g"}}]
     with (
         patch("db.get_kb_chunks", return_value=chunks),
-        patch("google.generativeai.GenerativeModel", return_value=fake_model),
-        patch("google.generativeai.configure"),
+        patch("google.genai.Client", return_value=fake_client),
     ):
         asyncio.run(gp.gear_planner.generate_plan("", GearParams(surface="trail")))
-    prompt_sent = fake_model.generate_content.call_args[0][0]
+    prompt_sent = fake_client.models.generate_content.call_args.kwargs["contents"]
     assert '"weight"' in prompt_sent  # field guidance mentions weight
     assert "9.6 oz / 272 g" in prompt_sent  # catalog's own weight value was injected
 
@@ -138,7 +136,7 @@ def test_gear_params_accepts_race_name():
 def test_gemini_engine_injects_course_context_and_echoes_matched_race(monkeypatch):
     monkeypatch.setattr(settings, "RAG_ENGINE", "gemini")
     monkeypatch.setattr(settings, "GEMINI_API_KEY", "test-key")
-    fake_model = _mock_gemini_model(GEAR_JSON)
+    fake_client = _mock_gemini_client(GEAR_JSON)
     chunks = [{"title": "Speedgoat 7", "payload": {"brand": "Hoka", "price": "$155"}}]
     from services.race_matcher import MatchedRace
 
@@ -154,11 +152,10 @@ def test_gemini_engine_injects_course_context_and_echoes_matched_race(monkeypatc
     with (
         patch("db.get_kb_chunks", return_value=chunks),
         patch("services.race_matcher.match_race", return_value=matched),
-        patch("google.generativeai.GenerativeModel", return_value=fake_model),
-        patch("google.generativeai.configure"),
+        patch("google.genai.Client", return_value=fake_client),
     ):
         result = asyncio.run(gp.gear_planner.generate_plan("", GearParams(surface="trail", race_name="VMM")))
-    prompt_sent = fake_model.generate_content.call_args[0][0]
+    prompt_sent = fake_client.models.generate_content.call_args.kwargs["contents"]
     assert "hand-and-knees scrambles" in prompt_sent
     assert result["matched_race"]["race_name"] == "Vietnam Mountain Marathon"
     assert result["matched_race"]["elevation_gain_m"] == 2800
@@ -167,12 +164,11 @@ def test_gemini_engine_injects_course_context_and_echoes_matched_race(monkeypatc
 def test_no_race_name_means_no_matched_race_in_response(monkeypatch):
     monkeypatch.setattr(settings, "RAG_ENGINE", "gemini")
     monkeypatch.setattr(settings, "GEMINI_API_KEY", "test-key")
-    fake_model = _mock_gemini_model(GEAR_JSON)
+    fake_client = _mock_gemini_client(GEAR_JSON)
     chunks = [{"title": "Speedgoat 7", "payload": {"brand": "Hoka"}}]
     with (
         patch("db.get_kb_chunks", return_value=chunks),
-        patch("google.generativeai.GenerativeModel", return_value=fake_model),
-        patch("google.generativeai.configure"),
+        patch("google.genai.Client", return_value=fake_client),
     ):
         result = asyncio.run(gp.gear_planner.generate_plan("", GearParams(surface="trail")))
     assert result["matched_race"] is None

@@ -19,7 +19,8 @@ from datetime import datetime
 from typing import Any
 from urllib.parse import urlparse
 
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from pydantic import BaseModel
 
 try:
@@ -170,13 +171,16 @@ NUTRITION_PRINCIPLE_TOPICS = [
 
 
 async def _gemini_structured(api_key: str, prompt: str, schema: type[BaseModel]) -> dict[str, Any]:
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-2.5-flash")
+    client = genai.Client(api_key=api_key)
     response = await asyncio.to_thread(
-        model.generate_content,
-        prompt,
-        generation_config=genai.GenerationConfig(
-            response_mime_type="application/json", response_schema=schema, temperature=0.0
+        client.models.generate_content,
+        model=settings.GEMINI_MODEL,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema=schema,
+            temperature=0.0,
+            thinking_config=types.ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL),
         ),
     )
     return json.loads(response.text)

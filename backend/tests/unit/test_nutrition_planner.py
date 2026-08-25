@@ -34,18 +34,18 @@ def clear_cache():
     np_mod._NUTRITION_CACHE.clear()
 
 
-def _mock_gemini_model(response_text):
+def _mock_gemini_client(response_text):
     fake_response = MagicMock()
     fake_response.text = response_text
-    fake_model = MagicMock()
-    fake_model.generate_content.return_value = fake_response
-    return fake_model
+    fake_client = MagicMock()
+    fake_client.models.generate_content.return_value = fake_response
+    return fake_client
 
 
 def test_gemini_engine_primary_injects_catalog_and_principles(monkeypatch):
     monkeypatch.setattr(settings, "RAG_ENGINE", "gemini")
     monkeypatch.setattr(settings, "GEMINI_API_KEY", "test-key")
-    fake_model = _mock_gemini_model(NUTRITION_JSON)
+    fake_client = _mock_gemini_client(NUTRITION_JSON)
 
     def fake_get_kb_chunks(domain, kind=None):
         assert domain == "nutrition"
@@ -55,14 +55,13 @@ def test_gemini_engine_primary_injects_catalog_and_principles(monkeypatch):
 
     with (
         patch("db.get_kb_chunks", side_effect=fake_get_kb_chunks),
-        patch("google.generativeai.GenerativeModel", return_value=fake_model),
-        patch("google.generativeai.configure"),
+        patch("google.genai.Client", return_value=fake_client),
     ):
         result = asyncio.run(
             np_mod.nutrition_planner.generate_plan("", NutritionParams(distance_km=50, weather_temp="hot"))
         )
     assert result["products"][0]["name"] == "Gel 100"
-    prompt_sent = fake_model.generate_content.call_args[0][0]
+    prompt_sent = fake_client.models.generate_content.call_args.kwargs["contents"]
     assert "KNOWLEDGE BASE" in prompt_sent
     assert "Maurten Gel 100" in prompt_sent
     assert "Sodium in heat" in prompt_sent  # principles injected too

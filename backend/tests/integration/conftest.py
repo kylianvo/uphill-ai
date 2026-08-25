@@ -89,27 +89,24 @@ def auth_headers(client):
 
 @pytest.fixture
 def mock_gemini():
-    """Patches the real, shared google.generativeai module object.
+    """Patches the real, shared google.genai module object.
 
-    Gemini is imported as `import google.generativeai as genai` locally in
-    multiple files (main.py, services/plan_generator.py,
-    services/knowledge_extractor.py, services/workout_type_extractor.py).
-    All of those bindings resolve to the same sys.modules entry, so patching
-    the attribute on the real module is the one mock target that's reliable
-    regardless of which file does the importing.
+    Gemini is imported as `from google import genai` locally in multiple
+    files (main.py, services/plan_generator.py, services/knowledge_extractor.py,
+    services/workout_type_extractor.py). All of those bindings resolve to the
+    same sys.modules entry, so patching the attribute on the real module is
+    the one mock target that's reliable regardless of which file does the
+    importing.
     """
     from unittest.mock import MagicMock, patch
 
     fake_response = MagicMock()
     fake_response.text = "[]"
-    fake_model = MagicMock()
-    fake_model.generate_content.return_value = fake_response
+    fake_client = MagicMock()
+    fake_client.models.generate_content.return_value = fake_response
 
-    with (
-        patch("google.generativeai.GenerativeModel", return_value=fake_model) as mock_cls,
-        patch("google.generativeai.configure"),
-    ):
-        yield mock_cls, fake_model
+    with patch("google.genai.Client", return_value=fake_client) as mock_cls:
+        yield mock_cls, fake_client
 
 
 @pytest.fixture
