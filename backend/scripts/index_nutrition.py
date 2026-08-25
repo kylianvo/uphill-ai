@@ -3,7 +3,8 @@ import logging
 import os
 import sys
 
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from langchain_core.documents import Document
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_qdrant import QdrantVectorStore
@@ -92,10 +93,7 @@ def main():
 
     # Use first key for everything
     api_key = settings.get_next_gemini_key()
-    genai.configure(api_key=api_key)
-
-    # Initialize Extraction Model
-    model = genai.GenerativeModel("gemini-2.5-flash")
+    genai_client = genai.Client(api_key=api_key)
 
     logger.info("Initializing MarkItDown...")
     md = MarkItDown()
@@ -138,10 +136,14 @@ def main():
             logger.info("Extracting structured metadata via Gemini...")
             prompt = f"Extract the nutrition product details from the following website text. Ensure accurate extraction of carbs (g) and sodium (mg) per serving.\n\nWebsite Text:\n{text_content[:8000]}"
 
-            response = model.generate_content(
-                prompt,
-                generation_config=genai.GenerationConfig(
-                    response_mime_type="application/json", response_schema=NutritionMetadata, temperature=0.0
+            response = genai_client.models.generate_content(
+                model=settings.GEMINI_MODEL,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    response_schema=NutritionMetadata,
+                    temperature=0.0,
+                    thinking_config=types.ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL),
                 ),
             )
 

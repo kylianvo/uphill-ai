@@ -31,12 +31,12 @@ USER_PROFILE = {"age": 34, "max_hr": 188, "resting_hr": 52}
 RACE_INFO = {"lang": "en", "terrain": "trail"}
 
 
-def _fake_gemini_model():
+def _fake_gemini_client():
     fake_response = MagicMock()
     fake_response.text = WORKOUT_JSON
-    fake_model = MagicMock()
-    fake_model.generate_content.return_value = fake_response
-    return fake_model
+    fake_client = MagicMock()
+    fake_client.models.generate_content.return_value = fake_response
+    return fake_client
 
 
 async def _generate():
@@ -56,19 +56,18 @@ def test_gemini_flag_makes_gemini_primary_with_kb_context(monkeypatch):
     monkeypatch.setattr(settings, "RAG_ENGINE", "gemini")
     monkeypatch.setattr(settings, "NOTEBOOKLM_NOTEBOOK_ID", "nb-sched")
     monkeypatch.setattr(settings, "NOTEBOOKLM_AUTH_JSON", '{"tok": 1}')
-    fake_model = _fake_gemini_model()
+    fake_client = _fake_gemini_client()
     chunks = [{"title": "ME circuits", "content": "One pass per exercise, 6-8 rounds, short rests."}]
     with (
         patch("services.kb_retrieval.search_scheduler_chunks", return_value=chunks),
-        patch("google.generativeai.GenerativeModel", return_value=fake_model),
-        patch("google.generativeai.configure"),
+        patch("google.genai.Client", return_value=fake_client),
         patch("services.notebooklm_service.NotebookLmService.query_notebook", new_callable=AsyncMock) as nlm,
     ):
         workouts = asyncio.run(_generate())
 
     nlm.assert_not_called()  # Gemini succeeded first — NotebookLM never hit
     assert workouts and workouts[0]["title"] == "Easy Aerobic Run"
-    prompt_sent = fake_model.generate_content.call_args[0][0]
+    prompt_sent = fake_client.models.generate_content.call_args.kwargs["contents"]
     assert "UPHILL ATHLETE PHILOSOPHY" in prompt_sent
     assert "6-8 rounds" in prompt_sent
 
@@ -110,15 +109,14 @@ def test_used_counter_attributes_returned_plan_to_its_engine(monkeypatch):
     monkeypatch.setattr(settings, "NOTEBOOKLM_NOTEBOOK_ID", "nb-sched")
     monkeypatch.setattr(settings, "NOTEBOOKLM_AUTH_JSON", '{"tok": 1}')
     before = {"gemini": _used_count("gemini"), "notebooklm": _used_count("notebooklm")}
-    fake_model = _fake_gemini_model()
+    fake_client = _fake_gemini_client()
     with (
         patch(
             "services.notebooklm_service.NotebookLmService.query_notebook",
             new_callable=AsyncMock,
             return_value="Sorry, I could not find that in your sources.",  # unparsable → discarded
         ),
-        patch("google.generativeai.GenerativeModel", return_value=fake_model),
-        patch("google.generativeai.configure"),
+        patch("google.genai.Client", return_value=fake_client),
     ):
         workouts = asyncio.run(_generate())
     assert workouts and workouts[0]["title"] == "Easy Aerobic Run"  # Gemini's output won
@@ -132,12 +130,11 @@ def test_gemini_failure_falls_back_to_notebooklm(monkeypatch):
     monkeypatch.setattr(settings, "RAG_ENGINE", "gemini")
     monkeypatch.setattr(settings, "NOTEBOOKLM_NOTEBOOK_ID", "nb-sched")
     monkeypatch.setattr(settings, "NOTEBOOKLM_AUTH_JSON", '{"tok": 1}')
-    fake_model = MagicMock()
-    fake_model.generate_content.side_effect = Exception("Gemini down")
+    fake_client = MagicMock()
+    fake_client.models.generate_content.side_effect = Exception("Gemini down")
     with (
         patch("services.kb_retrieval.search_scheduler_chunks", return_value=[]),
-        patch("google.generativeai.GenerativeModel", return_value=fake_model),
-        patch("google.generativeai.configure"),
+        patch("google.genai.Client", return_value=fake_client),
         patch(
             "services.notebooklm_service.NotebookLmService.query_notebook",
             new_callable=AsyncMock,
@@ -164,11 +161,10 @@ def test_course_context_is_injected_into_the_prompt_when_present(monkeypatch):
     monkeypatch.setattr(settings, "RAG_ENGINE", "gemini")
     monkeypatch.setattr(settings, "NOTEBOOKLM_NOTEBOOK_ID", "nb-sched")
     monkeypatch.setattr(settings, "NOTEBOOKLM_AUTH_JSON", '{"tok": 1}')
-    fake_model = _fake_gemini_model()
+    fake_client = _fake_gemini_client()
     with (
         patch("services.kb_retrieval.search_scheduler_chunks", return_value=[]),
-        patch("google.generativeai.GenerativeModel", return_value=fake_model),
-        patch("google.generativeai.configure"),
+        patch("google.genai.Client", return_value=fake_client),
     ):
         asyncio.run(
             PlanGenerator.generate_plan_workouts(
@@ -180,7 +176,7 @@ def test_course_context_is_injected_into_the_prompt_when_present(monkeypatch):
                 block_number=1,
             )
         )
-    prompt_sent = fake_model.generate_content.call_args[0][0]
+    prompt_sent = fake_client.models.generate_content.call_args.kwargs["contents"]
     assert "COURSE PROFILE" in prompt_sent
     assert "hand-and-knees scrambles" in prompt_sent
 
@@ -191,12 +187,11 @@ def test_no_course_context_key_omits_the_section(monkeypatch):
     monkeypatch.setattr(settings, "RAG_ENGINE", "gemini")
     monkeypatch.setattr(settings, "NOTEBOOKLM_NOTEBOOK_ID", "nb-sched")
     monkeypatch.setattr(settings, "NOTEBOOKLM_AUTH_JSON", '{"tok": 1}')
-    fake_model = _fake_gemini_model()
+    fake_client = _fake_gemini_client()
     with (
         patch("services.kb_retrieval.search_scheduler_chunks", return_value=[]),
-        patch("google.generativeai.GenerativeModel", return_value=fake_model),
-        patch("google.generativeai.configure"),
+        patch("google.genai.Client", return_value=fake_client),
     ):
         asyncio.run(_generate())  # RACE_INFO has no course_context key
-    prompt_sent = fake_model.generate_content.call_args[0][0]
+    prompt_sent = fake_client.models.generate_content.call_args.kwargs["contents"]
     assert "COURSE PROFILE" not in prompt_sent

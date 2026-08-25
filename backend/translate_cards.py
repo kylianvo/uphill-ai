@@ -2,18 +2,23 @@ import json
 import os
 import time
 
-import google.generativeai as genai
 from dotenv import load_dotenv
+from google import genai
+from google.genai import types
 
 # Load env variables
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
+
+from config import settings  # noqa: E402 (must follow load_dotenv)
 
 api_key = os.getenv("GEMINI_API_KEY")
 if not api_key:
     raise ValueError("GEMINI_API_KEY not found in .env")
 
-genai.configure(api_key=api_key)
-model = genai.GenerativeModel("gemini-2.5-flash")
+client = genai.Client(api_key=api_key)
+_generate_config = types.GenerateContentConfig(
+    thinking_config=types.ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL)
+)
 
 
 def translate_card(card):
@@ -33,7 +38,7 @@ Card to translate:
 {json.dumps(card, indent=2, ensure_ascii=False)}
 """
     try:
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(model=settings.GEMINI_MODEL, contents=prompt, config=_generate_config)
         text = response.text.strip()
         # Clean potential markdown wrapping
         if text.startswith("```"):
@@ -48,7 +53,9 @@ Card to translate:
         # Retry once after 2 seconds
         time.sleep(2)
         try:
-            response = model.generate_content(prompt)
+            response = client.models.generate_content(
+                model=settings.GEMINI_MODEL, contents=prompt, config=_generate_config
+            )
             text = response.text.strip()
             if text.startswith("```"):
                 lines = text.split("\n")

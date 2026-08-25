@@ -3,7 +3,8 @@ import hashlib
 import json
 from typing import Any
 
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from pydantic import BaseModel
 
 from config import settings
@@ -168,17 +169,20 @@ Pick specific products from the knowledge base matching the requested brands/for
                 }
             },
         )
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-2.5-flash")
+        client = genai.Client(api_key=api_key)
 
         rag_attempts_total.labels(service="nutrition_lab", engine="gemini", status="attempt").inc()
         _start = time.time()
         try:
             response = await asyncio.to_thread(
-                model.generate_content,
-                prompt,
-                generation_config=genai.GenerationConfig(
-                    response_mime_type="application/json", response_schema=NutritionResponse, temperature=0.2
+                client.models.generate_content,
+                model=settings.GEMINI_MODEL,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    response_schema=NutritionResponse,
+                    temperature=0.2,
+                    thinking_config=types.ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL),
                 ),
             )
             _latency = time.time() - _start

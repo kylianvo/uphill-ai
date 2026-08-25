@@ -2,10 +2,11 @@ import os
 import uuid as _uuid
 from typing import Any
 
-import google.generativeai as genai
 import httpx
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from google import genai
+from google.genai import types as genai_types
 from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel
 
@@ -114,15 +115,12 @@ def startup_event():
     init_db()
 
 
-# Initialize Gemini SDK if API key is provided
-has_gemini = False
-if settings.GEMINI_API_KEY:
-    try:
-        genai.configure(api_key=settings.GEMINI_API_KEY)
-        has_gemini = True
-        print("Gemini SDK configured successfully.")
-    except Exception as e:
-        print(f"Error configuring Gemini SDK: {e}")
+# google-genai's Client is constructed per-request (see chat/plan endpoints below,
+# which may use a per-user key instead of the server-wide one) rather than configured
+# globally, so this just tracks whether a server-wide key is available at all.
+has_gemini = bool(settings.GEMINI_API_KEY)
+if has_gemini:
+    print("Gemini API key configured.")
 else:
     print("Warning: GEMINI_API_KEY is not configured. Running coach chat in fallback mock mode.")
 
@@ -1281,17 +1279,19 @@ async def coach_chat_copilot(
                 role = "user" if msg.role == "user" else "model"
                 formatted_contents.append({"role": role, "parts": [msg.content]})
 
-            model = genai.GenerativeModel(model_name="gemini-2.5-flash", system_instruction=full_system_prompt)
-
-            from google.generativeai import client as genai_client
-
-            my_manager = genai_client._ClientManager()
-            my_manager.configure(api_key=model_api_key)
-            model._client = my_manager.get_default_client("generative")
+            client = genai.Client(api_key=model_api_key)
 
             import asyncio
 
-            response = await asyncio.to_thread(model.generate_content, formatted_contents)
+            response = await asyncio.to_thread(
+                client.models.generate_content,
+                model=settings.GEMINI_MODEL,
+                contents=formatted_contents,
+                config=genai_types.GenerateContentConfig(
+                    system_instruction=full_system_prompt,
+                    thinking_config=genai_types.ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL),
+                ),
+            )
             return {"role": "assistant", "content": response.text}
         except Exception as e:
             print(f"[CoachCopilot][Gemini] FAILED: {e}")
@@ -2277,22 +2277,23 @@ async def coach_chat(request: ChatRequest):
 
             last_user = request.messages[-1].content
             print(
-                f"[Chat][Gemini] Sending to gemini-2.5-flash | system_prompt={len(full_system_prompt)} chars | history={len(formatted_contents)} msgs"
+                f"[Chat][Gemini] Sending to {settings.GEMINI_MODEL} | system_prompt={len(full_system_prompt)} chars | history={len(formatted_contents)} msgs"
             )
             print(f"[Chat][Gemini] User message: {last_user[:300]}")
 
-            model = genai.GenerativeModel(model_name="gemini-2.5-flash", system_instruction=full_system_prompt)
-
-            # Configure request-safe client bound to custom or global key
-            from google.generativeai import client as genai_client
-
-            my_manager = genai_client._ClientManager()
-            my_manager.configure(api_key=model_api_key)
-            model._client = my_manager.get_default_client("generative")
+            client = genai.Client(api_key=model_api_key)
 
             import asyncio
 
-            response = await asyncio.to_thread(model.generate_content, formatted_contents)
+            response = await asyncio.to_thread(
+                client.models.generate_content,
+                model=settings.GEMINI_MODEL,
+                contents=formatted_contents,
+                config=genai_types.GenerateContentConfig(
+                    system_instruction=full_system_prompt,
+                    thinking_config=genai_types.ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL),
+                ),
+            )
             print(f"[Chat][Gemini] Response received ({len(response.text)} chars)")
             return {"role": "assistant", "content": response.text}
         except Exception as e:

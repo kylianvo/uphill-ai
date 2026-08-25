@@ -23,13 +23,12 @@ def test_gear_gemini_success_records_metrics(monkeypatch):
 
     fake_response = MagicMock()
     fake_response.text = json.dumps({"recommendations": [], "tips": ["t"]})
-    fake_model = MagicMock()
-    fake_model.generate_content.return_value = fake_response
+    fake_client = MagicMock()
+    fake_client.models.generate_content.return_value = fake_response
     chunks = [{"title": "Speedgoat 7", "payload": {"brand": "Hoka"}}]
     with (
         patch("db.get_kb_chunks", return_value=chunks),
-        patch("google.generativeai.GenerativeModel", return_value=fake_model),
-        patch("google.generativeai.configure"),
+        patch("google.genai.Client", return_value=fake_client),
     ):
         asyncio.run(gp.gear_planner.generate_plan("", GearParams(surface="trail")))
 

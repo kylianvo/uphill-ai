@@ -187,8 +187,7 @@ def test_save_podcast_knowledge_cards_saves_en_and_vi():
     with (
         patch("db.save_knowledge_cards", side_effect=[1, 1]) as save_mock,
         patch.object(ke, "translate_cards_to_vi_with_gemini", new_callable=AsyncMock, return_value=vi_cards),
-        patch.object(ke.genai, "configure"),
-        patch.object(ke.genai, "GenerativeModel"),
+        patch.object(ke.genai, "Client"),
     ):
         saved = asyncio.run(ke.save_podcast_knowledge_cards(cards, "test-key"))
     assert saved == 1

@@ -3,7 +3,8 @@ import logging
 import os
 import sys
 
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from langchain_core.documents import Document
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_qdrant import QdrantVectorStore
@@ -50,8 +51,7 @@ class GearMetadata(BaseModel):
 
 def main():
     api_key = settings.get_next_gemini_key()
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-2.5-flash")
+    genai_client = genai.Client(api_key=api_key)
     embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-2", google_api_key=api_key)
 
     qdrant_url = "http://qdrant:6333" if os.path.exists("/.dockerenv") else "http://localhost:6333"
@@ -70,10 +70,14 @@ Available with caffeine in select flavors for added focus
     """
 
     logger.info("Extracting structured metadata for GU Drink Tabs...")
-    gu_response = model.generate_content(
-        f"Extract the nutrition product details from the following text.\n\nText:\n{gu_text}",
-        generation_config=genai.GenerationConfig(
-            response_mime_type="application/json", response_schema=NutritionMetadata, temperature=0.0
+    gu_response = genai_client.models.generate_content(
+        model=settings.GEMINI_MODEL,
+        contents=f"Extract the nutrition product details from the following text.\n\nText:\n{gu_text}",
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema=NutritionMetadata,
+            temperature=0.0,
+            thinking_config=types.ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL),
         ),
     )
 
@@ -105,10 +109,14 @@ Available with caffeine in select flavors for added focus
     hoka_text = result.text_content
 
     logger.info("Extracting structured metadata for Speedgoat 7 via Gemini...")
-    hoka_response = model.generate_content(
-        f"Extract the shoe details from the following review website text.\n\nWebsite Text:\n{hoka_text[:8000]}",
-        generation_config=genai.GenerationConfig(
-            response_mime_type="application/json", response_schema=GearMetadata, temperature=0.0
+    hoka_response = genai_client.models.generate_content(
+        model=settings.GEMINI_MODEL,
+        contents=f"Extract the shoe details from the following review website text.\n\nWebsite Text:\n{hoka_text[:8000]}",
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema=GearMetadata,
+            temperature=0.0,
+            thinking_config=types.ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL),
         ),
     )
 

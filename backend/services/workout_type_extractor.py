@@ -214,16 +214,15 @@ async def extract_workout_types(
     from services.notebooklm_service import NotebookLmService
 
     try:
-        import google.generativeai as genai
-        from google.generativeai import client as genai_client
+        from google import genai
+        from google.genai import types
     except ImportError:
-        status_holder.update({"status": "error", "message": "google-generativeai not installed"})
+        status_holder.update({"status": "error", "message": "google-genai not installed"})
         return 0
 
-    model = genai.GenerativeModel(model_name="gemini-2.5-flash")
-    mgr = genai_client._ClientManager()
-    mgr.configure(api_key=api_key)
-    model._client = mgr.get_default_client("generative")
+    from config import settings
+
+    client = genai.Client(api_key=api_key)
 
     total = len(WORKOUT_TYPE_QUERIES)
     total_saved = 0
@@ -261,9 +260,13 @@ async def extract_workout_types(
             )
 
             response = await asyncio.to_thread(
-                model.generate_content,
-                prompt,
-                generation_config={"response_mime_type": "application/json"},
+                client.models.generate_content,
+                model=settings.GEMINI_MODEL,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    thinking_config=types.ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL),
+                ),
             )
             raw = response.text.strip()
             if raw.startswith("```"):
@@ -285,7 +288,7 @@ async def extract_workout_types(
 
             # Translate to Vietnamese
             try:
-                vi_entry = await _translate_to_vi(model, entry)
+                vi_entry = await _translate_to_vi(client, entry)
                 save_workout_types([vi_entry], lang="vi")
                 print(f"[WorkoutTypeExtractor] Saved VI entry for {wtype['display_name']}")
             except Exception as tr_err:
@@ -314,9 +317,20 @@ async def extract_workout_types(
     return total_saved
 
 
-async def _translate_to_vi(model: Any, entry: dict[str, Any]) -> dict[str, Any]:
+async def _translate_to_vi(client: Any, entry: dict[str, Any]) -> dict[str, Any]:
+    from google.genai import types
+
+    from config import settings
+
     prompt = TRANSLATE_PROMPT.format(source_json=json.dumps(entry, ensure_ascii=False, indent=2))
-    response = await asyncio.to_thread(model.generate_content, prompt)
+    response = await asyncio.to_thread(
+        client.models.generate_content,
+        model=settings.GEMINI_MODEL,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            thinking_config=types.ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL)
+        ),
+    )
     text = response.text.strip()
     if text.startswith("```"):
         lines = text.split("\n")
