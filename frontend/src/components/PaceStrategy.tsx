@@ -670,7 +670,7 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
                       </span>
                       <span>
                         {selectedBenchmarkYear === "all"
-                          ? t(`Multi-year benchmark (${benchmarks.length} editions)`, `Mốc đối chiếu đa mùa giải (${benchmarks.length} năm)`)
+                          ? `${t(`Multi-year benchmark (${benchmarks.length} editions)`, `Mốc đối chiếu đa mùa giải (${benchmarks.length} năm)`)}${activeBenchmark.finishers ? ` · ~${activeBenchmark.finishers} ${t("finishers", "vận động viên")}` : ""}`
                           : `${activeBenchmark.year}: ${activeBenchmark.finishers || 0} ${t("finishers", "vận động viên")} ${activeBenchmark.winner_time ? `· ${t("winner", "vô địch")} ${activeBenchmark.winner_time}` : ""}`}
                       </span>
                     </div>
