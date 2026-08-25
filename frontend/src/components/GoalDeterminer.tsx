@@ -308,7 +308,7 @@ function FieldCurve({
       {topTimes && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "8px" }}>
           {[
-            { key: "top3", label: t("Podium", "Bục vinh quang") },
+            { key: "top3", label: "Podium" },
             { key: "top5", label: "Top 5" },
             { key: "top10", label: "Top 10" },
             { key: "top20", label: "Top 20" },
