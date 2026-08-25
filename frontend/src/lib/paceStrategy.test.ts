@@ -12,6 +12,7 @@ import {
   percentileForTime,
   fieldAnchors,
   percentileForAnchors,
+  averageBenchmarks,
 } from "./paceStrategy";
 
 describe("parsePaceToMinutes", () => {
@@ -230,5 +231,46 @@ describe("sliderBoundsMins", () => {
 
   it("scales with distance", () => {
     expect(sliderBoundsMins(100, 5000).max).toBeGreaterThan(sliderBoundsMins(21, 1000).max);
+  });
+});
+
+describe("averageBenchmarks", () => {
+  it("returns null for empty benchmarks array", () => {
+    expect(averageBenchmarks([])).toBeNull();
+  });
+
+  it("returns the single benchmark if only one is provided", () => {
+    const single = { year: 2024, finishers: 500, winner_time: "5:00:00" };
+    expect(averageBenchmarks([single])).toEqual(single);
+  });
+
+  it("correctly computes multi-year averages across multiple editions", () => {
+    const b1 = {
+      year: 2024,
+      finishers: 400,
+      winner_time: "4:00:00", // 240 mins
+      winner_time_women: "4:30:00", // 270 mins
+      percentiles: {
+        overall: { p10: "5:00:00", p50: "7:00:00", p90: "9:00:00" },
+      },
+    };
+    const b2 = {
+      year: 2025,
+      finishers: 600,
+      winner_time: "4:30:00", // 270 mins
+      winner_time_women: "5:00:00", // 300 mins
+      percentiles: {
+        overall: { p10: "5:30:00", p50: "7:30:00", p90: "9:30:00" },
+      },
+    };
+    const avg = averageBenchmarks([b1, b2]);
+    expect(avg).not.toBeNull();
+    expect(avg?.year).toBe(0);
+    expect(avg?.finishers).toBe(500);
+    expect(avg?.winner_time).toBe("4:15:00");
+    expect(avg?.winner_time_women).toBe("4:45:00");
+    expect(avg?.percentiles?.overall?.p10).toBe("5:15:00");
+    expect(avg?.percentiles?.overall?.p50).toBe("7:15:00");
+    expect(avg?.percentiles?.overall?.p90).toBe("9:15:00");
   });
 });

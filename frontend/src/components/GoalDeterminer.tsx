@@ -13,6 +13,8 @@ import {
   fieldAnchors,
   percentileForAnchors,
   PercentileSet,
+  RaceBenchmark,
+  averageBenchmarks,
 } from "@/lib/paceStrategy";
 import { Crosshair, XCircle, Gauge, Target, TrendUp, ShieldCheck, Lightning } from "@phosphor-icons/react";
 
@@ -39,18 +41,6 @@ interface GoalEstimate {
   reference_profile_source?: "gpx" | "synthetic" | null;
   target_course_year?: number | null;
   reference_course_year?: number | null;
-}
-
-interface RaceBenchmark {
-  year: number;
-  finishers?: number;
-  finishers_men?: number;
-  finishers_women?: number;
-  winner_time?: string;
-  winner_time_women?: string;
-  conditions_note?: string;
-  percentiles?: Record<string, PercentileSet>;
-  top_times?: Record<string, Record<string, string>>;
 }
 
 function getBaseUrl(): string {
@@ -93,23 +83,34 @@ const inputStyle: React.CSSProperties = {
 /** Cumulative field curve: straight lines between hand-verified percentile
  *  anchors (never a fitted density — we only plot what was measured). */
 function FieldCurve({
-  bench,
+  benchmarks,
   goals,
   rankTransferMins,
   lang,
 }: {
-  bench: RaceBenchmark;
+  benchmarks: RaceBenchmark[];
   goals: { label: string; short: string; mins: number }[];
   rankTransferMins?: number | null;
   lang: "en" | "vi";
 }) {
+  const years = React.useMemo(() => {
+    return Array.from(new Set(benchmarks.map((b) => b.year).filter((y) => y > 0))).sort((a, b) => b - a);
+  }, [benchmarks]);
+
+  const [selectedYear, setSelectedYear] = useState<number | "all">("all");
+  const avgBench = React.useMemo(() => averageBenchmarks(benchmarks), [benchmarks]);
+  const bench = React.useMemo(() => {
+    if (selectedYear === "all") return avgBench || benchmarks[0];
+    return benchmarks.find((b) => b.year === selectedYear) || avgBench || benchmarks[0];
+  }, [selectedYear, benchmarks, avgBench]);
+
   const groups = (["overall", "men", "women"] as const).filter(
-    (g) => percentilePoints(bench.percentiles?.[g] || {}).length >= 2,
+    (g) => bench && percentilePoints(bench.percentiles?.[g] || {}).length >= 2,
   );
   const [group, setGroup] = useState<(typeof groups)[number]>("overall");
   const [hover, setHover] = useState<{ x: number; mins: number; pct: number } | null>(null);
   const t = (en: string, vi: string) => (lang === "en" ? en : vi);
-  if (groups.length === 0) return null;
+  if (!bench || groups.length === 0) return null;
   const active = groups.includes(group) ? group : groups[0];
 
   const ps = bench.percentiles![active];
@@ -160,34 +161,81 @@ function FieldCurve({
     else setHover(null);
   };
 
+  const yearDisplay = selectedYear === "all" ? t("Multi-Year Avg", "Trung bình các năm") : String(selectedYear);
+
   return (
     <div style={{ marginTop: "20px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
-        <div style={{ fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 700, color: "var(--text-primary)" }}>
-          {t("Where your goals land in the field", "Vị trí mục tiêu của bạn trong đoàn đua")} · {bench.year}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px", marginBottom: "8px" }}>
+        <div style={{ fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 700, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "6px" }}>
+          <span>{t("Where your goals land in the field", "Vị trí mục tiêu của bạn trong đoàn đua")} · {yearDisplay}</span>
+          <span style={{ fontSize: "9.5px", fontWeight: 600, padding: "1px 6px", borderRadius: "6px", background: "rgba(0,0,0,0.06)", color: "var(--text-secondary)", textTransform: "none", letterSpacing: "normal" }}>
+            {t("Verified UTMB Index Data", "Dữ liệu xác thực UTMB Index")}
+          </span>
         </div>
-        {groups.length > 1 && (
-          <div style={{ display: "flex", gap: "4px" }}>
-            {groups.map((g) => (
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+          {years.length > 1 && (
+            <div style={{ display: "flex", gap: "4px", background: "rgba(0,0,0,0.03)", padding: "2px", borderRadius: "14px" }}>
               <button
-                key={g}
-                onClick={() => setGroup(g)}
+                type="button"
+                onClick={() => setSelectedYear("all")}
                 style={{
-                  padding: "4px 12px",
+                  padding: "3px 10px",
                   borderRadius: "12px",
-                  border: active === g ? "none" : "1px solid var(--border-color)",
-                  background: active === g ? "var(--text-primary)" : "transparent",
-                  color: active === g ? "white" : "var(--text-secondary)",
-                  fontSize: "11.5px",
+                  border: "none",
+                  background: selectedYear === "all" ? "var(--text-primary)" : "transparent",
+                  color: selectedYear === "all" ? "white" : "var(--text-secondary)",
+                  fontSize: "11px",
                   fontWeight: 600,
                   cursor: "pointer",
                 }}
               >
-                {g === "overall" ? t("Overall", "Tổng") : g === "men" ? t("Men", "Nam") : t("Women", "Nữ")}
+                {t("All (Avg)", "Tất cả (TB)")}
               </button>
-            ))}
-          </div>
-        )}
+              {years.map((y) => (
+                <button
+                  type="button"
+                  key={y}
+                  onClick={() => setSelectedYear(y)}
+                  style={{
+                    padding: "3px 10px",
+                    borderRadius: "12px",
+                    border: "none",
+                    background: selectedYear === y ? "var(--text-primary)" : "transparent",
+                    color: selectedYear === y ? "white" : "var(--text-secondary)",
+                    fontSize: "11px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  {y}
+                </button>
+              ))}
+            </div>
+          )}
+          {groups.length > 1 && (
+            <div style={{ display: "flex", gap: "4px" }}>
+              {groups.map((g) => (
+                <button
+                  type="button"
+                  key={g}
+                  onClick={() => setGroup(g)}
+                  style={{
+                    padding: "4px 12px",
+                    borderRadius: "12px",
+                    border: active === g ? "none" : "1px solid var(--border-color)",
+                    background: active === g ? "var(--text-primary)" : "transparent",
+                    color: active === g ? "white" : "var(--text-secondary)",
+                    fontSize: "11.5px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  {g === "overall" ? t("Overall", "Tổng") : g === "men" ? t("Men", "Nam") : t("Women", "Nữ")}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
       {/* On narrow (mobile) viewports the container is much smaller than the
           chart's natural 720px width — letting the SVG shrink to fill it would
@@ -813,75 +861,77 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
               ))}
             </div>
 
-            {estimate.benchmarks?.[0]?.percentiles && (
+            {estimate.benchmarks && estimate.benchmarks.length > 0 && (
               <FieldCurve
-                bench={estimate.benchmarks[0]}
+                benchmarks={estimate.benchmarks}
                 goals={goalCards.map((g) => ({ label: g.label, short: g.label[0], mins: g.mins }))}
                 rankTransferMins={estimate.rank_transfer_mins}
                 lang={lang}
               />
             )}
 
-            <div style={{ marginTop: "16px", background: "rgba(0,0,0,0.02)", border: "1px dashed rgba(0,0,0,0.1)", borderRadius: "14px", padding: "14px", fontSize: "12px", color: "var(--text-secondary)", lineHeight: 1.55 }}>
-              <div style={{ fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", fontSize: "11px", color: "var(--text-primary)", marginBottom: "6px" }}>
-                {t("How this was computed", "Cách tính")}
+            <div style={{ marginTop: "20px", background: "rgba(0,0,0,0.02)", border: "1px solid var(--border-color)", borderRadius: "14px", padding: "16px", fontSize: "12px", color: "var(--text-secondary)", lineHeight: 1.55 }}>
+              <div style={{ fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", fontSize: "11px", color: "var(--text-primary)", marginBottom: "12px" }}>
+                {t("How this goal was calculated", "Cách tính mục tiêu chi tiết")}
               </div>
-              <div>
-                {t("Physics model", "Mô hình vật lý")}: {formatDurationHM(estimate.predicted_time_mins)}{" "}
-                {t("at a", "với")} {estimate.base_flat_pace_min_km.toFixed(1)} min/km{" "}
-                {t("flat base pace over", "pace nền trên")} {Math.round(estimate.distance_km)}k /{" "}
-                {Math.round(estimate.elevation_gain_m)}m D+ ({t("Minetti grade curve + fatigue", "đường cong Minetti + mệt mỏi")}).
-              </div>
-              <div>
-                {t("Course", "Đường đua")}:{" "}
-                {estimate.target_profile_source === "gpx"
-                  ? t(
-                      `Real curated route (${estimate.target_course_year} GPX)`,
-                      `Đường đua thực tế (GPX ${estimate.target_course_year})`,
-                    )
-                  : t(
-                      "Estimated from distance/elevation — no GPX curated for this race yet",
-                      "Ước tính từ khoảng cách/độ cao — chưa có GPX cho giải này",
-                    )}
-                {estimate.reference_profile_source && (
-                  <>
-                    {" · "}
-                    {estimate.reference_profile_source === "gpx"
-                      ? t(
-                          `reference race: real route (${estimate.reference_course_year} GPX)`,
-                          `giải tham chiếu: đường đua thực tế (GPX ${estimate.reference_course_year})`,
-                        )
-                      : t("reference race: estimated route", "giải tham chiếu: đường đua ước tính")}
-                  </>
-                )}
-              </div>
-              {estimate.improvement_pct > 0 && (
+
+              {/* Layer 1: Physics Engine */}
+              <div style={{ paddingBottom: "10px", marginBottom: "10px", borderBottom: "1px dashed var(--border-color)" }}>
+                <div style={{ fontWeight: 600, color: "var(--text-primary)", marginBottom: "2px" }}>
+                  1. {t("Course Physics Model", "Mô hình vật lý đường đua")}: {formatDurationHM(estimate.predicted_time_mins)}
+                </div>
                 <div>
-                  {t("Training block", "Chu kỳ tập luyện")}: −{estimate.improvement_pct}%{" "}
-                  {t("plausible gain before race day", "cải thiện khả thi trước ngày đua")} →{" "}
-                  {formatDurationHM(estimate.adjusted_time_mins)}.
+                  {t("Paced at", "Tính từ pace nền")} {estimate.base_flat_pace_min_km.toFixed(1)} min/km{" "}
+                  {t("over", "trên cự ly")} {Math.round(estimate.distance_km)}km / {Math.round(estimate.elevation_gain_m)}m D+{" "}
+                  ({t("Minetti grade curve and fatigue cost", "đường cong Minetti và mệt mỏi theo độ dốc")}).
+                  {" "}
+                  {estimate.target_profile_source === "gpx"
+                    ? t(`Course profile: Real route (GPX ${estimate.target_course_year}).`, `Đường đua: Thực tế (GPX ${estimate.target_course_year}).`)
+                    : t("Course profile: Synthesized from distance and elevation.", "Đường đua: Ước tính từ cự ly và độ cao.")}
+                </div>
+              </div>
+
+              {/* Layer 2: Historical Field Calibration */}
+              {estimate.benchmarks && estimate.benchmarks.length > 0 && (
+                <div style={{ paddingBottom: "10px", marginBottom: "10px", borderBottom: "1px dashed var(--border-color)" }}>
+                  <div style={{ fontWeight: 600, color: "var(--text-primary)", marginBottom: "2px", display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span>2. {t("Historical Field Calibration", "Hiệu chuẩn theo lịch sử giải đấu")}</span>
+                    <span style={{ fontSize: "10px", fontWeight: 600, padding: "1px 6px", borderRadius: "6px", background: "rgba(0,0,0,0.06)", color: "var(--text-secondary)" }}>
+                      {t("UTMB Index Verified", "Xác thực UTMB Index")}
+                    </span>
+                  </div>
+                  <div>
+                    {estimate.rank_transfer_mins != null ? (
+                      <div>
+                        {t("Cross-check against reference race puts a runner of your rank at approx.", "Đối chiếu kết quả giải tham chiếu tương ứng với thành tích khoảng")}{" "}
+                        <strong style={{ color: "var(--text-primary)" }}>{formatDurationHM(estimate.rank_transfer_mins)}</strong>.
+                      </div>
+                    ) : null}
+                    <div>
+                      {t("Course benchmark data", "Dữ liệu giải đấu")}: {estimate.benchmarks.length} {t("editions recorded", "mùa giải")} ({estimate.benchmarks.map((b) => b.year).filter((y) => y > 0).join(", ")}).
+                      {" "}
+                      {estimate.benchmarks[0].winner_time ? `${t("Latest winner", "Vô địch gần nhất")}: ${estimate.benchmarks[0].winner_time} (${estimate.benchmarks[0].finishers || 0} ${t("finishers", "vận động viên hoàn thành")}).` : ""}
+                    </div>
+                  </div>
                 </div>
               )}
+
+              {/* Layer 3: Goal Targets & Training Adjustment */}
               <div>
-                {t(
-                  "Ambitious = −5% (everything goes right) · Safe = +8% (banked margin for problems).",
-                  "Tham vọng = −5% (mọi thứ thuận lợi) · An toàn = +8% (dự phòng sự cố).",
+                <div style={{ fontWeight: 600, color: "var(--text-primary)", marginBottom: "2px" }}>
+                  3. {t("Final Goal Targets", "Mục tiêu tối ưu cuối cùng")}
+                </div>
+                {estimate.improvement_pct > 0 && (
+                  <div style={{ marginBottom: "4px" }}>
+                    {t("Training block progression", "Tiến độ chu kỳ tập luyện")}: -{estimate.improvement_pct}%{" "}
+                    {t("projected gain before race day", "cải thiện dự kiến trước ngày đua")} →{" "}
+                    <strong>{formatDurationHM(estimate.adjusted_time_mins)}</strong>.
+                  </div>
                 )}
+                <div style={{ color: "var(--text-muted)", fontSize: "11.5px" }}>
+                  {t("Ambitious (-5%): Optimal race day execution · Realistic: Expected baseline · Safe (+8%): Contingency margin.", "Tham vọng (-5%): Điều kiện tối ưu · Thực tế: Dự báo chuẩn · An toàn (+8%): Dự phòng rủi ro.")}
+                </div>
               </div>
-              {estimate.rank_transfer_mins != null && (
-                <div>
-                  {t("Cross-check — field history puts a runner of your rank at", "Đối chiếu — theo lịch sử giải, thứ hạng của bạn tương ứng")}{" "}
-                  ~{formatDurationHM(estimate.rank_transfer_mins)}.
-                </div>
-              )}
-              {estimate.benchmarks?.length ? (
-                <div>
-                  {t("Field", "Giải")} {estimate.benchmarks[0].year}: {estimate.benchmarks[0].finishers}{" "}
-                  {t("finishers", "người hoàn thành")}
-                  {estimate.benchmarks[0].winner_time ? ` · ${t("winner", "vô địch")} ${estimate.benchmarks[0].winner_time}` : ""}
-                  {estimate.benchmarks[0].conditions_note ? ` · ${estimate.benchmarks[0].conditions_note}` : ""}.
-                </div>
-              ) : null}
             </div>
             <p style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "8px" }}>
               {t(

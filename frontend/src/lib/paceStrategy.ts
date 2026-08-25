@@ -124,11 +124,81 @@ export function parseDurationToMinutes(time: string): number | null {
 }
 
 export interface PercentileSet {
+  p5?: string;
   p10?: string;
   p25?: string;
   p50?: string;
   p75?: string;
   p90?: string;
+}
+
+export interface RaceBenchmark {
+  year: number;
+  finishers?: number;
+  finishers_men?: number;
+  finishers_women?: number;
+  winner_time?: string;
+  winner_time_women?: string;
+  conditions_note?: string;
+  percentiles?: Record<string, PercentileSet>;
+  top_times?: Record<string, Record<string, string>>;
+}
+
+/** Computes a multi-year averaged benchmark across an array of yearly benchmarks. */
+export function averageBenchmarks(benchmarks: RaceBenchmark[]): RaceBenchmark | null {
+  if (!benchmarks || benchmarks.length === 0) return null;
+  if (benchmarks.length === 1) return benchmarks[0];
+
+  const groups = ["overall", "men", "women"] as const;
+  const pctKeys = ["p5", "p10", "p25", "p50", "p75", "p90"] as const;
+
+  const avgPercentiles: Record<string, PercentileSet> = {};
+  for (const grp of groups) {
+    const pSet: PercentileSet = {};
+    let hasValues = false;
+    for (const k of pctKeys) {
+      const vals: number[] = [];
+      for (const b of benchmarks) {
+        const timeStr = b.percentiles?.[grp]?.[k];
+        if (timeStr) {
+          const mins = parseDurationToMinutes(timeStr);
+          if (mins !== null) vals.push(mins);
+        }
+      }
+      if (vals.length > 0) {
+        const avgMins = vals.reduce((a, b) => a + b, 0) / vals.length;
+        pSet[k] = formatDurationHMS(avgMins);
+        hasValues = true;
+      }
+    }
+    if (hasValues) avgPercentiles[grp] = pSet;
+  }
+
+  // Average winner times
+  const winMen: number[] = [];
+  const winWomen: number[] = [];
+  const finishersList: number[] = [];
+
+  for (const b of benchmarks) {
+    if (b.winner_time) {
+      const m = parseDurationToMinutes(b.winner_time);
+      if (m !== null) winMen.push(m);
+    }
+    if (b.winner_time_women) {
+      const w = parseDurationToMinutes(b.winner_time_women);
+      if (w !== null) winWomen.push(w);
+    }
+    if (b.finishers) finishersList.push(b.finishers);
+  }
+
+  return {
+    year: 0, // 0 denotes multi-year average
+    finishers: finishersList.length ? Math.round(finishersList.reduce((a, b) => a + b, 0) / finishersList.length) : undefined,
+    winner_time: winMen.length ? formatDurationHMS(winMen.reduce((a, b) => a + b, 0) / winMen.length) : undefined,
+    winner_time_women: winWomen.length ? formatDurationHMS(winWomen.reduce((a, b) => a + b, 0) / winWomen.length) : undefined,
+    percentiles: avgPercentiles,
+    conditions_note: `Multi-year average across ${benchmarks.length} editions`,
+  };
 }
 
 /** Hand-curated percentile anchors parsed to {q: percent, mins}, sorted by q. */

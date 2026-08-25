@@ -16,6 +16,10 @@ import {
   sliderBoundsMins,
   synthesizeCourse,
   tempBucket,
+  RaceBenchmark,
+  averageBenchmarks,
+  fieldAnchors,
+  percentileForAnchors,
 } from "@/lib/paceStrategy";
 import {
   Gauge,
@@ -248,16 +252,18 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
 
   const [paced, setPaced] = useState<PacedCheckpoint[]>([]);
   const [pacingLoading, setPacingLoading] = useState(false);
+  const [benchmarks, setBenchmarks] = useState<RaceBenchmark[]>([]);
+  const [selectedBenchmarkYear, setSelectedBenchmarkYear] = useState<number | "all">("all");
 
-  interface RaceResult {
-    year: number;
-    finishers?: number;
-    winner_time?: string;
-    winner_time_women?: string;
-    conditions_note?: string;
-    percentiles?: Record<string, Record<string, string>>;
-  }
-  const [benchmarks, setBenchmarks] = useState<RaceResult[]>([]);
+  const benchmarkYears = useMemo(() => {
+    return Array.from(new Set(benchmarks.map((b) => b.year).filter((y) => y > 0))).sort((a, b) => b - a);
+  }, [benchmarks]);
+
+  const avgBenchmark = useMemo(() => averageBenchmarks(benchmarks), [benchmarks]);
+  const activeBenchmark = useMemo(() => {
+    if (selectedBenchmarkYear === "all") return avgBenchmark || benchmarks[0];
+    return benchmarks.find((b) => b.year === selectedBenchmarkYear) || avgBenchmark || benchmarks[0];
+  }, [selectedBenchmarkYear, benchmarks, avgBenchmark]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -600,13 +606,36 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
         {courseStats && bounds && effectiveTargetMins !== null && (
           <>
             <div style={{ ...boxStyle, marginBottom: "16px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                <label style={labelStyle}>
-                  {t("Target finish time", "Thời gian về đích mục tiêu")} · {Math.round(courseStats.dist)}k / {Math.round(courseStats.gain)}m D+
-                </label>
-                <span style={{ fontFamily: "var(--font-mono)", fontSize: "24px", fontWeight: 700, color: "var(--accent-primary)" }}>
-                  {formatDurationHM(effectiveTargetMins)}
-                </span>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "8px" }}>
+                <label style={{ ...labelStyle, marginBottom: 0 }}>{t("Target finish time", "Thời gian mục tiêu")}</label>
+                <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
+                  {(() => {
+                    if (!activeBenchmark?.percentiles?.overall) return null;
+                    const anchors = fieldAnchors({
+                      percentiles: activeBenchmark.percentiles.overall,
+                      topTimes: activeBenchmark.top_times?.overall,
+                      winner: activeBenchmark.winner_time,
+                      finishers: activeBenchmark.finishers,
+                    });
+                    const res = percentileForAnchors(anchors, effectiveTargetMins);
+                    if (!res) return null;
+                    const fmt = (pct: number) => (pct < 5 ? pct.toFixed(1) : String(Math.round(pct)));
+                    const rankLabel =
+                      res.clamped === "fast"
+                        ? `top ${fmt(res.pct)}%+`
+                        : res.clamped === "slow"
+                          ? t("back of field", "cuối đoàn")
+                          : `top ${fmt(res.pct)}%`;
+                    return (
+                      <span style={{ fontSize: "11px", fontWeight: 700, padding: "2px 8px", borderRadius: "10px", background: "rgba(0,0,0,0.06)", color: "var(--text-secondary)" }}>
+                        ≈ {rankLabel}
+                      </span>
+                    );
+                  })()}
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: "18px", fontWeight: 700, color: "var(--text-primary)" }}>
+                    {formatDurationHM(effectiveTargetMins)}
+                  </span>
+                </div>
               </div>
               <input
                 type="range"
@@ -632,13 +661,64 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
                 </span>
                 <span>{t("cruising", "thoải mái")} · {formatDurationHM(bounds.max)}</span>
               </div>
-              {benchmarks.length > 0 && (
-                <div style={{ marginTop: "10px", borderTop: "1px dashed var(--border-color)", paddingTop: "8px" }}>
+              {benchmarks.length > 0 && activeBenchmark && (
+                <div style={{ marginTop: "12px", borderTop: "1px dashed var(--border-color)", paddingTop: "8px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                    <div style={{ fontSize: "10.5px", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span style={{ fontSize: "9px", fontWeight: 600, padding: "1px 5px", borderRadius: "4px", background: "rgba(0,0,0,0.06)", color: "var(--text-secondary)" }}>
+                        {t("UTMB Verified", "Xác thực UTMB")}
+                      </span>
+                      <span>
+                        {selectedBenchmarkYear === "all"
+                          ? t(`Multi-year benchmark (${benchmarks.length} editions)`, `Mốc đối chiếu đa mùa giải (${benchmarks.length} năm)`)
+                          : `${activeBenchmark.year}: ${activeBenchmark.finishers || 0} ${t("finishers", "vận động viên")} ${activeBenchmark.winner_time ? `· ${t("winner", "vô địch")} ${activeBenchmark.winner_time}` : ""}`}
+                      </span>
+                    </div>
+                    {benchmarkYears.length > 1 && (
+                      <div style={{ display: "flex", gap: "3px", background: "rgba(0,0,0,0.03)", padding: "2px", borderRadius: "12px" }}>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedBenchmarkYear("all")}
+                          style={{
+                            padding: "2px 8px",
+                            borderRadius: "10px",
+                            border: "none",
+                            background: selectedBenchmarkYear === "all" ? "var(--text-primary)" : "transparent",
+                            color: selectedBenchmarkYear === "all" ? "white" : "var(--text-secondary)",
+                            fontSize: "10px",
+                            fontWeight: 600,
+                            cursor: "pointer",
+                          }}
+                        >
+                          {t("All (Avg)", "Tất cả (TB)")}
+                        </button>
+                        {benchmarkYears.map((y) => (
+                          <button
+                            type="button"
+                            key={y}
+                            onClick={() => setSelectedBenchmarkYear(y)}
+                            style={{
+                              padding: "2px 8px",
+                              borderRadius: "10px",
+                              border: "none",
+                              background: selectedBenchmarkYear === y ? "var(--text-primary)" : "transparent",
+                              color: selectedBenchmarkYear === y ? "white" : "var(--text-secondary)",
+                              fontSize: "10px",
+                              fontWeight: 600,
+                              cursor: "pointer",
+                            }}
+                          >
+                            {y}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   <div style={{ position: "relative", height: "18px" }}>
                     {[
-                      { label: t("Winner", "Vô địch"), time: benchmarks[0].winner_time },
-                      { label: t("Winner (F)", "Vô địch nữ"), time: benchmarks[0].winner_time_women },
-                      ...Object.entries(benchmarks[0].percentiles?.overall || {}).map(([p, v]) => ({
+                      { label: t("Winner", "Vô địch"), time: activeBenchmark.winner_time },
+                      { label: t("Winner (F)", "Vô địch nữ"), time: activeBenchmark.winner_time_women },
+                      ...Object.entries(activeBenchmark.percentiles?.overall || {}).map(([p, v]) => ({
                         label: p.toUpperCase(),
                         time: v,
                       })),
@@ -664,11 +744,6 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
                           {mk.label}
                         </div>
                       ))}
-                  </div>
-                  <div style={{ fontSize: "10.5px", color: "var(--text-muted)", marginTop: "2px" }}>
-                    {benchmarks[0].year}: {benchmarks[0].finishers} {t("finishers", "người hoàn thành")}
-                    {benchmarks[0].winner_time ? ` · ${t("winner", "vô địch")} ${benchmarks[0].winner_time}` : ""}
-                    {benchmarks[0].conditions_note ? ` · ${benchmarks[0].conditions_note}` : ""}
                   </div>
                 </div>
               )}
