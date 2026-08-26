@@ -988,7 +988,7 @@ export default function Home() {
   // New auth modal state
   // Onboarding wizard state
   useEffect(() => {
-    if (onboardingMode === "estimate") {
+    if (onboardingOpen && onboardingMode === "estimate") {
       const ageNum = parseInt(profileForm.age) || 30;
       const zone2MaxNum = parseInt(zone2Max) || 140;
       const maxHrEst = 220 - ageNum;
@@ -1010,7 +1010,7 @@ export default function Home() {
         };
       });
     }
-  }, [profileForm.age, onboardingMode, zone2Max]);
+  }, [profileForm.age, onboardingMode, zone2Max, onboardingOpen]);
   // Load backend health, active session, and training plans on mount
   useEffect(() => {
     checkHealth();
