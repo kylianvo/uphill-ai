@@ -545,6 +545,24 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
                               >
                                 {athlete.runner_level}
                               </span>
+                              {athlete.needs_attention && (
+                                <span
+                                  style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: "4px",
+                                    fontSize: "9.5px",
+                                    fontWeight: 700,
+                                    padding: "1px 7px",
+                                    borderRadius: "999px",
+                                    background: "rgba(220,38,38,0.12)",
+                                    color: "var(--accent-alert)",
+                                  }}
+                                >
+                                  <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "var(--accent-alert)" }} />
+                                  {lang === "en" ? "Needs attention" : "Cần chú ý"}
+                                </span>
+                              )}
                             </div>
                             <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>
                               {athlete.active_plan
