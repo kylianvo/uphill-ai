@@ -12,7 +12,7 @@ export default function OnboardingWizard() {
   const ctx = useAppContext();
   const { startPlanJobPoller, fetchRecentPlansWithToken } = usePlanner();
   const fetchActivePlanWithToken = fetchRecentPlansWithToken; // just alias if needed or handle properly.
-  const { activeTab, setActiveTab, lang, setLang, user, setUser, setActivePlan, setAuthErrorMsg, onboardingOpen, setOnboardingOpen, onboardingAnswers, setOnboardingAnswers, onboardingStep, setOnboardingStep, onboardingGenerating, setOnboardingGenerating, setIsGoalDeterminerOpen } = ctx;
+  const { activeTab, setActiveTab, lang, setLang, user, setUser, setProfileForm, setActivePlan, setAuthErrorMsg, onboardingOpen, setOnboardingOpen, onboardingAnswers, setOnboardingAnswers, onboardingStep, setOnboardingStep, onboardingGenerating, setOnboardingGenerating, setIsGoalDeterminerOpen } = ctx;
   const [showFitnessWarning, setShowFitnessWarning] = React.useState(false);
   const handleRaceMatchChange = (match: RaceMatch | null) => {
     if (match?.elevation_gain_m && !onboardingAnswers.course_elevation_gain_m) {
@@ -206,7 +206,20 @@ export default function OnboardingWizard() {
 
       // Update user immediately so the app is accessible
 
-      if (data.user) setUser(data.user);
+      if (data.user) {
+        setUser(data.user);
+        setProfileForm({
+          age: String(data.user.age ?? 30),
+          current_weekly_km: String(data.user.current_weekly_km ?? 30.0),
+          max_hr: String(data.user.max_hr ?? 185),
+          resting_hr: String(data.user.resting_hr ?? 60),
+          aet_hr: String(data.user.aet_hr ?? 135),
+          ant_hr: String(data.user.ant_hr ?? 165),
+          gemini_api_key: data.user.gemini_api_key ?? "",
+          zone2_pace_min: data.user.zone2_pace_min ?? "6:30",
+          zone2_pace_max: data.user.zone2_pace_max ?? "5:45",
+        });
+      }
 
       if (data.plan) setActivePlan(data.plan);
 
