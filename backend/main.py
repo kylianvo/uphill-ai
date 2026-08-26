@@ -16,6 +16,7 @@ from db import (
     add_source,
     approve_workout,
     coach_update_workout,
+    compute_current_week,
     create_coach_invite,
     create_coach_note,
     create_coach_workout,
@@ -1221,7 +1222,7 @@ def _build_athlete_context_block(athlete: dict[str, Any]) -> str:
         return f"Athlete: {athlete.get('name') or athlete.get('email')}\nThis athlete has no active training plan yet."
 
     workouts = get_plan_workouts(plan["id"])
-    current_week = plan.get("current_week") or 1
+    current_week = compute_current_week(plan.get("start_date"), plan.get("total_weeks"))
     week_workouts = [w for w in workouts if w["week_number"] == current_week]
 
     lines = [

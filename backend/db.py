@@ -1356,6 +1356,28 @@ def runner_level(current_weekly_km: float | None) -> str:
     return "elite"
 
 
+def compute_current_week(start_date: str | None, total_weeks: int | None) -> int:
+    """Calendar-derived current week: how far into the plan today is, clamped
+    to [1, total_weeks]. plans.current_week is never written anywhere after
+    plan creation (it stays at its table DEFAULT of 1 forever) -- reads that
+    trusted it directly were silently pinned to week 1 regardless of how long
+    the plan had actually been running. Workouts only carry week_number +
+    day_of_week (no absolute date), but plans.start_date is populated for
+    every plan (race and non-race alike), so calendar derivation from it is
+    reliable."""
+    from datetime import date as _date
+
+    if not start_date or not total_weeks:
+        return 1
+    try:
+        start = _date.fromisoformat(str(start_date)[:10])
+    except ValueError:
+        return 1
+    days_elapsed = (_date.today() - start).days
+    week = days_elapsed // 7 + 1
+    return max(1, min(week, total_weeks))
+
+
 def get_roster_overview_data(
     coach_id: int,
     days: int = 14,
@@ -1366,18 +1388,18 @@ def get_roster_overview_data(
     coach's active roster, over the last `days` days. Backs GET
     /api/coaching/overview.
 
-    'current week' trusts plans.current_week directly (no calendar-date
-    derivation -- workouts have no completion timestamp or date column,
-    only week_number + day_of_week). `days` is converted to a week-count
-    window (window_weeks) rather than filtering by real dates, for the
-    same reason."""
+    'current week' is calendar-derived (see compute_current_week) from each
+    plan's start_date, not read from the never-updated plans.current_week
+    column. `days` is converted to a week-count window (window_weeks) rather
+    than filtering by real dates, since workouts only carry week_number +
+    day_of_week, not an absolute date."""
     window_weeks = max(1, math.ceil(days / 7))
     with engine.connect() as conn:
         athlete_rows = conn.execute(
             text("""
                 SELECT ca.athlete_id, u.name AS athlete_name, u.email AS athlete_email,
                        u.current_weekly_km,
-                       p.id AS plan_id, p.race_name, p.race_date, p.current_week, p.total_weeks
+                       p.id AS plan_id, p.race_name, p.race_date, p.start_date, p.current_week, p.total_weeks
                 FROM coach_athletes ca
                 JOIN users u ON u.id = ca.athlete_id
                 LEFT JOIN LATERAL (
@@ -1509,7 +1531,7 @@ def get_roster_overview_data(
             )
             continue
 
-        current_week = row["current_week"] or 1
+        current_week = compute_current_week(row["start_date"], row["total_weeks"])
         wos_sorted = sorted(
             workouts_by_plan.get(plan_id, []),
             key=lambda w: (w["week_number"], _DAY_ORDER.get(w["day_of_week"], 0)),

@@ -2,9 +2,19 @@
 (get_roster_overview_data / GET /api/coaching/overview). See
 docs/superpowers/specs/2026-08-22-coach-dashboard-overview-design.md."""
 
+from datetime import date, timedelta
+
 from sqlalchemy import text
 
 from db import create_plan, engine, get_plan_workouts, get_roster_overview_data, save_workouts, update_workout_log
+
+
+def _set_current_week(conn, plan_id: int, week: int) -> None:
+    """Backdates the plan's start_date so compute_current_week(...) resolves
+    to `week` as of today. current_week is calendar-derived now (see
+    db.compute_current_week) -- plans.current_week itself is never read."""
+    start = date.today() - timedelta(days=(week - 1) * 7 + 3)
+    conn.execute(text("UPDATE plans SET start_date = :sd WHERE id = :pid"), {"sd": start.isoformat(), "pid": plan_id})
 
 
 def _create_user(email: str) -> int:
@@ -36,7 +46,7 @@ def _make_plan_with_workouts(athlete_id: int, current_week: int, total_weeks: in
         plan_status="active",
     )
     with engine.connect() as conn:
-        conn.execute(text("UPDATE plans SET current_week = :w WHERE id = :pid"), {"w": current_week, "pid": plan_id})
+        _set_current_week(conn, plan_id, current_week)
         conn.commit()
     days = ["Monday", "Tuesday", "Wednesday"]
     workouts = []
@@ -357,7 +367,7 @@ class TestGetRosterOverviewData:
             plan_status="active",
         )
         with engine.connect() as conn:
-            conn.execute(text("UPDATE plans SET current_week = 5 WHERE id = :pid"), {"pid": plan_id})
+            _set_current_week(conn, plan_id, 5)
             conn.commit()
         # All weeks in and around the window tagged 'build' -- no peak/taper/race phase anywhere.
         workouts = [
@@ -398,7 +408,7 @@ class TestGetRosterOverviewData:
             plan_status="active",
         )
         with engine.connect() as conn:
-            conn.execute(text("UPDATE plans SET current_week = 5 WHERE id = :pid"), {"pid": plan_id})
+            _set_current_week(conn, plan_id, 5)
             conn.commit()
         # Weeks 4 and 5 are 'build', but week 6 (next_week) is tagged 'taper' (alert phase).
         workouts = [
@@ -438,7 +448,7 @@ class TestGetRosterOverviewData:
             plan_status="active",
         )
         with engine.connect() as conn:
-            conn.execute(text("UPDATE plans SET current_week = 5 WHERE id = :pid"), {"pid": plan_id})
+            _set_current_week(conn, plan_id, 5)
             conn.commit()
         # All weeks in and around the window tagged 'build' -- no peak/taper/race phase anywhere.
         workouts = [
@@ -488,7 +498,7 @@ class TestGetRosterOverviewData:
             plan_status="active",
         )
         with engine.connect() as conn:
-            conn.execute(text("UPDATE plans SET current_week = :w WHERE id = :pid"), {"w": 5, "pid": plan_id})
+            _set_current_week(conn, plan_id, 5)
             conn.commit()
         # Weeks 1-5: one workout each, all completed. days=30 -> window_weeks = ceil(30/7) = 5 -> weeks 1-5.
         # days=14 -> window_weeks = 2 -> weeks 4-5 only.
@@ -606,7 +616,7 @@ class TestGetRosterOverviewData:
                 plan_status="active",
             )
             with engine.connect() as conn:
-                conn.execute(text("UPDATE plans SET current_week = 5 WHERE id = :pid"), {"pid": plan_id})
+                _set_current_week(conn, plan_id, 5)
                 conn.commit()
             workouts = [
                 {
@@ -649,7 +659,7 @@ class TestGetRosterOverviewData:
             plan_status="active",
         )
         with engine.connect() as conn:
-            conn.execute(text("UPDATE plans SET current_week = 5 WHERE id = :pid"), {"pid": plan_id})
+            _set_current_week(conn, plan_id, 5)
             conn.commit()
         save_workouts(
             plan_id,
