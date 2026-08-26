@@ -25,15 +25,26 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   const { lang, activePlan, planLoading, planErrorMsg, planForm, setPlanForm, targetTimeH, setTargetTimeH, targetTimeM, setTargetTimeM, targetTimeS, setTargetTimeS, cutoffTimeH, setCutoffTimeH, cutoffTimeM, setCutoffTimeM, cutoffTimeS, setCutoffTimeS, recentPlans, selectedWeek, setSelectedWeek, swapDay1, setSwapDay1, swapDay2, setSwapDay2, setWorkouts, setBackupWorkouts, setActivePlan, workouts, backupWorkouts, backupActivePlan, setBackupActivePlan, courseInputMode, setCourseInputMode, plannerGpxLoading, plannerGpxFile, plannerGpxError, showExportOptions, setShowExportOptions, exportTimePref, setExportTimePref, setIsGoalDeterminerOpen, settingsHandoff, setSettingsHandoff, setPaceHandoff, setIsPaceStrategyOpen, user, actingAsAthleteId, actingAsAthleteName, setActingAsAthleteId, setActingAsAthleteName, handleTabSwitch } = ctx;
   const isCoachActingAsAthlete = !!actingAsAthleteId;
   const workoutAthleteId: number | null = actingAsAthleteId ?? (user?.id ?? null);
+  const [switchingAthlete, setSwitchingAthlete] = useState(false);
 
   // When entering/leaving "acting as athlete" mode, load that athlete's
   // active plan + draft (instead of whatever the coach's own self-serve
-  // state happened to hold).
+  // state happened to hold). Clear the previous athlete's plan/workouts
+  // synchronously first -- otherwise, while the fetch below is in flight,
+  // the coach briefly sees the last-viewed athlete's plan rendered under
+  // the new athlete's name.
   useEffect(() => {
     if (actingAsAthleteId) {
       (async () => {
-        const hasActive = await fetchActivePlanForActing();
-        await fetchDraftPlan(hasActive);
+        setActivePlan(null);
+        setWorkouts([]);
+        setSwitchingAthlete(true);
+        try {
+          const hasActive = await fetchActivePlanForActing();
+          await fetchDraftPlan(hasActive);
+        } finally {
+          setSwitchingAthlete(false);
+        }
       })();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -458,7 +469,14 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
               : `Bản nháp — xem lại từng bài tập bên dưới và duyệt riêng từng bài (${draftPlan.race_name}). Kế hoạch sẽ hiển thị cho vận động viên ngay khi bài tập đầu tiên được duyệt.`}
           </div>
         )}
-        {!activePlan ? (
+        {switchingAthlete ? (
+          <div style={{ background: "rgba(255, 255, 255, 0.95)", border: "1px solid var(--border-color)", padding: isMobile ? "40px 20px" : "60px 32px", borderRadius: "16px", display: "flex", flexDirection: "column", alignItems: "center", gap: "12px" }}>
+            <div className="spinner" style={{ fontSize: "24px" }}>⚙️</div>
+            <p style={{ fontSize: "13px", color: "var(--text-secondary)", margin: 0 }}>
+              {lang === "en" ? `Loading ${actingAsAthleteName}'s plan…` : `Đang tải giáo án của ${actingAsAthleteName}…`}
+            </p>
+          </div>
+        ) : !activePlan ? (
           <form onSubmit={handleGeneratePlan} style={{ background: "rgba(255, 255, 255, 0.95)", border: "1px solid var(--border-color)", padding: isMobile ? "20px" : "32px", borderRadius: "16px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "8px" }}>
               <h3 style={{ fontSize: isMobile ? "18px" : "22px", margin: 0, color: "var(--accent-primary)" }}>
