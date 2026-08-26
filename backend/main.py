@@ -192,6 +192,10 @@ class PlanGenerateRequest(BaseModel):
     race_distance_completed: str | None = None
     days_since_race: int | None = None
     recovery_feel: str | None = None
+    # Coach-authored guidance, only meaningful on the coach-triggered path
+    # (/api/coaching/athletes/{athlete_id}/generate-plan) -- injected into the
+    # generation prompt so the coach's own judgment can override defaults.
+    coach_notes: str | None = None
 
 
 class SelectPlanRequest(BaseModel):
@@ -219,6 +223,10 @@ class GenerateNextBlockRequest(BaseModel):
     notes: str | None = None
     lang: str | None = None  # current UI language at click time; falls back to the user's saved lang
     override_gate: bool = False  # explicit athlete confirmation to bypass the 70% completion gate
+    # Coach-authored forward guidance for THIS block (distinct from `notes`,
+    # which is the athlete's own review of the block just finished) -- only
+    # meaningful on the coach-triggered path.
+    coach_notes: str | None = None
 
 
 # Phase 3 Request Models
@@ -1554,6 +1562,7 @@ async def _generate_plan_for_athlete(
         # Start date
         "plan_start_date": start_date_str,
         "lang": request.lang or "en",
+        "coach_notes": request.coach_notes,
     }
 
     # Fetch latest athlete details from database to ensure fresh physiological values
@@ -1732,17 +1741,20 @@ async def submit_block_review(request: BlockReviewRequest, user: dict[str, Any] 
     return {"review": review}
 
 
-@app.post("/api/coach/generate-next-block")
-async def generate_next_block(request: GenerateNextBlockRequest, user: dict[str, Any] = Depends(get_current_user)):
-    """
-    Generate the next 2-week block for an existing plan.
-    Requires the previous block to be ≥70% complete by training hours.
-    Injects block review feedback into the generation prompt.
+async def _generate_next_block_for_athlete(
+    request: GenerateNextBlockRequest, athlete_id: int, job_owner_user_id: int
+) -> dict[str, Any]:
+    """Shared core of next-block generation, used by both the self-serve
+    /api/coach/generate-next-block (athlete_id == job_owner_user_id) and the
+    coach-triggered /api/coaching/athletes/{athlete_id}/generate-next-block
+    (job_owner_user_id = coach.id, so only the coach who kicked it off polls
+    it via the shared /api/coach/plan-status/{job_id}, same pattern as
+    _generate_plan_for_athlete).
     """
     import asyncio
 
     # Ownership check FIRST — before any reads or writes on this plan
-    recent = get_recent_plans(user["id"], limit=100)
+    recent = get_recent_plans(athlete_id, limit=100)
     plan = next((p for p in recent if p["id"] == request.plan_id), None)
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found.")
@@ -1795,7 +1807,9 @@ async def generate_next_block(request: GenerateNextBlockRequest, user: dict[str,
     if block_start > total_weeks:
         raise HTTPException(status_code=400, detail="All blocks for this plan have already been generated.")
 
-    fresh_user = get_user_by_id(user["id"]) or user
+    fresh_user = get_user_by_id(athlete_id)
+    if not fresh_user:
+        raise HTTPException(status_code=404, detail="Athlete not found.")
 
     # Build compact block context for previous blocks
     reviews = get_block_reviews(request.plan_id)
@@ -1937,6 +1951,7 @@ async def generate_next_block(request: GenerateNextBlockRequest, user: dict[str,
         "training_environment": plan.get("training_environment") or "flat",
         "plan_start_date": plan.get("start_date"),
         "lang": request.lang or fresh_user.get("lang", "en"),
+        "coach_notes": request.coach_notes,
     }
 
     model_api_key = fresh_user.get("gemini_api_key") or settings.GEMINI_API_KEY
@@ -1953,7 +1968,7 @@ async def generate_next_block(request: GenerateNextBlockRequest, user: dict[str,
     job_id = str(_uuid.uuid4())
     plan_jobs[job_id] = {
         "status": "generating",
-        "user_id": user["id"],
+        "user_id": job_owner_user_id,
         "plan_id": request.plan_id,
         "kind": "next_block",
         "block_number": request.block_number,
@@ -1991,6 +2006,57 @@ async def generate_next_block(request: GenerateNextBlockRequest, user: dict[str,
         "week_start": block_start,
         "week_end": min(block_start + 1, total_weeks),
     }
+
+
+@app.post("/api/coach/generate-next-block")
+async def generate_next_block(request: GenerateNextBlockRequest, user: dict[str, Any] = Depends(get_current_user)):
+    """
+    Generate the next 2-week block for an existing plan.
+    Requires the previous block to be ≥70% complete by training hours.
+    Injects block review feedback into the generation prompt.
+    """
+    return await _generate_next_block_for_athlete(request, athlete_id=user["id"], job_owner_user_id=user["id"])
+
+
+@app.post("/api/coaching/athletes/{athlete_id}/generate-next-block")
+async def coach_generate_next_block(
+    athlete_id: int, request: GenerateNextBlockRequest, coach: dict[str, Any] = Depends(require_athlete_access)
+):
+    """Coach-scoped mirror of /api/coach/generate-next-block -- lets a coach
+    generate the next block for an athlete they're linked to, instead of only
+    the athlete's own session being able to (see coach_generate_plan for the
+    same pattern on initial plan generation)."""
+    return await _generate_next_block_for_athlete(request, athlete_id=athlete_id, job_owner_user_id=coach["id"])
+
+
+@app.get("/api/coaching/athletes/{athlete_id}/block-completion/{plan_id}")
+def get_athlete_plan_block_completion(
+    athlete_id: int, plan_id: int, coach: dict[str, Any] = Depends(require_athlete_access)
+):
+    """Coach-scoped mirror of /api/coach/block-completion/{plan_id} -- verifies
+    plan ownership against the athlete being viewed, not the caller."""
+    _verify_plan_ownership(plan_id, athlete_id)
+    max_week = get_max_generated_week(plan_id)
+    total_blocks = (max_week + 1) // 2
+    blocks = []
+    for b in range(1, total_blocks + 1):
+        blocks.append(get_block_completion(plan_id, b))
+    return {"plan_id": plan_id, "blocks": blocks, "max_generated_week": max_week}
+
+
+@app.post("/api/coaching/athletes/{athlete_id}/block-review")
+def submit_athlete_block_review(
+    athlete_id: int, request: BlockReviewRequest, coach: dict[str, Any] = Depends(require_athlete_access)
+):
+    """Coach-scoped mirror of /api/coach/block-review."""
+    _verify_plan_ownership(request.plan_id, athlete_id)
+    review = save_block_review(
+        plan_id=request.plan_id,
+        block_number=request.block_number,
+        overall_rpe=request.overall_rpe,
+        notes=request.notes,
+    )
+    return {"review": review}
 
 
 @app.post("/api/coach/select-plan")

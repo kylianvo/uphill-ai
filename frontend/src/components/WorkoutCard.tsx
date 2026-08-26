@@ -447,6 +447,18 @@ export default function WorkoutCard({
           <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
             {isCoachActingAsAthlete && (
               <>
+                {!isRest && (wo.is_completed || wo.is_missed) && (
+                  <span
+                    title={wo.is_completed ? (lang === "en" ? "Completed" : "Đã hoàn thành") : (lang === "en" ? "Missed" : "Đã bỏ lỡ")}
+                    style={{ display: "flex", alignItems: "center" }}
+                  >
+                    {wo.is_completed ? (
+                      <CheckCircle size={20} weight="fill" color="#10b981" />
+                    ) : (
+                      <XIcon size={20} weight="bold" color="#ef4444" />
+                    )}
+                  </span>
+                )}
                 {isPending && (
                   <button
                     onClick={() => onApproveWorkout?.(wo.id)}

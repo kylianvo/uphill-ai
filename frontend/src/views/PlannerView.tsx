@@ -289,25 +289,23 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   const [showBlockReview, setShowBlockReview] = useState(false);
   const [blockReviewRpe, setBlockReviewRpe] = useState(5);
   const [blockReviewNotes, setBlockReviewNotes] = useState("");
+  const [blockCoachNotes, setBlockCoachNotes] = useState("");
   const [nextBlockLoading, setNextBlockLoading] = useState(false);
   const [overrideConfirmed, setOverrideConfirmed] = useState(false);
 
   const fetchBlockCompletion = React.useCallback(() => {
     if (!activePlan) return;
-    // No coach-scoped equivalent exists for block-completion (same
-    // documented gap as select-plan/modify-calendar/workouts-log) --
-    // skip rather than 404 against the coach's own plan history.
-    if (isCoachActingAsAthlete) return;
     const token = typeof window !== "undefined" ? localStorage.getItem("uphill_session_token") : null;
     if (!token) return;
-    fetch(`${API_BASE_URL}/api/coach/block-completion/${activePlan.id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    const url = isCoachActingAsAthlete
+      ? `${API_BASE_URL}/api/coaching/athletes/${actingAsAthleteId}/block-completion/${activePlan.id}`
+      : `${API_BASE_URL}/api/coach/block-completion/${activePlan.id}`;
+    fetch(url, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (data) setBlockData(data); })
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activePlan?.id, API_BASE_URL, isCoachActingAsAthlete]);
+  }, [activePlan?.id, API_BASE_URL, isCoachActingAsAthlete, actingAsAthleteId]);
 
   useEffect(() => {
     if (!activePlan) { Promise.resolve().then(() => setBlockData(null)); return; }
@@ -351,7 +349,10 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
     const token = typeof window !== "undefined" ? localStorage.getItem("uphill_session_token") : null;
     if (!token) { setNextBlockLoading(false); return; }
     try {
-      const resp = await fetch(`${API_BASE_URL}/api/coach/generate-next-block`, {
+      const url = isCoachActingAsAthlete
+        ? `${API_BASE_URL}/api/coaching/athletes/${actingAsAthleteId}/generate-next-block`
+        : `${API_BASE_URL}/api/coach/generate-next-block`;
+      const resp = await fetch(url, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -359,6 +360,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
           block_number: nextBlockNum,
           overall_rpe: blockReviewRpe || null,
           notes: blockReviewNotes || null,
+          coach_notes: isCoachActingAsAthlete ? (blockCoachNotes || null) : null,
           lang,
           override_gate: overrideConfirmed,
         }),
@@ -368,6 +370,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
       setShowBlockReview(false);
       setBlockReviewNotes("");
       setBlockReviewRpe(5);
+      setBlockCoachNotes("");
       setOverrideConfirmed(false);
       // nextBlockLoading stays true until the job finishes
       startPlanJobPoller(data.job_id, token);
@@ -921,6 +924,23 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 </p>
               </div>
             </div>
+
+            {isCoachActingAsAthlete && (
+              <div style={{ marginBottom: "16px" }}>
+                <label style={{ fontSize: "12.5px", fontWeight: 700, color: "var(--text-secondary)", display: "block", marginBottom: "6px" }}>
+                  {lang === "en" ? "Your coaching notes (sent to the plan generator)" : "Ghi chú của HLV (gửi cho công cụ tạo giáo án)"}
+                </label>
+                <textarea
+                  className="chat-input"
+                  style={{ width: "100%", borderRadius: "8px", padding: "10px", fontSize: "13px", minHeight: "70px", resize: "vertical" }}
+                  placeholder={lang === "en"
+                    ? "e.g. \"Avoid downhill mileage — recovering from a knee niggle\" or \"Prioritize hill strength, this athlete undertrains vert\""
+                    : "VD: \"Tránh chạy xuống dốc — đang hồi phục đau gối\" hoặc \"Ưu tiên sức mạnh leo dốc, VĐV này ít tập vert\""}
+                  value={planForm.coach_notes}
+                  onChange={(e) => setPlanForm({ ...planForm, coach_notes: e.target.value })}
+                />
+              </div>
+            )}
 
             {planErrorMsg && (
               <div style={{ color: "var(--accent-alert)", fontSize: "12px", padding: "10px", background: "rgba(239, 68, 68, 0.08)", borderRadius: "6px", marginBottom: "16px" }}>
@@ -1541,6 +1561,27 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                   fontFamily: "inherit",
                 }}
               />
+
+              {isCoachActingAsAthlete && (
+                <div style={{ marginTop: "16px" }}>
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: "700", color: "var(--text-secondary)", marginBottom: "6px" }}>
+                    {lang === "en" ? "Your coaching instructions for this block (optional)" : "Chỉ đạo của HLV cho block này (tùy chọn)"}
+                  </label>
+                  <textarea
+                    placeholder={lang === "en"
+                      ? "e.g. \"Back off intensity, athlete mentioned shin soreness\" or \"Push long run distance up faster than usual\""
+                      : "VD: \"Giảm cường độ, VĐV có nói bị đau ống đồng\" hoặc \"Tăng quãng đường long run nhanh hơn bình thường\""}
+                    value={blockCoachNotes}
+                    onChange={e => setBlockCoachNotes(e.target.value)}
+                    style={{
+                      width: "100%", borderRadius: "10px", border: "1px solid var(--border-color)",
+                      padding: "10px", fontSize: "13px", minHeight: "70px", resize: "vertical",
+                      background: "rgba(0,0,0,0.03)", boxSizing: "border-box",
+                      fontFamily: "inherit",
+                    }}
+                  />
+                </div>
+              )}
 
               <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
                 <button

@@ -542,6 +542,7 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
         z3_range = f"{hr_zones['Zone 3']['min']}-{hr_zones['Zone 3']['max']} bpm"
         z4_range = f"{hr_zones['Zone 4']['min']}-{hr_zones['Zone 4']['max']} bpm"
 
+        coach_notes = race_info.get("coach_notes")
         terrain = race_info.get("terrain", "trail").lower()
         has_gym_access = bool(race_info.get("has_gym_access", False))
         use_treadmill = bool(race_info.get("use_treadmill", False))
@@ -839,8 +840,16 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
             # full prompt at ~3800 chars — the schema and hard constraints must survive truncation
             # even if this section gets cut off.
             feedback_instruction = ""
+            # Coach directives come first within this trailing section: if the section
+            # ever gets truncated (NotebookLM path), the tail (auto-collected athlete
+            # feedback) is what's lost, not an explicit human coach instruction.
+            if coach_notes:
+                feedback_instruction += (
+                    f"\nCOACH INSTRUCTIONS (from the athlete's human coach — give these real weight, "
+                    f"and let them override the default heuristics below where they conflict):\n{coach_notes}\n"
+                )
             if block_context:
-                feedback_instruction = (
+                feedback_instruction += (
                     f"\nATHLETE FEEDBACK FROM PREVIOUS BLOCKS:\n{block_context}\n"
                     "CRITICAL — adjust this block based on feedback above:\n"
                     "  • RPE ≥ 8: reduce weekly volume by 10-15% AND drop one quality session to easy running.\n"

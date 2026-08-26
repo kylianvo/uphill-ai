@@ -305,6 +305,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     race_distance_completed: "",
     days_since_race: "",
     recovery_feel: "",
+    coach_notes: "",
   });
   const [targetTimeH, setTargetTimeH] = useState("");
   const [targetTimeM, setTargetTimeM] = useState("");

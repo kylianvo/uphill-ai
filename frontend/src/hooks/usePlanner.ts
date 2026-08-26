@@ -311,6 +311,7 @@ export function usePlanner() {
         days_since_race: planForm.days_since_race ? parseInt(planForm.days_since_race) : null,
         recovery_feel: planForm.recovery_feel || null,
         lang: lang,
+        coach_notes: actingAsAthleteId ? (planForm.coach_notes || null) : null,
       };
 
       // Combine H/M/S into decimal hours
