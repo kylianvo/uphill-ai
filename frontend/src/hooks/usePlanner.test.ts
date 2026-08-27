@@ -34,6 +34,7 @@ describe("usePlanner.handleGeneratePlan", () => {
         race_date: "2027-05-01",
         goal_type: "finish",
         plan_start_date: "2027-03-15",
+        current_weekly_km: "30",
       });
     });
 
@@ -70,6 +71,35 @@ describe("usePlanner.handleGeneratePlan", () => {
 
     expect(fetchMock).not.toHaveBeenCalled();
     expect(result.current.ctx.planErrorMsg).toMatch(/plan start date/i);
+  });
+
+  it("rejects submission when current_weekly_km is missing, without calling fetch", async () => {
+    const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>;
+
+    const { result } = renderHookWithApp(() => {
+      const ctx = useAppContext();
+      const planner = usePlanner();
+      return { ctx, planner };
+    });
+
+    act(() => {
+      result.current.ctx.setPlanForm({
+        ...result.current.ctx.planForm,
+        plan_goal_category: "race",
+        race_name: "Test 50K",
+        race_date: "2027-05-01",
+        goal_type: "finish",
+        plan_start_date: "2027-03-15",
+        current_weekly_km: "",
+      });
+    });
+
+    await act(async () => {
+      await result.current.planner.handleGeneratePlan({ preventDefault: () => {} } as React.FormEvent);
+    });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(result.current.ctx.planErrorMsg).toMatch(/weekly mileage/i);
   });
 });
 

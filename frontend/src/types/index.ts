@@ -116,6 +116,9 @@ export interface User {
   role: "admin" | "user";
   is_coach?: boolean;
   age?: number;
+  gender?: "male" | "female" | "other" | "";
+  height_cm?: number;
+  weight_kg?: number;
   current_weekly_km?: number;
   max_hr?: number;
   resting_hr?: number;

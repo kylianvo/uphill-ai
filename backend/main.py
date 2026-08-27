@@ -67,6 +67,7 @@ from db import (
     swap_workouts,
     update_onboarding_profile,
     update_user_profile,
+    update_user_weekly_km,
     update_workout_log,
     verify_session,
 )
@@ -172,6 +173,7 @@ class PlanGenerateRequest(BaseModel):
     race_name: str | None = None
     race_date: str | None = None  # YYYY-MM-DD
     goal_type: str  # 'finish', 'time', 'optimal', 'start_running', 'return', 'recovery'
+    current_weekly_km: float  # current training volume, entered fresh for every plan
     target_time_hours: float | None = None
     cutoff_time_hours: float | None = None
     terrain: str | None = "trail"
@@ -287,6 +289,9 @@ class OnboardingRequest(BaseModel):
     # Step 1
     dob: str | None = None  # YYYY-MM-DD
     age: int | None = None
+    gender: str | None = None  # 'male' | 'female' | 'other'
+    height_cm: float | None = None
+    weight_kg: float | None = None
     # Step 2
     goal_type: str  # race|distance|start_running|return|recovery
     # Fitness
@@ -331,7 +336,6 @@ class OnboardingRequest(BaseModel):
 
 class UpdateProfileRequest(BaseModel):
     age: int
-    current_weekly_km: float
     max_hr: int
     resting_hr: int
     aet_hr: int
@@ -339,6 +343,9 @@ class UpdateProfileRequest(BaseModel):
     gemini_api_key: str | None = None
     zone2_pace_min: str | None = None
     zone2_pace_max: str | None = None
+    gender: str | None = None  # 'male' | 'female' | 'other'
+    height_cm: float | None = None
+    weight_kg: float | None = None
 
 
 class SetCoachStatusRequest(BaseModel):
@@ -434,6 +441,9 @@ def format_user_response(user: dict[str, Any]) -> dict[str, Any]:
         "has_password": bool(user.get("password_hash")),
         "age": user.get("age", 30),
         "dob": str(user["dob"]) if user.get("dob") else None,
+        "gender": user.get("gender"),
+        "height_cm": user.get("height_cm"),
+        "weight_kg": user.get("weight_kg"),
         "goal_type": user.get("goal_type"),
         "current_weekly_km": user.get("current_weekly_km", 30.0),
         "max_hr": user.get("max_hr", 185),
@@ -740,6 +750,9 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
     onboarding_data = {
         "dob": request.dob,
         "age": age,
+        "gender": request.gender,
+        "height_cm": request.height_cm,
+        "weight_kg": request.weight_kg,
         "goal_type": request.goal_type,
         "injury_history": request.injury_history,
         "preferred_run_days": request.preferred_run_days or [],
@@ -1573,6 +1586,7 @@ async def _generate_plan_for_athlete(
     fresh_user = dict(fresh_user)
     fresh_user.update(
         {
+            "current_weekly_km": request.current_weekly_km,
             "time_away": request.time_away,
             "fitness_feel": request.fitness_feel,
             "race_distance_completed": request.race_distance_completed,
@@ -1580,6 +1594,9 @@ async def _generate_plan_for_athlete(
             "recovery_feel": request.recovery_feel,
         }
     )
+    # Persist the freshly-entered weekly volume so it stays the source of
+    # truth for chat context, gear/nutrition displays, etc. between plans.
+    update_user_weekly_km(athlete_id, request.current_weekly_km)
 
     # Resolve Gemini API Key (per-user key with global settings fallback)
     model_api_key = fresh_user.get("gemini_api_key") or settings.GEMINI_API_KEY
