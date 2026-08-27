@@ -116,7 +116,12 @@ export function useKnowledge() {
       const res = await fetch(`${API_BASE_URL}/api/knowledge/cards/random?n=3&lang=${lang}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
-      if (res.ok) { const d = await res.json(); setDailyCards(d.cards || []); }
+      if (res.ok) {
+        const d = await res.json();
+        setDailyCards(d.cards || []);
+        localStorage.setItem("uphill_daily_cards_lang", lang);
+        localStorage.setItem("uphill_daily_cards_data", JSON.stringify(d.cards || []));
+      }
     } catch (e) {}
   };
 

@@ -828,24 +828,47 @@ export default function Home() {
           topic && topic !== "All"
             ? `${API_BASE_URL}/api/knowledge/cards?topic=${encodeURIComponent(topic)}&lang=${lang}`
             : `${API_BASE_URL}/api/knowledge/cards?lang=${lang}`;
-        const [cardsRes, dailyRes, topicsRes] = await Promise.all([
+        // Knowledge cards are the same static content for every user, so the
+        // "Daily Knowledge" pick only needs to be fetched once per language —
+        // never re-shuffled on tab switches or reloads. Only the explicit
+        // Shuffle button (shuffleDailyCards in useKnowledge.ts) refreshes it.
+        const needsDailyCards = localStorage.getItem("uphill_daily_cards_lang") !== lang;
+        // Claim the cache slot before the request resolves so a second effect
+        // firing in the same tick (e.g. React StrictMode's double-invoke, or a
+        // fast repeat tab switch) doesn't also see "no cache yet" and reshuffle.
+        if (needsDailyCards) {
+          localStorage.setItem("uphill_daily_cards_lang", lang);
+        }
+        const fetches: [Promise<Response>, Promise<Response>, Promise<Response> | null] = [
           fetch(url, { headers }),
-          fetch(`${API_BASE_URL}/api/knowledge/cards/random?n=3&lang=${lang}`, {
-            headers,
-          }),
           fetch(`${API_BASE_URL}/api/knowledge/topics`, { headers }),
-        ]);
+          needsDailyCards
+            ? fetch(`${API_BASE_URL}/api/knowledge/cards/random?n=3&lang=${lang}`, {
+                headers,
+              })
+            : null,
+        ];
+        const [cardsRes, topicsRes, dailyRes] = await Promise.all(fetches);
         if (cardsRes.ok) {
           const d = await cardsRes.json();
           setKnowledgeCards(d.cards || []);
         }
-        if (dailyRes.ok) {
-          const d = await dailyRes.json();
-          setDailyCards(d.cards || []);
-        }
         if (topicsRes.ok) {
           const d = await topicsRes.json();
           setKnowledgeTopics(d.topics || []);
+        }
+        if (dailyRes) {
+          if (dailyRes.ok) {
+            const d = await dailyRes.json();
+            setDailyCards(d.cards || []);
+            localStorage.setItem("uphill_daily_cards_data", JSON.stringify(d.cards || []));
+          } else {
+            // Request failed — release the claim so a later visit can retry.
+            localStorage.removeItem("uphill_daily_cards_lang");
+          }
+        } else {
+          const cached = localStorage.getItem("uphill_daily_cards_data");
+          if (cached) setDailyCards(JSON.parse(cached));
         }
       } catch (e) {
         console.error("Knowledge load error", e);
@@ -906,7 +929,6 @@ export default function Home() {
         knowledgePollerRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, lang]);
   const shuffleDailyCards = async () => {
     const token = localStorage.getItem("uphill_session_token");
