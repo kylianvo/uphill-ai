@@ -57,6 +57,9 @@ def init_db():
             -- physiology
             dob                     DATE,
             age                     INTEGER DEFAULT 30,
+            gender                  TEXT,
+            height_cm               REAL,
+            weight_kg               REAL,
             current_weekly_km       REAL DEFAULT 30.0,
             max_hr                  INTEGER DEFAULT 185,
             resting_hr              INTEGER DEFAULT 60,
@@ -353,6 +356,9 @@ def init_db():
             # newly-inserted coach workout going forward) should read as pending.
             "UPDATE workouts SET approved_at = NOW() WHERE approved_at IS NULL "
             "AND plan_id IN (SELECT id FROM plans WHERE plan_status = 'active')",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS gender TEXT",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS height_cm REAL",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS weight_kg REAL",
         ]:
             try:
                 conn.execute(text(col_sql))
@@ -1134,15 +1140,15 @@ def update_user_profile(user_id: int, profile_data: dict[str, Any]) -> bool:
         result = conn.execute(
             text("""
             UPDATE users SET
-                age = :age, current_weekly_km = :ckm, max_hr = :max_hr,
+                age = :age, max_hr = :max_hr,
                 resting_hr = :rhr, aet_hr = :aet, ant_hr = :ant,
                 gemini_api_key = :gak,
-                zone2_pace_min = :z2min, zone2_pace_max = :z2max
+                zone2_pace_min = :z2min, zone2_pace_max = :z2max,
+                gender = :gender, height_cm = :height_cm, weight_kg = :weight_kg
             WHERE id = :id
         """),
             {
                 "age": int(profile_data.get("age", 30)),
-                "ckm": float(profile_data.get("current_weekly_km", 30.0)),
                 "max_hr": int(profile_data.get("max_hr", 185)),
                 "rhr": int(profile_data.get("resting_hr", 60)),
                 "aet": int(profile_data.get("aet_hr", 135)),
@@ -1150,8 +1156,23 @@ def update_user_profile(user_id: int, profile_data: dict[str, Any]) -> bool:
                 "gak": profile_data.get("gemini_api_key"),
                 "z2min": profile_data.get("zone2_pace_min", "6:30"),
                 "z2max": profile_data.get("zone2_pace_max", "5:45"),
+                "gender": profile_data.get("gender"),
+                "height_cm": profile_data.get("height_cm"),
+                "weight_kg": profile_data.get("weight_kg"),
                 "id": user_id,
             },
+        )
+        conn.commit()
+    return result.rowcount > 0
+
+
+def update_user_weekly_km(user_id: int, current_weekly_km: float) -> bool:
+    """Overwrite the stored weekly volume -- called each time a plan is
+    generated, since mileage input now lives on plan creation, not profile."""
+    with engine.connect() as conn:
+        result = conn.execute(
+            text("UPDATE users SET current_weekly_km = :ckm WHERE id = :id"),
+            {"ckm": float(current_weekly_km), "id": user_id},
         )
         conn.commit()
     return result.rowcount > 0
@@ -1165,6 +1186,9 @@ def update_onboarding_profile(user_id: int, data: dict[str, Any]) -> bool:
             UPDATE users SET
                 dob = :dob,
                 age = :age,
+                gender = :gender,
+                height_cm = :height_cm,
+                weight_kg = :weight_kg,
                 goal_type = :goal_type,
                 injury_history = :injury_history,
                 preferred_run_days = :preferred_run_days,
@@ -1182,6 +1206,9 @@ def update_onboarding_profile(user_id: int, data: dict[str, Any]) -> bool:
             {
                 "dob": data.get("dob"),
                 "age": data.get("age", 30),
+                "gender": data.get("gender"),
+                "height_cm": data.get("height_cm"),
+                "weight_kg": data.get("weight_kg"),
                 "goal_type": data.get("goal_type"),
                 "injury_history": data.get("injury_history"),
                 "preferred_run_days": json.dumps(data.get("preferred_run_days", [])),

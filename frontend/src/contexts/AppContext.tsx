@@ -293,6 +293,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     days_per_week: 4,
     long_run_day: "Saturday",
     preferred_days: ["Monday", "Wednesday", "Saturday"] as string[],
+    current_weekly_km: "",
     has_gym_access: false,
     use_treadmill: false,
     training_environment: "flat" as "flat" | "hilly" | "mixed",
@@ -362,6 +363,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [onboardingStep, setOnboardingStep] = useState(0);
   const [onboardingAnswers, setOnboardingAnswers] = useState<Record<string, any>>({
     dob: "",
+    gender: "" as "" | "male" | "female" | "other",
+    height_cm: "",
+    weight_kg: "",
     goal_type: "",
     fitness_input_mode: "manual",
     aet_hr: "", ant_hr: "", max_hr: "", resting_hr: "",
@@ -384,7 +388,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [onboardingGenerating, setOnboardingGenerating] = useState(false);
   const [profileForm, setProfileForm] = useState({
     age: "30",
-    current_weekly_km: "30",
+    gender: "" as "" | "male" | "female" | "other",
+    height_cm: "",
+    weight_kg: "",
     max_hr: "185",
     resting_hr: "60",
     aet_hr: "135",

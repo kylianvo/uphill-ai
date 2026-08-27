@@ -280,6 +280,10 @@ export function usePlanner() {
       setPlanErrorMsg("Please select a Plan Start Date.");
       return;
     }
+    if (!planForm.current_weekly_km) {
+      setPlanErrorMsg("Please enter your current weekly mileage.");
+      return;
+    }
     setPlanLoading(true);
     setPlanErrorMsg("");
 
@@ -298,6 +302,7 @@ export function usePlanner() {
         days_per_week: planForm.days_per_week,
         long_run_day: planForm.long_run_day,
         preferred_days: planForm.preferred_days,
+        current_weekly_km: parseFloat(planForm.current_weekly_km),
         has_gym_access: planForm.has_gym_access,
         use_treadmill: planForm.use_treadmill,
         training_environment: planForm.training_environment,

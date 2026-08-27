@@ -269,7 +269,9 @@ export default function ProfileSettingsModal() {
 
 
 
-          current_weekly_km: parseFloat(profileForm.current_weekly_km),
+          gender: profileForm.gender || null,
+          height_cm: profileForm.height_cm ? parseFloat(profileForm.height_cm) : null,
+          weight_kg: profileForm.weight_kg ? parseFloat(profileForm.weight_kg) : null,
 
 
 
@@ -895,27 +897,30 @@ export default function ProfileSettingsModal() {
 
                 <div>
 
+                  <label style={labelStyle}>{lang === "en" ? "Gender" : "Giới tính"}</label>
 
+                  <select style={inputStyle} value={profileForm.gender} onChange={e => setProfileForm({ ...profileForm, gender: e.target.value })}>
+                    <option value="">{lang === "en" ? "Prefer not to say" : "Không muốn tiết lộ"}</option>
+                    <option value="male">{lang === "en" ? "Male" : "Nam"}</option>
+                    <option value="female">{lang === "en" ? "Female" : "Nữ"}</option>
+                    <option value="other">{lang === "en" ? "Other" : "Khác"}</option>
+                  </select>
 
+                </div>
 
+                <div>
 
+                  <label style={labelStyle}>{lang === "en" ? "Height (cm)" : "Chiều cao (cm)"}</label>
 
+                  <input type="number" style={inputStyle} value={profileForm.height_cm} onChange={e => setProfileForm({ ...profileForm, height_cm: e.target.value })} />
 
-                  <label style={labelStyle}>{lang === "en" ? "Weekly Volume (km)" : "Khối lượng tuần (km)"}</label>
+                </div>
 
+                <div>
 
+                  <label style={labelStyle}>{lang === "en" ? "Weight (kg)" : "Cân nặng (kg)"}</label>
 
-
-
-
-
-                  <input type="number" step="0.1" style={inputStyle} value={profileForm.current_weekly_km} onChange={e => setProfileForm({ ...profileForm, current_weekly_km: e.target.value })} required />
-
-
-
-
-
-
+                  <input type="number" step="0.1" style={inputStyle} value={profileForm.weight_kg} onChange={e => setProfileForm({ ...profileForm, weight_kg: e.target.value })} />
 
                 </div>
 

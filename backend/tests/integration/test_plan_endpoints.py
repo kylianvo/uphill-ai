@@ -19,6 +19,7 @@ def _generate_plan(client, headers, **overrides):
         "race_date": "2027-05-01",
         "plan_start_date": FAR_FUTURE_START_DATE,
         "days_per_week": 4,
+        "current_weekly_km": 30,
     }
     payload.update(overrides)
     return client.post("/api/coach/generate-plan", headers=headers, json=payload)

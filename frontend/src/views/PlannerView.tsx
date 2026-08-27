@@ -847,6 +847,22 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 </div>
               </div>
 
+              <div style={{ marginBottom: "12px" }}>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px", color: "var(--text-secondary)" }}>
+                  {lang === "en" ? "Current Weekly Mileage (km)" : "Khối lượng tuần hiện tại (km)"}
+                </label>
+                <input type="number" step="0.1" min="0" className="chat-input" style={{ borderRadius: "8px", width: "100%", padding: "10px" }}
+                  placeholder={lang === "en" ? "e.g. 30" : "vd. 30"}
+                  value={planForm.current_weekly_km}
+                  onChange={e => setPlanForm({ ...planForm, current_weekly_km: e.target.value })}
+                  required />
+                <p style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "5px", margin: "5px 0 0 0" }}>
+                  {lang === "en"
+                    ? "How many km are you currently running per week? Used to set your starting training load."
+                    : "Bạn hiện đang chạy bao nhiêu km mỗi tuần? Dùng để thiết lập khối lượng tập luyện ban đầu."}
+                </p>
+              </div>
+
               <div>
                 <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px", color: "var(--text-secondary)" }}>
                   {t("plan_preferred_days")}

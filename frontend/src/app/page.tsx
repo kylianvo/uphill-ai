@@ -971,6 +971,9 @@ export default function Home() {
     name: string;
     role: "admin" | "user";
     age?: number;
+    gender?: "male" | "female" | "other" | "";
+    height_cm?: number;
+    weight_kg?: number;
     current_weekly_km?: number;
     max_hr?: number;
     resting_hr?: number;
@@ -1029,7 +1032,9 @@ export default function Home() {
           setUser(userData);
           setProfileForm({
             age: String(userData.age ?? 30),
-            current_weekly_km: String(userData.current_weekly_km ?? 30.0),
+            gender: userData.gender ?? "",
+            height_cm: userData.height_cm != null ? String(userData.height_cm) : "",
+            weight_kg: userData.weight_kg != null ? String(userData.weight_kg) : "",
             max_hr: String(userData.max_hr ?? 185),
             resting_hr: String(userData.resting_hr ?? 60),
             aet_hr: String(userData.aet_hr ?? 135),
@@ -1201,7 +1206,9 @@ export default function Home() {
       setUser(data.user);
       setProfileForm({
         age: String(data.user.age ?? 30),
-        current_weekly_km: String(data.user.current_weekly_km ?? 30.0),
+        gender: data.user.gender ?? "",
+        height_cm: data.user.height_cm != null ? String(data.user.height_cm) : "",
+        weight_kg: data.user.weight_kg != null ? String(data.user.weight_kg) : "",
         max_hr: String(data.user.max_hr ?? 185),
         resting_hr: String(data.user.resting_hr ?? 60),
         aet_hr: String(data.user.aet_hr ?? 135),
@@ -1252,7 +1259,9 @@ export default function Home() {
       setUser(data.user);
       setProfileForm({
         age: String(data.user.age ?? 30),
-        current_weekly_km: String(data.user.current_weekly_km ?? 30.0),
+        gender: data.user.gender ?? "",
+        height_cm: data.user.height_cm != null ? String(data.user.height_cm) : "",
+        weight_kg: data.user.weight_kg != null ? String(data.user.weight_kg) : "",
         max_hr: String(data.user.max_hr ?? 185),
         resting_hr: String(data.user.resting_hr ?? 60),
         aet_hr: String(data.user.aet_hr ?? 135),
@@ -1289,7 +1298,6 @@ export default function Home() {
         },
         body: JSON.stringify({
           age: parseInt(profileForm.age),
-          current_weekly_km: parseFloat(profileForm.current_weekly_km),
           max_hr: parseInt(profileForm.max_hr),
           resting_hr: parseInt(profileForm.resting_hr),
           aet_hr: parseInt(profileForm.aet_hr),
@@ -1297,6 +1305,9 @@ export default function Home() {
           gemini_api_key: profileForm.gemini_api_key,
           zone2_pace_min: profileForm.zone2_pace_min,
           zone2_pace_max: profileForm.zone2_pace_max,
+          gender: profileForm.gender || null,
+          height_cm: profileForm.height_cm ? parseFloat(profileForm.height_cm) : null,
+          weight_kg: profileForm.weight_kg ? parseFloat(profileForm.weight_kg) : null,
         }),
       });
       if (!response.ok) {
@@ -1568,6 +1579,13 @@ export default function Home() {
       const payload: any = {
         dob: onboardingAnswers.dob || null,
         age,
+        gender: onboardingAnswers.gender || null,
+        height_cm: onboardingAnswers.height_cm
+          ? parseFloat(onboardingAnswers.height_cm)
+          : null,
+        weight_kg: onboardingAnswers.weight_kg
+          ? parseFloat(onboardingAnswers.weight_kg)
+          : null,
         goal_type: onboardingAnswers.goal_type,
         injury_history: onboardingAnswers.injury_history || null,
         preferred_run_days: onboardingAnswers.preferred_run_days,
@@ -1960,6 +1978,10 @@ export default function Home() {
       setPlanErrorMsg("Please select a Plan Start Date.");
       return;
     }
+    if (!planForm.current_weekly_km) {
+      setPlanErrorMsg("Please enter your current weekly mileage.");
+      return;
+    }
     setPlanLoading(true);
     setPlanErrorMsg("");
     const token = localStorage.getItem("uphill_session_token");
@@ -1986,6 +2008,7 @@ export default function Home() {
         days_per_week: planForm.days_per_week,
         long_run_day: planForm.long_run_day,
         preferred_days: planForm.preferred_days,
+        current_weekly_km: parseFloat(planForm.current_weekly_km),
         plan_start_date: planForm.plan_start_date || null,
         plan_duration_weeks: isRaceOrDist ? null : planForm.plan_duration_weeks,
         // non-race context fields

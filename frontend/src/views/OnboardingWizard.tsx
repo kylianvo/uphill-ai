@@ -102,6 +102,12 @@ export default function OnboardingWizard() {
 
         age,
 
+        gender: onboardingAnswers.gender || null,
+
+        height_cm: onboardingAnswers.height_cm ? parseFloat(onboardingAnswers.height_cm) : null,
+
+        weight_kg: onboardingAnswers.weight_kg ? parseFloat(onboardingAnswers.weight_kg) : null,
+
         goal_type: onboardingAnswers.goal_type,
 
         injury_history: onboardingAnswers.injury_history || null,
@@ -210,7 +216,9 @@ export default function OnboardingWizard() {
         setUser(data.user);
         setProfileForm({
           age: String(data.user.age ?? 30),
-          current_weekly_km: String(data.user.current_weekly_km ?? 30.0),
+          gender: data.user.gender ?? "",
+          height_cm: data.user.height_cm != null ? String(data.user.height_cm) : "",
+          weight_kg: data.user.weight_kg != null ? String(data.user.weight_kg) : "",
           max_hr: String(data.user.max_hr ?? 185),
           resting_hr: String(data.user.resting_hr ?? 60),
           aet_hr: String(data.user.aet_hr ?? 135),
@@ -448,6 +456,53 @@ export default function OnboardingWizard() {
                 </p>
 
               </div>
+
+              <div style={{ marginBottom: "10px" }}>
+
+                <label style={labelS}>{lang === "en" ? "Gender" : "Giới tính"}</label>
+
+                <select style={inputS} className="chat-input"
+                  value={onboardingAnswers.gender}
+                  onChange={e => setAns("gender", e.target.value)}>
+                  <option value="">{lang === "en" ? "Prefer not to say" : "Không muốn tiết lộ"}</option>
+                  <option value="male">{lang === "en" ? "Male" : "Nam"}</option>
+                  <option value="female">{lang === "en" ? "Female" : "Nữ"}</option>
+                  <option value="other">{lang === "en" ? "Other" : "Khác"}</option>
+                </select>
+
+              </div>
+
+              <div style={{ display: "flex", gap: "12px", marginBottom: "10px" }}>
+
+                <div style={{ flex: 1 }}>
+
+                  <label style={labelS}>{lang === "en" ? "Height (cm)" : "Chiều cao (cm)"}</label>
+
+                  <input type="number" style={inputS} className="chat-input"
+                    min="100" max="250" placeholder="175"
+                    value={onboardingAnswers.height_cm}
+                    onChange={e => setAns("height_cm", e.target.value)} />
+
+                </div>
+
+                <div style={{ flex: 1 }}>
+
+                  <label style={labelS}>{lang === "en" ? "Weight (kg)" : "Cân nặng (kg)"}</label>
+
+                  <input type="number" style={inputS} className="chat-input"
+                    min="30" max="250" placeholder="70"
+                    value={onboardingAnswers.weight_kg}
+                    onChange={e => setAns("weight_kg", e.target.value)} />
+
+                </div>
+
+              </div>
+
+              <p style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "-4px", marginBottom: "10px" }}>
+
+                {lang === "en" ? "Optional — you can adjust these later in your profile." : "Không bắt buộc — bạn có thể điều chỉnh sau trong hồ sơ của mình."}
+
+              </p>
 
             </div>
 
