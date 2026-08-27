@@ -16,6 +16,7 @@ def _create_plan_with_two_weeks_of_workouts(client, headers):
             "race_date": "2027-05-01",
             "plan_start_date": "2027-03-15",
             "days_per_week": 4,
+            "current_weekly_km": 30,
         },
     )
     plan_id = resp.json()["plan"]["id"]

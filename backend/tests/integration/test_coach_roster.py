@@ -463,6 +463,7 @@ class TestAthleteActivePlanEndpoint:
                 "race_date": "2027-05-01",
                 "plan_start_date": "2027-03-15",
                 "days_per_week": 4,
+                "current_weekly_km": 30,
             },
             headers=athlete_headers,
         )
@@ -488,6 +489,7 @@ class TestAthleteRecentPlansEndpoint:
                 "race_date": "2027-05-01",
                 "plan_start_date": "2027-03-15",
                 "days_per_week": 4,
+                "current_weekly_km": 30,
             },
             headers=athlete_headers,
         )
@@ -511,6 +513,7 @@ def _generate_plan(client, headers, race_name="Workouts 50K"):
             "race_date": "2027-05-01",
             "plan_start_date": "2027-03-15",
             "days_per_week": 4,
+            "current_weekly_km": 30,
         },
         headers=headers,
     )
