@@ -646,9 +646,17 @@ export default function OnboardingWizard() {
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
 
-                  <div><label style={labelS}>AeT HR (bpm)</label><input type="number" className="chat-input" style={inputS} placeholder="135" value={onboardingAnswers.aet_hr} onChange={e => setAns("aet_hr", e.target.value)} /></div>
+                  <div>
+                    <label style={labelS}>AeT HR (bpm)</label>
+                    <input type="number" className="chat-input" style={inputS} placeholder="135" value={onboardingAnswers.aet_hr} onChange={e => setAns("aet_hr", e.target.value)} />
+                    <p style={{ fontSize: "11px", color: "var(--text-muted)", margin: "4px 0 0 0" }}>{t("profile_aet_hint")}</p>
+                  </div>
 
-                  <div><label style={labelS}>AnT HR (bpm)</label><input type="number" className="chat-input" style={inputS} placeholder="165" value={onboardingAnswers.ant_hr} onChange={e => setAns("ant_hr", e.target.value)} /></div>
+                  <div>
+                    <label style={labelS}>AnT HR (bpm)</label>
+                    <input type="number" className="chat-input" style={inputS} placeholder="165" value={onboardingAnswers.ant_hr} onChange={e => setAns("ant_hr", e.target.value)} />
+                    <p style={{ fontSize: "11px", color: "var(--text-muted)", margin: "4px 0 0 0" }}>{t("profile_ant_hint")}</p>
+                  </div>
 
                   <div><label style={labelS}>Max HR (bpm)</label><input type="number" className="chat-input" style={inputS} placeholder="185" value={onboardingAnswers.max_hr} onChange={e => setAns("max_hr", e.target.value)} /></div>
 
@@ -1291,9 +1299,17 @@ export default function OnboardingWizard() {
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "14px" }}>
 
-                  <div><label style={labelS}>AeT HR (bpm)</label><input type="number" className="chat-input" style={inputS} placeholder="135" value={onboardingAnswers.aet_hr || ""} onChange={e => setAns("aet_hr", e.target.value)} /></div>
+                  <div>
+                    <label style={labelS}>AeT HR (bpm)</label>
+                    <input type="number" className="chat-input" style={inputS} placeholder="135" value={onboardingAnswers.aet_hr || ""} onChange={e => setAns("aet_hr", e.target.value)} />
+                    <p style={{ fontSize: "11px", color: "var(--text-muted)", margin: "4px 0 0 0" }}>{t("profile_aet_hint")}</p>
+                  </div>
 
-                  <div><label style={labelS}>AnT HR (bpm)</label><input type="number" className="chat-input" style={inputS} placeholder="165" value={onboardingAnswers.ant_hr || ""} onChange={e => setAns("ant_hr", e.target.value)} /></div>
+                  <div>
+                    <label style={labelS}>AnT HR (bpm)</label>
+                    <input type="number" className="chat-input" style={inputS} placeholder="165" value={onboardingAnswers.ant_hr || ""} onChange={e => setAns("ant_hr", e.target.value)} />
+                    <p style={{ fontSize: "11px", color: "var(--text-muted)", margin: "4px 0 0 0" }}>{t("profile_ant_hint")}</p>
+                  </div>
 
                   <div><label style={labelS}>Max HR (bpm)</label><input type="number" className="chat-input" style={inputS} placeholder="185" value={onboardingAnswers.max_hr || ""} onChange={e => setAns("max_hr", e.target.value)} /></div>
 
