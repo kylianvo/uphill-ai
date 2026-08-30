@@ -41,6 +41,38 @@ server) needs those two origins added manually or the shipped app can
 never reach that backend — see `backend/config.py`'s comment on
 `ALLOWED_ORIGINS`.
 
+## Release build (TestFlight)
+
+`frontend/scripts/ios_release.sh` automates the local half of shipping a new
+build: web build against production, `cap sync`, archive, and a signed
+`.ipa` export. It does **not** touch git and does **not** upload anything —
+those two steps stay manual/human-judgment calls.
+
+```bash
+# 1. Make sure you're on the commit you want to ship.
+git fetch origin main && git rebase origin/main   # resolve conflicts if any
+
+# 2. Run the release script (prompts for the last known TestFlight build
+#    number if you don't pass it as an argument).
+cd frontend
+./scripts/ios_release.sh          # or: ./scripts/ios_release.sh 3
+
+# 3. Xcode > Window > Organizer > select the new "Uphill AI" archive >
+#    Distribute App > App Store Connect > Upload. Once it processes,
+#    attach the new build to the right TestFlight group.
+```
+
+Why the build-number bump isn't committed: `CURRENT_PROJECT_VERSION` in
+`ios/App/App.xcodeproj/project.pbxproj` has never been bumped in git history
+across prior release sessions — it stays `1` there. The script bumps it
+locally for the archive/export, then restores the original file on exit
+(even on failure), so you always have to tell it the last build number you
+know was uploaded. When in doubt, check App Store Connect > TestFlight
+directly rather than guessing from git.
+
+The script fails fast and tells you what's missing if `.env.production`
+isn't present — see the mobile-build section above for what it needs.
+
 ## Notifications
 
 `src/utils/notifications.ts` wraps `@capacitor/local-notifications` (native)
