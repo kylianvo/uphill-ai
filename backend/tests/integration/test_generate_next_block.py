@@ -1,9 +1,10 @@
 """Integration tests for POST /api/coach/generate-next-block's 70% completion gate."""
 
+import json
 import time
 from unittest.mock import AsyncMock, patch
 
-from db import get_plan_workouts, save_workouts
+from db import get_plan_by_id, get_plan_workouts, save_workouts, update_plan_schedule
 
 
 def _create_plan_with_two_weeks_of_workouts(client, headers):
@@ -136,3 +137,32 @@ class TestGenerateNextBlockGate:
         )
         assert resp.status_code == 200, resp.text
         assert "job_id" in resp.json()
+
+
+class TestUpdatePlanSchedule:
+    def test_updates_only_provided_fields_and_keeps_others(self, client, auth_headers, mock_plan_generation):
+        plan_id, _ = _create_plan_with_two_weeks_of_workouts(client, auth_headers["headers"])
+        before = get_plan_by_id(plan_id)
+
+        updated = update_plan_schedule(plan_id, days_per_week=5, long_run_day="Sunday")
+
+        assert updated["days_per_week"] == 5
+        assert updated["long_run_day"] == "Sunday"
+        # Untouched fields keep their prior value
+        assert updated["preferred_run_days"] == before["preferred_run_days"]
+        assert updated["training_environment"] == before["training_environment"]
+
+    def test_returns_none_for_unknown_plan_id(self):
+        assert update_plan_schedule(plan_id=999999999, days_per_week=5) is None
+
+    def test_json_encodes_list_fields(self, client, auth_headers, mock_plan_generation):
+        plan_id, _ = _create_plan_with_two_weeks_of_workouts(client, auth_headers["headers"])
+
+        updated = update_plan_schedule(
+            plan_id,
+            preferred_run_days=["Tuesday", "Thursday", "Sunday"],
+            double_session_days=["Sunday"],
+        )
+
+        assert json.loads(updated["preferred_run_days"]) == ["Tuesday", "Thursday", "Sunday"]
+        assert json.loads(updated["double_session_days"]) == ["Sunday"]
