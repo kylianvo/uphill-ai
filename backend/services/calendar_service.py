@@ -58,11 +58,26 @@ class CalendarService:
         return "\r\n".join(chunks)
 
     @classmethod
-    def generate_ics_string(cls, race_date_str: str, workouts: list[dict[str, Any]], time_pref: str = "all_day") -> str:
+    def generate_ics_string(
+        cls,
+        race_date_str: str,
+        workouts: list[dict[str, Any]],
+        time_pref: str = "all_day",
+        plan_start_date_str: str | None = None,
+    ) -> str:
         """
         Generates a standard RFC 5545 iCalendar string.
-        Paces workouts backwards from the target race date.
-        Filters out workouts occurring after the race day.
+
+        Anchors dates forward from plan_start_date_str when available (same
+        model the app itself uses -- see usePlanner.ts's getWorkoutDateObj):
+        week 1 starts on the Monday on/before the plan's start date. This is
+        the only anchor that's correct for a plan generated block-by-block,
+        since `workouts` usually only covers the blocks generated so far, not
+        the whole plan through the race -- pacing backwards from race_date
+        assuming the loaded workouts reach all the way to race week silently
+        produced wildly wrong dates for any in-progress plan (the common
+        case). Paces backwards from race_date only as a legacy fallback for
+        plans that predate plan_start_date being stored at all.
         """
         try:
             # Expected input format: 'YYYY-MM-DD'
@@ -79,23 +94,33 @@ class CalendarService:
             if "TARGET EVENT" in title or w_type == "RACE":
                 wo["day_of_week"] = race_weekday_name
 
-        # 2. Determine total weeks and locate the Race workout to anchor dates
-        total_weeks = max(int(wo["week_number"]) for wo in workouts) if workouts else 12
-        race_week = None
-        race_day_offset = cls.DAY_OFFSETS.get(race_weekday_name, 5)
+        plan_start_date = None
+        if plan_start_date_str:
+            try:
+                plan_start_date = datetime.strptime(plan_start_date_str, "%Y-%m-%d").date()
+            except ValueError:
+                plan_start_date = None
 
-        for wo in workouts:
-            title = wo.get("title", "").upper()
-            w_type = wo.get("type", "").upper()
-            if "TARGET EVENT" in title or w_type == "RACE":
-                race_week = int(wo["week_number"])
-                break
-
-        if race_week is not None:
-            start_monday = race_date - timedelta(days=((race_week - 1) * 7) + race_day_offset)
+        if plan_start_date is not None:
+            start_monday = plan_start_date - timedelta(days=plan_start_date.weekday())
         else:
-            # Fallback: assume race is on race_date (which corresponds to race_date.weekday()) in the last week
-            start_monday = race_date - timedelta(days=((total_weeks - 1) * 7) + race_date.weekday())
+            # Legacy fallback: determine total weeks and locate the Race workout to anchor dates
+            total_weeks = max(int(wo["week_number"]) for wo in workouts) if workouts else 12
+            race_week = None
+            race_day_offset = cls.DAY_OFFSETS.get(race_weekday_name, 5)
+
+            for wo in workouts:
+                title = wo.get("title", "").upper()
+                w_type = wo.get("type", "").upper()
+                if "TARGET EVENT" in title or w_type == "RACE":
+                    race_week = int(wo["week_number"])
+                    break
+
+            if race_week is not None:
+                start_monday = race_date - timedelta(days=((race_week - 1) * 7) + race_day_offset)
+            else:
+                # Fallback: assume race is on race_date (which corresponds to race_date.weekday()) in the last week
+                start_monday = race_date - timedelta(days=((total_weeks - 1) * 7) + race_date.weekday())
 
         ics_lines = [
             "BEGIN:VCALENDAR",

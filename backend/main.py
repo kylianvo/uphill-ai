@@ -2163,7 +2163,9 @@ def export_ics(
     if not workouts:
         raise HTTPException(status_code=404, detail="No workouts found for this plan.")
 
-    ics_text = CalendarService.generate_ics_string(race_date, workouts, time_pref)
+    ics_text = CalendarService.generate_ics_string(
+        race_date, workouts, time_pref, plan_start_date_str=active_plan.get("start_date")
+    )
 
     return Response(
         content=ics_text,

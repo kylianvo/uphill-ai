@@ -40,3 +40,32 @@ class TestGenerateIcsString:
         del workouts[0]["treadmill_speed"]
         out = CalendarService.generate_ics_string("2026-09-01", workouts)
         assert "Treadmill" not in out
+
+    def test_anchors_from_plan_start_date_when_provided(self):
+        # Regression test: a block-generated plan only has the FIRST couple
+        # weeks of workouts loaded (no "Race"-tagged workout yet, since
+        # that's in the final block) -- the legacy race-date-backward math
+        # then silently anchored week 1 to right before race_date instead of
+        # the plan's actual start, producing wildly wrong exported dates for
+        # any in-progress plan. plan_start_date_str must anchor forward
+        # instead, exactly like the app's own getWorkoutDateObj.
+        workouts = [make_workout(week_number=1, day_of_week="Thursday", title="Aerobic Base Incline Run")]
+        out = CalendarService.generate_ics_string(
+            "2026-10-28",
+            workouts,
+            plan_start_date_str="2026-08-27",  # a Thursday
+        )
+        assert "DTSTART;VALUE=DATE:20260827" in out
+
+    def test_falls_back_to_race_date_anchoring_when_no_plan_start_date(self):
+        # Legacy plans (created before plan_start_date was stored) keep the
+        # old race-date-backward behavior.
+        workouts = [
+            make_workout(week_number=1, day_of_week="Monday"),
+            make_workout(week_number=2, day_of_week="Saturday", title="Target Event", type="Race"),
+        ]
+        out = CalendarService.generate_ics_string("2026-09-06", workouts)  # a Sunday
+        # The race workout's day_of_week gets relabeled to race_date's actual
+        # weekday (Sunday) first, so race week's Monday is race_date - 6 days;
+        # week 1 Monday is a further 7 days before that.
+        assert "DTSTART;VALUE=DATE:20260824" in out
