@@ -66,6 +66,7 @@ from db import (
     set_user_password,
     swap_workouts,
     update_onboarding_profile,
+    update_plan_schedule,
     update_user_profile,
     update_user_weekly_km,
     update_workout_log,
@@ -230,6 +231,16 @@ class GenerateNextBlockRequest(BaseModel):
     # which is the athlete's own review of the block just finished) -- only
     # meaningful on the coach-triggered path.
     coach_notes: str | None = None
+    # Mid-plan schedule preference edits -- optional; any field left unset
+    # (None) leaves that column on the `plans` row unchanged. Same shapes as
+    # PlanGenerateRequest's scheduling fields.
+    preferred_days: list[str] | None = None
+    long_run_day: str | None = None
+    days_per_week: int | None = None
+    double_session_days: list[str] | None = None
+    has_gym_access: bool | None = None
+    use_treadmill: bool | None = None
+    training_environment: str | None = None
 
 
 # Phase 3 Request Models
@@ -1824,6 +1835,36 @@ async def _generate_next_block_for_athlete(
     block_start = (request.block_number - 1) * 2 + 1
     if block_start > total_weeks:
         raise HTTPException(status_code=400, detail="All blocks for this plan have already been generated.")
+
+    # Mid-plan schedule preference edit: if the athlete changed any Schedule
+    # Preferences field for this next block, persist it to the plans row
+    # BEFORE building race_info below, so this call's own generation uses the
+    # new values immediately (nothing else caches the old ones). Placed after
+    # every check above that can reject the request (ownership, double-submit,
+    # completion gate, all-blocks-generated) so a rejected request never
+    # mutates the plan's schedule fields.
+    _schedule_fields = (
+        request.preferred_days,
+        request.long_run_day,
+        request.days_per_week,
+        request.double_session_days,
+        request.has_gym_access,
+        request.use_treadmill,
+        request.training_environment,
+    )
+    if any(f is not None for f in _schedule_fields):
+        updated_plan = update_plan_schedule(
+            plan_id=request.plan_id,
+            preferred_run_days=request.preferred_days,
+            long_run_day=request.long_run_day,
+            days_per_week=request.days_per_week,
+            double_session_days=request.double_session_days,
+            has_gym_access=request.has_gym_access,
+            use_treadmill=request.use_treadmill,
+            training_environment=request.training_environment,
+        )
+        if updated_plan:
+            plan = updated_plan
 
     fresh_user = get_user_by_id(athlete_id)
     if not fresh_user:

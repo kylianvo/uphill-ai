@@ -675,6 +675,49 @@ def get_plan_by_id(plan_id: int) -> dict[str, Any] | None:
     return _row_to_dict(row) if row else None
 
 
+def update_plan_schedule(
+    plan_id: int,
+    preferred_run_days: list | None = None,
+    long_run_day: str | None = None,
+    days_per_week: int | None = None,
+    double_session_days: list | None = None,
+    has_gym_access: bool | None = None,
+    use_treadmill: bool | None = None,
+    training_environment: str | None = None,
+) -> dict[str, Any] | None:
+    """Partial update of a plan's mid-plan-editable schedule columns. Any
+    argument left as None keeps that column's current value (COALESCE) --
+    lets callers pass only the fields the athlete actually changed."""
+    with engine.connect() as conn:
+        result = conn.execute(
+            text("""
+                UPDATE plans SET
+                    preferred_run_days = COALESCE(:preferred_run_days, preferred_run_days),
+                    long_run_day = COALESCE(:long_run_day, long_run_day),
+                    days_per_week = COALESCE(:days_per_week, days_per_week),
+                    double_session_days = COALESCE(:double_session_days, double_session_days),
+                    has_gym_access = COALESCE(:has_gym_access, has_gym_access),
+                    use_treadmill = COALESCE(:use_treadmill, use_treadmill),
+                    training_environment = COALESCE(:training_environment, training_environment)
+                WHERE id = :plan_id
+                RETURNING *
+            """),
+            {
+                "plan_id": plan_id,
+                "preferred_run_days": json.dumps(preferred_run_days) if preferred_run_days is not None else None,
+                "long_run_day": long_run_day,
+                "days_per_week": days_per_week,
+                "double_session_days": json.dumps(double_session_days) if double_session_days is not None else None,
+                "has_gym_access": has_gym_access,
+                "use_treadmill": use_treadmill,
+                "training_environment": training_environment,
+            },
+        )
+        conn.commit()
+        row = result.fetchone()
+    return _row_to_dict(row) if row else None
+
+
 def get_draft_plan_for_athlete(athlete_id: int) -> dict[str, Any] | None:
     with engine.connect() as conn:
         row = conn.execute(
