@@ -166,3 +166,83 @@ class TestUpdatePlanSchedule:
 
         assert json.loads(updated["preferred_run_days"]) == ["Tuesday", "Thursday", "Sunday"]
         assert json.loads(updated["double_session_days"]) == ["Sunday"]
+
+
+class TestGenerateNextBlockScheduleEdit:
+    def test_schedule_fields_update_plan_row_and_flow_into_generation(self, client, auth_headers):
+        plan_id, workout_id = _create_plan_with_two_weeks_of_workouts_no_mock(client, auth_headers["headers"])
+        client.patch(
+            "/api/coach/workouts/log",
+            headers=auth_headers["headers"],
+            json={"workout_id": workout_id, "is_completed": 1},
+        )
+
+        captured = {}
+
+        async def _capture(*args, **kwargs):
+            captured["race_info"] = args[2] if len(args) > 2 else kwargs.get("race_info")
+            return []
+
+        with patch(
+            "services.plan_generator.PlanGenerator.generate_plan_workouts",
+            new=AsyncMock(side_effect=_capture),
+        ):
+            resp = client.post(
+                "/api/coach/generate-next-block",
+                headers=auth_headers["headers"],
+                json={
+                    "plan_id": plan_id,
+                    "block_number": 2,
+                    "override_gate": True,
+                    "days_per_week": 5,
+                    "long_run_day": "Sunday",
+                    "preferred_days": ["Tuesday", "Thursday", "Sunday"],
+                    "double_session_days": ["Sunday"],
+                    "has_gym_access": True,
+                    "use_treadmill": True,
+                    "training_environment": "hilly",
+                },
+            )
+            assert resp.status_code == 200, resp.text
+            job_id = resp.json()["job_id"]
+
+            status = None
+            for _ in range(20):
+                poll = client.get(f"/api/coach/plan-status/{job_id}", headers=auth_headers["headers"])
+                status = poll.json()["status"]
+                if status == "done":
+                    break
+                time.sleep(0.05)
+            assert status == "done"
+
+        race_info = captured["race_info"]
+        assert race_info["days_per_week"] == 5
+        assert race_info["long_run_day"] == "Sunday"
+        assert race_info["preferred_days"] == json.dumps(["Tuesday", "Thursday", "Sunday"])
+        assert race_info["training_environment"] == "hilly"
+        assert race_info["has_gym_access"] is True
+        assert race_info["use_treadmill"] is True
+
+        updated_plan = get_plan_by_id(plan_id)
+        assert updated_plan["days_per_week"] == 5
+        assert json.loads(updated_plan["double_session_days"]) == ["Sunday"]
+
+    def test_omitted_schedule_fields_leave_plan_unchanged(self, client, auth_headers, mock_plan_generation):
+        plan_id, workout_id = _create_plan_with_two_weeks_of_workouts(client, auth_headers["headers"])
+        before = get_plan_by_id(plan_id)
+        client.patch(
+            "/api/coach/workouts/log",
+            headers=auth_headers["headers"],
+            json={"workout_id": workout_id, "is_completed": 1},
+        )
+
+        resp = client.post(
+            "/api/coach/generate-next-block",
+            headers=auth_headers["headers"],
+            json={"plan_id": plan_id, "block_number": 2, "override_gate": True},
+        )
+        assert resp.status_code == 200, resp.text
+
+        after = get_plan_by_id(plan_id)
+        assert after["days_per_week"] == before["days_per_week"]
+        assert after["long_run_day"] == before["long_run_day"]
