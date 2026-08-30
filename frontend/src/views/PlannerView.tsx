@@ -304,6 +304,15 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   const [blockCoachNotes, setBlockCoachNotes] = useState("");
   const [nextBlockLoading, setNextBlockLoading] = useState(false);
   const [overrideConfirmed, setOverrideConfirmed] = useState(false);
+  const [nextBlockSchedule, setNextBlockSchedule] = useState<ScheduleFieldsValue>({
+    days_per_week: 4,
+    long_run_day: "Saturday",
+    preferred_days: [],
+    has_gym_access: false,
+    use_treadmill: false,
+    training_environment: "flat",
+    double_session_days: [],
+  });
 
   const fetchBlockCompletion = React.useCallback(() => {
     if (!activePlan) return;
@@ -355,6 +364,25 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
     if (activePlan?.id) handleCoachEditWorkout(activePlan.id, workoutId, fields);
   };
 
+  const openBlockReviewModal = (withOverride: boolean) => {
+    const p: any = activePlan || {};
+    let preferredDays: string[] = [];
+    try { preferredDays = JSON.parse(p.preferred_run_days || "[]"); } catch { preferredDays = []; }
+    let doubleSessionDays: string[] = [];
+    try { doubleSessionDays = JSON.parse(p.double_session_days || "[]"); } catch { doubleSessionDays = []; }
+    setNextBlockSchedule({
+      days_per_week: p.days_per_week || 4,
+      long_run_day: p.long_run_day || "Saturday",
+      preferred_days: preferredDays,
+      has_gym_access: !!p.has_gym_access,
+      use_treadmill: !!p.use_treadmill,
+      training_environment: p.training_environment || "flat",
+      double_session_days: doubleSessionDays,
+    });
+    if (withOverride) setOverrideConfirmed(true);
+    setShowBlockReview(true);
+  };
+
   const handleGenerateNextBlock = async () => {
     if (!activePlan) return;
     setNextBlockLoading(true);
@@ -375,6 +403,13 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
           coach_notes: isCoachActingAsAthlete ? (blockCoachNotes || null) : null,
           lang,
           override_gate: overrideConfirmed,
+          days_per_week: nextBlockSchedule.days_per_week,
+          long_run_day: nextBlockSchedule.long_run_day,
+          preferred_days: nextBlockSchedule.preferred_days,
+          double_session_days: nextBlockSchedule.double_session_days,
+          has_gym_access: nextBlockSchedule.has_gym_access,
+          use_treadmill: nextBlockSchedule.use_treadmill,
+          training_environment: nextBlockSchedule.training_environment,
         }),
       });
       const data = await resp.json();
@@ -1337,7 +1372,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                   <button
                     className="btn btn-primary"
                     style={{ alignSelf: "flex-start", fontSize: "13px", height: "38px", paddingLeft: "20px", paddingRight: "20px", display: "flex", alignItems: "center", gap: "6px" }}
-                    onClick={() => setShowBlockReview(true)}
+                    onClick={() => openBlockReviewModal(false)}
                     disabled={nextBlockLoading}
                   >
                     <span>⚡</span>
@@ -1369,7 +1404,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 <button
                   className="btn"
                   style={{ alignSelf: "flex-start", fontSize: "13px", height: "38px", paddingLeft: "20px", paddingRight: "20px", border: "1px solid rgba(239,68,68,0.35)", background: "none", color: "#ef4444", cursor: "pointer", borderRadius: "8px" }}
-                  onClick={() => { setOverrideConfirmed(true); setShowBlockReview(true); }}
+                  onClick={() => openBlockReviewModal(true)}
                   disabled={nextBlockLoading}
                 >
                   {lang === "en" ? "Generate anyway" : "Vẫn tạo tiếp"}
@@ -1420,6 +1455,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
               background: "rgba(255,255,255,0.97)", borderRadius: "18px",
               padding: "28px 24px", maxWidth: "420px", width: "100%",
               boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+              maxHeight: "90vh", overflowY: "auto" as const,
             }}>
               <h3 style={{ margin: "0 0 4px", fontSize: "18px", fontWeight: "800" }}>
                 {lang === "en" ? `How was Block ${currentBlockNum}?` : `Block ${currentBlockNum} như thế nào?`}
@@ -1481,6 +1517,24 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                   fontFamily: "inherit",
                 }}
               />
+
+              <div style={{ marginTop: "20px" }}>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: "700", color: "var(--text-secondary)", marginBottom: "8px" }}>
+                  {lang === "en" ? "Update Schedule Preferences (optional)" : "Cập nhật Tùy chọn lịch tập (tùy chọn)"}
+                </label>
+                <p style={{ fontSize: "11.5px", color: "var(--text-muted)", margin: "0 0 10px" }}>
+                  {lang === "en"
+                    ? `These changes apply starting with Block ${nextBlockNum}.`
+                    : `Thay đổi sẽ áp dụng từ Block ${nextBlockNum}.`}
+                </p>
+                <ScheduleFieldsEditor
+                  lang={lang}
+                  t={t}
+                  isMobile={isMobile}
+                  value={nextBlockSchedule}
+                  onChange={(patch) => setNextBlockSchedule({ ...nextBlockSchedule, ...patch })}
+                />
+              </div>
 
               {isCoachActingAsAthlete && (
                 <div style={{ marginTop: "16px" }}>
