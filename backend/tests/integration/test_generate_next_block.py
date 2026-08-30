@@ -246,3 +246,38 @@ class TestGenerateNextBlockScheduleEdit:
         after = get_plan_by_id(plan_id)
         assert after["days_per_week"] == before["days_per_week"]
         assert after["long_run_day"] == before["long_run_day"]
+
+    def test_gate_rejection_does_not_persist_schedule_fields(self, client, auth_headers, mock_plan_generation):
+        """A request that submits schedule-preference fields alongside a
+        block that is still below the 70% completion gate (and no
+        override_gate) must be rejected with 403 -- and, critically, must
+        NOT have written the schedule fields to the plan row. Only requests
+        that get past every rejection check may mutate the plan."""
+        plan_id, workout_id = _create_plan_with_two_weeks_of_workouts(client, auth_headers["headers"])
+        before = get_plan_by_id(plan_id)
+        client.patch(
+            "/api/coach/workouts/log",
+            headers=auth_headers["headers"],
+            json={"workout_id": workout_id, "is_completed": 1},
+        )
+
+        resp = client.post(
+            "/api/coach/generate-next-block",
+            headers=auth_headers["headers"],
+            json={
+                "plan_id": plan_id,
+                "block_number": 2,
+                "days_per_week": 6,
+                "long_run_day": "Friday",
+                "preferred_days": ["Monday", "Friday"],
+                "training_environment": "flat",
+            },
+        )
+        assert resp.status_code == 403
+        assert "70%" in resp.json()["detail"]
+
+        after = get_plan_by_id(plan_id)
+        assert after["days_per_week"] == before["days_per_week"]
+        assert after["long_run_day"] == before["long_run_day"]
+        assert after["preferred_run_days"] == before["preferred_run_days"]
+        assert after["training_environment"] == before["training_environment"]
