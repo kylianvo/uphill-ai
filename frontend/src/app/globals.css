@@ -1252,3 +1252,122 @@ label {
   border: 1px solid rgba(255, 255, 255, 0.6);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LEGAL / SUPPORT PAGES (/privacy, /support)
+   Standalone routes that must render for logged-out visitors (API partner and
+   app-store reviewers), so they carry their own layout rather than relying on
+   the authenticated app shell.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.legal-page {
+  min-height: 100vh;
+  background: #f9fafb;
+  padding: 40px 20px 72px;
+}
+
+.legal-container {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.legal-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 40px;
+}
+
+.legal-back {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent-primary);
+  text-decoration: none;
+}
+
+.legal-back:hover { text-decoration: underline; }
+
+.legal-lang {
+  display: flex;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+}
+
+.legal-lang-btn {
+  padding: 6px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 0;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.legal-lang-btn.is-active {
+  background: var(--accent-primary);
+  color: #0d0c0d;
+}
+
+.legal-header { margin-bottom: 36px; }
+
+.legal-title {
+  font-family: var(--font-fustat), sans-serif;
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--text-primary);
+  margin: 0 0 10px;
+}
+
+.legal-updated {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.legal-section { margin-top: 36px; }
+
+.legal-heading {
+  font-family: var(--font-fustat), sans-serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 12px;
+}
+
+.legal-p {
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin: 0 0 14px;
+}
+
+.legal-list {
+  list-style: disc;
+  padding-left: 22px;
+  margin: 0 0 14px;
+  color: var(--text-secondary);
+}
+
+.legal-list li {
+  line-height: 1.7;
+  margin-bottom: 10px;
+}
+
+.legal-footer {
+  margin-top: 48px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border-color);
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-muted);
+}
+
+@media (min-width: 640px) {
+  .legal-page { padding: 64px 32px 96px; }
+  .legal-title { font-size: 40px; }
+}

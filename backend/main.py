@@ -75,6 +75,7 @@ from db import (
 from parsers.fit_parser import FitParser
 from parsers.gpx_parser import GpxParser
 from routers.analytics import router as analytics_router
+from routers.integrations import router as integrations_router
 from services.auth_service import hash_password, verify_password
 from services.calendar_service import CalendarService
 from services.gear_planner import GearParams, gear_planner
@@ -97,6 +98,7 @@ app = FastAPI(
 )
 
 app.include_router(analytics_router, prefix="/api")
+app.include_router(integrations_router, prefix="/api")
 
 # Set up CORS
 app.add_middleware(
