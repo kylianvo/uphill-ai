@@ -243,76 +243,18 @@ Uphill AI codifies the training methodologies of elite coaches and world-record 
 
 ### System Architecture Diagram
 
-![Uphill AI System Architecture](assets/architecture/uphill_ai_architecture.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/architecture/uphill-ai-architecture-dark.png">
+  <img alt="Uphill AI System Architecture" src="assets/architecture/uphill-ai-architecture-light.png">
+</picture>
 
-*Interactive Excalidraw source file available at [`assets/architecture/uphill_ai_architecture.excalidraw`](assets/architecture/uphill_ai_architecture.excalidraw).*
+*Explorable interactive version (pan/zoom, click-to-trace, light/dark) at [`assets/architecture/uphill-ai-architecture.html`](assets/architecture/uphill-ai-architecture.html) — open it locally in a browser. Source spec: [`assets/architecture/uphill-ai-architecture.json`](assets/architecture/uphill-ai-architecture.json). The original Excalidraw sketch is preserved at [`assets/architecture/uphill_ai_architecture.excalidraw`](assets/architecture/uphill_ai_architecture.excalidraw).*
 
-<details>
-<summary><b>Click to view textual Mermaid source</b></summary>
-
-```mermaid
-flowchart TB
-    subgraph CLIENT["Client Layer (Web & Mobile)"]
-        WEB["Next.js 16 (React 19, TS5)\nTailwind CSS + HSL Tokens"]
-        MOB["Capacitor 8.5\n(iOS & Android Native Shell)"]
-    end
-
-    subgraph API_GATEWAY["API & Orchestration Layer"]
-        FASTAPI["FastAPI Backend (Python 3.11+)\nSQLAlchemy Core (Async Raw SQL)"]
-        AUTH["JWT Session Store / OAuth2\n(Google & Facebook Auth)"]
-    end
-
-    subgraph ENGINES["Deterministic & Physiological Engines"]
-        MINETTI["Minetti Metabolic Physics Engine\n(Grade, Altitude, Heat, Decay)"]
-        PLAN_GEN["Plan Generator & 80/20 Auditor"]
-        GOAL_ENG["Goal Determiner & Rank Transfer\n(ITRA Inversion, DUV Stats)"]
-        PARSERS["Telemetry Parsers\n(fitparse, gpxpy)"]
-    end
-
-    subgraph AI_RAG["AI & Vector Knowledge Layer"]
-        GEMINI["Google Gemini 2.5 Flash\n(Structured LLM Engine)"]
-        QDRANT["Qdrant Vector DB\n(uphill_kb_scheduler)"]
-        NOTEBOOKLM["NotebookLM API\n(Offline Topic Distiller)"]
-        TAVILY["Tavily Web Search\n(Live Gear/Nutrition Crawler)"]
-    end
-
-    subgraph DATA_PLATFORM["Enterprise Data Platform"]
-        KAFKA["Apache Kafka 3.7\n(Event Stream)"]
-        SPARK["Apache Spark 3.5\n(Delta Lake Aggregations)"]
-        AIRFLOW["Apache Airflow 2.9\n(DAG Orchestration)"]
-        DUCKDB["DuckDB + dbt Core\n(Data Warehouse)"]
-    end
-
-    subgraph STORAGE["Storage & Observability"]
-        PG["PostgreSQL 16\n(Primary OLTP Database)"]
-        PROM["Prometheus + Node Exporter\n(Metrics Collection)"]
-        GRAFANA["Grafana OSS\n(System Dashboards)"]
-        METABASE["Metabase BI\n(Analytics & Reporting)"]
-    end
-
-    CLIENT --> FASTAPI
-    FASTAPI --> AUTH
-    FASTAPI --> ENGINES
-    FASTAPI --> AI_RAG
-    FASTAPI --> PG
-    FASTAPI --> KAFKA
-    
-    ENGINES --> PARSERS
-    AI_RAG --> QDRANT
-    AI_RAG --> GEMINI
-
-    KAFKA --> SPARK
-    SPARK --> DUCKDB
-    AIRFLOW --> DUCKDB
-    AIRFLOW --> QDRANT
-    AIRFLOW --> FASTAPI
-
-    PG --> METABASE
-    DUCKDB --> METABASE
-    FASTAPI --> PROM
-    PROM --> GRAFANA
-```
-</details>
+- **Client Layer**: the Next.js 16 static export (deployed to GitHub Pages) and the Capacitor-wrapped iOS/Android app both talk to the FastAPI backend over HTTPS/REST.
+- **Backend**: FastAPI + SQLAlchemy Core fronts the deterministic physics engines (Minetti grade/altitude/weather model, 80/20 auditor, goal/rank-transfer estimator) and issues SQL to PostgreSQL, vector retrieval to Qdrant, grounded generation calls to Gemini 2.5 Flash, workout events to Kafka, and metrics to Prometheus.
+- **AI & Vector Layer**: Qdrant holds the Scheduler's philosophy embeddings for RAG; Gear and Nutrition instead inject their full curated catalog into the Gemini prompt directly (no retrieval-miss risk).
+- **Data Platform**: Kafka streams workout telemetry into Spark/Delta Lake; Airflow orchestrates the weekly KB-distillation and warehouse ELT DAGs into DuckDB/dbt.
+- **Analytics & Ops**: Metabase serves BI dashboards off both PostgreSQL and the DuckDB warehouse; Prometheus + Grafana cover backend latency and system telemetry.
 
 ### Technology Breakdown
 

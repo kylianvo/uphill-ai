@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Uphill AI System Architecture",
+    "output": "assets/architecture/uphill-ai-architecture.html",
+    "quality_profile": "showcase"
+  },
+  "components": [
+    { "id": "web_client", "type": "frontend", "label": "Next.js 16 Web App", "sublabel": "static export", "pos": [40, 40], "size": [150, 62] },
+    { "id": "mobile_client", "type": "frontend", "label": "iOS & Android App", "sublabel": "Capacitor shell", "pos": [40, 220], "size": [150, 62] },
+
+    { "id": "backend", "type": "backend", "label": "FastAPI Backend", "sublabel": "SQLAlchemy Core", "pos": [270, 220], "size": [160, 72] },
+
+    { "id": "qdrant", "type": "database", "label": "Qdrant", "sublabel": "vector DB", "pos": [540, 20], "size": [140, 62] },
+    { "id": "postgres", "type": "database", "label": "PostgreSQL 16", "sublabel": "primary OLTP", "pos": [540, 160], "size": [140, 62] },
+    { "id": "kafka", "type": "messagebus", "label": "Apache Kafka", "sublabel": "event stream", "pos": [540, 300], "size": [140, 62] },
+    { "id": "observability", "type": "backend", "label": "Prometheus & Grafana", "sublabel": "metrics", "pos": [540, 440], "size": [160, 62] },
+    { "id": "gemini", "type": "external", "label": "Gemini 2.5 Flash", "sublabel": "grounded RAG", "pos": [540, 600], "size": [150, 62] },
+
+    { "id": "data_platform", "type": "backend", "label": "Data Platform", "sublabel": "Spark · Airflow", "pos": [800, 220], "size": [160, 74] },
+
+    { "id": "metabase", "type": "backend", "label": "Metabase", "sublabel": "BI analytics", "pos": [1040, 160], "size": [140, 62] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "GitHub Pages (static hosting)", "wraps": ["web_client"], "pad": 20 },
+    { "kind": "region", "label": "Google Cloud (external API)", "wraps": ["gemini"], "pad": 20 }
+  ],
+  "connections": [
+    { "from": "web_client", "to": "backend", "label": "HTTPS / REST", "variant": "emphasis", "fromSide": "right", "toSide": "top" },
+    { "from": "mobile_client", "to": "backend", "label": "HTTPS / REST", "variant": "emphasis", "fromSide": "right", "toSide": "left", "labelAt": [214, 296] },
+
+    { "from": "backend", "to": "postgres", "label": "SQL", "fromSide": "right", "toSide": "left" },
+    { "from": "backend", "to": "qdrant", "label": "vector retrieval", "fromSide": "top", "toSide": "bottom" },
+    { "from": "backend", "to": "gemini", "label": "grounded generation", "variant": "emphasis", "fromSide": "bottom", "toSide": "left" },
+    { "from": "backend", "to": "kafka", "label": "workout events", "variant": "dashed", "fromSide": "right", "toSide": "left" },
+    { "from": "backend", "to": "observability", "label": "/metrics", "variant": "dashed", "fromSide": "bottom", "toSide": "left" },
+
+    { "from": "kafka", "to": "data_platform", "label": "stream ingest", "fromSide": "right", "toSide": "bottom" },
+    { "from": "postgres", "to": "data_platform", "label": "batch export", "variant": "dashed", "fromSide": "right", "toSide": "left" },
+    { "from": "data_platform", "to": "metabase", "label": "dbt models", "fromSide": "right", "toSide": "left" },
+    { "from": "postgres", "to": "metabase", "label": "BI queries", "fromSide": "right", "toSide": "left" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Client Layer", "items": ["Next.js 16 static export, deployed to GitHub Pages on push to main", "Capacitor wraps the same web app for iOS & Android", "Runtime API base URL is overridable via ?api= for staging"] },
+    { "dot": "rose", "title": "Grounded AI & RAG", "items": ["Gemini 2.5 Flash answers only when grounded on distilled kb_chunks", "Qdrant holds scheduler philosophy embeddings for top-k retrieval", "Gear & Nutrition inject their full curated catalog, no retrieval miss"] },
+    { "dot": "emerald", "title": "Data Platform & Ops", "items": ["Kafka captures workout telemetry for Spark/Delta Lake aggregation", "Airflow orchestrates weekly KB distillation and warehouse ELT", "Prometheus/Grafana and Metabase cover system and business metrics"] }
+  ]
+}
