@@ -147,6 +147,26 @@ Sleep HRV Time Series
 00:00 42 ms
 00:05 43 ms"""
 
+# --- Fix-round-2 fixtures --------------------------------------------------
+# Round 1's guards over-corrected: they raised on a *recognised* shape that
+# legitimately has no data for one date (as opposed to a body that is
+# unrecognised/truncated). Both scenarios below are plausible real responses
+# -- a brand-new athlete with too little history, or a night the watch
+# couldn't compute HRV -- and must return an empty result, not raise.
+
+# A real date header with no numeric fields at all (just a Comment line).
+TRAINING_LOAD_INSUFFICIENT_HISTORY = (
+    "Training Load Assessment\n========================\n\n"
+    "2026-09-04\nComment: Insufficient training history to compute load ratio"
+)
+
+# A real date header in the assessment section with no "HRV Avg:" line.
+SLEEP_HRV_INSUFFICIENT_DATA = (
+    "Sleep HRV — 2026-09-02 to 2026-09-04\n========================\n\n"
+    "HRV Assessment — Last 7 days\n========================\n\n"
+    "2026-09-04:\nInsufficient sleep data to compute HRV for this night."
+)
+
 # IMPORTANT 3 (+ addendum): a record missing LabelId, Duration, or its Time
 # Window startTimestamp cannot be identified, stored, or timed -- each must
 # raise rather than silently coming back as None.
@@ -329,3 +349,15 @@ class TestContractGuard:
         # assessment section itself must be required.
         with pytest.raises(p.CorosParseError):
             p.parse_sleep_hrv(SLEEP_HRV_TIME_SERIES_ONLY)
+
+    def test_training_load_recognised_date_with_no_numeric_fields_returns_empty(self):
+        # A real date header (e.g. a brand-new athlete with too little
+        # training history to compute a load ratio yet) is a recognised
+        # shape with legitimately nothing to record -- must not raise.
+        assert p.parse_training_load(TRAINING_LOAD_INSUFFICIENT_HISTORY) == {}
+
+    def test_sleep_hrv_recognised_date_with_no_avg_line_returns_empty(self):
+        # A real date header for a night the watch couldn't compute HRV for
+        # is a recognised shape with legitimately nothing to record -- must
+        # not raise.
+        assert p.parse_sleep_hrv(SLEEP_HRV_INSUFFICIENT_DATA) == {}

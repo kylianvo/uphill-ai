@@ -200,6 +200,12 @@ def parse_sleep_hrv(text: str) -> dict[date, dict[str, Any]]:
         raise CorosParseError("querySleepHrv output missing its 'HRV Assessment' header")
 
     assessment = text.split("Sleep HRV Time Series")[0]
+    # Tracked separately from `out` -- a date header that is matched but then
+    # skipped (no "HRV Avg:" line, e.g. a night the watch couldn't compute
+    # HRV for) is a recognised shape with legitimately nothing to record, not
+    # an unrecognised response. `out` being empty can't distinguish the two;
+    # this counter, taken before any skipping, can.
+    date_headers = list(re.finditer(r"^(\d{4}-\d{2}-\d{2}):\s*$", assessment, re.M))
     out: dict[date, dict[str, Any]] = {}
     blocks = re.split(r"^(\d{4}-\d{2}-\d{2}):\s*$", assessment, flags=re.M)
     for index in range(1, len(blocks) - 1, 2):
@@ -213,7 +219,7 @@ def parse_sleep_hrv(text: str) -> dict[date, dict[str, Any]]:
             "hrv_baseline_ms": _search_float(r"Baseline:\s*([\d.]+)\s*ms", body),
         }
 
-    if not out:
+    if not date_headers:
         remaining = _drop_lines(
             assessment,
             r"Sleep HRV.*",
@@ -256,7 +262,13 @@ def parse_training_load(text: str) -> dict[date, dict[str, Any]]:
             continue
         out[date.fromisoformat(match.group(1))] = parsed
 
-    if not out:
+    # `days` (not `out`) is the right thing to test here: a date header that
+    # was matched and then skipped for lacking numeric fields (e.g. "not
+    # enough training history yet") is a recognised shape with legitimately
+    # nothing to record, not an unrecognised response. `out` being empty
+    # can't distinguish "found headers, all skipped" from "found no headers
+    # at all" -- `days` was captured before any skipping happened.
+    if not days:
         remaining = _drop_lines(text, r"Training Load Assessment.*", r"=+")
         if remaining:
             raise CorosParseError(
