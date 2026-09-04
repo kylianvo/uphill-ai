@@ -85,6 +85,100 @@ Short-Term Load: 90
 Long-Term Load: 73
 Load Ratio: 1.23"""
 
+# --- Fix-round-1 fixtures ------------------------------------------------
+# The five fixtures above are the verbatim captures and are never edited.
+# Everything below is a new fixture built for a specific defect found in
+# review: an ordinary vendor addition (a footer sentence) that must not
+# corrupt real data, and truncated/malformed responses that must raise
+# instead of silently looking like "no data".
+
+# CRITICAL 1: a trailing sentence that happens to start with a date must not
+# be mistaken for a new per-date block and overwrite the real 2026-09-04 row.
+TRAINING_LOAD_WITH_FOOTER = (
+    TRAINING_LOAD + "\n\n2026-09-04 data last refreshed at 06:00 local time. Figures may lag by up to 15 minutes."
+)
+
+# CRITICAL 2: header claims 2 records but the body was truncated before any
+# record entries -- must raise, not silently return [].
+SPORT_RECORDS_HEADER_COUNT_MISMATCH = "Sport Records — 2026-08-29 to 2026-09-02 (2 records)\n========================\n"
+
+# CRITICAL 2: header present but body has neither data rows nor anything else
+# left over -- a legitimate "no data for this athlete" answer, must not raise.
+RESTING_HR_EMPTY_BODY = "Resting Heart Rate — Last 3 days\n========================\n"
+
+# CRITICAL 2: header present, body has leftover content that isn't a data row
+# -- the response shape was not recognised, must raise.
+RESTING_HR_GARBAGE_BODY = (
+    "Resting Heart Rate — Last 3 days\n========================\n\nService temporarily unavailable."
+)
+
+# CRITICAL 2: same two cases for training load.
+TRAINING_LOAD_EMPTY_BODY = "Training Load Assessment\n========================\n"
+TRAINING_LOAD_GARBAGE_BODY = "Training Load Assessment\n========================\n\n[no data]"
+
+# CRITICAL 2: same two cases for sleep HRV -- note both header sections
+# ("Sleep HRV" and "HRV Assessment") must be stripped for the empty case to
+# be recognised as genuinely empty.
+SLEEP_HRV_EMPTY_BODY = """Sleep HRV — 2026-09-02 to 2026-09-04
+========================
+Note: dates are wake-up days (each value comes from the night that ended that morning).
+
+HRV Assessment — Last 7 days
+========================
+"""
+SLEEP_HRV_GARBAGE_BODY = """Sleep HRV — 2026-09-02 to 2026-09-04
+========================
+Note: dates are wake-up days (each value comes from the night that ended that morning).
+
+HRV Assessment — Last 7 days
+========================
+
+Service temporarily unavailable."""
+
+# CRITICAL 2 worst case: a response carrying only the (much longer) time
+# series section, no assessment section at all. "Sleep HRV" alone as a guard
+# would pass here because it's a substring of "Sleep HRV Time Series".
+SLEEP_HRV_TIME_SERIES_ONLY = """Sleep HRV — 2026-09-02 to 2026-09-04
+========================
+
+Sleep HRV Time Series
+========================
+
+00:00 42 ms
+00:05 43 ms"""
+
+# IMPORTANT 3 (+ addendum): a record missing LabelId, Duration, or its Time
+# Window startTimestamp cannot be identified, stored, or timed -- each must
+# raise rather than silently coming back as None.
+SPORT_RECORD_MISSING_LABEL_ID = """Sport Records — 2026-09-02 to 2026-09-02 (1 records)
+========================
+
+1. Indoor Run — 2026-09-02
+   Location: Indoor Run
+   Time Window: startTimestamp=1788318848 | endTimestamp=1788322570
+   Duration: 1:00:05 | Distance: 10.92 km
+   Average Pace: 5:30 /km | Avg HR: 157 bpm | Calories: 555 kcal
+   SportType: 101"""
+
+SPORT_RECORD_MISSING_DURATION = """Sport Records — 2026-09-02 to 2026-09-02 (1 records)
+========================
+
+1. Indoor Run — 2026-09-02
+   Location: Indoor Run
+   Time Window: startTimestamp=1788318848 | endTimestamp=1788322570
+   Distance: 10.92 km
+   Average Pace: 5:30 /km | Avg HR: 157 bpm | Calories: 555 kcal
+   LabelId: 480049189982601318 | SportType: 101"""
+
+SPORT_RECORD_MISSING_TIME_WINDOW = """Sport Records — 2026-09-02 to 2026-09-02 (1 records)
+========================
+
+1. Indoor Run — 2026-09-02
+   Location: Indoor Run
+   Duration: 1:00:05 | Distance: 10.92 km
+   Average Pace: 5:30 /km | Avg HR: 157 bpm | Calories: 555 kcal
+   LabelId: 480049189982601318 | SportType: 101"""
+
 
 class TestDurationAndPace:
     def test_parses_hour_minute_second_duration(self):
@@ -126,6 +220,24 @@ class TestSportRecords:
     def test_returns_empty_list_when_there_are_no_records(self):
         assert p.parse_sport_records("Sport Records — none (0 records)\n========================") == []
 
+    def test_missing_label_id_raises(self):
+        # LabelId is the cross-provider dedup key -- a record we can't
+        # identify must not be silently returned with label_id=None.
+        with pytest.raises(p.CorosParseError):
+            p.parse_sport_records(SPORT_RECORD_MISSING_LABEL_ID)
+
+    def test_missing_duration_raises(self):
+        # activities.duration_seconds is REAL NOT NULL -- a record we can't
+        # time must not be silently returned with duration_seconds=None.
+        with pytest.raises(p.CorosParseError):
+            p.parse_sport_records(SPORT_RECORD_MISSING_DURATION)
+
+    def test_missing_time_window_raises(self):
+        # activities.start_time is TIMESTAMPTZ NOT NULL, and to_utc(None)
+        # would otherwise raise a confusing bare TypeError far from here.
+        with pytest.raises(p.CorosParseError):
+            p.parse_sport_records(SPORT_RECORD_MISSING_TIME_WINDOW)
+
 
 class TestActivityDetail:
     def test_extracts_elevation_gain_and_loss_separately(self):
@@ -164,6 +276,16 @@ class TestDailyMetrics:
         assert row["training_load_long"] == 71.0
         assert row["load_ratio"] == 1.08
 
+    def test_trailing_disclaimer_line_does_not_overwrite_real_date_row(self):
+        # A vendor footer sentence that happens to start with a date (e.g.
+        # "2026-09-04 data last refreshed at ...") must not be mistaken for a
+        # second block keyed to the same date, silently nulling out the real
+        # 77 / 71 / 1.08 row for 2026-09-04.
+        row = p.parse_training_load(TRAINING_LOAD_WITH_FOOTER)[date(2026, 9, 4)]
+        assert row["training_load_short"] == 77.0
+        assert row["training_load_long"] == 71.0
+        assert row["load_ratio"] == 1.08
+
 
 class TestContractGuard:
     def test_unrecognisable_sport_records_output_raises_rather_than_returning_nothing(self):
@@ -171,3 +293,39 @@ class TestContractGuard:
         # and quietly stop syncing. Fail loudly instead.
         with pytest.raises(p.CorosParseError):
             p.parse_sport_records("<html>maintenance</html>")
+
+    def test_sport_records_header_claims_records_but_body_has_none_raises(self):
+        # The header's own "(N records)" count says 2 but the body was cut
+        # off before any record entries -- must not look like "no activities".
+        with pytest.raises(p.CorosParseError):
+            p.parse_sport_records(SPORT_RECORDS_HEADER_COUNT_MISMATCH)
+
+    def test_resting_hr_header_with_garbage_body_raises(self):
+        with pytest.raises(p.CorosParseError):
+            p.parse_resting_hr(RESTING_HR_GARBAGE_BODY)
+
+    def test_resting_hr_header_with_genuinely_empty_body_returns_empty(self):
+        # A brand-new athlete with no resting-HR history is a real, legitimate
+        # case and must not raise.
+        assert p.parse_resting_hr(RESTING_HR_EMPTY_BODY) == {}
+
+    def test_training_load_header_with_garbage_body_raises(self):
+        with pytest.raises(p.CorosParseError):
+            p.parse_training_load(TRAINING_LOAD_GARBAGE_BODY)
+
+    def test_training_load_header_with_genuinely_empty_body_returns_empty(self):
+        assert p.parse_training_load(TRAINING_LOAD_EMPTY_BODY) == {}
+
+    def test_sleep_hrv_header_with_garbage_body_raises(self):
+        with pytest.raises(p.CorosParseError):
+            p.parse_sleep_hrv(SLEEP_HRV_GARBAGE_BODY)
+
+    def test_sleep_hrv_header_with_genuinely_empty_body_returns_empty(self):
+        assert p.parse_sleep_hrv(SLEEP_HRV_EMPTY_BODY) == {}
+
+    def test_sleep_hrv_time_series_only_response_raises(self):
+        # "Sleep HRV" alone would wrongly pass as a guard here since it's a
+        # substring of the "Sleep HRV Time Series" section heading -- the
+        # assessment section itself must be required.
+        with pytest.raises(p.CorosParseError):
+            p.parse_sleep_hrv(SLEEP_HRV_TIME_SERIES_ONLY)

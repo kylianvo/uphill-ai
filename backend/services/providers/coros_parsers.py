@@ -8,6 +8,15 @@ here is paired with a fixture test built from a verbatim real response.
 Parsers raise CorosParseError when output does not look like the expected shape
 at all. They must never return an empty result for unrecognised input -- that
 reads downstream as "the athlete did nothing", which silently stops sync.
+
+Guard design: a substring check on the response's title banner is not enough --
+a truncated or garbled response can still carry the title text. Beyond the
+banner check, each dict/list-returning parser also verifies that it actually
+extracted something whenever the stripped response body (banner, "====" rules,
+and "Note:" preambles removed) still has content left over. A body that is
+genuinely empty after stripping is treated as a legitimate "no data for this
+athlete" answer, not an error -- that happens for real, e.g. a brand-new
+athlete with no history yet.
 """
 
 import re
@@ -15,7 +24,10 @@ from datetime import UTC, date, datetime
 from typing import Any
 
 _RECORD_HEADER = re.compile(r"^\s*(\d+)\.\s+(.+?)\s+—\s+(\d{4}-\d{2}-\d{2})\s*$", re.M)
-_DATE_LINE = re.compile(r"^(\d{4}-\d{2}-\d{2})", re.M)
+# Anchored to lines that are *only* a date -- a vendor-added trailing sentence
+# that happens to start with a date (e.g. a footer disclaimer) must not be
+# mistaken for a new block boundary.
+_DATE_LINE = re.compile(r"^(\d{4}-\d{2}-\d{2})\s*$", re.M)
 
 
 class CorosParseError(ValueError):
@@ -46,11 +58,43 @@ def _search_int(pattern: str, text: str) -> int | None:
     return int(value) if value is not None else None
 
 
+def _drop_lines(text: str, *line_patterns: str) -> str:
+    """Strip banner/title/separator/note lines matching any of the given
+    whole-line regexes, returning whatever is left.
+
+    Used by the dict/list-returning parsers to tell a genuinely empty response
+    body (a legitimate "no data" answer) apart from a body that has leftover
+    content we failed to recognise (a truncated or reshaped response).
+    """
+    compiled = [re.compile(pattern) for pattern in line_patterns]
+    kept = [
+        line.strip()
+        for line in text.split("\n")
+        if line.strip() and not any(pattern.fullmatch(line.strip()) for pattern in compiled)
+    ]
+    return "\n".join(kept)
+
+
 def parse_sport_records(text: str) -> list[dict[str, Any]]:
     if "Sport Records" not in text:
         raise CorosParseError("querySportRecords output missing its 'Sport Records' header")
 
     headers = list(_RECORD_HEADER.finditer(text))
+
+    # The header line carries an authoritative "(N records)" count -- stronger
+    # evidence than "is there any text left" for telling a real empty result
+    # (N == 0) apart from a truncated response that claims records but has none.
+    count_match = re.search(r"\((\d+)\s*records?\)", text)
+    expected_count = int(count_match.group(1)) if count_match else None
+
+    if not headers:
+        if expected_count == 0:
+            return []
+        raise CorosParseError(
+            "querySportRecords output has a 'Sport Records' header but no parsable "
+            "record entries -- response shape may have changed"
+        )
+
     records: list[dict[str, Any]] = []
     for index, header in enumerate(headers):
         end = headers[index + 1].start() if index + 1 < len(headers) else len(text)
@@ -59,16 +103,41 @@ def parse_sport_records(text: str) -> list[dict[str, Any]]:
         coords = re.search(r"Start Coordinates:\s*(-?[\d.]+),\s*(-?[\d.]+)", block)
         duration = re.search(r"Duration:\s*([\d:]+)", block)
         pace = re.search(r"Average Pace:\s*([\d:]+)\s*/km", block)
+        label_id_match = re.search(r"LabelId:\s*(\d+)", block)
+        start_timestamp_match = re.search(r"startTimestamp=(\d+)", block)
+
+        # LabelId is the cross-provider dedup key, Duration backs a NOT NULL DB
+        # column, and start_timestamp becomes activities.start_time (also NOT
+        # NULL, and fed straight into to_utc() by Task 6's adapter -- a missing
+        # value there would otherwise surface as a bare TypeError from
+        # datetime.fromtimestamp(None) far from the actual cause). A record
+        # missing any of the three cannot be identified, timed, or stored, so
+        # it must fail loudly rather than silently carry a None through.
+        if label_id_match is None:
+            raise CorosParseError(
+                f"querySportRecords record #{index + 1} is missing its LabelId -- "
+                "cannot dedupe this activity across providers"
+            )
+        if duration is None:
+            raise CorosParseError(
+                f"querySportRecords record #{index + 1} is missing its Duration -- "
+                "cannot store an activity with no duration"
+            )
+        if start_timestamp_match is None:
+            raise CorosParseError(
+                f"querySportRecords record #{index + 1} is missing its Time Window "
+                "startTimestamp -- cannot store an activity with no start time"
+            )
 
         records.append(
             {
-                "label_id": (re.search(r"LabelId:\s*(\d+)", block) or [None, None])[1],
+                "label_id": label_id_match[1],
                 "sport_type": _search_int(r"SportType:\s*(\d+)", block),
                 "sport_label": header.group(2).strip(),
                 "date": date.fromisoformat(header.group(3)),
-                "start_timestamp": _search_int(r"startTimestamp=(\d+)", block),
+                "start_timestamp": int(start_timestamp_match.group(1)),
                 "end_timestamp": _search_int(r"endTimestamp=(\d+)", block),
-                "duration_seconds": parse_duration(duration.group(1)) if duration else None,
+                "duration_seconds": parse_duration(duration.group(1)),
                 "distance_km": _search_float(r"Distance:\s*([\d.]+)\s*km", block),
                 "avg_pace_sec_per_km": parse_pace(pace.group(1)) if pace else None,
                 "avg_hr": _search_int(r"Avg HR:\s*(\d+)", block),
@@ -108,14 +177,27 @@ def parse_activity_detail(text: str) -> dict[str, Any]:
 def parse_resting_hr(text: str) -> dict[date, int]:
     if "Resting Heart Rate" not in text:
         raise CorosParseError("queryRestingHeartRate output missing its header")
-    return {
+
+    entries = {
         date.fromisoformat(day): int(bpm) for day, bpm in re.findall(r"^(\d{4}-\d{2}-\d{2}):\s*(\d+)\s*bpm", text, re.M)
     }
+    if not entries:
+        remaining = _drop_lines(text, r"Resting Heart Rate.*", r"=+")
+        if remaining:
+            raise CorosParseError(
+                "queryRestingHeartRate output has a header but no parsable date rows "
+                "-- response shape may have changed"
+            )
+    return entries
 
 
 def parse_sleep_hrv(text: str) -> dict[date, dict[str, Any]]:
-    if "Sleep HRV" not in text and "HRV Assessment" not in text:
-        raise CorosParseError("querySleepHrv output missing its header")
+    # "Sleep HRV" alone is not a safe guard -- it is a substring of the
+    # "Sleep HRV Time Series" section heading, so a response containing only
+    # that (much longer) section would slip past a check on "Sleep HRV".
+    # The assessment section itself must be present.
+    if "HRV Assessment" not in text:
+        raise CorosParseError("querySleepHrv output missing its 'HRV Assessment' header")
 
     assessment = text.split("Sleep HRV Time Series")[0]
     out: dict[date, dict[str, Any]] = {}
@@ -130,6 +212,20 @@ def parse_sleep_hrv(text: str) -> dict[date, dict[str, Any]]:
             "hrv_status": avg.group(2).strip(),
             "hrv_baseline_ms": _search_float(r"Baseline:\s*([\d.]+)\s*ms", body),
         }
+
+    if not out:
+        remaining = _drop_lines(
+            assessment,
+            r"Sleep HRV.*",
+            r"HRV Assessment.*",
+            r"=+",
+            r"Note:.*",
+        )
+        if remaining:
+            raise CorosParseError(
+                "querySleepHrv output has an 'HRV Assessment' header but no parsable "
+                "date rows -- response shape may have changed"
+            )
     return out
 
 
@@ -142,12 +238,31 @@ def parse_training_load(text: str) -> dict[date, dict[str, Any]]:
     for index, match in enumerate(days):
         end = days[index + 1].start() if index + 1 < len(days) else len(text)
         block = text[match.start() : end]
-        out[date.fromisoformat(match.group(1))] = {
+        parsed = {
             "training_load_short": _search_float(r"Short-Term Load:\s*([\d.]+)", block),
             "training_load_long": _search_float(r"Long-Term Load:\s*([\d.]+)", block),
             "load_ratio": _search_float(r"Load Ratio:\s*([\d.]+)", block),
             "comment": (re.search(r"Comment:\s*(.+)", block) or [None, None])[1],
         }
+        if (
+            parsed["training_load_short"] is None
+            and parsed["training_load_long"] is None
+            and parsed["load_ratio"] is None
+        ):
+            # A block carrying none of the numeric fields is boilerplate (e.g. a
+            # footer sentence that happens to start with a date), not a real
+            # entry -- never let it silently overwrite a populated entry for
+            # the same date.
+            continue
+        out[date.fromisoformat(match.group(1))] = parsed
+
+    if not out:
+        remaining = _drop_lines(text, r"Training Load Assessment.*", r"=+")
+        if remaining:
+            raise CorosParseError(
+                "queryTrainingLoadAssessment output has a header but no parsable "
+                "date rows -- response shape may have changed"
+            )
     return out
 
 
