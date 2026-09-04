@@ -14,6 +14,7 @@ from datetime import date
 from typing import Any, Protocol
 
 from log_utils import get_logger
+from services.mcp_client import McpError
 from services.providers import coros_parsers as parsers
 from services.providers.base import CanonicalActivity, CanonicalDailyMetric
 
@@ -28,6 +29,19 @@ SPORT_TYPE_NAMES = {
     102: "trail_run",
     103: "track_run",
 }
+
+
+class CorosDailyMetricsUnavailableError(RuntimeError):
+    """Raised when every independent COROS daily-metric source failed.
+
+    Returning an empty list in that situation would read downstream as "this
+    athlete has no health data today", which is the same silent-failure class
+    the COROS parsers were hardened against in Task 5 -- so a total outage
+    across resting HR, sleep HRV and training load must raise, not silently
+    produce zero rows. A partial outage (one or two sources failing) is not
+    this error -- those cases return a merged result built from whatever
+    succeeded.
+    """
 
 
 class SupportsCallTool(Protocol):
@@ -86,9 +100,13 @@ class CorosAdapter:
                         },
                     )
                 )
-            except parsers.CorosParseError:
+            except (parsers.CorosParseError, McpError) as exc:
                 # A missing detail must not drop the activity -- the summary
-                # alone is enough to match it against a planned session.
+                # alone is enough to match it against a planned session. This
+                # also covers transient MCP failures (timeout, rate limit,
+                # isError result) hitting a single detail call mid-loop --
+                # those must not abort the whole batch and discard every
+                # activity already collected.
                 logger.warning(
                     "coros activity detail unavailable",
                     extra={
@@ -96,6 +114,8 @@ class CorosAdapter:
                             "service": "coros_adapter",
                             "event": "detail_missing",
                             "label_id": summary["label_id"],
+                            "error_type": type(exc).__name__,
+                            "error": str(exc),
                         }
                     },
                 )
@@ -124,11 +144,79 @@ class CorosAdapter:
         return activities
 
     async def fetch_daily_metrics(self, days: int = 7) -> list[CanonicalDailyMetric]:
-        resting = parsers.parse_resting_hr(await self._mcp.call_tool("queryRestingHeartRate", {"days": days}))
-        hrv = parsers.parse_sleep_hrv(
-            await self._mcp.call_tool("querySleepHrv", {"startDate": None, "endDate": None, "days": min(days, 7)})
-        )
-        load = parsers.parse_training_load(await self._mcp.call_tool("queryTrainingLoadAssessment", {"days": days}))
+        """Merge three independent COROS daily-metric sources by date.
+
+        Each source (resting HR, sleep HRV, training load) is fetched and
+        parsed independently. One source failing (a parse error or an MCP
+        transport failure) must not discard data already obtained from the
+        other two -- so each is guarded separately and contributes an empty
+        result on failure. Only when all three fail does this raise, rather
+        than silently returning `[]`, which downstream would otherwise read
+        as "this athlete has no health data" instead of "COROS was
+        unavailable".
+        """
+        resting: dict[date, int] = {}
+        hrv: dict[date, dict[str, Any]] = {}
+        load: dict[date, dict[str, Any]] = {}
+        failures: list[tuple[str, Exception]] = []
+
+        try:
+            resting = parsers.parse_resting_hr(await self._mcp.call_tool("queryRestingHeartRate", {"days": days}))
+        except (parsers.CorosParseError, McpError) as exc:
+            failures.append(("queryRestingHeartRate", exc))
+            logger.warning(
+                "coros daily metric source unavailable",
+                extra={
+                    "fields": {
+                        "service": "coros_adapter",
+                        "event": "daily_metric_source_failed",
+                        "source": "queryRestingHeartRate",
+                        "error_type": type(exc).__name__,
+                        "error": str(exc),
+                    }
+                },
+            )
+
+        try:
+            hrv = parsers.parse_sleep_hrv(
+                await self._mcp.call_tool("querySleepHrv", {"startDate": None, "endDate": None, "days": min(days, 7)})
+            )
+        except (parsers.CorosParseError, McpError) as exc:
+            failures.append(("querySleepHrv", exc))
+            logger.warning(
+                "coros daily metric source unavailable",
+                extra={
+                    "fields": {
+                        "service": "coros_adapter",
+                        "event": "daily_metric_source_failed",
+                        "source": "querySleepHrv",
+                        "error_type": type(exc).__name__,
+                        "error": str(exc),
+                    }
+                },
+            )
+
+        try:
+            load = parsers.parse_training_load(await self._mcp.call_tool("queryTrainingLoadAssessment", {"days": days}))
+        except (parsers.CorosParseError, McpError) as exc:
+            failures.append(("queryTrainingLoadAssessment", exc))
+            logger.warning(
+                "coros daily metric source unavailable",
+                extra={
+                    "fields": {
+                        "service": "coros_adapter",
+                        "event": "daily_metric_source_failed",
+                        "source": "queryTrainingLoadAssessment",
+                        "error_type": type(exc).__name__,
+                        "error": str(exc),
+                    }
+                },
+            )
+
+        if len(failures) == 3:
+            names = ", ".join(name for name, _ in failures)
+            last_exc = failures[-1][1]
+            raise CorosDailyMetricsUnavailableError(f"all COROS daily-metric sources failed: {names}") from last_exc
 
         metrics: list[CanonicalDailyMetric] = []
         for day in sorted(set(resting) | set(hrv) | set(load)):
