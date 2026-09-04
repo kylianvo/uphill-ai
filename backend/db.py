@@ -2300,3 +2300,213 @@ def add_kb_chunks(domain: str, chunks: list[dict[str, Any]]) -> int:
             inserted += 1
         conn.commit()
     return inserted
+
+
+# ---------------------------------------------------------------------------
+# Device integrations (COROS today; Garmin when their programme reopens)
+# ---------------------------------------------------------------------------
+
+# Two activities are treated as the same session seen through different
+# providers when they start within this window and agree closely on shape.
+# Strava/COROS/manual copies of one run differ by seconds, not minutes.
+_DUPLICATE_START_WINDOW_SECONDS = 180
+_DUPLICATE_TOLERANCE = 0.02
+
+
+def _find_duplicate(conn, user_id: int, activity) -> int | None:
+    rows = conn.execute(
+        text("""
+        SELECT id, duration_seconds, distance_km FROM activities
+        WHERE user_id = :u
+          AND duplicate_of IS NULL
+          AND source_provider <> :p
+          AND abs(extract(epoch FROM (start_time - :start))) <= :window
+        """),
+        {
+            "u": user_id,
+            "p": activity.provider,
+            "start": activity.start_time,
+            "window": _DUPLICATE_START_WINDOW_SECONDS,
+        },
+    ).fetchall()
+
+    for row in rows:
+        if activity.duration_seconds and row[1]:
+            if abs(row[1] - activity.duration_seconds) / row[1] > _DUPLICATE_TOLERANCE:
+                continue
+        if activity.distance_km and row[2]:
+            if abs(row[2] - activity.distance_km) / row[2] > _DUPLICATE_TOLERANCE:
+                continue
+        return row[0]
+    return None
+
+
+def upsert_activity(user_id: int, activity) -> int:
+    """Insert an activity, or return the existing row id if we already have it.
+
+    Identity is (provider, external_id) held in the external_ids JSONB map, so
+    the same run arriving from two providers converges rather than duplicating.
+    """
+    with engine.connect() as conn:
+        existing = conn.execute(
+            text("SELECT id FROM activities WHERE user_id = :u AND external_ids ->> :p = :e"),
+            {"u": user_id, "p": activity.provider, "e": activity.external_id},
+        ).scalar()
+        if existing:
+            return existing
+
+        duplicate_of = _find_duplicate(conn, user_id, activity)
+        row = conn.execute(
+            text("""
+            INSERT INTO activities (
+                user_id, source_provider, external_ids, device_model, activity_type,
+                start_time, end_time, duration_seconds, distance_km,
+                elevation_gain_m, elevation_loss_m, avg_hr, max_hr,
+                avg_pace_sec_per_km, adjusted_pace_sec_per_km, calories,
+                training_load, aerobic_te, anaerobic_te, duplicate_of
+            ) VALUES (
+                :user_id, :provider, jsonb_build_object(:provider, :external_id), :device_model,
+                :activity_type, :start_time, :end_time, :duration_seconds, :distance_km,
+                :elevation_gain_m, :elevation_loss_m, :avg_hr, :max_hr,
+                :avg_pace, :adjusted_pace, :calories,
+                :training_load, :aerobic_te, :anaerobic_te, :duplicate_of
+            ) RETURNING id
+            """),
+            {
+                "user_id": user_id,
+                "provider": activity.provider,
+                "external_id": activity.external_id,
+                "device_model": activity.device_model,
+                "activity_type": activity.activity_type,
+                "start_time": activity.start_time,
+                "end_time": activity.end_time,
+                "duration_seconds": activity.duration_seconds,
+                "distance_km": activity.distance_km,
+                "elevation_gain_m": activity.elevation_gain_m,
+                "elevation_loss_m": activity.elevation_loss_m,
+                "avg_hr": activity.avg_hr,
+                "max_hr": activity.max_hr,
+                "avg_pace": activity.avg_pace_sec_per_km,
+                "adjusted_pace": activity.adjusted_pace_sec_per_km,
+                "calories": activity.calories,
+                "training_load": activity.training_load,
+                "aerobic_te": activity.aerobic_te,
+                "anaerobic_te": activity.anaerobic_te,
+                "duplicate_of": duplicate_of,
+            },
+        ).fetchone()
+        conn.commit()
+        return row[0]
+
+
+def upsert_daily_metric(user_id: int, metric) -> int:
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("""
+            INSERT INTO daily_metrics (
+                user_id, metric_date, source_provider, resting_hr, hrv_ms,
+                hrv_baseline_ms, hrv_status, training_load_short,
+                training_load_long, load_ratio, recovery_percent
+            ) VALUES (
+                :user_id, :metric_date, :provider, :resting_hr, :hrv_ms,
+                :hrv_baseline_ms, :hrv_status, :load_short, :load_long,
+                :load_ratio, :recovery_percent
+            )
+            ON CONFLICT (user_id, metric_date, source_provider) DO UPDATE SET
+                resting_hr = COALESCE(EXCLUDED.resting_hr, daily_metrics.resting_hr),
+                hrv_ms = COALESCE(EXCLUDED.hrv_ms, daily_metrics.hrv_ms),
+                hrv_baseline_ms = COALESCE(EXCLUDED.hrv_baseline_ms, daily_metrics.hrv_baseline_ms),
+                hrv_status = COALESCE(EXCLUDED.hrv_status, daily_metrics.hrv_status),
+                training_load_short = COALESCE(EXCLUDED.training_load_short, daily_metrics.training_load_short),
+                training_load_long = COALESCE(EXCLUDED.training_load_long, daily_metrics.training_load_long),
+                load_ratio = COALESCE(EXCLUDED.load_ratio, daily_metrics.load_ratio),
+                recovery_percent = COALESCE(EXCLUDED.recovery_percent, daily_metrics.recovery_percent)
+            RETURNING id
+            """),
+            {
+                "user_id": user_id,
+                "metric_date": metric.metric_date,
+                "provider": metric.provider,
+                "resting_hr": metric.resting_hr,
+                "hrv_ms": metric.hrv_ms,
+                "hrv_baseline_ms": metric.hrv_baseline_ms,
+                "hrv_status": metric.hrv_status,
+                "load_short": metric.training_load_short,
+                "load_long": metric.training_load_long,
+                "load_ratio": metric.load_ratio,
+                "recovery_percent": metric.recovery_percent,
+            },
+        ).fetchone()
+        conn.commit()
+        return row[0]
+
+
+def get_connection(user_id: int, provider: str) -> dict[str, Any] | None:
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("SELECT * FROM athlete_connections WHERE user_id = :u AND provider = :p"),
+            {"u": user_id, "p": provider},
+        ).fetchone()
+    return _row_to_dict(row) if row else None
+
+
+def save_connection(
+    user_id: int,
+    provider: str,
+    access_token_enc: str,
+    refresh_token_enc: str | None,
+    token_expires_at,
+    scopes: str,
+    provider_user_id: str | None = None,
+) -> int:
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("""
+            INSERT INTO athlete_connections (
+                user_id, provider, provider_user_id, access_token_enc,
+                refresh_token_enc, token_expires_at, scopes, status
+            ) VALUES (:u, :p, :pu, :at, :rt, :exp, :sc, 'active')
+            ON CONFLICT (user_id, provider) DO UPDATE SET
+                provider_user_id = EXCLUDED.provider_user_id,
+                access_token_enc = EXCLUDED.access_token_enc,
+                refresh_token_enc = EXCLUDED.refresh_token_enc,
+                token_expires_at = EXCLUDED.token_expires_at,
+                scopes = EXCLUDED.scopes,
+                status = 'active'
+            RETURNING id
+            """),
+            {
+                "u": user_id,
+                "p": provider,
+                "pu": provider_user_id,
+                "at": access_token_enc,
+                "rt": refresh_token_enc,
+                "exp": token_expires_at,
+                "sc": scopes,
+            },
+        ).fetchone()
+        conn.commit()
+        return row[0]
+
+
+def delete_provider_data(user_id: int, provider: str) -> None:
+    """Hard-delete everything sourced from a provider.
+
+    COROS API Agreement 9.5 requires deletion or de-identification within 24
+    hours of the athlete revoking access, so this really deletes -- it does not
+    set a flag.
+    """
+    with engine.connect() as conn:
+        conn.execute(
+            text("DELETE FROM activities WHERE user_id = :u AND source_provider = :p"),
+            {"u": user_id, "p": provider},
+        )
+        conn.execute(
+            text("DELETE FROM daily_metrics WHERE user_id = :u AND source_provider = :p"),
+            {"u": user_id, "p": provider},
+        )
+        conn.execute(
+            text("DELETE FROM athlete_connections WHERE user_id = :u AND provider = :p"),
+            {"u": user_id, "p": provider},
+        )
+        conn.commit()
