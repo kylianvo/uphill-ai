@@ -64,5 +64,14 @@ class Config:
     METABASE_ADMIN_PASSWORD: str = os.getenv("METABASE_ADMIN_PASSWORD", "")
     API_BASE_URL: str = os.getenv("API_BASE_URL", "http://localhost:8000")
 
+    # COROS MCP integration. Obtain CLIENT_ID/SECRET once by running
+    # scripts/register_coros_client.py (RFC 7591 dynamic client registration).
+    COROS_CLIENT_ID: str = os.getenv("COROS_CLIENT_ID", "")
+    COROS_CLIENT_SECRET: str = os.getenv("COROS_CLIENT_SECRET", "")
+    COROS_REDIRECT_URI: str = os.getenv(
+        "COROS_REDIRECT_URI", "https://api.uphill-ai.io.vn/api/integrations/coros/callback"
+    )
+    COROS_MCP_ENDPOINT: str = os.getenv("COROS_MCP_ENDPOINT", "https://mcp.coros.com/mcp")
+
 
 settings = Config()
