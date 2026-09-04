@@ -33,3 +33,25 @@ def test_decrypting_with_the_wrong_key_raises():
 def test_encrypting_without_a_configured_key_raises_a_clear_error():
     with pytest.raises(token_crypto.TokenEncryptionUnconfigured):
         token_crypto.encrypt_token("secret", key="")
+
+
+def test_uses_the_configured_key_when_none_is_passed(monkeypatch):
+    # Production code calls encrypt_token/decrypt_token with no key argument,
+    # relying on settings.TOKEN_ENCRYPTION_KEY. This test verifies that path.
+    from config import settings
+
+    key = token_crypto.generate_key()
+    monkeypatch.setattr(settings, "TOKEN_ENCRYPTION_KEY", key)
+
+    enc = token_crypto.encrypt_token("refresh-token-xyz")
+    assert token_crypto.decrypt_token(enc) == "refresh-token-xyz"
+
+
+def test_encrypting_with_no_key_argument_raises_when_settings_key_is_empty(monkeypatch):
+    # When TOKEN_ENCRYPTION_KEY is not configured and no key is passed,
+    # encrypt_token should raise TokenEncryptionUnconfigured.
+    from config import settings
+
+    monkeypatch.setattr(settings, "TOKEN_ENCRYPTION_KEY", "")
+    with pytest.raises(token_crypto.TokenEncryptionUnconfigured):
+        token_crypto.encrypt_token("secret")
