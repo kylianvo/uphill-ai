@@ -80,3 +80,75 @@ def test_delete_provider_data_removes_activities_and_metrics(user_id):
         activities = conn.execute(text("SELECT count(*) FROM activities WHERE user_id = :u"), {"u": user_id}).scalar()
         metrics = conn.execute(text("SELECT count(*) FROM daily_metrics WHERE user_id = :u"), {"u": user_id}).scalar()
     assert (activities, metrics) == (0, 0)
+
+
+def test_save_connection_preserves_refresh_token_when_reconnect_omits_it(user_id):
+    """A reconnect that doesn't get a fresh refresh token back from the
+    provider's token exchange passes refresh_token_enc=None. That must not
+    clobber the previously stored token -- otherwise background sync breaks
+    silently until the athlete disconnects and reconnects."""
+    expires_at = datetime.now(UTC) + timedelta(hours=1)
+    db.save_connection(
+        user_id,
+        "coros",
+        "enc-access-1",
+        "enc-refresh-1",
+        expires_at,
+        "workout:read",
+        provider_user_id="coros-athlete-1",
+    )
+    db.save_connection(user_id, "coros", "enc-access-2", None, expires_at, "workout:read")
+
+    conn_row = db.get_connection(user_id, "coros")
+    assert conn_row["refresh_token_enc"] == "enc-refresh-1"
+    assert conn_row["access_token_enc"] == "enc-access-2"
+    assert conn_row["status"] == "active"
+
+
+def test_upsert_activity_survives_a_concurrent_insert_for_the_same_identity(user_id, monkeypatch):
+    """Exercises idx_activities_provider_external itself, not just the
+    app-level pre-check SELECT: forces a second, independent connection to
+    insert and commit the same (user, provider, external_id) row in the gap
+    between this call's own pre-check and its INSERT -- the exact race a
+    manual "sync now" and the hourly cron sweep could produce for the same
+    provider. _find_duplicate runs in precisely that gap, so patching it to
+    also perform the racing insert reproduces the race deterministically,
+    without depending on real thread timing."""
+    activity = _activity(external_id="race1", provider="coros")
+    winner = {}
+    real_find_duplicate = db._find_duplicate
+
+    def racing_find_duplicate(conn, uid, act):
+        result = real_find_duplicate(conn, uid, act)
+        with db.engine.connect() as other_conn:
+            winner["id"] = other_conn.execute(
+                text("""
+                INSERT INTO activities (
+                    user_id, source_provider, external_ids, device_model,
+                    activity_type, start_time, duration_seconds, distance_km
+                ) VALUES (
+                    :u, :p, jsonb_build_object(:p, :e), :dm, :at, :st, :dur, :dist
+                ) RETURNING id
+                """),
+                {
+                    "u": uid,
+                    "p": act.provider,
+                    "e": act.external_id,
+                    "dm": act.device_model,
+                    "at": act.activity_type,
+                    "st": act.start_time,
+                    "dur": act.duration_seconds,
+                    "dist": act.distance_km,
+                },
+            ).scalar()
+            other_conn.commit()
+        return result
+
+    monkeypatch.setattr(db, "_find_duplicate", racing_find_duplicate)
+
+    result = db.upsert_activity(user_id, activity)
+
+    assert result == winner["id"]
+    with db.engine.connect() as conn:
+        count = conn.execute(text("SELECT count(*) FROM activities WHERE user_id = :u"), {"u": user_id}).scalar()
+    assert count == 1

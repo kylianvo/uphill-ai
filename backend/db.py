@@ -387,6 +387,21 @@ def init_db():
         conn.execute(
             text("CREATE INDEX IF NOT EXISTS idx_activities_user_start " "ON activities (user_id, start_time DESC)")
         )
+
+        # Enforces upsert_activity's (provider, external_id) idempotency at the
+        # database level -- the app-level pre-check SELECT it also does is only
+        # an optimization, since two concurrent syncs for the same provider (a
+        # manual "sync now" racing the hourly cron sweep, say) can both pass that
+        # SELECT before either commits. Rows whose external_ids has no key for
+        # their own source_provider (shouldn't happen via upsert_activity, but
+        # cheap to allow) get NULL there, and Postgres never treats NULLs as
+        # duplicates of each other, so those remain unrestricted.
+        conn.execute(
+            text("""
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_activities_provider_external
+            ON activities (user_id, source_provider, (external_ids ->> source_provider))
+            """)
+        )
         conn.commit()
 
         for col_sql in [
@@ -2346,6 +2361,14 @@ def upsert_activity(user_id: int, activity) -> int:
 
     Identity is (provider, external_id) held in the external_ids JSONB map, so
     the same run arriving from two providers converges rather than duplicating.
+    The SELECT below is only an optimization to skip the INSERT in the common
+    case -- idempotency itself is enforced by idx_activities_provider_external
+    (a unique index on (user_id, source_provider, external_ids ->> source_provider)
+    created in init_db()), because two concurrent callers for the same provider
+    (e.g. a manual "sync now" racing the hourly cron sweep) can both pass this
+    SELECT before either has committed its INSERT. When that happens the second
+    INSERT's ON CONFLICT DO NOTHING is a no-op and RETURNING yields no row, so we
+    re-SELECT rather than insert a true duplicate.
     """
     with engine.connect() as conn:
         existing = conn.execute(
@@ -2370,7 +2393,9 @@ def upsert_activity(user_id: int, activity) -> int:
                 :elevation_gain_m, :elevation_loss_m, :avg_hr, :max_hr,
                 :avg_pace, :adjusted_pace, :calories,
                 :training_load, :aerobic_te, :anaerobic_te, :duplicate_of
-            ) RETURNING id
+            )
+            ON CONFLICT (user_id, source_provider, (external_ids ->> source_provider)) DO NOTHING
+            RETURNING id
             """),
             {
                 "user_id": user_id,
@@ -2395,6 +2420,20 @@ def upsert_activity(user_id: int, activity) -> int:
                 "duplicate_of": duplicate_of,
             },
         ).fetchone()
+
+        if row is None:
+            # Lost the race: a concurrent upsert for this exact
+            # (user_id, source_provider, external_id) committed first. Its row
+            # is now visible to us (READ COMMITTED re-checks visibility per
+            # statement, and that committed row is what made our own INSERT
+            # conflict), so re-read it instead of losing the activity.
+            existing = conn.execute(
+                text("SELECT id FROM activities WHERE user_id = :u AND external_ids ->> :p = :e"),
+                {"u": user_id, "p": activity.provider, "e": activity.external_id},
+            ).scalar()
+            conn.commit()
+            return existing
+
         conn.commit()
         return row[0]
 
@@ -2467,9 +2506,9 @@ def save_connection(
                 refresh_token_enc, token_expires_at, scopes, status
             ) VALUES (:u, :p, :pu, :at, :rt, :exp, :sc, 'active')
             ON CONFLICT (user_id, provider) DO UPDATE SET
-                provider_user_id = EXCLUDED.provider_user_id,
+                provider_user_id = COALESCE(EXCLUDED.provider_user_id, athlete_connections.provider_user_id),
                 access_token_enc = EXCLUDED.access_token_enc,
-                refresh_token_enc = EXCLUDED.refresh_token_enc,
+                refresh_token_enc = COALESCE(EXCLUDED.refresh_token_enc, athlete_connections.refresh_token_enc),
                 token_expires_at = EXCLUDED.token_expires_at,
                 scopes = EXCLUDED.scopes,
                 status = 'active'
