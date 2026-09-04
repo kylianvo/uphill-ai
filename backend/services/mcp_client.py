@@ -42,7 +42,11 @@ class McpClient:
         await self._client.aclose()
 
     async def __aenter__(self) -> "McpClient":
-        await self.initialize()
+        try:
+            await self.initialize()
+        except BaseException:
+            await self.aclose()
+            raise
         return self
 
     async def __aexit__(self, *exc_info: object) -> None:
@@ -64,23 +68,42 @@ class McpClient:
         return self._next_id
 
     @staticmethod
-    def _decode(response: httpx.Response) -> dict[str, Any]:
-        """Accepts either a plain JSON body or an SSE stream carrying one message."""
+    def _decode(response: httpx.Response, expected_id: int) -> dict[str, Any]:
+        """Accepts either a plain JSON body or an SSE stream carrying one message.
+
+        An SSE stream may legitimately interleave notification frames (e.g.
+        notifications/progress) ahead of the actual JSON-RPC response, and a
+        single frame's data may legally be split across multiple `data:`
+        lines. So: split the body into events on blank lines, join each
+        event's `data:` lines with "\\n" before parsing, skip frames that
+        fail to parse or lack a matching `id` (notifications have no `id`
+        at all), and return the first frame whose `id` equals `expected_id`.
+        If none match -- including the case where there was no data frame
+        at all -- raise McpError.
+        """
         content_type = response.headers.get("content-type", "")
         if "text/event-stream" in content_type:
-            for line in response.text.splitlines():
-                if line.startswith("data:"):
-                    return json.loads(line[5:].strip())
-            raise McpError("SSE response contained no data frame")
+            for event in response.text.split("\n\n"):
+                data_lines = [line[len("data:") :].strip() for line in event.splitlines() if line.startswith("data:")]
+                if not data_lines:
+                    continue
+                try:
+                    frame = json.loads("\n".join(data_lines))
+                except json.JSONDecodeError:
+                    continue
+                if frame.get("id") == expected_id:
+                    return frame
+            raise McpError(f"SSE response contained no frame matching request id {expected_id}")
         return response.json()
 
     async def initialize(self) -> None:
+        request_id = self._rpc_id()
         response = await self._client.post(
             self._endpoint,
             headers=self._headers(),
             json={
                 "jsonrpc": "2.0",
-                "id": self._rpc_id(),
+                "id": request_id,
                 "method": "initialize",
                 "params": {
                     "protocolVersion": PROTOCOL_VERSION,
@@ -91,7 +114,7 @@ class McpClient:
         )
         response.raise_for_status()
         self._session_id = response.headers.get("Mcp-Session-Id") or self._session_id
-        payload = self._decode(response)
+        payload = self._decode(response, request_id)
         if "error" in payload:
             raise McpError(str(payload["error"].get("message", payload["error"])))
 
@@ -102,18 +125,19 @@ class McpClient:
         )
 
     async def call_tool(self, name: str, arguments: dict[str, Any]) -> str:
+        request_id = self._rpc_id()
         response = await self._client.post(
             self._endpoint,
             headers=self._headers(),
             json={
                 "jsonrpc": "2.0",
-                "id": self._rpc_id(),
+                "id": request_id,
                 "method": "tools/call",
                 "params": {"name": name, "arguments": arguments},
             },
         )
         response.raise_for_status()
-        payload = self._decode(response)
+        payload = self._decode(response, request_id)
         if "error" in payload:
             raise McpError(str(payload["error"].get("message", payload["error"])))
 
