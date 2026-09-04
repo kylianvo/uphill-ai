@@ -31,7 +31,8 @@ import secrets
 import time
 from typing import Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+import httpx
+from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
 
 import db
@@ -121,6 +122,13 @@ async def get_current_user(authorization: str | None = Header(None)) -> dict[str
 _PENDING_AUTH: dict[str, tuple[int, str, float]] = {}
 _PENDING_AUTH_TTL_SECONDS = 600  # 10 minutes -- generous for a redirect round trip
 
+# The cookie that binds an authorization attempt to the browser that started
+# it (see coros_connect / coros_callback below -- RFC 6749 section 10.12
+# client CSRF). Scoped to the callback path only so it isn't sent on every
+# request to the API.
+COROS_OAUTH_STATE_COOKIE = "coros_oauth_state"
+COROS_CALLBACK_PATH = "/api/integrations/coros/callback"
+
 
 def _prune_pending_auth() -> None:
     """Drops expired pending-authorization entries so the dict cannot grow
@@ -150,31 +158,80 @@ def _pop_pending_auth(state: str | None) -> tuple[int, str] | None:
     return user_id, verifier
 
 
+def _error_redirect() -> RedirectResponse:
+    """Every failure path out of /coros/callback ends here, and the one-shot
+    CSRF cookie is always cleared on the way out -- success or failure -- so it
+    can never be replayed against a later attempt."""
+    response = RedirectResponse(url=f"{settings.FRONTEND_URL}/?coros=error")
+    response.delete_cookie(key=COROS_OAUTH_STATE_COOKIE, path=COROS_CALLBACK_PATH)
+    return response
+
+
 @router.get("/coros/connect")
-async def coros_connect(user: dict[str, Any] = Depends(get_current_user)):
+async def coros_connect(response: Response, user: dict[str, Any] = Depends(get_current_user)):
     if not settings.COROS_CLIENT_ID:
         raise HTTPException(status_code=503, detail="COROS integration is not configured.")
     _prune_pending_auth()
     verifier, challenge = coros_oauth.make_pkce_pair()
     state = secrets.token_urlsafe(32)
     _PENDING_AUTH[state] = (user["id"], verifier, time.monotonic())
+    # Binds this authorization attempt to the browser that started it (RFC 6749
+    # section 10.12, OAuth client CSRF): state alone is unguessable and single-use,
+    # so it can't be forged, but without this cookie an attacker could start their
+    # own /connect, get back a legitimate authorize URL bound to *their* user_id,
+    # and lure a victim into completing COROS consent on it -- binding the
+    # victim's COROS account (sleep, HRV, training data) to the attacker's Uphill
+    # account. SameSite=Lax is sufficient because /coros/callback is only ever hit
+    # by a top-level GET navigation (the redirect back from COROS), which carries
+    # a Lax cookie; a cross-site POST or subresource load would not.
+    # Secure is set unconditionally rather than gated on an environment flag:
+    # COROS_REDIRECT_URI is always https in every environment that actually talks
+    # to COROS, and browsers additionally treat http://localhost (this repo's
+    # local-dev origin) as a secure context, so an unconditional Secure flag never
+    # silently drops the cookie in an environment this app actually runs in.
+    response.set_cookie(
+        key=COROS_OAUTH_STATE_COOKIE,
+        value=state,
+        max_age=_PENDING_AUTH_TTL_SECONDS,
+        path=COROS_CALLBACK_PATH,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+    )
     return {"authorize_url": coros_oauth.build_authorize_url(state, challenge)}
 
 
 @router.get("/coros/callback")
-async def coros_callback(code: str | None = None, state: str | None = None):
+async def coros_callback(
+    code: str | None = None,
+    state: str | None = None,
+    state_cookie: str | None = Cookie(default=None, alias=COROS_OAUTH_STATE_COOKIE),
+):
+    # Check the CSRF-binding cookie before touching _PENDING_AUTH at all. An
+    # attacker who replays or guesses someone else's `state` from a different
+    # browser (no cookie, or the wrong one) must not be able to consume -- and
+    # thereby invalidate -- the real athlete's still-pending entry; that would
+    # let the attacker grief a legitimate connect attempt even if they can't
+    # complete it themselves.
+    if not state or not state_cookie or not secrets.compare_digest(state_cookie, state):
+        return _error_redirect()
+
     pending = _pop_pending_auth(state)
     if not code or not pending:
-        return RedirectResponse(url=f"{settings.FRONTEND_URL}/?coros=error")
+        return _error_redirect()
 
     user_id, verifier = pending
     try:
         tokens = await coros_oauth.exchange_code(code, verifier)
-    except coros_oauth.CorosAuthError:
-        # Never let a rejected/expired code surface as a raw 500 to the athlete's
-        # browser -- this endpoint is hit by a full-page redirect from COROS, not
-        # an API call the frontend can catch, so an unhandled exception here would
-        # otherwise strand them on a bare JSON error page outside the app shell.
+    except (coros_oauth.CorosAuthError, httpx.HTTPError, ValueError) as exc:
+        # Never let a rejected/expired code, a flaky network call to COROS
+        # (httpx.HTTPError covers connect/timeout/transport failures), or a
+        # non-JSON error body from a proxy in front of COROS (json.JSONDecodeError
+        # is a ValueError) surface as a raw 500 to the athlete's browser -- this
+        # endpoint is hit by a full-page redirect from COROS, not an API call the
+        # frontend can catch, so any unhandled exception here would strand them on
+        # a bare error page outside the app shell. Logs only the failure type,
+        # never the code, token, or state.
         logger.warning(
             "coros token exchange failed",
             extra={
@@ -183,10 +240,11 @@ async def coros_callback(code: str | None = None, state: str | None = None):
                     "provider": "coros",
                     "event": "exchange_failed",
                     "user_id": user_id,
+                    "error_type": type(exc).__name__,
                 }
             },
         )
-        return RedirectResponse(url=f"{settings.FRONTEND_URL}/?coros=error")
+        return _error_redirect()
 
     db.save_connection(
         user_id=user_id,
@@ -196,13 +254,17 @@ async def coros_callback(code: str | None = None, state: str | None = None):
         token_expires_at=tokens.expires_at,
         scopes=coros_oauth.SCOPES,
     )
-    return RedirectResponse(url=f"{settings.FRONTEND_URL}/?coros=connected")
+    response = RedirectResponse(url=f"{settings.FRONTEND_URL}/?coros=connected")
+    response.delete_cookie(key=COROS_OAUTH_STATE_COOKIE, path=COROS_CALLBACK_PATH)
+    return response
 
 
 @router.post("/coros/sync")
 async def coros_sync_now(days: int = 30, user: dict[str, Any] = Depends(get_current_user)):
     try:
         return await coros_sync.sync_user(user["id"], days=days)
+    except coros_sync.CorosReconnectRequired as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

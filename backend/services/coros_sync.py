@@ -17,6 +17,33 @@ from services.providers.coros import PROVIDER, CorosAdapter
 logger = get_logger(__name__)
 
 
+class CorosReconnectRequired(RuntimeError):
+    """Raised when a stored COROS connection cannot be refreshed without the
+    athlete reconnecting.
+
+    Distinct from ValueError (used for "no connection at all") because this
+    means something different: a connection row exists, but the token exchange
+    that created it never returned a refresh_token (COROS doesn't always issue
+    one), so once the access token nears expiry there is nothing to refresh
+    with. Kept as its own type rather than folded into ValueError so callers
+    -- and future frontend messaging -- can tell "reconnect" apart from "never
+    connected" if that distinction ever matters.
+    """
+
+
+class CorosSyncPersistError(RuntimeError):
+    """Raised when persist() attempted to store rows and every single one failed.
+
+    A single bad row is logged and skipped -- that is normal, tolerated noise.
+    But if a non-empty batch has a 100% failure rate, that pattern reads as the
+    persistence layer itself being unavailable (DB unreachable, pool exhausted)
+    rather than N coincidentally-malformed rows, and reporting it back as
+    {"activities": 0, ...} would be indistinguishable from a genuinely quiet
+    sync -- the same silent-empty-result failure mode already hardened against
+    in the COROS parsers and the adapter's daily-metrics merge.
+    """
+
+
 async def persist(user_id: int, adapter, days: int) -> dict[str, int]:
     """Pull and store. Isolated from transport so it can be unit-tested."""
     until = date.today()
@@ -39,6 +66,8 @@ async def persist(user_id: int, adapter, days: int) -> dict[str, int]:
                     }
                 },
             )
+    if activities and not stored_activities:
+        raise CorosSyncPersistError(f"all {len(activities)} activities failed to persist for user {user_id}")
 
     metrics = await adapter.fetch_daily_metrics(days=min(days, 30))
     stored_metrics = 0
@@ -57,6 +86,8 @@ async def persist(user_id: int, adapter, days: int) -> dict[str, int]:
                     }
                 },
             )
+    if metrics and not stored_metrics:
+        raise CorosSyncPersistError(f"all {len(metrics)} daily metrics failed to persist for user {user_id}")
 
     db.mark_connection_synced(user_id, PROVIDER)
     return {"activities": stored_activities, "daily_metrics": stored_metrics}
@@ -66,7 +97,17 @@ async def _access_token(connection: dict) -> str:
     """Returns a usable access token, refreshing it first if it is near expiry."""
     expires_at = connection.get("token_expires_at")
     if expires_at and expires_at <= datetime.now(UTC) + timedelta(minutes=5):
-        refreshed = await coros_oauth.refresh(token_crypto.decrypt_token(connection["refresh_token_enc"]))
+        refresh_token_enc = connection.get("refresh_token_enc")
+        if not refresh_token_enc:
+            # coros_callback stores refresh_token_enc=None whenever COROS's token
+            # exchange returned no refresh_token -- decrypting None would raise a
+            # bare AttributeError here instead of a message that tells anyone
+            # what to do about it.
+            raise CorosReconnectRequired(
+                f"No refresh token on file for user {connection.get('user_id')}'s COROS connection; "
+                "the athlete must reconnect their COROS account."
+            )
+        refreshed = await coros_oauth.refresh(token_crypto.decrypt_token(refresh_token_enc))
         db.save_connection(
             user_id=connection["user_id"],
             provider=PROVIDER,
