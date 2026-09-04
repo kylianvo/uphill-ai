@@ -2558,3 +2558,12 @@ def mark_connection_synced(user_id: int, provider: str) -> None:
             {"u": user_id, "p": provider},
         )
         conn.commit()
+
+
+def list_active_connections(provider: str) -> list[dict[str, Any]]:
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("SELECT * FROM athlete_connections WHERE provider = :p AND status = 'active'"),
+            {"p": provider},
+        ).fetchall()
+    return [_row_to_dict(row) for row in rows]
