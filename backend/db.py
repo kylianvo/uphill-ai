@@ -313,6 +313,80 @@ def init_db():
         )
         """)
         )
+
+        conn.execute(
+            text("""
+        CREATE TABLE IF NOT EXISTS athlete_connections (
+            id                SERIAL PRIMARY KEY,
+            user_id           INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            provider          TEXT NOT NULL,
+            provider_user_id  TEXT,
+            access_token_enc  TEXT,
+            refresh_token_enc TEXT,
+            token_expires_at  TIMESTAMPTZ,
+            scopes            TEXT,
+            status            TEXT NOT NULL DEFAULT 'active',
+            priority          INTEGER NOT NULL DEFAULT 100,
+            last_sync_at      TIMESTAMPTZ,
+            created_at        TIMESTAMPTZ DEFAULT NOW(),
+            UNIQUE (user_id, provider)
+        )
+        """)
+        )
+
+        conn.execute(
+            text("""
+        CREATE TABLE IF NOT EXISTS activities (
+            id                    SERIAL PRIMARY KEY,
+            user_id               INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            source_provider       TEXT NOT NULL,
+            external_ids          JSONB NOT NULL DEFAULT '{}'::jsonb,
+            device_model          TEXT,
+            activity_type         TEXT NOT NULL,
+            start_time            TIMESTAMPTZ NOT NULL,
+            end_time              TIMESTAMPTZ,
+            duration_seconds      REAL NOT NULL,
+            distance_km           REAL,
+            elevation_gain_m      REAL,
+            elevation_loss_m      REAL,
+            avg_hr                INTEGER,
+            max_hr                INTEGER,
+            avg_pace_sec_per_km   REAL,
+            adjusted_pace_sec_per_km REAL,
+            calories              INTEGER,
+            training_load         REAL,
+            aerobic_te            REAL,
+            anaerobic_te          REAL,
+            duplicate_of          INTEGER REFERENCES activities(id) ON DELETE SET NULL,
+            created_at            TIMESTAMPTZ DEFAULT NOW()
+        )
+        """)
+        )
+
+        conn.execute(
+            text("""
+        CREATE TABLE IF NOT EXISTS daily_metrics (
+            id                  SERIAL PRIMARY KEY,
+            user_id             INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            metric_date         DATE NOT NULL,
+            source_provider     TEXT NOT NULL,
+            resting_hr          INTEGER,
+            hrv_ms              REAL,
+            hrv_baseline_ms     REAL,
+            hrv_status          TEXT,
+            training_load_short REAL,
+            training_load_long  REAL,
+            load_ratio          REAL,
+            recovery_percent    INTEGER,
+            created_at          TIMESTAMPTZ DEFAULT NOW(),
+            UNIQUE (user_id, metric_date, source_provider)
+        )
+        """)
+        )
+
+        conn.execute(
+            text("CREATE INDEX IF NOT EXISTS idx_activities_user_start " "ON activities (user_id, start_time DESC)")
+        )
         conn.commit()
 
         for col_sql in [
