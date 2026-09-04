@@ -73,5 +73,9 @@ class Config:
     )
     COROS_MCP_ENDPOINT: str = os.getenv("COROS_MCP_ENDPOINT", "https://mcp.coros.com/mcp")
 
+    # Where the OAuth callback redirects the athlete's browser after a COROS
+    # connect attempt (success or failure) -- the static-export frontend, not the API.
+    FRONTEND_URL: str = os.getenv("FRONTEND_URL", "https://uphill-ai.io.vn")
+
 
 settings = Config()

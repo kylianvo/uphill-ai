@@ -2549,3 +2549,12 @@ def delete_provider_data(user_id: int, provider: str) -> None:
             {"u": user_id, "p": provider},
         )
         conn.commit()
+
+
+def mark_connection_synced(user_id: int, provider: str) -> None:
+    with engine.connect() as conn:
+        conn.execute(
+            text("UPDATE athlete_connections SET last_sync_at = NOW() WHERE user_id = :u AND provider = :p"),
+            {"u": user_id, "p": provider},
+        )
+        conn.commit()
