@@ -7,6 +7,12 @@ was flaky" without reading every per-user log line -- see the module
 docstring on scripts/sync_devices.py. The existing four keys
 (succeeded/failed/activities/daily_metrics) keep their original meaning so
 nothing downstream that reads them breaks.
+
+main()'s overlap guard is tested by monkeypatching _try_acquire_lock so no
+real file locking happens here -- these tests only prove main() branches
+correctly on lock acquired/not-acquired and releases what it was given. They
+do not exercise real fcntl.flock semantics (that a second concurrent OS
+process actually blocks); see the Task 9 report for what to check manually.
 """
 
 import pytest
@@ -87,3 +93,42 @@ async def test_transient_mcp_error_is_counted_separately_from_reconnect(monkeypa
     assert result["transient_failed"] == 1
     assert result["reconnect_required"] == 0
     assert result["failed"] == 1
+
+
+def test_main_skips_when_a_previous_sweep_still_holds_the_lock(monkeypatch):
+    """A stalled prior run must not be piled on top of -- see the module
+    docstring on the overlapping-sweeps risk. main() checks the lock itself,
+    so this holds no matter how the script is invoked, unlike a crontab-line
+    `flock` that only helps if every entry is copied exactly right."""
+    monkeypatch.setattr(sync_devices, "_try_acquire_lock", lambda: None)
+
+    def fail_if_called(*args, **kwargs):
+        pytest.fail("sync_all_active must not run while the lock is held elsewhere")
+
+    monkeypatch.setattr(sync_devices, "sync_all_active", fail_if_called)
+
+    exit_code = sync_devices.main()
+
+    # Not a failure: an overlapping run under a fixed hourly schedule is
+    # expected behaviour, not an error -- a non-zero exit would generate cron
+    # mail noise every hour a previous sweep happens to still be running.
+    assert exit_code == 0
+
+
+def test_main_runs_the_sweep_and_releases_the_lock_when_acquired(monkeypatch):
+    monkeypatch.setattr(sync_devices.db, "list_active_connections", lambda p: [])
+
+    class FakeLock:
+        def __init__(self):
+            self.closed = False
+
+        def close(self):
+            self.closed = True
+
+    fake_lock = FakeLock()
+    monkeypatch.setattr(sync_devices, "_try_acquire_lock", lambda: fake_lock)
+
+    exit_code = sync_devices.main()
+
+    assert exit_code == 0
+    assert fake_lock.closed is True
