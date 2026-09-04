@@ -22,6 +22,11 @@ class Config:
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_DAYS: int = 7
 
+    # Encrypts third-party OAuth tokens in athlete_connections. Generate with
+    # services.token_crypto.generate_key(). Rotating it invalidates every stored
+    # device-account token and forces all athletes to reconnect.
+    TOKEN_ENCRYPTION_KEY: str = os.getenv("TOKEN_ENCRYPTION_KEY", "")
+
     # CORS
     # capacitor://localhost (iOS) and https://localhost (Android) are the fixed
     # origins Capacitor's WKWebView/WebView send for every environment the mobile

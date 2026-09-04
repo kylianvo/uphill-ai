@@ -17,6 +17,9 @@ alembic>=1.13.0
 # Auth
 passlib[bcrypt]>=1.7.4
 PyJWT>=2.8.0
+# Encrypts third-party OAuth tokens at rest (services/token_crypto.py). Already
+# present transitively; pinned explicitly so a transitive change can't remove it.
+cryptography>=42.0.0
 # NotebookLM
 notebooklm-py>=0.7.0
 # Web search (gear KB discovery)
