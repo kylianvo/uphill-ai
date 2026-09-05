@@ -78,17 +78,24 @@ def bundle_activities(activities: list[dict]) -> list[SessionBundle]:
     for activity in ordered:
         if not current:
             current = [activity]
+            session_end = _end_time(activity)
             continue
 
+        # The session ends when its LAST-FINISHING member ends, which is not
+        # necessarily its last-starting one: a short activity logged inside a
+        # longer one would otherwise drag the session end backwards and split
+        # a session that overlaps itself.
         previous = current[-1]
         both_runs = activity["activity_type"] in RUN_TYPES and previous["activity_type"] in RUN_TYPES
-        gap = (activity["start_time"] - _end_time(previous)).total_seconds()
+        gap = (activity["start_time"] - session_end).total_seconds()
 
         if both_runs and gap <= BUNDLE_GAP_SECONDS:
             current.append(activity)
+            session_end = max(session_end, _end_time(activity))
         else:
             bundles.append(_to_bundle(current))
             current = [activity]
+            session_end = _end_time(activity)
 
     bundles.append(_to_bundle(current))
     return bundles

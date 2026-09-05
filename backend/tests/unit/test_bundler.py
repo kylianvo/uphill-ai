@@ -99,3 +99,37 @@ class TestBundleIdentity:
     def test_bundle_start_time_is_the_earliest_fragment(self):
         bundles = bundle_activities([act(0, 212, 0.5), act(560, 3652, 10.9)])
         assert bundles[0].start_time == BASE
+
+
+class TestOverlappingFragments:
+    """A watch can log a short activity inside a longer one's window.
+
+    The session's end is the latest end among its members, not the end of the
+    member that started last. Measuring the gap from the wrong one splits a
+    session that plainly overlaps itself.
+    """
+
+    def test_a_contained_fragment_does_not_reset_the_session_end(self):
+        # 06:00-07:00 long run, a 06:05-06:10 blip inside it, then 06:50 -- which
+        # starts BEFORE the long run has even finished.
+        bundles = bundle_activities([act(0, 3600, 10.0, id_=1), act(300, 300, 0.5, id_=2), act(3000, 1200, 3.0, id_=3)])
+        assert len(bundles) == 1
+        assert bundles[0].activity_ids == [1, 2, 3]
+
+
+class TestWeightedHeartRate:
+    def test_avg_hr_is_weighted_by_duration_not_a_plain_mean(self):
+        # 60 min @ 140 and 30 min @ 170 -> 150, where a plain mean would give 155.
+        a, b = act(0, 3600, 10.0), act(3600, 1800, 5.0)
+        a["avg_hr"], b["avg_hr"] = 140, 170
+        assert bundle_activities([a, b])[0].avg_hr == 150
+
+    def test_fragments_without_hr_are_excluded_from_the_weighting(self):
+        a, b = act(0, 3600, 10.0), act(3600, 1800, 5.0)
+        a["avg_hr"], b["avg_hr"] = 150, None
+        assert bundle_activities([a, b])[0].avg_hr == 150
+
+    def test_avg_hr_is_none_when_no_fragment_reports_one(self):
+        a, b = act(0, 3600, 10.0), act(3600, 1800, 5.0)
+        a["avg_hr"] = b["avg_hr"] = None
+        assert bundle_activities([a, b])[0].avg_hr is None
