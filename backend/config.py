@@ -77,5 +77,11 @@ class Config:
     # connect attempt (success or failure) -- the static-export frontend, not the API.
     FRONTEND_URL: str = os.getenv("FRONTEND_URL", "https://uphill-ai.io.vn")
 
+    # Shadow mode records match decisions without marking workouts complete.
+    # Keep this true until the assigner's thresholds have been calibrated
+    # against real athlete data -- an uncalibrated matcher writing is_completed
+    # would corrupt the training history it exists to describe.
+    MATCHING_SHADOW_MODE: bool = os.getenv("MATCHING_SHADOW_MODE", "true").lower() != "false"
+
 
 settings = Config()

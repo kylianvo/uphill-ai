@@ -29,6 +29,7 @@ clientSecret issued on approval):
 
 import secrets
 import time
+from datetime import date, timedelta
 from typing import Any
 
 import httpx
@@ -40,6 +41,7 @@ from config import settings
 from db import verify_session
 from log_utils import get_logger
 from services import coros_oauth, coros_sync, token_crypto
+from services.matching import runner as matching_runner
 from services.mcp_client import McpError
 from services.providers.coros import PROVIDER, CorosDailyMetricsUnavailableError
 from services.providers.coros_parsers import CorosParseError
@@ -376,3 +378,24 @@ async def integration_status(user: dict[str, Any] = Depends(get_current_user)):
             "last_sync_at": connection.get("last_sync_at") if connection else None,
         }
     }
+
+
+@router.post("/matching/run")
+async def matching_run(days: int = 30, user: dict[str, Any] = Depends(get_current_user)):
+    if not 1 <= days <= 365:
+        raise HTTPException(status_code=400, detail="days must be between 1 and 365.")
+    until = date.today()
+    return await matching_runner.match_user(user["id"], until - timedelta(days=days), until)
+
+
+@router.patch("/matching/{activity_id}")
+async def matching_override(
+    activity_id: int,
+    workout_id: int | None = None,
+    user: dict[str, Any] = Depends(get_current_user),
+):
+    """Athlete corrects a match. Manual matches are never re-scored automatically."""
+    if not db.activity_belongs_to_user(activity_id, user["id"]):
+        raise HTTPException(status_code=404, detail="Activity not found.")
+    db.set_manual_match(activity_id=activity_id, workout_id=workout_id)
+    return {"status": "ok", "activity_id": activity_id, "workout_id": workout_id}

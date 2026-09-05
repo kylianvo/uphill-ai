@@ -2601,3 +2601,96 @@ def list_active_connections(provider: str) -> list[dict[str, Any]]:
             {"p": provider},
         ).fetchall()
     return [_row_to_dict(row) for row in rows]
+
+
+# ─── Matching engine ─────────────────────────────────────────────────────────
+
+
+def get_activities_for_matching(user_id: int, since, until) -> list[dict[str, Any]]:
+    """Non-duplicate activities in a date window, with their current match state."""
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("""
+            SELECT id, start_time, duration_seconds, distance_km, elevation_gain_m,
+                   avg_hr, activity_type, match_method
+            FROM activities
+            WHERE user_id = :u AND duplicate_of IS NULL
+              AND start_time >= :since AND start_time < :until
+            ORDER BY start_time
+            """),
+            {"u": user_id, "since": since, "until": until},
+        ).fetchall()
+    return [_row_to_dict(row) for row in rows]
+
+
+def get_dated_workouts_for_matching(user_id: int) -> list[dict[str, Any]]:
+    """Every workout on the athlete's active plans, with the plan's start_date
+    attached so the caller can derive each workout's calendar date."""
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("""
+            SELECT w.id, w.type, w.duration_minutes, w.distance_km, w.elevation_gain_m,
+                   w.target_hr_range, w.target_pace, w.interval_reps, w.week_number,
+                   w.day_of_week, w.is_completed, p.start_date, p.race_date
+            FROM workouts w
+            JOIN plans p ON p.id = w.plan_id
+            WHERE p.user_id = :u
+            """),
+            {"u": user_id},
+        ).fetchall()
+    return [_row_to_dict(row) for row in rows]
+
+
+def save_match(
+    activity_id: int, workout_id: int | None, confidence: float, method: str, details: dict[str, Any]
+) -> None:
+    """Writes automatic match state. Never touches an activity the athlete has
+    matched by hand -- their correction is ground truth."""
+    with engine.connect() as conn:
+        conn.execute(
+            text("""
+            UPDATE activities
+            SET matched_workout_id = :w, match_confidence = :c,
+                match_method = :m, match_details = CAST(:d AS jsonb)
+            WHERE id = :i AND (match_method IS NULL OR match_method <> 'manual')
+            """),
+            {"i": activity_id, "w": workout_id, "c": confidence, "m": method, "d": json.dumps(details)},
+        )
+        conn.commit()
+
+
+def set_manual_match(activity_id: int, workout_id: int | None) -> None:
+    with engine.connect() as conn:
+        conn.execute(
+            text("""
+            UPDATE activities
+            SET matched_workout_id = :w, match_method = 'manual',
+                match_confidence = NULL, match_details = NULL
+            WHERE id = :i
+            """),
+            {"i": activity_id, "w": workout_id},
+        )
+        conn.commit()
+
+
+def clear_match(activity_id: int) -> None:
+    with engine.connect() as conn:
+        conn.execute(
+            text("""
+            UPDATE activities
+            SET matched_workout_id = NULL, match_method = NULL,
+                match_confidence = NULL, match_details = NULL
+            WHERE id = :i
+            """),
+            {"i": activity_id},
+        )
+        conn.commit()
+
+
+def activity_belongs_to_user(activity_id: int, user_id: int) -> bool:
+    with engine.connect() as conn:
+        found = conn.execute(
+            text("SELECT 1 FROM activities WHERE id = :i AND user_id = :u"),
+            {"i": activity_id, "u": user_id},
+        ).scalar()
+    return bool(found)
