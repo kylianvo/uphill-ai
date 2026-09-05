@@ -457,12 +457,37 @@ def init_db():
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS gender TEXT",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS height_cm REAL",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS weight_kg REAL",
+            "ALTER TABLE activities ADD COLUMN IF NOT EXISTS matched_workout_id INTEGER REFERENCES workouts(id) ON DELETE SET NULL",
+            "ALTER TABLE activities ADD COLUMN IF NOT EXISTS match_confidence REAL",
+            "ALTER TABLE activities ADD COLUMN IF NOT EXISTS match_method TEXT",
+            "ALTER TABLE activities ADD COLUMN IF NOT EXISTS match_details JSONB",
         ]:
             try:
                 conn.execute(text(col_sql))
                 conn.commit()
             except Exception:
                 conn.rollback()
+
+        # Must run after the ALTER loop above, not alongside the other
+        # CREATE INDEX statements near activities' CREATE TABLE: unlike
+        # those, this index is on matched_workout_id, a self-migrated
+        # column that doesn't exist yet at that earlier point for a
+        # brand-new database -- creating it there would fail with
+        # "column matched_workout_id does not exist" on a fresh init_db().
+        #
+        # Partial (WHERE matched_workout_id IS NOT NULL): one planned
+        # workout can be satisfied by at most one activity bundle, while
+        # unmatched activities (NULL) stay unconstrained.
+        try:
+            conn.execute(
+                text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS idx_activities_matched_workout "
+                    "ON activities (matched_workout_id) WHERE matched_workout_id IS NOT NULL"
+                )
+            )
+            conn.commit()
+        except Exception:
+            conn.rollback()
 
     seed_data()
     print("PostgreSQL database tables initialized successfully.")
