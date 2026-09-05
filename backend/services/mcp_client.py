@@ -138,10 +138,9 @@ class McpClient:
         if "error" in payload:
             raise McpError(str(payload["error"].get("message", payload["error"])))
 
-        await self._client.post(
-            self._endpoint,
-            headers=self._headers(),
-            json={"jsonrpc": "2.0", "method": "notifications/initialized"},
+        await self._post(
+            "notifications/initialized",
+            {"jsonrpc": "2.0", "method": "notifications/initialized"},
         )
 
     async def call_tool(self, name: str, arguments: dict[str, Any]) -> str:

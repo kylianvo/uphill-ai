@@ -130,6 +130,26 @@ async def test_a_timeout_also_surfaces_as_mcp_error():
 
 
 @pytest.mark.asyncio
+async def test_a_transport_failure_on_the_initialized_notification_also_surfaces_as_mcp_error():
+    # initialize() runs on every sync (unlike the one-shot detail/daily-metric
+    # calls this transport failure resembles), so a raw httpx exception
+    # escaping from its trailing notifications/initialized POST would surface
+    # as a bare 500 on POST /coros/sync and get miscategorised as "other"
+    # rather than "transient_failed" in scripts/sync_devices.py's summary.
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        if body["method"] == "initialize":
+            return httpx.Response(
+                200, json={"jsonrpc": "2.0", "id": body["id"], "result": {}}, headers={"Mcp-Session-Id": "s"}
+            )
+        raise httpx.TimeoutException("timed out", request=request)
+
+    client = McpClient(ENDPOINT, "tok", transport=_transport(handler))
+    with pytest.raises(McpError):
+        await client.initialize()
+
+
+@pytest.mark.asyncio
 async def test_call_tool_skips_notification_frames_ahead_of_the_matching_response():
     def handler(request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content)
