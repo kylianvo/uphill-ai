@@ -19,6 +19,25 @@ export type MatchCounts = {
   skipped_manual: number;
 };
 
+// Wire shape of GET /api/integrations/matching -- one row per activity, raw
+// values only (no pre-formatted strings), so the caller can format them per
+// locale. Snake_case, matching the backend's JSON keys exactly; MatchReview
+// maps this to its own camelCase MatchItem view model.
+export type RawMatchActivity = {
+  activity_id: number;
+  workout_id: number | null;
+  workout_title: string | null;
+  distance_km: number | null;
+  duration_seconds: number;
+  avg_hr: number | null;
+  elevation_gain_m: number | null;
+  start_time: string;
+  match_confidence: number | null;
+  match_method: string | null;
+  device_model: string | null;
+  source_provider: string;
+};
+
 function authHeaders(): Record<string, string> {
   const token = localStorage.getItem("uphill_session_token");
   return {
@@ -100,5 +119,25 @@ export function useMatching() {
     [patchMatch]
   );
 
-  return { running, error, runMatching, confirmMatch, clearMatch };
+  // GET /api/integrations/matching -- lists the caller's activities in the
+  // window with their current match state, so the review UI has something
+  // to render on load (previously only POST run and PATCH correct existed).
+  const fetchMatches = useCallback(async (days = 30): Promise<RawMatchActivity[] | null> => {
+    const API_BASE_URL = getBackendUrl();
+    setError("");
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/integrations/matching?days=${days}`, {
+        method: "GET",
+        headers: authHeaders(),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body?.detail || "Could not load your matches.");
+      return (body?.activities ?? []) as RawMatchActivity[];
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not load your matches.");
+      return null;
+    }
+  }, []);
+
+  return { running, error, runMatching, confirmMatch, clearMatch, fetchMatches };
 }

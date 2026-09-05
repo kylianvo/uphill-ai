@@ -1,6 +1,6 @@
 import React from "react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { render, screen, waitFor, fireEvent, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import MatchReview, { type MatchItem } from "./MatchReview";
 
@@ -27,16 +27,24 @@ function baseHook(overrides: Record<string, unknown> = {}) {
     runMatching: vi.fn(async () => ({ matched: 0, suggested: 0, unmatched: 0, skipped_manual: 0 })),
     confirmMatch: vi.fn(async () => true),
     clearMatch: vi.fn(async () => true),
+    fetchMatches: vi.fn(async () => []),
     ...overrides,
   };
 }
 
+// Raw values only -- distanceKm/durationSeconds/avgHr/startTime -- formatted
+// inside the component per-locale. "2026-09-0XT12:00:00Z" (noon UTC) is used
+// throughout so the rendered calendar day is stable across the local
+// timezone the test runner happens to use.
 const suggestItem: MatchItem = {
   activityId: 7,
   workoutId: 42,
   workoutTitle: "Tuesday hill repeats",
-  activitySummary: "8.2 km, 42:10, avg HR 151",
-  activityDate: "Sep 2",
+  distanceKm: 8.2,
+  durationSeconds: 2530,
+  avgHr: 151,
+  elevationGainM: 120,
+  startTime: "2026-09-02T12:00:00Z",
   confidence: 0.68,
   confidenceBand: "suggest",
   reasons: ["similar distance and duration"],
@@ -48,8 +56,11 @@ const autoItem: MatchItem = {
   activityId: 8,
   workoutId: 43,
   workoutTitle: "Wednesday easy run",
-  activitySummary: "6.0 km, 30:00, avg HR 138",
-  activityDate: "Sep 3",
+  distanceKm: 6.0,
+  durationSeconds: 1800,
+  avgHr: 138,
+  elevationGainM: 50,
+  startTime: "2026-09-03T12:00:00Z",
   confidence: 0.91,
   confidenceBand: "auto",
   reasons: ["distance, duration and date all match"],
@@ -61,8 +72,11 @@ const unmatchedItem: MatchItem = {
   activityId: 9,
   workoutId: null,
   workoutTitle: null,
-  activitySummary: "3.1 km, 15:40, avg HR 160",
-  activityDate: "Sep 4",
+  distanceKm: 3.1,
+  durationSeconds: 940,
+  avgHr: 160,
+  elevationGainM: null,
+  startTime: "2026-09-04T12:00:00Z",
   confidence: 0,
   confidenceBand: "unmatched",
   reasons: ["no workout scored high enough"],
@@ -78,6 +92,13 @@ describe("MatchReview", () => {
     mockUseMatching.mockReturnValue(baseHook());
   });
 
+  // Always restore real timers, even if a fake-timer test above fails or
+  // times out -- otherwise fake timers leak into every test that runs after
+  // it in this file, and userEvent/waitFor hang for the rest of the suite.
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("shows the empty state and says what to do about it", () => {
     render(<MatchReview items={[]} />);
     expect(
@@ -85,10 +106,12 @@ describe("MatchReview", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders a populated list across all three confidence bands", () => {
+  it("renders a populated list across all three confidence bands, formatting raw values into the display summary", () => {
     render(<MatchReview items={[suggestItem, autoItem, unmatchedItem]} />);
     expect(screen.getByText("Needs your confirmation")).toBeInTheDocument();
     expect(screen.getByText("Tuesday hill repeats")).toBeInTheDocument();
+    expect(screen.getByText("8.2 km, 42:10, avg HR 151")).toBeInTheDocument();
+    expect(screen.getByText("Sep 2")).toBeInTheDocument();
     expect(screen.getByText("Matched automatically")).toBeInTheDocument();
     expect(screen.getByText("Wednesday easy run")).toBeInTheDocument();
     expect(screen.getByText("No match found")).toBeInTheDocument();
@@ -100,6 +123,13 @@ describe("MatchReview", () => {
     expect(screen.getByText("No match")).toBeInTheDocument();
     expect(screen.queryByText(/% confidence/)).not.toBeInTheDocument();
     expect(screen.queryByText(/%/)).not.toBeInTheDocument();
+  });
+
+  it("never renders a fabricated confidence percentage for a manually-confirmed match (null confidence)", () => {
+    const manualItem: MatchItem = { ...autoItem, confidence: null };
+    render(<MatchReview items={[manualItem]} />);
+    expect(screen.getByText("Matched")).toBeInTheDocument();
+    expect(screen.queryByText(/% confidence/)).not.toBeInTheDocument();
   });
 
   it("renders COROS attribution with the real per-activity device model next to that activity's data", () => {
@@ -114,17 +144,43 @@ describe("MatchReview", () => {
     expect(screen.queryByText(/Data provided by COROS ·/)).not.toBeInTheDocument();
   });
 
-  it("confirms a suggested match by calling confirmMatch with the activity and workout ids", async () => {
+  it("requires two deliberate taps before confirming a suggested match -- the first tap alone must not PATCH", async () => {
     const user = userEvent.setup();
     const confirmMatch = vi.fn(async () => true);
     mockUseMatching.mockReturnValue(baseHook({ confirmMatch }));
     render(<MatchReview items={[suggestItem]} />);
+
     await user.click(screen.getByRole("button", { name: "Yes, that's it" }));
+    expect(confirmMatch).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Tap again to confirm" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Tap again to confirm" }));
     expect(confirmMatch).toHaveBeenCalledWith(7, 42);
+    expect(confirmMatch).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(screen.getByText("Saved")).toBeInTheDocument());
   });
 
-  it("clears a match by calling clearMatch with just the activity id", async () => {
+  it("reverts the armed confirm button back to its original label after a few seconds without a second tap", () => {
+    vi.useFakeTimers();
+    // fireEvent (not userEvent) here: userEvent's internal pointer-event
+    // machinery relies on real timers to resolve even with delay: null, so
+    // it deadlocks under vi.useFakeTimers(). fireEvent.click is synchronous
+    // and exercises the same onClick handler.
+    const confirmMatch = vi.fn(async () => true);
+    mockUseMatching.mockReturnValue(baseHook({ confirmMatch }));
+    render(<MatchReview items={[suggestItem]} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Yes, that's it" }));
+    expect(screen.getByRole("button", { name: "Tap again to confirm" })).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(screen.getByRole("button", { name: "Yes, that's it" })).toBeInTheDocument();
+    expect(confirmMatch).not.toHaveBeenCalled();
+  });
+
+  it("clears a match by calling clearMatch with just the activity id, in a single tap", async () => {
     const user = userEvent.setup();
     const clearMatch = vi.fn(async () => true);
     mockUseMatching.mockReturnValue(baseHook({ clearMatch }));
@@ -143,6 +199,7 @@ describe("MatchReview", () => {
     mockUseMatching.mockReturnValue(baseHook({ confirmMatch }));
     render(<MatchReview items={[suggestItem]} />);
     await user.click(screen.getByRole("button", { name: "Yes, that's it" }));
+    await user.click(screen.getByRole("button", { name: "Tap again to confirm" }));
     expect(await screen.findByRole("button", { name: "Saving..." })).toBeInTheDocument();
     resolvePromise(true);
     await waitFor(() => expect(screen.getByText("Saved")).toBeInTheDocument());
@@ -154,6 +211,7 @@ describe("MatchReview", () => {
     mockUseMatching.mockReturnValue(baseHook({ confirmMatch, error: "Activity not found." }));
     render(<MatchReview items={[suggestItem]} />);
     await user.click(screen.getByRole("button", { name: "Yes, that's it" }));
+    await user.click(screen.getByRole("button", { name: "Tap again to confirm" }));
     expect(screen.getByText("Activity not found.")).toBeInTheDocument();
     expect(screen.queryByText("Saved")).not.toBeInTheDocument();
   });
@@ -202,7 +260,7 @@ describe("MatchReview", () => {
     expect(await screen.findByText(/2 matched automatically, 1 need your confirmation, 0 without a match\./)).toBeInTheDocument();
   });
 
-  it("renders Vietnamese copy, not English, when lang is vi", () => {
+  it("renders Vietnamese copy and locale-formatted numbers/dates, not English, when lang is vi", () => {
     mockUseAppContext.mockReturnValue({ lang: "vi" });
     render(<MatchReview items={[suggestItem, unmatchedItem]} />);
     expect(screen.getByText("Khớp hoạt động")).toBeInTheDocument();
@@ -217,9 +275,25 @@ describe("MatchReview", () => {
       screen.getByText(/Điều này là vĩnh viễn/)
     ).toBeInTheDocument();
     expect(screen.getByText("Không tìm thấy khớp")).toBeInTheDocument();
+    // Vietnamese decimal comma (8,2 not 8.2) and Vietnamese short-date format.
+    expect(screen.getByText("8,2 km, 42:10, nhịp tim TB 151")).toBeInTheDocument();
+    expect(screen.getByText("2 thg 9")).toBeInTheDocument();
     // English copy must not leak through.
     expect(screen.queryByText("Activity matching")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Yes, that's it" })).not.toBeInTheDocument();
+  });
+
+  it("requires two taps for the Vietnamese confirm button too, with a Vietnamese hint on the armed tap", async () => {
+    mockUseAppContext.mockReturnValue({ lang: "vi" });
+    const user = userEvent.setup();
+    const confirmMatch = vi.fn(async () => true);
+    mockUseMatching.mockReturnValue(baseHook({ confirmMatch }));
+    render(<MatchReview items={[suggestItem]} />);
+    await user.click(screen.getByRole("button", { name: "Đúng rồi" }));
+    expect(confirmMatch).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Nhấn lần nữa để xác nhận" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Nhấn lần nữa để xác nhận" }));
+    expect(confirmMatch).toHaveBeenCalledWith(7, 42);
   });
 
   it("translates a known hook error message to Vietnamese when lang is vi", () => {
@@ -228,5 +302,87 @@ describe("MatchReview", () => {
     render(<MatchReview items={[]} />);
     expect(screen.getByText("Không tìm thấy hoạt động này.")).toBeInTheDocument();
     expect(screen.queryByText("Activity not found.")).not.toBeInTheDocument();
+  });
+
+  describe("self-fetching (mounted without an items prop)", () => {
+    it("fetches its own matches on mount and renders them", async () => {
+      const fetchMatches = vi.fn(async () => [
+        {
+          activity_id: 7,
+          workout_id: 42,
+          workout_title: "Tuesday hill repeats",
+          distance_km: 8.2,
+          duration_seconds: 2530,
+          avg_hr: 151,
+          elevation_gain_m: 120,
+          start_time: "2026-09-02T12:00:00Z",
+          match_confidence: 0.68,
+          match_method: "suggest",
+          device_model: "COROS APEX 2 Pro",
+          source_provider: "coros",
+        },
+      ]);
+      mockUseMatching.mockReturnValue(baseHook({ fetchMatches }));
+      render(<MatchReview />);
+      expect(fetchMatches).toHaveBeenCalledWith(30);
+      expect(await screen.findByText("Tuesday hill repeats")).toBeInTheDocument();
+      expect(screen.getByText("8.2 km, 42:10, avg HR 151")).toBeInTheDocument();
+    });
+
+    it("maps a manually-confirmed activity (match_method 'manual') to the auto band without a fabricated percentage", async () => {
+      const fetchMatches = vi.fn(async () => [
+        {
+          activity_id: 11,
+          workout_id: 99,
+          workout_title: "Long run",
+          distance_km: 20.0,
+          duration_seconds: 7200,
+          avg_hr: 145,
+          elevation_gain_m: 300,
+          start_time: "2026-09-02T12:00:00Z",
+          match_confidence: null,
+          match_method: "manual",
+          device_model: "COROS APEX 2 Pro",
+          source_provider: "coros",
+        },
+      ]);
+      mockUseMatching.mockReturnValue(baseHook({ fetchMatches }));
+      render(<MatchReview />);
+      expect(await screen.findByText("Matched automatically")).toBeInTheDocument();
+      expect(screen.getByText("Matched")).toBeInTheDocument();
+      expect(screen.queryByText(/% confidence/)).not.toBeInTheDocument();
+    });
+
+    it("maps an activity that was never run through the matcher (match_method null) to unmatched", async () => {
+      const fetchMatches = vi.fn(async () => [
+        {
+          activity_id: 12,
+          workout_id: null,
+          workout_title: null,
+          distance_km: 4.0,
+          duration_seconds: 1200,
+          avg_hr: 130,
+          elevation_gain_m: null,
+          start_time: "2026-09-02T12:00:00Z",
+          match_confidence: null,
+          match_method: null,
+          device_model: null,
+          source_provider: "coros",
+        },
+      ]);
+      mockUseMatching.mockReturnValue(baseHook({ fetchMatches }));
+      render(<MatchReview />);
+      expect(await screen.findByText("No match found")).toBeInTheDocument();
+    });
+
+    it("shows the loading skeleton while the initial fetch is in flight", async () => {
+      let resolveFetch: (v: unknown[]) => void = () => {};
+      const fetchMatches = vi.fn(() => new Promise((resolve) => { resolveFetch = resolve; }));
+      mockUseMatching.mockReturnValue(baseHook({ fetchMatches }));
+      const { container } = render(<MatchReview />);
+      expect(container.querySelectorAll(".match-card-skeleton").length).toBeGreaterThan(0);
+      resolveFetch([]);
+      await waitFor(() => expect(container.querySelectorAll(".match-card-skeleton").length).toBe(0));
+    });
   });
 });

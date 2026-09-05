@@ -17,6 +17,7 @@ import {
 } from '../utils/notifications';
 import { triggerHaptic } from '../utils/native';
 import ConnectedAccounts from '../components/ConnectedAccounts';
+import MatchReview from '../components/MatchReview';
 
 export default function ProfileSettingsModal() {
   const ctx = useAppContext();
@@ -2372,6 +2373,8 @@ export default function ProfileSettingsModal() {
           </form>
 
           <ConnectedAccounts />
+
+          <MatchReview />
 
 
 

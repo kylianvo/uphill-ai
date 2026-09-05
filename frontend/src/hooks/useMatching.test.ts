@@ -68,4 +68,55 @@ describe("useMatching", () => {
     const headers = fetchMock.mock.calls[0][1].headers;
     expect(headers["Authorization"]).toBe("Bearer tok-abc");
   });
+
+  it("fetches the caller's matches via GET and returns the raw activities", async () => {
+    const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>;
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        activities: [
+          {
+            activity_id: 7,
+            workout_id: 42,
+            workout_title: "Tuesday hill repeats",
+            distance_km: 8.2,
+            duration_seconds: 2530,
+            avg_hr: 151,
+            elevation_gain_m: 120,
+            start_time: "2026-09-02T06:00:00+00:00",
+            match_confidence: 0.68,
+            match_method: "suggest",
+            device_model: "COROS APEX 2 Pro",
+            source_provider: "coros",
+          },
+        ],
+      })
+    );
+    const { result } = renderHook(() => useMatching());
+    let activities: unknown[] | null = null;
+    await act(async () => { activities = await result.current.fetchMatches(30); });
+    const [url, opts] = fetchMock.mock.calls[0];
+    expect(url).toContain("/api/integrations/matching?days=30");
+    expect(opts.method).toBe("GET");
+    expect(activities).toHaveLength(1);
+    expect((activities as { activity_id: number }[])[0].activity_id).toBe(7);
+  });
+
+  it("surfaces an error when fetching matches fails", async () => {
+    const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>;
+    fetchMock.mockResolvedValueOnce(jsonResponse({ detail: "days must be between 1 and 365." }, false));
+    const { result } = renderHook(() => useMatching());
+    let activities: unknown[] | null = [];
+    await act(async () => { activities = await result.current.fetchMatches(9999); });
+    expect(activities).toBeNull();
+    expect(result.current.error).toMatch(/days must be/);
+  });
+
+  it("sends the session token when fetching matches", async () => {
+    const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>;
+    fetchMock.mockResolvedValueOnce(jsonResponse({ activities: [] }));
+    const { result } = renderHook(() => useMatching());
+    await act(async () => { await result.current.fetchMatches(30); });
+    const headers = fetchMock.mock.calls[0][1].headers;
+    expect(headers["Authorization"]).toBe("Bearer tok-abc");
+  });
 });

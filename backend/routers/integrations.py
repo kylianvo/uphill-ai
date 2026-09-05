@@ -388,6 +388,21 @@ async def matching_run(days: int = 30, user: dict[str, Any] = Depends(get_curren
     return await matching_runner.match_user(user["id"], until - timedelta(days=days), until)
 
 
+@router.get("/matching")
+async def matching_list(days: int = 30, user: dict[str, Any] = Depends(get_current_user)):
+    """Lists the caller's activities in the window with their current match
+    state, for the matching-review UI. Raw values only (numbers, an ISO
+    start_time) -- no pre-formatted strings, so the frontend can render
+    Vietnamese numbers/dates in Vietnamese convention rather than English
+    unit strings baked in server-side. See db.get_matches_for_review.
+    """
+    if not 1 <= days <= 365:
+        raise HTTPException(status_code=400, detail="days must be between 1 and 365.")
+    until = date.today()
+    activities = db.get_matches_for_review(user["id"], until - timedelta(days=days), until + timedelta(days=1))
+    return {"activities": activities}
+
+
 @router.patch("/matching/{activity_id}")
 async def matching_override(
     activity_id: int,

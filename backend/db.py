@@ -2641,6 +2641,36 @@ def get_dated_workouts_for_matching(user_id: int) -> list[dict[str, Any]]:
     return [_row_to_dict(row) for row in rows]
 
 
+def get_matches_for_review(user_id: int, since, until) -> list[dict[str, Any]]:
+    """The caller's activities in a date window with their current match
+    state, for the matching-review UI (there was previously no listing
+    endpoint -- only POST run and PATCH correct).
+
+    LEFT JOIN, not JOIN: an activity the matcher hasn't matched (or couldn't
+    match) has matched_workout_id = NULL, and it must still appear -- with
+    workout_id/workout_title both None -- rather than silently vanish from
+    the review list. Scoped strictly to :u so one athlete's activities are
+    never visible to another. Raw values only, no formatting: the frontend
+    formats per-locale where `lang` is known (see MatchReview.tsx).
+    """
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("""
+            SELECT a.id AS activity_id, a.matched_workout_id AS workout_id, w.title AS workout_title,
+                   a.distance_km, a.duration_seconds, a.avg_hr, a.elevation_gain_m,
+                   a.start_time, a.match_confidence, a.match_method,
+                   a.device_model, a.source_provider
+            FROM activities a
+            LEFT JOIN workouts w ON w.id = a.matched_workout_id
+            WHERE a.user_id = :u AND a.duplicate_of IS NULL
+              AND a.start_time >= :since AND a.start_time < :until
+            ORDER BY a.start_time
+            """),
+            {"u": user_id, "since": since, "until": until},
+        ).fetchall()
+    return [_row_to_dict(row) for row in rows]
+
+
 def save_match(
     activity_id: int, workout_id: int | None, confidence: float, method: str, details: dict[str, Any]
 ) -> None:

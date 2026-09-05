@@ -1,6 +1,6 @@
 """Persistence tests for match state. Needs a live Postgres."""
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 import pytest
 from sqlalchemy import text
@@ -231,3 +231,148 @@ def test_matching_override_route_rejects_a_foreign_workout_id(client, auth_heade
         ).fetchone()
     assert matched[0] is None
     assert matched[1] is None
+
+
+# --- GET /api/integrations/matching -----------------------------------------
+#
+# Previously only POST (run a match) and PATCH (correct one) existed -- there
+# was no way to list what the matcher decided, so the review UI had nothing
+# to render. This lists the caller's activities in a date window with their
+# current match state, LEFT JOINed to workouts so an unmatched activity still
+# appears (with workout_id/workout_title both None). Every value is raw
+# (numbers, an ISO datetime), never a pre-formatted string -- formatting
+# (including Vietnamese locale conventions) happens in the frontend, where
+# `lang` is known.
+
+
+def test_get_matches_for_review_returns_only_the_callers_activities(user_id, activity_id, other_user_id):
+    db.upsert_activity(
+        other_user_id,
+        CanonicalActivity(
+            external_id="other-1",
+            provider="coros",
+            activity_type="outdoor_run",
+            start_time=datetime(2026, 9, 2, 7, 0, tzinfo=UTC),
+            duration_seconds=1800.0,
+            distance_km=5.0,
+        ),
+    )
+    rows = db.get_matches_for_review(user_id, date(2026, 9, 1), date(2026, 9, 5))
+    assert [r["activity_id"] for r in rows] == [activity_id]
+
+
+def test_get_matches_for_review_left_joins_so_an_unmatched_activity_still_appears(user_id, activity_id):
+    rows = db.get_matches_for_review(user_id, date(2026, 9, 1), date(2026, 9, 5))
+    assert len(rows) == 1
+    assert rows[0]["activity_id"] == activity_id
+    assert rows[0]["workout_id"] is None
+    assert rows[0]["workout_title"] is None
+
+
+def test_get_matches_for_review_includes_the_matched_workouts_title(user_id, activity_id):
+    workout_id = _create_workout_for(user_id)
+    db.save_match(activity_id=activity_id, workout_id=workout_id, confidence=0.91, method="auto", details={})
+    rows = db.get_matches_for_review(user_id, date(2026, 9, 1), date(2026, 9, 5))
+    assert rows[0]["workout_id"] == workout_id
+    assert rows[0]["workout_title"] == "Easy Run"
+
+
+def test_get_matches_for_review_returns_raw_not_formatted_values(user_id):
+    activity_id = db.upsert_activity(
+        user_id,
+        CanonicalActivity(
+            external_id="raw-1",
+            provider="coros",
+            activity_type="outdoor_run",
+            start_time=datetime(2026, 9, 2, 6, 0, tzinfo=UTC),
+            duration_seconds=2530.0,
+            distance_km=8.2,
+            elevation_gain_m=145.0,
+            avg_hr=151,
+            device_model="COROS APEX 2 Pro",
+        ),
+    )
+    rows = db.get_matches_for_review(user_id, date(2026, 9, 1), date(2026, 9, 5))
+    row = next(r for r in rows if r["activity_id"] == activity_id)
+    assert row["distance_km"] == pytest.approx(8.2)
+    assert row["duration_seconds"] == pytest.approx(2530.0)
+    assert row["avg_hr"] == 151
+    assert row["elevation_gain_m"] == pytest.approx(145.0)
+    assert row["device_model"] == "COROS APEX 2 Pro"
+    assert row["source_provider"] == "coros"
+    assert row["start_time"] is not None
+
+
+def test_get_matches_for_review_respects_the_date_window(user_id):
+    db.upsert_activity(
+        user_id,
+        CanonicalActivity(
+            external_id="outside-window",
+            provider="coros",
+            activity_type="outdoor_run",
+            start_time=datetime(2026, 8, 1, 6, 0, tzinfo=UTC),
+            duration_seconds=1800.0,
+            distance_km=5.0,
+        ),
+    )
+    rows = db.get_matches_for_review(user_id, date(2026, 9, 1), date(2026, 9, 5))
+    assert rows == []
+
+
+def test_matching_get_route_returns_only_the_callers_activities(client, auth_headers, other_user_id):
+    caller_id = auth_headers["user_id"]
+    my_activity_id = db.upsert_activity(
+        caller_id,
+        CanonicalActivity(
+            external_id="route-get-1",
+            provider="coros",
+            activity_type="outdoor_run",
+            start_time=datetime.now(UTC),
+            duration_seconds=1800.0,
+            distance_km=5.0,
+        ),
+    )
+    db.upsert_activity(
+        other_user_id,
+        CanonicalActivity(
+            external_id="route-get-other",
+            provider="coros",
+            activity_type="outdoor_run",
+            start_time=datetime.now(UTC),
+            duration_seconds=1800.0,
+            distance_km=5.0,
+        ),
+    )
+    resp = client.get("/api/integrations/matching", params={"days": 30}, headers=auth_headers["headers"])
+    assert resp.status_code == 200
+    body = resp.json()
+    activity_ids = [a["activity_id"] for a in body["activities"]]
+    assert activity_ids == [my_activity_id]
+
+
+def test_matching_get_route_left_join_includes_unmatched_activity(client, auth_headers):
+    caller_id = auth_headers["user_id"]
+    db.upsert_activity(
+        caller_id,
+        CanonicalActivity(
+            external_id="route-get-unmatched",
+            provider="coros",
+            activity_type="outdoor_run",
+            start_time=datetime.now(UTC),
+            duration_seconds=1800.0,
+            distance_km=5.0,
+        ),
+    )
+    resp = client.get("/api/integrations/matching", params={"days": 30}, headers=auth_headers["headers"])
+    assert resp.status_code == 200
+    body = resp.json()
+    assert len(body["activities"]) == 1
+    assert body["activities"][0]["workout_id"] is None
+    assert body["activities"][0]["workout_title"] is None
+
+
+@pytest.mark.parametrize("days", [0, 366, -1])
+def test_matching_get_route_rejects_days_out_of_bounds(client, auth_headers, days):
+    resp = client.get("/api/integrations/matching", params={"days": days}, headers=auth_headers["headers"])
+    assert resp.status_code == 400
+    assert resp.json()["detail"] == "days must be between 1 and 365."

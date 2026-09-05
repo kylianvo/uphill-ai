@@ -1488,6 +1488,11 @@ label {
 }
 .match-btn-secondary:hover:not(:disabled) { background: var(--bg-card-hover); }
 .match-btn-secondary:disabled { opacity: .55; cursor: default; }
+/* Two-step confirm: after the first tap the primary confirm button "arms"
+   itself into this state (see MatchCard in MatchReview.tsx) -- the alert
+   color signals that the very next tap performs the permanent write. */
+.match-btn-armed { background: var(--accent-alert); border-color: var(--accent-alert); }
+.match-btn-armed:hover { background: var(--accent-alert); }
 .match-resolved {
   display: flex; align-items: center; gap: 6px;
   font-size: 12.5px; font-weight: 600; color: var(--accent-primary);
