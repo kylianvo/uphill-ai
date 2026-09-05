@@ -16,6 +16,7 @@ import {
   DAILY_KNOWLEDGE_REMINDER_ID,
 } from '../utils/notifications';
 import { triggerHaptic } from '../utils/native';
+import ConnectedAccounts from '../components/ConnectedAccounts';
 
 export default function ProfileSettingsModal() {
   const ctx = useAppContext();
@@ -2370,7 +2371,7 @@ export default function ProfileSettingsModal() {
 
           </form>
 
-
+          <ConnectedAccounts />
 
 
 

@@ -1371,3 +1371,52 @@ label {
   .legal-page { padding: 64px 32px 96px; }
   .legal-title { font-size: 40px; }
 }
+
+/* ─── Connected accounts (Profile settings) ─────────────────────────────── */
+.device-section { margin-top: 24px; }
+.device-heading {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--font-fustat), sans-serif;
+  font-size: 14px; font-weight: 700; color: var(--text-primary);
+  border-bottom: 1px solid var(--border-color); padding-bottom: 6px; margin: 0 0 12px;
+}
+/* var(--text-muted) measures ~4.8:1 on white and can drop below WCAG AA
+   (4.5:1) once the translucent --bg-card composites over a darker page
+   background, so help/status/attribution text here uses --text-secondary
+   (~7.6:1 on white) instead. */
+.device-help { font-size: 13px; color: var(--text-secondary); margin: 0 0 12px; line-height: 1.6; }
+.device-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 12px 0; border-bottom: 1px solid var(--border-color); flex-wrap: wrap;
+}
+.device-name { display: block; font-size: 15px; font-weight: 600; color: var(--text-primary); }
+.device-state { font-size: 12.5px; color: var(--text-secondary); margin-top: 2px; }
+.device-actions { display: flex; gap: 8px; align-items: center; }
+.device-btn {
+  padding: 7px 14px; border-radius: 999px; border: 1px solid var(--border-color);
+  background: transparent; color: var(--text-secondary);
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.device-btn:hover:not(:disabled) { background: var(--bg-card-hover); }
+.device-btn:disabled { opacity: .55; cursor: default; }
+.device-btn-danger { color: var(--accent-alert); border-color: var(--accent-alert); }
+.device-btn-danger:hover:not(:disabled) { background: rgba(239, 68, 68, 0.08); }
+.device-skeleton {
+  display: inline-block; width: 84px; height: 30px; border-radius: 999px;
+  background: var(--border-color); opacity: .6;
+}
+.device-notice {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 13px; color: var(--text-primary); margin: 10px 0 0;
+}
+.device-notice svg { color: var(--accent-primary); flex-shrink: 0; }
+.device-error {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 13px; color: var(--accent-alert); margin: 10px 0 0;
+}
+.device-attribution { font-size: 11.5px; color: var(--text-secondary); letter-spacing: .01em; }
+
+@media (prefers-reduced-motion: reduce) {
+  .device-btn { transition: none; }
+}
