@@ -13,6 +13,15 @@ vi.mock("../hooks/useDeviceConnection", () => ({
   useDeviceConnection: (...args: unknown[]) => mockUseDeviceConnection(...args),
 }));
 
+// ConnectedAccounts reads `lang` from AppContext, the same source
+// ProfileSettingsModal.tsx uses (`const { lang } = ctx`) -- not a prop, per
+// the existing pattern already used by other standalone components such as
+// PendingInviteBanner.tsx. Default to "en"; individual tests override it.
+const mockUseAppContext = vi.fn();
+vi.mock("../contexts/AppContext", () => ({
+  useAppContext: (...args: unknown[]) => mockUseAppContext(...args),
+}));
+
 function baseHook(overrides: Record<string, unknown> = {}) {
   return {
     status: null,
@@ -31,6 +40,8 @@ describe("ConnectedAccounts", () => {
 
   beforeEach(() => {
     mockUseDeviceConnection.mockReset();
+    mockUseAppContext.mockReset();
+    mockUseAppContext.mockReturnValue({ lang: "en" });
     // @ts-expect-error -- jsdom's location is not directly assignable
     delete window.location;
     // @ts-expect-error -- minimal stand-in so we can observe navigation attempts
@@ -99,5 +110,32 @@ describe("ConnectedAccounts", () => {
     // with no check navigates to "" (i.e. reloads the current page) and the
     // error above is never seen.
     expect(window.location.href).toBe("http://localhost/settings");
+  });
+
+  it("renders Vietnamese copy, not English, when lang is vi", () => {
+    mockUseAppContext.mockReturnValue({ lang: "vi" });
+    mockUseDeviceConnection.mockReturnValue(
+      baseHook({ status: { coros: { connected: false } } })
+    );
+    render(<ConnectedAccounts />);
+    expect(screen.getByText("Chưa kết nối")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Kết nối" })).toBeInTheDocument();
+    expect(screen.queryByText("Not connected")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Connect" })).not.toBeInTheDocument();
+  });
+
+  it("translates a known hook error message to Vietnamese when lang is vi", () => {
+    mockUseAppContext.mockReturnValue({ lang: "vi" });
+    mockUseDeviceConnection.mockReturnValue(
+      baseHook({
+        status: { coros: { connected: false } },
+        error: "COROS connection is unavailable.",
+      })
+    );
+    render(<ConnectedAccounts />);
+    expect(
+      screen.getByText("Không thể kết nối COROS lúc này. Vui lòng thử lại sau.")
+    ).toBeInTheDocument();
+    expect(screen.queryByText("COROS connection is unavailable.")).not.toBeInTheDocument();
   });
 });

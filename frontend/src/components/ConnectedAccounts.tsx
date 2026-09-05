@@ -2,10 +2,24 @@
 
 import { useEffect, useState } from "react";
 import { Watch, CheckCircle, Warning } from "@phosphor-icons/react";
+import { useAppContext } from "../contexts/AppContext";
 import { useDeviceConnection } from "../hooks/useDeviceConnection";
 import CorosAttribution from "./CorosAttribution";
 
+// The hook's own fallback error strings (used when the backend response has
+// no `detail`, e.g. a network failure). Arbitrary backend `detail` text
+// (e.g. "reconnect required") is passed through untranslated -- the backend
+// does not yet return bilingual error detail, so that stays English-only
+// until it does.
+const ERROR_TRANSLATIONS_VI: Record<string, string> = {
+  "Could not load connection status.": "Không thể tải trạng thái kết nối. Vui lòng thử lại.",
+  "COROS connection is unavailable.": "Không thể kết nối COROS lúc này. Vui lòng thử lại sau.",
+  "Sync failed. Please try again.": "Đồng bộ thất bại. Vui lòng thử lại.",
+  "Could not disconnect.": "Không thể ngắt kết nối. Vui lòng thử lại.",
+};
+
 export default function ConnectedAccounts() {
+  const { lang } = useAppContext();
   const { status, loading, error, refreshStatus, connectCoros, disconnectCoros, syncNow } =
     useDeviceConnection();
   // Read the OAuth-callback redirect params (?coros=connected|error) during
@@ -14,8 +28,14 @@ export default function ConnectedAccounts() {
   const [notice, setNotice] = useState(() => {
     if (typeof window === "undefined") return "";
     const result = new URLSearchParams(window.location.search).get("coros");
-    if (result === "connected") return "COROS connected.";
-    if (result === "error") return "COROS connection failed. Please try again.";
+    if (result === "connected") {
+      return lang === "vi" ? "Đã kết nối COROS." : "COROS connected.";
+    }
+    if (result === "error") {
+      return lang === "vi"
+        ? "Kết nối COROS thất bại. Vui lòng thử lại."
+        : "COROS connection failed. Please try again.";
+    }
     return "";
   });
 
@@ -31,6 +51,8 @@ export default function ConnectedAccounts() {
   // falling through to the disconnected branch.
   const checkingConnection = status === null && loading;
 
+  const displayError = error ? (lang === "vi" ? ERROR_TRANSLATIONS_VI[error] ?? error : error) : "";
+
   const handleConnect = async () => {
     // connectCoros() does NOT throw on failure -- it records the problem in
     // `error` and resolves to "". Navigating unconditionally would send the
@@ -45,7 +67,11 @@ export default function ConnectedAccounts() {
   const handleSync = async () => {
     const result = await syncNow();
     if (result) {
-      setNotice(`Synced ${result.activities} activities and ${result.daily_metrics} days of health data.`);
+      setNotice(
+        lang === "vi"
+          ? `Đã đồng bộ ${result.activities} hoạt động và ${result.daily_metrics} ngày dữ liệu sức khỏe.`
+          : `Synced ${result.activities} activities and ${result.daily_metrics} days of health data.`
+      );
       await refreshStatus();
     }
   };
@@ -59,10 +85,12 @@ export default function ConnectedAccounts() {
     <div className="device-section">
       <h3 className="device-heading">
         <Watch size={16} weight="duotone" style={{ color: "var(--accent-primary)" }} />
-        Connected accounts
+        {lang === "vi" ? "Tài khoản đã kết nối" : "Connected accounts"}
       </h3>
       <p className="device-help">
-        Connect your watch so completed runs are matched to your plan automatically.
+        {lang === "vi"
+          ? "Kết nối đồng hồ của bạn để các buổi chạy đã hoàn thành được tự động khớp với kế hoạch tập luyện."
+          : "Connect your watch so completed runs are matched to your plan automatically."}
       </p>
 
       <div className="device-row">
@@ -70,12 +98,18 @@ export default function ConnectedAccounts() {
           <strong className="device-name">COROS</strong>
           <div className="device-state">
             {checkingConnection
-              ? "Checking connection..."
+              ? lang === "vi"
+                ? "Đang kiểm tra kết nối..."
+                : "Checking connection..."
               : connected
                 ? status?.coros?.last_sync_at
-                  ? `Last synced ${new Date(status.coros.last_sync_at).toLocaleString()}`
-                  : "Connected"
-                : "Not connected"}
+                  ? `${lang === "vi" ? "Đồng bộ lần cuối" : "Last synced"} ${new Date(status.coros.last_sync_at).toLocaleString()}`
+                  : lang === "vi"
+                    ? "Đã kết nối"
+                    : "Connected"
+                : lang === "vi"
+                  ? "Chưa kết nối"
+                  : "Not connected"}
           </div>
           {connected && (
             <div style={{ marginTop: "4px" }}>
@@ -93,7 +127,13 @@ export default function ConnectedAccounts() {
             {connected ? (
               <>
                 <button type="button" className="device-btn" onClick={handleSync} disabled={loading}>
-                  {loading ? "Syncing..." : "Sync now"}
+                  {loading
+                    ? lang === "vi"
+                      ? "Đang đồng bộ..."
+                      : "Syncing..."
+                    : lang === "vi"
+                      ? "Đồng bộ ngay"
+                      : "Sync now"}
                 </button>
                 <button
                   type="button"
@@ -101,7 +141,7 @@ export default function ConnectedAccounts() {
                   onClick={handleDisconnect}
                   disabled={loading}
                 >
-                  Disconnect
+                  {lang === "vi" ? "Ngắt kết nối" : "Disconnect"}
                 </button>
               </>
             ) : (
@@ -112,7 +152,7 @@ export default function ConnectedAccounts() {
                 onClick={handleConnect}
                 disabled={loading}
               >
-                Connect
+                {lang === "vi" ? "Kết nối" : "Connect"}
               </button>
             )}
           </div>
@@ -125,15 +165,17 @@ export default function ConnectedAccounts() {
           {notice}
         </p>
       )}
-      {error && (
+      {displayError && (
         <p className="device-error">
           <Warning size={14} weight="fill" />
-          {error}
+          {displayError}
         </p>
       )}
 
       <p className="device-help">
-        Disconnecting deletes the data we received from COROS within 24 hours.
+        {lang === "vi"
+          ? "Khi ngắt kết nối, dữ liệu chúng tôi nhận được từ COROS sẽ được xóa trong vòng 24 giờ."
+          : "Disconnecting deletes the data we received from COROS within 24 hours."}
       </p>
     </div>
   );
