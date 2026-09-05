@@ -4,7 +4,7 @@ from datetime import UTC, date, datetime, timedelta
 
 import pytest
 
-from services import coros_sync
+from services import coros_sync, token_crypto
 from services.providers.base import CanonicalActivity, CanonicalDailyMetric
 
 
@@ -145,6 +145,53 @@ async def test_access_token_requires_reconnect_when_refresh_token_missing():
         "scopes": "openid mcp.tools offline_access",
         "provider_user_id": None,
     }
+
+    with pytest.raises(coros_sync.CorosReconnectRequired):
+        await coros_sync._access_token(connection)
+
+
+@pytest.mark.asyncio
+async def test_access_token_requires_reconnect_when_refresh_token_cannot_be_decrypted(monkeypatch):
+    """A rotated TOKEN_ENCRYPTION_KEY means the stored ciphertext can no
+    longer be read back -- functionally identical to having no refresh token
+    at all, so this must surface as CorosReconnectRequired (the honest,
+    typed reason the athlete needs to reconnect), not an unhandled
+    TokenDecryptionError bubbling up as a 500."""
+    connection = {
+        "user_id": 7,
+        "token_expires_at": datetime.now(UTC) - timedelta(minutes=1),
+        "refresh_token_enc": "undecryptable-ciphertext",
+        "access_token_enc": "irrelevant",
+        "scopes": "openid mcp.tools offline_access",
+        "provider_user_id": None,
+    }
+
+    def raise_decryption_error(ciphertext, key=None):
+        raise token_crypto.TokenDecryptionError("Stored token could not be decrypted.")
+
+    monkeypatch.setattr(coros_sync.token_crypto, "decrypt_token", raise_decryption_error)
+
+    with pytest.raises(coros_sync.CorosReconnectRequired):
+        await coros_sync._access_token(connection)
+
+
+@pytest.mark.asyncio
+async def test_access_token_requires_reconnect_when_access_token_cannot_be_decrypted(monkeypatch):
+    """Same rotated-key scenario, but hitting the still-valid (non-expiring)
+    access token path instead of the refresh path."""
+    connection = {
+        "user_id": 7,
+        "token_expires_at": datetime.now(UTC) + timedelta(hours=1),
+        "refresh_token_enc": "irrelevant",
+        "access_token_enc": "undecryptable-ciphertext",
+        "scopes": "openid mcp.tools offline_access",
+        "provider_user_id": None,
+    }
+
+    def raise_decryption_error(ciphertext, key=None):
+        raise token_crypto.TokenDecryptionError("Stored token could not be decrypted.")
+
+    monkeypatch.setattr(coros_sync.token_crypto, "decrypt_token", raise_decryption_error)
 
     with pytest.raises(coros_sync.CorosReconnectRequired):
         await coros_sync._access_token(connection)

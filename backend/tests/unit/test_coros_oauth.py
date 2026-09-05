@@ -62,3 +62,29 @@ async def test_exchange_code_raises_on_an_oauth_error():
 
     with pytest.raises(coros_oauth.CorosAuthError, match="invalid_grant"):
         await coros_oauth.exchange_code("bad", "v", transport=httpx.MockTransport(handler))
+
+
+@pytest.mark.asyncio
+async def test_refresh_raises_coros_auth_error_on_a_non_json_error_body():
+    # A proxy sitting in front of COROS can return an HTML error page (a 502)
+    # instead of JSON. _post_token must check the status code before parsing
+    # the body, or this surfaces as json.JSONDecodeError -- which the
+    # background refresh path in coros_sync._access_token does not catch,
+    # unlike the callback's broader ValueError net.
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(502, text="<html>Bad Gateway</html>", headers={"content-type": "text/html"})
+
+    with pytest.raises(coros_oauth.CorosAuthError, match="502") as exc_info:
+        await coros_oauth.refresh("some-refresh-token", transport=httpx.MockTransport(handler))
+    assert "some-refresh-token" not in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_refresh_raises_coros_auth_error_on_a_non_json_success_body():
+    # Belt-and-braces: even a 200 with a non-JSON body (a misconfigured proxy
+    # serving a static page) must not raise json.JSONDecodeError.
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, text="not json", headers={"content-type": "text/plain"})
+
+    with pytest.raises(coros_oauth.CorosAuthError, match="200"):
+        await coros_oauth.refresh("some-refresh-token", transport=httpx.MockTransport(handler))

@@ -102,14 +102,31 @@ async def test_raises_mcp_error_when_the_server_returns_an_error():
 
 @pytest.mark.asyncio
 async def test_context_manager_closes_the_transport_when_initialize_fails():
+    # A non-2xx status must surface as McpError, not the raw httpx exception --
+    # McpError is the only exception type the per-item isolation guards in
+    # services/providers/coros.py catch, so an httpx.HTTPStatusError escaping
+    # here would bypass them and abort whatever batch is in flight.
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(401, json={"error": "unauthorized"})
 
     client = McpClient(ENDPOINT, "tok", transport=_transport(handler))
-    with pytest.raises(httpx.HTTPStatusError):
+    with pytest.raises(McpError, match="401"):
         async with client:
             pass
     assert client._client.is_closed is True
+
+
+@pytest.mark.asyncio
+async def test_a_timeout_also_surfaces_as_mcp_error():
+    # A slow/rate-limited COROS response must not escape as httpx.TimeoutException
+    # -- that would bypass the (CorosParseError, McpError) isolation guards in
+    # services/providers/coros.py and discard an entire in-flight batch.
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.TimeoutException("timed out", request=request)
+
+    client = McpClient(ENDPOINT, "tok", transport=_transport(handler))
+    with pytest.raises(McpError):
+        await client.initialize()
 
 
 @pytest.mark.asyncio

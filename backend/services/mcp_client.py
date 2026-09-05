@@ -96,12 +96,33 @@ class McpClient:
             raise McpError(f"SSE response contained no frame matching request id {expected_id}")
         return response.json()
 
+    async def _post(self, label: str, json_body: dict[str, Any]) -> httpx.Response:
+        """POSTs one JSON-RPC message and translates every transport-level
+        failure into McpError: a non-2xx response (httpx.HTTPStatusError) and
+        any other httpx.HTTPError (timeout, connect failure, etc.) alike.
+
+        This is the client's only network boundary, so no httpx exception
+        should ever escape McpClient -- the per-item isolation guards in
+        services/providers/coros.py catch (CorosParseError, McpError) only,
+        and a transport failure that instead surfaced as a bare httpx
+        exception would bypass them entirely, aborting whatever batch is in
+        flight. `label` identifies the failing call for debugging; the
+        message never includes the request body or the bearer token.
+        """
+        try:
+            response = await self._client.post(self._endpoint, headers=self._headers(), json=json_body)
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            raise McpError(f"MCP request '{label}' failed with HTTP {exc.response.status_code}") from exc
+        except httpx.HTTPError as exc:
+            raise McpError(f"MCP request '{label}' failed: {type(exc).__name__}") from exc
+        return response
+
     async def initialize(self) -> None:
         request_id = self._rpc_id()
-        response = await self._client.post(
-            self._endpoint,
-            headers=self._headers(),
-            json={
+        response = await self._post(
+            "initialize",
+            {
                 "jsonrpc": "2.0",
                 "id": request_id,
                 "method": "initialize",
@@ -112,7 +133,6 @@ class McpClient:
                 },
             },
         )
-        response.raise_for_status()
         self._session_id = response.headers.get("Mcp-Session-Id") or self._session_id
         payload = self._decode(response, request_id)
         if "error" in payload:
@@ -126,17 +146,15 @@ class McpClient:
 
     async def call_tool(self, name: str, arguments: dict[str, Any]) -> str:
         request_id = self._rpc_id()
-        response = await self._client.post(
-            self._endpoint,
-            headers=self._headers(),
-            json={
+        response = await self._post(
+            name,
+            {
                 "jsonrpc": "2.0",
                 "id": request_id,
                 "method": "tools/call",
                 "params": {"name": name, "arguments": arguments},
             },
         )
-        response.raise_for_status()
         payload = self._decode(response, request_id)
         if "error" in payload:
             raise McpError(str(payload["error"].get("message", payload["error"])))

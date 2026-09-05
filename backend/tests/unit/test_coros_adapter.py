@@ -212,6 +212,47 @@ async def test_a_failed_detail_call_does_not_drop_other_activities():
 
 
 @pytest.mark.asyncio
+async def test_unrecognised_device_list_shape_degrades_to_none_with_a_warning(caplog):
+    # COROS Agreement 14.5 requires naming the specific device model wherever
+    # their data is shown and treats a failure to do so as a material breach.
+    # A NULL device_model must never happen silently -- this must at least
+    # log a clearly-named warning so the gap can be noticed.
+    stub = StubMcp(
+        {
+            "querySportRecords": SPORT_RECORDS,
+            "getActivityDetail": ACTIVITY_DETAIL,
+            "queryDevices": "Bound Devices (0)\n========================\n\nNo devices bound.",
+        }
+    )
+    with caplog.at_level("WARNING", logger="services.providers.coros"):
+        activities = await CorosAdapter(stub).fetch_activities(date(2026, 8, 29), date(2026, 9, 2))
+
+    assert activities[0].device_model is None
+    events = [r.fields["event"] for r in caplog.records if hasattr(r, "fields")]
+    assert "device_model_missing" in events
+
+
+@pytest.mark.asyncio
+async def test_queryDevices_failure_degrades_to_none_instead_of_aborting_the_batch(caplog):
+    # A rate-limited or timed-out queryDevices call must not discard the whole
+    # activity batch just to attribute a device model to it.
+    stub = RaisingMcp(
+        {
+            "querySportRecords": SPORT_RECORDS,
+            "getActivityDetail": ACTIVITY_DETAIL,
+        },
+        raising={"queryDevices": McpError("rate limited")},
+    )
+    with caplog.at_level("WARNING", logger="services.providers.coros"):
+        activities = await CorosAdapter(stub).fetch_activities(date(2026, 8, 29), date(2026, 9, 2))
+
+    assert len(activities) == 1
+    assert activities[0].device_model is None
+    events = [r.fields["event"] for r in caplog.records if hasattr(r, "fields")]
+    assert "device_model_missing" in events
+
+
+@pytest.mark.asyncio
 async def test_fetch_daily_metrics_merges_resting_hr_hrv_and_load_by_date():
     stub = StubMcp(
         {

@@ -104,6 +104,7 @@ def test_callback_with_matching_cookie_connects(monkeypatch):
 
 def test_connect_sets_httponly_samesite_lax_cookie_scoped_to_callback(monkeypatch):
     monkeypatch.setattr(integrations.settings, "COROS_CLIENT_ID", "test-client-id")
+    monkeypatch.setattr(integrations.settings, "TOKEN_ENCRYPTION_KEY", "test-encryption-key")
     monkeypatch.setattr(integrations.coros_oauth, "make_pkce_pair", lambda: ("verifier123", "challenge123"))
 
     app.dependency_overrides[integrations.get_current_user] = lambda: {"id": 42}
@@ -124,3 +125,78 @@ def test_connect_sets_httponly_samesite_lax_cookie_scoped_to_callback(monkeypatc
     stored_states = list(integrations._PENDING_AUTH.keys())
     assert len(stored_states) == 1
     assert stored_states[0] in authorize_url
+
+
+def test_connect_returns_503_when_token_encryption_key_is_not_configured(monkeypatch):
+    # A fresh deploy that set COROS_CLIENT_ID but never generated
+    # TOKEN_ENCRYPTION_KEY must fail here, at /connect, with a clear 503 --
+    # not after the athlete has already granted consent at COROS, which is
+    # what happens if this only surfaces once the callback tries to encrypt
+    # the returned tokens.
+    monkeypatch.setattr(integrations.settings, "COROS_CLIENT_ID", "test-client-id")
+    monkeypatch.setattr(integrations.settings, "TOKEN_ENCRYPTION_KEY", "")
+
+    app.dependency_overrides[integrations.get_current_user] = lambda: {"id": 42}
+    try:
+        resp = client.get("/api/integrations/coros/connect")
+    finally:
+        app.dependency_overrides.pop(integrations.get_current_user, None)
+
+    assert resp.status_code == 503
+    assert integrations._PENDING_AUTH == {}
+
+
+def test_callback_redirects_to_error_when_token_encryption_is_unconfigured(monkeypatch):
+    # Simulates the fresh-deploy gap this closes: exchange_code succeeds (COROS
+    # accepted the code), but TOKEN_ENCRYPTION_KEY is missing so encrypt_token
+    # raises TokenEncryptionUnconfigured. That must redirect to ?coros=error
+    # like every other callback failure, not 500 on a bare error page outside
+    # the app shell.
+    state = "state-unconfigured-key"
+    _seed_pending(state, user_id=42, verifier="verifier123")
+    saved = []
+
+    async def fake_exchange_code(code, verifier):
+        return TokenSet(access_token="at", refresh_token="rt", expires_at=datetime.now(UTC) + timedelta(hours=1))
+
+    monkeypatch.setattr(integrations.coros_oauth, "exchange_code", fake_exchange_code)
+    monkeypatch.setattr(integrations.settings, "TOKEN_ENCRYPTION_KEY", "")
+    monkeypatch.setattr(integrations.db, "save_connection", lambda **kw: saved.append(kw))
+    client.cookies.set(COOKIE_NAME, state)
+
+    resp = client.get(CALLBACK, params={"code": "auth-code", "state": state})
+
+    assert resp.status_code in (302, 307)
+    assert resp.headers["location"] == "https://uphill-ai.io.vn/?coros=error"
+    assert saved == []
+    assert "Max-Age=0" in resp.headers.get("set-cookie", "")
+
+
+def test_callback_without_cookie_logs_a_distinct_event_from_a_mismatched_cookie(caplog):
+    # A genuine CSRF attempt and a frontend that forgot `credentials: "include"`
+    # on its fetch must not look identical in the logs -- this branch ships no
+    # frontend yet, so the latter is the likely cause of a missing cookie.
+    state = "state-log-no-cookie"
+    _seed_pending(state)
+
+    with caplog.at_level("WARNING", logger=integrations.logger.name):
+        resp = client.get(CALLBACK, params={"code": "auth-code", "state": state})
+
+    assert resp.headers["location"] == "https://uphill-ai.io.vn/?coros=error"
+    events = [r.fields["event"] for r in caplog.records if hasattr(r, "fields")]
+    assert "callback_state_cookie_absent" in events
+    assert "callback_state_mismatch" not in events
+
+
+def test_callback_with_mismatched_cookie_logs_a_distinct_event_from_a_missing_cookie(caplog):
+    state = "state-log-mismatch"
+    _seed_pending(state)
+    client.cookies.set(COOKIE_NAME, "some-other-attacker-controlled-state")
+
+    with caplog.at_level("WARNING", logger=integrations.logger.name):
+        resp = client.get(CALLBACK, params={"code": "auth-code", "state": state})
+
+    assert resp.headers["location"] == "https://uphill-ai.io.vn/?coros=error"
+    events = [r.fields["event"] for r in caplog.records if hasattr(r, "fields")]
+    assert "callback_state_mismatch" in events
+    assert "callback_state_cookie_absent" not in events

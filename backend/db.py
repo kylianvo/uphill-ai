@@ -24,6 +24,15 @@ engine = create_engine(
     max_overflow=20,
     pool_pre_ping=True,
     echo=False,
+    # A SQLAlchemy StatementError's __str__ appends the SQL and its bound
+    # parameters -- for activities/daily_metrics that means real athlete
+    # health data (start_time, distance_km, avg_hr, device_model, ...). The
+    # per-row handlers in services/coros_sync.py use logger.exception, which
+    # renders that same __str__ into the logs. hide_parameters=True keeps the
+    # traceback and statement text (useful for debugging) while redacting the
+    # parameter values themselves, matching this project's rule against
+    # logging payload bodies.
+    hide_parameters=True,
     # future=True: this module is imported both by the backend (SQLAlchemy 2.0,
     # where 2.0-style Connection.commit() is the only mode) and by Airflow
     # (SQLAlchemy <2.0, pinned by Airflow itself) -- future=True opts SQLAlchemy

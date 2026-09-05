@@ -60,12 +60,47 @@ class CorosAdapter:
         Where more than one device is bound (e.g. a watch plus a separate HR
         strap), this is a guess, not a verified match -- the exact per-activity
         model is only available inside the FIT file.
+
+        Never raises: COROS Agreement 14.5 requires the specific device model
+        wherever their data is displayed and treats a failure to do so as a
+        material breach, but a missing model must not abort the sync that
+        would otherwise store the activity. Both failure paths below --
+        queryDevices itself failing, and it returning an unrecognised shape --
+        degrade to None, but always with a warning naming the event clearly,
+        since a silent NULL here would never surface the compliance gap.
         """
-        text = await self._mcp.call_tool("queryDevices", {})
+        try:
+            text = await self._mcp.call_tool("queryDevices", {})
+        except McpError as exc:
+            logger.warning(
+                "coros device model unavailable",
+                extra={
+                    "fields": {
+                        "service": "coros_adapter",
+                        "event": "device_model_missing",
+                        "reason": "query_devices_failed",
+                        "error_type": type(exc).__name__,
+                        "error": str(exc),
+                    }
+                },
+            )
+            return None
+
         for line in text.splitlines():
             stripped = line.strip()
             if stripped[:2].rstrip(".").isdigit() and "." in stripped[:3]:
                 return stripped.split(".", 1)[1].strip()
+
+        logger.warning(
+            "coros device model unavailable",
+            extra={
+                "fields": {
+                    "service": "coros_adapter",
+                    "event": "device_model_missing",
+                    "reason": "unrecognised_device_list_shape",
+                }
+            },
+        )
         return None
 
     async def fetch_activities(self, since: date, until: date) -> list[CanonicalActivity]:

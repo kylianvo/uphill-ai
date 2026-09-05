@@ -113,6 +113,11 @@ Backend reads from `backend/.env`. Key variables:
 - `TAVILY_API_KEY` — search API key for gear's and nutrition's web-discovery KB distillation (`services/kb_distiller.py`'s `discover_gear_web`/`discover_nutrition_web`); without it those domains' distillation raises (gear) or falls back to principles-only (nutrition)
 - `RAG_ENGINE` — `gemini` (distilled KB + Gemini, ~5-45s) or `notebooklm` (legacy runtime NotebookLM, ~2 min); the other engine remains the automatic fallback
 - `QDRANT_URL` — defaults to `http://qdrant:6333` in Docker, `http://localhost:6333` otherwise
+- `TOKEN_ENCRYPTION_KEY` — Fernet key encrypting third-party OAuth tokens (COROS today) at rest in `athlete_connections`; generate it once via `services.token_crypto.generate_key()`. Rotating it invalidates every stored token and forces every athlete to reconnect their device account
+- `COROS_CLIENT_ID`, `COROS_CLIENT_SECRET` — OAuth client credentials for the COROS MCP auth server, issued by `scripts/register_coros_client.py`'s dynamic registration
+- `COROS_REDIRECT_URI` — the `/api/integrations/coros/callback` URL COROS redirects back to after consent; must exactly match what was registered
+- `COROS_MCP_ENDPOINT` — the COROS MCP server endpoint polled for activities and health data (defaults to `https://mcp.coros.com/mcp`)
+- `FRONTEND_URL` — origin the COROS OAuth callback redirects the athlete's browser back to after connect/error (defaults to `https://uphill-ai.io.vn`)
 
 Per-user Gemini API keys are stored in the `users` table (`gemini_api_key` column) and take precedence over the server-level key for chat and plan generation (NOT yet for the gear/nutrition Gemini engines, which use the server key).
 

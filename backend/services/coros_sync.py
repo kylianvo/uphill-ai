@@ -107,7 +107,20 @@ async def _access_token(connection: dict) -> str:
                 f"No refresh token on file for user {connection.get('user_id')}'s COROS connection; "
                 "the athlete must reconnect their COROS account."
             )
-        refreshed = await coros_oauth.refresh(token_crypto.decrypt_token(refresh_token_enc))
+        try:
+            refresh_token = token_crypto.decrypt_token(refresh_token_enc)
+        except token_crypto.TokenDecryptionError as exc:
+            # TOKEN_ENCRYPTION_KEY rotated (or the ciphertext is otherwise
+            # unreadable) -- there is no way to recover the plaintext refresh
+            # token, so this is functionally identical to having none at all.
+            # Raised here, at the point of failure, rather than left for a
+            # caller to translate: this is the only place that knows *why*
+            # the athlete needs to reconnect.
+            raise CorosReconnectRequired(
+                f"Stored COROS refresh token for user {connection.get('user_id')} could not be decrypted; "
+                "the athlete must reconnect their COROS account."
+            ) from exc
+        refreshed = await coros_oauth.refresh(refresh_token)
         db.save_connection(
             user_id=connection["user_id"],
             provider=PROVIDER,
@@ -121,7 +134,13 @@ async def _access_token(connection: dict) -> str:
             provider_user_id=connection.get("provider_user_id"),
         )
         return refreshed.access_token
-    return token_crypto.decrypt_token(connection["access_token_enc"])
+    try:
+        return token_crypto.decrypt_token(connection["access_token_enc"])
+    except token_crypto.TokenDecryptionError as exc:
+        raise CorosReconnectRequired(
+            f"Stored COROS access token for user {connection.get('user_id')} could not be decrypted; "
+            "the athlete must reconnect their COROS account."
+        ) from exc
 
 
 async def sync_user(user_id: int, days: int = 30) -> dict[str, int]:

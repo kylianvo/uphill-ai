@@ -40,7 +40,9 @@ from config import settings
 from db import verify_session
 from log_utils import get_logger
 from services import coros_oauth, coros_sync, token_crypto
-from services.providers.coros import PROVIDER
+from services.mcp_client import McpError
+from services.providers.coros import PROVIDER, CorosDailyMetricsUnavailableError
+from services.providers.coros_parsers import CorosParseError
 
 router = APIRouter(prefix="/integrations", tags=["integrations"])
 logger = get_logger(__name__)
@@ -169,7 +171,11 @@ def _error_redirect() -> RedirectResponse:
 
 @router.get("/coros/connect")
 async def coros_connect(response: Response, user: dict[str, Any] = Depends(get_current_user)):
-    if not settings.COROS_CLIENT_ID:
+    # Both must be set before an athlete is sent to COROS: without
+    # TOKEN_ENCRYPTION_KEY, the callback can exchange the code but cannot
+    # store the resulting tokens (encrypt_token raises TokenEncryptionUnconfigured),
+    # which would otherwise only surface AFTER the athlete has granted consent.
+    if not settings.COROS_CLIENT_ID or not settings.TOKEN_ENCRYPTION_KEY:
         raise HTTPException(status_code=503, detail="COROS integration is not configured.")
     _prune_pending_auth()
     verifier, challenge = coros_oauth.make_pkce_pair()
@@ -213,7 +219,38 @@ async def coros_callback(
     # thereby invalidate -- the real athlete's still-pending entry; that would
     # let the attacker grief a legitimate connect attempt even if they can't
     # complete it themselves.
-    if not state or not state_cookie or not secrets.compare_digest(state_cookie, state):
+    if not state_cookie:
+        # Indistinguishable from a mismatch at the HTTP response (both redirect
+        # to ?coros=error), but they mean very different things operationally:
+        # this branch is what a frontend that forgot `credentials: "include"`
+        # on its fetch looks like -- this branch ships no frontend yet, so
+        # that mistake is the likely cause, not an attack. Logged distinctly
+        # from a present-but-wrong cookie so the two don't look identical in
+        # the logs.
+        logger.warning(
+            "coros callback state cookie absent",
+            extra={
+                "fields": {
+                    "service": "integrations",
+                    "provider": "coros",
+                    "event": "callback_state_cookie_absent",
+                }
+            },
+        )
+        return _error_redirect()
+    if not state or not secrets.compare_digest(state_cookie, state):
+        # A cookie was present but didn't match (or `state` was missing from
+        # the query string) -- this is the shape a genuine CSRF attempt takes.
+        logger.warning(
+            "coros callback state mismatch",
+            extra={
+                "fields": {
+                    "service": "integrations",
+                    "provider": "coros",
+                    "event": "callback_state_mismatch",
+                }
+            },
+        )
         return _error_redirect()
 
     pending = _pop_pending_auth(state)
@@ -223,15 +260,30 @@ async def coros_callback(
     user_id, verifier = pending
     try:
         tokens = await coros_oauth.exchange_code(code, verifier)
-    except (coros_oauth.CorosAuthError, httpx.HTTPError, ValueError) as exc:
+        # Encryption happens inside this try, not after it: on a fresh deploy
+        # where TOKEN_ENCRYPTION_KEY was never set, encrypt_token raises
+        # TokenEncryptionUnconfigured -- which, outside this block, would
+        # surface as a raw 500 AFTER the athlete already granted consent at
+        # COROS, since coros_connect's own config guard cannot check
+        # TOKEN_ENCRYPTION_KEY at /connect time for a deploy that only broke
+        # it after that check ran (or, before that guard existed, at all).
+        access_token_enc = token_crypto.encrypt_token(tokens.access_token)
+        refresh_token_enc = token_crypto.encrypt_token(tokens.refresh_token) if tokens.refresh_token else None
+    except (
+        coros_oauth.CorosAuthError,
+        httpx.HTTPError,
+        ValueError,
+        token_crypto.TokenEncryptionUnconfigured,
+    ) as exc:
         # Never let a rejected/expired code, a flaky network call to COROS
-        # (httpx.HTTPError covers connect/timeout/transport failures), or a
+        # (httpx.HTTPError covers connect/timeout/transport failures), a
         # non-JSON error body from a proxy in front of COROS (json.JSONDecodeError
-        # is a ValueError) surface as a raw 500 to the athlete's browser -- this
-        # endpoint is hit by a full-page redirect from COROS, not an API call the
-        # frontend can catch, so any unhandled exception here would strand them on
-        # a bare error page outside the app shell. Logs only the failure type,
-        # never the code, token, or state.
+        # is a ValueError), or a missing TOKEN_ENCRYPTION_KEY surface as a raw
+        # 500 to the athlete's browser -- this endpoint is hit by a full-page
+        # redirect from COROS, not an API call the frontend can catch, so any
+        # unhandled exception here would strand them on a bare error page
+        # outside the app shell. Logs only the failure type, never the code,
+        # token, or state.
         logger.warning(
             "coros token exchange failed",
             extra={
@@ -249,8 +301,8 @@ async def coros_callback(
     db.save_connection(
         user_id=user_id,
         provider=PROVIDER,
-        access_token_enc=token_crypto.encrypt_token(tokens.access_token),
-        refresh_token_enc=token_crypto.encrypt_token(tokens.refresh_token) if tokens.refresh_token else None,
+        access_token_enc=access_token_enc,
+        refresh_token_enc=refresh_token_enc,
         token_expires_at=tokens.expires_at,
         scopes=coros_oauth.SCOPES,
     )
@@ -265,6 +317,45 @@ async def coros_sync_now(days: int = 30, user: dict[str, Any] = Depends(get_curr
         return await coros_sync.sync_user(user["id"], days=days)
     except coros_sync.CorosReconnectRequired as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except CorosParseError as exc:
+        # CorosParseError subclasses ValueError, so it MUST be caught before
+        # the generic ValueError arm below -- otherwise a COROS response-shape
+        # change is reported to the athlete as a 400 client error carrying an
+        # internal parser string as `detail` (e.g. "querySportRecords output
+        # missing its 'Sport Records' header"), which is both a vendor-side
+        # fault mis-reported as the athlete's fault and an internals leak.
+        # Logged, not returned.
+        logger.warning(
+            "coros sync failed: unrecognised response shape",
+            extra={
+                "fields": {
+                    "service": "integrations",
+                    "provider": "coros",
+                    "event": "sync_parse_failed",
+                    "user_id": user["id"],
+                    "error": str(exc),
+                }
+            },
+        )
+        raise HTTPException(status_code=502, detail="COROS sync failed. Please try again shortly.") from exc
+    except (McpError, coros_sync.CorosSyncPersistError, CorosDailyMetricsUnavailableError) as exc:
+        # All three are upstream/provider failures (a COROS transport error
+        # surfaced through McpClient, or a persistence layer that rejected
+        # every row in a non-empty batch) rather than anything the athlete did
+        # wrong, so this is a 502, not a 400.
+        logger.warning(
+            "coros sync failed: upstream error",
+            extra={
+                "fields": {
+                    "service": "integrations",
+                    "provider": "coros",
+                    "event": "sync_upstream_failed",
+                    "user_id": user["id"],
+                    "error_type": type(exc).__name__,
+                }
+            },
+        )
+        raise HTTPException(status_code=502, detail="COROS sync failed. Please try again shortly.") from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

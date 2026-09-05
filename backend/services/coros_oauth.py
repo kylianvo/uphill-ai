@@ -83,8 +83,26 @@ async def _post_token(data: dict[str, str], transport: httpx.BaseTransport | Non
             data=body,
             headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
-    payload = response.json()
-    if response.status_code >= 400 or "error" in payload:
+    # Check the status before touching the body: a proxy in front of COROS
+    # (a 502, an HTML error page) returns a non-JSON body, and calling
+    # response.json() first would raise json.JSONDecodeError instead of a
+    # message that says what happened. The callback in routers/integrations.py
+    # happens to catch ValueError (json.JSONDecodeError's base class) so that
+    # path is covered either way, but the background refresh path in
+    # coros_sync._access_token is not -- it would otherwise surface a proxy
+    # outage to the athlete as a bare "Expecting value: line 1 column 1".
+    if response.status_code >= 400:
+        try:
+            error_payload = response.json()
+            detail = error_payload.get("error", response.text)
+        except ValueError:
+            detail = response.text
+        raise CorosAuthError(f"COROS token endpoint returned HTTP {response.status_code}: {detail}")
+    try:
+        payload = response.json()
+    except ValueError as exc:
+        raise CorosAuthError(f"COROS token endpoint returned a non-JSON body (HTTP {response.status_code})") from exc
+    if "error" in payload:
         raise CorosAuthError(str(payload.get("error", response.text)))
     return payload
 
