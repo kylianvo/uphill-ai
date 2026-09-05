@@ -1420,3 +1420,92 @@ label {
 @media (prefers-reduced-motion: reduce) {
   .device-btn { transition: none; }
 }
+
+/* ─── Match review ───────────────────────────────────────────────────────── */
+.match-section { margin-top: 24px; }
+.match-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.match-heading {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--font-fustat), sans-serif;
+  font-size: 14px; font-weight: 700; color: var(--text-primary); margin: 0;
+}
+/* Same WCAG AA note as .device-help above: --text-muted can drop below 4.5:1
+   over --bg-card, so status/help/attribution text here uses --text-secondary. */
+.match-help { font-size: 13px; color: var(--text-secondary); margin: 10px 0 0; line-height: 1.6; }
+.match-summary { font-size: 13px; color: var(--text-secondary); margin: 10px 0 0; }
+.match-empty { font-size: 13px; color: var(--text-secondary); margin: 14px 0 0; line-height: 1.6; }
+.match-error {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 13px; color: var(--accent-alert); margin: 10px 0 0;
+}
+
+.match-group { margin-top: 20px; }
+.match-group-heading {
+  font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--text-secondary); margin: 0 0 8px;
+}
+.match-list { display: flex; flex-direction: column; gap: 10px; }
+
+.match-card {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+  padding: 14px; border: 1px solid var(--border-color); border-radius: 12px;
+  background: var(--bg-card); flex-wrap: wrap;
+}
+.match-card-body { display: flex; flex-direction: column; gap: 4px; min-width: 220px; flex: 1; }
+.match-workout { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+.match-activity { font-size: 13px; color: var(--text-secondary); }
+.match-date { font-size: 12px; color: var(--text-secondary); }
+.match-reason { font-size: 12px; color: var(--text-secondary); }
+.match-unmatched-note { font-size: 12.5px; color: var(--text-secondary); margin: 2px 0 0; line-height: 1.5; }
+
+.match-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 9px; border-radius: 999px;
+  font-size: 11px; font-weight: 700; letter-spacing: .02em;
+  width: fit-content; margin-top: 2px;
+}
+.match-badge-pct { font-weight: 600; opacity: .85; }
+.match-badge-auto {
+  background: var(--accent-primary); color: #ffffff;
+}
+.match-badge-suggest {
+  background: transparent; color: var(--accent-primary);
+  border: 1px solid var(--border-color-active);
+}
+.match-badge-unmatched {
+  background: transparent; color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.match-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; min-width: 180px; }
+.match-permanent-note { font-size: 11.5px; color: var(--text-secondary); margin: 0; text-align: right; line-height: 1.4; max-width: 220px; }
+.match-action-buttons { display: flex; gap: 8px; }
+.match-btn-secondary {
+  padding: 7px 14px; border-radius: 999px; border: 1px solid var(--border-color);
+  background: transparent; color: var(--text-secondary);
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.match-btn-secondary:hover:not(:disabled) { background: var(--bg-card-hover); }
+.match-btn-secondary:disabled { opacity: .55; cursor: default; }
+.match-resolved {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12.5px; font-weight: 600; color: var(--accent-primary);
+}
+
+.match-spin { animation: match-spin 0.9s linear infinite; }
+@keyframes match-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+.match-card-skeleton { background: var(--bg-card); }
+.match-skeleton-line {
+  display: block; border-radius: 999px; background: var(--border-color); opacity: .5;
+}
+.match-skeleton-line-wide { width: 60%; height: 15px; }
+.match-skeleton-line-narrow { width: 40%; height: 12px; margin-top: 8px; }
+.match-skeleton-line-badge { width: 90px; height: 18px; margin-top: 8px; border-radius: 999px; }
+.match-skeleton-line-actions { width: 140px; height: 30px; align-self: center; }
+
+@media (prefers-reduced-motion: reduce) {
+  .match-btn-secondary { transition: none; }
+  .match-spin { animation: none; }
+}

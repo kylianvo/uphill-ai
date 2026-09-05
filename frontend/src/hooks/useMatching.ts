@@ -1,0 +1,104 @@
+import { useCallback, useState } from "react";
+
+// Mirrors useDeviceConnection's getBackendUrl -- the app can point at a
+// different backend at runtime via ?api=<url> (stored in localStorage as
+// UPHILL_API_URL_OVERRIDE), so every hook reads that override rather than
+// baking in NEXT_PUBLIC_API_URL alone.
+function getBackendUrl(): string {
+  if (typeof window !== "undefined") {
+    const override = localStorage.getItem("UPHILL_API_URL_OVERRIDE");
+    if (override) return override;
+  }
+  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+}
+
+export type MatchCounts = {
+  matched: number;
+  suggested: number;
+  unmatched: number;
+  skipped_manual: number;
+};
+
+function authHeaders(): Record<string, string> {
+  const token = localStorage.getItem("uphill_session_token");
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
+/**
+ * Drives the two matching-engine endpoints:
+ *   POST  /api/integrations/matching/run              -- run the matcher
+ *   PATCH /api/integrations/matching/{activity_id}     -- the athlete's manual correction
+ *
+ * The matcher runs in shadow mode today (it records decisions, it does not
+ * mark workouts complete) and a manual correction is permanent (match_method
+ * becomes 'manual' and no automatic run ever touches it again, whether the
+ * correction assigns a workout_id or clears one to null) -- see
+ * services/matching/runner.py and db.set_manual_match. Those two facts are
+ * backend behaviour, not something this hook can change; MatchReview is
+ * responsible for saying so to the athlete before they act.
+ */
+export function useMatching() {
+  const [running, setRunning] = useState(false);
+  const [error, setError] = useState("");
+
+  const runMatching = useCallback(async (days = 30): Promise<MatchCounts | null> => {
+    const API_BASE_URL = getBackendUrl();
+    setRunning(true);
+    setError("");
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/integrations/matching/run?days=${days}`, {
+        method: "POST",
+        headers: authHeaders(),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body?.detail || "Could not match your activities.");
+      return body as MatchCounts;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not match your activities.");
+      return null;
+    } finally {
+      setRunning(false);
+    }
+  }, []);
+
+  // workout_id travels as a query param (matching the backend's route
+  // signature, which reads it that way, not from a JSON body). Omitting the
+  // param entirely for a clear (rather than sending workout_id=null as
+  // literal text) is deliberate -- the endpoint's default is None either way,
+  // and this avoids ever emitting a query string a naive server-side parser
+  // could mistake for the literal id "null".
+  const patchMatch = useCallback(
+    async (activityId: number, workoutId: number | null): Promise<boolean> => {
+      const API_BASE_URL = getBackendUrl();
+      setError("");
+      const query = workoutId === null ? "" : `?workout_id=${workoutId}`;
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/integrations/matching/${activityId}${query}`, {
+          method: "PATCH",
+          headers: authHeaders(),
+        });
+        const body = await res.json();
+        if (!res.ok) throw new Error(body?.detail || "Could not update the match.");
+        return true;
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Could not update the match.");
+        return false;
+      }
+    },
+    []
+  );
+
+  const confirmMatch = useCallback(
+    (activityId: number, workoutId: number) => patchMatch(activityId, workoutId),
+    [patchMatch]
+  );
+  const clearMatch = useCallback(
+    (activityId: number) => patchMatch(activityId, null),
+    [patchMatch]
+  );
+
+  return { running, error, runMatching, confirmMatch, clearMatch };
+}
