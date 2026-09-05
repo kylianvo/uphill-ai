@@ -123,3 +123,17 @@ Per-user Gemini API keys are stored in the `users` table (`gemini_api_key` colum
 - **Bilingual support**: The app supports English and Vietnamese (`lang: "en" | "vi"`). Knowledge cards and plan generation respect the `lang` parameter.
 - **Qdrant**: A Qdrant vector DB container is in docker-compose. The KB RAG engine uses it via `services/kb_retrieval.py` (plain qdrant-client + `gemini-embedding-2`, collection `uphill_kb_scheduler`). `services/vector_service.py` is legacy (langchain-based, deps not in requirements.txt) kept only for the old `scripts/index_*.py`.
 - **Dual schema**: every table/column change goes in BOTH `db.py:init_db()` and a hand-written Alembic migration (see the `db-migration` skill). `init_db()` also self-migrates existing dev databases via idempotent ALTERs at startup.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues on `kylianvo/uphill-ai`, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`), unchanged. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context layout: one `CONTEXT.md` + `docs/adr/` at the repo root (created lazily, not yet present). See `docs/agents/domain.md`.
