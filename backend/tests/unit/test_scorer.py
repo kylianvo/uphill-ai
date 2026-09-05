@@ -89,3 +89,46 @@ class TestScoring:
     def test_reasons_explain_the_score_for_the_athlete(self):
         scored = score_bundle(bundle(duration_s=1800), workout())
         assert any("duration" in r.lower() for r in scored.reasons)
+
+
+class TestFixRound1ElevationAndNegativeGuards:
+    """Fix round 1: elevation_gain_m is REAL DEFAULT 0.0 (never NULL) in the
+    workouts table, so a flat prescription (0.0) is indistinguishable from
+    "unspecified" under the old falsy check -- and flat prescriptions (easy
+    road runs, track intervals, treadmill sessions) are the common case, not
+    an edge case. These tests pin the fixed behaviour: presence is `is None`,
+    and a *given* 0.0 target is always scored (via absolute deviation, since
+    _ratio_score's relative-error formula divides by target and cannot handle
+    a zero target)."""
+
+    def test_flat_prescription_matched_by_flat_actual_scores_full_marks_and_is_present(self):
+        scored = score_bundle(bundle(elev=0.0), workout(elevation_gain_m=0.0))
+        assert scored._component("elevation") == pytest.approx(1.0)
+        assert "elevation" in scored.components
+
+    def test_flat_prescription_with_800m_of_climbing_scores_zero_and_drags_the_total_down(self):
+        # A bare `== 0.0` assertion on the component alone would still pass
+        # under the OLD skip-the-component behaviour (component simply
+        # absent). Comparing totals against the same bundle scored with the
+        # elevation key absent is what actually proves the component is
+        # being scored (and penalising), not silently dropped.
+        with_elevation = score_bundle(bundle(elev=800.0), workout(elevation_gain_m=0.0))
+        without_elevation = score_bundle(bundle(elev=800.0), workout(elevation_gain_m=None))
+        assert with_elevation._component("elevation") == pytest.approx(0.0)
+        assert with_elevation.total < without_elevation.total
+
+    def test_flat_prescription_with_100m_of_climbing_scores_about_two_thirds(self):
+        scored = score_bundle(bundle(elev=100.0), workout(elevation_gain_m=0.0))
+        assert scored._component("elevation") == pytest.approx(1.0 - 100.0 / 300.0)
+
+    def test_missing_or_none_elevation_key_excludes_the_component_and_renormalises(self):
+        via_none = score_bundle(bundle(), workout(elevation_gain_m=None))
+        assert "elevation" not in via_none.components
+
+        workout_without_key = {k: v for k, v in workout().items() if k != "elevation_gain_m"}
+        via_absent_key = score_bundle(bundle(), workout_without_key)
+        assert "elevation" not in via_absent_key.components
+
+    def test_negative_planned_duration_is_treated_as_absent_not_scored_as_zero(self):
+        scored = score_bundle(bundle(), workout(duration_minutes=-5))
+        assert "duration" not in scored.components
