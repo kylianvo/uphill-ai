@@ -2659,7 +2659,20 @@ def save_match(
         conn.commit()
 
 
-def set_manual_match(activity_id: int, workout_id: int | None) -> None:
+def set_manual_match(activity_id: int, workout_id: int | None, user_id: int) -> None:
+    """Records the athlete's own correction as the permanent match.
+
+    Ownership is enforced here, not just at the route: workout_id must be
+    NULL (clearing the match) or a workout reached via workouts.plan_id ->
+    plans.id -> plans.user_id = :u -- the same join used elsewhere in this
+    file (see e.g. the plan-approval query) to prove a workout belongs to a
+    given athlete. Without this guard, an athlete could attach their own
+    activity to another athlete's workout by guessing a small integer, and
+    because match_method='manual' is permanent, no automatic run would ever
+    clear the wrong reference. CAST(:w AS INTEGER) IS NULL (rather than a
+    bare `:w IS NULL`) is needed because some drivers can't infer the type of
+    an untyped NULL-only bound parameter.
+    """
     with engine.connect() as conn:
         conn.execute(
             text("""
@@ -2667,8 +2680,17 @@ def set_manual_match(activity_id: int, workout_id: int | None) -> None:
             SET matched_workout_id = :w, match_method = 'manual',
                 match_confidence = NULL, match_details = NULL
             WHERE id = :i
+              AND user_id = :u
+              AND (
+                CAST(:w AS INTEGER) IS NULL
+                OR EXISTS (
+                    SELECT 1 FROM workouts w
+                    JOIN plans p ON p.id = w.plan_id
+                    WHERE w.id = :w AND p.user_id = :u
+                )
+              )
             """),
-            {"i": activity_id, "w": workout_id},
+            {"i": activity_id, "w": workout_id, "u": user_id},
         )
         conn.commit()
 
@@ -2692,5 +2714,22 @@ def activity_belongs_to_user(activity_id: int, user_id: int) -> bool:
         found = conn.execute(
             text("SELECT 1 FROM activities WHERE id = :i AND user_id = :u"),
             {"i": activity_id, "u": user_id},
+        ).scalar()
+    return bool(found)
+
+
+def workout_belongs_to_user(workout_id: int, user_id: int) -> bool:
+    """Same workouts -> plans ownership join used elsewhere in this file
+    (e.g. the plan-approval query) -- reused here so the matching-override
+    route can reject a foreign workout_id before it ever reaches
+    set_manual_match."""
+    with engine.connect() as conn:
+        found = conn.execute(
+            text("""
+                SELECT 1 FROM workouts w
+                JOIN plans p ON p.id = w.plan_id
+                WHERE w.id = :w AND p.user_id = :u
+            """),
+            {"w": workout_id, "u": user_id},
         ).scalar()
     return bool(found)

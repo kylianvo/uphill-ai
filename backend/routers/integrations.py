@@ -394,8 +394,19 @@ async def matching_override(
     workout_id: int | None = None,
     user: dict[str, Any] = Depends(get_current_user),
 ):
-    """Athlete corrects a match. Manual matches are never re-scored automatically."""
+    """Athlete corrects a match. Manual matches are never re-scored automatically.
+
+    workout_id ownership is checked here (and again inside set_manual_match's
+    own SQL, as defense in depth) to prevent an athlete from attaching their
+    own activity to another athlete's workout by guessing a small integer --
+    a permanent cross-user reference, since match_method='manual' is never
+    cleared by an automatic run. A foreign workout_id gets the SAME 404/detail
+    as a foreign activity_id: a different response would itself confirm the
+    workout exists and just belongs to someone else.
+    """
     if not db.activity_belongs_to_user(activity_id, user["id"]):
         raise HTTPException(status_code=404, detail="Activity not found.")
-    db.set_manual_match(activity_id=activity_id, workout_id=workout_id)
+    if workout_id is not None and not db.workout_belongs_to_user(workout_id, user["id"]):
+        raise HTTPException(status_code=404, detail="Activity not found.")
+    db.set_manual_match(activity_id=activity_id, workout_id=workout_id, user_id=user["id"])
     return {"status": "ok", "activity_id": activity_id, "workout_id": workout_id}
