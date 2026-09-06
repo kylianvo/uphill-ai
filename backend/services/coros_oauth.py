@@ -72,11 +72,14 @@ def build_authorize_url(state: str, code_challenge: str) -> str:
 async def _post_token(data: dict[str, str], transport: httpx.BaseTransport | None) -> dict:
     # client_secret_post: credentials travel in the form body, matching the
     # token_endpoint_auth_method requested at dynamic-registration time.
+    # If client_secret is empty (e.g. auth_method: none / public PKCE client),
+    # omit client_secret from the form body per RFC 7636 / RFC 6749.
     body = {
         **data,
         "client_id": settings.COROS_CLIENT_ID,
-        "client_secret": settings.COROS_CLIENT_SECRET,
     }
+    if settings.COROS_CLIENT_SECRET:
+        body["client_secret"] = settings.COROS_CLIENT_SECRET
     async with httpx.AsyncClient(transport=transport, timeout=30.0) as client:
         response = await client.post(
             TOKEN_URL,

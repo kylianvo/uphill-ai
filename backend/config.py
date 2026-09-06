@@ -83,5 +83,11 @@ class Config:
     # would corrupt the training history it exists to describe.
     MATCHING_SHADOW_MODE: bool = os.getenv("MATCHING_SHADOW_MODE", "true").lower() != "false"
 
+    # Require HttpOnly state cookie on COROS OAuth callback (RFC 6749 s10.12).
+    # Enabled by default. In staging or cross-origin dev environments, browsers
+    # drop third-party cookies on cross-origin fetch, so setting this to false
+    # allows legitimate OAuth flows using state & PKCE verification.
+    COROS_REQUIRE_STATE_COOKIE: bool = os.getenv("COROS_REQUIRE_STATE_COOKIE", "true").lower() != "false"
+
 
 settings = Config()

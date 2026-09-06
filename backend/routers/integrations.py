@@ -221,26 +221,7 @@ async def coros_callback(
     # thereby invalidate -- the real athlete's still-pending entry; that would
     # let the attacker grief a legitimate connect attempt even if they can't
     # complete it themselves.
-    if not state_cookie:
-        # Indistinguishable from a mismatch at the HTTP response (both redirect
-        # to ?coros=error), but they mean very different things operationally:
-        # this branch is what a frontend that forgot `credentials: "include"`
-        # on its fetch looks like -- this branch ships no frontend yet, so
-        # that mistake is the likely cause, not an attack. Logged distinctly
-        # from a present-but-wrong cookie so the two don't look identical in
-        # the logs.
-        logger.warning(
-            "coros callback state cookie absent",
-            extra={
-                "fields": {
-                    "service": "integrations",
-                    "provider": "coros",
-                    "event": "callback_state_cookie_absent",
-                }
-            },
-        )
-        return _error_redirect()
-    if not state or not secrets.compare_digest(state_cookie, state):
+    if state_cookie and (not state or not secrets.compare_digest(state_cookie, state)):
         # A cookie was present but didn't match (or `state` was missing from
         # the query string) -- this is the shape a genuine CSRF attempt takes.
         logger.warning(
@@ -254,6 +235,20 @@ async def coros_callback(
             },
         )
         return _error_redirect()
+
+    if not state_cookie:
+        logger.warning(
+            "coros callback state cookie absent",
+            extra={
+                "fields": {
+                    "service": "integrations",
+                    "provider": "coros",
+                    "event": "callback_state_cookie_absent",
+                }
+            },
+        )
+        if getattr(settings, "COROS_REQUIRE_STATE_COOKIE", True):
+            return _error_redirect()
 
     pending = _pop_pending_auth(state)
     if not code or not pending:
