@@ -161,7 +161,29 @@ class McpClient:
         result = payload.get("result", {})
         if result.get("isError"):
             raise McpError(f"tool {name} reported an error")
-        text = "".join(block.get("text", "") for block in result.get("content", []) if block.get("type") == "text")
+        text_blocks: list[str] = []
+        for block in result.get("content", []):
+            if block.get("type") == "text":
+                block_text = block.get("text", "")
+                if isinstance(block_text, str):
+                    stripped = block_text.strip()
+                    if stripped.startswith('"') and stripped.endswith('"') and len(stripped) >= 2:
+                        try:
+                            unquoted = json.loads(stripped)
+                            if isinstance(unquoted, str):
+                                block_text = unquoted
+                        except json.JSONDecodeError:
+                            pass
+                    text_blocks.append(block_text)
+        text = "".join(text_blocks)
+        stripped_full = text.strip()
+        if stripped_full.startswith('"') and stripped_full.endswith('"') and len(stripped_full) >= 2:
+            try:
+                unquoted = json.loads(stripped_full)
+                if isinstance(unquoted, str):
+                    text = unquoted
+            except json.JSONDecodeError:
+                pass
         logger.info(
             "mcp tool called",
             extra={

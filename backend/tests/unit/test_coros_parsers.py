@@ -5,6 +5,7 @@ Fixtures are verbatim responses captured from a live COROS account on
 point -- the alternative is silently ingesting nulls.
 """
 
+import json
 from datetime import date
 
 import pytest
@@ -361,3 +362,20 @@ class TestContractGuard:
         # is a recognised shape with legitimately nothing to record -- must
         # not raise.
         assert p.parse_sleep_hrv(SLEEP_HRV_INSUFFICIENT_DATA) == {}
+
+    def test_parsers_handle_json_encoded_strings(self):
+        records = p.parse_sport_records(json.dumps(SPORT_RECORDS))
+        assert len(records) == 2
+        assert records[0]["label_id"] == "480049189982601318"
+
+        detail = p.parse_activity_detail(json.dumps(ACTIVITY_DETAIL))
+        assert detail["duration_seconds"] == 5434.0
+
+        rhr = p.parse_resting_hr(json.dumps(RESTING_HR))
+        assert rhr[date(2026, 9, 2)] == 59
+
+        hrv = p.parse_sleep_hrv(json.dumps(SLEEP_HRV))
+        assert hrv[date(2026, 9, 2)]["hrv_ms"] == 49.0
+
+        load = p.parse_training_load(json.dumps(TRAINING_LOAD))
+        assert load[date(2026, 9, 3)]["training_load_short"] == 90.0

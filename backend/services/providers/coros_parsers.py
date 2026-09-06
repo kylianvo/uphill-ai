@@ -19,15 +19,29 @@ athlete" answer, not an error -- that happens for real, e.g. a brand-new
 athlete with no history yet.
 """
 
+import json
 import re
 from datetime import UTC, date, datetime
 from typing import Any
 
-_RECORD_HEADER = re.compile(r"^\s*(\d+)\.\s+(.+?)\s+—\s+(\d{4}-\d{2}-\d{2})\s*$", re.M)
+_RECORD_HEADER = re.compile(r"^\s*(\d+)\.\s+(.+?)\s+[—–-]\s+(\d{4}-\d{2}-\d{2})\s*$", re.M)
 # Anchored to lines that are *only* a date -- a vendor-added trailing sentence
 # that happens to start with a date (e.g. a footer disclaimer) must not be
 # mistaken for a new block boundary.
 _DATE_LINE = re.compile(r"^(\d{4}-\d{2}-\d{2})\s*$", re.M)
+
+
+def _clean_text(text: str) -> str:
+    """Unquote text if wrapped in JSON string quotes (e.g. from MCP tools)."""
+    stripped = text.strip()
+    if stripped.startswith('"') and stripped.endswith('"') and len(stripped) >= 2:
+        try:
+            unquoted = json.loads(stripped)
+            if isinstance(unquoted, str):
+                return unquoted
+        except json.JSONDecodeError:
+            pass
+    return text
 
 
 class CorosParseError(ValueError):
@@ -76,6 +90,7 @@ def _drop_lines(text: str, *line_patterns: str) -> str:
 
 
 def parse_sport_records(text: str) -> list[dict[str, Any]]:
+    text = _clean_text(text)
     if "Sport Records" not in text:
         raise CorosParseError("querySportRecords output missing its 'Sport Records' header")
 
@@ -150,6 +165,7 @@ def parse_sport_records(text: str) -> list[dict[str, Any]]:
 
 
 def parse_activity_detail(text: str) -> dict[str, Any]:
+    text = _clean_text(text)
     if "Activity Details" not in text:
         raise CorosParseError("getActivityDetail output missing its 'Activity Details' header")
 
@@ -175,6 +191,7 @@ def parse_activity_detail(text: str) -> dict[str, Any]:
 
 
 def parse_resting_hr(text: str) -> dict[date, int]:
+    text = _clean_text(text)
     if "Resting Heart Rate" not in text:
         raise CorosParseError("queryRestingHeartRate output missing its header")
 
@@ -192,6 +209,7 @@ def parse_resting_hr(text: str) -> dict[date, int]:
 
 
 def parse_sleep_hrv(text: str) -> dict[date, dict[str, Any]]:
+    text = _clean_text(text)
     # "Sleep HRV" alone is not a safe guard -- it is a substring of the
     # "Sleep HRV Time Series" section heading, so a response containing only
     # that (much longer) section would slip past a check on "Sleep HRV".
@@ -236,6 +254,7 @@ def parse_sleep_hrv(text: str) -> dict[date, dict[str, Any]]:
 
 
 def parse_training_load(text: str) -> dict[date, dict[str, Any]]:
+    text = _clean_text(text)
     if "Training Load Assessment" not in text:
         raise CorosParseError("queryTrainingLoadAssessment output missing its header")
 

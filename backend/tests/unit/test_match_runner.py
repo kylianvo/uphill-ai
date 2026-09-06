@@ -51,6 +51,31 @@ async def test_writes_match_state_for_a_confident_pair(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_bundle_attributes_workout_id_to_primary_fragment_only(monkeypatch):
+    # In a multi-activity bundle (e.g. 2.5 min warm-up + 60 min main run),
+    # UNIQUE(matched_workout_id) constraint in PostgreSQL dictates only the primary
+    # activity receives workout_id, while the secondary fragment gets workout_id=None.
+    saved = []
+    frag1 = activity(1, offset_s=0, duration_s=150.0, km=0.5)
+    frag2 = activity(2, offset_s=300, duration_s=3600.0, km=9.5)
+    monkeypatch.setattr(runner.db, "get_activities_for_matching", lambda *a, **k: [frag1, frag2])
+    monkeypatch.setattr(runner.db, "get_dated_workouts_for_matching", lambda *a, **k: [workout(10)])
+    monkeypatch.setattr(runner.db, "save_match", lambda **kw: saved.append(kw))
+    monkeypatch.setattr(runner.settings, "MATCHING_SHADOW_MODE", True)
+
+    result = await runner.match_user(7, date(2026, 9, 1), date(2026, 9, 3))
+    assert result["matched"] == 1
+    assert len(saved) == 2
+
+    saved_by_id = {s["activity_id"]: s for s in saved}
+    assert saved_by_id[2]["workout_id"] == 10
+    assert saved_by_id[2]["method"] == "auto"
+
+    assert saved_by_id[1]["workout_id"] is None
+    assert saved_by_id[1]["details"]["bundle_primary_activity_id"] == 2
+
+
+@pytest.mark.asyncio
 async def test_shadow_mode_never_marks_a_workout_complete(monkeypatch):
     completed = []
     monkeypatch.setattr(runner.db, "get_activities_for_matching", lambda *a, **k: [activity(1)])

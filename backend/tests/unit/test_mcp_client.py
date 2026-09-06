@@ -197,3 +197,29 @@ async def test_raises_mcp_error_when_no_sse_frame_matches_the_request_id():
     await client.initialize()
     with pytest.raises(McpError, match="no frame matching request id"):
         await client.call_tool("queryUserInfo", {})
+
+
+@pytest.mark.asyncio
+async def test_call_tool_unquotes_json_encoded_string_response():
+    raw_json_str = json.dumps("Line 1\nLine 2\nLine 3")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        if body["method"] == "initialize":
+            return httpx.Response(
+                200, json={"jsonrpc": "2.0", "id": body["id"], "result": {}}, headers={"Mcp-Session-Id": "s"}
+            )
+        if body["method"] == "notifications/initialized":
+            return httpx.Response(202)
+        return httpx.Response(
+            200,
+            json={
+                "jsonrpc": "2.0",
+                "id": body["id"],
+                "result": {"content": [{"type": "text", "text": raw_json_str}]},
+            },
+        )
+
+    client = McpClient(ENDPOINT, "tok", transport=_transport(handler))
+    await client.initialize()
+    assert await client.call_tool("querySportRecords", {}) == "Line 1\nLine 2\nLine 3"

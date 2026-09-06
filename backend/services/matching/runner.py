@@ -127,6 +127,8 @@ async def match_user(user_id: int, since: date, until: date) -> dict[str, int]:
             continue
         by_day[activity["start_time"].date()].append(activity)
 
+    activities_by_id = {a["id"]: a for a in activities}
+
     for day, day_activities in sorted(by_day.items()):
         bundles = bundle_activities(day_activities)
         candidates = [w for w in by_date.get(day, []) if not w.get("is_completed")]
@@ -139,17 +141,32 @@ async def match_user(user_id: int, since: date, until: date) -> dict[str, int]:
             else:
                 totals["unmatched"] += 1
 
+            primary_id = (
+                max(
+                    assignment.bundle.activity_ids,
+                    key=lambda aid: float(activities_by_id.get(aid, {}).get("duration_seconds") or 0.0),
+                )
+                if assignment.bundle.activity_ids
+                else None
+            )
+
             for activity_id in assignment.bundle.activity_ids:
+                is_primary = activity_id == primary_id
+                assigned_workout_id = assignment.workout_id if is_primary else None
+                fragment_details = {
+                    "reasons": assignment.score.reasons,
+                    "components": assignment.score.components,
+                    "fragments": assignment.bundle.fragment_count,
+                }
+                if not is_primary:
+                    fragment_details["bundle_primary_activity_id"] = primary_id
+
                 db.save_match(
                     activity_id=activity_id,
-                    workout_id=assignment.workout_id,
-                    confidence=assignment.score.total,
-                    method=band if band != "unmatched" else "none",
-                    details={
-                        "reasons": assignment.score.reasons,
-                        "components": assignment.score.components,
-                        "fragments": assignment.bundle.fragment_count,
-                    },
+                    workout_id=assigned_workout_id,
+                    confidence=assignment.score.total if is_primary else 0.0,
+                    method=band if (is_primary and band != "unmatched") else "none",
+                    details=fragment_details,
                 )
 
             if band == "auto" and assignment.workout_id and not settings.MATCHING_SHADOW_MODE:
