@@ -47,8 +47,8 @@ class Config:
     # Tavily search API — used by gear's web-discovery sweep (RunRepeat/BelieveInTheRun)
     TAVILY_API_KEY: str = os.getenv("TAVILY_API_KEY", "")
 
-    # KB RAG engine — 'notebooklm' (current behavior) or 'gemini' (distilled kb_chunks + Gemini)
-    RAG_ENGINE: str = os.getenv("RAG_ENGINE", "notebooklm")
+    # KB RAG engine — 'gemini' (default: distilled kb_chunks + Gemini) or 'notebooklm' (ad-hoc / distillation)
+    RAG_ENGINE: str = os.getenv("RAG_ENGINE", "gemini")
     QDRANT_URL: str = os.getenv(
         "QDRANT_URL", "http://qdrant:6333" if os.path.exists("/.dockerenv") else "http://localhost:6333"
     )

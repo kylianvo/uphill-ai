@@ -18,8 +18,8 @@ from datetime import datetime, timedelta
 # the common real case, not an edge case.
 RUN_TYPES = frozenset({"outdoor_run", "indoor_run", "trail_run", "track_run"})
 
-BUNDLE_GAP_SECONDS = 30 * 60
-WARMUP_GAP_SECONDS = 45 * 60
+BUNDLE_GAP_SECONDS = 60 * 60
+WARMUP_GAP_SECONDS = 60 * 60
 NOISE_FLOOR_KM = 1.5
 NOISE_FLOOR_SECONDS = 10 * 60
 

@@ -455,6 +455,7 @@ async def integration_status(user: dict[str, Any] = Depends(get_current_user)):
 async def matching_run(
     days: int = 30,
     plan_id: int | None = None,
+    tz_offset_minutes: int | None = None,
     user: dict[str, Any] = Depends(get_current_user),
 ):
     if plan_id is not None:
@@ -464,7 +465,9 @@ async def matching_run(
             raise HTTPException(status_code=400, detail="days must be between 1 and 365.")
         until = date.today()
         since = until - timedelta(days=days)
-    return await matching_runner.match_user(user["id"], since, until, plan_id=plan_id)
+    return await matching_runner.match_user(
+        user["id"], since, until, plan_id=plan_id, tz_offset_minutes=tz_offset_minutes
+    )
 
 
 @router.get("/matching")
@@ -519,11 +522,96 @@ async def matching_override(
     quality_score = None
     quality_grade = None
     quality_details = None
+    match_details = None
     if workout_id is not None:
         workout = db.get_workout_by_id(workout_id)
         activity = db.get_activity_by_id(activity_id)
         if workout and activity:
             athlete_profile = db.get_user_by_id(user["id"]) or {}
+
+            # Check if this workout already has a matched activity -> combine into a multi-fragment session!
+            existing_act = db.get_activity_matched_to_workout(workout_id)
+            if existing_act and existing_act["id"] != activity_id:
+                prev_ids = (existing_act.get("match_details") or {}).get("bundle_activity_ids") or [existing_act["id"]]
+                if activity_id not in prev_ids:
+                    prev_ids.append(activity_id)
+
+                member_acts = [db.get_activity_by_id(aid) for aid in prev_ids]
+                member_acts = [a for a in member_acts if a]
+
+                primary = max(
+                    member_acts,
+                    key=lambda a: (float(a.get("distance_km") or 0.0), float(a.get("duration_seconds") or 0.0)),
+                )
+                primary_id = primary["id"]
+
+                total_dist = round(sum(float(a.get("distance_km") or 0.0) for a in member_acts), 4)
+                total_dur = sum(float(a.get("duration_seconds") or 0.0) for a in member_acts)
+                total_elev = sum(float(a.get("elevation_gain_m") or 0.0) for a in member_acts)
+
+                hr_weighted = [
+                    (a["avg_hr"], float(a.get("duration_seconds") or 0.0)) for a in member_acts if a.get("avg_hr")
+                ]
+                hr_sum = sum(d for _, d in hr_weighted)
+                avg_hr = round(sum(h * d for h, d in hr_weighted) / hr_sum) if hr_sum > 0 else None
+
+                from services.matching.bundler import SessionBundle
+
+                bundle = SessionBundle(
+                    start_time=min(a["start_time"] for a in member_acts),
+                    duration_seconds=total_dur,
+                    distance_km=total_dist,
+                    elevation_gain_m=total_elev,
+                    avg_hr=avg_hr,
+                    activity_ids=[a["id"] for a in member_acts],
+                    activity_types={a.get("activity_type", "run") for a in member_acts},
+                    primary_activity_id=primary_id,
+                )
+
+                q_res = score_workout_quality(workout, bundle, athlete_profile)
+                bundle_details = {
+                    "fragments": len(member_acts),
+                    "bundle_activity_ids": [a["id"] for a in member_acts],
+                    "bundle_distance_km": total_dist,
+                    "bundle_duration_seconds": total_dur,
+                    "bundle_elevation_gain_m": total_elev,
+                    "bundle_avg_hr": avg_hr,
+                    "fragment_breakdown": [
+                        {
+                            "activity_id": a["id"],
+                            "distance_km": a.get("distance_km"),
+                            "duration_seconds": a.get("duration_seconds"),
+                            "avg_hr": a.get("avg_hr"),
+                            "start_time": (
+                                a["start_time"].isoformat()
+                                if hasattr(a["start_time"], "isoformat")
+                                else str(a["start_time"])
+                            ),
+                        }
+                        for a in member_acts
+                    ],
+                }
+
+                db.set_manual_match(
+                    activity_id=primary_id,
+                    workout_id=workout_id,
+                    user_id=user["id"],
+                    quality_score=q_res.overall_score,
+                    quality_grade=q_res.grade,
+                    quality_details=q_res.to_dict(),
+                    match_details=bundle_details,
+                )
+                for a in member_acts:
+                    if a["id"] != primary_id:
+                        db.set_manual_match(
+                            activity_id=a["id"],
+                            workout_id=None,
+                            user_id=user["id"],
+                            match_details={"bundle_primary_activity_id": primary_id, "fragments": len(member_acts)},
+                        )
+                db.update_workout_log(workout_id, is_completed=1)
+                return {"status": "ok", "activity_id": activity_id, "workout_id": workout_id, "combined": True}
+
             q_res = score_workout_quality(workout, activity, athlete_profile)
             quality_score = q_res.overall_score
             quality_grade = q_res.grade
@@ -537,5 +625,6 @@ async def matching_override(
         quality_score=quality_score,
         quality_grade=quality_grade,
         quality_details=quality_details,
+        match_details=match_details,
     )
     return {"status": "ok", "activity_id": activity_id, "workout_id": workout_id}

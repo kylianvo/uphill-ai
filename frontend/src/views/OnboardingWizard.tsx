@@ -173,6 +173,7 @@ export default function OnboardingWizard() {
       if (onboardingAnswers.course_elevation_gain_m) payload.course_elevation_gain_m = parseFloat(onboardingAnswers.course_elevation_gain_m);
 
       if (onboardingAnswers.plan_start_date) payload.plan_start_date = onboardingAnswers.plan_start_date;
+      if (onboardingAnswers.athlete_notes) payload.athlete_notes = onboardingAnswers.athlete_notes;
 
 
 
@@ -1449,6 +1450,46 @@ export default function OnboardingWizard() {
                 <p style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "5px", margin: "5px 0 0 0" }}>
 
                   {lang === "en" ? "Week 1 of your plan will begin from this date." : "Tuần 1 của kế hoạch sẽ bắt đầu từ ngày này."}
+
+                </p>
+
+              </div>
+
+              <div style={{ marginTop: "14px" }}>
+
+                <label style={labelS}>
+
+                  {lang === "en" ? "Special Constraints & Living Context (Optional)" : "Ghi chú & Ràng buộc cá nhân (Tùy chọn)"}
+
+                </label>
+
+                <textarea
+
+                  className="chat-input"
+
+                  rows={3}
+
+                  style={{ ...inputS, height: "auto", padding: "8px 10px", fontSize: "12.5px", resize: "vertical" }}
+
+                  placeholder={lang === "en"
+
+                    ? "e.g., Living in urban city on weekdays, can only trail run on weekends; upcoming 4-day mountain camp; hamstring tightness..."
+
+                    : "VD: Sống ở nội thành ngày thường, chỉ chạy trail cuối tuần; tháng tới có training camp leo núi 4 ngày; gân kheo hơi căng..."}
+
+                  value={onboardingAnswers.athlete_notes || ""}
+
+                  onChange={e => setAns("athlete_notes", e.target.value)}
+
+                />
+
+                <p style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "4px", margin: "4px 0 0 0" }}>
+
+                  {lang === "en"
+
+                    ? "Provide any lifestyle, travel, training camps, or terrain constraints. The AI coach adapts your plan accordingly."
+
+                    : "Cung cấp thông tin lịch trình, địa hình hoặc hạn chế để AI coach phân bổ bài tập ngày thường và cuối tuần tối ưu."}
 
                 </p>
 

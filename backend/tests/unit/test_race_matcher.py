@@ -137,6 +137,14 @@ def test_to_dict_shape():
         "distance_km": 46.7,
         "elevation_gain_m": 2800,
         "terrain": ["rice terraces", "technical hand-and-knees scrambles"],
+        "course_intelligence": {
+            "location": "",
+            "climate": {},
+            "key_climbs": [],
+            "terrain": ["rice terraces", "technical hand-and-knees scrambles"],
+            "distance_label": "50km",
+            "historical_results": None,
+        },
     }
 
 

@@ -317,6 +317,7 @@ export function usePlanner() {
         recovery_feel: planForm.recovery_feel || null,
         lang: lang,
         coach_notes: actingAsAthleteId ? (planForm.coach_notes || null) : null,
+        athlete_notes: planForm.athlete_notes || null,
       };
 
       // Combine H/M/S into decimal hours

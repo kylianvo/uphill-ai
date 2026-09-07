@@ -470,6 +470,8 @@ def init_db():
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS coros_running_level REAL",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS pace_zone_model TEXT DEFAULT '5_zone'",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_pace_zones JSONB",
+            "ALTER TABLE plans ADD COLUMN IF NOT EXISTS athlete_notes TEXT",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS athlete_notes TEXT",
         ]:
             try:
                 conn.execute(text(col_sql))
@@ -658,6 +660,7 @@ def create_plan(
     training_environment: str = "flat",
     created_by_user_id: int | None = None,
     plan_status: str = "active",
+    athlete_notes: str | None = None,
 ) -> int:
     with engine.connect() as conn:
         result = conn.execute(
@@ -667,12 +670,12 @@ def create_plan(
                                course_elevation_gain_m, preferred_run_days, long_run_day,
                                days_per_week, double_session_days, start_date,
                                has_gym_access, use_treadmill, training_environment,
-                               created_by_user_id, plan_status)
+                               created_by_user_id, plan_status, athlete_notes)
             VALUES (:user_id, :race_name, :race_date, :goal_type,
                     :tth, :total_weeks, :dist_km, :elev_m, :preferred_run_days,
                     :long_run_day, :days_per_week, :double_session_days, :start_date,
                     :has_gym_access, :use_treadmill, :training_environment,
-                    :created_by_user_id, :plan_status)
+                    :created_by_user_id, :plan_status, :athlete_notes)
             RETURNING id
         """),
             {
@@ -694,6 +697,7 @@ def create_plan(
                 "training_environment": training_environment or "flat",
                 "created_by_user_id": created_by_user_id if created_by_user_id is not None else user_id,
                 "plan_status": plan_status,
+                "athlete_notes": athlete_notes,
             },
         )
         conn.commit()
@@ -816,6 +820,7 @@ def update_plan_schedule(
     has_gym_access: bool | None = None,
     use_treadmill: bool | None = None,
     training_environment: str | None = None,
+    athlete_notes: str | None = None,
 ) -> dict[str, Any] | None:
     """Partial update of a plan's mid-plan-editable schedule columns. Any
     argument left as None keeps that column's current value (COALESCE) --
@@ -830,7 +835,8 @@ def update_plan_schedule(
                     double_session_days = COALESCE(:double_session_days, double_session_days),
                     has_gym_access = COALESCE(:has_gym_access, has_gym_access),
                     use_treadmill = COALESCE(:use_treadmill, use_treadmill),
-                    training_environment = COALESCE(:training_environment, training_environment)
+                    training_environment = COALESCE(:training_environment, training_environment),
+                    athlete_notes = COALESCE(:athlete_notes, athlete_notes)
                 WHERE id = :plan_id
                 RETURNING *
             """),
@@ -843,6 +849,7 @@ def update_plan_schedule(
                 "has_gym_access": has_gym_access,
                 "use_treadmill": use_treadmill,
                 "training_environment": training_environment,
+                "athlete_notes": athlete_notes,
             },
         )
         conn.commit()
@@ -1360,7 +1367,8 @@ def update_user_profile(user_id: int, profile_data: dict[str, Any]) -> bool:
                 coros_vo2max = COALESCE(:vo2max, coros_vo2max),
                 coros_running_level = COALESCE(:running_level, coros_running_level),
                 pace_zone_model = COALESCE(:model, pace_zone_model),
-                custom_pace_zones = COALESCE(CAST(:custom_zones AS jsonb), custom_pace_zones)
+                custom_pace_zones = COALESCE(CAST(:custom_zones AS jsonb), custom_pace_zones),
+                athlete_notes = COALESCE(:athlete_notes, athlete_notes)
             WHERE id = :id
         """),
             {
@@ -1380,6 +1388,7 @@ def update_user_profile(user_id: int, profile_data: dict[str, Any]) -> bool:
                 "running_level": profile_data.get("coros_running_level"),
                 "model": profile_data.get("pace_zone_model"),
                 "custom_zones": custom_zones_json,
+                "athlete_notes": profile_data.get("athlete_notes"),
                 "id": user_id,
             },
         )
@@ -2831,6 +2840,15 @@ def get_activity_by_id(activity_id: int) -> dict[str, Any] | None:
     return _row_to_dict(row) if row else None
 
 
+def get_activity_matched_to_workout(workout_id: int) -> dict[str, Any] | None:
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("SELECT * FROM activities WHERE matched_workout_id = :w LIMIT 1"),
+            {"w": workout_id},
+        ).fetchone()
+    return _row_to_dict(row) if row else None
+
+
 def set_manual_match(
     activity_id: int,
     workout_id: int | None,
@@ -2838,6 +2856,7 @@ def set_manual_match(
     quality_score: float | None = None,
     quality_grade: str | None = None,
     quality_details: dict[str, Any] | None = None,
+    match_details: dict[str, Any] | None = None,
 ) -> None:
     """Records the athlete's own correction as the permanent match.
 
@@ -2853,12 +2872,14 @@ def set_manual_match(
     an untyped NULL-only bound parameter.
     """
     qd_json = json.dumps(quality_details) if quality_details is not None else None
+    md_json = json.dumps(match_details) if match_details is not None else None
     with engine.connect() as conn:
         conn.execute(
             text("""
             UPDATE activities
             SET matched_workout_id = :w, match_method = 'manual',
-                match_confidence = NULL, match_details = NULL,
+                match_confidence = NULL,
+                match_details = CASE WHEN CAST(:md AS jsonb) IS NOT NULL THEN CAST(:md AS jsonb) ELSE match_details END,
                 quality_score = :qs, quality_grade = :qg,
                 quality_details = CAST(:qd AS jsonb)
             WHERE id = :i
@@ -2879,6 +2900,7 @@ def set_manual_match(
                 "qs": quality_score,
                 "qg": quality_grade,
                 "qd": qd_json,
+                "md": md_json,
             },
         )
         conn.commit()
@@ -2922,3 +2944,212 @@ def workout_belongs_to_user(workout_id: int, user_id: int) -> bool:
             {"w": workout_id, "u": user_id},
         ).scalar()
     return bool(found)
+
+
+def get_user_activity_ceiling(user_id: int) -> dict[str, Any]:
+    """Returns athlete's historical ceiling across all non-duplicate synced activities:
+    max distance (km), max duration (hours), max elevation gain (m).
+    """
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("""
+                SELECT
+                    COALESCE(MAX(distance_km), 0) AS max_distance_km,
+                    COALESCE(MAX(duration_seconds), 0) AS max_duration_seconds,
+                    COALESCE(MAX(elevation_gain_m), 0) AS max_elevation_gain_m,
+                    COUNT(id) AS total_count
+                FROM activities
+                WHERE user_id = :uid
+                  AND duplicate_of IS NULL
+                  AND (activity_type ILIKE '%run%' OR activity_type ILIKE '%trail%' OR activity_type ILIKE '%hike%' OR activity_type ILIKE '%walk%')
+            """),
+            {"uid": user_id},
+        ).fetchone()
+
+        if not row or (row.total_count or 0) == 0:
+            row = conn.execute(
+                text("""
+                    SELECT
+                        COALESCE(MAX(distance_km), 0) AS max_distance_km,
+                        COALESCE(MAX(duration_seconds), 0) AS max_duration_seconds,
+                        COALESCE(MAX(elevation_gain_m), 0) AS max_elevation_gain_m,
+                        COUNT(id) AS total_count
+                    FROM activities
+                    WHERE user_id = :uid
+                      AND duplicate_of IS NULL
+                """),
+                {"uid": user_id},
+            ).fetchone()
+
+        max_dist = round(float(row.max_distance_km or 0), 1) if row else 0.0
+        max_dur_sec = float(row.max_duration_seconds or 0) if row else 0.0
+        max_elev = round(float(row.max_elevation_gain_m or 0), 0) if row else 0.0
+        total_count = int(row.total_count or 0) if row else 0
+
+        return {
+            "max_distance_km": max_dist,
+            "max_duration_seconds": max_dur_sec,
+            "max_duration_hours": round(max_dur_sec / 3600.0, 1),
+            "max_elevation_gain_m": max_elev,
+            "total_activities_count": total_count,
+        }
+
+
+def get_recent_readiness_summary(user_id: int, days: int = 7) -> dict[str, Any]:
+    """Computes a rolling readiness summary from daily_metrics over the last `days` days.
+    Returns:
+    - avg_hrv_ms: float | None
+    - latest_hrv_status: str | None
+    - avg_resting_hr: float | None
+    - avg_load_ratio: float | None (Acute:Chronic Workload Ratio / ACWR)
+    - latest_load_ratio: float | None
+    - avg_recovery_percent: int | None
+    - days_recorded: int
+    - readiness_flag: str ("optimal" | "fatigued" | "overreaching" | "fresh" | "insufficient_data")
+    """
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("""
+                SELECT metric_date, resting_hr, hrv_ms, hrv_status, load_ratio, recovery_percent
+                FROM daily_metrics
+                WHERE user_id = :uid
+                  AND metric_date >= CURRENT_DATE - CAST(:days AS INTEGER)
+                ORDER BY metric_date DESC
+            """),
+            {"uid": user_id, "days": days},
+        ).fetchall()
+
+    if not rows:
+        return {
+            "days_recorded": 0,
+            "avg_hrv_ms": None,
+            "latest_hrv_status": None,
+            "avg_resting_hr": None,
+            "avg_load_ratio": None,
+            "latest_load_ratio": None,
+            "avg_recovery_percent": None,
+            "readiness_flag": "insufficient_data",
+        }
+
+    hrvs = [float(r.hrv_ms) for r in rows if r.hrv_ms is not None]
+    rhrs = [float(r.resting_hr) for r in rows if r.resting_hr is not None]
+    ratios = [float(r.load_ratio) for r in rows if r.load_ratio is not None]
+    recovs = [float(r.recovery_percent) for r in rows if r.recovery_percent is not None]
+
+    avg_hrv = round(sum(hrvs) / len(hrvs), 1) if hrvs else None
+    avg_rhr = round(sum(rhrs) / len(rhrs), 1) if rhrs else None
+    avg_ratio = round(sum(ratios) / len(ratios), 2) if ratios else None
+    latest_ratio = round(ratios[0], 2) if ratios else None
+    latest_hrv_status = rows[0].hrv_status if rows[0].hrv_status else None
+    avg_recov = int(round(sum(recovs) / len(recovs))) if recovs else None
+
+    # Determine readiness flag based on ACWR (sweet spot: 0.8-1.3) and recovery
+    readiness_flag = "optimal"
+    if latest_ratio and latest_ratio > 1.4:
+        readiness_flag = "overreaching"
+    elif (latest_hrv_status and latest_hrv_status.lower() in ["low", "fatigued", "depleted"]) or (
+        avg_recov is not None and avg_recov < 45
+    ):
+        readiness_flag = "fatigued"
+    elif latest_ratio and latest_ratio < 0.8:
+        readiness_flag = "fresh"
+
+    return {
+        "days_recorded": len(rows),
+        "avg_hrv_ms": avg_hrv,
+        "latest_hrv_status": latest_hrv_status,
+        "avg_resting_hr": avg_rhr,
+        "avg_load_ratio": avg_ratio,
+        "latest_load_ratio": latest_ratio,
+        "avg_recovery_percent": avg_recov,
+        "readiness_flag": readiness_flag,
+    }
+
+
+def get_block_actual_volume(
+    user_id: int,
+    plan_id: int,
+    wk_start: int,
+    wk_end: int,
+    plan_start_date: str | None = None,
+) -> dict[str, Any]:
+    """Computes actual recorded volume (GPS distance, duration, vert) from synced watch activities
+    for a given block.
+    Includes:
+    1. Activities matched to the block's workouts (via matched_workout_id).
+    2. Unplanned activities during the block window (if start_date is known or inferred).
+    """
+    with engine.connect() as conn:
+        # 1. Matched activities for this block's workouts
+        matched_rows = conn.execute(
+            text("""
+                SELECT a.id, a.distance_km, a.duration_seconds, a.elevation_gain_m, a.start_time, a.activity_type, a.matched_workout_id
+                FROM activities a
+                JOIN workouts w ON a.matched_workout_id = w.id
+                WHERE w.plan_id = :plan_id
+                  AND w.week_number BETWEEN :wk_start AND :wk_end
+                  AND a.duplicate_of IS NULL
+                ORDER BY a.start_time ASC
+            """),
+            {"plan_id": plan_id, "wk_start": wk_start, "wk_end": wk_end},
+        ).fetchall()
+
+        matched_km = sum(float(r.distance_km or 0.0) for r in matched_rows)
+        matched_sec = sum(float(r.duration_seconds or 0.0) for r in matched_rows)
+        matched_vert = sum(float(r.elevation_gain_m or 0.0) for r in matched_rows)
+
+        # 2. Determine date range for unplanned activities
+        cal_start = None
+        cal_end = None
+        if plan_start_date:
+            try:
+                p_start = datetime.datetime.strptime(plan_start_date, "%Y-%m-%d").date()
+                cal_start = p_start + datetime.timedelta(days=(wk_start - 1) * 7)
+                cal_end = p_start + datetime.timedelta(days=(wk_end * 7) - 1)
+            except Exception:
+                pass
+
+        if not cal_start and matched_rows:
+            times = [r.start_time for r in matched_rows if r.start_time]
+            if times:
+                cal_start = min(times).date()
+                cal_end = max(times).date()
+
+        unplanned_rows = []
+        if cal_start and cal_end:
+            unplanned_rows = conn.execute(
+                text("""
+                    SELECT id, distance_km, duration_seconds, elevation_gain_m, start_time, activity_type
+                    FROM activities
+                    WHERE user_id = :uid
+                      AND duplicate_of IS NULL
+                      AND matched_workout_id IS NULL
+                      AND start_time::date >= :s_date
+                      AND start_time::date <= :e_date
+                """),
+                {"uid": user_id, "s_date": str(cal_start), "e_date": str(cal_end)},
+            ).fetchall()
+
+        unplanned_km = sum(float(r.distance_km or 0.0) for r in unplanned_rows)
+        unplanned_sec = sum(float(r.duration_seconds or 0.0) for r in unplanned_rows)
+        unplanned_vert = sum(float(r.elevation_gain_m or 0.0) for r in unplanned_rows)
+
+        total_km = round(matched_km + unplanned_km, 1)
+        total_sec = matched_sec + unplanned_sec
+        total_vert = round(matched_vert + unplanned_vert, 0)
+
+        return {
+            "total_actual_km": total_km,
+            "total_actual_hours": round(total_sec / 3600.0, 1),
+            "total_actual_minutes": round(total_sec / 60.0),
+            "total_actual_vert_m": total_vert,
+            "matched_km": round(matched_km, 1),
+            "matched_hours": round(matched_sec / 3600.0, 1),
+            "matched_vert_m": round(matched_vert, 0),
+            "matched_count": len(matched_rows),
+            "unplanned_km": round(unplanned_km, 1),
+            "unplanned_hours": round(unplanned_sec / 3600.0, 1),
+            "unplanned_vert_m": round(unplanned_vert, 0),
+            "unplanned_count": len(unplanned_rows),
+            "total_activities_count": len(matched_rows) + len(unplanned_rows),
+        }

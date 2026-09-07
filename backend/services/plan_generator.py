@@ -503,7 +503,9 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                     contents=prompt,
                     config=_genai_types.GenerateContentConfig(
                         thinking_config=_genai_types.ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL)
-                    ),
+                    )
+                    if hasattr(_genai_types, "ThinkingConfig")
+                    else None,
                 )
                 _text = _response.text.strip()
                 _start, _end = _text.find("{"), _text.rfind("}")
@@ -587,6 +589,9 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
         age = int(user_profile.get("age", 30))
         max_hr = int(user_profile.get("max_hr", 220 - age))
         resting_hr = int(user_profile.get("resting_hr", 60))
+        gender = user_profile.get("gender")
+        height_cm = user_profile.get("height_cm")
+        weight_kg = user_profile.get("weight_kg")
 
         # Parse scheduling preferences stored as JSON strings in the DB
         import json as _json
@@ -613,6 +618,10 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
         # Threshold Heart Rates (AeT = Aerobic, AnT = Anaerobic)
         aet_hr = int(user_profile.get("aet_hr", resting_hr + int((max_hr - resting_hr) * 0.65)))
         ant_hr = int(user_profile.get("ant_hr", resting_hr + int((max_hr - resting_hr) * 0.85)))
+
+        # Aerobic Deficiency Syndrome (ADS) per Training for the Uphill Athlete:
+        # ADS is present if AeT is > 30 bpm below AnT, or if AeT < 80% of AnT.
+        is_ads = (ant_hr - aet_hr) > 30 or (ant_hr > 0 and aet_hr < (ant_hr * 0.80))
 
         # Calculate Heart Rate Zones
         hr_zones = TrainingRules.calculate_heart_rate_zones(max_hr, resting_hr, aet_hr, ant_hr)
@@ -795,8 +804,70 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
             if injury_history:
                 scheduling_notes += f"- Injury history: {injury_history}\n"
 
+            # Historical Ceiling & Athlete Notes
+            ceiling_notes = ""
+            historical_ceiling = race_info.get("historical_ceiling") or user_profile.get("historical_ceiling")
+            if historical_ceiling:
+                max_d = historical_ceiling.get("max_distance_km", 0)
+                max_h = historical_ceiling.get("max_duration_hours", 0)
+                max_v = historical_ceiling.get("max_elevation_gain_m", 0)
+                total_c = historical_ceiling.get("total_activities_count", 0)
+                if max_d > 0 or max_v > 0:
+                    ceiling_notes = (
+                        f"\nAthlete Historical Ceiling (from wearable activity records):\n"
+                        f"- Longest recorded run: {max_d} km ({max_h} hrs)\n"
+                        f"- Max single-run elevation gain: {max_v} m D+\n"
+                        f"- Synced activities on record: {total_c}\n"
+                        f"Rule: Respect the athlete's proven endurance ceiling. Single long runs must not exceed 15-20% above this ceiling without multi-block progression.\n"
+                    )
+
+            athlete_notes = race_info.get("athlete_notes") or user_profile.get("athlete_notes")
+            constraints_notes = ""
+            if athlete_notes:
+                constraints_notes = (
+                    f"\nAthlete Notes & Special Routine Constraints:\n"
+                    f'"{athlete_notes}"\n'
+                    f"Rules for Special Constraints:\n"
+                    f"- Flat/Urban Weekdays vs Weekend Trails: If the runner lives in an urban/flat environment during the week but accesses trails on weekends, prescribe flat aerobic runs, treadmill incline sessions, or bodyweight ME on weekdays, and allocate the big-vert trail runs to Saturday/Sunday.\n"
+                    f"- Training Camp: If the athlete specifies a training camp during certain dates or weeks, allocate higher volume, back-to-back long runs, and race-specific vert during those designated camp days.\n"
+                )
+
+            gender_str = f"Gender: {gender.capitalize()}" if gender else "Gender: Not specified"
+            ht_wt_parts = []
+            if height_cm:
+                ht_wt_parts.append(f"Height: {height_cm} cm")
+            if weight_kg:
+                ht_wt_parts.append(f"Weight: {weight_kg} kg")
+            ht_wt_str = (", " + ", ".join(ht_wt_parts)) if ht_wt_parts else ""
+
+            female_note = ""
+            if gender and str(gender).strip().lower() == "female":
+                female_note = (
+                    "\nFemale Athlete Physiology Considerations: Prioritize iron/ferritin status monitoring, "
+                    "allow adequate recovery between high-intensity bouts, ensure adequate carbohydrate availability "
+                    "to prevent Relative Energy Deficiency in Sport (RED-S), and emphasize progressive heavy strength "
+                    "training to preserve bone mineral density and tendon stiffness for mountain trail durability.\n"
+                )
+
+            if is_ads:
+                ads_status = (
+                    f"\nAEROBIC DEFICIENCY SYNDROME (ADS) DETECTED:\n"
+                    f"- AeT ({aet_hr} bpm) is {ant_hr - aet_hr} bpm below AnT ({ant_hr} bpm) — spread exceeds 30 bpm / 80% threshold.\n"
+                    f"- Hard Coaching Constraint: The athlete's slow-twitch aerobic base is deficient. DO NOT prescribe Zone 4/5 "
+                    f"speedwork, threshold intervals, or high-glycolytic sessions during Base/Build phases. Allocate 90%+ of running "
+                    f"volume strictly to Zone 1-2 (conversational pace below {aet_hr} bpm) to build mitochondrial density and fat "
+                    f"oxidation capacity before introducing speedwork.\n"
+                )
+            else:
+                ads_spread = ant_hr - aet_hr
+                ads_ratio_pct = round((aet_hr / ant_hr) * 100) if ant_hr > 0 else 0
+                ads_status = (
+                    f"\nAerobic Efficiency: Healthy AeT/AnT spread ({ads_spread} bpm gap, AeT at {ads_ratio_pct}% of AnT). "
+                    f"Normal aerobic base. Progressive threshold and ME work permitted in appropriate phases.\n"
+                )
+
             user_summary = (
-                f"Age: {age}, Weekly volume base: {current_weekly_km} km, Max HR: {max_hr} bpm, "
+                f"{gender_str}{ht_wt_str}, Age: {age}, Weekly volume base: {current_weekly_km} km, Max HR: {max_hr} bpm, "
                 f"Resting HR: {resting_hr} bpm, AeT: {aet_hr} bpm, AnT: {ant_hr} bpm, "
                 f"Gym Access: {has_gym_access}, Treadmill Access: {use_treadmill}, "
                 f"Training Environment: {training_environment} (hills available: {training_environment in ('hilly', 'mixed')})\n"
@@ -806,7 +877,11 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                 f"- Zone 3 (Tempo): {p_z3}\n"
                 f"- Zone 4 (Threshold): {p_z4}\n"
                 f"- Zone 5 (Interval): {p_z5}"
+                f"{ads_status}"
+                f"{female_note}"
                 f"{scheduling_notes}"
+                f"{ceiling_notes}"
+                f"{constraints_notes}"
             )
 
             # Calculate week/date context for the AI prompt
@@ -877,15 +952,28 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
             else:
                 goal_description = "Goal: Optimal performance."
 
+            steepness_ratio_str = ""
+            if course_distance_km and course_elevation_gain_m and float(course_distance_km) > 0:
+                steepness = round(float(course_elevation_gain_m) / float(course_distance_km), 1)
+                if steepness < 25.0:
+                    terrain_category = "Rolling / Runnable trail (< 25 m D+/km). Prioritize sustained running cadence, steady aerobic economy, and runnable tempo intervals."
+                elif steepness <= 50.0:
+                    terrain_category = "Steep mountain trail (25-50 m D+/km). Emphasize power-hiking transitions on sustained grades (>12%), uphill repeats, and quad-loading descents."
+                else:
+                    terrain_category = "Extreme technical mountain vert / Skyrunning (> 50 m D+/km). Emphasize sustained power-hiking with poles, heavy weighted box step-ups (15-20% bodyweight), and eccentric downhill resistance repeats."
+                steepness_ratio_str = f"Course Steepness Ratio: {steepness} m D+/km — {terrain_category}\n"
+
             if is_event_goal:
                 program_summary = (
                     f"Race Name: {race_info.get('name')}, Date: {race_info.get('date')}, Terrain: {terrain}, "
-                    f"Distance: {course_distance_km} km, Elevation Gain: {course_elevation_gain_m} m. "
+                    f"Distance: {course_distance_km} km, Elevation Gain: {course_elevation_gain_m} m.\n"
+                    f"{steepness_ratio_str}"
                     f"{goal_description}"
                 )
             else:
                 program_summary = (
-                    f"Training Plan Name: {race_info.get('name')}, Focus: {race_info.get('goal_type')}. "
+                    f"Training Plan Name: {race_info.get('name')}, Focus: {race_info.get('goal_type')}.\n"
+                    f"{steepness_ratio_str}"
                     f"{goal_description}"
                 )
 
@@ -905,7 +993,9 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
 
             course_context = race_info.get("course_context")
             if course_context:
-                program_details += f"\nCOURSE PROFILE (curated race data):\n{course_context}\n"
+                program_details += (
+                    f"\nCOURSE INTELLIGENCE & ENVIRONMENTAL DEMANDS (Curated Race Profile):\n{course_context}\n"
+                )
 
             total_blocks = (total_weeks + weeks_per_block - 1) // weeks_per_block
             block_scope_instruction = (
@@ -927,6 +1017,35 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                     f"\nCOACH INSTRUCTIONS (from the athlete's human coach — give these real weight, "
                     f"and let them override the default heuristics below where they conflict):\n{coach_notes}\n"
                 )
+
+            # Wearable Readiness Summary (7-day HRV, ACWR load ratio, recovery)
+            readiness_summary = race_info.get("readiness_summary") or user_profile.get("readiness_summary")
+            if readiness_summary and readiness_summary.get("days_recorded", 0) > 0:
+                hrv = readiness_summary.get("avg_hrv_ms")
+                hrv_stat = readiness_summary.get("latest_hrv_status") or "normal"
+                rhr = readiness_summary.get("avg_resting_hr")
+                acwr = readiness_summary.get("avg_load_ratio")
+                lat_acwr = readiness_summary.get("latest_load_ratio")
+                recov = readiness_summary.get("avg_recovery_percent")
+                flag = (readiness_summary.get("readiness_flag") or "optimal").upper()
+
+                hrv_str = f"{hrv} ms" if hrv is not None else "N/A"
+                rhr_str = f"{rhr} bpm" if rhr is not None else "N/A"
+                acwr_str = f"{acwr}" if acwr is not None else (f"{lat_acwr}" if lat_acwr is not None else "N/A")
+                lat_acwr_str = f"{lat_acwr}" if lat_acwr is not None else "N/A"
+                recov_str = f"{recov}%" if recov is not None else "N/A"
+
+                feedback_instruction += (
+                    f"\n7-DAY WEARABLE BIOLOGICAL READINESS & LOAD RATIO:\n"
+                    f"- Rolling HRV: {hrv_str} (Status: {hrv_stat}) | Resting HR: {rhr_str}\n"
+                    f"- ACWR (Acute:Chronic Load Ratio): {acwr_str} (Latest: {lat_acwr_str})\n"
+                    f"- Rolling Recovery: {recov_str} | Biological Readiness Flag: {flag}\n"
+                    f"Wearable Load Guidance:\n"
+                    f"  • OVERREACHING (ACWR > 1.4): Cap weekly volume increase at 0% or deload 10-15% to avoid high injury risk. Eliminate high-impact eccentric downhill pounding.\n"
+                    f"  • FATIGUED (Low HRV / Recovery < 45%): Convert one scheduled tempo/interval workout to an easy Zone 1 recovery run or Rest.\n"
+                    f"  • OPTIMAL / FRESH (ACWR 0.8-1.3): Athlete is adapting well; proceed with planned progressive overload.\n"
+                )
+
             if block_context:
                 feedback_instruction += (
                     f"\nATHLETE FEEDBACK FROM PREVIOUS BLOCKS & COACH EVALUATION:\n{block_context}\n"
@@ -1051,7 +1170,11 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                 "(expected physiological adaptation), and Warning (ONLY injury risks or execution "
                 "precautions — NEVER exercise prescriptions, sets, or reps; those belong exclusively in "
                 "Process). Provide extensive context.)\n"
-                "   - `fueling_tip` (string: hydration, carbohydrate, and electrolyte guides specific to duration/intensity)\n"
+                "   - `fueling_tip` (string: hydration, carbohydrate, and electrolyte guides specific to duration and intensity. Strictly follow these quantitative targets: "
+                "* Sessions < 75 mins: Plain water and optional electrolytes (200-400mg sodium); no exogenous carbs needed. "
+                "* Sessions 75-150 mins: 30-60g carbohydrates per hour + 300-500mg sodium/hr with 400-600ml water/hr. "
+                "* Sessions > 150 mins (Long Runs & Ultra simulation): 60-90g carbohydrates per hour + 500-800mg sodium/hr with 500-750ml fluid/hr. Practice with race-day fuels (energy gels, chews, drink mix). "
+                "* Race Day / Pre-race (Target Race): 8-10g carbohydrates per kg bodyweight per day for 36-48 hours prior; on race day take 60-90g CHO/hr + 600-900mg sodium/hr starting within the first 30-45 minutes.)\n"
                 "   - `treadmill_incline` (number, optional: recommended incline percentage if using treadmill. "
                 "Inform this from the route's actual grade instead of a flat generic default: for trail-terrain "
                 "Easy/Tempo/Interval/Long Run workouts, set it consistent with this same workout's own "
@@ -1069,10 +1192,22 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                 f"{_start_date_constraint}"
                 f"{week_schedule_constraints}"
                 "\nRules:\n"
-                "1. Generate workouts for the specified block weeks only. Each week must have structured workouts (typically 4-6 workouts per week). ALWAYS honor the athlete's preferred training days and double-session days from their profile — place Rest workouts on non-preferred days, and produce two workout objects on each double-session day as described above.\n"
-                "2. Make the plan highly customized. For example, scale long runs, map Sunday Muscular Endurance box steps/weighted step-ups based on the race elevation gain, or specify treadmill incline/speed settings for gym workouts.\n"
-                "3. NEVER invent a physiological claim, exercise, or number beyond what the Uphill Athlete training philosophy implies. If unsure of an exact figure, give a sensible range instead of fabricating false precision.\n"
-                "4. Give the athlete profile and prior feedback below real weight — this plan MUST reflect their specific numbers, schedule, and history, not a generic template.\n"
+                "1. Block Scope & Schedule: Generate workouts for the specified block weeks only. Each week must have structured workouts (typically 4-6 workouts per week). ALWAYS honor the athlete's preferred training days and double-session days from their profile — place Rest workouts on non-preferred days, and produce two workout objects on each double-session day as described above.\n"
+                "2. 80/20 Low-Intensity Volume Polarization: At least 80-85% of total weekly running volume/time MUST be strictly in Zone 1 and Zone 2 (below AeT). High-intensity work (Zone 3/4/5, ME circuits) must NOT exceed 15-20% of weekly volume.\n"
+                "3. Long Run Proportionality Cap: A single long run must NOT exceed 30-35% of total weekly volume. For ultra distances where back-to-back weekend long runs (Saturday + Sunday) are scheduled, their combined total must NOT exceed 50% of the week's total volume to prevent excessive structural breakdown.\n"
+                "4. Periodization Phases (Training for the Uphill Athlete):\n"
+                "   - Base Phase: Aerobic volume accumulation (Zone 1-2) + Maximum Strength (heavy compound bodyweight/gym lifts: squats, deadlifts, step-ups; 3-5 sets of 4-6 reps, 2-3 min rest between sets). DO NOT prescribe high-repetition Muscular Endurance circuits in early Base.\n"
+                "   - Build Phase: Aerobic base expansion + Muscular Endurance (ME circuits: split jump squats, box step-ups with 10-30s transitions, 6-8 rounds) + Zone 3/4 hill tempo repeats.\n"
+                "   - Peak Phase: Race-specific terrain simulation, high-vert weekend back-to-backs, weighted pack step-ups, and eccentric downhill repeats (quad conditioning).\n"
+                "   - Taper Phase: Reduce weekly volume by 40-60% while maintaining neuromuscular sharpness (short race-pace strides/surges).\n"
+                "   - Race Week: Minimal volume, rest days before race day, race execution, post-race recovery.\n"
+                "5. Deload Adaptation Cycles: Follow a 3:1 (or 2:1 for masters/fatigued runners) loading-to-recovery pattern. On recovery/deload weeks, reduce weekly volume by 20-30% to consolidate physiological adaptation and prevent overtraining.\n"
+                "6. Aerobic Deficiency Syndrome (ADS) Rule: If ADS is detected in the athlete profile, strictly enforce aerobic base building: NO Zone 4 or 5 intervals in Base/Build phases. Keep all aerobic runs strictly below AeT heart rate.\n"
+                "7. Make the plan highly customized. For example, scale long runs, map Sunday Muscular Endurance box steps/weighted step-ups based on the race elevation gain, or specify treadmill incline/speed settings for gym workouts.\n"
+                "8. NEVER invent a physiological claim, exercise, or number beyond what the Uphill Athlete training philosophy implies. If unsure of an exact figure, give a sensible range instead of fabricating false precision.\n"
+                "9. Give the athlete profile and prior feedback below real weight — this plan MUST reflect their specific numbers, schedule, and history, not a generic template.\n"
+                "10. Uphill Athlete & Trail Specificity: For mountain/trail races, incorporate progressive eccentric quad conditioning (eccentric box step-downs, downhill repeats, hill bounding) and back-to-back weekend long runs where appropriate for ultra distances (50K+). If the course profile notes high heat or altitude, integrate acclimation guidance.\n"
+                "11. Environmental & Routine Scheduling: If the athlete's notes indicate flat/urban living on weekdays with weekend trail travel, prescribe flat road/treadmill aerobic work or gym ME on weekdays, reserving high-vert trail long runs for Saturday/Sunday.\n"
                 f"{equipment_terrain_rule}"
                 f"{lang_rule}\n\n"
                 f"Athlete Profile:\n{user_summary}\n\n"
@@ -1117,7 +1252,7 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                 "placeholder like 'perform the circuit for 20 min'; never place exercises outside Process "
                 "(e.g. after Warning, injury-risks only); Intervals state exact reps/distance-or-"
                 "duration/recovery; plus Overall/Reason/Benefit/Warning), "
-                "fueling_tip (string), "
+                "fueling_tip (string: <75m water/electrolytes; 75-150m 30-60g CHO/hr; >150m 60-90g CHO/hr + 500-800mg sodium; pre-race 8-10g CHO/kg), "
                 "treadmill_incline/treadmill_speed (optional numbers, treadmill only — incline should match this "
                 "run's own grade_percent for trail workouts, not a flat 1%; EXCEPTION: Hill Sprint/Hill Repeat "
                 "titles MUST use 10-15% incline regardless of grade_percent; speed reduced to match incline), "
@@ -1142,9 +1277,15 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
             )
             nb_rules_block = (
                 "Rules: Honor the athlete's preferred training and double-session days below — place Rest on "
-                "non-preferred days, produce two objects on double-session days. Customize scaling to the "
-                "athlete's actual numbers (long runs, ME volume, treadmill settings) instead of a generic "
-                "template. NEVER invent a claim or figure beyond standard Uphill Athlete training principles."
+                "non-preferred days, produce two objects on double-session days. "
+                "80/20 Polarization: 80-85% volume in Zone 1-2, high intensity <= 15-20%. "
+                "Long run cap: <= 30-35% of weekly volume (<= 50% for weekend back-to-backs). "
+                "Phase periodization: Base (Max Strength, 4-6 reps, 2-3m rest) -> Build (ME circuits, 6-8 rounds, 10-30s transition) -> Peak (vert/eccentric downhill) -> Taper (cut vol 40-60%). "
+                "Deload cycles: 3:1 load-to-recovery (cut vol 20-30% on deload). "
+                "ADS Rule: If ADS flagged, NO Zone 4/5 speedwork in Base/Build — strictly Zone 1-2. "
+                "Fueling: <75m water/electrolytes, 75-150m 30-60g CHO/hr, >150m 60-90g CHO/hr + 500-800mg sodium, pre-race 8-10g CHO/kg. "
+                "Customize scaling to the athlete's actual numbers instead of a generic template. "
+                "NEVER invent a claim or figure beyond standard Uphill Athlete training principles."
                 f"{nb_equipment_terrain_rule}"
                 f"{lang_rule}\n\n"
             )
@@ -1300,25 +1441,22 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
             import asyncio
 
             _kb_context = ""
-            if settings.RAG_ENGINE == "gemini":
-                # Ground the plan in distilled Uphill Athlete philosophy. Retrieval failure
-                # is non-fatal — the prompt already carries the core rules inline.
-                try:
-                    from services.kb_context import render_principles_context
-                    from services.kb_retrieval import search_scheduler_chunks
+            # Ground the plan in distilled Uphill Athlete philosophy. Retrieval failure
+            # is non-fatal — the prompt already carries the core rules inline.
+            try:
+                from services.kb_context import render_principles_context
+                from services.kb_retrieval import search_scheduler_chunks
 
-                    _retrieval_query = (
-                        f"{race_info.get('terrain', 'trail')} race training plan: periodization "
-                        f"phases, muscular endurance circuit design, taper and race week, long run "
-                        f"and Zone 2 volume, double sessions"
-                    )
-                    _hits = await asyncio.to_thread(search_scheduler_chunks, _retrieval_query, api_key, 6)
-                    _kb_context = render_principles_context(
-                        _hits, heading="UPHILL ATHLETE PHILOSOPHY (grounding context)"
-                    )
-                    print(f"[PlanGen][KB] Retrieved {len(_hits)} philosophy chunks")
-                except Exception as _kb_ex:
-                    print(f"[PlanGen][KB] Retrieval failed (continuing without): {_kb_ex}")
+                _retrieval_query = (
+                    f"{race_info.get('terrain', 'trail')} race training plan: periodization "
+                    f"phases, muscular endurance circuit design, taper and race week, long run "
+                    f"and Zone 2 volume, double sessions"
+                )
+                _hits = await asyncio.to_thread(search_scheduler_chunks, _retrieval_query, api_key, 6)
+                _kb_context = render_principles_context(_hits, heading="UPHILL ATHLETE PHILOSOPHY (grounding context)")
+                print(f"[PlanGen][KB] Retrieved {len(_hits)} philosophy chunks")
+            except Exception as _kb_ex:
+                print(f"[PlanGen][KB] Retrieval failed (continuing without): {_kb_ex}")
             _gemini_prompt = _ai_prompt + ("\n\n" + _kb_context if _kb_context else "")
             try:
                 import time
@@ -1350,7 +1488,9 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                         contents=_gemini_prompt,
                         config=_genai_types.GenerateContentConfig(
                             thinking_config=_genai_types.ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL)
-                        ),
+                        )
+                        if hasattr(_genai_types, "ThinkingConfig")
+                        else None,
                     )
                     _latency = time.time() - _start
                     rag_latency_seconds.labels(service="plan_generator", engine="gemini").observe(_latency)

@@ -42,4 +42,14 @@ describe("ScheduleFieldsEditor", () => {
     const doubleSessionSection = screen.getByText(t("plan_double_session_days")).closest("div")!;
     expect(within(doubleSessionSection).queryAllByText("Tue")).toHaveLength(0);
   });
+
+  it("updates athlete_notes when typing into the notes textarea", () => {
+    const onChange = vi.fn();
+    render(<ScheduleFieldsEditor lang="en" t={t} isMobile={false} value={{ ...baseValue, athlete_notes: "" }} onChange={onChange} />);
+
+    const textarea = screen.getByPlaceholderText(t("plan_athlete_notes_placeholder"));
+    fireEvent.change(textarea, { target: { value: "Living in city on weekdays, mountain running on weekends." } });
+
+    expect(onChange).toHaveBeenCalledWith({ athlete_notes: "Living in city on weekdays, mountain running on weekends." });
+  });
 });

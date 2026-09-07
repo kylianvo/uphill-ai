@@ -161,6 +161,10 @@ SCHEDULER_TOPICS = [
     "Strength training (non-ME): exercise selection, sets/reps/rest, and how gym work fits each training phase",
     "Recovery weeks and deloads: frequency, volume reduction, signs of overtraining, adjusting after missed training",
     "Race-day pacing and course-specific preparation for uphill athletes",
+    "Downhill running mechanics, eccentric quadriceps conditioning, vert adaptation, and injury-prevention protocols (step-downs, weighted lunges, downhill repeats)",
+    "Back-to-back long runs for ultra endurance: volume caps, weekly percentage distribution, fueling between days, and fatigue management",
+    "Altitude and heat acclimation: timeline for adaptations, pacing adjustments per 1000m elevation gain, plasma volume expansion, and heat protocol integration",
+    "Pre-race carb-loading protocols (g/kg bodyweight over 36-48h), low-residue diet transition to prevent GI distress, and electrolyte pre-loading",
 ]
 
 NUTRITION_PRINCIPLE_TOPICS = [

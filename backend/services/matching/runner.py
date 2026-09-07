@@ -114,7 +114,13 @@ def _workouts_by_date(workouts: list[dict]) -> dict[date, list[dict]]:
     return by_date
 
 
-async def match_user(user_id: int, since: date, until: date, plan_id: int | None = None) -> dict[str, int]:
+async def match_user(
+    user_id: int,
+    since: date,
+    until: date,
+    plan_id: int | None = None,
+    tz_offset_minutes: int | None = None,
+) -> dict[str, int]:
     activities = db.get_activities_for_matching(user_id, since, until + timedelta(days=1))
     workouts = db.get_dated_workouts_for_matching(user_id, plan_id=plan_id)
     by_date = _workouts_by_date(workouts)
@@ -135,7 +141,10 @@ async def match_user(user_id: int, since: date, until: date, plan_id: int | None
         if activity.get("match_method") == "manual":
             totals["skipped_manual"] += 1
             continue
-        by_day[activity["start_time"].date()].append(activity)
+        st = activity["start_time"]
+        if tz_offset_minutes is not None:
+            st = st + timedelta(minutes=tz_offset_minutes)
+        by_day[st.date()].append(activity)
 
     activities_by_id = {a["id"]: a for a in activities}
 
@@ -174,6 +183,11 @@ async def match_user(user_id: int, since: date, until: date, plan_id: int | None
                     "components": assignment.score.components,
                     "fragments": assignment.bundle.fragment_count,
                     "warmup_distance_km": assignment.bundle.warmup_distance_km,
+                    "bundle_distance_km": assignment.bundle.distance_km,
+                    "bundle_duration_seconds": assignment.bundle.duration_seconds,
+                    "bundle_elevation_gain_m": assignment.bundle.elevation_gain_m,
+                    "bundle_avg_hr": assignment.bundle.avg_hr,
+                    "bundle_activity_ids": assignment.bundle.activity_ids,
                 }
                 if not is_primary:
                     fragment_details["bundle_primary_activity_id"] = primary_id

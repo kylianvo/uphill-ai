@@ -374,6 +374,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
     use_treadmill: false,
     training_environment: "flat",
     double_session_days: [],
+    athlete_notes: "",
   });
 
   const fetchBlockCompletion = React.useCallback(() => {
@@ -470,6 +471,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
       use_treadmill: !!p.use_treadmill,
       training_environment: p.training_environment || "flat",
       double_session_days: doubleSessionDays,
+      athlete_notes: p.athlete_notes || "",
     });
     if (withOverride) setOverrideConfirmed(true);
     setBlockEvaluation(null);
@@ -504,6 +506,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
           has_gym_access: nextBlockSchedule.has_gym_access,
           use_treadmill: nextBlockSchedule.use_treadmill,
           training_environment: nextBlockSchedule.training_environment,
+          athlete_notes: nextBlockSchedule.athlete_notes || null,
         }),
       });
       const data = await resp.json();
@@ -980,6 +983,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 use_treadmill: planForm.use_treadmill,
                 training_environment: planForm.training_environment,
                 double_session_days: planForm.double_session_days,
+                athlete_notes: planForm.athlete_notes,
               }}
               onChange={(patch) => setPlanForm({ ...planForm, ...patch })}
             />
@@ -2184,15 +2188,28 @@ function DayGroup({
   // Unmatched activities on this day (unplanned runs from watch)
   const unplannedActivities = matches.filter((a) => {
     if (a.workout_id != null) return false;
+    // Hide secondary fragments of an already matched multi-activity bundle
+    if (a.match_details?.bundle_primary_activity_id != null) return false;
     if (!dayDateStr || !a.start_time) return false;
-    const actDateStr = a.start_time.split("T")[0];
+    const d = new Date(a.start_time);
+    const actDateStr = Number.isNaN(d.getTime())
+      ? a.start_time.split("T")[0]
+      : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     return actDateStr === dayDateStr;
   });
 
-  // Workouts on this day that do not yet have an assigned watch activity
-  const availableUnmatchedWorkouts = dayWos
-    .filter((w) => !matches.some((a) => a.workout_id === w.id))
-    .map((w) => ({ id: w.id, title: w.title || w.type, type: w.type }));
+  // Workouts on this day available to link (unmatched or allow combining with existing)
+  const availableUnmatchedWorkouts = dayWos.map((w: any) => {
+    const isAlreadyMatched = matches.some((a) => a.workout_id === w.id);
+    const title = w.title || w.type;
+    return {
+      id: w.id,
+      title: isAlreadyMatched
+        ? (lang === "vi" ? `+ Ghép vào ${title}` : `+ Combine with ${title}`)
+        : title,
+      type: w.type,
+    };
+  });
 
   // Combine refs
   const setRef = (node: HTMLElement | null) => { setDragRef(node); setDropRef(node); };

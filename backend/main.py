@@ -31,6 +31,7 @@ from db import (
     get_active_plan,
     get_all_grounding_content,
     get_all_knowledge_cards,
+    get_block_actual_volume,
     get_block_completion,
     get_block_reviews,
     get_coach_athlete_by_id,
@@ -46,8 +47,10 @@ from db import (
     get_plan_workouts,
     get_random_knowledge_cards,
     get_recent_plans,
+    get_recent_readiness_summary,
     get_roster_for_coach,
     get_roster_overview_data,
+    get_user_activity_ceiling,
     get_user_by_email,
     get_user_by_id,
     get_workout_by_id,
@@ -204,6 +207,7 @@ class PlanGenerateRequest(BaseModel):
     # (/api/coaching/athletes/{athlete_id}/generate-plan) -- injected into the
     # generation prompt so the coach's own judgment can override defaults.
     coach_notes: str | None = None
+    athlete_notes: str | None = None
 
 
 class SelectPlanRequest(BaseModel):
@@ -245,6 +249,7 @@ class GenerateNextBlockRequest(BaseModel):
     has_gym_access: bool | None = None
     use_treadmill: bool | None = None
     training_environment: str | None = None
+    athlete_notes: str | None = None
 
 
 # Phase 3 Request Models
@@ -347,6 +352,7 @@ class OnboardingRequest(BaseModel):
     # into the app; they can start a plan later from the Planner tab.
     skip_plan: bool = False
     plan_start_date: str | None = None  # YYYY-MM-DD
+    athlete_notes: str | None = None
 
 
 class UpdateProfileRequest(BaseModel):
@@ -366,6 +372,7 @@ class UpdateProfileRequest(BaseModel):
     coros_running_level: float | None = None
     pace_zone_model: str | None = None
     custom_pace_zones: dict[str, Any] | None = None
+    athlete_notes: str | None = None
 
 
 class SetCoachStatusRequest(BaseModel):
@@ -525,6 +532,10 @@ You are Coach Uphill, an elite running coach speaking directly to your athlete �
 MUST: Keep every reply to 1-2 short paragraphs or a brief bullet list. NEVER open with a preamble or repeat the athlete's question back to them. NEVER pad with essay-like explanation.
 NEVER fabricate a workout detail, product spec, or statistic you are not confident about. If the grounding data below doesn't cover what's asked, say so plainly and answer from general coaching principles instead of inventing specifics.
 
+Domain Boundaries — enforce strictly:
+- You ONLY answer questions concerning running (trail, ultra, mountain, road, track), endurance training, strength & mobility for runners, running gear/shoes, injury prevention/recovery, and sports nutrition/hydration.
+- If the user asks about ANY topic outside of running, endurance sports, and athletic nutrition (such as coding/software, general trivia, politics, non-sports cooking, mathematics, homework, finance, entertainment, etc.), you MUST politely decline in 1-2 brief sentences and redirect them back to their running and training goals (e.g., "I'm Coach Uphill, specialized exclusively in running, endurance training, and sports nutrition. Let's get back to your training — how can I help with your runs, workouts, or fueling?").
+
 Coaching principles — apply strictly:
 1. Trail Running: Scott Johnston's "Training for the Uphill Athlete" principles. Emphasize muscular endurance (e.g., weighted step-ups, hill sprints).
 2. Road Running: 80/20 rule — 80% of volume in Zone 1-2, 20% in Zone 3-5.
@@ -540,6 +551,10 @@ You are an AI coaching assistant helping a human coach think through their athle
 
 MUST: Keep every reply to 1-2 short paragraphs or a brief bullet list. NEVER open with a preamble or repeat the coach's question back to them.
 NEVER fabricate a workout detail, completion status, or statistic about this athlete that isn't in the athlete context below. If the context doesn't cover what's asked, say so plainly rather than guessing, and answer from general coaching principles instead.
+
+Domain Boundaries — enforce strictly:
+- Strictly limit discussion to running, endurance training, athlete physiological metrics, workout prescription, recovery, gear, and sports nutrition.
+- If prompted about topics unrelated to athlete coaching and endurance sports performance, decline briefly and redirect back to the athlete's training.
 
 Coaching principles — apply strictly:
 1. Trail Running: Scott Johnston's "Training for the Uphill Athlete" principles. Emphasize muscular endurance (e.g., weighted step-ups, hill sprints).
@@ -839,6 +854,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         has_gym_access=request.has_gym_access or False,
         use_treadmill=request.has_gym_access or False,
         training_environment=request.training_environment or "flat",
+        athlete_notes=request.athlete_notes,
     )
 
     # Mark onboarding complete immediately so the user can enter the app
@@ -846,6 +862,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
 
     fresh_user = get_user_by_id(user["id"]) or user
     model_api_key = fresh_user.get("gemini_api_key") or settings.GEMINI_API_KEY
+    historical_ceiling = get_user_activity_ceiling(user["id"])
 
     race_info = {
         "name": race_name,
@@ -864,6 +881,8 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         "use_treadmill": request.has_gym_access or False,
         "training_environment": request.training_environment or "flat",
         "plan_start_date": onboarding_start_date,
+        "athlete_notes": request.athlete_notes or fresh_user.get("athlete_notes"),
+        "historical_ceiling": historical_ceiling,
         "lang": request.lang or "en",
     }
 
@@ -1656,7 +1675,12 @@ async def _generate_plan_for_athlete(
         training_environment=request.training_environment or "flat",
         created_by_user_id=created_by_user_id,
         plan_status=plan_status,
+        athlete_notes=request.athlete_notes,
     )
+
+    # Fetch latest athlete details from database to ensure fresh physiological values
+    fresh_user = get_user_by_id(athlete_id) or {"id": athlete_id}
+    historical_ceiling = get_user_activity_ceiling(athlete_id)
 
     race_info = {
         "name": race_name_str,
@@ -1679,12 +1703,11 @@ async def _generate_plan_for_athlete(
         "training_environment": request.training_environment or "flat",
         # Start date
         "plan_start_date": start_date_str,
+        "athlete_notes": request.athlete_notes or fresh_user.get("athlete_notes"),
+        "historical_ceiling": historical_ceiling,
         "lang": request.lang or "en",
         "coach_notes": request.coach_notes,
     }
-
-    # Fetch latest athlete details from database to ensure fresh physiological values
-    fresh_user = get_user_by_id(athlete_id) or {"id": athlete_id}
 
     # Merge onboarding/non-race context fields into fresh_user dict for plan generator
     fresh_user = dict(fresh_user)
@@ -1951,6 +1974,7 @@ async def _generate_next_block_for_athlete(
         request.has_gym_access,
         request.use_treadmill,
         request.training_environment,
+        request.athlete_notes,
     )
     if any(f is not None for f in _schedule_fields):
         updated_plan = update_plan_schedule(
@@ -1962,6 +1986,7 @@ async def _generate_next_block_for_athlete(
             has_gym_access=request.has_gym_access,
             use_treadmill=request.use_treadmill,
             training_environment=request.training_environment,
+            athlete_notes=request.athlete_notes,
         )
         if updated_plan:
             plan = updated_plan
@@ -1995,9 +2020,25 @@ async def _generate_next_block_for_athlete(
         planned_km = sum(w.get("distance_km") or 0 for w in block_wos)
         planned_min = sum(w.get("duration_minutes") or 0 for w in block_wos)
 
-        # Actual totals (from completed workouts)
-        actual_km = sum(w.get("distance_km") or 0 for w in completed_wos)
-        actual_min = sum(w.get("duration_minutes") or 0 for w in completed_wos)
+        # Actual totals (from true GPS watch activities, both matched & unplanned)
+        actual_vol = get_block_actual_volume(
+            user_id=athlete_id,
+            plan_id=request.plan_id,
+            wk_start=wk_start,
+            wk_end=wk_end,
+            plan_start_date=plan.get("start_date"),
+        )
+        if actual_vol.get("total_activities_count", 0) > 0:
+            actual_km = actual_vol["total_actual_km"]
+            actual_min = actual_vol["total_actual_minutes"]
+            actual_vert = actual_vol["total_actual_vert_m"]
+        else:
+            actual_km = sum(w.get("distance_km") or 0 for w in completed_wos)
+            actual_min = sum(w.get("duration_minutes") or 0 for w in completed_wos)
+            actual_vert = sum(w.get("elevation_gain_m") or 0 for w in completed_wos)
+
+        unplanned_count = actual_vol.get("unplanned_count", 0)
+        unplanned_km = actual_vol.get("unplanned_km", 0.0)
 
         sessions_done = len(completed_wos)
         sessions_total = len(block_wos)
@@ -2036,8 +2077,12 @@ async def _generate_next_block_for_athlete(
         line = (
             f"Block {blk} (Wk {wk_start}-{wk_end}): "
             f"{sessions_done}/{sessions_total} sessions ({completion_pct}%) | "
-            f"Actual {actual_km:.1f}km/{actual_min/60:.1f}h vs Planned {planned_km:.1f}km/{planned_min/60:.1f}h"
+            f"Actual {actual_km:.1f}km/{actual_min/60:.1f}h"
+            + (f" (+{actual_vert:.0f}m D+)" if actual_vert > 0 else "")
+            + f" vs Planned {planned_km:.1f}km/{planned_min/60:.1f}h"
         )
+        if unplanned_count > 0:
+            line += f" [Includes {unplanned_count} unplanned watch activity: {unplanned_km:.1f}km]"
         if block_rpe:
             line += f" | RPE {block_rpe}/10"
         context_lines.append(line)
@@ -2114,6 +2159,9 @@ async def _generate_next_block_for_athlete(
             if cn not in active_coach_notes:
                 active_coach_notes.append(cn)
 
+    readiness_summary = get_recent_readiness_summary(athlete_id, days=7)
+    historical_ceiling = get_user_activity_ceiling(athlete_id)
+
     race_info = {
         "name": plan.get("race_name", "Training Plan"),
         "date": plan.get("race_date"),
@@ -2131,6 +2179,9 @@ async def _generate_next_block_for_athlete(
         "use_treadmill": plan.get("use_treadmill", False),
         "training_environment": plan.get("training_environment") or "flat",
         "plan_start_date": plan.get("start_date"),
+        "athlete_notes": request.athlete_notes or plan.get("athlete_notes") or fresh_user.get("athlete_notes"),
+        "historical_ceiling": historical_ceiling,
+        "readiness_summary": readiness_summary,
         "lang": request.lang or fresh_user.get("lang", "en"),
         "coach_notes": "\n".join(active_coach_notes) if active_coach_notes else None,
     }

@@ -101,7 +101,15 @@ export default function MatchedActivityCard({
     activity.activity_type === "gym_cardio" ||
     (!activity.distance_km && (activity.sets != null || (plannedWorkout?.title || "").toLowerCase().includes("strength") || (plannedWorkout?.title || "").toLowerCase().includes("gym")));
 
-  const actualPace = !isStrength ? formatPace(activity.duration_seconds, activity.distance_km) : null;
+  // Multi-fragment / combined session support
+  const fragments = activity.match_details?.fragments ?? 1;
+  const isCombinedSession = fragments > 1;
+  const displayDistance = activity.match_details?.bundle_distance_km ?? activity.distance_km;
+  const displayDuration = activity.match_details?.bundle_duration_seconds ?? activity.duration_seconds;
+  const displayElevation = activity.match_details?.bundle_elevation_gain_m ?? activity.elevation_gain_m;
+  const displayHr = activity.match_details?.bundle_avg_hr ?? activity.avg_hr;
+
+  const actualPace = !isStrength ? formatPace(displayDuration, displayDistance) : null;
   const formattedTime = formatActivityTime(activity.start_time);
 
   // Bundled warm-up detection
@@ -176,13 +184,13 @@ export default function MatchedActivityCard({
 
   // Delta computations
   let distanceDeltaKm: number | null = null;
-  if (!isStrength && activity.distance_km != null && plannedWorkout?.distance_km != null && plannedWorkout.distance_km > 0) {
-    distanceDeltaKm = activity.distance_km - plannedWorkout.distance_km;
+  if (!isStrength && displayDistance != null && plannedWorkout?.distance_km != null && plannedWorkout.distance_km > 0) {
+    distanceDeltaKm = displayDistance - plannedWorkout.distance_km;
   }
 
   let durationDeltaMin: number | null = null;
-  if (activity.duration_seconds > 0 && plannedWorkout?.duration_minutes != null && plannedWorkout.duration_minutes > 0) {
-    durationDeltaMin = Math.round(activity.duration_seconds / 60 - plannedWorkout.duration_minutes);
+  if (displayDuration > 0 && plannedWorkout?.duration_minutes != null && plannedWorkout.duration_minutes > 0) {
+    durationDeltaMin = Math.round(displayDuration / 60 - plannedWorkout.duration_minutes);
   }
 
   const qStyle = getQualityColor(qualityGrade);
@@ -329,8 +337,33 @@ export default function MatchedActivityCard({
         </div>
       </div>
 
+      {/* Bundled multi-activity combined session banner */}
+      {isCombinedSession && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            padding: "6px 10px",
+            borderRadius: "8px",
+            background: "rgba(59, 130, 246, 0.08)",
+            border: "1px solid rgba(59, 130, 246, 0.25)",
+            color: "#2563eb",
+            fontSize: "12px",
+            fontWeight: "600",
+          }}
+        >
+          <Sparkle size={14} weight="bold" aria-hidden="true" />
+          <span>
+            {lang === "vi"
+              ? `Buổi tập kết hợp (${fragments} hoạt động, tổng cộng ${displayDistance?.toFixed(1)} km)`
+              : `Combined session (${fragments} activities, ${displayDistance?.toFixed(1)} km total)`}
+          </span>
+        </div>
+      )}
+
       {/* Bundled warm-up fragment banner */}
-      {warmupKm > 0 && (
+      {!isCombinedSession && warmupKm > 0 && (
         <div
           style={{
             display: "flex",
@@ -363,7 +396,7 @@ export default function MatchedActivityCard({
         }}
       >
         {/* Distance (Hidden for pure strength) */}
-        {!isStrength && activity.distance_km != null && (
+        {!isStrength && displayDistance != null && (
           <div
             style={{
               padding: "8px 10px",
@@ -377,7 +410,7 @@ export default function MatchedActivityCard({
               <span>{lang === "vi" ? "QUÃNG ĐƯỜNG" : "DISTANCE"}</span>
             </div>
             <div style={{ fontSize: "14px", fontWeight: "700", color: "var(--text-primary)", marginTop: "2px" }}>
-              {activity.distance_km.toFixed(1)} km
+              {displayDistance.toFixed(1)} km
             </div>
             {distanceDeltaKm != null && (
               <div
@@ -409,7 +442,7 @@ export default function MatchedActivityCard({
             <span>{lang === "vi" ? "THỜI GIAN" : "DURATION"}</span>
           </div>
           <div style={{ fontSize: "14px", fontWeight: "700", color: "var(--text-primary)", marginTop: "2px" }}>
-            {formatDuration(activity.duration_seconds)}
+            {formatDuration(displayDuration)}
           </div>
           {durationDeltaMin != null && (
             <div
@@ -472,7 +505,7 @@ export default function MatchedActivityCard({
         )}
 
         {/* Heart Rate */}
-        {activity.avg_hr != null && (
+        {displayHr != null && (
           <div
             style={{
               padding: "8px 10px",
@@ -486,7 +519,7 @@ export default function MatchedActivityCard({
               <span>{lang === "vi" ? "NHỊP TIM TB" : "AVG HR"}</span>
             </div>
             <div style={{ fontSize: "14px", fontWeight: "700", color: "var(--text-primary)", marginTop: "2px" }}>
-              {activity.avg_hr} bpm
+              {displayHr} bpm
             </div>
             {plannedWorkout?.target_hr_range && (
               <div style={{ fontSize: "10px", color: "var(--text-muted)", marginTop: "1px" }}>
@@ -497,7 +530,7 @@ export default function MatchedActivityCard({
         )}
 
         {/* Elevation Gain */}
-        {!isStrength && activity.elevation_gain_m != null && activity.elevation_gain_m > 0 && (
+        {!isStrength && displayElevation != null && displayElevation > 0 && (
           <div
             style={{
               padding: "8px 10px",
@@ -511,7 +544,7 @@ export default function MatchedActivityCard({
               <span>{lang === "vi" ? "ĐỘ DỐC" : "ELEVATION"}</span>
             </div>
             <div style={{ fontSize: "14px", fontWeight: "700", color: "var(--text-primary)", marginTop: "2px" }}>
-              +{Math.round(activity.elevation_gain_m)} m
+              +{Math.round(displayElevation)} m
             </div>
           </div>
         )}

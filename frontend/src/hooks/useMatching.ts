@@ -55,6 +55,19 @@ export type RawMatchActivity = {
     warmup_distance_km?: number;
     fragments?: number;
     reasons?: string[];
+    bundle_primary_activity_id?: number;
+    bundle_activity_ids?: number[];
+    bundle_distance_km?: number;
+    bundle_duration_seconds?: number;
+    bundle_elevation_gain_m?: number;
+    bundle_avg_hr?: number;
+    fragment_breakdown?: Array<{
+      activity_id: number;
+      distance_km: number | null;
+      duration_seconds: number;
+      avg_hr: number | null;
+      start_time: string;
+    }>;
   } | null;
 };
 
@@ -93,6 +106,8 @@ export function useMatching() {
       const planId = typeof arg === "object" ? arg?.planId : undefined;
       const queryParts = [`days=${days}`];
       if (planId != null) queryParts.push(`plan_id=${planId}`);
+      const tzOffset = -new Date().getTimezoneOffset();
+      queryParts.push(`tz_offset_minutes=${tzOffset}`);
 
       try {
         const res = await fetch(`${API_BASE_URL}/api/integrations/matching/run?${queryParts.join("&")}`, {
