@@ -571,6 +571,7 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
         block_number: int = 1,
         weeks_per_block: int = 2,
         block_context: str | None = None,
+        target_week: int | None = None,
     ) -> list[dict[str, Any]]:
         """
         Generates a structured running plan based on:
@@ -581,8 +582,12 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
         - Dynamic periodized schedule duration.
         """
         # Block window calculation
-        block_start_week = (block_number - 1) * weeks_per_block + 1
-        block_end_week = min(block_start_week + weeks_per_block - 1, total_weeks)
+        if target_week is not None:
+            block_start_week = target_week
+            block_end_week = target_week
+        else:
+            block_start_week = (block_number - 1) * weeks_per_block + 1
+            block_end_week = min(block_start_week + weeks_per_block - 1, total_weeks)
 
         # 1. Base Variables Extract
         lang = race_info.get("lang", "en").lower()
@@ -997,13 +1002,21 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                     f"\nCOURSE INTELLIGENCE & ENVIRONMENTAL DEMANDS (Curated Race Profile):\n{course_context}\n"
                 )
 
-            total_blocks = (total_weeks + weeks_per_block - 1) // weeks_per_block
-            block_scope_instruction = (
-                f"\nSEQUENTIAL BLOCK GENERATION:\n"
-                f"This plan spans {total_weeks} weeks total, generated in {total_blocks} blocks of {weeks_per_block} weeks each.\n"
-                f"Generate ONLY Block {block_number} of {total_blocks}: weeks {block_start_week} through {block_end_week}.\n"
-                f"CRITICAL: Every workout `week_number` MUST be between {block_start_week} and {block_end_week} (inclusive). Do NOT output week numbers outside this range.\n"
-            )
+            if target_week is not None:
+                block_scope_instruction = (
+                    f"\nSINGLE-WEEK REGENERATION & ADAPTATION:\n"
+                    f"This plan spans {total_weeks} weeks total. You are adapting and regenerating ONLY Week {target_week}.\n"
+                    f"CRITICAL: Every workout `week_number` MUST be exactly {target_week}. Do NOT output any workouts for other weeks.\n"
+                    f"Adapt the workouts according to the athlete's latest feedback, fatigue, and recovery while maintaining target progressive overload.\n"
+                )
+            else:
+                total_blocks = (total_weeks + weeks_per_block - 1) // weeks_per_block
+                block_scope_instruction = (
+                    f"\nSEQUENTIAL BLOCK GENERATION:\n"
+                    f"This plan spans {total_weeks} weeks total, generated in {total_blocks} blocks of {weeks_per_block} weeks each.\n"
+                    f"Generate ONLY Block {block_number} of {total_blocks}: weeks {block_start_week} through {block_end_week}.\n"
+                    f"CRITICAL: Every workout `week_number` MUST be between {block_start_week} and {block_end_week} (inclusive). Do NOT output week numbers outside this range.\n"
+                )
             # Kept separate from block_scope_instruction (and placed last in the final prompt below):
             # this is free-text athlete feedback of unbounded length, and NotebookLM truncates the
             # full prompt at ~3800 chars — the schema and hard constraints must survive truncation

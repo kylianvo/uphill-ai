@@ -9,7 +9,7 @@ import { KnowledgeCard } from "../components/KnowledgeCard";
 import { DndContext, DragEndEvent, DragOverEvent, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, TouchSensor, KeyboardSensor } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import ToolsView from "./ToolsView";
-import { UploadSimple, FileArrowUp, Heart, Clock, Mountains, MapPin, Footprints, ArrowsMerge, PlayCircle, CheckCircle, Fire, Path, RoadHorizon, Info, Check, Question, WarningCircle, Plus, Trash, Archive, LockKey, LockKeyOpen, Trophy, Target, Sneaker, PersonSimpleRun, Bed, XCircle, DownloadSimple, Gauge, Sun, Moon, DotsSixVertical, ArrowsClockwise, LinkSimple, Flag, TrendUp, Drop, Leaf, Lightning, PencilSimple, X, ArrowLeft, ArrowsLeftRight, ShieldCheck } from '@phosphor-icons/react';
+import { UploadSimple, FileArrowUp, Heart, Clock, Mountains, MapPin, Footprints, ArrowsMerge, PlayCircle, CheckCircle, Fire, Path, RoadHorizon, Info, Check, Question, WarningCircle, Plus, Trash, Archive, LockKey, LockKeyOpen, Trophy, Target, Sneaker, PersonSimpleRun, Bed, XCircle, DownloadSimple, Gauge, Sun, Moon, DotsSixVertical, ArrowsClockwise, LinkSimple, Flag, TrendUp, Drop, Leaf, Lightning, PencilSimple, X, ArrowLeft, ArrowsLeftRight, ShieldCheck, Sparkle } from '@phosphor-icons/react';
 import { RaceMatch } from "../hooks/useRaceMatch";
 import { RaceNameField } from "../components/RaceNameField";
 import { CoachNoteThread } from "../components/CoachNoteThread";
@@ -21,6 +21,7 @@ import { useMatching, type RawMatchActivity } from "../hooks/useMatching";
 import MatchedActivityCard from "../components/MatchedActivityCard";
 import UnplannedActivityCard from "../components/UnplannedActivityCard";
 import { MoveWorkoutModal } from "../components/MoveWorkoutModal";
+import { AdaptWeekModal } from "../components/AdaptWeekModal";
 import { triggerHaptic } from "../utils/native";
 
 export default function PlannerView({ isMobile }: { isMobile: boolean }) {
@@ -376,6 +377,49 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
     double_session_days: [],
     athlete_notes: "",
   });
+
+  // ── Adapt Week state ─────────────────────────────────────────────────────
+  const [showAdaptWeek, setShowAdaptWeek] = useState(false);
+  const [adaptTargetWeek, setAdaptTargetWeek] = useState(1);
+  const [adaptLoading, setAdaptLoading] = useState(false);
+  const [adaptingWeekNum, setAdaptingWeekNum] = useState<number | null>(null);
+
+  const handleOpenAdaptWeek = (weekNum: number) => {
+    setAdaptTargetWeek(weekNum);
+    setShowAdaptWeek(true);
+  };
+
+  const handleAdaptSuccess = (jobId: string, weekNum: number) => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("uphill_session_token") : null;
+    if (!token) return;
+    setAdaptLoading(true);
+    setAdaptingWeekNum(weekNum);
+    startPlanJobPoller(jobId, token);
+    const repoll = setInterval(() => {
+      const tkn = localStorage.getItem("uphill_session_token");
+      if (!tkn) {
+        clearInterval(repoll);
+        setAdaptLoading(false);
+        setAdaptingWeekNum(null);
+        return;
+      }
+      fetch(`${API_BASE_URL}/api/coach/plan-status/${jobId}`, { headers: { Authorization: `Bearer ${tkn}` } })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => {
+          if (d?.status === "done" || d?.status === "error") {
+            clearInterval(repoll);
+            setAdaptLoading(false);
+            setAdaptingWeekNum(null);
+            fetchBlockCompletion();
+          }
+        })
+        .catch(() => {
+          clearInterval(repoll);
+          setAdaptLoading(false);
+          setAdaptingWeekNum(null);
+        });
+    }, 3000);
+  };
 
   const fetchBlockCompletion = React.useCallback(() => {
     if (!activePlan) return;
@@ -1350,19 +1394,47 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                     border: "1px solid var(--border-color)",
                     borderRadius: "12px",
                     display: "flex",
-                    flexDirection: "column",
-                    gap: "4px"
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "12px",
+                    flexWrap: "wrap",
                   }}>
-                    <span style={{ fontSize: "10px", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: "700" }}>
-                      {lang === "en" ? `Weekly Volume (Week ${selectedWeek})` : `Thể tích tuần (Tuần ${selectedWeek})`}
-                    </span>
-                    <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
-                      <span style={{ fontSize: "18px", fontWeight: "800", color: "var(--accent-primary)" }}>{weeklyHours} {lang === "en" ? "hrs" : "giờ"}</span>
-                      <span style={{ fontSize: "13px", color: "var(--text-muted)", fontWeight: "600" }}>· ~{weeklyKm.toFixed(1)} km</span>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                      <span style={{ fontSize: "10px", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: "700" }}>
+                        {lang === "en" ? `Weekly Volume (Week ${selectedWeek})` : `Thể tích tuần (Tuần ${selectedWeek})`}
+                      </span>
+                      <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
+                        <span style={{ fontSize: "18px", fontWeight: "800", color: "var(--accent-primary)" }}>{weeklyHours} {lang === "en" ? "hrs" : "giờ"}</span>
+                        <span style={{ fontSize: "13px", color: "var(--text-muted)", fontWeight: "600" }}>· ~{weeklyKm.toFixed(1)} km</span>
+                      </div>
+                      <span style={{ fontSize: "9.5px", color: "var(--text-muted)", fontWeight: "500", fontStyle: "italic" }}>
+                        {lang === "en" ? "Sessions are run by time — distance is an estimate for planning" : "Buổi tập theo dõi bằng thời gian — quãng đường chỉ là ước tính"}
+                      </span>
                     </div>
-                    <span style={{ fontSize: "9.5px", color: "var(--text-muted)", fontWeight: "500", fontStyle: "italic" }}>
-                      {lang === "en" ? "Sessions are run by time — distance is an estimate for planning" : "Buổi tập theo dõi bằng thời gian — quãng đường chỉ là ước tính"}
-                    </span>
+
+                    {selectedWeek <= maxGeneratedWeek && (
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={() => handleOpenAdaptWeek(selectedWeek)}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          padding: "8px 14px",
+                          fontSize: "12px",
+                          fontWeight: "700",
+                          borderRadius: "8px",
+                          cursor: "pointer",
+                          border: "1px solid rgba(99, 102, 241, 0.3)",
+                          background: "rgba(99, 102, 241, 0.08)",
+                          color: "var(--accent-primary)",
+                        }}
+                      >
+                        <Sparkle size={14} weight="fill" aria-hidden="true" />
+                        <span>{lang === "en" ? `Adapt Week ${selectedWeek}` : `Tùy chỉnh Tuần ${selectedWeek}`}</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -1601,6 +1673,37 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
           </div>
         )}
 
+        {/* Adapt Week Generating Banner */}
+        {adaptLoading && adaptingWeekNum && (
+          <div style={{
+            background: "rgba(255, 255, 255, 0.95)",
+            border: "1px solid var(--border-color)",
+            padding: isMobile ? "16px 18px" : "18px 24px",
+            borderRadius: "16px",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+            display: "flex",
+            alignItems: "center",
+            gap: "16px",
+            marginTop: "16px",
+          }}>
+            <div style={{
+              width: "22px", height: "22px", borderRadius: "50%",
+              border: "3px solid rgba(99,102,241,0.2)",
+              borderTopColor: "var(--accent-primary)",
+              animation: "spin 0.8s linear infinite",
+              flexShrink: 0,
+            }} />
+            <div>
+              <div style={{ fontWeight: "700", fontSize: "14px", color: "var(--accent-primary)" }}>
+                {lang === "en" ? `Adapting Week ${adaptingWeekNum}…` : `Đang tùy chỉnh Tuần ${adaptingWeekNum}…`}
+              </div>
+              <div style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "3px" }}>
+                {lang === "en" ? "Regenerating workouts according to your latest feedback." : "Đang tái tạo các bài tập theo phản hồi mới nhất của bạn."}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Block Review Modal */}
         {showBlockReview && (
           <div style={{
@@ -1829,6 +1932,50 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Adapt Week Modal */}
+        {showAdaptWeek && activePlan && (
+          <AdaptWeekModal
+            isOpen={showAdaptWeek}
+            onClose={() => setShowAdaptWeek(false)}
+            planId={activePlan.id}
+            weekNumber={adaptTargetWeek}
+            totalWeeks={activePlan.total_weeks || 12}
+            completedWorkoutsCount={getWeekWorkouts(adaptTargetWeek).filter((w: any) => w.is_completed === 1).length}
+            initialSchedule={{
+              days_per_week: activePlan.days_per_week || 4,
+              long_run_day: activePlan.long_run_day || "Saturday",
+              preferred_days: (() => {
+                try {
+                  const p = typeof activePlan.preferred_run_days === "string"
+                    ? JSON.parse(activePlan.preferred_run_days)
+                    : activePlan.preferred_run_days;
+                  return Array.isArray(p) ? p : [];
+                } catch {
+                  return [];
+                }
+              })(),
+              double_session_days: (() => {
+                try {
+                  const p = typeof activePlan.double_session_days === "string"
+                    ? JSON.parse(activePlan.double_session_days)
+                    : activePlan.double_session_days;
+                  return Array.isArray(p) ? p : [];
+                } catch {
+                  return [];
+                }
+              })(),
+              has_gym_access: !!activePlan.has_gym_access,
+              use_treadmill: !!activePlan.use_treadmill,
+              training_environment: activePlan.training_environment || "flat",
+              athlete_notes: activePlan.athlete_notes || "",
+            }}
+            lang={lang}
+            isMobile={isMobile}
+            onAdaptSuccess={(jobId) => handleAdaptSuccess(jobId, adaptTargetWeek)}
+            actingAsAthleteId={actingAsAthleteId}
+          />
         )}
 
         {addWorkoutTarget && (

@@ -730,25 +730,70 @@ def _flatten_llm_text(value: Any) -> Any:
     return value
 
 
-def save_workouts(plan_id: int, workouts: list[dict[str, Any]], auto_approve: bool = True):
+def save_workouts(
+    plan_id: int,
+    workouts: list[dict[str, Any]],
+    auto_approve: bool = True,
+    preserve_completed: bool = False,
+):
     """`auto_approve=False` for coach-drafted plans: workouts start pending
     (approved_at NULL) until the coach reviews each one. Self-serve plans
-    have no coach in the loop, so their workouts are approved on arrival."""
+    have no coach in the loop, so their workouts are approved on arrival.
+    `preserve_completed=True` for week/block adaptations: preserves any workouts
+    that are already marked completed or matched to an activity, only replacing
+    uncompleted workouts."""
     if not workouts:
         return
     week_numbers = [wo["week_number"] for wo in workouts]
     week_start, week_end = min(week_numbers), max(week_numbers)
     with engine.connect() as conn:
-        # Clear any existing rows in this block's week range first, so retries/duplicate
-        # generation calls overwrite instead of stacking duplicate workouts on top.
-        conn.execute(
-            text("""
-                DELETE FROM workouts
-                WHERE plan_id = :plan_id AND week_number BETWEEN :week_start AND :week_end
-            """),
-            {"plan_id": plan_id, "week_start": week_start, "week_end": week_end},
-        )
+        existing_completed_slots = set()
+        if preserve_completed:
+            # Query existing completed workout slots (week_number, day_of_week, session_slot)
+            completed_rows = conn.execute(
+                text("""
+                    SELECT w.week_number, w.day_of_week, w.session_slot
+                    FROM workouts w
+                    LEFT JOIN activities a ON a.matched_workout_id = w.id
+                    WHERE w.plan_id = :plan_id
+                      AND w.week_number BETWEEN :week_start AND :week_end
+                      AND (w.is_completed = 1 OR a.id IS NOT NULL)
+                """),
+                {"plan_id": plan_id, "week_start": week_start, "week_end": week_end},
+            ).fetchall()
+            for r in completed_rows:
+                s_slot = r.session_slot or "main"
+                existing_completed_slots.add((r.week_number, r.day_of_week, s_slot))
+
+            # Delete only uncompleted workouts in this week range that are not matched to any activity
+            conn.execute(
+                text("""
+                    DELETE FROM workouts
+                    WHERE plan_id = :plan_id
+                      AND week_number BETWEEN :week_start AND :week_end
+                      AND (is_completed = 0 OR is_completed IS NULL)
+                      AND id NOT IN (
+                          SELECT matched_workout_id FROM activities WHERE matched_workout_id IS NOT NULL
+                      )
+                """),
+                {"plan_id": plan_id, "week_start": week_start, "week_end": week_end},
+            )
+        else:
+            # Clear any existing rows in this block's week range first, so retries/duplicate
+            # generation calls overwrite instead of stacking duplicate workouts on top.
+            conn.execute(
+                text("""
+                    DELETE FROM workouts
+                    WHERE plan_id = :plan_id AND week_number BETWEEN :week_start AND :week_end
+                """),
+                {"plan_id": plan_id, "week_start": week_start, "week_end": week_end},
+            )
         for wo in workouts:
+            slot_val = _flatten_llm_text(wo.get("session_slot", "main")) or "main"
+            day_val = _flatten_llm_text(wo["day_of_week"])
+            wn_val = wo["week_number"]
+            if preserve_completed and (wn_val, day_val, slot_val) in existing_completed_slots:
+                continue
             conn.execute(
                 text("""
                 INSERT INTO workouts (plan_id, week_number, day_of_week, phase, title, type,

@@ -224,7 +224,20 @@ export const translations = {
     header_knowledge_desc: "Knowledge cards extracted from your indexed podcasts",
     header_tools_desc: "Data-driven insights to optimize your training and gear.",
     header_about_desc: "The story, engine, and philosophy behind Uphill.AI",
-    header_coach_desc: "Manage your athlete roster and their training plans."
+    header_coach_desc: "Manage your athlete roster and their training plans.",
+
+    // Adapt Week
+    adapt_week_btn: "Adapt Week",
+    adapt_week_title: "Adapt Week",
+    adapt_week_subtitle: "Adjust upcoming training based on recent fatigue, schedule, or life events.",
+    adapt_week_rpe_label: "Current Fatigue & Exertion Check",
+    adapt_week_fatigue_placeholder: "Why are you adapting this week? (e.g. calf tightness, accumulated fatigue, busy work week)",
+    adapt_week_constraints_title: "Week-Specific Constraints",
+    adapt_week_days_toggle: "Available Training Days",
+    adapt_week_preserved_notice: "completed/recorded session(s) in this week will be strictly preserved.",
+    adapt_week_submit: "Regenerate Week",
+    adapt_week_submitting: "Adapting Week...",
+    adapt_week_cancel: "Cancel"
   },
   vi: {
     // Brand & App General
@@ -451,6 +464,19 @@ export const translations = {
     header_knowledge_desc: "Các thẻ kiến thức được trích xuất từ tài liệu đã lưu trữ",
     header_tools_desc: "Tính toán Pace, Fueling, Gear — tất cả tại một nơi",
     header_about_desc: "Câu chuyện, nền tảng công nghệ, và triết lý của Uphill.AI",
-    header_coach_desc: "Quản lý danh sách vận động viên và kế hoạch huấn luyện của họ."
+    header_coach_desc: "Quản lý danh sách vận động viên và kế hoạch huấn luyện của họ.",
+
+    // Adapt Week
+    adapt_week_btn: "Tùy chỉnh Tuần",
+    adapt_week_title: "Tùy chỉnh Tuần",
+    adapt_week_subtitle: "Điều chỉnh lịch tập sắp tới dựa trên độ mệt mỏi, lịch trình hoặc sự kiện cuộc sống.",
+    adapt_week_rpe_label: "Kiểm tra mức độ mệt mỏi & gắng sức",
+    adapt_week_fatigue_placeholder: "Lý do tùy chỉnh tuần này? (VD: căng bắp chân, mệt mỏi tích tụ, tuần làm việc bận rộn)",
+    adapt_week_constraints_title: "Ràng buộc cụ thể trong tuần",
+    adapt_week_days_toggle: "Ngày có thể tập luyện",
+    adapt_week_preserved_notice: "bài tập đã hoàn thành/ghi nhận trong tuần này sẽ được giữ nguyên.",
+    adapt_week_submit: "Tái tạo Tuần",
+    adapt_week_submitting: "Đang tùy chỉnh Tuần...",
+    adapt_week_cancel: "Hủy"
   }
 };

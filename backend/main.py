@@ -252,6 +252,23 @@ class GenerateNextBlockRequest(BaseModel):
     athlete_notes: str | None = None
 
 
+class AdaptWeekRequest(BaseModel):
+    plan_id: int
+    week_number: int  # target week to adapt (1-indexed)
+    overall_rpe: int | None = None  # 1-10 fatigue / exertion check
+    fatigue_notes: str | None = None  # why adapting / fatigue details
+    athlete_notes: str | None = None
+    coach_notes: str | None = None
+    preferred_days: list[str] | None = None
+    long_run_day: str | None = None
+    days_per_week: int | None = None
+    double_session_days: list[str] | None = None
+    has_gym_access: bool | None = None
+    use_treadmill: bool | None = None
+    training_environment: str | None = None
+    lang: str | None = None
+
+
 # Phase 3 Request Models
 class PacingRequest(BaseModel):
     checkpoints: list[dict[str, Any]]
@@ -2259,6 +2276,210 @@ async def coach_generate_next_block(
     the athlete's own session being able to (see coach_generate_plan for the
     same pattern on initial plan generation)."""
     return await _generate_next_block_for_athlete(request, athlete_id=athlete_id, job_owner_user_id=coach["id"])
+
+
+async def _adapt_week_for_athlete(request: AdaptWeekRequest, athlete_id: int, job_owner_user_id: int) -> dict[str, Any]:
+    """Shared core of week adaptation, used by both the self-serve
+    /api/coach/adapt-week (athlete_id == job_owner_user_id) and the
+    coach-triggered /api/coaching/athletes/{athlete_id}/adapt-week.
+    """
+    import asyncio
+    import uuid as _uuid
+
+    recent = get_recent_plans(athlete_id, limit=100)
+    plan = next((p for p in recent if p["id"] == request.plan_id), None)
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found.")
+
+    total_weeks = plan.get("total_weeks", 12)
+    if request.week_number < 1 or request.week_number > total_weeks:
+        raise HTTPException(status_code=400, detail="Invalid week number.")
+
+    max_week = get_max_generated_week(request.plan_id)
+    if request.week_number > max_week:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Week {request.week_number} has not been generated yet. Current generated weeks: 1-{max_week}.",
+        )
+
+    # Guard against duplicate concurrent job
+    for existing_job_id, job in plan_jobs.items():
+        if (
+            job.get("plan_id") == request.plan_id
+            and job.get("kind") == "adapt_week"
+            and job.get("target_week") == request.week_number
+            and job.get("status") == "generating"
+        ):
+            return {
+                "job_id": existing_job_id,
+                "plan_id": request.plan_id,
+                "week_number": request.week_number,
+            }
+
+    all_workouts = get_plan_workouts(request.plan_id)
+    fresh_user = get_user_by_id(athlete_id) or {}
+
+    context_lines: list[str] = [
+        f"ADAPTATION & REGENERATION FOR WEEK {request.week_number}:",
+    ]
+    if request.overall_rpe is not None:
+        context_lines.append(f"  Current Athlete Exertion / Fatigue RPE: {request.overall_rpe}/10")
+    if request.fatigue_notes:
+        context_lines.append(f'  Fatigue & Adaptation reason: "{request.fatigue_notes}"')
+    if request.athlete_notes:
+        context_lines.append(f'  Athlete notes: "{request.athlete_notes}"')
+    if request.coach_notes:
+        context_lines.append(f'  Coach instructions: "{request.coach_notes}"')
+
+    prev_wk = request.week_number - 1
+    if prev_wk >= 1:
+        prev_wos = [w for w in all_workouts if w.get("week_number") == prev_wk and w.get("type") != "Rest"]
+        completed_prev = [w for w in prev_wos if w.get("is_completed") == 1]
+        actual_vol = get_block_actual_volume(
+            user_id=athlete_id,
+            plan_id=request.plan_id,
+            wk_start=prev_wk,
+            wk_end=prev_wk,
+            plan_start_date=plan.get("start_date"),
+        )
+        if actual_vol.get("total_activities_count", 0) > 0:
+            actual_km = actual_vol["total_actual_km"]
+            actual_min = actual_vol["total_actual_minutes"]
+            actual_vert = actual_vol["total_actual_vert_m"]
+        else:
+            actual_km = sum(w.get("distance_km") or 0 for w in completed_prev)
+            actual_min = sum(w.get("duration_minutes") or 0 for w in completed_prev)
+            actual_vert = sum(w.get("elevation_gain_m") or 0 for w in completed_prev)
+        planned_km = sum(w.get("distance_km") or 0 for w in prev_wos)
+        planned_min = sum(w.get("duration_minutes") or 0 for w in prev_wos)
+        context_lines.append(
+            f"  Prior Week ({prev_wk}) Volume: Actual {actual_km:.1f}km / {actual_min/60:.1f}h"
+            + (f" (+{actual_vert:.0f}m D+)" if actual_vert > 0 else "")
+            + f" vs Planned {planned_km:.1f}km / {planned_min/60:.1f}h"
+        )
+
+    # Note any workouts already completed/matched in the target week
+    curr_completed = [
+        w for w in all_workouts if w.get("week_number") == request.week_number and w.get("is_completed") == 1
+    ]
+    if curr_completed:
+        context_lines.append(
+            f"  Note: Workouts already completed/matched in Week {request.week_number} will be PRESERVED:"
+        )
+        for cw in curr_completed:
+            context_lines.append(
+                f"    - {cw.get('day_of_week')}: {cw.get('title')} ({cw.get('duration_minutes', 0):.0f}min, {cw.get('distance_km', 0):.1f}km)"
+            )
+
+    block_context = "\n".join(context_lines)
+
+    _, _, course_context = _resolve_course_match(
+        plan.get("race_name"), plan.get("course_distance_km"), plan.get("course_elevation_gain_m")
+    )
+
+    readiness_summary = get_recent_readiness_summary(athlete_id, days=7)
+    historical_ceiling = get_user_activity_ceiling(athlete_id)
+
+    # Week-specific preference overrides (without mutating plan DB defaults)
+    preferred_days = request.preferred_days if request.preferred_days is not None else plan.get("preferred_run_days")
+    long_run_day = request.long_run_day if request.long_run_day is not None else plan.get("long_run_day")
+    days_per_week = request.days_per_week if request.days_per_week is not None else plan.get("days_per_week")
+    double_session_days = (
+        request.double_session_days if request.double_session_days is not None else plan.get("double_session_days")
+    )
+    has_gym_access = request.has_gym_access if request.has_gym_access is not None else plan.get("has_gym_access", False)
+    use_treadmill = request.use_treadmill if request.use_treadmill is not None else plan.get("use_treadmill", False)
+    training_environment = (
+        request.training_environment
+        if request.training_environment is not None
+        else (plan.get("training_environment") or "flat")
+    )
+
+    race_info = {
+        "name": plan.get("race_name", "Training Plan"),
+        "date": plan.get("race_date"),
+        "terrain": fresh_user.get("terrain", "trail"),
+        "goal_type": plan.get("goal_type"),
+        "target_time_hours": plan.get("target_time_hours"),
+        "course_distance_km": plan.get("course_distance_km"),
+        "course_elevation_gain_m": plan.get("course_elevation_gain_m"),
+        "course_context": course_context,
+        "preferred_days": preferred_days,
+        "long_run_day": long_run_day,
+        "days_per_week": days_per_week,
+        "double_session_days": double_session_days,
+        "has_gym_access": has_gym_access,
+        "use_treadmill": use_treadmill,
+        "training_environment": training_environment,
+        "plan_start_date": plan.get("start_date"),
+        "athlete_notes": request.athlete_notes or plan.get("athlete_notes") or fresh_user.get("athlete_notes"),
+        "historical_ceiling": historical_ceiling,
+        "readiness_summary": readiness_summary,
+        "lang": request.lang or fresh_user.get("lang", "en"),
+        "coach_notes": request.coach_notes,
+    }
+
+    model_api_key = fresh_user.get("gemini_api_key") or settings.GEMINI_API_KEY
+    block_num = (request.week_number + 1) // 2
+
+    job_id = str(_uuid.uuid4())
+    plan_jobs[job_id] = {
+        "status": "generating",
+        "user_id": job_owner_user_id,
+        "plan_id": request.plan_id,
+        "kind": "adapt_week",
+        "target_week": request.week_number,
+        "workouts": None,
+        "error": None,
+    }
+
+    async def _run_adapt_week():
+        try:
+            workouts = await PlanGenerator.generate_plan_workouts(
+                request.plan_id,
+                fresh_user,
+                race_info,
+                total_weeks,
+                api_key=model_api_key,
+                block_number=block_num,
+                weeks_per_block=2,
+                block_context=block_context,
+                target_week=request.week_number,
+            )
+            save_workouts(request.plan_id, workouts, preserve_completed=True)
+            plan_jobs[job_id]["workouts"] = workouts
+            plan_jobs[job_id]["status"] = "done"
+            print(f"[AdaptWeek][{job_id}] Week {request.week_number} complete — {len(workouts)} workouts saved.")
+        except Exception as ex:
+            plan_jobs[job_id]["status"] = "error"
+            plan_jobs[job_id]["error"] = str(ex)
+            print(f"[AdaptWeek][{job_id}] Week {request.week_number} FAILED: {ex}")
+
+    asyncio.create_task(_run_adapt_week())
+
+    return {
+        "job_id": job_id,
+        "plan_id": request.plan_id,
+        "week_number": request.week_number,
+    }
+
+
+@app.post("/api/coach/adapt-week")
+async def adapt_week(request: AdaptWeekRequest, user: dict[str, Any] = Depends(get_current_user)):
+    """
+    Adapt and regenerate an upcoming week in the current plan based on athlete feedback/fatigue.
+    Preserves completed / GPS-matched workouts, updates uncompleted workouts for that week.
+    """
+    return await _adapt_week_for_athlete(request, athlete_id=user["id"], job_owner_user_id=user["id"])
+
+
+@app.post("/api/coaching/athletes/{athlete_id}/adapt-week")
+async def coach_adapt_week(
+    athlete_id: int, request: AdaptWeekRequest, coach: dict[str, Any] = Depends(require_athlete_access)
+):
+    """Coach-scoped mirror of /api/coach/adapt-week -- lets a coach adapt an upcoming week
+    for a linked athlete."""
+    return await _adapt_week_for_athlete(request, athlete_id=athlete_id, job_owner_user_id=coach["id"])
 
 
 @app.get("/api/coaching/athletes/{athlete_id}/block-completion/{plan_id}")
