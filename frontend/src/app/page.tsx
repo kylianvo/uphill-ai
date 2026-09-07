@@ -37,6 +37,7 @@ import {
   Book,
   House,
   Users,
+  CheckCircle,
 } from "@phosphor-icons/react";
 if (typeof window !== "undefined") {
   // Check for api query parameter to override API URL
@@ -82,12 +83,15 @@ if (typeof window !== "undefined") {
         : input instanceof URL
           ? input.toString()
           : input.url;
-    if (url.startsWith(API_BASE_URL)) {
-      const apiBase =
-        localStorage.getItem("UPHILL_API_URL_OVERRIDE") ||
-        process.env.NEXT_PUBLIC_API_URL ||
-        API_BASE_URL;
-      url = url.replace(API_BASE_URL, apiBase);
+    const override = localStorage.getItem("UPHILL_API_URL_OVERRIDE");
+    if (override) {
+      if (url.startsWith(API_BASE_URL)) {
+        url = url.replace(API_BASE_URL, override);
+      } else if (url.startsWith("http://localhost:18000")) {
+        url = url.replace("http://localhost:18000", override);
+      } else if (url.startsWith("http://localhost:8000")) {
+        url = url.replace("http://localhost:8000", override);
+      }
     }
     return originalFetch(url, init);
   };
@@ -1454,8 +1458,8 @@ export default function Home() {
             <div class="card">
               <h3>Consent Request</h3>
               <p>Authorize Uphill.AI to access your profile name and email address via <strong>${provider === "google" ? "Google" : "Facebook"} OAuth</strong>.</p>
-              <button class="btn btn-primary" onclick="login('admin')">🔐 Connect as Coach Admin</button>
-              <button class="btn btn-secondary" onclick="login('user')"><PersonSimpleRun weight="bold" style={{marginRight: "6px", verticalAlign: "middle"}}/> Connect as Athlete User</button>
+              <button class="btn btn-primary" onclick="login('admin')">Connect as Coach Admin</button>
+              <button class="btn btn-secondary" onclick="login('user')">Connect as Athlete User</button>
             </div>
             <script>
               function login(role) {
@@ -2419,7 +2423,7 @@ export default function Home() {
                   flexShrink: 0,
                 }}
               />
-              <span>⚡ Generating your training plan…</span>
+              <span>Generating your training plan…</span>
               <span style={{ fontSize: "12px", opacity: 0.7, fontWeight: 400 }}>
                 This may take a few minutes
               </span>
@@ -2427,7 +2431,7 @@ export default function Home() {
           )}
           {planJobStatus === "done" && (
             <>
-              <span style={{ fontSize: "20px" }}>✅</span>
+              <CheckCircle size={20} weight="fill" color="#10b981" aria-hidden="true" />
               <span>Your training plan is ready!</span>
               <button
                 onClick={() => handleTabSwitch("planner")}

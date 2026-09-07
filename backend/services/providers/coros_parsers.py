@@ -157,6 +157,7 @@ def parse_sport_records(text: str) -> list[dict[str, Any]]:
                 "avg_pace_sec_per_km": parse_pace(pace.group(1)) if pace else None,
                 "avg_hr": _search_int(r"Avg HR:\s*(\d+)", block),
                 "calories": _search_int(r"Calories:\s*(\d+)", block),
+                "sets": _search_int(r"Sets:\s*(\d+)", block),
                 "start_lat": float(coords.group(1)) if coords else None,
                 "start_lon": float(coords.group(2)) if coords else None,
             }
@@ -184,10 +185,45 @@ def parse_activity_detail(text: str) -> dict[str, Any]:
         "elevation_gain_m": float(elevation.group(1)) if elevation else None,
         "elevation_loss_m": float(elevation.group(2)) if elevation else None,
         "calories": _search_int(r"Calories:\s*(\d+)", text),
+        "sets": _search_int(r"Sets:\s*(\d+)", text),
         "training_load": _search_float(r"Training Load:\s*([\d.]+)", text),
         "aerobic_te": _search_float(r"Aerobic TE:\s*([\d.]+)", text),
         "anaerobic_te": _search_float(r"Anaerobic TE:\s*([\d.]+)", text),
     }
+
+
+def parse_fitness_overview(text: str) -> dict[str, Any]:
+    text = _clean_text(text)
+    if "Fitness Assessment" not in text:
+        raise CorosParseError("queryFitnessAssessmentOverview output missing its header")
+
+    threshold_pace_match = re.search(r"Threshold Pace:\s*([\d:]+)\s*(?:/km)?", text)
+    threshold_pace_sec = parse_pace(threshold_pace_match.group(1)) if threshold_pace_match else None
+
+    pred_5k = re.search(r"^5 km Prediction:\s*([\d:]+)", text, re.M)
+    pred_10k = re.search(r"^10 km Prediction:\s*([\d:]+)", text, re.M)
+    pred_hm = re.search(r"^Half Marathon Prediction:\s*([\d:]+)", text, re.M)
+    pred_m = re.search(r"^Marathon Prediction:\s*([\d:]+)", text, re.M)
+
+    res = {
+        "vo2max": _search_float(r"VO2max:\s*([\d.]+)", text),
+        "running_level": _search_float(r"Running Level:\s*([\d.]+)", text),
+        "threshold_pace": threshold_pace_match.group(1) if threshold_pace_match else None,
+        "threshold_pace_sec_per_km": threshold_pace_sec,
+        "prediction_5k_sec": parse_duration(pred_5k.group(1)) if pred_5k else None,
+        "prediction_10k_sec": parse_duration(pred_10k.group(1)) if pred_10k else None,
+        "prediction_half_marathon_sec": parse_duration(pred_hm.group(1)) if pred_hm else None,
+        "prediction_marathon_sec": parse_duration(pred_m.group(1)) if pred_m else None,
+    }
+
+    if res["vo2max"] is None and res["threshold_pace"] is None:
+        remaining = _drop_lines(text, r"Fitness Assessment.*", r"=+", r"Note:.*")
+        if remaining:
+            raise CorosParseError(
+                "queryFitnessAssessmentOverview output has a header but no parsable metrics "
+                "-- response shape may have changed"
+            )
+    return res
 
 
 def parse_resting_hr(text: str) -> dict[date, int]:

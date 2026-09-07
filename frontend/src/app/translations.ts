@@ -89,11 +89,11 @@ export const translations = {
 
     // Plan Goals Selection
     goal_category: "Select Plan Goal",
-    goal_race: "Race 🏆",
-    goal_distance: "Distance 📏",
-    goal_start: "Start Running 🌱",
-    goal_return: "Return to Running 🔄",
-    goal_recovery: "Recovery 💤",
+    goal_race: "Race",
+    goal_distance: "Distance",
+    goal_start: "Start Running",
+    goal_return: "Return to Running",
+    goal_recovery: "Recovery",
 
     // Plan Generator Form
     plan_setup: "Adaptive Training Planner",
@@ -109,8 +109,8 @@ export const translations = {
     plan_road: "Road",
     plan_trail: "Trail",
     plan_course_mode: "Course Profile Mode",
-    plan_mode_manual: "✍️ Manual Input",
-    plan_mode_gpx: "📂 Upload GPX Route",
+    plan_mode_manual: "Manual Input",
+    plan_mode_gpx: "Upload GPX Route",
     plan_distance_km: "Course Distance (km)",
     plan_elevation_gain: "Course Elevation Gain (meters)",
     plan_gpx_placeholder: "Drop GPX file here or click to browse",
@@ -190,8 +190,8 @@ export const translations = {
     // Chat Tab
     chat_header: "Grounded AI Coach",
     chat_welcome: "Hi! I am your Coach Uphill AI. I have full context of your physiology profile and active training schedule. Ask me anything about your runs, ME exercises, or fueling strategies!",
-    chat_preset_me: "⛰️ Explain Sunday's ME workout?",
-    chat_preset_8020: "🏃‍♂️ How does 80/20 rule apply to my week?",
+    chat_preset_me: "Explain Sunday's ME workout?",
+    chat_preset_8020: "How does 80/20 rule apply to my week?",
     chat_input_placeholder: "Ask your AI coach...",
     chat_send: "Send",
     chat_locked_admin: "Chat session active. Grounded on system RAG.",
@@ -313,11 +313,11 @@ export const translations = {
 
     // Plan Goals Selection
     goal_category: "Chọn mục tiêu giáo án",
-    goal_race: "Race 🏆",
-    goal_distance: "Cự ly mục tiêu 📏",
-    goal_start: "Bắt đầu chạy bộ 🌱",
-    goal_return: "Tập luyện trở lại (Return to Running) 🔄",
-    goal_recovery: "Phục hồi toàn diện (Recovery) 💤",
+    goal_race: "Giải chạy (Race)",
+    goal_distance: "Cự ly mục tiêu",
+    goal_start: "Bắt đầu chạy bộ",
+    goal_return: "Tập luyện trở lại (Return to Running)",
+    goal_recovery: "Phục hồi toàn diện (Recovery)",
 
     // Plan Generator Form
     plan_setup: "Thiết Kế Giáo Án Huấn Luyện",
@@ -333,8 +333,8 @@ export const translations = {
     plan_road: "Road",
     plan_trail: "Trail",
     plan_course_mode: "Chế độ thông số đường chạy",
-    plan_mode_manual: "✍️ Nhập thủ công",
-    plan_mode_gpx: "📂 Tải lên file GPX",
+    plan_mode_manual: "Nhập thủ công",
+    plan_mode_gpx: "Tải lên file GPX",
     plan_distance_km: "Cự ly đường chạy (km)",
     plan_elevation_gain: "Elevation Gain (D+) (mét)",
     plan_gpx_placeholder: "Kéo thả file GPX vào đây hoặc nhấp để chọn file",
@@ -414,8 +414,8 @@ export const translations = {
     // Chat Tab
     chat_header: "Trợ Lý AI Coach",
     chat_welcome: "Xin chào! Tôi là AI Coach Uphill của bạn. Tôi đã nắm rõ các chỉ số thể chất và giáo án hiện tại của bạn. Hãy thoải mái đặt câu hỏi về các bài chạy, bài tập Muscular Endurance (ME) hoặc chiến lược Fueling!",
-    chat_preset_me: "⛰️ Giải thích bài tập Muscular Endurance (ME) Chủ Nhật này?",
-    chat_preset_8020: "🏃‍♂️ Nguyên tắc 80/20 được áp dụng như thế nào vào giáo án tuần này của tôi?",
+    chat_preset_me: "Giải thích bài tập Muscular Endurance (ME) Chủ Nhật này?",
+    chat_preset_8020: "Nguyên tắc 80/20 được áp dụng như thế nào vào giáo án tuần này của tôi?",
     chat_input_placeholder: "Hỏi AI Coach của bạn...",
     chat_send: "Gửi",
     chat_locked_admin: "Phiên trò chuyện đang hoạt động. Dữ liệu được đối chiếu dựa trên hệ thống RAG.",

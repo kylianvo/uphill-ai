@@ -132,3 +132,41 @@ class TestFixRound1ElevationAndNegativeGuards:
     def test_negative_planned_duration_is_treated_as_absent_not_scored_as_zero(self):
         scored = score_bundle(bundle(), workout(duration_minutes=-5))
         assert "duration" not in scored.components
+
+
+class TestStrengthScoring:
+    def test_strength_session_matches_gym_workout_by_duration(self):
+        gym_workout = {
+            "id": 99,
+            "type": "STRENGTH",
+            "title": "Gym Muscular Endurance Circuit Progression",
+            "duration_minutes": 60.0,
+            "distance_km": None,
+            "elevation_gain_m": 0.0,
+            "target_hr_range": None,
+            "target_pace": None,
+        }
+        strength_bundle = SessionBundle(
+            start_time=datetime(2026, 9, 6, 8, 0, tzinfo=UTC),
+            duration_seconds=3600.0,
+            distance_km=0.0,
+            elevation_gain_m=0.0,
+            avg_hr=105,
+            activity_ids=[10],
+            activity_types={"strength"},
+        )
+        scored = score_bundle(strength_bundle, gym_workout)
+        assert scored.total >= 0.80
+        assert "duration" in scored.components
+
+    def test_running_activity_does_not_match_strength_workout(self):
+        gym_workout = {
+            "id": 99,
+            "type": "STRENGTH",
+            "title": "Gym Circuit",
+            "duration_minutes": 60.0,
+        }
+        run_bundle = bundle(duration_s=3600, km=10.0)
+        scored = score_bundle(run_bundle, gym_workout)
+        assert scored.total == 0.0
+        assert "mismatch" in scored.reasons[0]

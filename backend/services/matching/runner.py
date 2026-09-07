@@ -15,6 +15,7 @@ from config import settings
 from log_utils import get_logger
 from services.matching.assigner import assign
 from services.matching.bundler import bundle_activities
+from services.matching.quality_scorer import score_workout_quality
 from services.workout_calendar import plan_start_monday, workout_date
 
 logger = get_logger(__name__)
@@ -113,12 +114,21 @@ def _workouts_by_date(workouts: list[dict]) -> dict[date, list[dict]]:
     return by_date
 
 
-async def match_user(user_id: int, since: date, until: date) -> dict[str, int]:
+async def match_user(user_id: int, since: date, until: date, plan_id: int | None = None) -> dict[str, int]:
     activities = db.get_activities_for_matching(user_id, since, until + timedelta(days=1))
-    workouts = db.get_dated_workouts_for_matching(user_id)
+    workouts = db.get_dated_workouts_for_matching(user_id, plan_id=plan_id)
     by_date = _workouts_by_date(workouts)
 
     totals = {"matched": 0, "suggested": 0, "unmatched": 0, "skipped_manual": 0}
+
+    athlete_profile = {}
+    if hasattr(db, "get_user_by_id"):
+        try:
+            athlete_profile = db.get_user_by_id(user_id) or {}
+        except Exception:
+            pass
+
+    matched_workout_ids: set[int] = set()
 
     by_day: dict[date, list[dict]] = defaultdict(list)
     for activity in activities:
@@ -141,14 +151,20 @@ async def match_user(user_id: int, since: date, until: date) -> dict[str, int]:
             else:
                 totals["unmatched"] += 1
 
-            primary_id = (
-                max(
+            primary_id = assignment.bundle.primary_activity_id
+            if primary_id is None and assignment.bundle.activity_ids:
+                primary_id = max(
                     assignment.bundle.activity_ids,
                     key=lambda aid: float(activities_by_id.get(aid, {}).get("duration_seconds") or 0.0),
                 )
-                if assignment.bundle.activity_ids
-                else None
-            )
+
+            matched_workout = None
+            if assignment.workout_id:
+                matched_workout = next((w for w in candidates if w.get("id") == assignment.workout_id), None)
+
+            quality_res = None
+            if assignment.workout_id and matched_workout and band in ("auto", "suggest"):
+                quality_res = score_workout_quality(matched_workout, assignment.bundle, athlete_profile)
 
             for activity_id in assignment.bundle.activity_ids:
                 is_primary = activity_id == primary_id
@@ -157,9 +173,14 @@ async def match_user(user_id: int, since: date, until: date) -> dict[str, int]:
                     "reasons": assignment.score.reasons,
                     "components": assignment.score.components,
                     "fragments": assignment.bundle.fragment_count,
+                    "warmup_distance_km": assignment.bundle.warmup_distance_km,
                 }
                 if not is_primary:
                     fragment_details["bundle_primary_activity_id"] = primary_id
+
+                q_score = quality_res.overall_score if (is_primary and quality_res) else None
+                q_grade = quality_res.grade if (is_primary and quality_res) else None
+                q_details = quality_res.to_dict() if (is_primary and quality_res) else None
 
                 db.save_match(
                     activity_id=activity_id,
@@ -167,10 +188,31 @@ async def match_user(user_id: int, since: date, until: date) -> dict[str, int]:
                     confidence=assignment.score.total if is_primary else 0.0,
                     method=band if (is_primary and band != "unmatched") else "none",
                     details=fragment_details,
+                    quality_score=q_score,
+                    quality_grade=q_grade,
+                    quality_details=q_details,
                 )
+
+            if assignment.workout_id:
+                matched_workout_ids.add(assignment.workout_id)
 
             if band == "auto" and assignment.workout_id and not settings.MATCHING_SHADOW_MODE:
                 db.update_workout_log(assignment.workout_id, is_completed=1)
+
+    # Auto-Skip: Mark past scheduled workouts with no recorded activity and no match as is_missed = 1
+    if not settings.MATCHING_SHADOW_MODE:
+        today = date.today()
+        for day, plan_workouts in by_date.items():
+            if day < today:
+                for w in plan_workouts:
+                    w_id = w.get("id")
+                    if (
+                        w_id
+                        and not w.get("is_completed")
+                        and w_id not in matched_workout_ids
+                        and w.get("is_missed") != 1
+                    ):
+                        db.update_workout_log(w_id, is_missed=1)
 
     logger.info(
         "matching run complete",

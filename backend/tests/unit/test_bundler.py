@@ -133,3 +133,16 @@ class TestWeightedHeartRate:
         a, b = act(0, 3600, 10.0), act(3600, 1800, 5.0)
         a["avg_hr"] = b["avg_hr"] = None
         assert bundle_activities([a, b])[0].avg_hr is None
+
+
+class TestWarmupBundling:
+    def test_bundles_warmup_jog_with_main_session_within_40_minutes(self):
+        # 0.6 km jog to gym, 40 minute gap, then 10 km run
+        jog = act(0, 240, 0.6, id_=1)
+        main_run = act(240 + 40 * 60, 3600, 10.0, id_=2)
+        bundles = bundle_activities([jog, main_run])
+        assert len(bundles) == 1
+        assert bundles[0].fragment_count == 2
+        assert round(bundles[0].distance_km, 1) == 10.6
+        assert bundles[0].primary_activity_id == 2
+        assert bundles[0].warmup_distance_km == 0.6

@@ -21,6 +21,7 @@ import {
   Warning,
   Leaf,
   Mountains,
+  Flag,
 } from "@phosphor-icons/react";
 import { getZoneColor, RPE_DESCRIPTORS } from "../data/workoutLibrary";
 import { useWorkoutTypes, resolveWorkoutInfo } from "../hooks/useWorkoutTypes";
@@ -833,7 +834,7 @@ export default function WorkoutCard({
                   alignItems: "flex-start",
                 }}
               >
-                <span style={{ fontSize: "18px", flexShrink: 0 }}>🏁</span>
+                <Flag size={20} weight="fill" color="#d97706" style={{ flexShrink: 0, marginTop: "2px" }} aria-hidden="true" />
                 <div>
                   <div style={{ fontSize: "9px", fontWeight: "800", letterSpacing: "0.08em", color: "#d97706", textTransform: "uppercase", marginBottom: "4px" }}>
                     {lang === "en" ? "Coach Uphill" : "Coach Uphill"}

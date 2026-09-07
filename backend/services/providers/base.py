@@ -32,6 +32,7 @@ class CanonicalActivity:
     training_load: float | None = None
     aerobic_te: float | None = None
     anaerobic_te: float | None = None
+    sets: int | None = None
     device_model: str | None = None
     raw: dict[str, Any] = field(default_factory=dict)
 

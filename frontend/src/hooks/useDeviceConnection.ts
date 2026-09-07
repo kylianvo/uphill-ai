@@ -93,6 +93,32 @@ export function useDeviceConnection() {
     }
   }, []);
 
+  const syncFitness = useCallback(async () => {
+    const API_BASE_URL = getBackendUrl();
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/integrations/coros/sync-fitness`, {
+        method: "POST",
+        headers: authHeaders(),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body?.detail || "Fitness sync failed. Please try again.");
+      return body as {
+        status: string;
+        threshold_pace?: string;
+        coros_vo2max?: number;
+        coros_running_level?: number;
+        pace_zones?: Record<string, unknown>;
+      };
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Fitness sync failed. Please try again.");
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const disconnectCoros = useCallback(async () => {
     const API_BASE_URL = getBackendUrl();
     setLoading(true);
@@ -112,5 +138,5 @@ export function useDeviceConnection() {
     }
   }, [refreshStatus]);
 
-  return { status, loading, error, refreshStatus, connectCoros, disconnectCoros, syncNow };
+  return { status, loading, error, refreshStatus, connectCoros, disconnectCoros, syncNow, syncFitness };
 }

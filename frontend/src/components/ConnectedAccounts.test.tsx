@@ -31,6 +31,7 @@ function baseHook(overrides: Record<string, unknown> = {}) {
     connectCoros: vi.fn(async () => ""),
     disconnectCoros: vi.fn(async () => {}),
     syncNow: vi.fn(async () => null),
+    syncFitness: vi.fn(async () => null),
     ...overrides,
   };
 }
@@ -137,5 +138,28 @@ describe("ConnectedAccounts", () => {
       screen.getByText("Không thể kết nối COROS lúc này. Vui lòng thử lại sau.")
     ).toBeInTheDocument();
     expect(screen.queryByText("COROS connection is unavailable.")).not.toBeInTheDocument();
+  });
+
+  it("syncs EvoLab fitness metrics when Sync EvoLab is clicked", async () => {
+    const user = userEvent.setup();
+    const syncFitness = vi.fn(async () => ({
+      status: "ok",
+      threshold_pace: "4:34",
+      coros_vo2max: 57,
+    }));
+    mockUseDeviceConnection.mockReturnValue(
+      baseHook({
+        status: { coros: { connected: true, last_sync_at: null } },
+        syncFitness,
+      })
+    );
+    render(<ConnectedAccounts />);
+    const syncBtn = screen.getByRole("button", { name: /Sync EvoLab/i });
+    expect(syncBtn).toBeInTheDocument();
+    await user.click(syncBtn);
+    expect(syncFitness).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(screen.getByText(/Synced EvoLab: Threshold pace 4:34/)).toBeInTheDocument();
+    });
   });
 });

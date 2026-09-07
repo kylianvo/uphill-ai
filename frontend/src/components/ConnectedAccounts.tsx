@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Watch, CheckCircle, Warning } from "@phosphor-icons/react";
+import { Watch, CheckCircle, Warning, Lightning } from "@phosphor-icons/react";
 import { useAppContext } from "../contexts/AppContext";
 import { useDeviceConnection } from "../hooks/useDeviceConnection";
 import CorosAttribution from "./CorosAttribution";
@@ -20,8 +20,9 @@ const ERROR_TRANSLATIONS_VI: Record<string, string> = {
 
 export default function ConnectedAccounts() {
   const { lang } = useAppContext();
-  const { status, loading, error, refreshStatus, connectCoros, disconnectCoros, syncNow } =
+  const { status, loading, error, refreshStatus, connectCoros, disconnectCoros, syncNow, syncFitness } =
     useDeviceConnection();
+  const [syncingFitness, setSyncingFitness] = useState(false);
   // Read the OAuth-callback redirect params (?coros=connected|error) during
   // the initial render rather than in an effect -- setState calls in an
   // effect body run as an extra, avoidable re-render pass.
@@ -76,6 +77,23 @@ export default function ConnectedAccounts() {
     }
   };
 
+  const handleSyncFitness = async () => {
+    setSyncingFitness(true);
+    try {
+      const result = await syncFitness();
+      if (result) {
+        setNotice(
+          lang === "vi"
+            ? `Đã đồng bộ EvoLab: Ngưỡng pace ${result.threshold_pace || "—"}/km, VO2max ${result.coros_vo2max || "—"}.`
+            : `Synced EvoLab: Threshold pace ${result.threshold_pace || "—"}/km, VO2max ${result.coros_vo2max || "—"}.`
+        );
+        await refreshStatus();
+      }
+    } finally {
+      setSyncingFitness(false);
+    }
+  };
+
   const handleDisconnect = async () => {
     await disconnectCoros();
     setNotice("");
@@ -126,7 +144,26 @@ export default function ConnectedAccounts() {
           <div className="device-actions">
             {connected ? (
               <>
-                <button type="button" className="device-btn" onClick={handleSync} disabled={loading}>
+                <button
+                  type="button"
+                  className="device-btn"
+                  onClick={handleSyncFitness}
+                  disabled={loading || syncingFitness}
+                  style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}
+                  aria-label={lang === "vi" ? "Đồng bộ chỉ số EvoLab và pace zones" : "Sync EvoLab fitness metrics and pace zones"}
+                >
+                  <Lightning size={13} weight="bold" style={{ color: "var(--accent-primary)" }} aria-hidden="true" />
+                  <span>
+                    {syncingFitness
+                      ? lang === "vi"
+                        ? "Đang đồng bộ..."
+                        : "Syncing..."
+                      : lang === "vi"
+                        ? "Đồng bộ EvoLab"
+                        : "Sync EvoLab"}
+                  </span>
+                </button>
+                <button type="button" className="device-btn" onClick={handleSync} disabled={loading || syncingFitness}>
                   {loading
                     ? lang === "vi"
                       ? "Đang đồng bộ..."
@@ -139,7 +176,7 @@ export default function ConnectedAccounts() {
                   type="button"
                   className="device-btn device-btn-danger"
                   onClick={handleDisconnect}
-                  disabled={loading}
+                  disabled={loading || syncingFitness}
                 >
                   {lang === "vi" ? "Ngắt kết nối" : "Disconnect"}
                 </button>

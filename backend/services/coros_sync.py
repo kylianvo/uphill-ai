@@ -6,6 +6,7 @@ webhook stub in routers/integrations.py is the landing point for when there is.
 """
 
 from datetime import UTC, date, datetime, timedelta
+from typing import Any
 
 import db
 from config import settings
@@ -153,5 +154,42 @@ async def sync_user(user_id: int, days: int = 30) -> dict[str, int]:
     try:
         await client.initialize()
         return await persist(user_id, CorosAdapter(client), days)
+    finally:
+        await client.aclose()
+
+
+async def sync_fitness(user_id: int) -> dict[str, Any]:
+    """Pulls EvoLab fitness assessment overview from COROS and updates user profile."""
+    connection = db.get_connection(user_id, PROVIDER)
+    if not connection or connection.get("status") != "active":
+        raise ValueError("No active COROS connection for this athlete.")
+
+    token = await _access_token(connection)
+    client = McpClient(settings.COROS_MCP_ENDPOINT, token)
+    try:
+        await client.initialize()
+        adapter = CorosAdapter(client)
+        overview = await adapter.fetch_fitness_overview()
+        if not overview:
+            return {"status": "no_data"}
+
+        threshold_pace = overview.get("threshold_pace")
+        vo2max = overview.get("vo2max")
+        running_level = overview.get("running_level")
+
+        db.update_user_fitness(
+            user_id=user_id,
+            threshold_pace=threshold_pace,
+            coros_vo2max=vo2max,
+            coros_running_level=running_level,
+        )
+
+        return {
+            "status": "ok",
+            "threshold_pace": threshold_pace,
+            "coros_vo2max": vo2max,
+            "coros_running_level": running_level,
+            "race_predictions": overview.get("race_predictions", {}),
+        }
     finally:
         await client.aclose()

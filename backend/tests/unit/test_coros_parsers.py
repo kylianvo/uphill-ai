@@ -379,3 +379,59 @@ class TestContractGuard:
 
         load = p.parse_training_load(json.dumps(TRAINING_LOAD))
         assert load[date(2026, 9, 3)]["training_load_short"] == 90.0
+
+    def test_parse_fitness_overview_extracts_metrics(self):
+        text = """Fitness Assessment Overview
+========================
+
+VO2max: 57
+Running Level: 85
+Threshold Pace: 4:34 /km
+5 km Prediction: 21:56
+10 km Prediction: 45:37
+Half Marathon Prediction: 1:41:12
+Marathon Prediction: 3:31:18"""
+        res = p.parse_fitness_overview(text)
+        assert res["vo2max"] == 57.0
+        assert res["running_level"] == 85.0
+        assert res["threshold_pace"] == "4:34"
+        assert res["threshold_pace_sec_per_km"] == 274.0
+        assert res["prediction_5k_sec"] == 1316.0
+        assert res["prediction_10k_sec"] == 2737.0
+        assert res["prediction_half_marathon_sec"] == 6072.0
+        assert res["prediction_marathon_sec"] == 12678.0
+
+    def test_parse_fitness_overview_missing_header_raises(self):
+        with pytest.raises(p.CorosParseError):
+            p.parse_fitness_overview("Some random text with no header")
+
+    def test_strength_sport_records_extracts_sets(self):
+        text = """Sport Records — 2026-09-06 to 2026-09-06 (1 records)
+========================
+
+1. Strength — 2026-09-06
+   Location: Strength
+   Time Window: startTimestamp=1788694984 | endTimestamp=1788699050
+   Duration: 1:07:46 | Sets: 3 | Avg HR: 92 bpm | Calories: 257 kcal
+   LabelId: 480150249229287632 | SportType: 402"""
+        records = p.parse_sport_records(text)
+        assert len(records) == 1
+        assert records[0]["sets"] == 3
+        assert records[0]["sport_type"] == 402
+
+    def test_strength_activity_detail_extracts_sets(self):
+        text = """🏋️ Strength Activity Details
+========================================
+
+Workout Time: 1:07:46
+Total Time: 1:07:46
+Sets: 4
+Average Heart Rate: 92 bpm
+Calories: 257 kcal
+Training Load: 8
+Aerobic TE: 0.7
+Anaerobic TE: 0.0"""
+        detail = p.parse_activity_detail(text)
+        assert detail["sets"] == 4
+        assert detail["training_load"] == 8.0
+        assert detail["aerobic_te"] == 0.7

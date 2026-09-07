@@ -36,34 +36,113 @@ class PlanGenerator:
         return f"{mins}:{secs:02d}"
 
     @staticmethod
+    def calculate_pace_zones_from_threshold(
+        threshold_pace_str: str,
+        model: str = "5_zone",
+    ) -> dict[str, Any]:
+        """
+        Calculates pace zones directly from a Threshold Pace (T-Pace / Zone 4).
+        threshold_pace_str can be formatted as '4:34', '4:34 /km', or decimal minutes.
+
+        5-Zone Model (Standard / COROS):
+          - Zone 1 (Recovery): > T-Pace * 1.25
+          - Zone 2 (Aerobic / Easy): T-Pace * 1.15 to 1.25
+          - Zone 3 (Tempo): T-Pace * 1.05 to 1.15
+          - Zone 4 (Threshold): T-Pace * 0.98 to 1.05
+          - Zone 5 (Interval / VO2max): < T-Pace * 0.98
+
+        4-Zone Model (Scott Johnston & Steve House - Training for the Uphill Athlete):
+          - Zone 1 (Recovery): Below Aerobic Threshold (AeT) pace (> T-Pace * 1.22)
+          - Zone 2 (Aerobic Capacity): AeT to AnT transition (T-Pace * 1.05 to 1.22)
+          - Zone 3 (Threshold): Around Anaerobic Threshold (AnT) (T-Pace * 0.98 to 1.05)
+          - Zone 4 (Max / Anaerobic): Above AnT (< T-Pace * 0.98)
+        """
+        clean_pace = threshold_pace_str.split("/")[0].strip()
+        t_pace_dec = PlanGenerator.parse_pace_to_decimal(clean_pace)
+
+        def _fmt(slow_d: float, fast_d: float) -> str:
+            return f"{PlanGenerator.decimal_to_pace_str(slow_d)} - {PlanGenerator.decimal_to_pace_str(fast_d)}"
+
+        if model == "4_zone":
+            z4_fast = t_pace_dec * 0.88
+            z4_slow = t_pace_dec * 0.98
+            z3_fast = z4_slow
+            z3_slow = t_pace_dec * 1.05
+            z2_fast = z3_slow
+            z2_slow = t_pace_dec * 1.22
+            z1_fast = z2_slow
+            z1_slow = t_pace_dec * 1.40
+
+            return {
+                "model": "4_zone",
+                "threshold_pace": clean_pace,
+                "zone1_pace": _fmt(z1_slow, z1_fast),
+                "zone1_pace_mid": PlanGenerator.decimal_to_pace_str((z1_slow + z1_fast) / 2.0),
+                "zone2_pace": _fmt(z2_slow, z2_fast),
+                "zone2_pace_mid": PlanGenerator.decimal_to_pace_str((z2_slow + z2_fast) / 2.0),
+                "zone3_pace": _fmt(z3_slow, z3_fast),
+                "zone3_pace_mid": PlanGenerator.decimal_to_pace_str((z3_slow + z3_fast) / 2.0),
+                "zone4_pace": _fmt(z4_slow, z4_fast),
+                "zone4_pace_mid": PlanGenerator.decimal_to_pace_str((z4_slow + z4_fast) / 2.0),
+                "zone_labels": {
+                    "Zone 1": "Recovery (< AeT)",
+                    "Zone 2": "Aerobic Capacity (AeT - AnT)",
+                    "Zone 3": "Anaerobic Threshold (AnT)",
+                    "Zone 4": "Max / Anaerobic (> AnT)",
+                },
+            }
+        else:
+            # 5-zone
+            z5_fast = t_pace_dec * 0.88
+            z5_slow = t_pace_dec * 0.98
+            z4_fast = z5_slow
+            z4_slow = t_pace_dec * 1.05
+            z3_fast = z4_slow
+            z3_slow = t_pace_dec * 1.15
+            z2_fast = z3_slow
+            z2_slow = t_pace_dec * 1.25
+            z1_fast = z2_slow
+            z1_slow = t_pace_dec * 1.40
+
+            return {
+                "model": "5_zone",
+                "threshold_pace": clean_pace,
+                "zone1_pace": _fmt(z1_slow, z1_fast),
+                "zone1_pace_mid": PlanGenerator.decimal_to_pace_str((z1_slow + z1_fast) / 2.0),
+                "zone2_pace": _fmt(z2_slow, z2_fast),
+                "zone2_pace_mid": PlanGenerator.decimal_to_pace_str((z2_slow + z2_fast) / 2.0),
+                "zone3_pace": _fmt(z3_slow, z3_fast),
+                "zone3_pace_mid": PlanGenerator.decimal_to_pace_str((z3_slow + z3_fast) / 2.0),
+                "zone4_pace": _fmt(z4_slow, z4_fast),
+                "zone4_pace_mid": PlanGenerator.decimal_to_pace_str((z4_slow + z4_fast) / 2.0),
+                "zone5_pace": _fmt(z5_slow, z5_fast),
+                "zone5_pace_mid": PlanGenerator.decimal_to_pace_str((z5_slow + z5_fast) / 2.0),
+                "zone_labels": {
+                    "Zone 1": "Recovery",
+                    "Zone 2": "Aerobic / Easy",
+                    "Zone 3": "Tempo",
+                    "Zone 4": "Threshold",
+                    "Zone 5": "Interval / VO2max",
+                },
+            }
+
+    @staticmethod
     def estimate_pace_zones(
-        zone2_min_str: str,
-        zone2_max_str: str,
+        zone2_min_str: str | None = None,
+        zone2_max_str: str | None = None,
         aet_hr: float | None = None,
         ant_hr: float | None = None,
-    ) -> dict[str, str]:
+        threshold_pace: str | None = None,
+        model: str = "5_zone",
+    ) -> dict[str, Any]:
         """
-        Estimates all 5 pace zones as contiguous, non-overlapping ranges,
+        Estimates pace zones. If threshold_pace is provided, uses calculate_pace_zones_from_threshold.
+        Otherwise, estimates all 5 pace zones as contiguous, non-overlapping ranges,
         chained outward from the athlete's Zone 2 bounds.
-
-        Each zone touches the next at a shared boundary point: Zone 1's fast
-        bound is Zone 2's slow bound; Zone 3's slow bound is Zone 2's fast
-        bound; Zone 4's slow bound is Zone 3's fast bound; Zone 5's slow
-        bound is Zone 4's fast bound. Each boundary is computed by scaling
-        Zone 2's slow bound (for Zone 1) or fast bound (for Zones 3-5) by a
-        personalized ratio, scaled by the athlete's own AeT/AnT heart-rate
-        gap (ant_hr / aet_hr) relative to a 1.15 reference gap, so athletes
-        with a wider aerobic-to-anaerobic separation get more spread between
-        zones, and a narrower gap compresses them. This is a heuristic
-        improvement over a single universal ratio -- not a clinically
-        validated formula (no formula is, without lactate testing).
-
-        Chaining (rather than independently scaling both ends of every zone
-        by its own ratio) guarantees zones never overlap: independently
-        scaling both ends gives every zone the same relative width as Zone
-        2, which can exceed the gap between zone ratios whenever the
-        athlete's own Zone 2 range is proportionally wide.
         """
+        if threshold_pace:
+            return PlanGenerator.calculate_pace_zones_from_threshold(threshold_pace, model=model)
+
         z2_min = PlanGenerator.parse_pace_to_decimal(zone2_min_str or "6:30")
         z2_max = PlanGenerator.parse_pace_to_decimal(zone2_max_str or "5:45")
 
@@ -850,8 +929,10 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                 )
             if block_context:
                 feedback_instruction += (
-                    f"\nATHLETE FEEDBACK FROM PREVIOUS BLOCKS:\n{block_context}\n"
-                    "CRITICAL — adjust this block based on feedback above:\n"
+                    f"\nATHLETE FEEDBACK FROM PREVIOUS BLOCKS & COACH EVALUATION:\n{block_context}\n"
+                    "CRITICAL — adjust this block based on coach evaluation and feedback above:\n"
+                    "  • Coach evaluation indicates high execution quality (Grade A/B) and good aerobic control: proceed with planned progression.\n"
+                    "  • Coach evaluation notes broken Zone 2 discipline or excessive intensity drift: rein in paces, keep easy days strictly below AeT.\n"
                     "  • RPE ≥ 8: reduce weekly volume by 10-15% AND drop one quality session to easy running.\n"
                     "  • RPE 6-7: reduce intensity slightly (shift a Tempo to Zone 2, or shorten intervals by 10%).\n"
                     "  • RPE 4-5: maintain current progression — athlete is adapting well.\n"

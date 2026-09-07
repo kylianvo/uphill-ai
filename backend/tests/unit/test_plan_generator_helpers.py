@@ -192,6 +192,35 @@ class TestPaceAndDistanceForZone:
         assert pace == f"{est_zones['zone5_pace']} /km"
 
 
+class TestCalculatePaceZonesFromThreshold:
+    def test_computes_5_zone_model_from_threshold_pace(self):
+        zones = PlanGenerator.calculate_pace_zones_from_threshold("4:34", model="5_zone")
+        assert zones["model"] == "5_zone"
+        assert zones["threshold_pace"] == "4:34"
+        assert "zone1_pace" in zones
+        assert "zone2_pace" in zones
+        assert "zone3_pace" in zones
+        assert "zone4_pace" in zones
+        assert "zone5_pace" in zones
+        assert "4:47" in zones["zone4_pace"] or "4:48" in zones["zone4_pace"]
+
+    def test_computes_4_zone_model_from_threshold_pace(self):
+        zones = PlanGenerator.calculate_pace_zones_from_threshold("4:34", model="4_zone")
+        assert zones["model"] == "4_zone"
+        assert zones["threshold_pace"] == "4:34"
+        assert "zone1_pace" in zones
+        assert "zone2_pace" in zones
+        assert "zone3_pace" in zones
+        assert "zone4_pace" in zones
+        assert "zone5_pace" not in zones
+        assert "AeT" in zones["zone_labels"]["Zone 1"]
+
+    def test_estimate_pace_zones_delegates_when_threshold_pace_given(self):
+        zones = PlanGenerator.estimate_pace_zones(threshold_pace="4:34", model="4_zone")
+        assert zones["model"] == "4_zone"
+        assert zones["threshold_pace"] == "4:34"
+
+
 class TestWarmupCooldownMinutes:
     def test_clamps_to_a_3_to_10_minute_range(self):
         # 20% of 10 = 2, clamped up to the 3-minute floor.

@@ -21,13 +21,18 @@ from services.providers.base import CanonicalActivity, CanonicalDailyMetric
 logger = get_logger(__name__)
 
 PROVIDER = "coros"
-COROS_RUN_SPORT_TYPES = [100, 101, 102, 103]
+COROS_RUN_SPORT_TYPES = [100, 101, 102, 103, 104, 400, 401, 402, 9901]
 
 SPORT_TYPE_NAMES = {
     100: "outdoor_run",
     101: "indoor_run",
     102: "trail_run",
     103: "track_run",
+    104: "hike",
+    400: "gym_cardio",
+    401: "gps_cardio",
+    402: "strength",
+    9901: "indoor_strength",
 }
 
 
@@ -173,6 +178,7 @@ class CorosAdapter:
                     training_load=detail.get("training_load"),
                     aerobic_te=detail.get("aerobic_te"),
                     anaerobic_te=detail.get("anaerobic_te"),
+                    sets=detail.get("sets") or summary.get("sets"),
                     device_model=device_model,
                 )
             )
@@ -271,3 +277,22 @@ class CorosAdapter:
                 )
             )
         return metrics
+
+    async def fetch_fitness_overview(self) -> dict[str, Any]:
+        """Fetch COROS EvoLab fitness overview (threshold pace, VO2max, etc.)."""
+        try:
+            text = await self._mcp.call_tool("queryFitnessAssessmentOverview", {})
+            return parsers.parse_fitness_overview(text)
+        except (parsers.CorosParseError, McpError) as exc:
+            logger.warning(
+                "coros fitness overview unavailable",
+                extra={
+                    "fields": {
+                        "service": "coros_adapter",
+                        "event": "fitness_overview_failed",
+                        "error_type": type(exc).__name__,
+                        "error": str(exc),
+                    }
+                },
+            )
+            return {}

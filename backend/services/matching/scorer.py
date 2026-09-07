@@ -80,9 +80,12 @@ def _elevation_score(actual_elevation_m: float, target: float) -> float:
     return _ratio_score(actual_elevation_m, target)
 
 
-def _hr_score(avg_hr: int, target: tuple[int, int]) -> float:
+def _hr_score(avg_hr: int, target: tuple[int, int], is_strength: bool = False) -> float:
     low, high = target
     if low <= avg_hr <= high:
+        return 1.0
+    if is_strength and avg_hr < low:
+        # In strength/gym training, rest periods keep avg HR low, which is ideal
         return 1.0
     distance = low - avg_hr if avg_hr < low else avg_hr - high
     span = max(high - low, 1)
@@ -90,6 +93,25 @@ def _hr_score(avg_hr: int, target: tuple[int, int]) -> float:
 
 
 def score_bundle(bundle: SessionBundle, workout: dict) -> MatchScore:
+    w_type = (workout.get("type") or "").lower()
+    w_title = (workout.get("title") or "").lower()
+    is_planned_strength = (
+        "strength" in w_type
+        or "gym" in w_type
+        or "muscular endurance" in w_type
+        or any(s in w_title for s in ["strength", "gym", "circuit", "muscular endurance"])
+    )
+    is_bundle_strength = any(
+        t in {"strength", "indoor_strength", "gym_cardio", "gps_cardio"} for t in bundle.activity_types
+    )
+
+    if is_planned_strength != is_bundle_strength:
+        return MatchScore(
+            total=0.0,
+            components={},
+            reasons=["sport type mismatch between strength and endurance"],
+        )
+
     components: dict[str, float] = {}
     reasons: list[str] = []
 
@@ -121,7 +143,7 @@ def score_bundle(bundle: SessionBundle, workout: dict) -> MatchScore:
 
     hr_range = parse_hr_range(workout.get("target_hr_range"))
     if hr_range and bundle.avg_hr:
-        components["hr"] = _hr_score(bundle.avg_hr, hr_range)
+        components["hr"] = _hr_score(bundle.avg_hr, hr_range, is_strength=is_planned_strength)
         reasons.append(f"avg HR {bundle.avg_hr} vs target {hr_range[0]}-{hr_range[1]}")
 
     planned_pace = parse_pace_to_seconds(workout.get("target_pace"))

@@ -207,3 +207,21 @@ async def test_match_user_does_not_crash_on_a_malformed_plan_and_reports_unmatch
 
     result = await runner.match_user(7, date(2026, 9, 1), date(2026, 9, 3))
     assert result["unmatched"] == 1
+
+
+@pytest.mark.asyncio
+async def test_match_user_scopes_workouts_by_plan_id(monkeypatch):
+    calls = []
+
+    def fake_get_workouts(user_id, plan_id=None):
+        calls.append({"user_id": user_id, "plan_id": plan_id})
+        return [workout(10)]
+
+    monkeypatch.setattr(runner.db, "get_activities_for_matching", lambda *a, **k: [activity(1)])
+    monkeypatch.setattr(runner.db, "get_dated_workouts_for_matching", fake_get_workouts)
+    monkeypatch.setattr(runner.db, "save_match", lambda **kw: None)
+    monkeypatch.setattr(runner.settings, "MATCHING_SHADOW_MODE", True)
+
+    await runner.match_user(7, date(2026, 9, 1), date(2026, 9, 3), plan_id=42)
+    assert len(calls) == 1
+    assert calls[0]["plan_id"] == 42

@@ -39,6 +39,7 @@ from db import (
     get_kb_chunk_count,
     get_knowledge_card_count,
     get_knowledge_topics,
+    get_matches_for_review,
     get_max_generated_week,
     get_pending_invites_for_athlete,
     get_plan_by_id,
@@ -79,6 +80,7 @@ from routers.integrations import router as integrations_router
 from services.auth_service import hash_password, verify_password
 from services.calendar_service import CalendarService
 from services.gear_planner import GearParams, gear_planner
+from services.matching.block_evaluator import evaluate_block_performance
 from services.nutrition_planner import NutritionParams, nutrition_planner
 from services.pacing_calculator import PacingCalculator
 from services.plan_generator import PlanGenerator
@@ -359,6 +361,11 @@ class UpdateProfileRequest(BaseModel):
     gender: str | None = None  # 'male' | 'female' | 'other'
     height_cm: float | None = None
     weight_kg: float | None = None
+    threshold_pace: str | None = None
+    coros_vo2max: float | None = None
+    coros_running_level: float | None = None
+    pace_zone_model: str | None = None
+    custom_pace_zones: dict[str, Any] | None = None
 
 
 class SetCoachStatusRequest(BaseModel):
@@ -470,6 +477,11 @@ def format_user_response(user: dict[str, Any]) -> dict[str, Any]:
         "gemini_api_key": user.get("gemini_api_key") or "",
         "zone2_pace_min": user.get("zone2_pace_min") or "6:30",
         "zone2_pace_max": user.get("zone2_pace_max") or "5:45",
+        "threshold_pace": user.get("threshold_pace"),
+        "coros_vo2max": user.get("coros_vo2max"),
+        "coros_running_level": user.get("coros_running_level"),
+        "pace_zone_model": user.get("pace_zone_model") or "5_zone",
+        "custom_pace_zones": user.get("custom_pace_zones"),
         "is_coach": bool(user.get("is_coach", False)),
     }
 
@@ -976,12 +988,54 @@ def update_profile(request: UpdateProfileRequest, user: dict[str, Any] = Depends
 
 
 @app.get("/api/auth/pace-zones")
-def get_pace_zones(user: dict[str, Any] = Depends(get_current_user)):
+def get_pace_zones(model: str | None = None, user: dict[str, Any] = Depends(get_current_user)):
+    zone_model = model or user.get("pace_zone_model") or "5_zone"
+    threshold_pace = user.get("threshold_pace")
+
+    # If custom pace zones exist and match the requested model, return them directly
+    custom_zones = user.get("custom_pace_zones")
+    if custom_zones and isinstance(custom_zones, dict) and custom_zones.get("model") == zone_model:
+        return custom_zones
+
+    if zone_model == "4_zone":
+        if threshold_pace:
+            zones = PlanGenerator.calculate_pace_zones_from_threshold(threshold_pace, model="4_zone")
+        else:
+            zones = PlanGenerator.estimate_pace_zones(
+                user.get("zone2_pace_min") or "6:30",
+                user.get("zone2_pace_max") or "5:45",
+                user.get("aet_hr"),
+                user.get("ant_hr"),
+                model="4_zone",
+            )
+        aet = int(user.get("aet_hr") or 140)
+        ant = int(user.get("ant_hr") or 165)
+        return {
+            "model": "4_zone",
+            "threshold_pace": threshold_pace,
+            "zone1_pace": zones["zone1_pace"],
+            "zone2_pace": zones["zone2_pace"],
+            "zone3_pace": zones["zone3_pace"],
+            "zone4_pace": zones["zone4_pace"],
+            "zone5_pace": zones["zone4_pace"],  # Fallback for legacy 5-zone consumers
+            "zone1_hr": f"< {aet} bpm",
+            "zone2_hr": f"{aet}-{ant} bpm",
+            "zone3_hr": f"{ant}-{ant + 5} bpm",
+            "zone4_hr": f"> {ant + 5} bpm",
+            "zone5_hr": f"> {ant + 5} bpm",
+            "zone_labels": zones.get("zone_labels"),
+            "coros_vo2max": user.get("coros_vo2max"),
+            "coros_running_level": user.get("coros_running_level"),
+        }
+
+    # Default: 5-zone
     zones = PlanGenerator.estimate_pace_zones(
         user.get("zone2_pace_min") or "6:30",
         user.get("zone2_pace_max") or "5:45",
         user.get("aet_hr"),
         user.get("ant_hr"),
+        threshold_pace=threshold_pace,
+        model="5_zone",
     )
     hr_zones = TrainingRules.calculate_heart_rate_zones(
         int(user.get("max_hr") or 185),
@@ -990,6 +1044,8 @@ def get_pace_zones(user: dict[str, Any] = Depends(get_current_user)):
         user.get("ant_hr"),
     )
     return {
+        "model": "5_zone",
+        "threshold_pace": threshold_pace,
         "zone1_pace": zones["zone1_pace"],
         "zone2_pace": zones["zone2_pace"],
         "zone3_pace": zones["zone3_pace"],
@@ -1000,6 +1056,9 @@ def get_pace_zones(user: dict[str, Any] = Depends(get_current_user)):
         "zone3_hr": f"{hr_zones['Zone 3']['min']}-{hr_zones['Zone 3']['max']} bpm",
         "zone4_hr": f"{hr_zones['Zone 4']['min']}-{hr_zones['Zone 4']['max']} bpm",
         "zone5_hr": f"{hr_zones['Zone 5']['min']}-{hr_zones['Zone 5']['max']} bpm",
+        "zone_labels": zones.get("zone_labels"),
+        "coros_vo2max": user.get("coros_vo2max"),
+        "coros_running_level": user.get("coros_running_level"),
     }
 
 
@@ -1255,16 +1314,48 @@ def _build_athlete_context_block(athlete: dict[str, Any]) -> str:
         f"Athlete: {athlete.get('name') or athlete.get('email')}",
         f"Active Plan: {plan['race_name']} on {plan['race_date']} ({plan['goal_type']}, week {current_week} of {plan['total_weeks']})",
     ]
+    if athlete.get("threshold_pace"):
+        lines.append(f"Threshold Pace: {athlete['threshold_pace']}/km | VO2max: {athlete.get('coros_vo2max') or 'N/A'}")
+
     if not week_workouts:
         lines.append("No workouts recorded for the current week.")
     else:
         lines.append("This week's workouts:")
         for w in week_workouts:
-            status = "completed" if w.get("is_completed") else "not yet completed"
+            status = "completed" if w.get("is_completed") else ("missed" if w.get("is_missed") else "not yet completed")
             rpe = f", RPE {w['rpe']}" if w.get("rpe") else ""
             lines.append(
                 f"- {w['day_of_week']}: {w['title']} ({w['type']}, {w['duration_minutes']} min, {status}{rpe})"
             )
+
+    # Recent watch activity adherence & execution quality (last 14 days)
+    try:
+        from datetime import date, timedelta
+
+        until = date.today() + timedelta(days=1)
+        since = until - timedelta(days=14)
+        recent_matches = get_matches_for_review(athlete["id"], since, until, plan_id=plan["id"])
+        if recent_matches:
+            lines.append("\nRecent Watch Activities & Execution Quality (Last 14 Days):")
+            for act in recent_matches[-6:]:
+                dist = f"{act['distance_km']:.1f}km" if act.get("distance_km") else f"{act.get('sets') or 'N/A'} sets"
+                dur = f"{round((act.get('duration_seconds') or 0)/60)}m"
+                hr = f"avg HR {act['avg_hr']} bpm" if act.get("avg_hr") else ""
+                q_grade = (
+                    f"Quality: {act.get('quality_grade')} ({act.get('quality_score')}%)"
+                    if act.get("quality_score") is not None
+                    else ""
+                )
+                w_title = act.get("workout_title") or "Unplanned / Free session"
+                details = act.get("quality_details") or {}
+                takeaways = "; ".join(details.get("takeaways", [])) if isinstance(details, dict) else ""
+                notes = f" - Notes: {takeaways}" if takeaways else ""
+                lines.append(
+                    f"  * {str(act.get('start_time'))[:10]}: '{w_title}' - {dist} in {dur}, {hr}. {q_grade}{notes}"
+                )
+    except Exception as exc:
+        print(f"[AthleteContext] Warning loading recent matches: {exc}")
+
     return "\n".join(lines)
 
 
@@ -1772,6 +1863,13 @@ async def submit_block_review(request: BlockReviewRequest, user: dict[str, Any] 
     return {"review": review}
 
 
+@app.get("/api/coach/block-evaluation/{plan_id}/{block_number}")
+def get_plan_block_evaluation(plan_id: int, block_number: int, user: dict[str, Any] = Depends(get_current_user)):
+    """Return coach evaluation & takeaways for a completed 2-week block."""
+    _verify_plan_ownership(plan_id, user["id"])
+    return evaluate_block_performance(user["id"], plan_id, block_number)
+
+
 async def _generate_next_block_for_athlete(
     request: GenerateNextBlockRequest, athlete_id: int, job_owner_user_id: int
 ) -> dict[str, Any]:
@@ -1954,6 +2052,19 @@ async def _generate_next_block_for_athlete(
             )
 
         if blk == request.block_number - 1:
+            # Evaluate coach feedback on this most recent block:
+            prev_eval = evaluate_block_performance(athlete_id, request.plan_id, blk)
+            if prev_eval.get("coach_summary"):
+                context_lines.append(f"  Coach evaluation (Block {blk}): {prev_eval['coach_summary']}")
+            if prev_eval.get("avg_quality_score") is not None:
+                context_lines.append(
+                    f"  Execution quality: {prev_eval['avg_quality_score']}% (Grade {prev_eval['quality_grade']})"
+                )
+            for tk in prev_eval.get("coaching_takeaways", []):
+                context_lines.append(f"  Coach takeaway: {tk}")
+            for cn in prev_eval.get("coach_notes", []):
+                context_lines.append(f'  Coach directive on file: "{cn}"')
+
             # Most recent block: one line per session — performance, feedback,
             # RPE — so the next block reacts to specific sessions, not averages.
             context_lines.append("  Session-by-session (previous block):")
@@ -1994,6 +2105,15 @@ async def _generate_next_block_for_athlete(
     _, _, course_context = _resolve_course_match(
         plan.get("race_name"), plan.get("course_distance_km"), plan.get("course_elevation_gain_m")
     )
+
+    active_coach_notes = []
+    if request.coach_notes:
+        active_coach_notes.append(request.coach_notes)
+    if "prev_eval" in locals() and prev_eval.get("coach_notes"):
+        for cn in prev_eval["coach_notes"]:
+            if cn not in active_coach_notes:
+                active_coach_notes.append(cn)
+
     race_info = {
         "name": plan.get("race_name", "Training Plan"),
         "date": plan.get("race_date"),
@@ -2012,7 +2132,7 @@ async def _generate_next_block_for_athlete(
         "training_environment": plan.get("training_environment") or "flat",
         "plan_start_date": plan.get("start_date"),
         "lang": request.lang or fresh_user.get("lang", "en"),
-        "coach_notes": request.coach_notes,
+        "coach_notes": "\n".join(active_coach_notes) if active_coach_notes else None,
     }
 
     model_api_key = fresh_user.get("gemini_api_key") or settings.GEMINI_API_KEY
@@ -2118,6 +2238,15 @@ def submit_athlete_block_review(
         notes=request.notes,
     )
     return {"review": review}
+
+
+@app.get("/api/coaching/athletes/{athlete_id}/block-evaluation/{plan_id}/{block_number}")
+def get_athlete_block_evaluation(
+    athlete_id: int, plan_id: int, block_number: int, coach: dict[str, Any] = Depends(require_athlete_access)
+):
+    """Coach-scoped mirror of /api/coach/block-evaluation/{plan_id}/{block_number}."""
+    _verify_plan_ownership(plan_id, athlete_id)
+    return evaluate_block_performance(athlete_id, plan_id, block_number)
 
 
 @app.post("/api/coach/select-plan")
@@ -2383,11 +2512,47 @@ async def coach_chat(request: ChatRequest):
     profile_summary = f"\nUser Running Profile: {request.user_profile}" if request.user_profile else ""
     context_summary = f"\nContext/Activity Data: {request.context_data}" if request.context_data else ""
 
+    # 3. Dynamic watch activities & execution quality grounding
+    recent_activity_context = ""
+    user_id = request.user_profile.get("id") if request.user_profile else None
+    if user_id:
+        try:
+            from datetime import date, timedelta
+
+            until = date.today() + timedelta(days=1)
+            since = until - timedelta(days=14)
+            recent_matches = get_matches_for_review(user_id, since, until)
+            if recent_matches:
+                act_lines = ["\n=== RECENT WATCH ACTIVITIES & EXECUTION QUALITY ==="]
+                for act in recent_matches[-8:]:
+                    dist = (
+                        f"{act['distance_km']:.1f}km" if act.get("distance_km") else f"{act.get('sets') or 'N/A'} sets"
+                    )
+                    dur = f"{round((act.get('duration_seconds') or 0)/60)}m"
+                    hr = f"avg HR {act['avg_hr']} bpm" if act.get("avg_hr") else ""
+                    q_grade = (
+                        f"Quality: {act.get('quality_grade')} ({act.get('quality_score')}%)"
+                        if act.get("quality_score") is not None
+                        else ""
+                    )
+                    w_title = act.get("workout_title") or "Unplanned / Free session"
+                    details = act.get("quality_details") or {}
+                    takeaways = "; ".join(details.get("takeaways", [])) if isinstance(details, dict) else ""
+                    notes = f" | Takeaways: {takeaways}" if takeaways else ""
+                    act_lines.append(
+                        f"- {str(act.get('start_time'))[:10]}: '{w_title}' ({dist}, {dur}, {hr}) {q_grade}{notes}"
+                    )
+                act_lines.append("===================================================")
+                recent_activity_context = "\n".join(act_lines)
+        except Exception as exc:
+            print(f"[Chat] Warning loading recent activities: {exc}")
+
     full_system_prompt = (
         f"{COACH_SYSTEM_INSTRUCTION}"
         f"{grounding_context}"
         f"{profile_summary}"
         f"{context_summary}"
+        f"{recent_activity_context}"
         f"\n\nNote: If the user asks questions referring to uploaded documents or materials, retrieve answers from the GROUNDING REFERENCE DATABASE and state which document/link you got it from."
     )
 

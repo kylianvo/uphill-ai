@@ -29,7 +29,7 @@ clientSecret issued on approval):
 
 import secrets
 import time
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any
 
 import httpx
@@ -42,7 +42,9 @@ from db import verify_session
 from log_utils import get_logger
 from services import coros_oauth, coros_sync, token_crypto
 from services.matching import runner as matching_runner
+from services.matching.quality_scorer import score_workout_quality
 from services.mcp_client import McpError
+from services.plan_generator import PlanGenerator
 from services.providers.coros import PROVIDER, CorosDailyMetricsUnavailableError
 from services.providers.coros_parsers import CorosParseError
 
@@ -308,8 +310,54 @@ async def coros_callback(
     return response
 
 
+def _resolve_plan_window(plan_id: int, user_id: int) -> tuple[date, date]:
+    plan = db.get_plan_by_id(plan_id)
+    if not plan or plan.get("user_id") != user_id:
+        raise HTTPException(status_code=404, detail="Plan not found.")
+
+    start_str = plan.get("start_date")
+    if start_str:
+        try:
+            if isinstance(start_str, str):
+                start_d = datetime.strptime(start_str.split("T")[0], "%Y-%m-%d").date()
+            else:
+                start_d = start_str
+        except Exception:
+            start_d = date.today() - timedelta(days=30)
+    else:
+        start_d = date.today() - timedelta(days=30)
+
+    # Monday of start week
+    since = start_d - timedelta(days=start_d.weekday())
+
+    race_str = plan.get("race_date")
+    if race_str:
+        try:
+            if isinstance(race_str, str):
+                race_d = datetime.strptime(race_str.split("T")[0], "%Y-%m-%d").date()
+            else:
+                race_d = race_str
+            until = race_d + timedelta(days=2)
+        except Exception:
+            total_weeks = plan.get("total_weeks") or plan.get("plan_duration_weeks") or 12
+            until = since + timedelta(weeks=total_weeks, days=2)
+    else:
+        total_weeks = plan.get("total_weeks") or plan.get("plan_duration_weeks") or 12
+        until = since + timedelta(weeks=total_weeks, days=2)
+
+    return since, until
+
+
 @router.post("/coros/sync")
-async def coros_sync_now(days: int = 30, user: dict[str, Any] = Depends(get_current_user)):
+async def coros_sync_now(
+    days: int = 30,
+    plan_id: int | None = None,
+    user: dict[str, Any] = Depends(get_current_user),
+):
+    if plan_id is not None:
+        since, _ = _resolve_plan_window(plan_id, user["id"])
+        delta = (date.today() - since).days + 1
+        days = min(365, max(7, delta))
     try:
         return await coros_sync.sync_user(user["id"], days=days)
     except coros_sync.CorosReconnectRequired as exc:
@@ -364,37 +412,82 @@ async def coros_disconnect(user: dict[str, Any] = Depends(get_current_user)):
     return {"status": "disconnected"}
 
 
+@router.post("/coros/sync-fitness")
+async def coros_sync_fitness(user: dict[str, Any] = Depends(get_current_user)):
+    try:
+        res = await coros_sync.sync_fitness(user["id"])
+        updated_user = db.get_user_by_id(user["id"]) or user
+        model = updated_user.get("pace_zone_model") or "5_zone"
+        threshold = updated_user.get("threshold_pace")
+        zones = {}
+        if threshold:
+            zones = PlanGenerator.calculate_pace_zones_from_threshold(threshold, model=model)
+        return {
+            **res,
+            "pace_zones": zones,
+        }
+    except coros_sync.CorosReconnectRequired as exc:
+        raise HTTPException(status_code=401, detail=str(exc)) from exc
+    except McpError as exc:
+        logger.error("coros sync fitness failed: %s", exc)
+        raise HTTPException(status_code=502, detail="COROS sync failed. Please try again shortly.") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @router.get("/status")
 async def integration_status(user: dict[str, Any] = Depends(get_current_user)):
     connection = db.get_connection(user["id"], PROVIDER)
+    profile = db.get_user_by_id(user["id"]) or user
     return {
         "coros": {
             "connected": bool(connection and connection.get("status") == "active"),
             "last_sync_at": connection.get("last_sync_at") if connection else None,
+            "threshold_pace": profile.get("threshold_pace"),
+            "coros_vo2max": profile.get("coros_vo2max"),
+            "coros_running_level": profile.get("coros_running_level"),
+            "pace_zone_model": profile.get("pace_zone_model") or "5_zone",
         }
     }
 
 
 @router.post("/matching/run")
-async def matching_run(days: int = 30, user: dict[str, Any] = Depends(get_current_user)):
-    if not 1 <= days <= 365:
-        raise HTTPException(status_code=400, detail="days must be between 1 and 365.")
-    until = date.today()
-    return await matching_runner.match_user(user["id"], until - timedelta(days=days), until)
+async def matching_run(
+    days: int = 30,
+    plan_id: int | None = None,
+    user: dict[str, Any] = Depends(get_current_user),
+):
+    if plan_id is not None:
+        since, until = _resolve_plan_window(plan_id, user["id"])
+    else:
+        if not 1 <= days <= 365:
+            raise HTTPException(status_code=400, detail="days must be between 1 and 365.")
+        until = date.today()
+        since = until - timedelta(days=days)
+    return await matching_runner.match_user(user["id"], since, until, plan_id=plan_id)
 
 
 @router.get("/matching")
-async def matching_list(days: int = 30, user: dict[str, Any] = Depends(get_current_user)):
+async def matching_list(
+    days: int = 30,
+    plan_id: int | None = None,
+    user: dict[str, Any] = Depends(get_current_user),
+):
     """Lists the caller's activities in the window with their current match
     state, for the matching-review UI. Raw values only (numbers, an ISO
     start_time) -- no pre-formatted strings, so the frontend can render
     Vietnamese numbers/dates in Vietnamese convention rather than English
     unit strings baked in server-side. See db.get_matches_for_review.
     """
-    if not 1 <= days <= 365:
-        raise HTTPException(status_code=400, detail="days must be between 1 and 365.")
-    until = date.today()
-    activities = db.get_matches_for_review(user["id"], until - timedelta(days=days), until + timedelta(days=1))
+    if plan_id is not None:
+        since, until = _resolve_plan_window(plan_id, user["id"])
+    else:
+        if not 1 <= days <= 365:
+            raise HTTPException(status_code=400, detail="days must be between 1 and 365.")
+        until = date.today()
+        since = until - timedelta(days=days)
+        until = until + timedelta(days=1)
+    activities = db.get_matches_for_review(user["id"], since, until, plan_id=plan_id)
     return {"activities": activities}
 
 
@@ -402,6 +495,7 @@ async def matching_list(days: int = 30, user: dict[str, Any] = Depends(get_curre
 async def matching_override(
     activity_id: int,
     workout_id: int | None = None,
+    body: dict[str, Any] | None = None,
     user: dict[str, Any] = Depends(get_current_user),
 ):
     """Athlete corrects a match. Manual matches are never re-scored automatically.
@@ -414,9 +508,34 @@ async def matching_override(
     as a foreign activity_id: a different response would itself confirm the
     workout exists and just belongs to someone else.
     """
+    if workout_id is None and body and "workout_id" in body:
+        workout_id = body["workout_id"]
+
     if not db.activity_belongs_to_user(activity_id, user["id"]):
         raise HTTPException(status_code=404, detail="Activity not found.")
     if workout_id is not None and not db.workout_belongs_to_user(workout_id, user["id"]):
         raise HTTPException(status_code=404, detail="Activity not found.")
-    db.set_manual_match(activity_id=activity_id, workout_id=workout_id, user_id=user["id"])
+
+    quality_score = None
+    quality_grade = None
+    quality_details = None
+    if workout_id is not None:
+        workout = db.get_workout_by_id(workout_id)
+        activity = db.get_activity_by_id(activity_id)
+        if workout and activity:
+            athlete_profile = db.get_user_by_id(user["id"]) or {}
+            q_res = score_workout_quality(workout, activity, athlete_profile)
+            quality_score = q_res.overall_score
+            quality_grade = q_res.grade
+            quality_details = q_res.to_dict()
+        db.update_workout_log(workout_id, is_completed=1)
+
+    db.set_manual_match(
+        activity_id=activity_id,
+        workout_id=workout_id,
+        user_id=user["id"],
+        quality_score=quality_score,
+        quality_grade=quality_grade,
+        quality_details=quality_details,
+    )
     return {"status": "ok", "activity_id": activity_id, "workout_id": workout_id}

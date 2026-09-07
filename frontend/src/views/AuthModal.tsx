@@ -4,7 +4,7 @@ import { useAppContext } from "../contexts/AppContext";
 import { useAppAuth } from "../hooks/useAppAuth";
 import { usePlanner } from "../hooks/usePlanner";
 import { translations } from "../app/translations";
-import { X, XCircle, Warning } from '@phosphor-icons/react';
+import { X, XCircle, Warning, Eye, EyeSlash } from '@phosphor-icons/react';
 import { isNativePlatform } from "../utils/native";
 
 export default function AuthModal() {
@@ -314,7 +314,28 @@ export default function AuthModal() {
 
 
 
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: "14px", color: "var(--text-muted)" }}>{showPassword ? "👁️" : "🙈"}</button>
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    style={{
+                      position: "absolute",
+                      right: "6px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      minWidth: "44px",
+                      minHeight: "44px",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "var(--text-muted)",
+                    }}
+                  >
+                    {showPassword ? <EyeSlash size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
+                  </button>
 
 
 
@@ -398,7 +419,28 @@ export default function AuthModal() {
 
 
 
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: "14px", color: "var(--text-muted)" }}>{showPassword ? "👁️" : "🙈"}</button>
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    style={{
+                      position: "absolute",
+                      right: "6px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      minWidth: "44px",
+                      minHeight: "44px",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "var(--text-muted)",
+                    }}
+                  >
+                    {showPassword ? <EyeSlash size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
+                  </button>
 
 
 

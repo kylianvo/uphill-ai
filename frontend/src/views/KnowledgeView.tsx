@@ -4,7 +4,7 @@ import { useAppContext } from "../contexts/AppContext";
 import { useKnowledge } from "../hooks/useKnowledge";
 import { translations } from "../app/translations";
 import { KnowledgeCard } from "../components/KnowledgeCard";
-import { Brain, Lightbulb, Trash } from "@phosphor-icons/react";
+import { Brain, Lightbulb, Trash, Shuffle, Hourglass, FolderOpen, UploadSimple, FileText, YoutubeLogo, Globe, Check } from "@phosphor-icons/react";
 import { invalidateWorkoutTypesCache } from "../hooks/useWorkoutTypes";
 
 export default function KnowledgeView({ isMobile }: { isMobile: boolean }) {
@@ -96,9 +96,12 @@ export default function KnowledgeView({ isMobile }: { isMobile: boolean }) {
             {hasCards && (
               <button
                 className="btn btn-secondary"
-                style={{ fontSize: "12px", padding: "6px 14px", borderRadius: "8px", height: "32px", flexShrink: 0 }}
+                style={{ fontSize: "12px", padding: "6px 14px", borderRadius: "8px", height: "32px", flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "6px" }}
                 onClick={shuffleDailyCards}
-              >🔀 {t("home_shuffle_btn")}</button>
+              >
+                <Shuffle size={14} weight="bold" aria-hidden="true" />
+                <span>{t("home_shuffle_btn")}</span>
+              </button>
             )}
           </div>
 
@@ -111,8 +114,9 @@ export default function KnowledgeView({ isMobile }: { isMobile: boolean }) {
           )}
 
           {!hasCards && isExtracting && (
-            <div style={{ textAlign: "center", padding: "32px 16px", color: "var(--text-muted)", fontSize: "13px" }}>
-              ⏳ {t("home_extraction_in_progress")}
+            <div style={{ textAlign: "center", padding: "32px 16px", color: "var(--text-muted)", fontSize: "13px", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
+              <Hourglass size={15} weight="bold" aria-hidden="true" />
+              <span>{t("home_extraction_in_progress")}</span>
             </div>
           )}
 
@@ -129,7 +133,7 @@ export default function KnowledgeView({ isMobile }: { isMobile: boolean }) {
         {user?.role === "admin" && (
           <div className="card" style={{ padding: isMobile ? "20px" : "28px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
-              <span style={{ fontSize: "24px" }}>📂</span>
+              <FolderOpen size={24} weight="duotone" color="var(--accent-primary)" aria-hidden="true" />
               <h3 style={{ margin: 0, fontSize: isMobile ? "16px" : "18px", fontWeight: "800" }}>{t("know_indexed_files")}</h3>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "20px" }}>
@@ -146,7 +150,8 @@ export default function KnowledgeView({ isMobile }: { isMobile: boolean }) {
               <label style={{ display: "block", fontSize: "12.5px", fontWeight: "600", color: "var(--text-secondary)", marginBottom: "8px" }}>{t("know_upload_pdf")}</label>
               <button className="btn btn-secondary" style={{ borderRadius: "8px", padding: "10px 16px", fontSize: "13px", width: "100%", height: "40px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
                 onClick={triggerPdfUpload} disabled={ragLoading}>
-                {lang === "en" ? "📥 Choose & Upload PDF" : "📥 Chọn & Tải lên PDF"}
+                <UploadSimple size={15} weight="bold" aria-hidden="true" />
+                <span>{lang === "en" ? "Choose & Upload PDF" : "Chọn & Tải lên PDF"}</span>
               </button>
               <input type="file" ref={pdfInputRef} onChange={handlePdfFileChange} style={{ display: "none" }} accept=".pdf" />
             </div>
@@ -160,7 +165,15 @@ export default function KnowledgeView({ isMobile }: { isMobile: boolean }) {
                   : sources.map((src: any) => (
                     <div key={src.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "rgba(255,255,255,0.1)", border: "1px solid var(--border-color)", borderRadius: "8px" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "8px", overflow: "hidden" }}>
-                        <span>{src.type === "pdf" ? "📄" : src.type === "youtube" ? "📺" : "🌐"}</span>
+                        <span>
+                          {src.type === "pdf" ? (
+                            <FileText size={16} color="var(--accent-primary)" aria-hidden="true" />
+                          ) : src.type === "youtube" ? (
+                            <YoutubeLogo size={16} color="#ef4444" aria-hidden="true" />
+                          ) : (
+                            <Globe size={16} color="var(--text-secondary)" aria-hidden="true" />
+                          )}
+                        </span>
                         <span style={{ fontSize: "13px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: isMobile ? "200px" : "450px" }} title={src.title}>{src.title}</span>
                       </div>
                       <button style={{ background: "none", border: "none", color: "rgba(239,68,68,0.7)", cursor: "pointer", fontSize: "14px", padding: "4px" }} onClick={() => handleDeleteSource(src.id)}><Trash weight="bold" /></button>
@@ -204,7 +217,12 @@ export default function KnowledgeView({ isMobile }: { isMobile: boolean }) {
                 {woTypeStatus === "running"
                   ? (lang === "en" ? "Extracting…" : "Đang trích xuất…")
                   : woTypeStatus === "done"
-                    ? (lang === "en" ? "✓ Done — Re-extract" : "✓ Xong — Trích xuất lại")
+                    ? (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                        <Check size={13} weight="bold" aria-hidden="true" />
+                        <span>{lang === "en" ? "Done — Re-extract" : "Xong — Trích xuất lại"}</span>
+                      </span>
+                    )
                     : (lang === "en" ? "Extract Workout Types" : "Trích xuất định nghĩa Workout Types")}
               </button>
             </div>

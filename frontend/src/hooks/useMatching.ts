@@ -36,6 +36,26 @@ export type RawMatchActivity = {
   match_method: string | null;
   device_model: string | null;
   source_provider: string;
+  activity_type?: string | null;
+  sets?: number | null;
+  quality_score?: number | null;
+  quality_grade?: string | null;
+  quality_details?: {
+    overall_score?: number;
+    grade?: string;
+    rating?: string;
+    subscores?: {
+      volume?: number;
+      intensity?: number;
+      elevation?: number;
+    };
+    takeaways?: string[];
+  } | null;
+  match_details?: {
+    warmup_distance_km?: number;
+    fragments?: number;
+    reasons?: string[];
+  } | null;
 };
 
 function authHeaders(): Record<string, string> {
@@ -61,27 +81,36 @@ function authHeaders(): Record<string, string> {
  */
 export function useMatching() {
   const [running, setRunning] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState("");
 
-  const runMatching = useCallback(async (days = 30): Promise<MatchCounts | null> => {
-    const API_BASE_URL = getBackendUrl();
-    setRunning(true);
-    setError("");
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/integrations/matching/run?days=${days}`, {
-        method: "POST",
-        headers: authHeaders(),
-      });
-      const body = await res.json();
-      if (!res.ok) throw new Error(body?.detail || "Could not match your activities.");
-      return body as MatchCounts;
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not match your activities.");
-      return null;
-    } finally {
-      setRunning(false);
-    }
-  }, []);
+  const runMatching = useCallback(
+    async (arg?: number | { days?: number; planId?: number | null }): Promise<MatchCounts | null> => {
+      const API_BASE_URL = getBackendUrl();
+      setRunning(true);
+      setError("");
+      const days = typeof arg === "number" ? arg : (arg?.days ?? 30);
+      const planId = typeof arg === "object" ? arg?.planId : undefined;
+      const queryParts = [`days=${days}`];
+      if (planId != null) queryParts.push(`plan_id=${planId}`);
+
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/integrations/matching/run?${queryParts.join("&")}`, {
+          method: "POST",
+          headers: authHeaders(),
+        });
+        const body = await res.json();
+        if (!res.ok) throw new Error(body?.detail || "Could not match your activities.");
+        return body as MatchCounts;
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Could not match your activities.");
+        return null;
+      } finally {
+        setRunning(false);
+      }
+    },
+    []
+  );
 
   // workout_id travels as a query param (matching the backend's route
   // signature, which reads it that way, not from a JSON body). Omitting the
@@ -122,22 +151,58 @@ export function useMatching() {
   // GET /api/integrations/matching -- lists the caller's activities in the
   // window with their current match state, so the review UI has something
   // to render on load (previously only POST run and PATCH correct existed).
-  const fetchMatches = useCallback(async (days = 30): Promise<RawMatchActivity[] | null> => {
-    const API_BASE_URL = getBackendUrl();
-    setError("");
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/integrations/matching?days=${days}`, {
-        method: "GET",
-        headers: authHeaders(),
-      });
-      const body = await res.json();
-      if (!res.ok) throw new Error(body?.detail || "Could not load your matches.");
-      return (body?.activities ?? []) as RawMatchActivity[];
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not load your matches.");
-      return null;
-    }
-  }, []);
+  const fetchMatches = useCallback(
+    async (arg?: number | { days?: number; planId?: number | null }): Promise<RawMatchActivity[] | null> => {
+      const API_BASE_URL = getBackendUrl();
+      setError("");
+      const days = typeof arg === "number" ? arg : (arg?.days ?? 30);
+      const planId = typeof arg === "object" ? arg?.planId : undefined;
+      const queryParts = [`days=${days}`];
+      if (planId != null) queryParts.push(`plan_id=${planId}`);
 
-  return { running, error, runMatching, confirmMatch, clearMatch, fetchMatches };
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/integrations/matching?${queryParts.join("&")}`, {
+          method: "GET",
+          headers: authHeaders(),
+        });
+        const body = await res.json();
+        if (!res.ok) throw new Error(body?.detail || "Could not load your matches.");
+        return (body?.activities ?? []) as RawMatchActivity[];
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Could not load your matches.");
+        return null;
+      }
+    },
+    []
+  );
+
+  const syncWatch = useCallback(
+    async (options?: { days?: number; planId?: number | null }): Promise<boolean> => {
+      const API_BASE_URL = getBackendUrl();
+      setSyncing(true);
+      setError("");
+      const days = options?.days ?? 30;
+      const planId = options?.planId;
+      const queryParts = [`days=${days}`];
+      if (planId != null) queryParts.push(`plan_id=${planId}`);
+
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/integrations/coros/sync?${queryParts.join("&")}`, {
+          method: "POST",
+          headers: authHeaders(),
+        });
+        const body = await res.json();
+        if (!res.ok) throw new Error(body?.detail || "Watch sync failed.");
+        return true;
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Watch sync failed.");
+        return false;
+      } finally {
+        setSyncing(false);
+      }
+    },
+    []
+  );
+
+  return { running, syncing, error, runMatching, confirmMatch, clearMatch, fetchMatches, syncWatch };
 }

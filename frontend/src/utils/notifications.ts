@@ -232,7 +232,7 @@ export const scheduleDailyKnowledgeReminder = async (
   lang: 'en' | 'vi' = 'en'
 ): Promise<boolean> => {
   const card = await fetchRandomKnowledgeCard(lang);
-  const title = lang === 'vi' ? '💡 Kiến thức hôm nay | Uphill AI' : "💡 Today's Knowledge | Uphill AI";
+  const title = lang === 'vi' ? 'Kiến thức hôm nay | Uphill AI' : "Today's Knowledge | Uphill AI";
   const fallbackBody = lang === 'vi'
     ? 'Có một mẹo huấn luyện mới đang chờ bạn trong Knowledge Hub.'
     : 'A new coaching insight is waiting for you in the Knowledge Hub.';
@@ -251,7 +251,7 @@ export const scheduleDailyKnowledgeReminder = async (
 
 export const notifyPlanGenerated = async (lang: 'en' | 'vi' = 'en'): Promise<boolean> => {
   return scheduleNotification({
-    title: lang === 'vi' ? '🏔️ Kế hoạch của bạn đã sẵn sàng | Uphill AI' : "🏔️ Your Training Plan is Ready | Uphill AI",
+    title: lang === 'vi' ? 'Kế hoạch của bạn đã sẵn sàng | Uphill AI' : "Your Training Plan is Ready | Uphill AI",
     body: lang === 'vi'
       ? 'Coach Uphill đã hoàn thành kế hoạch tập luyện của bạn. Xem ngay!'
       : "Coach Uphill has finished building your training plan. Take a look!",
@@ -262,7 +262,7 @@ export const notifyPlanGenerated = async (lang: 'en' | 'vi' = 'en'): Promise<boo
 
 export const notifyGearPlanReady = async (lang: 'en' | 'vi' = 'en'): Promise<boolean> => {
   return scheduleNotification({
-    title: lang === 'vi' ? '👟 Gợi ý giày đã sẵn sàng | Uphill AI' : '👟 Your Shoe Recommendations are Ready | Uphill AI',
+    title: lang === 'vi' ? 'Gợi ý giày đã sẵn sàng | Uphill AI' : 'Your Shoe Recommendations are Ready | Uphill AI',
     body: lang === 'vi'
       ? 'Gợi ý giày chạy phù hợp với bạn đã có trong Gear Vault.'
       : 'Your personalized shoe picks are waiting in the Gear Vault.',
@@ -273,7 +273,7 @@ export const notifyGearPlanReady = async (lang: 'en' | 'vi' = 'en'): Promise<boo
 
 export const notifyNutritionPlanReady = async (lang: 'en' | 'vi' = 'en'): Promise<boolean> => {
   return scheduleNotification({
-    title: lang === 'vi' ? '🍌 Kế hoạch dinh dưỡng đã sẵn sàng | Uphill AI' : '🍌 Your Fueling Plan is Ready | Uphill AI',
+    title: lang === 'vi' ? 'Kế hoạch dinh dưỡng đã sẵn sàng | Uphill AI' : 'Your Fueling Plan is Ready | Uphill AI',
     body: lang === 'vi'
       ? 'Chiến lược Fueling & dinh dưỡng cho buổi tập của bạn đã sẵn sàng.'
       : 'Your race/workout fueling strategy has been calculated.',
@@ -296,7 +296,7 @@ export const scheduleFuelingReminder = async (
     const triggerTime = new Date(now + i * intervalMinutes * 60 * 1000);
     notifications.push({
       id: 20000 + i,
-      title: `⚡ Fueling Alert #${i}`,
+      title: `Fueling Alert #${i}`,
       body: `Time to fuel! Aim for 25-30g carbs & hydrate.`,
       schedule: { at: triggerTime, allowWhileIdle: true },
       extra: { type: 'fueling_interval', interval: i },

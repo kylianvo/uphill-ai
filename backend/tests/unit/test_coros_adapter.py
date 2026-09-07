@@ -304,3 +304,29 @@ async def test_all_daily_metric_sources_failing_raises_rather_than_returning_emp
     )
     with pytest.raises(CorosDailyMetricsUnavailableError):
         await CorosAdapter(stub).fetch_daily_metrics(days=1)
+
+
+@pytest.mark.asyncio
+async def test_fetch_fitness_overview_returns_parsed_metrics():
+    overview_text = """Fitness Assessment Overview
+========================
+
+VO2max: 57
+Running Level: 85
+Threshold Pace: 4:34 /km
+5 km Prediction: 21:56
+10 km Prediction: 45:37
+Half Marathon Prediction: 1:41:12
+Marathon Prediction: 3:31:18"""
+    stub = StubMcp({"queryFitnessAssessmentOverview": overview_text})
+    overview = await CorosAdapter(stub).fetch_fitness_overview()
+    assert overview["vo2max"] == 57.0
+    assert overview["threshold_pace"] == "4:34"
+    assert overview["threshold_pace_sec_per_km"] == 274.0
+
+
+@pytest.mark.asyncio
+async def test_fetch_fitness_overview_failure_degrades_gracefully():
+    stub = RaisingMcp({}, raising={"queryFitnessAssessmentOverview": McpError("timeout")})
+    overview = await CorosAdapter(stub).fetch_fitness_overview()
+    assert overview == {}

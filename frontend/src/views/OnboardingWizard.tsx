@@ -3,7 +3,7 @@ import React from "react";
 import { useAppContext } from "../contexts/AppContext";
 import { usePlanner } from "../hooks/usePlanner";
 import { translations } from "../app/translations";
-import { Calendar, PersonSimpleRun, Mountains, Watch, Target, CaretRight, CaretLeft, CaretDown, CaretUp, Plus, Info, X, Footprints, Lightning, Heartbeat , Trophy, Sneaker, Bed } from '@phosphor-icons/react';
+import { Calendar, PersonSimpleRun, Mountains, Watch, Target, CaretRight, CaretLeft, CaretDown, CaretUp, Plus, Info, X, Footprints, Lightning, Heartbeat , Trophy, Sneaker, Bed, Check, Flag, Heart, Flask, FirstAid, Moon, Sparkle, RocketLaunch, ArrowsClockwise } from '@phosphor-icons/react';
 import { RaceMatch } from "../hooks/useRaceMatch";
 import { RaceNameField } from "../components/RaceNameField";
 import { parsePaceToMinutes, formatDurationHM } from "../lib/paceStrategy";
@@ -387,7 +387,7 @@ export default function OnboardingWizard() {
 
               <div style={{ fontSize: "22px", fontWeight: "800", marginBottom: "6px" }}>
 
-                {lang === "en" ? `Welcome, ${user.name.split(" ")[0]}! 🎉` : `Chào mừng, ${user.name.split(" ")[0]}! 🎉`}
+                {lang === "en" ? `Welcome, ${user.name.split(" ")[0]}!` : `Chào mừng, ${user.name.split(" ")[0]}!`}
 
               </div>
 
@@ -411,7 +411,7 @@ export default function OnboardingWizard() {
 
                       style={{ flex: 1, height: "30px", fontSize: "12px", borderRadius: "8px", border: "none", background: lang === l ? "var(--accent-primary)" : "transparent", color: lang === l ? "#fff" : "var(--text-secondary)", fontWeight: "600", cursor: "pointer", transition: "all 0.15s" }}>
 
-                      {l === "en" ? "🇬🇧 English" : "🇻🇳 Tiếng Việt"}
+                      {l === "en" ? "English" : "Tiếng Việt"}
 
                     </button>
 
@@ -570,7 +570,7 @@ export default function OnboardingWizard() {
 
                     <span>{label}</span>
 
-                    {onboardingAnswers.goal_type === val && <span style={{ marginLeft: "auto" }}>✓</span>}
+                    {onboardingAnswers.goal_type === val && <Check size={16} weight="bold" color="var(--accent-primary)" style={{ marginLeft: "auto" }} aria-hidden="true" />}
 
                   </button>
 
@@ -590,7 +590,7 @@ export default function OnboardingWizard() {
 
               <div style={{ fontSize: "20px", fontWeight: "800", marginBottom: "6px" }}>
 
-                {lang === "en" ? "Current Fitness 💓" : "Chỉ số thể chất 💓"}
+                {lang === "en" ? "Current Fitness" : "Chỉ số thể chất"}
 
               </div>
 
@@ -608,11 +608,17 @@ export default function OnboardingWizard() {
 
                     style={{ flex: 1, height: "30px", fontSize: "12px", borderRadius: "8px", border: "none", background: onboardingAnswers.fitness_input_mode === m ? "var(--accent-primary)" : "transparent", color: onboardingAnswers.fitness_input_mode === m ? "#fff" : "var(--text-secondary)", fontWeight: "600", cursor: "pointer" }}>
 
-                    {m === "estimate"
-
-                      ? (lang === "en" ? "⚡ Estimate from race" : "⚡ Ước tính từ giải chạy")
-
-                      : (lang === "en" ? "🧪 I know my zones" : "🧪 Nhập thủ công các vùng tập (Zones)")}
+                    {m === "estimate" ? (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                        <Lightning size={13} weight="fill" aria-hidden="true" />
+                        <span>{lang === "en" ? "Estimate from race" : "Ước tính từ giải chạy"}</span>
+                      </span>
+                    ) : (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                        <Flask size={13} weight="bold" aria-hidden="true" />
+                        <span>{lang === "en" ? "I know my zones" : "Nhập thủ công các vùng tập (Zones)"}</span>
+                      </span>
+                    )}
 
                   </button>
 
@@ -715,63 +721,34 @@ export default function OnboardingWizard() {
             <div>
 
               <div style={{ fontSize: "20px", fontWeight: "800", marginBottom: "6px" }}>
-
-                {lang === "en" ? "Injury History 🩺" : "Lịch sử chấn thương 🩺"}
-
+                {lang === "en" ? "Injury History" : "Lịch sử chấn thương"}
               </div>
-
               <p style={{ color: "var(--text-muted)", fontSize: "13px", marginBottom: "20px" }}>
-
                 {lang === "en" ? "This helps us pace your plan's load progression carefully." : "Điều này giúp chúng tôi điều chỉnh tiến trình tăng tải của kế hoạch một cách cẩn thận."}
-
               </p>
-
               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-
                 {[
-
                   { val: "rarely", label: lang === "en" ? "Rarely or never injured" : "Hiếm khi hoặc không bao giờ chấn thương", sub: lang === "en" ? "I bounce back quickly from hard efforts" : "Phục hồi rất nhanh sau các buổi tập nặng" },
-
                   { val: "minor", label: lang === "en" ? "Minor or past significant injury" : "Chấn thương nhẹ hoặc từng chấn thương", sub: lang === "en" ? "Mostly resolved, occasionally careful" : "Đã hồi phục cơ bản, thỉnh thoảng cần lưu ý" },
-
                   { val: "frequent", label: lang === "en" ? "Frequently or recently injured" : "Thường xuyên hoặc vừa chấn thương", sub: lang === "en" ? "Need careful, conservative buildup" : "Cần tích lũy khối lượng cẩn thận và thận trọng" },
-
                   { val: "prefer_not", label: lang === "en" ? "Prefer not to say" : "Không muốn chia sẻ", sub: "" },
-
                 ].map(({ val, label, sub }) => (
-
                   <button key={val} type="button" onClick={() => setAns("injury_history", val)}
-
                     style={{ padding: "12px 14px", borderRadius: "10px", border: `1.5px solid ${onboardingAnswers.injury_history === val ? "var(--accent-primary)" : "var(--border-color)"}`, background: onboardingAnswers.injury_history === val ? "rgba(16,185,129,0.08)" : "rgba(255,255,255,0.3)", cursor: "pointer", textAlign: "left" as const }}>
-
                     <div style={{ fontWeight: "600", fontSize: "13px", color: onboardingAnswers.injury_history === val ? "var(--accent-primary)" : "var(--text-primary)" }}>{label}</div>
-
                     {sub && <div style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "3px" }}>{sub}</div>}
-
                   </button>
-
                 ))}
-
               </div>
-
             </div>
-
           );
-
         case "target":
-
           return (
-
             <div>
-
               <div style={{ fontSize: "20px", fontWeight: "800", marginBottom: "6px" }}>
-
                 {goal === "race"
-
-                  ? (lang === "en" ? "Race Details 🏁" : "Thông tin giải chạy 🏁")
-
-                  : (lang === "en" ? "Distance Target 📏" : "Mục tiêu cự ly 📏")}
-
+                  ? (lang === "en" ? "Race Details" : "Thông tin giải chạy")
+                  : (lang === "en" ? "Distance Target" : "Mục tiêu cự ly")}
               </div>
 
               <p style={{ color: "var(--text-muted)", fontSize: "13px", marginBottom: "16px" }}>
@@ -948,9 +925,7 @@ export default function OnboardingWizard() {
             <div>
 
               <div style={{ fontSize: "20px", fontWeight: "800", marginBottom: "6px" }}>
-
-                {lang === "en" ? "Getting Back 🔄" : "Tập luyện trở lại 🔄"}
-
+                {lang === "en" ? "Getting Back" : "Tập luyện trở lại"}
               </div>
 
               <p style={{ color: "var(--text-muted)", fontSize: "13px", marginBottom: "16px" }}>
@@ -1024,9 +999,7 @@ export default function OnboardingWizard() {
             <div>
 
               <div style={{ fontSize: "20px", fontWeight: "800", marginBottom: "6px" }}>
-
-                {lang === "en" ? "Post-Race Recovery 💤" : "Phục hồi sau giải chạy 💤"}
-
+                {lang === "en" ? "Post-Race Recovery" : "Phục hồi sau giải chạy"}
               </div>
 
               <p style={{ color: "var(--text-muted)", fontSize: "13px", marginBottom: "16px" }}>
@@ -1112,9 +1085,7 @@ export default function OnboardingWizard() {
             <div>
 
               <div style={{ fontSize: "20px", fontWeight: "800", marginBottom: "6px" }}>
-
-                {lang === "en" ? "Training Zones 💓" : "Vùng tập luyện 💓"}
-
+                {lang === "en" ? "Training Zones" : "Vùng tập luyện"}
               </div>
 
               <p style={{ color: "var(--text-muted)", fontSize: "13px", marginBottom: "16px" }}>
@@ -1224,43 +1195,35 @@ export default function OnboardingWizard() {
             <div>
 
               <div style={{ fontSize: "20px", fontWeight: "800", marginBottom: "6px" }}>
-
-                {lang === "en" ? "Current Fitness 💓" : "Thể trạng hiện tại 💓"}
-
+                {lang === "en" ? "Current Fitness" : "Thể trạng hiện tại"}
               </div>
 
               <p style={{ color: "var(--text-muted)", fontSize: "13px", marginBottom: "2px" }}>
-
                 {lang === "en"
-
                   ? "Helps us set your training zones accurately."
-
                   : "Giúp chúng tôi thiết lập vùng tập luyện của bạn chính xác hơn."}
-
               </p>
 
               <p style={{ color: "var(--text-muted)", fontSize: "12px", fontStyle: "italic", marginBottom: "16px" }}>
-
                 {lang === "en" ? "Optional — tap Next to skip and add this later." : "Tùy chọn — nhấn Tiếp theo để bỏ qua và thêm sau."}
-
               </p>
 
               <div style={{ display: "flex", background: "rgba(255,255,255,0.4)", border: "1px solid var(--border-color)", padding: "3px", borderRadius: "10px", marginBottom: "16px" }}>
-
                 {(["estimate", "manual"] as const).map(m => (
-
                   <button key={m} type="button" onClick={() => setAns("fitness_input_mode", m)}
-
-                    style={{ flex: 1, height: "30px", fontSize: "12px", borderRadius: "8px", border: "none", background: onboardingAnswers.fitness_input_mode === m ? "var(--accent-primary)" : "transparent", color: onboardingAnswers.fitness_input_mode === m ? "#fff" : "var(--text-secondary)", fontWeight: "600", cursor: "pointer" }}>
-
-                    {m === "estimate"
-
-                      ? (lang === "en" ? "⚡ Estimate from race" : "⚡ Ước tính từ giải chạy")
-
-                      : (lang === "en" ? "🧪 I know my zones" : "🧪 Tôi đã biết vùng nhịp tim")}
-
+                    style={{ flex: 1, height: "30px", fontSize: "12px", borderRadius: "8px", border: "none", background: onboardingAnswers.fitness_input_mode === m ? "var(--accent-primary)" : "transparent", color: onboardingAnswers.fitness_input_mode === m ? "#fff" : "var(--text-secondary)", fontWeight: "600", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
+                    {m === "estimate" ? (
+                      <>
+                        <Lightning size={13} weight="fill" aria-hidden="true" />
+                        <span>{lang === "en" ? "Estimate from race" : "Ước tính từ giải chạy"}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Flask size={13} weight="bold" aria-hidden="true" />
+                        <span>{lang === "en" ? "I know my zones" : "Tôi đã biết vùng nhịp tim"}</span>
+                      </>
+                    )}
                   </button>
-
                 ))}
 
               </div>
@@ -1366,9 +1329,7 @@ export default function OnboardingWizard() {
             <div>
 
               <div style={{ fontSize: "20px", fontWeight: "800", marginBottom: "6px" }}>
-
-                {lang === "en" ? "Your Schedule 📅" : "Lịch tập của bạn 📅"}
-
+                {lang === "en" ? "Your Schedule" : "Lịch tập của bạn"}
               </div>
 
               <p style={{ color: "var(--text-muted)", fontSize: "13px", marginBottom: "16px" }}>
@@ -1508,85 +1469,48 @@ export default function OnboardingWizard() {
             <div>
 
               <div style={{ fontSize: "20px", fontWeight: "800", marginBottom: "6px" }}>
-
-                {lang === "en" ? "Double Session Days ⚡" : "Ngày tập hai buổi ⚡"}
-
+                {lang === "en" ? "Double Session Days" : "Ngày tập hai buổi"}
               </div>
 
               <p style={{ color: "var(--text-muted)", fontSize: "13px", marginBottom: "4px" }}>
-
                 {lang === "en"
-
                   ? "On double-session days, Coach Uphill can schedule a short morning activation + an afternoon quality session."
-
                   : "Vào ngày tập hai buổi, Coach Uphill sẽ xếp buổi sáng ngắn + buổi chiều chất lượng cao."}
-
               </p>
 
               <p style={{ color: "var(--text-muted)", fontSize: "12px", fontStyle: "italic", marginBottom: "20px" }}>
-
                 {lang === "en" ? "Optional — skip if you prefer one session per day." : "Tùy chọn — bỏ qua nếu bạn chỉ muốn một buổi mỗi ngày."}
-
               </p>
 
               <div style={{ marginBottom: "16px" }}>
-
                 <label style={{ ...labelS, marginBottom: "10px" }}>
-
                   {lang === "en" ? "Pick up to 2 days (from your available days)" : "Chọn tối đa 2 ngày (từ ngày bạn có thể chạy)"}
-
                 </label>
-
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-
                   {preferredDays.map((day: string) => {
-
                     const sel = selectedDouble.includes(day);
-
                     const disabled = !sel && selectedDouble.length >= 2;
-
                     return (
-
                       <button
-
                         key={day}
-
                         type="button"
-
                         onClick={() => !disabled && toggleDoubleDay(day)}
-
                         style={{
-
                           padding: "8px 14px",
-
                           borderRadius: "8px",
-
                           border: `1.5px solid ${sel ? "var(--accent-primary)" : "var(--border-color)"}`,
-
                           background: sel ? "rgba(16,185,129,0.12)" : disabled ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.3)",
-
                           color: sel ? "var(--accent-primary)" : disabled ? "var(--text-muted)" : "var(--text-primary)",
-
                           fontWeight: sel ? "700" : "500",
-
                           fontSize: "13px",
-
                           cursor: disabled ? "not-allowed" : "pointer",
-
                           opacity: disabled ? 0.5 : 1,
-
                         }}
-
                       >
-
                         {day.slice(0, 3)}
-
-                        {sel && <span style={{ marginLeft: "4px", fontSize: "11px" }}>⚡</span>}
-
+                        {sel && <Lightning size={12} weight="fill" color="#f59e0b" style={{ marginLeft: "4px", verticalAlign: "middle" }} aria-hidden="true" />}
                       </button>
-
                     );
-
                   })}
 
                 </div>
@@ -1623,74 +1547,56 @@ export default function OnboardingWizard() {
 
                 <>
 
-                  <div style={{ fontSize: "40px", marginBottom: "16px", animation: "spin 2s linear infinite" }}>⚙️</div>
+                  <ArrowsClockwise size={40} className="match-spin" color="var(--accent-primary)" style={{ marginBottom: "16px" }} aria-hidden="true" />
 
                   <div style={{ fontSize: "20px", fontWeight: "800", marginBottom: "8px" }}>
-
                     {lang === "en" ? "Building your plan..." : "Đang tạo kế hoạch..."}
-
                   </div>
 
                   <p style={{ color: "var(--text-muted)", fontSize: "13px" }}>
-
                     {lang === "en"
-
                       ? "Coach Uphill is crafting a personalised training plan based on your profile. This may take 30–60 seconds."
-
                       : "Coach Uphill đang chuẩn bị kế hoạch tập luyện cá nhân hóa của bạn. Quá trình này có thể mất 30–60 giây."}
-
                   </p>
-
                 </>
-
               ) : (
-
                 <>
-
-                  <div style={{ fontSize: "40px", marginBottom: "16px" }}>✨</div>
+                  <Sparkle size={40} weight="duotone" color="var(--accent-primary)" style={{ marginBottom: "16px" }} aria-hidden="true" />
 
                   <div style={{ fontSize: "20px", fontWeight: "800", marginBottom: "8px" }}>
-
                     {lang === "en" ? "You're all set!" : "Tất cả đã sẵn sàng!"}
-
                   </div>
 
                   <p style={{ color: "var(--text-muted)", fontSize: "13px", marginBottom: "16px" }}>
-
                     {lang === "en"
-
                       ? `Ready to generate your personalised ${onboardingAnswers.goal_type?.replace("_"," ")} training plan?`
-
                       : `Bạn đã sẵn sàng khởi tạo kế hoạch tập luyện ${onboardingAnswers.goal_type?.replace("_"," ")} cá nhân hóa chưa?`}
-
                   </p>
 
                   <div style={{ background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: "12px", padding: "14px", marginBottom: "20px", textAlign: "left" }}>
-
                     <div style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "6px", fontWeight: "600" }}>
-
                       {lang === "en" ? "SUMMARY" : "BẢN TỔNG HỢP"}
-
                     </div>
 
-                    <div style={{ fontSize: "13px", display: "flex", flexDirection: "column", gap: "4px" }}>
-
+                    <div style={{ fontSize: "13px", display: "flex", flexDirection: "column", gap: "6px" }}>
                       <div>{lang === "en" ? "Goal:" : "Mục tiêu:"} <strong>{onboardingAnswers.goal_type?.replace("_"," ")}</strong></div>
-
                       <div>{lang === "en" ? "Starts:" : "Bắt đầu:"} <strong>{onboardingAnswers.plan_start_date || "Today"}</strong> · {onboardingAnswers.days_per_week || 4} {lang === "en" ? "days/week" : "ngày/tuần"}</div>
-
-                      <div>🌙 {lang === "en" ? "Long run:" : "Long Run:"} <strong>{onboardingAnswers.long_run_day}</strong> · {lang === "en" ? "Volume:" : "Khối lượng (Volume):"} <strong>{onboardingAnswers.current_weekly_km || 30} km/{lang === "en" ? "wk" : "tuần"}</strong></div>
-
-                      {onboardingAnswers.race_name && <div>🏁 {lang === "en" ? "Race:" : "Giải chạy:"} <strong>{onboardingAnswers.race_name}</strong></div>}
-
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <Moon size={14} weight="bold" color="var(--accent-primary)" aria-hidden="true" />
+                        <span>{lang === "en" ? "Long run:" : "Long Run:"}</span> <strong>{onboardingAnswers.long_run_day}</strong> · <span>{lang === "en" ? "Volume:" : "Khối lượng:"}</span> <strong>{onboardingAnswers.current_weekly_km || 30} km/{lang === "en" ? "wk" : "tuần"}</strong>
+                      </div>
+                      {onboardingAnswers.race_name && (
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <Flag size={14} weight="bold" color="var(--accent-primary)" aria-hidden="true" />
+                          <span>{lang === "en" ? "Race:" : "Giải chạy:"}</span> <strong>{onboardingAnswers.race_name}</strong>
+                        </div>
+                      )}
                     </div>
-
                   </div>
 
-                  <button className="btn btn-primary" style={{ width: "100%", height: "44px", fontSize: "14px", fontWeight: "700" }} onClick={() => handleCompleteOnboarding(false)}>
-
-                    🚀 {lang === "en" ? "Generate My Training Plan" : "Tạo Giáo Án Tập Luyện Của Tôi"}
-
+                  <button className="btn btn-primary" style={{ width: "100%", height: "44px", fontSize: "14px", fontWeight: "700", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "8px" }} onClick={() => handleCompleteOnboarding(false)}>
+                    <RocketLaunch size={18} weight="bold" aria-hidden="true" />
+                    <span>{lang === "en" ? "Generate My Training Plan" : "Tạo Giáo Án Tập Luyện Của Tôi"}</span>
                   </button>
 
                   <button
@@ -1731,7 +1637,9 @@ export default function OnboardingWizard() {
 
               <div style={{ background: "var(--bg-card)", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "360px", textAlign: "center", boxShadow: "0 8px 32px rgba(0,0,0,0.2)" }}>
 
-                <div style={{ fontSize: "32px", marginBottom: "12px" }}>⌚</div>
+                <div style={{ marginBottom: "12px" }}>
+                  <Watch size={36} weight="duotone" color="var(--accent-primary)" aria-hidden="true" />
+                </div>
 
                 <div style={{ fontSize: "16px", fontWeight: "800", marginBottom: "10px", color: "var(--text-primary)" }}>
 
