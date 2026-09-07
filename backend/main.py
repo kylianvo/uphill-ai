@@ -256,6 +256,7 @@ class AdaptWeekRequest(BaseModel):
     plan_id: int
     week_number: int  # target week to adapt (1-indexed)
     overall_rpe: int | None = None  # 1-10 fatigue / exertion check
+    fatigue_level: str | None = None  # 'easy', 'medium', 'hard', 'exhausted'
     fatigue_notes: str | None = None  # why adapting / fatigue details
     athlete_notes: str | None = None
     coach_notes: str | None = None
@@ -2319,11 +2320,48 @@ async def _adapt_week_for_athlete(request: AdaptWeekRequest, athlete_id: int, jo
     all_workouts = get_plan_workouts(request.plan_id)
     fresh_user = get_user_by_id(athlete_id) or {}
 
+    # Map fatigue_level (easy/medium/hard/exhausted) and overall_rpe coherently
+    fatigue_level = request.fatigue_level
+    overall_rpe = request.overall_rpe
+    if fatigue_level and overall_rpe is None:
+        level_to_rpe = {"easy": 3, "medium": 6, "hard": 8, "exhausted": 10}
+        overall_rpe = level_to_rpe.get(fatigue_level.lower(), 6)
+    elif overall_rpe is not None and not fatigue_level:
+        if overall_rpe <= 4:
+            fatigue_level = "easy"
+        elif overall_rpe <= 6:
+            fatigue_level = "medium"
+        elif overall_rpe <= 8:
+            fatigue_level = "hard"
+        else:
+            fatigue_level = "exhausted"
+
     context_lines: list[str] = [
         f"ADAPTATION & REGENERATION FOR WEEK {request.week_number}:",
     ]
-    if request.overall_rpe is not None:
-        context_lines.append(f"  Current Athlete Exertion / Fatigue RPE: {request.overall_rpe}/10")
+    if fatigue_level:
+        context_lines.append(
+            f"  Current Athlete Feeling: {fatigue_level.upper()} (equivalent RPE ~{overall_rpe or 6}/10)"
+        )
+        if fatigue_level.lower() == "easy":
+            context_lines.append(
+                "  Feeling Fresh/Easy: Athlete is well recovered. Maintain scheduled progression and key quality sessions."
+            )
+        elif fatigue_level.lower() == "medium":
+            context_lines.append(
+                "  Feeling Medium/Normal: Moderate training fatigue. Keep balanced volume with steady progression."
+            )
+        elif fatigue_level.lower() == "hard":
+            context_lines.append(
+                "  Feeling Hard/Tired: Elevated fatigue or heavy legs. Ease off high-intensity sessions and trim volume by 15-20%."
+            )
+        elif fatigue_level.lower() == "exhausted":
+            context_lines.append(
+                "  Feeling Exhausted: High fatigue or overreaching. Prescribe an active recovery/deload week with 25-35% reduced volume and no high-intensity work."
+            )
+    elif overall_rpe is not None:
+        context_lines.append(f"  Current Athlete Exertion / Fatigue RPE: {overall_rpe}/10")
+
     if request.fatigue_notes:
         context_lines.append(f'  Fatigue & Adaptation reason: "{request.fatigue_notes}"')
     if request.athlete_notes:

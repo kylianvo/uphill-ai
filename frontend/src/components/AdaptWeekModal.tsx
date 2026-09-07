@@ -34,6 +34,77 @@ const FULL_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Satu
 const SHORT_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const SHORT_DAYS_VI = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 
+export type FatigueLevel = "easy" | "medium" | "hard" | "exhausted";
+
+interface FeelingOption {
+  id: FatigueLevel;
+  labelKey: keyof typeof translations.en;
+  subKey: keyof typeof translations.en;
+  descKey: keyof typeof translations.en;
+  color: string;
+  badgeBg: string;
+  badgeBorder: string;
+  badgeText: string;
+  activeBg: string;
+  activeBorder: string;
+  rpe: number;
+}
+
+const FEELING_OPTIONS: FeelingOption[] = [
+  {
+    id: "easy",
+    labelKey: "adapt_week_feel_easy",
+    subKey: "adapt_week_feel_easy_sub",
+    descKey: "adapt_week_feel_easy_desc",
+    color: "#10b981",
+    badgeBg: "rgba(16, 185, 129, 0.12)",
+    badgeBorder: "rgba(16, 185, 129, 0.3)",
+    badgeText: "#059669",
+    activeBg: "rgba(16, 185, 129, 0.14)",
+    activeBorder: "#10b981",
+    rpe: 3,
+  },
+  {
+    id: "medium",
+    labelKey: "adapt_week_feel_medium",
+    subKey: "adapt_week_feel_medium_sub",
+    descKey: "adapt_week_feel_medium_desc",
+    color: "#3b82f6",
+    badgeBg: "rgba(59, 130, 246, 0.12)",
+    badgeBorder: "rgba(59, 130, 246, 0.3)",
+    badgeText: "#2563eb",
+    activeBg: "rgba(59, 130, 246, 0.14)",
+    activeBorder: "#3b82f6",
+    rpe: 6,
+  },
+  {
+    id: "hard",
+    labelKey: "adapt_week_feel_hard",
+    subKey: "adapt_week_feel_hard_sub",
+    descKey: "adapt_week_feel_hard_desc",
+    color: "#f59e0b",
+    badgeBg: "rgba(245, 158, 11, 0.12)",
+    badgeBorder: "rgba(245, 158, 11, 0.3)",
+    badgeText: "#d97706",
+    activeBg: "rgba(245, 158, 11, 0.14)",
+    activeBorder: "#f59e0b",
+    rpe: 8,
+  },
+  {
+    id: "exhausted",
+    labelKey: "adapt_week_feel_exhausted",
+    subKey: "adapt_week_feel_exhausted_sub",
+    descKey: "adapt_week_feel_exhausted_desc",
+    color: "#ef4444",
+    badgeBg: "rgba(239, 68, 68, 0.12)",
+    badgeBorder: "rgba(239, 68, 68, 0.3)",
+    badgeText: "#dc2626",
+    activeBg: "rgba(239, 68, 68, 0.14)",
+    activeBorder: "#ef4444",
+    rpe: 10,
+  },
+];
+
 export function AdaptWeekModal({
   isOpen,
   onClose,
@@ -46,7 +117,7 @@ export function AdaptWeekModal({
   onAdaptSuccess,
   actingAsAthleteId,
 }: AdaptWeekModalProps) {
-  const [rpe, setRpe] = useState<number>(6);
+  const [fatigueLevel, setFatigueLevel] = useState<FatigueLevel>("medium");
   const [fatigueNotes, setFatigueNotes] = useState<string>("");
   const [coachNotes, setCoachNotes] = useState<string>("");
   const [schedule, setSchedule] = useState(initialSchedule);
@@ -77,10 +148,14 @@ export function AdaptWeekModal({
         ? `${API_BASE_URL}/api/coaching/athletes/${actingAsAthleteId}/adapt-week`
         : `${API_BASE_URL}/api/coach/adapt-week`;
 
+      const activeOption = FEELING_OPTIONS.find((o) => o.id === fatigueLevel) || FEELING_OPTIONS[1];
+      const rpe = activeOption.rpe;
+
       const body = {
         plan_id: planId,
         week_number: weekNumber,
         overall_rpe: rpe,
+        fatigue_level: fatigueLevel,
         fatigue_notes: fatigueNotes.trim() || null,
         athlete_notes: fatigueNotes.trim() || null,
         coach_notes: actingAsAthleteId ? (coachNotes.trim() || null) : null,
@@ -231,7 +306,7 @@ export function AdaptWeekModal({
         )}
 
         <form onSubmit={handleSubmit}>
-          {/* Fatigue / Exertion Check */}
+          {/* Feeling / Fatigue Level Selector */}
           <div style={{ marginBottom: "16px" }}>
             <label
               style={{
@@ -239,53 +314,84 @@ export function AdaptWeekModal({
                 fontSize: "12px",
                 fontWeight: "700",
                 color: "var(--text-secondary)",
-                marginBottom: "6px",
+                marginBottom: "8px",
               }}
             >
-              {t("adapt_week_rpe_label")} ({rpe}/10)
+              {t("adapt_week_rpe_label")}
             </label>
-            <input
-              type="range"
-              min={1}
-              max={10}
-              value={rpe}
-              onChange={(e) => setRpe(Number(e.target.value))}
-              style={{ width: "100%", accentColor: "var(--accent-primary)" }}
-            />
             <div
               style={{
-                display: "flex",
-                justifyContent: "space-between",
-                fontSize: "10px",
-                color: "var(--text-muted)",
-                marginTop: "2px",
+                display: "grid",
+                gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)",
+                gap: "8px",
               }}
             >
-              <span>{lang === "en" ? "Fresh (1)" : "Sung sức (1)"}</span>
-              <span>{lang === "en" ? "Moderate (5-6)" : "Vừa sức (5-6)"}</span>
-              <span>{lang === "en" ? "Exhausted (10)" : "Kiệt sức (10)"}</span>
+              {FEELING_OPTIONS.map((opt) => {
+                const isSelected = fatigueLevel === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setFatigueLevel(opt.id)}
+                    style={{
+                      padding: "10px 8px",
+                      borderRadius: "12px",
+                      border: isSelected ? `2px solid ${opt.activeBorder}` : "1px solid var(--border-color)",
+                      background: isSelected ? opt.activeBg : "rgba(0, 0, 0, 0.02)",
+                      boxShadow: isSelected ? `0 2px 8px ${opt.badgeBg}` : "none",
+                      cursor: "pointer",
+                      textAlign: "center",
+                      transition: "all 0.15s ease",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: "2px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: "13px",
+                        fontWeight: "700",
+                        color: isSelected ? opt.color : "var(--text-bright)",
+                      }}
+                    >
+                      {t(opt.labelKey)}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: "10.5px",
+                        color: isSelected ? opt.badgeText : "var(--text-muted)",
+                        fontWeight: isSelected ? "600" : "500",
+                      }}
+                    >
+                      {t(opt.subKey)}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
-            <div
-              style={{
-                textAlign: "center",
-                fontSize: "11.5px",
-                fontWeight: "600",
-                marginTop: "4px",
-                color: rpe >= 8 ? "#ef4444" : rpe >= 6 ? "#f59e0b" : "#10b981",
-              }}
-            >
-              {rpe >= 8
-                ? lang === "en"
-                  ? "High fatigue — coach will ease off volume and reduce high-intensity strain"
-                  : "Mệt mỏi cao — coach sẽ giảm khối lượng và giảm cường độ nặng"
-                : rpe >= 6
-                ? lang === "en"
-                  ? "Moderate fatigue — coach will fine-tune volume to maintain recovery"
-                  : "Mệt vừa phải — coach sẽ tinh chỉnh tải để đảm bảo hồi phục"
-                : lang === "en"
-                ? "Feeling fresh — progressive overload maintained as planned"
-                : "Thể trạng tốt — tiếp tục tăng tải theo đúng lộ trình"}
-            </div>
+
+            {/* Dynamic Coach Guidance */}
+            {(() => {
+              const active = FEELING_OPTIONS.find((o) => o.id === fatigueLevel) || FEELING_OPTIONS[1];
+              return (
+                <div
+                  style={{
+                    marginTop: "8px",
+                    padding: "9px 12px",
+                    borderRadius: "10px",
+                    background: active.badgeBg,
+                    border: `1px solid ${active.badgeBorder}`,
+                    fontSize: "11.5px",
+                    fontWeight: "600",
+                    color: active.badgeText,
+                    lineHeight: "1.4",
+                  }}
+                >
+                  {t(active.descKey)}
+                </div>
+              );
+            })()}
           </div>
 
           {/* Reason / Fatigue Notes */}

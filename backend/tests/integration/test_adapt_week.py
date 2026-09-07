@@ -285,3 +285,70 @@ class TestAdaptWeekEndpoint:
             # Verify the plan in the DB was NOT mutated (baseline defaults retained)
             db_plan = get_plan_by_id(plan_id)
             assert db_plan["days_per_week"] == 4  # original from _create_test_plan
+
+    def test_adapt_week_with_fatigue_level_maps_rpe_and_injects_feeling_context(self, client, auth_headers):
+        plan_id = _create_test_plan(client, auth_headers["headers"])
+        save_workouts(
+            plan_id,
+            [
+                {
+                    "week_number": 1,
+                    "day_of_week": "Tuesday",
+                    "phase": "Base",
+                    "title": "W1 Run",
+                    "type": "Easy Run",
+                    "duration_minutes": 30,
+                    "target_zone": "Zone 2",
+                    "description": "W1 desc.",
+                },
+                {
+                    "week_number": 2,
+                    "day_of_week": "Tuesday",
+                    "phase": "Base",
+                    "title": "W2 Run",
+                    "type": "Easy Run",
+                    "duration_minutes": 30,
+                    "target_zone": "Zone 2",
+                    "description": "W2 desc.",
+                },
+            ],
+        )
+
+        captured_args = {}
+
+        async def _fake_generate(*args, **kwargs):
+            captured_args.update(kwargs)
+            return []
+
+        with patch(
+            "services.plan_generator.PlanGenerator.generate_plan_workouts",
+            new=AsyncMock(side_effect=_fake_generate),
+        ):
+            resp = client.post(
+                "/api/coach/adapt-week",
+                headers=auth_headers["headers"],
+                json={
+                    "plan_id": plan_id,
+                    "week_number": 2,
+                    "fatigue_level": "hard",
+                    "fatigue_notes": "Very heavy legs after mountain hike",
+                },
+            )
+            assert resp.status_code == 200
+            data = resp.json()
+            job_id = data["job_id"]
+
+            status_resp = None
+            for _ in range(20):
+                status_resp = client.get(f"/api/coach/plan-status/{job_id}", headers=auth_headers["headers"])
+                if status_resp.json().get("status") in ("done", "error"):
+                    break
+                time.sleep(0.05)
+
+            assert status_resp is not None
+            assert status_resp.json()["status"] == "done"
+
+            # Check feeling context and mapped RPE ~8/10
+            assert "Current Athlete Feeling: HARD" in captured_args["block_context"]
+            assert "8/10" in captured_args["block_context"]
+            assert "Very heavy legs after mountain hike" in captured_args["block_context"]

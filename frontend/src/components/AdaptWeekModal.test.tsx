@@ -56,11 +56,15 @@ describe("AdaptWeekModal", () => {
 
     expect(screen.getByText("Adapt Week 2")).toBeInTheDocument();
     expect(screen.getByText(/2 completed\/recorded session\(s\) in this week will be strictly preserved/)).toBeInTheDocument();
-    expect(screen.getByText(/Current Fatigue & Exertion Check/)).toBeInTheDocument();
+    expect(screen.getByText("How are your legs & energy feeling?")).toBeInTheDocument();
+    expect(screen.getByText("Easy")).toBeInTheDocument();
+    expect(screen.getByText("Medium")).toBeInTheDocument();
+    expect(screen.getByText("Hard")).toBeInTheDocument();
+    expect(screen.getByText("Exhausted")).toBeInTheDocument();
     expect(screen.getByText("Regenerate Week 2")).toBeInTheDocument();
   });
 
-  it("posts to self-serve endpoint and calls onAdaptSuccess on submit", async () => {
+  it("posts to self-serve endpoint with selected feeling and calls onAdaptSuccess on submit", async () => {
     const onAdaptSuccess = vi.fn();
     const onClose = vi.fn();
 
@@ -84,6 +88,9 @@ describe("AdaptWeekModal", () => {
       />
     );
 
+    // Select "Hard" feeling
+    fireEvent.click(screen.getByText("Hard"));
+
     // Fill fatigue notes
     const textarea = screen.getByPlaceholderText(/Why are you adapting this week/i);
     fireEvent.change(textarea, { target: { value: "Hamstring stiffness after long run" } });
@@ -101,6 +108,8 @@ describe("AdaptWeekModal", () => {
     const body = JSON.parse(options?.body as string);
     expect(body.plan_id).toBe(10);
     expect(body.week_number).toBe(2);
+    expect(body.fatigue_level).toBe("hard");
+    expect(body.overall_rpe).toBe(8);
     expect(body.fatigue_notes).toBe("Hamstring stiffness after long run");
     expect(body.preferred_days).toEqual(["Tuesday", "Thursday", "Saturday", "Sunday"]);
 
