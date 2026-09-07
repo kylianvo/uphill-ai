@@ -1394,6 +1394,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                     border: "1px solid var(--border-color)",
                     borderRadius: "12px",
                     display: "flex",
+                    flexDirection: "row",
                     alignItems: "center",
                     justifyContent: "space-between",
                     gap: "12px",
