@@ -59,9 +59,15 @@ docker compose up -d --build
 # Grafana: http://localhost:3000
 ```
 
+### Staging
+- **Backend**: Docker on SSH server `root@45.119.215.120` inside `/opt/uphill-ai-backend-staging` (port `8001`). Exposed via Nginx at `https://staging-api.uphill-ai.io.vn`.
+- **Database / Vector**: Isolated Postgres on port `5434` and Qdrant on port `6336`.
+- **Frontend testing**: Run local frontend on `http://127.0.0.1:18080` (or `http://localhost:8080`) pointing to staging either via `?api=https://staging-api.uphill-ai.io.vn` query override or via `docker-compose.override.yml`.
+- **Full Guide**: See [docs/staging_deployment_and_testing.md](docs/staging_deployment_and_testing.md) for complete rsync deployment instructions, CORS setup, and gotchas.
+
 ### Production
 - **Frontend**: Static export deployed to GitHub Pages — repo at `https://github.com/kylianvo/uphill-ai`. Deployment is automatic on push to the main branch (GitHub Actions).
-- **Backend**: Docker on SSH server `root@45.119.215.120`. Deployment is handled by `deploy_server.sh` (reads `deploy.env` for `DEPLOY_SERVER` and `DEPLOY_TARGET_DIR`). Set `ENVIRONMENT=production` in the backend `.env` on the server — this disables API docs and the mock-login endpoint. For KB-seed-only changes (hand-edited `backend/kb_seed/*.json`, no code change), use the lighter `./deploy_kb.sh [--domain gear|nutrition|scheduler|all]` instead — see the `deploy-backend` skill.
+- **Backend**: Docker on SSH server `root@45.119.215.120` inside `/opt/uphill-ai-backend` (port `8000`). Deployment is handled by `deploy_server.sh` (reads `deploy.env` for `DEPLOY_SERVER` and `DEPLOY_TARGET_DIR`). Set `ENVIRONMENT=production` in the backend `.env` on the server — this disables API docs and the mock-login endpoint. For KB-seed-only changes (hand-edited `backend/kb_seed/*.json`, no code change), use the lighter `./deploy_kb.sh [--domain gear|nutrition|scheduler|all]` instead — see the `deploy-backend` skill.
 
 The frontend uses `NEXT_PUBLIC_API_URL` to point at the production backend. In GitHub Pages deployments, this must be set at build time since the output is static.
 
@@ -113,11 +119,6 @@ Backend reads from `backend/.env`. Key variables:
 - `TAVILY_API_KEY` — search API key for gear's and nutrition's web-discovery KB distillation (`services/kb_distiller.py`'s `discover_gear_web`/`discover_nutrition_web`); without it those domains' distillation raises (gear) or falls back to principles-only (nutrition)
 - `RAG_ENGINE` — `gemini` (distilled KB + Gemini, ~5-45s) or `notebooklm` (legacy runtime NotebookLM, ~2 min); the other engine remains the automatic fallback
 - `QDRANT_URL` — defaults to `http://qdrant:6333` in Docker, `http://localhost:6333` otherwise
-- `TOKEN_ENCRYPTION_KEY` — Fernet key encrypting third-party OAuth tokens (COROS today) at rest in `athlete_connections`; generate it once via `services.token_crypto.generate_key()`. Rotating it invalidates every stored token and forces every athlete to reconnect their device account
-- `COROS_CLIENT_ID`, `COROS_CLIENT_SECRET` — OAuth client credentials for the COROS MCP auth server, issued by `scripts/register_coros_client.py`'s dynamic registration
-- `COROS_REDIRECT_URI` — the `/api/integrations/coros/callback` URL COROS redirects back to after consent; must exactly match what was registered
-- `COROS_MCP_ENDPOINT` — the COROS MCP server endpoint polled for activities and health data (defaults to `https://mcp.coros.com/mcp`)
-- `FRONTEND_URL` — origin the COROS OAuth callback redirects the athlete's browser back to after connect/error (defaults to `https://uphill-ai.io.vn`)
 
 Per-user Gemini API keys are stored in the `users` table (`gemini_api_key` column) and take precedence over the server-level key for chat and plan generation (NOT yet for the gear/nutrition Gemini engines, which use the server key).
 
