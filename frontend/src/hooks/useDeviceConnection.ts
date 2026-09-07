@@ -51,13 +51,13 @@ export function useDeviceConnection() {
     setLoading(true);
     setError("");
     try {
-      // credentials:"include" is REQUIRED -- the backend sets an HttpOnly state
-      // cookie here that the OAuth callback checks for CSRF protection. The
-      // frontend (uphill-ai.io.vn) and API (api.uphill-ai.io.vn) are cross-origin,
-      // so without this flag the browser silently drops the Set-Cookie and every
-      // connect attempt dies later at the callback with ?coros=error (backend logs
-      // `callback_state_cookie_absent` in exactly that case).
-      const res = await fetch(`${API_BASE_URL}/api/integrations/coros/connect`, {
+      // credentials:"include" is set -- the backend sets an HttpOnly state
+      // cookie here that the OAuth callback checks for CSRF protection when enabled.
+      // We also pass return_url so the callback redirects the athlete back to
+      // the exact origin they initiated connect from (e.g. preview, localhost, or prod).
+      const returnUrl = typeof window !== "undefined" ? window.location.origin + window.location.pathname : "";
+      const query = returnUrl ? `?return_url=${encodeURIComponent(returnUrl)}` : "";
+      const res = await fetch(`${API_BASE_URL}/api/integrations/coros/connect${query}`, {
         method: "GET",
         headers: authHeaders(),
         credentials: "include",

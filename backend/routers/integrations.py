@@ -31,6 +31,7 @@ import secrets
 import time
 from datetime import date, datetime, timedelta
 from typing import Any
+from urllib.parse import urlparse
 
 import httpx
 from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Request, Response
@@ -142,12 +143,12 @@ def _prune_pending_auth() -> None:
     on every new connect rather than on a timer -- there is no background
     scheduler in this process."""
     cutoff = time.monotonic() - _PENDING_AUTH_TTL_SECONDS
-    expired = [s for s, (_, _, created_at) in _PENDING_AUTH.items() if created_at < cutoff]
+    expired = [s for s, entry in _PENDING_AUTH.items() if entry[2] < cutoff]
     for s in expired:
         _PENDING_AUTH.pop(s, None)
 
 
-def _pop_pending_auth(state: str | None) -> tuple[int, str] | None:
+def _pop_pending_auth(state: str | None) -> tuple[int, str, str | None] | None:
     """Consumes a pending authorization exactly once. Returns None for a
     missing, unknown, replayed, or expired state -- an attacker-supplied code
     paired with a state that doesn't resolve to a live pending flow must not
@@ -158,23 +159,53 @@ def _pop_pending_auth(state: str | None) -> tuple[int, str] | None:
     entry = _PENDING_AUTH.pop(state, None)
     if entry is None:
         return None
-    user_id, verifier, created_at = entry
+    user_id = entry[0]
+    verifier = entry[1]
+    created_at = entry[2]
+    return_url = entry[3] if len(entry) > 3 else None
     if created_at < time.monotonic() - _PENDING_AUTH_TTL_SECONDS:
         return None
-    return user_id, verifier
+    return user_id, verifier, return_url
 
 
-def _error_redirect() -> RedirectResponse:
+def _validate_return_url(url: str | None) -> str | None:
+    """Validates that a return URL has an origin explicitly permitted by ALLOWED_ORIGINS
+    or matches FRONTEND_URL to prevent open redirect vulnerabilities."""
+    if not url:
+        return None
+    try:
+        parsed = urlparse(url)
+        if not parsed.scheme or not parsed.netloc:
+            return None
+        origin = f"{parsed.scheme}://{parsed.netloc}"
+        allowed = {a.rstrip("/") for a in settings.ALLOWED_ORIGINS if a}
+        if settings.FRONTEND_URL:
+            allowed.add(settings.FRONTEND_URL.rstrip("/"))
+        if origin in allowed:
+            path = parsed.path.rstrip("/")
+            return f"{origin}{path}" if path else origin
+    except Exception:
+        pass
+    return None
+
+
+def _error_redirect(return_url: str | None = None) -> RedirectResponse:
     """Every failure path out of /coros/callback ends here, and the one-shot
     CSRF cookie is always cleared on the way out -- success or failure -- so it
     can never be replayed against a later attempt."""
-    response = RedirectResponse(url=f"{settings.FRONTEND_URL}/?coros=error")
+    base = _validate_return_url(return_url) or settings.FRONTEND_URL
+    response = RedirectResponse(url=f"{base.rstrip('/')}/?coros=error")
     response.delete_cookie(key=COROS_OAUTH_STATE_COOKIE, path=COROS_CALLBACK_PATH)
     return response
 
 
 @router.get("/coros/connect")
-async def coros_connect(response: Response, user: dict[str, Any] = Depends(get_current_user)):
+async def coros_connect(
+    request: Request,
+    response: Response,
+    return_url: str | None = None,
+    user: dict[str, Any] = Depends(get_current_user),
+):
     # Both must be set before an athlete is sent to COROS: without
     # TOKEN_ENCRYPTION_KEY, the callback can exchange the code but cannot
     # store the resulting tokens (encrypt_token raises TokenEncryptionUnconfigured),
@@ -184,7 +215,12 @@ async def coros_connect(response: Response, user: dict[str, Any] = Depends(get_c
     _prune_pending_auth()
     verifier, challenge = coros_oauth.make_pkce_pair()
     state = secrets.token_urlsafe(32)
-    _PENDING_AUTH[state] = (user["id"], verifier, time.monotonic())
+
+    safe_return_url = _validate_return_url(return_url)
+    if not safe_return_url and request.headers.get("referer"):
+        safe_return_url = _validate_return_url(request.headers.get("referer"))
+
+    _PENDING_AUTH[state] = (user["id"], verifier, time.monotonic(), safe_return_url)
     # Binds this authorization attempt to the browser that started it (RFC 6749
     # section 10.12, OAuth client CSRF): state alone is unguessable and single-use,
     # so it can't be forged, but without this cookie an attacker could start their
@@ -256,7 +292,7 @@ async def coros_callback(
     if not code or not pending:
         return _error_redirect()
 
-    user_id, verifier = pending
+    user_id, verifier, return_url = pending
     try:
         tokens = await coros_oauth.exchange_code(code, verifier)
         # Encryption happens inside this try, not after it: on a fresh deploy
@@ -295,7 +331,7 @@ async def coros_callback(
                 }
             },
         )
-        return _error_redirect()
+        return _error_redirect(return_url)
 
     db.save_connection(
         user_id=user_id,
@@ -305,7 +341,8 @@ async def coros_callback(
         token_expires_at=tokens.expires_at,
         scopes=coros_oauth.SCOPES,
     )
-    response = RedirectResponse(url=f"{settings.FRONTEND_URL}/?coros=connected")
+    base = _validate_return_url(return_url) or settings.FRONTEND_URL
+    response = RedirectResponse(url=f"{base.rstrip('/')}/?coros=connected")
     response.delete_cookie(key=COROS_OAUTH_STATE_COOKIE, path=COROS_CALLBACK_PATH)
     return response
 

@@ -200,3 +200,46 @@ def test_callback_with_mismatched_cookie_logs_a_distinct_event_from_a_missing_co
     events = [r.fields["event"] for r in caplog.records if hasattr(r, "fields")]
     assert "callback_state_mismatch" in events
     assert "callback_state_cookie_absent" not in events
+
+
+def test_callback_with_safe_return_url_redirects_to_custom_frontend(monkeypatch):
+    state = "state-custom-url"
+    custom_url = "http://127.0.0.1:18080"
+    integrations._PENDING_AUTH[state] = (42, "verifier123", time.monotonic(), custom_url)
+    saved = {}
+
+    async def fake_exchange_code(code, verifier):
+        return TokenSet(access_token="at", refresh_token="rt", expires_at=datetime.now(UTC) + timedelta(hours=1))
+
+    monkeypatch.setattr(integrations.coros_oauth, "exchange_code", fake_exchange_code)
+    monkeypatch.setattr(integrations.token_crypto, "encrypt_token", lambda t: f"enc:{t}")
+    monkeypatch.setattr(integrations.db, "save_connection", lambda **kw: saved.update(kw))
+    monkeypatch.setattr(integrations.settings, "ALLOWED_ORIGINS", ["http://127.0.0.1:18080"])
+    client.cookies.set(COOKIE_NAME, state)
+
+    resp = client.get(CALLBACK, params={"code": "auth-code", "state": state})
+
+    assert resp.status_code in (302, 307)
+    assert resp.headers["location"] == f"{custom_url}/?coros=connected"
+    assert saved["user_id"] == 42
+
+
+def test_callback_without_cookie_succeeds_when_cookie_not_required(monkeypatch):
+    state = "state-no-cookie-allowed"
+    integrations._PENDING_AUTH[state] = (42, "verifier123", time.monotonic(), None)
+    saved = {}
+
+    async def fake_exchange_code(code, verifier):
+        return TokenSet(access_token="at", refresh_token="rt", expires_at=datetime.now(UTC) + timedelta(hours=1))
+
+    monkeypatch.setattr(integrations.coros_oauth, "exchange_code", fake_exchange_code)
+    monkeypatch.setattr(integrations.token_crypto, "encrypt_token", lambda t: f"enc:{t}")
+    monkeypatch.setattr(integrations.db, "save_connection", lambda **kw: saved.update(kw))
+    monkeypatch.setattr(integrations.settings, "COROS_REQUIRE_STATE_COOKIE", False)
+
+    resp = client.get(CALLBACK, params={"code": "auth-code", "state": state})
+
+    assert resp.status_code in (302, 307)
+    assert resp.headers["location"] == "https://uphill-ai.io.vn/?coros=connected"
+    assert saved["user_id"] == 42
+    assert state not in integrations._PENDING_AUTH

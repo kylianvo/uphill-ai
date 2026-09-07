@@ -35,7 +35,7 @@ class Config:
     # own ALLOWED_ORIGINS env var or the shipped app can never reach the API.
     ALLOWED_ORIGINS: list = os.getenv(
         "ALLOWED_ORIGINS",
-        "http://localhost:3000,http://127.0.0.1:3000,capacitor://localhost,https://localhost",
+        "http://localhost:3000,http://127.0.0.1:3000,http://localhost:18080,http://127.0.0.1:18080,capacitor://localhost,https://localhost",
     ).split(",")
 
     # NotebookLM — system-level config (not per-user)
