@@ -2505,11 +2505,18 @@ async def _adapt_week_for_athlete(request: AdaptWeekRequest, athlete_id: int, jo
         completed_km = sum(w.get("distance_km") or 0 for w in completed_target)
         uncompleted_count = max(1, len(target_wos) - len(completed_target))
 
+        target_planned_km = sum(w.get("distance_km") or 0 for w in target_wos)
+        user_weekly_km = float(fresh_user.get("current_weekly_km") or 0.0)
+
         # Reference prior volume to enforce the 5-10% weekly progression cap rule
         prior_ref_km = (
             actual_km
             if (prev_wos and actual_km > 0)
-            else (planned_km if (prev_wos and planned_km > 0) else float(fresh_user.get("current_weekly_km") or 65.0))
+            else (
+                planned_km
+                if (prev_wos and planned_km > 0)
+                else (user_weekly_km if user_weekly_km > 0 else (target_planned_km if target_planned_km > 0 else 30.0))
+            )
         )
 
         fatigue_normalized = (fatigue_level or "moderate").lower().replace(" ", "_")
