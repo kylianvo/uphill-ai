@@ -2,7 +2,7 @@
 import { useAppContext } from "../contexts/AppContext";
 import { User } from "../types";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE_URL = (typeof window !== "undefined" && localStorage.getItem("UPHILL_API_URL_OVERRIDE")) || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export function useKnowledge() {
   const ctx = useAppContext();

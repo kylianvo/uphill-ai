@@ -97,3 +97,4 @@ backend/kb_seed/raw_race_results/
 backend/scripts/scrape_utmb_race.py
 backend/scripts/add_asian_races.py
 backend/scripts/enrich_race_content.py
+docker-compose.override.yml

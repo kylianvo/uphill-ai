@@ -59,9 +59,15 @@ docker compose up -d --build
 # Grafana: http://localhost:3000
 ```
 
+### Staging
+- **Backend**: Docker on SSH server `root@45.119.215.120` inside `/opt/uphill-ai-backend-staging` (port `8001`). Exposed via Nginx at `https://staging-api.uphill-ai.io.vn`.
+- **Database / Vector**: Isolated Postgres on port `5434` and Qdrant on port `6336`.
+- **Frontend testing**: Run local frontend on `http://127.0.0.1:18080` (or `http://localhost:8080`) pointing to staging either via `?api=https://staging-api.uphill-ai.io.vn` query override or via `docker-compose.override.yml`.
+- **Full Guide**: See [docs/staging_deployment_and_testing.md](docs/staging_deployment_and_testing.md) for complete rsync deployment instructions, CORS setup, and gotchas.
+
 ### Production
 - **Frontend**: Static export deployed to GitHub Pages — repo at `https://github.com/kylianvo/uphill-ai`. Deployment is automatic on push to the main branch (GitHub Actions).
-- **Backend**: Docker on SSH server `root@45.119.215.120`. Deployment is handled by `deploy_server.sh` (reads `deploy.env` for `DEPLOY_SERVER` and `DEPLOY_TARGET_DIR`). Set `ENVIRONMENT=production` in the backend `.env` on the server — this disables API docs and the mock-login endpoint. For KB-seed-only changes (hand-edited `backend/kb_seed/*.json`, no code change), use the lighter `./deploy_kb.sh [--domain gear|nutrition|scheduler|all]` instead — see the `deploy-backend` skill.
+- **Backend**: Docker on SSH server `root@45.119.215.120` inside `/opt/uphill-ai-backend` (port `8000`). Deployment is handled by `deploy_server.sh` (reads `deploy.env` for `DEPLOY_SERVER` and `DEPLOY_TARGET_DIR`). Set `ENVIRONMENT=production` in the backend `.env` on the server — this disables API docs and the mock-login endpoint. For KB-seed-only changes (hand-edited `backend/kb_seed/*.json`, no code change), use the lighter `./deploy_kb.sh [--domain gear|nutrition|scheduler|all]` instead — see the `deploy-backend` skill.
 
 The frontend uses `NEXT_PUBLIC_API_URL` to point at the production backend. In GitHub Pages deployments, this must be set at build time since the output is static.
 

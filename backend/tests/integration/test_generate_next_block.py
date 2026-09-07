@@ -103,6 +103,7 @@ class TestGenerateNextBlockOverrideAnnotation:
             assert status == "done"
 
         assert "generated via override at 50%" in (captured.get("block_context") or "")
+        assert "Coach evaluation (Block 1):" in (captured.get("block_context") or "")
 
 
 class TestGenerateNextBlockGate:
@@ -281,3 +282,23 @@ class TestGenerateNextBlockScheduleEdit:
         assert after["long_run_day"] == before["long_run_day"]
         assert after["preferred_run_days"] == before["preferred_run_days"]
         assert after["training_environment"] == before["training_environment"]
+
+
+def test_get_block_evaluation_endpoint(client, auth_headers):
+    plan_id, workout_id = _create_plan_with_two_weeks_of_workouts(client, auth_headers["headers"])
+    client.patch(
+        "/api/coach/workouts/log",
+        headers=auth_headers["headers"],
+        json={"workout_id": workout_id, "is_completed": 1},
+    )
+    resp = client.get(
+        f"/api/coach/block-evaluation/{plan_id}/1",
+        headers=auth_headers["headers"],
+    )
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data["block_number"] == 1
+    assert data["sessions_total"] == 2
+    assert data["sessions_completed"] == 1
+    assert data["completion_pct"] == 50
+    assert "coach_summary" in data

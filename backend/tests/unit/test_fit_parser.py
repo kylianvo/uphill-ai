@@ -66,3 +66,26 @@ class TestSemicirclesToDegrees:
 
     def test_zero_semicircles_is_zero_degrees(self):
         assert FitParser.semicircles_to_degrees(0) == 0.0
+
+
+class TestFitParserUndersizedFieldCompatibility:
+    """COROS watches emit definition messages whose declared field size is not a
+    multiple of the declared base type's size (e.g. 1 byte against uint32).
+
+    fitparse 1.2.0 raises on these instead of falling back to byte encoding --
+    its own source says as much at fitparse/base.py:194 ("we could fall back to
+    byte encoding if there's any examples in the wild"). COROS is that example,
+    so every COROS activity upload used to fail with a 500.
+    """
+
+    def test_parses_file_containing_an_undersized_field(self):
+        fit_bytes = build_fit_bytes(make_records([(0.0, 120), (20.0, 130), (45.0, 140)]), undersized_field=True)
+        result = FitParser.parse(fit_bytes)
+        assert result["total_raw_points"] == 3
+
+    def test_undersized_field_does_not_corrupt_the_readable_fields(self):
+        fit_bytes = build_fit_bytes(make_records([(0.0, 100), (10.0, 150), (20.0, 200)]), undersized_field=True)
+        result = FitParser.parse(fit_bytes)
+        assert result["summary"]["total_distance_meters"] == 20.0
+        assert result["summary"]["max_heart_rate"] == 200
+        assert result["summary"]["avg_heart_rate"] == 150

@@ -21,8 +21,10 @@ import {
   Warning,
   Leaf,
   Mountains,
+  Flag,
 } from "@phosphor-icons/react";
-import { getZoneColor, RPE_DESCRIPTORS } from "../data/workoutLibrary";
+import { getZoneColor } from "../data/workoutLibrary";
+import { FeelingSelector, rpeToFeelingId } from "./FeelingSelector";
 import { useWorkoutTypes, resolveWorkoutInfo } from "../hooks/useWorkoutTypes";
 import {
   parseExecutionSteps,
@@ -833,7 +835,7 @@ export default function WorkoutCard({
                   alignItems: "flex-start",
                 }}
               >
-                <span style={{ fontSize: "18px", flexShrink: 0 }}>🏁</span>
+                <Flag size={20} weight="fill" color="#d97706" style={{ flexShrink: 0, marginTop: "2px" }} aria-hidden="true" />
                 <div>
                   <div style={{ fontSize: "9px", fontWeight: "800", letterSpacing: "0.08em", color: "#d97706", textTransform: "uppercase", marginBottom: "4px" }}>
                     {lang === "en" ? "Coach Uphill" : "Coach Uphill"}
@@ -947,46 +949,15 @@ export default function WorkoutCard({
                   coach understand how your body is responding week-to-week.
                 </p>
               )}
-              {/* RPE scale */}
-              <div style={{ display: "flex", gap: "4px", marginBottom: "6px", flexWrap: "wrap" }}>
-                {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => {
-                  const desc = RPE_DESCRIPTORS[n];
-                  const selected = rpe === n;
-                  return (
-                    <button
-                      key={n}
-                      onClick={() => setRpe(selected ? null : n)}
-                      title={desc.label}
-                      style={{
-                        width: "28px",
-                        height: "28px",
-                        borderRadius: "6px",
-                        border: `1.5px solid ${selected ? desc.color : "rgba(0,0,0,0.1)"}`,
-                        background: selected ? desc.color : "rgba(255,255,255,0.5)",
-                        color: selected ? "#fff" : "var(--text-muted)",
-                        fontSize: "11px",
-                        fontWeight: "700",
-                        cursor: "pointer",
-                        flexShrink: 0,
-                      }}
-                    >
-                      {n}
-                    </button>
-                  );
-                })}
+              {/* RPE feeling scale */}
+              <div style={{ marginBottom: "10px" }}>
+                <FeelingSelector
+                  variant="pills"
+                  selectedId={rpeToFeelingId(rpe)}
+                  onChange={(_, rpeVal) => setRpe(rpe === rpeVal ? null : rpeVal)}
+                  lang={lang as "en" | "vi"}
+                />
               </div>
-              {rpe !== null && (
-                <p
-                  style={{
-                    fontSize: "11px",
-                    color: RPE_DESCRIPTORS[rpe].color,
-                    margin: "0 0 10px 0",
-                    fontWeight: "600",
-                  }}
-                >
-                  {rpe} — {RPE_DESCRIPTORS[rpe].label}
-                </p>
-              )}
 
               {/* Notes */}
               <textarea

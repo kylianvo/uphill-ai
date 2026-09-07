@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useAppContext } from "../contexts/AppContext";
 import { usePlanner } from "../hooks/usePlanner";
 import { translations } from "../app/translations";
@@ -9,7 +10,7 @@ import { KnowledgeCard } from "../components/KnowledgeCard";
 import { DndContext, DragEndEvent, DragOverEvent, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, TouchSensor, KeyboardSensor } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import ToolsView from "./ToolsView";
-import { UploadSimple, FileArrowUp, Heart, Clock, Mountains, MapPin, Footprints, ArrowsMerge, PlayCircle, CheckCircle, Fire, Path, RoadHorizon, Info, Check, Question, WarningCircle, Plus, Trash, Archive, LockKey, LockKeyOpen, Trophy, Target, Sneaker, PersonSimpleRun, Bed, XCircle, DownloadSimple, Gauge } from '@phosphor-icons/react';
+import { UploadSimple, FileArrowUp, Heart, Clock, Mountains, MapPin, Footprints, ArrowsMerge, PlayCircle, CheckCircle, Fire, Path, RoadHorizon, Info, Check, Question, WarningCircle, Plus, Trash, Archive, LockKey, LockKeyOpen, Trophy, Target, Sneaker, PersonSimpleRun, Bed, XCircle, DownloadSimple, Gauge, Sun, Moon, DotsSixVertical, ArrowsClockwise, LinkSimple, Flag, TrendUp, Drop, Leaf, Lightning, PencilSimple, X, ArrowLeft, ArrowsLeftRight, ShieldCheck, Sparkle } from '@phosphor-icons/react';
 import { RaceMatch } from "../hooks/useRaceMatch";
 import { RaceNameField } from "../components/RaceNameField";
 import { CoachNoteThread } from "../components/CoachNoteThread";
@@ -17,6 +18,13 @@ import { WorkoutTypeSelect } from "../components/WorkoutTypeSelect";
 import { minsToHms, isTaperPhase, buildPaceHandoffFromPlan } from "../lib/planHandoff";
 import { parsePaceToMinutes, formatDurationHM } from "../lib/paceStrategy";
 import { ScheduleFieldsEditor, ScheduleFieldsValue } from "../components/ScheduleFieldsEditor";
+import { useMatching, type RawMatchActivity } from "../hooks/useMatching";
+import MatchedActivityCard from "../components/MatchedActivityCard";
+import UnplannedActivityCard from "../components/UnplannedActivityCard";
+import { MoveWorkoutModal } from "../components/MoveWorkoutModal";
+import { AdaptWeekModal } from "../components/AdaptWeekModal";
+import { FeelingSelector, rpeToFeelingId } from "../components/FeelingSelector";
+import { triggerHaptic } from "../utils/native";
 
 export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   const ctx = useAppContext();
@@ -52,6 +60,63 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   }, [actingAsAthleteId]);
   const t = (key: keyof typeof translations.en) => translations[lang]?.[key] || translations.en[key] || key;
   const totalWeeks = activePlan ? (activePlan.total_weeks || activePlan.plan_duration_weeks || 1) : 0;
+
+  // ── Watch Activity Matching ──────────────────────────────────────────────
+  const {
+    fetchMatches,
+    runMatching,
+    syncWatch,
+    confirmMatch,
+    clearMatch,
+    running: matchingRunning,
+    syncing: watchSyncing,
+  } = useMatching();
+
+  const [matchActivities, setMatchActivities] = useState<RawMatchActivity[]>([]);
+
+  const loadPlanMatches = React.useCallback(async () => {
+    if (!activePlan?.id) {
+      setMatchActivities([]);
+      return;
+    }
+    const res = await fetchMatches({ planId: activePlan.id });
+    if (res) setMatchActivities(res);
+  }, [activePlan, fetchMatches]);
+
+  useEffect(() => {
+    if (!activePlan?.id) return;
+    let cancelled = false;
+    void fetchMatches({ planId: activePlan.id }).then((res) => {
+      if (!cancelled && res) setMatchActivities(res);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [activePlan?.id, fetchMatches]);
+
+  const handleHeaderSync = async () => {
+    if (!activePlan?.id || watchSyncing || matchingRunning) return;
+    triggerHaptic();
+    await syncWatch({ planId: activePlan.id });
+    await runMatching({ planId: activePlan.id });
+    await loadPlanMatches();
+  };
+
+  const handleConfirmMatch = async (activityId: number, workoutId: number): Promise<boolean> => {
+    const ok = await confirmMatch(activityId, workoutId);
+    if (ok) {
+      await loadPlanMatches();
+    }
+    return ok;
+  };
+
+  const handleUnlinkMatch = async (activityId: number): Promise<boolean> => {
+    const ok = await clearMatch(activityId);
+    if (ok) {
+      await loadPlanMatches();
+    }
+    return ok;
+  };
 
   // ── Phase → knowledge card topic mapping ────────────────────────────────
   const phaseToTopic = (phase: string, daysToRace: number | null): string | null => {
@@ -192,7 +257,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
         `Chúc mừng bạn đã hoàn thành xuất sắc giải ${raceName}! Hãy nghỉ ngơi, thả lỏng và để cơ thể phục hồi, hấp thụ thành quả sau chu kỳ tập luyện.`,
         `Race hoàn thành! Dù kết quả ra sao, bạn đã nỗ lực hết mình và cán đích thành công. Hai tuần tới hãy tập thật nhẹ nhàng — phục hồi cũng là một phần thiết yếu của tập luyện.`,
       ];
-      return { icon: "🎉", color: "#10b981", text: msgs[v % msgs.length] };
+      return { Icon: Trophy, color: "#10b981", text: msgs[v % msgs.length] };
     }
 
     if (daysToRace !== null && daysToRace === 0) {
@@ -203,7 +268,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
         `Hôm nay là Ngày Đua! Mọi bài tập và nỗ lực chuẩn bị đã sẵn sàng trong bạn. Hãy tự tin sải bước và tận hưởng từng km đường đua!`,
         `Hôm nay là giải đấu ${raceName}. Hãy tin tưởng vào quá trình tập luyện, giữ vững chiến thuật Pacing và tận hưởng trọn vẹn đường chạy.`,
       ];
-      return { icon: "⚡", color: "#f59e0b", text: msgs[v % msgs.length] };
+      return { Icon: Lightning, color: "#f59e0b", text: msgs[v % msgs.length] };
     }
 
     if (daysToRace !== null && daysToRace > 0 && daysToRace <= 7) {
@@ -215,7 +280,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
         `Tuần thi đấu của giải ${raceName}. Khối lượng tập luyện đã hoàn tất — nhiệm vụ lúc này là giữ cơ thể thoải mái, ngủ đủ giấc và tin tưởng vào phong độ của bạn.`,
         `Chỉ còn ${daysToRace} ngày nữa là đến ${raceName}. Chỉ tập các bài ngắn và nhẹ để cơ bắp tích lũy độ nảy và độ sung mãn tối đa.`,
       ];
-      return { icon: "🏁", color: "#f59e0b", text: msgs[v % msgs.length] };
+      return { Icon: Flag, color: "#f59e0b", text: msgs[v % msgs.length] };
     }
 
     if (daysToRace !== null && daysToRace > 7 && daysToRace <= 14) {
@@ -225,7 +290,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
       ] : [
         `Còn 2 tuần nữa tới ${raceName}. Giai đoạn Taper đang phát huy tác dụng — hãy duy trì khối lượng nhẹ và kiên nhẫn khi đôi chân bắt đầu tràn đầy năng lượng.`,
       ];
-      return { icon: "🌊", color: "#3b82f6", text: msgs[v % msgs.length] };
+      return { Icon: Drop, color: "#3b82f6", text: msgs[v % msgs.length] };
     }
 
     // Phase-based messages
@@ -238,7 +303,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
         `Tuần đỉnh cao (Peak Week). Đây là giai đoạn tôi luyện thể lực và sức bền chuyên biệt trước giải. Hãy tập trung tối đa và ngủ nghỉ thật sâu sau mỗi bài tập.`,
         `Tuần tập luyện khối lượng cao nhất của chu kỳ. Từng buổi tập đều có giá trị lớn. Hãy tập hết mình và ưu tiên phục hồi tối đa.`,
       ];
-      return { icon: "🔥", color: "#ef4444", text: msgs[v % msgs.length] };
+      return { Icon: Fire, color: "#ef4444", text: msgs[v % msgs.length] };
     }
 
     if (phase.includes("taper")) {
@@ -249,7 +314,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
         `Tuần Taper giảm tải. Khối lượng tập luyện quan trọng nhất đã được tích lũy — tập thêm lúc này chỉ gây mỏi cơ. Hãy tuân thủ lịch giảm tải và tin vào quá trình phục hồi.`,
         `Cơ thể bạn đang hấp thụ toàn bộ khối lượng tập luyện vừa qua. Hãy kiềm chế thôi thúc tập thêm — nghỉ ngơi lúc này chính là bài tập quan trọng nhất.`,
       ];
-      return { icon: "🌊", color: "#3b82f6", text: msgs[v % msgs.length] };
+      return { Icon: Drop, color: "#3b82f6", text: msgs[v % msgs.length] };
     }
 
     if (phase.includes("build")) {
@@ -261,7 +326,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
         `Giai đoạn Build — nền tảng hiếu khí (aerobic) đã vững chắc, giờ là lúc nâng cao thể lực chuyên biệt cho giải đấu. Ưu tiên chất lượng hơn số lượng.`,
         `Bạn đang trong giai đoạn Build. Cường độ đang tăng dần — hãy đảm bảo các bài chạy nặng đạt đúng mục tiêu và các bài Easy Run thật sự nhẹ nhàng.`,
       ];
-      return { icon: "📈", color: "#8b5cf6", text: msgs[v % msgs.length] };
+      return { Icon: TrendUp, color: "#8b5cf6", text: msgs[v % msgs.length] };
     }
 
     if (phase.includes("base")) {
@@ -269,7 +334,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
         const text = lang === "en"
           ? `Welcome to your ${activePlan.total_weeks}-week plan for ${raceName}. These first weeks build the aerobic foundation everything else sits on. Run easy, run often, and resist the urge to push.`
           : `Chào mừng bạn đến với giáo án ${activePlan.total_weeks} tuần cho giải ${raceName}. Những tuần đầu tiên này sẽ xây dựng nền tảng hiếu khí (aerobic base) vững chắc. Hãy chạy nhẹ nhàng, duy trì đều đặn và không cần vội vàng ép nhịp tim.`;
-        return { icon: "🌱", color: "#10b981", text };
+        return { Icon: Leaf, color: "#10b981", text };
       }
       const msgs = lang === "en" ? [
         `Base phase — consistency beats intensity right now. Show up, run easy, let the aerobic engine grow.`,
@@ -278,7 +343,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
         `Giai đoạn Base — sự đều đặn quan trọng hơn cường độ. Hãy duy trì lịch chạy Easy, tích lũy thời gian vận động để phát triển hệ thống hiếu khí.`,
         `Bạn đang xây dựng động cơ hiếu khí. Những km chạy tích lũy trong Zone 2 hôm nay sẽ mang lại tốc độ bền bỉ trong ngày thi đấu.`,
       ];
-      return { icon: "🌱", color: "#10b981", text: msgs[v % msgs.length] };
+      return { Icon: Leaf, color: "#10b981", text: msgs[v % msgs.length] };
     }
 
     if (phase.includes("recovery")) {
@@ -289,7 +354,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
         `Tuần phục hồi (Recovery Week). Sự thích nghi và tiến bộ của cơ bắp diễn ra khi nghỉ ngơi. Hãy tôn trọng khối lượng giảm tải này để cơ thể nạp lại năng lượng.`,
         `Tuần Deload xả tải. Cơ thể đang phục hồi và củng cố thể lực sau chu kỳ tập nặng vừa qua. Hãy thư giãn và để cơ thể tự tái tạo.`,
       ];
-      return { icon: "💧", color: "#6b7280", text: msgs[v % msgs.length] };
+      return { Icon: Drop, color: "#6b7280", text: msgs[v % msgs.length] };
     }
 
     return null;
@@ -312,7 +377,51 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
     use_treadmill: false,
     training_environment: "flat",
     double_session_days: [],
+    athlete_notes: "",
   });
+
+  // ── Adapt Week state ─────────────────────────────────────────────────────
+  const [showAdaptWeek, setShowAdaptWeek] = useState(false);
+  const [adaptTargetWeek, setAdaptTargetWeek] = useState(1);
+  const [adaptLoading, setAdaptLoading] = useState(false);
+  const [adaptingWeekNum, setAdaptingWeekNum] = useState<number | null>(null);
+
+  const handleOpenAdaptWeek = (weekNum: number) => {
+    setAdaptTargetWeek(weekNum);
+    setShowAdaptWeek(true);
+  };
+
+  const handleAdaptSuccess = (jobId: string, weekNum: number) => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("uphill_session_token") : null;
+    if (!token) return;
+    setAdaptLoading(true);
+    setAdaptingWeekNum(weekNum);
+    startPlanJobPoller(jobId, token);
+    const repoll = setInterval(() => {
+      const tkn = localStorage.getItem("uphill_session_token");
+      if (!tkn) {
+        clearInterval(repoll);
+        setAdaptLoading(false);
+        setAdaptingWeekNum(null);
+        return;
+      }
+      fetch(`${API_BASE_URL}/api/coach/plan-status/${jobId}`, { headers: { Authorization: `Bearer ${tkn}` } })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => {
+          if (d?.status === "done" || d?.status === "error") {
+            clearInterval(repoll);
+            setAdaptLoading(false);
+            setAdaptingWeekNum(null);
+            fetchBlockCompletion();
+          }
+        })
+        .catch(() => {
+          clearInterval(repoll);
+          setAdaptLoading(false);
+          setAdaptingWeekNum(null);
+        });
+    }, 3000);
+  };
 
   const fetchBlockCompletion = React.useCallback(() => {
     if (!activePlan) return;
@@ -344,6 +453,36 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   const nextBlockNum = currentBlockNum + 1;
   const nextBlockStartWeek = nextBlockNum * 2 - 1;
   const allBlocksGenerated = maxGeneratedWeek >= totalWeeks && totalWeeks > 0;
+
+  const [blockEvaluation, setBlockEvaluation] = useState<any | null>(null);
+  const [blockEvaluationLoading, setBlockEvaluationLoading] = useState(false);
+
+  useEffect(() => {
+    if (!showBlockReview || !activePlan) return;
+    const token = typeof window !== "undefined" ? localStorage.getItem("uphill_session_token") : null;
+    if (!token) return;
+
+    let cancelled = false;
+    const evalUrl = actingAsAthleteId
+      ? `${API_BASE_URL}/api/coaching/athletes/${actingAsAthleteId}/block-evaluation/${activePlan.id}/${currentBlockNum}`
+      : `${API_BASE_URL}/api/coach/block-evaluation/${activePlan.id}/${currentBlockNum}`;
+
+    fetch(evalUrl, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data) setBlockEvaluation(data);
+      })
+      .catch((err) => console.error("Failed to fetch block evaluation:", err))
+      .finally(() => {
+        if (!cancelled) setBlockEvaluationLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [showBlockReview, activePlan?.id, currentBlockNum, actingAsAthleteId, API_BASE_URL]);
 
   // Re-check block completion % whenever a workout is toggled
   const handleToggleCompleteWithRefresh = async (id: number, completed: boolean) => {
@@ -378,8 +517,11 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
       use_treadmill: !!p.use_treadmill,
       training_environment: p.training_environment || "flat",
       double_session_days: doubleSessionDays,
+      athlete_notes: p.athlete_notes || "",
     });
     if (withOverride) setOverrideConfirmed(true);
+    setBlockEvaluation(null);
+    setBlockEvaluationLoading(true);
     setShowBlockReview(true);
   };
 
@@ -410,11 +552,13 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
           has_gym_access: nextBlockSchedule.has_gym_access,
           use_treadmill: nextBlockSchedule.use_treadmill,
           training_environment: nextBlockSchedule.training_environment,
+          athlete_notes: nextBlockSchedule.athlete_notes || null,
         }),
       });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.detail || "Failed to start next block generation");
       setShowBlockReview(false);
+      setBlockEvaluation(null);
       setBlockReviewNotes("");
       setBlockReviewRpe(5);
       setBlockCoachNotes("");
@@ -507,7 +651,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
         )}
         {switchingAthlete ? (
           <div style={{ background: "rgba(255, 255, 255, 0.95)", border: "1px solid var(--border-color)", padding: isMobile ? "40px 20px" : "60px 32px", borderRadius: "16px", display: "flex", flexDirection: "column", alignItems: "center", gap: "12px" }}>
-            <div className="spinner" style={{ fontSize: "24px" }}>⚙️</div>
+            <ArrowsClockwise size={28} className="match-spin" color="var(--accent-primary)" aria-hidden="true" />
             <p style={{ fontSize: "13px", color: "var(--text-secondary)", margin: 0 }}>
               {lang === "en" ? `Loading ${actingAsAthleteName}'s plan…` : `Đang tải giáo án của ${actingAsAthleteName}…`}
             </p>
@@ -527,11 +671,11 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
               </label>
               <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(5, 1fr)", gap: "8px" }}>
                 {([
-                  { val: "race",          Icon: Trophy, label: t("goal_race").replace(" 🏆", "") },
-                  { val: "distance",      Icon: Target, label: t("goal_distance").replace(" 📏", "") },
-                  { val: "start_running", Icon: Sneaker, label: t("goal_start").replace(" 🌱", "") },
-                  { val: "return",        Icon: PersonSimpleRun, label: t("goal_return").replace(" 🔄", "") },
-                  { val: "recovery",      Icon: Bed, label: t("goal_recovery").replace(" 💤", "") },
+                  { val: "race",          Icon: Trophy, label: t("goal_race") },
+                  { val: "distance",      Icon: Target, label: t("goal_distance") },
+                  { val: "start_running", Icon: Sneaker, label: t("goal_start") },
+                  { val: "return",        Icon: PersonSimpleRun, label: t("goal_return") },
+                  { val: "recovery",      Icon: Bed, label: t("goal_recovery") },
                 ] as const).map(({ val, Icon, label }) => {
                   const active = planForm.plan_goal_category === val;
                   return (
@@ -647,11 +791,13 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
               <div style={{ marginBottom: "16px" }}>
                 <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px", color: "var(--text-secondary)" }}>{t("plan_course_mode")}</label>
                 <div style={{ display: "flex", gap: "8px" }}>
-                  <button type="button" className={`btn ${courseInputMode === "manual" ? "btn-primary" : "btn-secondary"}`} style={{ padding: "6px 12px", fontSize: "12px", borderRadius: "8px", height: "32px", flex: 1 }} onClick={() => setCourseInputMode("manual")}>
-                    {lang === "en" ? "✍️ Manual" : "✍️ Thủ công"}
+                  <button type="button" className={`btn ${courseInputMode === "manual" ? "btn-primary" : "btn-secondary"}`} style={{ padding: "6px 12px", fontSize: "12px", borderRadius: "8px", height: "32px", flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }} onClick={() => setCourseInputMode("manual")}>
+                    <PencilSimple size={14} weight="bold" aria-hidden="true" />
+                    <span>{lang === "en" ? "Manual" : "Thủ công"}</span>
                   </button>
-                  <button type="button" className={`btn ${courseInputMode === "gpx" ? "btn-primary" : "btn-secondary"}`} style={{ padding: "6px 12px", fontSize: "12px", borderRadius: "8px", height: "32px", flex: 1 }} onClick={() => setCourseInputMode("gpx")}>
-                    {lang === "en" ? "📂 GPX Route" : "📂 File GPX"}
+                  <button type="button" className={`btn ${courseInputMode === "gpx" ? "btn-primary" : "btn-secondary"}`} style={{ padding: "6px 12px", fontSize: "12px", borderRadius: "8px", height: "32px", flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }} onClick={() => setCourseInputMode("gpx")}>
+                    <UploadSimple size={14} weight="bold" aria-hidden="true" />
+                    <span>{lang === "en" ? "GPX Route" : "File GPX"}</span>
                   </button>
                 </div>
               </div>
@@ -660,7 +806,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: isMobile ? "12px" : "16px", marginBottom: "20px" }}>
                   <div>
                     <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px", color: "var(--text-secondary)" }}>
-                      {lang === "en" ? "Distance (km)" : "Cự ly (km)"}
+                       {lang === "en" ? "Distance (km)" : "Cự ly (km)"}
                     </label>
                     <input type="number" step="0.1" className="chat-input" style={{ borderRadius: "8px", width: "100%", padding: "10px" }} placeholder="e.g. 50" value={planForm.course_distance_km} onChange={(e) => setPlanForm({ ...planForm, course_distance_km: e.target.value })} />
                   </div>
@@ -677,7 +823,12 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                   <button type="button" className="btn btn-secondary" style={{ fontSize: "12px", padding: "6px 12px", height: "32px", margin: "0 auto 8px auto" }} onClick={() => plannerGpxInputRef.current?.click()} disabled={plannerGpxLoading}>
                     {plannerGpxLoading ? (lang === "en" ? "Parsing..." : "Đang đọc...") : (lang === "en" ? "Select GPX" : "Chọn file GPX")}
                   </button>
-                  {plannerGpxFile && <div style={{ marginTop: "6px", padding: "6px", background: "rgba(16, 185, 129, 0.05)", border: "1px solid var(--border-color)", borderRadius: "6px", fontSize: "11.5px" }}>✅ {planForm.course_distance_km}km, {planForm.course_elevation_gain_m}m</div>}
+                  {plannerGpxFile && (
+                    <div style={{ marginTop: "6px", padding: "6px 10px", background: "rgba(16, 185, 129, 0.08)", border: "1px solid rgba(16, 185, 129, 0.25)", borderRadius: "6px", fontSize: "11.5px", display: "inline-flex", alignItems: "center", gap: "5px" }}>
+                      <CheckCircle size={14} weight="fill" color="var(--accent-primary)" aria-hidden="true" />
+                      <span>{planForm.course_distance_km}km, {planForm.course_elevation_gain_m}m</span>
+                    </div>
+                  )}
                   {plannerGpxError && <div style={{ marginTop: "6px", fontSize: "11px", color: "var(--accent-alert)" }}><XCircle weight="fill" style={{marginRight: "4px", verticalAlign: "middle"}}/> {plannerGpxError}</div>}
                 </div>
               )}
@@ -715,8 +866,9 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
             {planForm.plan_goal_category === "return" && (
               <div style={{ marginBottom: "16px", padding: "16px", border: "1px solid var(--border-color)", borderRadius: "12px", display: "flex", flexDirection: "column", gap: "12px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border-color)", paddingBottom: "8px", flexWrap: "wrap", gap: "8px" }}>
-                  <h4 style={{ margin: 0, fontSize: "14px", fontWeight: "700", color: "var(--text-bright)" }}>
-                    {lang === "en" ? "🔄 Return to Running" : "🔄 Tập luyện trở lại"}
+                  <h4 style={{ margin: 0, fontSize: "14px", fontWeight: "700", color: "var(--text-bright)", display: "flex", alignItems: "center", gap: "6px" }}>
+                    <PersonSimpleRun size={16} weight="bold" color="var(--accent-primary)" aria-hidden="true" />
+                    <span>{lang === "en" ? "Return to Running" : "Tập luyện trở lại"}</span>
                   </h4>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
@@ -779,8 +931,9 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
             {/* ── Post-Race Recovery fields ──────────────────────── */}
             {planForm.plan_goal_category === "recovery" && (
               <div style={{ marginBottom: "16px", padding: "16px", border: "1px solid var(--border-color)", borderRadius: "12px", display: "flex", flexDirection: "column", gap: "12px" }}>
-                <h4 style={{ margin: 0, fontSize: "14px", fontWeight: "700", color: "var(--text-bright)", borderBottom: "1px solid var(--border-color)", paddingBottom: "8px" }}>
-                  {lang === "en" ? "💤 Post-Race Recovery Program" : "💤 Lộ trình Phục hồi sau Giải chạy"}
+                <h4 style={{ margin: 0, fontSize: "14px", fontWeight: "700", color: "var(--text-bright)", borderBottom: "1px solid var(--border-color)", paddingBottom: "8px", display: "flex", alignItems: "center", gap: "6px" }}>
+                  <Bed size={16} weight="bold" color="var(--accent-primary)" aria-hidden="true" />
+                  <span>{lang === "en" ? "Post-Race Recovery Program" : "Lộ trình Phục hồi sau Giải chạy"}</span>
                 </h4>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
                   <div>
@@ -876,6 +1029,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 use_treadmill: planForm.use_treadmill,
                 training_environment: planForm.training_environment,
                 double_session_days: planForm.double_session_days,
+                athlete_notes: planForm.athlete_notes,
               }}
               onChange={(patch) => setPlanForm({ ...planForm, ...patch })}
             />
@@ -908,7 +1062,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 <button
                   type="button"
                   className="btn btn-secondary"
-                  style={{ flex: 1, height: "42px", fontSize: "13.5px" }}
+                  style={{ flex: 1, height: "44px", minHeight: "44px", fontSize: "13.5px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
                   onClick={() => {
                     setActivePlan(backupActivePlan);
                     setWorkouts(backupWorkouts);
@@ -916,7 +1070,8 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                     setBackupWorkouts([]);
                   }}
                 >
-                  {lang === "en" ? "◀ Go Back" : "◀ Quay lại"}
+                  <ArrowLeft size={16} aria-hidden="true" />
+                  <span>{lang === "en" ? "Go Back" : "Quay lại"}</span>
                 </button>
                 <button
                   type="submit"
@@ -924,7 +1079,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                   style={{ flex: 2, height: "42px", fontSize: "13.5px" }}
                   disabled={planLoading}
                 >
-                  {planLoading ? (lang === "en" ? "Building Plan..." : "Đang tạo Kế hoạch...") : (lang === "en" ? "🛠️ Build Custom Calendar" : "🛠️ Thiết lập Lịch tập tùy chỉnh")}
+                  {planLoading ? (lang === "en" ? "Building Plan..." : "Đang tạo Kế hoạch...") : (lang === "en" ? "Build Custom Calendar" : "Thiết lập Lịch tập tùy chỉnh")}
                 </button>
               </div>
             ) : (
@@ -934,7 +1089,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 style={{ width: "100%", height: "42px", fontSize: "13.5px" }}
                 disabled={planLoading}
               >
-                {planLoading ? (lang === "en" ? "Building Plan..." : "Đang tạo Kế hoạch...") : (lang === "en" ? "🛠️ Build Custom Calendar" : "🛠️ Thiết lập Lịch tập tùy chỉnh")}
+                {planLoading ? (lang === "en" ? "Building Plan..." : "Đang tạo Kế hoạch...") : (lang === "en" ? "Build Custom Calendar" : "Thiết lập Lịch tập tùy chỉnh")}
               </button>
             )}
           </form>
@@ -998,6 +1153,44 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
 
               {!showExportOptions ? (
                 <div style={{ display: "flex", gap: "10px", width: "100%", flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={handleHeaderSync}
+                    disabled={watchSyncing || matchingRunning}
+                    aria-label={lang === "en" ? "Sync watch activities" : "Đồng bộ hoạt động từ đồng hồ"}
+                    style={{
+                      flex: 1,
+                      minWidth: "120px",
+                      fontSize: "12px",
+                      height: "36px",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "6px",
+                      borderRadius: "9999px",
+                      border: "1px solid var(--border-color)",
+                      background: "rgba(0, 0, 0, 0.04)",
+                      color: "var(--text-primary)",
+                      cursor: watchSyncing || matchingRunning ? "default" : "pointer",
+                      opacity: watchSyncing || matchingRunning ? 0.7 : 1,
+                    }}
+                  >
+                    <ArrowsClockwise
+                      size={15}
+                      weight="bold"
+                      className={watchSyncing || matchingRunning ? "match-spin" : ""}
+                      aria-hidden="true"
+                    />
+                    <span>
+                      {watchSyncing
+                        ? (lang === "en" ? "Syncing..." : "Đang đồng bộ...")
+                        : matchingRunning
+                        ? (lang === "en" ? "Matching..." : "Đang khớp...")
+                        : (lang === "en" ? "Sync Watch" : "Đồng bộ đồng hồ")}
+                    </span>
+                  </button>
+
                   <button
                     className="btn btn-primary"
                     style={{ flex: 1, minWidth: "120px", fontSize: "12px", height: "36px", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
@@ -1083,9 +1276,12 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                     </span>
                     <button
                       type="button"
-                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: "12px", color: "var(--text-muted)" }}
+                      aria-label={lang === "en" ? "Close" : "Đóng"}
+                      style={{ background: "none", border: "none", cursor: "pointer", padding: "4px", color: "var(--text-muted)", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
                       onClick={() => setShowExportOptions(false)}
-                    >✕</button>
+                    >
+                      <X size={14} aria-hidden="true" />
+                    </button>
                   </div>
                   <div style={{ display: "flex", gap: "8px" }}>
                     <select
@@ -1135,13 +1331,13 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                       style={{
                         padding: "6px 12px", borderRadius: "8px", flexShrink: 0,
                         fontSize: "12px", display: "flex", flexDirection: "column",
-                        alignItems: "center", gap: "1px", minWidth: "60px", height: "44px",
+                        alignItems: "center", gap: "2px", minWidth: "60px", height: "44px",
                         background: "rgba(0,0,0,0.04)", border: "1px dashed rgba(0,0,0,0.15)",
                         color: "var(--text-muted)", opacity: 0.55, cursor: "not-allowed",
                         userSelect: "none",
                       }}
                     >
-                      <span style={{ fontSize: "11px" }}>🔒</span>
+                      <LockKey size={13} weight="fill" aria-hidden="true" />
                       <span style={{ fontSize: "9px" }}>{lang === "en" ? `Week ${w}` : `Tuần ${w}`}</span>
                     </div>
                   );
@@ -1200,19 +1396,59 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                     border: "1px solid var(--border-color)",
                     borderRadius: "12px",
                     display: "flex",
-                    flexDirection: "column",
-                    gap: "4px"
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "12px",
+                    flexWrap: "wrap",
                   }}>
-                    <span style={{ fontSize: "10px", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: "700" }}>
-                      {lang === "en" ? `Weekly Volume (Week ${selectedWeek})` : `Thể tích tuần (Tuần ${selectedWeek})`}
-                    </span>
-                    <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
-                      <span style={{ fontSize: "18px", fontWeight: "800", color: "var(--accent-primary)" }}>{weeklyHours} {lang === "en" ? "hrs" : "giờ"}</span>
-                      <span style={{ fontSize: "13px", color: "var(--text-muted)", fontWeight: "600" }}>· ~{weeklyKm.toFixed(1)} km</span>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                      <span style={{ fontSize: "10px", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: "700" }}>
+                        {lang === "en" ? `Weekly Volume (Week ${selectedWeek})` : `Thể tích tuần (Tuần ${selectedWeek})`}
+                      </span>
+                      <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
+                        <span style={{ fontSize: "18px", fontWeight: "800", color: "var(--accent-primary)" }}>{weeklyHours} {lang === "en" ? "hrs" : "giờ"}</span>
+                        <span style={{ fontSize: "13px", color: "var(--text-muted)", fontWeight: "600" }}>· ~{weeklyKm.toFixed(1)} km</span>
+                      </div>
+                      <span style={{ fontSize: "9.5px", color: "var(--text-muted)", fontWeight: "500", fontStyle: "italic" }}>
+                        {lang === "en" ? "Sessions are run by time — distance is an estimate for planning" : "Buổi tập theo dõi bằng thời gian — quãng đường chỉ là ước tính"}
+                      </span>
                     </div>
-                    <span style={{ fontSize: "9.5px", color: "var(--text-muted)", fontWeight: "500", fontStyle: "italic" }}>
-                      {lang === "en" ? "Sessions are run by time — distance is an estimate for planning" : "Buổi tập theo dõi bằng thời gian — quãng đường chỉ là ước tính"}
-                    </span>
+
+                    {selectedWeek <= maxGeneratedWeek && (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenAdaptWeek(selectedWeek)}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "5px",
+                          padding: "4px 10px",
+                          fontSize: "11.5px",
+                          fontWeight: "600",
+                          borderRadius: "20px",
+                          cursor: "pointer",
+                          border: "1px solid rgba(25, 206, 139, 0.4)",
+                          background: "rgba(25, 206, 139, 0.08)",
+                          color: "var(--accent-primary)",
+                          transition: "all 0.15s ease",
+                          whiteSpace: "nowrap",
+                          height: "26px",
+                          flexShrink: 0,
+                        }}
+                        onMouseEnter={e => {
+                          (e.currentTarget as HTMLButtonElement).style.background = "rgba(25, 206, 139, 0.16)";
+                          (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(25, 206, 139, 0.6)";
+                        }}
+                        onMouseLeave={e => {
+                          (e.currentTarget as HTMLButtonElement).style.background = "rgba(25, 206, 139, 0.08)";
+                          (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(25, 206, 139, 0.4)";
+                        }}
+                      >
+                        <Sparkle size={12} weight="fill" aria-hidden="true" />
+                        <span>{lang === "en" ? `Adapt Week ${selectedWeek}` : `Tùy chỉnh Tuần ${selectedWeek}`}</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -1228,7 +1464,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 background: `${coachMessage.color}10`,
                 border: `1px solid ${coachMessage.color}30`,
               }}>
-                <span style={{ fontSize: "18px", flexShrink: 0 }}>{coachMessage.icon}</span>
+                <coachMessage.Icon size={18} weight="bold" color={coachMessage.color} style={{ flexShrink: 0, marginTop: "2px" }} aria-hidden="true" />
                 <p style={{ fontSize: "13px", color: "var(--text-secondary)", margin: 0, lineHeight: "1.6", fontStyle: "italic" }}>
                   {coachMessage.text}
                 </p>
@@ -1245,7 +1481,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                   background: "linear-gradient(135deg, rgba(99,102,241,0.08), rgba(139,92,246,0.08))",
                   border: "1px solid rgba(139,92,246,0.2)",
                 }}>
-                  <div style={{ fontSize: "24px", animation: "spin 2s linear infinite", flexShrink: 0 }}>⚙️</div>
+                  <ArrowsClockwise size={24} className="match-spin" color="var(--accent-primary)" aria-hidden="true" style={{ flexShrink: 0 }} />
                   <div>
                     <div style={{ fontSize: "14px", fontWeight: "700", color: "var(--text-primary)", marginBottom: "3px" }}>
                       {lang === "en" ? "Generating your plan…" : "Đang tạo kế hoạch…"}
@@ -1326,6 +1562,10 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 onRemoveWorkout={handleRemoveWorkoutClick}
                 onEditWorkout={handleEditWorkoutClick}
                 onAddWorkout={isCoachActingAsAthlete ? (week, day) => setAddWorkoutTarget({ week, day }) : undefined}
+                matches={matchActivities}
+                onConfirmMatch={handleConfirmMatch}
+                onUnlinkMatch={handleUnlinkMatch}
+                getWorkoutDateObj={getWorkoutDateObj}
               />
             )}
 
@@ -1352,7 +1592,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 gap: "10px",
               }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  <span style={{ fontSize: "22px" }}>🎉</span>
+                  <Trophy size={24} weight="duotone" color="var(--accent-primary)" aria-hidden="true" />
                   <div>
                     <div style={{ fontWeight: "800", fontSize: "14px", color: "var(--accent-primary)" }}>
                       {lang === "en"
@@ -1375,10 +1615,12 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                     onClick={() => openBlockReviewModal(false)}
                     disabled={nextBlockLoading}
                   >
-                    <span>⚡</span>
-                    {nextBlockLoading
-                      ? (lang === "en" ? "Generating..." : "Đang tạo...")
-                      : (lang === "en" ? `Generate Block ${nextBlockNum}` : `Tạo Block ${nextBlockNum}`)}
+                    <Lightning size={15} weight="fill" color="#f59e0b" aria-hidden="true" />
+                    <span>
+                      {nextBlockLoading
+                        ? (lang === "en" ? "Generating..." : "Đang tạo...")
+                        : (lang === "en" ? `Generate Block ${nextBlockNum}` : `Tạo Block ${nextBlockNum}`)}
+                    </span>
                   </button>
                 )}
               </div>
@@ -1445,11 +1687,44 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
           </div>
         )}
 
+        {/* Adapt Week Generating Banner */}
+        {adaptLoading && adaptingWeekNum && (
+          <div style={{
+            background: "rgba(255, 255, 255, 0.95)",
+            border: "1px solid var(--border-color)",
+            padding: isMobile ? "16px 18px" : "18px 24px",
+            borderRadius: "16px",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+            display: "flex",
+            alignItems: "center",
+            gap: "16px",
+            marginTop: "16px",
+          }}>
+            <div style={{
+              width: "22px", height: "22px", borderRadius: "50%",
+              border: "3px solid rgba(99,102,241,0.2)",
+              borderTopColor: "var(--accent-primary)",
+              animation: "spin 0.8s linear infinite",
+              flexShrink: 0,
+            }} />
+            <div>
+              <div style={{ fontWeight: "700", fontSize: "14px", color: "var(--accent-primary)" }}>
+                {lang === "en" ? `Adapting Week ${adaptingWeekNum}…` : `Đang tùy chỉnh Tuần ${adaptingWeekNum}…`}
+              </div>
+              <div style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "3px" }}>
+                {lang === "en" ? "Regenerating workouts according to your latest feedback." : "Đang tái tạo các bài tập theo phản hồi mới nhất của bạn."}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Block Review Modal */}
-        {showBlockReview && (
+        {showBlockReview && typeof document !== "undefined" && createPortal(
           <div style={{
             position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)",
-            zIndex: 1200, display: "flex", alignItems: "center", justifyContent: "center", padding: "24px",
+            zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center",
+            padding: "max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom)) 24px",
+            overflowY: "auto",
           }}>
             <div style={{
               background: "rgba(255,255,255,0.97)", borderRadius: "18px",
@@ -1478,29 +1753,107 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 </div>
               )}
 
-              <label style={{ display: "block", fontSize: "12px", fontWeight: "700", color: "var(--text-secondary)", marginBottom: "8px" }}>
-                {lang === "en" ? `Overall Effort (RPE ${blockReviewRpe}/10)` : `Cảm giác chung (RPE ${blockReviewRpe}/10)`}
-              </label>
-              <div style={{ marginBottom: "6px" }}>
-                <input
-                  type="range" min={1} max={10} value={blockReviewRpe}
-                  onChange={e => setBlockReviewRpe(Number(e.target.value))}
-                  style={{ width: "100%", accentColor: "var(--accent-primary)" }}
-                />
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", color: "var(--text-muted)", marginTop: "2px" }}>
-                  <span>{lang === "en" ? "Very easy" : "Rất nhẹ"}</span>
-                  <span>{lang === "en" ? "Max effort" : "Cực kỳ nặng"}</span>
+              {/* Coach Feedback & Evaluation Card */}
+              <div
+                style={{
+                  background: "linear-gradient(135deg, rgba(16,185,129,0.08) 0%, rgba(6,182,212,0.04) 100%)",
+                  border: "1px solid rgba(16,185,129,0.22)",
+                  borderRadius: "14px",
+                  padding: "16px",
+                  marginBottom: "20px",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
+                    <ShieldCheck size={18} weight="bold" color="var(--accent-primary)" />
+                    <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-primary)" }}>
+                      {lang === "en" ? `Coach Evaluation (Block ${currentBlockNum})` : `Đánh giá của HLV (Block ${currentBlockNum})`}
+                    </span>
+                  </div>
+                  {blockEvaluation?.quality_grade ? (
+                    <span
+                      style={{
+                        fontSize: "11px",
+                        fontWeight: 700,
+                        padding: "2px 8px",
+                        borderRadius: "99px",
+                        background: "rgba(16,185,129,0.18)",
+                        color: "#059669",
+                        border: "1px solid rgba(16,185,129,0.3)",
+                      }}
+                    >
+                      {lang === "en"
+                        ? `Grade ${blockEvaluation.quality_grade} • ${blockEvaluation.avg_quality_score}%`
+                        : `Hạng ${blockEvaluation.quality_grade} • ${blockEvaluation.avg_quality_score}%`}
+                    </span>
+                  ) : blockEvaluation ? (
+                    <span
+                      style={{
+                        fontSize: "11px",
+                        fontWeight: 700,
+                        padding: "2px 8px",
+                        borderRadius: "99px",
+                        background: "rgba(16,185,129,0.12)",
+                        color: "#059669",
+                      }}
+                    >
+                      {blockEvaluation.completion_pct}% {lang === "en" ? "Adherence" : "Hoàn thành"}
+                    </span>
+                  ) : null}
                 </div>
+
+                {blockEvaluationLoading ? (
+                  <div style={{ fontSize: "12px", color: "var(--text-muted)", fontStyle: "italic" }}>
+                    {lang === "en" ? "Analyzing block execution..." : "Đang phân tích bài tập trong block..."}
+                  </div>
+                ) : blockEvaluation ? (
+                  <>
+                    <p style={{ margin: "0 0 10px", fontSize: "12.5px", color: "var(--text-secondary)", lineHeight: 1.45 }}>
+                      {blockEvaluation.coach_summary}
+                    </p>
+
+                    {blockEvaluation.coaching_takeaways && blockEvaluation.coaching_takeaways.length > 0 && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "4px", marginTop: "8px", borderTop: "1px dashed rgba(0,0,0,0.08)", paddingTop: "8px" }}>
+                        <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>
+                          {lang === "en" ? "Key Coach Takeaways:" : "Điểm nổi bật từ HLV:"}
+                        </div>
+                        {blockEvaluation.coaching_takeaways.map((tk: string, i: number) => (
+                          <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "6px", fontSize: "11.5px", color: "var(--text-secondary)" }}>
+                            <span style={{ color: "var(--accent-primary)", fontWeight: 700 }}>•</span>
+                            <span>{tk}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {blockEvaluation.coach_notes && blockEvaluation.coach_notes.length > 0 && (
+                      <div style={{ marginTop: "10px", background: "rgba(255,255,255,0.6)", borderRadius: "8px", padding: "8px 10px", border: "1px solid rgba(0,0,0,0.06)" }}>
+                        <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-primary)", marginBottom: "2px" }}>
+                          {lang === "en" ? "Coach Directive on File:" : "Chỉ đạo từ HLV:"}
+                        </div>
+                        {blockEvaluation.coach_notes.map((cn: string, i: number) => (
+                          <div key={i} style={{ fontSize: "11.5px", color: "var(--text-secondary)", fontStyle: "italic" }}>
+                            &ldquo;{cn}&rdquo;
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ) : null}
               </div>
-              <div style={{
-                textAlign: "center", fontSize: "12px", fontWeight: "600",
-                color: blockReviewRpe >= 8 ? "#ef4444" : blockReviewRpe >= 6 ? "#f59e0b" : "#10b981",
-                marginBottom: "18px",
-              }}>
-                {blockReviewRpe >= 9 ? (lang === "en" ? "Very hard — consider reducing next block" : "Rất nặng — cân nhắc giảm block tiếp")
-                  : blockReviewRpe >= 7 ? (lang === "en" ? "Hard — coach will ease off slightly" : "Nặng — coach sẽ giảm nhẹ")
-                  : blockReviewRpe >= 5 ? (lang === "en" ? "Manageable — good progression" : "Vừa phải — tiến độ tốt")
-                  : (lang === "en" ? "Easy — coach can increase load" : "Nhẹ — coach có thể tăng tải")}
+
+              <div style={{ marginBottom: "16px" }}>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: "700", color: "var(--text-secondary)", marginBottom: "8px" }}>
+                  {lang === "en" ? "How did this block feel?" : "Cảm giác của bạn trong block này?"}
+                </label>
+                <FeelingSelector
+                  variant="cards"
+                  showDescription={true}
+                  selectedId={rpeToFeelingId(blockReviewRpe)}
+                  onChange={(_, rpeVal) => setBlockReviewRpe(rpeVal)}
+                  lang={lang as "en" | "vi"}
+                  isMobile={isMobile}
+                />
               </div>
 
               <label style={{ display: "block", fontSize: "12px", fontWeight: "700", color: "var(--text-secondary)", marginBottom: "6px" }}>
@@ -1560,7 +1913,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
               <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
                 <button
                   type="button"
-                  onClick={() => { setShowBlockReview(false); setOverrideConfirmed(false); }}
+                  onClick={() => { setShowBlockReview(false); setOverrideConfirmed(false); setBlockEvaluation(null); }}
                   style={{ flex: 1, height: "42px", borderRadius: "10px", border: "1px solid var(--border-color)", background: "rgba(0,0,0,0.04)", cursor: "pointer", fontSize: "13px" }}
                 >
                   {lang === "en" ? "Cancel" : "Hủy"}
@@ -1574,14 +1927,63 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 >
                   {nextBlockLoading
                     ? (lang === "en" ? "Starting..." : "Đang bắt đầu...")
-                    : (lang === "en" ? `⚡ Generate Block ${nextBlockNum}` : `⚡ Tạo Block ${nextBlockNum}`)}
+                    : (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                        <Lightning size={15} weight="fill" color="#f59e0b" aria-hidden="true" />
+                        <span>{lang === "en" ? `Generate Block ${nextBlockNum}` : `Tạo Block ${nextBlockNum}`}</span>
+                      </span>
+                    )}
                 </button>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
-        {addWorkoutTarget && (
+        {/* Adapt Week Modal */}
+        {showAdaptWeek && activePlan && (
+          <AdaptWeekModal
+            isOpen={showAdaptWeek}
+            onClose={() => setShowAdaptWeek(false)}
+            planId={activePlan.id}
+            weekNumber={adaptTargetWeek}
+            totalWeeks={activePlan.total_weeks || 12}
+            completedWorkoutsCount={getWeekWorkouts(adaptTargetWeek).filter((w: any) => w.is_completed === 1).length}
+            initialSchedule={{
+              days_per_week: activePlan.days_per_week || 4,
+              long_run_day: activePlan.long_run_day || "Saturday",
+              preferred_days: (() => {
+                try {
+                  const p = typeof activePlan.preferred_run_days === "string"
+                    ? JSON.parse(activePlan.preferred_run_days)
+                    : activePlan.preferred_run_days;
+                  return Array.isArray(p) ? p : [];
+                } catch {
+                  return [];
+                }
+              })(),
+              double_session_days: (() => {
+                try {
+                  const p = typeof activePlan.double_session_days === "string"
+                    ? JSON.parse(activePlan.double_session_days)
+                    : activePlan.double_session_days;
+                  return Array.isArray(p) ? p : [];
+                } catch {
+                  return [];
+                }
+              })(),
+              has_gym_access: !!activePlan.has_gym_access,
+              use_treadmill: !!activePlan.use_treadmill,
+              training_environment: activePlan.training_environment || "flat",
+              athlete_notes: activePlan.athlete_notes || "",
+            }}
+            lang={lang}
+            isMobile={isMobile}
+            onAdaptSuccess={(jobId) => handleAdaptSuccess(jobId, adaptTargetWeek)}
+            actingAsAthleteId={actingAsAthleteId}
+          />
+        )}
+{addWorkoutTarget && (
           <AiCreateWorkoutModal
             lang={lang}
             weekNumber={addWorkoutTarget.week}
@@ -1672,14 +2074,26 @@ function AiCreateWorkoutModal({
     setSubmitting(false);
   };
 
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <div
-      style={{ position: "fixed", inset: 0, zIndex: 1200, background: "rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 2000,
+        background: "rgba(0,0,0,0.35)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom)) 20px",
+        overflowY: "auto",
+      }}
       onClick={onClose}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{ width: "100%", maxWidth: "420px", background: "rgba(255,255,255,0.98)", borderRadius: "16px", padding: "24px", border: "1px solid var(--border-color)" }}
+        style={{ width: "100%", maxWidth: "420px", background: "rgba(255,255,255,0.98)", borderRadius: "16px", padding: "24px", border: "1px solid var(--border-color)", maxHeight: "90vh", overflowY: "auto" }}
       >
         <h3 style={{ margin: "0 0 4px 0", fontSize: "16px", fontWeight: 800 }}>
           {lang === "en" ? "Add a workout" : "Thêm bài tập"}
@@ -1854,7 +2268,8 @@ function AiCreateWorkoutModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -1875,9 +2290,36 @@ interface DayGroupProps {
   onRemoveWorkout?: (id: number) => void;
   onEditWorkout?: (id: number, fields: Record<string, any>) => void;
   onAddWorkout?: (weekNumber: number, dayOfWeek: string) => void;
+  matches?: RawMatchActivity[];
+  onConfirmMatch?: (activityId: number, workoutId: number) => Promise<boolean>;
+  onUnlinkMatch?: (activityId: number) => Promise<boolean>;
+  getWorkoutDateObj?: (wo: any) => Date | null;
+  onInitiateSwap?: (day: string) => void;
 }
 
-function DayGroup({ day, dayIndex, dayWos, lang, isMobile, isOver, onToggleComplete, onMarkMissed, onLogWorkout, getWorkoutDate, isCoachActingAsAthlete, athleteId, onApproveWorkout, onRemoveWorkout, onEditWorkout, onAddWorkout }: DayGroupProps) {
+function DayGroup({
+  day,
+  dayIndex,
+  dayWos,
+  lang,
+  isMobile,
+  isOver,
+  onToggleComplete,
+  onMarkMissed,
+  onLogWorkout,
+  getWorkoutDate,
+  isCoachActingAsAthlete,
+  athleteId,
+  onApproveWorkout,
+  onRemoveWorkout,
+  onEditWorkout,
+  onAddWorkout,
+  matches = [],
+  onConfirmMatch,
+  onUnlinkMatch,
+  getWorkoutDateObj,
+  onInitiateSwap,
+}: DayGroupProps) {
   const { attributes, listeners, setNodeRef: setDragRef, transform, isDragging } = useDraggable({ id: day });
   const { setNodeRef: setDropRef } = useDroppable({ id: day });
 
@@ -1902,6 +2344,38 @@ function DayGroup({ day, dayIndex, dayWos, lang, isMobile, isOver, onToggleCompl
   const allRest = dayWos.every((w: any) => w.type === "Rest" || w.duration_minutes === 0);
   const dayLabel = lang === "vi" ? DAY_VI[dayIndex] : day;
 
+  // Derive date string (YYYY-MM-DD) for this day
+  const dayDateObj = dayWos[0] && getWorkoutDateObj ? getWorkoutDateObj(dayWos[0]) : null;
+  const dayDateStr = dayDateObj
+    ? `${dayDateObj.getFullYear()}-${String(dayDateObj.getMonth() + 1).padStart(2, "0")}-${String(dayDateObj.getDate()).padStart(2, "0")}`
+    : null;
+
+  // Unmatched activities on this day (unplanned runs from watch)
+  const unplannedActivities = matches.filter((a) => {
+    if (a.workout_id != null) return false;
+    // Hide secondary fragments of an already matched multi-activity bundle
+    if (a.match_details?.bundle_primary_activity_id != null) return false;
+    if (!dayDateStr || !a.start_time) return false;
+    const d = new Date(a.start_time);
+    const actDateStr = Number.isNaN(d.getTime())
+      ? a.start_time.split("T")[0]
+      : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    return actDateStr === dayDateStr;
+  });
+
+  // Workouts on this day available to link (unmatched or allow combining with existing)
+  const availableUnmatchedWorkouts = dayWos.map((w: any) => {
+    const isAlreadyMatched = matches.some((a) => a.workout_id === w.id);
+    const title = w.title || w.type;
+    return {
+      id: w.id,
+      title: isAlreadyMatched
+        ? (lang === "vi" ? `+ Ghép vào ${title}` : `+ Combine with ${title}`)
+        : title,
+      type: w.type,
+    };
+  });
+
   // Combine refs
   const setRef = (node: HTMLElement | null) => { setDragRef(node); setDropRef(node); };
 
@@ -1919,7 +2393,7 @@ function DayGroup({ day, dayIndex, dayWos, lang, isMobile, isOver, onToggleCompl
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
-          <span style={{ fontSize: "14px", color: "rgba(0,0,0,0.2)", flexShrink: 0, lineHeight: 1 }}>⠿</span>
+          <DotsSixVertical size={14} weight="bold" color="rgba(0,0,0,0.25)" aria-hidden="true" style={{ flexShrink: 0 }} />
           <span style={{ fontSize: "12px", fontWeight: "700", color: "var(--text-secondary)", letterSpacing: "0.02em" }}>
             {dayLabel.toUpperCase()}
           </span>
@@ -1946,13 +2420,38 @@ function DayGroup({ day, dayIndex, dayWos, lang, isMobile, isOver, onToggleCompl
               onPointerDown={(e) => e.stopPropagation()}
               title={lang === "en" ? "Add workout" : "Thêm bài tập"}
               style={{
-                width: "20px", height: "20px", borderRadius: "50%", border: "1px solid var(--accent-primary)",
+                width: "22px", height: "22px", borderRadius: "50%", border: "1px solid var(--accent-primary)",
                 background: "transparent", color: "var(--accent-primary)", cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center", fontSize: "13px", fontWeight: 700,
-                flexShrink: 0, lineHeight: 1, padding: 0,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                flexShrink: 0, padding: 0,
               }}
             >
-              +
+              <Plus size={12} weight="bold" aria-hidden="true" />
+            </button>
+          )}
+          {onInitiateSwap && (
+            <button
+              type="button"
+              onClick={() => onInitiateSwap(day)}
+              onPointerDown={(e) => e.stopPropagation()}
+              title={lang === "en" ? "Move or swap this day" : "Di chuyển hoặc đổi ngày"}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "4px",
+                padding: "2px 7px",
+                borderRadius: "6px",
+                border: "1px solid var(--border-color, rgba(0,0,0,0.12))",
+                background: "var(--bg-secondary, rgba(0,0,0,0.03))",
+                color: "var(--text-secondary, #4b5563)",
+                fontSize: "11px",
+                fontWeight: 600,
+                cursor: "pointer",
+                height: "22px",
+              }}
+            >
+              <ArrowsLeftRight size={11} weight="bold" />
+              <span>{lang === "en" ? "Swap" : "Đổi"}</span>
             </button>
           )}
         </div>
@@ -1963,6 +2462,25 @@ function DayGroup({ day, dayIndex, dayWos, lang, isMobile, isOver, onToggleCompl
         {dayWos.map((wo: any) => {
           const slot = wo.session_slot ?? "main";
           const showSlotBadge = isDoubleDay && slot !== "main";
+          const matchedActivity = matches.find((a) => a.workout_id === wo.id);
+
+          const workoutCardEl = (
+            <WorkoutCard
+              wo={wo}
+              isMobile={isMobile}
+              lang={lang}
+              onToggleComplete={onToggleComplete}
+              onMarkMissed={onMarkMissed}
+              onLogWorkout={onLogWorkout}
+              getWorkoutDate={getWorkoutDate}
+              isCoachActingAsAthlete={isCoachActingAsAthlete}
+              athleteId={athleteId}
+              onApproveWorkout={onApproveWorkout}
+              onRemoveWorkout={onRemoveWorkout}
+              onEditWorkout={onEditWorkout}
+            />
+          );
+
           return (
             <div key={wo.id}>
               {showSlotBadge && (
@@ -1971,30 +2489,84 @@ function DayGroup({ day, dayIndex, dayWos, lang, isMobile, isOver, onToggleCompl
                   paddingLeft: "2px", color: slot === "morning" ? "#f59e0b" : "#6366f1",
                   display: "flex", alignItems: "center", gap: "4px",
                 }}>
-                  <span>{slot === "morning" ? "☀️" : "🌙"}</span>
+                  <span>{slot === "morning" ? <Sun size={12} weight="bold" aria-hidden="true" /> : <Moon size={12} weight="bold" aria-hidden="true" />}</span>
                   <span>{slot === "morning"
                     ? (lang === "en" ? "MORNING SESSION" : "BUỔI SÁNG")
                     : (lang === "en" ? "AFTERNOON SESSION" : "BUỔI CHIỀU")
                   }</span>
                 </div>
               )}
-              <WorkoutCard
-                wo={wo}
-                isMobile={isMobile}
-                lang={lang}
-                onToggleComplete={onToggleComplete}
-                onMarkMissed={onMarkMissed}
-                onLogWorkout={onLogWorkout}
-                getWorkoutDate={getWorkoutDate}
-                isCoachActingAsAthlete={isCoachActingAsAthlete}
-                athleteId={athleteId}
-                onApproveWorkout={onApproveWorkout}
-                onRemoveWorkout={onRemoveWorkout}
-                onEditWorkout={onEditWorkout}
-              />
+
+              {matchedActivity ? (
+                isMobile ? (
+                  /* Mobile: stacked with connector indicator */
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                    {workoutCardEl}
+                    <div style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      paddingLeft: "12px",
+                      color: "var(--accent-primary)",
+                    }}>
+                      <LinkSimple size={13} weight="bold" aria-hidden="true" />
+                      <span style={{ fontSize: "10px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                        {lang === "vi" ? "Hoạt động ghi nhận trên đồng hồ" : "Recorded watch session"}
+                      </span>
+                    </div>
+                    <MatchedActivityCard
+                      activity={matchedActivity}
+                      plannedWorkout={wo}
+                      lang={lang as "en" | "vi"}
+                      isMobile={isMobile}
+                      onConfirmMatch={onConfirmMatch}
+                      onUnlinkMatch={onUnlinkMatch}
+                    />
+                  </div>
+                ) : (
+                  /* Desktop / Tablet: 2-column side-by-side */
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: "12px",
+                      alignItems: "stretch",
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      {workoutCardEl}
+                    </div>
+                    <div style={{ minWidth: 0, display: "flex", flexDirection: "column" }}>
+                      <MatchedActivityCard
+                        activity={matchedActivity}
+                        plannedWorkout={wo}
+                        lang={lang as "en" | "vi"}
+                        isMobile={isMobile}
+                        onConfirmMatch={onConfirmMatch}
+                        onUnlinkMatch={onUnlinkMatch}
+                      />
+                    </div>
+                  </div>
+                )
+              ) : (
+                workoutCardEl
+              )}
             </div>
           );
         })}
+
+        {/* Unplanned activities on this day */}
+        {unplannedActivities.map((act) => (
+          <div key={act.activity_id} style={{ marginTop: "4px" }}>
+            <UnplannedActivityCard
+              activity={act}
+              availableWorkouts={availableUnmatchedWorkouts}
+              lang={lang as "en" | "vi"}
+              isMobile={isMobile}
+              onLinkToWorkout={onConfirmMatch}
+            />
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -2015,10 +2587,34 @@ interface WeekDayListProps {
   onRemoveWorkout?: (id: number) => void;
   onEditWorkout?: (id: number, fields: Record<string, any>) => void;
   onAddWorkout?: (weekNumber: number, dayOfWeek: string) => void;
+  matches?: RawMatchActivity[];
+  onConfirmMatch?: (activityId: number, workoutId: number) => Promise<boolean>;
+  onUnlinkMatch?: (activityId: number) => Promise<boolean>;
+  getWorkoutDateObj?: (wo: any) => Date | null;
 }
 
-function WeekDayList({ weekWos, lang, isMobile, onSwapDays, onToggleComplete, onMarkMissed, onLogWorkout, getWorkoutDate, isCoachActingAsAthlete, athleteId, onApproveWorkout, onRemoveWorkout, onEditWorkout, onAddWorkout }: WeekDayListProps) {
+function WeekDayList({
+  weekWos,
+  lang,
+  isMobile,
+  onSwapDays,
+  onToggleComplete,
+  onMarkMissed,
+  onLogWorkout,
+  getWorkoutDate,
+  isCoachActingAsAthlete,
+  athleteId,
+  onApproveWorkout,
+  onRemoveWorkout,
+  onEditWorkout,
+  onAddWorkout,
+  matches = [],
+  onConfirmMatch,
+  onUnlinkMatch,
+  getWorkoutDateObj,
+}: WeekDayListProps) {
   const [overId, setOverId] = React.useState<string | null>(null);
+  const [swapModalDay, setSwapModalDay] = React.useState<string | null>(null);
 
   // Default PointerSensor activates on the slightest movement, which on a
   // touchscreen fights with normal vertical scrolling -- a small scroll
@@ -2056,34 +2652,53 @@ function WeekDayList({ weekWos, lang, isMobile, onSwapDays, onToggleComplete, on
   };
 
   return (
-    <DndContext sensors={sensors} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
-      <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-        {DAY_ORDER.map((day, di) => {
-          const dayWos = byDay[day];
-          if (!dayWos || dayWos.length === 0) return null;
-          return (
-            <DayGroup
-              key={day}
-              day={day}
-              dayIndex={di}
-              dayWos={dayWos}
-              lang={lang}
-              isMobile={isMobile}
-              isOver={overId === day}
-              onToggleComplete={onToggleComplete}
-              onMarkMissed={onMarkMissed}
-              onLogWorkout={onLogWorkout}
-              getWorkoutDate={getWorkoutDate}
-              isCoachActingAsAthlete={isCoachActingAsAthlete}
-              athleteId={athleteId}
-              onApproveWorkout={onApproveWorkout}
-              onRemoveWorkout={onRemoveWorkout}
-              onEditWorkout={onEditWorkout}
-              onAddWorkout={onAddWorkout}
-            />
-          );
-        })}
-      </div>
-    </DndContext>
+    <>
+      <DndContext sensors={sensors} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+          {DAY_ORDER.map((day, di) => {
+            const dayWos = byDay[day];
+            if (!dayWos || dayWos.length === 0) return null;
+            return (
+              <DayGroup
+                key={day}
+                day={day}
+                dayIndex={di}
+                dayWos={dayWos}
+                lang={lang}
+                isMobile={isMobile}
+                isOver={overId === day}
+                onToggleComplete={onToggleComplete}
+                onMarkMissed={onMarkMissed}
+                onLogWorkout={onLogWorkout}
+                getWorkoutDate={getWorkoutDate}
+                isCoachActingAsAthlete={isCoachActingAsAthlete}
+                athleteId={athleteId}
+                onApproveWorkout={onApproveWorkout}
+                onRemoveWorkout={onRemoveWorkout}
+                onEditWorkout={onEditWorkout}
+                onAddWorkout={onAddWorkout}
+                matches={matches}
+                onConfirmMatch={onConfirmMatch}
+                onUnlinkMatch={onUnlinkMatch}
+                getWorkoutDateObj={getWorkoutDateObj}
+                onInitiateSwap={setSwapModalDay}
+              />
+            );
+          })}
+        </div>
+      </DndContext>
+
+      {swapModalDay && (
+        <MoveWorkoutModal
+          isOpen={true}
+          onClose={() => setSwapModalDay(null)}
+          sourceDay={swapModalDay}
+          weekNumber={weekWos[0]?.week_number ?? 1}
+          weekWos={weekWos}
+          lang={lang}
+          onSwapDays={onSwapDays}
+        />
+      )}
+    </>
   );
 }

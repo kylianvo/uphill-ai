@@ -5,7 +5,7 @@ import { ActivePlan, Workout } from "../types";
 
 export function usePlanner() {
   const ctx = useAppContext();
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  const API_BASE_URL = (typeof window !== "undefined" && localStorage.getItem("UPHILL_API_URL_OVERRIDE")) || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
   const { planForm, setPlanForm, setPlanErrorMsg, setPlanLoading, lang, targetTimeH, targetTimeM, targetTimeS, cutoffTimeH, cutoffTimeM, cutoffTimeS, activePlan, selectedWeek, swapDay1, swapDay2, setSwapDay1, setSwapDay2, setActivePlan, setBackupActivePlan, setBackupWorkouts, setSelectedWeek, setWorkouts, workouts, setPlannerGpxLoading, setPlannerGpxFile, setPlannerGpxError, setCourseInputMode, setRecentPlans, actingAsAthleteId } = ctx;
   const trackEvent = (name: string, props?: any) => { if (typeof window !== "undefined" && (window as any).posthog) { (window as any).posthog.capture(name, props); } };
   const plannerGpxInputRef = React.useRef<HTMLInputElement>(null);
@@ -317,6 +317,7 @@ export function usePlanner() {
         recovery_feel: planForm.recovery_feel || null,
         lang: lang,
         coach_notes: actingAsAthleteId ? (planForm.coach_notes || null) : null,
+        athlete_notes: planForm.athlete_notes || null,
       };
 
       // Combine H/M/S into decimal hours

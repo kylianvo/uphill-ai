@@ -409,7 +409,11 @@ services:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
 volumes:
   pgdata:
-    name: uphill-ai_pgdata
+    # NO explicit `name:` here. A hardcoded name (it was uphill-ai_pgdata)
+    # is shared by every git worktree that copies this file, so two worktrees
+    # running `docker compose up` mount the SAME data directory with two
+    # postmasters and corrupt the WAL. Letting Compose derive the name per
+    # project directory gives each worktree its own database.
   prometheus_data:
   grafana_data:
   kafka_data:

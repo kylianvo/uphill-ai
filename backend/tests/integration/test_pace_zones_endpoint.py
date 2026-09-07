@@ -26,7 +26,7 @@ class TestPaceZonesEndpoint:
 
         expected_pace = PlanGenerator.estimate_pace_zones("6:20", "5:30", 140, 165)
         expected_hr = TrainingRules.calculate_heart_rate_zones(190, 50, 140, 165)
-        assert body == {
+        for key, expected_value in {
             "zone1_pace": expected_pace["zone1_pace"],
             "zone2_pace": expected_pace["zone2_pace"],
             "zone3_pace": expected_pace["zone3_pace"],
@@ -37,7 +37,9 @@ class TestPaceZonesEndpoint:
             "zone3_hr": f"{expected_hr['Zone 3']['min']}-{expected_hr['Zone 3']['max']} bpm",
             "zone4_hr": f"{expected_hr['Zone 4']['min']}-{expected_hr['Zone 4']['max']} bpm",
             "zone5_hr": f"{expected_hr['Zone 5']['min']}-{expected_hr['Zone 5']['max']} bpm",
-        }
+        }.items():
+            assert body[key] == expected_value
+        assert body.get("model") == "5_zone"
 
     def test_requires_authentication(self, client):
         resp = client.get("/api/auth/pace-zones")

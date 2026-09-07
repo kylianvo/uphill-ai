@@ -16,7 +16,7 @@ export function useAppAuth() {
   const [showPassword, setShowPassword] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
 
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  const API_BASE_URL = (typeof window !== "undefined" && localStorage.getItem("UPHILL_API_URL_OVERRIDE")) || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
   const fetchSourcesWithToken = async (user: any, token: string) => {
       // NOTE: Normally fetchSourcesWithToken would be in another hook or context.

@@ -5,7 +5,7 @@ import { useAppContext } from "../contexts/AppContext";
 import { translations } from "../app/translations";
 import { usePaceZones } from "../hooks/usePaceZones";
 import { ZONE_NUMBER_COLORS } from "../data/workoutLibrary";
-import { X, User, Heartbeat, Watch, SignOut, Warning, Bell, CheckCircle } from '@phosphor-icons/react';
+import { X, User, Heartbeat, Watch, SignOut, Warning, Bell, CheckCircle, Key, ArrowCounterClockwise, Lightbulb, Lightning, Check, ArrowsClockwise, Sparkle } from '@phosphor-icons/react';
 import {
   scheduleDailyKnowledgeReminder,
   scheduleNotification,
@@ -16,11 +16,54 @@ import {
   DAILY_KNOWLEDGE_REMINDER_ID,
 } from '../utils/notifications';
 import { triggerHaptic } from '../utils/native';
+import ConnectedAccounts from '../components/ConnectedAccounts';
 
 export default function ProfileSettingsModal() {
   const ctx = useAppContext();
   const { lang, setLang, user, setUser, profileSettingsOpen, setProfileSettingsOpen, profileForm, setProfileForm, activePlan, setActivePlan, workouts, setWorkouts, setSources, setAuthModalOpen, setOnboardingOpen, handleLogout } = ctx;
-  const { zones: paceZones, fetchPaceZones } = usePaceZones();
+  const { zones: paceZones, loading: syncingFitness, fetchPaceZones, syncFitness } = usePaceZones();
+  const [selectedModel, setSelectedModel] = useState<"4_zone" | "5_zone">(
+    user?.pace_zone_model === "4_zone" ? "4_zone" : "5_zone"
+  );
+  const [thresholdPace, setThresholdPace] = useState<string>(user?.threshold_pace || "");
+  const [syncMsg, setSyncMsg] = useState<string>("");
+
+  const [prevUser, setPrevUser] = useState(user);
+  if (user !== prevUser) {
+    setPrevUser(user);
+    if (user?.threshold_pace) setThresholdPace(user.threshold_pace);
+    if (user?.pace_zone_model === "4_zone" || user?.pace_zone_model === "5_zone") {
+      setSelectedModel(user.pace_zone_model);
+    }
+  }
+
+  React.useEffect(() => {
+    if (profileSettingsOpen) {
+      fetchPaceZones(selectedModel);
+    }
+  }, [profileSettingsOpen, selectedModel]);
+
+  const handleSyncFitness = async () => {
+    setSyncMsg(lang === "vi" ? "Đang đồng bộ từ COROS..." : "Syncing from COROS...");
+    triggerHaptic();
+    const res = await syncFitness();
+    if (res.success && res.data) {
+      const tp = res.data.threshold_pace;
+      const vo2 = res.data.coros_vo2max;
+      if (tp) {
+        setThresholdPace(tp);
+      }
+      setSyncMsg(
+        lang === "vi"
+          ? `Đã đồng bộ! Ngưỡng: ${tp || "—"} /km | VO2max: ${vo2 || "—"}`
+          : `Synced! Threshold: ${tp || "—"} /km | VO2max: ${vo2 || "—"}`
+      );
+      await fetchPaceZones(selectedModel);
+    } else {
+      setSyncMsg(lang === "vi" ? `Đồng bộ thất bại: ${res.error}` : `Sync failed: ${res.error}`);
+    }
+    setTimeout(() => setSyncMsg(""), 5000);
+  };
   const [passwordFormOpen, setPasswordFormOpen] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [passwordMsg, setPasswordMsg] = useState("");
@@ -89,7 +132,7 @@ export default function ProfileSettingsModal() {
     setTestNotifMsg(lang === "en" ? "Sending..." : "Đang gửi...");
     triggerHaptic();
     const success = await scheduleNotification({
-      title: lang === "en" ? "🏃 Uphill AI Coach" : "🏃 Huấn luyện viên Uphill AI",
+      title: lang === "en" ? "Uphill AI Coach" : "Huấn luyện viên Uphill AI",
       body: lang === "en" ? "Notifications are active! Your training reminders will appear here." : "Thông báo đã sẵn sàng! Lịch tập sẽ được nhắc nhở tại đây.",
     });
     if (success) {
@@ -326,6 +369,8 @@ export default function ProfileSettingsModal() {
 
 
           zone2_pace_max: profileForm.zone2_pace_max,
+          threshold_pace: thresholdPace || null,
+          pace_zone_model: selectedModel,
 
 
 
@@ -647,7 +692,7 @@ export default function ProfileSettingsModal() {
 
 
 
-            ✕
+            <X size={20} aria-hidden="true" />
 
 
 
@@ -1054,117 +1099,224 @@ export default function ProfileSettingsModal() {
 
                 </div>
 
+                {/* Threshold Pace & COROS Sync Card */}
+                <div
+                  style={{
+                    gridColumn: "1 / -1",
+                    padding: "12px 14px",
+                    borderRadius: "10px",
+                    background: "rgba(0, 0, 0, 0.02)",
+                    border: "1px solid rgba(0, 0, 0, 0.06)",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "8px",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "6px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <Lightning size={16} weight="bold" color="var(--accent-primary)" />
+                      <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-primary)" }}>
+                        {lang === "vi" ? "Ngưỡng Pace (Threshold Pace)" : "Threshold Pace"}
+                      </span>
+                    </div>
 
+                    <button
+                      type="button"
+                      onClick={handleSyncFitness}
+                      disabled={syncingFitness}
+                      style={{
+                        minHeight: "44px",
+                        padding: "6px 12px",
+                        borderRadius: "8px",
+                        background: "rgba(25, 206, 139, 0.12)",
+                        color: "var(--accent-primary)",
+                        border: "1px solid rgba(25, 206, 139, 0.3)",
+                        fontSize: "12px",
+                        fontWeight: "700",
+                        cursor: syncingFitness ? "default" : "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "6px",
+                      }}
+                      aria-label={lang === "vi" ? "Đồng bộ từ COROS" : "Sync from COROS"}
+                    >
+                      <ArrowsClockwise size={14} weight="bold" />
+                      <span>
+                        {syncingFitness
+                          ? lang === "vi"
+                            ? "Đang đồng bộ..."
+                            : "Syncing..."
+                          : lang === "vi"
+                          ? "Đồng bộ từ COROS"
+                          : "Sync from COROS"}
+                      </span>
+                    </button>
+                  </div>
 
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <input
+                      type="text"
+                      placeholder="4:34"
+                      style={{ ...inputStyle, flex: 1 }}
+                      value={thresholdPace}
+                      onChange={(e) => setThresholdPace(e.target.value)}
+                    />
+                    {user?.coros_vo2max && (
+                      <div style={{ fontSize: "11px", color: "var(--text-muted)", whiteSpace: "nowrap" }}>
+                        VO2max: <strong style={{ color: "var(--text-primary)" }}>{user.coros_vo2max}</strong>
+                      </div>
+                    )}
+                  </div>
 
-
-
+                  {syncMsg && (
+                    <div
+                      style={{
+                        fontSize: "11px",
+                        color: syncMsg.includes("thất bại") || syncMsg.includes("failed") ? "var(--accent-alert)" : "var(--accent-primary)",
+                        fontWeight: "600",
+                      }}
+                    >
+                      {syncMsg}
+                    </div>
+                  )}
+                </div>
 
                 <div>
-
-
-
-
-
-
-
                   <label style={labelStyle}>{lang === "en" ? "Zone 2 Pace Min" : "Zone 2 Pace Min"}</label>
-
-
-
-
-
-
-
                   <input type="text" style={inputStyle} value={profileForm.zone2_pace_min} onChange={e => setProfileForm({ ...profileForm, zone2_pace_min: e.target.value })} required />
-
-
-
-
-
-
-
                 </div>
-
-
-
-
-
-
 
                 <div>
-
-
-
-
-
-
-
                   <label style={labelStyle}>{lang === "en" ? "Zone 2 Pace Max" : "Zone 2 Pace Max"}</label>
-
-
-
-
-
-
-
                   <input type="text" style={inputStyle} value={profileForm.zone2_pace_max} onChange={e => setProfileForm({ ...profileForm, zone2_pace_max: e.target.value })} required />
-
-
-
-
-
-
-
                 </div>
-
-
-
-
-
-
 
               </div>
 
-                <div style={{ marginTop: "12px" }}>
-                  <label style={labelStyle}>{lang === "en" ? "Your Training Zones" : "Your Training Zones"}</label>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "6px" }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 10px", borderRadius: "8px", background: `${ZONE_NUMBER_COLORS[1]}14`, borderLeft: `3px solid ${ZONE_NUMBER_COLORS[1]}` }}>
-                      <span style={{ fontSize: "12px", fontWeight: 700, color: ZONE_NUMBER_COLORS[1] }}>{lang === "en" ? "Zone 1 (Recovery)" : "Zone 1 (Recovery)"}</span>
-                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "1px" }}>
-                        <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)" }}>{paceZones ? `${paceZones.zone1_pace} /km` : "—"}</span>
-                        <span style={{ fontSize: "10px", fontWeight: 500, color: "var(--text-muted)" }}>{paceZones ? paceZones.zone1_hr : ""}</span>
-                      </div>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 10px", borderRadius: "8px", background: `${ZONE_NUMBER_COLORS[2]}14`, borderLeft: `3px solid ${ZONE_NUMBER_COLORS[2]}` }}>
-                      <span style={{ fontSize: "12px", fontWeight: 700, color: ZONE_NUMBER_COLORS[2] }}>{lang === "en" ? "Zone 2 (Easy)" : "Zone 2 (Easy)"}</span>
-                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "1px" }}>
-                        <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)" }}>{paceZones ? `${paceZones.zone2_pace} /km` : "—"}</span>
-                        <span style={{ fontSize: "10px", fontWeight: 500, color: "var(--text-muted)" }}>{paceZones ? paceZones.zone2_hr : ""}</span>
-                      </div>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 10px", borderRadius: "8px", background: `${ZONE_NUMBER_COLORS[3]}14`, borderLeft: `3px solid ${ZONE_NUMBER_COLORS[3]}` }}>
-                      <span style={{ fontSize: "12px", fontWeight: 700, color: ZONE_NUMBER_COLORS[3] }}>{lang === "en" ? "Zone 3 (Tempo)" : "Zone 3 (Tempo)"}</span>
-                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "1px" }}>
-                        <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)" }}>{paceZones ? `${paceZones.zone3_pace} /km` : "—"}</span>
-                        <span style={{ fontSize: "10px", fontWeight: 500, color: "var(--text-muted)" }}>{paceZones ? paceZones.zone3_hr : ""}</span>
-                      </div>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 10px", borderRadius: "8px", background: `${ZONE_NUMBER_COLORS[4]}14`, borderLeft: `3px solid ${ZONE_NUMBER_COLORS[4]}` }}>
-                      <span style={{ fontSize: "12px", fontWeight: 700, color: ZONE_NUMBER_COLORS[4] }}>{lang === "en" ? "Zone 4 (Threshold)" : "Zone 4 (Threshold)"}</span>
-                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "1px" }}>
-                        <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)" }}>{paceZones ? `${paceZones.zone4_pace} /km` : "—"}</span>
-                        <span style={{ fontSize: "10px", fontWeight: 500, color: "var(--text-muted)" }}>{paceZones ? paceZones.zone4_hr : ""}</span>
-                      </div>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 10px", borderRadius: "8px", background: `${ZONE_NUMBER_COLORS[5]}14`, borderLeft: `3px solid ${ZONE_NUMBER_COLORS[5]}` }}>
-                      <span style={{ fontSize: "12px", fontWeight: 700, color: ZONE_NUMBER_COLORS[5] }}>{lang === "en" ? "Zone 5 (Interval)" : "Zone 5 (Interval)"}</span>
-                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "1px" }}>
-                        <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)" }}>{paceZones ? `${paceZones.zone5_pace} /km` : "—"}</span>
-                        <span style={{ fontSize: "10px", fontWeight: 500, color: "var(--text-muted)" }}>{paceZones ? paceZones.zone5_hr : ""}</span>
-                      </div>
+                <div style={{ marginTop: "14px" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+                    <label style={{ ...labelStyle, margin: 0 }}>
+                      {lang === "en" ? "Your Training Zones" : "Vùng Tập Luyện Của Bạn"}
+                    </label>
+
+                    {/* Model Toggle */}
+                    <div style={{ display: "flex", gap: "6px" }}>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          setSelectedModel("5_zone");
+                          triggerHaptic();
+                          await fetchPaceZones("5_zone");
+                        }}
+                        style={{
+                          minHeight: "36px",
+                          padding: "4px 10px",
+                          borderRadius: "6px",
+                          border: selectedModel === "5_zone" ? "1px solid var(--accent-primary)" : "1px solid var(--border-color)",
+                          background: selectedModel === "5_zone" ? "rgba(25, 206, 139, 0.12)" : "transparent",
+                          color: selectedModel === "5_zone" ? "var(--accent-primary)" : "var(--text-secondary)",
+                          fontSize: "11px",
+                          fontWeight: "700",
+                          cursor: "pointer",
+                        }}
+                      >
+                        5-Zone
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          setSelectedModel("4_zone");
+                          triggerHaptic();
+                          await fetchPaceZones("4_zone");
+                        }}
+                        style={{
+                          minHeight: "36px",
+                          padding: "4px 10px",
+                          borderRadius: "6px",
+                          border: selectedModel === "4_zone" ? "1px solid var(--accent-primary)" : "1px solid var(--border-color)",
+                          background: selectedModel === "4_zone" ? "rgba(25, 206, 139, 0.12)" : "transparent",
+                          color: selectedModel === "4_zone" ? "var(--accent-primary)" : "var(--text-secondary)",
+                          fontSize: "11px",
+                          fontWeight: "700",
+                          cursor: "pointer",
+                        }}
+                      >
+                        4-Zone (Uphill)
+                      </button>
                     </div>
                   </div>
+
+                  {/* Dynamic Zone Rows */}
+                  {selectedModel === "4_zone" ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "6px" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 10px", borderRadius: "8px", background: `${ZONE_NUMBER_COLORS[1]}14`, borderLeft: `3px solid ${ZONE_NUMBER_COLORS[1]}` }}>
+                        <span style={{ fontSize: "12px", fontWeight: 700, color: ZONE_NUMBER_COLORS[1] }}>{lang === "en" ? "Zone 1 (Recovery < AeT)" : "Zone 1 (Phục hồi < AeT)"}</span>
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "1px" }}>
+                          <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)" }}>{paceZones ? `${paceZones.zone1_pace} /km` : "—"}</span>
+                          <span style={{ fontSize: "10px", fontWeight: 500, color: "var(--text-muted)" }}>{paceZones ? paceZones.zone1_hr : ""}</span>
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 10px", borderRadius: "8px", background: `${ZONE_NUMBER_COLORS[2]}14`, borderLeft: `3px solid ${ZONE_NUMBER_COLORS[2]}` }}>
+                        <span style={{ fontSize: "12px", fontWeight: 700, color: ZONE_NUMBER_COLORS[2] }}>{lang === "en" ? "Zone 2 (Aerobic Capacity AeT-AnT)" : "Zone 2 (Khả năng hiếu khí AeT-AnT)"}</span>
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "1px" }}>
+                          <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)" }}>{paceZones ? `${paceZones.zone2_pace} /km` : "—"}</span>
+                          <span style={{ fontSize: "10px", fontWeight: 500, color: "var(--text-muted)" }}>{paceZones ? paceZones.zone2_hr : ""}</span>
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 10px", borderRadius: "8px", background: `${ZONE_NUMBER_COLORS[3]}14`, borderLeft: `3px solid ${ZONE_NUMBER_COLORS[3]}` }}>
+                        <span style={{ fontSize: "12px", fontWeight: 700, color: ZONE_NUMBER_COLORS[3] }}>{lang === "en" ? "Zone 3 (Threshold AnT)" : "Zone 3 (Ngưỡng AnT)"}</span>
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "1px" }}>
+                          <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)" }}>{paceZones ? `${paceZones.zone3_pace} /km` : "—"}</span>
+                          <span style={{ fontSize: "10px", fontWeight: 500, color: "var(--text-muted)" }}>{paceZones ? paceZones.zone3_hr : ""}</span>
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 10px", borderRadius: "8px", background: `${ZONE_NUMBER_COLORS[4]}14`, borderLeft: `3px solid ${ZONE_NUMBER_COLORS[4]}` }}>
+                        <span style={{ fontSize: "12px", fontWeight: 700, color: ZONE_NUMBER_COLORS[4] }}>{lang === "en" ? "Zone 4 (Max / Anaerobic > AnT)" : "Zone 4 (Tối đa / Kỵ khí > AnT)"}</span>
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "1px" }}>
+                          <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)" }}>{paceZones ? `${paceZones.zone4_pace} /km` : "—"}</span>
+                          <span style={{ fontSize: "10px", fontWeight: 500, color: "var(--text-muted)" }}>{paceZones ? paceZones.zone4_hr : ""}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "6px" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 10px", borderRadius: "8px", background: `${ZONE_NUMBER_COLORS[1]}14`, borderLeft: `3px solid ${ZONE_NUMBER_COLORS[1]}` }}>
+                        <span style={{ fontSize: "12px", fontWeight: 700, color: ZONE_NUMBER_COLORS[1] }}>{lang === "en" ? "Zone 1 (Recovery)" : "Zone 1 (Recovery)"}</span>
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "1px" }}>
+                          <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)" }}>{paceZones ? `${paceZones.zone1_pace} /km` : "—"}</span>
+                          <span style={{ fontSize: "10px", fontWeight: 500, color: "var(--text-muted)" }}>{paceZones ? paceZones.zone1_hr : ""}</span>
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 10px", borderRadius: "8px", background: `${ZONE_NUMBER_COLORS[2]}14`, borderLeft: `3px solid ${ZONE_NUMBER_COLORS[2]}` }}>
+                        <span style={{ fontSize: "12px", fontWeight: 700, color: ZONE_NUMBER_COLORS[2] }}>{lang === "en" ? "Zone 2 (Easy)" : "Zone 2 (Easy)"}</span>
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "1px" }}>
+                          <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)" }}>{paceZones ? `${paceZones.zone2_pace} /km` : "—"}</span>
+                          <span style={{ fontSize: "10px", fontWeight: 500, color: "var(--text-muted)" }}>{paceZones ? paceZones.zone2_hr : ""}</span>
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 10px", borderRadius: "8px", background: `${ZONE_NUMBER_COLORS[3]}14`, borderLeft: `3px solid ${ZONE_NUMBER_COLORS[3]}` }}>
+                        <span style={{ fontSize: "12px", fontWeight: 700, color: ZONE_NUMBER_COLORS[3] }}>{lang === "en" ? "Zone 3 (Tempo)" : "Zone 3 (Tempo)"}</span>
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "1px" }}>
+                          <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)" }}>{paceZones ? `${paceZones.zone3_pace} /km` : "—"}</span>
+                          <span style={{ fontSize: "10px", fontWeight: 500, color: "var(--text-muted)" }}>{paceZones ? paceZones.zone3_hr : ""}</span>
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 10px", borderRadius: "8px", background: `${ZONE_NUMBER_COLORS[4]}14`, borderLeft: `3px solid ${ZONE_NUMBER_COLORS[4]}` }}>
+                        <span style={{ fontSize: "12px", fontWeight: 700, color: ZONE_NUMBER_COLORS[4] }}>{lang === "en" ? "Zone 4 (Threshold)" : "Zone 4 (Threshold)"}</span>
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "1px" }}>
+                          <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)" }}>{paceZones ? `${paceZones.zone4_pace} /km` : "—"}</span>
+                          <span style={{ fontSize: "10px", fontWeight: 500, color: "var(--text-muted)" }}>{paceZones ? paceZones.zone4_hr : ""}</span>
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 10px", borderRadius: "8px", background: `${ZONE_NUMBER_COLORS[5]}14`, borderLeft: `3px solid ${ZONE_NUMBER_COLORS[5]}` }}>
+                        <span style={{ fontSize: "12px", fontWeight: 700, color: ZONE_NUMBER_COLORS[5] }}>{lang === "en" ? "Zone 5 (Interval)" : "Zone 5 (Interval)"}</span>
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "1px" }}>
+                          <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)" }}>{paceZones ? `${paceZones.zone5_pace} /km` : "—"}</span>
+                          <span style={{ fontSize: "10px", fontWeight: 500, color: "var(--text-muted)" }}>{paceZones ? paceZones.zone5_hr : ""}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
 
@@ -1546,7 +1698,7 @@ export default function ProfileSettingsModal() {
 
 
 
-                  ✓ {passwordMsg}
+                  <Check size={14} weight="bold" aria-hidden="true" style={{ verticalAlign: "middle", marginRight: "4px" }} />{passwordMsg}
 
 
 
@@ -1874,7 +2026,7 @@ export default function ProfileSettingsModal() {
 
 
 
-                      🔑 {lang === "en" ? "Set Account Password" : "Thiết lập Mật khẩu Tài khoản"}
+                      <Key size={14} weight="bold" aria-hidden="true" style={{ verticalAlign: "middle", marginRight: "6px" }} />{lang === "en" ? "Set Account Password" : "Thiết lập Mật khẩu Tài khoản"}
 
 
 
@@ -2090,7 +2242,7 @@ export default function ProfileSettingsModal() {
 
 
 
-                      🔄 {lang === "en" ? "Change Account Password" : "Thay đổi Mật khẩu Tài khoản"}
+                      <ArrowCounterClockwise size={14} weight="bold" aria-hidden="true" style={{ verticalAlign: "middle", marginRight: "6px" }} />{lang === "en" ? "Change Account Password" : "Thay đổi Mật khẩu Tài khoản"}
 
 
 
@@ -2164,8 +2316,9 @@ export default function ProfileSettingsModal() {
               </div>
 
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: "6px", borderTop: "1px dashed rgba(25, 206, 139, 0.2)" }}>
-                <span style={{ fontSize: "12.5px", color: "var(--text-primary)", fontWeight: "600" }}>
-                  💡 {lang === "en" ? "Daily Knowledge" : "Kiến thức Hằng ngày"}
+                <span style={{ fontSize: "12.5px", color: "var(--text-primary)", fontWeight: "600", display: "inline-flex", alignItems: "center" }}>
+                  <Lightbulb size={15} weight="bold" aria-hidden="true" style={{ verticalAlign: "middle", marginRight: "6px", color: "var(--accent-primary)" }} />
+                  {lang === "en" ? "Daily Knowledge" : "Kiến thức Hằng ngày"}
                 </span>
                 <label style={{ display: "flex", alignItems: "center", cursor: "pointer" }}>
                   <input
@@ -2214,9 +2367,10 @@ export default function ProfileSettingsModal() {
                 <button
                   type="button"
                   onClick={handleSendTestNotification}
-                  style={{ background: "rgba(255,255,255,0.8)", border: "1px solid var(--border-color)", borderRadius: "8px", padding: "6px 12px", fontSize: "11.5px", fontWeight: "600", cursor: "pointer", color: "var(--text-primary)" }}
+                  style={{ background: "rgba(255,255,255,0.8)", border: "1px solid var(--border-color)", borderRadius: "8px", padding: "6px 12px", fontSize: "11.5px", fontWeight: "600", cursor: "pointer", color: "var(--text-primary)", display: "inline-flex", alignItems: "center" }}
                 >
-                  ⚡ {lang === "en" ? "Test Notification" : "Thử Thông báo"}
+                  <Lightning size={14} weight="fill" aria-hidden="true" style={{ verticalAlign: "middle", marginRight: "4px", color: "#f59e0b" }} />
+                  {lang === "en" ? "Test Notification" : "Thử Thông báo"}
                 </button>
                 {testNotifMsg && (
                   <span style={{ fontSize: "11.5px", color: "var(--color-green)", fontWeight: "600", display: "flex", alignItems: "center", gap: "4px" }}>
@@ -2344,7 +2498,7 @@ export default function ProfileSettingsModal() {
 
 
 
-                🚪 {lang === "en" ? "Sign Out" : "Đăng xuất"}
+                <SignOut size={16} weight="bold" aria-hidden="true" style={{ verticalAlign: "middle", marginRight: "6px" }} />{lang === "en" ? "Sign Out" : "Đăng xuất"}
 
 
 
@@ -2370,7 +2524,7 @@ export default function ProfileSettingsModal() {
 
           </form>
 
-
+          <ConnectedAccounts />
 
 
 

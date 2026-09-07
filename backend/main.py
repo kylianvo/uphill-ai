@@ -31,6 +31,7 @@ from db import (
     get_active_plan,
     get_all_grounding_content,
     get_all_knowledge_cards,
+    get_block_actual_volume,
     get_block_completion,
     get_block_reviews,
     get_coach_athlete_by_id,
@@ -39,14 +40,17 @@ from db import (
     get_kb_chunk_count,
     get_knowledge_card_count,
     get_knowledge_topics,
+    get_matches_for_review,
     get_max_generated_week,
     get_pending_invites_for_athlete,
     get_plan_by_id,
     get_plan_workouts,
     get_random_knowledge_cards,
     get_recent_plans,
+    get_recent_readiness_summary,
     get_roster_for_coach,
     get_roster_overview_data,
+    get_user_activity_ceiling,
     get_user_by_email,
     get_user_by_id,
     get_workout_by_id,
@@ -79,6 +83,7 @@ from routers.integrations import router as integrations_router
 from services.auth_service import hash_password, verify_password
 from services.calendar_service import CalendarService
 from services.gear_planner import GearParams, gear_planner
+from services.matching.block_evaluator import evaluate_block_performance
 from services.nutrition_planner import NutritionParams, nutrition_planner
 from services.pacing_calculator import PacingCalculator
 from services.plan_generator import PlanGenerator
@@ -202,6 +207,7 @@ class PlanGenerateRequest(BaseModel):
     # (/api/coaching/athletes/{athlete_id}/generate-plan) -- injected into the
     # generation prompt so the coach's own judgment can override defaults.
     coach_notes: str | None = None
+    athlete_notes: str | None = None
 
 
 class SelectPlanRequest(BaseModel):
@@ -243,6 +249,25 @@ class GenerateNextBlockRequest(BaseModel):
     has_gym_access: bool | None = None
     use_treadmill: bool | None = None
     training_environment: str | None = None
+    athlete_notes: str | None = None
+
+
+class AdaptWeekRequest(BaseModel):
+    plan_id: int
+    week_number: int  # target week to adapt (1-indexed)
+    overall_rpe: int | None = None  # 1-10 fatigue / exertion check
+    fatigue_level: str | None = None  # 'easy', 'medium', 'hard', 'exhausted'
+    fatigue_notes: str | None = None  # why adapting / fatigue details
+    athlete_notes: str | None = None
+    coach_notes: str | None = None
+    preferred_days: list[str] | None = None
+    long_run_day: str | None = None
+    days_per_week: int | None = None
+    double_session_days: list[str] | None = None
+    has_gym_access: bool | None = None
+    use_treadmill: bool | None = None
+    training_environment: str | None = None
+    lang: str | None = None
 
 
 # Phase 3 Request Models
@@ -345,6 +370,7 @@ class OnboardingRequest(BaseModel):
     # into the app; they can start a plan later from the Planner tab.
     skip_plan: bool = False
     plan_start_date: str | None = None  # YYYY-MM-DD
+    athlete_notes: str | None = None
 
 
 class UpdateProfileRequest(BaseModel):
@@ -359,6 +385,12 @@ class UpdateProfileRequest(BaseModel):
     gender: str | None = None  # 'male' | 'female' | 'other'
     height_cm: float | None = None
     weight_kg: float | None = None
+    threshold_pace: str | None = None
+    coros_vo2max: float | None = None
+    coros_running_level: float | None = None
+    pace_zone_model: str | None = None
+    custom_pace_zones: dict[str, Any] | None = None
+    athlete_notes: str | None = None
 
 
 class SetCoachStatusRequest(BaseModel):
@@ -470,6 +502,11 @@ def format_user_response(user: dict[str, Any]) -> dict[str, Any]:
         "gemini_api_key": user.get("gemini_api_key") or "",
         "zone2_pace_min": user.get("zone2_pace_min") or "6:30",
         "zone2_pace_max": user.get("zone2_pace_max") or "5:45",
+        "threshold_pace": user.get("threshold_pace"),
+        "coros_vo2max": user.get("coros_vo2max"),
+        "coros_running_level": user.get("coros_running_level"),
+        "pace_zone_model": user.get("pace_zone_model") or "5_zone",
+        "custom_pace_zones": user.get("custom_pace_zones"),
         "is_coach": bool(user.get("is_coach", False)),
     }
 
@@ -513,6 +550,10 @@ You are Coach Uphill, an elite running coach speaking directly to your athlete �
 MUST: Keep every reply to 1-2 short paragraphs or a brief bullet list. NEVER open with a preamble or repeat the athlete's question back to them. NEVER pad with essay-like explanation.
 NEVER fabricate a workout detail, product spec, or statistic you are not confident about. If the grounding data below doesn't cover what's asked, say so plainly and answer from general coaching principles instead of inventing specifics.
 
+Domain Boundaries — enforce strictly:
+- You ONLY answer questions concerning running (trail, ultra, mountain, road, track), endurance training, strength & mobility for runners, running gear/shoes, injury prevention/recovery, and sports nutrition/hydration.
+- If the user asks about ANY topic outside of running, endurance sports, and athletic nutrition (such as coding/software, general trivia, politics, non-sports cooking, mathematics, homework, finance, entertainment, etc.), you MUST politely decline in 1-2 brief sentences and redirect them back to their running and training goals (e.g., "I'm Coach Uphill, specialized exclusively in running, endurance training, and sports nutrition. Let's get back to your training — how can I help with your runs, workouts, or fueling?").
+
 Coaching principles — apply strictly:
 1. Trail Running: Scott Johnston's "Training for the Uphill Athlete" principles. Emphasize muscular endurance (e.g., weighted step-ups, hill sprints).
 2. Road Running: 80/20 rule — 80% of volume in Zone 1-2, 20% in Zone 3-5.
@@ -528,6 +569,10 @@ You are an AI coaching assistant helping a human coach think through their athle
 
 MUST: Keep every reply to 1-2 short paragraphs or a brief bullet list. NEVER open with a preamble or repeat the coach's question back to them.
 NEVER fabricate a workout detail, completion status, or statistic about this athlete that isn't in the athlete context below. If the context doesn't cover what's asked, say so plainly rather than guessing, and answer from general coaching principles instead.
+
+Domain Boundaries — enforce strictly:
+- Strictly limit discussion to running, endurance training, athlete physiological metrics, workout prescription, recovery, gear, and sports nutrition.
+- If prompted about topics unrelated to athlete coaching and endurance sports performance, decline briefly and redirect back to the athlete's training.
 
 Coaching principles — apply strictly:
 1. Trail Running: Scott Johnston's "Training for the Uphill Athlete" principles. Emphasize muscular endurance (e.g., weighted step-ups, hill sprints).
@@ -827,6 +872,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         has_gym_access=request.has_gym_access or False,
         use_treadmill=request.has_gym_access or False,
         training_environment=request.training_environment or "flat",
+        athlete_notes=request.athlete_notes,
     )
 
     # Mark onboarding complete immediately so the user can enter the app
@@ -834,6 +880,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
 
     fresh_user = get_user_by_id(user["id"]) or user
     model_api_key = fresh_user.get("gemini_api_key") or settings.GEMINI_API_KEY
+    historical_ceiling = get_user_activity_ceiling(user["id"])
 
     race_info = {
         "name": race_name,
@@ -852,6 +899,8 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         "use_treadmill": request.has_gym_access or False,
         "training_environment": request.training_environment or "flat",
         "plan_start_date": onboarding_start_date,
+        "athlete_notes": request.athlete_notes or fresh_user.get("athlete_notes"),
+        "historical_ceiling": historical_ceiling,
         "lang": request.lang or "en",
     }
 
@@ -976,12 +1025,54 @@ def update_profile(request: UpdateProfileRequest, user: dict[str, Any] = Depends
 
 
 @app.get("/api/auth/pace-zones")
-def get_pace_zones(user: dict[str, Any] = Depends(get_current_user)):
+def get_pace_zones(model: str | None = None, user: dict[str, Any] = Depends(get_current_user)):
+    zone_model = model or user.get("pace_zone_model") or "5_zone"
+    threshold_pace = user.get("threshold_pace")
+
+    # If custom pace zones exist and match the requested model, return them directly
+    custom_zones = user.get("custom_pace_zones")
+    if custom_zones and isinstance(custom_zones, dict) and custom_zones.get("model") == zone_model:
+        return custom_zones
+
+    if zone_model == "4_zone":
+        if threshold_pace:
+            zones = PlanGenerator.calculate_pace_zones_from_threshold(threshold_pace, model="4_zone")
+        else:
+            zones = PlanGenerator.estimate_pace_zones(
+                user.get("zone2_pace_min") or "6:30",
+                user.get("zone2_pace_max") or "5:45",
+                user.get("aet_hr"),
+                user.get("ant_hr"),
+                model="4_zone",
+            )
+        aet = int(user.get("aet_hr") or 140)
+        ant = int(user.get("ant_hr") or 165)
+        return {
+            "model": "4_zone",
+            "threshold_pace": threshold_pace,
+            "zone1_pace": zones["zone1_pace"],
+            "zone2_pace": zones["zone2_pace"],
+            "zone3_pace": zones["zone3_pace"],
+            "zone4_pace": zones["zone4_pace"],
+            "zone5_pace": zones["zone4_pace"],  # Fallback for legacy 5-zone consumers
+            "zone1_hr": f"< {aet} bpm",
+            "zone2_hr": f"{aet}-{ant} bpm",
+            "zone3_hr": f"{ant}-{ant + 5} bpm",
+            "zone4_hr": f"> {ant + 5} bpm",
+            "zone5_hr": f"> {ant + 5} bpm",
+            "zone_labels": zones.get("zone_labels"),
+            "coros_vo2max": user.get("coros_vo2max"),
+            "coros_running_level": user.get("coros_running_level"),
+        }
+
+    # Default: 5-zone
     zones = PlanGenerator.estimate_pace_zones(
         user.get("zone2_pace_min") or "6:30",
         user.get("zone2_pace_max") or "5:45",
         user.get("aet_hr"),
         user.get("ant_hr"),
+        threshold_pace=threshold_pace,
+        model="5_zone",
     )
     hr_zones = TrainingRules.calculate_heart_rate_zones(
         int(user.get("max_hr") or 185),
@@ -990,6 +1081,8 @@ def get_pace_zones(user: dict[str, Any] = Depends(get_current_user)):
         user.get("ant_hr"),
     )
     return {
+        "model": "5_zone",
+        "threshold_pace": threshold_pace,
         "zone1_pace": zones["zone1_pace"],
         "zone2_pace": zones["zone2_pace"],
         "zone3_pace": zones["zone3_pace"],
@@ -1000,6 +1093,9 @@ def get_pace_zones(user: dict[str, Any] = Depends(get_current_user)):
         "zone3_hr": f"{hr_zones['Zone 3']['min']}-{hr_zones['Zone 3']['max']} bpm",
         "zone4_hr": f"{hr_zones['Zone 4']['min']}-{hr_zones['Zone 4']['max']} bpm",
         "zone5_hr": f"{hr_zones['Zone 5']['min']}-{hr_zones['Zone 5']['max']} bpm",
+        "zone_labels": zones.get("zone_labels"),
+        "coros_vo2max": user.get("coros_vo2max"),
+        "coros_running_level": user.get("coros_running_level"),
     }
 
 
@@ -1255,16 +1351,48 @@ def _build_athlete_context_block(athlete: dict[str, Any]) -> str:
         f"Athlete: {athlete.get('name') or athlete.get('email')}",
         f"Active Plan: {plan['race_name']} on {plan['race_date']} ({plan['goal_type']}, week {current_week} of {plan['total_weeks']})",
     ]
+    if athlete.get("threshold_pace"):
+        lines.append(f"Threshold Pace: {athlete['threshold_pace']}/km | VO2max: {athlete.get('coros_vo2max') or 'N/A'}")
+
     if not week_workouts:
         lines.append("No workouts recorded for the current week.")
     else:
         lines.append("This week's workouts:")
         for w in week_workouts:
-            status = "completed" if w.get("is_completed") else "not yet completed"
+            status = "completed" if w.get("is_completed") else ("missed" if w.get("is_missed") else "not yet completed")
             rpe = f", RPE {w['rpe']}" if w.get("rpe") else ""
             lines.append(
                 f"- {w['day_of_week']}: {w['title']} ({w['type']}, {w['duration_minutes']} min, {status}{rpe})"
             )
+
+    # Recent watch activity adherence & execution quality (last 14 days)
+    try:
+        from datetime import date, timedelta
+
+        until = date.today() + timedelta(days=1)
+        since = until - timedelta(days=14)
+        recent_matches = get_matches_for_review(athlete["id"], since, until, plan_id=plan["id"])
+        if recent_matches:
+            lines.append("\nRecent Watch Activities & Execution Quality (Last 14 Days):")
+            for act in recent_matches[-6:]:
+                dist = f"{act['distance_km']:.1f}km" if act.get("distance_km") else f"{act.get('sets') or 'N/A'} sets"
+                dur = f"{round((act.get('duration_seconds') or 0)/60)}m"
+                hr = f"avg HR {act['avg_hr']} bpm" if act.get("avg_hr") else ""
+                q_grade = (
+                    f"Quality: {act.get('quality_grade')} ({act.get('quality_score')}%)"
+                    if act.get("quality_score") is not None
+                    else ""
+                )
+                w_title = act.get("workout_title") or "Unplanned / Free session"
+                details = act.get("quality_details") or {}
+                takeaways = "; ".join(details.get("takeaways", [])) if isinstance(details, dict) else ""
+                notes = f" - Notes: {takeaways}" if takeaways else ""
+                lines.append(
+                    f"  * {str(act.get('start_time'))[:10]}: '{w_title}' - {dist} in {dur}, {hr}. {q_grade}{notes}"
+                )
+    except Exception as exc:
+        print(f"[AthleteContext] Warning loading recent matches: {exc}")
+
     return "\n".join(lines)
 
 
@@ -1565,7 +1693,12 @@ async def _generate_plan_for_athlete(
         training_environment=request.training_environment or "flat",
         created_by_user_id=created_by_user_id,
         plan_status=plan_status,
+        athlete_notes=request.athlete_notes,
     )
+
+    # Fetch latest athlete details from database to ensure fresh physiological values
+    fresh_user = get_user_by_id(athlete_id) or {"id": athlete_id}
+    historical_ceiling = get_user_activity_ceiling(athlete_id)
 
     race_info = {
         "name": race_name_str,
@@ -1588,12 +1721,11 @@ async def _generate_plan_for_athlete(
         "training_environment": request.training_environment or "flat",
         # Start date
         "plan_start_date": start_date_str,
+        "athlete_notes": request.athlete_notes or fresh_user.get("athlete_notes"),
+        "historical_ceiling": historical_ceiling,
         "lang": request.lang or "en",
         "coach_notes": request.coach_notes,
     }
-
-    # Fetch latest athlete details from database to ensure fresh physiological values
-    fresh_user = get_user_by_id(athlete_id) or {"id": athlete_id}
 
     # Merge onboarding/non-race context fields into fresh_user dict for plan generator
     fresh_user = dict(fresh_user)
@@ -1772,6 +1904,13 @@ async def submit_block_review(request: BlockReviewRequest, user: dict[str, Any] 
     return {"review": review}
 
 
+@app.get("/api/coach/block-evaluation/{plan_id}/{block_number}")
+def get_plan_block_evaluation(plan_id: int, block_number: int, user: dict[str, Any] = Depends(get_current_user)):
+    """Return coach evaluation & takeaways for a completed 2-week block."""
+    _verify_plan_ownership(plan_id, user["id"])
+    return evaluate_block_performance(user["id"], plan_id, block_number)
+
+
 async def _generate_next_block_for_athlete(
     request: GenerateNextBlockRequest, athlete_id: int, job_owner_user_id: int
 ) -> dict[str, Any]:
@@ -1853,6 +1992,7 @@ async def _generate_next_block_for_athlete(
         request.has_gym_access,
         request.use_treadmill,
         request.training_environment,
+        request.athlete_notes,
     )
     if any(f is not None for f in _schedule_fields):
         updated_plan = update_plan_schedule(
@@ -1864,6 +2004,7 @@ async def _generate_next_block_for_athlete(
             has_gym_access=request.has_gym_access,
             use_treadmill=request.use_treadmill,
             training_environment=request.training_environment,
+            athlete_notes=request.athlete_notes,
         )
         if updated_plan:
             plan = updated_plan
@@ -1897,9 +2038,25 @@ async def _generate_next_block_for_athlete(
         planned_km = sum(w.get("distance_km") or 0 for w in block_wos)
         planned_min = sum(w.get("duration_minutes") or 0 for w in block_wos)
 
-        # Actual totals (from completed workouts)
-        actual_km = sum(w.get("distance_km") or 0 for w in completed_wos)
-        actual_min = sum(w.get("duration_minutes") or 0 for w in completed_wos)
+        # Actual totals (from true GPS watch activities, both matched & unplanned)
+        actual_vol = get_block_actual_volume(
+            user_id=athlete_id,
+            plan_id=request.plan_id,
+            wk_start=wk_start,
+            wk_end=wk_end,
+            plan_start_date=plan.get("start_date"),
+        )
+        if actual_vol.get("total_activities_count", 0) > 0:
+            actual_km = actual_vol["total_actual_km"]
+            actual_min = actual_vol["total_actual_minutes"]
+            actual_vert = actual_vol["total_actual_vert_m"]
+        else:
+            actual_km = sum(w.get("distance_km") or 0 for w in completed_wos)
+            actual_min = sum(w.get("duration_minutes") or 0 for w in completed_wos)
+            actual_vert = sum(w.get("elevation_gain_m") or 0 for w in completed_wos)
+
+        unplanned_count = actual_vol.get("unplanned_count", 0)
+        unplanned_km = actual_vol.get("unplanned_km", 0.0)
 
         sessions_done = len(completed_wos)
         sessions_total = len(block_wos)
@@ -1938,10 +2095,24 @@ async def _generate_next_block_for_athlete(
         line = (
             f"Block {blk} (Wk {wk_start}-{wk_end}): "
             f"{sessions_done}/{sessions_total} sessions ({completion_pct}%) | "
-            f"Actual {actual_km:.1f}km/{actual_min/60:.1f}h vs Planned {planned_km:.1f}km/{planned_min/60:.1f}h"
+            f"Actual {actual_km:.1f}km/{actual_min/60:.1f}h"
+            + (f" (+{actual_vert:.0f}m D+)" if actual_vert > 0 else "")
+            + f" vs Planned {planned_km:.1f}km/{planned_min/60:.1f}h"
         )
+        if unplanned_count > 0:
+            line += f" [Includes {unplanned_count} unplanned watch activity: {unplanned_km:.1f}km]"
         if block_rpe:
-            line += f" | RPE {block_rpe}/10"
+            if block_rpe <= 2:
+                feeling_label = "Very Light"
+            elif block_rpe <= 4:
+                feeling_label = "Light"
+            elif block_rpe <= 6:
+                feeling_label = "Moderate"
+            elif block_rpe <= 8:
+                feeling_label = "Hard"
+            else:
+                feeling_label = "Max Effort"
+            line += f" | Effort: {feeling_label} (RPE {block_rpe}/10)"
         context_lines.append(line)
 
         if block_note:
@@ -1954,6 +2125,19 @@ async def _generate_next_block_for_athlete(
             )
 
         if blk == request.block_number - 1:
+            # Evaluate coach feedback on this most recent block:
+            prev_eval = evaluate_block_performance(athlete_id, request.plan_id, blk)
+            if prev_eval.get("coach_summary"):
+                context_lines.append(f"  Coach evaluation (Block {blk}): {prev_eval['coach_summary']}")
+            if prev_eval.get("avg_quality_score") is not None:
+                context_lines.append(
+                    f"  Execution quality: {prev_eval['avg_quality_score']}% (Grade {prev_eval['quality_grade']})"
+                )
+            for tk in prev_eval.get("coaching_takeaways", []):
+                context_lines.append(f"  Coach takeaway: {tk}")
+            for cn in prev_eval.get("coach_notes", []):
+                context_lines.append(f'  Coach directive on file: "{cn}"')
+
             # Most recent block: one line per session — performance, feedback,
             # RPE — so the next block reacts to specific sessions, not averages.
             context_lines.append("  Session-by-session (previous block):")
@@ -1965,7 +2149,19 @@ async def _generate_next_block_for_athlete(
                 if status == "completed":
                     detail = "completed"
                     if w.get("rpe"):
-                        detail += f", RPE {w['rpe']}/10"
+                        r = w["rpe"]
+                        f_lbl = (
+                            "Very Light"
+                            if r <= 2
+                            else "Light"
+                            if r <= 4
+                            else "Moderate"
+                            if r <= 6
+                            else "Hard"
+                            if r <= 8
+                            else "Max Effort"
+                        )
+                        detail += f", Feeling: {f_lbl} (RPE {r}/10)"
                     if w.get("notes"):
                         detail += f', feedback: "{w["notes"]}"'
                 else:
@@ -1994,6 +2190,18 @@ async def _generate_next_block_for_athlete(
     _, _, course_context = _resolve_course_match(
         plan.get("race_name"), plan.get("course_distance_km"), plan.get("course_elevation_gain_m")
     )
+
+    active_coach_notes = []
+    if request.coach_notes:
+        active_coach_notes.append(request.coach_notes)
+    if "prev_eval" in locals() and prev_eval.get("coach_notes"):
+        for cn in prev_eval["coach_notes"]:
+            if cn not in active_coach_notes:
+                active_coach_notes.append(cn)
+
+    readiness_summary = get_recent_readiness_summary(athlete_id, days=7)
+    historical_ceiling = get_user_activity_ceiling(athlete_id)
+
     race_info = {
         "name": plan.get("race_name", "Training Plan"),
         "date": plan.get("race_date"),
@@ -2011,8 +2219,11 @@ async def _generate_next_block_for_athlete(
         "use_treadmill": plan.get("use_treadmill", False),
         "training_environment": plan.get("training_environment") or "flat",
         "plan_start_date": plan.get("start_date"),
+        "athlete_notes": request.athlete_notes or plan.get("athlete_notes") or fresh_user.get("athlete_notes"),
+        "historical_ceiling": historical_ceiling,
+        "readiness_summary": readiness_summary,
         "lang": request.lang or fresh_user.get("lang", "en"),
-        "coach_notes": request.coach_notes,
+        "coach_notes": "\n".join(active_coach_notes) if active_coach_notes else None,
     }
 
     model_api_key = fresh_user.get("gemini_api_key") or settings.GEMINI_API_KEY
@@ -2090,6 +2301,340 @@ async def coach_generate_next_block(
     return await _generate_next_block_for_athlete(request, athlete_id=athlete_id, job_owner_user_id=coach["id"])
 
 
+async def _adapt_week_for_athlete(request: AdaptWeekRequest, athlete_id: int, job_owner_user_id: int) -> dict[str, Any]:
+    """Shared core of week adaptation, used by both the self-serve
+    /api/coach/adapt-week (athlete_id == job_owner_user_id) and the
+    coach-triggered /api/coaching/athletes/{athlete_id}/adapt-week.
+    """
+    import asyncio
+    import uuid as _uuid
+
+    recent = get_recent_plans(athlete_id, limit=100)
+    plan = next((p for p in recent if p["id"] == request.plan_id), None)
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found.")
+
+    total_weeks = plan.get("total_weeks", 12)
+    if request.week_number < 1 or request.week_number > total_weeks:
+        raise HTTPException(status_code=400, detail="Invalid week number.")
+
+    max_week = get_max_generated_week(request.plan_id)
+    if request.week_number > max_week:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Week {request.week_number} has not been generated yet. Current generated weeks: 1-{max_week}.",
+        )
+
+    # Guard against duplicate concurrent job
+    for existing_job_id, job in plan_jobs.items():
+        if (
+            job.get("plan_id") == request.plan_id
+            and job.get("kind") == "adapt_week"
+            and job.get("target_week") == request.week_number
+            and job.get("status") == "generating"
+        ):
+            return {
+                "job_id": existing_job_id,
+                "plan_id": request.plan_id,
+                "week_number": request.week_number,
+            }
+
+    all_workouts = get_plan_workouts(request.plan_id)
+    fresh_user = get_user_by_id(athlete_id) or {}
+
+    # Map fatigue_level (5 feelings: very_light/light/moderate/hard/max_effort) and overall_rpe coherently
+    fatigue_level = request.fatigue_level
+    overall_rpe = request.overall_rpe
+    level_to_rpe = {
+        "very_light": 2,
+        "very light": 2,
+        "easy": 3,
+        "light": 4,
+        "medium": 6,
+        "moderate": 6,
+        "hard": 8,
+        "exhausted": 10,
+        "max_effort": 10,
+        "max effort": 10,
+    }
+    if fatigue_level and overall_rpe is None:
+        overall_rpe = level_to_rpe.get(fatigue_level.lower(), 6)
+    elif overall_rpe is not None and not fatigue_level:
+        if overall_rpe <= 2:
+            fatigue_level = "very_light"
+        elif overall_rpe <= 4:
+            fatigue_level = "light"
+        elif overall_rpe <= 6:
+            fatigue_level = "moderate"
+        elif overall_rpe <= 8:
+            fatigue_level = "hard"
+        else:
+            fatigue_level = "max_effort"
+
+    context_lines: list[str] = [
+        f"ADAPTATION & REGENERATION FOR WEEK {request.week_number}:",
+    ]
+    if fatigue_level:
+        norm_fl = fatigue_level.lower().replace(" ", "_")
+        fl_display_map = {
+            "very_light": "VERY LIGHT",
+            "light": "LIGHT",
+            "moderate": "MODERATE",
+            "hard": "HARD",
+            "max_effort": "MAX EFFORT",
+            "easy": "LIGHT",
+            "medium": "MODERATE",
+            "exhausted": "MAX EFFORT",
+        }
+        display_feeling = fl_display_map.get(norm_fl, fatigue_level.upper())
+        context_lines.append(f"  Current Athlete Feeling: {display_feeling} (equivalent RPE ~{overall_rpe or 6}/10)")
+        if norm_fl in ("very_light",):
+            context_lines.append(
+                "  Feeling Very Light: Athlete is effortless and underloaded. "
+                "IMPORTANT: Increase training stimulus by adding 5-10% weekly volume or progressing key quality sessions (intervals/tempo) while respecting recovery."
+            )
+        elif norm_fl in ("light", "easy"):
+            context_lines.append(
+                "  Feeling Light / Fresh: Athlete is well recovered and ready to absorb more load. "
+                "IMPORTANT: Do NOT reduce weekly training volume. Match or slightly increase the planned week's total duration and distance. "
+                "Keep all key quality sessions (intervals, tempo, long run) intact. "
+                "You may optionally add 5% more volume to the easy/base runs to capitalise on the athlete's freshness."
+            )
+        elif norm_fl in ("moderate", "medium"):
+            context_lines.append(
+                "  Feeling Moderate: Normal training fatigue, manageable and sustainable. Keep balanced volume with steady progression."
+            )
+        elif norm_fl in ("hard",):
+            context_lines.append(
+                "  Feeling Hard / Tired: Elevated fatigue or heavy legs. Ease off high-intensity sessions and trim volume by 10-15%."
+            )
+        elif norm_fl in ("max_effort", "exhausted"):
+            context_lines.append(
+                "  Feeling Max Effort / Exhausted: High fatigue or overreaching. Prescribe an active recovery/deload week with 20-30% reduced volume and no high-intensity work."
+            )
+    elif overall_rpe is not None:
+        context_lines.append(f"  Current Athlete Exertion / Fatigue RPE: {overall_rpe}/10")
+
+    if request.fatigue_notes:
+        context_lines.append(f'  Fatigue & Adaptation reason: "{request.fatigue_notes}"')
+    if request.athlete_notes:
+        context_lines.append(f'  Athlete notes: "{request.athlete_notes}"')
+    if request.coach_notes:
+        context_lines.append(f'  Coach instructions: "{request.coach_notes}"')
+
+    # Double session preferences in single-week adaptation prompt
+    target_double_sessions = (
+        request.double_session_days if request.double_session_days is not None else plan.get("double_session_days")
+    )
+    if target_double_sessions:
+        if isinstance(target_double_sessions, str):
+            try:
+                import json
+
+                ds_list = json.loads(target_double_sessions)
+            except Exception:
+                ds_list = [d.strip() for d in target_double_sessions.split(",") if d.strip()]
+        else:
+            ds_list = list(target_double_sessions)
+        if ds_list:
+            context_lines.append(
+                f"  Double Session Preference: Athlete requested 2 sessions on: {', '.join(ds_list)} "
+                "(e.g., Morning run + Afternoon run/strength/mobility, or Easy AM + Quality PM). Schedule TWO workouts on these days."
+            )
+
+    prev_wk = request.week_number - 1
+    if prev_wk >= 1:
+        prev_wos = [w for w in all_workouts if w.get("week_number") == prev_wk and w.get("type") != "Rest"]
+        completed_prev = [w for w in prev_wos if w.get("is_completed") == 1]
+        actual_vol = get_block_actual_volume(
+            user_id=athlete_id,
+            plan_id=request.plan_id,
+            wk_start=prev_wk,
+            wk_end=prev_wk,
+            plan_start_date=plan.get("start_date"),
+        )
+        if actual_vol.get("total_activities_count", 0) > 0:
+            actual_km = actual_vol["total_actual_km"]
+            actual_min = actual_vol["total_actual_minutes"]
+            actual_vert = actual_vol["total_actual_vert_m"]
+        else:
+            actual_km = sum(w.get("distance_km") or 0 for w in completed_prev)
+            actual_min = sum(w.get("duration_minutes") or 0 for w in completed_prev)
+            actual_vert = sum(w.get("elevation_gain_m") or 0 for w in completed_prev)
+        planned_km = sum(w.get("distance_km") or 0 for w in prev_wos)
+        planned_min = sum(w.get("duration_minutes") or 0 for w in prev_wos)
+        context_lines.append(
+            f"  Prior Week ({prev_wk}) Volume: Actual {actual_km:.1f}km / {actual_min/60:.1f}h"
+            + (f" (+{actual_vert:.0f}m D+)" if actual_vert > 0 else "")
+            + f" vs Planned {planned_km:.1f}km / {planned_min/60:.1f}h"
+        )
+        # Check if athlete missed an ME session in previous week (Scott Johnston Rule 7)
+        missed_me = [
+            w
+            for w in prev_wos
+            if (
+                "ME" in (w.get("type") or "").upper()
+                or "MUSCULAR ENDURANCE" in (w.get("title") or "").upper()
+                or "CIRCUIT" in (w.get("title") or "").upper()
+            )
+            and w.get("is_completed") != 1
+        ]
+        if missed_me:
+            context_lines.append(
+                "  ME Progression Adjustment (Scott Johnston Rule 7): Athlete missed a scheduled Muscular Endurance (ME) session in the prior week. "
+                "Drop the ME progression back by 2 workouts (reduce rounds, reps, or pack weight) to allow safe tendon and joint re-adaptation."
+            )
+
+    # Note any workouts already completed/matched in the target week
+    curr_completed = [
+        w for w in all_workouts if w.get("week_number") == request.week_number and w.get("is_completed") == 1
+    ]
+    if curr_completed:
+        context_lines.append(
+            f"  Note: Workouts already completed/matched in Week {request.week_number} will be PRESERVED:"
+        )
+        for cw in curr_completed:
+            context_lines.append(
+                f"    - {cw.get('day_of_week')}: {cw.get('title')} ({cw.get('duration_minutes', 0):.0f}min, {cw.get('distance_km', 0):.1f}km)"
+            )
+
+    # Add planned volume for target week so Gemini has a concrete floor to stay above
+    # (especially critical for "easy" feedback where volume should not decrease)
+    target_wos = [w for w in all_workouts if w.get("week_number") == request.week_number and w.get("type") != "Rest"]
+    if target_wos:
+        target_planned_min = sum(w.get("duration_minutes") or 0 for w in target_wos)
+        target_planned_km = sum(w.get("distance_km") or 0 for w in target_wos)
+        completed_target = [w for w in target_wos if w.get("is_completed") == 1]
+        uncompleted_min = sum(w.get("duration_minutes") or 0 for w in target_wos if w.get("is_completed") != 1)
+        uncompleted_km = sum(w.get("distance_km") or 0 for w in target_wos if w.get("is_completed") != 1)
+        volume_floor_note = (
+            f"  Week {request.week_number} Original Planned Volume: {target_planned_km:.1f}km / {target_planned_min/60:.1f}h total "
+            f"({len(target_wos)} sessions, {len(completed_target)} already completed)."
+        )
+        context_lines.append(volume_floor_note)
+        if fatigue_level and fatigue_level.lower().replace(" ", "_") in (
+            "very_light",
+            "light",
+            "easy",
+            "moderate",
+            "medium",
+        ):
+            context_lines.append(
+                f"  Volume Floor: The regenerated week MUST include at least {uncompleted_km:.1f}km / {uncompleted_min/60:.1f}h "
+                f"across the remaining {len(target_wos) - len(completed_target)} sessions (i.e., not less than the original plan for uncompleted workouts)."
+            )
+
+    block_context = "\n".join(context_lines)
+
+    _, _, course_context = _resolve_course_match(
+        plan.get("race_name"), plan.get("course_distance_km"), plan.get("course_elevation_gain_m")
+    )
+
+    readiness_summary = get_recent_readiness_summary(athlete_id, days=7)
+    historical_ceiling = get_user_activity_ceiling(athlete_id)
+
+    # Week-specific preference overrides (without mutating plan DB defaults)
+    preferred_days = request.preferred_days if request.preferred_days is not None else plan.get("preferred_run_days")
+    long_run_day = request.long_run_day if request.long_run_day is not None else plan.get("long_run_day")
+    days_per_week = request.days_per_week if request.days_per_week is not None else plan.get("days_per_week")
+    double_session_days = (
+        request.double_session_days if request.double_session_days is not None else plan.get("double_session_days")
+    )
+    has_gym_access = request.has_gym_access if request.has_gym_access is not None else plan.get("has_gym_access", False)
+    use_treadmill = request.use_treadmill if request.use_treadmill is not None else plan.get("use_treadmill", False)
+    training_environment = (
+        request.training_environment
+        if request.training_environment is not None
+        else (plan.get("training_environment") or "flat")
+    )
+
+    race_info = {
+        "name": plan.get("race_name", "Training Plan"),
+        "date": plan.get("race_date"),
+        "terrain": fresh_user.get("terrain", "trail"),
+        "goal_type": plan.get("goal_type"),
+        "target_time_hours": plan.get("target_time_hours"),
+        "course_distance_km": plan.get("course_distance_km"),
+        "course_elevation_gain_m": plan.get("course_elevation_gain_m"),
+        "course_context": course_context,
+        "preferred_days": preferred_days,
+        "long_run_day": long_run_day,
+        "days_per_week": days_per_week,
+        "double_session_days": double_session_days,
+        "has_gym_access": has_gym_access,
+        "use_treadmill": use_treadmill,
+        "training_environment": training_environment,
+        "plan_start_date": plan.get("start_date"),
+        "athlete_notes": request.athlete_notes or plan.get("athlete_notes") or fresh_user.get("athlete_notes"),
+        "historical_ceiling": historical_ceiling,
+        "readiness_summary": readiness_summary,
+        "lang": request.lang or fresh_user.get("lang", "en"),
+        "coach_notes": request.coach_notes,
+    }
+
+    model_api_key = fresh_user.get("gemini_api_key") or settings.GEMINI_API_KEY
+    block_num = (request.week_number + 1) // 2
+
+    job_id = str(_uuid.uuid4())
+    plan_jobs[job_id] = {
+        "status": "generating",
+        "user_id": job_owner_user_id,
+        "plan_id": request.plan_id,
+        "kind": "adapt_week",
+        "target_week": request.week_number,
+        "workouts": None,
+        "error": None,
+    }
+
+    async def _run_adapt_week():
+        try:
+            workouts = await PlanGenerator.generate_plan_workouts(
+                request.plan_id,
+                fresh_user,
+                race_info,
+                total_weeks,
+                api_key=model_api_key,
+                block_number=block_num,
+                weeks_per_block=2,
+                block_context=block_context,
+                target_week=request.week_number,
+            )
+            save_workouts(request.plan_id, workouts, preserve_completed=True)
+            plan_jobs[job_id]["workouts"] = workouts
+            plan_jobs[job_id]["status"] = "done"
+            print(f"[AdaptWeek][{job_id}] Week {request.week_number} complete — {len(workouts)} workouts saved.")
+        except Exception as ex:
+            plan_jobs[job_id]["status"] = "error"
+            plan_jobs[job_id]["error"] = str(ex)
+            print(f"[AdaptWeek][{job_id}] Week {request.week_number} FAILED: {ex}")
+
+    asyncio.create_task(_run_adapt_week())
+
+    return {
+        "job_id": job_id,
+        "plan_id": request.plan_id,
+        "week_number": request.week_number,
+    }
+
+
+@app.post("/api/coach/adapt-week")
+async def adapt_week(request: AdaptWeekRequest, user: dict[str, Any] = Depends(get_current_user)):
+    """
+    Adapt and regenerate an upcoming week in the current plan based on athlete feedback/fatigue.
+    Preserves completed / GPS-matched workouts, updates uncompleted workouts for that week.
+    """
+    return await _adapt_week_for_athlete(request, athlete_id=user["id"], job_owner_user_id=user["id"])
+
+
+@app.post("/api/coaching/athletes/{athlete_id}/adapt-week")
+async def coach_adapt_week(
+    athlete_id: int, request: AdaptWeekRequest, coach: dict[str, Any] = Depends(require_athlete_access)
+):
+    """Coach-scoped mirror of /api/coach/adapt-week -- lets a coach adapt an upcoming week
+    for a linked athlete."""
+    return await _adapt_week_for_athlete(request, athlete_id=athlete_id, job_owner_user_id=coach["id"])
+
+
 @app.get("/api/coaching/athletes/{athlete_id}/block-completion/{plan_id}")
 def get_athlete_plan_block_completion(
     athlete_id: int, plan_id: int, coach: dict[str, Any] = Depends(require_athlete_access)
@@ -2118,6 +2663,15 @@ def submit_athlete_block_review(
         notes=request.notes,
     )
     return {"review": review}
+
+
+@app.get("/api/coaching/athletes/{athlete_id}/block-evaluation/{plan_id}/{block_number}")
+def get_athlete_block_evaluation(
+    athlete_id: int, plan_id: int, block_number: int, coach: dict[str, Any] = Depends(require_athlete_access)
+):
+    """Coach-scoped mirror of /api/coach/block-evaluation/{plan_id}/{block_number}."""
+    _verify_plan_ownership(plan_id, athlete_id)
+    return evaluate_block_performance(athlete_id, plan_id, block_number)
 
 
 @app.post("/api/coach/select-plan")
@@ -2383,11 +2937,47 @@ async def coach_chat(request: ChatRequest):
     profile_summary = f"\nUser Running Profile: {request.user_profile}" if request.user_profile else ""
     context_summary = f"\nContext/Activity Data: {request.context_data}" if request.context_data else ""
 
+    # 3. Dynamic watch activities & execution quality grounding
+    recent_activity_context = ""
+    user_id = request.user_profile.get("id") if request.user_profile else None
+    if user_id:
+        try:
+            from datetime import date, timedelta
+
+            until = date.today() + timedelta(days=1)
+            since = until - timedelta(days=14)
+            recent_matches = get_matches_for_review(user_id, since, until)
+            if recent_matches:
+                act_lines = ["\n=== RECENT WATCH ACTIVITIES & EXECUTION QUALITY ==="]
+                for act in recent_matches[-8:]:
+                    dist = (
+                        f"{act['distance_km']:.1f}km" if act.get("distance_km") else f"{act.get('sets') or 'N/A'} sets"
+                    )
+                    dur = f"{round((act.get('duration_seconds') or 0)/60)}m"
+                    hr = f"avg HR {act['avg_hr']} bpm" if act.get("avg_hr") else ""
+                    q_grade = (
+                        f"Quality: {act.get('quality_grade')} ({act.get('quality_score')}%)"
+                        if act.get("quality_score") is not None
+                        else ""
+                    )
+                    w_title = act.get("workout_title") or "Unplanned / Free session"
+                    details = act.get("quality_details") or {}
+                    takeaways = "; ".join(details.get("takeaways", [])) if isinstance(details, dict) else ""
+                    notes = f" | Takeaways: {takeaways}" if takeaways else ""
+                    act_lines.append(
+                        f"- {str(act.get('start_time'))[:10]}: '{w_title}' ({dist}, {dur}, {hr}) {q_grade}{notes}"
+                    )
+                act_lines.append("===================================================")
+                recent_activity_context = "\n".join(act_lines)
+        except Exception as exc:
+            print(f"[Chat] Warning loading recent activities: {exc}")
+
     full_system_prompt = (
         f"{COACH_SYSTEM_INSTRUCTION}"
         f"{grounding_context}"
         f"{profile_summary}"
         f"{context_summary}"
+        f"{recent_activity_context}"
         f"\n\nNote: If the user asks questions referring to uploaded documents or materials, retrieve answers from the GROUNDING REFERENCE DATABASE and state which document/link you got it from."
     )
 

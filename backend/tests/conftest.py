@@ -30,3 +30,18 @@ os.environ.setdefault(
 os.environ.setdefault("ENVIRONMENT", "development")  # required for /api/auth/mock-login to be registered
 os.environ.setdefault("GEMINI_API_KEY", "test-key-not-real")
 os.environ.setdefault("JWT_SECRET", "test-jwt-secret-not-for-prod")
+
+import logging
+
+import log_utils
+
+_orig_get_logger = log_utils.get_logger
+
+
+def _test_get_logger(name: str) -> logging.Logger:
+    logger = _orig_get_logger(name)
+    logger.propagate = True
+    return logger
+
+
+log_utils.get_logger = _test_get_logger

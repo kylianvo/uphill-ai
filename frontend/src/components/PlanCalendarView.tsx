@@ -2,8 +2,9 @@
 import React, { useMemo, useState } from "react";
 import { DndContext, DragEndEvent, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, KeyboardSensor } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { CaretLeft, CaretRight, CheckCircle, Circle, X } from "@phosphor-icons/react";
+import { CaretLeft, CaretRight, CheckCircle, Circle, X, Flag, DotsSixVertical, ArrowsLeftRight } from "@phosphor-icons/react";
 import WorkoutCard from "./WorkoutCard";
+import { MoveWorkoutModal } from "./MoveWorkoutModal";
 import { getZoneColor } from "../data/workoutLibrary";
 import { useWorkoutTypes, resolveWorkoutInfo } from "../hooks/useWorkoutTypes";
 
@@ -105,6 +106,7 @@ export default function PlanCalendarView({
   const monthMins = monthWorkouts.reduce((s, w) => s + (w.duration_minutes || 0), 0);
 
   const [openDayKey, setOpenDayKey] = useState<string | null>(null);
+  const [drawerSwapOpen, setDrawerSwapOpen] = useState(false);
   const openWorkouts = openDayKey ? byDate.get(openDayKey) || [] : [];
 
   const phaseLabel = (phase: string) => {
@@ -206,8 +208,30 @@ export default function PlanCalendarView({
             >
               <X size={13} weight="bold" />
             </button>
-            <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: "14px" }}>
-              {openDayKey && parseIsoDateLocal(openDayKey).toLocaleDateString(lang === "vi" ? "vi-VN" : "en-US", { weekday: "long", month: "long", day: "numeric" })}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px", paddingRight: "44px" }}>
+              <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                {openDayKey && parseIsoDateLocal(openDayKey).toLocaleDateString(lang === "vi" ? "vi-VN" : "en-US", { weekday: "long", month: "long", day: "numeric" })}
+              </div>
+              <button
+                type="button"
+                onClick={() => setDrawerSwapOpen(true)}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  padding: "4px 8px",
+                  borderRadius: "6px",
+                  border: "1px solid var(--border-color)",
+                  background: "var(--bg-secondary, rgba(0,0,0,0.04))",
+                  color: "var(--text-secondary)",
+                  fontSize: "11.5px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                <ArrowsLeftRight size={12} weight="bold" />
+                <span>{lang === "vi" ? "Đổi ngày" : "Move / Swap"}</span>
+              </button>
             </div>
             {openWorkouts.length === 0 ? (
               <div style={{ color: "var(--text-muted)", fontSize: "13px" }}>{lang === "en" ? "No workout scheduled." : "Không có buổi tập."}</div>
@@ -233,6 +257,25 @@ export default function PlanCalendarView({
                 ))}
               </div>
             )}
+
+            {drawerSwapOpen && openDayKey && (() => {
+              const openDayEntry = parseIsoDateLocal(openDayKey);
+              const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+              const openDayName = DAY_NAMES[openDayEntry.getDay()];
+              const openWeekNum = openWorkouts[0]?.week_number ?? (workouts.find((w: any) => w.day_of_week === openDayName)?.week_number ?? 1);
+              const openWeekWos = workouts.filter((w: any) => w.week_number === openWeekNum);
+              return (
+                <MoveWorkoutModal
+                  isOpen={true}
+                  onClose={() => setDrawerSwapOpen(false)}
+                  sourceDay={openDayName}
+                  weekNumber={openWeekNum}
+                  weekWos={openWeekWos}
+                  lang={lang}
+                  onSwapDays={onSwapDays}
+                />
+              );
+            })()}
           </div>
         </>
       )}
@@ -271,7 +314,15 @@ function CalendarWeekRow({
     const { active, over } = event;
     if (over && active.id !== over.id && weekNumber != null) {
       // dnd-kit ids are the ISO date keys (unique per row); the swap API needs day-of-week names.
-      const dayOfWeek = (key: string) => dayEntries.find((e) => e.key === key)?.wos[0]?.day_of_week;
+      const dayOfWeek = (key: string) => {
+        const entry = dayEntries.find((e) => e.key === key);
+        if (entry?.wos[0]?.day_of_week) return entry.wos[0].day_of_week;
+        if (entry?.date) {
+          const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+          return DAY_NAMES[entry.date.getDay()];
+        }
+        return undefined;
+      };
       const day1 = dayOfWeek(String(active.id));
       const day2 = dayOfWeek(String(over.id));
       if (day1 && day2) onSwapDays(day1, day2, weekNumber);
@@ -362,14 +413,12 @@ function CalendarDayCell({
   const hasData = wos.length > 0;
   const isRace = wos.some((w: any) => w.type?.toLowerCase() === "race");
   const isDraggable = hasData && !isRace;
+  const isDroppable = !isRace;
 
-  // The whole cell is both the drag source and the click target. A distance
-  // activation constraint on the row's DndContext (see CalendarWeekRow) means
-  // a plain click (near-zero pointer movement) still reaches this cell's
-  // onClick and each chip's complete-toggle button normally — only a real
-  // drag (movement past the threshold) is captured as a drag gesture.
+  // The cell is both the drag source and the click target. Distance activation constraint on row's DndContext
+  // ensures click reaches onClick and drag triggers relocation.
   const { attributes, listeners, setNodeRef: setDragRef, transform, isDragging } = useDraggable({ id: dayKey, disabled: !isDraggable });
-  const { setNodeRef: setDropRef, isOver } = useDroppable({ id: dayKey, disabled: !isDraggable });
+  const { setNodeRef: setDropRef, isOver } = useDroppable({ id: dayKey, disabled: !isDroppable });
   const setRef = (node: HTMLElement | null) => {
     setDragRef(node);
     setDropRef(node);
@@ -377,8 +426,23 @@ function CalendarDayCell({
 
   if (!hasData) {
     return (
-      <div style={{ minHeight: isMobile ? "48px" : "100px", opacity: inMonth ? 0.35 : 0.15, padding: "6px" }}>
-        <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--text-muted)", fontVariantNumeric: "tabular-nums" }}>{date.getDate()}</span>
+      <div
+        ref={setRef}
+        onClick={() => onOpenDay(dayKey)}
+        style={{
+          minHeight: isMobile ? "48px" : "100px",
+          borderRadius: "10px",
+          border: `1px solid ${isOver ? "var(--accent-primary)" : isToday ? "var(--accent-primary)" : "var(--border-color)"}`,
+          background: isOver ? "rgba(16,185,129,0.12)" : "transparent",
+          outline: isOver ? "2px dashed var(--accent-primary)" : "none",
+          outlineOffset: "-2px",
+          opacity: isOver ? 1 : inMonth ? 0.45 : 0.2,
+          padding: "6px",
+          cursor: "pointer",
+          transition: "all 0.15s ease",
+        }}
+      >
+        <span style={{ fontSize: "12px", fontWeight: 700, color: isToday ? "var(--accent-primary)" : "var(--text-muted)", fontVariantNumeric: "tabular-nums" }}>{date.getDate()}</span>
       </div>
     );
   }
@@ -444,7 +508,14 @@ function CalendarDayCell({
               <div key={w.id} style={{ display: "flex", alignItems: "center", gap: "4px", borderRadius: "7px", padding: "4px 6px", background: w.is_missed ? "rgba(239,68,68,0.10)" : `${color}22`, borderLeft: `3px solid ${w.is_missed ? "#ef4444" : color}` }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-primary)", textDecoration: w.is_missed ? "line-through" : "none" }}>
-                    {isRaceWo ? `🏁 ${lang === "en" ? "Race Day" : "Ngày đua"}` : w.title}
+                    {isRaceWo ? (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                        <Flag size={11} weight="fill" color="var(--accent-primary)" aria-hidden="true" />
+                        <span>{lang === "en" ? "Race Day" : "Ngày đua"}</span>
+                      </span>
+                    ) : (
+                      w.title
+                    )}
                   </div>
                   <div style={{ fontSize: "9.5px", color: "var(--text-secondary)", fontVariantNumeric: "tabular-nums" }}>
                     {isRaceWo
@@ -499,11 +570,12 @@ function CalendarDayCell({
         <span
           aria-hidden="true"
           style={{
-            position: "absolute", bottom: "4px", right: "5px", fontSize: "11px", lineHeight: 1,
-            color: "rgba(0,0,0,0.22)", pointerEvents: "none",
+            position: "absolute", bottom: "4px", right: "5px",
+            color: "rgba(0,0,0,0.3)", pointerEvents: "none",
+            display: "inline-flex", alignItems: "center",
           }}
         >
-          ⠿
+          <DotsSixVertical size={13} aria-hidden="true" />
         </span>
       )}
     </div>

@@ -384,6 +384,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     time_away: "", reason_for_break: "", fitness_feel: "",
     race_distance_completed: "", days_since_race: "", recovery_feel: "", next_goal: "",
     plan_start_date: new Date().toISOString().split("T")[0],
+    athlete_notes: "",
   });
   const [onboardingGenerating, setOnboardingGenerating] = useState(false);
   const [profileForm, setProfileForm] = useState({

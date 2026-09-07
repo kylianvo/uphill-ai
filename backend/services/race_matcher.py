@@ -35,6 +35,7 @@ class MatchedRace:
     terrain: list[str]
     course_context: str
     confidence: float
+    course_intelligence: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -43,6 +44,7 @@ class MatchedRace:
             "distance_km": self.distance_km,
             "elevation_gain_m": self.elevation_gain_m,
             "terrain": self.terrain,
+            "course_intelligence": self.course_intelligence,
         }
 
 
@@ -148,14 +150,90 @@ def _to_matched_race(chunk: dict[str, Any], score: float, resolved_distance_km: 
         # single-distance races (road marathons etc.) need no disambiguation
         distance_entry = distances[0]
 
+    climate = payload.get("climate") or {}
+    key_climbs = payload.get("key_climbs") or []
+    terrain = payload.get("terrain") or []
+    location = payload.get("location") or ""
+
+    # Extract historical race results & percentiles for this distance if available
+    benchmark_info = ""
+    results = payload.get("results") or []
+    matched_result = None
+    if distance_entry and results:
+        target_dist = distance_entry.get("distance_km")
+        target_label = (distance_entry.get("label") or "").lower()
+        for r in results:
+            r_label = (r.get("distance_label") or "").lower()
+            r_dist = r.get("distance_km")
+            if target_label and (target_label in r_label or r_label in target_label):
+                matched_result = r
+                break
+            if target_dist and r_dist and abs(target_dist - r_dist) < 3.0:
+                matched_result = r
+                break
+        if not matched_result and results:
+            matched_result = results[0]
+
+    if matched_result:
+        pcts = matched_result.get("percentiles", {}).get("overall", {})
+        p50 = pcts.get("p50")
+        winner = matched_result.get("winner_time")
+        finishers = matched_result.get("finishers")
+        bench_parts = []
+        if winner:
+            bench_parts.append(f"Winning time: {winner}")
+        if p50:
+            bench_parts.append(f"Median finisher (p50): {p50}")
+        if finishers:
+            bench_parts.append(f"Total finishers: {finishers}")
+        if bench_parts:
+            benchmark_info = "\nRace Benchmarks & Historical Times:\n" + "\n".join(f"- {b}" for b in bench_parts)
+
+    climate_str = ""
+    if climate:
+        c_items = []
+        if climate.get("avg_temp_c"):
+            c_items.append(f"Avg Temperature: {climate['avg_temp_c']}°C")
+        if climate.get("humidity_pct"):
+            c_items.append(f"Humidity: {climate['humidity_pct']}")
+        if climate.get("season"):
+            c_items.append(f"Season/Conditions: {climate['season']}")
+        if climate.get("notes"):
+            c_items.append(f"Climate Notes: {climate['notes']}")
+        if c_items:
+            climate_str = "\nEnvironmental & Climate Demands:\n" + "\n".join(f"- {ci}" for ci in c_items)
+
+    climbs_str = ""
+    if key_climbs:
+        climbs_str = "\nKey Climbs & Checkpoints:\n" + "\n".join(f"- {kc}" for kc in key_climbs)
+
+    raw_content = chunk.get("content", "").strip()
+    full_context = raw_content
+    if climbs_str and climbs_str not in full_context:
+        full_context += "\n" + climbs_str
+    if climate_str and climate_str not in full_context:
+        full_context += "\n" + climate_str
+    if benchmark_info and benchmark_info not in full_context:
+        full_context += "\n" + benchmark_info
+
+    course_intelligence = {
+        "location": location,
+        "climate": climate,
+        "key_climbs": key_climbs,
+        "terrain": terrain,
+        "historical_results": matched_result,
+        "distance_label": distance_entry.get("label") if distance_entry else None,
+    }
+
     return MatchedRace(
         race_name=payload.get("race_name", chunk.get("title", "")),
         distance_label=distance_entry.get("label") if distance_entry else None,
         distance_km=distance_entry.get("distance_km") if distance_entry else None,
         elevation_gain_m=distance_entry.get("elevation_gain_m") if distance_entry else None,
-        terrain=payload.get("terrain", []),
-        course_context=chunk.get("content", ""),
+        terrain=terrain,
+        course_context=full_context,
         confidence=score,
+        course_intelligence=course_intelligence,
     )
 
 

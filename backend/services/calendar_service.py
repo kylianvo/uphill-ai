@@ -1,9 +1,11 @@
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from services.workout_calendar import DAY_OFFSETS, plan_start_monday
+
 
 class CalendarService:
-    DAY_OFFSETS = {"Monday": 0, "Tuesday": 1, "Wednesday": 2, "Thursday": 3, "Friday": 4, "Saturday": 5, "Sunday": 6}
+    DAY_OFFSETS = DAY_OFFSETS
 
     @staticmethod
     def escape_text(val: str) -> str:
@@ -94,33 +96,7 @@ class CalendarService:
             if "TARGET EVENT" in title or w_type == "RACE":
                 wo["day_of_week"] = race_weekday_name
 
-        plan_start_date = None
-        if plan_start_date_str:
-            try:
-                plan_start_date = datetime.strptime(plan_start_date_str, "%Y-%m-%d").date()
-            except ValueError:
-                plan_start_date = None
-
-        if plan_start_date is not None:
-            start_monday = plan_start_date - timedelta(days=plan_start_date.weekday())
-        else:
-            # Legacy fallback: determine total weeks and locate the Race workout to anchor dates
-            total_weeks = max(int(wo["week_number"]) for wo in workouts) if workouts else 12
-            race_week = None
-            race_day_offset = cls.DAY_OFFSETS.get(race_weekday_name, 5)
-
-            for wo in workouts:
-                title = wo.get("title", "").upper()
-                w_type = wo.get("type", "").upper()
-                if "TARGET EVENT" in title or w_type == "RACE":
-                    race_week = int(wo["week_number"])
-                    break
-
-            if race_week is not None:
-                start_monday = race_date - timedelta(days=((race_week - 1) * 7) + race_day_offset)
-            else:
-                # Fallback: assume race is on race_date (which corresponds to race_date.weekday()) in the last week
-                start_monday = race_date - timedelta(days=((total_weeks - 1) * 7) + race_date.weekday())
+        start_monday = plan_start_monday(plan_start_date_str, workouts, race_date)
 
         ics_lines = [
             "BEGIN:VCALENDAR",

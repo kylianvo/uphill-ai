@@ -8,6 +8,7 @@ export interface ScheduleFieldsValue {
   use_treadmill: boolean;
   training_environment: "flat" | "hilly" | "mixed";
   double_session_days: string[];
+  athlete_notes?: string;
 }
 
 interface ScheduleFieldsEditorProps {
@@ -148,6 +149,23 @@ export function ScheduleFieldsEditor({ lang, t, isMobile, value, onChange }: Sch
         </div>
         <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "5px", margin: "5px 0 0 0" }}>
           {t("plan_double_session_help")}
+        </p>
+      </div>
+
+      <div style={{ marginTop: "14px" }}>
+        <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px", color: "var(--text-secondary)" }}>
+          {t("plan_athlete_notes")}
+        </label>
+        <textarea
+          className="chat-input"
+          rows={3}
+          style={{ width: "100%", padding: "8px 10px", fontSize: "12.5px", borderRadius: "8px", resize: "vertical", boxSizing: "border-box" }}
+          placeholder={t("plan_athlete_notes_placeholder")}
+          value={value.athlete_notes || ""}
+          onChange={(e) => onChange({ athlete_notes: e.target.value })}
+        />
+        <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px", margin: "4px 0 0 0" }}>
+          {t("plan_athlete_notes_help")}
         </p>
       </div>
     </div>

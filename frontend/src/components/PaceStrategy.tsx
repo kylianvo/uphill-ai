@@ -34,6 +34,7 @@ import {
   Fire,
   BowlFood,
   Sneaker,
+  CaretUp,
 } from "@phosphor-icons/react";
 
 interface PaceStrategyProps {
@@ -740,7 +741,7 @@ export const PaceStrategy: React.FC<PaceStrategyProps> = ({ isOpen, onClose, lan
                             lineHeight: 1.1,
                           }}
                         >
-                          ▲<br />
+                          <CaretUp size={10} weight="fill" aria-hidden="true" /><br />
                           {mk.label}
                         </div>
                       ))}

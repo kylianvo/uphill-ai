@@ -4,6 +4,13 @@ from typing import Any
 
 import fitparse
 
+from parsers import _fitparse_compat
+
+# COROS watches emit definition messages fitparse 1.2.0 rejects outright; without
+# this every COROS upload 500s. See the module docstring for why it degrades
+# safely if a future fitparse release moves the ground under it.
+_fitparse_compat.apply()
+
 
 class FitParser:
     SEMICIRCLE_CONVERSION = 180.0 / (2**31)

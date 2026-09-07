@@ -1371,3 +1371,146 @@ label {
   .legal-page { padding: 64px 32px 96px; }
   .legal-title { font-size: 40px; }
 }
+
+/* ─── Connected accounts (Profile settings) ─────────────────────────────── */
+.device-section { margin-top: 24px; }
+.device-heading {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--font-fustat), sans-serif;
+  font-size: 14px; font-weight: 700; color: var(--text-primary);
+  border-bottom: 1px solid var(--border-color); padding-bottom: 6px; margin: 0 0 12px;
+}
+/* var(--text-muted) measures ~4.8:1 on white and can drop below WCAG AA
+   (4.5:1) once the translucent --bg-card composites over a darker page
+   background, so help/status/attribution text here uses --text-secondary
+   (~7.6:1 on white) instead. */
+.device-help { font-size: 13px; color: var(--text-secondary); margin: 0 0 12px; line-height: 1.6; }
+.device-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 12px 0; border-bottom: 1px solid var(--border-color); flex-wrap: wrap;
+}
+.device-name { display: block; font-size: 15px; font-weight: 600; color: var(--text-primary); }
+.device-state { font-size: 12.5px; color: var(--text-secondary); margin-top: 2px; }
+.device-actions { display: flex; gap: 8px; align-items: center; }
+.device-btn {
+  padding: 7px 14px; border-radius: 999px; border: 1px solid var(--border-color);
+  background: transparent; color: var(--text-secondary);
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.device-btn:hover:not(:disabled) { background: var(--bg-card-hover); }
+.device-btn:disabled { opacity: .55; cursor: default; }
+.device-btn-danger { color: var(--accent-alert); border-color: var(--accent-alert); }
+.device-btn-danger:hover:not(:disabled) { background: rgba(239, 68, 68, 0.08); }
+.device-skeleton {
+  display: inline-block; width: 84px; height: 30px; border-radius: 999px;
+  background: var(--border-color); opacity: .6;
+}
+.device-notice {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 13px; color: var(--text-primary); margin: 10px 0 0;
+}
+.device-notice svg { color: var(--accent-primary); flex-shrink: 0; }
+.device-error {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 13px; color: var(--accent-alert); margin: 10px 0 0;
+}
+.device-attribution { font-size: 11.5px; color: var(--text-secondary); letter-spacing: .01em; }
+
+@media (prefers-reduced-motion: reduce) {
+  .device-btn { transition: none; }
+}
+
+/* ─── Match review ───────────────────────────────────────────────────────── */
+.match-section { margin-top: 24px; }
+.match-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.match-heading {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--font-fustat), sans-serif;
+  font-size: 14px; font-weight: 700; color: var(--text-primary); margin: 0;
+}
+/* Same WCAG AA note as .device-help above: --text-muted can drop below 4.5:1
+   over --bg-card, so status/help/attribution text here uses --text-secondary. */
+.match-help { font-size: 13px; color: var(--text-secondary); margin: 10px 0 0; line-height: 1.6; }
+.match-summary { font-size: 13px; color: var(--text-secondary); margin: 10px 0 0; }
+.match-empty { font-size: 13px; color: var(--text-secondary); margin: 14px 0 0; line-height: 1.6; }
+.match-error {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 13px; color: var(--accent-alert); margin: 10px 0 0;
+}
+
+.match-group { margin-top: 20px; }
+.match-group-heading {
+  font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--text-secondary); margin: 0 0 8px;
+}
+.match-list { display: flex; flex-direction: column; gap: 10px; }
+
+.match-card {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+  padding: 14px; border: 1px solid var(--border-color); border-radius: 12px;
+  background: var(--bg-card); flex-wrap: wrap;
+}
+.match-card-body { display: flex; flex-direction: column; gap: 4px; min-width: 220px; flex: 1; }
+.match-workout { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+.match-activity { font-size: 13px; color: var(--text-secondary); }
+.match-date { font-size: 12px; color: var(--text-secondary); }
+.match-reason { font-size: 12px; color: var(--text-secondary); }
+.match-unmatched-note { font-size: 12.5px; color: var(--text-secondary); margin: 2px 0 0; line-height: 1.5; }
+
+.match-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 9px; border-radius: 999px;
+  font-size: 11px; font-weight: 700; letter-spacing: .02em;
+  width: fit-content; margin-top: 2px;
+}
+.match-badge-pct { font-weight: 600; opacity: .85; }
+.match-badge-auto {
+  background: var(--accent-primary); color: #ffffff;
+}
+.match-badge-suggest {
+  background: transparent; color: var(--accent-primary);
+  border: 1px solid var(--border-color-active);
+}
+.match-badge-unmatched {
+  background: transparent; color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.match-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; min-width: 180px; }
+.match-permanent-note { font-size: 11.5px; color: var(--text-secondary); margin: 0; text-align: right; line-height: 1.4; max-width: 220px; }
+.match-action-buttons { display: flex; gap: 8px; }
+.match-btn-secondary {
+  padding: 7px 14px; border-radius: 999px; border: 1px solid var(--border-color);
+  background: transparent; color: var(--text-secondary);
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.match-btn-secondary:hover:not(:disabled) { background: var(--bg-card-hover); }
+.match-btn-secondary:disabled { opacity: .55; cursor: default; }
+/* Two-step confirm: after the first tap the primary confirm button "arms"
+   itself into this state (see MatchCard in MatchReview.tsx) -- the alert
+   color signals that the very next tap performs the permanent write. */
+.match-btn-armed { background: var(--accent-alert); border-color: var(--accent-alert); }
+.match-btn-armed:hover { background: var(--accent-alert); }
+.match-resolved {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12.5px; font-weight: 600; color: var(--accent-primary);
+}
+
+.match-spin { animation: match-spin 0.9s linear infinite; }
+@keyframes match-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+.match-card-skeleton { background: var(--bg-card); }
+.match-skeleton-line {
+  display: block; border-radius: 999px; background: var(--border-color); opacity: .5;
+}
+.match-skeleton-line-wide { width: 60%; height: 15px; }
+.match-skeleton-line-narrow { width: 40%; height: 12px; margin-top: 8px; }
+.match-skeleton-line-badge { width: 90px; height: 18px; margin-top: 8px; border-radius: 999px; }
+.match-skeleton-line-actions { width: 140px; height: 30px; align-self: center; }
+
+@media (prefers-reduced-motion: reduce) {
+  .match-btn-secondary { transition: none; }
+  .match-spin { animation: none; }
+}

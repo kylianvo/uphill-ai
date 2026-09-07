@@ -49,7 +49,7 @@ def create_brand_assets():
     # 2. Generate 2732x2732 Splash Screen
     splash_size = 2732
     splash_img = Image.new("RGBA", (splash_size, splash_size), BG_COLOR)
-    
+
     # Place a 512x512 centered logo in splash
     logo_splash = icon_img.resize((600, 600), Image.Resampling.LANCZOS)
     offset = ((splash_size - 600) // 2, (splash_size - 600) // 2)

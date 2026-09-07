@@ -25,6 +25,14 @@ ALL_TABLES = [
     "sources",
     "coach_notes",
     "coach_athletes",
+    # activities self-references itself via duplicate_of, which TRUNCATE
+    # tolerates as long as the table is truncated in the same statement --
+    # it and daily_metrics/athlete_connections also FK to users, so all three
+    # must precede "users" in this list (CASCADE would pull them in anyway,
+    # but listing them keeps the truncation from depending on that).
+    "activities",
+    "daily_metrics",
+    "athlete_connections",
     "users",
 ]
 
