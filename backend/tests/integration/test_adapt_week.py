@@ -352,3 +352,74 @@ class TestAdaptWeekEndpoint:
             assert "Current Athlete Feeling: HARD" in captured_args["block_context"]
             assert "8/10" in captured_args["block_context"]
             assert "Very heavy legs after mountain hike" in captured_args["block_context"]
+
+    def test_adapt_week_with_double_session_days_and_very_light_feeling(self, client, auth_headers):
+        plan_id = _create_test_plan(client, auth_headers["headers"])
+        save_workouts(
+            plan_id,
+            [
+                {
+                    "week_number": 1,
+                    "day_of_week": "Tuesday",
+                    "phase": "Base",
+                    "title": "W1 Run",
+                    "type": "Easy Run",
+                    "duration_minutes": 30,
+                    "target_zone": "Zone 2",
+                    "description": "W1 desc.",
+                },
+                {
+                    "week_number": 2,
+                    "day_of_week": "Tuesday",
+                    "phase": "Base",
+                    "title": "W2 Run",
+                    "type": "Easy Run",
+                    "duration_minutes": 30,
+                    "target_zone": "Zone 2",
+                    "description": "W2 desc.",
+                },
+            ],
+        )
+
+        captured_args = {}
+
+        async def _fake_generate(plan_id, user_profile, race_info, total_weeks=12, **kwargs):
+            captured_args["race_info"] = race_info
+            captured_args.update(kwargs)
+            return []
+
+        with patch(
+            "services.plan_generator.PlanGenerator.generate_plan_workouts",
+            new=AsyncMock(side_effect=_fake_generate),
+        ):
+            resp = client.post(
+                "/api/coach/adapt-week",
+                headers=auth_headers["headers"],
+                json={
+                    "plan_id": plan_id,
+                    "week_number": 2,
+                    "fatigue_level": "very_light",
+                    "double_session_days": ["Tuesday", "Thursday"],
+                },
+            )
+            assert resp.status_code == 200
+            data = resp.json()
+            job_id = data["job_id"]
+
+            status_resp = None
+            for _ in range(20):
+                status_resp = client.get(f"/api/coach/plan-status/{job_id}", headers=auth_headers["headers"])
+                if status_resp.json().get("status") in ("done", "error"):
+                    break
+                time.sleep(0.05)
+
+            assert status_resp is not None
+            assert status_resp.json()["status"] == "done"
+
+            # Check feeling context and double session preference in block_context
+            assert "Current Athlete Feeling: VERY LIGHT" in captured_args["block_context"]
+            assert "2/10" in captured_args["block_context"]
+            assert "Double Session Preference" in captured_args["block_context"]
+            assert "Tuesday, Thursday" in captured_args["block_context"]
+            # Check race_info passed to PlanGenerator
+            assert captured_args["race_info"]["double_session_days"] == ["Tuesday", "Thursday"]

@@ -2102,7 +2102,17 @@ async def _generate_next_block_for_athlete(
         if unplanned_count > 0:
             line += f" [Includes {unplanned_count} unplanned watch activity: {unplanned_km:.1f}km]"
         if block_rpe:
-            line += f" | RPE {block_rpe}/10"
+            if block_rpe <= 2:
+                feeling_label = "Very Light"
+            elif block_rpe <= 4:
+                feeling_label = "Light"
+            elif block_rpe <= 6:
+                feeling_label = "Moderate"
+            elif block_rpe <= 8:
+                feeling_label = "Hard"
+            else:
+                feeling_label = "Max Effort"
+            line += f" | Effort: {feeling_label} (RPE {block_rpe}/10)"
         context_lines.append(line)
 
         if block_note:
@@ -2139,7 +2149,19 @@ async def _generate_next_block_for_athlete(
                 if status == "completed":
                     detail = "completed"
                     if w.get("rpe"):
-                        detail += f", RPE {w['rpe']}/10"
+                        r = w["rpe"]
+                        f_lbl = (
+                            "Very Light"
+                            if r <= 2
+                            else "Light"
+                            if r <= 4
+                            else "Moderate"
+                            if r <= 6
+                            else "Hard"
+                            if r <= 8
+                            else "Max Effort"
+                        )
+                        detail += f", Feeling: {f_lbl} (RPE {r}/10)"
                     if w.get("notes"):
                         detail += f', feedback: "{w["notes"]}"'
                 else:
@@ -2320,47 +2342,75 @@ async def _adapt_week_for_athlete(request: AdaptWeekRequest, athlete_id: int, jo
     all_workouts = get_plan_workouts(request.plan_id)
     fresh_user = get_user_by_id(athlete_id) or {}
 
-    # Map fatigue_level (easy/medium/hard/exhausted) and overall_rpe coherently
+    # Map fatigue_level (5 feelings: very_light/light/moderate/hard/max_effort) and overall_rpe coherently
     fatigue_level = request.fatigue_level
     overall_rpe = request.overall_rpe
+    level_to_rpe = {
+        "very_light": 2,
+        "very light": 2,
+        "easy": 3,
+        "light": 4,
+        "medium": 6,
+        "moderate": 6,
+        "hard": 8,
+        "exhausted": 10,
+        "max_effort": 10,
+        "max effort": 10,
+    }
     if fatigue_level and overall_rpe is None:
-        level_to_rpe = {"easy": 3, "medium": 6, "hard": 8, "exhausted": 10}
         overall_rpe = level_to_rpe.get(fatigue_level.lower(), 6)
     elif overall_rpe is not None and not fatigue_level:
-        if overall_rpe <= 4:
-            fatigue_level = "easy"
+        if overall_rpe <= 2:
+            fatigue_level = "very_light"
+        elif overall_rpe <= 4:
+            fatigue_level = "light"
         elif overall_rpe <= 6:
-            fatigue_level = "medium"
+            fatigue_level = "moderate"
         elif overall_rpe <= 8:
             fatigue_level = "hard"
         else:
-            fatigue_level = "exhausted"
+            fatigue_level = "max_effort"
 
     context_lines: list[str] = [
         f"ADAPTATION & REGENERATION FOR WEEK {request.week_number}:",
     ]
     if fatigue_level:
-        context_lines.append(
-            f"  Current Athlete Feeling: {fatigue_level.upper()} (equivalent RPE ~{overall_rpe or 6}/10)"
-        )
-        if fatigue_level.lower() == "easy":
+        norm_fl = fatigue_level.lower().replace(" ", "_")
+        fl_display_map = {
+            "very_light": "VERY LIGHT",
+            "light": "LIGHT",
+            "moderate": "MODERATE",
+            "hard": "HARD",
+            "max_effort": "MAX EFFORT",
+            "easy": "LIGHT",
+            "medium": "MODERATE",
+            "exhausted": "MAX EFFORT",
+        }
+        display_feeling = fl_display_map.get(norm_fl, fatigue_level.upper())
+        context_lines.append(f"  Current Athlete Feeling: {display_feeling} (equivalent RPE ~{overall_rpe or 6}/10)")
+        if norm_fl in ("very_light",):
             context_lines.append(
-                "  Feeling Fresh/Easy: Athlete is well recovered and ready to absorb more load. "
+                "  Feeling Very Light: Athlete is effortless and underloaded. "
+                "IMPORTANT: Increase training stimulus by adding 5-10% weekly volume or progressing key quality sessions (intervals/tempo) while respecting recovery."
+            )
+        elif norm_fl in ("light", "easy"):
+            context_lines.append(
+                "  Feeling Light / Fresh: Athlete is well recovered and ready to absorb more load. "
                 "IMPORTANT: Do NOT reduce weekly training volume. Match or slightly increase the planned week's total duration and distance. "
                 "Keep all key quality sessions (intervals, tempo, long run) intact. "
-                "You may optionally add 5-10% more volume to the easy/base runs to capitalise on the athlete's freshness."
+                "You may optionally add 5% more volume to the easy/base runs to capitalise on the athlete's freshness."
             )
-        elif fatigue_level.lower() == "medium":
+        elif norm_fl in ("moderate", "medium"):
             context_lines.append(
-                "  Feeling Medium/Normal: Moderate training fatigue. Keep balanced volume with steady progression."
+                "  Feeling Moderate: Normal training fatigue, manageable and sustainable. Keep balanced volume with steady progression."
             )
-        elif fatigue_level.lower() == "hard":
+        elif norm_fl in ("hard",):
             context_lines.append(
-                "  Feeling Hard/Tired: Elevated fatigue or heavy legs. Ease off high-intensity sessions and trim volume by 15-20%."
+                "  Feeling Hard / Tired: Elevated fatigue or heavy legs. Ease off high-intensity sessions and trim volume by 10-15%."
             )
-        elif fatigue_level.lower() == "exhausted":
+        elif norm_fl in ("max_effort", "exhausted"):
             context_lines.append(
-                "  Feeling Exhausted: High fatigue or overreaching. Prescribe an active recovery/deload week with 25-35% reduced volume and no high-intensity work."
+                "  Feeling Max Effort / Exhausted: High fatigue or overreaching. Prescribe an active recovery/deload week with 20-30% reduced volume and no high-intensity work."
             )
     elif overall_rpe is not None:
         context_lines.append(f"  Current Athlete Exertion / Fatigue RPE: {overall_rpe}/10")
@@ -2371,6 +2421,26 @@ async def _adapt_week_for_athlete(request: AdaptWeekRequest, athlete_id: int, jo
         context_lines.append(f'  Athlete notes: "{request.athlete_notes}"')
     if request.coach_notes:
         context_lines.append(f'  Coach instructions: "{request.coach_notes}"')
+
+    # Double session preferences in single-week adaptation prompt
+    target_double_sessions = (
+        request.double_session_days if request.double_session_days is not None else plan.get("double_session_days")
+    )
+    if target_double_sessions:
+        if isinstance(target_double_sessions, str):
+            try:
+                import json
+
+                ds_list = json.loads(target_double_sessions)
+            except Exception:
+                ds_list = [d.strip() for d in target_double_sessions.split(",") if d.strip()]
+        else:
+            ds_list = list(target_double_sessions)
+        if ds_list:
+            context_lines.append(
+                f"  Double Session Preference: Athlete requested 2 sessions on: {', '.join(ds_list)} "
+                "(e.g., Morning run + Afternoon run/strength/mobility, or Easy AM + Quality PM). Schedule TWO workouts on these days."
+            )
 
     prev_wk = request.week_number - 1
     if prev_wk >= 1:
@@ -2398,6 +2468,22 @@ async def _adapt_week_for_athlete(request: AdaptWeekRequest, athlete_id: int, jo
             + (f" (+{actual_vert:.0f}m D+)" if actual_vert > 0 else "")
             + f" vs Planned {planned_km:.1f}km / {planned_min/60:.1f}h"
         )
+        # Check if athlete missed an ME session in previous week (Scott Johnston Rule 7)
+        missed_me = [
+            w
+            for w in prev_wos
+            if (
+                "ME" in (w.get("type") or "").upper()
+                or "MUSCULAR ENDURANCE" in (w.get("title") or "").upper()
+                or "CIRCUIT" in (w.get("title") or "").upper()
+            )
+            and w.get("is_completed") != 1
+        ]
+        if missed_me:
+            context_lines.append(
+                "  ME Progression Adjustment (Scott Johnston Rule 7): Athlete missed a scheduled Muscular Endurance (ME) session in the prior week. "
+                "Drop the ME progression back by 2 workouts (reduce rounds, reps, or pack weight) to allow safe tendon and joint re-adaptation."
+            )
 
     # Note any workouts already completed/matched in the target week
     curr_completed = [
@@ -2426,7 +2512,13 @@ async def _adapt_week_for_athlete(request: AdaptWeekRequest, athlete_id: int, jo
             f"({len(target_wos)} sessions, {len(completed_target)} already completed)."
         )
         context_lines.append(volume_floor_note)
-        if fatigue_level and fatigue_level.lower() in ("easy", "medium"):
+        if fatigue_level and fatigue_level.lower().replace(" ", "_") in (
+            "very_light",
+            "light",
+            "easy",
+            "moderate",
+            "medium",
+        ):
             context_lines.append(
                 f"  Volume Floor: The regenerated week MUST include at least {uncompleted_km:.1f}km / {uncompleted_min/60:.1f}h "
                 f"across the remaining {len(target_wos) - len(completed_target)} sessions (i.e., not less than the original plan for uncompleted workouts)."

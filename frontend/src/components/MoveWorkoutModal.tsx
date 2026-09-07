@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { createPortal } from "react-dom";
 import { ArrowsLeftRight, ArrowRight, X, Moon, CalendarBlank } from "@phosphor-icons/react";
 
 interface ModalWorkout {
@@ -44,6 +45,7 @@ export function MoveWorkoutModal({
   onSwapDays,
 }: MoveWorkoutModalProps) {
   if (!isOpen) return null;
+  if (typeof document === "undefined") return null;
 
   const isVi = lang === "vi";
   const sourceWos = weekWos.filter((w) => w.day_of_week === sourceDay);
@@ -54,18 +56,18 @@ export function MoveWorkoutModal({
     onClose();
   };
 
-  return (
+  return createPortal(
     <div
       style={{
         position: "fixed",
         inset: 0,
         background: "rgba(10, 15, 12, 0.45)",
         backdropFilter: "blur(4px)",
-        zIndex: 1300,
+        zIndex: 2000,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        padding: "16px",
+        padding: "max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)) 16px",
       }}
       onClick={onClose}
     >
@@ -259,6 +261,7 @@ export function MoveWorkoutModal({
             : "Tap a day to relocate workouts instantly without drag-and-drop."}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

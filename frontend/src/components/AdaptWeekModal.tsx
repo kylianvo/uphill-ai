@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { createPortal } from "react-dom";
 import { Sparkle, X, Lightning, CheckCircle } from "@phosphor-icons/react";
 import { translations } from "../app/translations";
 
@@ -34,76 +35,13 @@ const FULL_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Satu
 const SHORT_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const SHORT_DAYS_VI = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 
-export type FatigueLevel = "easy" | "medium" | "hard" | "exhausted";
+import {
+  FeelingSelector,
+  FeelingId,
+  feelingIdToRpe,
+} from "./FeelingSelector";
 
-interface FeelingOption {
-  id: FatigueLevel;
-  labelKey: keyof typeof translations.en;
-  subKey: keyof typeof translations.en;
-  descKey: keyof typeof translations.en;
-  color: string;
-  badgeBg: string;
-  badgeBorder: string;
-  badgeText: string;
-  activeBg: string;
-  activeBorder: string;
-  rpe: number;
-}
-
-const FEELING_OPTIONS: FeelingOption[] = [
-  {
-    id: "easy",
-    labelKey: "adapt_week_feel_easy",
-    subKey: "adapt_week_feel_easy_sub",
-    descKey: "adapt_week_feel_easy_desc",
-    color: "#10b981",
-    badgeBg: "rgba(16, 185, 129, 0.12)",
-    badgeBorder: "rgba(16, 185, 129, 0.3)",
-    badgeText: "#059669",
-    activeBg: "rgba(16, 185, 129, 0.14)",
-    activeBorder: "#10b981",
-    rpe: 3,
-  },
-  {
-    id: "medium",
-    labelKey: "adapt_week_feel_medium",
-    subKey: "adapt_week_feel_medium_sub",
-    descKey: "adapt_week_feel_medium_desc",
-    color: "#3b82f6",
-    badgeBg: "rgba(59, 130, 246, 0.12)",
-    badgeBorder: "rgba(59, 130, 246, 0.3)",
-    badgeText: "#2563eb",
-    activeBg: "rgba(59, 130, 246, 0.14)",
-    activeBorder: "#3b82f6",
-    rpe: 6,
-  },
-  {
-    id: "hard",
-    labelKey: "adapt_week_feel_hard",
-    subKey: "adapt_week_feel_hard_sub",
-    descKey: "adapt_week_feel_hard_desc",
-    color: "#f59e0b",
-    badgeBg: "rgba(245, 158, 11, 0.12)",
-    badgeBorder: "rgba(245, 158, 11, 0.3)",
-    badgeText: "#d97706",
-    activeBg: "rgba(245, 158, 11, 0.14)",
-    activeBorder: "#f59e0b",
-    rpe: 8,
-  },
-  {
-    id: "exhausted",
-    labelKey: "adapt_week_feel_exhausted",
-    subKey: "adapt_week_feel_exhausted_sub",
-    descKey: "adapt_week_feel_exhausted_desc",
-    color: "#ef4444",
-    badgeBg: "rgba(239, 68, 68, 0.12)",
-    badgeBorder: "rgba(239, 68, 68, 0.3)",
-    badgeText: "#dc2626",
-    activeBg: "rgba(239, 68, 68, 0.14)",
-    activeBorder: "#ef4444",
-    rpe: 10,
-  },
-];
+export type FatigueLevel = FeelingId;
 
 export function AdaptWeekModal({
   isOpen,
@@ -117,14 +55,18 @@ export function AdaptWeekModal({
   onAdaptSuccess,
   actingAsAthleteId,
 }: AdaptWeekModalProps) {
-  const [fatigueLevel, setFatigueLevel] = useState<FatigueLevel>("medium");
+  const [fatigueLevel, setFatigueLevel] = useState<FatigueLevel>("moderate");
   const [fatigueNotes, setFatigueNotes] = useState<string>("");
   const [coachNotes, setCoachNotes] = useState<string>("");
-  const [schedule, setSchedule] = useState(initialSchedule);
+  const [schedule, setSchedule] = useState({
+    ...initialSchedule,
+    double_session_days: initialSchedule.double_session_days || [],
+  });
   const [loading, setLoading] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   if (!isOpen) return null;
+  if (typeof document === "undefined") return null;
 
   const t = (key: keyof typeof translations.en) => {
     const dict = (translations as Record<string, Record<string, string>>)[lang] || translations.en;
@@ -148,8 +90,7 @@ export function AdaptWeekModal({
         ? `${API_BASE_URL}/api/coaching/athletes/${actingAsAthleteId}/adapt-week`
         : `${API_BASE_URL}/api/coach/adapt-week`;
 
-      const activeOption = FEELING_OPTIONS.find((o) => o.id === fatigueLevel) || FEELING_OPTIONS[1];
-      const rpe = activeOption.rpe;
+      const rpe = feelingIdToRpe(fatigueLevel);
 
       const body = {
         plan_id: planId,
@@ -193,7 +134,7 @@ export function AdaptWeekModal({
     }
   };
 
-  return (
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -202,11 +143,11 @@ export function AdaptWeekModal({
         position: "fixed",
         inset: 0,
         background: "rgba(0, 0, 0, 0.75)",
-        zIndex: 1200,
+        zIndex: 2000,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        padding: "20px",
+        padding: "max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom)) 20px",
       }}
     >
       <div
@@ -319,79 +260,14 @@ export function AdaptWeekModal({
             >
               {t("adapt_week_rpe_label")}
             </label>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)",
-                gap: "8px",
-              }}
-            >
-              {FEELING_OPTIONS.map((opt) => {
-                const isSelected = fatigueLevel === opt.id;
-                return (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => setFatigueLevel(opt.id)}
-                    style={{
-                      padding: "10px 8px",
-                      borderRadius: "12px",
-                      border: isSelected ? `2px solid ${opt.activeBorder}` : "1px solid var(--border-color)",
-                      background: isSelected ? opt.activeBg : "rgba(0, 0, 0, 0.02)",
-                      boxShadow: isSelected ? `0 2px 8px ${opt.badgeBg}` : "none",
-                      cursor: "pointer",
-                      textAlign: "center",
-                      transition: "all 0.15s ease",
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      gap: "2px",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: "13px",
-                        fontWeight: "700",
-                        color: isSelected ? opt.color : "var(--text-bright)",
-                      }}
-                    >
-                      {t(opt.labelKey)}
-                    </div>
-                    <div
-                      style={{
-                        fontSize: "10.5px",
-                        color: isSelected ? opt.badgeText : "var(--text-muted)",
-                        fontWeight: isSelected ? "600" : "500",
-                      }}
-                    >
-                      {t(opt.subKey)}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Dynamic Coach Guidance */}
-            {(() => {
-              const active = FEELING_OPTIONS.find((o) => o.id === fatigueLevel) || FEELING_OPTIONS[1];
-              return (
-                <div
-                  style={{
-                    marginTop: "8px",
-                    padding: "9px 12px",
-                    borderRadius: "10px",
-                    background: active.badgeBg,
-                    border: `1px solid ${active.badgeBorder}`,
-                    fontSize: "11.5px",
-                    fontWeight: "600",
-                    color: active.badgeText,
-                    lineHeight: "1.4",
-                  }}
-                >
-                  {t(active.descKey)}
-                </div>
-              );
-            })()}
+            <FeelingSelector
+              selectedId={fatigueLevel}
+              onChange={(id) => setFatigueLevel(id)}
+              lang={lang === "vi" ? "vi" : "en"}
+              isMobile={isMobile}
+              variant="cards"
+              showDescription={true}
+            />
           </div>
 
           {/* Reason / Fatigue Notes */}
@@ -477,6 +353,7 @@ export function AdaptWeekModal({
                           ...schedule,
                           preferred_days: next,
                           days_per_week: Math.max(3, Math.min(7, next.length || schedule.days_per_week)),
+                          double_session_days: (schedule.double_session_days || []).filter((d) => next.includes(d)),
                         });
                       }}
                       style={{
@@ -495,6 +372,57 @@ export function AdaptWeekModal({
                   );
                 })}
               </div>
+            </div>
+
+            {/* Double-Session Days */}
+            <div style={{ marginBottom: "12px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                <span style={{ fontSize: "12px", fontWeight: "600", color: "var(--text-secondary)" }}>
+                  {t("adapt_week_double_session_days")}
+                </span>
+                <span style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: "600" }}>
+                  {(schedule.double_session_days || []).length}/2 {lang === "en" ? "days" : "ngày"}
+                </span>
+              </div>
+              <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+                {SHORT_DAYS.map((short, i) => {
+                  const full = FULL_DAYS[i];
+                  if (!schedule.preferred_days.includes(full)) return null;
+                  const currentDouble = schedule.double_session_days || [];
+                  const selected = currentDouble.includes(full);
+                  const disabled = !selected && currentDouble.length >= 2;
+                  const label = lang === "vi" ? SHORT_DAYS_VI[i] : short;
+                  return (
+                    <button
+                      key={full}
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => {
+                        const next = selected
+                          ? currentDouble.filter((d) => d !== full)
+                          : [...currentDouble, full];
+                        setSchedule({ ...schedule, double_session_days: next });
+                      }}
+                      style={{
+                        padding: "5px 9px",
+                        borderRadius: "8px",
+                        border: `1.5px solid ${selected ? "var(--accent-primary)" : "var(--border-color)"}`,
+                        background: selected ? "rgba(16,185,129,0.12)" : "rgba(255,255,255,0.4)",
+                        color: selected ? "var(--accent-primary)" : disabled ? "var(--text-muted)" : "var(--text-secondary)",
+                        fontWeight: selected ? "700" : "500",
+                        fontSize: "12px",
+                        cursor: disabled ? "not-allowed" : "pointer",
+                        opacity: disabled ? 0.5 : 1,
+                      }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p style={{ fontSize: "11px", color: "var(--text-muted)", margin: "4px 0 0 0" }}>
+                {t("plan_double_session_help")}
+              </p>
             </div>
 
             {/* Long Run Day & Days per week */}
@@ -656,6 +584,7 @@ export function AdaptWeekModal({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

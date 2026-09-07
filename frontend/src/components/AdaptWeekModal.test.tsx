@@ -38,7 +38,7 @@ describe("AdaptWeekModal", () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it("renders header, rpe slider, and preserved notice when completedWorkoutsCount > 0", () => {
+  it("renders header, feeling cards, and preserved notice when completedWorkoutsCount > 0", () => {
     render(
       <AdaptWeekModal
         isOpen={true}
@@ -57,10 +57,12 @@ describe("AdaptWeekModal", () => {
     expect(screen.getByText("Adapt Week 2")).toBeInTheDocument();
     expect(screen.getByText(/2 completed\/recorded session\(s\) in this week will be strictly preserved/)).toBeInTheDocument();
     expect(screen.getByText("How are your legs & energy feeling?")).toBeInTheDocument();
-    expect(screen.getByText("Easy")).toBeInTheDocument();
-    expect(screen.getByText("Medium")).toBeInTheDocument();
+    expect(screen.getByText("Very Light")).toBeInTheDocument();
+    expect(screen.getByText("Light")).toBeInTheDocument();
+    expect(screen.getByText("Moderate")).toBeInTheDocument();
     expect(screen.getByText("Hard")).toBeInTheDocument();
-    expect(screen.getByText("Exhausted")).toBeInTheDocument();
+    expect(screen.getByText("Max Effort")).toBeInTheDocument();
+    expect(screen.getByText("Double Session Days (Optional)")).toBeInTheDocument();
     expect(screen.getByText("Regenerate Week 2")).toBeInTheDocument();
   });
 
@@ -115,6 +117,52 @@ describe("AdaptWeekModal", () => {
 
     expect(onClose).toHaveBeenCalled();
     expect(onAdaptSuccess).toHaveBeenCalledWith("adapt-job-123");
+  });
+
+  it("allows selecting double session days from preferred days", async () => {
+    const onAdaptSuccess = vi.fn();
+    const onClose = vi.fn();
+
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ job_id: "adapt-job-789", plan_id: 10, week_number: 2 }),
+    } as Response);
+
+    render(
+      <AdaptWeekModal
+        isOpen={true}
+        onClose={onClose}
+        planId={10}
+        weekNumber={2}
+        totalWeeks={12}
+        completedWorkoutsCount={0}
+        initialSchedule={defaultSchedule}
+        lang="en"
+        isMobile={false}
+        onAdaptSuccess={onAdaptSuccess}
+      />
+    );
+
+    // Find double session container
+    const doubleSessionHeader = screen.getByText("Double Session Days (Optional)");
+    const doubleSessionContainer = doubleSessionHeader.closest("div")!.parentElement!;
+    // Click Tuesday button in the double session container
+    const tueBtn = Array.from(doubleSessionContainer.querySelectorAll("button")).find(
+      (b) => b.textContent?.trim() === "Tue"
+    );
+    expect(tueBtn).toBeDefined();
+    fireEvent.click(tueBtn!);
+
+    const submitBtn = screen.getByRole("button", { name: /Regenerate Week 2/i });
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+    });
+
+    const [, options] = fetchSpy.mock.calls[0];
+    const body = JSON.parse(options?.body as string);
+    expect(body.double_session_days).toEqual(["Tuesday"]);
   });
 
   it("posts to coach-scoped endpoint when actingAsAthleteId is set", async () => {

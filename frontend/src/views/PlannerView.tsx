@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useAppContext } from "../contexts/AppContext";
 import { usePlanner } from "../hooks/usePlanner";
 import { translations } from "../app/translations";
@@ -22,6 +23,7 @@ import MatchedActivityCard from "../components/MatchedActivityCard";
 import UnplannedActivityCard from "../components/UnplannedActivityCard";
 import { MoveWorkoutModal } from "../components/MoveWorkoutModal";
 import { AdaptWeekModal } from "../components/AdaptWeekModal";
+import { FeelingSelector, rpeToFeelingId } from "../components/FeelingSelector";
 import { triggerHaptic } from "../utils/native";
 
 export default function PlannerView({ isMobile }: { isMobile: boolean }) {
@@ -1717,10 +1719,12 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
         )}
 
         {/* Block Review Modal */}
-        {showBlockReview && (
+        {showBlockReview && typeof document !== "undefined" && createPortal(
           <div style={{
             position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)",
-            zIndex: 1200, display: "flex", alignItems: "center", justifyContent: "center", padding: "24px",
+            zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center",
+            padding: "max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom)) 24px",
+            overflowY: "auto",
           }}>
             <div style={{
               background: "rgba(255,255,255,0.97)", borderRadius: "18px",
@@ -1838,29 +1842,18 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 ) : null}
               </div>
 
-              <label style={{ display: "block", fontSize: "12px", fontWeight: "700", color: "var(--text-secondary)", marginBottom: "8px" }}>
-                {lang === "en" ? `Overall Effort (RPE ${blockReviewRpe}/10)` : `Cảm giác chung (RPE ${blockReviewRpe}/10)`}
-              </label>
-              <div style={{ marginBottom: "6px" }}>
-                <input
-                  type="range" min={1} max={10} value={blockReviewRpe}
-                  onChange={e => setBlockReviewRpe(Number(e.target.value))}
-                  style={{ width: "100%", accentColor: "var(--accent-primary)" }}
+              <div style={{ marginBottom: "16px" }}>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: "700", color: "var(--text-secondary)", marginBottom: "8px" }}>
+                  {lang === "en" ? "How did this block feel?" : "Cảm giác của bạn trong block này?"}
+                </label>
+                <FeelingSelector
+                  variant="cards"
+                  showDescription={true}
+                  selectedId={rpeToFeelingId(blockReviewRpe)}
+                  onChange={(_, rpeVal) => setBlockReviewRpe(rpeVal)}
+                  lang={lang as "en" | "vi"}
+                  isMobile={isMobile}
                 />
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", color: "var(--text-muted)", marginTop: "2px" }}>
-                  <span>{lang === "en" ? "Very easy" : "Rất nhẹ"}</span>
-                  <span>{lang === "en" ? "Max effort" : "Cực kỳ nặng"}</span>
-                </div>
-              </div>
-              <div style={{
-                textAlign: "center", fontSize: "12px", fontWeight: "600",
-                color: blockReviewRpe >= 8 ? "#ef4444" : blockReviewRpe >= 6 ? "#f59e0b" : "#10b981",
-                marginBottom: "18px",
-              }}>
-                {blockReviewRpe >= 9 ? (lang === "en" ? "Very hard — consider reducing next block" : "Rất nặng — cân nhắc giảm block tiếp")
-                  : blockReviewRpe >= 7 ? (lang === "en" ? "Hard — coach will ease off slightly" : "Nặng — coach sẽ giảm nhẹ")
-                  : blockReviewRpe >= 5 ? (lang === "en" ? "Manageable — good progression" : "Vừa phải — tiến độ tốt")
-                  : (lang === "en" ? "Easy — coach can increase load" : "Nhẹ — coach có thể tăng tải")}
               </div>
 
               <label style={{ display: "block", fontSize: "12px", fontWeight: "700", color: "var(--text-secondary)", marginBottom: "6px" }}>
@@ -1943,7 +1936,8 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 </button>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         {/* Adapt Week Modal */}
@@ -1989,8 +1983,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
             actingAsAthleteId={actingAsAthleteId}
           />
         )}
-
-        {addWorkoutTarget && (
+{addWorkoutTarget && (
           <AiCreateWorkoutModal
             lang={lang}
             weekNumber={addWorkoutTarget.week}
@@ -2081,14 +2074,26 @@ function AiCreateWorkoutModal({
     setSubmitting(false);
   };
 
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <div
-      style={{ position: "fixed", inset: 0, zIndex: 1200, background: "rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 2000,
+        background: "rgba(0,0,0,0.35)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom)) 20px",
+        overflowY: "auto",
+      }}
       onClick={onClose}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{ width: "100%", maxWidth: "420px", background: "rgba(255,255,255,0.98)", borderRadius: "16px", padding: "24px", border: "1px solid var(--border-color)" }}
+        style={{ width: "100%", maxWidth: "420px", background: "rgba(255,255,255,0.98)", borderRadius: "16px", padding: "24px", border: "1px solid var(--border-color)", maxHeight: "90vh", overflowY: "auto" }}
       >
         <h3 style={{ margin: "0 0 4px 0", fontSize: "16px", fontWeight: 800 }}>
           {lang === "en" ? "Add a workout" : "Thêm bài tập"}
@@ -2263,7 +2268,8 @@ function AiCreateWorkoutModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

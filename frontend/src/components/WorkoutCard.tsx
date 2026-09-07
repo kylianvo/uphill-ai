@@ -23,7 +23,8 @@ import {
   Mountains,
   Flag,
 } from "@phosphor-icons/react";
-import { getZoneColor, RPE_DESCRIPTORS } from "../data/workoutLibrary";
+import { getZoneColor } from "../data/workoutLibrary";
+import { FeelingSelector, rpeToFeelingId } from "./FeelingSelector";
 import { useWorkoutTypes, resolveWorkoutInfo } from "../hooks/useWorkoutTypes";
 import {
   parseExecutionSteps,
@@ -948,46 +949,15 @@ export default function WorkoutCard({
                   coach understand how your body is responding week-to-week.
                 </p>
               )}
-              {/* RPE scale */}
-              <div style={{ display: "flex", gap: "4px", marginBottom: "6px", flexWrap: "wrap" }}>
-                {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => {
-                  const desc = RPE_DESCRIPTORS[n];
-                  const selected = rpe === n;
-                  return (
-                    <button
-                      key={n}
-                      onClick={() => setRpe(selected ? null : n)}
-                      title={desc.label}
-                      style={{
-                        width: "28px",
-                        height: "28px",
-                        borderRadius: "6px",
-                        border: `1.5px solid ${selected ? desc.color : "rgba(0,0,0,0.1)"}`,
-                        background: selected ? desc.color : "rgba(255,255,255,0.5)",
-                        color: selected ? "#fff" : "var(--text-muted)",
-                        fontSize: "11px",
-                        fontWeight: "700",
-                        cursor: "pointer",
-                        flexShrink: 0,
-                      }}
-                    >
-                      {n}
-                    </button>
-                  );
-                })}
+              {/* RPE feeling scale */}
+              <div style={{ marginBottom: "10px" }}>
+                <FeelingSelector
+                  variant="pills"
+                  selectedId={rpeToFeelingId(rpe)}
+                  onChange={(_, rpeVal) => setRpe(rpe === rpeVal ? null : rpeVal)}
+                  lang={lang as "en" | "vi"}
+                />
               </div>
-              {rpe !== null && (
-                <p
-                  style={{
-                    fontSize: "11px",
-                    color: RPE_DESCRIPTORS[rpe].color,
-                    margin: "0 0 10px 0",
-                    fontWeight: "600",
-                  }}
-                >
-                  {rpe} — {RPE_DESCRIPTORS[rpe].label}
-                </p>
-              )}
 
               {/* Notes */}
               <textarea
