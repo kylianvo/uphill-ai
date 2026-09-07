@@ -378,8 +378,9 @@ class PlanGenerator:
             grade = ai_incline if ai_incline > 0 else _as_float(wo.get("grade_percent"))
             if grade <= 0:
                 grade = 1.0  # standard 1% treadmill rule when nothing else is known
+            grade = min(15.0, grade)  # Commercial gym treadmills max out at 15.0%
             incline_low = max(1.0, grade - 1.0)
-            incline_high = grade + 1.0
+            incline_high = min(15.0, grade + 1.0)
         incline_mid = (incline_low + incline_high) / 2
 
         pace_range = PlanGenerator.parse_pace_range(target_pace)
@@ -1161,7 +1162,7 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                 "Process (step-by-step execution using → to separate segments — EVERY exercise or effort chunk MUST be its own → segment; NEVER chain multiple exercises together with semicolons or commas inside a single segment, and NEVER wrap them in a label like 'Main Circuit: ...'. The warm-up, main, and cool-down minutes stated MUST sum exactly to duration_minutes.\n"
                 "     * Easy/Tempo/Interval/Long Run, e.g. 'Warm up 10 min easy → 4 x 6min @ Zone 4, 2min jog recovery → cool down 10 min'.\n"
                 "     * Strength (general/max-strength): straight sets — one → segment per exercise, each naming the exercise plus sets x reps and a 60-180s rest interval BETWEEN SETS OF THAT SAME EXERCISE (appropriate for near-maximal loads), e.g. 'Warm up 5 min mobility → Bodyweight Squats: 3x10, 90s rest → Walking Lunges: 3x10 each leg, 90s rest → Cool down 5 min stretching'.\n"
-                "     * Muscular Endurance (ME): this develops peripheral muscular fatigue resistance without cardiac strain. Format by terrain: (a) Flat/Rolling or Gym: high-cadence, high-rep CIRCUIT training — NEVER straight sets. One → segment per exercise names ONE pass (e.g. '10 reps Split Jump Squats, 15s transition → 10 reps Squat Jumps, 15s transition → 10 reps/leg Box Step-Ups at 75% kneecap height, 15s transition → 10 reps/leg Front Lunges'), followed by total rounds (6-8 rounds) and rest between rounds (~60s tapering to 15s). (b) Outdoor Mountain Hikes: steep 30%+ off-trail grade with 5-15% bodyweight pack, 5-20 min climbing intervals with 1-3 min recovery, and mandatory Summit Water Dump protocol: 'Dump water weight at summit; descend unweighted to preserve orthopedic integrity'. (c) Incline Treadmill: 25% incline, 90% and 95% VK pace intervals. (d) Hill Bounding / Ski Striding: 6-8 reps of 8-12s max-effort bounds on 15-20% hill, 3-4 min full standing/walking rest, strictly terminate at first power drop.\n"
+                "     * Muscular Endurance (ME): this develops peripheral muscular fatigue resistance without cardiac strain. Format by terrain: (a) Flat/Rolling or Gym: high-cadence, high-rep CIRCUIT training — NEVER straight sets. One → segment per exercise names ONE pass (e.g. '10 reps Split Jump Squats, 15s transition → 10 reps Squat Jumps, 15s transition → 10 reps/leg Box Step-Ups at 75% kneecap height, 15s transition → 10 reps/leg Front Lunges'), followed by total rounds (6-8 rounds) and rest between rounds (~60s tapering to 15s). (b) Outdoor Mountain Hikes: steep 30%+ off-trail grade with 5-15% bodyweight pack, 5-20 min climbing intervals with 1-3 min recovery, and mandatory Summit Water Dump protocol: 'Dump water weight at summit; descend unweighted to preserve orthopedic integrity'. (c) Incline Treadmill: 12-15% incline, 90% and 95% uphill climbing pace intervals (standard commercial gym treadmills max out at 15%). (d) Hill Bounding / Ski Striding: 6-8 reps of 8-12s max-effort bounds on 15-20% hill, 3-4 min full standing/walking rest, strictly terminate at first power drop.\n"
                 "     * Interval: state exact rep count, distance or duration per rep, and recovery between reps.\n"
                 "NEVER substitute a placeholder segment like 'Perform the bodyweight strength circuit for 20 minutes' for the actual named-exercise segments, and NEVER place the exercise breakdown anywhere outside this Process → chain (in particular, never append it after Warning or any other section) — every exercise MUST live inside Process and nowhere else), "
                 "Overall (2-3 sentence summary of the session), Reason (why it is scheduled now), Benefit (expected physiological adaptation), and Warning (ONLY injury risks or execution precautions — NEVER exercise prescriptions, sets, or reps; those belong exclusively in Process). Provide extensive context.)\n"
@@ -1178,11 +1179,11 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                 f"{week_schedule_constraints}"
                 "\nRules:\n"
                 "1. Block Scope & Schedule: Generate workouts for the specified block weeks only. Each week must have structured workouts (typically 4-6 workouts per week). ALWAYS honor the athlete's preferred training days and double-session days from their profile — place Rest workouts on non-preferred days, and produce two workout objects on each double-session day as described above.\n"
-                "2. 80/20 Low-Intensity Volume Polarization: At least 80-85% of total weekly running volume/time MUST be strictly in Zone 1 and Zone 2 (below AeT). High-intensity work (Zone 3/4/5, ME circuits) must NOT exceed 15-20% of weekly volume.\n"
-                "3. Long Run Proportionality Cap: A single long run must NOT exceed 30-35% of total weekly volume. For ultra distances where back-to-back weekend long runs (Saturday + Sunday) are scheduled, their combined total must NOT exceed 50% of the week's total volume to prevent excessive structural breakdown.\n"
+                "2. 80/20 Low-Intensity Volume Polarization: At least 80-85% of total weekly running volume/time MUST be strictly in Zone 1 and Zone 2 (below AeT). High-intensity work (Zone 3/4/5, ME circuits) must NOT exceed 15-20% of weekly volume. PROGRESSION CEILING: Total weekly running volume MUST NOT increase by more than 5-10% week-over-week (the 10% rule). Never produce abrupt spikes in weekly mileage.\n"
+                "3. Long Run Proportionality Cap: A single long run must NOT exceed 30-35% of total weekly volume. For ultra distances where back-to-back weekend long runs (Saturday + Sunday) are scheduled, their combined total must NOT exceed 50% of the week's total volume to prevent excessive structural breakdown. WEEKDAY RUN DURATIONS: Weekday runs (Mon-Fri) must typically be 45-75 minutes (average ~60 minutes) to respect athlete daily work schedules — never schedule an excessive 90-120+ minute run on a weekday unless explicitly requested.\n"
                 "4. Periodization Phases (Training for the Uphill Athlete):\n"
-                "   - Short Runway Override (<= 8 weeks total plan): Bypass general strength phases. Start a specific Muscular Endurance (ME) block in Week 2, concluding 10-14 days before race day.\n"
-                "   - Base Phase: Aerobic volume accumulation (Zone 1-2) + Maximum Strength (heavy compound bodyweight/gym lifts: squats, deadlifts, step-ups; 3-5 sets of 4-6 reps, 2-3 min rest between sets). DO NOT prescribe high-repetition Muscular Endurance circuits in early Base for standard/long plans.\n"
+                "   - Short Runway Override (<= 10 weeks total plan): Bypass general strength phases. Start a specific Muscular Endurance (ME) block in Week 1 or Week 2, concluding 10-14 days before race day.\n"
+                "   - Base Phase: Aerobic volume accumulation (Zone 1-2) + Maximum Strength (heavy compound bodyweight/gym lifts: squats, deadlifts, step-ups; 3-5 sets of 4-6 reps, 2-3 min rest between sets). For standard/long plans (>= 12 weeks), introduce high-repetition ME circuits in the Build phase.\n"
                 "   - Build Phase: Aerobic base expansion + Muscular Endurance (8-12 week ME block: gym circuits or uphill carries) + Zone 3/4 hill tempo repeats.\n"
                 "   - Peak Phase: Race-specific terrain simulation, high-vert weekend back-to-backs, weighted pack step-ups, and eccentric downhill repeats (quad conditioning).\n"
                 "   - Taper Phase: Reduce weekly volume by 40-60% while maintaining neuromuscular sharpness (stop heavy ME 10-14 days out).\n"
@@ -1193,12 +1194,13 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                 "8. NEVER invent a physiological claim, exercise, or number beyond what the Uphill Athlete training philosophy implies. If unsure of an exact figure, give a sensible range instead of fabricating false precision.\n"
                 "9. Give the athlete profile and prior feedback below real weight — this plan MUST reflect their specific numbers, schedule, and history, not a generic template.\n"
                 "10. Uphill Athlete & Trail Specificity: For mountain/trail races, incorporate progressive eccentric quad conditioning (eccentric box step-downs, downhill repeats, hill bounding) and back-to-back weekend long runs where appropriate for ultra distances (50K+). If the course profile notes high heat or altitude, integrate acclimation guidance.\n"
-                "11. Environmental & Routine Scheduling: If the athlete's notes indicate flat/urban living on weekdays with weekend trail travel, prescribe flat road/treadmill aerobic work or gym ME on weekdays, reserving high-vert trail long runs for Saturday/Sunday.\n"
+                "11. Environmental & Routine Scheduling: If the athlete's notes indicate flat/urban living on weekdays with weekend trail travel, prescribe flat road/treadmill aerobic work or gym ME on weekdays, reserving high-vert trail long runs for Saturday/Sunday. Keep weekday runs accessible (~45-60 min).\n"
                 "12. Muscular Endurance (ME) Directives (Scott Johnston Framework):\n"
                 "   - Chassis vs. Engine Principle: Local muscular fatigue resistance of propelling fibers, not cardiac capacity, is the primary governor of sustainable race pace.\n"
                 "   - Terrain Routing:\n"
-                "     * Flat/Rolling Races (<15m vert/km or road): Prescribe Gym Leg Endurance Circuits, Short Steep Hill Strides (15-20% grade, 8-12s bounds), or Flat Tire Drags/Sled Pushes to adapt FTa frontier fibers and prevent late-race stride shortening, hip drop, and eccentric quad collapse.\n"
-                "     * Steep Mountain Races (>=30-50m vert/km or climbs >500m): Prescribe Outdoor Weighted Uphill Hikes (30%+ slope, 5-15% BW pack, Summit Water Dump protocol: dump water at top, descend unweighted) or Treadmill Incline VK Series (25% grade).\n"
+                "     * Flat/Rolling Races (<25m vert/km or road): Prescribe Gym Leg Endurance Circuits, Short Steep Hill Strides (10-15% grade, 8-12s bounds), or Flat Tire Drags/Sled Pushes to adapt FTa frontier fibers and prevent late-race stride shortening, hip drop, and eccentric quad collapse.\n"
+                "     * Steep Mountain Races (>=25-35m vert/km or sustained single climbs >500m D+): Prescribe Outdoor Weighted Uphill Hikes (20-30%+ slope, 5-15% BW pack, Summit Water Dump protocol: dump water at top, descend unweighted) or Treadmill Incline Series (12-15% grade).\n"
+                "   - Treadmill Incline Hardware Realism: Standard commercial gym treadmills MAX OUT at 12-15% incline. For treadmill ME or hill repeats, ALWAYS prescribe 10-15% incline. NEVER prescribe >15% treadmill incline unless the athlete explicitly notes access to a specialized 25-40% Incline Trainer.\n"
                 "   - The 48-Hour Buffer: NEVER schedule an ME session within 48 hours of a weekend Long Run, Zone 3/4 interval run, or heavy gym workout.\n"
                 "   - Double Session Sequencing: On double-session days with ME, the high-power ME session is ALWAYS in the morning (fresh CNS); the easy Zone 1/2 aerobic run is in the afternoon.\n"
                 "   - Cardiac vs. Muscular Rule: Heart rate must remain in Zone 1-2 (conversational), while peripheral propelling muscles experience deep, continuous muscular burn.\n"
@@ -1239,7 +1241,7 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                 "segment, never wrap them in a 'Main Circuit: ...' label. Strength = straight sets, e.g. "
                 "'Squats: 3x10, 90s rest' per exercise. ME = CIRCUIT, NOT straight sets — "
                 "flat/gym: Jump Squats/Step-Ups/Lunges circuit (10-30s transition, 6-8 rounds, 60s rest); "
-                "mountain: weighted uphill carries (dump water at top, descend unweighted); 25% incline treadmill; "
+                "mountain: weighted uphill carries (dump water at top, descend unweighted); 12-15% incline treadmill; "
                 "hill bounds (8-12s, 3-4m rest); never 45-60s rest between sets of SAME exercise; never placeholder; "
                 "Intervals state exact reps/distance/recovery; plus Overall/Reason/Benefit/Warning), "
                 "fueling_tip (string: <75m water/electrolytes; 75-150m 30-60g CHO/hr; >150m 60-90g CHO/hr + 500-800mg sodium; pre-race 8-10g CHO/kg), "
@@ -1266,10 +1268,10 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
             )
             nb_rules_block = (
                 "Rules: Honor athlete's preferred training/double days — Rest on off days, 2 objects on double days. "
-                "80/20 Polarization: 80-85% vol Zone 1-2, high intensity <= 15-20%. "
+                "80/20 Polarization & Volume Progression: 80-85% vol Zone 1-2, high intensity <= 15-20%, weekly progression cap 5-10% (max 10% rule). Weekday runs ~45-75 min. "
                 "Long run cap: <= 30-35% weekly vol (<= 50% weekend back-to-backs). "
-                "Periodization: Short plans (<=8w) start ME in Wk 2; Standard/Long (12-24w) Base (Max Strength) -> Build (ME circuits/carries) -> Peak (vert/downhill) -> Taper (cut 40-60%, stop heavy ME 10-14d out). "
-                "ME Directives: Local muscular endurance limits pace; Flat/road gets Gym Circuits/Hill Strides/Tire Drags to prevent stride/quad collapse; Steep mountain gets Weighted Uphill Carries (dump water at top) or 25% treadmill; NEVER schedule ME within 48h of Long Run; on double days ME is AM, Z1/2 run is PM; HR in Z1-2 while legs experience deep burn. "
+                "Periodization: Short plans (<=10w) start ME in Wk 1-2; Standard/Long (12-24w) Base (Max Strength) -> Build (ME circuits/carries) -> Peak (vert/downhill) -> Taper (cut 40-60%, stop heavy ME 10-14d out). "
+                "ME Directives: Local muscular endurance limits pace; Flat/road gets Gym Circuits/Hill Strides/Tire Drags to prevent stride/quad collapse; Steep mountain gets Weighted Uphill Carries (dump water at top) or 12-15% treadmill; NEVER schedule ME within 48h of Long Run; on double days ME is AM, Z1/2 run is PM; HR in Z1-2 while legs experience deep burn. "
                 "Deload cycles: 3:1 load-to-recovery (cut vol 20-30%). "
                 "ADS: If flagged, NO Z4/5 speedwork in Base/Build — strictly Zone 1-2. "
                 "Fueling: <75m water/electrolytes, 75-150m 30-60g CHO/hr, >150m 60-90g CHO/hr, pre-race 8-10g CHO/kg."
