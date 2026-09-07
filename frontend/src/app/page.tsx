@@ -14,6 +14,7 @@ import KnowledgeView from "@/views/KnowledgeView";
 import CoachDashboardView from "@/views/CoachDashboardView";
 import PendingInviteBanner from "@/components/PendingInviteBanner";
 import { notifyPlanGenerated } from "@/utils/notifications";
+import { resolveCurrentWeek } from "@/utils/planDate";
 import { NutritionLab } from "../components/NutritionLab";
 import { GearVault } from "../components/GearVault";
 import { PaceStrategy } from "../components/PaceStrategy";
@@ -1188,6 +1189,7 @@ export default function Home() {
         if (data.active) {
           setActivePlan(data.plan);
           setWorkouts(data.workouts);
+          setSelectedWeek(resolveCurrentWeek(data.plan, data.workouts));
         } else {
           setActivePlan(null);
           setWorkouts([]);
@@ -1570,7 +1572,6 @@ export default function Home() {
           setPlanJobStatus("done");
           // Re-fetch active plan and workouts from database to guarantee complete state synchronization
           await fetchActivePlanWithToken(token);
-          setSelectedWeek(1);
           notifyPlanGenerated(lang);
           // Auto-dismiss banner after 10 seconds
           setTimeout(() => setPlanJobStatus("idle"), 10000);
@@ -2086,7 +2087,7 @@ export default function Home() {
         setBackupActivePlan(null);
         setBackupWorkouts([]);
       }
-      setSelectedWeek(1);
+      setSelectedWeek(resolveCurrentWeek(result.plan, result.workouts));
       // Start background polling for workouts
       if (result.job_id) {
         startPlanJobPoller(result.job_id, token!);
@@ -2161,7 +2162,7 @@ export default function Home() {
         setWorkouts(data.workouts);
         setBackupActivePlan(null);
         setBackupWorkouts([]);
-        setSelectedWeek(1);
+        setSelectedWeek(resolveCurrentWeek(data.plan, data.workouts));
         fetchRecentPlansWithToken(token);
       } else {
         const errorText = await response.json();

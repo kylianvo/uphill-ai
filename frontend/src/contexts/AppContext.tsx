@@ -7,6 +7,7 @@ import { Keyboard } from "@capacitor/keyboard";
 import { Message, ParsedSummary, RagSource, Workout, ActivePlan, PacedCheckpoint, FuelStrategy, Shoe, User } from "../types";
 import { isNativePlatform } from "../utils/native";
 import { hasNotificationPermission, scheduleDailyKnowledgeReminder, scheduleNotification, buildWorkoutReminderContent, DAILY_WORKOUT_REMINDER_ID } from "../utils/notifications";
+import { resolveCurrentWeek } from "../utils/planDate";
 
 interface AppContextType {
   isNutritionLabOpen: any;
@@ -431,6 +432,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     setActiveTab(tab);
     if (tab === "planner") {
       setPlanJobStatus("idle");
+      if (activePlan) {
+        setSelectedWeek(resolveCurrentWeek(activePlan, workouts));
+      }
     }
   };
 

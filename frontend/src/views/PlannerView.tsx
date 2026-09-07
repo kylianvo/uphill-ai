@@ -25,6 +25,7 @@ import { MoveWorkoutModal } from "../components/MoveWorkoutModal";
 import { AdaptWeekModal } from "../components/AdaptWeekModal";
 import { FeelingSelector, rpeToFeelingId } from "../components/FeelingSelector";
 import { triggerHaptic } from "../utils/native";
+import { resolveCurrentWeek } from "../utils/planDate";
 
 export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   const ctx = useAppContext();
@@ -60,6 +61,19 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   }, [actingAsAthleteId]);
   const t = (key: keyof typeof translations.en) => translations[lang]?.[key] || translations.en[key] || key;
   const totalWeeks = activePlan ? (activePlan.total_weeks || activePlan.plan_duration_weeks || 1) : 0;
+
+  // Automatically select the calendar-derived current week when an active plan loads or changes
+  const lastAutoSelectedPlanIdRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (activePlan?.id) {
+      if (lastAutoSelectedPlanIdRef.current !== activePlan.id) {
+        lastAutoSelectedPlanIdRef.current = activePlan.id;
+        setSelectedWeek(resolveCurrentWeek(activePlan, workouts));
+      }
+    } else {
+      lastAutoSelectedPlanIdRef.current = null;
+    }
+  }, [activePlan?.id, activePlan?.start_date, activePlan?.total_weeks, workouts, setSelectedWeek]);
 
   // ── Watch Activity Matching ──────────────────────────────────────────────
   const {
@@ -453,6 +467,13 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   const nextBlockNum = currentBlockNum + 1;
   const nextBlockStartWeek = nextBlockNum * 2 - 1;
   const allBlocksGenerated = maxGeneratedWeek >= totalWeeks && totalWeeks > 0;
+
+  // Keep selectedWeek within the unlocked / generated range
+  useEffect(() => {
+    if (maxGeneratedWeek > 0 && selectedWeek > maxGeneratedWeek) {
+      setSelectedWeek(maxGeneratedWeek);
+    }
+  }, [maxGeneratedWeek, selectedWeek, setSelectedWeek]);
 
   const [blockEvaluation, setBlockEvaluation] = useState<any | null>(null);
   const [blockEvaluationLoading, setBlockEvaluationLoading] = useState(false);
