@@ -61,7 +61,7 @@ test("onboarding wizard sends the chosen Plan Start Date, not today", async ({ p
 
   const [onboardingResponse] = await Promise.all([
     page.waitForResponse((resp) => resp.url().includes("/api/auth/onboarding") && resp.request().method() === "POST"),
-    page.getByRole("button", { name: "🚀 Generate My Training Plan" }).click(),
+    page.getByRole("button", { name: /Generate My Training Plan/ }).click(),
   ]);
   expect(onboardingResponse.ok()).toBeTruthy();
 
