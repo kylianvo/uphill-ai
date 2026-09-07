@@ -1415,23 +1415,34 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                     {selectedWeek <= maxGeneratedWeek && (
                       <button
                         type="button"
-                        className="btn btn-secondary"
                         onClick={() => handleOpenAdaptWeek(selectedWeek)}
                         style={{
                           display: "inline-flex",
                           alignItems: "center",
-                          gap: "6px",
-                          padding: "8px 14px",
-                          fontSize: "12px",
-                          fontWeight: "700",
-                          borderRadius: "8px",
+                          gap: "5px",
+                          padding: "4px 10px",
+                          fontSize: "11.5px",
+                          fontWeight: "600",
+                          borderRadius: "20px",
                           cursor: "pointer",
-                          border: "1px solid rgba(99, 102, 241, 0.3)",
-                          background: "rgba(99, 102, 241, 0.08)",
+                          border: "1px solid rgba(25, 206, 139, 0.4)",
+                          background: "rgba(25, 206, 139, 0.08)",
                           color: "var(--accent-primary)",
+                          transition: "all 0.15s ease",
+                          whiteSpace: "nowrap",
+                          height: "26px",
+                          flexShrink: 0,
+                        }}
+                        onMouseEnter={e => {
+                          (e.currentTarget as HTMLButtonElement).style.background = "rgba(25, 206, 139, 0.16)";
+                          (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(25, 206, 139, 0.6)";
+                        }}
+                        onMouseLeave={e => {
+                          (e.currentTarget as HTMLButtonElement).style.background = "rgba(25, 206, 139, 0.08)";
+                          (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(25, 206, 139, 0.4)";
                         }}
                       >
-                        <Sparkle size={14} weight="fill" aria-hidden="true" />
+                        <Sparkle size={12} weight="fill" aria-hidden="true" />
                         <span>{lang === "en" ? `Adapt Week ${selectedWeek}` : `Tùy chỉnh Tuần ${selectedWeek}`}</span>
                       </button>
                     )}

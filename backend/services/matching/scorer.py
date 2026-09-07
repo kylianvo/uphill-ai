@@ -112,6 +112,20 @@ def score_bundle(bundle: SessionBundle, workout: dict) -> MatchScore:
             reasons=["sport type mismatch between strength and endurance"],
         )
 
+    # Interval/fartlek/repeat sessions: GPS total distance is NOT a reliable
+    # identity signal because the athlete runs short reps separated by rest jogs,
+    # so actual_km << the plan's prescribed distance. Skip the distance component
+    # entirely and rely on duration + HR + pace quality instead.
+    is_planned_interval = (
+        "interval" in w_type
+        or "repeat" in w_type
+        or "fartlek" in w_type
+        or any(
+            s in w_title
+            for s in ["interval", "repeat", "fartlek", "vo2", "hiit", "x400", "x800", "x1000", "x1200", "x1600"]
+        )
+    )
+
     components: dict[str, float] = {}
     reasons: list[str] = []
 
@@ -127,8 +141,9 @@ def score_bundle(bundle: SessionBundle, workout: dict) -> MatchScore:
     # distance_km is nullable with no default, so a real 0 km never occurs;
     # the falsy check is correct as-is. Guard against a corrupt negative the
     # same way as duration.
+    # Skip distance for interval sessions: GPS total << prescribed course km.
     planned_distance = workout.get("distance_km")
-    if planned_distance and planned_distance > 0:
+    if planned_distance and planned_distance > 0 and not is_planned_interval:
         components["distance"] = _ratio_score(bundle.distance_km, float(planned_distance))
         reasons.append(f"distance {bundle.distance_km:.2f} km vs {float(planned_distance):.2f} planned")
 

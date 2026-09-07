@@ -286,20 +286,44 @@ def score_workout_quality(
         or any(s in w_title for s in ["strength", "gym", "circuit", "muscular endurance"])
         or activity_type in {"strength", "indoor_strength", "gym_cardio"}
     )
-    is_easy = not is_strength and (
-        "EASY" in w_type
-        or "RECOVERY" in w_type
-        or "BASE" in w_type
-        or "LONG" in w_type
-        or "AEROBIC" in w_title
-        or "zone 1" in w_title
-        or "zone 2" in w_title
+    # Interval sessions: total distance is NOT a valid quality metric because each rep
+    # is separated by recovery jogs, so actual_km << planned_course_km. Judge on
+    # duration adherence and HR/pace quality only.
+    is_interval = not is_strength and (
+        "INTERVAL" in w_type
+        or "REPEAT" in w_type
+        or "FARTLEK" in w_type
+        or any(
+            s in w_title
+            for s in ["interval", "repeat", "fartlek", "vo2", "hiit", "x400", "x800", "x1000", "x1200", "x1600"]
+        )
+    )
+    is_easy = (
+        not is_strength
+        and not is_interval
+        and (
+            "EASY" in w_type
+            or "RECOVERY" in w_type
+            or "BASE" in w_type
+            or "LONG" in w_type
+            or "AEROBIC" in w_title
+            or "zone 1" in w_title
+            or "zone 2" in w_title
+        )
     )
 
     all_takeaways: list[str] = []
 
     # 1. Volume Score
-    volume_score, vol_notes = _volume_score(actual_minutes, planned_minutes, distance_km, planned_km)
+    # For interval sessions skip the distance sub-score: the athlete runs short repeats
+    # with rest intervals, so their GPS total distance will always be far below a
+    # continuous-run distance target. Only duration adherence matters here.
+    effective_planned_km = None if is_interval else planned_km
+    volume_score, vol_notes = _volume_score(actual_minutes, planned_minutes, distance_km, effective_planned_km)
+    if is_interval and planned_km and planned_km > 0:
+        vol_notes.append(
+            "Interval session: distance target not used for scoring — duration adherence and effort quality are what matter."
+        )
     all_takeaways.extend(vol_notes)
 
     # 2. Intensity Score
@@ -340,10 +364,18 @@ def score_workout_quality(
         all_takeaways.append(f"Included {warmup_km:.1f} km warm-up jog in the total workout volume.")
 
     # Weighted Overall Score
+    # Interval sessions weight intensity more heavily (0.70) since effort quality
+    # is the primary goal; volume is still checked (duration only) with 0.30.
     if "elevation" in subscores:
-        overall = subscores["volume"] * 0.35 + subscores["intensity"] * 0.45 + subscores["elevation"] * 0.20
+        if is_interval:
+            overall = subscores["volume"] * 0.25 + subscores["intensity"] * 0.55 + subscores["elevation"] * 0.20
+        else:
+            overall = subscores["volume"] * 0.35 + subscores["intensity"] * 0.45 + subscores["elevation"] * 0.20
     else:
-        overall = subscores["volume"] * 0.45 + subscores["intensity"] * 0.55
+        if is_interval:
+            overall = subscores["volume"] * 0.30 + subscores["intensity"] * 0.70
+        else:
+            overall = subscores["volume"] * 0.45 + subscores["intensity"] * 0.55
 
     overall_100 = max(10.0, min(100.0, overall * 100.0))
     grade, rating = _grade_for_score(overall_100)

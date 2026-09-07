@@ -2345,7 +2345,10 @@ async def _adapt_week_for_athlete(request: AdaptWeekRequest, athlete_id: int, jo
         )
         if fatigue_level.lower() == "easy":
             context_lines.append(
-                "  Feeling Fresh/Easy: Athlete is well recovered. Maintain scheduled progression and key quality sessions."
+                "  Feeling Fresh/Easy: Athlete is well recovered and ready to absorb more load. "
+                "IMPORTANT: Do NOT reduce weekly training volume. Match or slightly increase the planned week's total duration and distance. "
+                "Keep all key quality sessions (intervals, tempo, long run) intact. "
+                "You may optionally add 5-10% more volume to the easy/base runs to capitalise on the athlete's freshness."
             )
         elif fatigue_level.lower() == "medium":
             context_lines.append(
@@ -2407,6 +2410,26 @@ async def _adapt_week_for_athlete(request: AdaptWeekRequest, athlete_id: int, jo
         for cw in curr_completed:
             context_lines.append(
                 f"    - {cw.get('day_of_week')}: {cw.get('title')} ({cw.get('duration_minutes', 0):.0f}min, {cw.get('distance_km', 0):.1f}km)"
+            )
+
+    # Add planned volume for target week so Gemini has a concrete floor to stay above
+    # (especially critical for "easy" feedback where volume should not decrease)
+    target_wos = [w for w in all_workouts if w.get("week_number") == request.week_number and w.get("type") != "Rest"]
+    if target_wos:
+        target_planned_min = sum(w.get("duration_minutes") or 0 for w in target_wos)
+        target_planned_km = sum(w.get("distance_km") or 0 for w in target_wos)
+        completed_target = [w for w in target_wos if w.get("is_completed") == 1]
+        uncompleted_min = sum(w.get("duration_minutes") or 0 for w in target_wos if w.get("is_completed") != 1)
+        uncompleted_km = sum(w.get("distance_km") or 0 for w in target_wos if w.get("is_completed") != 1)
+        volume_floor_note = (
+            f"  Week {request.week_number} Original Planned Volume: {target_planned_km:.1f}km / {target_planned_min/60:.1f}h total "
+            f"({len(target_wos)} sessions, {len(completed_target)} already completed)."
+        )
+        context_lines.append(volume_floor_note)
+        if fatigue_level and fatigue_level.lower() in ("easy", "medium"):
+            context_lines.append(
+                f"  Volume Floor: The regenerated week MUST include at least {uncompleted_km:.1f}km / {uncompleted_min/60:.1f}h "
+                f"across the remaining {len(target_wos) - len(completed_target)} sessions (i.e., not less than the original plan for uncompleted workouts)."
             )
 
     block_context = "\n".join(context_lines)
