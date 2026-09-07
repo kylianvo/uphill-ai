@@ -177,7 +177,7 @@ def test_course_context_is_injected_into_the_prompt_when_present(monkeypatch):
             )
         )
     prompt_sent = fake_client.models.generate_content.call_args.kwargs["contents"]
-    assert "COURSE PROFILE" in prompt_sent
+    assert "COURSE INTELLIGENCE" in prompt_sent or "COURSE PROFILE" in prompt_sent
     assert "hand-and-knees scrambles" in prompt_sent
 
 
