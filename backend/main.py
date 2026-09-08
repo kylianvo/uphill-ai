@@ -2498,31 +2498,54 @@ async def _adapt_week_for_athlete(request: AdaptWeekRequest, athlete_id: int, jo
                 f"    - {cw.get('day_of_week')}: {cw.get('title')} ({cw.get('duration_minutes', 0):.0f}min, {cw.get('distance_km', 0):.1f}km)"
             )
 
-    # Add planned volume for target week so Gemini has a concrete floor to stay above
-    # (especially critical for "easy" feedback where volume should not decrease)
+    # Add planned volume for target week with strict floor AND progression ceiling
     target_wos = [w for w in all_workouts if w.get("week_number") == request.week_number and w.get("type") != "Rest"]
     if target_wos:
-        target_planned_min = sum(w.get("duration_minutes") or 0 for w in target_wos)
-        target_planned_km = sum(w.get("distance_km") or 0 for w in target_wos)
         completed_target = [w for w in target_wos if w.get("is_completed") == 1]
-        uncompleted_min = sum(w.get("duration_minutes") or 0 for w in target_wos if w.get("is_completed") != 1)
-        uncompleted_km = sum(w.get("distance_km") or 0 for w in target_wos if w.get("is_completed") != 1)
-        volume_floor_note = (
-            f"  Week {request.week_number} Original Planned Volume: {target_planned_km:.1f}km / {target_planned_min/60:.1f}h total "
-            f"({len(target_wos)} sessions, {len(completed_target)} already completed)."
-        )
-        context_lines.append(volume_floor_note)
-        if fatigue_level and fatigue_level.lower().replace(" ", "_") in (
-            "very_light",
-            "light",
-            "easy",
-            "moderate",
-            "medium",
-        ):
-            context_lines.append(
-                f"  Volume Floor: The regenerated week MUST include at least {uncompleted_km:.1f}km / {uncompleted_min/60:.1f}h "
-                f"across the remaining {len(target_wos) - len(completed_target)} sessions (i.e., not less than the original plan for uncompleted workouts)."
+        completed_km = sum(w.get("distance_km") or 0 for w in completed_target)
+        uncompleted_count = max(1, len(target_wos) - len(completed_target))
+
+        target_planned_km = sum(w.get("distance_km") or 0 for w in target_wos)
+        user_weekly_km = float(fresh_user.get("current_weekly_km") or 0.0)
+
+        # Reference prior volume to enforce the 5-10% weekly progression cap rule
+        prior_ref_km = (
+            actual_km
+            if (prev_wos and actual_km > 0)
+            else (
+                planned_km
+                if (prev_wos and planned_km > 0)
+                else (user_weekly_km if user_weekly_km > 0 else (target_planned_km if target_planned_km > 0 else 30.0))
             )
+        )
+
+        fatigue_normalized = (fatigue_level or "moderate").lower().replace(" ", "_")
+        if fatigue_normalized in ("very_light", "light", "easy"):
+            target_floor_km = prior_ref_km * 1.02
+            target_ceil_km = prior_ref_km * 1.08
+        elif fatigue_normalized in ("moderate", "medium"):
+            target_floor_km = prior_ref_km * 0.98
+            target_ceil_km = prior_ref_km * 1.05
+        elif fatigue_normalized in ("hard", "heavy"):
+            target_floor_km = prior_ref_km * 0.85
+            target_ceil_km = prior_ref_km * 0.90
+        else:  # max_effort, exhausted
+            target_floor_km = prior_ref_km * 0.70
+            target_ceil_km = prior_ref_km * 0.80
+
+        rem_floor_km = max(0.0, target_floor_km - completed_km)
+        rem_ceil_km = max(rem_floor_km + 2.0, target_ceil_km - completed_km)
+
+        volume_guidance = (
+            f"  Week {request.week_number} Volume Bounds (Strict 5-10% weekly progression rule):\n"
+            f"    - Target Full Week Total: {target_floor_km:.1f}km - {target_ceil_km:.1f}km\n"
+            f"    - Completed So Far: {completed_km:.1f}km ({len(completed_target)} sessions)\n"
+            f"    - Remaining {uncompleted_count} Sessions Target: MUST total between {rem_floor_km:.1f}km and {rem_ceil_km:.1f}km. "
+            f"DO NOT exceed {rem_ceil_km:.1f}km across the remaining sessions.\n"
+            f"  Weekday Session Durations: Standard weekday runs (Mon-Fri) should typically be 45-75 minutes (average ~60 minutes). "
+            f"Do NOT schedule 90-120+ min long runs on weekdays."
+        )
+        context_lines.append(volume_guidance)
 
     block_context = "\n".join(context_lines)
 

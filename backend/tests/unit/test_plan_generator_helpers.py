@@ -578,6 +578,12 @@ class TestResolveTreadmillSettings:
         wo_no_speed = {"title": "Gym Session", "treadmill_incline": 5.0}
         assert PlanGenerator.resolve_treadmill_settings(wo_no_speed, "")[1] == "0"
 
+    def test_incline_clamped_to_commercial_gym_15_percent_max(self):
+        # Commercial gym treadmills max out at 15% grade. If AI emits 25%, it must clamp.
+        wo = {"title": "Incline Treadmill Muscular Endurance Session", "treadmill_incline": 25.0}
+        incline, _ = PlanGenerator.resolve_treadmill_settings(wo, "6:00 /km")
+        assert incline == "14-15"
+
 
 class TestPostProcessWorkoutsElevation:
     def _run_rule_based(self, monkeypatch, terrain: str, course_distance_km: float, course_elevation_gain_m: float):

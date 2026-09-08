@@ -2,6 +2,7 @@
 import React from "react";
 import { useAppContext } from "../contexts/AppContext";
 import { ActivePlan, Workout } from "../types";
+import { resolveCurrentWeek } from "../utils/planDate";
 
 export function usePlanner() {
   const ctx = useAppContext();
@@ -54,6 +55,7 @@ export function usePlanner() {
         if (data.active) {
           setActivePlan(data.plan);
           setWorkouts(data.workouts);
+          setSelectedWeek(resolveCurrentWeek(data.plan, data.workouts));
           hasActive = true;
         } else {
           setActivePlan(null);
@@ -366,7 +368,7 @@ export function usePlanner() {
         setBackupActivePlan(null);
         setBackupWorkouts([]);
       }
-      setSelectedWeek(1);
+      setSelectedWeek(resolveCurrentWeek(result.plan, result.workouts));
       // Start background polling — poller owns planLoading until job completes
       if (result.job_id) {
         pollerStarted = true;
@@ -442,7 +444,7 @@ export function usePlanner() {
         setWorkouts(data.workouts);
         setBackupActivePlan(null);
         setBackupWorkouts([]);
-        setSelectedWeek(1);
+        setSelectedWeek(resolveCurrentWeek(data.plan, data.workouts));
         fetchRecentPlansWithToken(token);
       } else {
         const errorText = await response.json();

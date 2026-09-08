@@ -847,13 +847,23 @@ def get_active_plan(user_id: int) -> dict[str, Any] | None:
             ),
             {"uid": user_id},
         ).fetchone()
-    return _row_to_dict(row) if row else None
+    if not row:
+        return None
+    d = _row_to_dict(row)
+    if d:
+        d["current_week"] = compute_current_week(d.get("start_date"), d.get("total_weeks"))
+    return d
 
 
 def get_plan_by_id(plan_id: int) -> dict[str, Any] | None:
     with engine.connect() as conn:
         row = conn.execute(text("SELECT * FROM plans WHERE id = :id"), {"id": plan_id}).fetchone()
-    return _row_to_dict(row) if row else None
+    if not row:
+        return None
+    d = _row_to_dict(row)
+    if d:
+        d["current_week"] = compute_current_week(d.get("start_date"), d.get("total_weeks"))
+    return d
 
 
 def update_plan_schedule(
