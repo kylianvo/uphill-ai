@@ -61,7 +61,7 @@ def _create_plan_with_two_weeks_of_workouts_no_mock(client, headers):
     with patch(
         "services.plan_generator.PlanGenerator.generate_plan_workouts",
         new_callable=AsyncMock,
-        return_value=[],
+        return_value=([], "recreational"),
     ):
         return _create_plan_with_two_weeks_of_workouts(client, headers)
 
@@ -79,7 +79,7 @@ class TestGenerateNextBlockOverrideAnnotation:
 
         async def _capture(*args, **kwargs):
             captured["block_context"] = kwargs.get("block_context")
-            return []
+            return [], "recreational"
 
         with patch(
             "services.plan_generator.PlanGenerator.generate_plan_workouts",
@@ -182,7 +182,7 @@ class TestGenerateNextBlockScheduleEdit:
 
         async def _capture(*args, **kwargs):
             captured["race_info"] = args[2] if len(args) > 2 else kwargs.get("race_info")
-            return []
+            return [], "recreational"
 
         with patch(
             "services.plan_generator.PlanGenerator.generate_plan_workouts",

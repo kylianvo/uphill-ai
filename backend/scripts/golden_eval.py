@@ -96,7 +96,7 @@ async def _run_scheduler(fixture: dict) -> tuple[list[dict], str]:
     from services.plan_generator import PlanGenerator
 
     before = _scheduler_counters()
-    workouts = await PlanGenerator.generate_plan_workouts(
+    workouts, _tier = await PlanGenerator.generate_plan_workouts(
         plan_id=0,
         user_profile=fixture["user_profile"],
         race_info=fixture["race_info"],

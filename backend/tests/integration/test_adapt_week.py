@@ -10,7 +10,7 @@ def _create_test_plan(client, headers):
     with patch(
         "services.plan_generator.PlanGenerator.generate_plan_workouts",
         new_callable=AsyncMock,
-        return_value=[],
+        return_value=([], "recreational"),
     ):
         resp = client.post(
             "/api/coach/generate-plan",
@@ -235,7 +235,7 @@ class TestAdaptWeekEndpoint:
                     "target_zone": "Zone 2",
                     "description": "Adapted.",
                 }
-            ]
+            ], "recreational"
 
         with patch(
             "services.plan_generator.PlanGenerator.generate_plan_workouts",
@@ -318,7 +318,7 @@ class TestAdaptWeekEndpoint:
 
         async def _fake_generate(*args, **kwargs):
             captured_args.update(kwargs)
-            return []
+            return [], "recreational"
 
         with patch(
             "services.plan_generator.PlanGenerator.generate_plan_workouts",
@@ -386,7 +386,7 @@ class TestAdaptWeekEndpoint:
         async def _fake_generate(plan_id, user_profile, race_info, total_weeks=12, **kwargs):
             captured_args["race_info"] = race_info
             captured_args.update(kwargs)
-            return []
+            return [], "recreational"
 
         with patch(
             "services.plan_generator.PlanGenerator.generate_plan_workouts",
@@ -481,7 +481,7 @@ def _adapt_and_capture(client, headers, plan_id, **payload):
 
     async def _fake_generate(plan_id, user_profile, race_info, total_weeks=12, **kwargs):
         captured.update(kwargs)
-        return []
+        return [], "recreational"
 
     with patch(
         "services.plan_generator.PlanGenerator.generate_plan_workouts",

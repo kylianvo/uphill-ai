@@ -9,7 +9,7 @@ def _create_plan_with_one_workout(client, headers):
     with patch(
         "services.plan_generator.PlanGenerator.generate_plan_workouts",
         new_callable=AsyncMock,
-        return_value=[],
+        return_value=([], "recreational"),
     ):
         resp = client.post(
             "/api/coach/generate-plan",
@@ -52,7 +52,7 @@ def test_save_workouts_flattens_nested_llm_fields(client, auth_headers):
     with patch(
         "services.plan_generator.PlanGenerator.generate_plan_workouts",
         new_callable=AsyncMock,
-        return_value=[],
+        return_value=([], "recreational"),
     ):
         resp = client.post(
             "/api/coach/generate-plan",
@@ -96,7 +96,7 @@ def test_save_workouts_round_trips_interval_fields(client, auth_headers):
     with patch(
         "services.plan_generator.PlanGenerator.generate_plan_workouts",
         new_callable=AsyncMock,
-        return_value=[],
+        return_value=([], "recreational"),
     ):
         resp = client.post(
             "/api/coach/generate-plan",

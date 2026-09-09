@@ -10,7 +10,7 @@ def _setup_test_plan(client, auth_headers):
     with patch(
         "services.plan_generator.PlanGenerator.generate_plan_workouts",
         new_callable=AsyncMock,
-        return_value=[],
+        return_value=([], "recreational"),
     ):
         resp = client.post(
             "/api/coach/generate-plan",

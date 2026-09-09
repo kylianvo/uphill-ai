@@ -138,7 +138,7 @@ def mock_plan_generation():
     with patch(
         "services.plan_generator.PlanGenerator.generate_plan_workouts",
         new_callable=AsyncMock,
-        return_value=[],
+        return_value=([], "recreational"),
     ) as mock_fn:
         yield mock_fn
 
