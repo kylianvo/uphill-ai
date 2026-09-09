@@ -1,23 +1,14 @@
 from typing import Any
 
 # ─── Zone 2 pace defaults ─────────────────────────────────────────────────────
-# Slower/faster bound in min/km. These apply ONLY when an athlete has no zones of
-# their own -- a stored value always wins, and the DB writers COALESCE so that an
-# update omitting these fields can never blank them (see db.update_user_profile).
+# The per-tier values live in services/athlete_tier.py's TIER_PROFILES, so the tier
+# table is the single place a coach corrects any of this. These wrappers exist because
+# the pace defaults are consumed from call sites that know a goal but not a tier.
 #
 # Before this existed the pair "6:30"/"5:45" was hardcoded at nine call sites, so a
 # beginner who lost her stored zones silently read as a trained runner: every derived
-# number -- target pace, distance_km, treadmill speed -- inherited the error. One map,
-# one resolver, so a tier can only be wrong in one place.
-#
-# Only two tiers are defined because only two are evidenced in this codebase. Adding
-# novice/advanced/elite needs real reference paces per tier, not interpolation between
-# these two -- see docs/prompt-audit-2026-09.md.
-ZONE2_PACE_DEFAULTS: dict[str, tuple[str, str]] = {
-    "beginner": ("8:30", "7:30"),
-    "general": ("6:30", "5:45"),
-}
-DEFAULT_PACE_TIER = "general"
+# number -- target pace, distance_km, treadmill speed -- inherited the error.
+from services.athlete_tier import BEGINNER, DEFAULT_TIER, get_profile
 
 # Goals that imply an athlete who cannot yet sustain continuous running. "return" and
 # "recovery" are deliberately absent: a runner coming back from a break or a race is
@@ -26,25 +17,18 @@ BEGINNER_GOAL_TYPES = ("start_running",)
 
 
 def pace_tier_for_goal(goal_type: str | None, athlete_tier: str | None = None) -> str:
-    """Which default pace tier applies.
-
-    Only two pace tiers exist because only two pairs of reference paces are evidenced
-    here -- the four non-beginner athlete tiers all resolve to "general". That is not an
-    oversight: interpolating a pace band per tier would be inventing numbers, and a
-    trained athlete's real zones come from their own data rather than a default.
-
-    An explicit athlete tier wins over the goal, since it is derived from more signals.
-    """
-    if (athlete_tier or "").strip().lower() == "beginner":
-        return "beginner"
-    return "beginner" if (goal_type or "").lower() in BEGINNER_GOAL_TYPES else DEFAULT_PACE_TIER
+    """Which tier's pace defaults apply. An explicit athlete tier wins over the goal,
+    since it is derived from more signals."""
+    if athlete_tier:
+        return athlete_tier.strip().lower()
+    return BEGINNER if (goal_type or "").lower() in BEGINNER_GOAL_TYPES else DEFAULT_TIER
 
 
 def default_zone2_pace(tier: str | None = None) -> tuple[str, str]:
     """(slower, faster) Zone 2 bounds in min/km for a tier. Unknown tiers fall back to
-    the general default rather than raising -- a plan with slightly wrong paces beats
-    no plan, and the caller has no better answer to substitute."""
-    return ZONE2_PACE_DEFAULTS.get((tier or DEFAULT_PACE_TIER).lower(), ZONE2_PACE_DEFAULTS[DEFAULT_PACE_TIER])
+    the default profile rather than raising -- a plan with slightly wrong paces beats no
+    plan, and the caller has no better answer to substitute."""
+    return get_profile(tier).zone2_pace
 
 
 def resolve_zone2_pace(

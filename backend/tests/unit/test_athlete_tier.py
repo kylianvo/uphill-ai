@@ -17,6 +17,7 @@ from services.athlete_tier import (
     SUB_ELITE,
     TIER_ORDER,
     TIER_PROFILES,
+    aet_ant_gap,
     derive_tier,
     get_profile,
     resolve_tier,
@@ -41,12 +42,21 @@ class TestTierProfiles:
         for key, profile in TIER_PROFILES.items():
             assert profile.uses_walk_run == (key == BEGINNER)
 
-    def test_intensity_and_me_blocks_are_withheld_from_the_lowest_tiers(self):
+    def test_only_the_beginner_tier_is_denied_intensity(self):
+        """The doctrine forbids intensity for BEGINNERS explicitly -- walk/run, Zone 1-2
+        only. It says no such thing about novices, describing them only by weekly hours
+        and lack of periodization. The ADS rule is what guards a deficient athlete at any
+        tier, so withholding all quality work from a 30 km/week runner would be an
+        invention rather than doctrine."""
         assert not TIER_PROFILES[BEGINNER].allows_intensity
-        assert not TIER_PROFILES[NOVICE].allows_intensity
-        assert TIER_PROFILES[RECREATIONAL].allows_intensity
+        for tier in (NOVICE, RECREATIONAL, SUB_ELITE, ELITE):
+            assert TIER_PROFILES[tier].allows_intensity
+
+    def test_structured_me_blocks_start_at_the_recreational_tier(self):
         assert not TIER_PROFILES[BEGINNER].allows_me_blocks
-        assert TIER_PROFILES[SUB_ELITE].allows_me_blocks
+        assert not TIER_PROFILES[NOVICE].allows_me_blocks
+        for tier in (RECREATIONAL, SUB_ELITE, ELITE):
+            assert TIER_PROFILES[tier].allows_me_blocks
 
     def test_weekday_session_bands_never_regress_as_the_tier_rises(self):
         lows = [TIER_PROFILES[k].weekday_minutes[0] for k in TIER_ORDER]
@@ -70,16 +80,19 @@ class TestDeriveTier:
     @pytest.mark.parametrize(
         "weekly_km,expected",
         [
+            # KB-grounded bands: beginner 3 runs of 20-30 min; recreational 30-50 mi/wk
+            # with "40 km/wk baseline for 50K training" as its floor; sub-elite 50-80+
+            # mi/wk; elite 100-150+ mi/wk.
             (5.0, BEGINNER),
             (14.9, BEGINNER),
             (15.0, NOVICE),
-            (29.9, NOVICE),
-            (30.0, RECREATIONAL),
-            (59.9, RECREATIONAL),
-            (60.0, SUB_ELITE),
-            (99.9, SUB_ELITE),
-            (100.0, ELITE),
-            (180.0, ELITE),
+            (39.9, NOVICE),
+            (40.0, RECREATIONAL),
+            (79.9, RECREATIONAL),
+            (80.0, SUB_ELITE),
+            (159.9, SUB_ELITE),
+            (160.0, ELITE),
+            (220.0, ELITE),
         ],
     )
     def test_weekly_volume_selects_the_band(self, weekly_km, expected):
@@ -95,10 +108,58 @@ class TestDeriveTier:
     def test_a_proven_long_run_promotes_but_never_demotes(self):
         assert derive_tier(current_weekly_km=8.0, historical_max_distance_km=30.0) == NOVICE
         # It must not pull a genuine elite down toward the long run's own band.
-        assert derive_tier(current_weekly_km=120.0, historical_max_distance_km=30.0) == ELITE
+        assert derive_tier(current_weekly_km=200.0, historical_max_distance_km=30.0) == ELITE
 
     def test_an_explicit_start_running_goal_outranks_a_long_run_history(self):
         assert derive_tier(goal_type="start_running", historical_max_distance_km=42.0) == BEGINNER
+
+
+class TestAetAntGapSignal:
+    """The threshold spread is the doctrine's sharpest marker of training level, but it
+    is only evidence when it was actually MEASURED."""
+
+    def test_a_wide_measured_gap_demotes_a_high_volume_claim(self):
+        """Weekly volume is self-reported and often aspirational; the spread is measured.
+        90 km/week with a 35% spread is an aerobic deficiency, not a sub-elite engine."""
+        assert derive_tier(current_weekly_km=90.0) == SUB_ELITE
+        assert derive_tier(current_weekly_km=90.0, aet_hr=110, ant_hr=170) == RECREATIONAL
+
+    def test_a_narrow_measured_gap_leaves_the_volume_tier_alone(self):
+        assert derive_tier(current_weekly_km=90.0, aet_hr=155, ant_hr=169) == SUB_ELITE
+
+    def test_the_gap_can_only_demote_never_promote(self):
+        """A 6% spread on 20 km/week is a detrained former athlete, not an elite."""
+        assert derive_tier(current_weekly_km=20.0, aet_hr=160, ant_hr=170) == NOVICE
+
+    def test_demotion_stops_at_recreational(self):
+        """They demonstrably run the volume; they are just not competitive. Dropping them
+        to beginner would prescribe walk/run intervals to someone running 90 km a week."""
+        assert derive_tier(current_weekly_km=90.0, aet_hr=100, ant_hr=180) == RECREATIONAL
+
+    def test_derived_thresholds_must_not_cap_the_entire_user_base(self):
+        """REGRESSION. aet_hr/ant_hr are derived from fixed 65%/85%-of-reserve ratios
+        when absent, which yields the SAME ~17% spread for every athlete -- above both
+        the sub-elite and elite limits. Passing those in capped every athlete at
+        recreational, so nobody could ever be classified sub-elite or elite. Callers must
+        pass the raw stored fields, and None must mean unknown rather than deficient."""
+        assert derive_tier(current_weekly_km=200.0, aet_hr=None, ant_hr=None) == ELITE
+
+        resting, mx = 44, 192
+        derived_aet = resting + int((mx - resting) * 0.65)
+        derived_ant = resting + int((mx - resting) * 0.85)
+        gap = aet_ant_gap(derived_aet, derived_ant)
+        assert gap is not None and gap > TIER_PROFILES[SUB_ELITE].aet_ant_gap_max, (
+            "the derived ratios still produce a spread that would demote everyone -- "
+            "this is exactly why only measured thresholds may be passed"
+        )
+
+    @pytest.mark.parametrize(
+        "aet,ant",
+        [(None, 170), (140, None), (0, 170), (140, 0), (180, 170)],
+    )
+    def test_unusable_threshold_inputs_are_ignored_rather_than_guessed(self, aet, ant):
+        assert aet_ant_gap(aet, ant) is None
+        assert derive_tier(current_weekly_km=200.0, aet_hr=aet, ant_hr=ant) == ELITE
 
 
 class TestResolveTier:
@@ -198,10 +259,11 @@ class TestRulesBlock:
         assert "48-Hour Buffer" in rules
         assert "run/walk intervals" not in rules
 
-    def test_novice_gets_neither_walk_run_nor_me_blocks(self):
+    def test_novice_gets_quality_work_but_no_structured_me_blocks(self):
         rules = build_rules_block(get_profile(NOVICE))
         assert "run/walk intervals" not in rules
         assert "48-Hour Buffer" not in rules
+        assert "Intensity Distribution" in rules  # quality work is permitted
         assert "do not prescribe them" in rules or "do NOT prescribe" in rules
 
     @pytest.mark.parametrize("tier", TIER_ORDER)

@@ -16,49 +16,49 @@ silently falsifies every distance, pace and treadmill speed shown to the athlete
 
 import pytest
 
+from services.athlete_tier import BEGINNER, DEFAULT_TIER, ELITE, TIER_ORDER, TIER_PROFILES
 from services.plan_generator import PlanGenerator
-from services.training_rules import (
-    ZONE2_PACE_DEFAULTS,
-    default_zone2_pace,
-    pace_tier_for_goal,
-    resolve_zone2_pace,
-)
+from services.training_rules import default_zone2_pace, pace_tier_for_goal, resolve_zone2_pace
 
 
 class TestPaceTierForGoal:
     def test_start_running_is_the_beginner_tier(self):
-        assert pace_tier_for_goal("start_running") == "beginner"
+        assert pace_tier_for_goal("start_running") == BEGINNER
 
     @pytest.mark.parametrize("goal", ["finish", "time", "optimal", None, ""])
-    def test_everything_else_is_the_general_tier(self, goal):
-        assert pace_tier_for_goal(goal) == "general"
+    def test_everything_else_falls_back_to_the_default_tier(self, goal):
+        assert pace_tier_for_goal(goal) == DEFAULT_TIER
+
+    def test_an_explicit_tier_wins_over_the_goal(self):
+        assert pace_tier_for_goal("finish", athlete_tier="elite") == ELITE
 
     @pytest.mark.parametrize("goal", ["return", "recovery"])
     def test_return_and_recovery_are_not_beginners(self, goal):
         """A detrained runner is not a new runner -- they usually still have usable
         zones from before, and slowing them to walk-run pace would be wrong."""
-        assert pace_tier_for_goal(goal) == "general"
+        assert pace_tier_for_goal(goal) == DEFAULT_TIER
 
     def test_case_insensitive(self):
         assert pace_tier_for_goal("START_RUNNING") == "beginner"
 
 
 class TestDefaultZone2Pace:
-    def test_beginner_is_slower_than_general_on_both_bounds(self):
-        b_slow, b_fast = default_zone2_pace("beginner")
-        g_slow, g_fast = default_zone2_pace("general")
-        assert PlanGenerator.parse_pace_to_decimal(b_slow) > PlanGenerator.parse_pace_to_decimal(g_slow)
-        assert PlanGenerator.parse_pace_to_decimal(b_fast) > PlanGenerator.parse_pace_to_decimal(g_fast)
+    def test_zone2_defaults_get_faster_at_every_step_up_the_tiers(self):
+        """KB-grounded: 12:00-15:00 /mi for a beginner down to 4:30-5:00 /mi for an elite.
+        A non-monotonic table would mean some tier is prescribed a pace from another."""
+        mids = [PlanGenerator.parse_pace_to_decimal(TIER_PROFILES[t].zone2_pace[0]) for t in TIER_ORDER]
+        assert mids == sorted(mids, reverse=True), "each tier's Zone 2 must be faster than the one below"
 
-    def test_every_defined_tier_has_a_slower_and_a_faster_bound(self):
-        for tier, (slow, fast) in ZONE2_PACE_DEFAULTS.items():
-            slow_d = PlanGenerator.parse_pace_to_decimal(slow)
-            fast_d = PlanGenerator.parse_pace_to_decimal(fast)
-            assert slow_d > fast_d, f"{tier}: slower bound must be a larger min/km than the faster bound"
+    def test_every_tier_has_a_slower_and_a_faster_bound(self):
+        for tier in TIER_ORDER:
+            slow, fast = TIER_PROFILES[tier].zone2_pace
+            assert PlanGenerator.parse_pace_to_decimal(slow) > PlanGenerator.parse_pace_to_decimal(
+                fast
+            ), f"{tier}: slower bound must be a larger min/km than the faster bound"
 
     def test_unknown_tier_falls_back_rather_than_raising(self):
-        assert default_zone2_pace("elite") == default_zone2_pace("general")
-        assert default_zone2_pace(None) == default_zone2_pace("general")
+        assert default_zone2_pace("nonsense") == default_zone2_pace(DEFAULT_TIER)
+        assert default_zone2_pace(None) == default_zone2_pace(DEFAULT_TIER)
 
 
 class TestResolveZone2Pace:
@@ -69,19 +69,19 @@ class TestResolveZone2Pace:
         assert resolve_zone2_pace("6:30", "5:45", "start_running") == ("6:30", "5:45")
 
     def test_a_beginner_with_no_stored_zones_gets_the_beginner_default(self):
-        assert resolve_zone2_pace(None, None, "start_running") == ZONE2_PACE_DEFAULTS["beginner"]
+        assert resolve_zone2_pace(None, None, "start_running") == TIER_PROFILES[BEGINNER].zone2_pace
 
     def test_a_race_athlete_with_no_stored_zones_gets_the_general_default(self):
-        assert resolve_zone2_pace(None, None, "finish") == ZONE2_PACE_DEFAULTS["general"]
+        assert resolve_zone2_pace(None, None, "finish") == TIER_PROFILES[DEFAULT_TIER].zone2_pace
 
     def test_each_bound_falls_back_independently(self):
         """A half-populated profile keeps the bound it does have."""
         slow, fast = resolve_zone2_pace("9:15", None, "start_running")
         assert slow == "9:15"
-        assert fast == ZONE2_PACE_DEFAULTS["beginner"][1]
+        assert fast == TIER_PROFILES[BEGINNER].zone2_pace[1]
 
     def test_empty_strings_are_treated_as_unset(self):
-        assert resolve_zone2_pace("", "", "start_running") == ZONE2_PACE_DEFAULTS["beginner"]
+        assert resolve_zone2_pace("", "", "start_running") == TIER_PROFILES[BEGINNER].zone2_pace
 
 
 class TestDownstreamImpact:

@@ -84,7 +84,14 @@ class TestEstimatePaceZones:
         assert z5_fast < z1_slow
 
     def test_defaults_apply_when_bounds_missing(self):
-        with_explicit_defaults = PlanGenerator.estimate_pace_zones("6:30", "5:45")
+        """The inner fallback now comes from the tier table rather than a hardcoded
+        "6:30"/"5:45", so this asserts the two agree rather than naming a literal --
+        pinning the literal here would silently drift from the tier the app actually
+        uses. Callers should never reach this branch: they resolve zones through
+        training_rules.resolve_zone2_pace first."""
+        from services.training_rules import default_zone2_pace
+
+        with_explicit_defaults = PlanGenerator.estimate_pace_zones(*default_zone2_pace())
         with_none = PlanGenerator.estimate_pace_zones(None, None)
         assert with_none == with_explicit_defaults
 
@@ -939,3 +946,25 @@ class TestPromptCarriesPerAthleteContext:
         assert "9800.0 m" in prompt
         assert "session_slot" in prompt
         assert "ATHLETE FEEDBACK FROM PREVIOUS BLOCKS" in prompt
+
+
+class TestZoneFallbackConsistency:
+    """The numeric fallback and the display fallback inside estimate_pace_zones were
+    separate literals. A missing Zone 2 bound therefore produced a DISPLAY range of
+    6:30-5:45 while the distance maths used the tier default -- the athlete was shown one
+    pace and given workouts computed from another."""
+
+    def test_the_displayed_zone2_range_matches_the_pace_the_maths_used(self):
+        from services.training_rules import default_zone2_pace
+
+        explicit = PlanGenerator.estimate_pace_zones(*default_zone2_pace())
+        implicit = PlanGenerator.estimate_pace_zones(None, None)
+        assert implicit == explicit
+
+    def test_the_displayed_range_reflects_the_tier_default_not_a_literal(self):
+        slow, fast = None, None
+        from services.training_rules import default_zone2_pace
+
+        slow, fast = default_zone2_pace()
+        zones = PlanGenerator.estimate_pace_zones(None, None)
+        assert zones["zone2_pace"] == f"{slow} - {fast}"

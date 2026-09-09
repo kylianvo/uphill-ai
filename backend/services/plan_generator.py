@@ -227,7 +227,10 @@ class PlanGenerator:
         return {
             "zone1_pace": z1_range,
             "zone1_pace_mid": z1_mid,
-            "zone2_pace": f"{zone2_min_str or '6:30'} - {zone2_max_str or '5:45'}",
+            # Same fallback as the numeric branch above -- these were separate literals,
+            # so a missing bound produced a DISPLAY range of 6:30-5:45 while the distance
+            # maths used the tier default. The athlete saw one pace and got another.
+            "zone2_pace": f"{zone2_min_str or _fallback_min} - {zone2_max_str or _fallback_max}",
             "zone2_pace_mid": PlanGenerator.decimal_to_pace_str(z2_mid_dec),
             "zone3_pace": z3_range,
             "zone3_pace_mid": z3_mid,
@@ -719,6 +722,13 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
             current_weekly_km=current_weekly_km,
             max_continuous_jog_min=_max_jog_min,
             historical_max_distance_km=(_historical_ceiling or {}).get("max_distance_km"),
+            # RAW stored thresholds, deliberately not the derived aet_hr/ant_hr above.
+            # Those are computed from fixed 65%/85%-of-reserve ratios, so they yield the
+            # SAME ~17% spread for every athlete -- which exceeds both the sub-elite and
+            # elite gap limits and would cap literally everyone at recreational. The gap
+            # is only evidence when it was actually measured.
+            aet_hr=user_profile.get("aet_hr"),
+            ant_hr=user_profile.get("ant_hr"),
         )
         tier_profile = get_profile(athlete_tier)
 

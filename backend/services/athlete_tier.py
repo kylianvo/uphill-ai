@@ -91,6 +91,13 @@ class TierProfile:
     allows_me_blocks: bool
     # Whether running is continuous, or built from run/walk intervals.
     uses_walk_run: bool
+    # Default Zone 2 bounds (slower, faster) in min/km, used ONLY when the athlete has no
+    # zones of their own. KB-grounded, converted from the doctrine's min/mile figures.
+    zone2_pace: tuple[str, str]
+    # AeT-to-AnT spread this tier typically shows, as a fraction. Above 0.30 is Aerobic
+    # Deficiency Syndrome. This is a stronger tier signal than weekly volume, because it
+    # is measured rather than self-reported -- but only when the thresholds are real.
+    aet_ant_gap_max: float
 
 
 TIER_PROFILES: dict[str, TierProfile] = {
@@ -119,6 +126,8 @@ TIER_PROFILES: dict[str, TierProfile] = {
         allows_intensity=False,
         allows_me_blocks=False,
         uses_walk_run=True,
+        zone2_pace=("9:19", "7:27"),
+        aet_ant_gap_max=1.00,
     ),
     NOVICE: TierProfile(
         key=NOVICE,
@@ -129,16 +138,18 @@ TIER_PROFILES: dict[str, TierProfile] = {
             "quality session."
         ),
         weekly_km_min=15.0,
-        weekly_km_max=30.0,
+        weekly_km_max=40.0,
         max_weekly_progression=0.10,
         max_annual_progression=0.20,
         low_intensity_share=1.00,
         zone4_weekly_cap_min=None,
         weekday_minutes=(25, 50),
         long_run_share_cap=0.35,
-        allows_intensity=False,
+        allows_intensity=True,
         allows_me_blocks=False,
         uses_walk_run=False,
+        zone2_pace=("7:27", "6:13"),
+        aet_ant_gap_max=0.30,
     ),
     RECREATIONAL: TierProfile(
         key=RECREATIONAL,
@@ -147,8 +158,8 @@ TIER_PROFILES: dict[str, TierProfile] = {
             "A consistently training runner with race experience, balancing training against "
             "work and family. Can absorb structured quality work and a genuine long run."
         ),
-        weekly_km_min=30.0,
-        weekly_km_max=60.0,
+        weekly_km_min=40.0,
+        weekly_km_max=80.0,
         max_weekly_progression=0.10,
         max_annual_progression=0.15,
         low_intensity_share=0.85,
@@ -158,6 +169,8 @@ TIER_PROFILES: dict[str, TierProfile] = {
         allows_intensity=True,
         allows_me_blocks=True,
         uses_walk_run=False,
+        zone2_pace=("6:13", "4:58"),
+        aet_ant_gap_max=0.30,
     ),
     SUB_ELITE: TierProfile(
         key=SUB_ELITE,
@@ -167,8 +180,8 @@ TIER_PROFILES: dict[str, TierProfile] = {
             "age group or locally. Tolerates two quality sessions a week and back-to-back "
             "long days, and recovers fast enough to progress on a shorter cycle."
         ),
-        weekly_km_min=60.0,
-        weekly_km_max=100.0,
+        weekly_km_min=80.0,
+        weekly_km_max=160.0,
         max_weekly_progression=0.10,
         max_annual_progression=0.10,
         low_intensity_share=0.90,
@@ -178,6 +191,8 @@ TIER_PROFILES: dict[str, TierProfile] = {
         allows_intensity=True,
         allows_me_blocks=True,
         uses_walk_run=False,
+        zone2_pace=("4:21", "3:44"),
+        aet_ant_gap_max=0.10,
     ),
     ELITE: TierProfile(
         key=ELITE,
@@ -187,7 +202,7 @@ TIER_PROFILES: dict[str, TierProfile] = {
             "recovery rather than fitted around a job. Double days are routine. Progression "
             "is cautious in percentage terms precisely because the absolute volume is large."
         ),
-        weekly_km_min=100.0,
+        weekly_km_min=160.0,
         weekly_km_max=None,
         max_weekly_progression=0.10,
         max_annual_progression=0.10,
@@ -198,6 +213,8 @@ TIER_PROFILES: dict[str, TierProfile] = {
         allows_intensity=True,
         allows_me_blocks=True,
         uses_walk_run=False,
+        zone2_pace=("3:06", "2:48"),
+        aet_ant_gap_max=0.07,
     ),
 }
 
@@ -218,11 +235,29 @@ def get_profile(tier: str | None) -> TierProfile:
     return TIER_PROFILES.get((tier or "").strip().lower(), TIER_PROFILES[DEFAULT_TIER])
 
 
+def aet_ant_gap(aet_hr: float | None, ant_hr: float | None) -> float | None:
+    """Fractional spread between the aerobic and anaerobic thresholds, or None when the
+    inputs are unusable. The doctrine reads this as the sharpest marker of training
+    level: above 30% is Aerobic Deficiency Syndrome, 10-30% recreational, at or under
+    10% competitive, 5-7% elite.
+
+    CALLERS MUST PASS MEASURED THRESHOLDS ONLY. Elsewhere in this codebase aet_hr and
+    ant_hr are derived from fixed 65%/85%-of-reserve ratios when absent, which produces
+    the same ~17% spread for every athlete. Feeding those derived values in here would
+    exceed both the sub-elite and elite limits for everyone and silently cap the whole
+    user base at recreational. Pass the raw stored fields, and let None mean unknown."""
+    if not aet_hr or not ant_hr or ant_hr <= 0 or aet_hr <= 0 or aet_hr >= ant_hr:
+        return None
+    return (ant_hr - aet_hr) / ant_hr
+
+
 def derive_tier(
     goal_type: str | None = None,
     current_weekly_km: float | None = None,
     max_continuous_jog_min: int | None = None,
     historical_max_distance_km: float | None = None,
+    aet_hr: float | None = None,
+    ant_hr: float | None = None,
 ) -> str:
     """Infer a tier from what is known about the athlete.
 
@@ -261,6 +296,19 @@ def derive_tier(
     if historical_max_distance_km and historical_max_distance_km >= 25.0 and tier == BEGINNER:
         tier = NOVICE
 
+    # A wide AeT/AnT spread can only DEMOTE, never promote. Weekly volume is
+    # self-reported and often aspirational; the threshold spread is measured. An athlete
+    # claiming 90 km/week while carrying a 35% spread has an aerobic deficiency, not a
+    # sub-elite engine, and prescribing them sub-elite work would be the exact mistake
+    # the ADS rule exists to prevent. Demotion stops at RECREATIONAL rather than running
+    # all the way to BEGINNER: they demonstrably run, they just are not competitive.
+    gap = aet_ant_gap(aet_hr, ant_hr)
+    if gap is not None:
+        for candidate in (SUB_ELITE, ELITE):
+            if tier == candidate and gap > TIER_PROFILES[candidate].aet_ant_gap_max:
+                tier = RECREATIONAL
+                break
+
     return tier
 
 
@@ -270,6 +318,8 @@ def resolve_tier(
     current_weekly_km: float | None = None,
     max_continuous_jog_min: int | None = None,
     historical_max_distance_km: float | None = None,
+    aet_hr: float | None = None,
+    ant_hr: float | None = None,
 ) -> str:
     """An explicit per-plan override when one is set, otherwise the derived tier.
     An unrecognised override is ignored rather than honoured, so a typo degrades to
@@ -281,4 +331,6 @@ def resolve_tier(
         current_weekly_km=current_weekly_km,
         max_continuous_jog_min=max_continuous_jog_min,
         historical_max_distance_km=historical_max_distance_km,
+        aet_hr=aet_hr,
+        ant_hr=ant_hr,
     )
