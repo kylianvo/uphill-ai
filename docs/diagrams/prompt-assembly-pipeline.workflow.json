@@ -1,0 +1,56 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Tier-Aware Prompt Assembly & Fallback Chain",
+    "output": "docs/diagrams/prompt-assembly-pipeline.html",
+    "visual_preset": "signal-flow",
+    "quality_profile": "showcase",
+    "views": [
+      { "id": "resolve", "label": "Resolve the athlete", "focus": ["context", "resolve"], "note": "Tier and pace zones are resolved once, from the plan's goal and the athlete's own stored data." },
+      { "id": "assemble", "label": "Assemble the tier-conditional prompt", "focus": ["resolve", "rules", "kb", "prompt"], "note": "Rules AND schema are both gated by tier -- a beginner's prompt never sees ME apparatus." },
+      { "id": "fallback", "label": "Gemini, then retry, then deterministic", "focus": ["prompt", "gemini", "retry", "rulebased", "postprocess"], "note": "Rule-based fallback is NOT tier-aware -- it has no walk-run concept." }
+    ]
+  },
+  "lanes": [
+    { "id": "input", "label": "Context" },
+    { "id": "resolve", "label": "Resolve Athlete" },
+    { "id": "kb", "label": "KB Grounding" },
+    { "id": "generate", "label": "Generate" },
+    { "id": "exceptions", "label": "Fallback Chain", "variant": "exception" }
+  ],
+  "phases": [
+    { "id": "resolve_phase", "label": "Resolve", "fromCol": 0, "toCol": 1 },
+    { "id": "assemble_phase", "label": "Assemble (tier-conditional)", "fromCol": 2, "toCol": 3, "variant": "emphasis" },
+    { "id": "generate_phase", "label": "Generate + fall back", "fromCol": 4, "toCol": 5, "variant": "dashed" }
+  ],
+  "mainPath": ["context", "resolve", "rules", "prompt", "gemini", "postprocess"],
+  "nodes": [
+    { "id": "context", "lane": "input", "col": 0, "width": 110, "type": "external", "label": "Athlete + Plan" },
+    { "id": "resolve", "lane": "resolve", "col": 1, "width": 130, "type": "backend", "label": "Resolve Tier + Zones", "sublabel": "goal, jog-time, volume, gap" },
+    { "id": "rules", "lane": "resolve", "col": 2, "width": 160, "type": "backend", "label": "Tier-Conditional Rules", "sublabel": "walk-run, or gated performance" },
+    { "id": "kb", "lane": "kb", "col": 2, "width": 130, "type": "database", "label": "Qdrant Retrieval", "sublabel": "top-6 scheduler chunks", "tag": "40 rows" },
+    { "id": "prompt", "lane": "resolve", "col": 3, "width": 120, "type": "backend", "label": "Assemble Prompt" },
+    { "id": "gemini", "lane": "generate", "col": 4, "width": 110, "type": "cloud", "label": "Gemini" },
+    { "id": "retry", "lane": "exceptions", "col": 4, "width": 130, "type": "security", "label": "Reduced Retry", "sublabel": "drops KB, shorter output" },
+    { "id": "rulebased", "lane": "exceptions", "col": 5, "width": 140, "type": "security", "label": "Rule-Based Schedule", "sublabel": "not tier-aware", "tag": "no walk-run" },
+    { "id": "postprocess", "lane": "generate", "col": 5, "width": 140, "type": "backend", "label": "Post-Process", "sublabel": "recompute pace, distance" }
+  ],
+  "edges": [
+    { "from": "context", "to": "resolve", "variant": "emphasis" },
+    { "from": "resolve", "to": "rules", "variant": "emphasis" },
+    { "from": "kb", "to": "prompt", "label": "grounding context" },
+    { "from": "rules", "to": "prompt", "variant": "emphasis" },
+    { "from": "prompt", "to": "gemini", "variant": "emphasis" },
+    { "from": "gemini", "to": "postprocess", "label": "parsed JSON", "variant": "emphasis" },
+    { "from": "gemini", "to": "retry", "label": "empty / unparseable", "variant": "security", "role": "error" },
+    { "from": "retry", "to": "postprocess", "label": "parsed JSON", "variant": "dashed" },
+    { "from": "retry", "to": "rulebased", "label": "still fails", "variant": "security", "role": "error" },
+    { "from": "rulebased", "to": "postprocess", "label": "phase-based schedule", "variant": "dashed" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Resolved Once, Used Everywhere", "items": ["Tier and pace zones are computed before a single prompt character is written", "An explicit per-plan athlete_tier override always wins; otherwise it's derived", "The AeT/AnT gap can only demote a tier, never promote one"] },
+    { "dot": "violet", "title": "The Schema Is Tier-Conditional Too", "items": ["Fixing only the rules block once left ME apparatus in a beginner's JSON schema", "ME format, fueling tiers, and the hill-incline exception are all gated", "A beginner's prompt is materially shorter -- every dropped character was a contradiction"] },
+    { "dot": "amber", "title": "Three Tiers of Fallback", "items": ["The reduced retry drops KB grounding and asks for shorter output to fix truncation", "Rule-based is the last resort and is NOT tier-aware -- no walk-run, no beginner rules", "Post-process never trusts the model's own pace or distance numbers"] }
+  ]
+}

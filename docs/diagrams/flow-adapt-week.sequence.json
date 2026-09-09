@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Adapt Week Flow",
+    "output": "docs/diagrams/flow-adapt-week.html",
+    "viewBox": [900, 860],
+    "column_fit": "spread",
+    "visual_preset": "signal-flow",
+    "quality_profile": "showcase",
+    "views": [
+      { "id": "context", "label": "Build the adaptation context", "focus": ["athlete", "adapt_api", "workouts_db"], "note": "Bounds are computed in minutes, anchored on PLANNED volume, before any prompt is written." },
+      { "id": "generate", "label": "Regenerate one week only", "focus": ["job", "generator", "workouts_db"], "note": "target_week scopes the prompt to a single week -- every other week is untouched." },
+      { "id": "poll", "label": "Poll to completion", "focus": ["athlete", "adapt_api"], "note": "Already-completed sessions in the target week are preserved, not overwritten." }
+    ]
+  },
+  "participants": [
+    { "id": "athlete", "type": "external", "label": "Athlete", "sublabel": "feeling + notes" },
+    { "id": "adapt_api", "type": "backend", "label": "Adapt-Week API", "sublabel": "/api/coach/adapt-week" },
+    { "id": "workouts_db", "type": "database", "label": "Workouts DB", "sublabel": "prior + target week" },
+    { "id": "job", "type": "backend", "label": "Background Job" },
+    { "id": "generator", "type": "cloud", "label": "Prompt Generator" }
+  ],
+  "segments": [
+    { "from": 150, "to": 380, "label": "Build context (minutes, not km)" },
+    { "from": 396, "to": 560, "label": "Regenerate target week" },
+    { "from": 576, "to": 780, "label": "Poll to completion" }
+  ],
+  "messages": [
+    { "from": "athlete", "to": "adapt_api", "y": 180, "label": "POST /adapt-week (week, feeling, notes)", "variant": "emphasis" },
+    { "from": "adapt_api", "to": "workouts_db", "y": 222, "label": "read prior week: planned vs actual", "variant": "default", "note": "anchor = PRIOR PLANNED minutes, never completed-only" },
+    { "from": "adapt_api", "to": "athlete", "y": 280, "label": "202 + job_id", "variant": "return", "note": "adherence < 80% holds the band; request sets where within it" },
+    { "from": "adapt_api", "to": "job", "y": 322, "label": "spawn (target_week=N)", "variant": "dashed" },
+    { "from": "job", "to": "generator", "y": 430, "label": "generate_plan_workouts(target_week)", "variant": "emphasis" },
+    { "from": "generator", "to": "job", "y": 490, "label": "workouts[] (week N only)", "variant": "return" },
+    { "from": "job", "to": "workouts_db", "y": 532, "label": "save_workouts(preserve_completed=True)", "variant": "emphasis" },
+    { "from": "athlete", "to": "adapt_api", "y": 610, "label": "GET /plan-status/:job_id", "variant": "default" },
+    { "from": "adapt_api", "to": "athlete", "y": 652, "label": "generating", "variant": "return" },
+    { "from": "athlete", "to": "adapt_api", "y": 694, "label": "GET /plan-status/:job_id", "variant": "default" },
+    { "from": "adapt_api", "to": "athlete", "y": 736, "label": "200 done + week N", "variant": "return" }
+  ],
+  "activations": [
+    { "participant": "adapt_api", "from": 168, "to": 366, "type": "backend" },
+    { "participant": "job", "from": 382, "to": 546, "type": "backend" },
+    { "participant": "generator", "from": 424, "to": 496, "type": "cloud" },
+    { "participant": "adapt_api", "from": 598, "to": 664, "type": "backend" },
+    { "participant": "adapt_api", "from": 682, "to": 748, "type": "backend" }
+  ],
+  "cards": [
+    { "dot": "rose", "title": "The Bug This Flow Used to Have", "items": ["Anchoring on COMPLETED volume meant a busy week shrank the next one", "Bounds in km, recomputed from a pace the athlete might not run, distorted the target", "Both are fixed: the anchor is always PLANNED minutes now, never completed-only"] },
+    { "dot": "amber", "title": "Adherence Is a Signal, Not a Punishment", "items": ["Below 80% completion the week HOLDS near the prior plan (0.95-1.02x)", "The model is told to frame a held week as a repeat, not a setback", "100% completion still doesn't guarantee growth -- the request's own precedence rule decides"] },
+    { "dot": "cyan", "title": "Single-Week Scope", "items": ["target_week pins block_start_week = block_end_week = N inside the generator", "Every other week in the plan is untouched by this flow", "preserve_completed=True means an already-logged session in week N survives regeneration"] }
+  ]
+}
