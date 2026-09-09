@@ -10,12 +10,23 @@ Rules are now assembled from the tier's profile, so a number that varies by tier
 written once and interpolated, rather than restated in prose that drifts.
 
 PROVENANCE
-    The performance rules below are the previously shipped text, preserved verbatim
-    except where a hardcoded figure became a tier parameter. The beginner rules are
-    NEW and are conservative general run/walk practice -- they are NOT drawn from the
-    distilled Uphill Athlete knowledge base, which contains no beginner material at all
-    (0 of 29 scheduler rows). They are marked here so they can be replaced with
-    KB-grounded doctrine rather than silently mistaken for it.
+    The performance rules are the previously shipped text, preserved verbatim except
+    where a hardcoded figure became a tier parameter.
+
+    The beginner rules ARE now KB-grounded. An earlier revision of this module warned
+    that they were unsourced general practice, on the assumption that a mountain-athlete
+    source would carry nothing for new runners. That assumption was wrong: the notebook
+    covers walk-to-run progression, the transition to continuous running, connective-
+    tissue adaptation, and effort regulation without device data. Those four principles
+    are now rows in kb_seed/scheduler.json, and the numbers below are taken from them --
+    the 1:1 starting ratio, the 10 min run / 3 min walk transition point, the sub-AeT
+    heart-rate readiness criterion, the one-seventh connective-tissue adaptation rate,
+    and the A-F session grading threshold.
+
+    Several of the placeholders that revision shipped were simply wrong against the real
+    doctrine and have been corrected: progression advances the RUN duration specifically
+    rather than any one of three variables, and rest days call for non-impact
+    cross-training rather than nothing at all.
 """
 
 from services.athlete_tier import TierProfile
@@ -29,22 +40,30 @@ def _pct(fraction: float) -> str:
 def _beginner_rules(profile: TierProfile, max_continuous_jog_min: int | None) -> str:
     """Walk-to-run rules for an athlete who cannot yet run continuously.
 
-    The organising principle is that the limiter is tissue tolerance and habit, not
-    fitness or willpower. Everything here follows from that: no intensity, generous
-    rest, and progress measured by unbroken jogging time rather than distance -- the
-    one number a new runner can feel and retell.
+    Grounded in four kb_seed/scheduler.json principles: "Walk-to-Run Progression for
+    Complete Beginners", "Transitioning from Run/Walk Intervals to Continuous Running",
+    "Connective-Tissue Adaptation and Injury Risk in New Runners", and "Regulating
+    Effort Without Pace or Heart-Rate Data".
+
+    The organising principle is the connective-tissue one: tendons and fascia gain
+    strength at roughly a seventh of the rate muscle gains fitness, so a new runner
+    feels capable of far more than their tissues can absorb. Everything else follows --
+    no intensity, non-consecutive running days, and progress measured in unbroken
+    jogging minutes rather than distance.
     """
     lo, hi = profile.weekday_minutes
     jog_line = (
         f"The athlete's current longest UNBROKEN jog is {max_continuous_jog_min} minutes."
         if max_continuous_jog_min
-        else "The athlete's longest unbroken jog is not recorded yet; assume 1-2 minutes and start there."
+        else "The athlete's longest unbroken jog is not recorded yet; start from a 1 min jog / 1 min walk ratio."
     )
     return f"""
 Rules:
 YOU ARE WRITING FOR A NEW RUNNER. Ignore any instinct to make this look like a serious
-training plan. The single measure of success is that the athlete finishes every session
-feeling like she could have done more, and comes back next week.
+training plan. The limiter is connective-tissue tolerance, not fitness or willpower:
+tendons, ligaments and fascia are poorly vascularized and gain strength at roughly ONE
+SEVENTH the rate muscle gains fitness, so this athlete will feel capable of more than
+their tissues can yet absorb. Every rule below follows from that.
 
 1. Progress Metric — THE headline number: longest UNBROKEN jog, in minutes. {jog_line}
    Every week should move that number, or hold it deliberately. Name it in the workout
@@ -53,50 +72,70 @@ feeling like she could have done more, and comes back next week.
    flatters or punishes at random and measures the wrong thing.
 2. Session Shape — run/walk intervals, NOT continuous running:
    - Every running session is: brisk-walk warm-up → N x (jog X min, walk Y min) → walk cool-down.
-   - Set the jog interval from the athlete's current unbroken jog time. Do not exceed it
-     early in a week; the repeats, not the single effort, build the volume.
-   - The walk is a prescribed part of the session, never a failure. Say so explicitly.
-   - Progress ONE variable at a time: either lengthen the jog interval, or add a repeat,
-     or shorten the walk. NEVER two in the same week.
-3. Intensity — there is none. Every session is conversational: the athlete must be able
-   to speak a full sentence throughout. NO Zone 3, 4 or 5. NO tempo, threshold, interval,
-   fartlek, hill sprint or Muscular Endurance sessions of any kind. If the athlete asks
-   to go faster, give them more minutes at the same easy effort instead.
-   The talk test is the ONLY effort cue that works here: a new runner has no reliable
-   pace sense and their heart-rate zones are estimates, so do not lean on either.
-4. Effort Cue and Zones: prescribe Zone 1-2 only. Frame the target as "you should be able
-   to hold a conversation", with pace and heart rate as secondary information.
-5. Volume Progression: weekly TIME increases by at most {_pct(profile.max_weekly_progression)}%.
+   - Standard starting ratio is 1 min jog / 1 min walk, or 2-3 min jog / 3-4 min walk.
+   - Repeat the intervals to fill the session. Total session time starts at {lo}-{hi} min
+     and builds toward 30-60 min as the athlete adapts.
+   - The walk is a PRESCRIBED part of the session, never a failure. Say so explicitly.
+3. Progression — advance the JOG duration, holding the walk steady or shortening it
+   slightly. Never lengthen the jog and cut the walk in the same week. The ladder runs
+   1 min jog / 1 min walk → 2 min jog / 1 min walk → and onward toward 10 min jog /
+   3 min walk.
+4. Readiness to Progress — subjective comfort at the current ratio, OR heart-rate
+   stability. The concrete test: if the athlete can complete a jog segment (say 5 min)
+   keeping heart rate strictly BELOW their Aerobic Threshold, and it settles during the
+   walk break, they are ready to lengthen the jog. A heart rate that will not settle
+   within the walk break means the current ratio is still correct — hold it.
+5. Transition to Continuous Running — only once 10 min jog / 3 min walk is comfortable,
+   or heart rate stays below AeT through the longer jog blocks. Then do NOT jump to
+   uninterrupted running: shift to longer structured blocks such as 4 x 6 min jog with
+   3 min walk recovery, extend from there, and drop the walk break only when it is no
+   longer needed rather than on a schedule.
+6. Intensity — there is none. NO Zone 3, 4 or 5. NO tempo, threshold, interval, fartlek,
+   hill sprint or Muscular Endurance sessions of any kind. If the athlete asks to go
+   faster, give them more minutes at the same easy effort instead.
+7. Effort Cues — this athlete has no reliable pace sense and their heart-rate zones are
+   estimates, so prescribe by feel and give the cue explicitly in every session:
+   - Zone 2 / Aerobic Threshold: can speak smoothly in medium-length COMPLETE sentences
+     without gasping; can hold strict NOSE breathing for several minutes at a time.
+   - Zone 1 / recovery: "stumblingly slow" — should feel BETTER a few hours after the
+     session than before it.
+   Pace and heart rate are secondary information, never the instruction.
+8. Volume Progression: weekly TIME increases by at most {_pct(profile.max_weekly_progression)}%.
    Hold a week flat, or repeat it, whenever the athlete reports difficulty, misses
    sessions, or reports any pain. Repeating a week is a normal, successful outcome for a
-   new runner -- describe it that way, never as a setback.
-6. Frequency and Recovery: 3 running days per week, NEVER on consecutive days unless the
-   athlete has explicitly asked for more. New runners break down from doing too much too
-   soon, and the rest day is where the adaptation happens. Prefer adding a rest day over
-   adding a session.
-7. Session Duration: {lo}-{hi} minutes INCLUDING warm-up and cool-down. A 20-minute
-   session is a complete, correct session for this athlete -- do NOT stretch it toward
-   any general-population weekday minimum.
-8. Long Run: the longest session may take up to {_pct(profile.long_run_share_cap)}% of
-   weekly time, and is still run/walk. It is "the longest one", not a different kind of
-   session, and it carries no additional intensity.
-9. Injury Guardrails: new runners' most common injuries come from load applied faster
-   than bone and tendon adapt. In the Warning section name the specific early signals --
-   shin pain, a sore spot on the top of the foot, knee pain that worsens during a run --
-   and instruct the athlete to stop and take rest days rather than push through. Any
-   mention of pain in the athlete's feedback: reduce volume and remove the affected
-   movement entirely.
-10. Fueling: sessions this short need water only. Do NOT prescribe gels, carbohydrate
-    targets per hour, or electrolyte protocols -- they are irrelevant at this duration
+   new runner — describe it that way, never as a setback.
+9. Frequency and Recovery: 3 running sessions per week. NEVER run on consecutive days,
+   and never every day. On alternate days prescribe NON-IMPACT aerobic work — cycling,
+   elliptical, stairmaster, steep treadmill hiking, or swimming — which builds aerobic
+   volume without the joint pounding the tissues cannot yet absorb. Prefer adding a
+   non-impact day over adding a run.
+10. Session Duration: {lo}-{hi} minutes INCLUDING warm-up and cool-down. A 20-minute
+    session is a complete, correct session for this athlete — do NOT stretch it toward
+    any general-population weekday minimum.
+11. Long Run: the longest session may take up to {_pct(profile.long_run_share_cap)}% of
+    weekly time, and is still run/walk. It is "the longest one", not a different kind of
+    session, and it carries no additional intensity.
+12. Injury Guardrails — in the Warning section, name the specific early signals that
+    mean back off, and instruct the athlete to take rest days rather than push through:
+    - heavy, "dead" legs with no bounce or spring;
+    - morning resting heart rate up 10-15% (roughly 10-15 bpm) over baseline;
+    - loss of motivation, persistent grumpiness, waking with no desire to train;
+    - morning stiffness — hobbling out of bed, or sharp joint twinges.
+    Also tell the athlete to grade each session A-F: more than two "C" grades in a row,
+    a "C" and a "D" in one week, or more than three "C"s in a week means an immediate
+    easy day or total rest. Any mention of pain in their feedback: reduce volume and
+    remove the affected movement entirely.
+13. Fueling: sessions this short need water only. Do NOT prescribe gels, carbohydrate
+    targets per hour, or electrolyte protocols — they are irrelevant at this duration
     and make the plan intimidating.
-11. Cross-training and Strength: bodyweight only, and framed as injury prevention rather
+14. Cross-training and Strength: bodyweight only, framed as injury prevention rather
     than performance. Simple, low-rep, no jumping or plyometrics.
-12. Tone: write to someone who may not think of themselves as a runner yet. Explain WHY
+15. Tone: write to someone who may not think of themselves as a runner yet. Explain WHY
     a session is easy. Never imply the athlete is behind, and never compare them to a
     trained runner.
-13. NEVER invent a physiological claim, exercise, or number. If unsure of an exact
+16. NEVER invent a physiological claim, exercise, or number. If unsure of an exact
     figure, give a sensible range instead of fabricating false precision.
-14. Give the athlete profile and prior feedback below real weight — this plan MUST
+17. Give the athlete profile and prior feedback below real weight — this plan MUST
     reflect their specific numbers, schedule, and history, not a generic template.
 """
 
@@ -111,6 +150,9 @@ def _performance_rules(profile: TierProfile) -> str:
     lo, hi = profile.weekday_minutes
     cap = _pct(profile.max_weekly_progression)
     long_share = _pct(profile.long_run_share_cap)
+    low_share = _pct(profile.low_intensity_share)
+    high_share = _pct(1.0 - profile.low_intensity_share)
+    annual = _pct(profile.max_annual_progression)
 
     me_periodization = (
         """4. Periodization Phases (Training for the Uphill Athlete):
@@ -149,10 +191,44 @@ def _performance_rules(profile: TierProfile) -> str:
 """
     )
 
+    z4_cap = (
+        f" ZONE 4 HARD CAP: total Zone 4 interval time must NOT exceed {profile.zone4_weekly_cap_min} minutes in a "
+        f"single week — beyond that even well-conditioned athletes hit severe endocrine stress (elevated cortisol) "
+        f"and risk overtraining. Zone 3 held strictly below AnT is different: 2+ hours per week is tolerable because "
+        f"global fatigue stays minimal."
+        if profile.zone4_weekly_cap_min
+        else ""
+    )
     intensity_rule = (
-        f"2. 80/20 Low-Intensity Volume Polarization: At least 80-85% of total weekly running volume/time MUST be strictly in Zone 1 and Zone 2 (below AeT). High-intensity work (Zone 3/4/5, ME circuits) must NOT exceed 15-20% of weekly volume. PROGRESSION CEILING: Total weekly running volume MUST NOT increase by more than {cap}% week-over-week. Never produce abrupt spikes in weekly mileage.\n"
+        f"2. Intensity Distribution (measured by TIME IN ZONE, not by session count): at least {low_share}% of total "
+        f"weekly volume MUST be in Zone 1-2 below AnT, and high-intensity work no more than {high_share}%.{z4_cap} "
+        f"PROGRESSION CEILING: weekly volume (distance, vertical or duration) MUST NOT increase by more than {cap}% "
+        f"week-over-week, and this athlete's annual volume should not rise more than {annual}% per year. Never "
+        f"produce abrupt spikes.\n"
         if profile.allows_intensity
-        else f"2. Aerobic Base Only: 100% of running volume is Zone 1-2, below AeT. This athlete is building an aerobic base and structural resilience — do NOT prescribe tempo, threshold or interval sessions yet. PROGRESSION CEILING: total weekly running volume MUST NOT increase by more than {cap}% week-over-week. Never produce abrupt spikes in weekly mileage.\n"
+        else f"2. Aerobic Base Only: 100% of running volume is Zone 1-2, below AeT. This athlete is building an "
+        f"aerobic base and structural resilience — do NOT prescribe tempo, threshold or interval sessions yet. "
+        f"PROGRESSION CEILING: weekly volume MUST NOT increase by more than {cap}% week-over-week, and annual volume "
+        f"by no more than {annual}%. Never produce abrupt spikes.\n"
+    )
+
+    # Doctrine that only applies once volume is high enough for it to matter.
+    high_volume_rules = (
+        """13. High-Volume Directives (this athlete trains at a volume where these bind):
+   - Diminishing Returns on Mileage: piling raw mileage onto an established high baseline yields diminishing returns and sharply raises overuse-injury risk. To keep adapting, add targeted LOW-GLOBAL-FATIGUE stimuli — Zone 3 sub-threshold work, or weighted Muscular Endurance — rather than more easy miles.
+   - Zone 1 Substitution: when an athlete's AeT pace is exceptionally fast, Zone 2 running imposes a large neuromuscular load. Reduce Zone 2 volume and place 35-45% of total volume in Zone 1 'stumblingly slow' running to avoid structural injury.
+   - Double-Threshold Days (Norwegian model): where two Zone 3 sessions share a day, the morning is controlled intervals (e.g. 10 x 1-mile sub-threshold, 1 min rest) and the afternoon a continuous sub-threshold tempo of 20-30 min. Hold lactate at 2.5-3.5 mMol/L.
+   - Double-Day Spacing: easy aerobic doubles need 6-10 hours between sessions; double-threshold days need a strict 8-12 hours, ideally 10-12, for metabolic clearing.
+   - Deload Weeks Are Consolidation Weeks: drop load so supercompensation can complete. Do NOT prescribe inactive rest — it leaves legs heavy and stiff. Use non-impact work: swimming, 20-30 min easy stationary cycling, walking.
+   - Readiness Red Flags — instruct the athlete to act on these, and respond to them in their feedback:
+     * resting HR up 10-15% (10-15 bpm) over baseline: immediate easy day or rest day;
+     * an abnormally LOW resting HR plus inability to raise HR in exercise, severe fatigue and low mood: parasympathetic overtraining — stop training and seek guidance, this is months not days;
+     * grade each session A-F; more than two 'C's in a row, a 'C' and a 'D' in one week, or more than three 'C's in a week: immediate easy day or rest;
+     * the warm-up rule: if they do not start feeling better during the warm-up, stop and convert the session to recovery;
+     * the daily repeatability test: if they cannot comfortably repeat yesterday's aerobic base session this morning, daily volume is exceeding work capacity — scale back.
+"""
+        if profile.key in ("sub_elite", "elite")
+        else ""
     )
 
     return f"""
@@ -166,7 +242,7 @@ Rules:
 9. Give the athlete profile and prior feedback below real weight — this plan MUST reflect their specific numbers, schedule, and history, not a generic template.
 10. Uphill Athlete & Trail Specificity: For mountain/trail races, incorporate progressive eccentric quad conditioning (eccentric box step-downs, downhill repeats, hill bounding) and back-to-back weekend long runs where appropriate for ultra distances (50K+). If the course profile notes high heat or altitude, integrate acclimation guidance.
 11. Environmental & Routine Scheduling: If the athlete's notes indicate flat/urban living on weekdays with weekend trail travel, prescribe flat road/treadmill aerobic work or gym ME on weekdays, reserving high-vert trail long runs for Saturday/Sunday. Keep weekday runs accessible ({lo}-{hi} min).
-{me_directives}"""
+{me_directives}{high_volume_rules}"""
 
 
 def build_rules_block(profile: TierProfile, max_continuous_jog_min: int | None = None) -> str:

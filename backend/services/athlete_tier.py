@@ -12,13 +12,20 @@ dimension, not an exception, and the prompt assembles its rules from the tier's
 profile.
 
 WHERE THE NUMBERS COME FROM
-    The weekly-volume bands and the caps in TIER_PROFILES are conventional coaching
-    defaults, deliberately conservative. They are NOT sourced from the distilled
-    Uphill Athlete knowledge base -- that KB is written for one audience and contains
-    no beginner or elite material at all (0 of 29 scheduler rows mention either). They
-    are gathered here, in one table, precisely so a coach can correct them in one
-    place rather than hunting through prompt prose. Treat them as placeholders pending
-    KB grounding, not as doctrine.
+    Mixed provenance, and worth knowing which is which.
+
+    KB-GROUNDED: the beginner tier's session band (3 sessions per week of 20-30 min,
+    building toward 30-60) and its no-intensity rule come from the distilled Uphill
+    Athlete principles now in kb_seed/scheduler.json -- "Connective-Tissue Adaptation
+    and Injury Risk in New Runners" and "Walk-to-Run Progression for Complete
+    Beginners". An earlier revision assumed a mountain-athlete source would have
+    nothing for new runners and shipped placeholders; that was wrong, and the beginner
+    numbers here have been corrected against the real doctrine.
+
+    STILL UNSOURCED: the weekly-volume BANDS that separate the five tiers, and the
+    caps for novice/recreational/sub_elite/elite. These remain conventional coaching
+    defaults. They are gathered here, in one table, precisely so a coach can correct
+    them in one place rather than hunting through prompt prose.
 """
 
 from dataclasses import dataclass
@@ -57,7 +64,21 @@ class TierProfile:
     weekly_km_min: float
     weekly_km_max: float | None
     # Week-over-week volume progression cap, as a fraction (0.10 == 10%).
+    # KB-grounded and deliberately the SAME across tiers: the doctrine limits weekly
+    # increases to 7-10% for everyone. An earlier revision guessed that elites progress
+    # more slowly week to week; they do not. What changes with training age is the
+    # ANNUAL rate below.
     max_weekly_progression: float
+    # Annual volume progression cap. This is the axis that actually separates a beginner
+    # from a highly trained athlete: up to 25%/year for a beginner, 10%/year once trained.
+    max_annual_progression: float
+    # Share of weekly TIME that must sit in Zone 1-2 below AnT. 80% is the floor; highly
+    # trained athletes run closer to 90/10.
+    low_intensity_share: float
+    # Ceiling on total weekly Zone 4 interval time, in minutes. None where intensity is
+    # not prescribed at all. Beyond ~30-40 min even well-conditioned athletes hit severe
+    # endocrine stress, so this is a hard cap rather than a target.
+    zone4_weekly_cap_min: int | None
     # Typical weekday session length in minutes (low, high). A beginner's 20 minutes is
     # correct, not a session that failed to reach some floor.
     weekday_minutes: tuple[int, int]
@@ -78,13 +99,22 @@ TIER_PROFILES: dict[str, TierProfile] = {
         label="Beginner / new runner",
         description=(
             "A new runner who cannot yet run continuously for long. Sessions are built from "
-            "run/walk intervals. The limiter is tissue tolerance and habit, not fitness or "
-            "willpower -- the goal is to finish every session feeling like more was possible."
+            "run/walk intervals, on non-consecutive days with non-impact cross-training between "
+            "them. The limiter is connective tissue, which gains strength at roughly a seventh "
+            "the rate muscle gains fitness -- so this athlete will feel capable of more than "
+            "their tendons can yet absorb. The goal is to finish every session feeling like "
+            "more was possible."
         ),
         weekly_km_min=0.0,
         weekly_km_max=15.0,
         max_weekly_progression=0.10,
-        weekday_minutes=(15, 35),
+        max_annual_progression=0.25,
+        low_intensity_share=1.00,
+        zone4_weekly_cap_min=None,
+        # KB-grounded: beginners start at 3 sessions per week of 20-30 minutes, and the
+        # run/walk session builds toward 30-60 min as the ratio progresses. The upper
+        # bound covers that progression; the rules text carries both figures explicitly.
+        weekday_minutes=(20, 45),
         long_run_share_cap=0.40,
         allows_intensity=False,
         allows_me_blocks=False,
@@ -101,6 +131,9 @@ TIER_PROFILES: dict[str, TierProfile] = {
         weekly_km_min=15.0,
         weekly_km_max=30.0,
         max_weekly_progression=0.10,
+        max_annual_progression=0.20,
+        low_intensity_share=1.00,
+        zone4_weekly_cap_min=None,
         weekday_minutes=(25, 50),
         long_run_share_cap=0.35,
         allows_intensity=False,
@@ -117,6 +150,9 @@ TIER_PROFILES: dict[str, TierProfile] = {
         weekly_km_min=30.0,
         weekly_km_max=60.0,
         max_weekly_progression=0.10,
+        max_annual_progression=0.15,
+        low_intensity_share=0.85,
+        zone4_weekly_cap_min=40,
         weekday_minutes=(45, 75),
         long_run_share_cap=0.33,
         allows_intensity=True,
@@ -133,7 +169,10 @@ TIER_PROFILES: dict[str, TierProfile] = {
         ),
         weekly_km_min=60.0,
         weekly_km_max=100.0,
-        max_weekly_progression=0.08,
+        max_weekly_progression=0.10,
+        max_annual_progression=0.10,
+        low_intensity_share=0.90,
+        zone4_weekly_cap_min=40,
         weekday_minutes=(60, 100),
         long_run_share_cap=0.30,
         allows_intensity=True,
@@ -150,7 +189,10 @@ TIER_PROFILES: dict[str, TierProfile] = {
         ),
         weekly_km_min=100.0,
         weekly_km_max=None,
-        max_weekly_progression=0.05,
+        max_weekly_progression=0.10,
+        max_annual_progression=0.10,
+        low_intensity_share=0.90,
+        zone4_weekly_cap_min=40,
         weekday_minutes=(60, 120),
         long_run_share_cap=0.28,
         allows_intensity=True,

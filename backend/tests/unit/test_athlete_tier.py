@@ -151,12 +151,46 @@ class TestRulesBlock:
     def test_a_beginner_without_a_recorded_jog_time_is_told_where_to_start(self):
         rules = build_rules_block(get_profile(BEGINNER), max_continuous_jog_min=None)
         assert "not recorded yet" in rules
-        assert "1-2 minutes" in rules
+        # The KB's stated starting ratio, not an invented one.
+        assert "1 min jog / 1 min walk" in rules
 
     def test_beginner_rules_forbid_intensity_explicitly(self):
         rules = build_rules_block(get_profile(BEGINNER))
         assert "NO Zone 3, 4 or 5" in rules
-        assert "talk test" in rules
+
+    def test_beginner_effort_cues_are_the_kb_field_tests_not_device_numbers(self):
+        """A new runner's zones are estimates, so the KB prescribes ventilatory cues."""
+        rules = build_rules_block(get_profile(BEGINNER))
+        assert "COMPLETE sentences" in rules
+        assert "NOSE breathing" in rules
+        assert "stumblingly slow" in rules
+
+    def test_beginner_rules_carry_the_kb_progression_ladder(self):
+        rules = build_rules_block(get_profile(BEGINNER))
+        assert "1 min jog / 1 min walk" in rules
+        assert "10 min jog /" in rules and "3 min walk" in rules
+        # Progression advances the JOG specifically -- an earlier placeholder wrongly
+        # allowed any one of three variables to move.
+        assert "advance the JOG duration" in rules or "advance the JOG" in rules
+
+    def test_beginner_rules_carry_the_kb_readiness_criterion(self):
+        rules = build_rules_block(get_profile(BEGINNER))
+        assert "Aerobic Threshold" in rules
+        assert "settle" in rules  # HR must settle within the walk break
+
+    def test_beginner_rest_days_prescribe_non_impact_work_not_nothing(self):
+        """The KB is explicit that alternate days carry non-impact aerobic volume."""
+        rules = build_rules_block(get_profile(BEGINNER))
+        assert "NON-IMPACT" in rules
+        assert "consecutive days" in rules
+        for modality in ("cycling", "elliptical", "swimming"):
+            assert modality in rules
+
+    def test_beginner_injury_guardrails_name_the_kb_warning_signs(self):
+        rules = build_rules_block(get_profile(BEGINNER))
+        assert "10-15 bpm" in rules
+        assert "dead" in rules
+        assert "A-F" in rules  # the session-grading threshold
 
     def test_recreational_keeps_the_muscular_endurance_framework(self):
         rules = build_rules_block(get_profile(RECREATIONAL))
@@ -176,16 +210,50 @@ class TestRulesBlock:
         assert "ATHLETE TIER:" in rules
         assert TIER_PROFILES[tier].label in rules
 
-    def test_the_progression_cap_is_interpolated_not_hardcoded(self):
-        """The old prompt said 5-10% for everyone, including the elite whose absolute
-        volume makes 10% a very different number."""
+    def test_the_weekly_cap_is_uniform_but_the_annual_cap_separates_tiers(self):
+        """KB-corrected. An earlier revision guessed elites progress more slowly week to
+        week; the doctrine caps everyone at 7-10% weekly, and differentiates ANNUALLY --
+        25%/year for a beginner against 10%/year once trained."""
         elite = build_rules_block(get_profile(ELITE))
         recreational = build_rules_block(get_profile(RECREATIONAL))
-        assert "5% week-over-week" in elite
+        beginner = build_rules_block(get_profile(BEGINNER))
+
+        assert "10% week-over-week" in elite
         assert "10% week-over-week" in recreational
+        assert "10% per year" in elite
+        assert "15% per year" in recreational
+        # The beginner block states its weekly cap in its own words.
+        assert "10%" in beginner
+
+    def test_intensity_distribution_tightens_toward_ninety_ten_at_the_top(self):
+        recreational = build_rules_block(get_profile(RECREATIONAL))
+        elite = build_rules_block(get_profile(ELITE))
+        assert "85% of total" in recreational
+        assert "90% of total" in elite
+        assert "TIME IN ZONE" in elite
+
+    def test_the_zone4_weekly_cap_applies_only_where_intensity_does(self):
+        assert "ZONE 4 HARD CAP" in build_rules_block(get_profile(RECREATIONAL))
+        assert "40 minutes" in build_rules_block(get_profile(ELITE))
+        assert "ZONE 4 HARD CAP" not in build_rules_block(get_profile(BEGINNER))
+        assert "ZONE 4 HARD CAP" not in build_rules_block(get_profile(NOVICE))
+
+    def test_high_volume_doctrine_reaches_only_the_top_two_tiers(self):
+        """Double-threshold spacing and Zone 1 substitution are meaningless below the
+        volume at which they bind, and would be actively wrong advice."""
+        for tier in (SUB_ELITE, ELITE):
+            rules = build_rules_block(get_profile(tier))
+            assert "Double-Threshold Days" in rules
+            assert "8-12 hours" in rules
+            assert "Zone 1 Substitution" in rules
+            assert "daily repeatability test" in rules
+        for tier in (BEGINNER, NOVICE, RECREATIONAL):
+            rules = build_rules_block(get_profile(tier))
+            assert "Double-Threshold Days" not in rules
+            assert "Zone 1 Substitution" not in rules
 
     def test_the_weekday_band_follows_the_tier(self):
         beginner = build_rules_block(get_profile(BEGINNER))
         recreational = build_rules_block(get_profile(RECREATIONAL))
-        assert "15-35 minutes" in beginner
+        assert "20-45 minutes" in beginner
         assert "45-75 minutes" in recreational

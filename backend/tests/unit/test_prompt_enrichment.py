@@ -329,7 +329,12 @@ async def test_plan_generator_prompt_includes_all_enriched_context():
     assert "Deep mud, rocky mountain passes, 90% humidity." in prompt
 
     # 8. Science & Methodology Grounding Rules (Training for the Uphill Athlete)
-    assert "80/20 Low-Intensity Volume Polarization" in prompt
+    # Formerly asserted the literal "80/20 Low-Intensity Volume Polarization". That label
+    # was hardcoded when every athlete received the same rules block; the split is now
+    # tier-dependent (85/15 recreational, 90/10 sub-elite and above), so naming one ratio
+    # in the heading would be wrong for most tiers. This athlete is recreational.
+    assert "Intensity Distribution" in prompt
+    assert "85% of total" in prompt
     assert "Long Run Proportionality Cap" in prompt
     assert "Periodization Phases (Training for the Uphill Athlete)" in prompt
     assert "Base Phase: Aerobic volume accumulation (Zone 1-2) + Maximum Strength" in prompt
