@@ -9,7 +9,6 @@ from pydantic import BaseModel
 
 from config import settings
 from log_utils import get_logger
-from services.notebooklm_service import NotebookLmService
 
 _logger = get_logger(__name__)
 
@@ -49,14 +48,11 @@ class GearResponse(BaseModel):
     tips: list[str]
 
 
-# Simple in-memory cache to skip NotebookLM calls for exact same queries
+# Simple in-memory cache to skip model calls for exact same queries
 _GEAR_CACHE: dict[str, str] = {}
 
 
 class GearPlannerService:
-    def __init__(self):
-        self.notebook_id = settings.NOTEBOOKLM_GEAR_ID
-
     def _generate_cache_key(self, params: GearParams) -> str:
         param_dict = params.model_dump()
         # Sort keys to ensure deterministic hashing
@@ -97,36 +93,29 @@ class GearPlannerService:
 
         matched_course = match_race(params.race_name, distance_label=params.race_distance)
 
-        order = ["gemini", "notebooklm"] if settings.RAG_ENGINE == "gemini" else ["notebooklm", "gemini"]
-        last_error: Exception | None = None
-        for engine_name in order:
-            try:
-                if engine_name == "gemini":
-                    return await self._generate_with_gemini(params, cache_key, matched_course)
-                return await self._generate_with_notebooklm(params, cache_key, matched_course)
-            except Exception as e:
-                # Gemini's own request failures are already logged inside
-                # _generate_with_gemini (with exc_info) before it re-raises --
-                # this catch is the only place NotebookLM's request-level
-                # failures (network/auth, not just JSON parsing) get logged.
-                _logger.error(
-                    f"{engine_name} engine failed",
-                    extra={
-                        "fields": {
-                            "service": "gear_finder",
-                            "engine": engine_name,
-                            "event": "engine_failed",
-                            "error": str(e),
-                        }
-                    },
-                    exc_info=True,
-                )
-                last_error = e
-        return {
-            "recommendations": [],
-            "tips": [f"Could not retrieve recommendations: {last_error}"],
-            "matched_race": matched_course.to_dict() if matched_course else None,
-        }
+        try:
+            return await self._generate_with_gemini(params, cache_key, matched_course)
+        except Exception as e:
+            # _generate_with_gemini logs its own request failures (with exc_info) before
+            # re-raising; this catch turns the failure into an empty, explained result
+            # rather than a 500, so the UI can say why nothing came back.
+            _logger.error(
+                "gemini engine failed",
+                extra={
+                    "fields": {
+                        "service": "gear_finder",
+                        "engine": "gemini",
+                        "event": "engine_failed",
+                        "error": str(e),
+                    }
+                },
+                exc_info=True,
+            )
+            return {
+                "recommendations": [],
+                "tips": [f"Could not retrieve recommendations: {e}"],
+                "matched_race": matched_course.to_dict() if matched_course else None,
+            }
 
     async def _generate_with_gemini(self, params: GearParams, cache_key: str, matched_course=None) -> dict[str, Any]:
         import time
@@ -229,94 +218,6 @@ MATCHING: weigh each catalog entry's own fields against the athlete's criteria �
             },
         )
         return parsed
-
-    async def _generate_with_notebooklm(
-        self, params: GearParams, cache_key: str, matched_course=None
-    ) -> dict[str, Any]:
-        auth_json = settings.NOTEBOOKLM_AUTH_JSON
-        if not auth_json:
-            raise RuntimeError("NotebookLM Auth JSON is missing.")
-
-        # Merged Query: Ask NotebookLM to do strict JSON formatting
-        nlm_query = f"""You are an expert running shoe specialist searching your documents for shoes that match an athlete's criteria.
-
-OUTPUT CONTRACT: You MUST output your response EXACTLY as a valid JSON object matching the schema below. NEVER include markdown formatting (like ```json), conversational filler, or plain text paragraphs outside the JSON.
-NEVER invent a shoe model, spec, or price that isn't in your documents — if you're not confident a detail is accurate, omit that field or say so in "cons" rather than guessing.
-BRAND CONSTRAINT: If "Preferred Brands" below is not empty, every recommendation MUST be from that brand (or brands) only — NEVER substitute a different brand. The ONLY exception: if your documents contain zero matching shoes for the requested brand, say so explicitly in "tips" and then recommend the closest available alternative from your documents.
-
-Schema:
-{{
-  "recommendations": [
-    {{
-      "model": "Shoe Model Name",
-      "brand": "Brand Name",
-      "foam_material": "Name of the foam ALONG WITH its material type in parentheses (e.g. ZoomX (PEBA), PWRRUN PB (PEBA), optiFOAM (EVA))",
-      "outsole_compound": "Name of outsole rubber (e.g. Vibram Megagrip, Contagrip, None for road)",
-      "lug_depth": "Lug depth in mm (e.g. 4mm, 5mm, None for road)",
-      "drop": "Drop in mm (e.g. 6mm)",
-      "stack": "Stack height (e.g. 35mm/29mm)",
-      "weight": "SHORT primary oz/g figure only from your documents (e.g. '9.6 oz / 272 g') — drop any parenthetical breakdown (actual vs. stated, men's vs. women's, multiple variants); never invent a number not present in your documents",
-      "price": "$XXX",
-      "pros": "2-3 short sentences about what the shoe is best for and its pros",
-      "cons": "1-2 short sentences about the drawbacks or who shouldn't buy this shoe"
-    }}
-  ],
-  "tips": [
-    "Short gear tip 1 based on user context",
-    "Short gear tip 2 based on user context"
-  ]
-}}
-
-{self._criteria_block(params)}{self._course_context_block(matched_course)}"""
-
-        _logger.info(
-            "notebooklm prompt sent",
-            extra={
-                "fields": {
-                    "service": "gear_finder",
-                    "engine": "notebooklm",
-                    "event": "prompt_sent",
-                    "chars_sent": len(nlm_query),
-                }
-            },
-        )
-        nlm_response = await NotebookLmService.query_notebook(
-            notebook_id=self.notebook_id, auth_json=auth_json, query=nlm_query, service="gear_finder"
-        )
-
-        # Clean up response in case it has markdown ticks
-        cleaned_response = nlm_response.strip()
-        if cleaned_response.startswith("```json"):
-            cleaned_response = cleaned_response[7:]
-        if cleaned_response.startswith("```"):
-            cleaned_response = cleaned_response[3:]
-        if cleaned_response.endswith("```"):
-            cleaned_response = cleaned_response[:-3]
-        cleaned_response = cleaned_response.strip()
-
-        try:
-            parsed_json = json.loads(cleaned_response)
-        except json.JSONDecodeError as json_err:
-            _logger.warning(
-                "notebooklm response failed JSON parsing",
-                extra={
-                    "fields": {
-                        "service": "gear_finder",
-                        "engine": "notebooklm",
-                        "event": "parse_error",
-                        "error": str(json_err),
-                    }
-                },
-            )
-            parsed_json = {
-                "recommendations": [],
-                "tips": ["Could not parse recommendations from NotebookLM. Please try again."],
-            }
-
-        parsed_json["matched_race"] = matched_course.to_dict() if matched_course else None
-        cleaned_response = json.dumps(parsed_json)
-        _GEAR_CACHE[cache_key] = cleaned_response
-        return parsed_json
 
 
 gear_planner = GearPlannerService()

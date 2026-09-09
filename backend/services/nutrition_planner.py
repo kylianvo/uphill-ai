@@ -9,7 +9,6 @@ from pydantic import BaseModel
 
 from config import settings
 from log_utils import get_logger
-from services.notebooklm_service import NotebookLmService
 
 _logger = get_logger(__name__)
 
@@ -56,9 +55,6 @@ _NUTRITION_CACHE: dict[str, str] = {}
 
 
 class NutritionPlannerService:
-    def __init__(self):
-        self.notebook_id = settings.NOTEBOOKLM_NUTRITION_ID
-
     def _generate_cache_key(self, params: NutritionParams) -> str:
         param_dict = params.model_dump()
         dict_str = json.dumps(param_dict, sort_keys=True)
@@ -100,32 +96,26 @@ Nutrition Goals:
             print("[NutritionPlanner] Cache HIT! Returning instant response.")
             return json.loads(_NUTRITION_CACHE[cache_key])
 
-        order = ["gemini", "notebooklm"] if settings.RAG_ENGINE == "gemini" else ["notebooklm", "gemini"]
-        last_error: Exception | None = None
-        for engine_name in order:
-            try:
-                if engine_name == "gemini":
-                    return await self._generate_with_gemini(user_profile, params, cache_key)
-                return await self._generate_with_notebooklm(user_profile, params, cache_key)
-            except Exception as e:
-                _logger.error(
-                    f"{engine_name} engine failed",
-                    extra={
-                        "fields": {
-                            "service": "nutrition_lab",
-                            "engine": engine_name,
-                            "event": "engine_failed",
-                            "error": str(e),
-                        }
-                    },
-                    exc_info=True,
-                )
-                last_error = e
-        return {
-            "products": [],
-            "hourly_plan": [],
-            "tips": [f"Could not retrieve plan: {last_error}"],
-        }
+        try:
+            return await self._generate_with_gemini(user_profile, params, cache_key)
+        except Exception as e:
+            _logger.error(
+                "gemini engine failed",
+                extra={
+                    "fields": {
+                        "service": "nutrition_lab",
+                        "engine": "gemini",
+                        "event": "engine_failed",
+                        "error": str(e),
+                    }
+                },
+                exc_info=True,
+            )
+            return {
+                "products": [],
+                "hourly_plan": [],
+                "tips": [f"Could not retrieve plan: {e}"],
+            }
 
     async def _generate_with_gemini(self, user_profile: str, params: NutritionParams, cache_key: str) -> dict[str, Any]:
         import time
@@ -229,101 +219,6 @@ Pick specific products from the knowledge base matching the requested brands/for
                 }
             },
         )
-        return parsed
-
-    async def _generate_with_notebooklm(
-        self, user_profile: str, params: NutritionParams, cache_key: str
-    ) -> dict[str, Any]:
-        auth_json = settings.NOTEBOOKLM_AUTH_JSON
-        if not auth_json:
-            raise RuntimeError("NotebookLM Auth JSON is missing.")
-
-        target_carb, target_sodium = self._macro_targets(params)
-        nlm_query = f"""You are an expert ultra-endurance nutrition coach searching your documents for a race nutrition plan.
-
-OUTPUT CONTRACT: You MUST output your response EXACTLY as a valid JSON object matching the schema below. NEVER include markdown formatting (like ```json), conversational filler, or plain text outside the JSON. NEVER use emoji icons.
-NEVER invent a product, brand, or macro figure that isn't in your documents — if you're not confident a number is accurate, calculate it from the stated Nutrition Goals below instead of guessing.
-BRAND CONSTRAINT: If "Preferred Brands" below is not empty, every product in "products" MUST be from that brand (or brands) only — NEVER substitute a different brand. The ONLY exception: if your documents contain zero matching products for the requested brand/format, say so explicitly as the first entry in "tips" and then recommend the closest available alternative from your documents.
-
-Schema:
-{{
-  "products": [
-    {{
-      "brand": "Brand Name",
-      "name": "Full Product Name (Flavor if applicable)",
-      "total_quantity": 4,
-      "carbs_per_unit": 27.0,
-      "sodium_per_unit": 420.0,
-      "protein_per_unit": 2.0,
-      "tech_notes": "Key science/tech notes about this product"
-    }}
-  ],
-  "hourly_plan": [
-    {{
-      "hour": 1,
-      "action": "Short action description e.g. 1x Gel A + 1x Gel B",
-      "carbs": 57.0,
-      "sodium": 545.0
-    }}
-  ],
-  "tips": [
-    "Concise critical tip 1",
-    "Concise critical tip 2",
-    "Concise critical tip 3"
-  ]
-}}
-
-Search your documents for specific products matching these brands/formats, calculate the required macros, and suggest a race nutrition plan.
-
-{self._race_profile_block(user_profile, params, target_carb, target_sodium)}"""
-
-        _logger.info(
-            "notebooklm prompt sent",
-            extra={
-                "fields": {
-                    "service": "nutrition_lab",
-                    "engine": "notebooklm",
-                    "event": "prompt_sent",
-                    "chars_sent": len(nlm_query),
-                }
-            },
-        )
-        nlm_response = await NotebookLmService.query_notebook(
-            notebook_id=self.notebook_id, auth_json=auth_json, query=nlm_query, service="nutrition_lab"
-        )
-
-        # Clean up response in case it has markdown ticks
-        cleaned = nlm_response.strip()
-        if cleaned.startswith("```json"):
-            cleaned = cleaned[7:]
-        if cleaned.startswith("```"):
-            cleaned = cleaned[3:]
-        if cleaned.endswith("```"):
-            cleaned = cleaned[:-3]
-        cleaned = cleaned.strip()
-
-        try:
-            parsed = json.loads(cleaned)
-        except json.JSONDecodeError as json_err:
-            _logger.warning(
-                "notebooklm response failed JSON parsing",
-                extra={
-                    "fields": {
-                        "service": "nutrition_lab",
-                        "engine": "notebooklm",
-                        "event": "parse_error",
-                        "error": str(json_err),
-                    }
-                },
-            )
-            parsed = {
-                "products": [],
-                "hourly_plan": [],
-                "tips": ["Could not parse nutrition plan from NotebookLM. Please try again."],
-            }
-            cleaned = json.dumps(parsed)
-
-        _NUTRITION_CACHE[cache_key] = cleaned
         return parsed
 
 

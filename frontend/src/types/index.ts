@@ -129,8 +129,6 @@ export interface User {
   aet_hr?: number;
   ant_hr?: number;
   gemini_api_key?: string;
-  notebooklm_notebook_id?: string;
-  notebooklm_auth_json?: string;
   zone2_pace_min?: string;
   zone2_pace_max?: string;
   provider?: string;

@@ -8,11 +8,10 @@ as the plan_start_date regression this suite exists to catch.
 
 import asyncio
 import re
-from unittest.mock import AsyncMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from config import settings
 from services.plan_generator import PlanGenerator
 
 
@@ -234,8 +233,8 @@ class TestWarmupCooldownMinutes:
 
 
 class TestRuleBasedFallbackDescriptionConsistency:
-    """Regression tests: the rule-based fallback generator (used when
-    NotebookLM/Gemini are both unavailable) used to hardcode Process minutes
+    """Regression tests: the rule-based fallback generator (used when Gemini is
+    unavailable or its retry also fails) used to hardcode Process minutes
     that never matched the day's actual computed duration_minutes -- e.g. a
     Tempo day always said "20-30 minutes" regardless of whether that day's
     duration_minutes was 18 or 50. Now the stated minutes must always sum
@@ -253,14 +252,8 @@ class TestRuleBasedFallbackDescriptionConsistency:
 
     @pytest.mark.asyncio
     async def test_wednesday_and_sunday_descriptions_sum_to_duration_minutes(self, monkeypatch):
-        # Force the rule-based fallback deterministically and without any
-        # network calls -- don't rely on the environment's real NotebookLM/
-        # Gemini config (whatever it happens to be) to land here.
-        from config import settings
-
-        monkeypatch.setattr(settings, "NOTEBOOKLM_NOTEBOOK_ID", "")
-        monkeypatch.setattr(settings, "NOTEBOOKLM_AUTH_JSON", "")
-
+        # api_key=None below forces the rule-based fallback deterministically and
+        # without any network calls.
         user_profile = {
             "age": 30,
             "max_hr": 185,
@@ -325,12 +318,8 @@ class TestRuleBasedFallbackDescriptionConsistency:
     VI_TAPER_WALK_RE = re.compile(r"Đi bộ phục hồi nhẹ nhàng (\d+) phút trên đường trail mềm\.")
 
     @pytest.mark.asyncio
-    async def test_vietnamese_translation_keeps_the_dynamic_minutes_consistent(self, monkeypatch):
-        from config import settings
-
-        monkeypatch.setattr(settings, "NOTEBOOKLM_NOTEBOOK_ID", "")
-        monkeypatch.setattr(settings, "NOTEBOOKLM_AUTH_JSON", "")
-
+    async def test_vietnamese_translation_keeps_the_dynamic_minutes_consistent(self):
+        # api_key=None below forces the rule-based fallback — no external call.
         user_profile = {
             "age": 30,
             "max_hr": 185,
@@ -587,17 +576,9 @@ class TestResolveTreadmillSettings:
 
 class TestPostProcessWorkoutsElevation:
     def _run_rule_based(self, monkeypatch, terrain: str, course_distance_km: float, course_elevation_gain_m: float):
-        # Force the rule-based path regardless of what's in this machine's
-        # backend/.env: config.py's load_dotenv() populates
-        # settings.NOTEBOOKLM_NOTEBOOK_ID/NOTEBOOKLM_AUTH_JSON from the real
-        # .env file (this repo's local dev .env has real values configured),
-        # and generate_plan_workouts gates the NotebookLM path on those two
-        # settings attributes (plan_generator.py:322-323,643) — NOT on an
-        # environment variable conftest.py controls. Without this patch the
-        # test would silently attempt a real external NotebookLM API call.
-        monkeypatch.setattr(settings, "NOTEBOOKLM_NOTEBOOK_ID", "")
-        monkeypatch.setattr(settings, "NOTEBOOKLM_AUTH_JSON", "")
-
+        # Force the rule-based path: generate_plan_workouts gates the Gemini attempt
+        # (and its retry) on `_ai_prompt and api_key`, so the api_key=None passed below
+        # is what guarantees no external call regardless of this machine's backend/.env.
         user_profile = {
             "current_weekly_km": 30.0,
             "max_hr": 185,
@@ -838,32 +819,27 @@ class TestGenerateSingleWorkout:
         assert wo["description"] == "3x12 lunges, 3x12 step-ups."
 
 
-class TestNotebookLmCompactPromptContent:
-    """The NotebookLM path builds its own compact prompt (nb_prompt_head) separate from
-    the full Gemini prompt, historically kept short for a query length limit that turned
-    out to be much smaller than NotebookLM's actual ~10,000-char limit. A prior version of
-    this prompt put the generic JSON-schema description before the athlete's own profile,
-    scheduling preferences, and race details — so on longer profiles, the actual per-athlete
-    context (Schedule Preferences chief among them) silently fell off the end of the
-    truncated string while the model still received a complete schema. These tests capture
-    the real query sent to NotebookLM and assert the per-athlete facts always survive.
+class TestPromptCarriesPerAthleteContext:
+    """Every fact that cannot be inferred or regenerated -- the athlete's own profile,
+    their scheduling preferences, and the race details -- must reach the model alongside
+    the schema. Successor to TestNotebookLmCompactPromptContent, which asserted the same
+    invariants against the deleted NotebookLM prompt: the bug it was written for (the
+    generic schema pushing per-athlete context off the end of a truncated prompt) is
+    exactly the kind that returns quietly, so the assertions now capture the Gemini
+    prompt instead of dying with the engine.
     """
 
-    def _capture_nb_query(
+    def _capture_prompt(
         self, monkeypatch, user_profile: dict, race_info: dict, block_context: str | None = None
     ) -> str:
-        monkeypatch.setattr(settings, "NOTEBOOKLM_NOTEBOOK_ID", "fake-notebook-id")
-        monkeypatch.setattr(settings, "NOTEBOOKLM_AUTH_JSON", "fake-auth-json")
+        fake_response = MagicMock()
+        fake_response.text = "[]"  # empty list -> falls through to rule-based, no real network call
+        fake_client = MagicMock()
+        fake_client.models.generate_content.return_value = fake_response
 
-        captured: dict[str, str] = {}
-
-        async def fake_query_notebook(notebook_id, auth_json, query, service=None):
-            captured["query"] = query
-            return "[]"  # empty list -> falls through to Gemini/rule-based, no real network call
-
-        with patch(
-            "services.notebooklm_service.NotebookLmService.query_notebook",
-            new=AsyncMock(side_effect=fake_query_notebook),
+        with (
+            patch("google.genai.Client", return_value=fake_client),
+            patch("services.kb_retrieval.search_scheduler_chunks", return_value=[]),
         ):
             asyncio.run(
                 PlanGenerator.generate_plan_workouts(
@@ -871,14 +847,15 @@ class TestNotebookLmCompactPromptContent:
                     user_profile=user_profile,
                     race_info=race_info,
                     total_weeks=race_info.get("total_weeks", 16),
-                    api_key=None,
+                    api_key="test-key",
                     block_number=race_info.get("block_number", 1),
                     weeks_per_block=2,
                     block_context=block_context,
                 )
             )
-        assert "query" in captured, "NotebookLmService.query_notebook was never called"
-        return captured["query"]
+        calls = fake_client.models.generate_content.call_args_list
+        assert calls, "Gemini was never called"
+        return calls[0].kwargs["contents"]
 
     def _base_profile_and_race(self) -> tuple[dict, dict]:
         user_profile = {
@@ -911,35 +888,35 @@ class TestNotebookLmCompactPromptContent:
 
     def test_schedule_preferences_fully_present_not_truncated(self, monkeypatch):
         user_profile, race_info = self._base_profile_and_race()
-        query = self._capture_nb_query(monkeypatch, user_profile, race_info)
+        prompt = self._capture_prompt(monkeypatch, user_profile, race_info)
 
-        assert "Scheduling Preferences" in query
-        assert "Preferred training days: Monday, Wednesday, Friday, Saturday" in query
-        assert "Rest/off days (assign Rest workouts):" in query
-        assert "Preferred long run day: Saturday" in query
-        assert "Double-session days: Tuesday" in query
-        assert "Injury history: Mild right knee IT band tightness" in query
+        assert "Scheduling Preferences" in prompt
+        assert "Preferred training days: Monday, Wednesday, Friday, Saturday" in prompt
+        assert "Rest/off days (assign Rest workouts):" in prompt
+        assert "Preferred long run day: Saturday" in prompt
+        assert "Double-session days: Tuesday" in prompt
+        assert "Injury history: Mild right knee IT band tightness" in prompt
 
     def test_race_and_date_context_fully_present(self, monkeypatch):
         user_profile, race_info = self._base_profile_and_race()
-        query = self._capture_nb_query(monkeypatch, user_profile, race_info)
+        prompt = self._capture_prompt(monkeypatch, user_profile, race_info)
 
-        assert "Race Details" in query
-        assert "SUM 42km" in query
-        assert "1800.0 m" in query
-        assert "Target Race Date" in query
-        assert "Full Plan Length: 16 weeks." in query
+        assert "Race Details" in prompt
+        assert "SUM 42km" in prompt
+        assert "1800.0 m" in prompt
+        assert "Target Race Date" in prompt
+        assert "Full Plan Length: 16 weeks." in prompt
 
     def test_schema_fields_still_present_alongside_athlete_context(self, monkeypatch):
         # Guards against fixing the truncation bug by simply dropping schema content —
         # the schema (including fields near its end) must survive too.
         user_profile, race_info = self._base_profile_and_race()
-        query = self._capture_nb_query(monkeypatch, user_profile, race_info)
+        prompt = self._capture_prompt(monkeypatch, user_profile, race_info)
 
-        assert "OUTPUT CONTRACT" in query
-        assert "elevation_gain_m/grade_percent" in query
-        assert "treadmill_incline/treadmill_speed" in query
-        assert "session_slot" in query
+        assert "OUTPUT CONTRACT" in prompt
+        assert "`elevation_gain_m` and `grade_percent`" in prompt
+        assert "`treadmill_incline`" in prompt and "`treadmill_speed`" in prompt
+        assert "`session_slot`" in prompt  # last field in the schema — the one truncation eats first
 
     def test_survives_even_with_long_feedback_and_verbose_profile(self, monkeypatch):
         user_profile, race_info = self._base_profile_and_race()
@@ -955,11 +932,10 @@ class TestNotebookLmCompactPromptContent:
         race_info["block_number"] = 2
         long_feedback = "Athlete reported RPE 8 last week and mentioned right knee pain during downhill sections. " * 20
 
-        query = self._capture_nb_query(monkeypatch, user_profile, race_info, block_context=long_feedback)
+        prompt = self._capture_prompt(monkeypatch, user_profile, race_info, block_context=long_feedback)
 
-        assert len(query) < 9500, "query should stay comfortably under NotebookLM's real ~10,000-char limit"
-        assert "Preferred long run day: Saturday" in query
-        assert "Double-session days: Tuesday, Thursday" in query
-        assert "9800.0 m" in query
-        assert "session_slot" in query
-        assert "ATHLETE FEEDBACK FROM PREVIOUS BLOCKS" in query
+        assert "Preferred long run day: Saturday" in prompt
+        assert "Double-session days: Tuesday, Thursday" in prompt
+        assert "9800.0 m" in prompt
+        assert "session_slot" in prompt
+        assert "ATHLETE FEEDBACK FROM PREVIOUS BLOCKS" in prompt

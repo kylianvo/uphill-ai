@@ -102,7 +102,7 @@
     },
     {
       "type": "stat",
-      "title": "NotebookLM Fallback Uses",
+      "title": "Gemini Retry Uses",
       "gridPos": {
         "x": 6,
         "y": 12,
@@ -111,7 +111,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rag_attempts_total{engine=\"notebooklm\"})",
+          "expr": "sum(rag_attempts_total{engine=\"gemini_retry\"})",
           "legendFormat": "Fallback Invocations"
         }
       ]
@@ -217,8 +217,8 @@
           "refId": "B"
         },
         {
-          "expr": "sum(rag_attempts_total{engine=\"notebooklm\"})",
-          "legendFormat": "NotebookLM Fallback",
+          "expr": "sum(rag_attempts_total{engine=\"gemini_retry\"})",
+          "legendFormat": "Gemini Retry",
           "refId": "C"
         }
       ],
@@ -229,7 +229,7 @@
     },
     {
       "type": "logs",
-      "title": "Gemini / NotebookLM Errors (live)",
+      "title": "Gemini Errors (live)",
       "gridPos": {
         "x": 0,
         "y": 28,

@@ -55,7 +55,7 @@ security defects — you do not fix them, you report them precisely.
    anywhere near a `text()` call or raw cursor execute.
 6. **Input validation at trust boundaries**: request bodies (Pydantic
    models in `main.py`), file uploads (`.fit`/`.gpx` via
-   `backend/parsers/`), and NotebookLM/RAG ingestion paths.
+   `backend/parsers/`), and KB/RAG ingestion paths.
 
 ## Output format
 

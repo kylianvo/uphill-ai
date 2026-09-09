@@ -1,15 +1,18 @@
 """Weekly KB distillation: sweep -> validate -> embed, per domain, in parallel.
-gear/nutrition-products source from live web discovery (Tavily); nutrition-principles/
-scheduler still sweep NotebookLM. A separate race_results task group enriches the
-hand-curated race_courses KB with newly-discovered result-year stats (winner times,
-finisher counts, percentiles) for races that already have a curated `results` block --
-it doesn't fit the sweep/validate/embed shape (race_courses is hand-curated, not one of
-the three DOMAINS distilled via distill_domain) so it calls kb_distiller's dedicated
-discover_race_results_web/save_race_results functions directly. A fourth podcast_knowledge
-task group discovers new Evoke Endurance podcast episodes and appends their knowledge
-cards (knowledge_cards table, not kb_chunks) via knowledge_extractor's dedicated
-discover_podcast_knowledge_web/save_podcast_knowledge_cards functions -- same reasoning:
-knowledge_cards isn't one of the three DOMAINS either.
+Only WEB_DOMAINS (gear + nutrition catalogs) are swept here -- both source from live web
+discovery (Tavily) and both save insert-only, so an unattended weekly run can add products
+but never remove them. The scheduler's curated training philosophy is deliberately NOT a
+DAG task: a principle sweep REPLACES doctrine wholesale, so it is script-only
+(backend/scripts/distill_principles.py), run by an operator who then reviews the seed diff.
+A separate race_results task group enriches the hand-curated race_courses KB with
+newly-discovered result-year stats (winner times, finisher counts, percentiles) for races
+that already have a curated `results` block -- it doesn't fit the sweep/validate/embed shape
+(race_courses is hand-curated, not one of the WEB_DOMAINS distilled via distill_domain) so it
+calls kb_distiller's dedicated discover_race_results_web/save_race_results functions directly.
+A fourth podcast_knowledge task group discovers new Evoke Endurance podcast episodes and
+appends their knowledge cards (knowledge_cards table, not kb_chunks) via knowledge_extractor's
+dedicated discover_podcast_knowledge_web/save_podcast_knowledge_cards functions -- same
+reasoning: knowledge_cards isn't one of the WEB_DOMAINS either.
 See docs/superpowers/specs/2026-07-27-airflow-kb-distill-design.md for the full design."""
 
 import asyncio
@@ -19,17 +22,18 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.utils.task_group import TaskGroup
 
-DOMAINS = ("gear", "nutrition", "scheduler")
+# Mirrors WEB_DOMAINS in services/kb_distiller.py -- 'scheduler' is absent on purpose
+# (script-only; see the module docstring above).
+DOMAINS = ("gear", "nutrition")
 # Paused 2026-07-29: gear/nutrition web discovery surfaced too many rare/niche
 # models compared to the previous hand-curated catalog -- there's no popularity
 # signal available from the review sites the discovery pipeline searches, only
 # "is this a real review" (which _has_review_substance already filters for).
-# scheduler's task group never completed a run locally either (NotebookLM auth
-# expired both attempts). The underlying code (sweep_domain/validate_domain_rows/
-# save_domain in kb_distiller.py, and the task-building loop below) is untouched
-# -- remove a domain from this set to re-enable its TaskGroup. race_results and
+# The underlying code (sweep_domain/validate_domain_rows/save_domain in
+# kb_distiller.py, and the task-building loop below) is untouched -- remove a
+# domain from this set to re-enable its TaskGroup. race_results and
 # podcast_knowledge are unaffected and keep running.
-PAUSED_DOMAINS = {"gear", "nutrition", "scheduler"}
+PAUSED_DOMAINS = {"gear", "nutrition"}
 ACTIVE_DOMAINS = tuple(d for d in DOMAINS if d not in PAUSED_DOMAINS)
 
 default_args = {"owner": "uphill-ai", "retries": 1}
@@ -109,7 +113,7 @@ with DAG(
                 task_id=f"sweep_{domain}",
                 python_callable=_sweep,
                 op_kwargs={"domain": domain},
-                execution_timeout=None,  # NotebookLM/Tavily+Gemini sweeps can run several minutes
+                execution_timeout=None,  # Tavily+Gemini sweeps can run several minutes
             )
             validate_task = PythonOperator(
                 task_id=f"validate_{domain}",

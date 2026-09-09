@@ -186,7 +186,6 @@ export const translations = {
     home_daily_desc: "3 random insights from your coach library",
     home_shuffle_btn: "Shuffle",
     home_no_cards: "No knowledge cards indexed yet. Become admin to ingest PDFs or URLs!",
-    home_connect_notebooklm: "Connect NotebookLM in your profile settings to auto-extract knowledge cards.",
     home_no_cards_yet: "No knowledge cards yet. Cards will appear automatically once extracted.",
     home_extraction_in_progress: "First-time extraction in progress — check back in a minute…",
 
@@ -213,9 +212,7 @@ export const translations = {
     know_delete_btn: "Delete",
     know_no_files: "No files or links indexed yet.",
     know_extract_status: "Extraction Status",
-    know_extracting: "Extracting cards from NotebookLM...",
     know_extracted: "knowledge cards in database.",
-    know_sync_notebooklm: "Sync NotebookLM Grounding Cards",
     know_sync_btn: "Sync Knowledge Cards",
 
     // Panel Headers
@@ -469,7 +466,6 @@ export const translations = {
     home_daily_desc: "3 lời khuyên trích xuất từ thư viện huấn luyện",
     home_shuffle_btn: "Đổi bài viết",
     home_no_cards: "Chưa có thẻ kiến thức nào được lưu. Hãy đăng nhập tài khoản Admin để tải tài liệu PDF hoặc liên kết Web!",
-    home_connect_notebooklm: "Kết nối NotebookLM trong phần cài đặt hồ sơ để tự động trích xuất các thẻ kiến thức.",
     home_no_cards_yet: "Chưa có thẻ kiến thức nào. Thẻ sẽ tự động hiển thị sau khi trích xuất dữ liệu thành công.",
     home_extraction_in_progress: "Hệ thống đang thực hiện trích xuất lần đầu — vui lòng quay lại sau một phút…",
 
@@ -496,9 +492,7 @@ export const translations = {
     know_delete_btn: "Xóa",
     know_no_files: "Chưa có tài liệu hoặc liên kết nào được nạp vào hệ thống.",
     know_extract_status: "Trạng thái trích xuất",
-    know_extracting: "Đang trích xuất dữ liệu từ NotebookLM...",
     know_extracted: "thẻ kiến thức trong cơ sở dữ liệu.",
-    know_sync_notebooklm: "Đồng bộ thẻ kiến thức NotebookLM",
     know_sync_btn: "Đồng bộ dữ liệu",
 
     // Panel Headers

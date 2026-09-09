@@ -1,14 +1,15 @@
 """Distills gear/nutrition/scheduler content into kb_chunks rows + committed seed files.
 
 Offline batch job, triggered by POST /api/kb/distill or the Airflow kb_distill DAG. Two
-source types feed it: NotebookLM sweeps (operator-curated notebooks, still used for
+source types feed it: operator-curated principle sweeps (script-only, see
 scheduler's training-philosophy principles and nutrition's science principles) and live
 web discovery via Tavily (gear's shoe catalog, nutrition's product catalog) -- both are
 structured through Gemini (temperature 0) into the same row shape. Rows land in Postgres
 (kb_chunks), get exported to backend/kb_seed/<domain>.json (committed so prod imports
-without re-distilling), and scheduler chunks are embedded into Qdrant. NotebookLM-sourced
-content fully replaces its (domain, kind) on each run; web-discovered content only appends
-new rows, since a search naturally surfaces what's new rather than a full catalog.
+without re-distilling), and scheduler chunks are embedded into Qdrant. Principle rows fully
+replace their (domain, kind) on each run, so only the script produces them; web-discovered
+content only appends new rows, since a search naturally surfaces what's new rather than a
+full catalog, which is why it is safe to run unattended.
 """
 
 import asyncio
@@ -32,13 +33,17 @@ except ModuleNotFoundError:
     TavilyClient = None
 
 from config import settings
-from services.notebooklm_service import NotebookLmService
 
 SEED_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "kb_seed")
 DOMAINS = ("gear", "nutrition", "scheduler")
-# Hand-curated domains have no NotebookLM notebook to sweep -- they only ever
-# load via load_seed(), never distill_domain(). Kept separate from DOMAINS so
-# /api/kb/distill (which sweeps notebooks) never tries to validate against them.
+# Domains the API and the Airflow DAG may sweep unattended. Both sources are live
+# web discovery (Tavily) and both are insert-only, so an automated run can only add.
+# 'scheduler' is deliberately absent: its rows are operator-curated doctrine that
+# save_domain REPLACES wholesale, so it is script-only (scripts/distill_principles.py).
+WEB_DOMAINS = ("gear", "nutrition")
+# Hand-curated domains have no sweep at all -- they only ever load via load_seed(),
+# never distill_domain(). Kept separate from DOMAINS so /api/kb/distill never tries
+# to validate against them.
 HAND_CURATED_DOMAINS = ("race_courses",)
 
 
@@ -150,29 +155,6 @@ class RaceResultList(BaseModel):
 
 # ─── Sweep queries ───────────────────────────────────────────────────────────
 
-SCHEDULER_TOPICS = [
-    "Muscular Endurance (ME) session design: circuit structure, exercise selection, reps per pass, rounds, rest between rounds, progression over weeks, and exactly how ME differs from conventional strength training",
-    "Periodization: Base, Build, Peak, Taper, Race Week and Recovery phases — how long each lasts, what workouts belong in each, and weekly volume progression rules",
-    "Zone 2 / aerobic base training: weekly volume share, AeT vs AnT, the 80/20 intensity distribution, aerobic deficiency syndrome",
-    "Long runs for trail and mountain races: distance and vert scaling to the goal race, back-to-back long days, fueling during long efforts",
-    "Taper and race week: how much to cut volume, keeping intensity, structuring the final week",
-    "Hill workouts and treadmill substitution: hill sprints vs hill repeats, incline and speed settings, matching grade to race-specific vert",
-    "Double sessions and weekly scheduling: when two-a-days make sense, what goes in morning vs afternoon sessions, recovery spacing",
-    "Strength training (non-ME): exercise selection, sets/reps/rest, and how gym work fits each training phase",
-    "Recovery weeks and deloads: frequency, volume reduction, signs of overtraining, adjusting after missed training",
-    "Race-day pacing and course-specific preparation for uphill athletes",
-    "Downhill running mechanics, eccentric quadriceps conditioning, vert adaptation, and injury-prevention protocols (step-downs, weighted lunges, downhill repeats)",
-    "Back-to-back long runs for ultra endurance: volume caps, weekly percentage distribution, fueling between days, and fatigue management",
-    "Altitude and heat acclimation: timeline for adaptations, pacing adjustments per 1000m elevation gain, plasma volume expansion, and heat protocol integration",
-    "Pre-race carb-loading protocols (g/kg bodyweight over 36-48h), low-residue diet transition to prevent GI distress, and electrolyte pre-loading",
-]
-
-NUTRITION_PRINCIPLE_TOPICS = [
-    "Carbohydrate intake targets per hour for ultra racing, gut training, and how to build up carb tolerance",
-    "Sodium and hydration strategy: mg per hour targets, hot weather adjustments, sweat rate",
-    "Pre-race nutrition, real food vs gels during long races, and common race fueling mistakes",
-]
-
 
 async def _gemini_structured(api_key: str, prompt: str, schema: type[BaseModel]) -> dict[str, Any]:
     client = genai.Client(api_key=api_key)
@@ -190,31 +172,10 @@ async def _gemini_structured(api_key: str, prompt: str, schema: type[BaseModel])
     return json.loads(response.text)
 
 
-async def _query_with_retries(notebook_id: str, auth_json: str, query: str, attempts: int = 3) -> str:
-    """NotebookLM calls fail transiently (server disconnects, truncated streams,
-    brief DNS outages) — observed holing an entire sweep. Retry with a growing
-    backoff before giving up on a topic/brand."""
-    for attempt in range(1, attempts + 1):
-        try:
-            return await NotebookLmService.query_notebook(
-                notebook_id=notebook_id, auth_json=auth_json, query=query, service="kb_distiller"
-            )
-        except Exception as e:
-            if "RPC response exceeded" in str(e):
-                # Deterministic: the answer itself overflows the client's stream
-                # cap, so the same query will always fail — callers must narrow it.
-                raise
-            if attempt == attempts:
-                raise
-            wait_s = 15.0 * attempt
-            print(f"[KBDistiller] Query attempt {attempt}/{attempts} failed ({e}); retrying in {wait_s:.0f}s…")
-            await asyncio.sleep(wait_s)
-
-
-# Gear sweeps use this operator-curated whitelist instead of a NotebookLM brand
-# enumeration — the sources mention many competitor brands in passing (review
-# sites compare shoes), and sweeping every mentioned brand adds noise. Add a
-# brand here and re-run POST /api/kb/distill?domain=gear to onboard it.
+# Gear sweeps use this operator-curated whitelist rather than enumerating brands from
+# a source — review sites mention many competitor brands in passing, and sweeping every
+# mentioned brand adds noise. Add a brand here and re-run POST /api/kb/distill?domain=gear
+# to onboard it.
 GEAR_BRANDS = [
     "adidas",
     "Nike",
@@ -251,7 +212,7 @@ def _whitelisted_brand(returned_brand: str, queried_brand: str, allowed_brands: 
 
 # A distilled shoe is only useful if it carries real specs. Score = number of
 # filled spec fields; a brand sweep averaging below the threshold is re-swept
-# (NotebookLM under load returns thin series-level summaries).
+# (a search that surfaces only series-level pages returns thin summaries).
 _SPEC_FIELDS = (
     "foam_material",
     "outsole_compound",
@@ -274,8 +235,8 @@ _SPEC_FIELDS = (
 )
 _MIN_AVG_RICHNESS = 4
 # Floors apply only to each domain's fully-resweepable source: nutrition's floor
-# checks its NotebookLM-sourced principle rows (3 topics -> ~3-9 principle rows
-# expected), not its incrementally-appended web-discovered product rows.
+# checks the principle rows a script sweep produces (3 topics -> ~3-9 rows expected),
+# not its incrementally-appended web-discovered product rows.
 _MIN_ROWS = {"nutrition": 3, "scheduler": 15}
 
 
@@ -390,7 +351,7 @@ async def discover_gear_web(api_key: str, tavily_api_key: str, status_holder: di
                         "source_label": source_label,
                     }
                 )
-        await asyncio.sleep(1.5)  # search-API rate-limit courtesy, same pacing as the NotebookLM sweeps
+        await asyncio.sleep(1.5)  # search-API rate-limit courtesy
     return rows
 
 
@@ -504,78 +465,7 @@ async def discover_nutrition_web(api_key: str, tavily_api_key: str, status_holde
                         "source_label": source_label,
                     }
                 )
-        await asyncio.sleep(1.5)  # search-API rate-limit courtesy, same pacing as the NotebookLM sweeps
-    return rows
-
-
-# Nutrition products are now sourced by discover_nutrition_web (live web search) --
-# this function only sweeps NotebookLM for the nutrition-science principle topics
-# (carb/sodium/pre-race guidance), which is curated philosophy content rather than
-# a product catalog and stays on the operator-curated NotebookLM path.
-async def _distill_nutrition(notebook_id: str, auth_json: str, api_key: str, status: dict) -> list[dict]:
-    rows: list[dict] = []
-    total = len(NUTRITION_PRINCIPLE_TOPICS)
-    for j, topic in enumerate(NUTRITION_PRINCIPLE_TOPICS):
-        status.update({"current_topic": f"nutrition principle {j + 1}", "progress": j, "total": total})
-        try:
-            answer = await _query_with_retries(
-                notebook_id,
-                auth_json,
-                f"Summarize everything your documents say about: {topic}. Be specific with numbers.",
-            )
-            structured = await _gemini_structured(
-                api_key,
-                "Split this text into 1-3 self-contained principle chunks (title + 100-400 word content). "
-                "NEVER add facts not present in the text. Write every field in clear English only — "
-                "never any other language.\n\n" + answer,
-                PrincipleList,
-            )
-            for principle in structured.get("principles", []):
-                rows.append(
-                    {
-                        "domain": "nutrition",
-                        "kind": "principle",
-                        "title": principle.get("title", topic[:60]),
-                        "content": principle.get("content", ""),
-                        "payload": None,
-                    }
-                )
-        except Exception as e:
-            print(f"[KBDistiller][nutrition] Principle topic failed, continuing: {e}")
-        await asyncio.sleep(1.5)
-    return rows
-
-
-async def _distill_scheduler(notebook_id: str, auth_json: str, api_key: str, status: dict) -> list[dict]:
-    rows: list[dict] = []
-    for i, topic in enumerate(SCHEDULER_TOPICS):
-        status.update({"current_topic": f"scheduler: {topic[:50]}…", "progress": i, "total": len(SCHEDULER_TOPICS)})
-        try:
-            answer = await _query_with_retries(
-                notebook_id,
-                auth_json,
-                f"Summarize everything your documents say about: {topic}. Be specific — numbers, protocols, examples.",
-            )
-            structured = await _gemini_structured(
-                api_key,
-                "Split this text into 2-4 self-contained principle chunks (title + 200-600 word content) "
-                "for grounding a training-plan generator. NEVER add facts not present in the text. "
-                "Write every field in clear English only — never any other language.\n\n" + answer,
-                PrincipleList,
-            )
-            for principle in structured.get("principles", []):
-                rows.append(
-                    {
-                        "domain": "scheduler",
-                        "kind": "principle",
-                        "title": principle.get("title", topic[:60]),
-                        "content": principle.get("content", ""),
-                        "payload": None,
-                    }
-                )
-        except Exception as e:
-            print(f"[KBDistiller][scheduler] Topic failed, continuing: {e}")
-        await asyncio.sleep(1.5)
+        await asyncio.sleep(1.5)  # search-API rate-limit courtesy
     return rows
 
 
@@ -806,22 +696,16 @@ def save_course_profile(
     }
 
 
-def _notebook_id(domain: str) -> str:
-    return {
-        "gear": settings.NOTEBOOKLM_GEAR_ID,
-        "nutrition": settings.NOTEBOOKLM_NUTRITION_ID,
-        "scheduler": settings.NOTEBOOKLM_NOTEBOOK_ID,
-    }[domain]
-
-
 def validate_domain_rows(domain: str, rows: list[dict]) -> list[dict]:
     """Batch-level gate before a sweep's rows reach Postgres/Qdrant.
     gear (incremental): 0 new rows is a normal outcome — just drop any individual thin row.
-    nutrition (hybrid): the floor applies only to its NotebookLM-sourced principle rows
-    (a broad-sweep-failure signal); its web-discovered catalog_item rows pass through
-    unfiltered — 0 new products this week is a normal, valid outcome, same as gear.
-    scheduler (full-replace): below-floor row counts mean the sweep likely hit a
-    broad NotebookLM outage/refusal — raise rather than replace a working KB with junk."""
+    nutrition: web-discovered catalog_item rows pass through unfiltered — 0 new products
+    this week is a normal, valid outcome, same as gear. The principle floor still applies
+    when principle rows ARE present (the script's sweep), as a broad-failure signal, but a
+    sweep that produced none is not treated as a failure — only save_domain's replace path
+    cares, and it refuses to replace with nothing.
+    scheduler (full-replace): below-floor row counts mean the sweep likely hit a broad
+    outage/refusal — raise rather than replace a working KB with junk."""
     if domain == "gear":
         return [
             r
@@ -833,7 +717,7 @@ def validate_domain_rows(domain: str, rows: list[dict]) -> list[dict]:
         principle_rows = [r for r in rows if r.get("kind") == "principle"]
         catalog_rows = [r for r in rows if r.get("kind") == "catalog_item"]
         floor = _MIN_ROWS["nutrition"]
-        if len(principle_rows) < floor:
+        if principle_rows and len(principle_rows) < floor:
             raise RuntimeError(
                 f"Distillation produced only {len(principle_rows)} principle rows for 'nutrition' "
                 f"(floor {floor}) — keeping existing KB."
@@ -848,30 +732,20 @@ def validate_domain_rows(domain: str, rows: list[dict]) -> list[dict]:
 
 
 async def sweep_domain(domain: str, api_key: str, status_holder: dict) -> list[dict]:
-    """Dispatch to this domain's data source(s). gear discovers from the live web
-    (RunRepeat/BelieveInTheRun via Tavily). nutrition combines both: NotebookLM for its
-    curated principle rows, plus live web discovery (Tavily) for new products -- if
-    TAVILY_API_KEY isn't configured, nutrition still proceeds with principles alone.
-    scheduler still sweeps NotebookLM only."""
+    """Dispatch to this domain's live-web source (Tavily). Both WEB_DOMAINS return
+    catalog_item rows only and both save insert-only, so an unattended run can add
+    products but never remove them. Principle rows are NOT swept here -- they are
+    operator-curated doctrine, produced only by scripts/distill_principles.py."""
+    if domain not in WEB_DOMAINS:
+        raise RuntimeError(
+            f"Domain '{domain}' has no automated sweep. Its rows are operator-curated — "
+            f"run scripts/distill_principles.py, then load the seed."
+        )
+    if not settings.TAVILY_API_KEY:
+        raise RuntimeError("TAVILY_API_KEY is not configured.")
     if domain == "gear":
-        if not settings.TAVILY_API_KEY:
-            raise RuntimeError("TAVILY_API_KEY is not configured.")
         return await discover_gear_web(api_key, settings.TAVILY_API_KEY, status_holder)
-    if domain == "nutrition":
-        notebook_id, auth_json = _notebook_id(domain), settings.NOTEBOOKLM_AUTH_JSON
-        if not notebook_id or not auth_json:
-            raise RuntimeError("NotebookLM is not configured for domain 'nutrition'.")
-        principle_rows = await _distill_nutrition(notebook_id, auth_json, api_key, status_holder)
-        if not settings.TAVILY_API_KEY:
-            print("[KBDistiller][nutrition] TAVILY_API_KEY not configured — skipping web product discovery.")
-            return principle_rows
-        web_rows = await discover_nutrition_web(api_key, settings.TAVILY_API_KEY, status_holder)
-        return principle_rows + web_rows
-    notebook_id, auth_json = _notebook_id(domain), settings.NOTEBOOKLM_AUTH_JSON
-    if not notebook_id or not auth_json:
-        raise RuntimeError(f"NotebookLM is not configured for domain '{domain}'.")
-    distiller = globals()[f"_distill_{domain}"]
-    return await distiller(notebook_id, auth_json, api_key, status_holder)
+    return await discover_nutrition_web(api_key, settings.TAVILY_API_KEY, status_holder)
 
 
 _SEED_KEYS = ("domain", "kind", "title", "content", "payload", "source_label")
@@ -880,9 +754,9 @@ _SEED_KEYS = ("domain", "kind", "title", "content", "payload", "source_label")
 async def save_domain(domain: str, rows: list[dict], api_key: str) -> int:
     """Persist validated rows. gear appends new rows without touching existing ones (its
     source is incremental discovery, not a full catalog sweep). nutrition is hybrid: its
-    principle rows fully replace (NotebookLM re-sweep), its catalog_item rows append
-    (web discovery) -- neither wipes the other. scheduler fully replaces and reindexes
-    Qdrant."""
+    principle rows fully replace, but ONLY when the sweep produced some (a web-only sweep
+    must never wipe curated doctrine); its catalog_item rows append (web discovery) --
+    neither wipes the other. scheduler fully replaces and reindexes Qdrant."""
     import db
 
     if domain == "gear":
@@ -897,7 +771,9 @@ async def save_domain(domain: str, rows: list[dict], api_key: str) -> int:
     if domain == "nutrition":
         principle_rows = [r for r in rows if r.get("kind") == "principle"]
         catalog_rows = [r for r in rows if r.get("kind") == "catalog_item"]
-        saved = db.replace_kb_chunks_by_kind(domain, "principle", principle_rows)
+        # Only a sweep that actually produced principles may replace them. A web-only
+        # sweep returns none, and replacing with [] would silently wipe curated doctrine.
+        saved = db.replace_kb_chunks_by_kind(domain, "principle", principle_rows) if principle_rows else 0
         saved += db.add_kb_chunks(domain, catalog_rows)
         # full current catalog (principles + products), same clean-projection reasoning as gear
         clean_rows = [{k: row[k] for k in _SEED_KEYS} for row in db.get_kb_chunks(domain)]

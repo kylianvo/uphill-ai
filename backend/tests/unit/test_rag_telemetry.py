@@ -14,7 +14,6 @@ def _sample(name, labels):
 
 
 def test_gear_gemini_success_records_metrics(monkeypatch):
-    monkeypatch.setattr(settings, "RAG_ENGINE", "gemini")
     monkeypatch.setattr(settings, "GEMINI_API_KEY", "test-key")
     gp._GEAR_CACHE.clear()
 

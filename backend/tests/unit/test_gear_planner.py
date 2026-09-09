@@ -1,6 +1,6 @@
 import asyncio
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -46,7 +46,6 @@ def _mock_gemini_client(response_text):
 
 
 def test_gemini_engine_primary_uses_kb_catalog(monkeypatch):
-    monkeypatch.setattr(settings, "RAG_ENGINE", "gemini")
     monkeypatch.setattr(settings, "GEMINI_API_KEY", "test-key")
     fake_client = _mock_gemini_client(GEAR_JSON)
     chunks = [{"title": "Speedgoat 7", "payload": {"brand": "Hoka", "price": "$155"}}]
@@ -64,36 +63,18 @@ def test_gemini_engine_primary_uses_kb_catalog(monkeypatch):
     assert len(gp._GEAR_CACHE) == 1
 
 
-def test_gemini_refuses_on_empty_kb_and_falls_back_to_notebooklm(monkeypatch):
-    monkeypatch.setattr(settings, "RAG_ENGINE", "gemini")
+def test_gemini_refuses_on_empty_kb_rather_than_answering_ungrounded(monkeypatch):
+    """With no catalog to ground on there is no second engine to fall back to, so the
+    only safe outcome is an empty result that explains itself -- never invented shoes."""
     monkeypatch.setattr(settings, "GEMINI_API_KEY", "test-key")
-    monkeypatch.setattr(settings, "NOTEBOOKLM_AUTH_JSON", '{"tok": 1}')
-    monkeypatch.setattr(settings, "NOTEBOOKLM_GEAR_ID", "nb-gear")
+    fake_client = _mock_gemini_client(GEAR_JSON)
     with (
         patch("db.get_kb_chunks", return_value=[]),
-        patch(
-            "services.notebooklm_service.NotebookLmService.query_notebook",
-            new_callable=AsyncMock,
-            return_value=GEAR_JSON,
-        ) as nlm,
+        patch("google.genai.Client", return_value=fake_client),
     ):
         result = asyncio.run(gp.gear_planner.generate_plan("", GearParams(surface="trail")))
-    nlm.assert_called_once()
-    assert result["recommendations"][0]["brand"] == "Hoka"
-
-
-def test_default_flag_keeps_notebooklm_primary(monkeypatch):
-    monkeypatch.setattr(settings, "RAG_ENGINE", "notebooklm")
-    monkeypatch.setattr(settings, "NOTEBOOKLM_AUTH_JSON", '{"tok": 1}')
-    monkeypatch.setattr(settings, "NOTEBOOKLM_GEAR_ID", "nb-gear")
-    with patch(
-        "services.notebooklm_service.NotebookLmService.query_notebook",
-        new_callable=AsyncMock,
-        return_value=GEAR_JSON,
-    ) as nlm:
-        result = asyncio.run(gp.gear_planner.generate_plan("", GearParams(surface="road")))
-    nlm.assert_called_once()
-    assert result["tips"] == ["Size up half a size."]
+    assert result["recommendations"] == []
+    assert result["tips"], "an empty result must say why"
 
 
 def test_gear_recommendation_schema_includes_weight():
@@ -101,7 +82,6 @@ def test_gear_recommendation_schema_includes_weight():
 
 
 def test_gemini_prompt_includes_weight_field_guidance(monkeypatch):
-    monkeypatch.setattr(settings, "RAG_ENGINE", "gemini")
     monkeypatch.setattr(settings, "GEMINI_API_KEY", "test-key")
     fake_client = _mock_gemini_client(GEAR_JSON)
     chunks = [{"title": "Speedgoat 7", "payload": {"brand": "Hoka", "weight": "9.6 oz / 272 g"}}]
@@ -115,26 +95,11 @@ def test_gemini_prompt_includes_weight_field_guidance(monkeypatch):
     assert "9.6 oz / 272 g" in prompt_sent  # catalog's own weight value was injected
 
 
-def test_notebooklm_schema_includes_weight_field_guidance(monkeypatch):
-    monkeypatch.setattr(settings, "RAG_ENGINE", "notebooklm")
-    monkeypatch.setattr(settings, "NOTEBOOKLM_AUTH_JSON", '{"tok": 1}')
-    monkeypatch.setattr(settings, "NOTEBOOKLM_GEAR_ID", "nb-gear")
-    with patch(
-        "services.notebooklm_service.NotebookLmService.query_notebook",
-        new_callable=AsyncMock,
-        return_value=GEAR_JSON,
-    ) as nlm:
-        asyncio.run(gp.gear_planner.generate_plan("", GearParams(surface="road")))
-    query_sent = nlm.call_args.kwargs["query"]
-    assert '"weight"' in query_sent  # schema block mentions weight guidance
-
-
 def test_gear_params_accepts_race_name():
     assert "race_name" in GearParams.model_fields
 
 
 def test_gemini_engine_injects_course_context_and_echoes_matched_race(monkeypatch):
-    monkeypatch.setattr(settings, "RAG_ENGINE", "gemini")
     monkeypatch.setattr(settings, "GEMINI_API_KEY", "test-key")
     fake_client = _mock_gemini_client(GEAR_JSON)
     chunks = [{"title": "Speedgoat 7", "payload": {"brand": "Hoka", "price": "$155"}}]
@@ -162,7 +127,6 @@ def test_gemini_engine_injects_course_context_and_echoes_matched_race(monkeypatc
 
 
 def test_no_race_name_means_no_matched_race_in_response(monkeypatch):
-    monkeypatch.setattr(settings, "RAG_ENGINE", "gemini")
     monkeypatch.setattr(settings, "GEMINI_API_KEY", "test-key")
     fake_client = _mock_gemini_client(GEAR_JSON)
     chunks = [{"title": "Speedgoat 7", "payload": {"brand": "Hoka"}}]

@@ -1,6 +1,6 @@
 import asyncio
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -43,7 +43,6 @@ def _mock_gemini_client(response_text):
 
 
 def test_gemini_engine_primary_injects_catalog_and_principles(monkeypatch):
-    monkeypatch.setattr(settings, "RAG_ENGINE", "gemini")
     monkeypatch.setattr(settings, "GEMINI_API_KEY", "test-key")
     fake_client = _mock_gemini_client(NUTRITION_JSON)
 
@@ -66,17 +65,3 @@ def test_gemini_engine_primary_injects_catalog_and_principles(monkeypatch):
     assert "Maurten Gel 100" in prompt_sent
     assert "Sodium in heat" in prompt_sent  # principles injected too
     assert "Target Sodium/Hour: 1000.0mg" in prompt_sent  # hot-weather macro logic untouched
-
-
-def test_default_flag_keeps_notebooklm_primary(monkeypatch):
-    monkeypatch.setattr(settings, "RAG_ENGINE", "notebooklm")
-    monkeypatch.setattr(settings, "NOTEBOOKLM_AUTH_JSON", '{"tok": 1}')
-    monkeypatch.setattr(settings, "NOTEBOOKLM_NUTRITION_ID", "nb-nutrition")
-    with patch(
-        "services.notebooklm_service.NotebookLmService.query_notebook",
-        new_callable=AsyncMock,
-        return_value=NUTRITION_JSON,
-    ) as nlm:
-        result = asyncio.run(np_mod.nutrition_planner.generate_plan("", NutritionParams(distance_km=42)))
-    nlm.assert_called_once()
-    assert result["hourly_plan"][0]["hour"] == 1

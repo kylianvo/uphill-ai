@@ -754,7 +754,7 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                 )
             return wos
 
-        # 2. AI Plan Generation (NotebookLM → Gemini → Rule-Based)
+        # 2. AI Plan Generation (Gemini → reduced-prompt retry → Rule-Based)
         import re as _re
 
         def _extract_json_array(text: str) -> str:
@@ -777,12 +777,9 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
 
         from config import settings
 
-        notebook_id = settings.NOTEBOOKLM_NOTEBOOK_ID
-        auth_json = settings.NOTEBOOKLM_AUTH_JSON
-
-        # Build shared AI prompt (used by both NotebookLM and Gemini paths)
+        # Build the AI prompt (Gemini is the only engine; a reduced retry and the
+        # rule-based schedule below are the fallbacks).
         _ai_prompt = None
-        _nb_prompt = None
         try:
             scheduling_notes = ""
             all_days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
@@ -1018,14 +1015,11 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                     f"Generate ONLY Block {block_number} of {total_blocks}: weeks {block_start_week} through {block_end_week}.\n"
                     f"CRITICAL: Every workout `week_number` MUST be between {block_start_week} and {block_end_week} (inclusive). Do NOT output week numbers outside this range.\n"
                 )
-            # Kept separate from block_scope_instruction (and placed last in the final prompt below):
-            # this is free-text athlete feedback of unbounded length, and NotebookLM truncates the
-            # full prompt at ~3800 chars — the schema and hard constraints must survive truncation
-            # even if this section gets cut off.
+            # Kept separate from block_scope_instruction and placed last in the final prompt
+            # below: this is free-text athlete feedback of unbounded length, so the schema and
+            # hard constraints stay ahead of it. Coach directives come first within this
+            # trailing section, ahead of the auto-collected athlete feedback.
             feedback_instruction = ""
-            # Coach directives come first within this trailing section: if the section
-            # ever gets truncated (NotebookLM path), the tail (auto-collected athlete
-            # feedback) is what's lost, not an explicit human coach instruction.
             if coach_notes:
                 feedback_instruction += (
                     f"\nCOACH INSTRUCTIONS (from the athlete's human coach — give these real weight, "
@@ -1216,237 +1210,48 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                 f"{feedback_instruction}"
             )
 
-            # NotebookLM's actual query limit is ~10,000 chars (confirmed) — comfortably large
-            # enough to carry the same schema detail as the full Gemini prompt above, so this
-            # reuses the exact same wording rather than a terser paraphrase (a terser schema
-            # risks losing the ME-circuit-vs-straight-set distinction, which has needed a
-            # concrete example to reliably hold in the past). Built as a separate prompt (not
-            # a direct reuse of _ai_prompt) only because a couple of framing lines differ.
-            nb_schema_block = (
-                "OUTPUT CONTRACT: Return ONLY a JSON array of workout objects — no markdown fences, no prose.\n"
-                "Each object MUST have: week_number (int, within block range below), day_of_week (Mon-Sun), "
-                "phase (Base→Build→Peak→Taper→Race Week→Recovery, in that exact order; Taper cuts volume ~50%), "
-                "title (string), type (Easy/Tempo/Interval/Long Run/Strength/Rest/Race/Recovery/Muscular Endurance), "
-                "duration_minutes (number), target_zone (Zone 1-5), target_hr_range (e.g. '125-140 bpm'), "
-                "target_pace (e.g. '6:00 /km'), distance_km (= duration_minutes / pace, decimal min/km), "
-                "interval_reps/interval_rep_value/interval_rep_unit (ONLY for type Interval AND ONLY for "
-                "a single clean rep block, e.g. 8 reps of 12s hill sprints — unit is one of s/m/min/km; "
-                "OMIT all three, don't guess, when warm-up/main/cool-down structure, a pyramid, or mixed "
-                "rep durations don't reduce to one block), "
-                "elevation_gain_m/grade_percent (numbers, Easy/Tempo/Interval/Long Run on trail terrain only, "
-                "else 0: plausible climb for this run given the race's course_elevation_gain_m/course_distance_km "
-                "context and this run's own distance/phase — grade_percent ≈ elevation_gain_m/(distance_km×10)), "
-                "description (detailed: Process uses → between phases, minutes sum to duration_minutes; "
-                "EVERY exercise is its own → segment — never semicolon/comma-chain exercises into one "
-                "segment, never wrap them in a 'Main Circuit: ...' label. Strength = straight sets, e.g. "
-                "'Squats: 3x10, 90s rest' per exercise. ME = CIRCUIT, NOT straight sets — "
-                "flat/gym: Jump Squats/Step-Ups/Lunges circuit (10-30s transition, 6-8 rounds, 60s rest); "
-                "mountain: weighted uphill carries (dump water at top, descend unweighted); 12-15% incline treadmill; "
-                "hill bounds (8-12s, 3-4m rest); never 45-60s rest between sets of SAME exercise; never placeholder; "
-                "Intervals state exact reps/distance/recovery; plus Overall/Reason/Benefit/Warning), "
-                "fueling_tip (string: <75m water/electrolytes; 75-150m 30-60g CHO/hr; >150m 60-90g CHO/hr + 500-800mg sodium; pre-race 8-10g CHO/kg), "
-                "treadmill_incline/treadmill_speed (optional numbers, treadmill only — incline matches grade_percent; "
-                "EXCEPTION: Hill Sprint/Hill Repeat titles MUST use 10-15% incline; speed matches incline), "
-                "session_slot ('morning'/'afternoon' on double-session days only, omit otherwise).\n\n"
-            )
-            nb_equipment_terrain_rule = (
-                ""
-                if has_gym_access and hill_sprint_eligible
-                else (
-                    " Equipment/terrain (hard constraints): "
-                    + (
-                        "No gym — Strength/ME must be bodyweight-only, no weights/machines. "
-                        if not has_gym_access
-                        else ""
-                    )
-                    + (
-                        "No hills or treadmill — NEVER prescribe Hill Sprint/Repeat/Bound, substitute Fartlek/Surges instead."
-                        if not hill_sprint_eligible
-                        else ""
-                    )
-                )
-            )
-            nb_rules_block = (
-                "Rules: Honor athlete's preferred training/double days — Rest on off days, 2 objects on double days. "
-                "80/20 Polarization & Volume Progression: 80-85% vol Zone 1-2, high intensity <= 15-20%, weekly progression cap 5-10% (max 10% rule). Weekday runs ~45-75 min. "
-                "Long run cap: <= 30-35% weekly vol (<= 50% weekend back-to-backs). "
-                "Periodization: Short plans (<=10w) start ME in Wk 1-2; Standard/Long (12-24w) Base (Max Strength) -> Build (ME circuits/carries) -> Peak (vert/downhill) -> Taper (cut 40-60%, stop heavy ME 10-14d out). "
-                "ME Directives: Local muscular endurance limits pace; Flat/road gets Gym Circuits/Hill Strides/Tire Drags to prevent stride/quad collapse; Steep mountain gets Weighted Uphill Carries (dump water at top) or 12-15% treadmill; NEVER schedule ME within 48h of Long Run; on double days ME is AM, Z1/2 run is PM; HR in Z1-2 while legs experience deep burn. "
-                "Deload cycles: 3:1 load-to-recovery (cut vol 20-30%). "
-                "ADS: If flagged, NO Z4/5 speedwork in Base/Build — strictly Zone 1-2. "
-                "Fueling: <75m water/electrolytes, 75-150m 30-60g CHO/hr, >150m 60-90g CHO/hr, pre-race 8-10g CHO/kg."
-                f"{nb_equipment_terrain_rule}"
-                f"{lang_rule}\n\n"
-            )
-            # Ordered so the per-request facts that can't be inferred or regenerated — hard
-            # week-range/date constraints, the athlete's own profile and scheduling
-            # preferences, and the race/program details — come before the generic, identical-
-            # every-time schema block. At the real ~10,000-char limit this ordering is a
-            # defensive safety margin rather than a load-bearing necessity (everything fits
-            # without truncation in practice), but it means an unusually long feedback blob
-            # (the one genuinely unbounded section) is the only thing ever at risk of being
-            # cut, never the athlete/race facts.
-            _nb_prompt_head = (
-                "You are a world-class running coach training athletes based on the 'Training for the Uphill Athlete' philosophy.\n"
-                f"{goal_intro}\n\n"
-                f"{block_scope_instruction}"
-                f"{_start_date_constraint}"
-                f"{week_schedule_constraints}"
-                f"Athlete Profile:\n{user_summary}\n\n"
-                f"{program_details}"
-                f"Plan Start Date: {current_date_str} ({current_weekday})\n"
-                f"{target_date_details}"
-                f"Full Plan Length: {total_weeks} weeks.\n"
-                f"- Week 1 starts on: {current_date_str} ({current_weekday}).\n\n"
-                f"{nb_rules_block}"
-                f"{nb_schema_block}"
-            )
-            _NOTEBOOKLM_MAX_CHARS = 9400
-            _nb_feedback_budget = _NOTEBOOKLM_MAX_CHARS - len(_nb_prompt_head)
-            _nb_prompt = _nb_prompt_head + (
-                feedback_instruction[:_nb_feedback_budget] if _nb_feedback_budget > 0 else ""
-            )
-            # Safety net in case the head itself ever exceeds the budget (e.g. unusually long
-            # scheduling notes) — truncate the whole thing rather than send an oversized query.
-            _nb_prompt = _nb_prompt[:_NOTEBOOKLM_MAX_CHARS]
         except Exception as _prompt_ex:
             print(f"[PlanGen] Prompt building failed: {_prompt_ex}. Using rule-based fallback.")
 
-        _nb_query = _nb_prompt
-
-        async def _try_notebooklm() -> list[dict[str, Any]] | None:
-            if not (_nb_query and notebook_id and auth_json):
-                return None
-            try:
-                from services.notebooklm_service import NotebookLmService
-
-                _logger.info(
-                    "notebooklm prompt sent",
-                    extra={
-                        "fields": {
-                            "service": "plan_generator",
-                            "engine": "notebooklm",
-                            "event": "prompt_sent",
-                            "chars_sent": len(_nb_query),
-                            "gemini_prompt_chars": len(_ai_prompt),
-                        }
-                    },
-                )
-                response_text = await NotebookLmService.query_notebook(
-                    notebook_id=notebook_id, auth_json=auth_json, query=_nb_query, service="plan_generator"
-                )
-                _logger.info(
-                    "notebooklm response received",
-                    extra={
-                        "fields": {
-                            "service": "plan_generator",
-                            "engine": "notebooklm",
-                            "event": "response_received",
-                            "chars_received": len(response_text),
-                        }
-                    },
-                )
-                clean_text = _extract_json_array(response_text)
-                try:
-                    ai_workouts = _json.loads(clean_text)
-                except _json.JSONDecodeError as json_err:
-                    _logger.warning(
-                        "notebooklm response failed JSON parsing",
-                        extra={
-                            "fields": {
-                                "service": "plan_generator",
-                                "engine": "notebooklm",
-                                "event": "parse_error",
-                                "error": str(json_err),
-                            }
-                        },
-                    )
-                    ai_workouts = None
-                if isinstance(ai_workouts, list) and len(ai_workouts) > 0:
-                    cleaned_wos = [wo for wo in ai_workouts if isinstance(wo, dict)]
-                    _logger.info(
-                        "notebooklm workouts parsed",
-                        extra={
-                            "fields": {
-                                "service": "plan_generator",
-                                "engine": "notebooklm",
-                                "event": "parsed",
-                                "workout_count": len(cleaned_wos),
-                            }
-                        },
-                    )
-                    from telemetry import rag_attempts_total
-
-                    _processed = post_process_workouts(cleaned_wos)
-                    # "used" fires only when this engine's output is what the plan
-                    # actually returns — unlike "success", which fires at the API
-                    # level before parse validation.
-                    rag_attempts_total.labels(service="plan_generator", engine="notebooklm", status="used").inc()
-                    return _processed
-                else:
-                    _logger.warning(
-                        "notebooklm returned empty or invalid list, trying gemini fallback",
-                        extra={
-                            "fields": {
-                                "service": "plan_generator",
-                                "engine": "notebooklm",
-                                "event": "empty_result",
-                            }
-                        },
-                    )
-                    return None
-            except Exception as ex:
-                err_str = str(ex)
-                if "No parseable chunks" in err_str or "empty" in err_str.lower():
-                    _logger.warning(
-                        "notebooklm empty streaming response, falling back to gemini",
-                        extra={
-                            "fields": {
-                                "service": "plan_generator",
-                                "engine": "notebooklm",
-                                "event": "empty_stream",
-                                "error": err_str,
-                            }
-                        },
-                    )
-                else:
-                    _logger.error(
-                        "notebooklm request failed, trying gemini fallback",
-                        extra={
-                            "fields": {
-                                "service": "plan_generator",
-                                "engine": "notebooklm",
-                                "event": "error",
-                                "error": err_str,
-                            }
-                        },
-                        exc_info=True,
-                    )
-                return None
-
-        async def _try_gemini() -> list[dict[str, Any]] | None:
+        async def _try_gemini(reduced: bool = False) -> list[dict[str, Any]] | None:
+            """One Gemini attempt. `reduced=True` is the retry tier: it drops the KB
+            grounding context and asks for shorter descriptions, because the failure it
+            exists to recover from — a truncated or unparseable response — is driven by
+            output length. Telemetry labels it as a separate engine so the retry's own
+            hit rate is visible rather than folded into the first attempt's."""
             if not (_ai_prompt and api_key):
                 return None
             import asyncio
 
+            _engine = "gemini_retry" if reduced else "gemini"
+
             _kb_context = ""
             # Ground the plan in distilled Uphill Athlete philosophy. Retrieval failure
             # is non-fatal — the prompt already carries the core rules inline.
-            try:
-                from services.kb_context import render_principles_context
-                from services.kb_retrieval import search_scheduler_chunks
+            if not reduced:
+                try:
+                    from services.kb_context import render_principles_context
+                    from services.kb_retrieval import search_scheduler_chunks
 
-                _retrieval_query = (
-                    f"{race_info.get('terrain', 'trail')} race training plan: periodization "
-                    f"phases, muscular endurance circuit design, taper and race week, long run "
-                    f"and Zone 2 volume, double sessions"
-                )
-                _hits = await asyncio.to_thread(search_scheduler_chunks, _retrieval_query, api_key, 6)
-                _kb_context = render_principles_context(_hits, heading="UPHILL ATHLETE PHILOSOPHY (grounding context)")
-                print(f"[PlanGen][KB] Retrieved {len(_hits)} philosophy chunks")
-            except Exception as _kb_ex:
-                print(f"[PlanGen][KB] Retrieval failed (continuing without): {_kb_ex}")
+                    _retrieval_query = (
+                        f"{race_info.get('terrain', 'trail')} race training plan: periodization "
+                        f"phases, muscular endurance circuit design, taper and race week, long run "
+                        f"and Zone 2 volume, double sessions"
+                    )
+                    _hits = await asyncio.to_thread(search_scheduler_chunks, _retrieval_query, api_key, 6)
+                    _kb_context = render_principles_context(
+                        _hits, heading="UPHILL ATHLETE PHILOSOPHY (grounding context)"
+                    )
+                    print(f"[PlanGen][KB] Retrieved {len(_hits)} philosophy chunks")
+                except Exception as _kb_ex:
+                    print(f"[PlanGen][KB] Retrieval failed (continuing without): {_kb_ex}")
             _gemini_prompt = _ai_prompt + ("\n\n" + _kb_context if _kb_context else "")
+            if reduced:
+                _gemini_prompt = (
+                    "RETRY: the previous attempt did not return usable JSON. Return ONLY the JSON "
+                    "array — no prose, no markdown fences — and keep each `description` under 600 "
+                    "characters so the response completes. Every other rule below still applies.\n\n"
+                ) + _gemini_prompt
             try:
                 import time
 
@@ -1461,14 +1266,14 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                     extra={
                         "fields": {
                             "service": "plan_generator",
-                            "engine": "gemini",
+                            "engine": _engine,
                             "event": "prompt_sent",
                             "chars_sent": len(_gemini_prompt),
                         }
                     },
                 )
 
-                rag_attempts_total.labels(service="plan_generator", engine="gemini", status="attempt").inc()
+                rag_attempts_total.labels(service="plan_generator", engine=_engine, status="attempt").inc()
                 _start = time.time()
                 try:
                     _response = await asyncio.to_thread(
@@ -1482,14 +1287,14 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                         else None,
                     )
                     _latency = time.time() - _start
-                    rag_latency_seconds.labels(service="plan_generator", engine="gemini").observe(_latency)
-                    rag_attempts_total.labels(service="plan_generator", engine="gemini", status="success").inc()
+                    rag_latency_seconds.labels(service="plan_generator", engine=_engine).observe(_latency)
+                    rag_attempts_total.labels(service="plan_generator", engine=_engine, status="success").inc()
                     _logger.info(
                         "gemini response received",
                         extra={
                             "fields": {
                                 "service": "plan_generator",
-                                "engine": "gemini",
+                                "engine": _engine,
                                 "event": "response_received",
                                 "chars_received": len(_response.text),
                                 "latency_ms": round(_latency * 1000),
@@ -1497,13 +1302,13 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                         },
                     )
                 except Exception as _gemini_ex:
-                    rag_attempts_total.labels(service="plan_generator", engine="gemini", status="error").inc()
+                    rag_attempts_total.labels(service="plan_generator", engine=_engine, status="error").inc()
                     _logger.error(
                         "gemini request failed",
                         extra={
                             "fields": {
                                 "service": "plan_generator",
-                                "engine": "gemini",
+                                "engine": _engine,
                                 "event": "error",
                                 "error": str(_gemini_ex),
                             }
@@ -1520,7 +1325,7 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                         extra={
                             "fields": {
                                 "service": "plan_generator",
-                                "engine": "gemini",
+                                "engine": _engine,
                                 "event": "parse_error",
                                 "error": str(json_err),
                             }
@@ -1534,14 +1339,14 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                         extra={
                             "fields": {
                                 "service": "plan_generator",
-                                "engine": "gemini",
+                                "engine": _engine,
                                 "event": "parsed",
                                 "workout_count": len(cleaned_wos),
                             }
                         },
                     )
                     _processed = post_process_workouts(cleaned_wos)
-                    rag_attempts_total.labels(service="plan_generator", engine="gemini", status="used").inc()
+                    rag_attempts_total.labels(service="plan_generator", engine=_engine, status="used").inc()
                     return _processed
                 else:
                     _logger.warning(
@@ -1549,7 +1354,7 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                         extra={
                             "fields": {
                                 "service": "plan_generator",
-                                "engine": "gemini",
+                                "engine": _engine,
                                 "event": "empty_result",
                             }
                         },
@@ -1561,7 +1366,7 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                     extra={
                         "fields": {
                             "service": "plan_generator",
-                            "engine": "gemini",
+                            "engine": _engine,
                             "event": "fallback",
                             "error": str(ex),
                         }
@@ -1570,11 +1375,11 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                 )
                 return None
 
-        _engine_order = (
-            [_try_gemini, _try_notebooklm] if settings.RAG_ENGINE == "gemini" else [_try_notebooklm, _try_gemini]
-        )
-        for _attempt in _engine_order:
-            _result = await _attempt()
+        # Gemini is the only engine. One reduced-prompt retry covers the common transient
+        # failure (a truncated or unparseable response) before falling through to the
+        # deterministic rule-based schedule below.
+        for _reduced in (False, True):
+            _result = await _try_gemini(reduced=_reduced)
             if _result:
                 return _result
 

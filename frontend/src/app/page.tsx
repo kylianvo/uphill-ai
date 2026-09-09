@@ -910,17 +910,8 @@ export default function Home() {
         if (statusRes.ok) {
           const s = await statusRes.json();
           setExtractStatus(s);
-          if ((s.card_count || 0) === 0 && s.status !== "extracting") {
-            // Auto-trigger background extraction
-            await fetch(`${API_BASE_URL}/api/knowledge/trigger`, {
-              method: "POST",
-              headers,
-            });
-            setExtractStatus((prev: any) => ({
-              ...prev,
-              status: "extracting",
-            }));
-          }
+          // Cards are populated by the admin-run podcast discovery job, not by an
+          // auto-trigger from the client -- there is no on-demand extraction endpoint.
           if (s.status === "extracting" && !knowledgePollerRef.current) {
             knowledgePollerRef.current = setInterval(checkStatus, 4000);
           }
@@ -1007,8 +998,6 @@ export default function Home() {
     aet_hr?: number;
     ant_hr?: number;
     gemini_api_key?: string;
-    notebooklm_notebook_id?: string;
-    notebooklm_auth_json?: string;
     zone2_pace_min?: string;
     zone2_pace_max?: string;
     provider?: string;
