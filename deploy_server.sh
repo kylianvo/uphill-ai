@@ -76,7 +76,11 @@ ssh $SERVER "mkdir -p $TARGET_DIR/qdrant_storage"
 ssh $SERVER "mkdir -p $TARGET_DIR/airflow && [ -f $TARGET_DIR/airflow/.env ] || touch $TARGET_DIR/airflow/.env"
 
 # 2. Sync backend files
-rsync -avz --exclude '.venv' --exclude '__pycache__' --exclude '*.pyc' \
+# --exclude 'qdrant_storage': this is the live bind-mount target for the qdrant
+# container (docker-compose.yml maps ./backend/qdrant_storage:/qdrant/storage),
+# not a build artifact -- syncing a developer's local qdrant_storage here would
+# splice their local vector segments into the server's live collection directory.
+rsync -avz --exclude '.venv' --exclude '__pycache__' --exclude '*.pyc' --exclude 'qdrant_storage' \
     ./backend/ $SERVER:$TARGET_DIR/backend/
 
 # Sync docker-compose.yml and grafana configs
