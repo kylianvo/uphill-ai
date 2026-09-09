@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from log_utils import get_logger
-from services.training_rules import TrainingRules
+from services.training_rules import TrainingRules, default_zone2_pace, resolve_zone2_pace
 
 _logger = get_logger(__name__)
 
@@ -143,8 +143,13 @@ class PlanGenerator:
         if threshold_pace:
             return PlanGenerator.calculate_pace_zones_from_threshold(threshold_pace, model=model)
 
-        z2_min = PlanGenerator.parse_pace_to_decimal(zone2_min_str or "6:30")
-        z2_max = PlanGenerator.parse_pace_to_decimal(zone2_max_str or "5:45")
+        # Last-resort guard only: every caller resolves the athlete's zones through
+        # training_rules.resolve_zone2_pace first, which is where the tier default is
+        # applied. This branch means a caller passed nothing at all -- fall back to the
+        # general tier rather than crash, but it should not normally be reachable.
+        _fallback_min, _fallback_max = default_zone2_pace()
+        z2_min = PlanGenerator.parse_pace_to_decimal(zone2_min_str or _fallback_min)
+        z2_max = PlanGenerator.parse_pace_to_decimal(zone2_max_str or _fallback_max)
 
         reference_gap = 1.15
         if aet_hr and ant_hr and aet_hr > 0:
@@ -439,8 +444,9 @@ class PlanGenerator:
         ant_hr = int(user_profile.get("ant_hr", resting_hr + int((max_hr - resting_hr) * 0.85)))
         hr_zones = TrainingRules.calculate_heart_rate_zones(max_hr, resting_hr, aet_hr, ant_hr)
 
-        z2_min = user_profile.get("zone2_pace_min") or "6:30"
-        z2_max = user_profile.get("zone2_pace_max") or "5:45"
+        z2_min, z2_max = resolve_zone2_pace(
+            user_profile.get("zone2_pace_min"), user_profile.get("zone2_pace_max"), user_profile.get("goal_type")
+        )
         est_zones = PlanGenerator.estimate_pace_zones(z2_min, z2_max, aet_hr, ant_hr)
 
         is_rest_or_strength = workout_type in ("Rest", "Strength", "Muscular Endurance")
@@ -659,8 +665,13 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
             goal_race_pace_str = None  # fall back to Zone 4 (race effort)
 
         # Extract Zone 2 bounds and calculate personalized pacing zone ranges
-        z2_min = user_profile.get("zone2_pace_min") or "6:30"
-        z2_max = user_profile.get("zone2_pace_max") or "5:45"
+        # goal_type comes from the PLAN, not the user: the same athlete can hold a
+        # start-running plan and a race plan, and the tier default must follow the plan.
+        z2_min, z2_max = resolve_zone2_pace(
+            user_profile.get("zone2_pace_min"),
+            user_profile.get("zone2_pace_max"),
+            race_info.get("goal_type") or user_profile.get("goal_type"),
+        )
         est_zones = PlanGenerator.estimate_pace_zones(z2_min, z2_max, aet_hr, ant_hr)
 
         p_z1 = est_zones["zone1_pace"]  # Range representation for prompt, e.g. "6:53 - 6:04"
@@ -1128,28 +1139,6 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                 "   - `target_hr_range` (string: heart rate bounds based on athlete's thresholds, e.g. '125-140 bpm')\n"
                 "   - `target_pace` (string: recommended target pace, matching or referencing their custom pace zones, e.g. '6:00 /km')\n"
                 "   - `distance_km` (number: estimated distance in kilometers. Calculate this as duration_minutes / (target_pace in decimal minutes), e.g. 60 mins at 6:00/km is 10.0 km)\n"
-                "   - `interval_reps`, `interval_rep_value`, `interval_rep_unit` (ONLY for `type` "
-                "'Interval' AND ONLY when the session is a single clean rep block — e.g. 8 reps of "
-                "12-second hill sprints, or 5 reps of 400m repeats. `interval_reps` is the integer rep "
-                "count, `interval_rep_value` is the number per rep, `interval_rep_unit` is one of "
-                "'s'/'m'/'min'/'km' matching how that rep is measured. OMIT all three (do not guess) "
-                "when the session has a warm-up/main/cool-down structure that doesn't reduce to one rep "
-                "block, a pyramid, or mixed rep durations — the `description` Process section still "
-                "carries the full detail for those.)\n"
-                "   - `elevation_gain_m` and `grade_percent` (numbers, ONLY for `type` Easy/Tempo/Interval/Long Run "
-                "AND only when the athlete's terrain is trail/mountain — omit or use 0 otherwise): give this "
-                "specific run a plausible amount of climbing, using the race's overall course_elevation_gain_m/"
-                "course_distance_km (given below in the athlete/race profile) as context for what's typical, and "
-                "this run's own distance/phase/role to vary it — a Base-phase Easy run climbs less than a "
-                "Peak-phase Long Run. `grade_percent` should be consistent with `elevation_gain_m` and this run's "
-                "own `distance_km` (grade ≈ elevation_gain_m / (distance_km × 10)), not just the race's average. "
-                "NEVER invent a figure wildly inconsistent with the race's overall elevation profile.\n"
-                "   - `description` (string: highly detailed description containing specific sections, "
-                "each introduced by its keyword — Process, Overall, Reason, Benefit, Warning — appearing "
-                "in that order and each appearing EXACTLY ONCE: "
-                "Process (step-by-step execution using → to separate segments — EVERY exercise or effort "
-                "chunk MUST be its own → segment; NEVER chain multiple exercises together with semicolons "
-                "or commas inside a single segment, and NEVER wrap them in a label like 'Main Circuit: ...'. "
                 "   - `interval_reps`, `interval_rep_value`, `interval_rep_unit` (ONLY for `type` 'Interval' AND ONLY when the session is a single clean rep block — e.g. 8 reps of 12-second hill sprints, or 5 reps of 400m repeats. `interval_reps` is the integer rep count, `interval_rep_value` is the number per rep, `interval_rep_unit` is one of 's'/'m'/'min'/'km' matching how that rep is measured. OMIT all three (do not guess) when the session has a warm-up/main/cool-down structure that doesn't reduce to one rep block, a pyramid, or mixed rep durations — the `description` Process section still carries the full detail for those.)\n"
                 "   - `elevation_gain_m` and `grade_percent` (numbers, ONLY for `type` Easy/Tempo/Interval/Long Run AND only when the athlete's terrain is trail/mountain — omit or use 0 otherwise): give this specific run a plausible amount of climbing, using the race's overall course_elevation_gain_m/course_distance_km (given below in the athlete/race profile) as context for what's typical, and this run's own distance/phase/role to vary it — a Base-phase Easy run climbs less than a Peak-phase Long Run. `grade_percent` should be consistent with `elevation_gain_m` and this run's own `distance_km` (grade ≈ elevation_gain_m / (distance_km × 10)), not just the race's average. NEVER invent a figure wildly inconsistent with the race's overall elevation profile.\n"
                 "   - `description` (string: highly detailed description containing specific sections, each introduced by its keyword — Process, Overall, Reason, Benefit, Warning — appearing in that order and each appearing EXACTLY ONCE: "

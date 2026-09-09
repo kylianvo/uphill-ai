@@ -1416,7 +1416,8 @@ def update_user_profile(user_id: int, profile_data: dict[str, Any]) -> bool:
                 age = :age, max_hr = :max_hr,
                 resting_hr = :rhr, aet_hr = :aet, ant_hr = :ant,
                 gemini_api_key = :gak,
-                zone2_pace_min = :z2min, zone2_pace_max = :z2max,
+                zone2_pace_min = COALESCE(:z2min, zone2_pace_min),
+                zone2_pace_max = COALESCE(:z2max, zone2_pace_max),
                 gender = :gender, height_cm = :height_cm, weight_kg = :weight_kg,
                 threshold_pace = COALESCE(:threshold_pace, threshold_pace),
                 coros_vo2max = COALESCE(:vo2max, coros_vo2max),
@@ -1433,8 +1434,11 @@ def update_user_profile(user_id: int, profile_data: dict[str, Any]) -> bool:
                 "aet": int(profile_data.get("aet_hr", 135)),
                 "ant": int(profile_data.get("ant_hr", 165)),
                 "gak": profile_data.get("gemini_api_key"),
-                "z2min": profile_data.get("zone2_pace_min", "6:30"),
-                "z2max": profile_data.get("zone2_pace_max", "5:45"),
+                # No default here on purpose: None means "caller didn't say", and the
+                # COALESCE above then keeps whatever the athlete already had. Substituting
+                # a default at this layer is what silently reset beginners to 6:30-5:45.
+                "z2min": profile_data.get("zone2_pace_min"),
+                "z2max": profile_data.get("zone2_pace_max"),
                 "gender": profile_data.get("gender"),
                 "height_cm": profile_data.get("height_cm"),
                 "weight_kg": profile_data.get("weight_kg"),
@@ -1518,8 +1522,8 @@ def update_onboarding_profile(user_id: int, data: dict[str, Any]) -> bool:
                 resting_hr = :resting_hr,
                 aet_hr = :aet_hr,
                 ant_hr = :ant_hr,
-                zone2_pace_min = :zone2_pace_min,
-                zone2_pace_max = :zone2_pace_max
+                zone2_pace_min = COALESCE(:zone2_pace_min, zone2_pace_min),
+                zone2_pace_max = COALESCE(:zone2_pace_max, zone2_pace_max)
             WHERE id = :id
         """),
             {
@@ -1538,8 +1542,8 @@ def update_onboarding_profile(user_id: int, data: dict[str, Any]) -> bool:
                 "resting_hr": int(data.get("resting_hr", 60)),
                 "aet_hr": int(data.get("aet_hr", 135)),
                 "ant_hr": int(data.get("ant_hr", 165)),
-                "zone2_pace_min": data.get("zone2_pace_min", "6:30"),
-                "zone2_pace_max": data.get("zone2_pace_max", "5:45"),
+                "zone2_pace_min": data.get("zone2_pace_min"),
+                "zone2_pace_max": data.get("zone2_pace_max"),
                 "double_session_days": json.dumps(data.get("double_session_days", [])),
                 "id": user_id,
             },

@@ -1,5 +1,54 @@
 from typing import Any
 
+# ─── Zone 2 pace defaults ─────────────────────────────────────────────────────
+# Slower/faster bound in min/km. These apply ONLY when an athlete has no zones of
+# their own -- a stored value always wins, and the DB writers COALESCE so that an
+# update omitting these fields can never blank them (see db.update_user_profile).
+#
+# Before this existed the pair "6:30"/"5:45" was hardcoded at nine call sites, so a
+# beginner who lost her stored zones silently read as a trained runner: every derived
+# number -- target pace, distance_km, treadmill speed -- inherited the error. One map,
+# one resolver, so a tier can only be wrong in one place.
+#
+# Only two tiers are defined because only two are evidenced in this codebase. Adding
+# novice/advanced/elite needs real reference paces per tier, not interpolation between
+# these two -- see docs/prompt-audit-2026-09.md.
+ZONE2_PACE_DEFAULTS: dict[str, tuple[str, str]] = {
+    "beginner": ("8:30", "7:30"),
+    "general": ("6:30", "5:45"),
+}
+DEFAULT_PACE_TIER = "general"
+
+# Goals that imply an athlete who cannot yet sustain continuous running. "return" and
+# "recovery" are deliberately absent: a runner coming back from a break or a race is
+# detrained, not a beginner, and usually still has usable zones from before.
+BEGINNER_GOAL_TYPES = ("start_running",)
+
+
+def pace_tier_for_goal(goal_type: str | None) -> str:
+    """Which default pace tier a goal implies. Tier-aware by design: today it maps to
+    beginner/general, and is the seam a fuller tier model plugs into."""
+    return "beginner" if (goal_type or "").lower() in BEGINNER_GOAL_TYPES else DEFAULT_PACE_TIER
+
+
+def default_zone2_pace(tier: str | None = None) -> tuple[str, str]:
+    """(slower, faster) Zone 2 bounds in min/km for a tier. Unknown tiers fall back to
+    the general default rather than raising -- a plan with slightly wrong paces beats
+    no plan, and the caller has no better answer to substitute."""
+    return ZONE2_PACE_DEFAULTS.get((tier or DEFAULT_PACE_TIER).lower(), ZONE2_PACE_DEFAULTS[DEFAULT_PACE_TIER])
+
+
+def resolve_zone2_pace(
+    stored_min: str | None,
+    stored_max: str | None,
+    goal_type: str | None = None,
+) -> tuple[str, str]:
+    """The athlete's own zones when they have them, otherwise the tier default.
+    Each bound falls back independently, so a half-populated profile doesn't lose the
+    bound it does have."""
+    tier_min, tier_max = default_zone2_pace(pace_tier_for_goal(goal_type))
+    return (stored_min or tier_min, stored_max or tier_max)
+
 
 class TrainingRules:
     @staticmethod

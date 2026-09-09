@@ -142,24 +142,43 @@ const TYPE_MAP: Record<string, string> = {
   "race":               "race day",
 };
 
+// Mirrors NON_ESCALATING_TYPES in hooks/useWorkoutTypes.ts — kept in sync deliberately,
+// since this static library is the fallback that renders whenever the DB types haven't
+// loaded, and a guard that only covers one of the two paths isn't a guard.
+const NON_ESCALATING_TYPES = new Set([
+  "easy",
+  "recovery",
+  "active recovery",
+  "long run",
+  "walk/run",
+  "rest",
+]);
+
 export function getWorkoutInfo(title: string, type: string): WorkoutInfo | null {
   const titleLower = title.toLowerCase();
+  const typeLower = type.toLowerCase();
+  // A title describes structure, not intensity. When `type` already says the session
+  // isn't hard, the title must not be allowed to promote it to one — that is what
+  // rendered "Progressive Walk-Jog Intervals" (type Easy) as a red Zone 4-5 session.
+  const titleMayEscalate = !NON_ESCALATING_TYPES.has(typeLower);
 
   // 1. Title keyword scan first — catches compound sessions like "Aerobic Base + Hill Sprints"
   //    Skip short/generic keys (≤5 chars) to avoid "rest" matching "forest run" etc.
-  for (const [keyword, info] of LIBRARY) {
-    if (keyword.length > 5 && titleLower.includes(keyword)) return info;
+  if (titleMayEscalate) {
+    for (const [keyword, info] of LIBRARY) {
+      if (keyword.length > 5 && titleLower.includes(keyword)) return info;
+    }
   }
 
   // 2. Direct type→library mapping for single-type sessions
-  const mapped = TYPE_MAP[type.toLowerCase()];
+  const mapped = TYPE_MAP[typeLower];
   if (mapped) {
     const entry = LIBRARY.find(([k]) => k === mapped);
     if (entry) return entry[1];
   }
 
   // 3. Combined title+type keyword search as final fallback
-  const key = `${titleLower} ${type.toLowerCase()}`;
+  const key = titleMayEscalate ? `${titleLower} ${typeLower}` : typeLower;
   for (const [keyword, info] of LIBRARY) {
     if (key.includes(keyword)) return info;
   }

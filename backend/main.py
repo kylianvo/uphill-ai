@@ -87,7 +87,7 @@ from services.nutrition_planner import NutritionParams, nutrition_planner
 from services.pacing_calculator import PacingCalculator
 from services.plan_generator import PlanGenerator
 from services.rag_service import RagService
-from services.training_rules import TrainingRules
+from services.training_rules import TrainingRules, resolve_zone2_pace
 from services.weather_service import WeatherService
 
 _is_prod = os.getenv("ENVIRONMENT", "development") == "production"
@@ -403,7 +403,9 @@ def _resolve_zone_pace_and_hr(
     ant_hr = int(athlete.get("ant_hr", resting_hr + int((max_hr - resting_hr) * 0.85)))
     hr_zones = TrainingRules.calculate_heart_rate_zones(max_hr, resting_hr, aet_hr, ant_hr)
     est_zones = PlanGenerator.estimate_pace_zones(
-        athlete.get("zone2_pace_min") or "6:30", athlete.get("zone2_pace_max") or "5:45", aet_hr, ant_hr
+        *resolve_zone2_pace(athlete.get("zone2_pace_min"), athlete.get("zone2_pace_max"), athlete.get("goal_type")),
+        aet_hr,
+        ant_hr,
     )
     pace, _distance_km = PlanGenerator.pace_and_distance_for_zone(target_zone, duration_minutes or 30, est_zones)
     zone_key = target_zone if target_zone in hr_zones else "Zone 2"
@@ -464,6 +466,14 @@ class CoachNoteCreateRequest(BaseModel):
     note: str
 
 
+def _z2_min_for(user: dict[str, Any]) -> str:
+    return resolve_zone2_pace(user.get("zone2_pace_min"), user.get("zone2_pace_max"), user.get("goal_type"))[0]
+
+
+def _z2_max_for(user: dict[str, Any]) -> str:
+    return resolve_zone2_pace(user.get("zone2_pace_min"), user.get("zone2_pace_max"), user.get("goal_type"))[1]
+
+
 def format_user_response(user: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": user["id"],
@@ -489,8 +499,8 @@ def format_user_response(user: dict[str, Any]) -> dict[str, Any]:
         "long_run_day": user.get("long_run_day") or "",
         "injury_history": user.get("injury_history") or "",
         "gemini_api_key": user.get("gemini_api_key") or "",
-        "zone2_pace_min": user.get("zone2_pace_min") or "6:30",
-        "zone2_pace_max": user.get("zone2_pace_max") or "5:45",
+        "zone2_pace_min": _z2_min_for(user),
+        "zone2_pace_max": _z2_max_for(user),
         "threshold_pace": user.get("threshold_pace"),
         "coros_vo2max": user.get("coros_vo2max"),
         "coros_running_level": user.get("coros_running_level"),
@@ -784,15 +794,10 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
     ant_hr = request.ant_hr or round(max_hr * 0.89)
     resting_hr = request.resting_hr or 60
 
-    # Determine Zone 2 pace ranges with slow defaults for start_running
-    zone2_min = request.zone2_pace_min
-    zone2_max = request.zone2_pace_max
-    if request.goal_type == "start_running":
-        zone2_min = zone2_min if zone2_min and zone2_min != "6:30" else "8:30"
-        zone2_max = zone2_max if zone2_max and zone2_max != "5:45" else "7:30"
-    else:
-        zone2_min = zone2_min or "6:30"
-        zone2_max = zone2_max or "5:45"
+    # Zone 2 defaults come from the athlete's tier, not from a literal repeated per
+    # call site. The old form also treated an explicit "6:30" as "unset" and silently
+    # replaced it, so a beginner who genuinely measured 6:30 could not keep it.
+    zone2_min, zone2_max = resolve_zone2_pace(request.zone2_pace_min, request.zone2_pace_max, request.goal_type)
 
     onboarding_data = {
         "dob": request.dob,
@@ -1028,8 +1033,7 @@ def get_pace_zones(model: str | None = None, user: dict[str, Any] = Depends(get_
             zones = PlanGenerator.calculate_pace_zones_from_threshold(threshold_pace, model="4_zone")
         else:
             zones = PlanGenerator.estimate_pace_zones(
-                user.get("zone2_pace_min") or "6:30",
-                user.get("zone2_pace_max") or "5:45",
+                *resolve_zone2_pace(user.get("zone2_pace_min"), user.get("zone2_pace_max"), user.get("goal_type")),
                 user.get("aet_hr"),
                 user.get("ant_hr"),
                 model="4_zone",
@@ -1056,8 +1060,7 @@ def get_pace_zones(model: str | None = None, user: dict[str, Any] = Depends(get_
 
     # Default: 5-zone
     zones = PlanGenerator.estimate_pace_zones(
-        user.get("zone2_pace_min") or "6:30",
-        user.get("zone2_pace_max") or "5:45",
+        *resolve_zone2_pace(user.get("zone2_pace_min"), user.get("zone2_pace_max"), user.get("goal_type")),
         user.get("aet_hr"),
         user.get("ant_hr"),
         threshold_pace=threshold_pace,
@@ -2484,52 +2487,107 @@ async def _adapt_week_for_athlete(request: AdaptWeekRequest, athlete_id: int, jo
                 f"    - {cw.get('day_of_week')}: {cw.get('title')} ({cw.get('duration_minutes', 0):.0f}min, {cw.get('distance_km', 0):.1f}km)"
             )
 
-    # Add planned volume for target week with strict floor AND progression ceiling
+    # Volume bounds for the target week.
+    #
+    # Two deliberate choices here, both fixing production bugs:
+    #
+    # 1. BOUNDS ARE IN MINUTES, not km. post_process_workouts discards whatever
+    #    distance the model returns and recomputes distance_km = duration / zone2_pace,
+    #    so distance is a pure function of duration. A km bound was therefore a
+    #    disguised minutes bound, converted at a pace the athlete may not run -- for a
+    #    walk-run beginner whose real pace is far slower than her Zone 2 setting, the
+    #    conversion inflated every figure. Minutes are what the athlete actually
+    #    controls and what the model actually sets.
+    #
+    # 2. THE ANCHOR IS PLANNED VOLUME, not completed volume. Anchoring on completed
+    #    volume meant that adapting a week *because you were busy* -- the single most
+    #    common reason to adapt -- shrank the next week in proportion to what you
+    #    missed, while the prompt still described it as a 2-8% increase. Under-
+    #    completion is now reported as its own adherence signal with its own
+    #    instruction, so the model can coach the missed week instead of silently
+    #    rebaselining onto it.
     target_wos = [w for w in all_workouts if w.get("week_number") == request.week_number and w.get("type") != "Rest"]
     if target_wos:
         completed_target = [w for w in target_wos if w.get("is_completed") == 1]
-        completed_km = sum(w.get("distance_km") or 0 for w in completed_target)
+        completed_min = sum(w.get("duration_minutes") or 0 for w in completed_target)
         uncompleted_count = max(1, len(target_wos) - len(completed_target))
 
-        target_planned_km = sum(w.get("distance_km") or 0 for w in target_wos)
-        user_weekly_km = float(fresh_user.get("current_weekly_km") or 0.0)
+        target_planned_min = sum(w.get("duration_minutes") or 0 for w in target_wos)
+        # current_weekly_km -> minutes needs a pace; 6 min/km is the same rough
+        # conversion the rule-based fallback uses for its own volume estimate.
+        user_weekly_min = float(fresh_user.get("current_weekly_km") or 0.0) * 6.0
 
-        # Reference prior volume to enforce the 5-10% weekly progression cap rule
-        prior_ref_km = (
-            actual_km
-            if (prev_wos and actual_km > 0)
-            else (
-                planned_km
-                if (prev_wos and planned_km > 0)
-                else (user_weekly_km if user_weekly_km > 0 else (target_planned_km if target_planned_km > 0 else 30.0))
-            )
+        prior_planned_min = planned_min if prev_wos else 0.0
+        prior_ref_min = (
+            prior_planned_min
+            or (target_planned_min if target_planned_min > 0 else 0.0)
+            or (user_weekly_min if user_weekly_min > 0 else 180.0)
         )
 
-        fatigue_normalized = (fatigue_level or "moderate").lower().replace(" ", "_")
-        if fatigue_normalized in ("very_light", "light", "easy"):
-            target_floor_km = prior_ref_km * 1.02
-            target_ceil_km = prior_ref_km * 1.08
-        elif fatigue_normalized in ("moderate", "medium"):
-            target_floor_km = prior_ref_km * 0.98
-            target_ceil_km = prior_ref_km * 1.05
-        elif fatigue_normalized in ("hard", "heavy"):
-            target_floor_km = prior_ref_km * 0.85
-            target_ceil_km = prior_ref_km * 0.90
-        else:  # max_effort, exhausted
-            target_floor_km = prior_ref_km * 0.70
-            target_ceil_km = prior_ref_km * 0.80
+        # Adherence is a coaching input, never a smaller baseline.
+        adherence_note = ""
+        if prev_wos and prior_planned_min > 0:
+            adherence = (actual_min or 0.0) / prior_planned_min
+            if adherence < 0.8:
+                adherence_note = (
+                    f"  Prior-Week Adherence: the athlete completed {adherence * 100:.0f}% of Week {prev_wk}'s "
+                    f"planned time ({actual_min:.0f} of {prior_planned_min:.0f} min).\n"
+                    f"  IMPORTANT: do NOT progress volume on top of a week that was not completed, and do NOT "
+                    f"shrink the plan as a punishment either. HOLD this week at roughly the same planned volume "
+                    f"as Week {prev_wk} so the athlete gets a second chance at the same stimulus. Say so plainly "
+                    f"in the workout descriptions -- name it as a repeat, not a setback.\n"
+                )
+                # Repeat the week rather than progress off an incomplete one.
+                floor_mult, ceil_mult = 0.95, 1.02
+            else:
+                floor_mult, ceil_mult = None, None
+        else:
+            floor_mult, ceil_mult = None, None
 
-        rem_floor_km = max(0.0, target_floor_km - completed_km)
-        rem_ceil_km = max(rem_floor_km + 2.0, target_ceil_km - completed_km)
+        if floor_mult is None:
+            fatigue_normalized = (fatigue_level or "moderate").lower().replace(" ", "_")
+            if fatigue_normalized in ("very_light", "light", "easy"):
+                floor_mult, ceil_mult = 1.02, 1.08
+            elif fatigue_normalized in ("moderate", "medium"):
+                floor_mult, ceil_mult = 0.98, 1.05
+            elif fatigue_normalized in ("hard", "heavy"):
+                floor_mult, ceil_mult = 0.85, 0.90
+            else:  # max_effort, exhausted
+                floor_mult, ceil_mult = 0.70, 0.80
+
+        target_floor_min = prior_ref_min * floor_mult
+        target_ceil_min = prior_ref_min * ceil_mult
+
+        rem_floor_min = max(0.0, target_floor_min - completed_min)
+        rem_ceil_min = max(rem_floor_min + 15.0, target_ceil_min - completed_min)
+
+        # Precedence. Without this the 5-tier RPE table above ("Very Light ... increase
+        # stimulus") sat as prose above a "MUST ... DO NOT exceed" numeric ceiling with
+        # nothing saying which wins, so the number always won and an athlete asking for
+        # more work while reporting very light effort got less. The request does not
+        # remove the cap -- it decides where inside the band the week lands.
+        precedence_note = (
+            "  Bound Precedence: these bounds are a safety cap, not a target. When the athlete reports "
+            "LIGHT or VERY LIGHT effort AND asks for more work, place the week at the TOP of the range "
+            "(and prefer adding time to easy/base runs rather than adding intensity). When they report "
+            "HARD or MAX EFFORT, place it at the BOTTOM. Never return a week below the floor because a "
+            "previous week was missed -- see the adherence note above if present.\n"
+        )
 
         volume_guidance = (
-            f"  Week {request.week_number} Volume Bounds (Strict 5-10% weekly progression rule):\n"
-            f"    - Target Full Week Total: {target_floor_km:.1f}km - {target_ceil_km:.1f}km\n"
-            f"    - Completed So Far: {completed_km:.1f}km ({len(completed_target)} sessions)\n"
-            f"    - Remaining {uncompleted_count} Sessions Target: MUST total between {rem_floor_km:.1f}km and {rem_ceil_km:.1f}km. "
-            f"DO NOT exceed {rem_ceil_km:.1f}km across the remaining sessions.\n"
-            f"  Weekday Session Durations: Standard weekday runs (Mon-Fri) should typically be 45-75 minutes (average ~60 minutes). "
-            f"Do NOT schedule 90-120+ min long runs on weekdays."
+            f"  Week {request.week_number} Volume Bounds (in MINUTES of training time -- "
+            f"distance is derived from duration, so time is the quantity to set):\n"
+            f"    - Reference: Week {prev_wk} planned {prior_ref_min:.0f} min\n"
+            f"    - Target Full Week Total: {target_floor_min:.0f}-{target_ceil_min:.0f} min\n"
+            f"    - Completed So Far: {completed_min:.0f} min ({len(completed_target)} sessions)\n"
+            f"    - Remaining {uncompleted_count} Sessions: total between {rem_floor_min:.0f} and "
+            f"{rem_ceil_min:.0f} min.\n"
+            f"{adherence_note}"
+            f"{precedence_note}"
+            f"  Weekday Session Durations: standard weekday runs (Mon-Fri) are typically 45-75 minutes, "
+            f"but NEVER stretch a session beyond what this athlete's current ability supports -- a "
+            f"beginner's weekday run may be 20-30 minutes and that is correct. Do NOT schedule "
+            f"90-120+ min long runs on weekdays."
         )
         context_lines.append(volume_guidance)
 
