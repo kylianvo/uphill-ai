@@ -54,7 +54,6 @@ from db import (
     get_user_by_email,
     get_user_by_id,
     get_workout_by_id,
-    get_workout_type_count,
     get_workout_types,
     has_active_coach_link,
     init_db,
@@ -141,16 +140,6 @@ extraction_status: dict[str, Any] = {
     "progress": 0,
     "total": 8,
     "card_count": 0,
-    "last_extracted": None,
-    "message": None,
-}
-
-workout_type_extraction_status: dict[str, Any] = {
-    "status": "idle",
-    "current_type": None,
-    "progress": 0,
-    "total": 12,
-    "type_count": 0,
     "last_extracted": None,
     "message": None,
 }
@@ -1416,7 +1405,7 @@ async def coach_chat_copilot(
     model_api_key = fresh_coach.get("gemini_api_key") or settings.GEMINI_API_KEY
 
     kb_context = ""
-    if model_api_key and settings.RAG_ENGINE == "gemini":
+    if model_api_key:
         try:
             import asyncio
 
@@ -2022,9 +2011,9 @@ async def _generate_next_block_for_athlete(
     block_context = None
     context_lines: list[str] = []
 
-    # Newest block first: it carries per-session detail, and the NotebookLM
-    # fallback truncates the tail of the feedback blob — older summaries are
-    # the right thing to lose, not last block's session-by-session feedback.
+    # Newest block first: it carries per-session detail, and this blob is the
+    # unbounded tail of the prompt — older summaries are the right thing to lose
+    # if anything is, not last block's session-by-session feedback.
     for blk in range(request.block_number - 1, 0, -1):
         wk_start = (blk - 1) * 2 + 1
         wk_end = blk * 2
@@ -2227,12 +2216,9 @@ async def _generate_next_block_for_athlete(
     }
 
     model_api_key = fresh_user.get("gemini_api_key") or settings.GEMINI_API_KEY
-    _nb_id = settings.NOTEBOOKLM_NOTEBOOK_ID
-    _nb_auth = settings.NOTEBOOKLM_AUTH_JSON
     print(
         f"[NextBlock] plan_id={request.plan_id} block={request.block_number} "
-        f"notebook_configured={'yes' if (_nb_id and _nb_auth) else 'NO — will use Gemini/rule-based'} "
-        f"gemini_key={'yes' if model_api_key else 'NO'} "
+        f"gemini_key={'yes' if model_api_key else 'NO — will use rule-based'} "
         f"plan_start_date={race_info.get('plan_start_date')} "
         f"block_context_lines={len(block_context.splitlines()) if block_context else 0}"
     )
@@ -2932,7 +2918,7 @@ def get_nutrition_catalog():
 @app.post("/api/coach/chat")
 async def coach_chat(request: ChatRequest):
     """
-    Query Gemini model grounded with custom SQLite or NotebookLM documents.
+    Query Gemini model grounded with the distilled knowledge base.
     Dynamic contextual references are injected in the prompt envelope.
     """
     if not request.messages:
@@ -3093,48 +3079,6 @@ def get_extraction_status(user: dict[str, Any] = Depends(get_current_user)):
     return status
 
 
-@app.post("/api/knowledge/trigger")
-async def trigger_knowledge_extraction(user: dict[str, Any] = Depends(get_current_user)):
-    """
-    Auto-triggered by the frontend when the Knowledge Hub tab opens and no cards exist.
-    Only fires if NotebookLM is configured and not already extracting.
-    """
-    import asyncio
-
-    from services.knowledge_extractor import extract_knowledge_cards
-
-    if extraction_status["status"] == "extracting":
-        return {"status": "already_extracting", "card_count": get_knowledge_card_count()}
-
-    card_count = get_knowledge_card_count()
-    if card_count > 0:
-        return {"status": "already_done", "card_count": card_count}
-
-    # Use system-level NotebookLM config
-    notebook_id = settings.NOTEBOOKLM_NOTEBOOK_ID
-    auth_json = settings.NOTEBOOKLM_AUTH_JSON
-
-    if not notebook_id or not auth_json:
-        return {"status": "no_notebooklm", "card_count": 0}
-
-    fresh_user = get_user_by_id(user["id"]) or user
-    api_key = fresh_user.get("gemini_api_key") or settings.GEMINI_API_KEY
-    if not api_key:
-        return {"status": "no_api_key", "card_count": 0}
-
-    # Fire and forget — runs fully in background
-    async def run_extraction():
-        try:
-            await extract_knowledge_cards(notebook_id, auth_json, api_key, extraction_status)
-        except Exception as e:
-            extraction_status.update({"status": "error", "message": str(e)})
-            print(f"[Knowledge] Extraction failed: {e}")
-
-    asyncio.create_task(run_extraction())
-    extraction_status.update({"status": "extracting", "progress": 0, "current_topic": "Starting…"})
-    return {"status": "started"}
-
-
 podcast_discovery_status: dict[str, Any] = {"status": "idle"}
 podcast_discovery_task = None
 
@@ -3142,9 +3086,8 @@ podcast_discovery_task = None
 @app.post("/api/knowledge/discover-podcast")
 async def trigger_podcast_discovery(user: dict[str, Any] = Depends(require_admin)):
     """Discover new Evoke Endurance podcast episodes and append their knowledge cards
-    (admin, background job). Distinct from /api/knowledge/trigger's NotebookLM sweep
-    (which does a full clear+rebuild on 8 fixed topics): this incrementally appends
-    cards from newly-found episodes, never touching the existing library."""
+    (admin, background job). Incrementally appends cards from newly-found episodes,
+    never touching the existing library."""
     import asyncio
 
     from services.knowledge_extractor import discover_podcast_knowledge_web, save_podcast_knowledge_cards
@@ -3180,7 +3123,7 @@ def get_podcast_discovery_status(user: dict[str, Any] = Depends(get_current_user
     return dict(podcast_discovery_status)
 
 
-# ─── KB Distillation (NotebookLM → kb_chunks) ────────────────────────────────
+# ─── KB Distillation (web discovery → kb_chunks) ─────────────────────────────
 
 kb_distill_status: dict[str, Any] = {"status": "idle"}
 # Strong reference to the running distillation task — the event loop keeps only
@@ -3191,16 +3134,19 @@ kb_distill_task = None
 
 @app.post("/api/kb/distill")
 async def trigger_kb_distill(domain: str = "all", user: dict[str, Any] = Depends(require_admin)):
-    """Re-distill the knowledge base from the NotebookLM notebooks (admin, background job).
-    Operator workflow: add sources to the notebook in NotebookLM, then call this."""
+    """Re-distill the gear/nutrition catalogs from live web discovery (admin, background job).
+    Only WEB_DOMAINS are reachable here: these sweeps are insert-only, so an unattended run
+    can add products but never remove them. The scheduler's curated training philosophy is
+    NOT swept here -- it replaces doctrine wholesale, so it is script-only
+    (backend/scripts/distill_principles.py)."""
     import asyncio
 
-    from services.kb_distiller import DOMAINS, distill_domain
+    from services.kb_distiller import WEB_DOMAINS, distill_domain
 
     global kb_distill_task
-    domains = list(DOMAINS) if domain == "all" else [domain]
-    if any(d not in DOMAINS for d in domains):
-        raise HTTPException(status_code=400, detail=f"domain must be one of {list(DOMAINS)} or 'all'")
+    domains = list(WEB_DOMAINS) if domain == "all" else [domain]
+    if any(d not in WEB_DOMAINS for d in domains):
+        raise HTTPException(status_code=400, detail=f"domain must be one of {list(WEB_DOMAINS)} or 'all'")
     if kb_distill_task is not None and not kb_distill_task.done():
         return {"status": "already_distilling"}
 
@@ -3219,9 +3165,9 @@ async def trigger_kb_distill(domain: str = "all", user: dict[str, Any] = Depends
                 domain_status.update({"status": "error", "message": str(e)})
                 print(f"[KB] Distillation failed for '{d}': {e}")
 
-        # The three notebooks are independent, so domains distill concurrently —
-        # wall time is the slowest domain, not the sum. Each domain still paces
-        # its own NotebookLM queries internally (rate-limit courtesy).
+        # The domains are independent, so they distill concurrently — wall time is the
+        # slowest domain, not the sum. Each domain still paces its own search queries
+        # internally (rate-limit courtesy).
         await asyncio.gather(*(run_domain(d) for d in domains))
         failed = {d: s.get("message") for d, s in kb_distill_status["per_domain"].items() if s.get("status") == "error"}
         kb_distill_status.update({"status": "error" if failed else "done", "errors": failed or None})
@@ -3609,46 +3555,3 @@ def pace_strategy_benchmarks(name: str, distance_km: float | None = None):
 def list_workout_types(lang: str = "en"):
     """Return all workout type descriptions from the DB. No auth required."""
     return {"types": get_workout_types(lang=lang)}
-
-
-@app.get("/api/workouts/types/extract/status")
-def get_workout_type_extraction_status(user: dict[str, Any] = Depends(get_current_user)):
-    status = dict(workout_type_extraction_status)
-    status["type_count"] = get_workout_type_count()
-    return status
-
-
-@app.post("/api/workouts/types/extract")
-async def trigger_workout_type_extraction(user: dict[str, Any] = Depends(get_current_user)):
-    """
-    Extract workout type descriptions from NotebookLM and store in DB.
-    Can be re-triggered to refresh content. Runs in background.
-    """
-    import asyncio
-
-    from services.workout_type_extractor import extract_workout_types
-
-    if workout_type_extraction_status["status"] == "extracting":
-        return {"status": "already_extracting", "type_count": get_workout_type_count()}
-
-    notebook_id = settings.NOTEBOOKLM_NOTEBOOK_ID
-    auth_json = settings.NOTEBOOKLM_AUTH_JSON
-
-    if not notebook_id or not auth_json:
-        return {"status": "no_notebooklm", "type_count": 0}
-
-    fresh_user = get_user_by_id(user["id"]) or user
-    api_key = fresh_user.get("gemini_api_key") or settings.GEMINI_API_KEY
-    if not api_key:
-        return {"status": "no_api_key", "type_count": 0}
-
-    async def run():
-        try:
-            await extract_workout_types(notebook_id, auth_json, api_key, workout_type_extraction_status)
-        except Exception as e:
-            workout_type_extraction_status.update({"status": "error", "message": str(e)})
-            print(f"[WorkoutTypes] Extraction failed: {e}")
-
-    asyncio.create_task(run())
-    workout_type_extraction_status.update({"status": "extracting", "progress": 0, "current_type": "Starting…"})
-    return {"status": "started"}

@@ -83,11 +83,11 @@ into the server's Qdrant using the server `GEMINI_API_KEY`. Verify with:
 ssh root@45.119.215.120 "cd /opt/uphill-ai-backend && docker compose exec -T db psql -U uphill -d uphill_ai -c \"SELECT domain, count(*) FROM kb_chunks GROUP BY 1;\""
 ```
 
-`RAG_ENGINE=gemini` in the server `.env` selects the fast KB engine
-(NotebookLM stays as automatic fallback); without it the default is the
-legacy `notebooklm` engine. If the KB import is skipped while
-`RAG_ENGINE=gemini`, the app still works — the Gemini engine refuses on an
-empty KB and every request falls back to slow NotebookLM.
+Gemini grounded on `kb_chunks` is the only engine — there is no second one to
+fall back to, so the KB import is not optional. Skip it and the Gemini engine
+refuses on an empty KB rather than answering ungrounded: Gear and Nutrition
+return an empty result that explains itself, and plan generation drops to the
+rule-based schedule. Always confirm the kb_chunks counts above are non-zero.
 
 ## After deploying
 

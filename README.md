@@ -153,9 +153,7 @@ Uphill AI codifies the training methodologies of elite coaches and world-record 
 ### 7. Knowledge Hub & Multimodal RAG Ingestion
 *Continuously evolving coaching wisdom curated from primary sources.*
 
-- **Dual-Source Ingestion Engine**:
-  1. **NotebookLM Deep Sweeps**: Structured extraction across 8 core endurance topics.
-  2. **Autonomous Podcast Pipeline**: Crawls new *Evoke Endurance ("Evokecast")* episodes, downloads YouTube transcripts, and synthesizes bilingual knowledge cards.
+- **Autonomous Podcast Pipeline**: Crawls new *Evoke Endurance ("Evokecast")* episodes, downloads YouTube transcripts, and synthesizes bilingual knowledge cards.
 - **Curated Race Course Database**: Ingests route profiles, key climbs, terrain nuances, climate warnings, and DUV result statistics.
 
 ### 8. Data Platform, Warehousing & Analytics

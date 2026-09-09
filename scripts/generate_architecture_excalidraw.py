@@ -290,7 +290,7 @@ def create_excalidraw_diagram():
         "  A/B/C Goals, DUV Ultramarathon Rank Transfer\n"
         "• Gear Finder: 100% Full-Catalog Grounded Trail Shoes\n"
         "• Nutrition Lab: Dynamic 60-90g/h Carb & Sodium Plan\n"
-        "• Continuous KB Distillation: NotebookLM Sweeps +\n"
+        "• Continuous KB Distillation: Curated Principles +\n"
         "  Evoke Endurance Podcast YouTube Transcript Crawler"
     )
     add_text("card_tools_body", 920, 625, tools_detail_text, font_size=11, color="#2e1065")

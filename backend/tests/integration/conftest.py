@@ -100,8 +100,8 @@ def mock_gemini():
     """Patches the real, shared google.genai module object.
 
     Gemini is imported as `from google import genai` locally in multiple
-    files (main.py, services/plan_generator.py, services/knowledge_extractor.py,
-    services/workout_type_extractor.py). All of those bindings resolve to the
+    files (main.py, services/plan_generator.py, services/knowledge_extractor.py).
+    All of those bindings resolve to the
     same sys.modules entry, so patching the attribute on the real module is
     the one mock target that's reliable regardless of which file does the
     importing.
@@ -118,20 +118,6 @@ def mock_gemini():
 
 
 @pytest.fixture
-def mock_notebooklm():
-    """Forces PlanGenerator's NotebookLM call to fail, which sends it down
-    the Gemini fallback path deterministically (see
-    services/plan_generator.py's NotebookLM-then-Gemini flow)."""
-    from unittest.mock import patch
-
-    with patch(
-        "services.notebooklm_service.NotebookLmService.query_notebook",
-        side_effect=Exception("NotebookLM disabled in tests"),
-    ) as mock_query:
-        yield mock_query
-
-
-@pytest.fixture
 def mock_plan_generation():
     """Neutralizes PlanGenerator.generate_plan_workouts for the ENTIRE test,
     not just the initiating POST request.
@@ -144,8 +130,7 @@ def mock_plan_generation():
     yet. If a test only patches generate_plan_workouts inside a `with`
     block scoped to the POST call (and exits that block right after), the
     background task can end up executing AFTER the patch has already been
-    undone -- silently falling through to a real Gemini/NotebookLM network
-    call. Scoping the patch to this fixture's full lifetime (active for the
+    undone -- silently falling through to a real Gemini network call. Scoping the patch to this fixture's full lifetime (active for the
     whole test function, including any later polling calls) avoids that.
     """
     from unittest.mock import AsyncMock, patch

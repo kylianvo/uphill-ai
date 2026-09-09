@@ -38,17 +38,17 @@ class Config:
         "http://localhost:3000,http://127.0.0.1:3000,http://localhost:18080,http://127.0.0.1:18080,capacitor://localhost,https://localhost",
     ).split(",")
 
-    # NotebookLM — system-level config (not per-user)
+    # NotebookLM — read ONLY by backend/scripts/distill_principles.py, the operator
+    # script that re-sweeps curated doctrine into kb_seed. No request path touches these:
+    # the app serves every AI feature from the distilled KB via Gemini. Unset in normal
+    # deployments; set them only when running that script.
     NOTEBOOKLM_NOTEBOOK_ID: str = os.getenv("NOTEBOOKLM_NOTEBOOK_ID", "")
-    NOTEBOOKLM_GEAR_ID: str = os.getenv("NOTEBOOKLM_GEAR_ID", "")
     NOTEBOOKLM_NUTRITION_ID: str = os.getenv("NOTEBOOKLM_NUTRITION_ID", "")
     NOTEBOOKLM_AUTH_JSON: str = os.getenv("NOTEBOOKLM_AUTH_JSON", "")
 
     # Tavily search API — used by gear's web-discovery sweep (RunRepeat/BelieveInTheRun)
     TAVILY_API_KEY: str = os.getenv("TAVILY_API_KEY", "")
 
-    # KB RAG engine — 'gemini' (default: distilled kb_chunks + Gemini) or 'notebooklm' (ad-hoc / distillation)
-    RAG_ENGINE: str = os.getenv("RAG_ENGINE", "gemini")
     QDRANT_URL: str = os.getenv(
         "QDRANT_URL", "http://qdrant:6333" if os.path.exists("/.dockerenv") else "http://localhost:6333"
     )

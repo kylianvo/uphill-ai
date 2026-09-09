@@ -2,7 +2,7 @@
 
 Every test in this file that calls _generate_plan must also depend on the
 mock_plan_generation fixture (it's what actually neutralizes the background
-Gemini/NotebookLM call -- see conftest.py's docstring for why it has to be a
+Gemini call -- see conftest.py's docstring for why it has to be a
 fixture with test-scoped lifetime rather than a `with patch(...)` block
 around just the POST call).
 """

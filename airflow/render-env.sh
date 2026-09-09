@@ -33,10 +33,6 @@ OUT="${2:-airflow/.env}"
 VARS=(
   GEMINI_API_KEY
   TAVILY_API_KEY
-  NOTEBOOKLM_NOTEBOOK_ID
-  NOTEBOOKLM_GEAR_ID
-  NOTEBOOKLM_NUTRITION_ID
-  NOTEBOOKLM_AUTH_JSON
 )
 
 if [ ! -f "$SRC" ]; then
@@ -54,10 +50,9 @@ for v in "${VARS[@]}"; do
   line=$(grep -E "^${v}=" "$SRC" || true)
   if [ -n "$line" ]; then
     # Docker Compose interpolates `$VAR`/`${VAR}` in env_file values unless
-    # escaped as `$$` -- NOTEBOOKLM_AUTH_JSON is an opaque cookie-session JSON
-    # blob that can contain literal `$` characters (confirmed in practice: an
-    # unescaped `$` here gets silently replaced with an empty string, corrupting
-    # the JSON). Escape every `$` in the value before writing it out.
+    # escaped as `$$`. API keys and opaque tokens can contain literal `$`
+    # characters, and an unescaped one gets silently replaced with an empty
+    # string, corrupting the value. Escape every `$` before writing it out.
     value="${line#*=}"
     echo "${v}=${value//\$/\$\$}" >> "$OUT"
     found=$((found + 1))

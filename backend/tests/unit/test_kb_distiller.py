@@ -192,48 +192,6 @@ def test_save_domain_gear_uses_insert_only_append(tmp_path, monkeypatch):
     assert "id" not in exported_row and "content_hash" not in exported_row and "created_at" not in exported_row
 
 
-def test_query_with_retries_does_not_retry_stream_overflow():
-    with (
-        patch(
-            "services.notebooklm_service.NotebookLmService.query_notebook",
-            new_callable=AsyncMock,
-            side_effect=Exception("RPC response exceeded 52428800 bytes"),
-        ) as nlm,
-        patch("asyncio.sleep", new_callable=AsyncMock),
-    ):
-        with pytest.raises(Exception, match="RPC response exceeded"):
-            asyncio.run(kb_distiller._query_with_retries("nb", '{"tok":1}', "q"))
-    assert nlm.call_count == 1  # deterministic overflow — retrying is pure waste
-
-
-def test_query_with_retries_recovers_from_transient_failure():
-    with (
-        patch(
-            "services.notebooklm_service.NotebookLmService.query_notebook",
-            new_callable=AsyncMock,
-            side_effect=[Exception("Server disconnected"), "recovered answer"],
-        ) as nlm,
-        patch("asyncio.sleep", new_callable=AsyncMock),
-    ):
-        answer = asyncio.run(kb_distiller._query_with_retries("nb", '{"tok":1}', "q"))
-    assert answer == "recovered answer"
-    assert nlm.call_count == 2
-
-
-def test_query_with_retries_gives_up_after_attempts():
-    with (
-        patch(
-            "services.notebooklm_service.NotebookLmService.query_notebook",
-            new_callable=AsyncMock,
-            side_effect=Exception("DNS down"),
-        ) as nlm,
-        patch("asyncio.sleep", new_callable=AsyncMock),
-    ):
-        with pytest.raises(Exception, match="DNS down"):
-            asyncio.run(kb_distiller._query_with_retries("nb", '{"tok":1}', "q", attempts=3))
-    assert nlm.call_count == 3
-
-
 def test_whitelisted_brand_word_boundary():
     # "Salomon" contains "on" but must NOT be coerced to the "On" brand
     assert kb_distiller._whitelisted_brand("Salomon", "On") == "Salomon"  # exact whitelist hit wins
@@ -244,35 +202,60 @@ def test_whitelisted_brand_word_boundary():
 def test_distill_domain_composes_sweep_validate_save(monkeypatch, tmp_path):
     from config import settings
 
-    monkeypatch.setattr(settings, "NOTEBOOKLM_NOTEBOOK_ID", "nb-sched")
-    monkeypatch.setattr(settings, "NOTEBOOKLM_AUTH_JSON", '{"tok":1}')
+    monkeypatch.setattr(settings, "TAVILY_API_KEY", "tvly-test")
     monkeypatch.setattr(kb_distiller, "SEED_DIR", str(tmp_path))  # don't clobber the real committed seed file
     rows = [
-        {"domain": "scheduler", "kind": "principle", "title": f"p{i}", "content": "c", "payload": None}
-        for i in range(15)
+        {
+            "domain": "nutrition",
+            "kind": "catalog_item",
+            "title": f"Gel {i}",
+            "content": "c",
+            "payload": None,
+            "source_label": "brand.com",
+        }
+        for i in range(4)
     ]
     with (
-        patch.object(kb_distiller, "_distill_scheduler", new_callable=AsyncMock, return_value=rows),
-        patch("db.replace_kb_chunks", return_value=15) as replace_mock,
-        patch("services.kb_retrieval.reindex_scheduler_chunks") as reindex_mock,
+        patch.object(kb_distiller, "discover_nutrition_web", new_callable=AsyncMock, return_value=rows),
+        patch("db.replace_kb_chunks_by_kind") as replace_mock,
+        patch("db.add_kb_chunks", return_value=4) as add_mock,
+        patch("db.get_kb_chunks", return_value=rows),
     ):
-        saved = asyncio.run(kb_distiller.distill_domain("scheduler", "test-key", {}))
-    assert saved == 15
-    replace_mock.assert_called_once_with("scheduler", rows)
-    reindex_mock.assert_called_once()
+        saved = asyncio.run(kb_distiller.distill_domain("nutrition", "test-key", {}))
+    assert saved == 4
+    add_mock.assert_called_once_with("nutrition", rows)
+    # No principle rows in a web sweep -> curated doctrine must be left alone entirely.
+    replace_mock.assert_not_called()
 
 
-def test_distill_domain_still_refuses_to_wipe_on_below_floor_sweep(monkeypatch):
-    from config import settings
+def test_sweep_domain_refuses_scheduler_because_it_would_replace_curated_doctrine():
+    """scheduler is script-only: an unattended sweep that returned junk would overwrite
+    the whole curated philosophy KB, so the automated path must not reach it at all."""
+    with pytest.raises(RuntimeError, match="operator-curated"):
+        asyncio.run(kb_distiller.sweep_domain("scheduler", "test-key", {}))
 
-    monkeypatch.setattr(settings, "NOTEBOOKLM_NOTEBOOK_ID", "nb-sched")
-    monkeypatch.setattr(settings, "NOTEBOOKLM_AUTH_JSON", '{"tok":1}')
+
+def test_save_domain_never_wipes_principles_when_a_sweep_returned_none(tmp_path, monkeypatch):
+    """The web sweep returns catalog rows only. Passing its empty principle list to
+    replace_kb_chunks_by_kind would silently delete every curated principle row."""
+    monkeypatch.setattr(kb_distiller, "SEED_DIR", str(tmp_path))
+    catalog_rows = [
+        {
+            "domain": "nutrition",
+            "kind": "catalog_item",
+            "title": "GU Mini Gel",
+            "content": "c",
+            "payload": None,
+            "source_label": "guenergy.com",
+        }
+    ]
     with (
-        patch.object(kb_distiller, "_distill_scheduler", new_callable=AsyncMock, return_value=[]),
-        patch("db.replace_kb_chunks") as replace_mock,
+        patch("db.replace_kb_chunks_by_kind") as replace_mock,
+        patch("db.add_kb_chunks", return_value=1),
+        patch("db.get_kb_chunks", return_value=catalog_rows),
     ):
-        with pytest.raises(RuntimeError, match="scheduler"):
-            asyncio.run(kb_distiller.distill_domain("scheduler", "test-key", {}))
+        saved = asyncio.run(kb_distiller.save_domain("nutrition", catalog_rows, "test-key"))
+    assert saved == 1
     replace_mock.assert_not_called()
 
 
@@ -422,38 +405,6 @@ def test_discover_nutrition_web_returns_empty_when_nothing_new(monkeypatch):
     assert rows == []
 
 
-def test_sweep_domain_nutrition_combines_principles_and_web_products(monkeypatch):
-    from config import settings
-
-    monkeypatch.setattr(settings, "NOTEBOOKLM_NUTRITION_ID", "nb-nutrition")
-    monkeypatch.setattr(settings, "NOTEBOOKLM_AUTH_JSON", '{"tok":1}')
-    monkeypatch.setattr(settings, "TAVILY_API_KEY", "tvly-test")
-    principle_rows = [{"domain": "nutrition", "kind": "principle", "title": "Carb targets", "content": "c"}]
-    product_rows = [{"domain": "nutrition", "kind": "catalog_item", "title": "GU Mini Gel", "content": "c"}]
-    with (
-        patch.object(kb_distiller, "_distill_nutrition", new_callable=AsyncMock, return_value=principle_rows),
-        patch.object(kb_distiller, "discover_nutrition_web", new_callable=AsyncMock, return_value=product_rows),
-    ):
-        rows = asyncio.run(kb_distiller.sweep_domain("nutrition", "test-key", {}))
-    assert rows == principle_rows + product_rows
-
-
-def test_sweep_domain_nutrition_skips_web_discovery_without_tavily_key(monkeypatch):
-    from config import settings
-
-    monkeypatch.setattr(settings, "NOTEBOOKLM_NUTRITION_ID", "nb-nutrition")
-    monkeypatch.setattr(settings, "NOTEBOOKLM_AUTH_JSON", '{"tok":1}')
-    monkeypatch.setattr(settings, "TAVILY_API_KEY", "")
-    principle_rows = [{"domain": "nutrition", "kind": "principle", "title": "Carb targets", "content": "c"}]
-    with (
-        patch.object(kb_distiller, "_distill_nutrition", new_callable=AsyncMock, return_value=principle_rows),
-        patch.object(kb_distiller, "discover_nutrition_web", new_callable=AsyncMock) as web_mock,
-    ):
-        rows = asyncio.run(kb_distiller.sweep_domain("nutrition", "test-key", {}))
-    assert rows == principle_rows
-    web_mock.assert_not_called()
-
-
 def test_save_domain_nutrition_replaces_principles_and_appends_products(tmp_path, monkeypatch):
     monkeypatch.setattr(kb_distiller, "SEED_DIR", str(tmp_path))
     principle_rows = [{"domain": "nutrition", "kind": "principle", "title": "Carb targets", "content": "c"}]
@@ -466,7 +417,7 @@ def test_save_domain_nutrition_replaces_principles_and_appends_products(tmp_path
             "title": "Carb targets",
             "content": "c",
             "payload": None,
-            "source_label": "NotebookLM distillation",
+            "source_label": "curated principles",
             "content_hash": "h1",
             "created_at": "2026-07-27T00:00:00",
         },

@@ -100,7 +100,3 @@ export function resolveWorkoutInfo(
 }
 
 /** Invalidate cache — call after triggering a re-extraction. */
-export function invalidateWorkoutTypesCache() {
-  cache = null;
-  fetchPromise = null;
-}

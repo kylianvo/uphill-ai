@@ -1,11 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useRef, useState } from "react";
+import React, { useRef } from "react";
 import { useAppContext } from "../contexts/AppContext";
 import { useKnowledge } from "../hooks/useKnowledge";
 import { translations } from "../app/translations";
 import { KnowledgeCard } from "../components/KnowledgeCard";
-import { Brain, Lightbulb, Trash, Shuffle, Hourglass, FolderOpen, UploadSimple, FileText, YoutubeLogo, Globe, Check } from "@phosphor-icons/react";
-import { invalidateWorkoutTypesCache } from "../hooks/useWorkoutTypes";
+import { Brain, Lightbulb, Trash, Shuffle, Hourglass, FolderOpen, UploadSimple, FileText, YoutubeLogo, Globe } from "@phosphor-icons/react";
 
 export default function KnowledgeView({ isMobile }: { isMobile: boolean }) {
   const ctx = useAppContext();
@@ -14,40 +13,6 @@ export default function KnowledgeView({ isMobile }: { isMobile: boolean }) {
   const t = (key: keyof typeof translations.en) => translations[lang]?.[key] || translations.en[key] || key;
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const triggerPdfUpload = () => pdfInputRef.current?.click();
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-  const [woTypeStatus, setWoTypeStatus] = useState<"idle" | "running" | "done" | "error">("idle");
-  const [woTypeProgress, setWoTypeProgress] = useState<{ current: string; progress: number; total: number } | null>(null);
-
-  const handleExtractWorkoutTypes = async () => {
-    setWoTypeStatus("running");
-    const token = typeof window !== "undefined" ? localStorage.getItem("uphill_session_token") : null;
-    const res = await fetch(`${API_BASE_URL}/api/workouts/types/extract`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await res.json();
-    if (data.status === "started") {
-      // Poll status
-      const poll = setInterval(async () => {
-        const r = await fetch(`${API_BASE_URL}/api/workouts/types/extract/status`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const s = await r.json();
-        setWoTypeProgress({ current: s.current_type || "", progress: s.progress || 0, total: s.total || 12 });
-        if (s.status === "done") {
-          clearInterval(poll);
-          setWoTypeStatus("done");
-          invalidateWorkoutTypesCache();
-        } else if (s.status === "error") {
-          clearInterval(poll);
-          setWoTypeStatus("error");
-        }
-      }, 3000);
-    } else {
-      setWoTypeStatus(data.status === "already_extracting" ? "running" : "error");
-    }
-  };
-
     const isExtracting = extractStatus.status === "extracting";
     const hasCards = knowledgeCards.length > 0 || dailyCards.length > 0;
 
@@ -69,7 +34,7 @@ export default function KnowledgeView({ isMobile }: { isMobile: boolean }) {
               <div style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
                 {extractStatus.current_topic
                   ? `${lang === "en" ? "Extracting:" : "Đang trích xuất:"} ${extractStatus.current_topic} (${extractStatus.progress ?? 0}/${extractStatus.total ?? 8})`
-                  : (lang === "en" ? "Querying NotebookLM and structuring knowledge cards…" : "Đang truy vấn NotebookLM và cấu trúc các thẻ kiến thức…")}
+                  : (lang === "en" ? "Structuring knowledge cards…" : "Đang cấu trúc các thẻ kiến thức…")}
               </div>
               <div style={{ marginTop: "6px", height: "4px", borderRadius: "4px", background: "rgba(255,255,255,0.1)", overflow: "hidden" }}>
                 <div style={{
@@ -107,9 +72,7 @@ export default function KnowledgeView({ isMobile }: { isMobile: boolean }) {
 
           {!hasCards && !isExtracting && (
             <div style={{ textAlign: "center", padding: "32px 16px", color: "var(--text-muted)", fontSize: "13px" }}>
-              {extractStatus.status === "no_notebooklm"
-                ? t("home_connect_notebooklm")
-                : t("home_no_cards_yet")}
+              {t("home_no_cards_yet")}
             </div>
           )}
 
@@ -183,49 +146,6 @@ export default function KnowledgeView({ isMobile }: { isMobile: boolean }) {
               </div>
             </div>
 
-            {/* Workout Type Descriptions */}
-            <div style={{ marginTop: "20px", paddingTop: "20px", borderTop: "1px solid var(--border-color)" }}>
-              <h4 style={{ fontSize: "13px", fontWeight: "700", marginBottom: "8px" }}>
-                {lang === "en" ? "Workout Type Descriptions" : "Mô tả bài tập (Workout Types)"}
-              </h4>
-              <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginBottom: "12px" }}>
-                {lang === "en"
-                  ? "Extract workout descriptions from NotebookLM (Easy Run, Tempo, ME, etc.). Used in the Planner's expandable workout cards."
-                  : "Trích xuất mô tả bài tập từ NotebookLM (Easy Run, Tempo, ME,...). Dùng trong thẻ bài tập ở Planner."}
-              </p>
-              {woTypeStatus === "running" && woTypeProgress && (
-                <div style={{ marginBottom: "10px" }}>
-                  <div style={{ fontSize: "12px", color: "var(--text-secondary)", marginBottom: "4px" }}>
-                    {woTypeProgress.current} ({woTypeProgress.progress}/{woTypeProgress.total})
-                  </div>
-                  <div style={{ height: "4px", borderRadius: "4px", background: "rgba(0,0,0,0.08)", overflow: "hidden" }}>
-                    <div style={{
-                      height: "100%", borderRadius: "4px", background: "var(--accent-primary)",
-                      width: `${((woTypeProgress.progress / woTypeProgress.total) * 100)}%`,
-                      transition: "width 0.5s ease",
-                    }} />
-                  </div>
-                </div>
-              )}
-              <button
-                className="btn btn-secondary"
-                style={{ fontSize: "12px", height: "36px", display: "flex", alignItems: "center", gap: "6px" }}
-                onClick={handleExtractWorkoutTypes}
-                disabled={woTypeStatus === "running"}
-              >
-                <Brain size={14} weight="duotone" />
-                {woTypeStatus === "running"
-                  ? (lang === "en" ? "Extracting…" : "Đang trích xuất…")
-                  : woTypeStatus === "done"
-                    ? (
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
-                        <Check size={13} weight="bold" aria-hidden="true" />
-                        <span>{lang === "en" ? "Done — Re-extract" : "Xong — Trích xuất lại"}</span>
-                      </span>
-                    )
-                    : (lang === "en" ? "Extract Workout Types" : "Trích xuất định nghĩa Workout Types")}
-              </button>
-            </div>
           </div>
         )}
       </div>

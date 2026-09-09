@@ -1,8 +1,9 @@
 """
 Knowledge Extractor Service
 ────────────────────────────
-Queries NotebookLM on 8 targeted topics, then uses Gemini to structure
-each response into JSON knowledge cards, which are saved to the DB.
+Discovers new Evoke Endurance podcast episodes, fetches each episode's YouTube
+transcript, and uses Gemini to structure it into bilingual knowledge cards saved
+to the DB. Incremental and insert-only: it never clears the existing library.
 """
 
 import asyncio
@@ -17,236 +18,6 @@ from tavily import TavilyClient
 
 from config import settings
 from services.kb_distiller import _gemini_structured
-
-# Topic queries sent to NotebookLM — each focuses on a distinct area
-TOPIC_QUERIES = [
-    {
-        "topic": "Training",
-        "label": "Aerobic Base & Zone 2 Training",
-        "query": (
-            "Summarize everything discussed about aerobic base building and Zone 2 training. "
-            "Include: what Zone 2 is, how to identify it (HR, pace, talk test), why it matters, "
-            "how much weekly volume should be Zone 2, common mistakes, and any specific protocols mentioned."
-        ),
-    },
-    {
-        "topic": "Training",
-        "label": "Muscular Endurance & Strength Training",
-        "query": (
-            "Summarize everything about muscular endurance training and strength work for mountain/trail runners. "
-            "Include: box step-ups, weighted carries, hill repeats, gym exercises, periodization of strength, "
-            "and how it complements aerobic training."
-        ),
-    },
-    {
-        "topic": "Training",
-        "label": "Periodization & Training Planning",
-        "query": (
-            "Summarize the training periodization concepts discussed — Base, Build, Peak, Taper phases. "
-            "Include: how long each phase should be, how to structure a training week, "
-            "how to decide weekly volume, and the 80/20 intensity principle."
-        ),
-    },
-    {
-        "topic": "Pacing",
-        "label": "Race Strategy & Pacing",
-        "query": (
-            "Summarize all race strategy and pacing advice from these podcasts. "
-            "Include: how to set a target pace, uphill vs downhill pacing strategy, "
-            "positive/negative split debate, how to handle aid stations, late-race fatigue management."
-        ),
-    },
-    {
-        "topic": "Nutrition",
-        "label": "Nutrition & In-Race Fueling",
-        "query": (
-            "Summarize all nutrition and fueling advice — both training nutrition and race-day fueling. "
-            "Include: carbohydrate intake targets (g/hr), sodium/electrolyte guidelines, "
-            "fluid intake, gut training, real food vs gels, and pre-race nutrition."
-        ),
-    },
-    {
-        "topic": "Recovery",
-        "label": "Recovery & Regeneration",
-        "query": (
-            "Summarize all recovery advice discussed in these podcasts. "
-            "Include: sleep importance, active vs passive recovery, recovery nutrition, "
-            "how to know when you're recovered, deload weeks, and signs of overtraining."
-        ),
-    },
-    {
-        "topic": "Mindset",
-        "label": "Mental Training & Race Mindset",
-        "query": (
-            "Summarize the mental and psychological aspects of training and racing discussed. "
-            "Include: how to deal with suffering, goal-setting, self-talk strategies, "
-            "fear of failure, pre-race anxiety, and staying motivated during long training blocks."
-        ),
-    },
-    {
-        "topic": "Gear",
-        "label": "Gear & Equipment for Mountain Running",
-        "query": (
-            "Summarize all gear and equipment recommendations discussed. "
-            "Include: shoe selection (trail vs road, drop, cushioning), poles, packs/vests, "
-            "clothing for weather, trekking poles use in races, and any specific product recommendations."
-        ),
-    },
-]
-
-GEMINI_STRUCTURE_PROMPT = """
-You are structuring podcast transcript summaries into knowledge cards for a training app.
-
-OUTPUT CONTRACT: Return ONLY a valid JSON array. NEVER include markdown fences or explanation.
-Each card MUST have exactly these fields:
-- "chapter_title": Short, punchy title (max 8 words, no punctuation at end)
-- "summary": 2–3 sentences explaining the concept clearly
-- "key_points": Array of 3–5 specific, actionable bullet points (strings, start with a verb)
-- "tags": Array of 2–4 lowercase keyword tags (e.g. "zone2", "heart-rate", "recovery", "fueling")
-- "topic": Exactly one of: Training, Nutrition, Recovery, Pacing, Mindset, Gear
-- "source_label": "Uphill Athlete Podcasts"
-
-Convert the source summary below into 3–6 cards, one per distinct concept, principle, or piece of advice.
-NEVER add a fact, statistic, or claim that isn't present in the source summary — restructure it, don't extend it.
-
-Topic category for this batch: {topic}
-Source summary:
-{source_text}
-"""
-
-
-async def extract_knowledge_cards(
-    notebook_id: str,
-    auth_json: str,
-    api_key: str,
-    status_holder: dict[str, Any],
-) -> int:
-    """
-    Full extraction pipeline:
-      For each topic → query NotebookLM → structure with Gemini → save to DB.
-    Updates status_holder in place so the API can stream progress.
-    Returns total cards saved.
-    """
-    from db import clear_knowledge_cards, save_knowledge_cards
-    from services.notebooklm_service import NotebookLmService
-
-    try:
-        from google import genai
-        from google.genai import types
-    except ImportError:
-        status_holder.update({"status": "error", "message": "google-genai not installed"})
-        return 0
-
-    client = genai.Client(api_key=api_key)
-
-    # Clear existing cards before fresh extraction
-    clear_knowledge_cards()
-    total_saved = 0
-    total_topics = len(TOPIC_QUERIES)
-
-    for idx, topic_def in enumerate(TOPIC_QUERIES):
-        topic_name = topic_def["label"]
-        status_holder.update(
-            {
-                "status": "extracting",
-                "current_topic": topic_name,
-                "progress": idx,
-                "total": total_topics,
-            }
-        )
-        print(f"[KnowledgeExtractor] Querying NLM for: {topic_name}")
-
-        try:
-            # Step 1: Query NotebookLM
-            print(f"[KnowledgeExtractor][NotebookLM] Querying notebook {notebook_id[:8]}... Topic: {topic_name}")
-            print(f"[KnowledgeExtractor][NotebookLM] Query: {topic_def['query'][:200]}...")
-            nlm_text = await NotebookLmService.query_notebook(
-                notebook_id=notebook_id,
-                auth_json=auth_json,
-                query=topic_def["query"],
-            )
-            print(f"[KnowledgeExtractor][NotebookLM] Response received ({len(nlm_text)} chars) for {topic_name}")
-
-            if not nlm_text or len(nlm_text.strip()) < 50:
-                print(f"[KnowledgeExtractor][NotebookLM] Empty/short response for {topic_name}, skipping.")
-                continue
-
-            # Step 2: Structure with Gemini
-            prompt = GEMINI_STRUCTURE_PROMPT.format(
-                topic=topic_def["topic"],
-                source_text=nlm_text[:8000],  # Trim to avoid token limits
-            )
-            print(f"[KnowledgeExtractor][Gemini] Sending structure prompt ({len(prompt)} chars) for {topic_name}")
-            print("[KnowledgeExtractor][Gemini] --- PROMPT START ---")
-            print(prompt[:1000])
-            print("[KnowledgeExtractor][Gemini] --- PROMPT END ---")
-            import asyncio
-
-            response = await asyncio.to_thread(
-                client.models.generate_content,
-                model=settings.GEMINI_MODEL,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    thinking_config=types.ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL),
-                ),
-            )
-            raw = response.text.strip()
-            print(f"[KnowledgeExtractor][Gemini] Response received ({len(raw)} chars) for {topic_name}")
-
-            # Clean up any accidental markdown fences
-            if raw.startswith("```"):
-                raw = raw.split("```")[1]
-                if raw.startswith("json"):
-                    raw = raw[4:]
-            raw = raw.strip()
-
-            cards = json.loads(raw)
-            if not isinstance(cards, list):
-                print(f"[KnowledgeExtractor] Gemini returned non-list for {topic_name}")
-                continue
-
-            # Force the correct topic field (don't trust the model)
-            for card in cards:
-                card["topic"] = topic_def["topic"]
-                card["source_label"] = "Uphill Athlete Podcasts"
-
-            saved_en = save_knowledge_cards(cards, lang="en")
-            total_saved += saved_en
-            print(f"[KnowledgeExtractor] Saved {saved_en} EN cards for {topic_name} (total EN so far: {total_saved})")
-
-            # Translate to Vietnamese and save
-            try:
-                translated_cards = await translate_cards_to_vi_with_gemini(client, cards)
-                saved_vi = save_knowledge_cards(translated_cards, lang="vi")
-                print(f"[KnowledgeExtractor] Translated and saved {saved_vi} VI cards for {topic_name}")
-            except Exception as tr_err:
-                print(f"[KnowledgeExtractor] Failed to translate and save VI cards: {tr_err}")
-
-            # Small delay between NLM queries to avoid rate limits
-            await asyncio.sleep(1.5)
-
-        except json.JSONDecodeError as e:
-            print(f"[KnowledgeExtractor][Gemini] JSON parse error for {topic_name}: {e}")
-            continue
-        except Exception as e:
-            print(f"[KnowledgeExtractor] Error processing {topic_name}: {e}")
-            continue
-
-    from datetime import datetime
-
-    status_holder.update(
-        {
-            "status": "done",
-            "current_topic": None,
-            "card_count": total_saved,
-            "last_extracted": datetime.utcnow().isoformat(),
-            "progress": total_topics,
-            "total": total_topics,
-        }
-    )
-    print(f"[KnowledgeExtractor] Extraction complete. Total EN cards: {total_saved}")
-    return total_saved
 
 
 async def translate_cards_to_vi_with_gemini(client, cards: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -307,7 +78,7 @@ Card to translate:
 
 
 # ─── Podcast episode knowledge cards (live web discovery) ────────────────────
-# Distinct from extract_knowledge_cards above (which sweeps a NotebookLM notebook
+# Incremental discovery path (
 # on 8 fixed topics and does a full clear+rebuild): this finds NEW Evoke Endurance
 # trail/ultrarunning podcast ("Evokecast") episodes directly from the web, fetches
 # each episode's YouTube transcript, and structures it into cards with Gemini --
@@ -478,8 +249,7 @@ async def discover_podcast_knowledge_web(api_key: str, tavily_api_key: str, stat
 
 async def save_podcast_knowledge_cards(cards: list[dict], api_key: str) -> int:
     """Insert-only append of newly-discovered podcast knowledge cards -- never
-    clears/replaces the existing library, unlike extract_knowledge_cards's full
-    NotebookLM rebuild. Bilingual: also translates + saves the Vietnamese versions,
+    clears or replaces the existing library. Bilingual: also translates + saves the Vietnamese versions,
     matching this table's existing en/vi convention. Returns the EN count saved (VI
     translation failures are logged but don't fail the whole save -- the EN cards
     are still worth keeping)."""

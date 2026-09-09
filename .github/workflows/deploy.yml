@@ -34,7 +34,7 @@ jobs:
         run: cd frontend && npx playwright install --with-deps chromium
       - name: Synthesize a minimal backend/.env for CI
         # docker-compose.yml's backend service requires env_file: ./backend/.env to
-        # exist. Real secrets aren't needed here -- Gemini/NotebookLM calls are either
+        # exist. Real secrets aren't needed here -- Gemini calls are either
         # unexercised by these specs or fail gracefully (mock-login and the
         # onboarding regression test only need the plans row committed synchronously,
         # which happens before any real AI call).

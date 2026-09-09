@@ -27,8 +27,8 @@ services:
     # Deliberately no env_file here (unlike the other services in this file):
     # Docker Compose's env_file loading applies ${VAR}/$VAR interpolation to
     # the file's content, which silently corrupts any value containing a
-    # literal `$` (confirmed in practice with NOTEBOOKLM_AUTH_JSON, an opaque
-    # cookie-session JSON blob) unless every `$` is escaped as `$$` in the
+    # literal `$` (confirmed in practice with an opaque token value) unless
+    # every `$` is escaped as `$$` in the
     # source file -- which backend/.env can't require, since it's also read
     # directly (correctly, no interpolation) by config.py's load_dotenv() for
     # local non-Docker dev and by scripts/tooling. The backend/:/app volume

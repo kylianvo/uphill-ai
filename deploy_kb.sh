@@ -7,8 +7,8 @@ set -e
 # none of which matter when the only thing that changed is seed data.
 #
 # Usage: ./deploy_kb.sh [--domain gear|nutrition|scheduler|race_courses|all]
-# Defaults to --domain all. race_courses is hand-curated (no NotebookLM
-# notebook) and excluded from "all" — deploy it explicitly.
+# Defaults to --domain all. race_courses is hand-curated and excluded from
+# "all" — deploy it explicitly.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ -f "$SCRIPT_DIR/deploy.env" ]; then
