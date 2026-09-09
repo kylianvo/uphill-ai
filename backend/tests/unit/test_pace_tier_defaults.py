@@ -99,3 +99,45 @@ class TestDownstreamImpact:
         # The bug showed ~3.7km for this session; the beginner tier must show meaningfully less.
         assert general_km > beginner_km
         assert beginner_km < 3.2, f"beginner distance still inflated: {beginner_km} km"
+
+
+class TestResolvePaceZones:
+    """One resolver, so the app and the plan cannot disagree about an athlete's zones.
+
+    The generator used to call estimate_pace_zones with only the Zone 2 bounds, dropping
+    threshold_pace and pace_zone_model even though the function accepts both and
+    GET /api/auth/pace-zones passes them. An athlete with a measured threshold saw one
+    set of zones in the app while their plan was built on another -- and every workout's
+    target pace, distance_km and treadmill speed came from the plan's set.
+    """
+
+    def test_a_measured_threshold_pace_is_honoured(self):
+        profile = {"zone2_pace_min": "6:30", "zone2_pace_max": "5:45", "aet_hr": 140, "ant_hr": 172}
+        estimated = PlanGenerator.resolve_pace_zones(profile)
+        measured = PlanGenerator.resolve_pace_zones({**profile, "threshold_pace": "4:30"})
+        assert measured != estimated, "threshold_pace must change the resolved zones"
+        assert measured["zone4_pace"] != estimated["zone4_pace"]
+
+    def test_the_pace_zone_model_is_honoured(self):
+        profile = {"zone2_pace_min": "6:30", "zone2_pace_max": "5:45", "aet_hr": 140, "ant_hr": 172}
+        four = PlanGenerator.resolve_pace_zones({**profile, "threshold_pace": "4:30", "pace_zone_model": "4_zone"})
+        five = PlanGenerator.resolve_pace_zones({**profile, "threshold_pace": "4:30", "pace_zone_model": "5_zone"})
+        assert four.get("model") == "4_zone"
+        assert five.get("model") == "5_zone"
+
+    def test_it_always_returns_the_mid_values_the_distance_maths_needs(self):
+        """pace_and_distance_for_zone indexes zoneN_pace_mid; a resolver that returned a
+        display-shaped payload without them would make every distance 0."""
+        for extra in ({}, {"threshold_pace": "4:30"}):
+            zones = PlanGenerator.resolve_pace_zones(
+                {"zone2_pace_min": "6:30", "zone2_pace_max": "5:45", "aet_hr": 140, "ant_hr": 172, **extra}
+            )
+            for z in range(1, 6):
+                assert zones.get(f"zone{z}_pace_mid"), f"missing zone{z}_pace_mid with {extra}"
+
+    def test_it_still_applies_the_beginner_tier_default_when_no_zones_are_stored(self):
+        zones = PlanGenerator.resolve_pace_zones({"aet_hr": 140, "ant_hr": 172}, "start_running")
+        general = PlanGenerator.resolve_pace_zones({"aet_hr": 140, "ant_hr": 172}, "finish")
+        slow = PlanGenerator.parse_pace_to_decimal(zones["zone2_pace_mid"])
+        fast = PlanGenerator.parse_pace_to_decimal(general["zone2_pace_mid"])
+        assert slow > fast, "a beginner's Zone 2 must be slower than the general default"
