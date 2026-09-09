@@ -64,6 +64,7 @@ from db import (
     remove_coach_athlete_link,
     save_block_review,
     save_workouts,
+    set_max_continuous_jog_min,
     set_plan_active,
     set_user_is_coach,
     set_user_password,
@@ -256,6 +257,11 @@ class AdaptWeekRequest(BaseModel):
     has_gym_access: bool | None = None
     use_treadmill: bool | None = None
     training_environment: str | None = None
+    # Longest unbroken jog in minutes. The beginner progression metric: asked of the
+    # athlete rather than parsed out of the model's own prose, because deriving state by
+    # reading generated text means the model's formatting drift silently changes the
+    # athlete's training.
+    max_continuous_jog_min: int | None = None
     lang: str | None = None
 
 
@@ -895,6 +901,8 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         "plan_start_date": onboarding_start_date,
         "athlete_notes": request.athlete_notes or fresh_user.get("athlete_notes"),
         "historical_ceiling": historical_ceiling,
+        # No stored override on a plan being created -- the generator derives the tier.
+        "athlete_tier": None,
         "lang": request.lang or "en",
     }
 
@@ -1715,6 +1723,8 @@ async def _generate_plan_for_athlete(
         "plan_start_date": start_date_str,
         "athlete_notes": request.athlete_notes or fresh_user.get("athlete_notes"),
         "historical_ceiling": historical_ceiling,
+        # No stored override on a plan being created -- the generator derives the tier.
+        "athlete_tier": None,
         "lang": request.lang or "en",
         "coach_notes": request.coach_notes,
     }
@@ -2213,6 +2223,8 @@ async def _generate_next_block_for_athlete(
         "plan_start_date": plan.get("start_date"),
         "athlete_notes": request.athlete_notes or plan.get("athlete_notes") or fresh_user.get("athlete_notes"),
         "historical_ceiling": historical_ceiling,
+        # Explicit per-plan tier override; None means the generator derives it.
+        "athlete_tier": plan.get("athlete_tier"),
         "readiness_summary": readiness_summary,
         "lang": request.lang or fresh_user.get("lang", "en"),
         "coach_notes": "\n".join(active_coach_notes) if active_coach_notes else None,
@@ -2328,6 +2340,11 @@ async def _adapt_week_for_athlete(request: AdaptWeekRequest, athlete_id: int, jo
                 "week_number": request.week_number,
             }
 
+    # Record the reported jog time BEFORE reading the profile, so this week's tier and
+    # prompt reflect what the athlete just told us rather than last week's number.
+    if request.max_continuous_jog_min:
+        set_max_continuous_jog_min(athlete_id, request.max_continuous_jog_min)
+
     all_workouts = get_plan_workouts(request.plan_id)
     fresh_user = get_user_by_id(athlete_id) or {}
 
@@ -2363,6 +2380,14 @@ async def _adapt_week_for_athlete(request: AdaptWeekRequest, athlete_id: int, jo
     context_lines: list[str] = [
         f"ADAPTATION & REGENERATION FOR WEEK {request.week_number}:",
     ]
+    # The beginner progression metric, surfaced so the model can move it deliberately
+    # rather than inferring progress from weekly kilometres.
+    _jog_min = fresh_user.get("max_continuous_jog_min")
+    if _jog_min:
+        context_lines.append(
+            f"  Longest Unbroken Jog: {_jog_min} minutes. For a new runner this is THE progress "
+            f"metric -- move it or hold it deliberately, and name it in the workout descriptions."
+        )
     if fatigue_level:
         norm_fl = fatigue_level.lower().replace(" ", "_")
         fl_display_map = {
@@ -2634,6 +2659,8 @@ async def _adapt_week_for_athlete(request: AdaptWeekRequest, athlete_id: int, jo
         "plan_start_date": plan.get("start_date"),
         "athlete_notes": request.athlete_notes or plan.get("athlete_notes") or fresh_user.get("athlete_notes"),
         "historical_ceiling": historical_ceiling,
+        # Explicit per-plan tier override; None means the generator derives it.
+        "athlete_tier": plan.get("athlete_tier"),
         "readiness_summary": readiness_summary,
         "lang": request.lang or fresh_user.get("lang", "en"),
         "coach_notes": request.coach_notes,

@@ -43,6 +43,8 @@ export interface Workout {
   interval_reps?: number;
   interval_rep_value?: number;
   interval_rep_unit?: "s" | "m" | "min" | "km";
+  /** Walk recovery per rep on a Walk/Run session, in interval_rep_unit. */
+  walk_interval_value?: number;
   description?: string;
   fueling_tip?: string;
   is_completed: number;

@@ -61,6 +61,8 @@ const DB_TYPE_MAP: Record<string, string> = {
   "active recovery":    "recovery_run",
   "cross-training":     "cross_training",
   "aerobic capacity":   "easy_run",
+  // Walk/Run is an EASY session made of repeated bouts -- it must never map to the
+  // `interval` type, which renders red and labelled Zone 4-5.
   "walk/run":           "easy_run",
   "race":               "race_day",
   "rest":               "rest",

@@ -25,9 +25,18 @@ DEFAULT_PACE_TIER = "general"
 BEGINNER_GOAL_TYPES = ("start_running",)
 
 
-def pace_tier_for_goal(goal_type: str | None) -> str:
-    """Which default pace tier a goal implies. Tier-aware by design: today it maps to
-    beginner/general, and is the seam a fuller tier model plugs into."""
+def pace_tier_for_goal(goal_type: str | None, athlete_tier: str | None = None) -> str:
+    """Which default pace tier applies.
+
+    Only two pace tiers exist because only two pairs of reference paces are evidenced
+    here -- the four non-beginner athlete tiers all resolve to "general". That is not an
+    oversight: interpolating a pace band per tier would be inventing numbers, and a
+    trained athlete's real zones come from their own data rather than a default.
+
+    An explicit athlete tier wins over the goal, since it is derived from more signals.
+    """
+    if (athlete_tier or "").strip().lower() == "beginner":
+        return "beginner"
     return "beginner" if (goal_type or "").lower() in BEGINNER_GOAL_TYPES else DEFAULT_PACE_TIER
 
 
@@ -42,11 +51,12 @@ def resolve_zone2_pace(
     stored_min: str | None,
     stored_max: str | None,
     goal_type: str | None = None,
+    athlete_tier: str | None = None,
 ) -> tuple[str, str]:
     """The athlete's own zones when they have them, otherwise the tier default.
     Each bound falls back independently, so a half-populated profile doesn't lose the
     bound it does have."""
-    tier_min, tier_max = default_zone2_pace(pace_tier_for_goal(goal_type))
+    tier_min, tier_max = default_zone2_pace(pace_tier_for_goal(goal_type, athlete_tier))
     return (stored_min or tier_min, stored_max or tier_max)
 
 

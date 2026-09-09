@@ -38,17 +38,28 @@ import { CoachNoteThread } from "./CoachNoteThread";
 import { WorkoutTypeSelect } from "./WorkoutTypeSelect";
 import { PencilSimple, Check, X as XIcon, ClockCounterClockwise } from "@phosphor-icons/react";
 
+const fmtRepValue = (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1));
+
 export function formatIntervalSummary(wo: {
   type?: string;
   interval_reps?: number;
   interval_rep_value?: number;
   interval_rep_unit?: string;
+  walk_interval_value?: number;
 }): string | null {
-  if (wo.type?.toLowerCase() !== "interval") return null;
+  const type = wo.type?.toLowerCase();
+  if (type !== "interval" && type !== "walk/run") return null;
   const { interval_reps: reps, interval_rep_value: value, interval_rep_unit: unit } = wo;
   if (!reps || !value || !unit) return null;
-  const formattedValue = Number.isInteger(value) ? value : value.toFixed(1);
-  return `${reps}x${formattedValue}${unit}`;
+
+  // Walk/Run sessions carry a walk partner for each work interval. Rendering the pair
+  // is the whole point: "5 x 2 min jog / 1 min walk" is one glance, whereas the
+  // long-hand the model writes in the description ("2 min run, 1 min walk, 2 min run,
+  // ...") has to be counted by the reader to be understood.
+  if (type === "walk/run" && wo.walk_interval_value) {
+    return `${reps} x ${fmtRepValue(value)}${unit} jog / ${fmtRepValue(wo.walk_interval_value)}${unit} walk`;
+  }
+  return `${reps}x${fmtRepValue(value)}${unit}`;
 }
 
 interface WorkoutCardProps {
