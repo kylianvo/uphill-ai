@@ -276,7 +276,7 @@ class TestRuleBasedFallbackDescriptionConsistency:
         # 8 weeks in one block: Base(1-2)/Build(3-4)/Peak(5)/Taper(6)/Race Week(7)/Recovery(8)
         # -- week 5 (odd) exercises the Tempo branch, week 6 (even) exercises
         # both the Interval branch and the Sunday Taper "Active Recovery Walk".
-        workouts = await PlanGenerator.generate_plan_workouts(
+        workouts, _tier = await PlanGenerator.generate_plan_workouts(
             plan_id=1,
             user_profile=user_profile,
             race_info=race_info,
@@ -339,7 +339,7 @@ class TestRuleBasedFallbackDescriptionConsistency:
         }
         race_info = {"name": "Test Race", "goal_type": "finish", "terrain": "trail", "lang": "vi"}
 
-        workouts = await PlanGenerator.generate_plan_workouts(
+        workouts, _tier = await PlanGenerator.generate_plan_workouts(
             plan_id=1,
             user_profile=user_profile,
             race_info=race_info,
@@ -618,7 +618,7 @@ class TestPostProcessWorkoutsElevation:
         # where Saturday always produces a "Long Run" workout
         # (plan_generator.py:945-959, the `else` branch after the
         # Recovery/Race-Week checks).
-        return asyncio.run(
+        workouts, _tier = asyncio.run(
             PlanGenerator.generate_plan_workouts(
                 plan_id=1,
                 user_profile=user_profile,
@@ -629,6 +629,7 @@ class TestPostProcessWorkoutsElevation:
                 weeks_per_block=2,
             )
         )
+        return workouts
 
     def test_trail_long_run_gets_nonzero_elevation_and_grade(self, monkeypatch):
         workouts = self._run_rule_based(

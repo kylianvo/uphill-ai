@@ -626,7 +626,7 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
         weeks_per_block: int = 2,
         block_context: str | None = None,
         target_week: int | None = None,
-    ) -> list[dict[str, Any]]:
+    ) -> tuple[list[dict[str, Any]], str]:
         """
         Generates a structured running plan based on:
         - User profile (age, max_hr, resting_hr, aet_hr, ant_hr, treadmill_preference, pace zones)
@@ -634,6 +634,9 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
         - Scott Johnston's Uphill Athlete principles (ME blocks)
         - The 80/20 intensity threshold logic for road running.
         - Dynamic periodized schedule duration.
+
+        Returns (workouts, athlete_tier) — the resolved tier is the caller's only way to
+        persist plans.athlete_tier; it is not stored anywhere inside this call.
         """
         # Block window calculation
         if target_week is not None:
@@ -1423,7 +1426,7 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                     )
                     _processed = post_process_workouts(cleaned_wos)
                     rag_attempts_total.labels(service="plan_generator", engine=_engine, status="used").inc()
-                    return _processed
+                    return _processed, athlete_tier
                 else:
                     _logger.warning(
                         "gemini returned empty or invalid list, using rule-based fallback",
@@ -1979,4 +1982,4 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                 wo["description"] = t_str(wo.get("description", ""))
                 wo["fueling_tip"] = t_str(wo.get("fueling_tip", ""))
 
-        return post_process_workouts(workouts)
+        return post_process_workouts(workouts), athlete_tier

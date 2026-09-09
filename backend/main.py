@@ -66,6 +66,7 @@ from db import (
     save_workouts,
     set_max_continuous_jog_min,
     set_plan_active,
+    set_plan_athlete_tier,
     set_user_is_coach,
     set_user_password,
     swap_workouts,
@@ -918,7 +919,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
 
     async def _run_plan_gen():
         try:
-            workouts = await PlanGenerator.generate_plan_workouts(
+            workouts, resolved_tier = await PlanGenerator.generate_plan_workouts(
                 plan_id,
                 fresh_user,
                 race_info,
@@ -928,6 +929,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
                 weeks_per_block=2,
             )
             save_workouts(plan_id, workouts)
+            set_plan_athlete_tier(plan_id, resolved_tier)
             plan_jobs[job_id]["workouts"] = workouts
             plan_jobs[job_id]["status"] = "done"
             print(f"[PlanJob][{job_id}] Onboarding plan generation complete — {len(workouts)} workouts saved.")
@@ -1761,7 +1763,7 @@ async def _generate_plan_for_athlete(
 
     async def _run_gen():
         try:
-            workouts = await PlanGenerator.generate_plan_workouts(
+            workouts, resolved_tier = await PlanGenerator.generate_plan_workouts(
                 plan_id,
                 fresh_user,
                 race_info,
@@ -1772,6 +1774,7 @@ async def _generate_plan_for_athlete(
                 weeks_per_block=2,
             )
             save_workouts(plan_id, workouts, auto_approve=(plan_status != "draft"))
+            set_plan_athlete_tier(plan_id, resolved_tier)
             plan_jobs[job_id]["workouts"] = workouts
             plan_jobs[job_id]["status"] = "done"
             print(f"[PlanJob][{job_id}] generate-plan complete — {len(workouts)} workouts saved.")
@@ -2251,7 +2254,7 @@ async def _generate_next_block_for_athlete(
 
     async def _run_next_block():
         try:
-            workouts = await PlanGenerator.generate_plan_workouts(
+            workouts, resolved_tier = await PlanGenerator.generate_plan_workouts(
                 request.plan_id,
                 fresh_user,
                 race_info,
@@ -2262,6 +2265,7 @@ async def _generate_next_block_for_athlete(
                 block_context=block_context,
             )
             save_workouts(request.plan_id, workouts)
+            set_plan_athlete_tier(request.plan_id, resolved_tier)
             plan_jobs[job_id]["workouts"] = workouts
             plan_jobs[job_id]["status"] = "done"
             print(f"[NextBlock][{job_id}] Block {request.block_number} complete — {len(workouts)} workouts saved.")
@@ -2682,7 +2686,7 @@ async def _adapt_week_for_athlete(request: AdaptWeekRequest, athlete_id: int, jo
 
     async def _run_adapt_week():
         try:
-            workouts = await PlanGenerator.generate_plan_workouts(
+            workouts, resolved_tier = await PlanGenerator.generate_plan_workouts(
                 request.plan_id,
                 fresh_user,
                 race_info,
@@ -2694,6 +2698,7 @@ async def _adapt_week_for_athlete(request: AdaptWeekRequest, athlete_id: int, jo
                 target_week=request.week_number,
             )
             save_workouts(request.plan_id, workouts, preserve_completed=True)
+            set_plan_athlete_tier(request.plan_id, resolved_tier)
             plan_jobs[job_id]["workouts"] = workouts
             plan_jobs[job_id]["status"] = "done"
             print(f"[AdaptWeek][{job_id}] Week {request.week_number} complete — {len(workouts)} workouts saved.")

@@ -1419,6 +1419,23 @@ def set_max_continuous_jog_min(user_id: int, minutes: int) -> bool:
     return result.rowcount > 0
 
 
+def set_plan_athlete_tier(plan_id: int, tier: str | None) -> bool:
+    """Persists the tier resolved by PlanGenerator.generate_plan_workouts() for its most
+    recent call against this plan. Overwritten on every onboarding/adapt-week/next-block
+    generation by design -- the tier is re-resolved each time from the athlete's current
+    profile, and this column should always reflect the tier the LATEST generated content
+    was actually written for, not a historical record of the first one."""
+    if not tier:
+        return False
+    with engine.connect() as conn:
+        result = conn.execute(
+            text("UPDATE plans SET athlete_tier = :tier WHERE id = :id"),
+            {"tier": tier, "id": plan_id},
+        )
+        conn.commit()
+    return result.rowcount > 0
+
+
 def get_user_by_id(user_id: int) -> dict[str, Any] | None:
     with engine.connect() as conn:
         row = conn.execute(text("SELECT * FROM users WHERE id = :id"), {"id": user_id}).fetchone()

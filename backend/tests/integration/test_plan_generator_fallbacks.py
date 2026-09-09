@@ -53,7 +53,7 @@ def _fake_gemini_client(*texts: str):
 
 
 async def _generate(race_info=RACE_INFO):
-    return await PlanGenerator.generate_plan_workouts(
+    workouts, _tier = await PlanGenerator.generate_plan_workouts(
         plan_id=999999,
         user_profile=USER_PROFILE,
         race_info=race_info,
@@ -61,6 +61,7 @@ async def _generate(race_info=RACE_INFO):
         api_key="test-key",
         block_number=1,
     )
+    return workouts
 
 
 def test_gemini_is_grounded_with_retrieved_kb_context():
