@@ -76,6 +76,9 @@ def init_db():
             ant_hr                  INTEGER DEFAULT 165,
             zone2_pace_min          TEXT DEFAULT '6:30',
             zone2_pace_max          TEXT DEFAULT '5:45',
+            -- longest unbroken jog in minutes; the beginner progression metric.
+            -- NULL means unknown (never asked, or not a beginner).
+            max_continuous_jog_min  INTEGER,
             -- onboarding
             onboarding_complete     BOOLEAN DEFAULT FALSE,
             goal_type               TEXT,
@@ -132,6 +135,10 @@ def init_db():
             has_gym_access          BOOLEAN DEFAULT FALSE,
             use_treadmill           BOOLEAN DEFAULT FALSE,
             training_environment    TEXT DEFAULT 'flat',
+            -- explicit tier override for THIS plan; NULL means derive it from the
+            -- athlete's data. Lives on the plan, not the user: the same athlete can
+            -- hold a start-running plan and a race plan at once.
+            athlete_tier            TEXT,
             created_by_user_id      INTEGER REFERENCES users(id),
             plan_status             TEXT NOT NULL DEFAULT 'active',  -- 'draft' | 'active'
             approved_by_user_id     INTEGER REFERENCES users(id),
@@ -192,6 +199,8 @@ def init_db():
             interval_reps       INTEGER,
             interval_rep_value  REAL,
             interval_rep_unit   TEXT,
+            -- walk recovery per rep on a Walk/Run session, same unit as interval_rep_unit
+            walk_interval_value REAL,
             description         TEXT,
             fueling_tip         TEXT,
             source              TEXT NOT NULL DEFAULT 'ai_generated',  -- 'ai_generated' | 'coach_edited' | 'coach_created'
@@ -420,6 +429,10 @@ def init_db():
             "ALTER TABLE workouts ALTER COLUMN treadmill_incline SET DEFAULT '0'",
             "ALTER TABLE workouts ALTER COLUMN treadmill_speed TYPE TEXT USING treadmill_speed::text",
             "ALTER TABLE workouts ALTER COLUMN treadmill_speed SET DEFAULT '0'",
+            # Beginner progression metric + per-plan tier override (see the CREATE TABLE
+            # blocks above; these ALTERs self-migrate existing dev databases).
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS max_continuous_jog_min INTEGER",
+            "ALTER TABLE plans ADD COLUMN IF NOT EXISTS athlete_tier TEXT",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS rpe INTEGER",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS notes TEXT",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS session_slot TEXT DEFAULT 'main'",
@@ -428,6 +441,7 @@ def init_db():
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS interval_reps INTEGER",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS interval_rep_value REAL",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS interval_rep_unit TEXT",
+            "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS walk_interval_value REAL",
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS preferred_run_days TEXT",
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS long_run_day TEXT",
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS days_per_week INTEGER DEFAULT 4",
@@ -799,12 +813,12 @@ def save_workouts(
                 INSERT INTO workouts (plan_id, week_number, day_of_week, phase, title, type,
                     duration_minutes, distance_km, target_zone, target_hr_range, target_pace,
                     treadmill_incline, treadmill_speed, elevation_gain_m, grade_percent,
-                    interval_reps, interval_rep_value, interval_rep_unit,
+                    interval_reps, interval_rep_value, interval_rep_unit, walk_interval_value,
                     description, fueling_tip, session_slot, approved_at)
                 VALUES (:plan_id, :week_number, :day_of_week, :phase, :title, :type,
                     :duration_minutes, :distance_km, :target_zone, :target_hr_range, :target_pace,
                     :treadmill_incline, :treadmill_speed, :elevation_gain_m, :grade_percent,
-                    :interval_reps, :interval_rep_value, :interval_rep_unit,
+                    :interval_reps, :interval_rep_value, :interval_rep_unit, :walk_interval_value,
                     :description, :fueling_tip, :session_slot, :approved_at)
             """),
                 {
@@ -830,6 +844,7 @@ def save_workouts(
                     "interval_reps": wo.get("interval_reps"),
                     "interval_rep_value": wo.get("interval_rep_value"),
                     "interval_rep_unit": wo.get("interval_rep_unit"),
+                    "walk_interval_value": wo.get("walk_interval_value"),
                     "description": _flatten_llm_text(wo.get("description")),
                     "fueling_tip": _flatten_llm_text(wo.get("fueling_tip")),
                     "session_slot": _flatten_llm_text(wo.get("session_slot", "main")),
@@ -954,6 +969,7 @@ def coach_update_workout(workout_id: int, editor_user_id: int, fields: dict[str,
         "interval_reps",
         "interval_rep_value",
         "interval_rep_unit",
+        "walk_interval_value",
     )
     with engine.connect() as conn:
         row = conn.execute(text("SELECT id FROM workouts WHERE id = :id"), {"id": workout_id}).fetchone()
@@ -1013,11 +1029,11 @@ def create_coach_workout(plan_id: int, creator_user_id: int, fields: dict[str, A
                 INSERT INTO workouts (plan_id, week_number, day_of_week, phase, title, type,
                     duration_minutes, distance_km, target_zone, target_hr_range, target_pace,
                     description, fueling_tip, session_slot, source, last_edited_by_user_id, approved_at,
-                    interval_reps, interval_rep_value, interval_rep_unit)
+                    interval_reps, interval_rep_value, interval_rep_unit, walk_interval_value)
                 VALUES (:plan_id, :week_number, :day_of_week, :phase, :title, :type,
                     :duration_minutes, :distance_km, :target_zone, :target_hr_range, :target_pace,
                     :description, :fueling_tip, :session_slot, 'coach_created', :creator, NULL,
-                    :interval_reps, :interval_rep_value, :interval_rep_unit)
+                    :interval_reps, :interval_rep_value, :interval_rep_unit, :walk_interval_value)
                 RETURNING *
             """),
             {
@@ -1039,6 +1055,7 @@ def create_coach_workout(plan_id: int, creator_user_id: int, fields: dict[str, A
                 "interval_reps": fields.get("interval_reps"),
                 "interval_rep_value": fields.get("interval_rep_value"),
                 "interval_rep_unit": fields.get("interval_rep_unit"),
+                "walk_interval_value": fields.get("walk_interval_value"),
             },
         ).fetchone()
         conn.commit()
@@ -1385,6 +1402,23 @@ def create_user_with_password(email: str, name: str, password_hash: str) -> dict
         return _row_to_dict(row)
 
 
+def set_max_continuous_jog_min(user_id: int, minutes: int) -> bool:
+    """Record the athlete's longest unbroken jog. Monotonic by design: a session where
+    they jogged less than their best does not lower the ceiling, since the metric is
+    "what you have shown you can do", not "what you did this week"."""
+    with engine.connect() as conn:
+        result = conn.execute(
+            text("""
+            UPDATE users
+            SET max_continuous_jog_min = GREATEST(COALESCE(max_continuous_jog_min, 0), :minutes)
+            WHERE id = :id
+        """),
+            {"minutes": int(minutes), "id": user_id},
+        )
+        conn.commit()
+    return result.rowcount > 0
+
+
 def get_user_by_id(user_id: int) -> dict[str, Any] | None:
     with engine.connect() as conn:
         row = conn.execute(text("SELECT * FROM users WHERE id = :id"), {"id": user_id}).fetchone()
@@ -1416,7 +1450,8 @@ def update_user_profile(user_id: int, profile_data: dict[str, Any]) -> bool:
                 age = :age, max_hr = :max_hr,
                 resting_hr = :rhr, aet_hr = :aet, ant_hr = :ant,
                 gemini_api_key = :gak,
-                zone2_pace_min = :z2min, zone2_pace_max = :z2max,
+                zone2_pace_min = COALESCE(:z2min, zone2_pace_min),
+                zone2_pace_max = COALESCE(:z2max, zone2_pace_max),
                 gender = :gender, height_cm = :height_cm, weight_kg = :weight_kg,
                 threshold_pace = COALESCE(:threshold_pace, threshold_pace),
                 coros_vo2max = COALESCE(:vo2max, coros_vo2max),
@@ -1433,8 +1468,11 @@ def update_user_profile(user_id: int, profile_data: dict[str, Any]) -> bool:
                 "aet": int(profile_data.get("aet_hr", 135)),
                 "ant": int(profile_data.get("ant_hr", 165)),
                 "gak": profile_data.get("gemini_api_key"),
-                "z2min": profile_data.get("zone2_pace_min", "6:30"),
-                "z2max": profile_data.get("zone2_pace_max", "5:45"),
+                # No default here on purpose: None means "caller didn't say", and the
+                # COALESCE above then keeps whatever the athlete already had. Substituting
+                # a default at this layer is what silently reset beginners to 6:30-5:45.
+                "z2min": profile_data.get("zone2_pace_min"),
+                "z2max": profile_data.get("zone2_pace_max"),
                 "gender": profile_data.get("gender"),
                 "height_cm": profile_data.get("height_cm"),
                 "weight_kg": profile_data.get("weight_kg"),
@@ -1518,8 +1556,8 @@ def update_onboarding_profile(user_id: int, data: dict[str, Any]) -> bool:
                 resting_hr = :resting_hr,
                 aet_hr = :aet_hr,
                 ant_hr = :ant_hr,
-                zone2_pace_min = :zone2_pace_min,
-                zone2_pace_max = :zone2_pace_max
+                zone2_pace_min = COALESCE(:zone2_pace_min, zone2_pace_min),
+                zone2_pace_max = COALESCE(:zone2_pace_max, zone2_pace_max)
             WHERE id = :id
         """),
             {
@@ -1538,8 +1576,8 @@ def update_onboarding_profile(user_id: int, data: dict[str, Any]) -> bool:
                 "resting_hr": int(data.get("resting_hr", 60)),
                 "aet_hr": int(data.get("aet_hr", 135)),
                 "ant_hr": int(data.get("ant_hr", 165)),
-                "zone2_pace_min": data.get("zone2_pace_min", "6:30"),
-                "zone2_pace_max": data.get("zone2_pace_max", "5:45"),
+                "zone2_pace_min": data.get("zone2_pace_min"),
+                "zone2_pace_max": data.get("zone2_pace_max"),
                 "double_session_days": json.dumps(data.get("double_session_days", [])),
                 "id": user_id,
             },

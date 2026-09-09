@@ -77,3 +77,48 @@ def test_gear_has_no_notebook():
 
 def test_principle_domains_excludes_gear():
     assert dp.PRINCIPLE_DOMAINS == ("scheduler", "nutrition")
+
+
+class TestNotCoveredHandling:
+    """A sweep asks about topics the notebook may not cover. Scheduler principles
+    REPLACE the domain wholesale on save, so a generalised answer to a topic with no
+    source behind it would overwrite good rows with invented ones."""
+
+    def test_the_query_forbids_generalising_beyond_the_documents(self):
+        q = dp._sweep_query("walk-to-run progression", "Be specific with numbers.")
+        assert "walk-to-run progression" in q
+        assert dp.NOT_COVERED in q
+        assert "Do NOT generalise" in q
+        assert "outside these documents" in q
+
+    def test_a_bare_marker_is_recognised(self):
+        assert dp._is_not_covered("NOT COVERED")
+        assert dp._is_not_covered("  not covered  ")
+
+    def test_a_marker_wrapped_in_a_sentence_is_recognised(self):
+        assert dp._is_not_covered("The provided documents do not address this. NOT COVERED.")
+
+    def test_an_empty_answer_counts_as_not_covered(self):
+        assert dp._is_not_covered("")
+        assert dp._is_not_covered("   ")
+
+    def test_a_real_summary_is_not_discarded_just_for_mentioning_the_phrase(self):
+        """The check is deliberately scoped to short answers, so a genuine summary that
+        happens to note a gap in passing still becomes chunks."""
+        long_answer = (
+            "Muscular endurance training develops local fatigue resistance in the propelling "
+            "muscles. Gym-based circuits use 4-6 sets of 10 reps with 60s rest. " * 4
+        ) + " Downhill running is NOT COVERED in detail by these sources."
+        assert len(long_answer) >= 200
+        assert not dp._is_not_covered(long_answer)
+
+
+class TestTierGapTopics:
+    def test_the_sweep_covers_both_ends_of_the_tier_range(self):
+        topics = " ".join(dp.SCHEDULER_TOPICS).lower()
+        assert "walk-to-run progression" in topics
+        assert "continuous running" in topics
+        assert "new runners" in topics
+        assert "talk test" in topics
+        assert "100 km per week" in topics
+        assert "double-day" in topics

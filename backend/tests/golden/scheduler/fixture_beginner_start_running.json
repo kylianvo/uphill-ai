@@ -1,0 +1,18 @@
+{
+  "_comment": "Beginner tier via athlete_tier.py's goal-beats-volume rule (goal_type=start_running). The reported production bug: walk-run structure must render as Walk/Run, never Interval; pace zones must be the beginner default (9:19-7:27 /km), never 6:30-5:45; no ME, no endurance fueling tiers, no Peak/Taper phases anywhere in the output.",
+  "user_profile": {
+    "age": 29,
+    "gender": "female",
+    "max_hr": 191,
+    "resting_hr": 60,
+    "current_weekly_km": 2.0,
+    "days_per_week": 3
+  },
+  "race_info": {
+    "lang": "en",
+    "terrain": "road",
+    "goal_type": "start_running",
+    "name": "My Running Journey"
+  },
+  "total_weeks": 12
+}

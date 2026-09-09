@@ -43,4 +43,38 @@ describe("resolveWorkoutInfo", () => {
     const info = resolveWorkoutInfo("Totally Unrelated Title", "unknown-type", dbTypes);
     expect(info).toBeNull();
   });
+
+  describe("a title must not escalate a session the type already calls easy", () => {
+    // Regression: a beginner's "Aerobic Base: Progressive Walk-Jog Intervals" (type Easy)
+    // matched the `interval` key on the word "Intervals" and rendered red / "Zone 4-5".
+    const dbTypes = [
+      makeType({ type_key: "easy_run", zone: "easy", color: "#3b82f6" }),
+      makeType({ type_key: "long_run", zone: "moderate", color: "#10b981" }),
+      makeType({ type_key: "interval", zone: "hard", color: "#ef4444" }),
+    ];
+
+    it("keeps an Easy walk-jog easy despite 'Intervals' in the title", () => {
+      const info = resolveWorkoutInfo("Aerobic Base: Progressive Walk-Jog Intervals", "Easy", dbTypes);
+      expect(info).toMatchObject({ zone: "easy", color: "#3b82f6" });
+    });
+
+    it("keeps a Long Run moderate despite 'Intervals' in the title", () => {
+      const info = resolveWorkoutInfo("Aerobic Base: Foundation Long Run Intervals", "Long Run", dbTypes);
+      expect(info).toMatchObject({ zone: "moderate", color: "#10b981" });
+    });
+
+    it("still lets a genuinely hard compound session escalate", () => {
+      // "tempo" is not a non-escalating type, so the title may still refine it.
+      const info = resolveWorkoutInfo("Aerobic Base + Interval Sprints", "tempo", [
+        ...dbTypes,
+        makeType({ type_key: "tempo_run", zone: "tempo", color: "#f59e0b" }),
+      ]);
+      expect(info).toMatchObject({ zone: "hard" });
+    });
+
+    it("applies the same guard in the static library fallback (no dbTypes)", () => {
+      const info = resolveWorkoutInfo("Aerobic Base: Progressive Walk-Jog Intervals", "Easy", []);
+      expect(info?.zone).toBe("easy");
+    });
+  });
 });

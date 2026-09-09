@@ -423,3 +423,153 @@ class TestAdaptWeekEndpoint:
             assert "Tuesday, Thursday" in captured_args["block_context"]
             # Check race_info passed to PlanGenerator
             assert captured_args["race_info"]["double_session_days"] == ["Tuesday", "Thursday"]
+
+
+def _seed_two_weeks(client, headers, plan_id, week1_minutes, week2_minutes, week1_completed):
+    """Week 1 with `len(week1_minutes)` sessions, of which the first `week1_completed`
+    are marked done, plus a planned week 2.
+
+    Completion goes through /api/coach/workouts/log rather than an `is_completed` key
+    in the row dict -- save_workouts does not persist that field, so seeding it inline
+    silently produces a 0%-adherence week and tests the wrong branch.
+    """
+    days = ["Monday", "Wednesday", "Friday", "Saturday"]
+    rows = []
+    for i, mins in enumerate(week1_minutes):
+        rows.append(
+            {
+                "week_number": 1,
+                "day_of_week": days[i % 4],
+                "phase": "Base",
+                "title": f"W1 Session {i + 1}",
+                "type": "Easy",
+                "duration_minutes": mins,
+                "target_zone": "Zone 2",
+                "description": "W1 desc.",
+            }
+        )
+    for i, mins in enumerate(week2_minutes):
+        rows.append(
+            {
+                "week_number": 2,
+                "day_of_week": days[i % 4],
+                "phase": "Base",
+                "title": f"W2 Session {i + 1}",
+                "type": "Easy",
+                "duration_minutes": mins,
+                "target_zone": "Zone 2",
+                "description": "W2 desc.",
+            }
+        )
+    save_workouts(plan_id, rows)
+
+    week1 = sorted(
+        (w for w in get_plan_workouts(plan_id) if w["week_number"] == 1),
+        key=lambda w: w["id"],
+    )
+    for w in week1[:week1_completed]:
+        resp = client.patch(
+            "/api/coach/workouts/log",
+            headers=headers,
+            json={"workout_id": w["id"], "is_completed": 1, "rpe": 3},
+        )
+        assert resp.status_code == 200, resp.text
+
+
+def _adapt_and_capture(client, headers, plan_id, **payload):
+    captured = {}
+
+    async def _fake_generate(plan_id, user_profile, race_info, total_weeks=12, **kwargs):
+        captured.update(kwargs)
+        return []
+
+    with patch(
+        "services.plan_generator.PlanGenerator.generate_plan_workouts",
+        new=AsyncMock(side_effect=_fake_generate),
+    ):
+        resp = client.post(
+            "/api/coach/adapt-week",
+            headers=headers,
+            json={"plan_id": plan_id, "week_number": 2, **payload},
+        )
+        assert resp.status_code == 200, resp.text
+        job_id = resp.json()["job_id"]
+        for _ in range(20):
+            status = client.get(f"/api/coach/plan-status/{job_id}", headers=headers)
+            if status.json().get("status") in ("done", "error"):
+                break
+            time.sleep(0.05)
+        assert status.json()["status"] == "done"
+    return captured["block_context"]
+
+
+class TestAdaptWeekVolumeBounds:
+    """Regression cover for the production report: a beginner reported VERY LIGHT
+    effort and asked to run longer, and week 2 came back shorter than week 1."""
+
+    def test_bounds_are_expressed_in_minutes_not_kilometres(self, client, auth_headers):
+        """distance_km is recomputed from duration downstream, so a km bound was a
+        disguised minutes bound converted at a pace the athlete may not run."""
+        plan_id = _create_test_plan(client, auth_headers["headers"])
+        _seed_two_weeks(client, auth_headers["headers"], plan_id, [40, 40, 40], [40, 40, 40], week1_completed=3)
+
+        ctx = _adapt_and_capture(client, auth_headers["headers"], plan_id, fatigue_level="very_light")
+
+        assert "in MINUTES" in ctx
+        assert "min\n" in ctx
+        # The old bound line was "MUST total between X km and Y km" -- it must be gone.
+        assert "km and" not in ctx
+        assert "DO NOT exceed" not in ctx
+
+    def test_very_light_effort_does_not_shrink_a_fully_completed_week(self, client, auth_headers):
+        plan_id = _create_test_plan(client, auth_headers["headers"])
+        _seed_two_weeks(client, auth_headers["headers"], plan_id, [40, 40, 40], [40, 40, 40], week1_completed=3)
+
+        ctx = _adapt_and_capture(client, auth_headers["headers"], plan_id, fatigue_level="very_light")
+
+        # Week 1 planned 120 min -> very light band is 1.02-1.08 -> 122-130 min.
+        assert "Reference: Week 1 planned 120 min" in ctx
+        assert "Target Full Week Total: 122-130 min" in ctx
+
+    def test_an_incomplete_prior_week_holds_volume_instead_of_shrinking_it(self, client, auth_headers):
+        """THE reported bug. Week 1 planned 120 min but only 40 min was completed.
+        Anchoring on completed volume produced a ~41-43 min week 2 while calling it a
+        2-8% increase. It must now hold near the planned 120, and say why."""
+        plan_id = _create_test_plan(client, auth_headers["headers"])
+        _seed_two_weeks(client, auth_headers["headers"], plan_id, [40, 40, 40], [40, 40, 40], week1_completed=1)
+
+        ctx = _adapt_and_capture(client, auth_headers["headers"], plan_id, fatigue_level="very_light")
+
+        assert "Reference: Week 1 planned 120 min" in ctx
+        # 0.95-1.02 of 120 -> 114-122 min, nowhere near the ~41 min the old code produced.
+        assert "Target Full Week Total: 114-122 min" in ctx
+        assert "Prior-Week Adherence" in ctx
+        assert "do NOT progress volume" in ctx
+        assert "do NOT " in ctx and "punishment" in ctx
+
+    def test_the_athlete_request_is_given_explicit_precedence_over_the_cap(self, client, auth_headers):
+        """The 5-tier RPE table used to sit as prose above a MUST/DO-NOT-EXCEED
+        ceiling with nothing saying which wins, so the number always won."""
+        plan_id = _create_test_plan(client, auth_headers["headers"])
+        _seed_two_weeks(client, auth_headers["headers"], plan_id, [40, 40, 40], [40, 40, 40], week1_completed=3)
+
+        ctx = _adapt_and_capture(
+            client,
+            auth_headers["headers"],
+            plan_id,
+            fatigue_level="very_light",
+            athlete_notes="Felt easy, I want to run longer",
+        )
+
+        assert "Bound Precedence" in ctx
+        assert "safety cap, not a target" in ctx
+        assert "TOP of the range" in ctx
+        assert "Felt easy, I want to run longer" in ctx
+
+    def test_a_beginners_short_sessions_are_not_stretched_to_the_weekday_minimum(self, client, auth_headers):
+        plan_id = _create_test_plan(client, auth_headers["headers"])
+        _seed_two_weeks(client, auth_headers["headers"], plan_id, [20, 20, 25], [20, 20, 25], week1_completed=3)
+
+        ctx = _adapt_and_capture(client, auth_headers["headers"], plan_id, fatigue_level="very_light")
+
+        assert "a beginner's weekday run may be 20-30 minutes and that is correct" in ctx

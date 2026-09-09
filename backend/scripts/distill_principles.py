@@ -71,6 +71,22 @@ SCHEDULER_TOPICS = [
     "Back-to-back long runs for ultra endurance: volume caps, weekly percentage distribution, fueling between days, and fatigue management",
     "Altitude and heat acclimation: timeline for adaptations, pacing adjustments per 1000m elevation gain, plasma volume expansion, and heat protocol integration",
     "Pre-race carb-loading protocols (g/kg bodyweight over 36-48h), low-residue diet transition to prevent GI distress, and electrolyte pre-loading",
+    # ─── Tier-gap topics ──────────────────────────────────────────────────────
+    # The 29 rows this notebook produced before these were added were all pitched at
+    # one audience: a trained mountain athlete. services/athlete_tier.py now generates
+    # for five tiers, and retrieval had nothing to ground the two ends of that range --
+    # so a beginner's plan was grounded on gym ME protocols. These topics exist to fill
+    # that. EXPECT SOME TO COME BACK "NOT COVERED": this notebook is not a
+    # couch-to-5k source, and an honest gap is the correct outcome. Do not soften the
+    # NOT COVERED instruction in _sweep_query to make them return something.
+    "Walk-to-run progression for a complete beginner: the starting run:walk ratio and interval duration, repetitions per session, how the ratio changes week to week, and the specific criterion that says the athlete is ready to progress",
+    "Transitioning from run/walk intervals to continuous running: what threshold (unbroken minutes, run:walk ratio, or effort) signals readiness, and how to structure that transition",
+    "Injury risk in new runners: bone and connective-tissue adaptation timelines, weekly session-count and rest-day limits, and the early warning signs that require backing off",
+    "Regulating effort without reliable pace or heart-rate data: the talk test and other field cues for an athlete who has no established threshold numbers",
+    "Weeks containing two or more quality sessions: how they are spaced, sequenced relative to the long run, and what total weekly high-intensity volume a highly trained athlete tolerates",
+    "Periodization above 100 km per week: how progression rates, deload frequency and recovery needs differ from those of lower-volume athletes",
+    "Double-day training: when a second daily session is warranted, what belongs in each session, and the minimum recovery between them",
+    "Markers of readiness and overreaching in highly trained athletes: which metrics matter, and what thresholds should trigger a change to the plan",
 ]
 
 NUTRITION_PRINCIPLE_TOPICS = [
@@ -78,6 +94,34 @@ NUTRITION_PRINCIPLE_TOPICS = [
     "Sodium and hydration strategy: mg per hour targets, hot weather adjustments, sweat rate",
     "Pre-race nutrition, real food vs gels during long races, and common race fueling mistakes",
 ]
+
+
+# A sweep asks about topics the notebook may simply not cover -- the tier-gap topics
+# below are the obvious case, since this is not a beginner-running source. Without the
+# NOT COVERED escape, "summarize everything your documents say about X" invites the
+# model to generalise from adjacent material, and the result is plausible prose with no
+# source behind it. That is strictly worse than a gap here: scheduler principles REPLACE
+# the domain wholesale on save, so an ungrounded sweep would overwrite good rows with
+# invented ones. The marker is filtered out before structuring.
+NOT_COVERED = "NOT COVERED"
+
+
+def _sweep_query(topic: str, specificity: str) -> str:
+    return (
+        f"Summarize everything your documents say about: {topic}. {specificity}\n\n"
+        f"IMPORTANT: answer ONLY from these documents. If they do not address this topic, "
+        f"reply with exactly '{NOT_COVERED}' and nothing else. Do NOT generalise from "
+        f"related material, and do NOT draw on knowledge outside these documents -- an "
+        f"honest gap is more useful here than a plausible answer."
+    )
+
+
+def _is_not_covered(answer: str) -> bool:
+    """True when the notebook said it has nothing on this topic. Checked loosely --
+    models tend to wrap a bare marker in a sentence -- but only over a short answer, so
+    a real summary that happens to mention the phrase is not discarded."""
+    stripped = (answer or "").strip()
+    return not stripped or (len(stripped) < 200 and NOT_COVERED.lower() in stripped.lower())
 
 
 async def _query_with_retries(notebook_id: str, auth_json: str, query: str, attempts: int = 3) -> str:
@@ -103,6 +147,7 @@ async def _query_with_retries(notebook_id: str, auth_json: str, query: str, atte
 
 async def _distill_nutrition(notebook_id: str, auth_json: str, api_key: str, status: dict) -> list[dict]:
     rows: list[dict] = []
+    skipped: list[str] = []
     total = len(NUTRITION_PRINCIPLE_TOPICS)
     for j, topic in enumerate(NUTRITION_PRINCIPLE_TOPICS):
         status.update({"current_topic": f"nutrition principle {j + 1}", "progress": j, "total": total})
@@ -110,8 +155,13 @@ async def _distill_nutrition(notebook_id: str, auth_json: str, api_key: str, sta
             answer = await _query_with_retries(
                 notebook_id,
                 auth_json,
-                f"Summarize everything your documents say about: {topic}. Be specific with numbers.",
+                _sweep_query(topic, "Be specific with numbers."),
             )
+            if _is_not_covered(answer):
+                print(f"[distill_principles] NOT COVERED, skipping: {topic[:60]}…")
+                skipped.append(topic)
+                await asyncio.sleep(1.5)
+                continue
             structured = await _gemini_structured(
                 api_key,
                 "Split this text into 1-3 self-contained principle chunks (title + 100-400 word content). "
@@ -132,19 +182,31 @@ async def _distill_nutrition(notebook_id: str, auth_json: str, api_key: str, sta
         except Exception as e:
             print(f"[distill_principles][nutrition] Principle topic failed, continuing: {e}")
         await asyncio.sleep(1.5)
+    if skipped:
+        print(f"\n[distill_principles] {len(skipped)} topic(s) NOT COVERED by this notebook:")
+        for t in skipped:
+            print(f"    - {t[:100]}")
+        print("    These are real gaps, not failures. Source material would have to be added")
+        print("    to the notebook for them to produce rows.\n")
     return rows
 
 
 async def _distill_scheduler(notebook_id: str, auth_json: str, api_key: str, status: dict) -> list[dict]:
     rows: list[dict] = []
+    skipped: list[str] = []
     for i, topic in enumerate(SCHEDULER_TOPICS):
         status.update({"current_topic": f"scheduler: {topic[:50]}…", "progress": i, "total": len(SCHEDULER_TOPICS)})
         try:
             answer = await _query_with_retries(
                 notebook_id,
                 auth_json,
-                f"Summarize everything your documents say about: {topic}. Be specific — numbers, protocols, examples.",
+                _sweep_query(topic, "Be specific — numbers, protocols, examples."),
             )
+            if _is_not_covered(answer):
+                print(f"[distill_principles] NOT COVERED, skipping: {topic[:60]}…")
+                skipped.append(topic)
+                await asyncio.sleep(1.5)
+                continue
             structured = await _gemini_structured(
                 api_key,
                 "Split this text into 2-4 self-contained principle chunks (title + 200-600 word content) "
@@ -165,6 +227,12 @@ async def _distill_scheduler(notebook_id: str, auth_json: str, api_key: str, sta
         except Exception as e:
             print(f"[distill_principles][scheduler] Topic failed, continuing: {e}")
         await asyncio.sleep(1.5)
+    if skipped:
+        print(f"\n[distill_principles] {len(skipped)} topic(s) NOT COVERED by this notebook:")
+        for t in skipped:
+            print(f"    - {t[:100]}")
+        print("    These are real gaps, not failures. Source material would have to be added")
+        print("    to the notebook for them to produce rows.\n")
     return rows
 
 

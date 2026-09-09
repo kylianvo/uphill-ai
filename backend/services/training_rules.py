@@ -1,5 +1,48 @@
 from typing import Any
 
+# ─── Zone 2 pace defaults ─────────────────────────────────────────────────────
+# The per-tier values live in services/athlete_tier.py's TIER_PROFILES, so the tier
+# table is the single place a coach corrects any of this. These wrappers exist because
+# the pace defaults are consumed from call sites that know a goal but not a tier.
+#
+# Before this existed the pair "6:30"/"5:45" was hardcoded at nine call sites, so a
+# beginner who lost her stored zones silently read as a trained runner: every derived
+# number -- target pace, distance_km, treadmill speed -- inherited the error.
+from services.athlete_tier import BEGINNER, DEFAULT_TIER, get_profile
+
+# Goals that imply an athlete who cannot yet sustain continuous running. "return" and
+# "recovery" are deliberately absent: a runner coming back from a break or a race is
+# detrained, not a beginner, and usually still has usable zones from before.
+BEGINNER_GOAL_TYPES = ("start_running",)
+
+
+def pace_tier_for_goal(goal_type: str | None, athlete_tier: str | None = None) -> str:
+    """Which tier's pace defaults apply. An explicit athlete tier wins over the goal,
+    since it is derived from more signals."""
+    if athlete_tier:
+        return athlete_tier.strip().lower()
+    return BEGINNER if (goal_type or "").lower() in BEGINNER_GOAL_TYPES else DEFAULT_TIER
+
+
+def default_zone2_pace(tier: str | None = None) -> tuple[str, str]:
+    """(slower, faster) Zone 2 bounds in min/km for a tier. Unknown tiers fall back to
+    the default profile rather than raising -- a plan with slightly wrong paces beats no
+    plan, and the caller has no better answer to substitute."""
+    return get_profile(tier).zone2_pace
+
+
+def resolve_zone2_pace(
+    stored_min: str | None,
+    stored_max: str | None,
+    goal_type: str | None = None,
+    athlete_tier: str | None = None,
+) -> tuple[str, str]:
+    """The athlete's own zones when they have them, otherwise the tier default.
+    Each bound falls back independently, so a half-populated profile doesn't lose the
+    bound it does have."""
+    tier_min, tier_max = default_zone2_pace(pace_tier_for_goal(goal_type, athlete_tier))
+    return (stored_min or tier_min, stored_max or tier_max)
+
 
 class TrainingRules:
     @staticmethod

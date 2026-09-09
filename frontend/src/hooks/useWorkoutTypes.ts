@@ -61,10 +61,28 @@ const DB_TYPE_MAP: Record<string, string> = {
   "active recovery":    "recovery_run",
   "cross-training":     "cross_training",
   "aerobic capacity":   "easy_run",
+  // Walk/Run is an EASY session made of repeated bouts -- it must never map to the
+  // `interval` type, which renders red and labelled Zone 4-5.
   "walk/run":           "easy_run",
   "race":               "race_day",
   "rest":               "rest",
 };
+
+// Types where the coach has already declared the session is NOT hard. For these the
+// title may not escalate intensity: a generated title is a label describing STRUCTURE,
+// not a prescription. "Progressive Walk-Jog Intervals" is an easy session made of
+// repeated bouts — letting `interval` win off that substring painted a beginner's
+// walk-jog red and labelled it Zone 4-5, the most dangerous possible mislabel.
+// Compound sessions that genuinely are hard (e.g. type "tempo", title
+// "Aerobic Base + Interval Sprints") are unaffected — "tempo" isn't in this set.
+const NON_ESCALATING_TYPES = new Set([
+  "easy",
+  "recovery",
+  "active recovery",
+  "long run",
+  "walk/run",
+  "rest",
+]);
 
 /** Resolve workout info: DB-sourced first, static fallback second. */
 export function resolveWorkoutInfo(
@@ -72,18 +90,25 @@ export function resolveWorkoutInfo(
   type: string,
   dbTypes: WorkoutTypeEntry[]
 ): WorkoutInfo | null {
+  const typeLower = type.toLowerCase();
+  const titleMayEscalate = !NON_ESCALATING_TYPES.has(typeLower);
+
   if (dbTypes.length > 0) {
-    // 1. Title keyword scan first — catches compound sessions like "Aerobic Base + Hill Sprints"
+    // 1. Title keyword scan first — catches compound sessions like "Aerobic Base + Hill Sprints",
+    //    but only for types that haven't already declared themselves easy (see above).
     const titleLower = title.toLowerCase();
-    const titleMatch = dbTypes.find(
-      (t) => t.type_key.length > 5 && titleLower.includes(t.type_key.replace(/_/g, " "))
-    );
+    const titleMatch = titleMayEscalate
+      ? dbTypes.find((t) => t.type_key.length > 5 && titleLower.includes(t.type_key.replace(/_/g, " ")))
+      : undefined;
+    // 3's haystack drops the title for non-escalating types too — otherwise the title
+    // sneaks back in through the combined string and undoes the guard above.
+    const haystack = (titleMayEscalate ? `${titleLower} ${typeLower}` : typeLower);
     const match =
       titleMatch ||
       // 2. Direct type → type_key mapping
-      dbTypes.find((t) => t.type_key === DB_TYPE_MAP[type.toLowerCase()]) ||
+      dbTypes.find((t) => t.type_key === DB_TYPE_MAP[typeLower]) ||
       // 3. Combined title+type keyword fallback
-      dbTypes.find((t) => `${titleLower} ${type}`.toLowerCase().includes(t.type_key.replace(/_/g, " ")));
+      dbTypes.find((t) => haystack.includes(t.type_key.replace(/_/g, " ")));
     if (match) {
       return {
         zone: match.zone as any,

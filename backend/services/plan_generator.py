@@ -2,7 +2,9 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from log_utils import get_logger
-from services.training_rules import TrainingRules
+from services.athlete_tier import get_profile, resolve_tier
+from services.plan_rules import build_rules_block
+from services.training_rules import TrainingRules, default_zone2_pace, resolve_zone2_pace
 
 _logger = get_logger(__name__)
 
@@ -127,6 +129,45 @@ class PlanGenerator:
             }
 
     @staticmethod
+    def resolve_pace_zones(
+        user_profile: dict[str, Any],
+        goal_type: str | None = None,
+        athlete_tier: str | None = None,
+    ) -> dict[str, Any]:
+        """An athlete's pace zones, resolved the SAME way everywhere.
+
+        Precedence, strongest evidence first:
+          1. A measured threshold pace, which produces zones anchored on a real test
+             rather than chained outward from an estimate.
+          2. Zone 2 bounds -- the athlete's own if stored, otherwise the tier default.
+
+        This exists because the plan generator used to call estimate_pace_zones with
+        only the Zone 2 bounds, silently dropping `threshold_pace` and `pace_zone_model`
+        even though the function accepts both and GET /api/auth/pace-zones passes them.
+        An athlete with a measured threshold therefore saw one set of zones in the app
+        while their PLAN was built on a different, estimated set -- and every workout's
+        target pace, distance_km and treadmill speed came from the plan's set.
+
+        `custom_pace_zones` is deliberately NOT consulted here: that payload is shaped
+        for display and is not guaranteed to carry the `*_pace_mid` values the distance
+        maths needs. Honouring it needs a shape migration, not a lookup.
+        """
+        z2_min, z2_max = resolve_zone2_pace(
+            user_profile.get("zone2_pace_min"),
+            user_profile.get("zone2_pace_max"),
+            goal_type,
+            athlete_tier=athlete_tier,
+        )
+        return PlanGenerator.estimate_pace_zones(
+            z2_min,
+            z2_max,
+            user_profile.get("aet_hr"),
+            user_profile.get("ant_hr"),
+            threshold_pace=user_profile.get("threshold_pace"),
+            model=user_profile.get("pace_zone_model") or "5_zone",
+        )
+
+    @staticmethod
     def estimate_pace_zones(
         zone2_min_str: str | None = None,
         zone2_max_str: str | None = None,
@@ -143,8 +184,13 @@ class PlanGenerator:
         if threshold_pace:
             return PlanGenerator.calculate_pace_zones_from_threshold(threshold_pace, model=model)
 
-        z2_min = PlanGenerator.parse_pace_to_decimal(zone2_min_str or "6:30")
-        z2_max = PlanGenerator.parse_pace_to_decimal(zone2_max_str or "5:45")
+        # Last-resort guard only: every caller resolves the athlete's zones through
+        # training_rules.resolve_zone2_pace first, which is where the tier default is
+        # applied. This branch means a caller passed nothing at all -- fall back to the
+        # general tier rather than crash, but it should not normally be reachable.
+        _fallback_min, _fallback_max = default_zone2_pace()
+        z2_min = PlanGenerator.parse_pace_to_decimal(zone2_min_str or _fallback_min)
+        z2_max = PlanGenerator.parse_pace_to_decimal(zone2_max_str or _fallback_max)
 
         reference_gap = 1.15
         if aet_hr and ant_hr and aet_hr > 0:
@@ -181,7 +227,10 @@ class PlanGenerator:
         return {
             "zone1_pace": z1_range,
             "zone1_pace_mid": z1_mid,
-            "zone2_pace": f"{zone2_min_str or '6:30'} - {zone2_max_str or '5:45'}",
+            # Same fallback as the numeric branch above -- these were separate literals,
+            # so a missing bound produced a DISPLAY range of 6:30-5:45 while the distance
+            # maths used the tier default. The athlete saw one pace and got another.
+            "zone2_pace": f"{zone2_min_str or _fallback_min} - {zone2_max_str or _fallback_max}",
             "zone2_pace_mid": PlanGenerator.decimal_to_pace_str(z2_mid_dec),
             "zone3_pace": z3_range,
             "zone3_pace_mid": z3_mid,
@@ -282,7 +331,11 @@ class PlanGenerator:
         pyramid workouts are expected to leave these fields unset and keep
         relying on the free-text description, same as before this field existed.
         """
-        if w_type != "Interval":
+        # Walk/Run sessions are the whole reason a beginner's plan has rep structure at
+        # all. Gating this on "Interval" alone meant their structure was silently dropped
+        # and survived only as free text in the description, so the UI could never render
+        # "5 x 2 min jog / 1 min walk" as a chip.
+        if w_type not in ("Interval", "Walk/Run"):
             return None, None, None
 
         raw_reps = wo.get("interval_reps")
@@ -439,9 +492,9 @@ class PlanGenerator:
         ant_hr = int(user_profile.get("ant_hr", resting_hr + int((max_hr - resting_hr) * 0.85)))
         hr_zones = TrainingRules.calculate_heart_rate_zones(max_hr, resting_hr, aet_hr, ant_hr)
 
-        z2_min = user_profile.get("zone2_pace_min") or "6:30"
-        z2_max = user_profile.get("zone2_pace_max") or "5:45"
-        est_zones = PlanGenerator.estimate_pace_zones(z2_min, z2_max, aet_hr, ant_hr)
+        est_zones = PlanGenerator.resolve_pace_zones(
+            {**user_profile, "aet_hr": aet_hr, "ant_hr": ant_hr}, user_profile.get("goal_type")
+        )
 
         is_rest_or_strength = workout_type in ("Rest", "Strength", "Muscular Endurance")
         is_interval = workout_type == "Interval"
@@ -658,10 +711,35 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
         else:
             goal_race_pace_str = None  # fall back to Zone 4 (race effort)
 
-        # Extract Zone 2 bounds and calculate personalized pacing zone ranges
-        z2_min = user_profile.get("zone2_pace_min") or "6:30"
-        z2_max = user_profile.get("zone2_pace_max") or "5:45"
-        est_zones = PlanGenerator.estimate_pace_zones(z2_min, z2_max, aet_hr, ant_hr)
+        # Which kind of runner this plan is for. Resolved here, above the pace zones,
+        # because the tier decides the pace default as well as the rules block -- see
+        # services/athlete_tier.py for why the tier follows the plan, not the athlete.
+        _historical_ceiling = race_info.get("historical_ceiling") or user_profile.get("historical_ceiling")
+        _max_jog_min = user_profile.get("max_continuous_jog_min")
+        athlete_tier = resolve_tier(
+            explicit_tier=race_info.get("athlete_tier"),
+            goal_type=race_info.get("goal_type") or user_profile.get("goal_type"),
+            current_weekly_km=current_weekly_km,
+            max_continuous_jog_min=_max_jog_min,
+            historical_max_distance_km=(_historical_ceiling or {}).get("max_distance_km"),
+            # RAW stored thresholds, deliberately not the derived aet_hr/ant_hr above.
+            # Those are computed from fixed 65%/85%-of-reserve ratios, so they yield the
+            # SAME ~17% spread for every athlete -- which exceeds both the sub-elite and
+            # elite gap limits and would cap literally everyone at recreational. The gap
+            # is only evidence when it was actually measured.
+            aet_hr=user_profile.get("aet_hr"),
+            ant_hr=user_profile.get("ant_hr"),
+        )
+        tier_profile = get_profile(athlete_tier)
+
+        # Extract Zone 2 bounds and calculate personalized pacing zone ranges.
+        # goal_type comes from the PLAN, not the user: the same athlete can hold a
+        # start-running plan and a race plan, and the tier default must follow the plan.
+        est_zones = PlanGenerator.resolve_pace_zones(
+            {**user_profile, "aet_hr": aet_hr, "ant_hr": ant_hr},
+            race_info.get("goal_type") or user_profile.get("goal_type"),
+            athlete_tier=athlete_tier,
+        )
 
         p_z1 = est_zones["zone1_pace"]  # Range representation for prompt, e.g. "6:53 - 6:04"
         p_z2 = est_zones["zone2_pace"]  # Range representation for prompt, e.g. "6:30 - 5:45"
@@ -1112,6 +1190,49 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                 else ""
             )
 
+            rules_block = build_rules_block(tier_profile, _max_jog_min)
+
+            # The SCHEMA has to be tier-aware too, not just the rules. Fixing only the
+            # rules left a beginner's prompt stating "NO Muscular Endurance sessions of
+            # any kind" a few hundred characters after the schema handed the model the
+            # Summit Water Dump protocol and 8-10g/kg race-day carb loading. A prompt
+            # that contradicts itself is worse than one that is uniformly wrong: the
+            # model resolves the conflict however it likes, differently each run.
+            me_format_spec = (
+                "     * Muscular Endurance (ME): this develops peripheral muscular fatigue resistance without cardiac strain. Format by terrain: (a) Flat/Rolling or Gym: high-cadence, high-rep CIRCUIT training — NEVER straight sets. One → segment per exercise names ONE pass (e.g. '10 reps Split Jump Squats, 15s transition → 10 reps Squat Jumps, 15s transition → 10 reps/leg Box Step-Ups at 75% kneecap height, 15s transition → 10 reps/leg Front Lunges'), followed by total rounds (6-8 rounds) and rest between rounds (~60s tapering to 15s). (b) Outdoor Mountain Hikes: steep 30%+ off-trail grade with 5-15% bodyweight pack, 5-20 min climbing intervals with 1-3 min recovery, and mandatory Summit Water Dump protocol: 'Dump water weight at summit; descend unweighted to preserve orthopedic integrity'. (c) Incline Treadmill: 12-15% incline, 90% and 95% uphill climbing pace intervals (standard commercial gym treadmills max out at 15%). (d) Hill Bounding / Ski Striding: 6-8 reps of 8-12s max-effort bounds on 15-20% hill, 3-4 min full standing/walking rest, strictly terminate at first power drop.\n"
+                if tier_profile.allows_me_blocks
+                else ""
+            )
+
+            # Fueling advice scales to the sessions this athlete actually runs. A beginner
+            # doing 25-minute run/walks never reaches the carbohydrate tiers, and listing
+            # them makes the plan intimidating for no benefit.
+            _fuel_head = "   - `fueling_tip` (string: hydration, carbohydrate, and electrolyte guides specific to duration and intensity. Strictly follow these quantitative targets: "
+            _fuel_short = "* Sessions < 75 mins: Plain water and optional electrolytes (200-400mg sodium); no exogenous carbs needed. "
+            _fuel_long = (
+                "* Sessions 75-150 mins: 30-60g carbohydrates per hour + 300-500mg sodium/hr with 400-600ml water/hr. "
+                "* Sessions > 150 mins (Long Runs & Ultra simulation): 60-90g carbohydrates per hour + 500-800mg sodium/hr with 500-750ml fluid/hr. Practice with race-day fuels (energy gels, chews, drink mix). "
+            )
+            _fuel_race = "* Race Day / Pre-race (Target Race): 8-10g carbohydrates per kg bodyweight per day for 36-48 hours prior; on race day take 60-90g CHO/hr + 600-900mg sodium/hr starting within the first 30-45 minutes."
+            if tier_profile.uses_walk_run:
+                fueling_spec = (
+                    _fuel_head
+                    + _fuel_short
+                    + "Do NOT prescribe gels, per-hour carbohydrate targets or race-day loading — this athlete's sessions do not reach those durations.)\n"
+                )
+            elif is_event_goal:
+                fueling_spec = _fuel_head + _fuel_short + _fuel_long + _fuel_race + ")\n"
+            else:
+                fueling_spec = _fuel_head + _fuel_short + _fuel_long + ")\n"
+
+            # The steep hill-sprint incline is a prescription for a session type this
+            # athlete may not be given at all.
+            hill_incline_exception = (
+                "EXCEPTION — for a Hill Sprint or Hill Repeat workout specifically (identifiable by 'Hill Sprint'/'Hill Repeat' in the `title`), `treadmill_incline` MUST be in the 10-15% range regardless of the race's average grade or this workout's own `grade_percent` — these are short, near-maximal efforts that require a steep grade by design, not a race-average one. "
+                if tier_profile.allows_intensity
+                else ""
+            )
+
             _ai_prompt = (
                 "You are a world-class running coach training athletes based on the 'Training for the Uphill Athlete' philosophy.\n"
                 f"{goal_intro}\n\n"
@@ -1122,83 +1243,38 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                 "   - `day_of_week` (string: 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')\n"
                 "   - `phase` (string: 'Base', 'Build', 'Peak', 'Taper', 'Race Week', 'Recovery'. IMPORTANT: Follow this exact progression — Base (early weeks) → Build (mid weeks) → Peak (highest intensity week, 1-2 weeks before taper) → Taper (the week immediately before Race Week, reduce volume to ~50%) → Race Week (the week containing the actual race event) → Recovery (final week after the race).)\n"
                 "   - `title` (string: name of workout)\n"
-                "   - `type` (string: 'Easy', 'Tempo', 'Interval', 'Long Run', 'Strength', 'Rest', 'Race', 'Recovery', 'Muscular Endurance')\n"
+                "   - `type` (string: 'Easy', 'Tempo', 'Interval', 'Long Run', 'Strength', 'Rest', "
+                "'Race', 'Recovery', 'Muscular Endurance', 'Walk/Run'. Use 'Walk/Run' for ANY session "
+                "built from alternating jog and walk intervals — never label such a session 'Interval', "
+                "which means high-intensity repeats and is displayed to the athlete as hard, maximal work.)\n"
                 "   - `duration_minutes` (number: duration of workout)\n"
                 "   - `target_zone` (string: 'Zone 1', 'Zone 2', 'Zone 3', 'Zone 4', 'Zone 5')\n"
                 "   - `target_hr_range` (string: heart rate bounds based on athlete's thresholds, e.g. '125-140 bpm')\n"
                 "   - `target_pace` (string: recommended target pace, matching or referencing their custom pace zones, e.g. '6:00 /km')\n"
                 "   - `distance_km` (number: estimated distance in kilometers. Calculate this as duration_minutes / (target_pace in decimal minutes), e.g. 60 mins at 6:00/km is 10.0 km)\n"
-                "   - `interval_reps`, `interval_rep_value`, `interval_rep_unit` (ONLY for `type` "
-                "'Interval' AND ONLY when the session is a single clean rep block — e.g. 8 reps of "
-                "12-second hill sprints, or 5 reps of 400m repeats. `interval_reps` is the integer rep "
-                "count, `interval_rep_value` is the number per rep, `interval_rep_unit` is one of "
-                "'s'/'m'/'min'/'km' matching how that rep is measured. OMIT all three (do not guess) "
-                "when the session has a warm-up/main/cool-down structure that doesn't reduce to one rep "
-                "block, a pyramid, or mixed rep durations — the `description` Process section still "
-                "carries the full detail for those.)\n"
-                "   - `elevation_gain_m` and `grade_percent` (numbers, ONLY for `type` Easy/Tempo/Interval/Long Run "
-                "AND only when the athlete's terrain is trail/mountain — omit or use 0 otherwise): give this "
-                "specific run a plausible amount of climbing, using the race's overall course_elevation_gain_m/"
-                "course_distance_km (given below in the athlete/race profile) as context for what's typical, and "
-                "this run's own distance/phase/role to vary it — a Base-phase Easy run climbs less than a "
-                "Peak-phase Long Run. `grade_percent` should be consistent with `elevation_gain_m` and this run's "
-                "own `distance_km` (grade ≈ elevation_gain_m / (distance_km × 10)), not just the race's average. "
-                "NEVER invent a figure wildly inconsistent with the race's overall elevation profile.\n"
-                "   - `description` (string: highly detailed description containing specific sections, "
-                "each introduced by its keyword — Process, Overall, Reason, Benefit, Warning — appearing "
-                "in that order and each appearing EXACTLY ONCE: "
-                "Process (step-by-step execution using → to separate segments — EVERY exercise or effort "
-                "chunk MUST be its own → segment; NEVER chain multiple exercises together with semicolons "
-                "or commas inside a single segment, and NEVER wrap them in a label like 'Main Circuit: ...'. "
-                "   - `interval_reps`, `interval_rep_value`, `interval_rep_unit` (ONLY for `type` 'Interval' AND ONLY when the session is a single clean rep block — e.g. 8 reps of 12-second hill sprints, or 5 reps of 400m repeats. `interval_reps` is the integer rep count, `interval_rep_value` is the number per rep, `interval_rep_unit` is one of 's'/'m'/'min'/'km' matching how that rep is measured. OMIT all three (do not guess) when the session has a warm-up/main/cool-down structure that doesn't reduce to one rep block, a pyramid, or mixed rep durations — the `description` Process section still carries the full detail for those.)\n"
+                "   - `walk_interval_value` (number, ONLY for `type` 'Walk/Run': the WALK recovery per "
+                "rep, in the same unit as `interval_rep_unit`. Together with the three interval fields "
+                "below this makes the session renderable as '5 x 2 min jog / 1 min walk' rather than a "
+                "sentence the athlete has to parse.)\n"
+                "   - `interval_reps`, `interval_rep_value`, `interval_rep_unit` (for `type` 'Interval' or "
+                "'Walk/Run', AND ONLY when the session is a single clean rep block — e.g. 8 reps of 12-second hill sprints, or 5 reps of 400m repeats. `interval_reps` is the integer rep count, `interval_rep_value` is the number per rep, `interval_rep_unit` is one of 's'/'m'/'min'/'km' matching how that rep is measured. OMIT all three (do not guess) when the session has a warm-up/main/cool-down structure that doesn't reduce to one rep block, a pyramid, or mixed rep durations — the `description` Process section still carries the full detail for those.)\n"
                 "   - `elevation_gain_m` and `grade_percent` (numbers, ONLY for `type` Easy/Tempo/Interval/Long Run AND only when the athlete's terrain is trail/mountain — omit or use 0 otherwise): give this specific run a plausible amount of climbing, using the race's overall course_elevation_gain_m/course_distance_km (given below in the athlete/race profile) as context for what's typical, and this run's own distance/phase/role to vary it — a Base-phase Easy run climbs less than a Peak-phase Long Run. `grade_percent` should be consistent with `elevation_gain_m` and this run's own `distance_km` (grade ≈ elevation_gain_m / (distance_km × 10)), not just the race's average. NEVER invent a figure wildly inconsistent with the race's overall elevation profile.\n"
                 "   - `description` (string: highly detailed description containing specific sections, each introduced by its keyword — Process, Overall, Reason, Benefit, Warning — appearing in that order and each appearing EXACTLY ONCE: "
                 "Process (step-by-step execution using → to separate segments — EVERY exercise or effort chunk MUST be its own → segment; NEVER chain multiple exercises together with semicolons or commas inside a single segment, and NEVER wrap them in a label like 'Main Circuit: ...'. The warm-up, main, and cool-down minutes stated MUST sum exactly to duration_minutes.\n"
                 "     * Easy/Tempo/Interval/Long Run, e.g. 'Warm up 10 min easy → 4 x 6min @ Zone 4, 2min jog recovery → cool down 10 min'.\n"
                 "     * Strength (general/max-strength): straight sets — one → segment per exercise, each naming the exercise plus sets x reps and a 60-180s rest interval BETWEEN SETS OF THAT SAME EXERCISE (appropriate for near-maximal loads), e.g. 'Warm up 5 min mobility → Bodyweight Squats: 3x10, 90s rest → Walking Lunges: 3x10 each leg, 90s rest → Cool down 5 min stretching'.\n"
-                "     * Muscular Endurance (ME): this develops peripheral muscular fatigue resistance without cardiac strain. Format by terrain: (a) Flat/Rolling or Gym: high-cadence, high-rep CIRCUIT training — NEVER straight sets. One → segment per exercise names ONE pass (e.g. '10 reps Split Jump Squats, 15s transition → 10 reps Squat Jumps, 15s transition → 10 reps/leg Box Step-Ups at 75% kneecap height, 15s transition → 10 reps/leg Front Lunges'), followed by total rounds (6-8 rounds) and rest between rounds (~60s tapering to 15s). (b) Outdoor Mountain Hikes: steep 30%+ off-trail grade with 5-15% bodyweight pack, 5-20 min climbing intervals with 1-3 min recovery, and mandatory Summit Water Dump protocol: 'Dump water weight at summit; descend unweighted to preserve orthopedic integrity'. (c) Incline Treadmill: 12-15% incline, 90% and 95% uphill climbing pace intervals (standard commercial gym treadmills max out at 15%). (d) Hill Bounding / Ski Striding: 6-8 reps of 8-12s max-effort bounds on 15-20% hill, 3-4 min full standing/walking rest, strictly terminate at first power drop.\n"
+                f"{me_format_spec}"
                 "     * Interval: state exact rep count, distance or duration per rep, and recovery between reps.\n"
                 "NEVER substitute a placeholder segment like 'Perform the bodyweight strength circuit for 20 minutes' for the actual named-exercise segments, and NEVER place the exercise breakdown anywhere outside this Process → chain (in particular, never append it after Warning or any other section) — every exercise MUST live inside Process and nowhere else), "
                 "Overall (2-3 sentence summary of the session), Reason (why it is scheduled now), Benefit (expected physiological adaptation), and Warning (ONLY injury risks or execution precautions — NEVER exercise prescriptions, sets, or reps; those belong exclusively in Process). Provide extensive context.)\n"
-                "   - `fueling_tip` (string: hydration, carbohydrate, and electrolyte guides specific to duration and intensity. Strictly follow these quantitative targets: "
-                "* Sessions < 75 mins: Plain water and optional electrolytes (200-400mg sodium); no exogenous carbs needed. "
-                "* Sessions 75-150 mins: 30-60g carbohydrates per hour + 300-500mg sodium/hr with 400-600ml water/hr. "
-                "* Sessions > 150 mins (Long Runs & Ultra simulation): 60-90g carbohydrates per hour + 500-800mg sodium/hr with 500-750ml fluid/hr. Practice with race-day fuels (energy gels, chews, drink mix). "
-                "* Race Day / Pre-race (Target Race): 8-10g carbohydrates per kg bodyweight per day for 36-48 hours prior; on race day take 60-90g CHO/hr + 600-900mg sodium/hr starting within the first 30-45 minutes.)\n"
-                "   - `treadmill_incline` (number, optional: recommended incline percentage if using treadmill. Inform this from the route's actual grade instead of a flat generic default: for trail-terrain Easy/Tempo/Interval/Long Run workouts, set it consistent with this same workout's own `grade_percent` above (a flat 1% belt incline under-trains the specific climbing demand of a genuinely hilly race). EXCEPTION — for a Hill Sprint or Hill Repeat workout specifically (identifiable by 'Hill Sprint'/'Hill Repeat' in the `title`), `treadmill_incline` MUST be in the 10-15% range regardless of the race's average grade or this workout's own `grade_percent` — these are short, near-maximal efforts that require a steep grade by design, not a race-average one. Omit or use 0 when treadmill access isn't relevant.)\n"
+                f"{fueling_spec}"
+                f"   - `treadmill_incline` (number, optional: recommended incline percentage if using treadmill. Inform this from the route's actual grade instead of a flat generic default: for trail-terrain Easy/Tempo/Interval/Long Run workouts, set it consistent with this same workout's own `grade_percent` above (a flat 1% belt incline under-trains the specific climbing demand of a genuinely hilly race). {hill_incline_exception}Omit or use 0 when treadmill access isn't relevant.)\n"
                 "   - `treadmill_speed` (number, optional: recommended speed in kph if using treadmill, reduced appropriately for the incline set above — a steeper incline needs a slower speed to hold the same target effort)\n"
                 "   - `session_slot` (string, optional: ONLY set this on double-session days. Use 'morning' for the first/shorter session and 'afternoon' for the main/longer session. Omit entirely for single-session days.)\n\n"
                 f"{block_scope_instruction}"
                 f"{_start_date_constraint}"
                 f"{week_schedule_constraints}"
-                "\nRules:\n"
-                "1. Block Scope & Schedule: Generate workouts for the specified block weeks only. Each week must have structured workouts (typically 4-6 workouts per week). ALWAYS honor the athlete's preferred training days and double-session days from their profile — place Rest workouts on non-preferred days, and produce two workout objects on each double-session day as described above.\n"
-                "2. 80/20 Low-Intensity Volume Polarization: At least 80-85% of total weekly running volume/time MUST be strictly in Zone 1 and Zone 2 (below AeT). High-intensity work (Zone 3/4/5, ME circuits) must NOT exceed 15-20% of weekly volume. PROGRESSION CEILING: Total weekly running volume MUST NOT increase by more than 5-10% week-over-week (the 10% rule). Never produce abrupt spikes in weekly mileage.\n"
-                "3. Long Run Proportionality Cap: A single long run must NOT exceed 30-35% of total weekly volume. For ultra distances where back-to-back weekend long runs (Saturday + Sunday) are scheduled, their combined total must NOT exceed 50% of the week's total volume to prevent excessive structural breakdown. WEEKDAY RUN DURATIONS: Weekday runs (Mon-Fri) must typically be 45-75 minutes (average ~60 minutes) to respect athlete daily work schedules — never schedule an excessive 90-120+ minute run on a weekday unless explicitly requested.\n"
-                "4. Periodization Phases (Training for the Uphill Athlete):\n"
-                "   - Short Runway Override (<= 10 weeks total plan): Bypass general strength phases. Start a specific Muscular Endurance (ME) block in Week 1 or Week 2, concluding 10-14 days before race day.\n"
-                "   - Base Phase: Aerobic volume accumulation (Zone 1-2) + Maximum Strength (heavy compound bodyweight/gym lifts: squats, deadlifts, step-ups; 3-5 sets of 4-6 reps, 2-3 min rest between sets). For standard/long plans (>= 12 weeks), introduce high-repetition ME circuits in the Build phase.\n"
-                "   - Build Phase: Aerobic base expansion + Muscular Endurance (8-12 week ME block: gym circuits or uphill carries) + Zone 3/4 hill tempo repeats.\n"
-                "   - Peak Phase: Race-specific terrain simulation, high-vert weekend back-to-backs, weighted pack step-ups, and eccentric downhill repeats (quad conditioning).\n"
-                "   - Taper Phase: Reduce weekly volume by 40-60% while maintaining neuromuscular sharpness (stop heavy ME 10-14 days out).\n"
-                "   - Race Week: Minimal volume, rest days before race day, race execution, post-race recovery.\n"
-                "5. Deload Adaptation Cycles: Follow a 3:1 (or 2:1 for masters/fatigued runners) loading-to-recovery pattern. On recovery/deload weeks, reduce weekly volume by 20-30% to consolidate physiological adaptation and prevent overtraining.\n"
-                "6. Aerobic Deficiency Syndrome (ADS) Rule: If ADS is detected in the athlete profile, strictly enforce aerobic base building: NO Zone 4 or 5 intervals in Base/Build phases. Keep all aerobic runs strictly below AeT heart rate.\n"
-                "7. Make the plan highly customized. For example, scale long runs, map Sunday Muscular Endurance box steps/weighted step-ups based on the race elevation gain, or specify treadmill incline/speed settings for gym workouts.\n"
-                "8. NEVER invent a physiological claim, exercise, or number beyond what the Uphill Athlete training philosophy implies. If unsure of an exact figure, give a sensible range instead of fabricating false precision.\n"
-                "9. Give the athlete profile and prior feedback below real weight — this plan MUST reflect their specific numbers, schedule, and history, not a generic template.\n"
-                "10. Uphill Athlete & Trail Specificity: For mountain/trail races, incorporate progressive eccentric quad conditioning (eccentric box step-downs, downhill repeats, hill bounding) and back-to-back weekend long runs where appropriate for ultra distances (50K+). If the course profile notes high heat or altitude, integrate acclimation guidance.\n"
-                "11. Environmental & Routine Scheduling: If the athlete's notes indicate flat/urban living on weekdays with weekend trail travel, prescribe flat road/treadmill aerobic work or gym ME on weekdays, reserving high-vert trail long runs for Saturday/Sunday. Keep weekday runs accessible (~45-60 min).\n"
-                "12. Muscular Endurance (ME) Directives (Scott Johnston Framework):\n"
-                "   - Chassis vs. Engine Principle: Local muscular fatigue resistance of propelling fibers, not cardiac capacity, is the primary governor of sustainable race pace.\n"
-                "   - Terrain Routing:\n"
-                "     * Flat/Rolling Races (<25m vert/km or road): Prescribe Gym Leg Endurance Circuits, Short Steep Hill Strides (10-15% grade, 8-12s bounds), or Flat Tire Drags/Sled Pushes to adapt FTa frontier fibers and prevent late-race stride shortening, hip drop, and eccentric quad collapse.\n"
-                "     * Steep Mountain Races (>=25-35m vert/km or sustained single climbs >500m D+): Prescribe Outdoor Weighted Uphill Hikes (20-30%+ slope, 5-15% BW pack, Summit Water Dump protocol: dump water at top, descend unweighted) or Treadmill Incline Series (12-15% grade).\n"
-                "   - Treadmill Incline Hardware Realism: Standard commercial gym treadmills MAX OUT at 12-15% incline. For treadmill ME or hill repeats, ALWAYS prescribe 10-15% incline. NEVER prescribe >15% treadmill incline unless the athlete explicitly notes access to a specialized 25-40% Incline Trainer.\n"
-                "   - The 48-Hour Buffer: NEVER schedule an ME session within 48 hours of a weekend Long Run, Zone 3/4 interval run, or heavy gym workout.\n"
-                "   - Double Session Sequencing: On double-session days with ME, the high-power ME session is ALWAYS in the morning (fresh CNS); the easy Zone 1/2 aerobic run is in the afternoon.\n"
-                "   - Cardiac vs. Muscular Rule: Heart rate must remain in Zone 1-2 (conversational), while peripheral propelling muscles experience deep, continuous muscular burn.\n"
-                "   - Missed ME Session: If an athlete misses an ME session, drop progression back by 2 workouts to protect tendons and joints.\n"
+                f"{rules_block}"
                 f"{equipment_terrain_rule}"
                 f"{lang_rule}\n\n"
                 f"Athlete Profile:\n{user_summary}\n\n"

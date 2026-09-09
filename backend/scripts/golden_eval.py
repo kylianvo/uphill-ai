@@ -34,7 +34,15 @@ GOLDEN_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file
 
 
 def _fixtures(service: str) -> list[str]:
-    paths = sorted(glob.glob(os.path.join(GOLDEN_DIR, service, "fixture_*.json")))
+    # "fixture_*.json" also matches this script's own output: a captured baseline is
+    # named "<fixture>.ref.json", which itself starts with "fixture_" and ends in
+    # ".json". Without the exclusion, capture's OWN saved output becomes an input on the
+    # next run -- it gets loaded as a fixture, has none of the {"user_profile", ...}
+    # keys a real fixture has, and crashes with KeyError. Excluding *.ref.json makes a
+    # second capture over the same directory safe.
+    paths = sorted(
+        p for p in glob.glob(os.path.join(GOLDEN_DIR, service, "fixture_*.json")) if not p.endswith(".ref.json")
+    )
     if not paths:
         sys.exit(f"No fixtures in tests/golden/{service}/ — add fixture_*.json files first.")
     return paths
