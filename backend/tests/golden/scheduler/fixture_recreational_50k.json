@@ -1,0 +1,24 @@
+{
+  "_comment": "Recreational tier (40-80 km/wk band, the corrected floor -- doctrine states '40 km/wk baseline for 50K training'). First tier where structured ME blocks and Zone 3+ intensity both apply; Zone 4 weekly cap (40 min) should appear. Distinct from the pre-existing fixture_trail_8wk.json, which omits current_weekly_km and defaults to 30.0 -- landing in NOVICE under the corrected bands, not recreational. This fixture sets it explicitly so the tier under test is unambiguous.",
+  "user_profile": {
+    "age": 34,
+    "gender": "male",
+    "max_hr": 188,
+    "resting_hr": 52,
+    "aet_hr": 148,
+    "ant_hr": 168,
+    "current_weekly_km": 55.0,
+    "days_per_week": 5,
+    "has_gym_access": true
+  },
+  "race_info": {
+    "lang": "en",
+    "terrain": "trail",
+    "goal_type": "finish",
+    "name": "Regional 50K",
+    "date": "2026-12-15",
+    "course_distance_km": 50,
+    "course_elevation_gain_m": 2500
+  },
+  "total_weeks": 12
+}

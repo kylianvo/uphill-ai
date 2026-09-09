@@ -1,0 +1,24 @@
+{
+  "_comment": "Elite tier (160+ km/wk band). Should carry the full apparatus: Summit Water Dump, weighted ME carries, 8-10g/kg race-day carb loading, the 30-40 min Zone 4 weekly cap, double-day 8-12h spacing, and the daily-repeatability readiness test. This is the tier the beginner/novice fixtures are checked against NOT leaking -- a regression that strips this content from elite would be as wrong as leaking it into beginner.",
+  "user_profile": {
+    "age": 29,
+    "gender": "male",
+    "max_hr": 192,
+    "resting_hr": 44,
+    "aet_hr": 159,
+    "ant_hr": 170,
+    "current_weekly_km": 180.0,
+    "days_per_week": 6,
+    "has_gym_access": true
+  },
+  "race_info": {
+    "lang": "en",
+    "terrain": "trail",
+    "goal_type": "finish",
+    "name": "UTMB",
+    "date": "2026-12-15",
+    "course_distance_km": 170,
+    "course_elevation_gain_m": 10000
+  },
+  "total_weeks": 20
+}
