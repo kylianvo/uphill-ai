@@ -277,7 +277,28 @@ export const translations = {
     adapt_week_preserved_notice: "completed/recorded session(s) in this week will be strictly preserved.",
     adapt_week_submit: "Regenerate Week",
     adapt_week_submitting: "Adapting Week...",
-    adapt_week_cancel: "Cancel"
+    adapt_week_cancel: "Cancel",
+
+    // Weekly Review
+    week_review_show_details: "Show details",
+    week_review_hide_details: "Hide details",
+    week_review_completion: "Completion",
+    week_review_logged_as_complete: "Logged as complete",
+    week_review_time: "Time",
+    week_review_hrs_short: "hrs",
+    week_review_distance: "Distance",
+    week_review_vert: "Elevation Gain",
+    week_review_planned: "Planned",
+    week_review_actual: "Actual",
+    week_review_highlights: "Highlights",
+    week_review_watch: "Areas to Watch",
+    week_review_per_workout: "This Week's Sessions",
+    week_review_unplanned_activities: "Unplanned Activities",
+    week_review_state_matched: "Recorded",
+    week_review_state_checkbox: "Logged, no recording",
+    week_review_state_unplanned: "Unplanned",
+    week_review_state_missed: "Missed",
+    week_review_state_pending: "Pending"
   },
   vi: {
     // Brand & App General
@@ -557,6 +578,27 @@ export const translations = {
     adapt_week_preserved_notice: "bài tập đã hoàn thành/ghi nhận trong tuần này sẽ được giữ nguyên.",
     adapt_week_submit: "Tái tạo Tuần",
     adapt_week_submitting: "Đang tùy chỉnh Tuần...",
-    adapt_week_cancel: "Hủy"
+    adapt_week_cancel: "Hủy",
+
+    // Weekly Review
+    week_review_show_details: "Xem chi tiết",
+    week_review_hide_details: "Ẩn chi tiết",
+    week_review_completion: "Hoàn thành",
+    week_review_logged_as_complete: "Đã đánh dấu hoàn thành",
+    week_review_time: "Thời gian",
+    week_review_hrs_short: "giờ",
+    week_review_distance: "Quãng đường",
+    week_review_vert: "Độ cao tích lũy",
+    week_review_planned: "Kế hoạch",
+    week_review_actual: "Thực tế",
+    week_review_highlights: "Điểm nổi bật",
+    week_review_watch: "Cần lưu ý",
+    week_review_per_workout: "Các buổi tập tuần này",
+    week_review_unplanned_activities: "Hoạt động ngoài kế hoạch",
+    week_review_state_matched: "Đã ghi nhận",
+    week_review_state_checkbox: "Đã đánh dấu, không có dữ liệu đồng hồ",
+    week_review_state_unplanned: "Ngoài kế hoạch",
+    week_review_state_missed: "Bỏ lỡ",
+    week_review_state_pending: "Chưa tới"
   }
 };

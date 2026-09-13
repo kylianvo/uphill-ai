@@ -53,6 +53,8 @@ from db import (
     get_user_activity_ceiling,
     get_user_by_email,
     get_user_by_id,
+    get_week_planned_volume,
+    get_week_review,
     get_workout_by_id,
     get_workout_types,
     has_active_coach_link,
@@ -91,6 +93,7 @@ from services.plan_generator import PlanGenerator
 from services.rag_service import RagService
 from services.training_rules import TrainingRules, resolve_zone2_pace
 from services.weather_service import WeatherService
+from services.week_review_narrative import generate_week_narrative
 
 _is_prod = os.getenv("ENVIRONMENT", "development") == "production"
 app = FastAPI(
@@ -1916,6 +1919,19 @@ def get_plan_block_evaluation(plan_id: int, block_number: int, user: dict[str, A
     return evaluate_block_performance(user["id"], plan_id, block_number)
 
 
+@app.get("/api/coach/week-review/{plan_id}/{week_number}")
+def get_plan_week_review(plan_id: int, week_number: int, user: dict[str, Any] = Depends(get_current_user)):
+    """Read-only planned-vs-actual review for a single week: completion, distance,
+    vert, per-workout breakdown, unplanned activities, and a short narrative.
+    Additive alongside block-level review/completion -- does not affect the
+    70% next-block gate or block_reviews."""
+    _verify_plan_ownership(plan_id, user["id"])
+    plan = get_plan_by_id(plan_id)
+    review = get_week_review(user["id"], plan_id, week_number, plan.get("start_date") if plan else None)
+    review["narrative"] = generate_week_narrative(review)
+    return review
+
+
 async def _generate_next_block_for_athlete(
     request: GenerateNextBlockRequest, athlete_id: int, job_owner_user_id: int
 ) -> dict[str, Any]:
@@ -2039,9 +2055,10 @@ async def _generate_next_block_for_athlete(
         ]
         completed_wos = [w for w in block_wos if w.get("is_completed") == 1]
 
-        # Planned totals (from generated workouts)
-        planned_km = sum(w.get("distance_km") or 0 for w in block_wos)
-        planned_min = sum(w.get("duration_minutes") or 0 for w in block_wos)
+        # Planned totals (from generated workouts), summed week-by-week
+        planned_weeks = [get_week_planned_volume(request.plan_id, wk) for wk in range(wk_start, wk_end + 1)]
+        planned_km = sum(w["distance_km"] for w in planned_weeks)
+        planned_min = sum(w["duration_minutes"] for w in planned_weeks)
 
         # Actual totals (from true GPS watch activities, both matched & unplanned)
         actual_vol = get_block_actual_volume(
@@ -2771,6 +2788,18 @@ def get_athlete_block_evaluation(
     """Coach-scoped mirror of /api/coach/block-evaluation/{plan_id}/{block_number}."""
     _verify_plan_ownership(plan_id, athlete_id)
     return evaluate_block_performance(athlete_id, plan_id, block_number)
+
+
+@app.get("/api/coaching/athletes/{athlete_id}/week-review/{plan_id}/{week_number}")
+def get_athlete_week_review(
+    athlete_id: int, plan_id: int, week_number: int, coach: dict[str, Any] = Depends(require_athlete_access)
+):
+    """Coach-scoped mirror of /api/coach/week-review/{plan_id}/{week_number}."""
+    _verify_plan_ownership(plan_id, athlete_id)
+    plan = get_plan_by_id(plan_id)
+    review = get_week_review(athlete_id, plan_id, week_number, plan.get("start_date") if plan else None)
+    review["narrative"] = generate_week_narrative(review)
+    return review
 
 
 @app.post("/api/coach/select-plan")
