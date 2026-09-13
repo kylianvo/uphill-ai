@@ -59,6 +59,14 @@ def _workout(id, day_of_week, title, duration_minutes, distance_km, elevation_ga
     }
 
 
+def _mock_workout_row(workout: dict):
+    """A fake SQLAlchemy Row for a `workouts` table row -- _row_to_dict() reads
+    `row._mapping`, so the mock needs one rather than plain attributes."""
+    row = MagicMock()
+    row._mapping = workout
+    return row
+
+
 def test_get_week_planned_volume_aggregates():
     with patch("db.engine.connect") as mock_connect:
         mock_conn = MagicMock()
@@ -104,7 +112,6 @@ def _run_week_review(
 ):
     with (
         patch("db.get_week_planned_volume", return_value=planned),
-        patch("db.get_plan_workouts", return_value=plan_workouts),
         patch("db.get_activities_for_block", return_value=matched_activities),
         patch("db.get_block_actual_volume", return_value=actual),
         patch("db.get_matches_for_review", return_value=matches_for_review),
@@ -112,7 +119,12 @@ def _run_week_review(
     ):
         mock_conn = MagicMock()
         mock_connect.return_value.__enter__.return_value = mock_conn
-        mock_conn.execute.return_value.fetchall.return_value = checkbox_rows
+        # get_week_review issues two engine.connect().execute().fetchall() calls in
+        # order: the checkbox-completion query, then the week-scoped workouts query.
+        mock_conn.execute.side_effect = [
+            MagicMock(fetchall=MagicMock(return_value=checkbox_rows)),
+            MagicMock(fetchall=MagicMock(return_value=[_mock_workout_row(w) for w in plan_workouts])),
+        ]
 
         return get_week_review(user_id=1, plan_id=5, week_number=3, plan_start_date=plan_start_date)
 
