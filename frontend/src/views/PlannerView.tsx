@@ -480,6 +480,10 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   // Fetched once here and shared by the merged Weekly Volume card's compact
   // "actual so far" ring and its "Show details" disclosure.
   const [weekReview, setWeekReview] = useState<WeekReviewData | null>(null);
+  // Only true for the week-switch/plan-switch fetch below, not for the silent
+  // refresh after ticking a workout complete -- that one should update in
+  // place without flashing a skeleton over data the athlete is looking at.
+  const [weekReviewLoading, setWeekReviewLoading] = useState(false);
   // "Show details" disclosure on the merged Weekly Volume / Review card -- collapsed
   // by default, and re-collapsed whenever the athlete switches weeks.
   const [showWeekDetails, setShowWeekDetails] = useState(false);
@@ -494,16 +498,17 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
     fetch(url, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => setWeekReview(d))
-      .catch(() => setWeekReview(null));
+      .catch(() => setWeekReview(null))
+      .finally(() => setWeekReviewLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activePlan?.id, selectedWeek, maxGeneratedWeek, API_BASE_URL, isCoachActingAsAthlete, actingAsAthleteId]);
 
   useEffect(() => {
     if (!activePlan || selectedWeek > maxGeneratedWeek) {
-      Promise.resolve().then(() => { setWeekReview(null); setShowWeekDetails(false); });
+      Promise.resolve().then(() => { setWeekReview(null); setShowWeekDetails(false); setWeekReviewLoading(false); });
       return;
     }
-    Promise.resolve().then(() => setShowWeekDetails(false));
+    Promise.resolve().then(() => { setShowWeekDetails(false); setWeekReviewLoading(true); });
     fetchWeekReview();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activePlan?.id, selectedWeek, maxGeneratedWeek, fetchWeekReview]);
@@ -1533,8 +1538,25 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                       )}
                     </div>
 
-                    {/* Actual-so-far: small ring + figures, plus the details toggle */}
-                    {hasReview && (
+                    {/* Actual-so-far: small ring + figures, plus the details toggle.
+                        The loading skeleton keeps the same padding/border-top as the
+                        real row so this never visibly pops in/out on a week switch --
+                        it morphs in place once the fetch resolves. */}
+                    {weekReviewLoading && !hasReview ? (
+                      <div style={{
+                        display: "flex", alignItems: "center", gap: "10px",
+                        paddingTop: "10px", borderTop: "1px solid rgba(0,0,0,0.06)",
+                      }}>
+                        <div style={{
+                          width: "38px", height: "38px", borderRadius: "50%", flexShrink: 0,
+                          background: "rgba(0,0,0,0.06)", animation: "pulse 1.5s ease-in-out infinite",
+                        }} />
+                        <div style={{
+                          width: "130px", height: "13px", borderRadius: "999px",
+                          background: "rgba(0,0,0,0.06)", animation: "pulse 1.5s ease-in-out infinite",
+                        }} />
+                      </div>
+                    ) : hasReview && (
                       <div style={{
                         display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap",
                         paddingTop: "10px", borderTop: "1px solid rgba(0,0,0,0.06)",

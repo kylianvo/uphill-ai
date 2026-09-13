@@ -3342,9 +3342,20 @@ def get_week_review(
     checkbox_completed = sum(r[1] or 0 for r in checkbox_rows if r[0] == 1)
     checkbox_completion_pct = round(checkbox_completed / checkbox_total * 100) if checkbox_total > 0 else 0
 
-    week_workouts = [
-        w for w in get_plan_workouts(plan_id) if w.get("week_number") == week_number and w.get("type") != "Rest"
-    ]
+    # Scoped to this one week -- not get_plan_workouts(plan_id), which pulls every
+    # week of the plan just to filter one out in Python and gets slower as the
+    # plan grows longer.
+    with engine.connect() as conn:
+        week_workout_rows = conn.execute(
+            text("""
+                SELECT * FROM workouts
+                WHERE plan_id = :plan_id
+                  AND week_number = :week_number
+                  AND type != 'Rest'
+            """),
+            {"plan_id": plan_id, "week_number": week_number},
+        ).fetchall()
+    week_workouts = [_row_to_dict(r) for r in week_workout_rows]
     matched_activities = get_activities_for_block(plan_id, week_number, week_number)
     matched_by_workout = {a["workout_id"]: a for a in matched_activities}
 
