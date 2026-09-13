@@ -10,7 +10,7 @@ import { KnowledgeCard } from "../components/KnowledgeCard";
 import { DndContext, DragEndEvent, DragOverEvent, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, TouchSensor, KeyboardSensor } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import ToolsView from "./ToolsView";
-import { UploadSimple, FileArrowUp, Heart, Clock, Mountains, MapPin, Footprints, ArrowsMerge, PlayCircle, CheckCircle, Fire, Path, RoadHorizon, Info, Check, Question, WarningCircle, Plus, Trash, Archive, LockKey, LockKeyOpen, Trophy, Target, Sneaker, PersonSimpleRun, Bed, XCircle, DownloadSimple, Gauge, Sun, Moon, DotsSixVertical, ArrowsClockwise, LinkSimple, Flag, TrendUp, Drop, Leaf, Lightning, PencilSimple, X, ArrowLeft, ArrowsLeftRight, ShieldCheck, Sparkle } from '@phosphor-icons/react';
+import { UploadSimple, FileArrowUp, Heart, Clock, Mountains, MapPin, Footprints, ArrowsMerge, PlayCircle, CheckCircle, Fire, Path, RoadHorizon, Info, Check, Question, WarningCircle, Plus, Trash, Archive, LockKey, LockKeyOpen, Trophy, Target, Sneaker, PersonSimpleRun, Bed, XCircle, DownloadSimple, Gauge, Sun, Moon, DotsSixVertical, ArrowsClockwise, LinkSimple, Flag, TrendUp, TrendDown, Drop, Leaf, Lightning, PencilSimple, X, ArrowLeft, ArrowsLeftRight, ShieldCheck, Sparkle, CaretDown, CaretUp } from '@phosphor-icons/react';
 import { RaceMatch } from "../hooks/useRaceMatch";
 import { RaceNameField } from "../components/RaceNameField";
 import { CoachNoteThread } from "../components/CoachNoteThread";
@@ -21,6 +21,7 @@ import { ScheduleFieldsEditor, ScheduleFieldsValue } from "../components/Schedul
 import { useMatching, type RawMatchActivity } from "../hooks/useMatching";
 import MatchedActivityCard from "../components/MatchedActivityCard";
 import UnplannedActivityCard from "../components/UnplannedActivityCard";
+import WeeklyReview, { CompletionRing, ringColor, computeCreditedActual, type WeekReviewData } from "../components/WeeklyReview";
 import { MoveWorkoutModal } from "../components/MoveWorkoutModal";
 import { AdaptWeekModal } from "../components/AdaptWeekModal";
 import { FeelingSelector, rpeToFeelingId } from "../components/FeelingSelector";
@@ -475,6 +476,38 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
     }
   }, [maxGeneratedWeek, selectedWeek, setSelectedWeek]);
 
+  // ── Week review (planned vs. actual) state ───────────────────────────────
+  // Fetched once here and shared by the merged Weekly Volume card's compact
+  // "actual so far" ring and its "Show details" disclosure.
+  const [weekReview, setWeekReview] = useState<WeekReviewData | null>(null);
+  // "Show details" disclosure on the merged Weekly Volume / Review card -- collapsed
+  // by default, and re-collapsed whenever the athlete switches weeks.
+  const [showWeekDetails, setShowWeekDetails] = useState(false);
+
+  const fetchWeekReview = React.useCallback(() => {
+    if (!activePlan || selectedWeek > maxGeneratedWeek) return;
+    const token = typeof window !== "undefined" ? localStorage.getItem("uphill_session_token") : null;
+    if (!token) return;
+    const url = isCoachActingAsAthlete
+      ? `${API_BASE_URL}/api/coaching/athletes/${actingAsAthleteId}/week-review/${activePlan.id}/${selectedWeek}`
+      : `${API_BASE_URL}/api/coach/week-review/${activePlan.id}/${selectedWeek}`;
+    fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setWeekReview(d))
+      .catch(() => setWeekReview(null));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePlan?.id, selectedWeek, maxGeneratedWeek, API_BASE_URL, isCoachActingAsAthlete, actingAsAthleteId]);
+
+  useEffect(() => {
+    if (!activePlan || selectedWeek > maxGeneratedWeek) {
+      Promise.resolve().then(() => { setWeekReview(null); setShowWeekDetails(false); });
+      return;
+    }
+    Promise.resolve().then(() => setShowWeekDetails(false));
+    fetchWeekReview();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePlan?.id, selectedWeek, maxGeneratedWeek, fetchWeekReview]);
+
   const [blockEvaluation, setBlockEvaluation] = useState<any | null>(null);
   const [blockEvaluationLoading, setBlockEvaluationLoading] = useState(false);
 
@@ -509,6 +542,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   const handleToggleCompleteWithRefresh = async (id: number, completed: boolean) => {
     await handleToggleComplete(id, completed);
     fetchBlockCompletion();
+    fetchWeekReview();
   };
 
   // activePlan doubles as the draft plan while reviewing a not-yet-approved
@@ -1402,12 +1436,24 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
               );
             })()}
 
-            {/* Weekly Volume Stats */}
+            {/* Weekly Volume + Review (combined: planned volume, actual-so-far, and the
+                full planned-vs-actual breakdown behind a "Show details" toggle) */}
             {(() => {
               const weekWorkouts = getWeekWorkouts(selectedWeek);
               const weeklyKm = weekWorkouts.reduce((sum: any, wo: any) => sum + (wo.distance_km || 0), 0);
               const weeklyMins = weekWorkouts.reduce((sum: any, wo: any) => sum + (wo.duration_minutes || 0), 0);
               const weeklyHours = parseFloat((weeklyMins / 60).toFixed(1));
+
+              // Small progression indicator: this week's planned volume vs. last week's,
+              // the week-over-week overload signal a training plan is supposed to show.
+              const prevWeekMins = selectedWeek > 1
+                ? getWeekWorkouts(selectedWeek - 1).reduce((sum: any, wo: any) => sum + (wo.duration_minutes || 0), 0)
+                : 0;
+              const volumeChangePct = prevWeekMins > 0 ? Math.round(((weeklyMins - prevWeekMins) / prevWeekMins) * 100) : null;
+
+              const hasReview = !!weekReview && weekReview.week_number === selectedWeek;
+              const credited = hasReview ? computeCreditedActual(weekReview!) : null;
+              const actualColor = credited ? ringColor(credited.pct) : "var(--text-muted)";
 
               return (
                 <div style={{ marginBottom: "16px" }}>
@@ -1417,65 +1463,112 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                     border: "1px solid var(--border-color)",
                     borderRadius: "12px",
                     display: "flex",
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: "12px",
-                    flexWrap: "wrap",
+                    flexDirection: "column",
+                    gap: "10px",
                   }}>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                      <span style={{ fontSize: "10px", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: "700" }}>
-                        {lang === "en" ? `Weekly Volume (Week ${selectedWeek})` : `Thể tích tuần (Tuần ${selectedWeek})`}
-                      </span>
-                      <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
-                        <span style={{ fontSize: "18px", fontWeight: "800", color: "var(--accent-primary)" }}>{weeklyHours} {lang === "en" ? "hrs" : "giờ"}</span>
-                        <span style={{ fontSize: "13px", color: "var(--text-muted)", fontWeight: "600" }}>· ~{weeklyKm.toFixed(1)} km</span>
+                    <div style={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                        <span style={{ fontSize: "10px", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: "700" }}>
+                          {lang === "en" ? `Weekly Volume (Week ${selectedWeek})` : `Thể tích tuần (Tuần ${selectedWeek})`}
+                        </span>
+                        <div style={{ display: "flex", alignItems: "baseline", gap: "6px", flexWrap: "wrap" }}>
+                          <span style={{ fontSize: "18px", fontWeight: "800", color: "var(--accent-primary)" }}>{weeklyHours} {lang === "en" ? "hrs" : "giờ"}</span>
+                          <span style={{ fontSize: "13px", color: "var(--text-muted)", fontWeight: "600" }}>· ~{weeklyKm.toFixed(1)} km</span>
+                          {volumeChangePct !== null && (
+                            <span
+                              style={{
+                                display: "inline-flex", alignItems: "center", gap: "2px",
+                                fontSize: "10.5px", fontWeight: "700",
+                                color: volumeChangePct >= 0 ? "var(--accent-primary)" : "var(--text-muted)",
+                              }}
+                            >
+                              {volumeChangePct >= 0
+                                ? <TrendUp size={11} weight="bold" aria-hidden="true" />
+                                : <TrendDown size={11} weight="bold" aria-hidden="true" />}
+                              {volumeChangePct >= 0 ? `+${volumeChangePct}%` : `${volumeChangePct}%`}
+                              <span style={{ fontWeight: "500", color: "var(--text-muted)" }}>
+                                {lang === "en" ? "vs last wk" : "so với tuần trước"}
+                              </span>
+                            </span>
+                          )}
+                        </div>
+                        <span style={{ fontSize: "9.5px", color: "var(--text-muted)", fontWeight: "500", fontStyle: "italic" }}>
+                          {lang === "en" ? "Sessions are run by time — distance is an estimate for planning" : "Buổi tập theo dõi bằng thời gian — quãng đường chỉ là ước tính"}
+                        </span>
                       </div>
-                      <span style={{ fontSize: "9.5px", color: "var(--text-muted)", fontWeight: "500", fontStyle: "italic" }}>
-                        {lang === "en" ? "Sessions are run by time — distance is an estimate for planning" : "Buổi tập theo dõi bằng thời gian — quãng đường chỉ là ước tính"}
-                      </span>
+
+                      {selectedWeek <= maxGeneratedWeek && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenAdaptWeek(selectedWeek)}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "5px",
+                            padding: "4px 10px",
+                            fontSize: "11.5px",
+                            fontWeight: "600",
+                            borderRadius: "20px",
+                            cursor: "pointer",
+                            border: "1px solid rgba(25, 206, 139, 0.4)",
+                            background: "rgba(25, 206, 139, 0.08)",
+                            color: "var(--accent-primary)",
+                            transition: "all 0.15s ease",
+                            whiteSpace: "nowrap",
+                            height: "26px",
+                            flexShrink: 0,
+                          }}
+                          onMouseEnter={e => {
+                            (e.currentTarget as HTMLButtonElement).style.background = "rgba(25, 206, 139, 0.16)";
+                            (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(25, 206, 139, 0.6)";
+                          }}
+                          onMouseLeave={e => {
+                            (e.currentTarget as HTMLButtonElement).style.background = "rgba(25, 206, 139, 0.08)";
+                            (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(25, 206, 139, 0.4)";
+                          }}
+                        >
+                          <Sparkle size={12} weight="fill" aria-hidden="true" />
+                          <span>{lang === "en" ? `Adapt Week ${selectedWeek}` : `Tùy chỉnh Tuần ${selectedWeek}`}</span>
+                        </button>
+                      )}
                     </div>
 
-                    {selectedWeek <= maxGeneratedWeek && (
-                      <button
-                        type="button"
-                        onClick={() => handleOpenAdaptWeek(selectedWeek)}
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "5px",
-                          padding: "4px 10px",
-                          fontSize: "11.5px",
-                          fontWeight: "600",
-                          borderRadius: "20px",
-                          cursor: "pointer",
-                          border: "1px solid rgba(25, 206, 139, 0.4)",
-                          background: "rgba(25, 206, 139, 0.08)",
-                          color: "var(--accent-primary)",
-                          transition: "all 0.15s ease",
-                          whiteSpace: "nowrap",
-                          height: "26px",
-                          flexShrink: 0,
-                        }}
-                        onMouseEnter={e => {
-                          (e.currentTarget as HTMLButtonElement).style.background = "rgba(25, 206, 139, 0.16)";
-                          (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(25, 206, 139, 0.6)";
-                        }}
-                        onMouseLeave={e => {
-                          (e.currentTarget as HTMLButtonElement).style.background = "rgba(25, 206, 139, 0.08)";
-                          (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(25, 206, 139, 0.4)";
-                        }}
-                      >
-                        <Sparkle size={12} weight="fill" aria-hidden="true" />
-                        <span>{lang === "en" ? `Adapt Week ${selectedWeek}` : `Tùy chỉnh Tuần ${selectedWeek}`}</span>
-                      </button>
+                    {/* Actual-so-far: small ring + figures, plus the details toggle */}
+                    {hasReview && (
+                      <div style={{
+                        display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap",
+                        paddingTop: "10px", borderTop: "1px solid rgba(0,0,0,0.06)",
+                      }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                          <CompletionRing pct={credited!.pct} size={38} />
+                          <span style={{ fontSize: "11px", fontWeight: "700", color: actualColor }}>
+                            {lang === "en" ? "Actual" : "Thực tế"}: {(credited!.minutes / 60).toFixed(1)}
+                            {lang === "en" ? "h" : "g"} · {credited!.km.toFixed(1)}km
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setShowWeekDetails((v) => !v)}
+                          aria-expanded={showWeekDetails}
+                          style={{
+                            display: "inline-flex", alignItems: "center", gap: "4px",
+                            background: "none", border: "none", padding: 0, cursor: "pointer",
+                            fontSize: "11.5px", fontWeight: 600, color: "var(--accent-primary)",
+                          }}
+                        >
+                          {showWeekDetails ? t("week_review_hide_details") : t("week_review_show_details")}
+                          {showWeekDetails ? <CaretUp size={12} weight="bold" aria-hidden="true" /> : <CaretDown size={12} weight="bold" aria-hidden="true" />}
+                        </button>
+                      </div>
+                    )}
+
+                    {hasReview && showWeekDetails && (
+                      <WeeklyReview data={weekReview} lang={lang} />
                     )}
                   </div>
                 </div>
               );
             })()}
-
-
 
             {/* Coach message for this week */}
             {coachMessage && (
