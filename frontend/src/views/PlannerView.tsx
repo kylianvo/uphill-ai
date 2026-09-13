@@ -477,39 +477,54 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   }, [maxGeneratedWeek, selectedWeek, setSelectedWeek]);
 
   // ── Week review (planned vs. actual) state ───────────────────────────────
-  // Fetched once here and shared by the merged Weekly Volume card's compact
-  // "actual so far" ring and its "Show details" disclosure.
-  const [weekReview, setWeekReview] = useState<WeekReviewData | null>(null);
-  // Only true for the week-switch/plan-switch fetch below, not for the silent
-  // refresh after ticking a workout complete -- that one should update in
-  // place without flashing a skeleton over data the athlete is looking at.
-  const [weekReviewLoading, setWeekReviewLoading] = useState(false);
+  // ── Week review (planned vs. actual) state ───────────────────────────────
+  // Cached by plan_id + week_number so switching between already-viewed weeks is
+  // instantaneous (0ms) with zero skeleton flash, zero pop-out, and zero jitter.
+  const [weekReviews, setWeekReviews] = useState<Record<string, WeekReviewData>>({});
   // "Show details" disclosure on the merged Weekly Volume / Review card -- collapsed
   // by default, and re-collapsed whenever the athlete switches weeks.
   const [showWeekDetails, setShowWeekDetails] = useState(false);
+  const weekReviewAbortControllerRef = useRef<AbortController | null>(null);
 
-  const fetchWeekReview = React.useCallback(() => {
-    if (!activePlan || selectedWeek > maxGeneratedWeek) return;
+  const fetchWeekReview = React.useCallback((targetWeek?: number) => {
+    const weekNum = targetWeek ?? selectedWeek;
+    if (!activePlan || weekNum > maxGeneratedWeek) return;
     const token = typeof window !== "undefined" ? localStorage.getItem("uphill_session_token") : null;
     if (!token) return;
+
+    if (weekReviewAbortControllerRef.current) {
+      weekReviewAbortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    weekReviewAbortControllerRef.current = controller;
+
+    const planId = activePlan.id;
     const url = isCoachActingAsAthlete
-      ? `${API_BASE_URL}/api/coaching/athletes/${actingAsAthleteId}/week-review/${activePlan.id}/${selectedWeek}`
-      : `${API_BASE_URL}/api/coach/week-review/${activePlan.id}/${selectedWeek}`;
-    fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+      ? `${API_BASE_URL}/api/coaching/athletes/${actingAsAthleteId}/week-review/${planId}/${weekNum}`
+      : `${API_BASE_URL}/api/coach/week-review/${planId}/${weekNum}`;
+
+    fetch(url, {
+      signal: controller.signal,
+      headers: { Authorization: `Bearer ${token}` },
+    })
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => setWeekReview(d))
-      .catch(() => setWeekReview(null))
-      .finally(() => setWeekReviewLoading(false));
+      .then((d) => {
+        if (d && d.week_number) {
+          setWeekReviews((prev) => ({ ...prev, [`${planId}_${d.week_number}`]: d }));
+        }
+      })
+      .catch((err) => {
+        if (err.name !== "AbortError") {
+          console.error("Failed to fetch week review:", err);
+        }
+      });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activePlan?.id, selectedWeek, maxGeneratedWeek, API_BASE_URL, isCoachActingAsAthlete, actingAsAthleteId]);
 
   useEffect(() => {
-    if (!activePlan || selectedWeek > maxGeneratedWeek) {
-      Promise.resolve().then(() => { setWeekReview(null); setShowWeekDetails(false); setWeekReviewLoading(false); });
-      return;
-    }
-    Promise.resolve().then(() => { setShowWeekDetails(false); setWeekReviewLoading(true); });
-    fetchWeekReview();
+    Promise.resolve().then(() => setShowWeekDetails(false));
+    if (!activePlan || selectedWeek > maxGeneratedWeek) return;
+    fetchWeekReview(selectedWeek);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activePlan?.id, selectedWeek, maxGeneratedWeek, fetchWeekReview]);
 
@@ -545,9 +560,48 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
 
   // Re-check block completion % whenever a workout is toggled
   const handleToggleCompleteWithRefresh = async (id: number, completed: boolean) => {
+    // Optimistically update the week review cache so the completion ring & actual numbers
+    // update in <1ms without any flickering or waiting for network round-trip.
+    const activeKey = `${activePlan?.id ?? 0}_${selectedWeek}`;
+    setWeekReviews((prev) => {
+      const current = prev[activeKey];
+      if (!current) return prev;
+      const updatedPerWorkout = current.per_workout.map((w) => {
+        if (w.workout_id !== id) return w;
+        let newState: "matched" | "checkbox_only" | "missed" | "pending" = w.actual.state;
+        if (completed) {
+          newState = w.actual.state === "matched" ? "matched" : "checkbox_only";
+        } else {
+          newState = "pending";
+        }
+        return {
+          ...w,
+          actual: {
+            ...w.actual,
+            state: newState,
+          },
+        };
+      });
+
+      const checkboxTotal = updatedPerWorkout.reduce((sum, w) => sum + (w.planned.duration_minutes || 0), 0);
+      const checkboxCompleted = updatedPerWorkout
+        .filter((w) => w.actual.state === "matched" || w.actual.state === "checkbox_only")
+        .reduce((sum, w) => sum + (w.planned.duration_minutes || 0), 0);
+      const checkboxPct = checkboxTotal > 0 ? Math.round((checkboxCompleted / checkboxTotal) * 100) : 0;
+
+      return {
+        ...prev,
+        [activeKey]: {
+          ...current,
+          checkbox_completion_pct: checkboxPct,
+          per_workout: updatedPerWorkout,
+        },
+      };
+    });
+
     await handleToggleComplete(id, completed);
     fetchBlockCompletion();
-    fetchWeekReview();
+    fetchWeekReview(selectedWeek);
   };
 
   // activePlan doubles as the draft plan while reviewing a not-yet-approved
@@ -1456,8 +1510,10 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 : 0;
               const volumeChangePct = prevWeekMins > 0 ? Math.round(((weeklyMins - prevWeekMins) / prevWeekMins) * 100) : null;
 
-              const hasReview = !!weekReview && weekReview.week_number === selectedWeek;
-              const credited = hasReview ? computeCreditedActual(weekReview!) : null;
+              const currentWeekReview = weekReviews[`${activePlan?.id ?? 0}_${selectedWeek}`] || null;
+              const hasReview = !!currentWeekReview;
+              const isWeekReviewLoading = selectedWeek <= maxGeneratedWeek && !hasReview;
+              const credited = hasReview ? computeCreditedActual(currentWeekReview) : null;
               const actualColor = credited ? ringColor(credited.pct) : "var(--text-muted)";
 
               return (
@@ -1539,27 +1595,31 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                     </div>
 
                     {/* Actual-so-far: small ring + figures, plus the details toggle.
-                        The loading skeleton keeps the same padding/border-top as the
+                        The loading skeleton keeps the same padding/border-top and minHeight as the
                         real row so this never visibly pops in/out on a week switch --
                         it morphs in place once the fetch resolves. */}
-                    {weekReviewLoading && !hasReview ? (
+                    {isWeekReviewLoading ? (
                       <div style={{
-                        display: "flex", alignItems: "center", gap: "10px",
+                        display: "flex", alignItems: "center", justifyContent: "space-between",
                         paddingTop: "10px", borderTop: "1px solid rgba(0,0,0,0.06)",
+                        minHeight: "42px",
                       }}>
-                        <div style={{
-                          width: "38px", height: "38px", borderRadius: "50%", flexShrink: 0,
-                          background: "rgba(0,0,0,0.06)", animation: "pulse 1.5s ease-in-out infinite",
-                        }} />
-                        <div style={{
-                          width: "130px", height: "13px", borderRadius: "999px",
-                          background: "rgba(0,0,0,0.06)", animation: "pulse 1.5s ease-in-out infinite",
-                        }} />
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                          <div style={{
+                            width: "38px", height: "38px", borderRadius: "50%", flexShrink: 0,
+                            background: "rgba(0,0,0,0.06)", animation: "pulse 1.5s ease-in-out infinite",
+                          }} />
+                          <div style={{
+                            width: "130px", height: "13px", borderRadius: "999px",
+                            background: "rgba(0,0,0,0.06)", animation: "pulse 1.5s ease-in-out infinite",
+                          }} />
+                        </div>
                       </div>
-                    ) : hasReview && (
+                    ) : hasReview ? (
                       <div style={{
                         display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap",
                         paddingTop: "10px", borderTop: "1px solid rgba(0,0,0,0.06)",
+                        minHeight: "42px",
                       }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                           <CompletionRing pct={credited!.pct} size={38} />
@@ -1582,10 +1642,10 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                           {showWeekDetails ? <CaretUp size={12} weight="bold" aria-hidden="true" /> : <CaretDown size={12} weight="bold" aria-hidden="true" />}
                         </button>
                       </div>
-                    )}
+                    ) : null}
 
                     {hasReview && showWeekDetails && (
-                      <WeeklyReview data={weekReview} lang={lang} />
+                      <WeeklyReview data={currentWeekReview} lang={lang} />
                     )}
                   </div>
                 </div>
