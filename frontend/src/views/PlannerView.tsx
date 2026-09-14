@@ -28,6 +28,11 @@ import { FeelingSelector, rpeToFeelingId } from "../components/FeelingSelector";
 import { triggerHaptic } from "../utils/native";
 import { resolveCurrentWeek } from "../utils/planDate";
 
+// Must match backend/config.py's settings.WEEKS_PER_BLOCK -- the training
+// block size plan generation, the 70% completion gate, and block review all
+// operate on.
+const WEEKS_PER_BLOCK = 1;
+
 export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   const ctx = useAppContext();
   const { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, handleSwapWorkouts, swapDays, handleToggleComplete, handleMarkMissed, handleLogWorkout, getWeekWorkouts, getWorkoutDate, getWorkoutDateObj, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller, fetchDraftPlan, draftPlan, handleApproveWorkout, handleRemoveWorkout, handleAiCreateWorkout, handleCoachEditWorkout, fetchActivePlanForActing } = usePlanner();
@@ -462,11 +467,16 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   const maxGeneratedWeek = workouts.length > 0
     ? Math.max(...workouts.map((w: any) => w.week_number || 0))
     : 0;
-  const currentBlockNum = maxGeneratedWeek > 0 ? Math.ceil(maxGeneratedWeek / 2) : 1;
+  const currentBlockNum = maxGeneratedWeek > 0 ? Math.ceil(maxGeneratedWeek / WEEKS_PER_BLOCK) : 1;
   const currentBlockCompletion = blockData?.blocks?.find((b: any) => b.block_number === currentBlockNum);
   const blockUnlocked = currentBlockCompletion?.unlocked ?? false;
+  // Gemini's own narrative for the week being viewed (produced alongside its
+  // generation -- see PlanGenerator.generate_week_narrative), not the currently
+  // active block, so it stays visible while browsing earlier weeks.
+  const selectedWeekBlockNum = Math.ceil(selectedWeek / WEEKS_PER_BLOCK);
+  const selectedWeekNarrative = blockData?.blocks?.find((b: any) => b.block_number === selectedWeekBlockNum);
   const nextBlockNum = currentBlockNum + 1;
-  const nextBlockStartWeek = nextBlockNum * 2 - 1;
+  const nextBlockStartWeek = (nextBlockNum - 1) * WEEKS_PER_BLOCK + 1;
   const allBlocksGenerated = maxGeneratedWeek >= totalWeeks && totalWeeks > 0;
 
   // Keep selectedWeek within the unlocked / generated range
@@ -1652,6 +1662,36 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
               );
             })()}
 
+            {/* Coach's AI-written review of last week / description of this week,
+                produced by Gemini alongside this week's generation. */}
+            {(selectedWeekNarrative?.ai_last_week_review || selectedWeekNarrative?.ai_this_week_description) && (
+              <div style={{
+                display: "flex", flexDirection: "column", gap: "8px",
+                padding: "12px 16px", borderRadius: "10px", marginBottom: "12px",
+                background: "rgba(16,185,129,0.06)",
+                border: "1px solid rgba(16,185,129,0.2)",
+              }}>
+                {selectedWeekNarrative?.ai_last_week_review && (
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
+                    <Sparkle size={16} weight="fill" color="var(--accent-primary)" style={{ flexShrink: 0, marginTop: "2px" }} aria-hidden="true" />
+                    <p style={{ fontSize: "13px", color: "var(--text-secondary)", margin: 0, lineHeight: "1.6" }}>
+                      <strong>{lang === "en" ? "Last week: " : "Tuần trước: "}</strong>
+                      {selectedWeekNarrative.ai_last_week_review}
+                    </p>
+                  </div>
+                )}
+                {selectedWeekNarrative?.ai_this_week_description && (
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
+                    <Sparkle size={16} weight="fill" color="var(--accent-primary)" style={{ flexShrink: 0, marginTop: "2px" }} aria-hidden="true" />
+                    <p style={{ fontSize: "13px", color: "var(--text-secondary)", margin: 0, lineHeight: "1.6" }}>
+                      <strong>{lang === "en" ? "This week: " : "Tuần này: "}</strong>
+                      {selectedWeekNarrative.ai_this_week_description}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Coach message for this week */}
             {coachMessage && (
               <div style={{
@@ -1797,9 +1837,12 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                     </div>
                     {!allBlocksGenerated && (
                       <div style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "2px" }}>
-                        {lang === "en"
-                          ? `Weeks ${nextBlockStartWeek}–${Math.min(nextBlockStartWeek + 1, totalWeeks)} are ready to generate.`
-                          : `Tuần ${nextBlockStartWeek}–${Math.min(nextBlockStartWeek + 1, totalWeeks)} sẵn sàng để tạo.`}
+                        {(() => {
+                          const nextBlockEndWeek = Math.min(nextBlockStartWeek + WEEKS_PER_BLOCK - 1, totalWeeks);
+                          return nextBlockEndWeek <= nextBlockStartWeek
+                            ? (lang === "en" ? `Week ${nextBlockStartWeek} is ready to generate.` : `Tuần ${nextBlockStartWeek} sẵn sàng để tạo.`)
+                            : (lang === "en" ? `Weeks ${nextBlockStartWeek}–${nextBlockEndWeek} are ready to generate.` : `Tuần ${nextBlockStartWeek}–${nextBlockEndWeek} sẵn sàng để tạo.`);
+                        })()}
                       </div>
                     )}
                   </div>
@@ -1933,8 +1976,8 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
               </h3>
               <p style={{ fontSize: "13px", color: "var(--text-muted)", margin: "0 0 20px" }}>
                 {lang === "en"
-                  ? "Your feedback shapes the next 2 weeks of training."
-                  : "Phản hồi của bạn sẽ định hình 2 tuần tập tiếp theo."}
+                  ? (WEEKS_PER_BLOCK === 1 ? "Your feedback shapes the next week of training." : `Your feedback shapes the next ${WEEKS_PER_BLOCK} weeks of training.`)
+                  : (WEEKS_PER_BLOCK === 1 ? "Phản hồi của bạn sẽ định hình tuần tập tiếp theo." : `Phản hồi của bạn sẽ định hình ${WEEKS_PER_BLOCK} tuần tập tiếp theo.`)}
               </p>
 
               {overrideConfirmed && (

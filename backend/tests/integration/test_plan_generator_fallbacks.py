@@ -146,9 +146,9 @@ def test_gemini_failure_falls_back_to_the_rule_based_schedule():
 
     assert fake_client.models.generate_content.call_count == 2  # first attempt + retry
     assert workouts, "rule-based fallback must still produce a schedule"
-    # Block 1 with the default weeks_per_block=2 covers weeks 1-2, so the fallback must
+    # Block 1 with the default weeks_per_block=1 covers only week 1, so the fallback must
     # stay inside that window rather than laying out all 8 weeks of the plan.
-    assert {w["week_number"] for w in workouts} == {1, 2}
+    assert {w["week_number"] for w in workouts} == {1}
     assert all(w.get("title") for w in workouts)
 
 
@@ -186,3 +186,59 @@ def test_no_course_context_key_omits_the_section():
         asyncio.run(_generate())  # RACE_INFO has no course_context key
     prompt_sent = fake_client.models.generate_content.call_args.kwargs["contents"]
     assert "COURSE PROFILE" not in prompt_sent
+
+
+NARRATIVE_WORKOUTS = [
+    {"day_of_week": "Monday", "title": "Easy Run", "type": "Easy", "duration_minutes": 60, "target_zone": "Zone 2"},
+    {"day_of_week": "Wednesday", "type": "Rest"},
+]
+
+
+def test_generate_week_narrative_returns_both_fields_on_success():
+    import asyncio
+
+    fake_client = _fake_gemini_client(
+        json.dumps({"last_week_review": "Strong week, 3/3 sessions done.", "this_week_description": "Building volume."})
+    )
+    with patch("google.genai.Client", return_value=fake_client):
+        last_week_review, this_week_description = asyncio.run(
+            PlanGenerator.generate_week_narrative(
+                race_info=RACE_INFO,
+                block_context="Block 1 (Wk 1-1): 3/3 sessions (100%)",
+                workouts=NARRATIVE_WORKOUTS,
+                api_key="test-key",
+            )
+        )
+    assert last_week_review == "Strong week, 3/3 sessions done."
+    assert this_week_description == "Building volume."
+    prompt_sent = fake_client.models.generate_content.call_args.kwargs["contents"]
+    assert "Block 1 (Wk 1-1)" in prompt_sent
+    assert "Easy Run" in prompt_sent
+    assert "Rest" not in prompt_sent  # rest days excluded from the session summary
+
+
+def test_generate_week_narrative_returns_none_pair_without_an_api_key():
+    import asyncio
+
+    last_week_review, this_week_description = asyncio.run(
+        PlanGenerator.generate_week_narrative(
+            race_info=RACE_INFO, block_context="", workouts=NARRATIVE_WORKOUTS, api_key=None
+        )
+    )
+    assert (last_week_review, this_week_description) == (None, None)
+
+
+def test_generate_week_narrative_is_best_effort_on_gemini_failure():
+    """A Gemini failure here must never raise -- the narrative is a nice-to-have
+    generated after workouts are already saved, not a step plan generation depends on."""
+    import asyncio
+
+    fake_client = MagicMock()
+    fake_client.models.generate_content.side_effect = Exception("Gemini down")
+    with patch("google.genai.Client", return_value=fake_client):
+        result = asyncio.run(
+            PlanGenerator.generate_week_narrative(
+                race_info=RACE_INFO, block_context="", workouts=NARRATIVE_WORKOUTS, api_key="test-key"
+            )
+        )
+    assert result == (None, None)
