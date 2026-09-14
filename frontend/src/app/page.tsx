@@ -16,6 +16,7 @@ import {
   Mountains,
   CheckCircle,
   Robot,
+  ArrowRight,
 } from "@phosphor-icons/react";
 import { useAppContext } from "@/contexts/AppContext";
 import { translations } from "./translations";
