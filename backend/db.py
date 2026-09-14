@@ -318,16 +318,21 @@ def init_db():
         except Exception:
             conn.rollback()
 
-        # block_reviews: one row per 2-week block check-in before next-block generation
+        # block_reviews: one row per block check-in before next-block generation.
+        # ai_last_week_review / ai_this_week_description are Gemini-authored narrative
+        # text produced alongside next-block generation (see PlanGenerator.generate_week_narrative)
+        # -- distinct from overall_rpe/notes, which the athlete submits themselves.
         conn.execute(
             text("""
         CREATE TABLE IF NOT EXISTS block_reviews (
-            id           SERIAL PRIMARY KEY,
-            plan_id      INTEGER NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
-            block_number INTEGER NOT NULL,
-            overall_rpe  INTEGER,
-            notes        TEXT,
-            created_at   TIMESTAMPTZ DEFAULT NOW()
+            id                          SERIAL PRIMARY KEY,
+            plan_id                     INTEGER NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
+            block_number                INTEGER NOT NULL,
+            overall_rpe                 INTEGER,
+            notes                       TEXT,
+            ai_last_week_review         TEXT,
+            ai_this_week_description    TEXT,
+            created_at                  TIMESTAMPTZ DEFAULT NOW()
         )
         """)
         )
@@ -486,6 +491,8 @@ def init_db():
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_pace_zones JSONB",
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS athlete_notes TEXT",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS athlete_notes TEXT",
+            "ALTER TABLE block_reviews ADD COLUMN IF NOT EXISTS ai_last_week_review TEXT",
+            "ALTER TABLE block_reviews ADD COLUMN IF NOT EXISTS ai_this_week_description TEXT",
         ]:
             try:
                 conn.execute(text(col_sql))
@@ -1304,10 +1311,102 @@ def get_block_reviews(plan_id: int) -> list[dict[str, Any]]:
     return [_row_to_dict(r) for r in rows]
 
 
+def upsert_block_review_ai_fields(
+    plan_id: int,
+    block_number: int,
+    ai_last_week_review: str | None = None,
+    ai_this_week_description: str | None = None,
+) -> None:
+    """Sets Gemini-authored narrative text on a block_reviews row without disturbing
+    the athlete's own overall_rpe/notes (or the other AI field, if only one is passed).
+
+    save_block_review is a plain INSERT with no uniqueness constraint on
+    (plan_id, block_number) -- an athlete can submit a review before or after this
+    runs, each producing its own row. So this looks up the latest existing row for
+    (plan_id, block_number) and UPDATEs it if found, rather than assuming one exists
+    or risking a duplicate; see get_block_review_narrative for the matching read side.
+    """
+    if ai_last_week_review is None and ai_this_week_description is None:
+        return
+    with engine.connect() as conn:
+        existing_id = conn.execute(
+            text("""
+            SELECT id FROM block_reviews
+            WHERE plan_id = :plan_id AND block_number = :block_number
+            ORDER BY id DESC LIMIT 1
+            """),
+            {"plan_id": plan_id, "block_number": block_number},
+        ).scalar()
+        if existing_id is not None:
+            sets = []
+            params: dict[str, Any] = {"id": existing_id}
+            if ai_last_week_review is not None:
+                sets.append("ai_last_week_review = :ai_last_week_review")
+                params["ai_last_week_review"] = ai_last_week_review
+            if ai_this_week_description is not None:
+                sets.append("ai_this_week_description = :ai_this_week_description")
+                params["ai_this_week_description"] = ai_this_week_description
+            conn.execute(text(f"UPDATE block_reviews SET {', '.join(sets)} WHERE id = :id"), params)
+        else:
+            conn.execute(
+                text("""
+                INSERT INTO block_reviews (plan_id, block_number, ai_last_week_review, ai_this_week_description)
+                VALUES (:plan_id, :block_number, :ai_last_week_review, :ai_this_week_description)
+                """),
+                {
+                    "plan_id": plan_id,
+                    "block_number": block_number,
+                    "ai_last_week_review": ai_last_week_review,
+                    "ai_this_week_description": ai_this_week_description,
+                },
+            )
+        conn.commit()
+
+
+def get_block_review_narrative(plan_id: int, block_number: int) -> dict[str, Any]:
+    """Merges every block_reviews row for (plan_id, block_number) into one
+    {ai_last_week_review, ai_this_week_description}, taking the last non-null value
+    of each field in insertion order. Necessary because the table can hold more than
+    one row per (plan_id, block_number) -- see upsert_block_review_ai_fields."""
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("""
+            SELECT ai_last_week_review, ai_this_week_description FROM block_reviews
+            WHERE plan_id = :plan_id AND block_number = :block_number
+            ORDER BY id ASC
+            """),
+            {"plan_id": plan_id, "block_number": block_number},
+        ).fetchall()
+    merged: dict[str, Any] = {"ai_last_week_review": None, "ai_this_week_description": None}
+    for r in rows:
+        if r[0] is not None:
+            merged["ai_last_week_review"] = r[0]
+        if r[1] is not None:
+            merged["ai_this_week_description"] = r[1]
+    return merged
+
+
+def week_range_for_block(block_number: int, weeks_per_block: int = settings.WEEKS_PER_BLOCK) -> tuple[int, int]:
+    """The (week_start, week_end) a block covers, e.g. block 1 = weeks 1..weeks_per_block.
+
+    The single source of truth for the block-window formula -- plan generation,
+    the completion gate, and block evaluation all call this instead of each
+    inlining `(block_number - 1) * weeks_per_block + 1`.
+    """
+    week_start = (block_number - 1) * weeks_per_block + 1
+    week_end = block_number * weeks_per_block
+    return week_start, week_end
+
+
+def block_number_for_week(week_number: int, weeks_per_block: int = settings.WEEKS_PER_BLOCK) -> int:
+    """The block that contains a given week (ceiling division). Also used to
+    compute how many blocks a plan's total week count spans."""
+    return (week_number + weeks_per_block - 1) // weeks_per_block
+
+
 def get_block_completion(plan_id: int, block_number: int) -> dict[str, Any]:
-    """Returns total and completed hours for a 2-week block (block 1 = weeks 1-2, etc.)."""
-    week_start = (block_number - 1) * 2 + 1
-    week_end = block_number * 2
+    """Returns total and completed hours for a block (block 1 = weeks 1..weeks_per_block, etc.)."""
+    week_start, week_end = week_range_for_block(block_number)
     with engine.connect() as conn:
         rows = conn.execute(
             text("""
@@ -1323,6 +1422,7 @@ def get_block_completion(plan_id: int, block_number: int) -> dict[str, Any]:
     total_minutes = sum(r[1] or 0 for r in rows)
     completed_minutes = sum(r[1] or 0 for r in rows if r[0] == 1)
     pct = round(completed_minutes / total_minutes * 100) if total_minutes > 0 else 0
+    narrative = get_block_review_narrative(plan_id, block_number)
     return {
         "block_number": block_number,
         "week_start": week_start,
@@ -1331,6 +1431,8 @@ def get_block_completion(plan_id: int, block_number: int) -> dict[str, Any]:
         "completed_minutes": completed_minutes,
         "completion_pct": pct,
         "unlocked": pct >= 70,
+        "ai_last_week_review": narrative["ai_last_week_review"],
+        "ai_this_week_description": narrative["ai_this_week_description"],
     }
 
 
@@ -3263,3 +3365,186 @@ def get_block_actual_volume(
             "unplanned_count": len(unplanned_rows),
             "total_activities_count": len(matched_rows) + len(unplanned_rows),
         }
+
+
+def get_week_planned_volume(plan_id: int, week_number: int) -> dict[str, Any]:
+    """Planned duration/distance/elevation/count for a single week, excluding Rest
+    days. The week-level counterpart to get_block_completion's 2-week block math --
+    and the first place planned vert is aggregated anywhere in the app."""
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("""
+                SELECT
+                    COALESCE(SUM(duration_minutes), 0) AS duration_minutes,
+                    COALESCE(SUM(distance_km), 0) AS distance_km,
+                    COALESCE(SUM(elevation_gain_m), 0) AS elevation_gain_m,
+                    COUNT(*) AS workout_count
+                FROM workouts
+                WHERE plan_id = :plan_id
+                  AND week_number = :week_number
+                  AND type != 'Rest'
+            """),
+            {"plan_id": plan_id, "week_number": week_number},
+        ).fetchone()
+    return {
+        "week_number": week_number,
+        "duration_minutes": round(float(row.duration_minutes or 0), 1),
+        "distance_km": round(float(row.distance_km or 0), 1),
+        "elevation_gain_m": round(float(row.elevation_gain_m or 0)),
+        "workout_count": int(row.workout_count or 0),
+    }
+
+
+def get_week_review(
+    user_id: int,
+    plan_id: int,
+    week_number: int,
+    plan_start_date: str | None,
+) -> dict[str, Any]:
+    """Composes the read-only, week-scoped planned-vs-actual review: planned
+    volume, recorded actual volume (matched + unplanned watch activities), a
+    per-workout breakdown, missed sessions, unplanned activities, and match
+    coverage.
+
+    Two completion figures are returned side by side rather than one hiding
+    the other: `completion_pct` is recorded-duration based (actual watch
+    seconds over planned minutes), while `checkbox_completion_pct` mirrors
+    get_block_completion's ticked-checkbox math for a single week. A 90-minute
+    session ticked complete but recorded for only 40 minutes reads as ~44% here
+    and 100% there -- both are real, and get_block_completion's own return
+    contract (and the 70% next-block gate that reads it) is untouched.
+    """
+    planned = get_week_planned_volume(plan_id, week_number)
+
+    actual = get_block_actual_volume(
+        user_id=user_id,
+        plan_id=plan_id,
+        wk_start=week_number,
+        wk_end=week_number,
+        plan_start_date=plan_start_date,
+    )
+
+    planned_minutes = planned["duration_minutes"]
+    completion_pct = round(actual["total_actual_minutes"] / planned_minutes * 100) if planned_minutes > 0 else 0
+
+    # Checkbox-based completion: same math as get_block_completion, scoped to one week.
+    with engine.connect() as conn:
+        checkbox_rows = conn.execute(
+            text("""
+                SELECT is_completed, duration_minutes
+                FROM workouts
+                WHERE plan_id = :plan_id
+                  AND week_number = :week_number
+                  AND type != 'Rest'
+                  AND duration_minutes > 0
+            """),
+            {"plan_id": plan_id, "week_number": week_number},
+        ).fetchall()
+    checkbox_total = sum(r[1] or 0 for r in checkbox_rows)
+    checkbox_completed = sum(r[1] or 0 for r in checkbox_rows if r[0] == 1)
+    checkbox_completion_pct = round(checkbox_completed / checkbox_total * 100) if checkbox_total > 0 else 0
+
+    # Scoped to this one week -- not get_plan_workouts(plan_id), which pulls every
+    # week of the plan just to filter one out in Python and gets slower as the
+    # plan grows longer.
+    with engine.connect() as conn:
+        week_workout_rows = conn.execute(
+            text("""
+                SELECT * FROM workouts
+                WHERE plan_id = :plan_id
+                  AND week_number = :week_number
+                  AND type != 'Rest'
+            """),
+            {"plan_id": plan_id, "week_number": week_number},
+        ).fetchall()
+    week_workouts = [_row_to_dict(r) for r in week_workout_rows]
+    matched_activities = get_activities_for_block(plan_id, week_number, week_number)
+    matched_by_workout = {a["workout_id"]: a for a in matched_activities}
+
+    per_workout: list[dict[str, Any]] = []
+    for w in week_workouts:
+        match = matched_by_workout.get(w["id"])
+        if match:
+            actual_entry = {
+                "state": "matched",
+                "distance_km": match.get("distance_km"),
+                "duration_minutes": round((match.get("duration_seconds") or 0) / 60.0, 1),
+                "elevation_gain_m": match.get("elevation_gain_m"),
+                "activity_id": match.get("activity_id"),
+            }
+        elif w.get("is_completed") == 1:
+            # Ticked complete with no synced recording -- actual is inferred from the plan.
+            actual_entry = {
+                "state": "checkbox_only",
+                "distance_km": w.get("distance_km"),
+                "duration_minutes": w.get("duration_minutes"),
+                "elevation_gain_m": w.get("elevation_gain_m"),
+                "activity_id": None,
+            }
+        elif w.get("is_missed") == 1:
+            actual_entry = {
+                "state": "missed",
+                "distance_km": None,
+                "duration_minutes": None,
+                "elevation_gain_m": None,
+                "activity_id": None,
+            }
+        else:
+            actual_entry = {
+                "state": "pending",
+                "distance_km": None,
+                "duration_minutes": None,
+                "elevation_gain_m": None,
+                "activity_id": None,
+            }
+
+        per_workout.append(
+            {
+                "workout_id": w["id"],
+                "day_of_week": w.get("day_of_week"),
+                "title": w.get("title"),
+                "type": w.get("type"),
+                "planned": {
+                    "duration_minutes": w.get("duration_minutes"),
+                    "distance_km": w.get("distance_km"),
+                    "elevation_gain_m": w.get("elevation_gain_m"),
+                },
+                "actual": actual_entry,
+            }
+        )
+
+    missed = [w for w in week_workouts if w.get("is_missed") == 1]
+
+    completed_count = sum(1 for w in week_workouts if w.get("is_completed") == 1)
+    matched_completed_count = sum(
+        1 for w in week_workouts if w.get("is_completed") == 1 and w["id"] in matched_by_workout
+    )
+    coverage = {
+        "completed_count": completed_count,
+        "matched_count": matched_completed_count,
+        "checkbox_only_count": completed_count - matched_completed_count,
+    }
+
+    # Unplanned: real watch activities in this week's calendar window with no workout match.
+    unplanned: list[dict[str, Any]] = []
+    if plan_start_date:
+        try:
+            p_start = datetime.datetime.strptime(plan_start_date, "%Y-%m-%d").date()
+            cal_start = p_start + datetime.timedelta(days=(week_number - 1) * 7)
+            cal_until = cal_start + datetime.timedelta(days=7)
+            matches = get_matches_for_review(user_id, cal_start, cal_until, plan_id=plan_id)
+            unplanned = [m for m in matches if m.get("workout_id") is None]
+        except Exception:
+            unplanned = []
+
+    return {
+        "week_number": week_number,
+        "planned": planned,
+        "actual": actual,
+        "completion_pct": completion_pct,
+        "checkbox_completion_pct": checkbox_completion_pct,
+        "per_workout": per_workout,
+        "unplanned": unplanned,
+        "missed": missed,
+        "coverage": coverage,
+    }

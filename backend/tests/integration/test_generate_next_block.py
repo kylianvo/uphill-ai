@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, patch
 from db import get_plan_by_id, get_plan_workouts, save_workouts, update_plan_schedule
 
 
-def _create_plan_with_two_weeks_of_workouts(client, headers):
+def _create_plan_with_one_week_of_workouts(client, headers):
     resp = client.post(
         "/api/coach/generate-plan",
         headers=headers,
@@ -22,7 +22,7 @@ def _create_plan_with_two_weeks_of_workouts(client, headers):
     )
     plan_id = resp.json()["plan"]["id"]
 
-    # Block 1 = weeks 1-2. Two workouts, 60 min each -- mark only one
+    # Block 1 = week 1. Two workouts, 60 min each -- mark only one
     # completed so the block sits at 50%, well under the 70% gate.
     save_workouts(
         plan_id,
@@ -38,8 +38,8 @@ def _create_plan_with_two_weeks_of_workouts(client, headers):
                 "description": "Conversational pace.",
             },
             {
-                "week_number": 2,
-                "day_of_week": "Monday",
+                "week_number": 1,
+                "day_of_week": "Wednesday",
                 "phase": "base",
                 "title": "Easy Run 2",
                 "type": "easy",
@@ -53,8 +53,8 @@ def _create_plan_with_two_weeks_of_workouts(client, headers):
     return plan_id, workouts[0]["id"]
 
 
-def _create_plan_with_two_weeks_of_workouts_no_mock(client, headers):
-    """Same as _create_plan_with_two_weeks_of_workouts, but for tests that
+def _create_plan_with_one_week_of_workouts_no_mock(client, headers):
+    """Same as _create_plan_with_one_week_of_workouts, but for tests that
     install their own long-lived patch on generate_plan_workouts (to capture
     call args from the later generate-next-block background task) instead of
     the mock_plan_generation fixture."""
@@ -63,12 +63,12 @@ def _create_plan_with_two_weeks_of_workouts_no_mock(client, headers):
         new_callable=AsyncMock,
         return_value=([], "recreational"),
     ):
-        return _create_plan_with_two_weeks_of_workouts(client, headers)
+        return _create_plan_with_one_week_of_workouts(client, headers)
 
 
 class TestGenerateNextBlockOverrideAnnotation:
     def test_override_annotation_reaches_the_generation_prompt(self, client, auth_headers):
-        plan_id, workout_id = _create_plan_with_two_weeks_of_workouts_no_mock(client, auth_headers["headers"])
+        plan_id, workout_id = _create_plan_with_one_week_of_workouts_no_mock(client, auth_headers["headers"])
         client.patch(
             "/api/coach/workouts/log",
             headers=auth_headers["headers"],
@@ -108,7 +108,7 @@ class TestGenerateNextBlockOverrideAnnotation:
 
 class TestGenerateNextBlockGate:
     def test_blocks_generation_below_70_percent_without_override(self, client, auth_headers, mock_plan_generation):
-        plan_id, workout_id = _create_plan_with_two_weeks_of_workouts(client, auth_headers["headers"])
+        plan_id, workout_id = _create_plan_with_one_week_of_workouts(client, auth_headers["headers"])
         client.patch(
             "/api/coach/workouts/log",
             headers=auth_headers["headers"],
@@ -124,7 +124,7 @@ class TestGenerateNextBlockGate:
         assert "70%" in resp.json()["detail"]
 
     def test_override_gate_allows_generation_below_70_percent(self, client, auth_headers, mock_plan_generation):
-        plan_id, workout_id = _create_plan_with_two_weeks_of_workouts(client, auth_headers["headers"])
+        plan_id, workout_id = _create_plan_with_one_week_of_workouts(client, auth_headers["headers"])
         client.patch(
             "/api/coach/workouts/log",
             headers=auth_headers["headers"],
@@ -142,7 +142,7 @@ class TestGenerateNextBlockGate:
 
 class TestUpdatePlanSchedule:
     def test_updates_only_provided_fields_and_keeps_others(self, client, auth_headers, mock_plan_generation):
-        plan_id, _ = _create_plan_with_two_weeks_of_workouts(client, auth_headers["headers"])
+        plan_id, _ = _create_plan_with_one_week_of_workouts(client, auth_headers["headers"])
         before = get_plan_by_id(plan_id)
 
         updated = update_plan_schedule(plan_id, days_per_week=5, long_run_day="Sunday")
@@ -157,7 +157,7 @@ class TestUpdatePlanSchedule:
         assert update_plan_schedule(plan_id=999999999, days_per_week=5) is None
 
     def test_json_encodes_list_fields(self, client, auth_headers, mock_plan_generation):
-        plan_id, _ = _create_plan_with_two_weeks_of_workouts(client, auth_headers["headers"])
+        plan_id, _ = _create_plan_with_one_week_of_workouts(client, auth_headers["headers"])
 
         updated = update_plan_schedule(
             plan_id,
@@ -171,7 +171,7 @@ class TestUpdatePlanSchedule:
 
 class TestGenerateNextBlockScheduleEdit:
     def test_schedule_fields_update_plan_row_and_flow_into_generation(self, client, auth_headers):
-        plan_id, workout_id = _create_plan_with_two_weeks_of_workouts_no_mock(client, auth_headers["headers"])
+        plan_id, workout_id = _create_plan_with_one_week_of_workouts_no_mock(client, auth_headers["headers"])
         client.patch(
             "/api/coach/workouts/log",
             headers=auth_headers["headers"],
@@ -229,7 +229,7 @@ class TestGenerateNextBlockScheduleEdit:
         assert json.loads(updated_plan["double_session_days"]) == ["Sunday"]
 
     def test_omitted_schedule_fields_leave_plan_unchanged(self, client, auth_headers, mock_plan_generation):
-        plan_id, workout_id = _create_plan_with_two_weeks_of_workouts(client, auth_headers["headers"])
+        plan_id, workout_id = _create_plan_with_one_week_of_workouts(client, auth_headers["headers"])
         before = get_plan_by_id(plan_id)
         client.patch(
             "/api/coach/workouts/log",
@@ -254,7 +254,7 @@ class TestGenerateNextBlockScheduleEdit:
         override_gate) must be rejected with 403 -- and, critically, must
         NOT have written the schedule fields to the plan row. Only requests
         that get past every rejection check may mutate the plan."""
-        plan_id, workout_id = _create_plan_with_two_weeks_of_workouts(client, auth_headers["headers"])
+        plan_id, workout_id = _create_plan_with_one_week_of_workouts(client, auth_headers["headers"])
         before = get_plan_by_id(plan_id)
         client.patch(
             "/api/coach/workouts/log",
@@ -285,7 +285,7 @@ class TestGenerateNextBlockScheduleEdit:
 
 
 def test_get_block_evaluation_endpoint(client, auth_headers):
-    plan_id, workout_id = _create_plan_with_two_weeks_of_workouts(client, auth_headers["headers"])
+    plan_id, workout_id = _create_plan_with_one_week_of_workouts(client, auth_headers["headers"])
     client.patch(
         "/api/coach/workouts/log",
         headers=auth_headers["headers"],

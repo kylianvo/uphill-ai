@@ -49,6 +49,8 @@ The API base URL can be overridden at runtime via `?api=<url>` query param (stor
 
 The frontend `CLAUDE.md` points to `AGENTS.md`, which warns: **this is Next.js 16 with breaking changes — read `node_modules/next/dist/docs/` before writing App Router code.**
 
+Any change to rendered UI (components, views, styling, visible copy) needs a real screenshot of it running locally as evidence before being called done — passing `tsc`/`eslint`/`vitest` doesn't prove it looks right. See the `ui-screenshot-evidence` skill for the local dev-server + auth + screenshot workflow.
+
 ### Observability Stack
 Docker Compose also runs Prometheus + Grafana (metrics), node-exporter, and Metabase (analytics dashboards against the same Postgres DB). The FastAPI app is auto-instrumented via `prometheus-fastapi-instrumentator`.
 
@@ -146,3 +148,7 @@ Default label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `read
 ### Domain docs
 
 Single-context layout: one `CONTEXT.md` + `docs/adr/` at the repo root (created lazily, not yet present). See `docs/agents/domain.md`.
+
+### UI changes
+
+Never call a frontend change done on the strength of `tsc`/`eslint`/`vitest` alone — run it locally and capture a screenshot as evidence. See `.claude/skills/ui-screenshot-evidence/SKILL.md`.

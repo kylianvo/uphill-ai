@@ -27,7 +27,7 @@ def test_evaluate_block_performance_with_matched_activities():
         },
         {
             "id": 3,
-            "week_number": 2,
+            "week_number": 1,
             "day_of_week": "Saturday",
             "type": "long_run",
             "is_completed": 1,
@@ -36,7 +36,7 @@ def test_evaluate_block_performance_with_matched_activities():
         },
         {
             "id": 4,
-            "week_number": 2,
+            "week_number": 1,
             "day_of_week": "Sunday",
             "type": "easy",
             "is_completed": 0,
@@ -75,7 +75,7 @@ def test_evaluate_block_performance_with_matched_activities():
 
         assert res["block_number"] == 1
         assert res["week_start"] == 1
-        assert res["week_end"] == 2
+        assert res["week_end"] == 1
         assert res["sessions_total"] == 4
         assert res["sessions_completed"] == 3
         assert res["sessions_missed"] == 1

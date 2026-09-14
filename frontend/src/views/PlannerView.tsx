@@ -10,7 +10,7 @@ import { KnowledgeCard } from "../components/KnowledgeCard";
 import { DndContext, DragEndEvent, DragOverEvent, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, TouchSensor, KeyboardSensor } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import ToolsView from "./ToolsView";
-import { UploadSimple, FileArrowUp, Heart, Clock, Mountains, MapPin, Footprints, ArrowsMerge, PlayCircle, CheckCircle, Fire, Path, RoadHorizon, Info, Check, Question, WarningCircle, Plus, Trash, Archive, LockKey, LockKeyOpen, Trophy, Target, Sneaker, PersonSimpleRun, Bed, XCircle, DownloadSimple, Gauge, Sun, Moon, DotsSixVertical, ArrowsClockwise, LinkSimple, Flag, TrendUp, Drop, Leaf, Lightning, PencilSimple, X, ArrowLeft, ArrowsLeftRight, ShieldCheck, Sparkle } from '@phosphor-icons/react';
+import { UploadSimple, FileArrowUp, Heart, Clock, Mountains, MapPin, Footprints, ArrowsMerge, PlayCircle, CheckCircle, Fire, Path, RoadHorizon, Info, Check, Question, WarningCircle, Plus, Trash, Archive, LockKey, LockKeyOpen, Trophy, Target, Sneaker, PersonSimpleRun, Bed, XCircle, DownloadSimple, Gauge, Sun, Moon, DotsSixVertical, ArrowsClockwise, LinkSimple, Flag, TrendUp, TrendDown, Drop, Leaf, Lightning, PencilSimple, X, ArrowLeft, ArrowsLeftRight, ShieldCheck, Sparkle, CaretDown, CaretUp } from '@phosphor-icons/react';
 import { RaceMatch } from "../hooks/useRaceMatch";
 import { RaceNameField } from "../components/RaceNameField";
 import { CoachNoteThread } from "../components/CoachNoteThread";
@@ -21,11 +21,17 @@ import { ScheduleFieldsEditor, ScheduleFieldsValue } from "../components/Schedul
 import { useMatching, type RawMatchActivity } from "../hooks/useMatching";
 import MatchedActivityCard from "../components/MatchedActivityCard";
 import UnplannedActivityCard from "../components/UnplannedActivityCard";
+import WeeklyReview, { CompletionRing, ringColor, computeCreditedActual, type WeekReviewData } from "../components/WeeklyReview";
 import { MoveWorkoutModal } from "../components/MoveWorkoutModal";
 import { AdaptWeekModal } from "../components/AdaptWeekModal";
 import { FeelingSelector, rpeToFeelingId } from "../components/FeelingSelector";
 import { triggerHaptic } from "../utils/native";
 import { resolveCurrentWeek } from "../utils/planDate";
+
+// Must match backend/config.py's settings.WEEKS_PER_BLOCK -- the training
+// block size plan generation, the 70% completion gate, and block review all
+// operate on.
+const WEEKS_PER_BLOCK = 1;
 
 export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   const ctx = useAppContext();
@@ -461,11 +467,16 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   const maxGeneratedWeek = workouts.length > 0
     ? Math.max(...workouts.map((w: any) => w.week_number || 0))
     : 0;
-  const currentBlockNum = maxGeneratedWeek > 0 ? Math.ceil(maxGeneratedWeek / 2) : 1;
+  const currentBlockNum = maxGeneratedWeek > 0 ? Math.ceil(maxGeneratedWeek / WEEKS_PER_BLOCK) : 1;
   const currentBlockCompletion = blockData?.blocks?.find((b: any) => b.block_number === currentBlockNum);
   const blockUnlocked = currentBlockCompletion?.unlocked ?? false;
+  // Gemini's own narrative for the week being viewed (produced alongside its
+  // generation -- see PlanGenerator.generate_week_narrative), not the currently
+  // active block, so it stays visible while browsing earlier weeks.
+  const selectedWeekBlockNum = Math.ceil(selectedWeek / WEEKS_PER_BLOCK);
+  const selectedWeekNarrative = blockData?.blocks?.find((b: any) => b.block_number === selectedWeekBlockNum);
   const nextBlockNum = currentBlockNum + 1;
-  const nextBlockStartWeek = nextBlockNum * 2 - 1;
+  const nextBlockStartWeek = (nextBlockNum - 1) * WEEKS_PER_BLOCK + 1;
   const allBlocksGenerated = maxGeneratedWeek >= totalWeeks && totalWeeks > 0;
 
   // Keep selectedWeek within the unlocked / generated range
@@ -474,6 +485,58 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
       setSelectedWeek(maxGeneratedWeek);
     }
   }, [maxGeneratedWeek, selectedWeek, setSelectedWeek]);
+
+  // ── Week review (planned vs. actual) state ───────────────────────────────
+  // ── Week review (planned vs. actual) state ───────────────────────────────
+  // Cached by plan_id + week_number so switching between already-viewed weeks is
+  // instantaneous (0ms) with zero skeleton flash, zero pop-out, and zero jitter.
+  const [weekReviews, setWeekReviews] = useState<Record<string, WeekReviewData>>({});
+  // "Show details" disclosure on the merged Weekly Volume / Review card -- collapsed
+  // by default, and re-collapsed whenever the athlete switches weeks.
+  const [showWeekDetails, setShowWeekDetails] = useState(false);
+  const weekReviewAbortControllerRef = useRef<AbortController | null>(null);
+
+  const fetchWeekReview = React.useCallback((targetWeek?: number) => {
+    const weekNum = targetWeek ?? selectedWeek;
+    if (!activePlan || weekNum > maxGeneratedWeek) return;
+    const token = typeof window !== "undefined" ? localStorage.getItem("uphill_session_token") : null;
+    if (!token) return;
+
+    if (weekReviewAbortControllerRef.current) {
+      weekReviewAbortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    weekReviewAbortControllerRef.current = controller;
+
+    const planId = activePlan.id;
+    const url = isCoachActingAsAthlete
+      ? `${API_BASE_URL}/api/coaching/athletes/${actingAsAthleteId}/week-review/${planId}/${weekNum}`
+      : `${API_BASE_URL}/api/coach/week-review/${planId}/${weekNum}`;
+
+    fetch(url, {
+      signal: controller.signal,
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d && d.week_number) {
+          setWeekReviews((prev) => ({ ...prev, [`${planId}_${d.week_number}`]: d }));
+        }
+      })
+      .catch((err) => {
+        if (err.name !== "AbortError") {
+          console.error("Failed to fetch week review:", err);
+        }
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePlan?.id, selectedWeek, maxGeneratedWeek, API_BASE_URL, isCoachActingAsAthlete, actingAsAthleteId]);
+
+  useEffect(() => {
+    Promise.resolve().then(() => setShowWeekDetails(false));
+    if (!activePlan || selectedWeek > maxGeneratedWeek) return;
+    fetchWeekReview(selectedWeek);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePlan?.id, selectedWeek, maxGeneratedWeek, fetchWeekReview]);
 
   const [blockEvaluation, setBlockEvaluation] = useState<any | null>(null);
   const [blockEvaluationLoading, setBlockEvaluationLoading] = useState(false);
@@ -507,8 +570,48 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
 
   // Re-check block completion % whenever a workout is toggled
   const handleToggleCompleteWithRefresh = async (id: number, completed: boolean) => {
+    // Optimistically update the week review cache so the completion ring & actual numbers
+    // update in <1ms without any flickering or waiting for network round-trip.
+    const activeKey = `${activePlan?.id ?? 0}_${selectedWeek}`;
+    setWeekReviews((prev) => {
+      const current = prev[activeKey];
+      if (!current) return prev;
+      const updatedPerWorkout = current.per_workout.map((w) => {
+        if (w.workout_id !== id) return w;
+        let newState: "matched" | "checkbox_only" | "missed" | "pending" = w.actual.state;
+        if (completed) {
+          newState = w.actual.state === "matched" ? "matched" : "checkbox_only";
+        } else {
+          newState = "pending";
+        }
+        return {
+          ...w,
+          actual: {
+            ...w.actual,
+            state: newState,
+          },
+        };
+      });
+
+      const checkboxTotal = updatedPerWorkout.reduce((sum, w) => sum + (w.planned.duration_minutes || 0), 0);
+      const checkboxCompleted = updatedPerWorkout
+        .filter((w) => w.actual.state === "matched" || w.actual.state === "checkbox_only")
+        .reduce((sum, w) => sum + (w.planned.duration_minutes || 0), 0);
+      const checkboxPct = checkboxTotal > 0 ? Math.round((checkboxCompleted / checkboxTotal) * 100) : 0;
+
+      return {
+        ...prev,
+        [activeKey]: {
+          ...current,
+          checkbox_completion_pct: checkboxPct,
+          per_workout: updatedPerWorkout,
+        },
+      };
+    });
+
     await handleToggleComplete(id, completed);
     fetchBlockCompletion();
+    fetchWeekReview(selectedWeek);
   };
 
   // activePlan doubles as the draft plan while reviewing a not-yet-approved
@@ -1402,12 +1505,26 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
               );
             })()}
 
-            {/* Weekly Volume Stats */}
+            {/* Weekly Volume + Review (combined: planned volume, actual-so-far, and the
+                full planned-vs-actual breakdown behind a "Show details" toggle) */}
             {(() => {
               const weekWorkouts = getWeekWorkouts(selectedWeek);
               const weeklyKm = weekWorkouts.reduce((sum: any, wo: any) => sum + (wo.distance_km || 0), 0);
               const weeklyMins = weekWorkouts.reduce((sum: any, wo: any) => sum + (wo.duration_minutes || 0), 0);
               const weeklyHours = parseFloat((weeklyMins / 60).toFixed(1));
+
+              // Small progression indicator: this week's planned volume vs. last week's,
+              // the week-over-week overload signal a training plan is supposed to show.
+              const prevWeekMins = selectedWeek > 1
+                ? getWeekWorkouts(selectedWeek - 1).reduce((sum: any, wo: any) => sum + (wo.duration_minutes || 0), 0)
+                : 0;
+              const volumeChangePct = prevWeekMins > 0 ? Math.round(((weeklyMins - prevWeekMins) / prevWeekMins) * 100) : null;
+
+              const currentWeekReview = weekReviews[`${activePlan?.id ?? 0}_${selectedWeek}`] || null;
+              const hasReview = !!currentWeekReview;
+              const isWeekReviewLoading = selectedWeek <= maxGeneratedWeek && !hasReview;
+              const credited = hasReview ? computeCreditedActual(currentWeekReview) : null;
+              const actualColor = credited ? ringColor(credited.pct) : "var(--text-muted)";
 
               return (
                 <div style={{ marginBottom: "16px" }}>
@@ -1417,65 +1534,163 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                     border: "1px solid var(--border-color)",
                     borderRadius: "12px",
                     display: "flex",
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: "12px",
-                    flexWrap: "wrap",
+                    flexDirection: "column",
+                    gap: "10px",
                   }}>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                      <span style={{ fontSize: "10px", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: "700" }}>
-                        {lang === "en" ? `Weekly Volume (Week ${selectedWeek})` : `Thể tích tuần (Tuần ${selectedWeek})`}
-                      </span>
-                      <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
-                        <span style={{ fontSize: "18px", fontWeight: "800", color: "var(--accent-primary)" }}>{weeklyHours} {lang === "en" ? "hrs" : "giờ"}</span>
-                        <span style={{ fontSize: "13px", color: "var(--text-muted)", fontWeight: "600" }}>· ~{weeklyKm.toFixed(1)} km</span>
+                    <div style={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                        <span style={{ fontSize: "10px", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: "700" }}>
+                          {lang === "en" ? `Weekly Volume (Week ${selectedWeek})` : `Thể tích tuần (Tuần ${selectedWeek})`}
+                        </span>
+                        <div style={{ display: "flex", alignItems: "baseline", gap: "6px", flexWrap: "wrap" }}>
+                          <span style={{ fontSize: "18px", fontWeight: "800", color: "var(--accent-primary)" }}>{weeklyHours} {lang === "en" ? "hrs" : "giờ"}</span>
+                          <span style={{ fontSize: "13px", color: "var(--text-muted)", fontWeight: "600" }}>· ~{weeklyKm.toFixed(1)} km</span>
+                          {volumeChangePct !== null && (
+                            <span
+                              style={{
+                                display: "inline-flex", alignItems: "center", gap: "2px",
+                                fontSize: "10.5px", fontWeight: "700",
+                                color: volumeChangePct >= 0 ? "var(--accent-primary)" : "var(--text-muted)",
+                              }}
+                            >
+                              {volumeChangePct >= 0
+                                ? <TrendUp size={11} weight="bold" aria-hidden="true" />
+                                : <TrendDown size={11} weight="bold" aria-hidden="true" />}
+                              {volumeChangePct >= 0 ? `+${volumeChangePct}%` : `${volumeChangePct}%`}
+                              <span style={{ fontWeight: "500", color: "var(--text-muted)" }}>
+                                {lang === "en" ? "vs last wk" : "so với tuần trước"}
+                              </span>
+                            </span>
+                          )}
+                        </div>
+                        <span style={{ fontSize: "9.5px", color: "var(--text-muted)", fontWeight: "500", fontStyle: "italic" }}>
+                          {lang === "en" ? "Sessions are run by time — distance is an estimate for planning" : "Buổi tập theo dõi bằng thời gian — quãng đường chỉ là ước tính"}
+                        </span>
                       </div>
-                      <span style={{ fontSize: "9.5px", color: "var(--text-muted)", fontWeight: "500", fontStyle: "italic" }}>
-                        {lang === "en" ? "Sessions are run by time — distance is an estimate for planning" : "Buổi tập theo dõi bằng thời gian — quãng đường chỉ là ước tính"}
-                      </span>
+
+                      {selectedWeek <= maxGeneratedWeek && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenAdaptWeek(selectedWeek)}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "5px",
+                            padding: "4px 10px",
+                            fontSize: "11.5px",
+                            fontWeight: "600",
+                            borderRadius: "20px",
+                            cursor: "pointer",
+                            border: "1px solid rgba(25, 206, 139, 0.4)",
+                            background: "rgba(25, 206, 139, 0.08)",
+                            color: "var(--accent-primary)",
+                            transition: "all 0.15s ease",
+                            whiteSpace: "nowrap",
+                            height: "26px",
+                            flexShrink: 0,
+                          }}
+                          onMouseEnter={e => {
+                            (e.currentTarget as HTMLButtonElement).style.background = "rgba(25, 206, 139, 0.16)";
+                            (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(25, 206, 139, 0.6)";
+                          }}
+                          onMouseLeave={e => {
+                            (e.currentTarget as HTMLButtonElement).style.background = "rgba(25, 206, 139, 0.08)";
+                            (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(25, 206, 139, 0.4)";
+                          }}
+                        >
+                          <Sparkle size={12} weight="fill" aria-hidden="true" />
+                          <span>{lang === "en" ? `Adapt Week ${selectedWeek}` : `Tùy chỉnh Tuần ${selectedWeek}`}</span>
+                        </button>
+                      )}
                     </div>
 
-                    {selectedWeek <= maxGeneratedWeek && (
-                      <button
-                        type="button"
-                        onClick={() => handleOpenAdaptWeek(selectedWeek)}
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "5px",
-                          padding: "4px 10px",
-                          fontSize: "11.5px",
-                          fontWeight: "600",
-                          borderRadius: "20px",
-                          cursor: "pointer",
-                          border: "1px solid rgba(25, 206, 139, 0.4)",
-                          background: "rgba(25, 206, 139, 0.08)",
-                          color: "var(--accent-primary)",
-                          transition: "all 0.15s ease",
-                          whiteSpace: "nowrap",
-                          height: "26px",
-                          flexShrink: 0,
-                        }}
-                        onMouseEnter={e => {
-                          (e.currentTarget as HTMLButtonElement).style.background = "rgba(25, 206, 139, 0.16)";
-                          (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(25, 206, 139, 0.6)";
-                        }}
-                        onMouseLeave={e => {
-                          (e.currentTarget as HTMLButtonElement).style.background = "rgba(25, 206, 139, 0.08)";
-                          (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(25, 206, 139, 0.4)";
-                        }}
-                      >
-                        <Sparkle size={12} weight="fill" aria-hidden="true" />
-                        <span>{lang === "en" ? `Adapt Week ${selectedWeek}` : `Tùy chỉnh Tuần ${selectedWeek}`}</span>
-                      </button>
+                    {/* Actual-so-far: small ring + figures, plus the details toggle.
+                        The loading skeleton keeps the same padding/border-top and minHeight as the
+                        real row so this never visibly pops in/out on a week switch --
+                        it morphs in place once the fetch resolves. */}
+                    {isWeekReviewLoading ? (
+                      <div style={{
+                        display: "flex", alignItems: "center", justifyContent: "space-between",
+                        paddingTop: "10px", borderTop: "1px solid rgba(0,0,0,0.06)",
+                        minHeight: "42px",
+                      }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                          <div style={{
+                            width: "38px", height: "38px", borderRadius: "50%", flexShrink: 0,
+                            background: "rgba(0,0,0,0.06)", animation: "pulse 1.5s ease-in-out infinite",
+                          }} />
+                          <div style={{
+                            width: "130px", height: "13px", borderRadius: "999px",
+                            background: "rgba(0,0,0,0.06)", animation: "pulse 1.5s ease-in-out infinite",
+                          }} />
+                        </div>
+                      </div>
+                    ) : hasReview ? (
+                      <div style={{
+                        display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap",
+                        paddingTop: "10px", borderTop: "1px solid rgba(0,0,0,0.06)",
+                        minHeight: "42px",
+                      }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                          <CompletionRing pct={credited!.pct} size={38} />
+                          <span style={{ fontSize: "11px", fontWeight: "700", color: actualColor }}>
+                            {lang === "en" ? "Actual" : "Thực tế"}: {(credited!.minutes / 60).toFixed(1)}
+                            {lang === "en" ? "h" : "g"} · {credited!.km.toFixed(1)}km
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setShowWeekDetails((v) => !v)}
+                          aria-expanded={showWeekDetails}
+                          style={{
+                            display: "inline-flex", alignItems: "center", gap: "4px",
+                            background: "none", border: "none", padding: 0, cursor: "pointer",
+                            fontSize: "11.5px", fontWeight: 600, color: "var(--accent-primary)",
+                          }}
+                        >
+                          {showWeekDetails ? t("week_review_hide_details") : t("week_review_show_details")}
+                          {showWeekDetails ? <CaretUp size={12} weight="bold" aria-hidden="true" /> : <CaretDown size={12} weight="bold" aria-hidden="true" />}
+                        </button>
+                      </div>
+                    ) : null}
+
+                    {hasReview && showWeekDetails && (
+                      <WeeklyReview data={currentWeekReview} lang={lang} />
                     )}
                   </div>
                 </div>
               );
             })()}
 
-
+            {/* Coach's AI-written review of last week / description of this week,
+                produced by Gemini alongside this week's generation. */}
+            {(selectedWeekNarrative?.ai_last_week_review || selectedWeekNarrative?.ai_this_week_description) && (
+              <div style={{
+                display: "flex", flexDirection: "column", gap: "8px",
+                padding: "12px 16px", borderRadius: "10px", marginBottom: "12px",
+                background: "rgba(16,185,129,0.06)",
+                border: "1px solid rgba(16,185,129,0.2)",
+              }}>
+                {selectedWeekNarrative?.ai_last_week_review && (
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
+                    <Sparkle size={16} weight="fill" color="var(--accent-primary)" style={{ flexShrink: 0, marginTop: "2px" }} aria-hidden="true" />
+                    <p style={{ fontSize: "13px", color: "var(--text-secondary)", margin: 0, lineHeight: "1.6" }}>
+                      <strong>{lang === "en" ? "Last week: " : "Tuần trước: "}</strong>
+                      {selectedWeekNarrative.ai_last_week_review}
+                    </p>
+                  </div>
+                )}
+                {selectedWeekNarrative?.ai_this_week_description && (
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
+                    <Sparkle size={16} weight="fill" color="var(--accent-primary)" style={{ flexShrink: 0, marginTop: "2px" }} aria-hidden="true" />
+                    <p style={{ fontSize: "13px", color: "var(--text-secondary)", margin: 0, lineHeight: "1.6" }}>
+                      <strong>{lang === "en" ? "This week: " : "Tuần này: "}</strong>
+                      {selectedWeekNarrative.ai_this_week_description}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Coach message for this week */}
             {coachMessage && (
@@ -1622,9 +1837,12 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                     </div>
                     {!allBlocksGenerated && (
                       <div style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "2px" }}>
-                        {lang === "en"
-                          ? `Weeks ${nextBlockStartWeek}–${Math.min(nextBlockStartWeek + 1, totalWeeks)} are ready to generate.`
-                          : `Tuần ${nextBlockStartWeek}–${Math.min(nextBlockStartWeek + 1, totalWeeks)} sẵn sàng để tạo.`}
+                        {(() => {
+                          const nextBlockEndWeek = Math.min(nextBlockStartWeek + WEEKS_PER_BLOCK - 1, totalWeeks);
+                          return nextBlockEndWeek <= nextBlockStartWeek
+                            ? (lang === "en" ? `Week ${nextBlockStartWeek} is ready to generate.` : `Tuần ${nextBlockStartWeek} sẵn sàng để tạo.`)
+                            : (lang === "en" ? `Weeks ${nextBlockStartWeek}–${nextBlockEndWeek} are ready to generate.` : `Tuần ${nextBlockStartWeek}–${nextBlockEndWeek} sẵn sàng để tạo.`);
+                        })()}
                       </div>
                     )}
                   </div>
@@ -1758,8 +1976,8 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
               </h3>
               <p style={{ fontSize: "13px", color: "var(--text-muted)", margin: "0 0 20px" }}>
                 {lang === "en"
-                  ? "Your feedback shapes the next 2 weeks of training."
-                  : "Phản hồi của bạn sẽ định hình 2 tuần tập tiếp theo."}
+                  ? (WEEKS_PER_BLOCK === 1 ? "Your feedback shapes the next week of training." : `Your feedback shapes the next ${WEEKS_PER_BLOCK} weeks of training.`)
+                  : (WEEKS_PER_BLOCK === 1 ? "Phản hồi của bạn sẽ định hình tuần tập tiếp theo." : `Phản hồi của bạn sẽ định hình ${WEEKS_PER_BLOCK} tuần tập tiếp theo.`)}
               </p>
 
               {overrideConfirmed && (
