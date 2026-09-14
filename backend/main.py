@@ -15,6 +15,7 @@ from db import (
     accept_coach_invite,
     add_source,
     approve_workout,
+    block_number_for_week,
     coach_update_workout,
     compute_current_week,
     create_coach_invite,
@@ -77,7 +78,9 @@ from db import (
     update_user_profile,
     update_user_weekly_km,
     update_workout_log,
+    upsert_block_review_ai_fields,
     verify_session,
+    week_range_for_block,
 )
 from parsers.fit_parser import FitParser
 from parsers.gpx_parser import GpxParser
@@ -929,7 +932,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
                 total_weeks,
                 api_key=model_api_key,
                 block_number=1,
-                weeks_per_block=2,
+                weeks_per_block=settings.WEEKS_PER_BLOCK,
             )
             save_workouts(plan_id, workouts)
             set_plan_athlete_tier(plan_id, resolved_tier)
@@ -1774,7 +1777,7 @@ async def _generate_plan_for_athlete(
                 api_key=model_api_key,
                 cutoff_time_hours=cutoff,
                 block_number=1,
-                weeks_per_block=2,
+                weeks_per_block=settings.WEEKS_PER_BLOCK,
             )
             save_workouts(plan_id, workouts, auto_approve=(plan_status != "draft"))
             set_plan_athlete_tier(plan_id, resolved_tier)
@@ -1892,7 +1895,7 @@ def get_plan_block_completion(plan_id: int, user: dict[str, Any] = Depends(get_c
     """Return completion % for each 2-week block generated so far."""
     _verify_plan_ownership(plan_id, user["id"])
     max_week = get_max_generated_week(plan_id)
-    total_blocks = (max_week + 1) // 2  # number of blocks with any workouts
+    total_blocks = block_number_for_week(max_week)  # number of blocks with any workouts
     blocks = []
     for b in range(1, total_blocks + 1):
         blocks.append(get_block_completion(plan_id, b))
@@ -1959,14 +1962,14 @@ async def _generate_next_block_for_athlete(
             and job.get("kind") == "next_block"
             and job.get("status") == "generating"
         ):
+            _existing_block_num = job.get("block_number", request.block_number)
+            _existing_week_start, _existing_week_end = week_range_for_block(_existing_block_num)
             return {
                 "job_id": existing_job_id,
                 "plan_id": request.plan_id,
-                "block_number": job.get("block_number", request.block_number),
-                "week_start": (job.get("block_number", request.block_number) - 1) * 2 + 1,
-                "week_end": min(
-                    (job.get("block_number", request.block_number) - 1) * 2 + 2, plan.get("total_weeks", 12)
-                ),
+                "block_number": _existing_block_num,
+                "week_start": _existing_week_start,
+                "week_end": min(_existing_week_end, plan.get("total_weeks", 12)),
             }
 
     prev_block = request.block_number - 1
@@ -1994,7 +1997,7 @@ async def _generate_next_block_for_athlete(
         )
 
     total_weeks = plan.get("total_weeks", 12)
-    block_start = (request.block_number - 1) * 2 + 1
+    block_start, block_end = week_range_for_block(request.block_number)
     if block_start > total_weeks:
         raise HTTPException(status_code=400, detail="All blocks for this plan have already been generated.")
 
@@ -2047,8 +2050,7 @@ async def _generate_next_block_for_athlete(
     # unbounded tail of the prompt — older summaries are the right thing to lose
     # if anything is, not last block's session-by-session feedback.
     for blk in range(request.block_number - 1, 0, -1):
-        wk_start = (blk - 1) * 2 + 1
-        wk_end = blk * 2
+        wk_start, wk_end = week_range_for_block(blk)
 
         block_wos = [
             w for w in all_workouts if wk_start <= (w.get("week_number") or 0) <= wk_end and w.get("type") != "Rest"
@@ -2278,7 +2280,7 @@ async def _generate_next_block_for_athlete(
                 total_weeks,
                 api_key=model_api_key,
                 block_number=request.block_number,
-                weeks_per_block=2,
+                weeks_per_block=settings.WEEKS_PER_BLOCK,
                 block_context=block_context,
             )
             save_workouts(request.plan_id, workouts)
@@ -2286,6 +2288,25 @@ async def _generate_next_block_for_athlete(
             plan_jobs[job_id]["workouts"] = workouts
             plan_jobs[job_id]["status"] = "done"
             print(f"[NextBlock][{job_id}] Block {request.block_number} complete — {len(workouts)} workouts saved.")
+
+            # Best-effort athlete-facing narrative, from the same Gemini response
+            # context as the generation itself. Never allowed to fail the job --
+            # workouts are already saved and the job already marked "done" above.
+            try:
+                last_week_review, this_week_description = await PlanGenerator.generate_week_narrative(
+                    race_info=race_info,
+                    block_context=block_context or "",
+                    workouts=workouts,
+                    api_key=model_api_key,
+                )
+                if prev_block >= 1 and last_week_review:
+                    upsert_block_review_ai_fields(request.plan_id, prev_block, ai_last_week_review=last_week_review)
+                if this_week_description:
+                    upsert_block_review_ai_fields(
+                        request.plan_id, request.block_number, ai_this_week_description=this_week_description
+                    )
+            except Exception as ex:
+                print(f"[NextBlock][{job_id}] Week narrative FAILED (non-fatal): {ex}")
         except Exception as ex:
             plan_jobs[job_id]["status"] = "error"
             plan_jobs[job_id]["error"] = str(ex)
@@ -2298,7 +2319,7 @@ async def _generate_next_block_for_athlete(
         "plan_id": request.plan_id,
         "block_number": request.block_number,
         "week_start": block_start,
-        "week_end": min(block_start + 1, total_weeks),
+        "week_end": min(block_end, total_weeks),
     }
 
 
@@ -2688,7 +2709,7 @@ async def _adapt_week_for_athlete(request: AdaptWeekRequest, athlete_id: int, jo
     }
 
     model_api_key = fresh_user.get("gemini_api_key") or settings.GEMINI_API_KEY
-    block_num = (request.week_number + 1) // 2
+    block_num = block_number_for_week(request.week_number)
 
     job_id = str(_uuid.uuid4())
     plan_jobs[job_id] = {
@@ -2710,7 +2731,7 @@ async def _adapt_week_for_athlete(request: AdaptWeekRequest, athlete_id: int, jo
                 total_weeks,
                 api_key=model_api_key,
                 block_number=block_num,
-                weeks_per_block=2,
+                weeks_per_block=settings.WEEKS_PER_BLOCK,
                 block_context=block_context,
                 target_week=request.week_number,
             )
@@ -2759,7 +2780,7 @@ def get_athlete_plan_block_completion(
     plan ownership against the athlete being viewed, not the caller."""
     _verify_plan_ownership(plan_id, athlete_id)
     max_week = get_max_generated_week(plan_id)
-    total_blocks = (max_week + 1) // 2
+    total_blocks = block_number_for_week(max_week)
     blocks = []
     for b in range(1, total_blocks + 1):
         blocks.append(get_block_completion(plan_id, b))

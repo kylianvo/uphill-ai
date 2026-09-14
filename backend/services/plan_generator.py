@@ -1,6 +1,8 @@
 from datetime import datetime, timedelta
 from typing import Any
 
+from config import settings
+from db import block_number_for_week, week_range_for_block
 from log_utils import get_logger
 from services.athlete_tier import get_profile, resolve_tier
 from services.plan_rules import build_rules_block
@@ -623,7 +625,7 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
         api_key: str = None,
         cutoff_time_hours: float = None,
         block_number: int = 1,
-        weeks_per_block: int = 2,
+        weeks_per_block: int = settings.WEEKS_PER_BLOCK,
         block_context: str | None = None,
         target_week: int | None = None,
     ) -> tuple[list[dict[str, Any]], str]:
@@ -643,8 +645,8 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
             block_start_week = target_week
             block_end_week = target_week
         else:
-            block_start_week = (block_number - 1) * weeks_per_block + 1
-            block_end_week = min(block_start_week + weeks_per_block - 1, total_weeks)
+            block_start_week, block_end_week = week_range_for_block(block_number, weeks_per_block)
+            block_end_week = min(block_end_week, total_weeks)
 
         # 1. Base Variables Extract
         lang = race_info.get("lang", "en").lower()
@@ -855,8 +857,6 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                     if depth == 0:
                         return text[start : i + 1]
             return text[start:]  # malformed but let json.loads produce a clear error
-
-        from config import settings
 
         # Build the AI prompt (Gemini is the only engine; a reduced retry and the
         # rule-based schedule below are the fallbacks).
@@ -1089,7 +1089,7 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                     f"Adapt the workouts according to the athlete's latest feedback, fatigue, and recovery while maintaining target progressive overload.\n"
                 )
             else:
-                total_blocks = (total_weeks + weeks_per_block - 1) // weeks_per_block
+                total_blocks = block_number_for_week(total_weeks, weeks_per_block)
                 block_scope_instruction = (
                     f"\nSEQUENTIAL BLOCK GENERATION:\n"
                     f"This plan spans {total_weeks} weeks total, generated in {total_blocks} blocks of {weeks_per_block} weeks each.\n"
@@ -1775,8 +1775,8 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
 
                             if use_treadmill:
                                 treadmill_incl = incline_pct
-                                settings = TrainingRules.calculate_treadmill_settings(12.0, incline_pct)
-                                treadmill_sp = settings["speed_kph"]
+                                treadmill_settings_calc = TrainingRules.calculate_treadmill_settings(12.0, incline_pct)
+                                treadmill_sp = treadmill_settings_calc["speed_kph"]
                         else:
                             title = "Muscular Endurance: Bodyweight Step-Ups"
                             desc = f"Execute {steps} bodyweight step-ups on a 30cm box, no added weight. Simulates climbing demands for your event ({course_elevation_gain_m or ''}m total gain)."
@@ -1983,3 +1983,73 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                 wo["fueling_tip"] = t_str(wo.get("fueling_tip", ""))
 
         return post_process_workouts(workouts), athlete_tier
+
+    @staticmethod
+    async def generate_week_narrative(
+        race_info: dict[str, Any],
+        block_context: str,
+        workouts: list[dict[str, Any]],
+        api_key: str | None,
+    ) -> tuple[str | None, str | None]:
+        """Athlete-facing narrative shown after a new block/week is generated: a review
+        of the block that just finished and a description of the newly generated one.
+        Both come from block_context (the same compact actual-vs-planned/coach-eval
+        summary already built for the generation prompt) and the new week's own
+        sessions -- not a second attempt at the workout JSON. Best-effort only: this
+        runs after workouts are already saved, so a failure here must never fail plan
+        generation. Returns (None, None) on any failure, or if no api_key is set."""
+        if not api_key:
+            return None, None
+        try:
+            import asyncio
+            import json as _json
+
+            from google import genai as _genai
+            from google.genai import types as _genai_types
+
+            lang = (race_info.get("lang") or "en").lower()
+            lang_instruction = "Respond in Vietnamese." if lang == "vi" else "Respond in English."
+
+            workout_lines = "\n".join(
+                f"- {w.get('day_of_week', '?')}: {w.get('title') or w.get('type', '?')} "
+                f"({w.get('duration_minutes', 0)} min, {w.get('target_zone', '')})"
+                for w in workouts
+                if w.get("type") != "Rest"
+            )
+
+            prompt = f"""You are Coach Uphill, an expert trail-running coach. An athlete's training plan
+just advanced to a new block. Using the training history below and the newly generated
+block's sessions, write two short pieces of athlete-facing text.
+
+TRAINING HISTORY:
+{block_context}
+
+NEWLY GENERATED BLOCK'S SESSIONS:
+{workout_lines or "(no sessions)"}
+
+{lang_instruction}
+
+Return ONLY a single JSON object (no markdown fences, no prose) with exactly these keys:
+{{"last_week_review": "2-3 sentences reviewing how the most recently completed block went, encouraging and specific to the numbers above -- or null if the history above has nothing to review",
+"this_week_description": "2-3 sentences describing this new block's focus and why, addressed directly to the athlete"}}"""
+
+            _client = _genai.Client(api_key=api_key)
+            _response = await asyncio.to_thread(
+                _client.models.generate_content,
+                model=settings.GEMINI_MODEL,
+                contents=prompt,
+                config=_genai_types.GenerateContentConfig(
+                    thinking_config=_genai_types.ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL)
+                )
+                if hasattr(_genai_types, "ThinkingConfig")
+                else None,
+            )
+            _text = _response.text.strip()
+            _start, _end = _text.find("{"), _text.rfind("}")
+            if _start == -1 or _end == -1:
+                return None, None
+            parsed = _json.loads(_text[_start : _end + 1])
+            return parsed.get("last_week_review"), parsed.get("this_week_description")
+        except Exception as ex:
+            _logger.warning(f"[PlanGen][WeekNarrative] Gemini FAILED: {ex}")
+            return None, None

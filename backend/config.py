@@ -58,6 +58,17 @@ class Config:
         "KAFKA_BOOTSTRAP_SERVERS", "kafka:9092" if os.path.exists("/.dockerenv") else "127.0.0.1:9092"
     )
 
+    # Single source of truth for training block size (weeks per block), used by
+    # plan generation, the 70% completion gate, and block review/evaluation.
+    # See db.py's week_range_for_block/block_number_for_week helpers.
+    #
+    # Changed from 2 to 1 in 2026-09: plans/block_reviews rows created under the
+    # old 2-week math keep their stored block_number, which is now reinterpreted
+    # under 1-week windows (old block N = weeks 2N-1..2N is now read as block N =
+    # week N). This was a deliberate, accepted cutover -- not a migration -- since
+    # a majority of active plans already had 2nd-block history. See PR description.
+    WEEKS_PER_BLOCK: int = 1
+
     # Warehouse dashboards (Metabase)
     METABASE_URL: str = os.getenv("METABASE_URL", "http://localhost:3001")
     METABASE_ADMIN_EMAIL: str = os.getenv("METABASE_ADMIN_EMAIL", "admin@uphill.ai")

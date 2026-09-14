@@ -318,16 +318,21 @@ def init_db():
         except Exception:
             conn.rollback()
 
-        # block_reviews: one row per 2-week block check-in before next-block generation
+        # block_reviews: one row per block check-in before next-block generation.
+        # ai_last_week_review / ai_this_week_description are Gemini-authored narrative
+        # text produced alongside next-block generation (see PlanGenerator.generate_week_narrative)
+        # -- distinct from overall_rpe/notes, which the athlete submits themselves.
         conn.execute(
             text("""
         CREATE TABLE IF NOT EXISTS block_reviews (
-            id           SERIAL PRIMARY KEY,
-            plan_id      INTEGER NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
-            block_number INTEGER NOT NULL,
-            overall_rpe  INTEGER,
-            notes        TEXT,
-            created_at   TIMESTAMPTZ DEFAULT NOW()
+            id                          SERIAL PRIMARY KEY,
+            plan_id                     INTEGER NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
+            block_number                INTEGER NOT NULL,
+            overall_rpe                 INTEGER,
+            notes                       TEXT,
+            ai_last_week_review         TEXT,
+            ai_this_week_description    TEXT,
+            created_at                  TIMESTAMPTZ DEFAULT NOW()
         )
         """)
         )
@@ -486,6 +491,8 @@ def init_db():
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_pace_zones JSONB",
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS athlete_notes TEXT",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS athlete_notes TEXT",
+            "ALTER TABLE block_reviews ADD COLUMN IF NOT EXISTS ai_last_week_review TEXT",
+            "ALTER TABLE block_reviews ADD COLUMN IF NOT EXISTS ai_this_week_description TEXT",
         ]:
             try:
                 conn.execute(text(col_sql))
@@ -1304,10 +1311,102 @@ def get_block_reviews(plan_id: int) -> list[dict[str, Any]]:
     return [_row_to_dict(r) for r in rows]
 
 
+def upsert_block_review_ai_fields(
+    plan_id: int,
+    block_number: int,
+    ai_last_week_review: str | None = None,
+    ai_this_week_description: str | None = None,
+) -> None:
+    """Sets Gemini-authored narrative text on a block_reviews row without disturbing
+    the athlete's own overall_rpe/notes (or the other AI field, if only one is passed).
+
+    save_block_review is a plain INSERT with no uniqueness constraint on
+    (plan_id, block_number) -- an athlete can submit a review before or after this
+    runs, each producing its own row. So this looks up the latest existing row for
+    (plan_id, block_number) and UPDATEs it if found, rather than assuming one exists
+    or risking a duplicate; see get_block_review_narrative for the matching read side.
+    """
+    if ai_last_week_review is None and ai_this_week_description is None:
+        return
+    with engine.connect() as conn:
+        existing_id = conn.execute(
+            text("""
+            SELECT id FROM block_reviews
+            WHERE plan_id = :plan_id AND block_number = :block_number
+            ORDER BY id DESC LIMIT 1
+            """),
+            {"plan_id": plan_id, "block_number": block_number},
+        ).scalar()
+        if existing_id is not None:
+            sets = []
+            params: dict[str, Any] = {"id": existing_id}
+            if ai_last_week_review is not None:
+                sets.append("ai_last_week_review = :ai_last_week_review")
+                params["ai_last_week_review"] = ai_last_week_review
+            if ai_this_week_description is not None:
+                sets.append("ai_this_week_description = :ai_this_week_description")
+                params["ai_this_week_description"] = ai_this_week_description
+            conn.execute(text(f"UPDATE block_reviews SET {', '.join(sets)} WHERE id = :id"), params)
+        else:
+            conn.execute(
+                text("""
+                INSERT INTO block_reviews (plan_id, block_number, ai_last_week_review, ai_this_week_description)
+                VALUES (:plan_id, :block_number, :ai_last_week_review, :ai_this_week_description)
+                """),
+                {
+                    "plan_id": plan_id,
+                    "block_number": block_number,
+                    "ai_last_week_review": ai_last_week_review,
+                    "ai_this_week_description": ai_this_week_description,
+                },
+            )
+        conn.commit()
+
+
+def get_block_review_narrative(plan_id: int, block_number: int) -> dict[str, Any]:
+    """Merges every block_reviews row for (plan_id, block_number) into one
+    {ai_last_week_review, ai_this_week_description}, taking the last non-null value
+    of each field in insertion order. Necessary because the table can hold more than
+    one row per (plan_id, block_number) -- see upsert_block_review_ai_fields."""
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("""
+            SELECT ai_last_week_review, ai_this_week_description FROM block_reviews
+            WHERE plan_id = :plan_id AND block_number = :block_number
+            ORDER BY id ASC
+            """),
+            {"plan_id": plan_id, "block_number": block_number},
+        ).fetchall()
+    merged: dict[str, Any] = {"ai_last_week_review": None, "ai_this_week_description": None}
+    for r in rows:
+        if r[0] is not None:
+            merged["ai_last_week_review"] = r[0]
+        if r[1] is not None:
+            merged["ai_this_week_description"] = r[1]
+    return merged
+
+
+def week_range_for_block(block_number: int, weeks_per_block: int = settings.WEEKS_PER_BLOCK) -> tuple[int, int]:
+    """The (week_start, week_end) a block covers, e.g. block 1 = weeks 1..weeks_per_block.
+
+    The single source of truth for the block-window formula -- plan generation,
+    the completion gate, and block evaluation all call this instead of each
+    inlining `(block_number - 1) * weeks_per_block + 1`.
+    """
+    week_start = (block_number - 1) * weeks_per_block + 1
+    week_end = block_number * weeks_per_block
+    return week_start, week_end
+
+
+def block_number_for_week(week_number: int, weeks_per_block: int = settings.WEEKS_PER_BLOCK) -> int:
+    """The block that contains a given week (ceiling division). Also used to
+    compute how many blocks a plan's total week count spans."""
+    return (week_number + weeks_per_block - 1) // weeks_per_block
+
+
 def get_block_completion(plan_id: int, block_number: int) -> dict[str, Any]:
-    """Returns total and completed hours for a 2-week block (block 1 = weeks 1-2, etc.)."""
-    week_start = (block_number - 1) * 2 + 1
-    week_end = block_number * 2
+    """Returns total and completed hours for a block (block 1 = weeks 1..weeks_per_block, etc.)."""
+    week_start, week_end = week_range_for_block(block_number)
     with engine.connect() as conn:
         rows = conn.execute(
             text("""
@@ -1323,6 +1422,7 @@ def get_block_completion(plan_id: int, block_number: int) -> dict[str, Any]:
     total_minutes = sum(r[1] or 0 for r in rows)
     completed_minutes = sum(r[1] or 0 for r in rows if r[0] == 1)
     pct = round(completed_minutes / total_minutes * 100) if total_minutes > 0 else 0
+    narrative = get_block_review_narrative(plan_id, block_number)
     return {
         "block_number": block_number,
         "week_start": week_start,
@@ -1331,6 +1431,8 @@ def get_block_completion(plan_id: int, block_number: int) -> dict[str, Any]:
         "completed_minutes": completed_minutes,
         "completion_pct": pct,
         "unlocked": pct >= 70,
+        "ai_last_week_review": narrative["ai_last_week_review"],
+        "ai_this_week_description": narrative["ai_this_week_description"],
     }
 
 

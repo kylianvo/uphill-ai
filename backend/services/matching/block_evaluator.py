@@ -15,6 +15,7 @@ from db import (
     get_block_reviews,
     get_coach_notes,
     get_plan_workouts,
+    week_range_for_block,
 )
 
 
@@ -24,8 +25,7 @@ def evaluate_block_performance(
     block_number: int,
 ) -> dict[str, Any]:
     """Evaluates an athlete's completed training block to produce coach feedback."""
-    week_start = (block_number - 1) * 2 + 1
-    week_end = block_number * 2
+    week_start, week_end = week_range_for_block(block_number)
 
     all_workouts = get_plan_workouts(plan_id)
     block_wos = [
