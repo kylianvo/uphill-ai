@@ -244,12 +244,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     target_time_mins?: number;
     source_label?: string;
   } | null>(null);
-  const [activeTab, setActiveTab] = useState<"home" | "about" | "chat" | "planner" | "tools" | "knowledge" | "coach">(() => {
-    if (typeof window !== "undefined" && isNativePlatform()) {
-      return "home";
-    }
-    return "tools";
-  });
+  const [activeTab, setActiveTab] = useState<"home" | "about" | "chat" | "planner" | "tools" | "knowledge" | "coach">("tools");
   const [isNative, setIsNative] = useState(false);
   useEffect(() => {
     if (isNativePlatform()) {
