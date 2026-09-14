@@ -24,7 +24,7 @@ interface AppContextType {
   setIsGoalDeterminerOpen: any;
   activeTab: any;
   setActiveTab: any;
-  handleTabSwitch: (tab: "home" | "about" | "chat" | "planner" | "tools" | "knowledge" | "coach") => void;
+  handleTabSwitch: (tab: "about" | "chat" | "planner" | "tools" | "knowledge" | "coach") => void;
   lang: "en" | "vi";
   setLang: any;
   startBtnHovered: any;
@@ -243,7 +243,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     target_time_mins?: number;
     source_label?: string;
   } | null>(null);
-  const [activeTab, setActiveTab] = useState<"home" | "about" | "chat" | "planner" | "tools" | "knowledge" | "coach">("home");
+  // "tools" is the default because it's the one tab guests can use without
+  // hitting the chat/planner sign-in gate below -- see handleTabSwitch.
+  const [activeTab, setActiveTab] = useState<"about" | "chat" | "planner" | "tools" | "knowledge" | "coach">("tools");
   const [lang, setLang] = useState<"en" | "vi">("en");
   const [startBtnHovered, setStartBtnHovered] = useState(false);
   const [viewportWidth, setViewportWidth] = useState<number>(1024);
@@ -423,7 +425,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const handleTabSwitch = (
-    tab: "home" | "about" | "chat" | "planner" | "tools" | "knowledge" | "coach",
+    tab: "about" | "chat" | "planner" | "tools" | "knowledge" | "coach",
   ) => {
     if ((tab === "chat" || tab === "planner") && !user) {
       setAuthModalOpen(true);

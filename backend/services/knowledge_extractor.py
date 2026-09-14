@@ -24,16 +24,22 @@ async def translate_cards_to_vi_with_gemini(client, cards: list[dict[str, Any]])
     translated = []
     for card in cards:
         prompt = f"""
-You are an expert sports translator. Translate the following running coaching knowledge card into Vietnamese.
+You are an expert Vietnamese trail running coach and translator. Translate the following running coaching knowledge card into Vietnamese as spoken by Vietnamese endurance runners.
 
 OUTPUT CONTRACT: Return ONLY a JSON object with the exact same keys as the input — "chapter_title", "summary", "key_points", "tags", "topic", "source_label". NEVER wrap it in a markdown code block.
 
 Rules:
-1. Core physiological/running terms ("Zone 2", "AeT", "AnT", "Pace", "Resting HR", "Max HR") MUST remain in English.
-2. Keep the "topic" and "source_label" fields exactly as they are in English.
-3. Keep the "tags" list elements in English.
-4. Start "key_points" bullet points with an active verb in Vietnamese.
-5. Translations MUST sound natural, professional, and elite-coaching oriented — NEVER a literal word-for-word translation.
+1. KEEP TECHNICAL TERMS IN ENGLISH (NEVER TRANSLATE): "Pace", "Easy Run", "Long Run", "Tempo", "Threshold", "Interval", "Fartlek", "Recovery Run", "Muscular Endurance", "ME", "Strength", "Zone 1"–"Zone 5", "AeT", "AnT", "HR", "Max HR", "Resting HR", "RPE", "Cadence", "Deload", "Taper", "Block", "Split", "Elevation Gain", "D+", "GPX", "Race", "Ultra", "Trail", "Road", "Treadmill", "Fueling", "Carbs", "Sodium", "Electrolytes", "Warm-up", "Cool-down", "Strides", "Plan", "Coach", "Aerobic", "Anaerobic".
+2. Keep "topic" and "source_label" exactly as in English. Keep "tags" in English.
+3. FIXED MAPPINGS:
+   - Volume -> "khối lượng" (NEVER "thể tích")
+   - Physiology -> "thể chất" (NEVER "sinh lý")
+   - Pace -> "pace" (NEVER "tốc độ")
+   - Fueling -> "fueling" or "dinh dưỡng thi đấu" (NEVER "tiếp nhiên liệu")
+   - Training plan -> "plan", "lịch tập" (NEVER "giáo án")
+   - Workout -> "buổi tập", "bài chạy" (NEVER "bài tập thể dục")
+4. BAN LIST: Never use "kiến tạo", "bảo chứng", "bứt phá", "nâng tầm", "vượt trội", "tối ưu hóa", "chuyên sâu", "độc quyền", "đột phá", "uy tín hàng đầu", "chuẩn mực thế giới", "vận hành", "tri thức", "giáo án".
+5. REGISTER: Direct, clear, coach register (second-person "bạn", active verbs for "key_points"). No exclamation marks or marketing fluff.
 
 Card to translate:
 {json.dumps(card, indent=2, ensure_ascii=False)}

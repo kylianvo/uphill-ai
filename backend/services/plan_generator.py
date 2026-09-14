@@ -477,6 +477,7 @@ class PlanGenerator:
         interval_rep_value: float | None = None,
         interval_rep_unit: str | None = None,
         details: str | None = None,
+        lang: str | None = None,
     ) -> dict[str, Any]:
         """Coach co-creation: the coach supplies type/duration/day, and
         optionally overrides (zone, pace, interval structure, details/intent)
@@ -509,6 +510,13 @@ class PlanGenerator:
         description = details
         fueling_tip = None
 
+        resolved_lang = (lang or user_profile.get("lang") or "en").lower()
+        vi_chars = set(
+            "àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ"
+        )
+        if resolved_lang != "vi" and any(c in vi_chars for c in str(intent or "") + str(details or "")):
+            resolved_lang = "vi"
+
         if api_key and not is_rest_or_strength and not details:
             try:
                 import json as _json
@@ -529,6 +537,16 @@ class PlanGenerator:
                     if is_interval and interval_reps
                     else ""
                 )
+                vi_instruction = (
+                    "\nCRITICAL LOCALIZATION (VIETNAMESE):\n"
+                    "- All text fields ('title', 'description', 'fueling_tip') MUST be in natural Vietnamese as spoken by authentic Vietnamese trail runners.\n"
+                    "- Tone: direct, concise, second-person 'bạn', active verbs. No corporate/marketing fluff or exclamation marks.\n"
+                    "- KEEP IN ENGLISH: Pace, Easy Run, Long Run, Tempo, Threshold, Interval, Fartlek, Surges, Recovery Run, Muscular Endurance, ME, Strength, Zone 1-5, AeT, AnT, HR, Deload, Taper, Block, D+, GPX, Race, Ultra, Trail, Road, Treadmill, Fueling, Carbs, Sodium, Plan, Coach.\n"
+                    "- Fixed mappings: 'khối lượng' (never 'thể tích'), 'thể chất' (never 'sinh lý'), 'plan' / 'lịch tập' (never 'giáo án'), 'buổi tập' / 'bài chạy' (never 'bài tập thể dục').\n"
+                    "- Banned words: 'kiến tạo', 'bảo chứng', 'bứt phá', 'nâng tầm', 'vượt trội', 'tối ưu hóa', 'chuyên sâu', 'đột phá', 'giáo án', 'sinh lý', 'thể tích'.\n"
+                    if resolved_lang == "vi"
+                    else ""
+                )
                 prompt = f"""You are Coach Uphill, an expert trail-running coach following Scott Johnston's
 "Training for the Uphill Athlete" principles. A human coach is manually adding ONE workout to an
 athlete's training week and wants you to fill in the remaining detail. Do not invent a whole
@@ -544,6 +562,7 @@ Day: {day_of_week}, week {week_number}
 {zone_instruction}
 {interval_instruction}
 {f"Coach's intent: {intent}" if intent else ""}
+{vi_instruction}
 
 Return ONLY a single JSON object (no markdown fences, no prose) with exactly these keys:
 {{"title": "short session title", "target_zone": "Zone 1|Zone 2|Zone 3|Zone 4|Zone 5",
@@ -649,7 +668,17 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
             block_end_week = min(block_end_week, total_weeks)
 
         # 1. Base Variables Extract
-        lang = race_info.get("lang", "en").lower()
+        lang = (race_info.get("lang") or user_profile.get("lang") or "en").lower()
+        vi_chars = set(
+            "àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ"
+        )
+        all_notes = (
+            str(race_info.get("athlete_notes") or "")
+            + str(race_info.get("coach_notes") or "")
+            + str(block_context or "")
+        )
+        if lang != "vi" and any(c in vi_chars for c in all_notes):
+            lang = "vi"
         age = int(user_profile.get("age", 30))
         max_hr = int(user_profile.get("max_hr", 220 - age))
         resting_hr = int(user_profile.get("resting_hr", 60))
@@ -803,7 +832,7 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                 if not hill_sprint_eligible and any(
                     kw in title_lower for kw in PlanGenerator.HILL_SPRINT_TITLE_KEYWORDS
                 ):
-                    fallback_title = "Chạy Biến Tốc / Tăng Tốc" if lang == "vi" else "Fartlek / Surges"
+                    fallback_title = "Fartlek / Surges"
                     wo["title"] = fallback_title
                     title_lower = fallback_title.lower()
 
@@ -1088,6 +1117,13 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                     f"CRITICAL: Every workout `week_number` MUST be exactly {target_week}. Do NOT output any workouts for other weeks.\n"
                     f"Adapt the workouts according to the athlete's latest feedback, fatigue, and recovery while maintaining target progressive overload.\n"
                 )
+                if lang == "vi":
+                    block_scope_instruction += (
+                        "QUY TẮC ĐIỀU CHỈNH TUẦN TẬP (VIETNAMESE ADAPTATION CONTRACT):\n"
+                        "- Viết phần mô tả bài tập ('description'), lý do ('Reason') và tổng quan ('Overall') bằng tiếng Việt tự nhiên của runner chạy trail.\n"
+                        "- Nêu rõ nguyên nhân điều chỉnh tuần trong 'Overall'/'Reason' (ví dụ: hạ khối lượng 10-15% do mệt mỏi tích tụ, chuyển bài nặng thành Easy Run hoặc Recovery Run, giữ nguyên lịch chạy để hấp thu tải).\n"
+                        "- Tuyệt đối tuân thủ bảng thuật ngữ tiếng Anh và danh sách từ cấm bên dưới.\n"
+                    )
             else:
                 total_blocks = block_number_for_week(total_weeks, weeks_per_block)
                 block_scope_instruction = (
@@ -1184,11 +1220,19 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
 
             lang_rule = (
                 "\n6. CRITICAL LOCALIZATION (VIETNAMESE):"
-                "\n   - All workout text fields ('title', 'description', 'fueling_tip') MUST be written in natural, idiomatic Vietnamese used by endurance runners."
-                "\n   - KEEP specialized running and sports science terms in standard English (e.g. 'Easy Run', 'Long Run', 'Tempo', 'Threshold', 'Interval', 'Muscular Endurance', 'Zone 1', 'Zone 2', 'Zone 3', 'Zone 4', 'Zone 5', 'Pace', 'Carbs', 'Sodium', 'Electrolytes', 'Treadmill', 'Fartlek', 'Surges', 'Step-Ups', 'Hill Bounds', 'Foam Rolling', 'Fueling')."
-                "\n   - NEVER use the word 'sinh lý'; use 'thể chất' or appropriate physical context instead."
-                "\n   - Do NOT translate 'Pace' as 'tốc độ' (tốc độ is speed in km/h; Pace is min/km)."
-                "\n   - Do NOT translate 'Fueling' as 'tiếp nhiên liệu' (use 'dinh dưỡng & fueling' or 'fueling')."
+                "\n   - All workout text fields ('title', 'description', 'fueling_tip') MUST be written in natural Vietnamese as spoken by Vietnamese trail and ultra runners."
+                "\n   - REGISTER & TONE: Write like an authentic coach talking to a runner (use second-person 'bạn', active verbs, direct and concise sentences). Do not use exclamation marks or corporate/marketing fluff."
+                "\n   - KEEP IN ENGLISH (NEVER TRANSLATE): Pace, Easy Run, Long Run, Tempo, Threshold, Interval, Fartlek, Surges, Recovery Run, Hill Repeat, Hill Sprint, Hill Bound, Muscular Endurance, ME, Strength, Zone 1–Zone 5, AeT, AnT, HR, Max HR, Resting HR, RPE, Cadence, Deload, Taper, Block, Split, Checkpoint, CP, Cutoff, COT, DNF, Elevation Gain, D+, GPX, Race, Ultra, Trail, Road, Treadmill, Gel, Chews, Carbs, Sodium, Electrolytes, Fueling, Gut training, Stack Height, Drop, Carbon Plate, Lug Depth, Foam Rolling, Warm-up, Cool-down, Strides, Plan, Coach, Aerobic, Anaerobic, Aerobic decoupling, Cardiac drift."
+                "\n   - FIXED TERM MAPPINGS:"
+                "\n     * Volume / Weekly volume -> 'khối lượng' / 'khối lượng tuần' (NEVER 'thể tích')"
+                "\n     * Physiology / physiological -> 'thể chất', 'chỉ số thể chất' (NEVER 'sinh lý')"
+                "\n     * Pace -> 'Pace' (NEVER 'tốc độ', which is km/h)"
+                "\n     * Fueling -> 'fueling' or 'dinh dưỡng thi đấu' (NEVER 'tiếp nhiên liệu')"
+                "\n     * Training plan -> 'plan', 'lịch tập' (NEVER 'giáo án')"
+                "\n     * Workout / session -> 'buổi tập', 'bài chạy' (NEVER 'bài tập thể dục')"
+                "\n     * Build / generate -> 'tạo plan', 'lên plan' (NEVER 'kiến tạo')"
+                "\n     * Adapt / adaptation -> 'điều chỉnh tuần', 'tùy chỉnh tuần' (NEVER 'tối ưu hóa')"
+                "\n   - BAN LIST: Absolutely never use: 'kiến tạo', 'bảo chứng', 'chinh phục đỉnh cao', 'bứt phá', 'nâng tầm', 'vượt trội', 'tối ưu hóa', 'toàn diện', 'chuyên sâu', 'độc quyền', 'đột phá', 'mạnh mẽ', 'tuyệt vời', 'uy tín hàng đầu', 'chuẩn mực thế giới', 'đồng hành cùng bạn', 'vận hành', 'tri thức', 'hệ sinh thái', 'giáo án', 'sinh lý', 'thể tích'."
                 if lang == "vi"
                 else ""
             )
@@ -2008,7 +2052,21 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
             from google.genai import types as _genai_types
 
             lang = (race_info.get("lang") or "en").lower()
-            lang_instruction = "Respond in Vietnamese." if lang == "vi" else "Respond in English."
+            vi_chars = set(
+                "àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ"
+            )
+            if lang != "vi" and any(c in vi_chars for c in str(block_context or "")):
+                lang = "vi"
+            if lang == "vi":
+                lang_instruction = (
+                    "Respond in natural Vietnamese as spoken by authentic Vietnamese trail runners:\n"
+                    "- Coach tone: direct, concise, second-person 'bạn', no marketing puffery or exclamation marks.\n"
+                    "- Keep technical terms in English: Pace, Easy Run, Long Run, Tempo, Threshold, Interval, Recovery Run, Muscular Endurance, ME, Strength, Zone 1-5, AeT, AnT, HR, Deload, Taper, D+, GPX, Race, Ultra, Trail, Road, Treadmill, Fueling, Carbs, Sodium, Plan, Coach, Aerobic, Anaerobic, RPE.\n"
+                    "- Fixed mappings: 'khối lượng' (never 'thể tích'), 'thể chất' (never 'sinh lý'), 'plan' / 'lịch tập' (never 'giáo án'), 'buổi tập' / 'bài chạy' (never 'bài tập thể dục'), 'điều chỉnh tuần' (never 'tối ưu hóa').\n"
+                    "- Banned words: 'kiến tạo', 'bảo chứng', 'bứt phá', 'nâng tầm', 'vượt trội', 'tối ưu hóa', 'chuyên sâu', 'đột phá', 'giáo án', 'sinh lý', 'thể tích'."
+                )
+            else:
+                lang_instruction = "Respond in English."
 
             workout_lines = "\n".join(
                 f"- {w.get('day_of_week', '?')}: {w.get('title') or w.get('type', '?')} "

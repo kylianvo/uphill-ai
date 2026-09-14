@@ -167,6 +167,7 @@ class ChatRequest(BaseModel):
     messages: list[ChatMessage]
     user_profile: dict[str, Any] | None = None
     context_data: dict[str, Any] | None = None
+    lang: str | None = None
 
 
 class LinkIngestRequest(BaseModel):
@@ -594,9 +595,59 @@ Coaching principles — apply strictly:
 Tone: direct and pragmatic, like one coach talking shop with another — always actionable, focused on what the coach should do next with this athlete.
 """
 
+COACH_VI_LANGUAGE_INSTRUCTION = """
+VIETNAMESE LOCALIZATION & REGISTER CONTRACT (MANDATORY):
+The user is using the Vietnamese version (or communicating in Vietnamese). You MUST respond in natural, authentic Vietnamese as spoken by Vietnamese trail and ultra runners:
+1. Tone & Register:
+   - Speak like an authentic, experienced running coach: warm, direct, encouraging, concise (use second-person 'bạn', active verbs, 1-2 short paragraphs or bullet points).
+   - NEVER use stiff corporate/marketing fluff, robotic explanations, or exclamation-mark-heavy cheerleading.
+2. KEEP TECHNICAL RUNNING TERMS IN ENGLISH (DO NOT TRANSLATE TO VIETNAMESE):
+   - Pacing & Runs: Pace, Easy Run, Long Run, Tempo, Threshold, Interval, Fartlek, Surges, Recovery Run, Hill Repeat, Hill Sprint, Hill Bound, Strides, Warm-up, Cool-down.
+   - Training & Physiology: Muscular Endurance (ME), Strength, Zone 1–Zone 5, AeT, AnT, HR, Max HR, Resting HR, RPE, Cadence, Deload, Taper, Block, Split, Checkpoint (CP), Cutoff (COT), DNF, Aerobic, Anaerobic, Aerobic decoupling, Cardiac drift.
+   - Terrain & Route: Elevation Gain, D+, GPX, Race, Ultra, Trail, Road, Treadmill.
+   - Nutrition & Gear: Gel, Chews, Carbs, Sodium, Electrolytes, Fueling, Gut training, Stack Height, Drop, Carbon Plate, Lug Depth, Rock Plate, Foam Rolling.
+   - System: Plan, Coach.
+3. MANDATORY FIXED MAPPINGS:
+   - Volume / Weekly volume -> 'khối lượng' / 'khối lượng tuần' (ABSOLUTELY NEVER use 'thể tích').
+   - Physiology / physical metrics -> 'thể chất', 'chỉ số thể chất' (ABSOLUTELY NEVER use 'sinh lý').
+   - Pace -> 'Pace' (NEVER 'tốc độ', which is km/h).
+   - Fueling -> 'fueling' or 'dinh dưỡng thi đấu' (NEVER 'tiếp nhiên liệu').
+   - Training plan -> 'plan' or 'lịch tập' (NEVER 'giáo án').
+   - Workout / session -> 'buổi tập' or 'bài chạy' (NEVER 'bài tập thể dục').
+   - Build / generate plan -> 'lên plan' or 'tạo plan' (NEVER 'kiến tạo').
+4. STRICT BAN LIST:
+   - Absolutely never use: 'kiến tạo', 'bảo chứng', 'chinh phục đỉnh cao', 'bứt phá', 'nâng tầm', 'vượt trội', 'tối ưu hóa', 'toàn diện', 'chuyên sâu', 'độc quyền', 'đột phá', 'mạnh mẽ', 'tuyệt vời', 'uy tín hàng đầu', 'chuẩn mực thế giới', 'đồng hành cùng bạn', 'vận hành', 'tri thức', 'hệ sinh thái', 'giáo án', 'sinh lý', 'thể tích'.
+"""
+
+
+def is_vietnamese_request(
+    lang: str | None = None,
+    user_profile: dict[str, Any] | None = None,
+    context_data: dict[str, Any] | None = None,
+    messages: list[ChatMessage] | None = None,
+) -> bool:
+    """Detect if the user is using the Vietnamese version or requesting in Vietnamese."""
+    if lang and str(lang).lower().startswith("vi"):
+        return True
+    if user_profile and isinstance(user_profile, dict):
+        if str(user_profile.get("lang", "")).lower().startswith("vi"):
+            return True
+    if context_data and isinstance(context_data, dict):
+        if str(context_data.get("lang", "")).lower().startswith("vi"):
+            return True
+    if messages:
+        last_msg = messages[-1].content if messages else ""
+        vi_chars = set(
+            "àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ"
+        )
+        if any(c in vi_chars for c in last_msg):
+            return True
+    return False
+
 
 class CoachChatRequest(BaseModel):
     messages: list[ChatMessage]
+    lang: str | None = None
 
 
 @app.get("/api/health")
@@ -1437,8 +1488,13 @@ async def coach_chat_copilot(
         except Exception as kb_ex:
             print(f"[CoachCopilot][KB] Retrieval failed (continuing without): {kb_ex}")
 
+    vi_rule = ""
+    if is_vietnamese_request(lang=request.lang, messages=request.messages):
+        vi_rule = f"\n\n{COACH_VI_LANGUAGE_INSTRUCTION}"
+
     full_system_prompt = (
         f"{COACH_COPILOT_SYSTEM_INSTRUCTION}"
+        f"{vi_rule}"
         f"\n\n=== ATHLETE CONTEXT ===\n{athlete_context}\n=== END ATHLETE CONTEXT ===\n"
         f"{kb_context}"
     )
@@ -2704,7 +2760,18 @@ async def _adapt_week_for_athlete(request: AdaptWeekRequest, athlete_id: int, jo
         # Explicit per-plan tier override; None means the generator derives it.
         "athlete_tier": plan.get("athlete_tier"),
         "readiness_summary": readiness_summary,
-        "lang": request.lang or fresh_user.get("lang", "en"),
+        "lang": (
+            "vi"
+            if (request.lang and request.lang.lower().startswith("vi"))
+            or (fresh_user.get("lang") and fresh_user.get("lang").lower().startswith("vi"))
+            or any(
+                c in "àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ"
+                for c in str(request.fatigue_notes or "")
+                + str(request.athlete_notes or "")
+                + str(request.coach_notes or "")
+            )
+            else (request.lang or fresh_user.get("lang", "en"))
+        ),
         "coach_notes": request.coach_notes,
     }
 
@@ -3121,8 +3188,18 @@ async def coach_chat(request: ChatRequest):
         except Exception as exc:
             print(f"[Chat] Warning loading recent activities: {exc}")
 
+    vi_rule = ""
+    if is_vietnamese_request(
+        lang=request.lang,
+        user_profile=request.user_profile,
+        context_data=request.context_data,
+        messages=request.messages,
+    ):
+        vi_rule = f"\n\n{COACH_VI_LANGUAGE_INSTRUCTION}"
+
     full_system_prompt = (
         f"{COACH_SYSTEM_INSTRUCTION}"
+        f"{vi_rule}"
         f"{grounding_context}"
         f"{profile_summary}"
         f"{context_summary}"

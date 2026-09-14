@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import AnalyticsProvider from "@/components/AnalyticsProvider";
+import ApiUrlOverrideInit from "@/components/ApiUrlOverrideInit";
 import { AppProvider } from "@/contexts/AppContext";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -53,6 +54,7 @@ export default function RootLayout({
         <script src="https://accounts.google.com/gsi/client" async defer></script>
       </head>
       <body className="antialiased">
+        <ApiUrlOverrideInit />
         <AnalyticsProvider />
         <AppProvider>
           {children}

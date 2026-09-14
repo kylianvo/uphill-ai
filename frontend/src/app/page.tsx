@@ -1,702 +1,161 @@
-/* eslint-disable */
 "use client";
-import { useState, useEffect, useRef } from "react";
-import { useAppContext } from "@/contexts/AppContext";
-import HomeTab from "@/views/HomeTab";
-import ChatTab from "@/views/ChatTab";
-import AboutTab from "@/views/AboutTab";
-import AuthModal from "@/views/AuthModal";
-import OnboardingWizard from "@/views/OnboardingWizard";
-import ProfileSettingsModal from "@/views/ProfileSettingsModal";
-import PlannerView from "@/views/PlannerView";
-import ToolsView from "@/views/ToolsView";
-import KnowledgeView from "@/views/KnowledgeView";
-import CoachDashboardView from "@/views/CoachDashboardView";
-import PendingInviteBanner from "@/components/PendingInviteBanner";
-import { notifyPlanGenerated } from "@/utils/notifications";
-import { resolveCurrentWeek } from "@/utils/planDate";
-import { NutritionLab } from "../components/NutritionLab";
-import { GearVault } from "../components/GearVault";
-import { PaceStrategy } from "../components/PaceStrategy";
-import { GoalDeterminer } from "../components/GoalDeterminer";
-import { translations } from "./translations";
-import { useAnalytics } from "@/hooks/useAnalytics";
+import { useEffect, useState, useRef } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
-  Robot,
-  CalendarBlank,
-  BookOpen,
-  Calculator,
-  Mountains,
-  Warning,
+  Crosshair,
+  Gauge,
+  Sneaker,
   BowlFood,
-  Bed,
-  Timer,
-  Brain,
-  Backpack,
-  CaretDown,
-  CaretUp,
-  Book,
-  House,
-  Users,
+  MapPin,
+  CalendarBlank,
+  ArrowsClockwise,
+  Trophy,
+  ShieldCheck,
+  ChartLineUp,
+  Mountains,
   CheckCircle,
+  Robot,
+  ArrowRight,
 } from "@phosphor-icons/react";
-if (typeof window !== "undefined") {
-  // Check for api query parameter to override API URL
-  const params = new URLSearchParams(window.location.search);
-  const apiParam = params.get("api");
-  if (apiParam) {
-    let cleanParam = apiParam.trim();
-    if (
-      (cleanParam.startsWith('"') && cleanParam.endsWith('"')) ||
-      (cleanParam.startsWith("'") && cleanParam.endsWith("'"))
-    ) {
-      cleanParam = cleanParam.slice(1, -1).trim();
-    }
-    if (
-      cleanParam === "default" ||
-      cleanParam === "reset" ||
-      cleanParam === "clear"
-    ) {
-      localStorage.removeItem("UPHILL_API_URL_OVERRIDE");
-    } else {
-      localStorage.setItem("UPHILL_API_URL_OVERRIDE", cleanParam);
-    }
-    // Remove query param from URL to keep it clean
-    const cleanUrl = new URL(window.location.href);
-    cleanUrl.searchParams.delete("api");
-    window.history.replaceState(null, "", cleanUrl.pathname + cleanUrl.search);
+import { useAppContext } from "@/contexts/AppContext";
+import { translations } from "./translations";
+import { isNativePlatform } from "@/utils/native";
+import { TrustBanner } from "@/components/landing/TrustBanner";
+import { LANDING_FEATURES } from "@/data/landingFeatures";
+
+// Whether the Proof section renders real numbers/testimonials yet.
+// TODO(proof-section): flip on once we have plans-generated counts,
+// athletes' completed goal races, or named testimonials with outcome
+// labels to show. Never fabricate these to fill the slot early.
+const SHOW_PROOF_CONTENT = false;
+
+const TOOLING_ICONS = { Crosshair, Gauge, Sneaker, BowlFood };
+const TOOLING_FEATURE_IDS = ["pace", "goal", "gear", "nutrition"] as const;
+
+type Step = {
+  icon: React.ElementType;
+  titleKey: keyof typeof translations.en;
+  descKey: keyof typeof translations.en;
+  altKey: keyof typeof translations.en;
+  image: string;
+  anchor: string;
+};
+
+const STEPS: Step[] = [
+  {
+    icon: MapPin,
+    titleKey: "landing_step1_title",
+    descKey: "landing_step1_desc",
+    altKey: "landing_step1_alt",
+    image: "/screenshots/tell-us-where-you-are.png",
+    anchor: "/science#thresholds",
+  },
+  {
+    icon: CalendarBlank,
+    titleKey: "landing_step2_title",
+    descKey: "landing_step2_desc",
+    altKey: "landing_step2_alt",
+    image: "/screenshots/current-planner-view.png",
+    anchor: "/science#thresholds",
+  },
+  {
+    icon: ArrowsClockwise,
+    titleKey: "landing_step3_title",
+    descKey: "landing_step3_desc",
+    altKey: "landing_step3_alt",
+    image: "/screenshots/adapt-week-feeling-selector.png",
+    anchor: "/science#adaptation",
+  },
+  {
+    icon: Trophy,
+    titleKey: "landing_step4_title",
+    descKey: "landing_step4_desc",
+    altKey: "landing_step4_alt",
+    image: "/screenshots/block-review-coach-feedback.png",
+    anchor: "/science#block-evaluation",
+  },
+];
+
+const TOOL_CONFIG: Record<
+  "pace" | "goal" | "gear" | "nutrition",
+  {
+    image: string;
+    anchor: string;
+    alt: string;
   }
-}
-const getApiBaseUrl = (): string => {
-  if (typeof window !== "undefined") {
-    const override = localStorage.getItem("UPHILL_API_URL_OVERRIDE");
-    if (override) return override;
-  }
-  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+> = {
+  pace: {
+    image: "/screenshots/tool-pace-strategy.png",
+    anchor: "/science#pace-physics",
+    alt: "Pace Strategy splits table and elevation breakdown",
+  },
+  goal: {
+    image: "/screenshots/tool-goal-determiner.png",
+    anchor: "/science#goal-prediction",
+    alt: "Goal Determiner finish time predictor and A/B/C goals",
+  },
+  gear: {
+    image: "/screenshots/tool-gear-finder.png",
+    anchor: "/science#gear-grounding",
+    alt: "Gear Finder technical trail shoe match and verified specs",
+  },
+  nutrition: {
+    image: "/screenshots/tool-nutrition-lab.png",
+    anchor: "/science#nutrition-grounding",
+    alt: "Nutrition Lab metabolic hour-by-hour race fuel plan",
+  },
 };
-const API_BASE_URL = getApiBaseUrl();
-if (typeof window !== "undefined") {
-  const originalFetch = window.fetch;
-  window.fetch = async (input, init) => {
-    let url =
-      typeof input === "string"
-        ? input
-        : input instanceof URL
-          ? input.toString()
-          : input.url;
-    const override = localStorage.getItem("UPHILL_API_URL_OVERRIDE");
-    if (override) {
-      if (url.startsWith(API_BASE_URL)) {
-        url = url.replace(API_BASE_URL, override);
-      } else if (url.startsWith("http://localhost:18000")) {
-        url = url.replace("http://localhost:18000", override);
-      } else if (url.startsWith("http://localhost:8000")) {
-        url = url.replace("http://localhost:8000", override);
-      }
-    }
-    return originalFetch(url, init);
+
+export default function MarketingHome() {
+  const router = useRouter();
+  const { lang, setLang } = useAppContext() as {
+    lang: "en" | "vi";
+    setLang: (l: "en" | "vi") => void;
   };
-}
-interface Message {
-  role: "user" | "assistant";
-  content: string;
-}
-interface ParsedSummary {
-  distance_km: number;
-  duration_mins: number;
-  elevation_gain_m: number;
-  avg_hr?: number;
-  avg_speed?: string;
-  source_type: "FIT" | "GPX" | null;
-}
-interface RagSource {
-  id: number;
-  title: string;
-  type: "pdf" | "url" | "youtube";
-  url_path?: string;
-  summary?: string;
-  created_at: string;
-}
-interface Workout {
-  id: number;
-  plan_id: number;
-  week_number: number;
-  day_of_week: string;
-  phase: string;
-  title: string;
-  type: string;
-  duration_minutes: number;
-  distance_km?: number;
-  target_zone: string;
-  target_hr_range?: string;
-  target_pace?: string;
-  treadmill_incline: number | string;
-  treadmill_speed: number | string;
-  description?: string;
-  fueling_tip?: string;
-  is_completed: number;
-}
-interface ActivePlan {
-  id: number;
-  race_name: string;
-  race_date: string;
-  goal_type: string;
-  target_time_hours?: number;
-  total_weeks: number;
-  course_distance_km?: number;
-  course_elevation_gain_m?: number;
-}
-interface PacedCheckpoint {
-  name: string;
-  distance_km: number;
-  elevation_m: number;
-  target_pace: string;
-  split_time: string;
-  cumulative_time_mins: number;
-  flat_equivalent_km: number;
-  grade_pct: number;
-}
-interface FuelStrategy {
-  targets: {
-    carbs_grams_per_hour: number;
-    sodium_mg_per_hour: number;
-    fluid_ml_per_hour: number;
-    carb_complexity: string;
-  };
-  recommended_hourly_recipe: Array<{
-    product: string;
-    qty: number;
-    type: string;
-  }>;
-  recipe_totals: {
-    carbs_grams: number;
-    sodium_mg: number;
-    caffeine_mg: number;
-    fluid_ml: number;
-  };
-  warnings: string[];
-}
-interface Shoe {
-  id: number;
-  brand: string;
-  model: string;
-  surface: string;
-  cushioning: string;
-  drop_mm: number;
-  plate: string;
-  width: string;
-  review_summary: string;
-}
-// Simple Markdown Parser to format Assistant messages
-const parseMarkdown = (text: string) => {
-  if (!text) return null;
-  const lines = text.split("\n");
-  return lines.map((line, lineIdx) => {
-    const trimmed = line.trim();
-    if (trimmed.startsWith("### ")) {
-      return (
-        <h4
-          key={lineIdx}
-          style={{
-            fontSize: "15px",
-            fontWeight: "700",
-            marginTop: "12px",
-            marginBottom: "6px",
-            color: "var(--accent-secondary)",
-          }}
-        >
-          {parseInlineStyles(trimmed.substring(4))}
-        </h4>
-      );
-    }
-    if (trimmed.startsWith("## ")) {
-      return (
-        <h3
-          key={lineIdx}
-          style={{
-            fontSize: "16px",
-            fontWeight: "700",
-            marginTop: "16px",
-            marginBottom: "8px",
-            color: "var(--accent-secondary)",
-          }}
-        >
-          {parseInlineStyles(trimmed.substring(3))}
-        </h3>
-      );
-    }
-    if (trimmed.startsWith("# ")) {
-      return (
-        <h2
-          key={lineIdx}
-          style={{
-            fontSize: "18px",
-            fontWeight: "700",
-            marginTop: "20px",
-            marginBottom: "10px",
-            color: "var(--accent-secondary)",
-          }}
-        >
-          {parseInlineStyles(trimmed.substring(2))}
-        </h2>
-      );
-    }
-    const isBullet =
-      trimmed.startsWith("* ") ||
-      trimmed.startsWith("- ") ||
-      trimmed.startsWith("• ");
-    if (isBullet) {
-      return (
-        <li
-          key={lineIdx}
-          style={{
-            marginLeft: "16px",
-            marginBottom: "4px",
-            listStyleType: "disc",
-          }}
-        >
-          {parseInlineStyles(trimmed.substring(2))}
-        </li>
-      );
-    }
-    const numMatch = trimmed.match(/^(\d+)\.\s(.*)/);
-    if (numMatch) {
-      return (
-        <li
-          key={lineIdx}
-          style={{
-            marginLeft: "16px",
-            marginBottom: "4px",
-            listStyleType: "decimal",
-          }}
-        >
-          {parseInlineStyles(numMatch[2])}
-        </li>
-      );
-    }
-    if (trimmed === "") {
-      return <div key={lineIdx} style={{ height: "8px" }} />;
-    }
-    return (
-      <p key={lineIdx} style={{ marginBottom: "6px", lineHeight: "1.4" }}>
-        {parseInlineStyles(line)}
-      </p>
-    );
-  });
-};
-const parseInlineStyles = (text: string): React.ReactNode[] => {
-  const parts = text.split("**");
-  return parts.map((part, index) => {
-    if (index % 2 === 1) {
-      return (
-        <strong
-          key={index}
-          style={{ fontWeight: "700", color: "var(--text-bright)" }}
-        >
-          {part}
-        </strong>
-      );
-    }
-    return part;
-  });
-};
-const topicColors: Record<string, string> = {
-  Training: "#3b82f6",
-  Nutrition: "#10b981",
-  Recovery: "#8b5cf6",
-  Pacing: "#f59e0b",
-  Mindset: "#ec4899",
-  Gear: "#14b8a6",
-};
-const topicIcons: Record<string, React.ReactNode> = {
-  Training: <Mountains weight="fill" />,
-  Nutrition: <BowlFood weight="fill" />,
-  Recovery: <Bed weight="fill" />,
-  Pacing: <Timer weight="fill" />,
-  Mindset: <Brain weight="fill" />,
-  Gear: <Backpack weight="fill" />,
-};
-const KnowledgeCard = ({
-  card,
-  expanded = false,
-}: {
-  card: any;
-  expanded?: boolean;
-}) => {
-  const [open, setOpen] = useState(expanded);
-  const { trackEvent } = useAnalytics();
-  const color = topicColors[card.topic] || "#6366f1";
-  const icon = topicIcons[card.topic] || <Book weight="fill" />;
-  const handleToggle = () => {
-    if (!open) {
-      trackEvent("knowledge_card_clicked", {
-        topic: card.topic,
-        chapter_title: card.chapter_title,
-      });
-    }
-    setOpen(!open);
-  };
-  return (
-    <div
-      style={{
-        background: "var(--bg-card)",
-        border: `1px solid var(--border-color)`,
-        borderRadius: "14px",
-        padding: "16px",
-        cursor: "pointer",
-        transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
-        backdropFilter: "blur(8px)",
-        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05)",
-      }}
-      onClick={handleToggle}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.background = "var(--bg-card-hover)";
-        e.currentTarget.style.transform = "translateY(-1px)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = "var(--bg-card)";
-        e.currentTarget.style.transform = "translateY(0)";
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          gap: "8px",
-          marginBottom: "8px",
-        }}
-      >
-        <span
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "4px",
-            fontSize: "10px",
-            fontWeight: "700",
-            padding: "4px 8px",
-            borderRadius: "20px",
-            background: `${color}22`,
-            color: color,
-            letterSpacing: "0.5px",
-            flexShrink: 0,
-          }}
-        >
-          {icon} {card.topic?.toUpperCase()}
-        </span>
-        <span
-          style={{
-            fontSize: "14px",
-            color: "var(--text-muted)",
-            flexShrink: 0,
-          }}
-        >
-          {open ? <CaretUp weight="bold" /> : <CaretDown weight="bold" />}
-        </span>
-      </div>
-      <div
-        style={{
-          fontWeight: "700",
-          fontSize: "14px",
-          color: "var(--text-bright)",
-          marginBottom: "8px",
-          lineHeight: "1.4",
-        }}
-      >
-        {card.chapter_title}
-      </div>
-      <p
-        style={{
-          fontSize: "13px",
-          color: "var(--text-secondary)",
-          lineHeight: "1.6",
-          margin: 0,
-        }}
-      >
-        {card.summary}
-      </p>
-      {open && card.key_points?.length > 0 && (
-        <ul
-          style={{
-            marginTop: "12px",
-            paddingLeft: "16px",
-            display: "flex",
-            flexDirection: "column",
-            gap: "6px",
-          }}
-        >
-          {card.key_points.map((pt: string, i: number) => (
-            <li
-              key={i}
-              style={{
-                fontSize: "12.5px",
-                color: "var(--text-secondary)",
-                lineHeight: "1.5",
-              }}
-            >
-              {pt}
-            </li>
-          ))}
-        </ul>
-      )}
-      {open && card.tags?.length > 0 && (
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "4px",
-            marginTop: "10px",
-          }}
-        >
-          {card.tags.map((tag: string, i: number) => (
-            <span
-              key={i}
-              style={{
-                fontSize: "10px",
-                padding: "2px 6px",
-                borderRadius: "10px",
-                background: "rgba(255,255,255,0.1)",
-                color: "var(--text-muted)",
-              }}
-            >
-              #{tag}
-            </span>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
-export default function Home() {
-  const { trackEvent } = useAnalytics();
-  // Navigation active tab
-  const {
-    isNutritionLabOpen,
-    isGearVaultOpen,
-    isPaceStrategyOpen,
-    isGoalDeterminerOpen,
-    setIsGoalDeterminerOpen,
-    activeTab,
-    lang,
-    setIsNutritionLabOpen,
-    setIsGearVaultOpen,
-    setIsPaceStrategyOpen,
-    paceHandoff,
-    setPaceHandoff,
-    setActiveTab,
-    setLang,
-    startBtnHovered,
-    viewportWidth,
-    selectedDeviceView,
-    viewMode,
-    setStartBtnHovered,
-    setViewportWidth,
-    setSelectedDeviceView,
-    setViewMode,
-    heroInput,
-    backendConnected,
-    chatMessages,
-    chatInput,
-    setHeroInput,
-    setBackendConnected,
-    setChatMessages,
-    setChatInput,
-    chatLoading,
-    parsedSummary,
-    parserLoading,
-    uploadedFileName,
-    setChatLoading,
-    setParsedSummary,
-    setParserLoading,
-    setUploadedFileName,
-    parserErrorMsg,
-    gpxCheckpoints,
-    sources,
-    linkInput,
-    setParserErrorMsg,
-    setGpxCheckpoints,
-    setSources,
-    setLinkInput,
-    ragLoading,
-    ragErrorMsg,
-    knowledgeCards,
-    dailyCards,
-    setRagLoading,
-    setRagErrorMsg,
-    setKnowledgeCards,
-    setDailyCards,
-    knowledgeTopics,
-    knowledgeTopic,
-    extractStatus,
-    planJobId,
-    setKnowledgeTopics,
-    setKnowledgeTopic,
-    setExtractStatus,
-    setPlanJobId,
-    planJobStatus,
-    planJobMessage,
-    activePlan,
-    backupActivePlan,
-    setPlanJobStatus,
-    setPlanJobMessage,
-    setActivePlan,
-    setBackupActivePlan,
-    backupWorkouts,
-    recentPlans,
-    workouts,
-    selectedWeek,
-    setBackupWorkouts,
-    setRecentPlans,
-    setWorkouts,
-    setSelectedWeek,
-    exportTimePref,
-    showExportOptions,
-    planForm,
-    targetTimeH,
-    setExportTimePref,
-    setShowExportOptions,
-    setPlanForm,
-    setTargetTimeH,
-    targetTimeM,
-    targetTimeS,
-    cutoffTimeH,
-    cutoffTimeM,
-    setTargetTimeM,
-    setTargetTimeS,
-    setCutoffTimeH,
-    setCutoffTimeM,
-    cutoffTimeS,
-    planLoading,
-    planErrorMsg,
-    courseInputMode,
-    setCutoffTimeS,
-    setPlanLoading,
-    setPlanErrorMsg,
-    setCourseInputMode,
-    plannerGpxFile,
-    plannerGpxLoading,
-    plannerGpxError,
-    swapDay1,
-    setPlannerGpxFile,
-    setPlannerGpxLoading,
-    setPlannerGpxError,
-    setSwapDay1,
-    swapDay2,
-    targetFlatPace,
-    pacedCheckpoints,
-    pacingLoading,
-    setSwapDay2,
-    setTargetFlatPace,
-    setPacedCheckpoints,
-    setPacingLoading,
-    fuelDuration,
-    fuelSweatRate,
-    fuelTemp,
-    fuelStrategy,
-    setFuelDuration,
-    setFuelSweatRate,
-    setFuelTemp,
-    setFuelStrategy,
-    fuelLoading,
-    shoeSurface,
-    shoeCushion,
-    shoeWidth,
-    setFuelLoading,
-    setShoeSurface,
-    setShoeCushion,
-    setShoeWidth,
-    recommendedShoes,
-    shoesLoading,
-    user,
-    authModalOpen,
-    setRecommendedShoes,
-    setShoesLoading,
-    setUser,
-    setAuthModalOpen,
-    mockEmailInput,
-    authLoading,
-    authErrorMsg,
-    showApiKey,
-    setMockEmailInput,
-    setAuthLoading,
-    setAuthErrorMsg,
-    setShowApiKey,
-    onboardingOpen,
-    profileSettingsOpen,
-    passwordFormOpen,
-    newPassword,
-    setOnboardingOpen,
-    setProfileSettingsOpen,
-    setPasswordFormOpen,
-    setNewPassword,
-    confirmNewPassword,
-    passwordMsg,
-    passwordError,
-    authTab,
-    setConfirmNewPassword,
-    setPasswordMsg,
-    setPasswordError,
-    setAuthTab,
-    emailInput,
-    passwordInput,
-    nameInput,
-    confirmPasswordInput,
-    setEmailInput,
-    setPasswordInput,
-    setNameInput,
-    setConfirmPasswordInput,
-    showPassword,
-    onboardingStep,
-    onboardingAnswers,
-    onboardingGenerating,
-    setShowPassword,
-    setOnboardingStep,
-    setOnboardingAnswers,
-    setOnboardingGenerating,
-    profileForm,
-    onboardingMode,
-    raceDistance,
-    raceTimeHours,
-    setProfileForm,
-    setOnboardingMode,
-    setRaceDistance,
-    setRaceTimeHours,
-    raceTimeMinutes,
-    easyPaceMin,
-    easyPaceSec,
-    zone2Min,
-    setRaceTimeMinutes,
-    setEasyPaceMin,
-    setEasyPaceSec,
-    setZone2Min,
-    zone2Max,
-    setZone2Max,
-    handleTabSwitch,
-  } = useAppContext();
-  // Language State & Persistence
-  // State for homepage CTA button hover effect
+  const t = (key: keyof typeof translations.en) =>
+    translations[lang]?.[key] || translations.en[key] || key;
+
+  // The iOS/Android shells are the same static export loaded from its root
+  // index.html (see MOBILE.md) — someone who already installed the app
+  // should never see a marketing pitch, so skip straight to /app there.
+  const [showMarketing, setShowMarketing] = useState(false);
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const storedLang = window.localStorage.getItem("uphill_lang");
-      if (storedLang === "vi" || storedLang === "en") {
-        setLang(storedLang);
+    if (isNativePlatform()) {
+      router.replace("/app");
+    } else {
+      const timer = setTimeout(() => setShowMarketing(true), 0);
+      return () => clearTimeout(timer);
+    }
+  }, [router]);
+
+  // Scroll reveal observer for landing page elements (ui-ux-pro-max standard)
+  useEffect(() => {
+    if (!showMarketing || typeof window === "undefined") return;
+    const isReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (isReducedMotion) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("revealed");
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      {
+        threshold: 0.08,
+        rootMargin: "0px 0px -40px 0px",
       }
-    }
-  }, []);
-  const handleSetLang = (newLang: "en" | "vi") => {
-    setLang(newLang);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem("uphill_lang", newLang);
-    }
-  };
-  const t = (key: keyof typeof translations.en) => {
-    return translations[lang]?.[key] || translations.en[key] || key;
-  };
-  // Showcase state
-  const isDesktopMode = viewMode === "desktop";
-  const isMobileMode = viewMode === "mobile";
-  const isShowcaseMode = viewMode === "showcase";
-  const isViewportMobile = viewportWidth <= 900;
+    );
+
+    const elements = document.querySelectorAll(".scroll-reveal");
+    elements.forEach((el) => observer.observe(el));
+
+    return () => observer.disconnect();
+  }, [showMarketing]);
+
   // Video background refs — dual-video crossfade engine
   const videoARef = useRef<HTMLVideoElement>(null);
   const videoBRef = useRef<HTMLVideoElement>(null);
@@ -704,23 +163,7 @@ export default function Home() {
   const crossfadeRafARef = useRef<number | null>(null);
   const crossfadeRafBRef = useRef<number | null>(null);
   const crossfadingRef = useRef(false);
-  // Hero search state
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setViewportWidth(window.innerWidth);
-      const handleResize = () => setViewportWidth(window.innerWidth);
-      window.addEventListener("resize", handleResize);
-      const params = new URLSearchParams(window.location.search);
-      const mode = params.get("mode");
-      if (mode === "desktop" || mode === "mobile" || mode === "showcase") {
-        setViewMode(mode as any);
-      }
-      return () => window.removeEventListener("resize", handleResize);
-    }
-  }, []);
-  // ─── Dual-Video Seamless Crossfade Engine ──────────────────────────────────
-  // Uses two stacked <video> elements that crossfade at the loop point.
-  // This eliminates the black-screen gap that appears with a single video reset.
+
   useEffect(() => {
     const vidA = videoARef.current;
     const vidB = videoBRef.current;
@@ -728,12 +171,12 @@ export default function Home() {
     const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
     const SRC = basePath + "/bg.mp4";
     const FADE_MS = 250;
-    const FADE_THRESHOLD = 0.55; // seconds before end — begin crossfade
+    const FADE_THRESHOLD = 0.55;
     vidA.src = SRC;
     vidB.src = SRC;
     vidA.muted = true;
     vidB.muted = true;
-    /** Linear opacity fade via RAF. Returns cancel fn. */
+
     const animateFade = (
       el: HTMLVideoElement,
       rafRef: React.MutableRefObject<number | null>,
@@ -756,6 +199,7 @@ export default function Home() {
       };
       rafRef.current = requestAnimationFrame(tick);
     };
+
     const triggerCrossfade = () => {
       if (crossfadingRef.current) return;
       crossfadingRef.current = true;
@@ -765,13 +209,13 @@ export default function Home() {
         activeVideoRef.current === "A" ? crossfadeRafARef : crossfadeRafBRef;
       const inRaf =
         activeVideoRef.current === "A" ? crossfadeRafBRef : crossfadeRafARef;
-      // Pre-position the incoming video and start playing it silently at opacity 0
+
       inVid.currentTime = 0;
       inVid.style.opacity = "0";
       inVid.style.zIndex = "2";
       outVid.style.zIndex = "1";
       inVid.play().catch(() => {});
-      // Crossfade: out fades to 0, in fades to 1
+
       animateFade(outVid, outRaf, 1, 0, () => {
         outVid.pause();
         crossfadingRef.current = false;
@@ -779,1550 +223,52 @@ export default function Home() {
       });
       animateFade(inVid, inRaf, 0, 1);
     };
+
     const handleTimeUpdateA = () => {
       if (!vidA.duration || activeVideoRef.current !== "A") return;
-      if (vidA.duration - vidA.currentTime <= FADE_THRESHOLD)
-        triggerCrossfade();
+      if (vidA.duration - vidA.currentTime <= FADE_THRESHOLD) triggerCrossfade();
     };
     const handleTimeUpdateB = () => {
       if (!vidB.duration || activeVideoRef.current !== "B") return;
-      if (vidB.duration - vidB.currentTime <= FADE_THRESHOLD)
-        triggerCrossfade();
+      if (vidB.duration - vidB.currentTime <= FADE_THRESHOLD) triggerCrossfade();
     };
-    // Initial startup: fade vidA in
-    vidA.style.opacity = "0";
-    vidB.style.opacity = "0";
-    vidA.style.zIndex = "2";
-    vidB.style.zIndex = "1";
-    const startUp = () => {
-      vidA.play().catch(() => {});
-      animateFade(vidA, crossfadeRafARef, 0, 1);
-    };
-    if (vidA.readyState >= 3) {
-      startUp();
-    } else {
-      vidA.addEventListener("canplay", startUp, { once: true });
-    }
+
     vidA.addEventListener("timeupdate", handleTimeUpdateA);
     vidB.addEventListener("timeupdate", handleTimeUpdateB);
+    vidA.style.opacity = "1";
+    vidA.play().catch(() => {});
+
     return () => {
       vidA.removeEventListener("timeupdate", handleTimeUpdateA);
       vidB.removeEventListener("timeupdate", handleTimeUpdateB);
-      if (crossfadeRafARef.current)
+      if (crossfadeRafARef.current !== null)
         cancelAnimationFrame(crossfadeRafARef.current);
-      if (crossfadeRafBRef.current)
+      if (crossfadeRafBRef.current !== null)
         cancelAnimationFrame(crossfadeRafBRef.current);
     };
-  }, []);
-  // Knowledge Hub: auto-load and auto-extract when tab opens
-  useEffect(() => {
-    if (activeTab !== "knowledge" && activeTab !== "home") {
-      // Stop polling when leaving the tab
-      if (knowledgePollerRef.current) {
-        clearInterval(knowledgePollerRef.current);
-        knowledgePollerRef.current = null;
-      }
-      return;
-    }
-    const token = localStorage.getItem("uphill_session_token");
-    if (!token) return;
-    const headers = { Authorization: `Bearer ${token}` };
-    const loadCards = async (topic?: string) => {
-      try {
-        const url =
-          topic && topic !== "All"
-            ? `${API_BASE_URL}/api/knowledge/cards?topic=${encodeURIComponent(topic)}&lang=${lang}`
-            : `${API_BASE_URL}/api/knowledge/cards?lang=${lang}`;
-        // Knowledge cards are the same static content for every user, so the
-        // "Daily Knowledge" pick only needs to be fetched once per language —
-        // never re-shuffled on tab switches or reloads. Only the explicit
-        // Shuffle button (shuffleDailyCards in useKnowledge.ts) refreshes it.
-        const needsDailyCards = localStorage.getItem("uphill_daily_cards_lang") !== lang;
-        // Claim the cache slot before the request resolves so a second effect
-        // firing in the same tick (e.g. React StrictMode's double-invoke, or a
-        // fast repeat tab switch) doesn't also see "no cache yet" and reshuffle.
-        if (needsDailyCards) {
-          localStorage.setItem("uphill_daily_cards_lang", lang);
-        }
-        const fetches: [Promise<Response>, Promise<Response>, Promise<Response> | null] = [
-          fetch(url, { headers }),
-          fetch(`${API_BASE_URL}/api/knowledge/topics`, { headers }),
-          needsDailyCards
-            ? fetch(`${API_BASE_URL}/api/knowledge/cards/random?n=3&lang=${lang}`, {
-                headers,
-              })
-            : null,
-        ];
-        const [cardsRes, topicsRes, dailyRes] = await Promise.all(fetches);
-        if (cardsRes.ok) {
-          const d = await cardsRes.json();
-          setKnowledgeCards(d.cards || []);
-        }
-        if (topicsRes.ok) {
-          const d = await topicsRes.json();
-          setKnowledgeTopics(d.topics || []);
-        }
-        if (dailyRes) {
-          if (dailyRes.ok) {
-            const d = await dailyRes.json();
-            setDailyCards(d.cards || []);
-            localStorage.setItem("uphill_daily_cards_data", JSON.stringify(d.cards || []));
-          } else {
-            // Request failed — release the claim so a later visit can retry.
-            localStorage.removeItem("uphill_daily_cards_lang");
-          }
-        } else {
-          const cached = localStorage.getItem("uphill_daily_cards_data");
-          if (cached) setDailyCards(JSON.parse(cached));
-        }
-      } catch (e) {
-        console.error("Knowledge load error", e);
-      }
-    };
-    const checkStatus = async () => {
-      try {
-        const res = await fetch(
-          `${API_BASE_URL}/api/knowledge/extract/status`,
-          { headers },
-        );
-        if (res.ok) {
-          const s = await res.json();
-          setExtractStatus(s);
-          if (s.status === "done" && (s.card_count || 0) > 0) {
-            // Done — load cards and stop polling
-            await loadCards();
-            if (knowledgePollerRef.current) {
-              clearInterval(knowledgePollerRef.current);
-              knowledgePollerRef.current = null;
-            }
-          }
-        }
-      } catch (e) {}
-    };
-    const init = async () => {
-      await loadCards();
-      if (activeTab === "knowledge") {
-        // Check if we need to auto-trigger extraction
-        const statusRes = await fetch(
-          `${API_BASE_URL}/api/knowledge/extract/status`,
-          { headers },
-        );
-        if (statusRes.ok) {
-          const s = await statusRes.json();
-          setExtractStatus(s);
-          // Cards are populated by the admin-run podcast discovery job, not by an
-          // auto-trigger from the client -- there is no on-demand extraction endpoint.
-          if (s.status === "extracting" && !knowledgePollerRef.current) {
-            knowledgePollerRef.current = setInterval(checkStatus, 4000);
-          }
-        }
-      }
-    };
-    init();
-    return () => {
-      if (knowledgePollerRef.current) {
-        clearInterval(knowledgePollerRef.current);
-        knowledgePollerRef.current = null;
-      }
-    };
-  }, [activeTab, lang]);
-  const shuffleDailyCards = async () => {
-    const token = localStorage.getItem("uphill_session_token");
-    if (!token) return;
-    try {
-      const res = await fetch(
-        `${API_BASE_URL}/api/knowledge/cards/random?n=3&lang=${lang}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
-      if (res.ok) {
-        const d = await res.json();
-        setDailyCards(d.cards || []);
-      }
-    } catch (e) {}
-  };
-  const filterKnowledgeByTopic = async (topic: string) => {
-    setKnowledgeTopic(topic);
-    const token = localStorage.getItem("uphill_session_token");
-    if (!token) return;
-    try {
-      const url =
-        topic !== "All"
-          ? `${API_BASE_URL}/api/knowledge/cards?topic=${encodeURIComponent(topic)}&lang=${lang}`
-          : `${API_BASE_URL}/api/knowledge/cards?lang=${lang}`;
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const d = await res.json();
-        setKnowledgeCards(d.cards || []);
-      }
-    } catch (e) {}
-  };
-  // Backend connection status
-  // Chat sandbox state
-  const chatBottomRef = useRef<HTMLDivElement>(null);
-  // File parser sandbox state
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  // RAG sandbox state
-  const pdfInputRef = useRef<HTMLInputElement>(null);
-  // Knowledge Hub state
-  const knowledgePollerRef = useRef<ReturnType<typeof setInterval> | null>(
-    null,
-  );
-  // Async plan generation job tracking
-  const planJobPollerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  // Active Training Plan state
-  // Target time fields (H/M/S)
-  // Cutoff time fields (H/M/S) — for "Just to Finish" goal
-  const plannerGpxInputRef = useRef<HTMLInputElement>(null);
-  // Swap State
-  // Phase 3 States
-  // Pacing
-  // Fueling
-  // Shoes
-  // User Auth State
-  interface User {
-    id: number;
-    email: string;
-    name: string;
-    role: "admin" | "user";
-    age?: number;
-    gender?: "male" | "female" | "other" | "";
-    height_cm?: number;
-    weight_kg?: number;
-    current_weekly_km?: number;
-    max_hr?: number;
-    resting_hr?: number;
-    aet_hr?: number;
-    ant_hr?: number;
-    gemini_api_key?: string;
-    zone2_pace_min?: string;
-    zone2_pace_max?: string;
-    provider?: string;
-    has_password?: boolean;
-  }
-  // Onboarding / Profile Settings State
-  // New auth modal state
-  // Onboarding wizard state
-  useEffect(() => {
-    if (onboardingOpen && onboardingMode === "estimate") {
-      const ageNum = parseInt(profileForm.age) || 30;
-      const zone2MaxNum = parseInt(zone2Max) || 140;
-      const maxHrEst = 220 - ageNum;
-      const aetHrEst = zone2MaxNum;
-      const antHrEst = Math.round(zone2MaxNum * 1.18);
-      setProfileForm((prev: any) => {
-        if (
-          prev.max_hr === String(maxHrEst) &&
-          prev.aet_hr === String(aetHrEst) &&
-          prev.ant_hr === String(antHrEst)
-        ) {
-          return prev;
-        }
-        return {
-          ...prev,
-          max_hr: String(maxHrEst),
-          aet_hr: String(aetHrEst),
-          ant_hr: String(antHrEst),
-        };
-      });
-    }
-  }, [profileForm.age, onboardingMode, zone2Max, onboardingOpen]);
-  // Load backend health, active session, and training plans on mount
-  useEffect(() => {
-    checkHealth();
-    // Check local session storage
-    const token = localStorage.getItem("uphill_session_token");
-    if (token) {
-      setAuthLoading(true);
-      fetch(`${API_BASE_URL}/api/auth/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then((res) => {
-          if (res.ok) return res.json();
-          throw new Error("Session invalid");
-        })
-        .then((userData) => {
-          setUser(userData);
-          setProfileForm({
-            age: String(userData.age ?? 30),
-            gender: userData.gender ?? "",
-            height_cm: userData.height_cm != null ? String(userData.height_cm) : "",
-            weight_kg: userData.weight_kg != null ? String(userData.weight_kg) : "",
-            max_hr: String(userData.max_hr ?? 185),
-            resting_hr: String(userData.resting_hr ?? 60),
-            aet_hr: String(userData.aet_hr ?? 135),
-            ant_hr: String(userData.ant_hr ?? 165),
-            gemini_api_key: userData.gemini_api_key ?? "",
-            zone2_pace_min: userData.zone2_pace_min ?? "6:30",
-            zone2_pace_max: userData.zone2_pace_max ?? "5:45",
-          });
-          fetchSourcesWithToken(userData, token);
-          fetchActivePlanWithToken(token);
-        })
-        .catch(() => {
-          localStorage.removeItem("uphill_session_token");
-          setUser(null);
-        })
-        .finally(() => {
-          setAuthLoading(false);
-        });
-    } else {
-      // Lazy auth
-    }
-  }, []);
-  // Listen to postMessage OAuth popup channels
-  useEffect(() => {
-    const handleOAuthMessage = (event: MessageEvent) => {
-      if (event.data && event.data.provider && event.data.email) {
-        handleMockLogin(event.data.email);
-      }
-    };
-    window.addEventListener("message", handleOAuthMessage);
-    return () => window.removeEventListener("message", handleOAuthMessage);
-  }, []);
-  // Initialize Google Sign-In when AuthModal is open
-  useEffect(() => {
-    if (!authModalOpen) return;
-    let retryCount = 0;
-    const initGoogleSignIn = () => {
-      const g = (window as any).google;
-      if (g && g.accounts && g.accounts.id) {
-        const client_id =
-          process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
-          "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com";
-        g.accounts.id.initialize({
-          client_id: client_id,
-          callback: (response: any) => {
-            if (response && response.credential) {
-              handleGoogleLogin(response.credential);
-            }
-          },
-        });
-        const btnContainer = document.getElementById("google-signin-btn");
-        if (btnContainer) {
-          g.accounts.id.renderButton(btnContainer, {
-            theme: "outline",
-            size: "large",
-            width: btnContainer.clientWidth || 416,
-            text: "continue_with",
-            shape: "rectangular",
-          });
-        }
-        // Optionally prompt Google One Tap
-        g.accounts.id.prompt();
-      } else if (retryCount < 20) {
-        retryCount++;
-        setTimeout(initGoogleSignIn, 200);
-      }
-    };
-    setTimeout(initGoogleSignIn, 50);
-  }, [authModalOpen]);
-  const checkHealth = () => {
-    fetch(`${API_BASE_URL}/api/health`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.status === "healthy") {
-          setBackendConnected(true);
-        } else {
-          setBackendConnected(false);
-        }
-      })
-      .catch(() => {
-        setBackendConnected(false);
-      });
-  };
-  const fetchSourcesWithToken = async (
-    currentUser: User | null,
-    token: string,
-  ) => {
-    const activeUser = currentUser || user;
-    if (!activeUser || activeUser.role !== "admin") {
-      setSources([]);
-      return;
-    }
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/rag/sources`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setSources(data);
-      }
-    } catch (err) {
-      console.error("Failed to load knowledge sources:", err);
-    }
-  };
-  const fetchRecentPlansWithToken = async (token: string) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/coach/recent-plans`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setRecentPlans(data.plans || []);
-      }
-    } catch (err) {
-      console.error("Failed to fetch recent plans:", err);
-    }
-  };
-  const fetchActivePlanWithToken = async (token: string) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/coach/active-plan`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        if (data.active) {
-          setActivePlan(data.plan);
-          setWorkouts(data.workouts);
-          setSelectedWeek(resolveCurrentWeek(data.plan, data.workouts));
-        } else {
-          setActivePlan(null);
-          setWorkouts([]);
-        }
-      }
-      fetchRecentPlansWithToken(token);
-    } catch (err) {
-      console.error("Failed to fetch active plan:", err);
-    }
-  };
-  const fetchSources = () => {
-    const token = localStorage.getItem("uphill_session_token");
-    if (token) fetchSourcesWithToken(user, token);
-  };
-  const fetchActivePlan = () => {
-    const token = localStorage.getItem("uphill_session_token");
-    if (token) {
-      fetchActivePlanWithToken(token);
-      fetchRecentPlansWithToken(token);
-    }
-  };
-  // Scroll chat history to bottom
-  useEffect(() => {
-    chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chatMessages]);
-  // Auth actions
-  const handleMockLogin = async (emailToUse: string) => {
-    setAuthLoading(true);
-    setAuthErrorMsg("");
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/mock-login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: emailToUse }),
-      });
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.detail || "Mock Login failed.");
-      }
-      const data = await response.json();
-      localStorage.setItem("uphill_session_token", data.session_token);
-      setUser(data.user);
-      setProfileForm({
-        age: String(data.user.age ?? 30),
-        gender: data.user.gender ?? "",
-        height_cm: data.user.height_cm != null ? String(data.user.height_cm) : "",
-        weight_kg: data.user.weight_kg != null ? String(data.user.weight_kg) : "",
-        max_hr: String(data.user.max_hr ?? 185),
-        resting_hr: String(data.user.resting_hr ?? 60),
-        aet_hr: String(data.user.aet_hr ?? 135),
-        ant_hr: String(data.user.ant_hr ?? 165),
-        gemini_api_key: data.user.gemini_api_key ?? "",
-        zone2_pace_min: data.user.zone2_pace_min ?? "6:30",
-        zone2_pace_max: data.user.zone2_pace_max ?? "5:45",
-      });
-      // Show onboarding wizard for new users
-      if (!data.user.onboarding_complete) {
-        setOnboardingOpen(true);
-        setOnboardingStep(0);
-      }
-      setAuthModalOpen(false);
-      fetchSourcesWithToken(data.user, data.session_token);
-      fetchActivePlanWithToken(data.session_token);
-    } catch (err: any) {
-      setAuthErrorMsg(err.message || "Mock login failed");
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-  const handleGoogleLogin = async (idToken: string) => {
-    setAuthLoading(true);
-    setAuthErrorMsg("");
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/google`, {
-        method: `POST`,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ credential: idToken }),
-      });
-      if (!response.ok) {
-        const errData = await response.json();
-        let errMsg = "Google Login failed.";
-        if (typeof errData.detail === "string") {
-          errMsg = errData.detail;
-        } else if (Array.isArray(errData.detail)) {
-          errMsg = errData.detail
-            .map((e: any) => e.msg || JSON.stringify(e))
-            .join(", ");
-        } else if (errData.detail) {
-          errMsg = JSON.stringify(errData.detail);
-        }
-        throw new Error(errMsg);
-      }
-      const data = await response.json();
-      localStorage.setItem("uphill_session_token", data.session_token);
-      setUser(data.user);
-      setProfileForm({
-        age: String(data.user.age ?? 30),
-        gender: data.user.gender ?? "",
-        height_cm: data.user.height_cm != null ? String(data.user.height_cm) : "",
-        weight_kg: data.user.weight_kg != null ? String(data.user.weight_kg) : "",
-        max_hr: String(data.user.max_hr ?? 185),
-        resting_hr: String(data.user.resting_hr ?? 60),
-        aet_hr: String(data.user.aet_hr ?? 135),
-        ant_hr: String(data.user.ant_hr ?? 165),
-        gemini_api_key: data.user.gemini_api_key ?? "",
-        zone2_pace_min: data.user.zone2_pace_min ?? "6:30",
-        zone2_pace_max: data.user.zone2_pace_max ?? "5:45",
-      });
-      if (!data.user.onboarding_complete) {
-        setOnboardingOpen(true);
-        setOnboardingStep(0);
-      }
-      setAuthModalOpen(false);
-      fetchSourcesWithToken(data.user, data.session_token);
-      fetchActivePlanWithToken(data.session_token);
-    } catch (err: any) {
-      setAuthErrorMsg(err.message || "Failed to sign in with Google.");
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-  const handleSaveProfile = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    setAuthLoading(true);
-    setAuthErrorMsg("");
-    const token = localStorage.getItem("uphill_session_token");
-    if (!token) return;
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/update-profile`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          age: parseInt(profileForm.age),
-          max_hr: parseInt(profileForm.max_hr),
-          resting_hr: parseInt(profileForm.resting_hr),
-          aet_hr: parseInt(profileForm.aet_hr),
-          ant_hr: parseInt(profileForm.ant_hr),
-          gemini_api_key: profileForm.gemini_api_key,
-          zone2_pace_min: profileForm.zone2_pace_min,
-          zone2_pace_max: profileForm.zone2_pace_max,
-          gender: profileForm.gender || null,
-          height_cm: profileForm.height_cm ? parseFloat(profileForm.height_cm) : null,
-          weight_kg: profileForm.weight_kg ? parseFloat(profileForm.weight_kg) : null,
-        }),
-      });
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.detail || "Profile update failed.");
-      }
-      const updatedUser = await response.json();
-      setUser(updatedUser);
-      setAuthModalOpen(false);
-      setOnboardingOpen(false);
-    } catch (err: any) {
-      setAuthErrorMsg(err.message || "Failed to save physiology settings.");
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-  const handleSetPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setPasswordMsg("");
-    setPasswordError("");
-    if (newPassword.length < 8) {
-      setPasswordError("Password must be at least 8 characters.");
-      return;
-    }
-    if (newPassword !== confirmNewPassword) {
-      setPasswordError("Passwords do not match.");
-      return;
-    }
-    const token = localStorage.getItem("uphill_session_token");
-    if (!token) return;
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/set-password`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ password: newPassword }),
-      });
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.detail || "Failed to set password.");
-      }
-      setPasswordMsg("Password set successfully!");
-      setNewPassword("");
-      setConfirmNewPassword("");
-      setPasswordFormOpen(false);
-      if (user) {
-        setUser({ ...user, has_password: true });
-      }
-    } catch (err: any) {
-      setPasswordError(err.message || "Failed to set password.");
-    }
-  };
-  const handleOAuthLogin = (provider: "google" | "facebook") => {
-    setAuthLoading(true);
-    setAuthErrorMsg("");
-    const width = 500;
-    const height = 600;
-    const left = window.screenX + (window.outerWidth - width) / 2;
-    const top = window.screenY + (window.outerHeight - height) / 2;
-    const popup = window.open(
-      "",
-      `${provider}-login`,
-      `width=${width},height=${height},left=${left},top=${top},status=no,resizable=yes`,
-    );
-    if (popup) {
-      popup.document.write(`
-        <html>
-          <head>
-            <title>Authorize Uphill.AI</title>
-            <style>
-              body {
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                background: #0b0c10;
-                color: #ffffff;
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                align-items: center;
-                height: 100vh;
-                margin: 0;
-                padding: 20px;
-                box-sizing: border-box;
-                text-align: center;
-              }
-              .logo {
-                font-size: 24px;
-                font-weight: 800;
-                margin-bottom: 20px;
-                color: #c5f82a;
-              }
-              .card {
-                background: rgba(255, 255, 255, 0.03);
-                border: 1px solid rgba(255, 255, 255, 0.08);
-                border-radius: 12px;
-                padding: 30px;
-                width: 100%;
-                max-width: 380px;
-              }
-              h3 { margin-top: 0; font-size: 18px; }
-              p { color: #8f929d; font-size: 13px; line-height: 1.5; margin-bottom: 24px; }
-              .btn {
-                display: block;
-                width: 100%;
-                padding: 12px;
-                margin-bottom: 10px;
-                border-radius: 6px;
-                border: none;
-                font-weight: 600;
-                font-size: 13px;
-                cursor: pointer;
-                text-align: center;
-                box-sizing: border-box;
-              }
-              .btn-primary { background: #c5f82a; color: #000; }
-              .btn-secondary { background: rgba(255, 255, 255, 0.08); color: #fff; border: 1px solid rgba(255, 255, 255, 0.1); }
-            </style>
-          </head>
-          <body>
-            <div class="logo">Uphill.AI</div>
-            <div class="card">
-              <h3>Consent Request</h3>
-              <p>Authorize Uphill.AI to access your profile name and email address via <strong>${provider === "google" ? "Google" : "Facebook"} OAuth</strong>.</p>
-              <button class="btn btn-primary" onclick="login('admin')">Connect as Coach Admin</button>
-              <button class="btn btn-secondary" onclick="login('user')">Connect as Athlete User</button>
-            </div>
-            <script>
-              function login(role) {
-                const email = role === 'admin' ? 'admin@uphill.ai' : 'athlete@uphill.ai';
-                window.opener.postMessage({ provider: '${provider}', email: email }, '*');
-                window.close();
-              }
-            </script>
-          </body>
-        </html>
-      `);
-      popup.document.close();
-    }
-  };
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAuthLoading(true);
-    setAuthErrorMsg("");
-    if (passwordInput !== confirmPasswordInput) {
-      setAuthErrorMsg("Passwords do not match.");
-      setAuthLoading(false);
-      return;
-    }
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: nameInput.trim(),
-          email: emailInput.trim(),
-          password: passwordInput,
-        }),
-      });
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.detail || "Registration failed.");
-      }
-      const data = await response.json();
-      localStorage.setItem("uphill_session_token", data.session_token);
-      setUser(data.user);
-      setAuthModalOpen(false);
-      setOnboardingOpen(true);
-      setOnboardingStep(0);
-      fetchSourcesWithToken(data.user, data.session_token);
-      fetchActivePlanWithToken(data.session_token);
-    } catch (err: any) {
-      setAuthErrorMsg(err.message || "Registration failed.");
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-  const handleEmailLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAuthLoading(true);
-    setAuthErrorMsg("");
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: emailInput.trim(),
-          password: passwordInput,
-        }),
-      });
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.detail || "Login failed.");
-      }
-      const data = await response.json();
-      localStorage.setItem("uphill_session_token", data.session_token);
-      setUser(data.user);
-      setAuthModalOpen(false);
-      if (!data.user.onboarding_complete) {
-        setOnboardingOpen(true);
-        setOnboardingStep(0);
-      } else {
-        fetchActivePlanWithToken(data.session_token);
-      }
-      fetchSourcesWithToken(data.user, data.session_token);
-    } catch (err: any) {
-      setAuthErrorMsg(err.message || "Login failed.");
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-  const startPlanJobPoller = (jobId: string, token: string) => {
-    if (planJobPollerRef.current) clearInterval(planJobPollerRef.current);
-    setPlanJobId(jobId);
-    setPlanJobStatus("generating");
-    setPlanJobMessage("");
-    const poll = async () => {
-      try {
-        const res = await fetch(
-          `${API_BASE_URL}/api/coach/plan-status/${jobId}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          },
-        );
-        if (!res.ok) {
-          console.error("Plan status polling failed. HTTP Status:", res.status);
-          return;
-        }
-        const data = await res.json();
-        console.log("Plan job polling status update:", data);
-        if (data.status === "done") {
-          clearInterval(planJobPollerRef.current!);
-          planJobPollerRef.current = null;
-          setPlanJobStatus("done");
-          // Re-fetch active plan and workouts from database to guarantee complete state synchronization
-          await fetchActivePlanWithToken(token);
-          notifyPlanGenerated(lang);
-          // Auto-dismiss banner after 10 seconds
-          setTimeout(() => setPlanJobStatus("idle"), 10000);
-        } else if (data.status === "error") {
-          clearInterval(planJobPollerRef.current!);
-          planJobPollerRef.current = null;
-          setPlanJobStatus("error");
-          setPlanJobMessage(data.error || "Plan generation failed.");
-          setTimeout(() => setPlanJobStatus("idle"), 10000);
-        }
-      } catch (err) {
-        console.error("Exception during plan job polling:", err);
-      }
-    };
-    planJobPollerRef.current = setInterval(poll, 4000);
-    // Poll immediately too
-    poll();
-  };
-  const handleCompleteOnboarding = async () => {
-    const token = localStorage.getItem("uphill_session_token");
-    if (!token || !user) return;
-    setOnboardingGenerating(true);
-    try {
-      // Calculate age from DOB if provided
-      let age = 30;
-      if (onboardingAnswers.dob) {
-        const born = new Date(onboardingAnswers.dob);
-        age = Math.floor(
-          (Date.now() - born.getTime()) / (365.25 * 24 * 3600 * 1000),
-        );
-      }
-      const payload: any = {
-        dob: onboardingAnswers.dob || null,
-        age,
-        gender: onboardingAnswers.gender || null,
-        height_cm: onboardingAnswers.height_cm
-          ? parseFloat(onboardingAnswers.height_cm)
-          : null,
-        weight_kg: onboardingAnswers.weight_kg
-          ? parseFloat(onboardingAnswers.weight_kg)
-          : null,
-        goal_type: onboardingAnswers.goal_type,
-        injury_history: onboardingAnswers.injury_history || null,
-        preferred_run_days: onboardingAnswers.preferred_run_days,
-        long_run_day: onboardingAnswers.long_run_day || "Saturday",
-        days_per_week: onboardingAnswers.days_per_week || 4,
-        current_weekly_km:
-          parseFloat(onboardingAnswers.current_weekly_km) || 30.0,
-        has_gym_access: onboardingAnswers.has_gym_access || false,
-        training_environment: onboardingAnswers.training_environment || "flat",
-        double_session_days: onboardingAnswers.double_session_days || [],
-        zone2_pace_min: onboardingAnswers.zone2_pace_min || "6:30",
-        zone2_pace_max: onboardingAnswers.zone2_pace_max || "5:45",
-        terrain: onboardingAnswers.terrain || "trail",
-        time_away: onboardingAnswers.time_away || null,
-        reason_for_break: onboardingAnswers.reason_for_break || null,
-        fitness_feel: onboardingAnswers.fitness_feel || null,
-        race_distance_completed:
-          onboardingAnswers.race_distance_completed || null,
-        days_since_race: onboardingAnswers.days_since_race
-          ? parseInt(onboardingAnswers.days_since_race)
-          : null,
-        recovery_feel: onboardingAnswers.recovery_feel || null,
-        next_goal: onboardingAnswers.next_goal || null,
-        lang: lang,
-      };
-      // HR zones
-      if (onboardingAnswers.aet_hr)
-        payload.aet_hr = parseInt(onboardingAnswers.aet_hr);
-      if (onboardingAnswers.ant_hr)
-        payload.ant_hr = parseInt(onboardingAnswers.ant_hr);
-      if (onboardingAnswers.max_hr)
-        payload.max_hr = parseInt(onboardingAnswers.max_hr);
-      if (onboardingAnswers.resting_hr)
-        payload.resting_hr = parseInt(onboardingAnswers.resting_hr);
-      // Race/distance targets
-      if (onboardingAnswers.race_name)
-        payload.race_name = onboardingAnswers.race_name;
-      if (onboardingAnswers.race_date)
-        payload.race_date = onboardingAnswers.race_date;
-      if (onboardingAnswers.course_distance_km)
-        payload.course_distance_km = parseFloat(
-          onboardingAnswers.course_distance_km,
-        );
-      if (onboardingAnswers.course_elevation_gain_m)
-        payload.course_elevation_gain_m = parseFloat(
-          onboardingAnswers.course_elevation_gain_m,
-        );
-      if (onboardingAnswers.plan_start_date)
-        payload.plan_start_date = onboardingAnswers.plan_start_date;
-      // Race goals
-      payload.race_goal = onboardingAnswers.race_goal || "finish";
-      if (onboardingAnswers.race_goal === "time") {
-        const hh = String(onboardingAnswers.expected_finish_hours || "0");
-        const mm = String(onboardingAnswers.expected_finish_minutes || "0");
-        payload.expected_finish_time = `${hh.padStart(2, "0")}:${mm.padStart(2, "0")}:00`;
-      } else {
-        payload.expected_finish_time = null;
-      }
-      const response = await fetch(`${API_BASE_URL}/api/auth/onboarding`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-      if (!response.ok) throw new Error("Failed to complete onboarding.");
-      const data = await response.json();
-      // Update user immediately so the app is accessible
-      if (data.user) setUser(data.user);
-      if (data.plan) setActivePlan(data.plan);
-      // Close onboarding and let user into the app right away
-      setOnboardingOpen(false);
-      handleTabSwitch("home");
-      // Start polling for plan generation in the background
-      if (data.job_id) {
-        startPlanJobPoller(data.job_id, token);
-      }
-    } catch (err: any) {
-      setAuthErrorMsg(err.message || "Onboarding failed.");
-    } finally {
-      setOnboardingGenerating(false);
-    }
-  };
-  const handleLogout = async () => {
-    const token = localStorage.getItem("uphill_session_token");
-    if (token) {
-      try {
-        await fetch(`${API_BASE_URL}/api/auth/logout`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-        });
-      } catch (err) {
-        console.error("Logout request failed:", err);
-      }
-    }
-    localStorage.removeItem("uphill_session_token");
-    setUser(null);
-    setActivePlan(null);
-    setWorkouts([]);
-    setSources([]);
-    setAuthModalOpen(true);
-  };
-  // Send message to Coach Chat API
-  const handleSendMessage = async (textToSend?: string) => {
-    const messageText = textToSend || chatInput;
-    if (!messageText.trim()) return;
-    if (!textToSend) {
-      setChatInput("");
-    }
-    const updatedMessages = [
-      ...chatMessages,
-      { role: "user" as const, content: messageText },
-    ];
-    setChatMessages(updatedMessages);
-    setChatLoading(true);
-    const token = localStorage.getItem("uphill_session_token");
-    const headers: any = { "Content-Type": "application/json" };
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/coach/chat`, {
-        method: "POST",
-        headers: headers,
-        body: JSON.stringify({
-          messages: updatedMessages,
-          user_profile: {
-            age: user?.age ?? 30,
-            current_weekly_km: user?.current_weekly_km ?? 30.0,
-            max_hr: user?.max_hr ?? 185,
-            resting_hr: user?.resting_hr ?? 60,
-            aet_hr: user?.aet_hr ?? 135,
-            ant_hr: user?.ant_hr ?? 165,
-            use_treadmill: activePlan?.use_treadmill === true,
-            gemini_api_key: user?.gemini_api_key ?? "",
-            zone2_pace_min: user?.zone2_pace_min ?? "6:30",
-            zone2_pace_max: user?.zone2_pace_max ?? "5:45",
-            recent_race: planForm.race_name,
-          },
-          context_data: activePlan
-            ? {
-                race_name: activePlan.race_name,
-                race_date: activePlan.race_date,
-                goal_type: activePlan.goal_type,
-                total_weeks: activePlan.total_weeks,
-                workouts: workouts,
-              }
-            : null,
-        }),
-      });
-      if (!response.ok) {
-        throw new Error("Failed to communicate with Coach API");
-      }
-      const replyData = await response.json();
-      setChatMessages((prev: any) => [...prev, replyData]);
-    } catch (err: any) {
-      setChatMessages((prev: any) => [
-        ...prev,
-        {
-          role: "assistant",
-          content:
-            "Sorry, I had trouble reaching the coaching server. Please make sure the backend server is running.",
-        },
-      ]);
-    } finally {
-      setChatLoading(false);
-    }
-  };
-  const sendPresetPrompt = (prompt: string) => {
-    handleSendMessage(prompt);
-  };
-  // File Upload Handlers (FIT/GPX Telemetry)
-  const handleDropzoneClick = () => {
-    fileInputRef.current?.click();
-  };
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    await processFile(file);
-  };
-  const processFile = async (file: File) => {
-    setParserLoading(true);
-    setUploadedFileName(file.name);
-    setParserErrorMsg("");
-    setParsedSummary(null);
-    setGpxCheckpoints([]);
-    setPacedCheckpoints([]);
-    const formData = new FormData();
-    formData.append("file", file);
-    const extension = file.name.split(".").pop()?.toLowerCase();
-    let url = "";
-    if (extension === "fit") {
-      url = `${API_BASE_URL}/api/parser/fit`;
-    } else if (extension === "gpx") {
-      url = `${API_BASE_URL}/api/parser/gpx`;
-    } else {
-      setParserErrorMsg(
-        "Unsupported file format. Please upload a .fit or .gpx file.",
-      );
-      setParserLoading(false);
-      return;
-    }
-    try {
-      const response = await fetch(url, {
-        method: "POST",
-        body: formData,
-      });
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || "Parsing failed on server");
-      }
-      const result = await response.json();
-      const sum = result.summary;
-      if (extension === "fit") {
-        const fitDist = parseFloat(
-          ((sum.total_distance_meters || 0) / 1000).toFixed(2),
-        );
-        const fitElev = Math.round(sum.total_elevation_gain_meters || 0);
-        setParsedSummary({
-          distance_km: fitDist,
-          duration_mins: parseFloat(
-            ((sum.total_duration_seconds || 0) / 60).toFixed(1),
-          ),
-          elevation_gain_m: fitElev,
-          avg_hr: sum.avg_heart_rate
-            ? Math.round(sum.avg_heart_rate)
-            : undefined,
-          avg_speed: sum.avg_speed_mps
-            ? `${(16.6667 / sum.avg_speed_mps).toFixed(2)} min/km`
-            : undefined,
-          source_type: "FIT",
-        });
-      } else {
-        const gpxDist = parseFloat(
-          ((sum.total_distance_meters || 0) / 1000).toFixed(2),
-        );
-        const gpxElev = Math.round(sum.total_elevation_gain_meters || 0);
-        setParsedSummary({
-          distance_km: gpxDist,
-          duration_mins: 0,
-          elevation_gain_m: gpxElev,
-          source_type: "GPX",
-        });
-        setGpxCheckpoints(result.checkpoints);
-      }
-    } catch (err: any) {
-      setParserErrorMsg(
-        err.message || "An error occurred while uploading/parsing.",
-      );
-    } finally {
-      setParserLoading(false);
-    }
-  };
-  const handlePlannerGpxFileChange = async (
-    e: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setPlannerGpxLoading(true);
-    setPlannerGpxError("");
-    setPlannerGpxFile(null);
-    const formData = new FormData();
-    formData.append("file", file);
-    const extension = file.name.split(".").pop()?.toLowerCase();
-    if (extension !== "gpx") {
-      setPlannerGpxError("Unsupported file format. Please upload a .gpx file.");
-      setPlannerGpxLoading(false);
-      return;
-    }
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/parser/gpx`, {
-        method: "POST",
-        body: formData,
-      });
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || "Parsing failed on server");
-      }
-      const result = await response.json();
-      const sum = result.summary;
-      const dist = parseFloat(
-        ((sum.total_distance_meters || 0) / 1000).toFixed(2),
-      );
-      const elev = Math.round(sum.total_elevation_gain_meters || 0);
-      setPlanForm({
-        ...planForm,
-        course_distance_km: dist.toString(),
-        course_elevation_gain_m: elev.toString(),
-      });
-      setPlannerGpxFile(file);
-    } catch (err: any) {
-      setPlannerGpxError(
-        err.message || "An error occurred while uploading/parsing.",
-      );
-    } finally {
-      setPlannerGpxLoading(false);
-    }
-  };
-  // RAG Link Ingestion
-  const handleAddLink = async () => {
-    if (!linkInput.trim()) return;
-    setRagLoading(true);
-    setRagErrorMsg("");
-    const token = localStorage.getItem("uphill_session_token");
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/rag/link`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ url: linkInput }),
-      });
-      if (!response.ok) {
-        const errorText = await response.json();
-        throw new Error(errorText.detail || "Link ingestion failed.");
-      }
-      setLinkInput("");
-      await fetchSources();
-    } catch (err: any) {
-      setRagErrorMsg(err.message);
-    } finally {
-      setRagLoading(false);
-    }
-  };
-  // RAG PDF File Ingestion
-  const triggerPdfUpload = () => {
-    pdfInputRef.current?.click();
-  };
-  const handlePdfFileChange = async (
-    e: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setRagLoading(true);
-    setRagErrorMsg("");
-    const formData = new FormData();
-    formData.append("file", file);
-    const token = localStorage.getItem("uphill_session_token");
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/rag/upload`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-      if (!response.ok) {
-        const errorText = await response.json();
-        throw new Error(errorText.detail || "PDF upload failed.");
-      }
-      await fetchSources();
-    } catch (err: any) {
-      setRagErrorMsg(err.message);
-    } finally {
-      setRagLoading(false);
-    }
-  };
-  // Remove Grounding Source
-  const handleDeleteSource = async (id: number) => {
-    const token = localStorage.getItem("uphill_session_token");
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/rag/sources/${id}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (response.ok) {
-        await fetchSources();
-      }
-    } catch (err) {
-      console.error("Failed to delete source:", err);
-    }
-  };
-  // Plan Generator Action
-  const handleGeneratePlan = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const isRaceOrDistVal =
-      planForm.plan_goal_category === "race" ||
-      planForm.plan_goal_category === "distance";
-    if (isRaceOrDistVal && (!planForm.race_name || !planForm.race_date)) {
-      setPlanErrorMsg(
-        "Race Name and Race Date are required for Race/Distance goals.",
-      );
-      return;
-    }
-    if (!isRaceOrDistVal && !planForm.plan_start_date) {
-      setPlanErrorMsg("Please select a Plan Start Date.");
-      return;
-    }
-    if (!planForm.current_weekly_km) {
-      setPlanErrorMsg("Please enter your current weekly mileage.");
-      return;
-    }
-    setPlanLoading(true);
-    setPlanErrorMsg("");
-    const token = localStorage.getItem("uphill_session_token");
-    try {
-      const isRaceOrDist =
-        planForm.plan_goal_category === "race" ||
-        planForm.plan_goal_category === "distance";
-      // Build request body
-      const body: Record<string, any> = {
-        race_name: isRaceOrDist
-          ? planForm.race_name
-          : planForm.plan_goal_category.replace("_", " "),
-        race_date: isRaceOrDist ? planForm.race_date : "",
-        goal_type: isRaceOrDist
-          ? planForm.goal_type
-          : planForm.plan_goal_category,
-        terrain: planForm.terrain,
-        course_distance_km: planForm.course_distance_km
-          ? parseFloat(planForm.course_distance_km)
-          : null,
-        course_elevation_gain_m: planForm.course_elevation_gain_m
-          ? parseFloat(planForm.course_elevation_gain_m)
-          : null,
-        days_per_week: planForm.days_per_week,
-        long_run_day: planForm.long_run_day,
-        preferred_days: planForm.preferred_days,
-        current_weekly_km: parseFloat(planForm.current_weekly_km),
-        plan_start_date: planForm.plan_start_date || null,
-        plan_duration_weeks: isRaceOrDist ? null : planForm.plan_duration_weeks,
-        // non-race context fields
-        time_away: planForm.time_away || null,
-        fitness_feel: planForm.fitness_feel || null,
-        race_distance_completed: planForm.race_distance_completed || null,
-        days_since_race: planForm.days_since_race
-          ? parseInt(planForm.days_since_race)
-          : null,
-        recovery_feel: planForm.recovery_feel || null,
-        lang: lang,
-      };
-      // Combine H/M/S into decimal hours
-      if (planForm.goal_type === "time") {
-        const h = parseFloat(targetTimeH || "0");
-        const m = parseFloat(targetTimeM || "0");
-        const s = parseFloat(targetTimeS || "0");
-        const total = h + m / 60 + s / 3600;
-        if (total > 0) body.target_time_hours = total;
-      } else if (planForm.goal_type === "finish") {
-        const h = parseFloat(cutoffTimeH || "0");
-        const m = parseFloat(cutoffTimeM || "0");
-        const s = parseFloat(cutoffTimeS || "0");
-        const total = h + m / 60 + s / 3600;
-        if (total > 0) body.cutoff_time_hours = total;
-      }
-      const response = await fetch(`${API_BASE_URL}/api/coach/generate-plan`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(body),
-      });
-      if (!response.ok) {
-        const errorText = await response.json();
-        throw new Error(errorText.detail || "Plan generation failed.");
-      }
-      const result = await response.json();
-      trackEvent("plan_generated", {
-        success: true,
-        goal_type: body.goal_type,
-        terrain: body.terrain,
-        duration_weeks: body.plan_duration_weeks,
-      });
-      // Set plan immediately from the fast response
-      if (result.plan) {
-        setActivePlan(result.plan);
-        setBackupActivePlan(null);
-        setBackupWorkouts([]);
-      }
-      setSelectedWeek(resolveCurrentWeek(result.plan, result.workouts));
-      // Start background polling for workouts
-      if (result.job_id) {
-        startPlanJobPoller(result.job_id, token!);
-      } else {
-        // Fallback: if somehow we got workouts synchronously
-        if (result.workouts) setWorkouts(result.workouts);
-        if (token) fetchRecentPlansWithToken(token);
-      }
-    } catch (err: any) {
-      setPlanErrorMsg(err.message);
-      trackEvent("plan_generated", { success: false, error: err.message });
-    } finally {
-      setPlanLoading(false);
-    }
-  };
-  const getPlanDistance = (p: ActivePlan) => {
-    if (p.course_distance_km !== undefined && p.course_distance_km !== null)
-      return p.course_distance_km;
-    if (p.race_name && p.race_name.toUpperCase().includes("SUM30")) return 30;
-    return null;
-  };
-  const getPlanElevation = (p: ActivePlan) => {
-    if (
-      p.course_elevation_gain_m !== undefined &&
-      p.course_elevation_gain_m !== null
-    )
-      return p.course_elevation_gain_m;
-    if (p.race_name && p.race_name.toUpperCase().includes("SUM30")) return 1200;
-    return null;
-  };
-  const formatPlanName = (p: ActivePlan) => {
-    const dist = getPlanDistance(p);
-    const elev = getPlanElevation(p);
-    const kmStr = dist ? `${dist}km` : "0km";
-    const gainStr = elev ? `+${elev}m` : "+0m";
-    let targetStr = "Finish";
-    let dateStr = p.race_date || "No Date";
-    if (p.goal_type === "time" && p.target_time_hours) {
-      targetStr = `${p.target_time_hours}h`;
-    } else if (p.goal_type === "optimal") {
-      targetStr = "Optimal";
-    } else if (p.goal_type) {
-      targetStr =
-        p.goal_type.charAt(0).toUpperCase() +
-        p.goal_type.slice(1).replace("_", " ");
-    }
-    if (["start_running", "return", "recovery"].includes(p.goal_type || "")) {
-      dateStr = `Ends ${p.race_date}`;
-      return `${p.race_name || "Untitled Plan"} (${dateStr}) | ${targetStr}`;
-    } else {
-      dateStr = `Race: ${p.race_date}`;
-      return `${p.race_name || "Untitled Plan"} (${dateStr}) | ${kmStr} | +${elev || 0}m | ${targetStr}`;
-    }
-  };
-  const handleSelectPlan = async (planId: number) => {
-    const token = localStorage.getItem("uphill_session_token");
-    if (!token) return;
-    try {
-      setPlanLoading(true);
-      setPlanErrorMsg("");
-      const response = await fetch(`${API_BASE_URL}/api/coach/select-plan`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ plan_id: planId }),
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setActivePlan(data.plan);
-        setWorkouts(data.workouts);
-        setBackupActivePlan(null);
-        setBackupWorkouts([]);
-        setSelectedWeek(resolveCurrentWeek(data.plan, data.workouts));
-        fetchRecentPlansWithToken(token);
-      } else {
-        const errorText = await response.json();
-        setPlanErrorMsg(errorText.detail || "Failed to select plan.");
-      }
-    } catch (err: any) {
-      setPlanErrorMsg(err.message);
-    } finally {
-      setPlanLoading(false);
-    }
-  };
-  // Workout swap action
-  const handleSwapWorkouts = async () => {
-    if (!activePlan) return;
-    const token = localStorage.getItem("uphill_session_token");
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/coach/modify-calendar`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            plan_id: activePlan.id,
-            week_number: selectedWeek,
-            day_1: swapDay1,
-            day_2: swapDay2,
-          }),
-        },
-      );
-      if (response.ok) {
-        const result = await response.json();
-        setWorkouts(result.workouts);
-      }
-    } catch (err) {
-      console.error("Failed to swap workouts:", err);
-    }
-  };
-  // Mark workout complete (locally)
-  const handleToggleComplete = async (woId: number, isCompleted: boolean) => {
-    setWorkouts((prev: any) =>
-      prev.map((wo: any) =>
-        wo.id === woId ? { ...wo, is_completed: isCompleted ? 1 : 0 } : wo,
-      ),
-    );
-  };
-  const getWeekWorkouts = (weekNum: number) => {
-    return workouts.filter((w: any) => w.week_number === weekNum);
-  };
-  const getWorkoutDate = (wo: Workout) => {
-    if (!activePlan || !activePlan.race_date) return "";
-    try {
-      const parts = activePlan.race_date.split("-");
-      if (parts.length !== 3) return "";
-      const year = parseInt(parts[0], 10);
-      const month = parseInt(parts[1], 10) - 1;
-      const day = parseInt(parts[2], 10);
-      const raceDate = new Date(year, month, day);
-      const raceWo = workouts.find((w: any) => {
-        const title = w.title.toUpperCase();
-        const type = w.type.toUpperCase();
-        return title.includes("TARGET EVENT") || type === "RACE";
-      });
-      const raceWeek = raceWo ? raceWo.week_number : activePlan.total_weeks;
-      const getMondayRelativeOffset = (jsDay: number) => {
-        if (jsDay === 0) return 6; // Sunday
-        return jsDay - 1; // Mon-Sat
-      };
-      const raceDayOffset = getMondayRelativeOffset(raceDate.getDay());
-      const raceWeekMonday = new Date(raceDate);
-      raceWeekMonday.setDate(raceDate.getDate() - raceDayOffset);
-      const startMonday = new Date(raceWeekMonday);
-      startMonday.setDate(raceWeekMonday.getDate() - (raceWeek - 1) * 7);
-      const DAY_OFFSETS: Record<string, number> = {
-        Monday: 0,
-        Tuesday: 1,
-        Wednesday: 2,
-        Thursday: 3,
-        Friday: 4,
-        Saturday: 5,
-        Sunday: 6,
-      };
-      const dayName = wo.day_of_week;
-      const workoutDayOffset =
-        DAY_OFFSETS[dayName] !== undefined ? DAY_OFFSETS[dayName] : 0;
-      const workoutDate = new Date(startMonday);
-      workoutDate.setDate(
-        startMonday.getDate() + (wo.week_number - 1) * 7 + workoutDayOffset,
-      );
-      return workoutDate.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      });
-    } catch (e) {
-      console.error(e);
-      return "";
-    }
-  };
-  // --- Phase 3 Calculator Handlers ---
-  // Tab Icon generator
-  const getTabIcon = (tabName: string, active: boolean, size = 18) => {
-    const color = active ? "var(--accent-primary)" : "var(--text-secondary)";
-    const weight = active ? "fill" : "regular";
-    switch (tabName) {
-      case "home":
-        return <House size={size} color={color} weight={weight} />;
-      case "about":
-        return <Mountains size={size} color={color} weight={weight} />;
-      case "chat":
-        return <Robot size={size} color={color} weight={weight} />;
-      case "planner":
-        return <CalendarBlank size={size} color={color} weight={weight} />;
-      case "tools":
-        return <Calculator size={size} color={color} weight={weight} />;
-      case "knowledge":
-        return <BookOpen size={size} color={color} weight={weight} />;
-      case "coach":
-        return <Users size={size} color={color} weight={weight} />;
-      default:
-        return null;
-    }
-  };
-  const renderActiveTab = (isMobile: boolean) => {
-    switch (activeTab) {
-      case "home":
-        return <HomeTab isMobile={isMobile} />;
-      case "about":
-        return <AboutTab isMobile={isMobile} />;
-      case "chat":
-        return <ChatTab isMobile={isMobile} />;
-      case "planner":
-        return <PlannerView isMobile={isMobile} />;
-      case "tools":
-        return <ToolsView isMobile={isMobile} />;
-      case "knowledge":
-        return <KnowledgeView isMobile={isMobile} />;
-      case "coach":
-        return <CoachDashboardView isMobile={isMobile} />;
-      default:
-        return <HomeTab isMobile={isMobile} />;
-    }
-  };
-  const changeViewMode = (mode: "showcase" | "desktop" | "mobile") => {
-    setViewMode(mode);
-    if (typeof window !== "undefined") {
-      const url = new URL(window.location.href);
-      url.searchParams.set("mode", mode);
-      window.history.pushState(null, "", url.pathname + url.search);
-    }
-  };
-  // ─── Onboarding Wizard ────────────────────────────────────────────────────
-  // ─── Profile Settings Modal ───────────────────────────────────────────────
+  }, [showMarketing]);
+
+
+  if (!showMarketing) return null;
+
+  const toolingFeatures = TOOLING_FEATURE_IDS.map((id) =>
+    LANDING_FEATURES.find((f) => f.id === id),
+  ).filter((f): f is (typeof LANDING_FEATURES)[number] => !!f);
+
   return (
-    <div
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        height: "100dvh",
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-      }}
-    >
-      <PendingInviteBanner />
-      {/* ── Video Background: Two stacked videos for seamless crossfade ── */}
-      <div className="video-bg-container">
-        {/* Video A */}
+    <div style={{ position: "relative", minHeight: "100dvh", color: "#111827" }}>
+      {/* ── Fixed Video Background Layer ─────────────────────────────── */}
+      <div
+        className="video-bg-container"
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 0,
+          overflow: "hidden",
+          pointerEvents: "none",
+          background: "#0d1117",
+        }}
+      >
         <video
           ref={videoARef}
           autoPlay
@@ -2338,13 +284,11 @@ export default function Home() {
             objectFit: "cover",
             objectPosition: "center top",
             opacity: 0,
-            transition: "none",
             willChange: "opacity",
             zIndex: 2,
             pointerEvents: "none",
           }}
         />
-        {/* Video B */}
         <video
           ref={videoBRef}
           autoPlay
@@ -2360,985 +304,1529 @@ export default function Home() {
             objectFit: "cover",
             objectPosition: "center top",
             opacity: 0,
-            transition: "none",
             willChange: "opacity",
             zIndex: 1,
             pointerEvents: "none",
           }}
         />
-      </div>
-      {/* ── Plan Generation Notification Banner ── */}
-      {planJobStatus !== "idle" && (
+        {/* Soft light vignette overlay keeping video atmospheric while ensuring text legibility */}
         <div
           style={{
-            position: "fixed",
-            bottom: isViewportMobile ? "90px" : "24px",
-            left: isViewportMobile ? "16px" : "24px",
-            right: isViewportMobile ? "16px" : "auto",
-            transform: "none",
-            zIndex: 9999,
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-            padding: "12px 20px",
-            borderRadius: "16px",
+            position: "absolute",
+            inset: 0,
             background:
-              planJobStatus === "done"
-                ? "rgba(34, 197, 94, 0.18)"
-                : planJobStatus === "error"
-                  ? "rgba(239, 68, 68, 0.18)"
-                  : "rgba(99, 102, 241, 0.18)",
+              "radial-gradient(ellipse at 50% 15%, rgba(255, 255, 255, 0.48) 0%, rgba(255, 255, 255, 0.75) 60%, rgba(255, 255, 255, 0.88) 100%)",
+            pointerEvents: "none",
+            zIndex: 3,
+          }}
+        />
+      </div>
+
+      {/* ── Content Wrapper (Relative above video) ───────────────────── */}
+      <div style={{ position: "relative", zIndex: 10 }}>
+        {/* ── Top Navigation Bar (Product-Led & Clean Glass) ──────────── */}
+        <header
+          style={{
+            position: "sticky",
+            top: 0,
+            zIndex: 50,
+            background: "rgba(255, 255, 255, 0.75)",
             backdropFilter: "blur(20px)",
             WebkitBackdropFilter: "blur(20px)",
-            border: `1px solid ${planJobStatus === "done" ? "rgba(34,197,94,0.4)" : planJobStatus === "error" ? "rgba(239,68,68,0.4)" : "rgba(99,102,241,0.4)"}`,
-            boxShadow: "0 8px 32px rgba(0,0,0,0.3)",
-            color: "#fff",
-            fontSize: "14px",
-            fontWeight: 600,
-            whiteSpace: "nowrap",
-            maxWidth: "90vw",
+            borderBottom: "1px solid rgba(255, 255, 255, 0.7)",
+            boxShadow: "0 4px 20px rgba(0, 0, 0, 0.03)",
           }}
         >
-          {planJobStatus === "generating" && (
-            <>
-              <span
-                style={{
-                  display: "inline-block",
-                  width: "16px",
-                  height: "16px",
-                  border: "2px solid rgba(255,255,255,0.4)",
-                  borderTopColor: "#a78bfa",
-                  borderRadius: "50%",
-                  animation: "spin 0.8s linear infinite",
-                  flexShrink: 0,
-                }}
-              />
-              <span>Generating your training plan…</span>
-              <span style={{ fontSize: "12px", opacity: 0.7, fontWeight: 400 }}>
-                This may take a few minutes
-              </span>
-            </>
-          )}
-          {planJobStatus === "done" && (
-            <>
-              <CheckCircle size={20} weight="fill" color="#10b981" aria-hidden="true" />
-              <span>Your training plan is ready!</span>
-              <button
-                onClick={() => handleTabSwitch("planner")}
-                style={{
-                  marginLeft: "8px",
-                  padding: "4px 12px",
-                  borderRadius: "8px",
-                  background: "rgba(34,197,94,0.3)",
-                  border: "1px solid rgba(34,197,94,0.5)",
-                  color: "#fff",
-                  fontSize: "12px",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                }}
-              >
-                View Planner →
-              </button>
-              <button
-                onClick={() => setPlanJobStatus("idle")}
-                style={{
-                  marginLeft: "4px",
-                  background: "transparent",
-                  border: "none",
-                  color: "rgba(255,255,255,0.6)",
-                  cursor: "pointer",
-                  fontSize: "16px",
-                  lineHeight: 1,
-                }}
-                aria-label="Dismiss"
-              >
-                ×
-              </button>
-            </>
-          )}
-          {planJobStatus === "error" && (
-            <>
-              <span style={{ fontSize: "20px" }}>
-                <Warning weight="fill" />
-              </span>
-              <span>Plan generation failed.</span>
-              {planJobMessage && (
-                <span
-                  style={{
-                    fontSize: "12px",
-                    opacity: 0.7,
-                    fontWeight: 400,
-                    maxWidth: "200px",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                  }}
-                >
-                  {planJobMessage}
-                </span>
-              )}
-              <button
-                onClick={() => setPlanJobStatus("idle")}
-                style={{
-                  marginLeft: "8px",
-                  background: "transparent",
-                  border: "none",
-                  color: "rgba(255,255,255,0.6)",
-                  cursor: "pointer",
-                  fontSize: "16px",
-                  lineHeight: 1,
-                }}
-                aria-label="Dismiss"
-              >
-                ×
-              </button>
-            </>
-          )}
-        </div>
-      )}
-      {viewMode === "desktop" ? (
-        <div
-          className="desktop-only-wrapper"
-          style={{
-            display: "flex",
-            width: "100%",
-            height: "100%",
-            overflow: "hidden",
-            position: "relative",
-          }}
-        >
-          {/* Glow Effects */}
-          <div className="glow-bg" style={{ opacity: 0.45 }}></div>
-          <div className="glow-bg-left" style={{ opacity: 0.35 }}></div>
-          {/* Left Navigation Sidebar */}
-          <aside className="laptop-sidebar" style={{ height: "100%" }}>
-            <div>
-              <div className="laptop-sidebar-logo">
-                Uphill<span>.AI</span>
-              </div>
-              <ul className="sidebar-nav-list">
-                {(
-                  [
-                    "home",
-                    "about",
-                    "chat",
-                    "planner",
-                    "tools",
-                    "knowledge",
-                    ...(user?.is_coach ? (["coach"] as const) : []),
-                  ] as const
-                ).map((tab) => {
-                  const active = activeTab === tab;
-                  return (
-                    <li
-                      key={tab}
-                      onClick={() => handleTabSwitch(tab)}
-                      className={`sidebar-nav-item ${active ? "sidebar-nav-item-active" : ""}`}
-                    >
-                      {getTabIcon(tab, active)}
-                      <span>
-                        {tab === "home"
-                          ? t("tab_home")
-                          : tab === "chat"
-                            ? t("tab_chat")
-                            : tab === "planner"
-                              ? t("tab_scheduler")
-                              : tab === "knowledge"
-                                ? t("tab_knowledge")
-                                : tab === "coach"
-                                  ? t("tab_coach")
-                                  : tab === "about"
-                                    ? t("tab_about")
-                                    : t("tab_tools")}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-            {/* Sidebar Profile trigger */}
-            <div style={{ padding: "0 8px" }}>
-              {user ? (
-                <div
-                  onClick={() => {
-                    setProfileSettingsOpen(true);
-                  }}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px",
-                    cursor: "pointer",
-                    padding: "8px",
-                    borderRadius: "12px",
-                    background: "rgba(255,255,255,0.2)",
-                    border: "1px solid var(--border-color)",
-                  }}
-                >
-                  <div
-                    style={{
-                      width: "32px",
-                      height: "32px",
-                      borderRadius: "50%",
-                      background: "var(--accent-primary)",
-                      color: "#fff",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyItems: "center",
-                      justifyContent: "center",
-                      fontWeight: "700",
-                      fontSize: "14px",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {user.name[0].toUpperCase()}
-                  </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      overflow: "hidden",
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontSize: "12px",
-                        fontWeight: "700",
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        maxWidth: "100px",
-                      }}
-                    >
-                      {user.name}
-                    </span>
-                    <span
-                      style={{
-                        fontSize: "9.5px",
-                        color: "var(--accent-primary)",
-                        textDecoration: "underline",
-                      }}
-                    >
-                      {lang === "en" ? "Settings" : "Cài đặt"}
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setAuthModalOpen(true)}
-                  className="btn btn-primary"
-                  style={{
-                    width: "100%",
-                    height: "36px",
-                    padding: "0",
-                    fontSize: "12.5px",
-                  }}
-                >
-                  {t("auth_sign_in")}
-                </button>
-              )}
-            </div>
-          </aside>
-          {/* Main Content Area */}
-          <main className="laptop-main-area" style={{ height: "100%" }}>
-            {/* Mini-NavBar */}
-            <nav className="laptop-nav-bar">
-              <div
-                style={{ display: "flex", alignItems: "center", gap: "8px" }}
-              >
-                <span
-                  style={{
-                    fontSize: "12.5px",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.05em",
-                    color: "var(--text-secondary)",
-                    fontWeight: "600",
-                  }}
-                >
-                  {lang === "en" ? "Dashboard" : "Bảng điều khiển"} /{" "}
-                  <span style={{ color: "var(--accent-primary)" }}>
-                    {activeTab === "home"
-                      ? t("tab_home")
-                      : activeTab === "chat"
-                        ? t("tab_chat")
-                        : activeTab === "planner"
-                          ? t("tab_scheduler")
-                          : activeTab === "knowledge"
-                            ? t("tab_knowledge")
-                            : activeTab === "coach"
-                              ? t("tab_coach")
-                              : activeTab === "about"
-                                ? t("tab_about")
-                                : t("tab_tools")}
-                  </span>
-                </span>
-              </div>
-              <div
-                style={{ display: "flex", alignItems: "center", gap: "16px" }}
-              >
-                {/* Layout Switcher */}
-                <div
-                  style={{
-                    display: "flex",
-                    background: "rgba(255, 255, 255, 0.45)",
-                    border: "1px solid var(--border-color)",
-                    padding: "2px",
-                    borderRadius: "8px",
-                    gap: "2px",
-                  }}
-                >
-                  <button
-                    onClick={() => changeViewMode("showcase")}
-                    style={{
-                      padding: "4px 8px",
-                      fontSize: "10px",
-                      borderRadius: "6px",
-                      border: "none",
-                      background:
-                        (viewMode as string) === "showcase"
-                          ? "var(--accent-primary)"
-                          : "transparent",
-                      color:
-                        (viewMode as string) === "showcase"
-                          ? "#ffffff"
-                          : "var(--text-secondary)",
-                      cursor: "pointer",
-                      fontWeight:
-                        (viewMode as string) === "showcase" ? "600" : "500",
-                      transition: "all 0.15s",
-                    }}
-                  >
-                    {lang === "en" ? "Showcase" : "Giới thiệu"}
-                  </button>
-                  <button
-                    onClick={() => changeViewMode("desktop")}
-                    style={{
-                      padding: "4px 8px",
-                      fontSize: "10px",
-                      borderRadius: "6px",
-                      border: "none",
-                      background:
-                        (viewMode as string) === "desktop"
-                          ? "var(--accent-primary)"
-                          : "transparent",
-                      color:
-                        (viewMode as string) === "desktop"
-                          ? "#ffffff"
-                          : "var(--text-secondary)",
-                      cursor: "pointer",
-                      fontWeight:
-                        (viewMode as string) === "desktop" ? "600" : "500",
-                      transition: "all 0.15s",
-                    }}
-                  >
-                    {lang === "en" ? "Desktop Only" : "Chỉ Máy tính"}
-                  </button>
-                  <button
-                    onClick={() => changeViewMode("mobile")}
-                    style={{
-                      padding: "4px 8px",
-                      fontSize: "10px",
-                      borderRadius: "6px",
-                      border: "none",
-                      background:
-                        (viewMode as string) === "mobile"
-                          ? "var(--accent-primary)"
-                          : "transparent",
-                      color:
-                        (viewMode as string) === "mobile"
-                          ? "#ffffff"
-                          : "var(--text-secondary)",
-                      cursor: "pointer",
-                      fontWeight:
-                        (viewMode as string) === "mobile" ? "600" : "500",
-                      transition: "all 0.15s",
-                    }}
-                  >
-                    {lang === "en" ? "Mobile Only" : "Chỉ Di động"}
-                  </button>
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    fontSize: "12px",
-                    color: "var(--text-secondary)",
-                  }}
-                >
-                  <span
-                    className="coach-status-dot"
-                    style={{
-                      backgroundColor: backendConnected
-                        ? "var(--accent-success)"
-                        : "var(--accent-alert)",
-                    }}
-                  ></span>
-                  {backendConnected ? "Live" : "Offline"}
-                </div>
-                {user && (
-                  <button
-                    onClick={handleLogout}
-                    className="btn btn-secondary"
-                    style={{
-                      padding: "4px 10px",
-                      fontSize: "11px",
-                      height: "26px",
-                      borderRadius: "6px",
-                    }}
-                  >
-                    {t("logout")}
-                  </button>
-                )}
-              </div>
-            </nav>
-            {/* Scrollable Dashboard View */}
-            <div
-              className="laptop-scrollable-content"
-              style={{
-                height: "calc(100% - 60px)",
-                display: "flex",
-                flexDirection: "column",
-                overflow: activeTab === "chat" ? "hidden" : "auto",
-                padding: activeTab === "chat" ? "0" : undefined,
-              }}
-            >
-              {activeTab === "home" ? (
-                renderActiveTab(false)
-              ) : (
-                <div
-                  className={`content-panel ${activeTab === "chat" ? "chat-panel-active" : ""}`}
-                  style={
-                    activeTab === "chat"
-                      ? { overflowY: "hidden", flex: 1, minHeight: 0 }
-                      : { flex: 1, minHeight: 0 }
-                  }
-                >
-                  <div
-                    className="content-panel-inner"
-                    style={{
-                      width: "100%",
-                      height: activeTab === "chat" ? undefined : "auto",
-                      flex: activeTab === "chat" ? 1 : "1 0 auto",
-                      minHeight: activeTab === "chat" ? 0 : "100%",
-                      display: "flex",
-                      flexDirection: "column",
-                      maxWidth: activeTab === "chat" ? "680px" : undefined,
-                    }}
-                  >
-                    {/* Panel header breadcrumb */}
-                    <div className="panel-header">
-                      <span
-                        className="panel-header-icon"
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          color: "var(--text-primary)",
-                        }}
-                      >
-                        {activeTab === "chat" ? (
-                          <Robot size={28} weight="duotone" />
-                        ) : activeTab === "planner" ? (
-                          <CalendarBlank size={28} weight="duotone" />
-                        ) : activeTab === "knowledge" ? (
-                          <BookOpen size={28} weight="duotone" />
-                        ) : activeTab === "coach" ? (
-                          <Users size={28} weight="duotone" />
-                        ) : activeTab === "tools" ? (
-                          <Calculator size={28} weight="duotone" />
-                        ) : (
-                          <Mountains size={28} weight="duotone" />
-                        )}
-                      </span>
-                      <div>
-                        <h2>
-                          {activeTab === "chat"
-                            ? t("tab_chat")
-                            : activeTab === "planner"
-                              ? t("plan_setup")
-                              : activeTab === "knowledge"
-                                ? t("know_title")
-                                : activeTab === "coach"
-                                  ? t("tab_coach")
-                                  : activeTab === "tools"
-                                    ? t("tab_tools")
-                                    : t("tab_about")}
-                        </h2>
-                        <p>
-                          {activeTab === "chat"
-                            ? t("header_chat_desc")
-                            : activeTab === "planner"
-                              ? t("header_planner_desc")
-                              : activeTab === "knowledge"
-                                ? t("header_knowledge_desc")
-                                : activeTab === "coach"
-                                  ? t("header_coach_desc")
-                                  : activeTab === "tools"
-                                    ? t("header_tools_desc")
-                                    : t("header_about_desc")}
-                        </p>
-                      </div>
-                    </div>
-                    {/* Render actual tab content */}
-                    {renderActiveTab(false)}
-                  </div>
-                </div>
-              )}
-            </div>
-          </main>
-        </div>
-      ) : viewMode === "mobile" ? (
-        <div
-          className="mobile-only-wrapper"
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            height: "100dvh",
-            width: "100%",
-            position: "relative",
-            overflow: "hidden",
-          }}
-        >
-          {/* Glow Effects */}
-          <div className="glow-bg" style={{ opacity: 0.45 }}></div>
-          <div className="glow-bg-left" style={{ opacity: 0.35 }}></div>
           <div
             style={{
-              width: "100%",
-              maxWidth: "480px",
-              height: "100%",
-              background: "var(--bg-main)",
+              maxWidth: "1200px",
+              margin: "0 auto",
+              padding: "0 24px",
+              height: "70px",
               display: "flex",
-              flexDirection: "column",
-              borderLeft: "1px solid var(--border-color)",
-              borderRight: "1px solid var(--border-color)",
-              position: "relative",
-              boxShadow: "0 0 40px rgba(0,0,0,0.05)",
-              overflow: "hidden",
+              alignItems: "center",
+              justifyContent: "space-between",
             }}
           >
-            {/* Phone Top Header */}
-            <header
-              className="phone-header-bar"
-              style={{ padding: "12px 16px" }}
-            >
-              <a href="#" className="phone-logo" style={{ fontSize: "16px" }}>
-                Uphill<span>.AI</span>
-              </a>
-              <div
-                style={{ display: "flex", alignItems: "center", gap: "12px" }}
-              >
-                {/* Simple Mode Selector */}
-                <select
-                  value={viewMode}
-                  onChange={(e) => changeViewMode(e.target.value as any)}
-                  style={{
-                    background: "transparent",
-                    border: "1px solid var(--border-color)",
-                    borderRadius: "6px",
-                    fontSize: "10px",
-                    padding: "2px 6px",
-                    color: "var(--text-secondary)",
-                    outline: "none",
-                    cursor: "pointer",
-                  }}
-                >
-                  <option value="showcase">
-                    {lang === "en" ? "Showcase" : "Giới thiệu"}
-                  </option>
-                  <option value="desktop">
-                    {lang === "en" ? "Desktop Only" : "Chỉ Máy tính"}
-                  </option>
-                  <option value="mobile">
-                    {lang === "en" ? "Mobile Only" : "Chỉ Di động"}
-                  </option>
-                </select>
-                <span
-                  className="coach-status-dot"
-                  style={{
-                    width: "6px",
-                    height: "6px",
-                    backgroundColor: backendConnected
-                      ? "var(--accent-success)"
-                      : "var(--accent-alert)",
-                  }}
-                ></span>
-                {user ? (
-                  <span
-                    onClick={() => {
-                      setProfileSettingsOpen(true);
-                    }}
-                    style={{
-                      fontSize: "11px",
-                      fontWeight: "700",
-                      color: "var(--accent-primary)",
-                      cursor: "pointer",
-                    }}
-                  >
-                    {lang === "en" ? "Profile" : "Hồ sơ"}
-                  </span>
-                ) : (
-                  <span
-                    onClick={() => setAuthModalOpen(true)}
-                    style={{
-                      fontSize: "11px",
-                      fontWeight: "700",
-                      color: "var(--accent-primary)",
-                      cursor: "pointer",
-                    }}
-                  >
-                    {t("auth_sign_in")}
-                  </span>
-                )}
-              </div>
-            </header>
-            {/* Mobile Scrollable content */}
-            <div
-              className="phone-scrollable-content"
+            {/* Brand Logo */}
+            <Link
+              href="/"
               style={{
-                flex: 1,
-                overflowY: activeTab === "chat" ? "hidden" : "auto",
-                padding: activeTab === "chat" ? "0px" : "16px",
-                paddingBottom: activeTab === "chat" ? "56px" : "76px",
                 display: "flex",
-                flexDirection: "column",
-                minHeight: 0,
+                alignItems: "center",
+                gap: "10px",
+                textDecoration: "none",
+                color: "#111827",
               }}
             >
-              {renderActiveTab(true)}
-            </div>
-            {/* Persistent Bottom Tab Bar */}
-            <nav className="phone-bottom-tab-bar">
-              {(
-                [
-                  "home",
-                  "about",
-                  "chat",
-                  "planner",
-                  "tools",
-                  "knowledge",
-                  ...(user?.is_coach ? (["coach"] as const) : []),
-                ] as const
-              ).map((tab) => {
-                const active = activeTab === tab;
-                const tabLabel =
-                  tab === "home"
-                    ? "Home"
-                    : tab === "chat"
-                      ? "Coach"
-                      : tab === "planner"
-                        ? "Planner"
-                        : tab === "knowledge"
-                          ? "Hub"
-                          : tab === "coach"
-                            ? lang === "en"
-                              ? "Coach Dashboard"
-                              : "HLV"
-                            : tab === "tools"
-                              ? "Calculators"
-                              : "Philosophy";
-                return (
-                  <div
-                    key={tab}
-                    onClick={() => handleTabSwitch(tab)}
-                    className={`tab-bar-item ${active ? "tab-bar-item-active" : ""}`}
-                  >
-                    {getTabIcon(tab, active, 16)}
-                    <span
-                      className="tab-bar-item-label"
-                      style={{ textTransform: "none" }}
-                    >
-                      {tabLabel}
-                    </span>
-                  </div>
-                );
-              })}
-            </nav>
-          </div>
-        </div>
-      ) : (
-        <div
-          className="app-root"
-          style={{
-            position: "relative",
-            zIndex: 10,
-            display: "flex",
-            flexDirection: "column",
-            height: "100dvh",
-            overflow: "hidden",
-          }}
-        >
-          {/* ── Top Navigation ──────────────────────────────────── */}
-          <nav className="top-nav" style={{ flexShrink: 0 }}>
-            {/* Logo */}
-            <a className="top-nav-logo" href="#">
-              <span
+              <div
                 style={{
-                  display: "inline-flex",
+                  width: "36px",
+                  height: "36px",
+                  borderRadius: "10px",
+                  background: "linear-gradient(135deg, #19ce8b, #10b981)",
+                  display: "flex",
                   alignItems: "center",
-                  gap: "2px",
+                  justifyContent: "center",
+                  boxShadow: "0 4px 12px rgba(25, 206, 139, 0.3)",
                 }}
               >
                 <svg
-                  width="28"
-                  height="28"
+                  width="20"
+                  height="20"
                   viewBox="0 0 24 24"
                   fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.2"
+                  stroke="#ffffff"
+                  strokeWidth="2.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  style={{ color: "var(--accent-success)" }}
+                  aria-hidden="true"
                 >
-                  <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
-                  <polyline points="17 6 23 6 23 12" />
+                  <path d="M3 15l5-5 4 4 9-9" />
+                  <polyline points="16 5 21 5 21 10" />
                 </svg>
-                Uphill<span className="logo-accent">.AI</span>
+              </div>
+              <span
+                style={{
+                  fontFamily: "var(--font-schibsted), sans-serif",
+                  fontSize: "22px",
+                  fontWeight: 700,
+                  letterSpacing: "-0.8px",
+                }}
+              >
+                Uphill<span style={{ color: "var(--accent-primary)" }}>.AI</span>
               </span>
-            </a>
-            {/* Centre tab pills */}
-            <div className="top-nav-tabs">
-              {(
-                [
-                  "home",
-                  "chat",
-                  "planner",
-                  "knowledge",
-                  "tools",
-                  "about",
-                  ...(user?.is_coach ? (["coach"] as const) : []),
-                ] as const
-              ).map((tab) => {
-                const label =
-                  tab === "home"
-                    ? `${t("tab_home")}`
-                    : tab === "chat"
-                      ? `${t("tab_chat")}`
-                      : tab === "planner"
-                        ? `${t("tab_scheduler")}`
-                        : tab === "knowledge"
-                          ? `${t("tab_knowledge")}`
-                          : tab === "coach"
-                            ? `${t("tab_coach")}`
-                            : tab === "about"
-                              ? `${t("tab_about")}`
-                              : `${t("tab_tools")}`;
+            </Link>
+
+            {/* Nav Actions: Language Switcher + CTA */}
+            <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+              {/* Segmented Language Selector */}
+              <div
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  background: "rgba(255, 255, 255, 0.75)",
+                  backdropFilter: "blur(12px)",
+                  WebkitBackdropFilter: "blur(12px)",
+                  border: "1px solid rgba(0, 0, 0, 0.1)",
+                  borderRadius: "9999px",
+                  padding: "3px",
+                  boxShadow: "0 1px 3px rgba(0, 0, 0, 0.04)",
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setLang("en")}
+                  style={{
+                    border: "none",
+                    background: lang === "en" ? "#ffffff" : "transparent",
+                    color: lang === "en" ? "#111827" : "#6b7280",
+                    fontWeight: lang === "en" ? 700 : 500,
+                    fontSize: "12px",
+                    padding: "4px 10px",
+                    borderRadius: "9999px",
+                    cursor: "pointer",
+                    boxShadow: lang === "en" ? "0 1px 3px rgba(0, 0, 0, 0.1)" : "none",
+                    transition: "all 0.15s ease",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                  aria-label="Switch to English"
+                >
+                  <span>🇺🇸</span>
+                  <span>EN</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLang("vi")}
+                  style={{
+                    border: "none",
+                    background: lang === "vi" ? "#ffffff" : "transparent",
+                    color: lang === "vi" ? "#111827" : "#6b7280",
+                    fontWeight: lang === "vi" ? 700 : 500,
+                    fontSize: "12px",
+                    padding: "4px 10px",
+                    borderRadius: "9999px",
+                    cursor: "pointer",
+                    boxShadow: lang === "vi" ? "0 1px 3px rgba(0, 0, 0, 0.1)" : "none",
+                    transition: "all 0.15s ease",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                  aria-label="Switch to Vietnamese"
+                >
+                  <span>🇻🇳</span>
+                  <span>VI</span>
+                </button>
+              </div>
+
+              <Link
+                href="/app"
+                className="desktop-only-cta"
+                style={{
+                  background: "#111827",
+                  color: "#ffffff",
+                  padding: "10px 20px",
+                  borderRadius: "9999px",
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  textDecoration: "none",
+                  boxShadow: "0 4px 14px rgba(0, 0, 0, 0.12)",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  transition: "transform 0.15s ease, background 0.15s ease",
+                }}
+              >
+                <span>{t("landing_nav_cta")}</span>
+                <ArrowRight size={15} weight="bold" />
+              </Link>
+            </div>
+          </div>
+        </header>
+
+        {/* ── Main Marketing Body ────────────────────────────────────── */}
+        <main>
+          {/* ── Hero Section (Product-Led Presentation over Video) ───── */}
+          <section
+            style={{
+              position: "relative",
+              padding: "64px 24px 72px",
+            }}
+          >
+            <div
+              className="motion-fade-up"
+              style={{
+                maxWidth: "960px",
+                margin: "0 auto",
+                textAlign: "center",
+              }}
+            >
+              {/* Eyebrow badge */}
+              <div
+                className="hero-anim-badge"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  padding: "6px 14px",
+                  borderRadius: "9999px",
+                  background: "rgba(25, 206, 139, 0.12)",
+                  backdropFilter: "blur(12px)",
+                  border: "1px solid rgba(25, 206, 139, 0.3)",
+                  color: "var(--accent-primary)",
+                  fontSize: "13px",
+                  fontWeight: 700,
+                  marginBottom: "20px",
+                }}
+              >
+                <ShieldCheck size={16} weight="bold" />
+                <span>
+                  {lang === "vi"
+                    ? "KHOA HỌC CHẠY TRAIL"
+                    : "GROUNDED IN EXERCISE PHYSIOLOGY"}
+                </span>
+              </div>
+
+              {/* H1 Headline: strictly max 2 lines */}
+              <h1
+                className="hero-anim-title"
+                style={{
+                  fontFamily: "var(--font-schibsted), sans-serif",
+                  fontSize: "clamp(38px, 5.5vw, 62px)",
+                  fontWeight: 800,
+                  lineHeight: 1.08,
+                  letterSpacing: "-1.8px",
+                  color: "#111827",
+                  marginBottom: "18px",
+                  textShadow: "0 2px 20px rgba(255, 255, 255, 0.8)",
+                }}
+              >
+                {lang === "vi"
+                  ? "Tập Luyện Thông Minh, Chinh Phục Đỉnh Cao"
+                  : "Train Smarter, Go Higher"}
+              </h1>
+
+              {/* Subtext: under 20 words */}
+              <p
+                className="hero-anim-sub"
+                style={{
+                  fontSize: "clamp(16px, 2vw, 19px)",
+                  lineHeight: 1.5,
+                  color: "#0f172a",
+                  maxWidth: "640px",
+                  margin: "0 auto 32px",
+                  fontWeight: 500,
+                  textShadow: "0 1px 16px rgba(255, 255, 255, 0.95), 0 0 2px rgba(255, 255, 255, 0.8)",
+                }}
+              >
+                {t("landing_subtitle")}
+              </p>
+
+              {/* Primary & Secondary Action Cluster */}
+              <div
+                className="hero-anim-cta"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "16px",
+                  marginBottom: "36px",
+                  flexWrap: "wrap",
+                }}
+              >
+                <Link
+                  href="/app"
+                  className="btn-primary-motion"
+                  style={{
+                    background: "#111827",
+                    color: "#ffffff",
+                    padding: "16px 36px",
+                    borderRadius: "9999px",
+                    fontSize: "16.5px",
+                    fontWeight: 700,
+                    textDecoration: "none",
+                    boxShadow: "0 8px 24px rgba(0, 0, 0, 0.18)",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "10px",
+                  }}
+                >
+                  <span>{t("landing_cta_primary")}</span>
+                  <ArrowRight size={18} weight="bold" className="cta-arrow" />
+                </Link>
+
+                <Link
+                  href="/science"
+                  className="btn-secondary-motion"
+                  style={{
+                    background: "rgba(255, 255, 255, 0.75)",
+                    backdropFilter: "blur(16px)",
+                    color: "#111827",
+                    border: "1px solid rgba(255, 255, 255, 0.9)",
+                    padding: "16px 28px",
+                    borderRadius: "9999px",
+                    fontSize: "16.5px",
+                    fontWeight: 600,
+                    textDecoration: "none",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    boxShadow: "0 4px 16px rgba(0, 0, 0, 0.04)",
+                  }}
+                >
+                  <span>{t("landing_nav_science")}</span>
+                </Link>
+              </div>
+
+              {/* Trust Statement (Hero Integration) */}
+              <div className="hero-anim-trust" style={{ display: "flex", justifyContent: "center" }}>
+                <TrustBanner lang={lang} />
+              </div>
+            </div>
+          </section>
+
+
+
+          {/* ── 4 Sequential Product Steps (Real App Walkthrough) ─────── */}
+          <section
+            id="how-it-works"
+            className="landing-section-how-it-works"
+          >
+            <div style={{ textAlign: "center", marginBottom: "48px" }}>
+              <h2
+                style={{
+                  fontFamily: "var(--font-schibsted), sans-serif",
+                  fontSize: "clamp(26px, 4vw, 40px)",
+                  fontWeight: 800,
+                  color: "#111827",
+                  letterSpacing: "-1px",
+                  marginBottom: "12px",
+                  textShadow: "0 2px 16px rgba(255, 255, 255, 0.8)",
+                }}
+              >
+                {t("landing_steps_title")}
+              </h2>
+              <p
+                style={{
+                  fontSize: "17px",
+                  color: "#374151",
+                  maxWidth: "600px",
+                  margin: "0 auto",
+                  fontWeight: 500,
+                }}
+              >
+                {t("landing_steps_subtitle")}
+              </p>
+            </div>
+
+            {/* Steps alternating layout */}
+            <div className="landing-steps-container">
+              {STEPS.map((step, i) => {
+                const Icon = step.icon;
+                const isEven = i % 2 === 1;
                 return (
-                  <button
-                    key={tab}
-                    className={`top-nav-tab ${activeTab === tab ? "active" : ""}`}
-                    onClick={() => handleTabSwitch(tab)}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
-                    }}
+                  <div
+                    key={step.titleKey}
+                    className={`card-interactive-lift landing-step-card scroll-reveal ${isEven ? "step-even" : "step-odd"}`}
                   >
-                    {getTabIcon(tab, activeTab === tab, 18)}
-                    {label}
-                  </button>
+                    {/* Left Column (or Right Column if isEven on desktop; always top on mobile) */}
+                    <div className="landing-step-text-col">
+                      <div
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "8px",
+                          padding: "6px 12px",
+                          borderRadius: "8px",
+                          background: "rgba(25, 206, 139, 0.12)",
+                          color: "var(--accent-primary)",
+                          fontSize: "12.5px",
+                          fontWeight: 700,
+                          marginBottom: "16px",
+                        }}
+                      >
+                        <Icon size={16} weight="bold" />
+                        <span>{lang === "en" ? `Step 0${i + 1}` : `Bước 0${i + 1}`}</span>
+                      </div>
+
+                      <h3
+                        style={{
+                          fontFamily: "var(--font-schibsted), sans-serif",
+                          fontSize: "clamp(20px, 2.5vw, 26px)",
+                          fontWeight: 700,
+                          color: "#111827",
+                          letterSpacing: "-0.6px",
+                          marginBottom: "12px",
+                          lineHeight: 1.25,
+                        }}
+                      >
+                        {t(step.titleKey)}
+                      </h3>
+
+                      <p
+                        style={{
+                          fontSize: "15.5px",
+                          lineHeight: 1.65,
+                          color: "#4b5563",
+                          marginBottom: "20px",
+                        }}
+                      >
+                        {t(step.descKey)}
+                      </p>
+
+                      <Link
+                        href={step.anchor}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          fontSize: "14.5px",
+                          fontWeight: 600,
+                          color: "var(--accent-primary)",
+                          textDecoration: "none",
+                        }}
+                      >
+                        <span>{t("landing_step_science_link")}</span>
+                      </Link>
+                    </div>
+
+                    {/* Screenshot Card Container */}
+                    <div className="landing-step-img-col">
+                      <img
+                        src={step.image}
+                        alt={t(step.altKey)}
+                        width={1280}
+                        height={720}
+                        loading="lazy"
+                        className="landing-step-img"
+                      />
+                    </div>
+                  </div>
                 );
               })}
             </div>
-            {/* Right — status + user */}
-            <div className="top-nav-right">
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  fontSize: "12px",
-                  color: "rgba(0,0,0,0.6)",
-                }}
-              >
-                <span
-                  className="coach-status-dot"
-                  style={{
-                    backgroundColor: backendConnected
-                      ? "var(--accent-success)"
-                      : "var(--accent-alert)",
-                  }}
-                />
-                <span>{backendConnected ? "Live" : "Offline"}</span>
-              </div>
-              {user ? (
-                <div
-                  className="top-nav-avatar"
-                  onClick={() => {
-                    setProfileSettingsOpen(true);
-                  }}
-                  title={
-                    lang === "en"
-                      ? `${user.name} — click to open settings`
-                      : `${user.name} — nhấn để mở cài đặt`
-                  }
-                  style={{
-                    background:
-                      "linear-gradient(135deg, var(--accent-success), #16a34a)",
-                  }}
-                >
-                  {user.name[0].toUpperCase()}
-                </div>
-              ) : (
-                <button
-                  className="btn btn-primary"
-                  onClick={() => setAuthModalOpen(true)}
-                  style={{
-                    padding: "8px 18px",
-                    fontSize: "12.5px",
-                    background: "var(--accent-success)",
-                  }}
-                >
-                  {t("auth_sign_in")}
-                </button>
-              )}
-            </div>
-          </nav>
-          {/* ── Main Content Body ───────────────────────────────── */}
-          <div
+          </section>
+
+          {/* ── Foundational Methodology & Acknowledgement (The Legends Behind Uphill AI) ── */}
+          <section
+            id="methodology"
+            className="motion-fade-up"
             style={{
-              flex: 1,
-              overflow: "hidden",
-              position: "relative",
-              display: "flex",
-              flexDirection: "column",
+              padding: "96px 24px",
+              maxWidth: "1140px",
+              margin: "0 auto",
+              boxSizing: "border-box",
             }}
           >
-            {/* ── HOME TAB: introductory hero view ────────────────── */}
-            {activeTab === "home" && (
-              <section
-                className="hero-section"
+            {/* Header */}
+            <div style={{ textAlign: "center", marginBottom: "56px" }}>
+              <div
                 style={{
-                  height: "100%",
-                  overflowY: "auto",
-                  justifyContent: "flex-start",
-                  display: "flex",
-                  flexDirection: "column",
+                  display: "inline-flex",
                   alignItems: "center",
-                  paddingTop: "40px",
-                  paddingBottom: isViewportMobile ? "160px" : "40px",
-                  marginTop: 0,
+                  gap: "8px",
+                  padding: "4px 14px",
+                  borderRadius: "999px",
+                  background: "rgba(25, 206, 139, 0.12)",
+                  border: "1px solid rgba(25, 206, 139, 0.28)",
+                  color: "var(--accent-primary)",
+                  fontSize: "11px",
+                  fontWeight: 700,
+                  letterSpacing: "0.12em",
+                  textTransform: "uppercase",
+                  marginBottom: "14px",
                 }}
               >
-                {renderActiveTab(isViewportMobile)}
-              </section>
-            )}
-            {activeTab !== "home" && (
-              <div
-                className={`content-panel ${activeTab === "chat" ? "chat-panel-active" : ""}`}
-                style={
-                  activeTab === "chat"
-                    ? { overflowY: "hidden", flex: 1, minHeight: 0 }
-                    : { flex: 1, minHeight: 0 }
-                }
+                <Mountains size={14} weight="bold" />
+                <span>{t("landing_ack_eyebrow")}</span>
+              </div>
+              <h2
+                style={{
+                  fontFamily: "var(--font-schibsted), sans-serif",
+                  fontSize: "clamp(28px, 4vw, 40px)",
+                  fontWeight: 800,
+                  color: "#111827",
+                  letterSpacing: "-1px",
+                  marginBottom: "16px",
+                  textShadow: "0 2px 16px rgba(255, 255, 255, 0.8)",
+                }}
               >
+                {t("landing_ack_title")}
+              </h2>
+              <p
+                style={{
+                  fontSize: "17px",
+                  lineHeight: "1.65",
+                  color: "#374151",
+                  maxWidth: "760px",
+                  margin: "0 auto",
+                  fontWeight: 500,
+                }}
+              >
+                {t("landing_ack_subtitle")}
+              </p>
+            </div>
+
+            {/* Unified Master Showcase Card: The Definitive Textbook + 3 Co-Founders & Authors */}
+            <div
+              className="methodology-unified-card scroll-reveal"
+              style={{
+                background: "rgba(255, 255, 255, 0.88)",
+                backdropFilter: "blur(28px)",
+                WebkitBackdropFilter: "blur(28px)",
+                borderRadius: "32px",
+                border: "1px solid rgba(255, 255, 255, 0.95)",
+                boxShadow: "0 24px 60px rgba(0, 0, 0, 0.06), 0 2px 6px rgba(0, 0, 0, 0.02)",
+                padding: "clamp(28px, 4vw, 44px)",
+                display: "flex",
+                flexDirection: "column",
+                gap: "32px",
+                position: "relative",
+                overflow: "hidden",
+              }}
+            >
+              {/* Subtle top-right ambient glow */}
+              <div
+                className="ambient-aura-breathing"
+                style={{
+                  position: "absolute",
+                  top: "-100px",
+                  right: "-80px",
+                  width: "360px",
+                  height: "360px",
+                  borderRadius: "50%",
+                  background: "radial-gradient(circle, rgba(25, 206, 139, 0.07) 0%, rgba(25, 206, 139, 0) 70%)",
+                  pointerEvents: "none",
+                }}
+              />
+
+              {/* ── Upper Section: The Definitive Textbook (3D Book + Description + Pull Quote) ── */}
+              <div className="methodology-book-grid">
+                {/* Left Column: 3D Book Mockup with floating motion */}
                 <div
-                  className="content-panel-inner"
                   style={{
-                    width: "100%",
-                    height: activeTab === "chat" ? undefined : "auto",
-                    flex: activeTab === "chat" ? 1 : "1 0 auto",
-                    minHeight: activeTab === "chat" ? 0 : "100%",
                     display: "flex",
                     flexDirection: "column",
-                    maxWidth: activeTab === "chat" ? "680px" : undefined,
-                    padding:
-                      activeTab === "chat" && isViewportMobile
-                        ? "0px"
-                        : undefined,
-                    paddingBottom:
-                      activeTab === "chat" && isViewportMobile
-                        ? "calc(80px + env(safe-area-inset-bottom))"
-                        : undefined,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    position: "relative",
+                    padding: "8px 0",
                   }}
                 >
-                  {renderActiveTab(isViewportMobile)}
+                  <div
+                    style={{
+                      position: "relative",
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      width: "100%",
+                      maxWidth: "320px",
+                    }}
+                  >
+                    <a
+                      href="https://www.amazon.com.au/Training-Uphill-Athlete-Mountain-Mountaineers/dp/1938340841"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ display: "block", textDecoration: "none" }}
+                      aria-label="Training for the Uphill Athlete on Amazon"
+                    >
+                      <img
+                        src="/training-for-the-uphill-athlete.png"
+                        alt="Training for the Uphill Athlete by Steve House, Scott Johnston, and Kilian Jornet"
+                        width={360}
+                        height={460}
+                        className="book-mockup-floating"
+                        style={{
+                          width: "100%",
+                          maxWidth: "280px",
+                          height: "auto",
+                          display: "block",
+                          filter: "drop-shadow(0 20px 28px rgba(0, 0, 0, 0.18))",
+                          cursor: "pointer",
+                        }}
+                      />
+                    </a>
+                  </div>
+                  {/* Soft shadow accent below book */}
+                  <div
+                    style={{
+                      width: "180px",
+                      height: "16px",
+                      background: "radial-gradient(ellipse at center, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0) 70%)",
+                      marginTop: "6px",
+                    }}
+                  />
+                </div>
+
+                {/* Right Column: Textbook Details & Direct Buy Link */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                    <span
+                      style={{
+                        fontSize: "11px",
+                        fontWeight: 700,
+                        letterSpacing: "0.1em",
+                        textTransform: "uppercase",
+                        color: "var(--accent-primary)",
+                        background: "rgba(25, 206, 139, 0.12)",
+                        padding: "3px 10px",
+                        borderRadius: "6px",
+                      }}
+                    >
+                      {t("landing_ack_book_role")}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: "12px",
+                        fontWeight: 600,
+                        color: "#6B7280",
+                      }}
+                    >
+                      Patagonia Books
+                    </span>
+                  </div>
+
+                  <h3
+                    style={{
+                      fontFamily: "var(--font-schibsted), sans-serif",
+                      fontSize: "clamp(24px, 2.8vw, 30px)",
+                      fontWeight: 800,
+                      color: "#111827",
+                      letterSpacing: "-0.8px",
+                      margin: 0,
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    {t("landing_ack_book_name")}
+                  </h3>
+
+                  <p
+                    style={{
+                      fontSize: "14px",
+                      fontWeight: 600,
+                      color: "#4B5563",
+                      margin: 0,
+                    }}
+                  >
+                    {t("landing_ack_book_sub")}
+                  </p>
+
+                  <p
+                    style={{
+                      fontSize: "15px",
+                      lineHeight: "1.6",
+                      color: "#374151",
+                      margin: 0,
+                    }}
+                  >
+                    {t("landing_ack_book_desc")}
+                  </p>
+
+                  {/* Pull Quote */}
+                  <blockquote
+                    style={{
+                      margin: "8px 0 4px",
+                      padding: "14px 18px",
+                      background: "rgba(240, 253, 244, 0.85)",
+                      borderLeft: "4px solid var(--accent-primary)",
+                      borderRadius: "0 12px 12px 0",
+                    }}
+                  >
+                    <p
+                      style={{
+                        fontSize: "14.5px",
+                        fontStyle: "italic",
+                        color: "#1F2937",
+                        lineHeight: "1.55",
+                        margin: "0 0 6px",
+                      }}
+                    >
+                      {t("landing_ack_quote")}
+                    </p>
+                    <footer
+                      style={{
+                        fontSize: "12.5px",
+                        fontWeight: 600,
+                        color: "var(--accent-primary)",
+                      }}
+                    >
+                      {t("landing_ack_quote_author")}
+                    </footer>
+                  </blockquote>
+
+                  {/* Action Links */}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "14px",
+                      marginTop: "6px",
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <a
+                      href="https://www.amazon.com.au/Training-Uphill-Athlete-Mountain-Mountaineers/dp/1938340841"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn-cta-motion"
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        padding: "11px 22px",
+                        borderRadius: "12px",
+                        background: "var(--accent-primary)",
+                        color: "#ffffff",
+                        fontSize: "14px",
+                        fontWeight: 700,
+                        textDecoration: "none",
+                        boxShadow: "0 4px 14px rgba(25, 206, 139, 0.35)",
+                      }}
+                    >
+                      <span>{t("landing_ack_amazon_btn")}</span>
+                      <span className="cta-arrow">→</span>
+                    </a>
+
+                    <Link
+                      href="/science"
+                      style={{
+                        fontSize: "13.5px",
+                        fontWeight: 600,
+                        color: "#1F2937",
+                        textDecoration: "none",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "4px",
+                      }}
+                    >
+                      <span>{t("landing_ack_science_link")}</span>
+                    </Link>
+                  </div>
                 </div>
               </div>
-            )}
-          </div>
-          {/* Mobile Bottom Navigation Tabs (visible only on mobile viewports via CSS) */}
-          <div className="mobile-bottom-nav-tabs">
-            {(
-              [
-                "home",
-                "chat",
-                "planner",
-                "knowledge",
-                "tools",
-                "about",
-                ...(user?.is_coach ? (["coach"] as const) : []),
-              ] as const
-            ).map((tab) => {
-              const active = activeTab === tab;
-              const tabLabel =
-                tab === "home"
-                  ? t("tab_home")
-                  : tab === "chat"
-                    ? t("tab_chat")
-                    : tab === "planner"
-                      ? t("tab_scheduler")
-                      : tab === "knowledge"
-                        ? t("tab_knowledge")
-                        : tab === "coach"
-                          ? t("tab_coach")
-                          : tab === "tools"
-                            ? t("tab_tools")
-                            : t("tab_about");
-              return (
-                <button
-                  key={tab}
-                  className={`mobile-bottom-nav-tab ${active ? "active" : ""}`}
-                  onClick={() => handleTabSwitch(tab)}
+
+              {/* ── Sleek Inset Divider with Pill Label ── */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "14px",
+                  margin: "4px 0 0",
+                }}
+              >
+                <div style={{ flex: 1, height: "1px", background: "linear-gradient(90deg, rgba(0,0,0,0.01), rgba(0,0,0,0.08))" }} />
+                <span
+                  style={{
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    color: "var(--accent-primary)",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    background: "rgba(25, 206, 139, 0.08)",
+                    border: "1px solid rgba(25, 206, 139, 0.2)",
+                    padding: "4px 14px",
+                    borderRadius: "999px",
+                  }}
                 >
-                  <span className="mobile-bottom-nav-tab-icon">
-                    {getTabIcon(tab, active, 20)}
+                  <Mountains size={13} weight="bold" />
+                  <span>{t("landing_ack_authors_divider")}</span>
+                </span>
+                <div style={{ flex: 1, height: "1px", background: "linear-gradient(90deg, rgba(0,0,0,0.08), rgba(0,0,0,0.01))" }} />
+              </div>
+
+              {/* ── Lower Section: Three Authors Inset Shelf (Scott, Kilian & Steve) ── */}
+              <div className="landing-authors-grid">
+                {/* Scott Johnston Card */}
+                <div
+                  className="card-interactive-lift scroll-reveal stagger-1"
+                  style={{
+                    background: "rgba(249, 250, 251, 0.8)",
+                    backdropFilter: "blur(16px)",
+                    WebkitBackdropFilter: "blur(16px)",
+                    borderRadius: "16px",
+                    border: "1px solid rgba(229, 231, 235, 0.85)",
+                    boxShadow: "0 2px 10px rgba(0, 0, 0, 0.02)",
+                    padding: "18px 20px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "10px",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <div
+                      style={{
+                        width: "38px",
+                        height: "38px",
+                        borderRadius: "10px",
+                        background: "rgba(25, 206, 139, 0.12)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "var(--accent-primary)",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <ChartLineUp size={20} weight="bold" />
+                    </div>
+                    <div>
+                      <span
+                        style={{
+                          fontSize: "10.5px",
+                          fontWeight: 700,
+                          letterSpacing: "0.08em",
+                          textTransform: "uppercase",
+                          color: "var(--accent-primary)",
+                          display: "block",
+                        }}
+                      >
+                        {t("landing_ack_scott_role")}
+                      </span>
+                      <h4
+                        style={{
+                          fontFamily: "var(--font-schibsted), sans-serif",
+                          fontSize: "18.5px",
+                          fontWeight: 800,
+                          color: "#111827",
+                          margin: "2px 0 0",
+                        }}
+                      >
+                        {t("landing_ack_scott_name")}
+                      </h4>
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      color: "#374151",
+                      background: "rgba(0, 0, 0, 0.03)",
+                      padding: "5px 10px",
+                      borderRadius: "8px",
+                      alignSelf: "flex-start",
+                    }}
+                  >
+                    {t("landing_ack_scott_sub")}
+                  </div>
+                </div>
+
+                {/* Kilian Jornet Card */}
+                <div
+                  className="card-interactive-lift scroll-reveal stagger-2"
+                  style={{
+                    background: "rgba(249, 250, 251, 0.8)",
+                    backdropFilter: "blur(16px)",
+                    WebkitBackdropFilter: "blur(16px)",
+                    borderRadius: "16px",
+                    border: "1px solid rgba(229, 231, 235, 0.85)",
+                    boxShadow: "0 2px 10px rgba(0, 0, 0, 0.02)",
+                    padding: "18px 20px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "10px",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <div
+                      style={{
+                        width: "38px",
+                        height: "38px",
+                        borderRadius: "10px",
+                        background: "rgba(25, 206, 139, 0.12)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "var(--accent-primary)",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <Trophy size={20} weight="bold" />
+                    </div>
+                    <div>
+                      <span
+                        style={{
+                          fontSize: "10.5px",
+                          fontWeight: 700,
+                          letterSpacing: "0.08em",
+                          textTransform: "uppercase",
+                          color: "var(--accent-primary)",
+                          display: "block",
+                        }}
+                      >
+                        {t("landing_ack_kilian_role")}
+                      </span>
+                      <h4
+                        style={{
+                          fontFamily: "var(--font-schibsted), sans-serif",
+                          fontSize: "18.5px",
+                          fontWeight: 800,
+                          color: "#111827",
+                          margin: "2px 0 0",
+                        }}
+                      >
+                        {t("landing_ack_kilian_name")}
+                      </h4>
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      color: "#374151",
+                      background: "rgba(0, 0, 0, 0.03)",
+                      padding: "5px 10px",
+                      borderRadius: "8px",
+                      alignSelf: "flex-start",
+                    }}
+                  >
+                    {t("landing_ack_kilian_sub")}
+                  </div>
+                </div>
+
+                {/* Steve House Card */}
+                <div
+                  className="card-interactive-lift scroll-reveal stagger-3"
+                  style={{
+                    background: "rgba(249, 250, 251, 0.8)",
+                    backdropFilter: "blur(16px)",
+                    WebkitBackdropFilter: "blur(16px)",
+                    borderRadius: "16px",
+                    border: "1px solid rgba(229, 231, 235, 0.85)",
+                    boxShadow: "0 2px 10px rgba(0, 0, 0, 0.02)",
+                    padding: "18px 20px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "10px",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <div
+                      style={{
+                        width: "38px",
+                        height: "38px",
+                        borderRadius: "10px",
+                        background: "rgba(25, 206, 139, 0.12)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "var(--accent-primary)",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <Mountains size={20} weight="bold" />
+                    </div>
+                    <div>
+                      <span
+                        style={{
+                          fontSize: "10.5px",
+                          fontWeight: 700,
+                          letterSpacing: "0.08em",
+                          textTransform: "uppercase",
+                          color: "var(--accent-primary)",
+                          display: "block",
+                        }}
+                      >
+                        {t("landing_ack_steve_role")}
+                      </span>
+                      <h4
+                        style={{
+                          fontFamily: "var(--font-schibsted), sans-serif",
+                          fontSize: "18.5px",
+                          fontWeight: 800,
+                          color: "#111827",
+                          margin: "2px 0 0",
+                        }}
+                      >
+                        {t("landing_ack_steve_name")}
+                      </h4>
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      color: "#374151",
+                      background: "rgba(0, 0, 0, 0.03)",
+                      padding: "5px 10px",
+                      borderRadius: "8px",
+                      alignSelf: "flex-start",
+                    }}
+                  >
+                    {t("landing_ack_steve_sub")}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* ── Coach Uphill (AI Chat Agent) Feature Spotlight ──────── */}
+          <section
+            id="coach"
+            className="landing-coach-section"
+          >
+            <div
+              className="card-interactive-lift landing-coach-card scroll-reveal"
+            >
+              <div>
+                <div
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    padding: "6px 14px",
+                    borderRadius: "9999px",
+                    background: "rgba(25, 206, 139, 0.12)",
+                    color: "var(--accent-primary)",
+                    fontSize: "12.5px",
+                    fontWeight: 700,
+                    marginBottom: "16px",
+                  }}
+                >
+                  <Robot size={18} weight="bold" />
+                  <span>{t("landing_coach_eyebrow")}</span>
+                </div>
+
+                <h2
+                  style={{
+                    fontFamily: "var(--font-schibsted), sans-serif",
+                    fontSize: "clamp(26px, 3.5vw, 36px)",
+                    fontWeight: 800,
+                    color: "#111827",
+                    letterSpacing: "-0.8px",
+                    lineHeight: 1.2,
+                    marginBottom: "14px",
+                  }}
+                >
+                  {t("landing_coach_title")}
+                </h2>
+
+                <p
+                  style={{
+                    fontSize: "16px",
+                    lineHeight: 1.65,
+                    color: "#4b5563",
+                    marginBottom: "24px",
+                  }}
+                >
+                  {t("landing_coach_subtitle")}
+                </p>
+
+                <Link
+                  href="/science#coach-grounding"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    fontSize: "15px",
+                    fontWeight: 700,
+                    color: "var(--accent-primary)",
+                    textDecoration: "none",
+                  }}
+                >
+                  <span>{t("landing_coach_science_link")}</span>
+                  <ArrowRight size={16} weight="bold" />
+                </Link>
+              </div>
+
+              {/* Tight screenshot of chat exchange demonstrating refusal & citation */}
+              <div className="landing-coach-img-col">
+                <img
+                  src="/screenshots/coach-uphill-chat-exchange.png"
+                  alt="Coach Uphill chat exchange demonstrating source citation and refusal to recommend unverified supplements"
+                  width={1360}
+                  height={1200}
+                  loading="lazy"
+                  className="landing-coach-img"
+                />
+              </div>
+            </div>
+          </section>
+
+          {/* ── Specialized Mountain Tools Strip ─────────────────────── */}
+          <section
+            id="tools"
+            className="landing-tools-section"
+          >
+            <div style={{ maxWidth: "1140px", margin: "0 auto" }}>
+              <div style={{ textAlign: "center", marginBottom: "48px" }}>
+                <h2
+                  style={{
+                    fontFamily: "var(--font-schibsted), sans-serif",
+                    fontSize: "clamp(26px, 3.5vw, 36px)",
+                    fontWeight: 800,
+                    color: "#111827",
+                    letterSpacing: "-0.8px",
+                    marginBottom: "10px",
+                  }}
+                >
+                  {t("landing_tooling_title")}
+                </h2>
+                <p
+                  style={{
+                    fontSize: "16px",
+                    color: "#4b5563",
+                    maxWidth: "580px",
+                    margin: "0 auto",
+                    fontWeight: 500,
+                  }}
+                >
+                  {t("landing_tooling_subtitle")}
+                </p>
+              </div>
+
+              {/* 4 Tool Cards with Tight Screenshots (KoopAI-Style 2x2 Grid) */}
+              <div className="landing-tools-grid">
+                {toolingFeatures.map((feature, i) => {
+                  const Icon = TOOLING_ICONS[feature.icon as keyof typeof TOOLING_ICONS];
+                  const copy = feature[lang];
+                  const config = TOOL_CONFIG[feature.id as keyof typeof TOOL_CONFIG];
+                  return (
+                    <div
+                      key={feature.id}
+                      className={`card-interactive-lift landing-tool-card scroll-reveal stagger-${i + 1}`}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "14px",
+                          marginBottom: "14px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: "44px",
+                            height: "44px",
+                            borderRadius: "12px",
+                            background: "rgba(25, 206, 139, 0.12)",
+                            color: "var(--accent-primary)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            flexShrink: 0,
+                          }}
+                        >
+                          <Icon size={24} weight="duotone" />
+                        </div>
+                        <div>
+                          <h3
+                            style={{
+                              fontFamily: "var(--font-schibsted), sans-serif",
+                              fontSize: "19px",
+                              fontWeight: 700,
+                              color: "#111827",
+                              margin: 0,
+                            }}
+                          >
+                            {copy.tagline}
+                          </h3>
+                        </div>
+                      </div>
+
+                      <p
+                        style={{
+                          fontSize: "14px",
+                          lineHeight: 1.55,
+                          color: "#4b5563",
+                          margin: "0 0 18px",
+                        }}
+                      >
+                        {copy.cardBlurb}
+                      </p>
+
+                      {/* Tight Cropped Module Screenshot */}
+                      <div className="landing-tool-img-box">
+                        <img
+                          src={config.image}
+                          alt={config.alt}
+                          width={1360}
+                          height={800}
+                          className="landing-tool-img"
+                        />
+                      </div>
+
+                      <div style={{ marginTop: "auto" }}>
+                        <Link
+                          href={config.anchor}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            fontSize: "14px",
+                            fontWeight: 700,
+                            color: "var(--accent-primary)",
+                            textDecoration: "none",
+                          }}
+                        >
+                          <span>{t("landing_step_science_link")}</span>
+                        </Link>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div style={{ textAlign: "center", marginTop: "40px" }}>
+                <Link
+                  href="/science"
+                  style={{
+                    fontSize: "15px",
+                    fontWeight: 700,
+                    color: "var(--accent-primary)",
+                    textDecoration: "none",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                  }}
+                >
+                  <span>{t("landing_tooling_cta")}</span>
+                </Link>
+              </div>
+            </div>
+          </section>
+
+          {/* ── Connected Mountain Trail Ecosystem Strip ─────────────── */}
+          <section style={{ padding: "64px 24px" }}>
+            <div
+              className="scroll-reveal"
+              style={{
+                maxWidth: "840px",
+                margin: "0 auto",
+                textAlign: "center",
+                background: "rgba(255, 255, 255, 0.78)",
+                backdropFilter: "blur(20px)",
+                WebkitBackdropFilter: "blur(20px)",
+                borderRadius: "24px",
+                padding: "36px 28px",
+                border: "1px solid rgba(255, 255, 255, 0.85)",
+                boxShadow: "0 12px 32px rgba(0, 0, 0, 0.04)",
+              }}
+            >
+              <h3
+                style={{
+                  fontFamily: "var(--font-schibsted), sans-serif",
+                  fontSize: "20px",
+                  fontWeight: 700,
+                  color: "#111827",
+                  marginBottom: "8px",
+                }}
+              >
+                {t("landing_sync_title")}
+              </h3>
+              <p
+                style={{
+                  fontSize: "14.5px",
+                  color: "#4b5563",
+                  marginBottom: "24px",
+                }}
+              >
+                {t("landing_sync_subtitle")}
+              </p>
+
+              {/* Platform Badges: COROS Live, others clearly Coming soon */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "28px",
+                  flexWrap: "wrap",
+                }}
+              >
+                {/* COROS - Active Integration */}
+                <div
+                  className="card-interactive-lift"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    color: "#111827",
+                    fontSize: "15px",
+                    fontWeight: 700,
+                    padding: "8px 16px",
+                    borderRadius: "9999px",
+                    background: "rgba(25, 206, 139, 0.12)",
+                    border: "1px solid rgba(25, 206, 139, 0.35)",
+                  }}
+                >
+                  <span className="live-beacon-dot" />
+                  <CheckCircle size={18} weight="fill" color="#19ce8b" />
+                  <span>COROS</span>
+                  <span
+                    style={{
+                      fontSize: "10.5px",
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.5px",
+                      color: "var(--accent-primary)",
+                      background: "rgba(25, 206, 139, 0.2)",
+                      padding: "2px 7px",
+                      borderRadius: "4px",
+                      marginLeft: "4px",
+                    }}
+                  >
+                    {t("landing_sync_live")}
                   </span>
-                  <span className="mobile-bottom-nav-tab-label">
-                    {tabLabel}
-                  </span>
-                </button>
-              );
-            })}
+                </div>
+
+                {/* Coming Soon Platforms */}
+                {[
+                  { name: "Garmin Connect" },
+                  { name: "Strava" },
+                  { name: "Apple Watch" },
+                ].map((item) => (
+                  <div
+                    key={item.name}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      color: "#6b7280",
+                      fontSize: "14.5px",
+                      fontWeight: 500,
+                      opacity: 0.55,
+                    }}
+                  >
+                    <span>{item.name}</span>
+                    <span
+                      style={{
+                        fontSize: "10.5px",
+                        fontWeight: 600,
+                        color: "#6b7280",
+                        background: "rgba(0, 0, 0, 0.05)",
+                        padding: "2px 6px",
+                        borderRadius: "4px",
+                      }}
+                    >
+                      {t("landing_sync_coming_soon")}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* ── Proof Slot (Empty behind a flag per brief) ───────────── */}
+          {SHOW_PROOF_CONTENT ? (
+            <section
+              style={{
+                padding: "32px 24px",
+                textAlign: "center",
+              }}
+            >
+              <h3
+                style={{
+                  fontFamily: "var(--font-schibsted), sans-serif",
+                  fontSize: "18px",
+                  fontWeight: 600,
+                  color: "#9ca3af",
+                  marginBottom: "6px",
+                }}
+              >
+                {t("landing_proof_title")}
+              </h3>
+              <p style={{ color: "#9ca3af", fontSize: "13.5px", margin: 0 }}>
+                {t("landing_proof_placeholder")}
+              </p>
+            </section>
+          ) : null}
+
+          {/* ── Closing Call to Action Section ────────────────────────── */}
+          <section
+            style={{
+              padding: "72px 24px 96px",
+              textAlign: "center",
+            }}
+          >
+            <div
+              className="scroll-reveal"
+              style={{
+                maxWidth: "680px",
+                margin: "0 auto",
+                background: "rgba(255, 255, 255, 0.82)",
+                backdropFilter: "blur(24px)",
+                WebkitBackdropFilter: "blur(24px)",
+                padding: "48px 32px",
+                borderRadius: "28px",
+                border: "1px solid rgba(255, 255, 255, 0.9)",
+                boxShadow: "0 20px 48px rgba(0, 0, 0, 0.08)",
+              }}
+            >
+              <h2
+                style={{
+                  fontFamily: "var(--font-schibsted), sans-serif",
+                  fontSize: "clamp(28px, 4vw, 40px)",
+                  fontWeight: 800,
+                  color: "#111827",
+                  letterSpacing: "-1px",
+                  marginBottom: "14px",
+                }}
+              >
+                {t("landing_closing_title")}
+              </h2>
+              <p
+                style={{
+                  color: "#4b5563",
+                  fontSize: "17px",
+                  lineHeight: 1.5,
+                  marginBottom: "32px",
+                }}
+              >
+                {t("landing_closing_subtitle")}
+              </p>
+              <Link
+                href="/app"
+                className="btn-primary-motion"
+                style={{
+                  background: "#111827",
+                  color: "#ffffff",
+                  padding: "18px 44px",
+                  fontSize: "17px",
+                  borderRadius: "9999px",
+                  fontWeight: 700,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  textDecoration: "none",
+                  boxShadow: "0 8px 28px rgba(0, 0, 0, 0.2)",
+                }}
+              >
+                <span>{t("landing_cta_primary")}</span>
+                <ArrowRight size={18} weight="bold" className="cta-arrow" />
+              </Link>
+            </div>
+          </section>
+        </main>
+
+        {/* ── Minimalist Clean Frosted Footer ─────────────────────────── */}
+        <footer
+          style={{
+            borderTop: "1px solid rgba(255, 255, 255, 0.7)",
+            padding: "40px 24px",
+            background: "rgba(255, 255, 255, 0.75)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+          }}
+        >
+          <div
+            style={{
+              maxWidth: "1140px",
+              margin: "0 auto",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              flexWrap: "wrap",
+              gap: "20px",
+            }}
+          >
+            {/* Logo & Tagline */}
+            <div>
+              <div
+                style={{
+                  fontFamily: "var(--font-schibsted), sans-serif",
+                  fontSize: "18px",
+                  fontWeight: 700,
+                  color: "#111827",
+                  marginBottom: "4px",
+                }}
+              >
+                Uphill<span style={{ color: "var(--accent-primary)" }}>.AI</span>
+              </div>
+              <p style={{ color: "#6b7280", fontSize: "13px", margin: 0 }}>
+                {t("landing_footer_tagline")}
+              </p>
+            </div>
+
+            {/* Footer Links & Copyright */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "24px",
+                fontSize: "13.5px",
+                color: "#4b5563",
+              }}
+            >
+              <Link
+                href="/science"
+                style={{ color: "#4b5563", textDecoration: "none" }}
+              >
+                {t("landing_nav_science")}
+              </Link>
+              <Link
+                href="/app"
+                style={{ color: "#4b5563", textDecoration: "none" }}
+              >
+                {t("landing_nav_signin")}
+              </Link>
+              <button
+                onClick={() => setLang(lang === "en" ? "vi" : "en")}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#4b5563",
+                  cursor: "pointer",
+                  padding: 0,
+                  fontSize: "13.5px",
+                }}
+              >
+                {lang === "en" ? "Tiếng Việt" : "English"}
+              </button>
+              <span style={{ color: "#9ca3af" }}>
+                © {new Date().getFullYear()} Uphill.AI. {t("landing_footer_rights")}
+              </span>
+            </div>
           </div>
-        </div>
-      )}
-      {/* Global Modals */}
-      <AuthModal />
-      <OnboardingWizard />
-      <ProfileSettingsModal />
-      <NutritionLab
-        isOpen={isNutritionLabOpen}
-        onClose={() => setIsNutritionLabOpen(false)}
-        lang={lang}
-        user={user}
-        activePlan={activePlan}
-        prefill={paceHandoff}
-        onPrefillConsumed={() => setPaceHandoff(null)}
-      />
-      <GearVault
-        isOpen={isGearVaultOpen}
-        onClose={() => setIsGearVaultOpen(false)}
-        lang={lang}
-        user={user}
-        activePlan={activePlan}
-        prefill={paceHandoff}
-        onPrefillConsumed={() => setPaceHandoff(null)}
-      />
-      <PaceStrategy
-        isOpen={isPaceStrategyOpen}
-        onClose={() => setIsPaceStrategyOpen(false)}
-        lang={lang}
-        user={user}
-        activePlan={activePlan}
-      />
-      <GoalDeterminer
-        isOpen={isGoalDeterminerOpen}
-        onClose={() => setIsGoalDeterminerOpen(false)}
-        lang={lang}
-        user={user}
-        activePlan={activePlan}
-      />
+        </footer>
+      </div>
     </div>
   );
 }
