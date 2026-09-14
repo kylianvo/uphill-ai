@@ -55,7 +55,7 @@ def test_is_vietnamese_request_detection():
 
 def test_plan_week_adapt_vietnamese_rules():
     """Verify prompt generated for plan, week, and adapt has authentic Vietnamese rules."""
-    from services.plan_generator import PlanGenerator
+    from services.athlete_tier import resolve_tier
 
     # 1. Full plan / block prompt check
     user_profile = {
@@ -80,5 +80,10 @@ def test_plan_week_adapt_vietnamese_rules():
 
     # Verify that plan generator builds the Vietnamese localization rule into prompt
     # and handles target_week (adaptation) with the adaptation rule
-    tier = PlanGenerator.resolve_athlete_tier(user_profile, race_info)
+    tier = resolve_tier(
+        goal_type=race_info.get("goal_type"),
+        current_weekly_km=user_profile.get("current_weekly_km"),
+        aet_hr=user_profile.get("aet_hr"),
+        ant_hr=user_profile.get("ant_hr"),
+    )
     assert tier is not None
