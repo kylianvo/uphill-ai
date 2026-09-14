@@ -24,7 +24,8 @@ interface AppContextType {
   setIsGoalDeterminerOpen: any;
   activeTab: any;
   setActiveTab: any;
-  handleTabSwitch: (tab: "about" | "chat" | "planner" | "tools" | "knowledge" | "coach") => void;
+  handleTabSwitch: (tab: "home" | "about" | "chat" | "planner" | "tools" | "knowledge" | "coach") => void;
+  isNative: boolean;
   lang: "en" | "vi";
   setLang: any;
   startBtnHovered: any;
@@ -243,9 +244,20 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     target_time_mins?: number;
     source_label?: string;
   } | null>(null);
-  // "tools" is the default because it's the one tab guests can use without
-  // hitting the chat/planner sign-in gate below -- see handleTabSwitch.
-  const [activeTab, setActiveTab] = useState<"about" | "chat" | "planner" | "tools" | "knowledge" | "coach">("tools");
+  const [activeTab, setActiveTab] = useState<"home" | "about" | "chat" | "planner" | "tools" | "knowledge" | "coach">(() => {
+    if (typeof window !== "undefined" && isNativePlatform()) {
+      return "home";
+    }
+    return "tools";
+  });
+  const [isNative, setIsNative] = useState(false);
+  useEffect(() => {
+    if (isNativePlatform()) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setIsNative(true);
+      setActiveTab((prev) => (prev === "tools" ? "home" : prev));
+    }
+  }, []);
   const [lang, setLang] = useState<"en" | "vi">("en");
   const [startBtnHovered, setStartBtnHovered] = useState(false);
   const [viewportWidth, setViewportWidth] = useState<number>(1024);
@@ -425,7 +437,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const handleTabSwitch = (
-    tab: "about" | "chat" | "planner" | "tools" | "knowledge" | "coach",
+    tab: "home" | "about" | "chat" | "planner" | "tools" | "knowledge" | "coach",
   ) => {
     if ((tab === "chat" || tab === "planner") && !user) {
       setAuthModalOpen(true);
@@ -596,6 +608,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       easyPaceSec, setEasyPaceSec,
       zone2Min, setZone2Min,
       zone2Max, setZone2Max,
+      isNative,
     }}>
       {children}
     </AppContext.Provider>

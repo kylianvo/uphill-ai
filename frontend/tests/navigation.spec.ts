@@ -62,11 +62,65 @@ test.describe('Navigation and landing page split', () => {
     expect(failedImageUrls).toEqual([]);
   });
 
-  test('navigating to /app loads the app shell', async ({ page }) => {
+  test('navigating to /app on web does NOT show Home tab', async ({ page }) => {
     await page.goto('/app');
     await page.waitForLoadState('networkidle');
 
-    // On /app, the app header/navigation should be present
-    await expect(page.locator('.top-nav-logo, .phone-header, .laptop-sidebar-logo').first()).toBeVisible();
+    // On web, no "Home" or "Trang chủ" tab should exist in any navigation
+    await expect(page.locator('.top-nav-tab', { hasText: /^(Home|Trang chủ)$/ })).toHaveCount(0);
+    await expect(page.locator('.mobile-bottom-nav-tab', { hasText: /^(Home|Trang chủ)$/ })).toHaveCount(0);
+    await expect(page.locator('.sidebar-nav-item', { hasText: /^(Home|Trang chủ)$/ })).toHaveCount(0);
+
+    await page.screenshot({ path: '/Users/vietvo/.gemini/antigravity-ide/brain/fa573ad3-7356-4d49-b631-37a5bccd92a5/web-app-no-home-tab.png' });
+  });
+
+  test('on native platform: / redirects to /app, shows Home tab and Glassmorphism hero', async ({ page }) => {
+    // Mock native Capacitor platform before loading
+    await page.addInitScript(() => {
+      try {
+        window.localStorage.setItem('CAPACITOR_NATIVE_OVERRIDE', 'true');
+      } catch (e) {}
+    });
+
+    await page.goto('/');
+    await expect(page).toHaveURL(/\/app/);
+
+    // App shell loads on native with Home tab
+    const homeTab = page.locator('.mobile-bottom-nav-tab, .top-nav-tab').filter({ hasText: /^(Home|Trang chủ)$/ });
+    await expect(homeTab.first()).toBeVisible();
+
+    // HomeTab with Glassmorphism is active
+    const heroHeader = page.locator('.hero-header-group');
+    await expect(heroHeader).toBeVisible();
+
+    // Verify glassmorphism style (backdrop-filter)
+    const backdropFilter = await heroHeader.evaluate((el) => window.getComputedStyle(el).backdropFilter);
+    expect(backdropFilter).toContain('blur');
+
+    // Feature cards with glassmorphism are visible
+    const cards = page.locator('.card');
+    await expect(cards.first()).toBeVisible();
+
+    await page.screenshot({ path: '/Users/vietvo/.gemini/antigravity-ide/brain/fa573ad3-7356-4d49-b631-37a5bccd92a5/native-capacitor-home-glassmorphism.png' });
+  });
+
+  test('on native mobile device: displays Home tab on bottom nav with glassmorphism', async ({ page }) => {
+    await page.setViewportSize({ width: 393, height: 852 });
+    await page.addInitScript(() => {
+      try {
+        window.localStorage.setItem('CAPACITOR_NATIVE_OVERRIDE', 'true');
+      } catch (e) {}
+    });
+
+    await page.goto('/');
+    await expect(page).toHaveURL(/\/app/);
+
+    const bottomHomeTab = page.locator('.mobile-bottom-nav-tab').filter({ hasText: /^(Home|Trang chủ)$/ });
+    await expect(bottomHomeTab).toBeVisible();
+
+    const heroHeader = page.locator('.hero-header-group');
+    await expect(heroHeader).toBeVisible();
+
+    await page.screenshot({ path: '/Users/vietvo/.gemini/antigravity-ide/brain/fa573ad3-7356-4d49-b631-37a5bccd92a5/native-capacitor-mobile-home-glassmorphism.png' });
   });
 });

@@ -2,6 +2,26 @@ import { Capacitor } from '@capacitor/core';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 
 export const isNativePlatform = (): boolean => {
+  if (typeof window !== 'undefined') {
+    try {
+      if (window.localStorage?.getItem('CAPACITOR_NATIVE_OVERRIDE') === 'true') {
+        return true;
+      }
+      if (window.location?.search?.includes('native=1')) {
+        return true;
+      }
+      interface CapacitorGlobalLike {
+        isNativePlatform?: () => boolean;
+        getPlatform?: () => string;
+      }
+      const cap = (window as unknown as { Capacitor?: CapacitorGlobalLike }).Capacitor;
+      if (cap?.isNativePlatform?.() === true || cap?.getPlatform?.() === 'ios' || cap?.getPlatform?.() === 'android') {
+        return true;
+      }
+    } catch {
+      // Ignore localStorage access errors
+    }
+  }
   return Capacitor.isNativePlatform();
 };
 

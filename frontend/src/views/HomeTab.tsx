@@ -65,21 +65,13 @@ export default function HomeTab({ isMobile }: { isMobile: boolean }) {
           </div>
 
           <h1 className="hero-headline">
-
-            {lang === "en" ? "Train Smarter, Go Higher" : "Tập Luyện Thông Minh, Chinh Phục Đỉnh Cao."}
-
+            {lang === "en" ? "Train Smarter, Go Higher" : "Tập đúng cách, leo cao hơn."}
           </h1>
-
           <p className="hero-subtitle" style={{ maxWidth: "600px", margin: "0 auto" }}>
-
             {lang === "en"
-
               ? "Science-backed trail coaching powered by AI."
-
-              : "Nền tảng huấn luyện chạy trail chuẩn khoa học đột phá bởi AI."}
-
+              : "Coach AI chạy trail và leo núi dựa trên cơ sở khoa học."}
           </p>
-
         </div>
 
 

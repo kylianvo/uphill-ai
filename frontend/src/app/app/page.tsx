@@ -1,7 +1,9 @@
 /* eslint-disable */
 "use client";
 import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import { useAppContext } from "@/contexts/AppContext";
+import HomeTab from "@/views/HomeTab";
 import ChatTab from "@/views/ChatTab";
 import AboutTab from "@/views/AboutTab";
 import AuthModal from "@/views/AuthModal";
@@ -14,6 +16,7 @@ import CoachDashboardView from "@/views/CoachDashboardView";
 import PendingInviteBanner from "@/components/PendingInviteBanner";
 import { notifyPlanGenerated } from "@/utils/notifications";
 import { resolveCurrentWeek } from "@/utils/planDate";
+import { isNativePlatform } from "@/utils/native";
 import { NutritionLab } from "../../components/NutritionLab";
 import { GearVault } from "../../components/GearVault";
 import { PaceStrategy } from "../../components/PaceStrategy";
@@ -22,6 +25,7 @@ import { translations } from "../translations";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { getApiBaseUrl } from "@/lib/apiUrlOverride";
 import {
+  House,
   Robot,
   CalendarBlank,
   BookOpen,
@@ -615,6 +619,7 @@ export default function AppPage() {
     zone2Max,
     setZone2Max,
     handleTabSwitch,
+    isNative,
   } = useAppContext();
   // Language State & Persistence
   // State for homepage CTA button hover effect
@@ -2204,6 +2209,8 @@ export default function AppPage() {
     const color = active ? "var(--accent-primary)" : "var(--text-secondary)";
     const weight = active ? "fill" : "regular";
     switch (tabName) {
+      case "home":
+        return <House size={size} color={color} weight={weight} />;
       case "about":
         return <Mountains size={size} color={color} weight={weight} />;
       case "chat":
@@ -2222,6 +2229,8 @@ export default function AppPage() {
   };
   const renderActiveTab = (isMobile: boolean) => {
     switch (activeTab) {
+      case "home":
+        return <HomeTab isMobile={isMobile} />;
       case "about":
         return <AboutTab isMobile={isMobile} />;
       case "chat":
@@ -2460,11 +2469,12 @@ export default function AppPage() {
               <ul className="sidebar-nav-list">
                 {(
                   [
-                    "about",
+                    ...(isNative ? (["home"] as const) : []),
                     "chat",
                     "planner",
-                    "tools",
                     "knowledge",
+                    "tools",
+                    "about",
                     ...(user?.is_coach ? (["coach"] as const) : []),
                   ] as const
                 ).map((tab) => {
@@ -2477,8 +2487,10 @@ export default function AppPage() {
                     >
                       {getTabIcon(tab, active)}
                       <span>
-                        {tab === "chat"
-                          ? t("tab_chat")
+                        {tab === "home"
+                          ? (lang === "en" ? "Home" : "Trang chủ")
+                          : tab === "chat"
+                            ? t("tab_chat")
                             : tab === "planner"
                               ? t("tab_scheduler")
                               : tab === "knowledge"
@@ -2594,11 +2606,13 @@ export default function AppPage() {
                 >
                   {lang === "en" ? "Dashboard" : "Bảng điều khiển"} /{" "}
                   <span style={{ color: "var(--accent-primary)" }}>
-                    {activeTab === "chat"
-                      ? t("tab_chat")
-                      : activeTab === "planner"
-                        ? t("tab_scheduler")
-                        : activeTab === "knowledge"
+                    {activeTab === "home"
+                      ? (lang === "en" ? "Home" : "Trang chủ")
+                      : activeTab === "chat"
+                        ? t("tab_chat")
+                        : activeTab === "planner"
+                          ? t("tab_scheduler")
+                          : activeTab === "knowledge"
                             ? t("tab_knowledge")
                             : activeTab === "coach"
                               ? t("tab_coach")
@@ -2770,7 +2784,9 @@ export default function AppPage() {
                           color: "var(--text-primary)",
                         }}
                       >
-                        {activeTab === "chat" ? (
+                        {activeTab === "home" ? (
+                          <House size={28} weight="duotone" />
+                        ) : activeTab === "chat" ? (
                           <Robot size={28} weight="duotone" />
                         ) : activeTab === "planner" ? (
                           <CalendarBlank size={28} weight="duotone" />
@@ -2786,7 +2802,9 @@ export default function AppPage() {
                       </span>
                       <div>
                         <h2>
-                          {activeTab === "chat"
+                          {activeTab === "home"
+                            ? (lang === "en" ? "Home" : "Trang chủ")
+                            : activeTab === "chat"
                             ? t("tab_chat")
                             : activeTab === "planner"
                               ? t("plan_setup")
@@ -2799,7 +2817,9 @@ export default function AppPage() {
                                     : t("tab_about")}
                         </h2>
                         <p>
-                          {activeTab === "chat"
+                          {activeTab === "home"
+                            ? (lang === "en" ? "Overview & Features" : "Tổng quan & Tính năng")
+                            : activeTab === "chat"
                             ? t("header_chat_desc")
                             : activeTab === "planner"
                               ? t("header_planner_desc")
@@ -2946,18 +2966,21 @@ export default function AppPage() {
             <nav className="phone-bottom-tab-bar">
               {(
                 [
-                  "about",
+                  ...(isNative ? (["home"] as const) : []),
                   "chat",
                   "planner",
-                  "tools",
                   "knowledge",
+                  "tools",
+                  "about",
                   ...(user?.is_coach ? (["coach"] as const) : []),
                 ] as const
               ).map((tab) => {
                 const active = activeTab === tab;
                 const tabLabel =
-                  tab === "chat"
-                    ? "Coach"
+                  tab === "home"
+                    ? (lang === "en" ? "Home" : "Trang chủ")
+                    : tab === "chat"
+                      ? "Coach"
                       : tab === "planner"
                         ? "Planner"
                         : tab === "knowledge"
@@ -3003,7 +3026,16 @@ export default function AppPage() {
           {/* ── Top Navigation ──────────────────────────────────── */}
           <nav className="top-nav" style={{ flexShrink: 0 }}>
             {/* Logo */}
-            <a className="top-nav-logo" href="#">
+            <Link
+              className="top-nav-logo"
+              href={isNative ? "#" : "/"}
+              onClick={(e) => {
+                if (isNative) {
+                  e.preventDefault();
+                  handleTabSwitch("home");
+                }
+              }}
+            >
               <span
                 style={{
                   display: "inline-flex",
@@ -3027,11 +3059,12 @@ export default function AppPage() {
                 </svg>
                 Uphill<span className="logo-accent">.AI</span>
               </span>
-            </a>
+            </Link>
             {/* Centre tab pills */}
             <div className="top-nav-tabs">
               {(
                 [
+                  ...(isNative ? (["home"] as const) : []),
                   "chat",
                   "planner",
                   "knowledge",
@@ -3041,9 +3074,11 @@ export default function AppPage() {
                 ] as const
               ).map((tab) => {
                 const label =
-                  tab === "chat"
-                    ? `${t("tab_chat")}`
-                    : tab === "planner"
+                  tab === "home"
+                    ? (lang === "en" ? "Home" : "Trang chủ")
+                    : tab === "chat"
+                      ? `${t("tab_chat")}`
+                      : tab === "planner"
                         ? `${t("tab_scheduler")}`
                         : tab === "knowledge"
                           ? `${t("tab_knowledge")}`
@@ -3133,7 +3168,25 @@ export default function AppPage() {
               flexDirection: "column",
             }}
           >
-            {(
+            {activeTab === "home" && (
+              <section
+                className="hero-section"
+                style={{
+                  height: "100%",
+                  overflowY: "auto",
+                  justifyContent: "flex-start",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  paddingTop: "40px",
+                  paddingBottom: isViewportMobile ? "160px" : "40px",
+                  marginTop: 0,
+                }}
+              >
+                {renderActiveTab(isViewportMobile)}
+              </section>
+            )}
+            {activeTab !== "home" && (
               <div
                 className={`content-panel ${activeTab === "chat" ? "chat-panel-active" : ""}`}
                 style={
@@ -3172,6 +3225,7 @@ export default function AppPage() {
           <div className="mobile-bottom-nav-tabs">
             {(
               [
+                ...(isNative ? (["home"] as const) : []),
                 "chat",
                 "planner",
                 "knowledge",
@@ -3182,8 +3236,10 @@ export default function AppPage() {
             ).map((tab) => {
               const active = activeTab === tab;
               const tabLabel =
-                tab === "chat"
-                  ? t("tab_chat")
+                tab === "home"
+                  ? (lang === "en" ? "Home" : "Trang chủ")
+                  : tab === "chat"
+                    ? t("tab_chat")
                     : tab === "planner"
                       ? t("tab_scheduler")
                       : tab === "knowledge"
