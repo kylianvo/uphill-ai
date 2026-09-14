@@ -1,6 +1,8 @@
 from datetime import datetime, timedelta
 from typing import Any
 
+from config import settings
+from db import block_number_for_week, week_range_for_block
 from log_utils import get_logger
 from services.athlete_tier import get_profile, resolve_tier
 from services.plan_rules import build_rules_block
@@ -475,6 +477,7 @@ class PlanGenerator:
         interval_rep_value: float | None = None,
         interval_rep_unit: str | None = None,
         details: str | None = None,
+        lang: str | None = None,
     ) -> dict[str, Any]:
         """Coach co-creation: the coach supplies type/duration/day, and
         optionally overrides (zone, pace, interval structure, details/intent)
@@ -507,6 +510,13 @@ class PlanGenerator:
         description = details
         fueling_tip = None
 
+        resolved_lang = (lang or user_profile.get("lang") or "en").lower()
+        vi_chars = set(
+            "àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ"
+        )
+        if resolved_lang != "vi" and any(c in vi_chars for c in str(intent or "") + str(details or "")):
+            resolved_lang = "vi"
+
         if api_key and not is_rest_or_strength and not details:
             try:
                 import json as _json
@@ -527,6 +537,16 @@ class PlanGenerator:
                     if is_interval and interval_reps
                     else ""
                 )
+                vi_instruction = (
+                    "\nCRITICAL LOCALIZATION (VIETNAMESE):\n"
+                    "- All text fields ('title', 'description', 'fueling_tip') MUST be in natural Vietnamese as spoken by authentic Vietnamese trail runners.\n"
+                    "- Tone: direct, concise, second-person 'bạn', active verbs. No corporate/marketing fluff or exclamation marks.\n"
+                    "- KEEP IN ENGLISH: Pace, Easy Run, Long Run, Tempo, Threshold, Interval, Fartlek, Surges, Recovery Run, Muscular Endurance, ME, Strength, Zone 1-5, AeT, AnT, HR, Deload, Taper, Block, D+, GPX, Race, Ultra, Trail, Road, Treadmill, Fueling, Carbs, Sodium, Plan, Coach.\n"
+                    "- Fixed mappings: 'khối lượng' (never 'thể tích'), 'thể chất' (never 'sinh lý'), 'plan' / 'lịch tập' (never 'giáo án'), 'buổi tập' / 'bài chạy' (never 'bài tập thể dục').\n"
+                    "- Banned words: 'kiến tạo', 'bảo chứng', 'bứt phá', 'nâng tầm', 'vượt trội', 'tối ưu hóa', 'chuyên sâu', 'đột phá', 'giáo án', 'sinh lý', 'thể tích'.\n"
+                    if resolved_lang == "vi"
+                    else ""
+                )
                 prompt = f"""You are Coach Uphill, an expert trail-running coach following Scott Johnston's
 "Training for the Uphill Athlete" principles. A human coach is manually adding ONE workout to an
 athlete's training week and wants you to fill in the remaining detail. Do not invent a whole
@@ -542,6 +562,7 @@ Day: {day_of_week}, week {week_number}
 {zone_instruction}
 {interval_instruction}
 {f"Coach's intent: {intent}" if intent else ""}
+{vi_instruction}
 
 Return ONLY a single JSON object (no markdown fences, no prose) with exactly these keys:
 {{"title": "short session title", "target_zone": "Zone 1|Zone 2|Zone 3|Zone 4|Zone 5",
@@ -623,7 +644,7 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
         api_key: str = None,
         cutoff_time_hours: float = None,
         block_number: int = 1,
-        weeks_per_block: int = 2,
+        weeks_per_block: int = settings.WEEKS_PER_BLOCK,
         block_context: str | None = None,
         target_week: int | None = None,
     ) -> tuple[list[dict[str, Any]], str]:
@@ -643,11 +664,21 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
             block_start_week = target_week
             block_end_week = target_week
         else:
-            block_start_week = (block_number - 1) * weeks_per_block + 1
-            block_end_week = min(block_start_week + weeks_per_block - 1, total_weeks)
+            block_start_week, block_end_week = week_range_for_block(block_number, weeks_per_block)
+            block_end_week = min(block_end_week, total_weeks)
 
         # 1. Base Variables Extract
-        lang = race_info.get("lang", "en").lower()
+        lang = (race_info.get("lang") or user_profile.get("lang") or "en").lower()
+        vi_chars = set(
+            "àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ"
+        )
+        all_notes = (
+            str(race_info.get("athlete_notes") or "")
+            + str(race_info.get("coach_notes") or "")
+            + str(block_context or "")
+        )
+        if lang != "vi" and any(c in vi_chars for c in all_notes):
+            lang = "vi"
         age = int(user_profile.get("age", 30))
         max_hr = int(user_profile.get("max_hr", 220 - age))
         resting_hr = int(user_profile.get("resting_hr", 60))
@@ -801,7 +832,7 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                 if not hill_sprint_eligible and any(
                     kw in title_lower for kw in PlanGenerator.HILL_SPRINT_TITLE_KEYWORDS
                 ):
-                    fallback_title = "Chạy Biến Tốc / Tăng Tốc" if lang == "vi" else "Fartlek / Surges"
+                    fallback_title = "Fartlek / Surges"
                     wo["title"] = fallback_title
                     title_lower = fallback_title.lower()
 
@@ -855,8 +886,6 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                     if depth == 0:
                         return text[start : i + 1]
             return text[start:]  # malformed but let json.loads produce a clear error
-
-        from config import settings
 
         # Build the AI prompt (Gemini is the only engine; a reduced retry and the
         # rule-based schedule below are the fallbacks).
@@ -1088,8 +1117,15 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                     f"CRITICAL: Every workout `week_number` MUST be exactly {target_week}. Do NOT output any workouts for other weeks.\n"
                     f"Adapt the workouts according to the athlete's latest feedback, fatigue, and recovery while maintaining target progressive overload.\n"
                 )
+                if lang == "vi":
+                    block_scope_instruction += (
+                        "QUY TẮC ĐIỀU CHỈNH TUẦN TẬP (VIETNAMESE ADAPTATION CONTRACT):\n"
+                        "- Viết phần mô tả bài tập ('description'), lý do ('Reason') và tổng quan ('Overall') bằng tiếng Việt tự nhiên của runner chạy trail.\n"
+                        "- Nêu rõ nguyên nhân điều chỉnh tuần trong 'Overall'/'Reason' (ví dụ: hạ khối lượng 10-15% do mệt mỏi tích tụ, chuyển bài nặng thành Easy Run hoặc Recovery Run, giữ nguyên lịch chạy để hấp thu tải).\n"
+                        "- Tuyệt đối tuân thủ bảng thuật ngữ tiếng Anh và danh sách từ cấm bên dưới.\n"
+                    )
             else:
-                total_blocks = (total_weeks + weeks_per_block - 1) // weeks_per_block
+                total_blocks = block_number_for_week(total_weeks, weeks_per_block)
                 block_scope_instruction = (
                     f"\nSEQUENTIAL BLOCK GENERATION:\n"
                     f"This plan spans {total_weeks} weeks total, generated in {total_blocks} blocks of {weeks_per_block} weeks each.\n"
@@ -1184,11 +1220,19 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
 
             lang_rule = (
                 "\n6. CRITICAL LOCALIZATION (VIETNAMESE):"
-                "\n   - All workout text fields ('title', 'description', 'fueling_tip') MUST be written in natural, idiomatic Vietnamese used by endurance runners."
-                "\n   - KEEP specialized running and sports science terms in standard English (e.g. 'Easy Run', 'Long Run', 'Tempo', 'Threshold', 'Interval', 'Muscular Endurance', 'Zone 1', 'Zone 2', 'Zone 3', 'Zone 4', 'Zone 5', 'Pace', 'Carbs', 'Sodium', 'Electrolytes', 'Treadmill', 'Fartlek', 'Surges', 'Step-Ups', 'Hill Bounds', 'Foam Rolling', 'Fueling')."
-                "\n   - NEVER use the word 'sinh lý'; use 'thể chất' or appropriate physical context instead."
-                "\n   - Do NOT translate 'Pace' as 'tốc độ' (tốc độ is speed in km/h; Pace is min/km)."
-                "\n   - Do NOT translate 'Fueling' as 'tiếp nhiên liệu' (use 'dinh dưỡng & fueling' or 'fueling')."
+                "\n   - All workout text fields ('title', 'description', 'fueling_tip') MUST be written in natural Vietnamese as spoken by Vietnamese trail and ultra runners."
+                "\n   - REGISTER & TONE: Write like an authentic coach talking to a runner (use second-person 'bạn', active verbs, direct and concise sentences). Do not use exclamation marks or corporate/marketing fluff."
+                "\n   - KEEP IN ENGLISH (NEVER TRANSLATE): Pace, Easy Run, Long Run, Tempo, Threshold, Interval, Fartlek, Surges, Recovery Run, Hill Repeat, Hill Sprint, Hill Bound, Muscular Endurance, ME, Strength, Zone 1–Zone 5, AeT, AnT, HR, Max HR, Resting HR, RPE, Cadence, Deload, Taper, Block, Split, Checkpoint, CP, Cutoff, COT, DNF, Elevation Gain, D+, GPX, Race, Ultra, Trail, Road, Treadmill, Gel, Chews, Carbs, Sodium, Electrolytes, Fueling, Gut training, Stack Height, Drop, Carbon Plate, Lug Depth, Foam Rolling, Warm-up, Cool-down, Strides, Plan, Coach, Aerobic, Anaerobic, Aerobic decoupling, Cardiac drift."
+                "\n   - FIXED TERM MAPPINGS:"
+                "\n     * Volume / Weekly volume -> 'khối lượng' / 'khối lượng tuần' (NEVER 'thể tích')"
+                "\n     * Physiology / physiological -> 'thể chất', 'chỉ số thể chất' (NEVER 'sinh lý')"
+                "\n     * Pace -> 'Pace' (NEVER 'tốc độ', which is km/h)"
+                "\n     * Fueling -> 'fueling' or 'dinh dưỡng thi đấu' (NEVER 'tiếp nhiên liệu')"
+                "\n     * Training plan -> 'plan', 'lịch tập' (NEVER 'giáo án')"
+                "\n     * Workout / session -> 'buổi tập', 'bài chạy' (NEVER 'bài tập thể dục')"
+                "\n     * Build / generate -> 'tạo plan', 'lên plan' (NEVER 'kiến tạo')"
+                "\n     * Adapt / adaptation -> 'điều chỉnh tuần', 'tùy chỉnh tuần' (NEVER 'tối ưu hóa')"
+                "\n   - BAN LIST: Absolutely never use: 'kiến tạo', 'bảo chứng', 'chinh phục đỉnh cao', 'bứt phá', 'nâng tầm', 'vượt trội', 'tối ưu hóa', 'toàn diện', 'chuyên sâu', 'độc quyền', 'đột phá', 'mạnh mẽ', 'tuyệt vời', 'uy tín hàng đầu', 'chuẩn mực thế giới', 'đồng hành cùng bạn', 'vận hành', 'tri thức', 'hệ sinh thái', 'giáo án', 'sinh lý', 'thể tích'."
                 if lang == "vi"
                 else ""
             )
@@ -1775,8 +1819,8 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
 
                             if use_treadmill:
                                 treadmill_incl = incline_pct
-                                settings = TrainingRules.calculate_treadmill_settings(12.0, incline_pct)
-                                treadmill_sp = settings["speed_kph"]
+                                treadmill_settings_calc = TrainingRules.calculate_treadmill_settings(12.0, incline_pct)
+                                treadmill_sp = treadmill_settings_calc["speed_kph"]
                         else:
                             title = "Muscular Endurance: Bodyweight Step-Ups"
                             desc = f"Execute {steps} bodyweight step-ups on a 30cm box, no added weight. Simulates climbing demands for your event ({course_elevation_gain_m or ''}m total gain)."
@@ -1983,3 +2027,87 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                 wo["fueling_tip"] = t_str(wo.get("fueling_tip", ""))
 
         return post_process_workouts(workouts), athlete_tier
+
+    @staticmethod
+    async def generate_week_narrative(
+        race_info: dict[str, Any],
+        block_context: str,
+        workouts: list[dict[str, Any]],
+        api_key: str | None,
+    ) -> tuple[str | None, str | None]:
+        """Athlete-facing narrative shown after a new block/week is generated: a review
+        of the block that just finished and a description of the newly generated one.
+        Both come from block_context (the same compact actual-vs-planned/coach-eval
+        summary already built for the generation prompt) and the new week's own
+        sessions -- not a second attempt at the workout JSON. Best-effort only: this
+        runs after workouts are already saved, so a failure here must never fail plan
+        generation. Returns (None, None) on any failure, or if no api_key is set."""
+        if not api_key:
+            return None, None
+        try:
+            import asyncio
+            import json as _json
+
+            from google import genai as _genai
+            from google.genai import types as _genai_types
+
+            lang = (race_info.get("lang") or "en").lower()
+            vi_chars = set(
+                "àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ"
+            )
+            if lang != "vi" and any(c in vi_chars for c in str(block_context or "")):
+                lang = "vi"
+            if lang == "vi":
+                lang_instruction = (
+                    "Respond in natural Vietnamese as spoken by authentic Vietnamese trail runners:\n"
+                    "- Coach tone: direct, concise, second-person 'bạn', no marketing puffery or exclamation marks.\n"
+                    "- Keep technical terms in English: Pace, Easy Run, Long Run, Tempo, Threshold, Interval, Recovery Run, Muscular Endurance, ME, Strength, Zone 1-5, AeT, AnT, HR, Deload, Taper, D+, GPX, Race, Ultra, Trail, Road, Treadmill, Fueling, Carbs, Sodium, Plan, Coach, Aerobic, Anaerobic, RPE.\n"
+                    "- Fixed mappings: 'khối lượng' (never 'thể tích'), 'thể chất' (never 'sinh lý'), 'plan' / 'lịch tập' (never 'giáo án'), 'buổi tập' / 'bài chạy' (never 'bài tập thể dục'), 'điều chỉnh tuần' (never 'tối ưu hóa').\n"
+                    "- Banned words: 'kiến tạo', 'bảo chứng', 'bứt phá', 'nâng tầm', 'vượt trội', 'tối ưu hóa', 'chuyên sâu', 'đột phá', 'giáo án', 'sinh lý', 'thể tích'."
+                )
+            else:
+                lang_instruction = "Respond in English."
+
+            workout_lines = "\n".join(
+                f"- {w.get('day_of_week', '?')}: {w.get('title') or w.get('type', '?')} "
+                f"({w.get('duration_minutes', 0)} min, {w.get('target_zone', '')})"
+                for w in workouts
+                if w.get("type") != "Rest"
+            )
+
+            prompt = f"""You are Coach Uphill, an expert trail-running coach. An athlete's training plan
+just advanced to a new block. Using the training history below and the newly generated
+block's sessions, write two short pieces of athlete-facing text.
+
+TRAINING HISTORY:
+{block_context}
+
+NEWLY GENERATED BLOCK'S SESSIONS:
+{workout_lines or "(no sessions)"}
+
+{lang_instruction}
+
+Return ONLY a single JSON object (no markdown fences, no prose) with exactly these keys:
+{{"last_week_review": "2-3 sentences reviewing how the most recently completed block went, encouraging and specific to the numbers above -- or null if the history above has nothing to review",
+"this_week_description": "2-3 sentences describing this new block's focus and why, addressed directly to the athlete"}}"""
+
+            _client = _genai.Client(api_key=api_key)
+            _response = await asyncio.to_thread(
+                _client.models.generate_content,
+                model=settings.GEMINI_MODEL,
+                contents=prompt,
+                config=_genai_types.GenerateContentConfig(
+                    thinking_config=_genai_types.ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL)
+                )
+                if hasattr(_genai_types, "ThinkingConfig")
+                else None,
+            )
+            _text = _response.text.strip()
+            _start, _end = _text.find("{"), _text.rfind("}")
+            if _start == -1 or _end == -1:
+                return None, None
+            parsed = _json.loads(_text[_start : _end + 1])
+            return parsed.get("last_week_review"), parsed.get("this_week_description")
+        except Exception as ex:
+            _logger.warning(f"[PlanGen][WeekNarrative] Gemini FAILED: {ex}")
+            return None, None

@@ -15,6 +15,7 @@ from db import (
     accept_coach_invite,
     add_source,
     approve_workout,
+    block_number_for_week,
     coach_update_workout,
     compute_current_week,
     create_coach_invite,
@@ -53,6 +54,8 @@ from db import (
     get_user_activity_ceiling,
     get_user_by_email,
     get_user_by_id,
+    get_week_planned_volume,
+    get_week_review,
     get_workout_by_id,
     get_workout_types,
     has_active_coach_link,
@@ -75,7 +78,9 @@ from db import (
     update_user_profile,
     update_user_weekly_km,
     update_workout_log,
+    upsert_block_review_ai_fields,
     verify_session,
+    week_range_for_block,
 )
 from parsers.fit_parser import FitParser
 from parsers.gpx_parser import GpxParser
@@ -91,6 +96,7 @@ from services.plan_generator import PlanGenerator
 from services.rag_service import RagService
 from services.training_rules import TrainingRules, resolve_zone2_pace
 from services.weather_service import WeatherService
+from services.week_review_narrative import generate_week_narrative
 
 _is_prod = os.getenv("ENVIRONMENT", "development") == "production"
 app = FastAPI(
@@ -161,6 +167,7 @@ class ChatRequest(BaseModel):
     messages: list[ChatMessage]
     user_profile: dict[str, Any] | None = None
     context_data: dict[str, Any] | None = None
+    lang: str | None = None
 
 
 class LinkIngestRequest(BaseModel):
@@ -588,9 +595,59 @@ Coaching principles — apply strictly:
 Tone: direct and pragmatic, like one coach talking shop with another — always actionable, focused on what the coach should do next with this athlete.
 """
 
+COACH_VI_LANGUAGE_INSTRUCTION = """
+VIETNAMESE LOCALIZATION & REGISTER CONTRACT (MANDATORY):
+The user is using the Vietnamese version (or communicating in Vietnamese). You MUST respond in natural, authentic Vietnamese as spoken by Vietnamese trail and ultra runners:
+1. Tone & Register:
+   - Speak like an authentic, experienced running coach: warm, direct, encouraging, concise (use second-person 'bạn', active verbs, 1-2 short paragraphs or bullet points).
+   - NEVER use stiff corporate/marketing fluff, robotic explanations, or exclamation-mark-heavy cheerleading.
+2. KEEP TECHNICAL RUNNING TERMS IN ENGLISH (DO NOT TRANSLATE TO VIETNAMESE):
+   - Pacing & Runs: Pace, Easy Run, Long Run, Tempo, Threshold, Interval, Fartlek, Surges, Recovery Run, Hill Repeat, Hill Sprint, Hill Bound, Strides, Warm-up, Cool-down.
+   - Training & Physiology: Muscular Endurance (ME), Strength, Zone 1–Zone 5, AeT, AnT, HR, Max HR, Resting HR, RPE, Cadence, Deload, Taper, Block, Split, Checkpoint (CP), Cutoff (COT), DNF, Aerobic, Anaerobic, Aerobic decoupling, Cardiac drift.
+   - Terrain & Route: Elevation Gain, D+, GPX, Race, Ultra, Trail, Road, Treadmill.
+   - Nutrition & Gear: Gel, Chews, Carbs, Sodium, Electrolytes, Fueling, Gut training, Stack Height, Drop, Carbon Plate, Lug Depth, Rock Plate, Foam Rolling.
+   - System: Plan, Coach.
+3. MANDATORY FIXED MAPPINGS:
+   - Volume / Weekly volume -> 'khối lượng' / 'khối lượng tuần' (ABSOLUTELY NEVER use 'thể tích').
+   - Physiology / physical metrics -> 'thể chất', 'chỉ số thể chất' (ABSOLUTELY NEVER use 'sinh lý').
+   - Pace -> 'Pace' (NEVER 'tốc độ', which is km/h).
+   - Fueling -> 'fueling' or 'dinh dưỡng thi đấu' (NEVER 'tiếp nhiên liệu').
+   - Training plan -> 'plan' or 'lịch tập' (NEVER 'giáo án').
+   - Workout / session -> 'buổi tập' or 'bài chạy' (NEVER 'bài tập thể dục').
+   - Build / generate plan -> 'lên plan' or 'tạo plan' (NEVER 'kiến tạo').
+4. STRICT BAN LIST:
+   - Absolutely never use: 'kiến tạo', 'bảo chứng', 'chinh phục đỉnh cao', 'bứt phá', 'nâng tầm', 'vượt trội', 'tối ưu hóa', 'toàn diện', 'chuyên sâu', 'độc quyền', 'đột phá', 'mạnh mẽ', 'tuyệt vời', 'uy tín hàng đầu', 'chuẩn mực thế giới', 'đồng hành cùng bạn', 'vận hành', 'tri thức', 'hệ sinh thái', 'giáo án', 'sinh lý', 'thể tích'.
+"""
+
+
+def is_vietnamese_request(
+    lang: str | None = None,
+    user_profile: dict[str, Any] | None = None,
+    context_data: dict[str, Any] | None = None,
+    messages: list[ChatMessage] | None = None,
+) -> bool:
+    """Detect if the user is using the Vietnamese version or requesting in Vietnamese."""
+    if lang and str(lang).lower().startswith("vi"):
+        return True
+    if user_profile and isinstance(user_profile, dict):
+        if str(user_profile.get("lang", "")).lower().startswith("vi"):
+            return True
+    if context_data and isinstance(context_data, dict):
+        if str(context_data.get("lang", "")).lower().startswith("vi"):
+            return True
+    if messages:
+        last_msg = messages[-1].content if messages else ""
+        vi_chars = set(
+            "àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ"
+        )
+        if any(c in vi_chars for c in last_msg):
+            return True
+    return False
+
 
 class CoachChatRequest(BaseModel):
     messages: list[ChatMessage]
+    lang: str | None = None
 
 
 @app.get("/api/health")
@@ -926,7 +983,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
                 total_weeks,
                 api_key=model_api_key,
                 block_number=1,
-                weeks_per_block=2,
+                weeks_per_block=settings.WEEKS_PER_BLOCK,
             )
             save_workouts(plan_id, workouts)
             set_plan_athlete_tier(plan_id, resolved_tier)
@@ -1431,8 +1488,13 @@ async def coach_chat_copilot(
         except Exception as kb_ex:
             print(f"[CoachCopilot][KB] Retrieval failed (continuing without): {kb_ex}")
 
+    vi_rule = ""
+    if is_vietnamese_request(lang=request.lang, messages=request.messages):
+        vi_rule = f"\n\n{COACH_VI_LANGUAGE_INSTRUCTION}"
+
     full_system_prompt = (
         f"{COACH_COPILOT_SYSTEM_INSTRUCTION}"
+        f"{vi_rule}"
         f"\n\n=== ATHLETE CONTEXT ===\n{athlete_context}\n=== END ATHLETE CONTEXT ===\n"
         f"{kb_context}"
     )
@@ -1771,7 +1833,7 @@ async def _generate_plan_for_athlete(
                 api_key=model_api_key,
                 cutoff_time_hours=cutoff,
                 block_number=1,
-                weeks_per_block=2,
+                weeks_per_block=settings.WEEKS_PER_BLOCK,
             )
             save_workouts(plan_id, workouts, auto_approve=(plan_status != "draft"))
             set_plan_athlete_tier(plan_id, resolved_tier)
@@ -1889,7 +1951,7 @@ def get_plan_block_completion(plan_id: int, user: dict[str, Any] = Depends(get_c
     """Return completion % for each 2-week block generated so far."""
     _verify_plan_ownership(plan_id, user["id"])
     max_week = get_max_generated_week(plan_id)
-    total_blocks = (max_week + 1) // 2  # number of blocks with any workouts
+    total_blocks = block_number_for_week(max_week)  # number of blocks with any workouts
     blocks = []
     for b in range(1, total_blocks + 1):
         blocks.append(get_block_completion(plan_id, b))
@@ -1914,6 +1976,19 @@ def get_plan_block_evaluation(plan_id: int, block_number: int, user: dict[str, A
     """Return coach evaluation & takeaways for a completed 2-week block."""
     _verify_plan_ownership(plan_id, user["id"])
     return evaluate_block_performance(user["id"], plan_id, block_number)
+
+
+@app.get("/api/coach/week-review/{plan_id}/{week_number}")
+def get_plan_week_review(plan_id: int, week_number: int, user: dict[str, Any] = Depends(get_current_user)):
+    """Read-only planned-vs-actual review for a single week: completion, distance,
+    vert, per-workout breakdown, unplanned activities, and a short narrative.
+    Additive alongside block-level review/completion -- does not affect the
+    70% next-block gate or block_reviews."""
+    _verify_plan_ownership(plan_id, user["id"])
+    plan = get_plan_by_id(plan_id)
+    review = get_week_review(user["id"], plan_id, week_number, plan.get("start_date") if plan else None)
+    review["narrative"] = generate_week_narrative(review)
+    return review
 
 
 async def _generate_next_block_for_athlete(
@@ -1943,14 +2018,14 @@ async def _generate_next_block_for_athlete(
             and job.get("kind") == "next_block"
             and job.get("status") == "generating"
         ):
+            _existing_block_num = job.get("block_number", request.block_number)
+            _existing_week_start, _existing_week_end = week_range_for_block(_existing_block_num)
             return {
                 "job_id": existing_job_id,
                 "plan_id": request.plan_id,
-                "block_number": job.get("block_number", request.block_number),
-                "week_start": (job.get("block_number", request.block_number) - 1) * 2 + 1,
-                "week_end": min(
-                    (job.get("block_number", request.block_number) - 1) * 2 + 2, plan.get("total_weeks", 12)
-                ),
+                "block_number": _existing_block_num,
+                "week_start": _existing_week_start,
+                "week_end": min(_existing_week_end, plan.get("total_weeks", 12)),
             }
 
     prev_block = request.block_number - 1
@@ -1978,7 +2053,7 @@ async def _generate_next_block_for_athlete(
         )
 
     total_weeks = plan.get("total_weeks", 12)
-    block_start = (request.block_number - 1) * 2 + 1
+    block_start, block_end = week_range_for_block(request.block_number)
     if block_start > total_weeks:
         raise HTTPException(status_code=400, detail="All blocks for this plan have already been generated.")
 
@@ -2031,17 +2106,17 @@ async def _generate_next_block_for_athlete(
     # unbounded tail of the prompt — older summaries are the right thing to lose
     # if anything is, not last block's session-by-session feedback.
     for blk in range(request.block_number - 1, 0, -1):
-        wk_start = (blk - 1) * 2 + 1
-        wk_end = blk * 2
+        wk_start, wk_end = week_range_for_block(blk)
 
         block_wos = [
             w for w in all_workouts if wk_start <= (w.get("week_number") or 0) <= wk_end and w.get("type") != "Rest"
         ]
         completed_wos = [w for w in block_wos if w.get("is_completed") == 1]
 
-        # Planned totals (from generated workouts)
-        planned_km = sum(w.get("distance_km") or 0 for w in block_wos)
-        planned_min = sum(w.get("duration_minutes") or 0 for w in block_wos)
+        # Planned totals (from generated workouts), summed week-by-week
+        planned_weeks = [get_week_planned_volume(request.plan_id, wk) for wk in range(wk_start, wk_end + 1)]
+        planned_km = sum(w["distance_km"] for w in planned_weeks)
+        planned_min = sum(w["duration_minutes"] for w in planned_weeks)
 
         # Actual totals (from true GPS watch activities, both matched & unplanned)
         actual_vol = get_block_actual_volume(
@@ -2261,7 +2336,7 @@ async def _generate_next_block_for_athlete(
                 total_weeks,
                 api_key=model_api_key,
                 block_number=request.block_number,
-                weeks_per_block=2,
+                weeks_per_block=settings.WEEKS_PER_BLOCK,
                 block_context=block_context,
             )
             save_workouts(request.plan_id, workouts)
@@ -2269,6 +2344,25 @@ async def _generate_next_block_for_athlete(
             plan_jobs[job_id]["workouts"] = workouts
             plan_jobs[job_id]["status"] = "done"
             print(f"[NextBlock][{job_id}] Block {request.block_number} complete — {len(workouts)} workouts saved.")
+
+            # Best-effort athlete-facing narrative, from the same Gemini response
+            # context as the generation itself. Never allowed to fail the job --
+            # workouts are already saved and the job already marked "done" above.
+            try:
+                last_week_review, this_week_description = await PlanGenerator.generate_week_narrative(
+                    race_info=race_info,
+                    block_context=block_context or "",
+                    workouts=workouts,
+                    api_key=model_api_key,
+                )
+                if prev_block >= 1 and last_week_review:
+                    upsert_block_review_ai_fields(request.plan_id, prev_block, ai_last_week_review=last_week_review)
+                if this_week_description:
+                    upsert_block_review_ai_fields(
+                        request.plan_id, request.block_number, ai_this_week_description=this_week_description
+                    )
+            except Exception as ex:
+                print(f"[NextBlock][{job_id}] Week narrative FAILED (non-fatal): {ex}")
         except Exception as ex:
             plan_jobs[job_id]["status"] = "error"
             plan_jobs[job_id]["error"] = str(ex)
@@ -2281,7 +2375,7 @@ async def _generate_next_block_for_athlete(
         "plan_id": request.plan_id,
         "block_number": request.block_number,
         "week_start": block_start,
-        "week_end": min(block_start + 1, total_weeks),
+        "week_end": min(block_end, total_weeks),
     }
 
 
@@ -2666,12 +2760,23 @@ async def _adapt_week_for_athlete(request: AdaptWeekRequest, athlete_id: int, jo
         # Explicit per-plan tier override; None means the generator derives it.
         "athlete_tier": plan.get("athlete_tier"),
         "readiness_summary": readiness_summary,
-        "lang": request.lang or fresh_user.get("lang", "en"),
+        "lang": (
+            "vi"
+            if (request.lang and request.lang.lower().startswith("vi"))
+            or (fresh_user.get("lang") and fresh_user.get("lang").lower().startswith("vi"))
+            or any(
+                c in "àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ"
+                for c in str(request.fatigue_notes or "")
+                + str(request.athlete_notes or "")
+                + str(request.coach_notes or "")
+            )
+            else (request.lang or fresh_user.get("lang", "en"))
+        ),
         "coach_notes": request.coach_notes,
     }
 
     model_api_key = fresh_user.get("gemini_api_key") or settings.GEMINI_API_KEY
-    block_num = (request.week_number + 1) // 2
+    block_num = block_number_for_week(request.week_number)
 
     job_id = str(_uuid.uuid4())
     plan_jobs[job_id] = {
@@ -2693,7 +2798,7 @@ async def _adapt_week_for_athlete(request: AdaptWeekRequest, athlete_id: int, jo
                 total_weeks,
                 api_key=model_api_key,
                 block_number=block_num,
-                weeks_per_block=2,
+                weeks_per_block=settings.WEEKS_PER_BLOCK,
                 block_context=block_context,
                 target_week=request.week_number,
             )
@@ -2742,7 +2847,7 @@ def get_athlete_plan_block_completion(
     plan ownership against the athlete being viewed, not the caller."""
     _verify_plan_ownership(plan_id, athlete_id)
     max_week = get_max_generated_week(plan_id)
-    total_blocks = (max_week + 1) // 2
+    total_blocks = block_number_for_week(max_week)
     blocks = []
     for b in range(1, total_blocks + 1):
         blocks.append(get_block_completion(plan_id, b))
@@ -2771,6 +2876,18 @@ def get_athlete_block_evaluation(
     """Coach-scoped mirror of /api/coach/block-evaluation/{plan_id}/{block_number}."""
     _verify_plan_ownership(plan_id, athlete_id)
     return evaluate_block_performance(athlete_id, plan_id, block_number)
+
+
+@app.get("/api/coaching/athletes/{athlete_id}/week-review/{plan_id}/{week_number}")
+def get_athlete_week_review(
+    athlete_id: int, plan_id: int, week_number: int, coach: dict[str, Any] = Depends(require_athlete_access)
+):
+    """Coach-scoped mirror of /api/coach/week-review/{plan_id}/{week_number}."""
+    _verify_plan_ownership(plan_id, athlete_id)
+    plan = get_plan_by_id(plan_id)
+    review = get_week_review(athlete_id, plan_id, week_number, plan.get("start_date") if plan else None)
+    review["narrative"] = generate_week_narrative(review)
+    return review
 
 
 @app.post("/api/coach/select-plan")
@@ -3071,8 +3188,18 @@ async def coach_chat(request: ChatRequest):
         except Exception as exc:
             print(f"[Chat] Warning loading recent activities: {exc}")
 
+    vi_rule = ""
+    if is_vietnamese_request(
+        lang=request.lang,
+        user_profile=request.user_profile,
+        context_data=request.context_data,
+        messages=request.messages,
+    ):
+        vi_rule = f"\n\n{COACH_VI_LANGUAGE_INSTRUCTION}"
+
     full_system_prompt = (
         f"{COACH_SYSTEM_INSTRUCTION}"
+        f"{vi_rule}"
         f"{grounding_context}"
         f"{profile_summary}"
         f"{context_summary}"

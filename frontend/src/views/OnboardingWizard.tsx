@@ -236,7 +236,7 @@ export default function OnboardingWizard() {
 
       setOnboardingOpen(false);
 
-      setActiveTab(skipPlan ? "home" : "planner");
+      setActiveTab(skipPlan ? "tools" : "planner");
 
       // Start polling for plan generation in the background
 

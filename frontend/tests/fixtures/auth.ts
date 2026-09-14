@@ -16,7 +16,7 @@ import { test as base, expect, Page } from "@playwright/test";
  */
 export async function loginAsFreshUser(page: Page, emailPrefix = "e2e"): Promise<string> {
   const email = `${emailPrefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@uphill.ai`;
-  await page.goto("/");
+  await page.goto("/app");
   await page.evaluate((userEmail) => {
     window.postMessage({ provider: "mock", email: userEmail }, "*");
   }, email);

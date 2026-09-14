@@ -10,7 +10,7 @@ test.describe("Auth forms", () => {
   test("registering through the UI creates a session and opens onboarding", async ({ page }) => {
     const email = uniqueEmail("e2e-register");
 
-    await page.goto("/");
+    await page.goto("/app");
     await page.getByRole("button", { name: "Sign In" }).click();
     await page.getByRole("button", { name: "Create Account" }).click();
 
@@ -38,7 +38,7 @@ test.describe("Auth forms", () => {
       data: { name: "Login Tester", email, password: "correcthorse" },
     });
 
-    await page.goto("/");
+    await page.goto("/app");
     await page.getByRole("button", { name: "Sign In" }).click();
     await page.getByPlaceholder("you@example.com").fill(email);
     await page.getByPlaceholder("Your password").fill("wrong-password");
@@ -55,7 +55,7 @@ test.describe("Auth forms", () => {
       data: { name: "Login Tester", email, password: "correcthorse" },
     });
 
-    await page.goto("/");
+    await page.goto("/app");
     await page.getByRole("button", { name: "Sign In" }).click();
     await page.getByPlaceholder("you@example.com").fill(email);
     await page.getByPlaceholder("Your password").fill("correcthorse");

@@ -21,7 +21,7 @@ export function TrustBanner({ lang }: { lang: "en" | "vi" }) {
       <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-primary)" }}>
         {lang === "en"
           ? "No hallucinated advice — every answer traces back to a real, curated source."
-          : "Không có lời khuyên bịa đặt — mọi câu trả lời đều truy được về nguồn thật, đã tuyển chọn."}
+          : "Cơ sở khoa học chuẩn xác — 100% câu trả lời đều dẫn xuất từ tài liệu đã kiểm chứng."}
       </span>
     </div>
   );

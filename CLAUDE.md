@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Uphill AI is an AI-powered adaptive training platform for trail and mountain runners. It uses Gemini 2.5 Flash as the LLM, grounded by a RAG knowledge base. The coach persona ("Coach Uphill") follows Scott Johnston's principles from *Training for the Uphill Athlete*.
+Uphill AI is an AI-powered adaptive training platform for trail and mountain runners. It uses Gemini 3.8 Flash as the LLM, grounded by a RAG knowledge base. The coach persona ("Coach Uphill") follows Scott Johnston's principles from *Training for the Uphill Athlete*.
 
 ## Architecture
 
@@ -21,7 +21,7 @@ Key modules:
 Plan generation is async and job-based: `POST /api/coach/generate-plan` returns a `job_id`, and the frontend polls `GET /api/coach/plan-status/{job_id}`. Job state is in-memory (`plan_jobs` dict in main.py — not persisted across restarts).
 
 ### Knowledge-base RAG engine (Scheduler / Nutrition / Gear)
-The three AI features run on a single engine: Gemini 2.5 Flash grounded on the distilled `kb_chunks` Postgres table. Gear/Nutrition inject their FULL catalog into the prompt (no retrieval-miss risk); the Scheduler retrieves top-k philosophy chunks from Qdrant (`uphill_kb_scheduler` collection, `services/kb_retrieval.py`). The engine refuses when the KB is empty — it never answers ungrounded, so Gear/Nutrition return an empty result that explains itself.
+The three AI features run on a single engine: Gemini 3.8 Flash grounded on the distilled `kb_chunks` Postgres table. Gear/Nutrition inject their FULL catalog into the prompt (no retrieval-miss risk); the Scheduler retrieves top-k philosophy chunks from Qdrant (`uphill_kb_scheduler` collection, `services/kb_retrieval.py`). The engine refuses when the KB is empty — it never answers ungrounded, so Gear/Nutrition return an empty result that explains itself.
 
 The Scheduler alone has fallback tiers, since a plan must always be produced: **Gemini → one reduced-prompt Gemini retry** (drops the KB grounding block and asks for shorter descriptions, recovering the common truncated/unparseable response) **→ the rule-based schedule**. Telemetry labels the retry as `engine="gemini_retry"` so its hit rate is visible separately.
 

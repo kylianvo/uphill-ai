@@ -11,6 +11,6 @@ describe("TrustBanner", () => {
 
   it("shows the Vietnamese trust message", () => {
     render(<TrustBanner lang="vi" />);
-    expect(screen.getByText(/Không có lời khuyên bịa đặt/)).toBeInTheDocument();
+    expect(screen.getByText(/Cơ sở khoa học chuẩn xác/)).toBeInTheDocument();
   });
 });
