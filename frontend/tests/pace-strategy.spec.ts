@@ -5,7 +5,7 @@ import { test, expect } from '@playwright/test';
 // race_courses KB loaded), same as the other e2e specs.
 
 test('pace strategy: race pick produces a segment plan', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app');
 
   await page.getByRole('button', { name: 'Tools', exact: true }).click();
   await page.getByText('Turn a target finish time').click();
@@ -30,7 +30,7 @@ test('pace strategy: race pick produces a segment plan', async ({ page }) => {
 });
 
 test('goal determiner: reference result produces A/B/C goals and hands off to pace strategy', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app');
 
   await page.getByRole('button', { name: 'Tools', exact: true }).click();
   await page.getByText('Find out what finish time').click();
@@ -63,7 +63,7 @@ test('goal determiner: reference result produces A/B/C goals and hands off to pa
 });
 
 test('pace strategy: manual distance works without a race match', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app');
 
   await page.getByRole('button', { name: 'Tools', exact: true }).click();
   await page.getByText('Turn a target finish time').click();
