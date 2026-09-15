@@ -1,3 +1,4 @@
+import json
 import os
 
 from dotenv import load_dotenv
@@ -99,6 +100,31 @@ class Config:
     # drop third-party cookies on cross-origin fetch, so setting this to false
     # allows legitimate OAuth flows using state & PKCE verification.
     COROS_REQUIRE_STATE_COOKIE: bool = os.getenv("COROS_REQUIRE_STATE_COOKIE", "true").lower() != "false"
+
+    # LLM observability (services/observability.py). Empty keys disable Langfuse;
+    # the Prometheus llm_* token/cost counters work regardless.
+    LANGFUSE_PUBLIC_KEY: str = os.getenv("LANGFUSE_PUBLIC_KEY", "")
+    LANGFUSE_SECRET_KEY: str = os.getenv("LANGFUSE_SECRET_KEY", "")
+    # EU region. Self-hosting Langfuse later changes only this value.
+    LANGFUSE_BASE_URL: str = os.getenv("LANGFUSE_BASE_URL", "https://cloud.langfuse.com")
+    LANGFUSE_ENVIRONMENT: str = os.getenv("LANGFUSE_ENVIRONMENT", os.getenv("ENVIRONMENT", "development"))
+    LANGFUSE_SAMPLE_RATE: float = float(os.getenv("LANGFUSE_SAMPLE_RATE", "1.0"))
+    # Seconds; bounds background export and shutdown flush only, never a request.
+    LANGFUSE_TIMEOUT: int = int(os.getenv("LANGFUSE_TIMEOUT", "5"))
+    # Must stay false: only metadata and scores may leave our infrastructure
+    # (coach-chat roadmap decision 5). Flipping it needs a new product decision.
+    LANGFUSE_EXPORT_CONTENT: bool = os.getenv("LANGFUSE_EXPORT_CONTENT", "false").lower() == "true"
+    # HMAC salt for pseudonymous user/thread ids in traces. Required when Langfuse
+    # keys are set -- observability refuses to enable without it.
+    OBSERVABILITY_ID_SALT: str = os.getenv("OBSERVABILITY_ID_SALT", "")
+    # USD per 1M tokens as dated windows (Gemini Developer API paid tier, standard).
+    # Output price includes thinking tokens. LLM_PRICES_JSON replaces the table wholesale.
+    LLM_PRICES_USD_PER_M: dict = json.loads(os.getenv("LLM_PRICES_JSON") or "null") or {
+        "gemini-3.8-flash": [
+            {"until": "2026-12-31", "input": 0.75, "cached_input": 0.075, "output": 3.75},
+            {"from": "2027-01-01", "input": 1.50, "cached_input": 0.15, "output": 7.50},
+        ]
+    }
 
 
 settings = Config()

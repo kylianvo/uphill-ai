@@ -124,6 +124,11 @@ Backend reads from `backend/.env`. Key variables:
 - `NOTEBOOKLM_NOTEBOOK_ID`, `NOTEBOOKLM_NUTRITION_ID`, `NOTEBOOKLM_AUTH_JSON` — read **only** by `backend/scripts/distill_principles.py`. No request path touches them; leave them unset in normal deployments and set them only when running that script
 - `TAVILY_API_KEY` — search API key for gear's and nutrition's web-discovery KB distillation (`services/kb_distiller.py`'s `discover_gear_web`/`discover_nutrition_web`); without it `sweep_domain` raises
 - `QDRANT_URL` — defaults to `http://qdrant:6333` in Docker, `http://localhost:6333` otherwise
+- `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY` — enable Langfuse tracing (EU cloud, `LANGFUSE_BASE_URL`); empty disables it. `services/observability.py` is the only module importing `langfuse`/`openinference`/`opentelemetry`
+- `OBSERVABILITY_ID_SALT` — HMAC salt for pseudonymous user/thread ids; required when Langfuse keys are set
+- `LANGFUSE_EXPORT_CONTENT` — must stay `false`: traces are metadata and scores only (no prompts, replies or health notes)
+- `LANGFUSE_ENVIRONMENT`, `LANGFUSE_SAMPLE_RATE`, `LANGFUSE_TIMEOUT` — trace tagging, sampling, background export timeout
+- `LLM_PRICES_JSON` — optional override of the per-model USD price table in `config.py` used by the `llm_cost_usd_total` Prometheus counter
 
 Per-user Gemini API keys are stored in the `users` table (`gemini_api_key` column) and take precedence over the server-level key for chat and plan generation (NOT yet for the gear/nutrition Gemini engines, which use the server key).
 

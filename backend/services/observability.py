@@ -11,7 +11,10 @@ the implementation lands, every function is a no-op returning its disabled-mode 
 import contextlib
 from collections.abc import Iterator
 from dataclasses import dataclass
+from datetime import UTC, date, datetime
 from typing import Any
+
+from config import settings
 
 
 @dataclass(frozen=True)
@@ -31,6 +34,27 @@ class Usage:
             thinking_tokens=getattr(usage_metadata, "thoughts_token_count", None) or 0,
             cached_tokens=getattr(usage_metadata, "cached_content_token_count", None) or 0,
         )
+
+
+def cost_usd(model: str, usage: Usage, on: date | None = None) -> float | None:
+    """USD cost of one call, or None when `model` has no price window covering `on`
+    (UTC today by default). prompt_token_count includes cached tokens, so cached
+    tokens are subtracted from the input bill and charged at the cached rate."""
+    day = on or datetime.now(UTC).date()
+    for window in settings.LLM_PRICES_USD_PER_M.get(model, []):
+        starts, ends = window.get("from"), window.get("until")
+        if starts and day < date.fromisoformat(starts):
+            continue
+        if ends and day > date.fromisoformat(ends):
+            continue
+        uncached = max(usage.input_tokens - usage.cached_tokens, 0)
+        total = (
+            uncached * window["input"]
+            + usage.cached_tokens * window["cached_input"]
+            + (usage.output_tokens + usage.thinking_tokens) * window["output"]
+        )
+        return round(total / 1_000_000, 6)
+    return None
 
 
 class Observation:
