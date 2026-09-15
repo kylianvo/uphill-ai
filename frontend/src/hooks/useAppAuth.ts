@@ -133,9 +133,17 @@ export function useAppAuth() {
           iOSServerClientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
         },
       });
+      // No custom `scopes` here: the plugin's Android GoogleProvider hard-
+      // rejects any login() call that includes a scopes array unless
+      // MainActivity implements ModifiedMainActivityForSocialLoginPlugin
+      // ("You CANNOT use scopes without modifying the main activity"),
+      // which broke Google Sign-In on every Android build. The plugin's
+      // default scopes (userinfo.email, userinfo.profile, openid) already
+      // cover exactly what "email"/"profile" were asking for, on both
+      // platforms, so omitting the option avoids the native-activity
+      // requirement entirely instead of chasing it.
       const res = await SocialLogin.login({
         provider: "google",
-        options: { scopes: ["email", "profile"] },
       });
       const idToken = "idToken" in res.result ? res.result.idToken : null;
       if (!idToken) throw new Error("No credential returned from Google.");
