@@ -165,9 +165,10 @@ class ChatMessage(BaseModel):
 
 
 class ChatRequest(BaseModel):
+    # No identity, profile, plan or API-key fields: /api/coach/chat resolves
+    # all of those from the session user. Old clients that still send them
+    # are fine -- pydantic ignores unknown fields.
     messages: list[ChatMessage]
-    user_profile: dict[str, Any] | None = None
-    context_data: dict[str, Any] | None = None
     lang: str | None = None
 
 
@@ -630,19 +631,11 @@ The user is using the Vietnamese version (or communicating in Vietnamese). You M
 
 def is_vietnamese_request(
     lang: str | None = None,
-    user_profile: dict[str, Any] | None = None,
-    context_data: dict[str, Any] | None = None,
     messages: list[ChatMessage] | None = None,
 ) -> bool:
     """Detect if the user is using the Vietnamese version or requesting in Vietnamese."""
     if lang and str(lang).lower().startswith("vi"):
         return True
-    if user_profile and isinstance(user_profile, dict):
-        if str(user_profile.get("lang", "")).lower().startswith("vi"):
-            return True
-    if context_data and isinstance(context_data, dict):
-        if str(context_data.get("lang", "")).lower().startswith("vi"):
-            return True
     if messages:
         last_msg = messages[-1].content if messages else ""
         vi_chars = set(
@@ -3168,10 +3161,11 @@ def get_nutrition_catalog():
 
 
 @app.post("/api/coach/chat")
-async def coach_chat(request: ChatRequest):
+async def coach_chat(request: ChatRequest, user: dict[str, Any] = Depends(get_current_user)):
     """
     Query Gemini model grounded with the distilled knowledge base.
-    Dynamic contextual references are injected in the prompt envelope.
+    Profile, active plan, recent activities and Gemini key are resolved from
+    the session user -- never from the request body.
     """
     if not request.messages:
         raise HTTPException(status_code=400, detail="Message history cannot be empty.")
@@ -3195,51 +3189,64 @@ async def coach_chat(request: ChatRequest):
         )
 
     # 2. Setup system instructions
-    profile_summary = f"\nUser Running Profile: {request.user_profile}" if request.user_profile else ""
-    context_summary = f"\nContext/Activity Data: {request.context_data}" if request.context_data else ""
+    user_id = user["id"]
+    plan = get_active_plan(user_id)
+    profile = {
+        "age": user.get("age"),
+        "current_weekly_km": user.get("current_weekly_km"),
+        "max_hr": user.get("max_hr"),
+        "resting_hr": user.get("resting_hr"),
+        "aet_hr": user.get("aet_hr"),
+        "ant_hr": user.get("ant_hr"),
+        "use_treadmill": bool(plan and plan.get("use_treadmill")),
+        "zone2_pace_min": _z2_min_for(user),
+        "zone2_pace_max": _z2_max_for(user),
+    }
+    profile_summary = f"\nUser Running Profile: {profile}"
+    context_summary = ""
+    if plan:
+        plan_context = {
+            "race_name": plan["race_name"],
+            "race_date": plan["race_date"],
+            "goal_type": plan["goal_type"],
+            "total_weeks": plan["total_weeks"],
+            "workouts": get_plan_workouts(plan["id"]),
+        }
+        context_summary = f"\nContext/Activity Data: {plan_context}"
 
     # 3. Dynamic watch activities & execution quality grounding
     recent_activity_context = ""
-    user_id = request.user_profile.get("id") if request.user_profile else None
-    if user_id:
-        try:
-            from datetime import date, timedelta
+    try:
+        from datetime import date, timedelta
 
-            until = date.today() + timedelta(days=1)
-            since = until - timedelta(days=14)
-            recent_matches = get_matches_for_review(user_id, since, until)
-            if recent_matches:
-                act_lines = ["\n=== RECENT WATCH ACTIVITIES & EXECUTION QUALITY ==="]
-                for act in recent_matches[-8:]:
-                    dist = (
-                        f"{act['distance_km']:.1f}km" if act.get("distance_km") else f"{act.get('sets') or 'N/A'} sets"
-                    )
-                    dur = f"{round((act.get('duration_seconds') or 0)/60)}m"
-                    hr = f"avg HR {act['avg_hr']} bpm" if act.get("avg_hr") else ""
-                    q_grade = (
-                        f"Quality: {act.get('quality_grade')} ({act.get('quality_score')}%)"
-                        if act.get("quality_score") is not None
-                        else ""
-                    )
-                    w_title = act.get("workout_title") or "Unplanned / Free session"
-                    details = act.get("quality_details") or {}
-                    takeaways = "; ".join(details.get("takeaways", [])) if isinstance(details, dict) else ""
-                    notes = f" | Takeaways: {takeaways}" if takeaways else ""
-                    act_lines.append(
-                        f"- {str(act.get('start_time'))[:10]}: '{w_title}' ({dist}, {dur}, {hr}) {q_grade}{notes}"
-                    )
-                act_lines.append("===================================================")
-                recent_activity_context = "\n".join(act_lines)
-        except Exception as exc:
-            print(f"[Chat] Warning loading recent activities: {exc}")
+        until = date.today() + timedelta(days=1)
+        since = until - timedelta(days=14)
+        recent_matches = get_matches_for_review(user_id, since, until)
+        if recent_matches:
+            act_lines = ["\n=== RECENT WATCH ACTIVITIES & EXECUTION QUALITY ==="]
+            for act in recent_matches[-8:]:
+                dist = f"{act['distance_km']:.1f}km" if act.get("distance_km") else f"{act.get('sets') or 'N/A'} sets"
+                dur = f"{round((act.get('duration_seconds') or 0)/60)}m"
+                hr = f"avg HR {act['avg_hr']} bpm" if act.get("avg_hr") else ""
+                q_grade = (
+                    f"Quality: {act.get('quality_grade')} ({act.get('quality_score')}%)"
+                    if act.get("quality_score") is not None
+                    else ""
+                )
+                w_title = act.get("workout_title") or "Unplanned / Free session"
+                details = act.get("quality_details") or {}
+                takeaways = "; ".join(details.get("takeaways", [])) if isinstance(details, dict) else ""
+                notes = f" | Takeaways: {takeaways}" if takeaways else ""
+                act_lines.append(
+                    f"- {str(act.get('start_time'))[:10]}: '{w_title}' ({dist}, {dur}, {hr}) {q_grade}{notes}"
+                )
+            act_lines.append("===================================================")
+            recent_activity_context = "\n".join(act_lines)
+    except Exception as exc:
+        print(f"[Chat] Warning loading recent activities: {exc}")
 
     vi_rule = ""
-    if is_vietnamese_request(
-        lang=request.lang,
-        user_profile=request.user_profile,
-        context_data=request.context_data,
-        messages=request.messages,
-    ):
+    if is_vietnamese_request(lang=request.lang, messages=request.messages):
         vi_rule = f"\n\n{COACH_VI_LANGUAGE_INSTRUCTION}"
 
     full_system_prompt = (
@@ -3252,11 +3259,7 @@ async def coach_chat(request: ChatRequest):
         f"\n\nNote: If the user asks questions referring to uploaded documents or materials, retrieve answers from the GROUNDING REFERENCE DATABASE and state which document/link you got it from."
     )
 
-    model_api_key = None
-    if request.user_profile:
-        model_api_key = request.user_profile.get("gemini_api_key")
-    if not model_api_key:
-        model_api_key = settings.GEMINI_API_KEY
+    model_api_key = user.get("gemini_api_key") or settings.GEMINI_API_KEY
 
     if model_api_key:
         try:

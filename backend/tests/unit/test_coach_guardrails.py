@@ -44,8 +44,6 @@ def test_is_vietnamese_request_detection():
 
     assert is_vietnamese_request(lang="vi") is True
     assert is_vietnamese_request(lang="en") is False
-    assert is_vietnamese_request(user_profile={"lang": "vi"}) is True
-    assert is_vietnamese_request(context_data={"lang": "vi"}) is True
     assert (
         is_vietnamese_request(messages=[ChatMessage(role="user", content="Tập bài Long Run Chủ Nhật này thế nào?")])
         is True
