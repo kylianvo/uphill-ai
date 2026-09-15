@@ -6,6 +6,8 @@ see services/vector_service.py note in the implementation plan for why langchain
 is intentionally avoided here.
 """
 
+import hashlib
+
 from google import genai
 from google.genai import types
 from qdrant_client import QdrantClient
@@ -69,12 +71,27 @@ def scheduler_point_count() -> int | None:
         return None
 
 
+def _chunk_ref(title: str, content: str) -> str:
+    """Stable 12-hex id for a chunk. Qdrant point ids are enumerate() indexes that
+    change on every reindex; this doesn't, so traces can name the chunks they used."""
+    return hashlib.sha1(f"{title}\n{content}".encode()).hexdigest()[:12]
+
+
 def search_scheduler_chunks(query: str, api_key: str, k: int = 6) -> list[dict]:
-    """Top-k philosophy chunks for a retrieval query. [] if collection absent."""
+    """Top-k philosophy chunks for a retrieval query: title, content, score, ref. [] if collection absent."""
     client = _client()
     if not client.collection_exists(COLLECTION):
         print(f"[KBRetrieval] Collection {COLLECTION} does not exist — returning no context")
         return []
     vector = _embed([query], api_key, task_type="retrieval_query")[0]
     hits = client.query_points(collection_name=COLLECTION, query=vector, limit=k).points
-    return [{"title": h.payload.get("title", ""), "content": h.payload.get("content", "")} for h in hits if h.payload]
+    results = []
+    for hit in hits:
+        if not hit.payload:
+            continue
+        title = hit.payload.get("title", "")
+        content = hit.payload.get("content", "")
+        results.append(
+            {"title": title, "content": content, "score": float(hit.score), "ref": _chunk_ref(title, content)}
+        )
+    return results
