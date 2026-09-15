@@ -6,7 +6,7 @@ import { usePlanner } from "./usePlanner";
 export function useAppAuth() {
   const ctx = useAppContext();
   const { setUser, setAuthModalOpen, setOnboardingOpen, setOnboardingStep, authErrorMsg, setAuthErrorMsg } = ctx;
-  const { fetchRecentPlansWithToken } = usePlanner();
+  const { fetchRecentPlansWithToken, fetchActivePlanWithToken } = usePlanner();
 
   const [emailInput, setEmailInput] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
@@ -52,6 +52,7 @@ export function useAppAuth() {
       setOnboardingOpen(true);
       setOnboardingStep(0);
       fetchRecentPlansWithToken(data.session_token);
+      fetchActivePlanWithToken(data.session_token);
     } catch (err: any) {
       setAuthErrorMsg(err.message || "Registration failed.");
     } finally {
@@ -78,6 +79,7 @@ export function useAppAuth() {
       setUser(data.user);
       setAuthModalOpen(false);
       fetchRecentPlansWithToken(data.session_token);
+      fetchActivePlanWithToken(data.session_token);
     } catch (err: any) {
       setAuthErrorMsg(err.message || "Login failed.");
     } finally {
@@ -112,6 +114,7 @@ export function useAppAuth() {
       }
       setAuthModalOpen(false);
       fetchRecentPlansWithToken(data.session_token);
+      fetchActivePlanWithToken(data.session_token);
     } catch (err: any) {
       setAuthErrorMsg(err.message || "Failed to sign in with Google.");
     } finally {
@@ -130,9 +133,18 @@ export function useAppAuth() {
           iOSServerClientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
         },
       });
+      // No custom `scopes` here: the plugin's Android GoogleProvider hard-
+      // rejects any login() call that includes a scopes array unless
+      // MainActivity implements ModifiedMainActivityForSocialLoginPlugin
+      // ("You CANNOT use scopes without modifying the main activity"),
+      // which broke Google Sign-In on every Android build. The plugin's
+      // default scopes (userinfo.email, userinfo.profile, openid) already
+      // cover exactly what "email"/"profile" were asking for, on both
+      // platforms, so omitting the option avoids the native-activity
+      // requirement entirely instead of chasing it.
       const res = await SocialLogin.login({
         provider: "google",
-        options: { scopes: ["email", "profile"] },
+        options: {},
       });
       const idToken = "idToken" in res.result ? res.result.idToken : null;
       if (!idToken) throw new Error("No credential returned from Google.");
