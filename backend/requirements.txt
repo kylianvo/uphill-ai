@@ -4,7 +4,7 @@ pydantic>=2.0.0
 python-dotenv>=1.0.0
 fitparse>=1.2.0
 gpxpy>=1.6.2
-google-genai>=1.0.0
+google-genai>=2.0.0
 python-multipart
 pypdf
 beautifulsoup4
@@ -45,3 +45,13 @@ pytz
 # has no protobuf dependency, so that specific conflict is gone, but
 # scripts/run_dw_elt.py still runs dbt from an isolated venv at ./warehouse/.venv
 # and hasn't been re-evaluated for merging back into this file's dependency tree.
+# LLM observability -- imported ONLY by services/observability.py, lazily, so a stale
+# prod image without these degrades to "observability disabled" instead of crashing.
+# Exact pins: requirements.txt gaps have taken prod down three times, and these pull in
+# the OpenTelemetry stack. openinference-instrumentation-google-genai 1.4.7 requires
+# google-genai>=2.0.0. See docs/superpowers/specs/llm-observability-design.md.
+langfuse==4.15.3
+openinference-instrumentation-google-genai==1.4.7
+opentelemetry-api==1.44.0
+opentelemetry-exporter-otlp-proto-http==1.44.0
+opentelemetry-sdk==1.44.0
