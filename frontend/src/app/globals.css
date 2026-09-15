@@ -1124,16 +1124,6 @@ label {
 }
 
 @media (max-width: 900px) {
-  :root {
-    --bg-main: rgba(255, 255, 255, 0.96);
-    --bg-card: #ffffff;
-    --bg-card-hover: #ffffff;
-    --border-color: rgba(0, 0, 0, 0.08);
-    --text-primary: #0f172a;
-    --text-secondary: #334155;
-    --text-muted: #64748b;
-  }
-
   .top-nav {
     /* padding-top (not margin) carries --sat here so it keeps the nav's own
        background/blur behind the notch/Dynamic Island, while still pushing
