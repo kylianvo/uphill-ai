@@ -1689,31 +1689,8 @@ export default function AppPage() {
       const response = await fetch(`${API_BASE_URL}/api/coach/chat`, {
         method: "POST",
         headers: headers,
-        body: JSON.stringify({
-          messages: updatedMessages,
-          user_profile: {
-            age: user?.age ?? 30,
-            current_weekly_km: user?.current_weekly_km ?? 30.0,
-            max_hr: user?.max_hr ?? 185,
-            resting_hr: user?.resting_hr ?? 60,
-            aet_hr: user?.aet_hr ?? 135,
-            ant_hr: user?.ant_hr ?? 165,
-            use_treadmill: activePlan?.use_treadmill === true,
-            gemini_api_key: user?.gemini_api_key ?? "",
-            zone2_pace_min: user?.zone2_pace_min ?? "6:30",
-            zone2_pace_max: user?.zone2_pace_max ?? "5:45",
-            recent_race: planForm.race_name,
-          },
-          context_data: activePlan
-            ? {
-                race_name: activePlan.race_name,
-                race_date: activePlan.race_date,
-                goal_type: activePlan.goal_type,
-                total_weeks: activePlan.total_weeks,
-                workouts: workouts,
-              }
-            : null,
-        }),
+        // Profile, plan and Gemini key are resolved server-side from the session.
+        body: JSON.stringify({ messages: updatedMessages }),
       });
       if (!response.ok) {
         throw new Error("Failed to communicate with Coach API");
