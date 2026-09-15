@@ -66,7 +66,7 @@ export default function ToolsView({ isMobile }: { isMobile: boolean }) {
                 alignItems: "center",
                 gap: "14px",
                 cursor: "pointer",
-                background: "#ffffff",
+                background: "var(--bg-card)",
                 border: "1px solid rgba(0, 0, 0, 0.08)",
                 borderRadius: "16px",
                 boxShadow: "0 2px 10px rgba(0, 0, 0, 0.04)",
