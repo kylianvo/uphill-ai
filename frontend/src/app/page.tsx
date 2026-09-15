@@ -126,9 +126,6 @@ export default function MarketingHome() {
   useEffect(() => {
     if (isNativePlatform()) {
       router.replace("/app");
-      if (typeof window !== "undefined") {
-        window.location.replace("/app");
-      }
     } else {
       const timer = setTimeout(() => setShowMarketing(true), 0);
       return () => clearTimeout(timer);
