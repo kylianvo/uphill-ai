@@ -5,6 +5,10 @@ out/
 build/
 .venv/
 venv/
+# .venv/ (trailing slash) only matches directories, not the symlink to the
+# shared venv that test runs in this repo create at backend/.venv -- match it
+# explicitly so it's never accidentally tracked.
+backend/.venv
 
 # Environment and Secrets
 .env

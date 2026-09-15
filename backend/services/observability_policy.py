@@ -6,8 +6,9 @@ touches those SDKs. Coach-chat roadmap decision 5: only metadata and scores leav
 infrastructure. See docs/superpowers/specs/llm-observability-design.md.
 
 Attribute names below are the ones emitted by langfuse 4.15.3 (_client/attributes.py)
-and openinference-instrumentation-google-genai 1.4.7. Anything not listed is deleted
-before export; a new SDK attribute is therefore dropped until someone allowlists it.
+and openinference-instrumentation-google-genai 1.4.7. Anything not explicitly allowlisted
+is deleted before export. Token count attributes must carry numeric values only (no free-text);
+health-sensitive fields in content are redacted; list lengths are capped to prevent volume leaks.
 """
 
 import hashlib
@@ -97,6 +98,7 @@ _HEALTH_FREE_TEXT_KEYS = frozenset({"injury_history", "athlete_notes", "notes", 
 _MAX_METADATA_STRING = 64
 # Metadata values arrive at export JSON-serialised (a list of chunk refs is one string).
 _MAX_ATTRIBUTE_STRING = 512
+_MAX_LIST_ITEMS = 100  # cap list length to prevent volume leaks
 
 
 def pseudonym(value: int | str, salt: str) -> str:
@@ -115,7 +117,8 @@ def filter_metadata(metadata: dict[str, Any] | None) -> dict[str, Any]:
         if key not in METADATA_KEYS:
             continue
         if isinstance(value, list | tuple):
-            if all(_is_short_scalar(item, _MAX_METADATA_STRING) for item in value):
+            # Cap list length to prevent volume leaks; reject if too many items
+            if len(value) <= _MAX_LIST_ITEMS and all(_is_short_scalar(item, _MAX_METADATA_STRING) for item in value):
                 kept[key] = list(value)
         elif _is_short_scalar(value, _MAX_METADATA_STRING):
             kept[key] = value
@@ -127,8 +130,11 @@ def _is_content_key(key: str) -> bool:
 
 
 def _allowed(key: str, value: Any, export_content: bool) -> bool:
-    if key in _OTEL_KEYS or key.startswith(_OTEL_PREFIXES):
+    if key in _OTEL_KEYS:
         return True
+    # llm.token_count.* and gen_ai.usage.* must only carry numeric values (int/float/bool), never strings
+    if key.startswith(_OTEL_PREFIXES):
+        return isinstance(value, bool | int | float)
     for prefix in _METADATA_ATTRIBUTE_PREFIXES:
         if key.startswith(prefix):
             return key[len(prefix) :] in METADATA_KEYS and _is_short_scalar(value, _MAX_ATTRIBUTE_STRING)
@@ -153,6 +159,15 @@ def _redact(node: Any) -> Any:
         return {k: "[redacted]" if k in _HEALTH_FREE_TEXT_KEYS else _redact(v) for k, v in node.items()}
     if isinstance(node, list):
         return [_redact(item) for item in node]
+    if isinstance(node, str):
+        # Try to parse and redact JSON strings (e.g., in list elements)
+        try:
+            parsed = json.loads(node)
+            redacted = _redact(parsed)
+            return json.dumps(redacted, ensure_ascii=False)
+        except (TypeError, ValueError):
+            # Not JSON, return unchanged
+            return node
     return node
 
 
