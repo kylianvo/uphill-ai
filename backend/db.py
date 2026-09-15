@@ -425,6 +425,23 @@ def init_db():
             ON activities (user_id, source_provider, (external_ids ->> source_provider))
             """)
         )
+
+        conn.execute(
+            text("""
+        CREATE TABLE IF NOT EXISTS beta_signups (
+            id                  SERIAL PRIMARY KEY,
+            name                VARCHAR(255) NOT NULL,
+            email               VARCHAR(255) NOT NULL,
+            referral_source     VARCHAR(100) NOT NULL,
+            usage_intent        VARCHAR(100) NOT NULL,
+            user_agent          TEXT,
+            ip_address          VARCHAR(100),
+            created_at          TIMESTAMPTZ DEFAULT NOW()
+        )
+        """)
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_beta_signups_email ON beta_signups (email)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_beta_signups_created_at ON beta_signups (created_at DESC)"))
         conn.commit()
 
         for col_sql in [
@@ -3548,3 +3565,44 @@ def get_week_review(
         "missed": missed,
         "coverage": coverage,
     }
+
+
+def create_beta_signup(
+    name: str,
+    email: str,
+    referral_source: str,
+    usage_intent: str,
+    user_agent: str | None = None,
+    ip_address: str | None = None,
+) -> dict[str, Any]:
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("""
+                INSERT INTO beta_signups (name, email, referral_source, usage_intent, user_agent, ip_address)
+                VALUES (:name, :email, :referral_source, :usage_intent, :user_agent, :ip_address)
+                RETURNING *
+            """),
+            {
+                "name": name.strip(),
+                "email": email.strip().lower(),
+                "referral_source": referral_source.strip(),
+                "usage_intent": usage_intent.strip(),
+                "user_agent": user_agent,
+                "ip_address": ip_address,
+            },
+        ).fetchone()
+        conn.commit()
+    return _row_to_dict(row)
+
+
+def get_beta_signups(limit: int = 100, offset: int = 0) -> list[dict[str, Any]]:
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("""
+                SELECT * FROM beta_signups
+                ORDER BY created_at DESC
+                LIMIT :limit OFFSET :offset
+            """),
+            {"limit": limit, "offset": offset},
+        ).fetchall()
+    return [_row_to_dict(r) for r in rows]

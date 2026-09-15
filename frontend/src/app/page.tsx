@@ -17,12 +17,14 @@ import {
   CheckCircle,
   Robot,
   ArrowRight,
+  DownloadSimple,
 } from "@phosphor-icons/react";
 import { useAppContext } from "@/contexts/AppContext";
 import { translations } from "./translations";
 import { isNativePlatform } from "@/utils/native";
 import { TrustBanner } from "@/components/landing/TrustBanner";
 import { LANDING_FEATURES } from "@/data/landingFeatures";
+import { BetaDownloadModal } from "@/components/landing/BetaDownloadModal";
 
 // Whether the Proof section renders real numbers/testimonials yet.
 // TODO(proof-section): flip on once we have plans-generated counts,
@@ -120,6 +122,7 @@ export default function MarketingHome() {
   // index.html (see MOBILE.md) — someone who already installed the app
   // should never see a marketing pitch, so skip straight to /app there.
   const [showMarketing, setShowMarketing] = useState(false);
+  const [betaModalOpen, setBetaModalOpen] = useState(false);
   useEffect(() => {
     if (isNativePlatform()) {
       router.replace("/app");
@@ -465,6 +468,38 @@ export default function MarketingHome() {
                 </button>
               </div>
 
+              <button
+                type="button"
+                onClick={() => setBetaModalOpen(true)}
+                className="desktop-only-cta"
+                style={{
+                  background: "rgba(16, 185, 129, 0.1)",
+                  border: "1px solid rgba(16, 185, 129, 0.35)",
+                  color: "#059669",
+                  padding: "9px 18px",
+                  borderRadius: "9999px",
+                  fontSize: "13.5px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  boxShadow: "0 2px 8px rgba(16, 185, 129, 0.12)",
+                  transition: "all 0.15s ease",
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = "rgba(16, 185, 129, 0.18)";
+                  e.currentTarget.style.borderColor = "rgba(16, 185, 129, 0.6)";
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = "rgba(16, 185, 129, 0.1)";
+                  e.currentTarget.style.borderColor = "rgba(16, 185, 129, 0.35)";
+                }}
+              >
+                <DownloadSimple size={15} weight="bold" />
+                <span>{t("landing_nav_beta_download")}</span>
+              </button>
+
               <Link
                 href="/app"
                 className="desktop-only-cta"
@@ -600,6 +635,40 @@ export default function MarketingHome() {
                   <span>{t("landing_cta_primary")}</span>
                   <ArrowRight size={18} weight="bold" className="cta-arrow" />
                 </Link>
+
+                <button
+                  type="button"
+                  onClick={() => setBetaModalOpen(true)}
+                  className="btn-secondary-motion"
+                  style={{
+                    background: "rgba(16, 185, 129, 0.12)",
+                    backdropFilter: "blur(16px)",
+                    WebkitBackdropFilter: "blur(16px)",
+                    color: "#047857",
+                    border: "1px solid rgba(16, 185, 129, 0.35)",
+                    padding: "16px 30px",
+                    borderRadius: "9999px",
+                    fontSize: "16.5px",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    boxShadow: "0 4px 16px rgba(16, 185, 129, 0.12)",
+                    transition: "all 0.15s ease",
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.background = "rgba(16, 185, 129, 0.2)";
+                    e.currentTarget.style.borderColor = "rgba(16, 185, 129, 0.6)";
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.background = "rgba(16, 185, 129, 0.12)";
+                    e.currentTarget.style.borderColor = "rgba(16, 185, 129, 0.35)";
+                  }}
+                >
+                  <DownloadSimple size={18} weight="bold" />
+                  <span>{t("landing_hero_beta_download")}</span>
+                </button>
 
                 <Link
                   href="/science"
@@ -1725,26 +1794,70 @@ export default function MarketingHome() {
               >
                 {t("landing_closing_subtitle")}
               </p>
-              <Link
-                href="/app"
-                className="btn-primary-motion"
+              <div
                 style={{
-                  background: "#111827",
-                  color: "#ffffff",
-                  padding: "18px 44px",
-                  fontSize: "17px",
-                  borderRadius: "9999px",
-                  fontWeight: 700,
-                  display: "inline-flex",
+                  display: "flex",
                   alignItems: "center",
-                  gap: "10px",
-                  textDecoration: "none",
-                  boxShadow: "0 8px 28px rgba(0, 0, 0, 0.2)",
+                  justifyContent: "center",
+                  gap: "14px",
+                  flexWrap: "wrap",
                 }}
               >
-                <span>{t("landing_cta_primary")}</span>
-                <ArrowRight size={18} weight="bold" className="cta-arrow" />
-              </Link>
+                <Link
+                  href="/app"
+                  className="btn-primary-motion"
+                  style={{
+                    background: "#111827",
+                    color: "#ffffff",
+                    padding: "18px 44px",
+                    fontSize: "17px",
+                    borderRadius: "9999px",
+                    fontWeight: 700,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    textDecoration: "none",
+                    boxShadow: "0 8px 28px rgba(0, 0, 0, 0.2)",
+                  }}
+                >
+                  <span>{t("landing_cta_primary")}</span>
+                  <ArrowRight size={18} weight="bold" className="cta-arrow" />
+                </Link>
+
+                <button
+                  type="button"
+                  onClick={() => setBetaModalOpen(true)}
+                  className="btn-secondary-motion"
+                  style={{
+                    background: "rgba(16, 185, 129, 0.12)",
+                    backdropFilter: "blur(16px)",
+                    WebkitBackdropFilter: "blur(16px)",
+                    color: "#047857",
+                    border: "1px solid rgba(16, 185, 129, 0.35)",
+                    padding: "18px 36px",
+                    borderRadius: "9999px",
+                    fontSize: "17px",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    boxShadow: "0 4px 20px rgba(16, 185, 129, 0.1)",
+                    transition: "all 0.15s ease",
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.background = "rgba(16, 185, 129, 0.2)";
+                    e.currentTarget.style.borderColor = "rgba(16, 185, 129, 0.6)";
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.background = "rgba(16, 185, 129, 0.12)";
+                    e.currentTarget.style.borderColor = "rgba(16, 185, 129, 0.35)";
+                  }}
+                >
+                  <DownloadSimple size={18} weight="bold" />
+                  <span>{t("landing_closing_beta_download")}</span>
+                </button>
+              </div>
             </div>
           </section>
         </main>
@@ -1829,6 +1942,13 @@ export default function MarketingHome() {
             </div>
           </div>
         </footer>
+
+        {/* ── Beta Download Lead Capture & Distribution Modal ─────────── */}
+        <BetaDownloadModal
+          isOpen={betaModalOpen}
+          onClose={() => setBetaModalOpen(false)}
+          lang={lang}
+        />
       </div>
     </div>
   );

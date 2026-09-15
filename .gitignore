@@ -51,6 +51,7 @@ skills-lock.json
 # Backup files
 *.bak
 *.bak2
+frontend/scripts/
 
 # Business/strategy docs (local only, not part of the shipped repo)
 docs/*

@@ -3,7 +3,7 @@ import uuid as _uuid
 from typing import Any
 
 import httpx
-from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Response, UploadFile
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from google import genai
 from google.genai import types as genai_types
@@ -18,6 +18,7 @@ from db import (
     block_number_for_week,
     coach_update_workout,
     compute_current_week,
+    create_beta_signup,
     create_coach_invite,
     create_coach_note,
     create_coach_workout,
@@ -308,6 +309,13 @@ class FacebookAuthRequest(BaseModel):
 
 class MockLoginRequest(BaseModel):
     email: str
+
+
+class BetaSignupRequest(BaseModel):
+    name: str
+    email: str
+    referral_source: str
+    usage_intent: str
 
 
 class RegisterRequest(BaseModel):
@@ -725,6 +733,43 @@ async def auth_facebook(request: FacebookAuthRequest):
         if isinstance(e, HTTPException):
             raise e
         raise HTTPException(status_code=500, detail=f"Facebook authentication error: {str(e)}")
+
+
+@app.post("/api/marketing/beta-signup")
+def register_beta_signup(req: BetaSignupRequest, request: Request):
+    """Save marketing lead beta download request."""
+    client_ip = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
+    email = req.email.strip().lower()
+    name = req.name.strip()
+    referral = req.referral_source.strip()
+    intent = req.usage_intent.strip()
+
+    if not name:
+        raise HTTPException(status_code=400, detail="Name is required.")
+    if not email or "@" not in email:
+        raise HTTPException(status_code=400, detail="A valid email is required.")
+    if not referral:
+        raise HTTPException(status_code=400, detail="Referral source is required.")
+    if not intent:
+        raise HTTPException(status_code=400, detail="Usage intent is required.")
+
+    record = create_beta_signup(
+        name=name,
+        email=email,
+        referral_source=referral,
+        usage_intent=intent,
+        user_agent=user_agent,
+        ip_address=client_ip,
+    )
+
+    return {
+        "status": "ok",
+        "message": "Beta signup recorded successfully",
+        "id": record.get("id"),
+        "ios_url": "https://testflight.apple.com/join/T9WarWaS",
+        "android_url": "https://drive.google.com/file/d/17lt8-S1eeyAbUbyR-QSlkr_kBilNnTKB/view?usp=sharing",
+    }
 
 
 @app.post("/api/auth/register")
