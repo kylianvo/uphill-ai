@@ -111,11 +111,9 @@ export function useKnowledge() {
 
   const shuffleDailyCards = async () => {
     const token = localStorage.getItem("uphill_session_token");
-    if (!token) return;
+    const headers: Record<string, string> = token ? { "Authorization": `Bearer ${token}` } : {};
     try {
-      const res = await fetch(`${API_BASE_URL}/api/knowledge/cards/random?n=3&lang=${lang}`, {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
+      const res = await fetch(`${API_BASE_URL}/api/knowledge/cards/random?n=3&lang=${lang}`, { headers });
       if (res.ok) {
         const d = await res.json();
         setDailyCards(d.cards || []);
@@ -128,12 +126,12 @@ export function useKnowledge() {
   const filterKnowledgeByTopic = async (topic: string) => {
     setKnowledgeTopic(topic);
     const token = localStorage.getItem("uphill_session_token");
-    if (!token) return;
+    const headers: Record<string, string> = token ? { "Authorization": `Bearer ${token}` } : {};
     try {
       const url = topic === "All"
         ? `${API_BASE_URL}/api/knowledge/cards?lang=${lang}`
         : `${API_BASE_URL}/api/knowledge/cards?topic=${topic}&lang=${lang}`;
-      const res = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
+      const res = await fetch(url, { headers });
       if (res.ok) { const d = await res.json(); setDailyCards(d.cards || []); }
     } catch (e) {}
   };

@@ -3313,22 +3313,22 @@ if __name__ == "__main__":
 
 
 @app.get("/api/knowledge/cards")
-def get_knowledge_cards(topic: str | None = None, lang: str = "en", user: dict[str, Any] = Depends(get_current_user)):
-    """Return all knowledge cards, optionally filtered by topic."""
+def get_knowledge_cards(topic: str | None = None, lang: str = "en"):
+    """Return all knowledge cards, optionally filtered by topic. Public: same content for every user, logged in or not."""
     cards = get_all_knowledge_cards(topic=topic, lang=lang)
     return {"cards": cards, "total": len(cards)}
 
 
 @app.get("/api/knowledge/cards/random")
-def get_random_cards(n: int = 3, lang: str = "en", user: dict[str, Any] = Depends(get_current_user)):
-    """Return n random knowledge cards for the Daily Knowledge widget."""
+def get_random_cards(n: int = 3, lang: str = "en"):
+    """Return n random knowledge cards for the Daily Knowledge widget. Public: same content for every user, logged in or not."""
     cards = get_random_knowledge_cards(n=n, lang=lang)
     return {"cards": cards}
 
 
 @app.get("/api/knowledge/topics")
-def get_topics(user: dict[str, Any] = Depends(get_current_user)):
-    """Return distinct list of topics for filter pills."""
+def get_topics():
+    """Return distinct list of topics for filter pills. Public: same content for every user, logged in or not."""
     topics = get_knowledge_topics()
     return {"topics": topics}
 

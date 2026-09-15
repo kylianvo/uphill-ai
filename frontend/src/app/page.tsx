@@ -123,12 +123,34 @@ export default function MarketingHome() {
   // should never see a marketing pitch, so skip straight to /app there.
   const [showMarketing, setShowMarketing] = useState(false);
   const [betaModalOpen, setBetaModalOpen] = useState(false);
+  // Guards the redirect below to fire at most once per mount. Without it,
+  // anything that re-runs this effect (e.g. `router` not being referentially
+  // stable across renders) re-issues both navigations below, and WKWebView
+  // logs a genuine infinite loop -- repeated `didStartProvisionalNavigation`/
+  // `setMainDocumentError(code=-999)` pairs, dozens per second, forever. That
+  // showed up as the app "blinking" and never becoming usable (the "build 8"
+  // bug). A one-shot ref makes that structurally impossible regardless of
+  // why the effect re-fires.
+  const hasRedirectedToAppRef = useRef(false);
   useEffect(() => {
+    if (hasRedirectedToAppRef.current) return;
     if (isNativePlatform()) {
+      hasRedirectedToAppRef.current = true;
+      // router.replace first so Next's client router has a consistent route
+      // state; it gets immediately superseded by the hard nav below (visible
+      // in WKWebView logs as one cancelled navigation), which is expected.
       router.replace("/app");
-      if (typeof window !== "undefined") {
-        window.location.replace("/app");
-      }
+      // Hard nav to the *exact file*, not the extensionless "/app" path:
+      // this static export produces BOTH out/app.html (the real page) and
+      // an out/app/ directory (RSC prefetch fragments only, no index.html)
+      // -- the same ambiguity that once broke `/app` under local `serve`
+      // (see frontend/Dockerfile history). Capacitor's WKWebView asset
+      // server resolves the extensionless path against that directory,
+      // finds no index.html, and falls back to index.html -- which
+      // remounts this component and (absent the ref guard above) fires
+      // this effect again. Requesting the exact file removes that
+      // ambiguity entirely.
+      window.location.replace("/app.html");
     } else {
       const timer = setTimeout(() => setShowMarketing(true), 0);
       return () => clearTimeout(timer);
