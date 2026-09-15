@@ -15,6 +15,45 @@ from datetime import UTC, date, datetime
 from typing import Any
 
 from config import settings
+from log_utils import get_logger
+from telemetry import (
+    llm_calls_total,
+    llm_cost_usd_total,
+    llm_latency_seconds,
+    llm_tokens_total,
+    llm_unpriced_calls_total,
+)
+
+logger = get_logger(__name__)
+
+FEATURES = frozenset(
+    {
+        "coach_chat",
+        "chat_summary",
+        "plan_generation",
+        "workout_ai_create",
+        "block_narrative",
+        "gear_finder",
+        "nutrition_lab",
+        "kb_distill",
+        "knowledge_cards",
+    }
+)
+
+_warned: set[str] = set()
+
+
+def _warn_once(event: str, exc: BaseException) -> None:
+    """Log an observability failure once per (event, exception type). Never logs the
+    exception message: it can carry prompt or athlete content."""
+    key = f"{event}:{type(exc).__name__}"
+    if key in _warned:
+        return
+    _warned.add(key)
+    logger.warning(
+        "observability degraded",
+        extra={"fields": {"service": "observability", "event": event, "error_type": type(exc).__name__}},
+    )
 
 
 @dataclass(frozen=True)
@@ -101,7 +140,33 @@ def record_generation(
     streaming: bool = False,
     status: str = "ok",
 ) -> float | None:
-    return None
+    """Record one Gemini call in the Prometheus llm_* series and return its USD cost
+    (None when unpriced). Always records, whether or not Langfuse is enabled.
+
+    `streaming` states a fact about the call. It changes nothing today: the pinned
+    OpenInference instrumentor auto-traces streamed and non-streamed calls alike
+    (see INSTRUMENTOR_TRACES_STREAMS)."""
+    label = feature if feature in FEATURES else "other"
+    cost: float | None = None
+    try:
+        llm_calls_total.labels(feature=label, model=model, status=status).inc()
+        for kind, count in (
+            ("input", usage.input_tokens),
+            ("output", usage.output_tokens),
+            ("thinking", usage.thinking_tokens),
+            ("cached", usage.cached_tokens),
+        ):
+            if count:
+                llm_tokens_total.labels(feature=label, model=model, kind=kind).inc(count)
+        llm_latency_seconds.labels(feature=label, model=model).observe(latency_s)
+        cost = cost_usd(model, usage)
+        if cost is None:
+            llm_unpriced_calls_total.labels(model=model).inc()
+        elif cost:
+            llm_cost_usd_total.labels(feature=label, model=model).inc(cost)
+    except Exception as exc:
+        _warn_once("record_generation", exc)
+    return cost
 
 
 def score(*, trace_id: str, name: str, value: float, category: str | None = None) -> None:
