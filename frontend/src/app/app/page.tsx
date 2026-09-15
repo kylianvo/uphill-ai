@@ -773,8 +773,10 @@ export default function AppPage() {
       return;
     }
     const token = localStorage.getItem("uphill_session_token");
-    if (!token) return;
-    const headers = { Authorization: `Bearer ${token}` };
+    // Knowledge cards are public content -- no login required to view them.
+    // Only attach the auth header when we have one (needed for the
+    // admin-only source list elsewhere on this tab).
+    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
     const loadCards = async (topic?: string) => {
       try {
         const url =
