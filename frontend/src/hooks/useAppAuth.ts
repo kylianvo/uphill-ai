@@ -6,7 +6,7 @@ import { usePlanner } from "./usePlanner";
 export function useAppAuth() {
   const ctx = useAppContext();
   const { setUser, setAuthModalOpen, setOnboardingOpen, setOnboardingStep, authErrorMsg, setAuthErrorMsg } = ctx;
-  const { fetchRecentPlansWithToken } = usePlanner();
+  const { fetchRecentPlansWithToken, fetchActivePlanWithToken } = usePlanner();
 
   const [emailInput, setEmailInput] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
@@ -52,6 +52,7 @@ export function useAppAuth() {
       setOnboardingOpen(true);
       setOnboardingStep(0);
       fetchRecentPlansWithToken(data.session_token);
+      fetchActivePlanWithToken(data.session_token);
     } catch (err: any) {
       setAuthErrorMsg(err.message || "Registration failed.");
     } finally {
@@ -78,6 +79,7 @@ export function useAppAuth() {
       setUser(data.user);
       setAuthModalOpen(false);
       fetchRecentPlansWithToken(data.session_token);
+      fetchActivePlanWithToken(data.session_token);
     } catch (err: any) {
       setAuthErrorMsg(err.message || "Login failed.");
     } finally {
@@ -112,6 +114,7 @@ export function useAppAuth() {
       }
       setAuthModalOpen(false);
       fetchRecentPlansWithToken(data.session_token);
+      fetchActivePlanWithToken(data.session_token);
     } catch (err: any) {
       setAuthErrorMsg(err.message || "Failed to sign in with Google.");
     } finally {

@@ -69,6 +69,33 @@ export function usePlanner() {
     return hasActive;
   };
 
+  // Self-serve counterpart to fetchActivePlanForActing -- fetches the
+  // logged-in user's own active plan. Login/register (useAppAuth.ts) only
+  // called fetchRecentPlansWithToken, so activePlan/workouts stayed empty
+  // until the next cold start's mount effect populated them, which made
+  // the Schedule tab flash "no plan" right after login until the user left
+  // the tab and came back.
+  const fetchActivePlanWithToken = async (token: string) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/coach/active-plan`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.active) {
+          setActivePlan(data.plan);
+          setWorkouts(data.workouts);
+          setSelectedWeek(resolveCurrentWeek(data.plan, data.workouts));
+        } else {
+          setActivePlan(null);
+          setWorkouts([]);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch active plan:", err);
+    }
+  };
+
   // `hasActivePlan` is threaded through explicitly (rather than read back
   // off `activePlan` state) because this always runs right after
   // fetchActivePlanForActing in the same effect, and React state from that
@@ -625,5 +652,5 @@ export function usePlanner() {
     return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
-  return { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, handleSwapWorkouts, swapDays, handleToggleComplete, handleMarkMissed, handleLogWorkout, getWeekWorkouts, getWorkoutDate, getWorkoutDateObj, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller, fetchDraftPlan, draftPlan, draftWorkouts, handleApproveWorkout, handleRemoveWorkout, handleAiCreateWorkout, handleCoachEditWorkout, fetchActivePlanForActing };
+  return { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, handleSwapWorkouts, swapDays, handleToggleComplete, handleMarkMissed, handleLogWorkout, getWeekWorkouts, getWorkoutDate, getWorkoutDateObj, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller, fetchDraftPlan, draftPlan, draftWorkouts, handleApproveWorkout, handleRemoveWorkout, handleAiCreateWorkout, handleCoachEditWorkout, fetchActivePlanForActing, fetchActivePlanWithToken };
 }

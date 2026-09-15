@@ -990,7 +990,10 @@ export default function AppPage() {
       })
         .then((res) => {
           if (res.ok) return res.json();
-          throw new Error("Session invalid");
+          if (res.status === 401 || res.status === 403) {
+            throw new Error("unauthorized");
+          }
+          throw new Error("transient");
         })
         .then((userData) => {
           setUser(userData);
@@ -1010,8 +1013,14 @@ export default function AppPage() {
           fetchSourcesWithToken(userData, token);
           fetchActivePlanWithToken(token);
         })
-        .catch(() => {
-          localStorage.removeItem("uphill_session_token");
+        .catch((err) => {
+          // Only a confirmed 401/403 means the session is actually invalid.
+          // A network blip or backend hiccup at launch must not delete a
+          // valid 7-day session token -- that's what was logging mobile
+          // users out on every flaky connection.
+          if (err instanceof Error && err.message === "unauthorized") {
+            localStorage.removeItem("uphill_session_token");
+          }
           setUser(null);
         })
         .finally(() => {
