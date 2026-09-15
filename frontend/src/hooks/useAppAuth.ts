@@ -144,6 +144,7 @@ export function useAppAuth() {
       // requirement entirely instead of chasing it.
       const res = await SocialLogin.login({
         provider: "google",
+        options: {},
       });
       const idToken = "idToken" in res.result ? res.result.idToken : null;
       if (!idToken) throw new Error("No credential returned from Google.");
