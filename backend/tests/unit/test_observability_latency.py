@@ -23,6 +23,7 @@ def silent_endpoint():
 
 def test_unresponsive_exporter_adds_no_request_latency(monkeypatch, silent_endpoint):
     from openinference.instrumentation.google_genai import GoogleGenAIInstrumentor
+    from openinference.instrumentation.langchain import LangChainInstrumentor
 
     monkeypatch.setattr(settings, "LANGFUSE_PUBLIC_KEY", f"pk-lf-latency-{uuid.uuid4().hex}")
     monkeypatch.setattr(settings, "LANGFUSE_SECRET_KEY", "sk-lf-latency")
@@ -45,6 +46,7 @@ def test_unresponsive_exporter_adds_no_request_latency(monkeypatch, silent_endpo
         flush_seconds = time.perf_counter() - flush_started
     finally:
         GoogleGenAIInstrumentor().uninstrument()
+        LangChainInstrumentor().uninstrument()
         client, obs._client = obs._client, None
         client.shutdown()
 
