@@ -32,6 +32,9 @@ os.environ.setdefault("GEMINI_API_KEY", "test-key-not-real")
 os.environ.setdefault("JWT_SECRET", "test-jwt-secret-not-for-prod")
 
 import logging
+import uuid
+
+import pytest
 
 import log_utils
 
@@ -45,3 +48,31 @@ def _test_get_logger(name: str) -> logging.Logger:
 
 
 log_utils.get_logger = _test_get_logger
+
+
+@pytest.fixture
+def langfuse_spans(monkeypatch):
+    """Enables services.observability against an in-memory OTel exporter -- no network.
+    Yields the exporter; call observability.flush() before reading get_finished_spans().
+
+    Each test gets a fresh public key: Langfuse caches its resource manager per key, so
+    reusing one would silently keep the previous test's exporter."""
+    from openinference.instrumentation.google_genai import GoogleGenAIInstrumentor
+    from openinference.instrumentation.langchain import LangChainInstrumentor
+    from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+
+    from config import settings
+    from services import observability
+
+    exporter = InMemorySpanExporter()
+    monkeypatch.setattr(settings, "LANGFUSE_PUBLIC_KEY", f"pk-lf-test-{uuid.uuid4().hex}")
+    monkeypatch.setattr(settings, "LANGFUSE_SECRET_KEY", "sk-lf-test")
+    monkeypatch.setattr(settings, "OBSERVABILITY_ID_SALT", "test-salt")
+    monkeypatch.setattr(settings, "LANGFUSE_BASE_URL", "http://127.0.0.1:9")
+    observability.init(span_exporter=exporter)
+    assert observability.enabled(), "observability.init() did not enable with test keys"
+    yield exporter
+    GoogleGenAIInstrumentor().uninstrument()
+    LangChainInstrumentor().uninstrument()
+    observability._client.shutdown()
+    observability._client = None
