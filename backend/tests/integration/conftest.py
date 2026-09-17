@@ -61,11 +61,26 @@ def _truncate_tables():
     rollback isn't viable here -- truncate-between-tests is the pragmatic
     equivalent. Consequence: tests must not depend on execution order or on
     rows left behind by another test.
+
+    Also clears main.plan_jobs: it's process-global, in-memory state that
+    outlives any single test's TestClient, unlike the DB rows above. A test
+    that fires a background generation job via asyncio.create_task without
+    polling it to completion (e.g. one that only checks the 200/job_id on
+    the initiating response) leaves that job stuck at status "generating"
+    forever. Because RESTART IDENTITY above resets plan_id back to the same
+    small integers for every test, a later test's freshly-created plan can
+    reuse that same plan_id -- and generate-next-block's double-submission
+    guard matches on plan_id across the whole process lifetime, so it
+    silently hands back the stale leaked job instead of running the new
+    request, skipping the 70% completion gate entirely.
     """
     yield
     with engine.connect() as conn:
         conn.execute(text(f"TRUNCATE TABLE {', '.join(ALL_TABLES)} RESTART IDENTITY CASCADE"))
         conn.commit()
+    from main import plan_jobs
+
+    plan_jobs.clear()
 
 
 @pytest.fixture

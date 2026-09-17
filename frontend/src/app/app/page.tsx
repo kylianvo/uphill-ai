@@ -567,6 +567,8 @@ export default function AppPage() {
     setMockEmailInput,
     setAuthLoading,
     setAuthErrorMsg,
+    activePlanLoading,
+    setActivePlanLoading,
     setShowApiKey,
     onboardingOpen,
     profileSettingsOpen,
@@ -987,6 +989,13 @@ export default function AppPage() {
     const token = localStorage.getItem("uphill_session_token");
     if (token) {
       setAuthLoading(true);
+      // Fired in parallel with /api/auth/me below, not chained after it --
+      // active-plan only needs the bearer token, so waiting for the user
+      // profile first just added a second sequential round-trip to the time
+      // before the Scheduler could show the real plan (it was flashing the
+      // "Create New Plan" empty state in the meantime).
+      setActivePlanLoading(true);
+      fetchActivePlanWithToken(token).finally(() => setActivePlanLoading(false));
       fetch(`${API_BASE_URL}/api/auth/me`, {
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -1013,7 +1022,6 @@ export default function AppPage() {
             zone2_pace_max: userData.zone2_pace_max ?? "5:45",
           });
           fetchSourcesWithToken(userData, token);
-          fetchActivePlanWithToken(token);
         })
         .catch((err) => {
           // Only a confirmed 401/403 means the session is actually invalid.
@@ -2560,7 +2568,7 @@ export default function AppPage() {
                     </span>
                   </div>
                 </div>
-              ) : (
+              ) : authLoading ? null : (
                 <button
                   onClick={() => setAuthModalOpen(true)}
                   className="btn btn-primary"
@@ -2920,7 +2928,7 @@ export default function AppPage() {
                   >
                     {lang === "en" ? "Profile" : "Hồ sơ"}
                   </span>
-                ) : (
+                ) : authLoading ? null : (
                   <span
                     onClick={() => setAuthModalOpen(true)}
                     style={{
@@ -3131,7 +3139,7 @@ export default function AppPage() {
                 >
                   {user.name[0].toUpperCase()}
                 </div>
-              ) : (
+              ) : authLoading ? null : (
                 <button
                   className="btn btn-primary"
                   onClick={() => setAuthModalOpen(true)}
