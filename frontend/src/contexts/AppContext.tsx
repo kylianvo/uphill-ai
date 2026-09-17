@@ -166,6 +166,8 @@ interface AppContextType {
   setAuthLoading: any;
   authErrorMsg: any;
   setAuthErrorMsg: any;
+  activePlanLoading: any;
+  setActivePlanLoading: any;
   handleLogout: () => void;
   showApiKey: any;
   setShowApiKey: any;
@@ -356,6 +358,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [mockEmailInput, setMockEmailInput] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
   const [authErrorMsg, setAuthErrorMsg] = useState("");
+  // True while the stored session's active plan is being fetched on cold
+  // launch, so the Planner can show a loading state instead of flashing the
+  // "Create New Plan" empty-state form before the real plan arrives.
+  const [activePlanLoading, setActivePlanLoading] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [profileSettingsOpen, setProfileSettingsOpen] = useState(false);
@@ -576,6 +582,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       mockEmailInput, setMockEmailInput,
       authLoading, setAuthLoading,
       authErrorMsg, setAuthErrorMsg,
+      activePlanLoading, setActivePlanLoading,
       handleLogout,
       showApiKey, setShowApiKey,
       onboardingOpen, setOnboardingOpen,
