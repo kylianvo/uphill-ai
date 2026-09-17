@@ -4,11 +4,13 @@ This is the ONLY module allowed to import langfuse, openinference or opentelemet
 the services/mcp_client.py containment pattern. Every other module calls the
 functions below. See docs/superpowers/specs/llm-observability-design.md.
 
-Contract stage: these signatures are what sub-projects 1 and 2 code against. Until
-the implementation lands, every function is a no-op returning its disabled-mode value.
+Without configured keys the API remains a no-op. When enabled, every span passes
+through a metadata-only exporter boundary before the configured transport.
 """
 
 import contextlib
+import math
+import re
 from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
@@ -42,6 +44,9 @@ FEATURES = frozenset(
 )
 
 _warned: set[str] = set()
+_TRACE_ID_RE = re.compile(r"^[0-9a-f]{32}$")
+_SCORE_NAMES = frozenset({"thumbs"})
+_SCORE_CATEGORIES = frozenset({"helpful", "incorrect", "unsafe", "irrelevant", "other"})
 
 
 def _warn_once(event: str, exc: BaseException) -> None:
@@ -132,7 +137,7 @@ def pseudonym(value: int | str) -> str:
 
 def _mask(*, data: Any, **kwargs: Any) -> Any:
     try:
-        return policy.mask_payload(data, settings.LANGFUSE_EXPORT_CONTENT)
+        return policy.mask_payload(data, export_content=False)
     except Exception as exc:
         _warn_once("mask", exc)
         return None
@@ -144,7 +149,7 @@ def _mask_otel_spans(*, params: Any, **kwargs: Any) -> Any:
     try:
         patches = {}
         for identifier, span_data in params.spans.items():
-            deletes, sets = policy.otel_patch(dict(span_data.attributes or {}), settings.LANGFUSE_EXPORT_CONTENT)
+            deletes, sets = policy.otel_patch(dict(span_data.attributes or {}), export_content=False)
             if deletes or sets:
                 patches[identifier] = OtelSpanPatch(set_attributes=sets, delete_attributes=tuple(deletes))
         return MaskOtelSpansResult(span_patches=patches) if patches else None
@@ -159,6 +164,156 @@ def _mask_otel_spans(*, params: Any, **kwargs: Any) -> Any:
                 for identifier, span_data in params.spans.items()
             }
         )
+
+
+def _span_context_without_state(context: Any) -> Any:
+    if context is None:
+        return None
+    from opentelemetry.trace import SpanContext, TraceState
+
+    return SpanContext(
+        trace_id=context.trace_id,
+        span_id=context.span_id,
+        is_remote=context.is_remote,
+        trace_flags=context.trace_flags,
+        trace_state=TraceState(),
+    )
+
+
+def _sanitized_readable_span(span: Any, resource_attributes: dict[str, str]) -> Any | None:
+    from opentelemetry.sdk.resources import Resource
+    from opentelemetry.sdk.trace import ReadableSpan
+    from opentelemetry.sdk.util.instrumentation import InstrumentationScope
+    from opentelemetry.trace import Link
+    from opentelemetry.trace.status import Status, StatusCode
+
+    scope = span.instrumentation_scope or span.instrumentation_info
+    envelope = {
+        "name": span.name,
+        "attributes": dict(span.attributes or {}),
+        "events": [{"name": event.name, "attributes": dict(event.attributes or {})} for event in (span.events or ())],
+        "status": {
+            "code": span.status.status_code.name,
+            "description": span.status.description,
+        },
+        "resource": {
+            "attributes": dict(resource_attributes),
+            "schema_url": getattr(span.resource, "schema_url", None),
+        },
+        "links": [
+            {
+                "attributes": dict(link.attributes or {}),
+                "trace_state": str(link.context.trace_state),
+            }
+            for link in (span.links or ())
+        ],
+        "instrumentation_scope": {
+            "name": getattr(scope, "name", None),
+            "version": getattr(scope, "version", None),
+            "schema_url": getattr(scope, "schema_url", None),
+            "attributes": dict(getattr(scope, "attributes", None) or {}),
+        },
+        "trace_state": str(span.context.trace_state) if span.context else "",
+    }
+    safe = policy.sanitize_span_envelope(envelope)
+    if safe is None:
+        return None
+
+    safe_scope = safe["instrumentation_scope"]
+    links = tuple(Link(_span_context_without_state(link.context), attributes={}) for link in (span.links or ()))
+    status_code = getattr(StatusCode, safe["status"]["code"], StatusCode.UNSET)
+    return ReadableSpan(
+        name=safe["name"],
+        context=_span_context_without_state(span.context),
+        parent=_span_context_without_state(span.parent),
+        resource=Resource(safe["resource"]["attributes"], schema_url=None),
+        attributes=safe["attributes"],
+        events=(),
+        links=links,
+        kind=span.kind,
+        instrumentation_info=None,
+        status=Status(status_code),
+        start_time=span.start_time,
+        end_time=span.end_time,
+        instrumentation_scope=InstrumentationScope(
+            safe_scope["name"],
+            version=None,
+            schema_url=None,
+            attributes={},
+        ),
+    )
+
+
+def _final_span_exporter(delegate: Any, *, resource_attributes: dict[str, str]) -> Any:
+    """Wrap a transport with the last, metadata-only export boundary."""
+    from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
+
+    class FinalSanitizingSpanExporter(SpanExporter):
+        def __init__(self) -> None:
+            self._shutdown = False
+
+        def export(self, spans: Any) -> Any:
+            sanitized = []
+            for span in spans:
+                try:
+                    safe_span = _sanitized_readable_span(span, resource_attributes)
+                except Exception as exc:
+                    _warn_once("sanitize_export", exc)
+                    continue
+                if safe_span is not None:
+                    sanitized.append(safe_span)
+            if not sanitized:
+                return SpanExportResult.SUCCESS
+            try:
+                return delegate.export(tuple(sanitized))
+            except Exception as exc:
+                _warn_once("span_export", exc)
+                return SpanExportResult.FAILURE
+
+        def force_flush(self, timeout_millis: int = 30000) -> bool:
+            try:
+                force_flush = getattr(delegate, "force_flush", None)
+                return True if force_flush is None else bool(force_flush(timeout_millis=timeout_millis))
+            except Exception as exc:
+                _warn_once("span_export_flush", exc)
+                return False
+
+        def shutdown(self) -> None:
+            if self._shutdown:
+                return
+            self._shutdown = True
+            try:
+                delegate.shutdown()
+            except Exception as exc:
+                _warn_once("span_export_shutdown", exc)
+
+    return FinalSanitizingSpanExporter()
+
+
+def _export_resource_attributes() -> dict[str, str]:
+    attributes = {"service.name": "uphill-ai-backend"}
+    if settings.LANGFUSE_ENVIRONMENT in {"development", "staging", "production", "test"}:
+        attributes["deployment.environment.name"] = settings.LANGFUSE_ENVIRONMENT
+    return attributes
+
+
+def _real_otlp_exporter() -> Any:
+    import base64
+    from importlib.metadata import version
+
+    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+
+    token = base64.b64encode(f"{settings.LANGFUSE_PUBLIC_KEY}:{settings.LANGFUSE_SECRET_KEY}".encode()).decode("ascii")
+    return OTLPSpanExporter(
+        endpoint=f"{settings.LANGFUSE_BASE_URL.rstrip('/')}/api/public/otel/v1/traces",
+        headers={
+            "Authorization": f"Basic {token}",
+            "x-langfuse-sdk-name": "python",
+            "x-langfuse-sdk-version": version("langfuse"),
+            "x-langfuse-public-key": settings.LANGFUSE_PUBLIC_KEY,
+        },
+        timeout=settings.LANGFUSE_TIMEOUT,
+    )
 
 
 def init(*, span_exporter: Any = None) -> None:
@@ -182,9 +337,21 @@ def init(*, span_exporter: Any = None) -> None:
     except ImportError as exc:
         _warn_once("import", exc)
         return
+    client = None
+    provider = None
+    final_exporter = None
+    google_instrumentor = None
+    langchain_instrumentor = None
+    google_was_instrumented = False
+    langchain_was_instrumented = False
     try:
         # Our own provider, shared by Langfuse and both instrumentors: nothing global is touched.
         provider = TracerProvider()
+        transport = span_exporter if span_exporter is not None else _real_otlp_exporter()
+        final_exporter = _final_span_exporter(
+            transport,
+            resource_attributes=_export_resource_attributes(),
+        )
         client = Langfuse(
             public_key=settings.LANGFUSE_PUBLIC_KEY,
             secret_key=settings.LANGFUSE_SECRET_KEY,
@@ -195,9 +362,11 @@ def init(*, span_exporter: Any = None) -> None:
             tracer_provider=provider,
             mask=_mask,
             mask_otel_spans=_mask_otel_spans,
-            span_exporter=span_exporter,
+            span_exporter=final_exporter,
         )
-        hide = not settings.LANGFUSE_EXPORT_CONTENT
+        # Metadata-only is the approved production mode. The config flag remains
+        # documented for a future product decision, but cannot weaken H1's boundary.
+        hide = True
         trace_config = TraceConfig(
             hide_inputs=hide,
             hide_outputs=hide,
@@ -215,11 +384,33 @@ def init(*, span_exporter: Any = None) -> None:
         # Plan Gen/Gear/Nutrition call google.genai directly; the chat agent (sub-project 2)
         # runs on LangGraph -- both instrumentors share this provider, so every feature's
         # spans land in the same masked Langfuse pipeline regardless of which SDK it uses.
-        GoogleGenAIInstrumentor().instrument(tracer_provider=provider, config=trace_config)
-        LangChainInstrumentor().instrument(tracer_provider=provider, config=trace_config)
+        google_instrumentor = GoogleGenAIInstrumentor()
+        langchain_instrumentor = LangChainInstrumentor()
+        google_was_instrumented = google_instrumentor.is_instrumented_by_opentelemetry
+        langchain_was_instrumented = langchain_instrumentor.is_instrumented_by_opentelemetry
+        google_instrumentor.instrument(tracer_provider=provider, config=trace_config)
+        langchain_instrumentor.instrument(tracer_provider=provider, config=trace_config)
         _client = client
         logger.info("observability enabled", extra={"fields": {"service": "observability", "event": "enabled"}})
     except Exception as exc:
+        for instrumentor, was_instrumented in (
+            (langchain_instrumentor, langchain_was_instrumented),
+            (google_instrumentor, google_was_instrumented),
+        ):
+            if instrumentor is not None and not was_instrumented and instrumentor.is_instrumented_by_opentelemetry:
+                try:
+                    instrumentor.uninstrument()
+                except Exception as cleanup_exc:
+                    _warn_once("init_uninstrument", cleanup_exc)
+        try:
+            if client is not None:
+                client.shutdown()
+            if provider is not None:
+                provider.shutdown()
+            if client is None and final_exporter is not None:
+                final_exporter.shutdown()
+        except Exception as cleanup_exc:
+            _warn_once("init_shutdown", cleanup_exc)
         _warn_once("init", exc)
 
 
@@ -354,6 +545,18 @@ def record_generation(
 
 def score(*, trace_id: str, name: str, value: float, category: str | None = None) -> None:
     if _client is None:
+        return
+    if (
+        not isinstance(trace_id, str)
+        or not _TRACE_ID_RE.fullmatch(trace_id)
+        or not isinstance(name, str)
+        or name not in _SCORE_NAMES
+        or isinstance(value, bool)
+        or not isinstance(value, int | float)
+        or not math.isfinite(value)
+        or float(value) not in {-1.0, 1.0}
+        or (category is not None and (not isinstance(category, str) or category not in _SCORE_CATEGORIES))
+    ):
         return
     try:
         _client.create_score(

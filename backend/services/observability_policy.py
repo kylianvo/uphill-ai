@@ -14,6 +14,8 @@ health-sensitive fields in content are redacted; list lengths are capped to prev
 import hashlib
 import hmac
 import json
+import math
+import re
 from typing import Any
 
 METADATA_KEYS = frozenset(
@@ -46,41 +48,6 @@ METADATA_KEYS = frozenset(
     }
 )
 
-_OTEL_KEYS = frozenset(
-    {
-        # OpenInference / OTel GenAI span identity -- names and counts, no content
-        "openinference.span.kind",
-        "llm.model_name",
-        "llm.provider",
-        "llm.system",
-        "gen_ai.system",
-        "gen_ai.request.model",
-        "gen_ai.response.model",
-        # Langfuse trace and observation identity
-        "langfuse.trace.name",
-        "user.id",
-        "session.id",
-        "langfuse.environment",
-        "langfuse.release",
-        "langfuse.version",
-        "langfuse.observation.type",
-        "langfuse.observation.level",
-        "langfuse.observation.model.name",
-        "langfuse.observation.usage_details",
-        "langfuse.observation.cost_details",
-        "langfuse.internal.as_root",
-        "langfuse.internal.is_app_root",
-        # Experiment linkage for golden_eval --push-langfuse (ids and names only)
-        "langfuse.experiment.id",
-        "langfuse.experiment.name",
-        "langfuse.experiment.dataset.id",
-        "langfuse.experiment.item.id",
-        "langfuse.experiment.item.root_observation_id",
-        # Error class name only -- never exception.message or a stack trace
-        "exception.type",
-    }
-)
-_OTEL_PREFIXES = ("llm.token_count.", "gen_ai.usage.")
 _METADATA_ATTRIBUTE_PREFIXES = ("langfuse.observation.metadata.", "langfuse.trace.metadata.")
 _CONTENT_KEYS = frozenset(
     {
@@ -95,20 +62,274 @@ _CONTENT_KEYS = frozenset(
 _CONTENT_PREFIXES = ("llm.input_messages.", "llm.output_messages.")
 _HEALTH_FREE_TEXT_KEYS = frozenset({"injury_history", "athlete_notes", "notes", "feeling"})
 
-_MAX_METADATA_STRING = 64
-# Metadata values arrive at export JSON-serialised (a list of chunk refs is one string).
-_MAX_ATTRIBUTE_STRING = 512
 _MAX_LIST_ITEMS = 100  # cap list length to prevent volume leaks
+
+_SPAN_NAMES = frozenset(
+    {
+        "GenerateContent",
+        "GenerateContentStream",
+        "RunnableLambda",
+        "block_narrative",
+        "chat_summary",
+        "coach_chat.turn",
+        "gear_finder",
+        "gemini",
+        "generation",
+        "kb_distill",
+        "kb_retrieval",
+        "knowledge_cards",
+        "nutrition_lab",
+        "persist",
+        "plan_generation",
+        "retrieval",
+        "workout_ai_create",
+    }
+)
+_FEATURES = frozenset(
+    {
+        "coach_chat",
+        "chat_summary",
+        "plan_generation",
+        "workout_ai_create",
+        "block_narrative",
+        "gear_finder",
+        "nutrition_lab",
+        "kb_distill",
+        "knowledge_cards",
+    }
+)
+_STATUS_CODES = frozenset({"UNSET", "OK", "ERROR"})
+_SCOPE_NAMES = frozenset(
+    {
+        "langfuse-sdk",
+        "openinference.instrumentation.google_genai",
+        "openinference.instrumentation.langchain",
+    }
+)
+_RESOURCE_VALUES = {
+    "service.name": frozenset({"uphill-ai-backend"}),
+    "deployment.environment.name": frozenset({"development", "staging", "production", "test"}),
+}
+_SPAN_KINDS = frozenset({"LLM", "CHAIN", "AGENT", "TOOL", "RETRIEVER", "EMBEDDING", "RERANKER"})
+_PROVIDERS = frozenset({"google"})
+_SYSTEMS = frozenset({"google", "gemini"})
+_MODELS = frozenset({"gemini-3.8-flash"})
+_ENVIRONMENTS = frozenset({"development", "staging", "production", "test"})
+_OBSERVATION_TYPES = frozenset({"span", "generation", "agent", "tool", "chain", "retriever", "evaluator"})
+_OBSERVATION_LEVELS = frozenset({"DEFAULT", "DEBUG", "WARNING", "ERROR"})
+_TOKEN_ATTRIBUTE_KEYS = frozenset(
+    {
+        "llm.token_count.prompt",
+        "llm.token_count.completion",
+        "llm.token_count.total",
+        "gen_ai.usage.input_tokens",
+        "gen_ai.usage.output_tokens",
+    }
+)
+_USAGE_DETAIL_KEYS = frozenset(
+    {
+        "input",
+        "output",
+        "total",
+        "cached_input",
+        "cache_read_input_tokens",
+        "input_tokens",
+        "output_tokens",
+        "prompt_tokens",
+        "completion_tokens",
+        "thinking_tokens",
+    }
+)
+_COST_DETAIL_KEYS = frozenset({"input", "output", "total", "cached_input", "input_cost", "output_cost", "total_cost"})
+_IDENTIFIER_RE = re.compile(r"^[0-9a-f]{32}$")
+_ERROR_TYPES = frozenset(
+    {
+        "APIError",
+        "CancelledError",
+        "ClientError",
+        "ConnectionError",
+        "JSONDecodeError",
+        "KeyError",
+        "RuntimeError",
+        "ServerError",
+        "TimeoutError",
+        "TypeError",
+        "ValidationError",
+        "ValueError",
+    }
+)
+_ENGINES = frozenset({"gemini", "gemini_retry", "rule_based", "mock"})
+_TIERS = frozenset({"primary", "retry", "fallback"})
+_GENERATION_STATUSES = frozenset({"ok", "error", "attempt", "success", "used", "fallback"})
+_LANGUAGES = frozenset({"en", "vi"})
+_COLLECTIONS = frozenset({"uphill_kb_scheduler"})
+_CHUNK_REF_RE = re.compile(r"^[0-9a-f]{12}$")
 
 
 def pseudonym(value: int | str, salt: str) -> str:
     return hmac.new(salt.encode(), str(value).encode(), hashlib.sha256).hexdigest()[:32]
 
 
-def _is_short_scalar(value: Any, max_len: int) -> bool:
-    if isinstance(value, bool | int | float):
-        return True
-    return isinstance(value, str) and len(value) <= max_len
+def _nonnegative_number(value: Any, *, integer: bool = False) -> bool:
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        return False
+    if integer and not isinstance(value, int):
+        return False
+    return math.isfinite(value) and value >= 0
+
+
+def _in_enum(value: Any, allowed: frozenset[str]) -> bool:
+    return isinstance(value, str) and value in allowed
+
+
+def _numeric_json(value: Any, allowed_keys: frozenset[str], *, integer: bool) -> str | None:
+    if not isinstance(value, str):
+        return None
+    try:
+        parsed = json.loads(value)
+    except (TypeError, ValueError):
+        return None
+    if not isinstance(parsed, dict) or not parsed or not set(parsed).issubset(allowed_keys):
+        return None
+    if not all(_nonnegative_number(item, integer=integer) for item in parsed.values()):
+        return None
+    return json.dumps(parsed, separators=(",", ":"), sort_keys=True)
+
+
+def _sanitize_metadata_value(key: str, value: Any) -> Any | None:
+    if key == "feature":
+        return value if _in_enum(value, _FEATURES) else None
+    if key == "engine":
+        return value if _in_enum(value, _ENGINES) else None
+    if key == "tier":
+        return value if _in_enum(value, _TIERS) else None
+    if key == "status":
+        return value if _in_enum(value, _GENERATION_STATUSES) else None
+    if key == "error_type":
+        return value if _in_enum(value, _ERROR_TYPES) else None
+    if key == "lang":
+        return value if _in_enum(value, _LANGUAGES) else None
+    if key == "model":
+        return value if _in_enum(value, _MODELS) else None
+    if key in {"input_tokens", "output_tokens", "thinking_tokens", "cached_tokens"}:
+        return value if _nonnegative_number(value, integer=True) else None
+    if key in {"cost_usd", "latency_ms"}:
+        return value if _nonnegative_number(value) else None
+    if key == "retrieval_k":
+        return value if isinstance(value, int) and not isinstance(value, bool) and 0 <= value <= 100 else None
+    if key == "collections":
+        if isinstance(value, list | tuple) and len(value) <= _MAX_LIST_ITEMS and all(v in _COLLECTIONS for v in value):
+            return list(value)
+        return None
+    if key == "chunk_refs":
+        if (
+            isinstance(value, list | tuple)
+            and len(value) <= _MAX_LIST_ITEMS
+            and all(isinstance(v, str) and _CHUNK_REF_RE.fullmatch(v) for v in value)
+        ):
+            return list(value)
+        return None
+    if key == "chunk_scores":
+        if (
+            isinstance(value, list | tuple)
+            and len(value) <= _MAX_LIST_ITEMS
+            and all(_nonnegative_number(v) and v <= 1 for v in value)
+        ):
+            return list(value)
+        return None
+    if key in {"grounded", "cap_hit", "cache_hit"}:
+        return value if isinstance(value, bool) else None
+    if key in {"turn_index", "catalog_entries", "workout_count"}:
+        return value if _nonnegative_number(value, integer=True) else None
+    return None
+
+
+def _metadata_attribute(key: str, value: Any) -> Any | None:
+    suffix = next(
+        (key[len(prefix) :] for prefix in _METADATA_ATTRIBUTE_PREFIXES if key.startswith(prefix)),
+        None,
+    )
+    if suffix is None:
+        return None
+    parsed = value
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except (TypeError, ValueError):
+            parsed = value
+    return value if _sanitize_metadata_value(suffix, parsed) is not None else None
+
+
+def _sanitize_attribute(key: str, value: Any) -> Any | None:
+    if key == "openinference.span.kind" and value in _SPAN_KINDS:
+        return value
+    if key == "llm.provider" and value in _PROVIDERS:
+        return value
+    if key in {"llm.system", "gen_ai.system"} and value in _SYSTEMS:
+        return value
+    if key in {"llm.model_name", "gen_ai.request.model", "gen_ai.response.model", "langfuse.observation.model.name"}:
+        return value if value in _MODELS else None
+    if key in _TOKEN_ATTRIBUTE_KEYS:
+        return value if _nonnegative_number(value) else None
+    if key in {"user.id", "session.id"}:
+        return value if isinstance(value, str) and _IDENTIFIER_RE.fullmatch(value) else None
+    if key == "langfuse.trace.name":
+        return value if value in _SPAN_NAMES else None
+    if key == "langfuse.environment":
+        return value if value in _ENVIRONMENTS else None
+    if key == "langfuse.observation.type":
+        return value if value in _OBSERVATION_TYPES else None
+    if key == "langfuse.observation.level":
+        return value if value in _OBSERVATION_LEVELS else None
+    if key in {"langfuse.internal.as_root", "langfuse.internal.is_app_root"}:
+        return value if isinstance(value, bool) else None
+    if key == "langfuse.observation.usage_details":
+        return _numeric_json(value, _USAGE_DETAIL_KEYS, integer=True)
+    if key == "langfuse.observation.cost_details":
+        return _numeric_json(value, _COST_DETAIL_KEYS, integer=False)
+    if key == "exception.type":
+        return value if _in_enum(value, _ERROR_TYPES) else None
+    if key.startswith(_METADATA_ATTRIBUTE_PREFIXES):
+        return _metadata_attribute(key, value)
+    return None
+
+
+def sanitize_span_envelope(envelope: dict[str, Any]) -> dict[str, Any] | None:
+    """Return a metadata-only span envelope covering every serialized text surface."""
+    try:
+        resource = envelope.get("resource") or {}
+        resource_attributes = resource.get("attributes") or {}
+        safe_resource = {
+            key: value
+            for key, value in resource_attributes.items()
+            if key in _RESOURCE_VALUES and value in _RESOURCE_VALUES[key]
+        }
+        scope = envelope.get("instrumentation_scope") or {}
+        scope_name = scope.get("name")
+        status = envelope.get("status") or {}
+        status_code = status.get("code")
+        safe_attributes = {}
+        for key, value in (envelope.get("attributes") or {}).items():
+            safe_value = _sanitize_attribute(key, value)
+            if safe_value is not None:
+                safe_attributes[key] = safe_value
+        return {
+            "name": envelope.get("name") if envelope.get("name") in _SPAN_NAMES else "operation",
+            "attributes": safe_attributes,
+            "events": [],
+            "status": {"code": status_code if status_code in _STATUS_CODES else "UNSET"},
+            "resource": {"attributes": safe_resource, "schema_url": None},
+            "links": [{"attributes": {}, "trace_state": ""} for _ in (envelope.get("links") or [])],
+            "instrumentation_scope": {
+                "name": scope_name if scope_name in _SCOPE_NAMES else "uphill-ai.observability",
+                "version": None,
+                "schema_url": None,
+                "attributes": {},
+            },
+            "trace_state": "",
+        }
+    except Exception:
+        return None
 
 
 def filter_metadata(metadata: dict[str, Any] | None) -> dict[str, Any]:
@@ -116,12 +337,9 @@ def filter_metadata(metadata: dict[str, Any] | None) -> dict[str, Any]:
     for key, value in (metadata or {}).items():
         if key not in METADATA_KEYS:
             continue
-        if isinstance(value, list | tuple):
-            # Cap list length to prevent volume leaks; reject if too many items
-            if len(value) <= _MAX_LIST_ITEMS and all(_is_short_scalar(item, _MAX_METADATA_STRING) for item in value):
-                kept[key] = list(value)
-        elif _is_short_scalar(value, _MAX_METADATA_STRING):
-            kept[key] = value
+        sanitized = _sanitize_metadata_value(key, value)
+        if sanitized is not None:
+            kept[key] = sanitized
     return kept
 
 
@@ -130,27 +348,24 @@ def _is_content_key(key: str) -> bool:
 
 
 def _allowed(key: str, value: Any, export_content: bool) -> bool:
-    if key in _OTEL_KEYS:
-        return True
-    # llm.token_count.* and gen_ai.usage.* must only carry numeric values (int/float/bool), never strings
-    if key.startswith(_OTEL_PREFIXES):
-        return isinstance(value, bool | int | float)
-    for prefix in _METADATA_ATTRIBUTE_PREFIXES:
-        if key.startswith(prefix):
-            return key[len(prefix) :] in METADATA_KEYS and _is_short_scalar(value, _MAX_ATTRIBUTE_STRING)
-    return export_content and _is_content_key(key)
+    return _sanitize_attribute(key, value) is not None or (export_content and _is_content_key(key))
 
 
 def otel_patch(attributes: dict[str, Any], export_content: bool) -> tuple[list[str], dict[str, Any]]:
     """(attribute keys to delete, attribute values to overwrite) for one exported span."""
     deletes = sorted(key for key, value in attributes.items() if not _allowed(key, value, export_content))
     sets: dict[str, Any] = {}
-    if export_content:
-        for key, value in attributes.items():
-            if key not in deletes and _is_content_key(key) and isinstance(value, str):
-                redacted = redact_free_text(value)
-                if redacted != value:
-                    sets[key] = redacted
+    for key, value in attributes.items():
+        if key in deletes:
+            continue
+        if export_content and _is_content_key(key) and isinstance(value, str):
+            redacted = redact_free_text(value)
+            if redacted != value:
+                sets[key] = redacted
+        elif not _is_content_key(key):
+            sanitized = _sanitize_attribute(key, value)
+            if sanitized != value:
+                sets[key] = sanitized
     return deletes, sets
 
 

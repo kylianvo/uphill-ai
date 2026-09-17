@@ -2,10 +2,116 @@
 langfuse 4.15.3 and openinference-instrumentation-google-genai 1.4.7 emit."""
 
 import json
+import math
 
 from services import observability_policy as policy
 
 CANARY = "CANARY-knee-pain-since-march"
+
+
+def test_all_text_surfaces_are_closed():
+    secret = "CANARY-HEALTH-injury-left-knee"
+    envelope = {
+        "name": secret,
+        "attributes": {"llm.model_name": secret, "gen_ai.usage.input_tokens": secret},
+        "events": [{"name": secret, "attributes": {"exception.message": secret}}],
+        "status": {"code": "ERROR", "description": secret},
+        "resource": {
+            "attributes": {"service.name": secret},
+            "schema_url": secret,
+        },
+        "links": [{"attributes": {"note": secret}, "trace_state": secret}],
+        "instrumentation_scope": {
+            "name": secret,
+            "version": secret,
+            "schema_url": secret,
+            "attributes": {"public_key": secret},
+        },
+        "trace_state": secret,
+    }
+
+    safe = policy.sanitize_span_envelope(envelope)
+
+    assert secret not in json.dumps(safe)
+
+
+def test_span_attributes_require_permitted_values_and_numeric_usage():
+    identifier = "0123456789abcdef0123456789abcdef"
+    safe = policy.sanitize_span_envelope(
+        {
+            "name": "GenerateContent",
+            "attributes": {
+                "openinference.span.kind": "LLM",
+                "llm.provider": "google",
+                "llm.model_name": "gemini-3.8-flash",
+                "llm.token_count.prompt": 12,
+                "gen_ai.usage.input_tokens": 12,
+                "user.id": identifier,
+                "session.id": identifier,
+                "langfuse.trace.name": "coach_chat.turn",
+                "langfuse.environment": "development",
+                "langfuse.observation.type": "span",
+                "langfuse.internal.is_app_root": True,
+                "langfuse.observation.metadata.feature": "coach_chat",
+                "langfuse.observation.metadata.retrieval_k": "6",
+                "langfuse.observation.usage_details": json.dumps({"input": 12, "output": 3, "total": 15}),
+                "langfuse.observation.cost_details": json.dumps({"total": 0.002}),
+                "exception.type": "ValueError",
+            },
+            "status": {"code": "OK"},
+        }
+    )
+
+    assert safe is not None
+    assert safe["name"] == "GenerateContent"
+    assert safe["attributes"] == {
+        "openinference.span.kind": "LLM",
+        "llm.provider": "google",
+        "llm.model_name": "gemini-3.8-flash",
+        "llm.token_count.prompt": 12,
+        "gen_ai.usage.input_tokens": 12,
+        "user.id": identifier,
+        "session.id": identifier,
+        "langfuse.trace.name": "coach_chat.turn",
+        "langfuse.environment": "development",
+        "langfuse.observation.type": "span",
+        "langfuse.internal.is_app_root": True,
+        "langfuse.observation.metadata.feature": "coach_chat",
+        "langfuse.observation.metadata.retrieval_k": "6",
+        "langfuse.observation.usage_details": '{"input":12,"output":3,"total":15}',
+        "langfuse.observation.cost_details": '{"total":0.002}',
+        "exception.type": "ValueError",
+    }
+
+    rejected = policy.sanitize_span_envelope(
+        {
+            "name": "secret operation",
+            "attributes": {
+                "openinference.span.kind": CANARY,
+                "llm.provider": CANARY,
+                "llm.model_name": CANARY,
+                "llm.token_count.prompt": True,
+                "llm.token_count.completion": -1,
+                "llm.token_count.total": math.inf,
+                "gen_ai.usage.input_tokens": math.nan,
+                "user.id": CANARY,
+                "session.id": "42",
+                "langfuse.trace.name": CANARY,
+                "langfuse.environment": CANARY,
+                "langfuse.observation.type": CANARY,
+                "langfuse.internal.is_app_root": CANARY,
+                "langfuse.observation.metadata.feature": CANARY,
+                "langfuse.observation.metadata.retrieval_k": CANARY,
+                "langfuse.observation.usage_details": json.dumps({"input": 1, "note": CANARY}),
+                "langfuse.observation.cost_details": json.dumps({"total": True}),
+                "exception.type": CANARY,
+            },
+        }
+    )
+
+    assert rejected is not None
+    assert rejected["name"] == "operation"
+    assert rejected["attributes"] == {}
 
 
 def test_metadata_keeps_only_allowlisted_short_values():
@@ -26,6 +132,53 @@ def test_metadata_keeps_only_allowlisted_short_values():
         "retrieval_k": 6,
         "grounded": True,
         "chunk_refs": ["44c51538e091", "1547080b33e1"],
+    }
+
+
+def test_metadata_requires_known_enums_and_typed_numbers():
+    assert (
+        policy.filter_metadata(
+            {
+                "feature": CANARY,
+                "model": CANARY,
+                "lang": CANARY,
+                "status": CANARY,
+                "input_tokens": True,
+                "output_tokens": -1,
+                "cost_usd": math.inf,
+                "latency_ms": math.nan,
+                "retrieval_k": "6",
+                "grounded": "true",
+                "error_type": CANARY,
+            }
+        )
+        == {}
+    )
+
+    assert policy.filter_metadata(
+        {
+            "feature": "coach_chat",
+            "model": "gemini-3.8-flash",
+            "lang": "vi",
+            "status": "ok",
+            "input_tokens": 10,
+            "cost_usd": 0.002,
+            "latency_ms": 120,
+            "retrieval_k": 6,
+            "grounded": True,
+            "error_type": "ValueError",
+        }
+    ) == {
+        "feature": "coach_chat",
+        "model": "gemini-3.8-flash",
+        "lang": "vi",
+        "status": "ok",
+        "input_tokens": 10,
+        "cost_usd": 0.002,
+        "latency_ms": 120,
+        "retrieval_k": 6,
+        "grounded": True,
+        "error_type": "ValueError",
     }
 
 
@@ -63,6 +216,22 @@ def test_otel_patch_deletes_every_content_bearing_attribute():
         "langfuse.observation.metadata.retrieval_k": "6",
         "exception.type": "ValueError",
     }
+
+
+def test_otel_patch_does_not_trust_exact_keys():
+    attributes = {
+        "llm.model_name": CANARY,
+        "user.id": CANARY,
+        "langfuse.trace.name": CANARY,
+        "langfuse.observation.metadata.feature": CANARY,
+        "llm.token_count.prompt": True,
+        "gen_ai.usage.input_tokens": math.nan,
+    }
+
+    deletes, sets = policy.otel_patch(attributes, export_content=False)
+
+    assert deletes == sorted(attributes)
+    assert sets == {}
 
 
 def test_content_export_keeps_io_but_redacts_health_free_text():
