@@ -427,6 +427,7 @@ def test_partial_initialization_failure_shuts_down_export_and_instrumentation(mo
     import langfuse
     from openinference.instrumentation.google_genai import GoogleGenAIInstrumentor
     from openinference.instrumentation.langchain import LangChainInstrumentor
+    from opentelemetry.sdk.trace import TracerProvider
 
     class TrackingExporter(InMemorySpanExporter):
         def __init__(self):
@@ -450,12 +451,19 @@ def test_partial_initialization_failure_shuts_down_export_and_instrumentation(mo
     monkeypatch.setattr(LangChainInstrumentor, "instrument", fail)
     original_shutdown = langfuse.Langfuse.shutdown
     allow_shutdown = threading.Event()
+    provider_shutdown_attempted = threading.Event()
+    shutdown_clients = []
 
     def slow_shutdown(self):
+        shutdown_clients.append(self)
         allow_shutdown.wait(timeout=5)
         return original_shutdown(self)
 
+    def track_provider_shutdown(self):
+        provider_shutdown_attempted.set()
+
     monkeypatch.setattr(langfuse.Langfuse, "shutdown", slow_shutdown)
+    monkeypatch.setattr(TracerProvider, "shutdown", track_provider_shutdown)
     obs._client = None
     obs._init_failed = False
     try:
@@ -466,6 +474,9 @@ def test_partial_initialization_failure_shuts_down_export_and_instrumentation(mo
         assert obs.enabled() is False
         assert elapsed < 0.75, "failed initialization cleanup must have a deadline"
         assert GoogleGenAIInstrumentor().is_instrumented_by_opentelemetry is False
+        assert shutdown_clients[0]._resources.tracer_provider is None
+        assert provider_shutdown_attempted.is_set(), "provider cleanup must not wait for client shutdown"
+        assert exporter.was_shutdown is True, "exporter cleanup must not wait for client or provider shutdown"
 
         obs.init(span_exporter=replacement)
 
@@ -503,11 +514,14 @@ def test_client_construction_failure_shuts_down_unowned_exporter(monkeypatch):
         lambda **kwargs: (_ for _ in ()).throw(RuntimeError("client construction failed")),
     )
     obs._client = None
+    previous_init_failed, obs._init_failed = obs._init_failed, False
+    try:
+        obs.init(span_exporter=exporter)
 
-    obs.init(span_exporter=exporter)
-
-    assert obs.enabled() is False
-    assert exporter.was_shutdown is True
+        assert obs.enabled() is False
+        assert exporter.was_shutdown is True
+    finally:
+        obs._init_failed = previous_init_failed
 
 
 def test_missing_keys_do_not_construct_a_transport(monkeypatch):

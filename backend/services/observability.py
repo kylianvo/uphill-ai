@@ -15,6 +15,7 @@ import os
 import re
 import secrets
 import threading
+import time
 from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
@@ -186,27 +187,52 @@ def _media_uploads_disabled() -> Iterator[None]:
                 os.environ[_MEDIA_UPLOAD_ENV] = previous
 
 
+def _separate_sdk_cleanup_ownership(client: Any, provider: Any) -> None:
+    """Keep pinned Langfuse cleanup from recursively shutting down our provider."""
+    resources = getattr(client, "_resources", None)
+    if resources is not None and getattr(resources, "tracer_provider", None) is provider:
+        resources.tracer_provider = None
+
+
 def _shutdown_with_deadline(*resources: Any) -> None:
-    """Release SDK-owned resources without allowing their queue joins to block init."""
+    """Attempt every SDK cleanup independently while bounding total caller wait."""
     owned = tuple(resource for resource in resources if resource is not None)
     if not owned:
         return
 
-    def shutdown() -> None:
-        seen: set[int] = set()
-        for resource in owned:
-            if id(resource) in seen:
-                continue
+    unique = []
+    seen: set[int] = set()
+    for resource in owned:
+        if id(resource) not in seen:
             seen.add(id(resource))
-            try:
-                resource.shutdown()
-            except Exception as exc:
-                _warn_once("init_shutdown", exc)
+            unique.append(resource)
 
-    worker = threading.Thread(target=shutdown, name="observability-init-cleanup", daemon=True)
-    worker.start()
-    worker.join(timeout=max(float(settings.LANGFUSE_TIMEOUT), 0.01))
-    if worker.is_alive():
+    def shutdown(resource: Any) -> None:
+        try:
+            resource.shutdown()
+        except Exception as exc:
+            _warn_once("init_shutdown", exc)
+
+    workers = []
+    for index, resource in enumerate(unique):
+        worker = threading.Thread(
+            target=shutdown,
+            args=(resource,),
+            name=f"observability-init-cleanup-{index}",
+            daemon=True,
+        )
+        worker.start()
+        workers.append(worker)
+
+    deadline = time.monotonic() + max(float(settings.LANGFUSE_TIMEOUT), 0.01)
+    for worker in workers:
+        remaining = deadline - time.monotonic()
+        if remaining > 0:
+            try:
+                worker.join(timeout=remaining)
+            except RuntimeError as exc:
+                _warn_once("init_shutdown", exc)
+    if any(worker.is_alive() for worker in workers):
         _warn_once("init_shutdown_timeout", TimeoutError())
 
 
@@ -334,6 +360,7 @@ def _final_span_exporter(delegate: Any, *, resource_attributes: dict[str, str]) 
     class FinalSanitizingSpanExporter(SpanExporter):
         def __init__(self) -> None:
             self._shutdown = False
+            self._shutdown_lock = threading.Lock()
 
         def export(self, spans: Any) -> Any:
             sanitized = []
@@ -362,9 +389,10 @@ def _final_span_exporter(delegate: Any, *, resource_attributes: dict[str, str]) 
                 return False
 
         def shutdown(self) -> None:
-            if self._shutdown:
-                return
-            self._shutdown = True
+            with self._shutdown_lock:
+                if self._shutdown:
+                    return
+                self._shutdown = True
             try:
                 delegate.shutdown()
             except Exception as exc:
@@ -492,7 +520,8 @@ def init(*, span_exporter: Any = None) -> None:
                     instrumentor.uninstrument()
                 except Exception as cleanup_exc:
                     _warn_once("init_uninstrument", cleanup_exc)
-        _shutdown_with_deadline(client, provider, final_exporter if client is None else None)
+        _separate_sdk_cleanup_ownership(client, provider)
+        _shutdown_with_deadline(client, provider, final_exporter)
         _warn_once("init", exc)
 
 

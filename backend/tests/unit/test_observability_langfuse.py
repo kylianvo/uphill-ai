@@ -101,9 +101,13 @@ def test_a_failing_client_never_raises_into_callers(langfuse_spans):
 
 @pytest.fixture
 def clean_observability():
-    obs._client = None
-    yield
-    obs._client = None
+    previous_client, obs._client = obs._client, None
+    previous_init_failed, obs._init_failed = obs._init_failed, False
+    try:
+        yield
+    finally:
+        obs._client = previous_client
+        obs._init_failed = previous_init_failed
 
 
 def test_keys_without_salt_refuse_to_enable(monkeypatch, clean_observability):
