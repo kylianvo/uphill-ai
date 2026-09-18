@@ -64,17 +64,31 @@ def langfuse_spans(monkeypatch):
     from config import settings
     from services import observability
 
-    exporter = InMemorySpanExporter()
-    monkeypatch.setattr(settings, "LANGFUSE_PUBLIC_KEY", f"pk-lf-test-{uuid.uuid4().hex}")
-    monkeypatch.setattr(settings, "LANGFUSE_SECRET_KEY", "sk-lf-test")
-    monkeypatch.setattr(settings, "OBSERVABILITY_ID_SALT", "test-salt")
-    monkeypatch.setattr(settings, "LANGFUSE_BASE_URL", "http://127.0.0.1:9")
-    observability._init_failed = False
-    observability.init(span_exporter=exporter)
-    assert observability.enabled(), "observability.init() did not enable with test keys"
-    yield exporter
-    GoogleGenAIInstrumentor().uninstrument()
-    LangChainInstrumentor().uninstrument()
-    observability._client.shutdown()
-    observability._client = None
-    observability._init_failed = False
+    previous_client, observability._client = observability._client, None
+    previous_init_failed, observability._init_failed = observability._init_failed, False
+    fixture_client = None
+    try:
+        exporter = InMemorySpanExporter()
+        monkeypatch.setattr(settings, "LANGFUSE_PUBLIC_KEY", f"pk-lf-test-{uuid.uuid4().hex}")
+        monkeypatch.setattr(settings, "LANGFUSE_SECRET_KEY", "sk-lf-test")
+        monkeypatch.setattr(settings, "OBSERVABILITY_ID_SALT", "test-salt")
+        monkeypatch.setattr(settings, "LANGFUSE_BASE_URL", "http://127.0.0.1:9")
+        try:
+            observability.init(span_exporter=exporter)
+        finally:
+            fixture_client = observability._client
+        assert observability.enabled(), "observability.init() did not enable with test keys"
+        yield exporter
+    finally:
+        try:
+            try:
+                GoogleGenAIInstrumentor().uninstrument()
+            finally:
+                LangChainInstrumentor().uninstrument()
+        finally:
+            try:
+                if fixture_client is not None and fixture_client is not previous_client:
+                    fixture_client.shutdown()
+            finally:
+                observability._client = previous_client
+                observability._init_failed = previous_init_failed

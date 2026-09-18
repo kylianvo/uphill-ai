@@ -1,12 +1,14 @@
 import base64
 import hashlib
 import hmac
+import importlib.util
 import json
 import math
 import threading
 import time
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 
 import httpx
 import pytest
@@ -29,6 +31,14 @@ from services import observability_policy as policy
 
 CANARY = "canary-health-injury-left-knee"
 SAFE_ID = "0123456789abcdef0123456789abcdef"
+
+
+def _load_root_conftest():
+    spec = importlib.util.spec_from_file_location("h1_root_conftest", Path(__file__).parents[1] / "conftest.py")
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 @pytest.fixture
@@ -464,8 +474,8 @@ def test_partial_initialization_failure_shuts_down_export_and_instrumentation(mo
 
     monkeypatch.setattr(langfuse.Langfuse, "shutdown", slow_shutdown)
     monkeypatch.setattr(TracerProvider, "shutdown", track_provider_shutdown)
-    obs._client = None
-    obs._init_failed = False
+    previous_client, obs._client = obs._client, None
+    previous_init_failed, obs._init_failed = obs._init_failed, False
     try:
         started = time.monotonic()
         obs.init(span_exporter=exporter)
@@ -485,11 +495,70 @@ def test_partial_initialization_failure_shuts_down_export_and_instrumentation(mo
     finally:
         allow_shutdown.set()
         time.sleep(0.2)
+        failed_client = obs._client
+        try:
+            GoogleGenAIInstrumentor().uninstrument()
+            if failed_client is not None and failed_client is not previous_client:
+                failed_client.shutdown()
+        finally:
+            obs._client = previous_client
+            obs._init_failed = previous_init_failed
+
+
+def test_langfuse_fixture_restores_prior_true_state_when_setup_fails(monkeypatch):
+    root_conftest = _load_root_conftest()
+
+    sentinel_client = object()
+    previous_client, previous_init_failed = obs._client, obs._init_failed
+    obs._client, obs._init_failed = sentinel_client, True
+
+    def fail_setup(**kwargs):
+        obs._client = None
         obs._init_failed = False
-        GoogleGenAIInstrumentor().uninstrument()
-        if obs._client is not None:
-            client, obs._client = obs._client, None
-            client.shutdown()
+
+    monkeypatch.setattr(obs, "init", fail_setup)
+    fixture = root_conftest.langfuse_spans.__wrapped__(monkeypatch)
+    try:
+        with pytest.raises(AssertionError):
+            next(fixture)
+        assert obs._client is sentinel_client
+        assert obs._init_failed is True
+    finally:
+        fixture.close()
+        obs._client, obs._init_failed = previous_client, previous_init_failed
+
+
+def test_langfuse_fixture_restores_prior_false_state_after_normal_teardown(monkeypatch):
+    root_conftest = _load_root_conftest()
+
+    class TrackingClient:
+        def __init__(self):
+            self.shutdown_calls = 0
+
+        def shutdown(self):
+            self.shutdown_calls += 1
+
+    sentinel_client = TrackingClient()
+    fixture_client = TrackingClient()
+    previous_client, previous_init_failed = obs._client, obs._init_failed
+    obs._client, obs._init_failed = sentinel_client, False
+
+    def initialize_fixture_client(**kwargs):
+        obs._client = fixture_client
+
+    monkeypatch.setattr(obs, "init", initialize_fixture_client)
+    fixture = root_conftest.langfuse_spans.__wrapped__(monkeypatch)
+    try:
+        next(fixture)
+        with pytest.raises(StopIteration):
+            next(fixture)
+        assert obs._client is sentinel_client
+        assert obs._init_failed is False
+        assert sentinel_client.shutdown_calls == 0
+        assert fixture_client.shutdown_calls == 1
+    finally:
+        fixture.close()
+        obs._client, obs._init_failed = previous_client, previous_init_failed
 
 
 def test_client_construction_failure_shuts_down_unowned_exporter(monkeypatch):
@@ -513,7 +582,7 @@ def test_client_construction_failure_shuts_down_unowned_exporter(monkeypatch):
         "Langfuse",
         lambda **kwargs: (_ for _ in ()).throw(RuntimeError("client construction failed")),
     )
-    obs._client = None
+    previous_client, obs._client = obs._client, None
     previous_init_failed, obs._init_failed = obs._init_failed, False
     try:
         obs.init(span_exporter=exporter)
@@ -521,6 +590,7 @@ def test_client_construction_failure_shuts_down_unowned_exporter(monkeypatch):
         assert obs.enabled() is False
         assert exporter.was_shutdown is True
     finally:
+        obs._client = previous_client
         obs._init_failed = previous_init_failed
 
 
