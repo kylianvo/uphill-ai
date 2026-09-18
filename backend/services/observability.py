@@ -9,8 +9,12 @@ through a metadata-only exporter boundary before the configured transport.
 """
 
 import contextlib
-import math
+import hashlib
+import hmac
+import os
 import re
+import secrets
+import threading
 from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
@@ -125,6 +129,14 @@ _NOOP = Observation()
 INSTRUMENTOR_TRACES_STREAMS = True
 
 _client: Any = None
+_init_failed = False
+_MEDIA_UPLOAD_ENV = "LANGFUSE_MEDIA_UPLOAD_ENABLED"
+_media_configuration_lock = threading.Lock()
+_identifier_proof_key = secrets.token_bytes(32)
+_IDENTIFIER_PROOF_ATTRIBUTES = {
+    "user.id": "langfuse.trace.metadata._uphill_user_id_proof",
+    "session.id": "langfuse.trace.metadata._uphill_session_id_proof",
+}
 
 
 def enabled() -> bool:
@@ -133,6 +145,69 @@ def enabled() -> bool:
 
 def pseudonym(value: int | str) -> str:
     return policy.pseudonym(value, settings.OBSERVABILITY_ID_SALT)
+
+
+def _identifier_proof(attribute: str, identifier: str) -> str:
+    return hmac.new(_identifier_proof_key, f"{attribute}:{identifier}".encode(), hashlib.sha256).hexdigest()
+
+
+def _trusted_identifiers(attributes: dict[str, Any]) -> dict[str, str]:
+    trusted = {}
+    for attribute, proof_attribute in _IDENTIFIER_PROOF_ATTRIBUTES.items():
+        identifier = attributes.get(attribute)
+        proof = attributes.get(proof_attribute)
+        if (
+            isinstance(identifier, str)
+            and _TRACE_ID_RE.fullmatch(identifier)
+            and isinstance(proof, str)
+            and hmac.compare_digest(proof, _identifier_proof(attribute, identifier))
+        ):
+            trusted[attribute] = identifier
+    return trusted
+
+
+@contextlib.contextmanager
+def _media_uploads_disabled() -> Iterator[None]:
+    """Construct Langfuse with its pinned media manager disabled.
+
+    Langfuse 4.15.3 reads this switch once into both the resource manager and
+    media manager. The transform exporter processes media before either masking
+    hook, so disabling the manager at construction is the only safe boundary.
+    """
+    with _media_configuration_lock:
+        previous = os.environ.get(_MEDIA_UPLOAD_ENV)
+        os.environ[_MEDIA_UPLOAD_ENV] = "false"
+        try:
+            yield
+        finally:
+            if previous is None:
+                os.environ.pop(_MEDIA_UPLOAD_ENV, None)
+            else:
+                os.environ[_MEDIA_UPLOAD_ENV] = previous
+
+
+def _shutdown_with_deadline(*resources: Any) -> None:
+    """Release SDK-owned resources without allowing their queue joins to block init."""
+    owned = tuple(resource for resource in resources if resource is not None)
+    if not owned:
+        return
+
+    def shutdown() -> None:
+        seen: set[int] = set()
+        for resource in owned:
+            if id(resource) in seen:
+                continue
+            seen.add(id(resource))
+            try:
+                resource.shutdown()
+            except Exception as exc:
+                _warn_once("init_shutdown", exc)
+
+    worker = threading.Thread(target=shutdown, name="observability-init-cleanup", daemon=True)
+    worker.start()
+    worker.join(timeout=max(float(settings.LANGFUSE_TIMEOUT), 0.01))
+    if worker.is_alive():
+        _warn_once("init_shutdown_timeout", TimeoutError())
 
 
 def _mask(*, data: Any, **kwargs: Any) -> Any:
@@ -149,7 +224,12 @@ def _mask_otel_spans(*, params: Any, **kwargs: Any) -> Any:
     try:
         patches = {}
         for identifier, span_data in params.spans.items():
-            deletes, sets = policy.otel_patch(dict(span_data.attributes or {}), export_content=False)
+            attributes = dict(span_data.attributes or {})
+            trusted_identifiers = _trusted_identifiers(attributes)
+            preserved = set(trusted_identifiers)
+            preserved.update(_IDENTIFIER_PROOF_ATTRIBUTES[key] for key in trusted_identifiers)
+            deletes, sets = policy.otel_patch(attributes, export_content=False)
+            deletes = [key for key in deletes if key not in preserved]
             if deletes or sets:
                 patches[identifier] = OtelSpanPatch(set_attributes=sets, delete_attributes=tuple(deletes))
         return MaskOtelSpansResult(span_patches=patches) if patches else None
@@ -188,9 +268,11 @@ def _sanitized_readable_span(span: Any, resource_attributes: dict[str, str]) -> 
     from opentelemetry.trace.status import Status, StatusCode
 
     scope = span.instrumentation_scope or span.instrumentation_info
+    attributes = dict(span.attributes or {})
+    trusted_identifiers = _trusted_identifiers(attributes)
     envelope = {
         "name": span.name,
-        "attributes": dict(span.attributes or {}),
+        "attributes": attributes,
         "events": [{"name": event.name, "attributes": dict(event.attributes or {})} for event in (span.events or ())],
         "status": {
             "code": span.status.status_code.name,
@@ -218,6 +300,7 @@ def _sanitized_readable_span(span: Any, resource_attributes: dict[str, str]) -> 
     safe = policy.sanitize_span_envelope(envelope)
     if safe is None:
         return None
+    safe["attributes"].update(trusted_identifiers)
 
     safe_scope = safe["instrumentation_scope"]
     links = tuple(Link(_span_context_without_state(link.context), attributes={}) for link in (span.links or ()))
@@ -319,8 +402,11 @@ def _real_otlp_exporter() -> Any:
 def init(*, span_exporter: Any = None) -> None:
     """Enable Langfuse tracing when configured. Never raises. The SDK imports live here,
     inside try/except, so a stale prod image without them degrades to disabled."""
-    global _client
+    global _client, _init_failed
     if _client is not None or not (settings.LANGFUSE_PUBLIC_KEY and settings.LANGFUSE_SECRET_KEY):
+        return
+    if _init_failed:
+        _shutdown_with_deadline(span_exporter)
         return
     if not settings.OBSERVABILITY_ID_SALT:
         logger.error(
@@ -335,6 +421,8 @@ def init(*, span_exporter: Any = None) -> None:
         from openinference.instrumentation.langchain import LangChainInstrumentor
         from opentelemetry.sdk.trace import TracerProvider
     except ImportError as exc:
+        _init_failed = True
+        _shutdown_with_deadline(span_exporter)
         _warn_once("import", exc)
         return
     client = None
@@ -352,18 +440,19 @@ def init(*, span_exporter: Any = None) -> None:
             transport,
             resource_attributes=_export_resource_attributes(),
         )
-        client = Langfuse(
-            public_key=settings.LANGFUSE_PUBLIC_KEY,
-            secret_key=settings.LANGFUSE_SECRET_KEY,
-            base_url=settings.LANGFUSE_BASE_URL,
-            environment=settings.LANGFUSE_ENVIRONMENT,
-            sample_rate=settings.LANGFUSE_SAMPLE_RATE,
-            timeout=settings.LANGFUSE_TIMEOUT,
-            tracer_provider=provider,
-            mask=_mask,
-            mask_otel_spans=_mask_otel_spans,
-            span_exporter=final_exporter,
-        )
+        with _media_uploads_disabled():
+            client = Langfuse(
+                public_key=settings.LANGFUSE_PUBLIC_KEY,
+                secret_key=settings.LANGFUSE_SECRET_KEY,
+                base_url=settings.LANGFUSE_BASE_URL,
+                environment=settings.LANGFUSE_ENVIRONMENT,
+                sample_rate=settings.LANGFUSE_SAMPLE_RATE,
+                timeout=settings.LANGFUSE_TIMEOUT,
+                tracer_provider=provider,
+                mask=_mask,
+                mask_otel_spans=_mask_otel_spans,
+                span_exporter=final_exporter,
+            )
         # Metadata-only is the approved production mode. The config flag remains
         # documented for a future product decision, but cannot weaken H1's boundary.
         hide = True
@@ -393,6 +482,7 @@ def init(*, span_exporter: Any = None) -> None:
         _client = client
         logger.info("observability enabled", extra={"fields": {"service": "observability", "event": "enabled"}})
     except Exception as exc:
+        _init_failed = True
         for instrumentor, was_instrumented in (
             (langchain_instrumentor, langchain_was_instrumented),
             (google_instrumentor, google_was_instrumented),
@@ -402,15 +492,7 @@ def init(*, span_exporter: Any = None) -> None:
                     instrumentor.uninstrument()
                 except Exception as cleanup_exc:
                     _warn_once("init_uninstrument", cleanup_exc)
-        try:
-            if client is not None:
-                client.shutdown()
-            if provider is not None:
-                provider.shutdown()
-            if client is None and final_exporter is not None:
-                final_exporter.shutdown()
-        except Exception as cleanup_exc:
-            _warn_once("init_shutdown", cleanup_exc)
+        _shutdown_with_deadline(client, provider, final_exporter if client is None else None)
         _warn_once("init", exc)
 
 
@@ -458,10 +540,19 @@ def trace(
     def open_contexts(stack: contextlib.ExitStack) -> Any:
         from langfuse import propagate_attributes
 
+        user_identifier = pseudonym(user_id) if user_id is not None else None
+        session_identifier = pseudonym(thread_id) if thread_id is not None else None
+        identifier_proofs = {}
+        if user_identifier is not None:
+            identifier_proofs["_uphill_user_id_proof"] = _identifier_proof("user.id", user_identifier)
+        if session_identifier is not None:
+            identifier_proofs["_uphill_session_id_proof"] = _identifier_proof("session.id", session_identifier)
+
         stack.enter_context(
             propagate_attributes(
-                user_id=pseudonym(user_id) if user_id is not None else None,
-                session_id=pseudonym(thread_id) if thread_id is not None else None,
+                user_id=user_identifier,
+                session_id=session_identifier,
+                metadata=identifier_proofs or None,
                 trace_name=name,
             )
         )
@@ -553,8 +644,7 @@ def score(*, trace_id: str, name: str, value: float, category: str | None = None
         or name not in _SCORE_NAMES
         or isinstance(value, bool)
         or not isinstance(value, int | float)
-        or not math.isfinite(value)
-        or float(value) not in {-1.0, 1.0}
+        or value not in (-1, 1)
         or (category is not None and (not isinstance(category, str) or category not in _SCORE_CATEGORIES))
     ):
         return

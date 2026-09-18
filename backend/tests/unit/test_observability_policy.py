@@ -70,8 +70,6 @@ def test_span_attributes_require_permitted_values_and_numeric_usage():
         "llm.model_name": "gemini-3.8-flash",
         "llm.token_count.prompt": 12,
         "gen_ai.usage.input_tokens": 12,
-        "user.id": identifier,
-        "session.id": identifier,
         "langfuse.trace.name": "coach_chat.turn",
         "langfuse.environment": "development",
         "langfuse.observation.type": "span",
@@ -211,8 +209,6 @@ def test_otel_patch_deletes_every_content_bearing_attribute():
         "llm.model_name": "gemini-3.8-flash",
         "llm.token_count.prompt": 120,
         "llm.token_count.completion": 8,
-        "user.id": "a" * 32,
-        "session.id": "b" * 32,
         "langfuse.observation.metadata.retrieval_k": "6",
         "exception.type": "ValueError",
     }

@@ -141,7 +141,6 @@ _USAGE_DETAIL_KEYS = frozenset(
     }
 )
 _COST_DETAIL_KEYS = frozenset({"input", "output", "total", "cached_input", "input_cost", "output_cost", "total_cost"})
-_IDENTIFIER_RE = re.compile(r"^[0-9a-f]{32}$")
 _ERROR_TYPES = frozenset(
     {
         "APIError",
@@ -271,8 +270,6 @@ def _sanitize_attribute(key: str, value: Any) -> Any | None:
         return value if value in _MODELS else None
     if key in _TOKEN_ATTRIBUTE_KEYS:
         return value if _nonnegative_number(value) else None
-    if key in {"user.id", "session.id"}:
-        return value if isinstance(value, str) and _IDENTIFIER_RE.fullmatch(value) else None
     if key == "langfuse.trace.name":
         return value if value in _SPAN_NAMES else None
     if key == "langfuse.environment":

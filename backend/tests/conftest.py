@@ -69,6 +69,7 @@ def langfuse_spans(monkeypatch):
     monkeypatch.setattr(settings, "LANGFUSE_SECRET_KEY", "sk-lf-test")
     monkeypatch.setattr(settings, "OBSERVABILITY_ID_SALT", "test-salt")
     monkeypatch.setattr(settings, "LANGFUSE_BASE_URL", "http://127.0.0.1:9")
+    observability._init_failed = False
     observability.init(span_exporter=exporter)
     assert observability.enabled(), "observability.init() did not enable with test keys"
     yield exporter
@@ -76,3 +77,4 @@ def langfuse_spans(monkeypatch):
     LangChainInstrumentor().uninstrument()
     observability._client.shutdown()
     observability._client = None
+    observability._init_failed = False

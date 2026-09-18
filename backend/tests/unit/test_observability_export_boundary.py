@@ -4,6 +4,7 @@ import hmac
 import json
 import math
 import threading
+import time
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -35,15 +36,38 @@ def recording_http_server():
     requests = []
 
     class Handler(BaseHTTPRequestHandler):
-        def do_POST(self):
+        def _record_request(self):
             body = self.rfile.read(int(self.headers.get("content-length", "0")))
             requests.append(
                 {
+                    "method": self.command,
                     "path": self.path,
                     "headers": {key.lower(): value for key, value in self.headers.items()},
                     "body": body,
                 }
             )
+            return body
+
+        def do_POST(self):
+            body = self._record_request()
+            self.send_response(200)
+            self.send_header("content-type", "application/json")
+            self.end_headers()
+            if self.path == "/api/public/media":
+                payload = json.loads(body)
+                media_id = payload["sha256Hash"].replace("+", "-").replace("/", "_")[:22]
+                upload_url = f"http://{self.headers['host']}/media-upload"
+                self.wfile.write(json.dumps({"uploadUrl": upload_url, "mediaId": media_id}).encode())
+            else:
+                self.wfile.write(b"{}")
+
+        def do_PUT(self):
+            self._record_request()
+            self.send_response(200)
+            self.end_headers()
+
+        def do_PATCH(self):
+            self._record_request()
             self.send_response(200)
             self.send_header("content-type", "application/json")
             self.end_headers()
@@ -150,7 +174,7 @@ def test_final_exporter_clones_and_sanitizes_every_envelope_surface():
     [exported] = delegate.get_finished_spans()
     assert CANARY not in _serialized_span(exported)
     assert exported.name == "operation"
-    assert dict(exported.attributes or {}) == {"user.id": SAFE_ID}
+    assert dict(exported.attributes or {}) == {}, "identifier shape alone is not trusted provenance"
     assert exported.events == ()
     assert exported.status.status_code is StatusCode.ERROR
     assert exported.status.description is None
@@ -235,6 +259,7 @@ def test_score_allows_only_enumerated_metadata_and_finite_feedback_values():
         obs.score(trace_id=SAFE_ID, name=CANARY, value=1.0)
         obs.score(trace_id=SAFE_ID, name="thumbs", value=math.nan)
         obs.score(trace_id=SAFE_ID, name="thumbs", value=True)
+        obs.score(trace_id=SAFE_ID, name="thumbs", value=10**1000)
         obs.score(trace_id=SAFE_ID, name="thumbs", value=1.0, category=CANARY)
         obs.score(trace_id=SAFE_ID, name=[], value=1.0, category={})  # type: ignore[arg-type]
     finally:
@@ -286,6 +311,8 @@ def test_real_otlp_transport_serializes_only_sanitized_metadata(monkeypatch, rec
     obs._client = None
     obs.init()
     assert obs.enabled()
+    assert obs._client._resources._media_upload_enabled is False
+    assert obs._client._resources._media_manager._enabled is False
     try:
         client = genai.Client(
             api_key="test-key",
@@ -332,6 +359,11 @@ def test_real_otlp_transport_serializes_only_sanitized_metadata(monkeypatch, rec
             links=[Link(unsafe_context, {"note": CANARY})],
         ) as unsafe_span:
             unsafe_span.set_attribute("gen_ai.request.model", "gemini-3.8-flash")
+            unsafe_span.set_attribute("user.id", SAFE_ID)
+            unsafe_span.set_attribute(
+                "input.value",
+                f"data:text/plain;base64,{base64.b64encode(CANARY.encode()).decode()}",
+            )
         obs.score(trace_id=CANARY, name=CANARY, value=1.0, category=CANARY)
         obs.score(trace_id=SAFE_ID, name="thumbs", value=-1.0, category="incorrect")
         obs.flush()
@@ -348,6 +380,24 @@ def test_real_otlp_transport_serializes_only_sanitized_metadata(monkeypatch, rec
     assert trace_requests, f"no OTLP request captured; paths were {[request['path'] for request in requests]}"
     auxiliary_requests = [request for request in requests if request not in trace_requests]
     assert auxiliary_requests, "the valid score must exercise the non-OTLP auxiliary boundary"
+    assert not [
+        request for request in requests if request["method"] == "PUT"
+    ], "metadata-only mode must prevent media bytes from being queued for auxiliary upload"
+    assert not [request for request in requests if request["path"] == "/api/public/media"]
+    score_requests = [request for request in requests if request["path"] == "/api/public/ingestion"]
+    score_events = [
+        event
+        for request in score_requests
+        for event in json.loads(request["body"])["batch"]
+        if event["type"] == "score-create"
+    ]
+    assert len(score_events) == 1
+    score_body = score_events[0]["body"]
+    assert score_body["name"] == "thumbs"
+    assert score_body["value"] == -1.0
+    assert score_body["dataType"] == "NUMERIC"
+    assert score_body["traceId"] == SAFE_ID
+    assert score_body["metadata"] == {"category": "incorrect"}
 
     all_bodies = b"".join(request["body"] for request in requests)
     assert CANARY.encode() not in all_bodies
@@ -363,6 +413,7 @@ def test_real_otlp_transport_serializes_only_sanitized_metadata(monkeypatch, rec
         assert request["headers"]["authorization"] == expected_auth
     serialized = json.dumps(decoded, sort_keys=True)
     assert CANARY not in serialized
+    assert SAFE_ID not in serialized
     assert expected_user in serialized
     assert expected_session in serialized
     assert "GenerateContent" in serialized
@@ -373,6 +424,7 @@ def test_real_otlp_transport_serializes_only_sanitized_metadata(monkeypatch, rec
 
 
 def test_partial_initialization_failure_shuts_down_export_and_instrumentation(monkeypatch):
+    import langfuse
     from openinference.instrumentation.google_genai import GoogleGenAIInstrumentor
     from openinference.instrumentation.langchain import LangChainInstrumentor
 
@@ -386,22 +438,43 @@ def test_partial_initialization_failure_shuts_down_export_and_instrumentation(mo
             return super().shutdown()
 
     exporter = TrackingExporter()
+    replacement = TrackingExporter()
     monkeypatch.setattr(settings, "LANGFUSE_PUBLIC_KEY", f"pk-lf-partial-{uuid.uuid4().hex}")
     monkeypatch.setattr(settings, "LANGFUSE_SECRET_KEY", "sk-lf-partial")
     monkeypatch.setattr(settings, "OBSERVABILITY_ID_SALT", "partial-salt")
+    monkeypatch.setattr(settings, "LANGFUSE_TIMEOUT", 0.05)
 
     def fail(*args, **kwargs):
         raise RuntimeError("instrumentation failed")
 
     monkeypatch.setattr(LangChainInstrumentor, "instrument", fail)
+    original_shutdown = langfuse.Langfuse.shutdown
+    allow_shutdown = threading.Event()
+
+    def slow_shutdown(self):
+        allow_shutdown.wait(timeout=5)
+        return original_shutdown(self)
+
+    monkeypatch.setattr(langfuse.Langfuse, "shutdown", slow_shutdown)
     obs._client = None
+    obs._init_failed = False
     try:
+        started = time.monotonic()
         obs.init(span_exporter=exporter)
+        elapsed = time.monotonic() - started
 
         assert obs.enabled() is False
-        assert exporter.was_shutdown is True
+        assert elapsed < 0.75, "failed initialization cleanup must have a deadline"
         assert GoogleGenAIInstrumentor().is_instrumented_by_opentelemetry is False
+
+        obs.init(span_exporter=replacement)
+
+        assert obs.enabled() is False, "a failed SDK singleton must not be reused"
+        assert replacement.was_shutdown is True, "an exporter rejected after failure remains caller-safe"
     finally:
+        allow_shutdown.set()
+        time.sleep(0.2)
+        obs._init_failed = False
         GoogleGenAIInstrumentor().uninstrument()
         if obs._client is not None:
             client, obs._client = obs._client, None
