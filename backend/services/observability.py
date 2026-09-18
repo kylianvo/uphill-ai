@@ -17,6 +17,7 @@ import secrets
 import threading
 import time
 from collections.abc import Iterator
+from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from typing import Any
@@ -29,6 +30,7 @@ from telemetry import (
     llm_cost_usd_total,
     llm_latency_seconds,
     llm_tokens_total,
+    llm_unknown_usage_calls_total,
     llm_unpriced_calls_total,
 )
 
@@ -45,6 +47,8 @@ FEATURES = frozenset(
         "nutrition_lab",
         "kb_distill",
         "knowledge_cards",
+        "embeddings",
+        "evaluation",
     }
 )
 
@@ -86,10 +90,7 @@ class Usage:
         )
 
 
-def cost_usd(model: str, usage: Usage, on: date | None = None) -> float | None:
-    """USD cost of one call, or None when `model` has no price window covering `on`
-    (UTC today by default). prompt_token_count includes cached tokens, so cached
-    tokens are subtracted from the input bill and charged at the cached rate."""
+def _cost_details_usd(model: str, usage: Usage, on: date | None = None) -> dict[str, float] | None:
     day = on or datetime.now(UTC).date()
     for window in settings.LLM_PRICES_USD_PER_M.get(model, []):
         starts, ends = window.get("from"), window.get("until")
@@ -98,13 +99,24 @@ def cost_usd(model: str, usage: Usage, on: date | None = None) -> float | None:
         if ends and day > date.fromisoformat(ends):
             continue
         uncached = max(usage.input_tokens - usage.cached_tokens, 0)
-        total = (
-            uncached * window["input"]
-            + usage.cached_tokens * window["cached_input"]
-            + (usage.output_tokens + usage.thinking_tokens) * window["output"]
-        )
-        return round(total / 1_000_000, 6)
+        input_cost = uncached * window["input"] / 1_000_000
+        cached_cost = usage.cached_tokens * window["cached_input"] / 1_000_000
+        output_cost = (usage.output_tokens + usage.thinking_tokens) * window["output"] / 1_000_000
+        return {
+            "input": round(input_cost, 6),
+            "cached_input": round(cached_cost, 6),
+            "output": round(output_cost, 6),
+            "total": round(input_cost + cached_cost + output_cost, 6),
+        }
     return None
+
+
+def cost_usd(model: str, usage: Usage, on: date | None = None) -> float | None:
+    """USD cost of one call, or None when `model` has no price window covering `on`
+    (UTC today by default). prompt_token_count includes cached tokens, so cached
+    tokens are subtracted from the input bill and charged at the cached rate."""
+    details = _cost_details_usd(model, usage, on=on)
+    return details["total"] if details is not None else None
 
 
 class Observation:
@@ -138,6 +150,10 @@ _IDENTIFIER_PROOF_ATTRIBUTES = {
     "user.id": "langfuse.trace.metadata._uphill_user_id_proof",
     "session.id": "langfuse.trace.metadata._uphill_session_id_proof",
 }
+_INVOCATION_ATTRIBUTE = "uphill.internal.invocation_id"
+_INVOCATION_PROOF_ATTRIBUTE = "uphill.internal.invocation_id_proof"
+_INVOCATION_OWNER_ATTRIBUTE = "uphill.internal.invocation_owner"
+_current_invocation_id: ContextVar[str | None] = ContextVar("observability_invocation_id", default=None)
 
 
 def enabled() -> bool:
@@ -165,6 +181,19 @@ def _trusted_identifiers(attributes: dict[str, Any]) -> dict[str, str]:
         ):
             trusted[attribute] = identifier
     return trusted
+
+
+def _trusted_invocation_id(attributes: dict[str, Any]) -> str | None:
+    invocation_id = attributes.get(_INVOCATION_ATTRIBUTE)
+    proof = attributes.get(_INVOCATION_PROOF_ATTRIBUTE)
+    if (
+        isinstance(invocation_id, str)
+        and _TRACE_ID_RE.fullmatch(invocation_id)
+        and isinstance(proof, str)
+        and hmac.compare_digest(proof, _identifier_proof(_INVOCATION_ATTRIBUTE, invocation_id))
+    ):
+        return invocation_id
+    return None
 
 
 @contextlib.contextmanager
@@ -254,6 +283,11 @@ def _mask_otel_spans(*, params: Any, **kwargs: Any) -> Any:
             trusted_identifiers = _trusted_identifiers(attributes)
             preserved = set(trusted_identifiers)
             preserved.update(_IDENTIFIER_PROOF_ATTRIBUTES[key] for key in trusted_identifiers)
+            trusted_invocation = _trusted_invocation_id(attributes)
+            if trusted_invocation is not None:
+                preserved.update({_INVOCATION_ATTRIBUTE, _INVOCATION_PROOF_ATTRIBUTE})
+                if attributes.get(_INVOCATION_OWNER_ATTRIBUTE) == trusted_invocation:
+                    preserved.add(_INVOCATION_OWNER_ATTRIBUTE)
             deletes, sets = policy.otel_patch(attributes, export_content=False)
             deletes = [key for key in deletes if key not in preserved]
             if deletes or sets:
@@ -296,6 +330,15 @@ def _sanitized_readable_span(span: Any, resource_attributes: dict[str, str]) -> 
     scope = span.instrumentation_scope or span.instrumentation_info
     attributes = dict(span.attributes or {})
     trusted_identifiers = _trusted_identifiers(attributes)
+    invocation_id = _trusted_invocation_id(attributes)
+    invocation_owner = attributes.pop(_INVOCATION_OWNER_ATTRIBUTE, None)
+    attributes.pop(_INVOCATION_ATTRIBUTE, None)
+    attributes.pop(_INVOCATION_PROOF_ATTRIBUTE, None)
+    if invocation_id is not None:
+        attributes = policy.normalize_explicit_invocation_attributes(
+            attributes,
+            canonical=invocation_owner == invocation_id,
+        )
     envelope = {
         "name": span.name,
         "attributes": attributes,
@@ -447,7 +490,8 @@ def init(*, span_exporter: Any = None) -> None:
         from openinference.instrumentation import TraceConfig
         from openinference.instrumentation.google_genai import GoogleGenAIInstrumentor
         from openinference.instrumentation.langchain import LangChainInstrumentor
-        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace import SpanProcessor, TracerProvider
+        from opentelemetry.sdk.trace.sampling import TraceIdRatioBased
     except ImportError as exc:
         _init_failed = True
         _shutdown_with_deadline(span_exporter)
@@ -462,7 +506,20 @@ def init(*, span_exporter: Any = None) -> None:
     langchain_was_instrumented = False
     try:
         # Our own provider, shared by Langfuse and both instrumentors: nothing global is touched.
-        provider = TracerProvider()
+        provider = TracerProvider(sampler=TraceIdRatioBased(settings.LANGFUSE_SAMPLE_RATE))
+
+        class InvocationContextSpanProcessor(SpanProcessor):
+            def on_start(self, span: Any, parent_context: Any = None) -> None:
+                invocation_id = _current_invocation_id.get()
+                if invocation_id is None:
+                    return
+                span.set_attribute(_INVOCATION_ATTRIBUTE, invocation_id)
+                span.set_attribute(
+                    _INVOCATION_PROOF_ATTRIBUTE,
+                    _identifier_proof(_INVOCATION_ATTRIBUTE, invocation_id),
+                )
+
+        provider.add_span_processor(InvocationContextSpanProcessor())
         transport = span_exporter if span_exporter is not None else _real_otlp_exporter()
         final_exporter = _final_span_exporter(
             transport,
@@ -607,6 +664,198 @@ def span(name: str, *, metadata: dict[str, Any] | None = None) -> Iterator[Obser
         yield observation
 
 
+def _usage_details(usage: Usage) -> dict[str, int]:
+    return {
+        "input": usage.input_tokens,
+        "output": usage.output_tokens,
+        "thinking_tokens": usage.thinking_tokens,
+        "cached_input": usage.cached_tokens,
+        "total": usage.input_tokens + usage.output_tokens + usage.thinking_tokens,
+    }
+
+
+def _valid_usage(usage: Any) -> bool:
+    return isinstance(usage, Usage) and all(
+        isinstance(value, int) and not isinstance(value, bool) and value >= 0
+        for value in (
+            usage.input_tokens,
+            usage.output_tokens,
+            usage.thinking_tokens,
+            usage.cached_tokens,
+        )
+    )
+
+
+def _record_generation_metrics(
+    *,
+    feature: str,
+    model: str,
+    usage: Usage | None,
+    usage_known: bool,
+    latency_s: float,
+    status: str,
+) -> tuple[float | None, dict[str, float] | None]:
+    label = feature if feature in FEATURES else "other"
+    status_label = "error" if status == "error" else "ok"
+    cost_details = None
+    if usage_known and usage is not None:
+        try:
+            cost_details = _cost_details_usd(model, usage)
+        except Exception as exc:
+            _warn_once("generation_cost", exc)
+
+    try:
+        llm_calls_total.labels(feature=label, model=model, status=status_label).inc()
+        llm_latency_seconds.labels(feature=label, model=model).observe(max(latency_s, 0.0))
+        if not usage_known or usage is None:
+            llm_unknown_usage_calls_total.labels(feature=label, status=status_label).inc()
+        else:
+            for kind, count in (
+                ("input", usage.input_tokens),
+                ("output", usage.output_tokens),
+                ("thinking", usage.thinking_tokens),
+                ("cached", usage.cached_tokens),
+            ):
+                if count:
+                    llm_tokens_total.labels(feature=label, model=model, kind=kind).inc(count)
+            if cost_details is None:
+                llm_unpriced_calls_total.labels(model=model).inc()
+            elif cost_details["total"]:
+                llm_cost_usd_total.labels(feature=label, model=model).inc(cost_details["total"])
+    except Exception as exc:
+        _warn_once("record_generation", exc)
+    return (cost_details["total"] if cost_details is not None else None, cost_details)
+
+
+class GenerationRecorder(Observation):
+    """Per-invocation usage accumulator yielded by generation()."""
+
+    def __init__(self, handle: Any, *, feature: str, model: str) -> None:
+        super().__init__(handle)
+        self._feature = feature
+        self._model = model
+        self._usage: Usage | None = None
+        self._usage_known = False
+        self._finished = False
+
+    def set_usage(self, usage: Usage, *, known: bool = True) -> None:
+        if not _valid_usage(usage):
+            self._usage_known = False
+            return
+        if self._usage is None:
+            self._usage = usage
+        else:
+            self._usage = Usage(
+                input_tokens=max(self._usage.input_tokens, usage.input_tokens),
+                output_tokens=max(self._usage.output_tokens, usage.output_tokens),
+                thinking_tokens=max(self._usage.thinking_tokens, usage.thinking_tokens),
+                cached_tokens=max(self._usage.cached_tokens, usage.cached_tokens),
+            )
+        self._usage_known = bool(known)
+
+    def _finish(self, *, status: str, latency_s: float) -> None:
+        if self._finished:
+            return
+        self._finished = True
+        cost, cost_details = _record_generation_metrics(
+            feature=self._feature,
+            model=self._model,
+            usage=self._usage,
+            usage_known=self._usage_known,
+            latency_s=latency_s,
+            status=status,
+        )
+        if self._handle is None:
+            return
+        metadata: dict[str, Any] = {
+            "status": status,
+            "latency_ms": round(max(latency_s, 0.0) * 1000),
+        }
+        usage_details = None
+        if self._usage_known and self._usage is not None:
+            usage_details = _usage_details(self._usage)
+            metadata.update(
+                {
+                    "model": self._model,
+                    "input_tokens": self._usage.input_tokens,
+                    "output_tokens": self._usage.output_tokens,
+                    "thinking_tokens": self._usage.thinking_tokens,
+                    "cached_tokens": self._usage.cached_tokens,
+                    "cost_usd": cost,
+                }
+            )
+        try:
+            self._handle.update(
+                model=self._model,
+                usage_details=usage_details,
+                cost_details=cost_details,
+                metadata=policy.filter_metadata(metadata),
+                level="ERROR" if status == "error" else None,
+            )
+        except Exception as exc:
+            _warn_once("generation_update", exc)
+
+
+@contextlib.contextmanager
+def generation(
+    name: str,
+    *,
+    feature: str,
+    model: str,
+    user_id: int | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> Iterator[GenerationRecorder]:
+    """Record one provider invocation with one canonical billing owner."""
+    invocation_id = secrets.token_hex(16)
+    invocation_token = _current_invocation_id.set(invocation_id)
+    started = time.monotonic()
+    stack = contextlib.ExitStack()
+    handle = None
+    if _client is not None:
+        try:
+            if user_id is not None:
+                from langfuse import propagate_attributes
+
+                user_identifier = pseudonym(user_id)
+                stack.enter_context(
+                    propagate_attributes(
+                        user_id=user_identifier,
+                        metadata={
+                            "_uphill_user_id_proof": _identifier_proof("user.id", user_identifier),
+                        },
+                    )
+                )
+            label = feature if feature in FEATURES else "other"
+            handle = stack.enter_context(
+                _client.start_as_current_observation(
+                    as_type="generation",
+                    name=name,
+                    model=model,
+                    metadata=policy.filter_metadata({**(metadata or {}), "feature": label}),
+                )
+            )
+            from opentelemetry.trace import get_current_span
+
+            get_current_span().set_attribute(_INVOCATION_OWNER_ATTRIBUTE, invocation_id)
+        except Exception as exc:
+            _close(stack)
+            stack = contextlib.ExitStack()
+            _warn_once("generation_start", exc)
+
+    recorder = GenerationRecorder(handle, feature=feature, model=model)
+    status = "ok"
+    try:
+        yield recorder
+    except BaseException as body_exc:
+        status = "error"
+        recorder.set(status="error", error_type=type(body_exc).__name__)
+        raise
+    finally:
+        recorder._finish(status=status, latency_s=time.monotonic() - started)
+        _close(stack)
+        _current_invocation_id.reset(invocation_token)
+
+
 def record_generation(
     *,
     feature: str,
@@ -622,26 +871,14 @@ def record_generation(
     `streaming` states a fact about the call. It changes nothing today: the pinned
     OpenInference instrumentor auto-traces streamed and non-streamed calls alike
     (see INSTRUMENTOR_TRACES_STREAMS)."""
-    label = feature if feature in FEATURES else "other"
-    cost: float | None = None
-    try:
-        llm_calls_total.labels(feature=label, model=model, status=status).inc()
-        for kind, count in (
-            ("input", usage.input_tokens),
-            ("output", usage.output_tokens),
-            ("thinking", usage.thinking_tokens),
-            ("cached", usage.cached_tokens),
-        ):
-            if count:
-                llm_tokens_total.labels(feature=label, model=model, kind=kind).inc(count)
-        llm_latency_seconds.labels(feature=label, model=model).observe(latency_s)
-        cost = cost_usd(model, usage)
-        if cost is None:
-            llm_unpriced_calls_total.labels(model=model).inc()
-        elif cost:
-            llm_cost_usd_total.labels(feature=label, model=model).inc(cost)
-    except Exception as exc:
-        _warn_once("record_generation", exc)
+    cost, _ = _record_generation_metrics(
+        feature=feature,
+        model=model,
+        usage=usage,
+        usage_known=True,
+        latency_s=latency_s,
+        status=status,
+    )
     if _client is not None:
         try:
             _client.update_current_span(

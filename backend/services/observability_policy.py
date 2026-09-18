@@ -96,6 +96,8 @@ _FEATURES = frozenset(
         "nutrition_lab",
         "kb_distill",
         "knowledge_cards",
+        "embeddings",
+        "evaluation",
     }
 )
 _STATUS_CODES = frozenset({"UNSET", "OK", "ERROR"})
@@ -163,6 +165,21 @@ _GENERATION_STATUSES = frozenset({"ok", "error", "attempt", "success", "used", "
 _LANGUAGES = frozenset({"en", "vi"})
 _COLLECTIONS = frozenset({"uphill_kb_scheduler"})
 _CHUNK_REF_RE = re.compile(r"^[0-9a-f]{12}$")
+_BILLABLE_MODEL_KEYS = frozenset(
+    {
+        "llm.model_name",
+        "gen_ai.request.model",
+        "gen_ai.response.model",
+        "langfuse.observation.model.name",
+    }
+)
+_BILLABLE_USAGE_COST_KEYS = frozenset(
+    {
+        "langfuse.observation.usage_details",
+        "langfuse.observation.cost_details",
+    }
+)
+_BILLABLE_USAGE_PREFIXES = ("llm.token_count.", "gen_ai.usage.")
 
 
 def pseudonym(value: int | str, salt: str) -> str:
@@ -289,6 +306,19 @@ def _sanitize_attribute(key: str, value: Any) -> Any | None:
     if key.startswith(_METADATA_ATTRIBUTE_PREFIXES):
         return _metadata_attribute(key, value)
     return None
+
+
+def normalize_explicit_invocation_attributes(attributes: dict[str, Any], *, canonical: bool) -> dict[str, Any]:
+    """Remove native billable attribution from descendants of an explicit generation."""
+    if canonical:
+        return attributes
+    return {
+        key: value
+        for key, value in attributes.items()
+        if key not in _BILLABLE_MODEL_KEYS
+        and key not in _BILLABLE_USAGE_COST_KEYS
+        and not key.startswith(_BILLABLE_USAGE_PREFIXES)
+    }
 
 
 def sanitize_span_envelope(envelope: dict[str, Any]) -> dict[str, Any] | None:

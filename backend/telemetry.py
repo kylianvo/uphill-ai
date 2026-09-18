@@ -33,3 +33,9 @@ llm_cost_usd_total = Counter("llm_cost_usd_total", "Estimated Gemini cost in USD
 llm_latency_seconds = Histogram("llm_latency_seconds", "Gemini generation latency", ["feature", "model"])
 
 llm_unpriced_calls_total = Counter("llm_unpriced_calls_total", "Gemini calls with no price window", ["model"])
+
+llm_unknown_usage_calls_total = Counter(
+    "llm_unknown_usage_calls_total",
+    "Gemini calls whose final token usage was unavailable",
+    ["feature", "status"],
+)

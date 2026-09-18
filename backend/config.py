@@ -1,10 +1,59 @@
 import json
+import logging
+import math
 import os
+from datetime import date
 
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
+
+logger = logging.getLogger(__name__)
+
+DEFAULT_LLM_PRICES_USD_PER_M = {
+    "gemini-3.8-flash": [
+        {"until": "2026-12-31", "input": 0.75, "cached_input": 0.075, "output": 3.75},
+        {"from": "2027-01-01", "input": 1.50, "cached_input": 0.15, "output": 7.50},
+    ]
+}
+
+
+def _valid_price_rate(value: object) -> bool:
+    return isinstance(value, int | float) and not isinstance(value, bool) and math.isfinite(value) and value >= 0
+
+
+def _valid_price_table(value: object) -> bool:
+    if not isinstance(value, dict):
+        return False
+    for model, windows in value.items():
+        if not isinstance(model, str) or not model or not isinstance(windows, list):
+            return False
+        for window in windows:
+            if not isinstance(window, dict):
+                return False
+            if not all(_valid_price_rate(window.get(key)) for key in ("input", "cached_input", "output")):
+                return False
+            for boundary in ("from", "until"):
+                if boundary in window:
+                    try:
+                        date.fromisoformat(window[boundary])
+                    except (TypeError, ValueError):
+                        return False
+    return True
+
+
+def _parse_llm_prices(raw: str | None) -> dict:
+    if raw is None or not raw.strip():
+        return DEFAULT_LLM_PRICES_USD_PER_M
+    try:
+        parsed = json.loads(raw)
+    except (TypeError, ValueError):
+        parsed = None
+    if _valid_price_table(parsed):
+        return parsed
+    logger.warning("invalid LLM_PRICES_JSON; using verified defaults")
+    return DEFAULT_LLM_PRICES_USD_PER_M
 
 
 class Config:
@@ -119,12 +168,7 @@ class Config:
     OBSERVABILITY_ID_SALT: str = os.getenv("OBSERVABILITY_ID_SALT", "")
     # USD per 1M tokens as dated windows (Gemini Developer API paid tier, standard).
     # Output price includes thinking tokens. LLM_PRICES_JSON replaces the table wholesale.
-    LLM_PRICES_USD_PER_M: dict = json.loads(os.getenv("LLM_PRICES_JSON") or "null") or {
-        "gemini-3.8-flash": [
-            {"until": "2026-12-31", "input": 0.75, "cached_input": 0.075, "output": 3.75},
-            {"from": "2027-01-01", "input": 1.50, "cached_input": 0.15, "output": 7.50},
-        ]
-    }
+    LLM_PRICES_USD_PER_M: dict = _parse_llm_prices(os.getenv("LLM_PRICES_JSON"))
 
 
 settings = Config()

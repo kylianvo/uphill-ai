@@ -62,3 +62,49 @@ def test_a_broken_metric_never_raises_into_the_caller(monkeypatch):
     monkeypatch.setattr(obs, "llm_calls_total", Exploding())
 
     obs.record_generation(feature="coach_chat", model="m-metrics-broken", usage=obs.Usage(), latency_s=0.1)
+
+
+def test_generation_with_missing_usage_counts_unknown_not_zero_cost():
+    labels = {"feature": "coach_chat", "status": "ok"}
+    before_unknown = _sample("llm_unknown_usage_calls_total", labels)
+    before_calls = _sample(
+        "llm_calls_total",
+        {"feature": "coach_chat", "model": "m-missing-usage", "status": "ok"},
+    )
+
+    with obs.generation("gemini", feature="coach_chat", model="m-missing-usage"):
+        pass
+
+    assert _sample("llm_unknown_usage_calls_total", labels) - before_unknown == 1
+    assert (
+        _sample(
+            "llm_calls_total",
+            {"feature": "coach_chat", "model": "m-missing-usage", "status": "ok"},
+        )
+        - before_calls
+        == 1
+    )
+    assert _sample("llm_cost_usd_total", {"feature": "coach_chat", "model": "m-missing-usage"}) == 0
+
+
+def test_generation_reports_monotonic_cumulative_stream_usage_once(monkeypatch):
+    monkeypatch.setattr(
+        settings,
+        "LLM_PRICES_USD_PER_M",
+        {"m-stream": [{"input": 1.0, "cached_input": 0.5, "output": 2.0}]},
+    )
+    labels = {"feature": "plan_generation", "model": "m-stream"}
+    before_calls = _sample("llm_calls_total", {**labels, "status": "ok"})
+    before_input = _sample("llm_tokens_total", {**labels, "kind": "input"})
+    before_output = _sample("llm_tokens_total", {**labels, "kind": "output"})
+    before_latency = _sample("llm_latency_seconds_count", labels)
+
+    with obs.generation("gemini", feature="plan_generation", model="m-stream") as generation:
+        generation.set_usage(obs.Usage(input_tokens=100, output_tokens=10))
+        generation.set_usage(obs.Usage(input_tokens=100, output_tokens=25))
+        generation.set_usage(obs.Usage(input_tokens=90, output_tokens=20))
+
+    assert _sample("llm_calls_total", {**labels, "status": "ok"}) - before_calls == 1
+    assert _sample("llm_tokens_total", {**labels, "kind": "input"}) - before_input == 100
+    assert _sample("llm_tokens_total", {**labels, "kind": "output"}) - before_output == 25
+    assert _sample("llm_latency_seconds_count", labels) - before_latency == 1

@@ -4,6 +4,8 @@ langfuse 4.15.3 and openinference-instrumentation-google-genai 1.4.7 emit."""
 import json
 import math
 
+import pytest
+
 from services import observability_policy as policy
 
 CANARY = "CANARY-knee-pain-since-march"
@@ -297,6 +299,11 @@ def test_filter_metadata_caps_list_length():
         assert len(kept["chunk_refs"]) < 100, f"list length not capped: {len(kept['chunk_refs'])} items"
     # Verify no volume leak
     assert len(str(kept)) < 10000, f"metadata dict too large: {len(str(kept))} chars"
+
+
+@pytest.mark.parametrize("feature", ["embeddings", "evaluation"])
+def test_new_accounting_features_are_bounded_allowlisted_labels(feature):
+    assert policy.filter_metadata({"feature": feature}) == {"feature": feature}
 
 
 def test_mask_payload_redacts_json_strings_in_lists():

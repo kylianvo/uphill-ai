@@ -2,10 +2,15 @@
 gemini-3.8-flash through 2026-12-31: input 0.75, cached 0.075, output 3.75 (USD/1M);
 from 2027-01-01: input 1.50, cached 0.15, output 7.50. Output price covers thinking."""
 
+import json
 from datetime import date
 
-from config import settings
+import pytest
+
+import config
 from services import observability as obs
+
+settings = config.settings
 
 # 10k prompt tokens of which 2k cached, 1k output, 500 thinking.
 USAGE = obs.Usage(input_tokens=10_000, output_tokens=1_000, thinking_tokens=500, cached_tokens=2_000)
@@ -37,3 +42,31 @@ def test_open_ended_window_from_an_overridden_table(monkeypatch):
 
     # 1M*1.0 + 0 + 500k*2.0 = 2,000,000 -> /1e6
     assert obs.cost_usd("custom-model", usage, on=date(2030, 1, 1)) == 2.0
+
+
+def test_empty_price_override_is_honored():
+    assert config._parse_llm_prices("{}") == {}
+
+
+def test_malformed_price_override_warns_without_logging_its_content(caplog):
+    secret = "CANARY-price-config-secret"
+
+    parsed = config._parse_llm_prices(f"not-json-{secret}")
+
+    assert parsed == config.DEFAULT_LLM_PRICES_USD_PER_M
+    assert secret not in caplog.text
+    assert "LLM_PRICES_JSON" in caplog.text
+
+
+@pytest.mark.parametrize("invalid_rate", [-1, True, float("inf"), float("nan"), "1.0"])
+def test_invalid_price_rates_fall_back_to_verified_defaults(invalid_rate, caplog):
+    raw = json.dumps(
+        {
+            "custom-model": [
+                {"input": invalid_rate, "cached_input": 0.5, "output": 2.0},
+            ]
+        }
+    )
+
+    assert config._parse_llm_prices(raw) == config.DEFAULT_LLM_PRICES_USD_PER_M
+    assert "LLM_PRICES_JSON" in caplog.text
