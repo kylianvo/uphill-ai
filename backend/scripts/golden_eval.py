@@ -147,12 +147,16 @@ def capture(service: str):
         print(f"[capture] saved {os.path.basename(ref_path)} ({ref['latency_s']}s)")
 
 
-def compare(service: str):
+def compare(service: str, push_langfuse: bool = False):
     from db import get_kb_chunks
     from services.kb_context import find_uncatalogued
 
     lines = [f"# Golden report — {service}\n"]
     catalog_titles = [c["title"] for c in get_kb_chunks(service, kind="catalog_item")]
+    items: list[dict] = []
+    results: list[dict | list] = []
+    scores: list[dict] = []
+
     for path in _fixtures(service):
         fixture = json.load(open(path, encoding="utf-8"))
         ref_path = path.replace(".json", ".ref.json")
@@ -161,6 +165,7 @@ def compare(service: str):
         start = time.time()
         result, engine_used = asyncio.run(_run(service, fixture))
         latency = round(time.time() - start, 1)
+        engine_is_gemini = engine_used == "gemini"
 
         lines.append(f"\n## {os.path.basename(path)}\n")
         lines.append(
@@ -176,16 +181,28 @@ def compare(service: str):
                 lines.append(
                     f"- ⚠️ Baseline came from '{ref.get('engine_used')}', not a clean Gemini run — re-capture it"
                 )
-        if service in ("gear", "nutrition"):
-            recs = result.get("recommendations") or result.get("products") or []
-            missing = find_uncatalogued(recs, catalog_titles)
-            lines.append(
-                f"- Hallucination guard: {'❌ NOT IN CATALOG: ' + ', '.join(missing) if missing else '✅ all recommendations exist in the distilled catalog'}"
-            )
-        else:
-            lines.append(f"- New: `{json.dumps(_scheduler_summary(result))}`")
+            summary = _scheduler_summary(result)
+            lines.append(f"- New: `{json.dumps(summary)}`")
             if ref:
                 lines.append(f"- Ref: `{json.dumps(_scheduler_summary(ref['output']))}`")
+            item_score = {
+                "latency_s": latency,
+                "engine_is_gemini": engine_is_gemini,
+                "workout_count": summary["workout_count"],
+            }
+        else:
+            recs = result.get("recommendations") or result.get("products") or []
+            missing = find_uncatalogued(recs, catalog_titles)
+            catalog_membership_valid = len(missing) == 0
+            lines.append(
+                f"- Catalog membership: {'❌ NOT IN CATALOG: ' + ', '.join(missing) if missing else '✅ all recommendations exist in the distilled catalog'}"
+            )
+            item_score = {
+                "latency_s": latency,
+                "engine_is_gemini": engine_is_gemini,
+                "catalog_membership_valid": catalog_membership_valid,
+            }
+
         lines.append(
             "\n<details><summary>Gemini+KB output</summary>\n\n```json\n"
             + json.dumps(result, ensure_ascii=False, indent=2)
@@ -197,17 +214,61 @@ def compare(service: str):
                 + json.dumps(ref["output"], ensure_ascii=False, indent=2)
                 + "\n```\n</details>"
             )
+
+        item_id = f"{service}_{os.path.splitext(os.path.basename(path))[0]}"
+        items.append(
+            {
+                "id": item_id,
+                "synthetic": True,
+                "provenance": service,
+                "input": fixture,
+                "expected_output": ref.get("output") if ref else None,
+            }
+        )
+        results.append(result)
+        scores.append(item_score)
+
     report_path = os.path.join(GOLDEN_DIR, f"report_{service}.md")
     open(report_path, "w", encoding="utf-8").write("\n".join(lines))
     print(f"[compare] report written: {report_path}")
+
+    if push_langfuse:
+        from services.observability import push_experiment
+
+        run_name = f"eval_{service}_{int(time.time())}"
+        dataset_name = f"uphill_{service}_golden"
+        pushed = push_experiment(
+            dataset_name=dataset_name,
+            run_name=run_name,
+            items=items,
+            results=results,
+            scores=scores,
+            synthetic=True,
+            description=f"Synthetic golden evaluation run for {service}",
+        )
+        if pushed:
+            print(f"[compare] Pushed experiment run to Langfuse: {run_name}")
+        else:
+            print(
+                "[compare] Warning: failed to push experiment to Langfuse (check credentials or synthetic validation)"
+            )
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("mode", choices=["capture", "compare"])
     parser.add_argument("--service", required=True, choices=["gear", "nutrition", "scheduler"])
+    parser.add_argument(
+        "--push-langfuse",
+        action="store_true",
+        default=False,
+        help="Publish precomputed experiment results to Langfuse (requires synthetic fixtures)",
+    )
     args = parser.parse_args()
-    (capture if args.mode == "capture" else compare)(args.service)
+    if args.mode == "capture":
+        capture(args.service)
+    else:
+        compare(args.service, push_langfuse=args.push_langfuse)
 
 
 if __name__ == "__main__":

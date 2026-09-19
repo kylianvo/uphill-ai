@@ -947,3 +947,119 @@ def flush() -> None:
         _client.flush()
     except Exception as exc:
         _warn_once("flush", exc)
+
+
+_SYNTHETIC_PROVENANCES = {"gear", "nutrition", "scheduler"}
+
+
+def push_experiment(
+    *,
+    dataset_name: str,
+    run_name: str,
+    items: list[dict[str, Any]],
+    results: list[dict[str, Any] | list[Any]],
+    scores: list[dict[str, Any]],
+    synthetic: bool = False,
+    description: str | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> bool:
+    """Publish precomputed synthetic evaluation experiments and scores to Langfuse.
+
+    Requires synthetic=True and committed fixture provenance. Never runs paid inference.
+    """
+    if not synthetic:
+        logger.warning(
+            "push_experiment denied: synthetic=True is required",
+            extra={"fields": {"service": "observability", "event": "push_experiment_denied"}},
+        )
+        return False
+
+    if not items or len(items) != len(results) or len(items) != len(scores):
+        logger.warning(
+            "push_experiment denied: items, results, and scores must have matching non-zero lengths",
+            extra={"fields": {"service": "observability", "event": "push_experiment_invalid_lengths"}},
+        )
+        return False
+
+    seen_ids: set[str] = set()
+    for item in items:
+        if not isinstance(item, dict):
+            return False
+        if item.get("synthetic") is not True:
+            return False
+        provenance = item.get("provenance")
+        if not provenance or provenance not in _SYNTHETIC_PROVENANCES:
+            return False
+        if item.get("is_private") or item.get("private"):
+            return False
+        item_id = item.get("id")
+        if not item_id or not isinstance(item_id, str):
+            return False
+        if item_id in seen_ids:
+            return False
+        seen_ids.add(item_id)
+
+    if _client is None:
+        return False
+
+    try:
+        try:
+            _client.create_dataset(
+                name=dataset_name,
+                description=description,
+                metadata={"synthetic": True},
+            )
+        except Exception:
+            pass
+
+        for item, _result, item_scores in zip(items, results, scores):
+            dataset_item = _client.create_dataset_item(
+                dataset_name=dataset_name,
+                id=item["id"],
+                input=item.get("input"),
+                expected_output=item.get("expected_output"),
+                metadata={
+                    "provenance": item.get("provenance"),
+                    "synthetic": True,
+                    **policy.filter_metadata(item.get("metadata") or {}),
+                },
+            )
+
+            run_item = _client.api.dataset_run_items.create(
+                run_name=run_name,
+                dataset_item_id=getattr(dataset_item, "id", None) or item["id"],
+                run_description=description,
+                metadata={
+                    "synthetic": True,
+                    **policy.filter_metadata(metadata or {}),
+                },
+            )
+
+            dataset_run_id = getattr(run_item, "dataset_run_id", None)
+            trace_id = getattr(run_item, "trace_id", None)
+
+            for score_name, score_value in item_scores.items():
+                if score_value is None:
+                    continue
+                dtype = (
+                    "BOOLEAN"
+                    if isinstance(score_value, bool)
+                    else ("NUMERIC" if isinstance(score_value, int | float) else "CATEGORICAL")
+                )
+                val = float(score_value) if isinstance(score_value, int | float | bool) else str(score_value)
+                score_kwargs: dict[str, Any] = {
+                    "name": score_name,
+                    "value": val,
+                    "data_type": dtype,
+                }
+                if dataset_run_id:
+                    score_kwargs["dataset_run_id"] = dataset_run_id
+                elif trace_id:
+                    score_kwargs["trace_id"] = trace_id
+                _client.create_score(**score_kwargs)
+
+        _client.flush()
+        return True
+    except Exception as exc:
+        _warn_once("push_experiment", exc)
+        return False
