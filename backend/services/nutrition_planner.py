@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from config import settings
 from log_utils import get_logger
+from services import observability
 
 _logger = get_logger(__name__)
 
@@ -134,8 +135,13 @@ Nutrition Goals:
         catalog_context = render_catalog_context(catalog_chunks, "nutrition")
         principles_context = render_principles_context(principle_chunks, heading="FUELING SCIENCE PRINCIPLES")
 
-        target_carb, target_sodium = self._macro_targets(params)
-        prompt = f"""You are an expert ultra-endurance nutrition coach building a race nutrition plan.
+        with observability.trace(
+            "nutrition_lab",
+            feature="nutrition_lab",
+            metadata={"catalog_entries": len(catalog_chunks), "cache_hit": False},
+        ):
+            target_carb, target_sodium = self._macro_targets(params)
+            prompt = f"""You are an expert ultra-endurance nutrition coach building a race nutrition plan.
 
 {catalog_context}
 {principles_context}
@@ -146,80 +152,88 @@ Pick specific products from the knowledge base matching the requested brands/for
 
 {self._race_profile_block(user_profile, params, target_carb, target_sodium)}"""
 
-        _logger.info(
-            "gemini prompt sent",
-            extra={
-                "fields": {
-                    "service": "nutrition_lab",
-                    "engine": "gemini",
-                    "event": "prompt_sent",
-                    "chars_sent": len(prompt),
-                    "catalog_entries": len(catalog_chunks),
-                    "principle_entries": len(principle_chunks),
-                }
-            },
-        )
-        client = genai.Client(api_key=api_key)
-
-        rag_attempts_total.labels(service="nutrition_lab", engine="gemini", status="attempt").inc()
-        _start = time.time()
-        try:
-            response = await asyncio.to_thread(
-                client.models.generate_content,
-                model=settings.GEMINI_MODEL,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema=NutritionResponse,
-                    temperature=0.2,
-                    thinking_config=types.ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL),
-                ),
-            )
-            _latency = time.time() - _start
-            rag_latency_seconds.labels(service="nutrition_lab", engine="gemini").observe(_latency)
-            rag_attempts_total.labels(service="nutrition_lab", engine="gemini", status="success").inc()
             _logger.info(
-                "gemini response received",
+                "gemini prompt sent",
                 extra={
                     "fields": {
                         "service": "nutrition_lab",
                         "engine": "gemini",
-                        "event": "response_received",
-                        "chars_received": len(response.text),
-                        "latency_ms": round(_latency * 1000),
+                        "event": "prompt_sent",
+                        "chars_sent": len(prompt),
+                        "catalog_entries": len(catalog_chunks),
+                        "principle_entries": len(principle_chunks),
                     }
                 },
             )
-        except Exception as _gemini_ex:
-            rag_attempts_total.labels(service="nutrition_lab", engine="gemini", status="error").inc()
-            _logger.error(
-                "gemini request failed",
-                extra={
-                    "fields": {
-                        "service": "nutrition_lab",
-                        "engine": "gemini",
-                        "event": "error",
-                        "error": str(_gemini_ex),
-                    }
-                },
-                exc_info=True,
-            )
-            raise
+            client = genai.Client(api_key=api_key)
 
-        parsed = json.loads(response.text)
-        _NUTRITION_CACHE[cache_key] = json.dumps(parsed)
-        _logger.info(
-            "gemini products parsed",
-            extra={
-                "fields": {
-                    "service": "nutrition_lab",
-                    "engine": "gemini",
-                    "event": "parsed",
-                    "product_count": len(parsed.get("products", [])),
-                }
-            },
-        )
-        return parsed
+            rag_attempts_total.labels(service="nutrition_lab", engine="gemini", status="attempt").inc()
+            _start = time.time()
+            try:
+                with observability.generation(
+                    "generation",
+                    feature="nutrition_lab",
+                    model=settings.GEMINI_MODEL,
+                    metadata={"tier": "primary"},
+                ) as generation:
+                    response = await asyncio.to_thread(
+                        client.models.generate_content,
+                        model=settings.GEMINI_MODEL,
+                        contents=prompt,
+                        config=types.GenerateContentConfig(
+                            response_mime_type="application/json",
+                            response_schema=NutritionResponse,
+                            temperature=0.2,
+                            thinking_config=types.ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL),
+                        ),
+                    )
+                    generation.set_usage(observability.Usage.from_genai(response.usage_metadata))
+                _latency = time.time() - _start
+                rag_latency_seconds.labels(service="nutrition_lab", engine="gemini").observe(_latency)
+                rag_attempts_total.labels(service="nutrition_lab", engine="gemini", status="success").inc()
+                _logger.info(
+                    "gemini response received",
+                    extra={
+                        "fields": {
+                            "service": "nutrition_lab",
+                            "engine": "gemini",
+                            "event": "response_received",
+                            "chars_received": len(response.text),
+                            "latency_ms": round(_latency * 1000),
+                        }
+                    },
+                )
+            except Exception as _gemini_ex:
+                rag_attempts_total.labels(service="nutrition_lab", engine="gemini", status="error").inc()
+                _logger.error(
+                    "gemini request failed",
+                    extra={
+                        "fields": {
+                            "service": "nutrition_lab",
+                            "engine": "gemini",
+                            "event": "error",
+                            "error": str(_gemini_ex),
+                        }
+                    },
+                    exc_info=True,
+                )
+                raise
+
+            parsed = json.loads(response.text)
+            _NUTRITION_CACHE[cache_key] = json.dumps(parsed)
+            _logger.info(
+                "gemini products parsed",
+                extra={
+                    "fields": {
+                        "service": "nutrition_lab",
+                        "engine": "gemini",
+                        "event": "parsed",
+                        "product_count": len(parsed.get("products", [])),
+                    }
+                },
+            )
+            return parsed
 
 
 nutrition_planner = NutritionPlannerService()
+NutritionPlanner = NutritionPlannerService
