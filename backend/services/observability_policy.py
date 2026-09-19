@@ -74,6 +74,7 @@ _SPAN_NAMES = frozenset(
         "coach_chat.turn",
         "gear_finder",
         "gemini",
+        "gemini_retry",
         "generation",
         "kb_distill",
         "kb_retrieval",
@@ -82,6 +83,7 @@ _SPAN_NAMES = frozenset(
         "persist",
         "plan_generation",
         "retrieval",
+        "rule_based",
         "workout_ai_create",
     }
 )

@@ -1,9 +1,11 @@
+import time
 from datetime import datetime, timedelta
 from typing import Any
 
 from config import settings
 from db import block_number_for_week, week_range_for_block
 from log_utils import get_logger
+from services import observability
 from services.athlete_tier import get_profile, resolve_tier
 from services.plan_rules import build_rules_block
 from services.training_rules import TrainingRules, default_zone2_pace, resolve_zone2_pace
@@ -479,6 +481,44 @@ class PlanGenerator:
         details: str | None = None,
         lang: str | None = None,
     ) -> dict[str, Any]:
+        user_id = user_profile.get("id")
+        if isinstance(user_id, bool) or not isinstance(user_id, int):
+            user_id = None
+        with observability.trace("workout_ai_create", feature="workout_ai_create", user_id=user_id):
+            return await PlanGenerator._generate_single_workout(
+                user_profile=user_profile,
+                workout_type=workout_type,
+                duration_minutes=duration_minutes,
+                day_of_week=day_of_week,
+                week_number=week_number,
+                intent=intent,
+                api_key=api_key,
+                target_zone=target_zone,
+                target_pace=target_pace,
+                interval_reps=interval_reps,
+                interval_rep_value=interval_rep_value,
+                interval_rep_unit=interval_rep_unit,
+                details=details,
+                lang=lang,
+            )
+
+    @staticmethod
+    async def _generate_single_workout(
+        user_profile: dict[str, Any],
+        workout_type: str,
+        duration_minutes: float,
+        day_of_week: str,
+        week_number: int,
+        intent: str | None = None,
+        api_key: str | None = None,
+        target_zone: str | None = None,
+        target_pace: str | None = None,
+        interval_reps: int | None = None,
+        interval_rep_value: float | None = None,
+        interval_rep_unit: str | None = None,
+        details: str | None = None,
+        lang: str | None = None,
+    ) -> dict[str, Any]:
         """Coach co-creation: the coach supplies type/duration/day, and
         optionally overrides (zone, pace, interval structure, details/intent)
         -- this fills in whatever's left, grounded in the athlete's own
@@ -572,16 +612,23 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                 _client = _genai.Client(api_key=api_key)
                 import asyncio
 
-                _response = await asyncio.to_thread(
-                    _client.models.generate_content,
+                with observability.generation(
+                    "generation",
+                    feature="workout_ai_create",
                     model=settings.GEMINI_MODEL,
-                    contents=prompt,
-                    config=_genai_types.GenerateContentConfig(
-                        thinking_config=_genai_types.ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL)
+                    metadata={"tier": "primary"},
+                ) as generation:
+                    _response = await asyncio.to_thread(
+                        _client.models.generate_content,
+                        model=settings.GEMINI_MODEL,
+                        contents=prompt,
+                        config=_genai_types.GenerateContentConfig(
+                            thinking_config=_genai_types.ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL)
+                        )
+                        if hasattr(_genai_types, "ThinkingConfig")
+                        else None,
                     )
-                    if hasattr(_genai_types, "ThinkingConfig")
-                    else None,
-                )
+                    generation.set_usage(observability.Usage.from_genai(_response.usage_metadata))
                 _text = _response.text.strip()
                 _start, _end = _text.find("{"), _text.rfind("}")
                 if _start != -1 and _end != -1:
@@ -637,6 +684,36 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
 
     @staticmethod
     async def generate_plan_workouts(
+        plan_id: int,
+        user_profile: dict[str, Any],
+        race_info: dict[str, Any],
+        total_weeks: int = 12,
+        api_key: str = None,
+        cutoff_time_hours: float = None,
+        block_number: int = 1,
+        weeks_per_block: int = settings.WEEKS_PER_BLOCK,
+        block_context: str | None = None,
+        target_week: int | None = None,
+    ) -> tuple[list[dict[str, Any]], str]:
+        user_id = user_profile.get("id")
+        if isinstance(user_id, bool) or not isinstance(user_id, int):
+            user_id = None
+        with observability.trace("plan_generation", feature="plan_generation", user_id=user_id):
+            return await PlanGenerator._generate_plan_workouts(
+                plan_id=plan_id,
+                user_profile=user_profile,
+                race_info=race_info,
+                total_weeks=total_weeks,
+                api_key=api_key,
+                cutoff_time_hours=cutoff_time_hours,
+                block_number=block_number,
+                weeks_per_block=weeks_per_block,
+                block_context=block_context,
+                target_week=target_week,
+            )
+
+    @staticmethod
+    async def _generate_plan_workouts(
         plan_id: int,
         user_profile: dict[str, Any],
         race_info: dict[str, Any],
@@ -1347,6 +1424,9 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
             import asyncio
 
             _engine = "gemini_retry" if reduced else "gemini"
+            _tier = "retry" if reduced else "primary"
+            _tier_context = observability.span(_engine, metadata={"engine": _engine, "tier": _tier})
+            _tier_observation = _tier_context.__enter__()
 
             _kb_context = ""
             # Ground the plan in distilled Uphill Athlete philosophy. Retrieval failure
@@ -1399,16 +1479,25 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                 rag_attempts_total.labels(service="plan_generator", engine=_engine, status="attempt").inc()
                 _start = time.time()
                 try:
-                    _response = await asyncio.to_thread(
-                        _client.models.generate_content,
+                    with observability.generation(
+                        "generation",
+                        feature="plan_generation",
                         model=settings.GEMINI_MODEL,
-                        contents=_gemini_prompt,
-                        config=_genai_types.GenerateContentConfig(
-                            thinking_config=_genai_types.ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL)
+                        metadata={"engine": _engine, "tier": _tier},
+                    ) as generation:
+                        _response = await asyncio.to_thread(
+                            _client.models.generate_content,
+                            model=settings.GEMINI_MODEL,
+                            contents=_gemini_prompt,
+                            config=_genai_types.GenerateContentConfig(
+                                thinking_config=_genai_types.ThinkingConfig(
+                                    thinking_level=settings.GEMINI_THINKING_LEVEL
+                                )
+                            )
+                            if hasattr(_genai_types, "ThinkingConfig")
+                            else None,
                         )
-                        if hasattr(_genai_types, "ThinkingConfig")
-                        else None,
-                    )
+                        generation.set_usage(observability.Usage.from_genai(_response.usage_metadata))
                     _latency = time.time() - _start
                     rag_latency_seconds.labels(service="plan_generator", engine=_engine).observe(_latency)
                     rag_attempts_total.labels(service="plan_generator", engine=_engine, status="success").inc()
@@ -1440,9 +1529,11 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                     )
                     raise
                 clean_text = _extract_json_array(_response.text)
+                _parse_error = None
                 try:
                     ai_workouts = _json.loads(clean_text)
                 except _json.JSONDecodeError as json_err:
+                    _parse_error = json_err
                     _logger.warning(
                         "gemini response failed JSON parsing",
                         extra={
@@ -1470,6 +1561,8 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                     )
                     _processed = post_process_workouts(cleaned_wos)
                     rag_attempts_total.labels(service="plan_generator", engine=_engine, status="used").inc()
+                    _tier_observation.set(status="used")
+                    _tier_context.__exit__(None, None, None)
                     return _processed, athlete_tier
                 else:
                     _logger.warning(
@@ -1482,6 +1575,11 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                             }
                         },
                     )
+                    _tier_observation.set(
+                        status="fallback",
+                        **({"error_type": type(_parse_error).__name__} if _parse_error is not None else {}),
+                    )
+                    _tier_context.__exit__(None, None, None)
                     return None
             except Exception as ex:
                 _logger.error(
@@ -1496,6 +1594,7 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                     },
                     exc_info=True,
                 )
+                _tier_context.__exit__(type(ex), ex, ex.__traceback__)
                 return None
 
         # Gemini is the only engine. One reduced-prompt retry covers the common transient
@@ -1507,6 +1606,8 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                 return _result
 
         # --- Rule-Based Fallback Schedule ---
+
+        _rule_started = time.monotonic()
 
         base_weekly_minutes = current_weekly_km * 6.0
         if base_weekly_minutes < 120.0:
@@ -2026,10 +2127,28 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                 wo["description"] = t_str(wo.get("description", ""))
                 wo["fueling_tip"] = t_str(wo.get("fueling_tip", ""))
 
-        return post_process_workouts(workouts), athlete_tier
+        result = post_process_workouts(workouts), athlete_tier
+        with observability.span("rule_based", metadata={"engine": "rule_based", "tier": "fallback"}) as _rule_span:
+            _rule_span.set(status="used", latency_ms=round((time.monotonic() - _rule_started) * 1000))
+        return result
 
     @staticmethod
     async def generate_week_narrative(
+        race_info: dict[str, Any],
+        block_context: str,
+        workouts: list[dict[str, Any]],
+        api_key: str | None,
+    ) -> tuple[str | None, str | None]:
+        with observability.trace("block_narrative", feature="block_narrative"):
+            return await PlanGenerator._generate_week_narrative(
+                race_info=race_info,
+                block_context=block_context,
+                workouts=workouts,
+                api_key=api_key,
+            )
+
+    @staticmethod
+    async def _generate_week_narrative(
         race_info: dict[str, Any],
         block_context: str,
         workouts: list[dict[str, Any]],
@@ -2092,16 +2211,23 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
 "this_week_description": "2-3 sentences describing this new block's focus and why, addressed directly to the athlete"}}"""
 
             _client = _genai.Client(api_key=api_key)
-            _response = await asyncio.to_thread(
-                _client.models.generate_content,
+            with observability.generation(
+                "generation",
+                feature="block_narrative",
                 model=settings.GEMINI_MODEL,
-                contents=prompt,
-                config=_genai_types.GenerateContentConfig(
-                    thinking_config=_genai_types.ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL)
+                metadata={"tier": "primary"},
+            ) as generation:
+                _response = await asyncio.to_thread(
+                    _client.models.generate_content,
+                    model=settings.GEMINI_MODEL,
+                    contents=prompt,
+                    config=_genai_types.GenerateContentConfig(
+                        thinking_config=_genai_types.ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL)
+                    )
+                    if hasattr(_genai_types, "ThinkingConfig")
+                    else None,
                 )
-                if hasattr(_genai_types, "ThinkingConfig")
-                else None,
-            )
+                generation.set_usage(observability.Usage.from_genai(_response.usage_metadata))
             _text = _response.text.strip()
             _start, _end = _text.find("{"), _text.rfind("}")
             if _start == -1 or _end == -1:
