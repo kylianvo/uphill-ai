@@ -60,11 +60,15 @@ def test_generation_exports_native_usage_and_cost_on_canonical_child_only(langfu
     assert canonical["langfuse.observation.model.name"] == "gemini-3.8-flash"
     assert usage == {
         "cached_input": 200_000,
-        "input": 1_000_000,
+        "input": 800_000,
         "output": 250_000,
-        "thinking_tokens": 250_000,
+        "output_reasoning": 250_000,
         "total": 1_500_000,
     }
+    provider_total = 1_000_000 + 250_000 + 250_000
+    exported_bucket_total = sum(usage[key] for key in ("input", "cached_input", "output", "output_reasoning"))
+    assert usage["total"] == provider_total
+    assert exported_bucket_total == provider_total
     assert costs == {"cached_input": 0.1, "input": 0.8, "output": 1.0, "total": 1.9}
     assert "langfuse.observation.usage_details" not in parent
     assert "langfuse.observation.cost_details" not in parent
@@ -204,7 +208,7 @@ def test_concurrent_generations_do_not_share_invocation_identity():
 
 
 def test_exception_without_usage_is_one_failed_unknown_invocation():
-    call_labels = {"feature": "gear_finder", "model": "m-exception", "status": "error"}
+    call_labels = {"feature": "gear_finder", "model": "other", "status": "error"}
     unknown_labels = {"feature": "gear_finder", "status": "error"}
     before_calls = _sample("llm_calls_total", call_labels)
     before_unknown = _sample("llm_unknown_usage_calls_total", unknown_labels)
@@ -228,8 +232,8 @@ def test_unknown_usage_exports_no_native_usage_or_zero_cost(langfuse_spans):
 
 
 def test_retry_records_each_provider_invocation_once():
-    first = {"feature": "nutrition_lab", "model": "m-retry", "status": "error"}
-    second = {"feature": "nutrition_lab", "model": "m-retry", "status": "ok"}
+    first = {"feature": "nutrition_lab", "model": "other", "status": "error"}
+    second = {"feature": "nutrition_lab", "model": "other", "status": "ok"}
     before_first = _sample("llm_calls_total", first)
     before_second = _sample("llm_calls_total", second)
 
@@ -249,7 +253,7 @@ def test_cached_and_thinking_usage_are_accounted_at_their_distinct_rates(monkeyp
         "LLM_PRICES_USD_PER_M",
         {"m-cached-thinking": [{"input": 1.0, "cached_input": 0.5, "output": 2.0}]},
     )
-    labels = {"feature": "evaluation", "model": "m-cached-thinking"}
+    labels = {"feature": "evaluation", "model": "other"}
     before_cost = _sample("llm_cost_usd_total", labels)
     before_cached = _sample("llm_tokens_total", {**labels, "kind": "cached"})
     before_thinking = _sample("llm_tokens_total", {**labels, "kind": "thinking"})
@@ -282,7 +286,7 @@ def test_sample_rate_zero_still_accounts_exactly_once(monkeypatch):
     monkeypatch.setattr(settings, "LANGFUSE_SECRET_KEY", "sk-sampled-out")
     monkeypatch.setattr(settings, "OBSERVABILITY_ID_SALT", "sampled-out-salt")
     monkeypatch.setattr(settings, "LANGFUSE_SAMPLE_RATE", 0.0)
-    labels = {"feature": "embeddings", "model": "m-sampled-out"}
+    labels = {"feature": "embeddings", "model": "other"}
     before_calls = _sample("llm_calls_total", {**labels, "status": "ok"})
     before_latency = _sample("llm_latency_seconds_count", labels)
 

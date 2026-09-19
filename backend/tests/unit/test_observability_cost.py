@@ -48,6 +48,57 @@ def test_empty_price_override_is_honored():
     assert config._parse_llm_prices("{}") == {}
 
 
+def test_adjacent_price_windows_are_valid():
+    table = {
+        "custom-model": [
+            {"until": "2026-12-31", "input": 1.0, "cached_input": 0.5, "output": 2.0},
+            {"from": "2027-01-01", "input": 2.0, "cached_input": 1.0, "output": 4.0},
+        ]
+    }
+
+    assert config._parse_llm_prices(json.dumps(table)) == table
+
+
+@pytest.mark.parametrize(
+    "windows",
+    [
+        [
+            {
+                "from": "2027-01-02",
+                "until": "2027-01-01",
+                "input": 1.0,
+                "cached_input": 0.5,
+                "output": 2.0,
+            }
+        ],
+        [
+            {"until": "2026-12-31", "input": 1.0, "cached_input": 0.5, "output": 2.0},
+            {"from": "2026-12-31", "input": 2.0, "cached_input": 1.0, "output": 4.0},
+        ],
+        [
+            {"from": "2027-01-01", "input": 1.0, "cached_input": 0.5, "output": 2.0},
+            {
+                "from": "2028-01-01",
+                "until": "2028-12-31",
+                "input": 2.0,
+                "cached_input": 1.0,
+                "output": 4.0,
+            },
+        ],
+        [
+            {"input": 1.0, "cached_input": 0.5, "output": 2.0},
+            {"from": "2027-01-01", "input": 2.0, "cached_input": 1.0, "output": 4.0},
+        ],
+    ],
+    ids=["inverted", "inclusive-overlap", "open-ended-overlap", "unbounded-overlap"],
+)
+def test_invalid_or_overlapping_price_windows_fall_back_to_defaults(windows, caplog):
+    raw = json.dumps({"custom-model": windows})
+
+    assert config._parse_llm_prices(raw) == config.DEFAULT_LLM_PRICES_USD_PER_M
+    assert "LLM_PRICES_JSON" in caplog.text
+
+
 def test_malformed_price_override_warns_without_logging_its_content(caplog):
     secret = "CANARY-price-config-secret"
 

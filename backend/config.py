@@ -29,17 +29,27 @@ def _valid_price_table(value: object) -> bool:
     for model, windows in value.items():
         if not isinstance(model, str) or not model or not isinstance(windows, list):
             return False
+        bounds = []
         for window in windows:
             if not isinstance(window, dict):
                 return False
             if not all(_valid_price_rate(window.get(key)) for key in ("input", "cached_input", "output")):
                 return False
+            parsed_boundaries = {}
             for boundary in ("from", "until"):
                 if boundary in window:
                     try:
-                        date.fromisoformat(window[boundary])
+                        parsed_boundaries[boundary] = date.fromisoformat(window[boundary])
                     except (TypeError, ValueError):
                         return False
+            starts = parsed_boundaries.get("from", date.min)
+            ends = parsed_boundaries.get("until", date.max)
+            if starts > ends:
+                return False
+            bounds.append((starts, ends))
+        bounds.sort()
+        if any(starts <= previous_ends for (_, previous_ends), (starts, _) in zip(bounds, bounds[1:])):
+            return False
     return True
 
 

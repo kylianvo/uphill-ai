@@ -51,6 +51,8 @@ FEATURES = frozenset(
         "evaluation",
     }
 )
+METRIC_MODELS = frozenset({"gemini-3.8-flash"})
+METRIC_STATUSES = frozenset({"ok", "error", "attempt", "success", "used", "fallback"})
 
 _warned: set[str] = set()
 _TRACE_ID_RE = re.compile(r"^[0-9a-f]{32}$")
@@ -665,12 +667,13 @@ def span(name: str, *, metadata: dict[str, Any] | None = None) -> Iterator[Obser
 
 
 def _usage_details(usage: Usage) -> dict[str, int]:
+    uncached_input = max(usage.input_tokens - usage.cached_tokens, 0)
     return {
-        "input": usage.input_tokens,
+        "input": uncached_input,
         "output": usage.output_tokens,
-        "thinking_tokens": usage.thinking_tokens,
+        "output_reasoning": usage.thinking_tokens,
         "cached_input": usage.cached_tokens,
-        "total": usage.input_tokens + usage.output_tokens + usage.thinking_tokens,
+        "total": uncached_input + usage.cached_tokens + usage.output_tokens + usage.thinking_tokens,
     }
 
 
@@ -696,7 +699,8 @@ def _record_generation_metrics(
     status: str,
 ) -> tuple[float | None, dict[str, float] | None]:
     label = feature if feature in FEATURES else "other"
-    status_label = "error" if status == "error" else "ok"
+    model_label = model if model in METRIC_MODELS else "other"
+    status_label = status if isinstance(status, str) and status in METRIC_STATUSES else "other"
     cost_details = None
     if usage_known and usage is not None:
         try:
@@ -705,8 +709,8 @@ def _record_generation_metrics(
             _warn_once("generation_cost", exc)
 
     try:
-        llm_calls_total.labels(feature=label, model=model, status=status_label).inc()
-        llm_latency_seconds.labels(feature=label, model=model).observe(max(latency_s, 0.0))
+        llm_calls_total.labels(feature=label, model=model_label, status=status_label).inc()
+        llm_latency_seconds.labels(feature=label, model=model_label).observe(max(latency_s, 0.0))
         if not usage_known or usage is None:
             llm_unknown_usage_calls_total.labels(feature=label, status=status_label).inc()
         else:
@@ -717,11 +721,11 @@ def _record_generation_metrics(
                 ("cached", usage.cached_tokens),
             ):
                 if count:
-                    llm_tokens_total.labels(feature=label, model=model, kind=kind).inc(count)
+                    llm_tokens_total.labels(feature=label, model=model_label, kind=kind).inc(count)
             if cost_details is None:
-                llm_unpriced_calls_total.labels(model=model).inc()
+                llm_unpriced_calls_total.labels(model=model_label).inc()
             elif cost_details["total"]:
-                llm_cost_usd_total.labels(feature=label, model=model).inc(cost_details["total"])
+                llm_cost_usd_total.labels(feature=label, model=model_label).inc(cost_details["total"])
     except Exception as exc:
         _warn_once("record_generation", exc)
     return (cost_details["total"] if cost_details is not None else None, cost_details)

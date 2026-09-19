@@ -139,7 +139,7 @@ _USAGE_DETAIL_KEYS = frozenset(
         "output_tokens",
         "prompt_tokens",
         "completion_tokens",
-        "thinking_tokens",
+        "output_reasoning",
     }
 )
 _COST_DETAIL_KEYS = frozenset({"input", "output", "total", "cached_input", "input_cost", "output_cost", "total_cost"})
