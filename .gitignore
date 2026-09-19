@@ -60,6 +60,7 @@ frontend/scripts/
 # Business/strategy docs (local only, not part of the shipped repo)
 docs/*
 !docs/agents/
+!docs/observability-release-report.md
 
 # MS Office lock files
 ~$*

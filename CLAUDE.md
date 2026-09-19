@@ -139,6 +139,7 @@ Per-user Gemini API keys are stored in the `users` table (`gemini_api_key` colum
 - **Bilingual support**: The app supports English and Vietnamese (`lang: "en" | "vi"`). Knowledge cards and plan generation respect the `lang` parameter.
 - **Qdrant**: A Qdrant vector DB container is in docker-compose. The KB RAG engine uses it via `services/kb_retrieval.py` (plain qdrant-client + `gemini-embedding-2`, collection `uphill_kb_scheduler`). `services/vector_service.py` is legacy (langchain-based, deps not in requirements.txt) kept only for the old `scripts/index_*.py`.
 - **Dual schema**: every table/column change goes in BOTH `db.py:init_db()` and a hand-written Alembic migration (see the `db-migration` skill). `init_db()` also self-migrates existing dev databases via idempotent ALTERs at startup.
+- **LLM Observability**: Unified tracing and cost accounting across Coach Plan Generator, Gear Finder, Nutrition Lab, KB Distiller, and Knowledge Cards via `services/observability.py`. Metadata-only export to EU Langfuse (`LANGFUSE_EXPORT_CONTENT=false`); Prometheus counters record calls, tokens, latency, and costs. See [docs/observability-release-report.md](docs/observability-release-report.md).
 
 ## Agent skills
 
