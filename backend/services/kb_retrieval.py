@@ -6,12 +6,15 @@ see services/vector_service.py note in the implementation plan for why langchain
 is intentionally avoided here.
 """
 
+import hashlib
+
 from google import genai
 from google.genai import types
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, PointStruct, VectorParams
 
 from config import settings
+from services import observability
 
 COLLECTION = "uphill_kb_scheduler"
 EMBEDDING_MODEL = "models/gemini-embedding-2"
@@ -26,9 +29,18 @@ def _embed(texts: list[str], api_key: str, task_type: str) -> list[list[float]]:
     client = genai.Client(api_key=api_key)
     vectors = []
     for t in texts:
-        result = client.models.embed_content(
-            model=EMBEDDING_MODEL, contents=t, config=types.EmbedContentConfig(task_type=task_type)
-        )
+        with observability.generation(
+            "generation",
+            feature="embeddings",
+            model=EMBEDDING_MODEL,
+            metadata={"collections": [COLLECTION]},
+        ) as generation:
+            result = client.models.embed_content(
+                model=EMBEDDING_MODEL, contents=t, config=types.EmbedContentConfig(task_type=task_type)
+            )
+            usage_metadata = getattr(result, "usage_metadata", None)
+            if usage_metadata is not None:
+                generation.set_usage(observability.Usage.from_genai(usage_metadata))
         vectors.append(result.embeddings[0].values)
     return vectors
 
@@ -69,12 +81,37 @@ def scheduler_point_count() -> int | None:
         return None
 
 
+def _chunk_ref(title: str, content: str) -> str:
+    """Stable 12-hex id for a chunk. Qdrant point ids are enumerate() indexes that
+    change on every reindex; this doesn't, so traces can name the chunks they used."""
+    return hashlib.sha1(f"{title}\n{content}".encode()).hexdigest()[:12]
+
+
 def search_scheduler_chunks(query: str, api_key: str, k: int = 6) -> list[dict]:
-    """Top-k philosophy chunks for a retrieval query. [] if collection absent."""
-    client = _client()
-    if not client.collection_exists(COLLECTION):
-        print(f"[KBRetrieval] Collection {COLLECTION} does not exist — returning no context")
-        return []
-    vector = _embed([query], api_key, task_type="retrieval_query")[0]
-    hits = client.query_points(collection_name=COLLECTION, query=vector, limit=k).points
-    return [{"title": h.payload.get("title", ""), "content": h.payload.get("content", "")} for h in hits if h.payload]
+    """Top-k philosophy chunks for a retrieval query: title, content, score, ref. [] if collection absent."""
+    with observability.span(
+        "retrieval",
+        metadata={"collections": [COLLECTION], "retrieval_k": k},
+    ) as retrieval:
+        client = _client()
+        if not client.collection_exists(COLLECTION):
+            retrieval.set(grounded=False, chunk_refs=[], chunk_scores=[])
+            print(f"[KBRetrieval] Collection {COLLECTION} does not exist — returning no context")
+            return []
+        vector = _embed([query], api_key, task_type="retrieval_query")[0]
+        hits = client.query_points(collection_name=COLLECTION, query=vector, limit=k).points
+        results = []
+        for hit in hits:
+            if not hit.payload:
+                continue
+            title = hit.payload.get("title", "")
+            content = hit.payload.get("content", "")
+            results.append(
+                {"title": title, "content": content, "score": float(hit.score), "ref": _chunk_ref(title, content)}
+            )
+        retrieval.set(
+            grounded=bool(results),
+            chunk_refs=[result["ref"] for result in results],
+            chunk_scores=[result["score"] for result in results],
+        )
+        return results

@@ -17,6 +17,7 @@ from pydantic import BaseModel
 from tavily import TavilyClient
 
 from config import settings
+from services import observability
 from services.kb_distiller import _gemini_structured
 
 
@@ -46,14 +47,21 @@ Card to translate:
 """
         try:
             # Wrap the blocking generate_content call in an async thread to prevent blocking the async loop
-            response = await asyncio.to_thread(
-                client.models.generate_content,
+            with observability.generation(
+                "generation",
+                feature="knowledge_cards",
                 model=settings.GEMINI_MODEL,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    thinking_config=types.ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL)
-                ),
-            )
+                metadata={"tier": "primary"},
+            ) as generation:
+                response = await asyncio.to_thread(
+                    client.models.generate_content,
+                    model=settings.GEMINI_MODEL,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        thinking_config=types.ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL)
+                    ),
+                )
+                generation.set_usage(observability.Usage.from_genai(response.usage_metadata))
             text = response.text.strip()
             if text.startswith("```"):
                 lines = text.split("\n")
@@ -231,7 +239,10 @@ async def discover_podcast_knowledge_web(api_key: str, tavily_api_key: str, stat
             continue
         try:
             structured = await _gemini_structured(
-                api_key, _PODCAST_CARD_ASK + content[:20000], PodcastKnowledgeCardList
+                api_key,
+                _PODCAST_CARD_ASK + content[:20000],
+                PodcastKnowledgeCardList,
+                feature="knowledge_cards",
             )
         except Exception as e:
             print(f"[KnowledgeExtractor][podcast-web] Structuring failed for '{video_url}', continuing: {e}")

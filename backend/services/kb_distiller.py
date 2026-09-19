@@ -33,6 +33,7 @@ except ModuleNotFoundError:
     TavilyClient = None
 
 from config import settings
+from services import observability
 
 SEED_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "kb_seed")
 DOMAINS = ("gear", "nutrition", "scheduler")
@@ -156,19 +157,32 @@ class RaceResultList(BaseModel):
 # ─── Sweep queries ───────────────────────────────────────────────────────────
 
 
-async def _gemini_structured(api_key: str, prompt: str, schema: type[BaseModel]) -> dict[str, Any]:
+async def _gemini_structured(
+    api_key: str,
+    prompt: str,
+    schema: type[BaseModel],
+    *,
+    feature: str = "kb_distill",
+) -> dict[str, Any]:
     client = genai.Client(api_key=api_key)
-    response = await asyncio.to_thread(
-        client.models.generate_content,
+    with observability.generation(
+        "generation",
+        feature=feature,
         model=settings.GEMINI_MODEL,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json",
-            response_schema=schema,
-            temperature=0.0,
-            thinking_config=types.ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL),
-        ),
-    )
+        metadata={"tier": "primary"},
+    ) as generation:
+        response = await asyncio.to_thread(
+            client.models.generate_content,
+            model=settings.GEMINI_MODEL,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=schema,
+                temperature=0.0,
+                thinking_config=types.ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL),
+            ),
+        )
+        generation.set_usage(observability.Usage.from_genai(response.usage_metadata))
     return json.loads(response.text)
 
 

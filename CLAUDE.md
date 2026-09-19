@@ -124,6 +124,11 @@ Backend reads from `backend/.env`. Key variables:
 - `NOTEBOOKLM_NOTEBOOK_ID`, `NOTEBOOKLM_NUTRITION_ID`, `NOTEBOOKLM_AUTH_JSON` — read **only** by `backend/scripts/distill_principles.py`. No request path touches them; leave them unset in normal deployments and set them only when running that script
 - `TAVILY_API_KEY` — search API key for gear's and nutrition's web-discovery KB distillation (`services/kb_distiller.py`'s `discover_gear_web`/`discover_nutrition_web`); without it `sweep_domain` raises
 - `QDRANT_URL` — defaults to `http://qdrant:6333` in Docker, `http://localhost:6333` otherwise
+- `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY` — enable Langfuse tracing (EU cloud, `LANGFUSE_BASE_URL`); empty disables it. `services/observability.py` is the only module importing `langfuse`/`openinference`/`opentelemetry`
+- `OBSERVABILITY_ID_SALT` — HMAC salt for pseudonymous user/thread ids; required when Langfuse keys are set
+- `LANGFUSE_EXPORT_CONTENT` — must stay `false`: traces are metadata and scores only (no prompts, replies or health notes)
+- `LANGFUSE_ENVIRONMENT`, `LANGFUSE_SAMPLE_RATE`, `LANGFUSE_TIMEOUT` — trace tagging, sampling, background export timeout
+- `LLM_PRICES_JSON` — optional override of the per-model USD price table in `config.py` used by the `llm_cost_usd_total` Prometheus counter
 
 Per-user Gemini API keys are stored in the `users` table (`gemini_api_key` column) and take precedence over the server-level key for chat and plan generation (NOT yet for the gear/nutrition Gemini engines, which use the server key).
 
@@ -134,6 +139,7 @@ Per-user Gemini API keys are stored in the `users` table (`gemini_api_key` colum
 - **Bilingual support**: The app supports English and Vietnamese (`lang: "en" | "vi"`). Knowledge cards and plan generation respect the `lang` parameter.
 - **Qdrant**: A Qdrant vector DB container is in docker-compose. The KB RAG engine uses it via `services/kb_retrieval.py` (plain qdrant-client + `gemini-embedding-2`, collection `uphill_kb_scheduler`). `services/vector_service.py` is legacy (langchain-based, deps not in requirements.txt) kept only for the old `scripts/index_*.py`.
 - **Dual schema**: every table/column change goes in BOTH `db.py:init_db()` and a hand-written Alembic migration (see the `db-migration` skill). `init_db()` also self-migrates existing dev databases via idempotent ALTERs at startup.
+- **LLM Observability**: Unified tracing and cost accounting across Coach Plan Generator, Gear Finder, Nutrition Lab, KB Distiller, and Knowledge Cards via `services/observability.py`. Metadata-only export to EU Langfuse (`LANGFUSE_EXPORT_CONTENT=false`); Prometheus counters record calls, tokens, latency, and costs. See [docs/observability-release-report.md](docs/observability-release-report.md).
 
 ## Agent skills
 

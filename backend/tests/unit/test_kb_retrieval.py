@@ -38,9 +38,10 @@ def test_reindex_recreates_collection_and_upserts():
     assert points[0].payload["title"] == "ME circuits"
 
 
-def test_search_returns_payloads():
+def test_search_returns_payloads_with_score_and_stable_ref():
     fake_hit = MagicMock()
     fake_hit.payload = {"title": "Taper", "content": "Cut volume ~50%."}
+    fake_hit.score = 0.83
     fake_client = MagicMock()
     fake_client.collection_exists.return_value = True
     fake_client.query_points.return_value.points = [fake_hit]
@@ -49,7 +50,9 @@ def test_search_returns_payloads():
         patch("google.genai.Client", side_effect=_fake_genai_client),
     ):
         results = kb_retrieval.search_scheduler_chunks("taper rules", api_key="test-key", k=3)
-    assert results == [{"title": "Taper", "content": "Cut volume ~50%."}]
+
+    # ref is sha1("Taper\nCut volume ~50%.")[:12], computed independently.
+    assert results == [{"title": "Taper", "content": "Cut volume ~50%.", "score": 0.83, "ref": "44c51538e091"}]
 
 
 def test_search_missing_collection_returns_empty():

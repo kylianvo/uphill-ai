@@ -1,9 +1,69 @@
+import json
+import logging
+import math
 import os
+from datetime import date
 
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
+
+logger = logging.getLogger(__name__)
+
+DEFAULT_LLM_PRICES_USD_PER_M = {
+    "gemini-3.8-flash": [
+        {"until": "2026-12-31", "input": 0.75, "cached_input": 0.075, "output": 3.75},
+        {"from": "2027-01-01", "input": 1.50, "cached_input": 0.15, "output": 7.50},
+    ]
+}
+
+
+def _valid_price_rate(value: object) -> bool:
+    return isinstance(value, int | float) and not isinstance(value, bool) and math.isfinite(value) and value >= 0
+
+
+def _valid_price_table(value: object) -> bool:
+    if not isinstance(value, dict):
+        return False
+    for model, windows in value.items():
+        if not isinstance(model, str) or not model or not isinstance(windows, list):
+            return False
+        bounds = []
+        for window in windows:
+            if not isinstance(window, dict):
+                return False
+            if not all(_valid_price_rate(window.get(key)) for key in ("input", "cached_input", "output")):
+                return False
+            parsed_boundaries = {}
+            for boundary in ("from", "until"):
+                if boundary in window:
+                    try:
+                        parsed_boundaries[boundary] = date.fromisoformat(window[boundary])
+                    except (TypeError, ValueError):
+                        return False
+            starts = parsed_boundaries.get("from", date.min)
+            ends = parsed_boundaries.get("until", date.max)
+            if starts > ends:
+                return False
+            bounds.append((starts, ends))
+        bounds.sort()
+        if any(starts <= previous_ends for (_, previous_ends), (starts, _) in zip(bounds, bounds[1:])):
+            return False
+    return True
+
+
+def _parse_llm_prices(raw: str | None) -> dict:
+    if raw is None or not raw.strip():
+        return DEFAULT_LLM_PRICES_USD_PER_M
+    try:
+        parsed = json.loads(raw)
+    except (TypeError, ValueError):
+        parsed = None
+    if _valid_price_table(parsed):
+        return parsed
+    logger.warning("invalid LLM_PRICES_JSON; using verified defaults")
+    return DEFAULT_LLM_PRICES_USD_PER_M
 
 
 class Config:
@@ -99,6 +159,26 @@ class Config:
     # drop third-party cookies on cross-origin fetch, so setting this to false
     # allows legitimate OAuth flows using state & PKCE verification.
     COROS_REQUIRE_STATE_COOKIE: bool = os.getenv("COROS_REQUIRE_STATE_COOKIE", "true").lower() != "false"
+
+    # LLM observability (services/observability.py). Empty keys disable Langfuse;
+    # the Prometheus llm_* token/cost counters work regardless.
+    LANGFUSE_PUBLIC_KEY: str = os.getenv("LANGFUSE_PUBLIC_KEY", "")
+    LANGFUSE_SECRET_KEY: str = os.getenv("LANGFUSE_SECRET_KEY", "")
+    # EU region. Self-hosting Langfuse later changes only this value.
+    LANGFUSE_BASE_URL: str = os.getenv("LANGFUSE_BASE_URL", "https://cloud.langfuse.com")
+    LANGFUSE_ENVIRONMENT: str = os.getenv("LANGFUSE_ENVIRONMENT", os.getenv("ENVIRONMENT", "development"))
+    LANGFUSE_SAMPLE_RATE: float = float(os.getenv("LANGFUSE_SAMPLE_RATE", "1.0"))
+    # Seconds; bounds background export and shutdown flush only, never a request.
+    LANGFUSE_TIMEOUT: int = int(os.getenv("LANGFUSE_TIMEOUT", "5"))
+    # Must stay false: only metadata and scores may leave our infrastructure
+    # (coach-chat roadmap decision 5). Flipping it needs a new product decision.
+    LANGFUSE_EXPORT_CONTENT: bool = os.getenv("LANGFUSE_EXPORT_CONTENT", "false").lower() == "true"
+    # HMAC salt for pseudonymous user/thread ids in traces. Required when Langfuse
+    # keys are set -- observability refuses to enable without it.
+    OBSERVABILITY_ID_SALT: str = os.getenv("OBSERVABILITY_ID_SALT", "")
+    # USD per 1M tokens as dated windows (Gemini Developer API paid tier, standard).
+    # Output price includes thinking tokens. LLM_PRICES_JSON replaces the table wholesale.
+    LLM_PRICES_USD_PER_M: dict = _parse_llm_prices(os.getenv("LLM_PRICES_JSON"))
 
 
 settings = Config()
