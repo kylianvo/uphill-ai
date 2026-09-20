@@ -129,6 +129,9 @@ Backend reads from `backend/.env`. Key variables:
 - `LANGFUSE_EXPORT_CONTENT` — must stay `false`: traces are metadata and scores only (no prompts, replies or health notes)
 - `LANGFUSE_ENVIRONMENT`, `LANGFUSE_SAMPLE_RATE`, `LANGFUSE_TIMEOUT` — trace tagging, sampling, background export timeout
 - `LLM_PRICES_JSON` — optional override of the per-model USD price table in `config.py` used by the `llm_cost_usd_total` Prometheus counter
+- `COACH_CHAT_DAILY_NEW_TURNS_LIMIT`, `COACH_CHAT_DAILY_RETRIES_LIMIT`, `COACH_CHAT_MAX_RETRIES_PER_ROOT` — daily athlete turn and retry limits (50 new turns, 10 retries, 2 retries per root)
+- `COACH_CHAT_TURN_TIMEOUT_SECONDS`, `COACH_CHAT_SUMMARY_TIMEOUT_SECONDS` — turn execution (45s) and summary generation (10s) deadlines
+- `COACH_CHAT_RETENTION_DAYS`, `COACH_CHAT_MAX_INPUT_CHARS` — conversation retention (90d) and maximum user prompt length (2000 chars)
 
 Per-user Gemini API keys are stored in the `users` table (`gemini_api_key` column) and take precedence over the server-level key for chat and plan generation (NOT yet for the gear/nutrition Gemini engines, which use the server key).
 

@@ -180,5 +180,14 @@ class Config:
     # Output price includes thinking tokens. LLM_PRICES_JSON replaces the table wholesale.
     LLM_PRICES_USD_PER_M: dict = _parse_llm_prices(os.getenv("LLM_PRICES_JSON"))
 
+    # Coach Chat Foundation limits & deadlines
+    COACH_CHAT_DAILY_NEW_TURNS_LIMIT: int = int(os.getenv("COACH_CHAT_DAILY_NEW_TURNS_LIMIT", "50"))
+    COACH_CHAT_DAILY_RETRIES_LIMIT: int = int(os.getenv("COACH_CHAT_DAILY_RETRIES_LIMIT", "10"))
+    COACH_CHAT_MAX_RETRIES_PER_ROOT: int = int(os.getenv("COACH_CHAT_MAX_RETRIES_PER_ROOT", "2"))
+    COACH_CHAT_TURN_TIMEOUT_SECONDS: int = int(os.getenv("COACH_CHAT_TURN_TIMEOUT_SECONDS", "45"))
+    COACH_CHAT_SUMMARY_TIMEOUT_SECONDS: int = int(os.getenv("COACH_CHAT_SUMMARY_TIMEOUT_SECONDS", "10"))
+    COACH_CHAT_RETENTION_DAYS: int = int(os.getenv("COACH_CHAT_RETENTION_DAYS", "90"))
+    COACH_CHAT_MAX_INPUT_CHARS: int = int(os.getenv("COACH_CHAT_MAX_INPUT_CHARS", "2000"))
+
 
 settings = Config()

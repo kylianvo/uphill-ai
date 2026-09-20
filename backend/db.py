@@ -3,10 +3,12 @@ Database layer — SQLAlchemy Core with PostgreSQL.
 All raw SQL uses %s-style placeholders via psycopg2 through SQLAlchemy.
 """
 
+from contextlib import contextmanager
 import datetime
 import hashlib
 import json
 import math
+import unicodedata
 import uuid
 from typing import Any
 
@@ -3715,6 +3717,91 @@ def get_beta_signups(limit: int = 100, offset: int = 0) -> list[dict[str, Any]]:
     return [_row_to_dict(r) for r in rows]
 
 
+# ─── Coach Chat Exceptions & Locking ─────────────────────────────────────────
+
+CHAT_ADVISORY_NAMESPACE = 0x43484154  # 'CHAT' in ASCII: 1128812884
+
+
+class CoachChatError(Exception):
+    def __init__(self, code: str, message: str = ""):
+        super().__init__(message or code)
+        self.code = code
+
+
+class ChatInProgressError(CoachChatError):
+    def __init__(self, code: str = "chat_in_progress", message: str = ""):
+        super().__init__(code=code, message=message)
+
+
+class ChatRequestConflictError(CoachChatError):
+    def __init__(self, code: str = "request_conflict", message: str = ""):
+        super().__init__(code=code, message=message)
+
+
+class ChatDailyLimitError(CoachChatError):
+    def __init__(self, code: str = "chat_daily_limit", message: str = ""):
+        super().__init__(code=code, message=message)
+
+
+class ChatRetryLimitError(CoachChatError):
+    def __init__(self, code: str = "chat_retry_limit", message: str = ""):
+        super().__init__(code=code, message=message)
+
+
+class NothingToRetryError(CoachChatError):
+    def __init__(self, code: str = "nothing_to_retry", message: str = ""):
+        super().__init__(code=code, message=message)
+
+
+@contextmanager
+def chat_turn_lock(user_id: int):
+    """Namespaced PostgreSQL session advisory lock on a dedicated checked-out connection.
+
+    Non-blocking: if lock is already held for this user_id, raises ChatInProgressError immediately.
+    Releases lock and closes connection on exit or disconnect.
+    """
+    conn = engine.connect()
+    acquired = False
+    try:
+        res = conn.execute(
+            text("SELECT pg_try_advisory_lock(:ns, :uid)"),
+            {"ns": CHAT_ADVISORY_NAMESPACE, "uid": user_id},
+        ).scalar()
+        if not res:
+            raise ChatInProgressError(code="chat_in_progress")
+        acquired = True
+        yield conn
+    finally:
+        if acquired:
+            try:
+                conn.execute(
+                    text("SELECT pg_advisory_unlock(:ns, :uid)"),
+                    {"ns": CHAT_ADVISORY_NAMESPACE, "uid": user_id},
+                )
+            except Exception:
+                pass
+        conn.close()
+
+
+def compute_chat_fingerprint(
+    message: str | None = None,
+    retry_of: Any = None,
+    lang: str = "en",
+    is_legacy: bool = False,
+) -> str:
+    parts = []
+    if message is not None:
+        norm_msg = unicodedata.normalize("NFC", message.strip())
+        parts.append(f"msg:{norm_msg}")
+    if retry_of is not None:
+        parts.append(f"retry:{str(retry_of)}")
+    norm_lang = (lang or "en").lower().strip()
+    parts.append(f"lang:{norm_lang}")
+    parts.append(f"legacy:{str(is_legacy).lower()}")
+    canonical = "|".join(parts)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
 # ─── Coach Chat CRUD ─────────────────────────────────────────────────────────
 
 
@@ -4102,3 +4189,167 @@ def get_chat_call(call_id: Any) -> dict[str, Any] | None:
             {"call_id": _to_uuid(call_id)},
         ).fetchone()
         return _row_to_dict(row) if row else None
+
+
+def admit_chat_turn(
+    user_id: int,
+    request_id: Any,
+    thread_id: int | None = None,
+    message: str | None = None,
+    retry_of: Any = None,
+    lang: str = "en",
+    is_legacy: bool = False,
+    now: datetime.datetime | None = None,
+) -> dict[str, Any]:
+    req_uuid = _to_uuid(request_id)
+    fp = compute_chat_fingerprint(message=message, retry_of=retry_of, lang=lang, is_legacy=is_legacy)
+    utc_today = (now or datetime.datetime.now(datetime.timezone.utc)).date()
+
+    with engine.connect() as conn:
+        existing_turn = conn.execute(
+            text("SELECT * FROM chat_turns WHERE request_id = :req_id"),
+            {"req_id": req_uuid},
+        ).fetchone()
+
+        if existing_turn:
+            turn_dict = _row_to_dict(existing_turn)
+            if turn_dict.get("user_id") != user_id or turn_dict.get("fingerprint") != fp:
+                raise ChatRequestConflictError(code="request_conflict")
+            return {
+                "kind": "replay",
+                "request_id": req_uuid,
+                "turn": turn_dict,
+                "status": turn_dict["status"],
+                "result_message_id": turn_dict.get("result_message_id"),
+                "attempt_number": turn_dict.get("attempt_number", 1),
+                "fingerprint": fp,
+            }
+
+        if retry_of is not None:
+            target_uuid = _to_uuid(retry_of)
+            target_turn = conn.execute(
+                text("SELECT * FROM chat_turns WHERE request_id = :tid AND user_id = :uid"),
+                {"tid": target_uuid, "uid": user_id},
+            ).fetchone()
+
+            if not target_turn:
+                raise NothingToRetryError(code="nothing_to_retry")
+
+            target_dict = _row_to_dict(target_turn)
+            if target_dict.get("status") not in ("error", "interrupted"):
+                raise NothingToRetryError(code="nothing_to_retry")
+
+            root_turn_id = target_dict.get("root_turn_id") or target_dict["request_id"]
+            retries_count_for_root = conn.execute(
+                text("SELECT COUNT(*) FROM chat_turns WHERE root_turn_id = :root_id AND user_id = :uid"),
+                {"root_id": root_turn_id, "uid": user_id},
+            ).scalar() or 0
+
+            if retries_count_for_root >= settings.COACH_CHAT_MAX_RETRIES_PER_ROOT:
+                raise ChatRetryLimitError(code="chat_retry_limit")
+
+            usage_row = conn.execute(
+                text("SELECT retries_count FROM chat_daily_usage WHERE usage_date = :d AND user_id = :uid"),
+                {"d": utc_today, "uid": user_id},
+            ).fetchone()
+            curr_retries = usage_row[0] if usage_row else 0
+            if curr_retries >= settings.COACH_CHAT_DAILY_RETRIES_LIMIT:
+                raise ChatRetryLimitError(code="chat_retry_limit")
+
+            conn.execute(
+                text("""
+                    INSERT INTO chat_daily_usage (usage_date, user_id, new_turns_count, retries_count)
+                    VALUES (:d, :uid, 0, 1)
+                    ON CONFLICT (usage_date, user_id)
+                    DO UPDATE SET retries_count = chat_daily_usage.retries_count + 1, updated_at = NOW()
+                """),
+                {"d": utc_today, "uid": user_id},
+            )
+
+            attempt_number = target_dict.get("attempt_number", 1) + 1
+            effective_thread_id = thread_id or target_dict.get("thread_id")
+
+            conn.execute(
+                text("""
+                    INSERT INTO chat_turns (
+                        request_id, user_id, thread_id, fingerprint,
+                        root_turn_id, attempt_number, status, created_at, updated_at
+                    ) VALUES (
+                        :req_id, :uid, :tid, :fp,
+                        :root_id, :attempt, 'active', NOW(), NOW()
+                    )
+                """),
+                {
+                    "req_id": req_uuid,
+                    "uid": user_id,
+                    "tid": effective_thread_id,
+                    "fp": fp,
+                    "root_id": root_turn_id,
+                    "attempt": attempt_number,
+                },
+            )
+            conn.commit()
+            return {
+                "kind": "retry",
+                "request_id": req_uuid,
+                "attempt_number": attempt_number,
+                "root_turn_id": root_turn_id,
+                "status": "active",
+                "fingerprint": fp,
+            }
+
+        if message is not None:
+            usage_row = conn.execute(
+                text("SELECT new_turns_count FROM chat_daily_usage WHERE usage_date = :d AND user_id = :uid"),
+                {"d": utc_today, "uid": user_id},
+            ).fetchone()
+            curr_new = usage_row[0] if usage_row else 0
+            if curr_new >= settings.COACH_CHAT_DAILY_NEW_TURNS_LIMIT:
+                raise ChatDailyLimitError(code="chat_daily_limit")
+
+            conn.execute(
+                text("""
+                    INSERT INTO chat_daily_usage (usage_date, user_id, new_turns_count, retries_count)
+                    VALUES (:d, :uid, 1, 0)
+                    ON CONFLICT (usage_date, user_id)
+                    DO UPDATE SET new_turns_count = chat_daily_usage.new_turns_count + 1, updated_at = NOW()
+                """),
+                {"d": utc_today, "uid": user_id},
+            )
+
+            conn.execute(
+                text("""
+                    INSERT INTO chat_turns (
+                        request_id, user_id, thread_id, fingerprint,
+                        root_turn_id, attempt_number, status, created_at, updated_at
+                    ) VALUES (
+                        :req_id, :uid, :tid, :fp,
+                        NULL, 1, 'active', NOW(), NOW()
+                    )
+                """),
+                {
+                    "req_id": req_uuid,
+                    "uid": user_id,
+                    "tid": thread_id,
+                    "fp": fp,
+                },
+            )
+            conn.commit()
+            return {
+                "kind": "new",
+                "request_id": req_uuid,
+                "attempt_number": 1,
+                "root_turn_id": None,
+                "status": "active",
+                "fingerprint": fp,
+            }
+
+        raise CoachChatError(code="invalid_request", message="Either message or retry_of must be specified")
+
+
+def finish_chat_turn(
+    request_id: Any,
+    status: str,
+    result_message_id: int | None = None,
+) -> None:
+    update_chat_turn_status(request_id=request_id, status=status, result_message_id=result_message_id)
