@@ -37,4 +37,7 @@ Task F10: implemented 90-day conversation retention enforcement, bounded batch p
 
 Task F11: implemented UTF-8 safe incremental streaming SSE parser in frontend/src/lib/coachChatStream.ts (handling split Vietnamese multi-byte codepoints, CRLF, heartbeat comment skipping, typed event unions, and premature stream error detection) and single conversation state owner in frontend/src/hooks/useCoachChat.ts (handling mount pagination, in-place token streaming, deduplication, retry_of semantics, interrupted partial retention, thread clearing with 409 conflict handling, on-demand source fetching, and unmount abort). Removed duplicate chat state from frontend/src/contexts/AppContext.tsx. Colocated unit test suites in coachChatStream.test.ts and useCoachChat.test.ts pass. Review clean. Task F11 complete.
 
+Task F12: rendered bilingual Coach Chat interface in frontend/src/views/ChatTab.tsx and sources drawer in frontend/src/components/ChatSources.tsx consuming useCoachChat exclusively. Enforced honest boundaries (no write tools, cards, Apply buttons, or false claims), added bilingual locale dictionaries in frontend/src/app/translations.ts meeting uphill-ai-vietnamese-copy standards, delegated ChatView.tsx to ChatTab, removed dead chat methods from page.tsx, and validated component behaviors, status labels, interrupted message retry actions, 429/409 errors, and source links in ChatTab.test.tsx and ChatSources.test.tsx. Review clean. Task F12 complete.
+
+
 

@@ -442,17 +442,13 @@ export default function AppPage() {
     setViewMode,
     heroInput,
     backendConnected,
-    chatMessages,
     chatInput,
     setHeroInput,
     setBackendConnected,
-    setChatMessages,
     setChatInput,
-    chatLoading,
     parsedSummary,
     parserLoading,
     uploadedFileName,
-    setChatLoading,
     setParsedSummary,
     setParserLoading,
     setUploadedFileName,
@@ -1674,52 +1670,6 @@ export default function AppPage() {
     setWorkouts([]);
     setSources([]);
     setAuthModalOpen(true);
-  };
-  // Send message to Coach Chat API
-  const handleSendMessage = async (textToSend?: string) => {
-    const messageText = textToSend || chatInput;
-    if (!messageText.trim()) return;
-    if (!textToSend) {
-      setChatInput("");
-    }
-    const updatedMessages = [
-      ...chatMessages,
-      { role: "user" as const, content: messageText },
-    ];
-    setChatMessages(updatedMessages);
-    setChatLoading(true);
-    const token = localStorage.getItem("uphill_session_token");
-    const headers: any = { "Content-Type": "application/json" };
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/coach/chat`, {
-        method: "POST",
-        headers: headers,
-        // Profile, plan and Gemini key are resolved server-side from the session.
-        body: JSON.stringify({ messages: updatedMessages }),
-      });
-      if (!response.ok) {
-        throw new Error("Failed to communicate with Coach API");
-      }
-      const replyData = await response.json();
-      setChatMessages((prev: any) => [...prev, replyData]);
-    } catch (err: any) {
-      setChatMessages((prev: any) => [
-        ...prev,
-        {
-          role: "assistant",
-          content:
-            "Sorry, I had trouble reaching the coaching server. Please make sure the backend server is running.",
-        },
-      ]);
-    } finally {
-      setChatLoading(false);
-    }
-  };
-  const sendPresetPrompt = (prompt: string) => {
-    handleSendMessage(prompt);
   };
   // File Upload Handlers (FIT/GPX Telemetry)
   const handleDropzoneClick = () => {
