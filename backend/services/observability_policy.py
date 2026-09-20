@@ -165,7 +165,7 @@ _ENGINES = frozenset({"gemini", "gemini_retry", "rule_based", "mock"})
 _TIERS = frozenset({"primary", "retry", "fallback"})
 _GENERATION_STATUSES = frozenset({"ok", "error", "attempt", "success", "used", "fallback"})
 _LANGUAGES = frozenset({"en", "vi"})
-_COLLECTIONS = frozenset({"uphill_kb_scheduler"})
+_COLLECTIONS = frozenset({"uphill_kb_scheduler", "uphill_kb_nutrition_principles"})
 _CHUNK_REF_RE = re.compile(r"^[0-9a-f]{12}$")
 _BILLABLE_MODEL_KEYS = frozenset(
     {

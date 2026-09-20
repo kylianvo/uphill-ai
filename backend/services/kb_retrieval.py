@@ -16,7 +16,9 @@ from qdrant_client.models import Distance, PointStruct, VectorParams
 from config import settings
 from services import observability
 
-COLLECTION = "uphill_kb_scheduler"
+COLLECTION_SCHEDULER = "uphill_kb_scheduler"
+COLLECTION_NUTRITION_PRINCIPLES = "uphill_kb_nutrition_principles"
+COLLECTION = COLLECTION_SCHEDULER
 EMBEDDING_MODEL = "models/gemini-embedding-2"
 VECTOR_SIZE = 3072
 
@@ -113,5 +115,112 @@ def search_scheduler_chunks(query: str, api_key: str, k: int = 6) -> list[dict]:
             grounded=bool(results),
             chunk_refs=[result["ref"] for result in results],
             chunk_scores=[result["score"] for result in results],
+        )
+        return results
+
+
+def reindex_nutrition_principles(chunks: list[dict], api_key: str) -> int:
+    """Drop and rebuild the nutrition principles collection from kb_chunks rows."""
+    client = _client()
+    if client.collection_exists(COLLECTION_NUTRITION_PRINCIPLES):
+        client.delete_collection(COLLECTION_NUTRITION_PRINCIPLES)
+    client.create_collection(
+        collection_name=COLLECTION_NUTRITION_PRINCIPLES,
+        vectors_config=VectorParams(size=VECTOR_SIZE, distance=Distance.COSINE),
+    )
+    texts = [f"{c.get('title', '')}\n{c.get('content', '')}" for c in chunks]
+    vectors = _embed(texts, api_key, task_type="retrieval_document")
+    points = [
+        PointStruct(
+            id=i,
+            vector=vec,
+            payload={
+                "title": chunk.get("title", ""),
+                "content": chunk.get("content", ""),
+                "source_label": chunk.get("source_label", "Evoke Endurance Nutrition"),
+                "url": chunk.get("url"),
+            },
+        )
+        for i, (chunk, vec) in enumerate(zip(chunks, vectors))
+    ]
+    client.upsert(collection_name=COLLECTION_NUTRITION_PRINCIPLES, points=points)
+    print(f"[KBRetrieval] Reindexed {len(points)} nutrition principle chunks into {COLLECTION_NUTRITION_PRINCIPLES}")
+    return len(points)
+
+
+def search_principles(
+    query: str,
+    api_key: str,
+    scheduler_k: int = 4,
+    nutrition_k: int = 2,
+) -> list[dict]:
+    """Search scheduler and nutrition principle collections with a single query embedding.
+
+    Tolerates either collection missing. Returns list of hits with title, content, score, ref, domain.
+    """
+    total_k = scheduler_k + nutrition_k
+    active_collections = []
+    client = _client()
+
+    has_sched = client.collection_exists(COLLECTION_SCHEDULER)
+    has_nutr = client.collection_exists(COLLECTION_NUTRITION_PRINCIPLES)
+
+    if has_sched:
+        active_collections.append(COLLECTION_SCHEDULER)
+    if has_nutr:
+        active_collections.append(COLLECTION_NUTRITION_PRINCIPLES)
+
+    with observability.span(
+        "retrieval",
+        metadata={"collections": active_collections or [COLLECTION_SCHEDULER], "retrieval_k": total_k},
+    ) as retrieval:
+        if not has_sched and not has_nutr:
+            retrieval.set(grounded=False, chunk_refs=[], chunk_scores=[])
+            return []
+
+        vector = _embed([query], api_key, task_type="retrieval_query")[0]
+        results: list[dict] = []
+
+        if has_sched and scheduler_k > 0:
+            hits_sched = client.query_points(collection_name=COLLECTION_SCHEDULER, query=vector, limit=scheduler_k).points
+            for hit in hits_sched:
+                if not hit.payload:
+                    continue
+                title = hit.payload.get("title", "")
+                content = hit.payload.get("content", "")
+                results.append({
+                    "title": title,
+                    "content": content,
+                    "score": float(hit.score),
+                    "ref": _chunk_ref(title, content),
+                    "domain": "scheduler",
+                    "source_label": hit.payload.get("source_label", "Training for the Uphill Athlete"),
+                    "url": hit.payload.get("url"),
+                })
+
+        if has_nutr and nutrition_k > 0:
+            hits_nutr = client.query_points(collection_name=COLLECTION_NUTRITION_PRINCIPLES, query=vector, limit=nutrition_k).points
+            for hit in hits_nutr:
+                if not hit.payload:
+                    continue
+                title = hit.payload.get("title", "")
+                content = hit.payload.get("content", "")
+                results.append({
+                    "title": title,
+                    "content": content,
+                    "score": float(hit.score),
+                    "ref": _chunk_ref(title, content),
+                    "domain": "nutrition",
+                    "source_label": hit.payload.get("source_label", "Evoke Endurance Nutrition"),
+                    "url": hit.payload.get("url"),
+                })
+
+        # Sort combined hits by retrieval score descending
+        results.sort(key=lambda x: x["score"], reverse=True)
+
+        retrieval.set(
+            grounded=bool(results),
+            chunk_refs=[r["ref"] for r in results],
+            chunk_scores=[r["score"] for r in results],
         )
         return results
