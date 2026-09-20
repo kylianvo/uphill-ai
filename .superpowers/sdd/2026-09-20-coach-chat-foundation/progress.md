@@ -39,5 +39,8 @@ Task F11: implemented UTF-8 safe incremental streaming SSE parser in frontend/sr
 
 Task F12: rendered bilingual Coach Chat interface in frontend/src/views/ChatTab.tsx and sources drawer in frontend/src/components/ChatSources.tsx consuming useCoachChat exclusively. Enforced honest boundaries (no write tools, cards, Apply buttons, or false claims), added bilingual locale dictionaries in frontend/src/app/translations.ts meeting uphill-ai-vietnamese-copy standards, delegated ChatView.tsx to ChatTab, removed dead chat methods from page.tsx, and validated component behaviors, status labels, interrupted message retry actions, 429/409 errors, and source links in ChatTab.test.tsx and ChatSources.test.tsx. Review clean. Task F12 complete.
 
+Task F13: added bilingual benchmark harness in backend/scripts/golden_eval.py (--service chat --synthetic-only), created 40 paired synthetic benchmark cases in backend/tests/golden/chat/fixture_chat_benchmark.json across 8 categories (20 EN, 20 VI), created test_golden_chat_eval.py verifying benchmark distribution, synthetic validation before Langfuse publication, baseline preservation, and deterministic safety checks (tool claim rejection, prompt leak prevention). Authored full foundation release report in docs/coach-chat-foundation-release-report.md. Review clean. Task F13 complete.
+
+
 
 
