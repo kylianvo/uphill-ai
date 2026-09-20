@@ -4585,3 +4585,70 @@ def finish_chat_turn(
     result_message_id: int | None = None,
 ) -> None:
     update_chat_turn_status(request_id=request_id, status=status, result_message_id=result_message_id)
+
+
+def prune_coach_chat(
+    now: datetime.datetime | None = None,
+    batch_size: int = 500,
+) -> dict[str, int]:
+    """Idempotently prune expired chat messages, stale summaries, and cleared turn tombstones.
+
+    Retention period is settings.COACH_CHAT_RETENTION_DAYS (default 90 days).
+    Does NOT delete chat_daily_usage or chat_llm_calls.
+    """
+    cutoff = (now or datetime.datetime.now(datetime.UTC)) - datetime.timedelta(days=settings.COACH_CHAT_RETENTION_DAYS)
+    deleted_msgs = 0
+    cleared_summaries = 0
+    deleted_turns = 0
+
+    with engine.connect() as conn:
+        # 1. Delete expired messages in batches
+        res_msgs = conn.execute(
+            text("""
+                DELETE FROM chat_messages
+                WHERE id IN (
+                    SELECT id FROM chat_messages
+                    WHERE created_at < :cutoff
+                    LIMIT :lim
+                )
+            """),
+            {"cutoff": cutoff, "lim": batch_size},
+        )
+        deleted_msgs = res_msgs.rowcount
+
+        # 2. Reset summaries pointing to deleted or expired messages
+        res_sum = conn.execute(
+            text("""
+                UPDATE chat_threads
+                SET summary = NULL, summarized_through_id = NULL, updated_at = NOW()
+                WHERE summarized_through_id IS NOT NULL
+                  AND (
+                      summarized_through_id NOT IN (SELECT id FROM chat_messages)
+                      OR updated_at < :cutoff
+                  )
+            """),
+            {"cutoff": cutoff},
+        )
+        cleared_summaries = res_sum.rowcount
+
+        # 3. Delete expired cleared turn tombstones
+        res_turns = conn.execute(
+            text("""
+                DELETE FROM chat_turns
+                WHERE request_id IN (
+                    SELECT request_id FROM chat_turns
+                    WHERE status = 'cleared' AND created_at < :cutoff
+                    LIMIT :lim
+                )
+            """),
+            {"cutoff": cutoff, "lim": batch_size},
+        )
+        deleted_turns = res_turns.rowcount
+
+        conn.commit()
+
+    return {
+        "deleted_messages": deleted_msgs,
+        "cleared_summaries": cleared_summaries,
+        "deleted_turns": deleted_turns,
+    }
