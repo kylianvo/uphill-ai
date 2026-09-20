@@ -3842,6 +3842,56 @@ def get_or_create_chat_thread(user_id: int) -> dict[str, Any]:
         return dict(row._mapping)
 
 
+def update_chat_thread_summary_cas(
+    thread_id: int,
+    user_id: int,
+    new_summary: str,
+    new_summarized_through_id: int,
+    expected_summarized_through_id: int | None,
+) -> bool:
+    """Compare-and-swap update of chat_threads summary.
+
+    Only updates if thread exists, belongs to user_id, and summarized_through_id
+    matches expected_summarized_through_id (or is NULL if expected is None).
+    """
+    with engine.connect() as conn:
+        if expected_summarized_through_id is None:
+            res = conn.execute(
+                text("""
+                    UPDATE chat_threads
+                    SET summary = :summary,
+                        summarized_through_id = :new_through_id,
+                        updated_at = NOW()
+                    WHERE id = :tid AND user_id = :uid AND summarized_through_id IS NULL
+                """),
+                {
+                    "summary": new_summary,
+                    "new_through_id": new_summarized_through_id,
+                    "tid": thread_id,
+                    "uid": user_id,
+                },
+            )
+        else:
+            res = conn.execute(
+                text("""
+                    UPDATE chat_threads
+                    SET summary = :summary,
+                        summarized_through_id = :new_through_id,
+                        updated_at = NOW()
+                    WHERE id = :tid AND user_id = :uid AND summarized_through_id = :exp_through_id
+                """),
+                {
+                    "summary": new_summary,
+                    "new_through_id": new_summarized_through_id,
+                    "tid": thread_id,
+                    "uid": user_id,
+                    "exp_through_id": expected_summarized_through_id,
+                },
+            )
+        conn.commit()
+        return res.rowcount > 0
+
+
 def append_chat_message(
     thread_id: int,
     role: str,
