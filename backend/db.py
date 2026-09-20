@@ -4151,9 +4151,9 @@ def finish_chat_call(
     cached_tokens: int = 0,
     cost_usd: Any = None,
     latency_ms: int | None = None,
-) -> None:
+) -> bool:
     with engine.connect() as conn:
-        conn.execute(
+        res = conn.execute(
             text("""
                 UPDATE chat_llm_calls
                 SET status = :status,
@@ -4165,7 +4165,7 @@ def finish_chat_call(
                     cost_usd = :cost_usd,
                     latency_ms = :latency_ms,
                     completed_at = NOW()
-                WHERE call_id = :call_id
+                WHERE call_id = :call_id AND status = 'reserved'
             """),
             {
                 "call_id": _to_uuid(call_id),
@@ -4180,6 +4180,7 @@ def finish_chat_call(
             },
         )
         conn.commit()
+        return (res.rowcount or 0) > 0
 
 
 def get_chat_call(call_id: Any) -> dict[str, Any] | None:
@@ -4189,6 +4190,47 @@ def get_chat_call(call_id: Any) -> dict[str, Any] | None:
             {"call_id": _to_uuid(call_id)},
         ).fetchone()
         return _row_to_dict(row) if row else None
+
+
+def chat_turn_totals(request_id: Any) -> dict[str, Any]:
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("""
+                SELECT
+                    COUNT(*) AS total_calls,
+                    COALESCE(SUM(input_tokens), 0) AS total_input_tokens,
+                    COALESCE(SUM(output_tokens), 0) AS total_output_tokens,
+                    COALESCE(SUM(thinking_tokens), 0) AS total_thinking_tokens,
+                    COALESCE(SUM(cached_tokens), 0) AS total_cached_tokens,
+                    COALESCE(SUM(cost_usd), 0.0) AS total_cost_usd,
+                    BOOL_AND(usage_known) AS all_usage_known
+                FROM chat_llm_calls
+                WHERE request_id = :req_id
+            """),
+            {"req_id": _to_uuid(request_id)},
+        ).fetchone()
+
+        if not row or (row._mapping["total_calls"] or 0) == 0:
+            return {
+                "total_calls": 0,
+                "total_input_tokens": 0,
+                "total_output_tokens": 0,
+                "total_thinking_tokens": 0,
+                "total_cached_tokens": 0,
+                "total_cost_usd": 0.0,
+                "usage_known": False,
+            }
+
+        m = row._mapping
+        return {
+            "total_calls": int(m["total_calls"] or 0),
+            "total_input_tokens": int(m["total_input_tokens"] or 0),
+            "total_output_tokens": int(m["total_output_tokens"] or 0),
+            "total_thinking_tokens": int(m["total_thinking_tokens"] or 0),
+            "total_cached_tokens": int(m["total_cached_tokens"] or 0),
+            "total_cost_usd": float(m["total_cost_usd"]) if m["total_cost_usd"] is not None else 0.0,
+            "usage_known": bool(m["all_usage_known"]) if m["all_usage_known"] is not None else False,
+        }
 
 
 def admit_chat_turn(
