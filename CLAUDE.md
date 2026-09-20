@@ -132,6 +132,7 @@ Backend reads from `backend/.env`. Key variables:
 - `COACH_CHAT_DAILY_NEW_TURNS_LIMIT`, `COACH_CHAT_DAILY_RETRIES_LIMIT`, `COACH_CHAT_MAX_RETRIES_PER_ROOT` — daily athlete turn and retry limits (50 new turns, 10 retries, 2 retries per root)
 - `COACH_CHAT_TURN_TIMEOUT_SECONDS`, `COACH_CHAT_SUMMARY_TIMEOUT_SECONDS` — turn execution (45s) and summary generation (10s) deadlines
 - `COACH_CHAT_RETENTION_DAYS`, `COACH_CHAT_MAX_INPUT_CHARS` — conversation retention (90d) and maximum user prompt length (2000 chars)
+- `COACH_CHAT_PROMPT_LABEL`, `COACH_CHAT_PROMPT_CACHE_TTL_SECONDS` — Langfuse prompt template label ("production"/"staging") and SDK cache TTL (300s)
 
 Per-user Gemini API keys are stored in the `users` table (`gemini_api_key` column) and take precedence over the server-level key for chat and plan generation (NOT yet for the gear/nutrition Gemini engines, which use the server key).
 

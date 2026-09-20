@@ -45,6 +45,9 @@ METADATA_KEYS = frozenset(
         "catalog_entries",
         "cache_hit",
         "workout_count",
+        "prompt_name",
+        "prompt_version",
+        "prompt_source",
     }
 )
 

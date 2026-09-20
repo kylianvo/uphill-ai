@@ -188,6 +188,11 @@ class Config:
     COACH_CHAT_SUMMARY_TIMEOUT_SECONDS: int = int(os.getenv("COACH_CHAT_SUMMARY_TIMEOUT_SECONDS", "10"))
     COACH_CHAT_RETENTION_DAYS: int = int(os.getenv("COACH_CHAT_RETENTION_DAYS", "90"))
     COACH_CHAT_MAX_INPUT_CHARS: int = int(os.getenv("COACH_CHAT_MAX_INPUT_CHARS", "2000"))
+    COACH_CHAT_PROMPT_LABEL: str = os.getenv(
+        "COACH_CHAT_PROMPT_LABEL",
+        "production" if os.getenv("ENVIRONMENT") == "production" else "staging",
+    )
+    COACH_CHAT_PROMPT_CACHE_TTL_SECONDS: int = int(os.getenv("COACH_CHAT_PROMPT_CACHE_TTL_SECONDS", "300"))
 
 
 settings = Config()
