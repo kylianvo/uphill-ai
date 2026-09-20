@@ -4123,16 +4123,156 @@ def create_chat_turn(
         conn.commit()
 
 
-def get_chat_turn(user_id: int, request_id: Any) -> dict[str, Any] | None:
+def get_chat_turn(user_id: int | Any = None, request_id: Any = None) -> dict[str, Any] | None:
+    if isinstance(user_id, (uuid.UUID, str)) and (isinstance(request_id, int) or request_id is None):
+        user_id, request_id = request_id, user_id
+
+    with engine.connect() as conn:
+        if user_id is not None:
+            row = conn.execute(
+                text("""
+                    SELECT * FROM chat_turns
+                    WHERE user_id = :uid AND request_id = :req_id
+                """),
+                {"uid": user_id, "req_id": _to_uuid(request_id)},
+            ).fetchone()
+        else:
+            row = conn.execute(
+                text("""
+                    SELECT * FROM chat_turns
+                    WHERE request_id = :req_id
+                """),
+                {"req_id": _to_uuid(request_id)},
+            ).fetchone()
+        return _row_to_dict(row) if row else None
+
+
+def get_chat_thread_paginated(
+    user_id: int,
+    before_id: int | None = None,
+    limit: int = 50,
+) -> dict[str, Any]:
+    capped_limit = min(max(1, limit), 50)
+    with engine.connect() as conn:
+        thread_row = conn.execute(
+            text("SELECT id, summary FROM chat_threads WHERE user_id = :uid"),
+            {"uid": user_id},
+        ).fetchone()
+        if not thread_row:
+            return {"messages": [], "summary": None, "has_more": False, "oldest_id": None}
+        thread_id = thread_row[0]
+        summary = thread_row[1]
+
+        query = """
+            SELECT * FROM chat_messages
+            WHERE thread_id = :tid
+        """
+        params: dict[str, Any] = {"tid": thread_id, "lim": capped_limit + 1}
+        if before_id is not None:
+            query += " AND id < :bid"
+            params["bid"] = before_id
+        query += " ORDER BY id DESC LIMIT :lim"
+
+        rows = conn.execute(text(query), params).fetchall()
+        has_more = len(rows) > capped_limit
+        paged_rows = rows[:capped_limit]
+        paged_rows.reverse()
+
+        messages = []
+        for r in paged_rows:
+            d = _row_to_dict(r)
+            for json_col in ("evidence", "citations", "usage"):
+                if isinstance(d.get(json_col), str):
+                    try:
+                        d[json_col] = json.loads(d[json_col])
+                    except Exception:
+                        pass
+            messages.append(d)
+
+        oldest_id = messages[0]["id"] if messages else None
+        return {
+            "messages": messages,
+            "summary": summary,
+            "has_more": has_more,
+            "oldest_id": oldest_id,
+        }
+
+
+def get_chat_message_sources(message_id: int, user_id: int) -> dict[str, Any] | None:
+    """Fetch retained retrieval evidence and citations for an owned message."""
     with engine.connect() as conn:
         row = conn.execute(
             text("""
-                SELECT * FROM chat_turns
-                WHERE user_id = :uid AND request_id = :req_id
+                SELECT m.id, m.evidence, m.citations, m.status, t.user_id
+                FROM chat_messages m
+                JOIN chat_threads t ON t.id = m.thread_id
+                WHERE m.id = :mid AND t.user_id = :uid
             """),
-            {"uid": user_id, "req_id": _to_uuid(request_id)},
+            {"mid": message_id, "uid": user_id},
         ).fetchone()
-        return _row_to_dict(row) if row else None
+        if not row:
+            return None
+        d = dict(row._mapping)
+        raw_ev = d.get("evidence")
+        evidence = json.loads(raw_ev) if isinstance(raw_ev, str) else (raw_ev or [])
+        raw_cit = d.get("citations")
+        citations = json.loads(raw_cit) if isinstance(raw_cit, str) else (raw_cit or [])
+        return {
+            "message_id": d["id"],
+            "evidence": evidence,
+            "citations": citations,
+            "evidence_status": "available" if evidence else "empty",
+        }
+
+
+def clear_chat_thread(user_id: int) -> bool:
+    """Clear athlete's conversation thread:
+    - Checks if an active turn is currently in progress (raises ChatInProgressError if so).
+    - Deletes all messages in the thread.
+    - Clears the summary and summarized_through_id on chat_threads.
+    - Records a cleared turn tombstone in chat_turns.
+    - Does NOT reset daily usage quotas or delete chat_llm_calls records.
+    """
+    with engine.connect() as conn:
+        active_turn = conn.execute(
+            text("SELECT * FROM chat_turns WHERE user_id = :uid AND status = 'active'"),
+            {"uid": user_id},
+        ).fetchone()
+        if active_turn:
+            raise ChatInProgressError(code="chat_in_progress")
+
+        thread_row = conn.execute(
+            text("SELECT id FROM chat_threads WHERE user_id = :uid"),
+            {"uid": user_id},
+        ).fetchone()
+        if not thread_row:
+            return False
+        thread_id = thread_row[0]
+
+        conn.execute(
+            text("DELETE FROM chat_messages WHERE thread_id = :tid"),
+            {"tid": thread_id},
+        )
+
+        conn.execute(
+            text("""
+                UPDATE chat_threads
+                SET summary = NULL, summarized_through_id = NULL, updated_at = NOW()
+                WHERE id = :tid
+            """),
+            {"tid": thread_id},
+        )
+
+        conn.execute(
+            text("""
+                INSERT INTO chat_turns (request_id, user_id, thread_id, status, created_at, updated_at)
+                VALUES (:req_id, :uid, :tid, 'cleared', NOW(), NOW())
+            """),
+            {"req_id": uuid.uuid4(), "uid": user_id, "tid": thread_id},
+        )
+
+        conn.commit()
+        return True
 
 
 def update_chat_turn_status(

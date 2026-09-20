@@ -1,21 +1,32 @@
 """Coach Chat endpoints — streaming, turn lifecycle, and legacy compatibility."""
 
+import asyncio
+from dataclasses import asdict
 from datetime import date, timedelta
+import json
 from typing import Any
+from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from fastapi.responses import StreamingResponse
 from google import genai
 from google.genai import types as genai_types
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from config import settings
+import db
 from db import (
+    ChatInProgressError,
+    CoachChatError,
     get_active_plan,
     get_all_grounding_content,
     get_matches_for_review,
     get_plan_workouts,
     verify_session,
 )
+from log_utils import get_logger
+from services import coach_chat
+from services.coach_graph import AppEvent
 from services.coach_prompts import (
     COACH_SYSTEM_INSTRUCTION,
     COACH_VI_LANGUAGE_INSTRUCTION,
@@ -23,7 +34,14 @@ from services.coach_prompts import (
 )
 from services.pacing_calculator import resolve_zone2_pace
 
+logger = get_logger(__name__)
+
 router = APIRouter(tags=["coach-chat"])
+
+
+# ---------------------------------------------------------------------------
+# Request & Response Models
+# ---------------------------------------------------------------------------
 
 
 class ChatMessage(BaseModel):
@@ -32,10 +50,26 @@ class ChatMessage(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    # No identity, profile, plan or API-key fields: /api/coach/chat resolves
-    # all of those from the session user.
-    messages: list[ChatMessage]
+    # Backward compatible with legacy caller patterns
+    messages: list[ChatMessage] | None = None
+    message: str | None = None
+    history: list[dict[str, Any]] | None = None
     lang: str | None = None
+    # Body-provided identity/key fields are explicitly ignored for security
+    user_profile: dict[str, Any] | None = None
+    context_data: dict[str, Any] | None = None
+
+
+class ChatStreamRequest(BaseModel):
+    request_id: str = Field(..., description="Client-generated unique UUID string for turn deduplication")
+    message: str | None = Field(None, description="Athlete message for a new turn")
+    retry_of: str | None = Field(None, description="Root turn UUID to retry")
+    lang: str = Field("en", description="Language ('en' or 'vi')")
+
+
+# ---------------------------------------------------------------------------
+# Authentication
+# ---------------------------------------------------------------------------
 
 
 async def get_current_user(authorization: str | None = Header(None)) -> dict[str, Any]:
@@ -56,21 +90,206 @@ def _z2_max_for(user: dict[str, Any]) -> str:
     return resolve_zone2_pace(user.get("zone2_pace_min"), user.get("zone2_pace_max"), user.get("goal_type"))[1]
 
 
+# ---------------------------------------------------------------------------
+# Streaming Endpoint (SSE)
+# ---------------------------------------------------------------------------
+
+
+@router.post("/api/coach/chat/stream")
+async def coach_chat_stream(
+    request: ChatStreamRequest,
+    user: dict[str, Any] = Depends(get_current_user),
+):
+    """Authenticated SSE endpoint streaming tokens, status, citations, and recovery events.
+
+    Runs pre-stream validation (UUID check, mutual exclusion, length limits, quotas).
+    """
+    # 1. Validate request_id format
+    try:
+        req_uuid = UUID(request.request_id)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="request_id must be a valid UUID.",
+        )
+
+    # 2. Validate mutual exclusion of message and retry_of
+    has_msg = bool(request.message and request.message.strip())
+    has_retry = bool(request.retry_of and request.retry_of.strip())
+
+    if has_msg == has_retry:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Either message or retry_of must be specified, not both.",
+        )
+
+    # 3. Validate input length
+    if has_msg and len(request.message) > settings.COACH_CHAT_MAX_INPUT_CHARS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Message exceeds maximum allowed length of {settings.COACH_CHAT_MAX_INPUT_CHARS} characters.",
+        )
+
+    # 4. SSE Stream generator with idle heartbeat framing
+    async def sse_event_generator():
+        event_queue = asyncio.Queue()
+        stop_sentinel = object()
+
+        async def run_producer():
+            try:
+                req_dict = {
+                    "request_id": req_uuid,
+                    "message": request.message.strip() if request.message else None,
+                    "retry_of": request.retry_of.strip() if request.retry_of else None,
+                    "lang": request.lang or "en",
+                }
+                async for app_event in coach_chat.run_turn(user=user, request=req_dict):
+                    await event_queue.put(app_event)
+            except CoachChatError as err:
+                logger.warning(f"Turn admission/domain error: {err.code}")
+                from services.coach_graph import ErrorEvent
+
+                await event_queue.put(ErrorEvent(code=err.code, message=err.message))
+            except Exception as exc:
+                logger.error(f"Unexpected turn stream error: {type(exc).__name__}")
+                from services.coach_graph import ErrorEvent
+
+                await event_queue.put(ErrorEvent(code="coach_upstream_error"))
+            finally:
+                await event_queue.put(stop_sentinel)
+
+        producer_task = asyncio.create_task(run_producer())
+
+        try:
+            while True:
+                try:
+                    # 10s idle heartbeat window
+                    item = await asyncio.wait_for(event_queue.get(), timeout=10.0)
+                    if item is stop_sentinel:
+                        break
+                    if isinstance(item, AppEvent):
+                        event_type = item.type
+                        payload = json.dumps(asdict(item))
+                        yield f"event: {event_type}\ndata: {payload}\n\n"
+                except TimeoutError:
+                    # Emit heartbeat comment to keep proxy connection alive
+                    yield ": heartbeat\n\n"
+        finally:
+            if not producer_task.done():
+                producer_task.cancel()
+                try:
+                    await producer_task
+                except asyncio.CancelledError:
+                    pass
+
+    return StreamingResponse(
+        sse_event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-transform",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )
+
+
+# ---------------------------------------------------------------------------
+# Conversation & Lifecycle Endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.get("/api/coach/chat/thread")
+async def get_chat_thread(
+    before_id: int | None = Query(None, description="Fetch messages older than before_id"),
+    limit: int = Query(50, ge=1, le=50, description="Page limit (max 50)"),
+    user: dict[str, Any] = Depends(get_current_user),
+):
+    """Retrieve chronologically ordered messages in the athlete's thread with pagination cursor."""
+    user_id = user["id"]
+    return db.get_chat_thread_paginated(user_id=user_id, before_id=before_id, limit=limit)
+
+
+@router.get("/api/coach/chat/turns/{request_id}")
+async def get_chat_turn_status(
+    request_id: str,
+    user: dict[str, Any] = Depends(get_current_user),
+):
+    """Retrieve execution status and result message ID for an owned turn."""
+    user_id = user["id"]
+    try:
+        req_uuid = UUID(request_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid request_id format.")
+
+    turn = db.get_chat_turn(user_id=user_id, request_id=req_uuid)
+    if not turn:
+        raise HTTPException(status_code=404, detail="Turn not found.")
+
+    return {
+        "request_id": str(turn["request_id"]),
+        "status": turn["status"],
+        "result_message_id": turn.get("result_message_id"),
+        "attempt_number": turn.get("attempt_number", 1),
+    }
+
+
+@router.get("/api/coach/chat/messages/{message_id}/sources")
+async def get_chat_message_sources(
+    message_id: int,
+    user: dict[str, Any] = Depends(get_current_user),
+):
+    """Fetch retained retrieval evidence and citations for an owned message."""
+    user_id = user["id"]
+    sources = db.get_chat_message_sources(message_id=message_id, user_id=user_id)
+    if not sources:
+        raise HTTPException(status_code=404, detail="Message sources not found.")
+    return sources
+
+
+@router.delete("/api/coach/chat/thread")
+async def clear_chat_thread(
+    user: dict[str, Any] = Depends(get_current_user),
+):
+    """Clear athlete's conversation messages and summary. Quotas and accounting remain intact."""
+    user_id = user["id"]
+    try:
+        db.clear_chat_thread(user_id=user_id)
+        return {"status": "cleared"}
+    except ChatInProgressError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cannot clear thread while a turn is active.",
+        )
+
+
+# ---------------------------------------------------------------------------
+# Legacy Endpoint (Backward Compatibility)
+# ---------------------------------------------------------------------------
+
+
 @router.post("/api/coach/chat")
-async def coach_chat(request: ChatRequest, user: dict[str, Any] = Depends(get_current_user)):
+async def coach_chat_legacy(
+    request: ChatRequest,
+    user: dict[str, Any] = Depends(get_current_user),
+):
+    """Legacy unmigrated chat endpoint.
+
+    Profile, active plan, recent activities and Gemini key are resolved exclusively
+    from the authenticated session user -- never from the request body.
     """
-    Query Gemini model grounded with the distilled knowledge base.
-    Profile, active plan, recent activities and Gemini key are resolved from
-    the session user -- never from the request body.
-    """
-    if not request.messages:
+    messages_list = request.messages or []
+    if not messages_list and request.message:
+        messages_list = [ChatMessage(role="user", content=request.message)]
+
+    if not messages_list:
         raise HTTPException(status_code=400, detail="Message history cannot be empty.")
+
+    user_id = user["id"]
 
     # 1. Fetch grounding content
     grounding_docs = get_all_grounding_content()
     grounding_context = ""
-
-    if not grounding_context and grounding_docs:
+    if grounding_docs:
         context_parts = []
         for idx, doc in enumerate(grounding_docs, 1):
             truncated_content = doc["content"][:15000]
@@ -84,8 +303,7 @@ async def coach_chat(request: ChatRequest, user: dict[str, Any] = Depends(get_cu
             + "\n=======================================================\n"
         )
 
-    # 2. Setup system instructions
-    user_id = user["id"]
+    # 2. Setup system instructions from authenticated user only
     plan = get_active_plan(user_id)
     profile = {
         "age": user.get("age"),
@@ -110,7 +328,7 @@ async def coach_chat(request: ChatRequest, user: dict[str, Any] = Depends(get_cu
         }
         context_summary = f"\nContext/Activity Data: {plan_context}"
 
-    # 3. Dynamic watch activities & execution quality grounding
+    # 3. Dynamic watch activities
     recent_activity_context = ""
     try:
         until = date.today() + timedelta(days=1)
@@ -137,10 +355,10 @@ async def coach_chat(request: ChatRequest, user: dict[str, Any] = Depends(get_cu
             act_lines.append("===================================================")
             recent_activity_context = "\n".join(act_lines)
     except Exception as exc:
-        print(f"[Chat] Warning loading recent activities: {exc}")
+        logger.warning(f"[Chat] Warning loading recent activities: {exc}")
 
     vi_rule = ""
-    if is_vietnamese_request(lang=request.lang, messages=request.messages):
+    if is_vietnamese_request(lang=request.lang, messages=messages_list):
         vi_rule = f"\n\n{COACH_VI_LANGUAGE_INSTRUCTION}"
 
     full_system_prompt = (
@@ -158,13 +376,11 @@ async def coach_chat(request: ChatRequest, user: dict[str, Any] = Depends(get_cu
     if model_api_key:
         try:
             formatted_contents = []
-            for msg in request.messages:
+            for msg in messages_list[-20:]:  # Cap history to 20 items
                 role = "user" if msg.role == "user" else "model"
                 formatted_contents.append({"role": role, "parts": [{"text": msg.content}]})
 
             client = genai.Client(api_key=model_api_key)
-
-            import asyncio
 
             response = await asyncio.to_thread(
                 client.models.generate_content,
@@ -175,12 +391,17 @@ async def coach_chat(request: ChatRequest, user: dict[str, Any] = Depends(get_cu
                     thinking_config=genai_types.ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL),
                 ),
             )
-            return {"role": "assistant", "content": response.text}
+            reply_text = response.text or ""
+            return {
+                "role": "assistant",
+                "content": reply_text,
+                "reply": reply_text,
+                "sources": [],
+            }
         except Exception as e:
-            print(f"[Chat][Gemini] FAILED: {type(e).__name__}")
+            logger.warning(f"[Chat][Gemini] FAILED: {type(e).__name__}")
 
-    # Fallback response without fabricated offline claims
-    return {
-        "role": "assistant",
-        "content": "Coach Uphill is currently unavailable. Please verify your Gemini API key configuration in settings.",
-    }
+    raise HTTPException(
+        status_code=503,
+        detail="Coach Uphill is currently unavailable. Please verify your Gemini API key configuration in settings.",
+    )
