@@ -262,14 +262,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [viewMode, setViewMode] = useState<"showcase" | "desktop" | "mobile">("showcase");
   const [heroInput, setHeroInput] = useState("");
   const [backendConnected, setBackendConnected] = useState<boolean | null>(null);
-  const [chatMessages, setChatMessages] = useState<Message[]>([
-    {
-      role: "assistant",
-      content: "Hello! I’m Coach Uphill AI. Are you training for a trail ultra or a road marathon?",
-    },
-  ]);
+  // Conversation state is owned exclusively by useCoachChat (Task F11)
   const [chatInput, setChatInput] = useState("");
-  const [chatLoading, setChatLoading] = useState(false);
   const [parsedSummary, setParsedSummary] = useState<ParsedSummary | null>(null);
   const [parserLoading, setParserLoading] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState("");
@@ -519,9 +513,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       viewMode, setViewMode,
       heroInput, setHeroInput,
       backendConnected, setBackendConnected,
-      chatMessages, setChatMessages,
+      // Conversation state is owned by useCoachChat (transitional shims for Task F11)
+      chatMessages: [] as Message[],
+      setChatMessages: () => {},
+      chatLoading: false,
+      setChatLoading: () => {},
       chatInput, setChatInput,
-      chatLoading, setChatLoading,
       parsedSummary, setParsedSummary,
       parserLoading, setParserLoading,
       uploadedFileName, setUploadedFileName,
