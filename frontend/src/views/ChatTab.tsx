@@ -32,7 +32,7 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
   const isBusy = status === "admitting" || status === "retrieving" || status === "generating";
 
   useEffect(() => {
-    chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    chatBottomRef.current?.scrollIntoView?.({ behavior: "smooth" });
   }, [messages, status]);
 
   const handleSend = async (textToSend?: string) => {

@@ -909,8 +909,6 @@ export default function AppPage() {
     } catch (e) {}
   };
   // Backend connection status
-  // Chat sandbox state
-  const chatBottomRef = useRef<HTMLDivElement>(null);
   // File parser sandbox state
   const fileInputRef = useRef<HTMLInputElement>(null);
   // RAG sandbox state
@@ -1163,10 +1161,6 @@ export default function AppPage() {
       fetchRecentPlansWithToken(token);
     }
   };
-  // Scroll chat history to bottom
-  useEffect(() => {
-    chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chatMessages]);
   // Auth actions
   const handleMockLogin = async (emailToUse: string) => {
     setAuthLoading(true);

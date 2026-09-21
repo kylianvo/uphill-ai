@@ -55,7 +55,7 @@ describe("coachChatStream", () => {
     // à (0xC3 0xA0), ạ (0xE1 0xBA 0xA1), đ (0xC4 0x91), â (0xC3 0xA2), ộ (0xE1 0xBB 0x99)
     const part1Str = 'event: token\ndata: {"type":"token","text":"Ch';
     const charAWithGrave = "à"; // 2 bytes: 0xC3, 0xA0
-    const part2Str = ' bạn"}\n\n' +
+    const part2Str = 'o bạn"}\n\n' +
       'event: done\ndata: {"type":"done","request_id":"uuid-vi","message_id":100,"replayed":false}\n\n';
 
     const part1Bytes = encoder.encode(part1Str);
