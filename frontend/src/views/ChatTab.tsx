@@ -115,9 +115,12 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
             flexDirection: "column",
             width: "100%",
             minHeight: isMobile ? "0px" : "350px",
-            backgroundColor: "#181b20",
-            borderRadius: "12px",
-            border: "1px solid #2d333b",
+            backgroundColor: "rgba(255, 255, 255, 0.85)",
+            backdropFilter: "blur(32px)",
+            WebkitBackdropFilter: "blur(32px)",
+            borderRadius: "16px",
+            border: "1px solid rgba(0, 0, 0, 0.1)",
+            boxShadow: "0 10px 30px rgba(0, 0, 0, 0.04)",
             overflow: "hidden",
           }}
         >
@@ -129,7 +132,8 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              borderBottom: "1px solid #2d333b",
+              borderBottom: "1px solid rgba(0, 0, 0, 0.08)",
+              background: "rgba(0, 0, 0, 0.02)",
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -149,13 +153,13 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
                   boxShadow: isBusy ? "0 0 8px #f59e0b" : undefined,
                 }}
               />
-              <span className="chat-header-title" style={{ fontSize: isMobile ? "13px" : "15px", fontWeight: 600 }}>
+              <span className="chat-header-title" style={{ fontSize: isMobile ? "13px" : "15px", fontWeight: 600, color: "#111111" }}>
                 {lang === "en" ? "Coach Uphill (AI)" : "Huấn luyện viên Uphill (AI)"}
               </span>
               <span
                 style={{
                   fontSize: isMobile ? "11px" : "12px",
-                  color: isBusy ? "#f59e0b" : "#9ca3af",
+                  color: isBusy ? "#d97706" : "var(--text-muted)",
                   marginLeft: "4px",
                 }}
               >
@@ -168,14 +172,15 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
                 onClick={handleClear}
                 disabled={isBusy}
                 style={{
-                  background: "transparent",
-                  border: "1px solid #373e47",
-                  color: "#9ca3af",
+                  background: "rgba(0, 0, 0, 0.04)",
+                  border: "1px solid rgba(0, 0, 0, 0.1)",
+                  color: "var(--text-secondary)",
                   borderRadius: "6px",
                   padding: isMobile ? "3px 8px" : "4px 10px",
                   fontSize: isMobile ? "11px" : "12px",
                   cursor: isBusy ? "not-allowed" : "pointer",
                   opacity: isBusy ? 0.5 : 1,
+                  transition: "background 0.2s ease",
                 }}
               >
                 {t("chat_clear_btn")}
@@ -203,13 +208,14 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
                   onClick={loadOlder}
                   disabled={isLoadingOlder}
                   style={{
-                    backgroundColor: "#22272e",
-                    border: "1px solid #373e47",
-                    color: "#9ca3af",
+                    backgroundColor: "rgba(255, 255, 255, 0.9)",
+                    border: "1px solid rgba(0, 0, 0, 0.1)",
+                    color: "var(--text-secondary)",
                     borderRadius: "6px",
                     padding: "4px 12px",
                     fontSize: "12px",
                     cursor: isLoadingOlder ? "not-allowed" : "pointer",
+                    boxShadow: "0 1px 2px rgba(0, 0, 0, 0.03)",
                   }}
                 >
                   {isLoadingOlder ? t("loading") : t("chat_load_older")}
@@ -228,21 +234,21 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
                   textAlign: "center",
                   padding: isMobile ? "24px 12px" : "48px 24px",
                   margin: "auto 0",
-                  color: "#9ca3af",
+                  color: "var(--text-muted)",
                 }}
               >
                 <div
                   style={{
-                    width: isMobile ? "40px" : "50px",
-                    height: isMobile ? "40px" : "50px",
+                    width: isMobile ? "44px" : "54px",
+                    height: isMobile ? "44px" : "54px",
                     borderRadius: "50%",
-                    backgroundColor: "#22272e",
-                    border: "1px solid #373e47",
+                    backgroundColor: "rgba(25, 206, 139, 0.12)",
+                    border: "1px solid rgba(25, 206, 139, 0.25)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     marginBottom: "12px",
-                    color: "#10b981",
+                    color: "var(--accent-primary)",
                   }}
                 >
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -251,10 +257,10 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
                     <path d="M2 12l10 5 10-5" />
                   </svg>
                 </div>
-                <h4 style={{ margin: "0 0 8px 0", color: "#f3f4f6", fontSize: isMobile ? "15px" : "18px" }}>
+                <h4 style={{ margin: "0 0 8px 0", color: "var(--text-primary)", fontSize: isMobile ? "15px" : "18px", fontWeight: 700 }}>
                   {t("chat_empty_title")}
                 </h4>
-                <p style={{ margin: "0 0 16px 0", maxWidth: "480px", fontSize: isMobile ? "12.5px" : "14px", lineHeight: "1.5" }}>
+                <p style={{ margin: "0 0 16px 0", maxWidth: "480px", fontSize: isMobile ? "12.5px" : "14px", lineHeight: "1.5", color: "var(--text-secondary)" }}>
                   {t("chat_empty_desc")}
                 </p>
 
@@ -269,22 +275,22 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
                     marginBottom: "16px",
                   }}
                 >
-                  <span style={{ fontSize: "11.5px", backgroundColor: "#22272e", border: "1px solid #373e47", padding: "4px 10px", borderRadius: "16px", color: "#d1d5db" }}>
+                  <span style={{ fontSize: "12px", backgroundColor: "rgba(255, 255, 255, 0.75)", border: "1px solid rgba(0, 0, 0, 0.08)", padding: "4px 12px", borderRadius: "16px", color: "var(--text-primary)", boxShadow: "0 1px 2px rgba(0, 0, 0, 0.03)" }}>
                     {t("chat_empty_cap_1")}
                   </span>
-                  <span style={{ fontSize: "11.5px", backgroundColor: "#22272e", border: "1px solid #373e47", padding: "4px 10px", borderRadius: "16px", color: "#d1d5db" }}>
+                  <span style={{ fontSize: "12px", backgroundColor: "rgba(255, 255, 255, 0.75)", border: "1px solid rgba(0, 0, 0, 0.08)", padding: "4px 12px", borderRadius: "16px", color: "var(--text-primary)", boxShadow: "0 1px 2px rgba(0, 0, 0, 0.03)" }}>
                     {t("chat_empty_cap_2")}
                   </span>
-                  <span style={{ fontSize: "11.5px", backgroundColor: "#22272e", border: "1px solid #373e47", padding: "4px 10px", borderRadius: "16px", color: "#d1d5db" }}>
+                  <span style={{ fontSize: "12px", backgroundColor: "rgba(255, 255, 255, 0.75)", border: "1px solid rgba(0, 0, 0, 0.08)", padding: "4px 12px", borderRadius: "16px", color: "var(--text-primary)", boxShadow: "0 1px 2px rgba(0, 0, 0, 0.03)" }}>
                     {t("chat_empty_cap_3")}
                   </span>
-                  <span style={{ fontSize: "11.5px", backgroundColor: "#22272e", border: "1px solid #373e47", padding: "4px 10px", borderRadius: "16px", color: "#d1d5db" }}>
+                  <span style={{ fontSize: "12px", backgroundColor: "rgba(255, 255, 255, 0.75)", border: "1px solid rgba(0, 0, 0, 0.08)", padding: "4px 12px", borderRadius: "16px", color: "var(--text-primary)", boxShadow: "0 1px 2px rgba(0, 0, 0, 0.03)" }}>
                     {t("chat_empty_cap_4")}
                   </span>
                 </div>
 
                 {/* Boundary notice */}
-                <p style={{ margin: 0, fontSize: "11.5px", color: "#6b7280", maxWidth: "440px", fontStyle: "italic" }}>
+                <p style={{ margin: 0, fontSize: "11.5px", color: "var(--text-muted)", maxWidth: "440px", fontStyle: "italic" }}>
                   {t("chat_empty_boundary")}
                 </p>
               </div>
@@ -297,13 +303,15 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
                 className={`chat-bubble ${msg.role === "user" ? "chat-bubble-user" : "chat-bubble-assistant"}`}
                 style={{
                   alignSelf: msg.role === "user" ? "flex-end" : "flex-start",
-                  maxWidth: isMobile ? "90%" : "80%",
+                  maxWidth: isMobile ? "90%" : "82%",
                   fontSize: isMobile ? "13px" : "14.5px",
+                  lineHeight: "1.55",
                   padding: isMobile ? "8px 12px" : "12px 18px",
-                  borderRadius: "12px",
-                  backgroundColor: msg.role === "user" ? "#2563eb" : "#22272e",
-                  color: "#f3f4f6",
-                  border: msg.role === "user" ? "none" : "1px solid #373e47",
+                  borderRadius: msg.role === "user" ? "14px 14px 3px 14px" : "14px 14px 14px 3px",
+                  backgroundColor: msg.role === "user" ? "var(--accent-primary)" : "rgba(255, 255, 255, 0.95)",
+                  color: msg.role === "user" ? "#ffffff" : "var(--text-primary)",
+                  border: msg.role === "user" ? "none" : "1px solid rgba(0, 0, 0, 0.08)",
+                  boxShadow: msg.role === "user" ? "0 2px 8px rgba(25, 206, 139, 0.25)" : "0 2px 8px rgba(0, 0, 0, 0.03)",
                 }}
               >
                 <div>
@@ -319,15 +327,15 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
                       gap: "8px",
                       marginTop: "8px",
                       paddingTop: "6px",
-                      borderTop: "1px solid #2d333b",
-                      fontSize: "11px",
+                      borderTop: "1px solid rgba(0, 0, 0, 0.06)",
+                      fontSize: "11.5px",
                     }}
                   >
                     {msg.interrupted && (
                       <span
                         style={{
-                          backgroundColor: "rgba(239, 68, 68, 0.15)",
-                          color: "#f87171",
+                          backgroundColor: "rgba(239, 68, 68, 0.1)",
+                          color: "#dc2626",
                           padding: "2px 6px",
                           borderRadius: "4px",
                           fontWeight: 600,
@@ -342,13 +350,13 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
                         onClick={() => retry(msg.request_id!)}
                         disabled={isBusy}
                         style={{
-                          background: "#373e47",
-                          border: "none",
-                          color: "#e5e7eb",
+                          background: "rgba(0, 0, 0, 0.06)",
+                          border: "1px solid rgba(0, 0, 0, 0.1)",
+                          color: "var(--text-primary)",
                           borderRadius: "4px",
                           padding: "2px 8px",
                           cursor: isBusy ? "not-allowed" : "pointer",
-                          fontWeight: 500,
+                          fontWeight: 600,
                         }}
                       >
                         {t("chat_retry_btn")}
@@ -361,13 +369,14 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
                         style={{
                           background: "transparent",
                           border: "none",
-                          color: "#60a5fa",
+                          color: "#0284c7",
                           padding: "2px 4px",
                           cursor: "pointer",
                           textDecoration: "underline",
                           display: "inline-flex",
                           alignItems: "center",
                           gap: "3px",
+                          fontWeight: 500,
                         }}
                       >
                         <span>{t("chat_view_sources")}</span>
@@ -385,15 +394,16 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
                 className="chat-bubble chat-bubble-assistant"
                 style={{
                   alignSelf: "flex-start",
-                  backgroundColor: "#22272e",
-                  border: "1px solid #373e47",
+                  backgroundColor: "rgba(255, 255, 255, 0.9)",
+                  border: "1px solid rgba(0, 0, 0, 0.08)",
                   padding: "10px 16px",
-                  borderRadius: "12px",
+                  borderRadius: "14px",
                   fontSize: "13px",
-                  color: "#9ca3af",
+                  color: "var(--text-secondary)",
                   display: "flex",
                   alignItems: "center",
                   gap: "8px",
+                  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.03)",
                 }}
               >
                 <span
@@ -401,7 +411,7 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
                     display: "inline-block",
                     width: "12px",
                     height: "12px",
-                    border: "2px solid #60a5fa",
+                    border: "2px solid var(--accent-primary)",
                     borderTopColor: "transparent",
                     borderRadius: "50%",
                     animation: "spin 1s linear infinite",
@@ -416,13 +426,14 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
                 className="chat-bubble chat-bubble-assistant"
                 style={{
                   alignSelf: "flex-start",
-                  backgroundColor: "#22272e",
-                  border: "1px solid #373e47",
+                  backgroundColor: "rgba(255, 255, 255, 0.9)",
+                  border: "1px solid rgba(0, 0, 0, 0.08)",
                   padding: "10px 16px",
-                  borderRadius: "12px",
+                  borderRadius: "14px",
                   fontSize: "13px",
-                  color: "#9ca3af",
+                  color: "var(--text-secondary)",
                   fontStyle: "italic",
+                  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.03)",
                 }}
               >
                 {t("chat_status_generating")}
@@ -433,12 +444,12 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
             {error && (
               <div
                 style={{
-                  backgroundColor: "rgba(239, 68, 68, 0.12)",
-                  border: "1px solid rgba(239, 68, 68, 0.3)",
+                  backgroundColor: "rgba(239, 68, 68, 0.08)",
+                  border: "1px solid rgba(239, 68, 68, 0.25)",
                   borderRadius: "8px",
                   padding: "10px 14px",
                   fontSize: "13px",
-                  color: "#fca5a5",
+                  color: "#dc2626",
                 }}
               >
                 {getErrorMessage()}
@@ -464,11 +475,12 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
               style={{
                 fontSize: isMobile ? "11px" : "12px",
                 padding: isMobile ? "3px 8px" : "4px 10px",
-                backgroundColor: "#22272e",
-                border: "1px solid #373e47",
+                backgroundColor: "rgba(255, 255, 255, 0.8)",
+                border: "1px solid rgba(0, 0, 0, 0.08)",
                 borderRadius: "14px",
-                color: "#d1d5db",
+                color: "var(--text-primary)",
                 cursor: isBusy ? "not-allowed" : "pointer",
+                boxShadow: "0 1px 2px rgba(0, 0, 0, 0.03)",
               }}
               disabled={isBusy}
               onClick={() => handleSend(t("chat_preset_me"))}
@@ -480,11 +492,12 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
               style={{
                 fontSize: isMobile ? "11px" : "12px",
                 padding: isMobile ? "3px 8px" : "4px 10px",
-                backgroundColor: "#22272e",
-                border: "1px solid #373e47",
+                backgroundColor: "rgba(255, 255, 255, 0.8)",
+                border: "1px solid rgba(0, 0, 0, 0.08)",
                 borderRadius: "14px",
-                color: "#d1d5db",
+                color: "var(--text-primary)",
                 cursor: isBusy ? "not-allowed" : "pointer",
+                boxShadow: "0 1px 2px rgba(0, 0, 0, 0.03)",
               }}
               disabled={isBusy}
               onClick={() => handleSend(t("chat_preset_8020"))}
@@ -498,7 +511,8 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
             className="chat-input-bar"
             style={{
               padding: isMobile ? "10px 12px" : "14px 18px",
-              borderTop: "1px solid #2d333b",
+              borderTop: "1px solid rgba(0, 0, 0, 0.06)",
+              backgroundColor: "rgba(255, 255, 255, 0.5)",
               display: "flex",
               alignItems: "center",
               gap: "8px",
@@ -511,10 +525,10 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
                 flex: 1,
                 padding: isMobile ? "9px 14px" : "12px 16px",
                 fontSize: "14px",
-                backgroundColor: "#22272e",
-                border: "1px solid #373e47",
+                backgroundColor: "rgba(255, 255, 255, 0.9)",
+                border: "1px solid rgba(0, 0, 0, 0.12)",
                 borderRadius: "8px",
-                color: "#f3f4f6",
+                color: "var(--text-primary)",
                 outline: "none",
               }}
               placeholder={t("chat_input_placeholder")}
@@ -528,8 +542,8 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
               style={{
                 width: isMobile ? "38px" : "42px",
                 height: isMobile ? "38px" : "42px",
-                backgroundColor: !inputText.trim() || isBusy ? "#2d333b" : "#2563eb",
-                color: "#ffffff",
+                backgroundColor: !inputText.trim() || isBusy ? "rgba(0, 0, 0, 0.06)" : "var(--accent-primary)",
+                color: !inputText.trim() || isBusy ? "var(--text-muted)" : "#ffffff",
                 border: "none",
                 borderRadius: "8px",
                 display: "flex",
@@ -537,6 +551,7 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
                 justifyContent: "center",
                 cursor: !inputText.trim() || isBusy ? "not-allowed" : "pointer",
                 opacity: !inputText.trim() || isBusy ? 0.6 : 1,
+                boxShadow: !inputText.trim() || isBusy ? "none" : "0 2px 8px rgba(25, 206, 139, 0.3)",
               }}
               onClick={() => handleSend()}
               disabled={!inputText.trim() || isBusy}

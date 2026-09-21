@@ -58,12 +58,14 @@ export default function ChatSources({ isOpen, onClose, sources, lang }: ChatSour
           width: "100%",
           maxWidth: "480px",
           height: "100%",
-          backgroundColor: "#181b20",
-          color: "#f3f4f6",
+          backgroundColor: "rgba(255, 255, 255, 0.96)",
+          backdropFilter: "blur(24px)",
+          WebkitBackdropFilter: "blur(24px)",
+          color: "var(--text-primary)",
           display: "flex",
           flexDirection: "column",
-          boxShadow: "-8px 0 24px rgba(0,0,0,0.5)",
-          borderLeft: "1px solid #2d333b",
+          boxShadow: "-8px 0 32px rgba(0, 0, 0, 0.08)",
+          borderLeft: "1px solid rgba(0, 0, 0, 0.1)",
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -71,17 +73,18 @@ export default function ChatSources({ isOpen, onClose, sources, lang }: ChatSour
         <div
           style={{
             padding: "16px 20px",
-            borderBottom: "1px solid #2d333b",
+            borderBottom: "1px solid rgba(0, 0, 0, 0.08)",
+            background: "rgba(0, 0, 0, 0.02)",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
           }}
         >
           <div>
-            <h3 id="chat-sources-title" style={{ margin: 0, fontSize: "16px", fontWeight: 600 }}>
+            <h3 id="chat-sources-title" style={{ margin: 0, fontSize: "16px", fontWeight: 600, color: "#111111" }}>
               {isVi ? "Tài liệu & Trích dẫn" : "Evidence & Citations"}
             </h3>
-            <span style={{ fontSize: "12px", color: "#9ca3af" }}>
+            <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>
               {isVi ? `Tin nhắn #${sources?.message_id ?? ""}` : `Message #${sources?.message_id ?? ""}`}
             </span>
           </div>
@@ -91,7 +94,7 @@ export default function ChatSources({ isOpen, onClose, sources, lang }: ChatSour
             style={{
               background: "transparent",
               border: "none",
-              color: "#9ca3af",
+              color: "var(--text-muted)",
               cursor: "pointer",
               padding: "6px",
               borderRadius: "6px",
@@ -110,7 +113,7 @@ export default function ChatSources({ isOpen, onClose, sources, lang }: ChatSour
         {/* Content */}
         <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px" }}>
           {citations.length === 0 && evidence.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "40px 20px", color: "#9ca3af" }}>
+            <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--text-muted)" }}>
               <p style={{ margin: 0, fontSize: "14px" }}>
                 {isVi
                   ? "Không có tài liệu trích dẫn ngoài nào cho câu trả lời này."
@@ -126,8 +129,9 @@ export default function ChatSources({ isOpen, onClose, sources, lang }: ChatSour
                       fontSize: "13px",
                       textTransform: "uppercase",
                       letterSpacing: "0.05em",
-                      color: "#6b7280",
+                      color: "var(--text-muted)",
                       marginBottom: "8px",
+                      fontWeight: 600,
                     }}
                   >
                     {isVi ? "Trích dẫn đã dẫn nguồn" : "Referenced Sources"}
@@ -137,10 +141,11 @@ export default function ChatSources({ isOpen, onClose, sources, lang }: ChatSour
                       <div
                         key={idx}
                         style={{
-                          backgroundColor: "#22272e",
-                          border: "1px solid #373e47",
+                          backgroundColor: "rgba(255, 255, 255, 0.9)",
+                          border: "1px solid rgba(0, 0, 0, 0.08)",
                           borderRadius: "8px",
                           padding: "12px 14px",
+                          boxShadow: "0 1px 3px rgba(0, 0, 0, 0.03)",
                         }}
                       >
                         <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
@@ -149,8 +154,8 @@ export default function ChatSources({ isOpen, onClose, sources, lang }: ChatSour
                               style={{
                                 fontSize: "11px",
                                 textTransform: "uppercase",
-                                backgroundColor: "#2d333b",
-                                color: "#60a5fa",
+                                backgroundColor: "rgba(25, 206, 139, 0.12)",
+                                color: "#059669",
                                 padding: "2px 6px",
                                 borderRadius: "4px",
                                 fontWeight: 600,
@@ -159,7 +164,7 @@ export default function ChatSources({ isOpen, onClose, sources, lang }: ChatSour
                               {cite.domain}
                             </span>
                           )}
-                          <span style={{ fontSize: "14px", fontWeight: 600, color: "#e5e7eb" }}>
+                          <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--text-primary)" }}>
                             {cite.title || cite.source_id || `Source #${idx + 1}`}
                           </span>
                         </div>
@@ -168,8 +173,8 @@ export default function ChatSources({ isOpen, onClose, sources, lang }: ChatSour
                             style={{
                               margin: "6px 0 0 0",
                               paddingLeft: "10px",
-                              borderLeft: "2px solid #4b5563",
-                              color: "#9ca3af",
+                              borderLeft: "2px solid var(--accent-primary)",
+                              color: "var(--text-secondary)",
                               fontSize: "12.5px",
                               fontStyle: "italic",
                             }}
@@ -185,11 +190,12 @@ export default function ChatSources({ isOpen, onClose, sources, lang }: ChatSour
                               rel="noopener noreferrer"
                               style={{
                                 fontSize: "12px",
-                                color: "#38bdf8",
+                                color: "#0284c7",
                                 textDecoration: "none",
                                 display: "inline-flex",
                                 alignItems: "center",
                                 gap: "4px",
+                                fontWeight: 500,
                               }}
                             >
                               <span>{isVi ? "Mở tài liệu nguồn" : "View original source"}</span>
@@ -214,8 +220,9 @@ export default function ChatSources({ isOpen, onClose, sources, lang }: ChatSour
                       fontSize: "13px",
                       textTransform: "uppercase",
                       letterSpacing: "0.05em",
-                      color: "#6b7280",
+                      color: "var(--text-muted)",
                       marginBottom: "8px",
+                      fontWeight: 600,
                     }}
                   >
                     {isVi ? "Đoạn trích đối chiếu" : "Retrieved Context Excerpts"}
@@ -225,17 +232,17 @@ export default function ChatSources({ isOpen, onClose, sources, lang }: ChatSour
                       <div
                         key={idx}
                         style={{
-                          backgroundColor: "#1c2128",
-                          border: "1px solid #2d333b",
+                          backgroundColor: "rgba(249, 250, 251, 0.85)",
+                          border: "1px solid rgba(0, 0, 0, 0.06)",
                           borderRadius: "8px",
                           padding: "10px 12px",
                           fontSize: "12px",
-                          color: "#d1d5db",
+                          color: "var(--text-secondary)",
                           lineHeight: "1.5",
                         }}
                       >
                         {chunk.title && (
-                          <div style={{ fontWeight: 600, color: "#9ca3af", marginBottom: "4px" }}>
+                          <div style={{ fontWeight: 600, color: "var(--text-primary)", marginBottom: "4px" }}>
                             {chunk.title}
                           </div>
                         )}
