@@ -1,9 +1,9 @@
 """Coach Chat endpoints — streaming, turn lifecycle, and legacy compatibility."""
 
 import asyncio
+import json
 from dataclasses import asdict
 from datetime import date, timedelta
-import json
 from typing import Any
 from uuid import UUID
 
@@ -13,8 +13,8 @@ from google import genai
 from google.genai import types as genai_types
 from pydantic import BaseModel, Field
 
-from config import settings
 import db
+from config import settings
 from db import (
     ChatInProgressError,
     CoachChatError,
@@ -32,7 +32,7 @@ from services.coach_prompts import (
     COACH_VI_LANGUAGE_INSTRUCTION,
     is_vietnamese_request,
 )
-from services.pacing_calculator import resolve_zone2_pace
+from services.training_rules import resolve_zone2_pace
 
 logger = get_logger(__name__)
 
