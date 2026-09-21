@@ -4272,6 +4272,20 @@ def clear_chat_thread(user_id: int) -> bool:
     - Does NOT reset daily usage quotas or delete chat_llm_calls records.
     """
     with engine.connect() as conn:
+        # Expire any orphaned turns left in 'active' longer than turn timeout
+        timeout_cutoff = datetime.datetime.now(datetime.UTC) - datetime.timedelta(
+            seconds=settings.COACH_CHAT_TURN_TIMEOUT_SECONDS
+        )
+        conn.execute(
+            text("""
+                UPDATE chat_turns
+                SET status = 'interrupted', updated_at = NOW()
+                WHERE user_id = :uid AND status = 'active' AND updated_at < :cutoff
+            """),
+            {"uid": user_id, "cutoff": timeout_cutoff},
+        )
+        conn.commit()
+
         active_turn = conn.execute(
             text("SELECT * FROM chat_turns WHERE user_id = :uid AND status = 'active'"),
             {"uid": user_id},
@@ -4494,6 +4508,20 @@ def admit_chat_turn(
                 "attempt_number": turn_dict.get("attempt_number", 1),
                 "fingerprint": fp,
             }
+
+        # Expire any orphaned turns left in 'active' longer than turn timeout
+        timeout_cutoff = (now or datetime.datetime.now(datetime.UTC)) - datetime.timedelta(
+            seconds=settings.COACH_CHAT_TURN_TIMEOUT_SECONDS
+        )
+        conn.execute(
+            text("""
+                UPDATE chat_turns
+                SET status = 'interrupted', updated_at = NOW()
+                WHERE user_id = :uid AND status = 'active' AND updated_at < :cutoff
+            """),
+            {"uid": user_id, "cutoff": timeout_cutoff},
+        )
+        conn.commit()
 
         if retry_of is not None:
             target_uuid = _to_uuid(retry_of)

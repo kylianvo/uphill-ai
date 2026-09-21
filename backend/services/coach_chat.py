@@ -344,10 +344,11 @@ async def run_turn(
             db.update_chat_message(assistant_msg_id, content=full_text, status="error", error_code=exc.code)
             db.finish_chat_turn(request_id=req_uuid, status="error", result_message_id=assistant_msg_id)
             yield ErrorEvent(code=exc.code, message=exc.message)
-        except Exception:
+        except Exception as exc:
+            logger.exception(f"Unexpected error in coach_chat run_turn: {exc}")
             full_text = "".join(accumulated)
             db.update_chat_message(
                 assistant_msg_id, content=full_text, status="error", error_code="coach_upstream_error"
             )
             db.finish_chat_turn(request_id=req_uuid, status="error", result_message_id=assistant_msg_id)
-            yield ErrorEvent(code="coach_upstream_error")
+            yield ErrorEvent(code="coach_upstream_error", message=str(exc))

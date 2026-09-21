@@ -327,7 +327,17 @@ async def astream_turn_graph(
         version="v2",
     )
     try:
-        async for mode, payload in stream_iter:
+        async for chunk in stream_iter:
+            if isinstance(chunk, dict):
+                mode = chunk.get("type")
+                payload = chunk.get("data")
+            elif isinstance(chunk, tuple | list) and len(chunk) == 2:
+                mode, payload = chunk
+            elif isinstance(chunk, tuple | list) and len(chunk) == 3:
+                mode, payload = chunk[0], chunk[2]
+            else:
+                continue
+
             if mode == "custom":
                 evt = parse_app_event(payload)
                 if evt is not None:
