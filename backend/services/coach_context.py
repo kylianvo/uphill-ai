@@ -164,33 +164,72 @@ def trim_context_to_budget(
     return ctx
 
 
-_REF_PATTERN = re.compile(r"\[ref:([a-zA-Z0-9_\-]+)\]|\[([a-zA-Z0-9_\-]{8,32})\]")
+_REF_PATTERN = re.compile(r"\[ref:([a-zA-Z0-9_\-]+)\]|\[([0-9]{1,2})\]|\[([a-zA-Z0-9_\-]{8,32})\]")
 
 
 def resolve_citations(reply_text: str, evidence: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Resolve citation markers in reply text against turn evidence.
 
+    Supports numeric references (e.g. [1]), ref tags (e.g. [ref:1] or [ref:hash]),
+    and raw chunk hashes (e.g. [7c9d28178ee9]).
+    Attaches authoritative book provenance from Training for the Uphill Athlete.
     Validates URLs (only HTTP/HTTPS preserved, others set to None).
     """
+    from services.doctrine_metadata import get_scheduler_chunk_metadata
+
     evidence_by_ref = {e.get("ref"): e for e in evidence if e.get("ref")}
     resolved: list[dict[str, Any]] = []
     seen_refs = set()
 
     for match in _REF_PATTERN.finditer(reply_text):
-        ref_id = match.group(1) or match.group(2)
-        if ref_id and ref_id in evidence_by_ref and ref_id not in seen_refs:
-            seen_refs.add(ref_id)
-            ev = evidence_by_ref[ref_id]
-            raw_url = ev.get("url")
-            safe_url = raw_url.strip() if _is_valid_web_url(raw_url) else None
+        ref_id = match.group(1) or match.group(2) or match.group(3)
+        if not ref_id:
+            continue
 
-            resolved.append(
-                {
-                    "ref": ref_id,
-                    "title": ev.get("title", ""),
-                    "source_label": ev.get("source_label", "Training for the Uphill Athlete"),
-                    "url": safe_url,
-                }
-            )
+        ev = None
+        # 1. Try matching by 1-based index if numeric
+        if ref_id.isdigit():
+            idx = int(ref_id) - 1
+            if 0 <= idx < len(evidence):
+                ev = evidence[idx]
+        elif ref_id.startswith("ref:") and ref_id[4:].isdigit():
+            idx = int(ref_id[4:]) - 1
+            if 0 <= idx < len(evidence):
+                ev = evidence[idx]
+
+        # 2. Try matching by chunk ref hash
+        if ev is None and ref_id in evidence_by_ref:
+            ev = evidence_by_ref[ref_id]
+
+        if ev is not None:
+            canonical_ref = ev.get("ref") or ref_id
+            if canonical_ref not in seen_refs:
+                seen_refs.add(canonical_ref)
+                raw_url = ev.get("url")
+                safe_url = raw_url.strip() if _is_valid_web_url(raw_url) else None
+
+                # Enrich with authoritative book metadata
+                meta = get_scheduler_chunk_metadata(ev.get("title")) or {}
+                book = meta.get("book") or ev.get("book") or ev.get("source_label", "Training for the Uphill Athlete")
+                ch_str = meta.get("chapter") or ev.get("chapter")
+                sec_str = meta.get("section") or ev.get("section")
+                cit_label = meta.get("citation_label") or (f"{book} — {ch_str}" if ch_str else book)
+
+                resolved.append(
+                    {
+                        "ref": canonical_ref,
+                        "title": ev.get("title", ""),
+                        "source_label": book,
+                        "book": book,
+                        "chapter": ch_str,
+                        "chapter_num": meta.get("chapter_num"),
+                        "chapter_title": meta.get("chapter_title"),
+                        "section": sec_str,
+                        "topic": meta.get("topic", ev.get("title", "")),
+                        "citation_label": cit_label,
+                        "url": safe_url,
+                        "domain": ev.get("domain", "scheduler"),
+                    }
+                )
 
     return resolved

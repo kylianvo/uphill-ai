@@ -4,12 +4,18 @@ import { parseMarkdown } from "../utils/markdown";
 import { translations } from "../app/translations";
 import { useCoachChat } from "../hooks/useCoachChat";
 import ChatSources from "../components/ChatSources";
+import { CitationItem } from "../lib/coachChatStream";
 
 export default function ChatTab({ isMobile }: { isMobile: boolean }) {
   const { lang } = useAppContext();
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const [inputText, setInputText] = useState("");
   const [isSourcesOpen, setIsSourcesOpen] = useState(false);
+  const [fallbackSources, setFallbackSources] = useState<{
+    message_id: number;
+    citations: CitationItem[];
+    evidence: unknown[];
+  } | null>(null);
 
   const {
     messages,
@@ -53,14 +59,24 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
     }
   };
 
-  const handleOpenSources = async (messageId?: number) => {
-    if (!messageId) return;
-    await fetchMessageSources(messageId);
-    setIsSourcesOpen(true);
+  const handleOpenSources = async (messageId?: number, fallbackCitations?: CitationItem[]) => {
+    if (messageId) {
+      setFallbackSources(null);
+      await fetchMessageSources(messageId);
+      setIsSourcesOpen(true);
+    } else if (fallbackCitations && fallbackCitations.length > 0) {
+      setFallbackSources({
+        message_id: 0,
+        citations: fallbackCitations,
+        evidence: [],
+      });
+      setIsSourcesOpen(true);
+    }
   };
 
   const handleCloseSources = () => {
     setIsSourcesOpen(false);
+    setFallbackSources(null);
     clearMessageSources();
   };
 
@@ -315,7 +331,12 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
                 }}
               >
                 <div>
-                  {msg.role === "assistant" ? parseMarkdown(msg.content) : msg.content}
+                  {msg.role === "assistant"
+                    ? parseMarkdown(msg.content, {
+                        citations: msg.citations,
+                        onCitationClick: () => handleOpenSources(msg.id, msg.citations),
+                      })
+                    : msg.content}
                 </div>
 
                 {/* Assistant footer: interrupted badge, retry button, sources button */}
@@ -363,9 +384,9 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
                       </button>
                     )}
 
-                    {msg.id && (
+                    {(msg.id || (msg.citations && msg.citations.length > 0)) && (
                       <button
-                        onClick={() => handleOpenSources(msg.id)}
+                        onClick={() => handleOpenSources(msg.id, msg.citations)}
                         style={{
                           background: "transparent",
                           border: "none",
@@ -569,7 +590,7 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
       <ChatSources
         isOpen={isSourcesOpen}
         onClose={handleCloseSources}
-        sources={selectedMessageSources}
+        sources={selectedMessageSources || fallbackSources}
         lang={lang}
       />
     </div>

@@ -140,7 +140,7 @@ def test_resolve_citations():
     evidence = [
         {
             "ref": "abc123def456",
-            "title": "Training Principles",
+            "title": "Difference Between Muscular Endurance and Conventional Strength Training",
             "source_label": "Training for the Uphill Athlete",
             "url": "https://uphillathlete.com/principles",
         },
@@ -152,14 +152,19 @@ def test_resolve_citations():
         },
     ]
 
-    # Reference by [ref] or [source_label]
-    text = "Follow low heart rate [ref:abc123def456] and eat carbs [ref:789xyz123456] or [ref:unknown]."
+    # Reference by [ref] or [source_label] or numeric index [1]
+    text = "Follow low heart rate [1] and eat carbs [ref:789xyz123456] or [ref:unknown]."
     resolved = resolve_citations(text, evidence)
 
     assert len(resolved) == 2
-    # First resolved has valid URL
+    # First resolved matched via [1] -> evidence[0], enriched with book metadata
     assert resolved[0]["ref"] == "abc123def456"
     assert resolved[0]["url"] == "https://uphillathlete.com/principles"
+    assert resolved[0]["book"] == "Training for the Uphill Athlete"
+    assert resolved[0]["chapter_num"] == 7
+    assert resolved[0]["chapter_title"] == "Muscular Endurance"
+    assert resolved[0]["section"] == "Section Three: Strength Training for the Uphill Athlete"
+    assert "Chapter 7: Muscular Endurance" in resolved[0]["citation_label"]
 
     # Second resolved had invalid URL scheme, so url is sanitized to None
     assert resolved[1]["ref"] == "789xyz123456"

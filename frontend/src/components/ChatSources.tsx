@@ -148,24 +148,76 @@ export default function ChatSources({ isOpen, onClose, sources, lang }: ChatSour
                           boxShadow: "0 1px 3px rgba(0, 0, 0, 0.03)",
                         }}
                       >
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
-                          {cite.domain && (
-                            <span
+                        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                          {/* Top row: [1] index pill & book label */}
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "6px" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                              <span
+                                style={{
+                                  fontSize: "11px",
+                                  fontWeight: "700",
+                                  backgroundColor: "rgba(2, 132, 199, 0.1)",
+                                  color: "#0284c7",
+                                  padding: "2px 6px",
+                                  borderRadius: "4px",
+                                  border: "1px solid rgba(2, 132, 199, 0.25)",
+                                }}
+                              >
+                                [{idx + 1}]
+                              </span>
+                              <span
+                                style={{
+                                  fontSize: "11.5px",
+                                  fontWeight: "600",
+                                  color: "#0369a1",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "4px",
+                                }}
+                              >
+                                📖 {cite.book || cite.source_label || "Training for the Uphill Athlete"}
+                              </span>
+                            </div>
+
+                            {cite.domain && (
+                              <span
+                                style={{
+                                  fontSize: "10.5px",
+                                  textTransform: "uppercase",
+                                  backgroundColor: "rgba(25, 206, 139, 0.12)",
+                                  color: "#059669",
+                                  padding: "2px 6px",
+                                  borderRadius: "4px",
+                                  fontWeight: 600,
+                                }}
+                              >
+                                {cite.domain}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Chapter & Section badge */}
+                          {(cite.chapter || cite.section) && (
+                            <div
                               style={{
-                                fontSize: "11px",
-                                textTransform: "uppercase",
-                                backgroundColor: "rgba(25, 206, 139, 0.12)",
-                                color: "#059669",
-                                padding: "2px 6px",
-                                borderRadius: "4px",
+                                fontSize: "12px",
+                                color: "#0f766e",
                                 fontWeight: 600,
+                                backgroundColor: "rgba(15, 118, 110, 0.06)",
+                                padding: "4px 8px",
+                                borderRadius: "6px",
+                                border: "1px solid rgba(15, 118, 110, 0.15)",
                               }}
                             >
-                              {cite.domain}
-                            </span>
+                              <span>{cite.chapter || ""}</span>
+                              {cite.chapter && cite.section && <span style={{ opacity: 0.6 }}> &bull; </span>}
+                              <span style={{ fontWeight: 400, color: "var(--text-muted)" }}>{cite.section || ""}</span>
+                            </div>
                           )}
-                          <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--text-primary)" }}>
-                            {cite.title || cite.source_id || `Source #${idx + 1}`}
+
+                          {/* Topic / Section Title */}
+                          <span style={{ fontSize: "13.5px", fontWeight: 600, color: "var(--text-primary)", marginTop: "2px" }}>
+                            {cite.topic || cite.title || cite.source_id || `Source #${idx + 1}`}
                           </span>
                         </div>
                         {cite.quote && (

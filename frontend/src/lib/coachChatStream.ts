@@ -3,8 +3,17 @@
  */
 
 export interface CitationItem {
+  ref?: string;
   source_id?: string;
   title?: string;
+  book?: string;
+  chapter?: string;
+  chapter_num?: number;
+  chapter_title?: string;
+  section?: string;
+  topic?: string;
+  citation_label?: string;
+  source_label?: string;
   url?: string;
   domain?: string;
   quote?: string;

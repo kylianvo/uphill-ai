@@ -107,4 +107,36 @@ describe("ChatSources", () => {
     fireEvent.keyDown(window, { key: "Escape" });
     expect(onClose).toHaveBeenCalledTimes(2);
   });
+
+  it("renders structured book provenance with chapter, section, and index pills", () => {
+    const sources = {
+      message_id: 101,
+      citations: [
+        {
+          ref: "7c9d28178ee9",
+          book: "Training for the Uphill Athlete",
+          chapter: "Chapter 7: Muscular Endurance",
+          section: "Section Three: Strength Training for the Uphill Athlete",
+          title: "Difference Between Muscular Endurance and Conventional Strength Training",
+          domain: "scheduler",
+        },
+      ],
+      evidence: [],
+    };
+
+    render(
+      <ChatSources
+        isOpen={true}
+        onClose={vi.fn()}
+        sources={sources}
+        lang="en"
+      />
+    );
+
+    expect(screen.getByText(/\[1\]/)).toBeDefined();
+    expect(screen.getAllByText(/Training for the Uphill Athlete/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/Chapter 7: Muscular Endurance/)).toBeDefined();
+    expect(screen.getByText(/Section Three: Strength Training for the Uphill Athlete/)).toBeDefined();
+    expect(screen.getByText("Difference Between Muscular Endurance and Conventional Strength Training")).toBeDefined();
+  });
 });
