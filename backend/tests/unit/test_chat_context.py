@@ -1,7 +1,7 @@
 """Unit tests for bounded trusted context assembly and citation resolution."""
 
 from datetime import UTC, datetime, timedelta
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -32,22 +32,39 @@ def test_build_chat_context_filters_expired_and_error_messages():
     ]
     mock_activities = [
         {"id": 201, "activity_type": "running", "distance_km": 10.5, "start_time": now - timedelta(days=2)},
-        {"id": 202, "activity_type": "running", "distance_km": 15.0, "start_time": now - timedelta(days=20)},  # >14d, exclude
+        {
+            "id": 202,
+            "activity_type": "running",
+            "distance_km": 15.0,
+            "start_time": now - timedelta(days=20),
+        },  # >14d, exclude
     ]
     mock_messages = [
         # Ok message 10 days ago (keep)
         {"id": 1, "role": "user", "content": "How are you?", "status": "ok", "created_at": now - timedelta(days=10)},
-        {"id": 2, "role": "assistant", "content": "I am great.", "status": "ok", "created_at": now - timedelta(days=10)},
+        {
+            "id": 2,
+            "role": "assistant",
+            "content": "I am great.",
+            "status": "ok",
+            "created_at": now - timedelta(days=10),
+        },
         # Error / interrupted message (exclude)
-        {"id": 3, "role": "assistant", "content": "Failed answer", "status": "error", "created_at": now - timedelta(days=5)},
+        {
+            "id": 3,
+            "role": "assistant",
+            "content": "Failed answer",
+            "status": "error",
+            "created_at": now - timedelta(days=5),
+        },
         # Expired message 95 days ago (exclude)
         {"id": 4, "role": "user", "content": "Old question", "status": "ok", "created_at": now - timedelta(days=95)},
     ]
 
     with (
         patch("db.get_user_by_id", return_value=mock_user),
-        patch("db.get_current_active_plan", return_value=mock_plan),
-        patch("db.get_workouts_for_plan", return_value=mock_workouts),
+        patch("db.get_active_plan", return_value=mock_plan),
+        patch("db.get_plan_workouts", return_value=mock_workouts),
         patch("db.get_activities_for_user", return_value=mock_activities),
         patch("db.get_chat_thread_messages", return_value=mock_messages),
     ):
@@ -71,7 +88,10 @@ def test_build_chat_context_filters_expired_and_error_messages():
 
 def test_trim_context_to_budget_trims_history_then_evidence():
     history = [{"id": i, "content": f"Message {i}" * 50} for i in range(10)]
-    evidence = [{"ref": f"ref-{i}", "title": f"Title {i}", "content": "Evidence text " * 50, "score": 0.5 + i * 0.05} for i in range(5)]
+    evidence = [
+        {"ref": f"ref-{i}", "title": f"Title {i}", "content": "Evidence text " * 50, "score": 0.5 + i * 0.05}
+        for i in range(5)
+    ]
 
     essential = {
         "athlete": {"max_hr": 180},

@@ -3,13 +3,13 @@ Database layer — SQLAlchemy Core with PostgreSQL.
 All raw SQL uses %s-style placeholders via psycopg2 through SQLAlchemy.
 """
 
-from contextlib import contextmanager
 import datetime
 import hashlib
 import json
 import math
 import unicodedata
 import uuid
+from contextlib import contextmanager
 from typing import Any
 
 from sqlalchemy import bindparam, create_engine, text
@@ -483,7 +483,9 @@ def init_db():
         """)
         )
         conn.execute(
-            text("CREATE INDEX IF NOT EXISTS idx_chat_messages_thread_created ON chat_messages (thread_id, created_at DESC)")
+            text(
+                "CREATE INDEX IF NOT EXISTS idx_chat_messages_thread_created ON chat_messages (thread_id, created_at DESC)"
+            )
         )
 
         try:
@@ -513,7 +515,9 @@ def init_db():
         )
         """)
         )
-        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_chat_turns_user_created ON chat_turns (user_id, created_at DESC)"))
+        conn.execute(
+            text("CREATE INDEX IF NOT EXISTS idx_chat_turns_user_created ON chat_turns (user_id, created_at DESC)")
+        )
         conn.execute(text("CREATE INDEX IF NOT EXISTS idx_chat_turns_root ON chat_turns (root_turn_id)"))
 
         conn.execute(
@@ -1003,6 +1007,9 @@ def get_active_plan(user_id: int) -> dict[str, Any] | None:
     return d
 
 
+get_current_active_plan = get_active_plan
+
+
 def get_plan_by_id(plan_id: int) -> dict[str, Any] | None:
     with engine.connect() as conn:
         row = conn.execute(text("SELECT * FROM plans WHERE id = :id"), {"id": plan_id}).fetchone()
@@ -1302,6 +1309,9 @@ def get_plan_workouts(plan_id: int) -> list[dict[str, Any]]:
             {"plan_id": plan_id},
         ).fetchall()
     return [_row_to_dict(r) for r in rows]
+
+
+get_workouts_for_plan = get_plan_workouts
 
 
 def update_workout_log(
@@ -3061,6 +3071,21 @@ def get_activities_for_matching(user_id: int, since, until) -> list[dict[str, An
     return [_row_to_dict(row) for row in rows]
 
 
+def get_activities_for_user(user_id: int, limit: int = 20) -> list[dict[str, Any]]:
+    """Retrieve recent non-duplicate activities for a user ordered by start_time descending."""
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("""
+            SELECT * FROM activities
+            WHERE user_id = :u AND duplicate_of IS NULL
+            ORDER BY start_time DESC, id DESC
+            LIMIT :lim
+            """),
+            {"u": user_id, "lim": limit},
+        ).fetchall()
+    return [_row_to_dict(row) for row in rows]
+
+
 def get_dated_workouts_for_matching(user_id: int, plan_id: int | None = None) -> list[dict[str, Any]]:
     """Every workout on the athlete's active plans, with the plan's start_date
     attached so the caller can derive each workout's calendar date."""
@@ -3929,12 +3954,12 @@ def append_chat_message(
                 "lang": lang,
                 "status": status,
                 "error_code": error_code,
-                "evidence": json.dumps(evidence) if isinstance(evidence, (dict, list)) else evidence,
-                "citations": json.dumps(citations) if isinstance(citations, (dict, list)) else citations,
+                "evidence": json.dumps(evidence) if isinstance(evidence, dict | list) else evidence,
+                "citations": json.dumps(citations) if isinstance(citations, dict | list) else citations,
                 "prompt_name": prompt_name,
                 "prompt_version": prompt_version,
                 "model": model,
-                "usage": json.dumps(usage) if isinstance(usage, (dict, list)) else usage,
+                "usage": json.dumps(usage) if isinstance(usage, dict | list) else usage,
                 "cost_usd": cost_usd,
                 "latency_ms": latency_ms,
                 "trace_id": trace_id,
@@ -3995,15 +4020,26 @@ def update_chat_message(
         return
 
     valid_cols = {
-        "content", "lang", "status", "error_code", "evidence", "citations",
-        "prompt_name", "prompt_version", "model", "usage", "cost_usd", "latency_ms", "trace_id",
+        "content",
+        "lang",
+        "status",
+        "error_code",
+        "evidence",
+        "citations",
+        "prompt_name",
+        "prompt_version",
+        "model",
+        "usage",
+        "cost_usd",
+        "latency_ms",
+        "trace_id",
     }
     set_clauses = []
     params: dict[str, Any] = {"mid": message_id}
 
     for col, val in fields.items():
         if col in valid_cols:
-            if col in ("evidence", "citations", "usage") and isinstance(val, (dict, list)):
+            if col in ("evidence", "citations", "usage") and isinstance(val, dict | list):
                 val = json.dumps(val)
             set_clauses.append(f"{col} = :{col}")
             params[col] = val
@@ -4017,7 +4053,9 @@ def update_chat_message(
             params,
         )
         conn.execute(
-            text("UPDATE chat_threads SET updated_at = NOW() WHERE id = (SELECT thread_id FROM chat_messages WHERE id = :mid)"),
+            text(
+                "UPDATE chat_threads SET updated_at = NOW() WHERE id = (SELECT thread_id FROM chat_messages WHERE id = :mid)"
+            ),
             {"mid": message_id},
         )
         conn.commit()
@@ -4124,7 +4162,7 @@ def create_chat_turn(
 
 
 def get_chat_turn(user_id: int | Any = None, request_id: Any = None) -> dict[str, Any] | None:
-    if isinstance(user_id, (uuid.UUID, str)) and (isinstance(request_id, int) or request_id is None):
+    if isinstance(user_id, uuid.UUID | str) and (isinstance(request_id, int) or request_id is None):
         user_id, request_id = request_id, user_id
 
     with engine.connect() as conn:
@@ -4265,10 +4303,10 @@ def clear_chat_thread(user_id: int) -> bool:
 
         conn.execute(
             text("""
-                INSERT INTO chat_turns (request_id, user_id, thread_id, status, created_at, updated_at)
-                VALUES (:req_id, :uid, :tid, 'cleared', NOW(), NOW())
+                INSERT INTO chat_turns (request_id, user_id, thread_id, fingerprint, status, created_at, updated_at)
+                VALUES (:req_id, :uid, :tid, :fp, 'cleared', NOW(), NOW())
             """),
-            {"req_id": uuid.uuid4(), "uid": user_id, "tid": thread_id},
+            {"req_id": uuid.uuid4(), "uid": user_id, "tid": thread_id, "fp": f"thread_cleared:{thread_id}"},
         )
 
         conn.commit()
@@ -4435,7 +4473,7 @@ def admit_chat_turn(
 ) -> dict[str, Any]:
     req_uuid = _to_uuid(request_id)
     fp = compute_chat_fingerprint(message=message, retry_of=retry_of, lang=lang, is_legacy=is_legacy)
-    utc_today = (now or datetime.datetime.now(datetime.timezone.utc)).date()
+    utc_today = (now or datetime.datetime.now(datetime.UTC)).date()
 
     with engine.connect() as conn:
         existing_turn = conn.execute(
@@ -4472,10 +4510,13 @@ def admit_chat_turn(
                 raise NothingToRetryError(code="nothing_to_retry")
 
             root_turn_id = target_dict.get("root_turn_id") or target_dict["request_id"]
-            retries_count_for_root = conn.execute(
-                text("SELECT COUNT(*) FROM chat_turns WHERE root_turn_id = :root_id AND user_id = :uid"),
-                {"root_id": root_turn_id, "uid": user_id},
-            ).scalar() or 0
+            retries_count_for_root = (
+                conn.execute(
+                    text("SELECT COUNT(*) FROM chat_turns WHERE root_turn_id = :root_id AND user_id = :uid"),
+                    {"root_id": root_turn_id, "uid": user_id},
+                ).scalar()
+                or 0
+            )
 
             if retries_count_for_root >= settings.COACH_CHAT_MAX_RETRIES_PER_ROOT:
                 raise ChatRetryLimitError(code="chat_retry_limit")

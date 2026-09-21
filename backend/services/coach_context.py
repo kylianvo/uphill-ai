@@ -56,10 +56,10 @@ def build_chat_context(
     }
 
     # 2. Plan and planned workouts
-    plan = db.get_current_active_plan(user_id)
+    plan = db.get_active_plan(user_id)
     plan_workouts: list[dict[str, Any]] = []
     if plan and plan.get("id"):
-        all_workouts = db.get_workouts_for_plan(plan["id"]) or []
+        all_workouts = db.get_plan_workouts(plan["id"]) or []
         # Keep current and upcoming workouts (e.g. within next 14 days)
         plan_workouts = all_workouts[:14]
 
@@ -164,7 +164,7 @@ def trim_context_to_budget(
     return ctx
 
 
-_REF_PATTERN = re.compile(r"\[ref:([a-f0-9]{12})\]|\[([a-f0-9]{12})\]")
+_REF_PATTERN = re.compile(r"\[ref:([a-zA-Z0-9_\-]+)\]|\[([a-zA-Z0-9_\-]{8,32})\]")
 
 
 def resolve_citations(reply_text: str, evidence: list[dict[str, Any]]) -> list[dict[str, Any]]:
