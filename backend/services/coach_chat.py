@@ -8,8 +8,8 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID, uuid4
 
-from config import settings
 import db
+from config import settings
 from db import CoachChatError
 from log_utils import get_logger
 from services import coach_context, kb_retrieval, observability
@@ -232,20 +232,24 @@ async def run_turn(
                     question = m.get("content", "")
                     break
 
-        assistant_msg_id = db.append_chat_message(
-            thread_id=thread_id,
-            role="assistant",
-            content="",
-            lang=lang,
-            status="active",
-        )
-        db.update_chat_turn_status(request_id=req_uuid, status="active", result_message_id=assistant_msg_id)
+        try:
+            assistant_msg_id = db.append_chat_message(
+                thread_id=thread_id,
+                role="assistant",
+                content="",
+                lang=lang,
+                status="interrupted",
+            )
+            db.update_chat_turn_status(request_id=req_uuid, status="active", result_message_id=assistant_msg_id)
 
-        if model is None:
-            from services.coach_model import GeminiCoachModel
+            if model is None:
+                from services.coach_model import GeminiCoachModel
 
-            api_key = user.get("gemini_api_key") or settings.GEMINI_API_KEY
-            model = GeminiCoachModel(api_key=api_key)
+                api_key = user.get("gemini_api_key") or settings.GEMINI_API_KEY
+                model = GeminiCoachModel(api_key=api_key)
+        except Exception:
+            db.finish_chat_turn(request_id=req_uuid, status="error")
+            raise
 
         def _retrieve_kb(q: str):
             api_key = user.get("gemini_api_key") or settings.GEMINI_API_KEY
@@ -340,8 +344,10 @@ async def run_turn(
             db.update_chat_message(assistant_msg_id, content=full_text, status="error", error_code=exc.code)
             db.finish_chat_turn(request_id=req_uuid, status="error", result_message_id=assistant_msg_id)
             yield ErrorEvent(code=exc.code, message=exc.message)
-        except Exception as exc:
+        except Exception:
             full_text = "".join(accumulated)
-            db.update_chat_message(assistant_msg_id, content=full_text, status="error", error_code="coach_upstream_error")
+            db.update_chat_message(
+                assistant_msg_id, content=full_text, status="error", error_code="coach_upstream_error"
+            )
             db.finish_chat_turn(request_id=req_uuid, status="error", result_message_id=assistant_msg_id)
             yield ErrorEvent(code="coach_upstream_error")

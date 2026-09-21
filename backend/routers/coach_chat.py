@@ -151,7 +151,7 @@ async def coach_chat_stream(
 
                 await event_queue.put(ErrorEvent(code=err.code, message=err.message))
             except Exception as exc:
-                logger.error(f"Unexpected turn stream error: {type(exc).__name__}")
+                logger.error(f"Unexpected turn stream error: {type(exc).__name__}: {exc}", exc_info=True)
                 from services.coach_graph import ErrorEvent
 
                 await event_queue.put(ErrorEvent(code="coach_upstream_error"))
