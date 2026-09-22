@@ -1,16 +1,11 @@
 import { ToolResultEvent, ToolCallEvent } from "../lib/coachChatStream";
+import { translations } from "../app/translations";
 
-const TOOL_LABELS_EN: Record<string, string> = {
-  get_week: "Get Week",
-  pace_strategy: "Pace Strategy",
-  week_review: "Week Review",
-  kb_search: "Knowledge Search",
-};
-const TOOL_LABELS_VI: Record<string, string> = {
-  get_week: "Xem lịch tuần",
-  pace_strategy: "Chiến lược Pace",
-  week_review: "Đánh giá tuần",
-  kb_search: "Tra cứu kiến thức",
+const TOOL_NAME_TO_KEY: Record<string, keyof typeof translations.en> = {
+  get_week: "chat_tool_label_get_week",
+  pace_strategy: "chat_tool_label_pace_strategy",
+  week_review: "chat_tool_label_week_review",
+  kb_search: "chat_tool_label_kb_search",
 };
 
 export default function ToolExecutionPill({
@@ -22,10 +17,14 @@ export default function ToolExecutionPill({
   result: ToolResultEvent | undefined;
   lang: string;
 }) {
-  const labels = lang === "vi" ? TOOL_LABELS_VI : TOOL_LABELS_EN;
-  const label = labels[call.name] || call.name;
+  const t = (key: keyof typeof translations.en) =>
+    translations[lang as keyof typeof translations]?.[key] || translations.en[key] || key;
+
+  const translationKey = TOOL_NAME_TO_KEY[call.name];
+  const label = translationKey ? t(translationKey) : call.name;
   const running = !result;
   const failed = result?.status === "error";
+  const failedText = ` — ${t("chat_tool_failed")}`;
 
   return (
     <div
@@ -44,7 +43,7 @@ export default function ToolExecutionPill({
     >
       {running && <span aria-hidden>●</span>}
       {label}
-      {failed && " — failed"}
+      {failed && failedText}
     </div>
   );
 }

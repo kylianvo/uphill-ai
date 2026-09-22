@@ -33,6 +33,8 @@ describe("ChatTab", () => {
     selectedMessageSources: null,
     fetchMessageSources: mockFetchMessageSources,
     clearMessageSources: mockClearMessageSources,
+    clarifyOptions: null,
+    dismissClarify: vi.fn(),
   };
 
   beforeEach(() => {

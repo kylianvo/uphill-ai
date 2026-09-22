@@ -504,6 +504,7 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
               dismissClarify();
               send(option);
             }}
+            lang={lang}
           />
 
           {/* Quick preset prompts */}

@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { ToolResultEvent } from "../lib/coachChatStream";
+import { translations } from "../app/translations";
 
 interface RichCardRendererProps {
   result: ToolResultEvent;
@@ -25,7 +26,10 @@ function WeekWorkoutCard({ data }: { data: any }) {
   );
 }
 
-function PacingSplitCard({ data, onOpenPaceStrategy }: { data: any; onOpenPaceStrategy: RichCardRendererProps["onOpenPaceStrategy"] }) {
+function PacingSplitCard({ data, onOpenPaceStrategy, lang }: { data: any; onOpenPaceStrategy: RichCardRendererProps["onOpenPaceStrategy"]; lang: string }) {
+  const t = (key: keyof typeof translations.en) =>
+    translations[lang as keyof typeof translations]?.[key] || translations.en[key] || key;
+
   return (
     <div style={cardStyle}>
       <div style={cardHeaderStyle}>{data.race_name}</div>
@@ -46,7 +50,7 @@ function PacingSplitCard({ data, onOpenPaceStrategy }: { data: any; onOpenPaceSt
         }
         style={buttonStyle}
       >
-        Open in Pace Strategy
+        {t("chat_open_in_pace_strategy")}
       </button>
     </div>
   );
@@ -95,7 +99,7 @@ export default function RichCardRenderer({ result, lang, onOpenPaceStrategy }: R
     case "week_schedule":
       return <WeekWorkoutCard data={result.card_data} />;
     case "pacing_splits":
-      return <PacingSplitCard data={result.card_data} onOpenPaceStrategy={onOpenPaceStrategy} />;
+      return <PacingSplitCard data={result.card_data} onOpenPaceStrategy={onOpenPaceStrategy} lang={lang} />;
     case "week_review":
       return <WeekWorkoutCard data={{ week_number: result.card_data.week_label, total_distance_km: result.card_data.completed_km, total_elevation_gain_m: result.card_data.completed_vert_m, workouts: [] }} />;
     case "knowledge_citations":

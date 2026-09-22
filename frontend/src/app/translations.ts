@@ -345,6 +345,13 @@ export const translations = {
     chat_error_in_progress: "Cannot clear chat while Coach is replying.",
     chat_error_disabled: "Coach chat is temporarily unavailable.",
     chat_error_network: "Unable to reach coaching server. Please check your connection.",
+    chat_tool_label_get_week: "Get Week",
+    chat_tool_label_pace_strategy: "Pace Strategy",
+    chat_tool_label_week_review: "Week Review",
+    chat_tool_label_kb_search: "Knowledge Search",
+    chat_tool_failed: "failed",
+    chat_open_in_pace_strategy: "Open in Pace Strategy",
+    chat_clarify_hint: "Coach needs a bit more detail:",
 
     // Knowledge Tab
     know_title: "Knowledge Hub (RAG)",
@@ -791,6 +798,13 @@ export const translations = {
     chat_error_in_progress: "Không thể xóa hội thoại khi Coach đang trả lời.",
     chat_error_disabled: "Tính năng Coach chat hiện đang tạm tắt.",
     chat_error_network: "Không thể kết nối đến máy chủ huấn luyện. Vui lòng kiểm tra kết nối.",
+    chat_tool_label_get_week: "Xem lịch tuần",
+    chat_tool_label_pace_strategy: "Chiến lược Pace",
+    chat_tool_label_week_review: "Đánh giá tuần",
+    chat_tool_label_kb_search: "Tìm kiếm kiến thức",
+    chat_tool_failed: "thất bại",
+    chat_open_in_pace_strategy: "Mở trong Pace Strategy",
+    chat_clarify_hint: "Coach cần thêm thông tin:",
 
     // Knowledge Tab
     know_title: "Thư Viện Kiến Thức",
