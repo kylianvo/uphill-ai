@@ -38,7 +38,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   const { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, handleSwapWorkouts, swapDays, handleToggleComplete, handleMarkMissed, handleLogWorkout, getWeekWorkouts, getWorkoutDate, getWorkoutDateObj, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller, fetchDraftPlan, draftPlan, handleApproveWorkout, handleRemoveWorkout, handleAiCreateWorkout, handleCoachEditWorkout, fetchActivePlanForActing } = usePlanner();
   const [planViewMode, setPlanViewMode] = useState<"list" | "calendar">("list");
   const [addWorkoutTarget, setAddWorkoutTarget] = useState<{ week: number; day: string } | null>(null);
-  const { lang, activePlan, planLoading, planErrorMsg, planForm, setPlanForm, targetTimeH, setTargetTimeH, targetTimeM, setTargetTimeM, targetTimeS, setTargetTimeS, cutoffTimeH, setCutoffTimeH, cutoffTimeM, setCutoffTimeM, cutoffTimeS, setCutoffTimeS, recentPlans, selectedWeek, setSelectedWeek, swapDay1, setSwapDay1, swapDay2, setSwapDay2, setWorkouts, setBackupWorkouts, setActivePlan, workouts, backupWorkouts, backupActivePlan, setBackupActivePlan, courseInputMode, setCourseInputMode, plannerGpxLoading, plannerGpxFile, plannerGpxError, showExportOptions, setShowExportOptions, exportTimePref, setExportTimePref, setIsGoalDeterminerOpen, settingsHandoff, setSettingsHandoff, setPaceHandoff, setIsPaceStrategyOpen, user, actingAsAthleteId, actingAsAthleteName, setActingAsAthleteId, setActingAsAthleteName, handleTabSwitch } = ctx;
+  const { lang, activePlan, planLoading, planErrorMsg, planForm, setPlanForm, targetTimeH, setTargetTimeH, targetTimeM, setTargetTimeM, targetTimeS, setTargetTimeS, cutoffTimeH, setCutoffTimeH, cutoffTimeM, setCutoffTimeM, cutoffTimeS, setCutoffTimeS, recentPlans, selectedWeek, setSelectedWeek, swapDay1, setSwapDay1, swapDay2, setSwapDay2, setWorkouts, setBackupWorkouts, setActivePlan, workouts, backupWorkouts, backupActivePlan, setBackupActivePlan, courseInputMode, setCourseInputMode, plannerGpxLoading, plannerGpxFile, plannerGpxError, showExportOptions, setShowExportOptions, exportTimePref, setExportTimePref, setIsGoalDeterminerOpen, settingsHandoff, setSettingsHandoff, setPaceHandoff, setIsPaceStrategyOpen, user, actingAsAthleteId, actingAsAthleteName, setActingAsAthleteId, setActingAsAthleteName, handleTabSwitch, activePlanLoading } = ctx;
   const isCoachActingAsAthlete = !!actingAsAthleteId;
   const workoutAthleteId: number | null = actingAsAthleteId ?? (user?.id ?? null);
   const [switchingAthlete, setSwitchingAthlete] = useState(false);
@@ -778,6 +778,13 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
             <ArrowsClockwise size={28} className="match-spin" color="var(--accent-primary)" aria-hidden="true" />
             <p style={{ fontSize: "13px", color: "var(--text-secondary)", margin: 0 }}>
               {lang === "en" ? `Loading ${actingAsAthleteName}'s plan…` : `Đang tải giáo án của ${actingAsAthleteName}…`}
+            </p>
+          </div>
+        ) : activePlanLoading ? (
+          <div style={{ background: "rgba(255, 255, 255, 0.95)", border: "1px solid var(--border-color)", padding: isMobile ? "40px 20px" : "60px 32px", borderRadius: "16px", display: "flex", flexDirection: "column", alignItems: "center", gap: "12px" }}>
+            <ArrowsClockwise size={28} className="match-spin" color="var(--accent-primary)" aria-hidden="true" />
+            <p style={{ fontSize: "13px", color: "var(--text-secondary)", margin: 0 }}>
+              {lang === "en" ? "Loading your plan…" : "Đang tải giáo án của bạn…"}
             </p>
           </div>
         ) : !activePlan ? (

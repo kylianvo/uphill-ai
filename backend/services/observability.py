@@ -74,6 +74,14 @@ def _warn_once(event: str, exc: BaseException) -> None:
 
 
 @dataclass(frozen=True)
+class PromptTemplate:
+    name: str
+    version: str
+    template: str
+    source: str
+
+
+@dataclass(frozen=True)
 class Usage:
     input_tokens: int = 0  # prompt_token_count (includes cached tokens)
     output_tokens: int = 0  # candidates_token_count
@@ -1063,3 +1071,54 @@ def push_experiment(
     except Exception as exc:
         _warn_once("push_experiment", exc)
         return False
+
+
+_PROMPT_CACHE: dict[tuple[str, str | None], PromptTemplate] = {}
+
+
+def clear_prompt_cache() -> None:
+    """Clear in-memory cached prompt templates."""
+    global _PROMPT_CACHE
+    _PROMPT_CACHE.clear()
+
+
+def get_prompt_template(
+    name: str,
+    label: str | None = None,
+    fallback: str = "",
+    cache_ttl_seconds: int = 300,
+) -> PromptTemplate:
+    """Retrieve a versioned prompt template from Langfuse with SDK caching and local fallback.
+
+    Athlete variables, compiled prompts, and conversation content are NEVER sent to the remote prompt API.
+    """
+    global _PROMPT_CACHE, _client
+
+    if _client is not None:
+        try:
+            remote_prompt = _client.get_prompt(name, label=label, cache_ttl_seconds=cache_ttl_seconds)
+            if remote_prompt is not None:
+                template_text = getattr(remote_prompt, "prompt", None) or str(remote_prompt)
+                version_str = str(getattr(remote_prompt, "version", "unknown"))
+                tpl = PromptTemplate(
+                    name=name,
+                    version=version_str,
+                    template=template_text,
+                    source="langfuse",
+                )
+                _PROMPT_CACHE[(name, label)] = tpl
+                return tpl
+        except Exception as exc:
+            _warn_once("get_prompt", exc)
+
+    # Return stale cache if available when remote fetch fails or client is unavailable
+    cached = _PROMPT_CACHE.get((name, label))
+    if cached is not None:
+        return cached
+
+    return PromptTemplate(
+        name=name,
+        version="local",
+        template=fallback,
+        source="local_fallback",
+    )

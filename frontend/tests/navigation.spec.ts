@@ -70,8 +70,6 @@ test.describe('Navigation and landing page split', () => {
     await expect(page.locator('.top-nav-tab', { hasText: /^(Home|Trang chủ)$/ })).toHaveCount(0);
     await expect(page.locator('.mobile-bottom-nav-tab', { hasText: /^(Home|Trang chủ)$/ })).toHaveCount(0);
     await expect(page.locator('.sidebar-nav-item', { hasText: /^(Home|Trang chủ)$/ })).toHaveCount(0);
-
-    await page.screenshot({ path: '/Users/vietvo/.gemini/antigravity-ide/brain/fa573ad3-7356-4d49-b631-37a5bccd92a5/web-app-no-home-tab.png' });
   });
 
   test('on native platform: / redirects to /app, shows Home tab and Glassmorphism hero', async ({ page }) => {
@@ -100,8 +98,6 @@ test.describe('Navigation and landing page split', () => {
     // Feature cards with glassmorphism are visible
     const cards = page.locator('.card');
     await expect(cards.first()).toBeVisible();
-
-    await page.screenshot({ path: '/Users/vietvo/.gemini/antigravity-ide/brain/fa573ad3-7356-4d49-b631-37a5bccd92a5/native-capacitor-home-glassmorphism.png' });
   });
 
   test('on native mobile device: displays Home tab on bottom nav with glassmorphism', async ({ page }) => {
@@ -120,7 +116,5 @@ test.describe('Navigation and landing page split', () => {
 
     const heroHeader = page.locator('.hero-header-group');
     await expect(heroHeader).toBeVisible();
-
-    await page.screenshot({ path: '/Users/vietvo/.gemini/antigravity-ide/brain/fa573ad3-7356-4d49-b631-37a5bccd92a5/native-capacitor-mobile-home-glassmorphism.png' });
   });
 });

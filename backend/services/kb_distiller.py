@@ -792,6 +792,10 @@ async def save_domain(domain: str, rows: list[dict], api_key: str) -> int:
         # full current catalog (principles + products), same clean-projection reasoning as gear
         clean_rows = [{k: row[k] for k in _SEED_KEYS} for row in db.get_kb_chunks(domain)]
         export_seed(domain, clean_rows)
+        if principle_rows and api_key:
+            from services.kb_retrieval import reindex_nutrition_principles
+
+            await asyncio.to_thread(reindex_nutrition_principles, principle_rows, api_key)
         print(f"[KBDistiller] 'nutrition': {saved} chunks saved (principles replaced, products appended).")
         return saved
     saved = db.replace_kb_chunks(domain, rows)
@@ -847,5 +851,11 @@ def load_seed(domain: str, api_key: str | None = None) -> int:
             "[KBDistiller] WARNING: scheduler chunks saved but Qdrant reindex SKIPPED "
             "(no Gemini API key) — plans will generate without philosophy grounding until reindexed."
         )
+    elif domain == "nutrition" and api_key:
+        principles = [c for c in chunks if c.get("kind") == "principle"]
+        if principles:
+            from services.kb_retrieval import reindex_nutrition_principles
+
+            reindex_nutrition_principles(principles, api_key)
     print(f"[KBDistiller] Seed '{domain}' loaded: {saved} chunks.")
     return saved

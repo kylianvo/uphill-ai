@@ -442,17 +442,13 @@ export default function AppPage() {
     setViewMode,
     heroInput,
     backendConnected,
-    chatMessages,
     chatInput,
     setHeroInput,
     setBackendConnected,
-    setChatMessages,
     setChatInput,
-    chatLoading,
     parsedSummary,
     parserLoading,
     uploadedFileName,
-    setChatLoading,
     setParsedSummary,
     setParserLoading,
     setUploadedFileName,
@@ -567,6 +563,8 @@ export default function AppPage() {
     setMockEmailInput,
     setAuthLoading,
     setAuthErrorMsg,
+    activePlanLoading,
+    setActivePlanLoading,
     setShowApiKey,
     onboardingOpen,
     profileSettingsOpen,
@@ -911,8 +909,6 @@ export default function AppPage() {
     } catch (e) {}
   };
   // Backend connection status
-  // Chat sandbox state
-  const chatBottomRef = useRef<HTMLDivElement>(null);
   // File parser sandbox state
   const fileInputRef = useRef<HTMLInputElement>(null);
   // RAG sandbox state
@@ -987,6 +983,13 @@ export default function AppPage() {
     const token = localStorage.getItem("uphill_session_token");
     if (token) {
       setAuthLoading(true);
+      // Fired in parallel with /api/auth/me below, not chained after it --
+      // active-plan only needs the bearer token, so waiting for the user
+      // profile first just added a second sequential round-trip to the time
+      // before the Scheduler could show the real plan (it was flashing the
+      // "Create New Plan" empty state in the meantime).
+      setActivePlanLoading(true);
+      fetchActivePlanWithToken(token).finally(() => setActivePlanLoading(false));
       fetch(`${API_BASE_URL}/api/auth/me`, {
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -1013,7 +1016,6 @@ export default function AppPage() {
             zone2_pace_max: userData.zone2_pace_max ?? "5:45",
           });
           fetchSourcesWithToken(userData, token);
-          fetchActivePlanWithToken(token);
         })
         .catch((err) => {
           // Only a confirmed 401/403 means the session is actually invalid.
@@ -1159,10 +1161,6 @@ export default function AppPage() {
       fetchRecentPlansWithToken(token);
     }
   };
-  // Scroll chat history to bottom
-  useEffect(() => {
-    chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chatMessages]);
   // Auth actions
   const handleMockLogin = async (emailToUse: string) => {
     setAuthLoading(true);
@@ -1666,52 +1664,6 @@ export default function AppPage() {
     setWorkouts([]);
     setSources([]);
     setAuthModalOpen(true);
-  };
-  // Send message to Coach Chat API
-  const handleSendMessage = async (textToSend?: string) => {
-    const messageText = textToSend || chatInput;
-    if (!messageText.trim()) return;
-    if (!textToSend) {
-      setChatInput("");
-    }
-    const updatedMessages = [
-      ...chatMessages,
-      { role: "user" as const, content: messageText },
-    ];
-    setChatMessages(updatedMessages);
-    setChatLoading(true);
-    const token = localStorage.getItem("uphill_session_token");
-    const headers: any = { "Content-Type": "application/json" };
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/coach/chat`, {
-        method: "POST",
-        headers: headers,
-        // Profile, plan and Gemini key are resolved server-side from the session.
-        body: JSON.stringify({ messages: updatedMessages }),
-      });
-      if (!response.ok) {
-        throw new Error("Failed to communicate with Coach API");
-      }
-      const replyData = await response.json();
-      setChatMessages((prev: any) => [...prev, replyData]);
-    } catch (err: any) {
-      setChatMessages((prev: any) => [
-        ...prev,
-        {
-          role: "assistant",
-          content:
-            "Sorry, I had trouble reaching the coaching server. Please make sure the backend server is running.",
-        },
-      ]);
-    } finally {
-      setChatLoading(false);
-    }
-  };
-  const sendPresetPrompt = (prompt: string) => {
-    handleSendMessage(prompt);
   };
   // File Upload Handlers (FIT/GPX Telemetry)
   const handleDropzoneClick = () => {
@@ -2560,7 +2512,7 @@ export default function AppPage() {
                     </span>
                   </div>
                 </div>
-              ) : (
+              ) : authLoading ? null : (
                 <button
                   onClick={() => setAuthModalOpen(true)}
                   className="btn btn-primary"
@@ -2920,7 +2872,7 @@ export default function AppPage() {
                   >
                     {lang === "en" ? "Profile" : "Hồ sơ"}
                   </span>
-                ) : (
+                ) : authLoading ? null : (
                   <span
                     onClick={() => setAuthModalOpen(true)}
                     style={{
@@ -3131,7 +3083,7 @@ export default function AppPage() {
                 >
                   {user.name[0].toUpperCase()}
                 </div>
-              ) : (
+              ) : authLoading ? null : (
                 <button
                   className="btn btn-primary"
                   onClick={() => setAuthModalOpen(true)}

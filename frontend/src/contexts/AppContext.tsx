@@ -166,6 +166,8 @@ interface AppContextType {
   setAuthLoading: any;
   authErrorMsg: any;
   setAuthErrorMsg: any;
+  activePlanLoading: any;
+  setActivePlanLoading: any;
   handleLogout: () => void;
   showApiKey: any;
   setShowApiKey: any;
@@ -260,14 +262,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [viewMode, setViewMode] = useState<"showcase" | "desktop" | "mobile">("showcase");
   const [heroInput, setHeroInput] = useState("");
   const [backendConnected, setBackendConnected] = useState<boolean | null>(null);
-  const [chatMessages, setChatMessages] = useState<Message[]>([
-    {
-      role: "assistant",
-      content: "Hello! I’m Coach Uphill AI. Are you training for a trail ultra or a road marathon?",
-    },
-  ]);
+  // Conversation state is owned exclusively by useCoachChat (Task F11)
   const [chatInput, setChatInput] = useState("");
-  const [chatLoading, setChatLoading] = useState(false);
   const [parsedSummary, setParsedSummary] = useState<ParsedSummary | null>(null);
   const [parserLoading, setParserLoading] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState("");
@@ -356,6 +352,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [mockEmailInput, setMockEmailInput] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
   const [authErrorMsg, setAuthErrorMsg] = useState("");
+  // True while the stored session's active plan is being fetched on cold
+  // launch, so the Planner can show a loading state instead of flashing the
+  // "Create New Plan" empty-state form before the real plan arrives.
+  const [activePlanLoading, setActivePlanLoading] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [profileSettingsOpen, setProfileSettingsOpen] = useState(false);
@@ -513,9 +513,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       viewMode, setViewMode,
       heroInput, setHeroInput,
       backendConnected, setBackendConnected,
-      chatMessages, setChatMessages,
+      // Conversation state is owned by useCoachChat (transitional shims for Task F11)
+      chatMessages: [] as Message[],
+      setChatMessages: () => {},
+      chatLoading: false,
+      setChatLoading: () => {},
       chatInput, setChatInput,
-      chatLoading, setChatLoading,
       parsedSummary, setParsedSummary,
       parserLoading, setParserLoading,
       uploadedFileName, setUploadedFileName,
@@ -576,6 +579,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       mockEmailInput, setMockEmailInput,
       authLoading, setAuthLoading,
       authErrorMsg, setAuthErrorMsg,
+      activePlanLoading, setActivePlanLoading,
       handleLogout,
       showApiKey, setShowApiKey,
       onboardingOpen, setOnboardingOpen,

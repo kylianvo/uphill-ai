@@ -1,0 +1,171 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
+import ChatTab from "./ChatTab";
+import * as useCoachChatModule from "../hooks/useCoachChat";
+import { AppProvider } from "../contexts/AppContext";
+
+vi.mock("../hooks/useCoachChat");
+
+describe("ChatTab", () => {
+  const mockSend = vi.fn();
+  const mockRetry = vi.fn();
+  const mockClear = vi.fn();
+  const mockLoadOlder = vi.fn();
+  const mockFetchMessageSources = vi.fn();
+  const mockClearMessageSources = vi.fn();
+
+  const defaultHookReturn: useCoachChatModule.UseCoachChatReturn = {
+    messages: [],
+    activeRequest: null,
+    status: "idle",
+    error: null,
+    hasMore: false,
+    isLoadingOlder: false,
+    send: mockSend,
+    retry: mockRetry,
+    clear: mockClear,
+    loadOlder: mockLoadOlder,
+    refreshTurn: vi.fn(),
+    selectedMessageSources: null,
+    fetchMessageSources: mockFetchMessageSources,
+    clearMessageSources: mockClearMessageSources,
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(useCoachChatModule.useCoachChat).mockReturnValue(defaultHookReturn);
+  });
+
+  const renderWithContext = (ui: React.ReactElement) => {
+    return render(<AppProvider>{ui}</AppProvider>);
+  };
+
+  it("renders honest empty state with capabilities and boundary notice, without tools or apply buttons", () => {
+    renderWithContext(<ChatTab isMobile={false} />);
+
+    expect(screen.getByText("Coach Uphill AI")).toBeDefined();
+    expect(screen.getByText(/Ask questions about training principles/i)).toBeDefined();
+    expect(screen.getByText(/Explain 80\/20 intensity distribution/i)).toBeDefined();
+    expect(screen.getByText(/Zone 2 aerobic base principles/i)).toBeDefined();
+    expect(screen.getByText(/Muscular Endurance \(ME\) workouts/i)).toBeDefined();
+    expect(
+      screen.getByText(/Coach chat answers questions and explains principles\. It will not modify/i)
+    ).toBeDefined();
+
+    // Invariant: No write tools, Apply buttons, or fabricated tool cards
+    expect(screen.queryByText(/Apply/i)).toBeNull();
+    expect(screen.queryByText(/Modify plan/i)).toBeNull();
+  });
+
+  it("displays retrieving and generating status labels", () => {
+    vi.mocked(useCoachChatModule.useCoachChat).mockReturnValue({
+      ...defaultHookReturn,
+      status: "retrieving",
+      messages: [{ role: "user", content: "Explain Zone 2" }],
+    });
+
+    renderWithContext(<ChatTab isMobile={false} />);
+    expect(screen.getAllByText(/Retrieving training principles\.\.\./i).length).toBeGreaterThan(0);
+  });
+
+  it("renders interrupted badge and explicit Retry button on interrupted partial message", () => {
+    vi.mocked(useCoachChatModule.useCoachChat).mockReturnValue({
+      ...defaultHookReturn,
+      status: "interrupted",
+      messages: [
+        { role: "user", content: "Tell me about nutrition" },
+        {
+          role: "assistant",
+          content: "You should eat 60g carbs per hour during...",
+          interrupted: true,
+          request_id: "turn-uuid-1",
+        },
+      ],
+    });
+
+    renderWithContext(<ChatTab isMobile={false} />);
+
+    expect(screen.getByText(/You should eat 60g carbs/i)).toBeDefined();
+    expect(screen.getByText("Interrupted")).toBeDefined();
+
+    const retryBtn = screen.getByRole("button", { name: "Retry" });
+    expect(retryBtn).toBeDefined();
+
+    fireEvent.click(retryBtn);
+    expect(mockRetry).toHaveBeenCalledWith("turn-uuid-1");
+  });
+
+  it("displays localized error for daily turn quota exceeded (429)", () => {
+    vi.mocked(useCoachChatModule.useCoachChat).mockReturnValue({
+      ...defaultHookReturn,
+      error: { code: "coach_turn_quota_exceeded" },
+    });
+
+    renderWithContext(<ChatTab isMobile={false} />);
+    expect(
+      screen.getByText(/Daily chat limit reached \(50 turns\)\. Please try again tomorrow\./i)
+    ).toBeDefined();
+  });
+
+  it("displays localized error for clear conflict during active turn (409)", () => {
+    vi.mocked(useCoachChatModule.useCoachChat).mockReturnValue({
+      ...defaultHookReturn,
+      error: { code: "chat_in_progress" },
+    });
+
+    renderWithContext(<ChatTab isMobile={false} />);
+    expect(
+      screen.getByText(/Cannot clear chat while Coach is replying\./i)
+    ).toBeDefined();
+  });
+
+  it("renders Sources button and calls fetchMessageSources when clicked", () => {
+    vi.mocked(useCoachChatModule.useCoachChat).mockReturnValue({
+      ...defaultHookReturn,
+      messages: [
+        {
+          id: 42,
+          role: "assistant",
+          content: "Zone 2 running builds capillary density.",
+          citations: [{ source_id: "kb-1", title: "Manual" }],
+        },
+      ],
+    });
+
+    renderWithContext(<ChatTab isMobile={false} />);
+
+    const sourcesBtn = screen.getByRole("button", { name: /Sources \(1\)/i });
+    expect(sourcesBtn).toBeDefined();
+
+    fireEvent.click(sourcesBtn);
+    expect(mockFetchMessageSources).toHaveBeenCalledWith(42);
+  });
+
+  it("renders load older button when hasMore is true", () => {
+    vi.mocked(useCoachChatModule.useCoachChat).mockReturnValue({
+      ...defaultHookReturn,
+      hasMore: true,
+      messages: [{ id: 5, role: "user", content: "Hi" }],
+    });
+
+    renderWithContext(<ChatTab isMobile={false} />);
+
+    const loadOlderBtn = screen.getByRole("button", { name: /Load older messages/i });
+    expect(loadOlderBtn).toBeDefined();
+
+    fireEvent.click(loadOlderBtn);
+    expect(mockLoadOlder).toHaveBeenCalledTimes(1);
+  });
+
+  it("triggers send with user input when clicking send button", () => {
+    renderWithContext(<ChatTab isMobile={false} />);
+
+    const input = screen.getByPlaceholderText("Ask your AI coach...");
+    fireEvent.change(input, { target: { value: "How do I build aerobic capacity?" } });
+
+    const sendBtn = screen.getByRole("button", { name: "" }); // icon button
+    fireEvent.click(sendBtn);
+
+    expect(mockSend).toHaveBeenCalledWith("How do I build aerobic capacity?");
+  });
+});

@@ -60,6 +60,8 @@ openinference-instrumentation-google-genai==1.4.7
 # a real runtime dependency here -- pinned explicitly, not left to the extra.
 openinference-instrumentation-langchain==0.1.76
 langchain-core==1.6.3
+langgraph==1.2.11
+langchain-google-genai==4.4.0
 opentelemetry-api==1.44.0
 opentelemetry-exporter-otlp-proto-http==1.44.0
 opentelemetry-sdk==1.44.0
