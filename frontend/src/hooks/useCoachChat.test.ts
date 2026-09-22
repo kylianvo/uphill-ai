@@ -277,4 +277,88 @@ describe("useCoachChat", () => {
 
     expect(result.current.selectedMessageSources).toBeNull();
   });
+
+  it("attaches tool_result events to the in-flight assistant message", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      jsonResponse({ messages: [], has_more: false, oldest_id: null })
+    );
+    global.fetch = fetchMock;
+
+    const { result } = renderHookWithApp(() => useCoachChat());
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const sseBody =
+      'event: status\ndata: {"type":"status","step":"generating","request_id":"r1"}\n\n' +
+      'event: tool_call\ndata: {"type":"tool_call","tool_call_id":"call_1","name":"get_week","args":{}}\n\n' +
+      'event: tool_result\ndata: {"type":"tool_result","tool_call_id":"call_1","name":"get_week","status":"success","card_type":"week_schedule","card_data":{"week_number":3}}\n\n' +
+      'event: token\ndata: {"type":"token","text":"Week 3 looks solid."}\n\n' +
+      'event: done\ndata: {"type":"done","request_id":"r1","message_id":42,"replayed":false}\n\n';
+    fetchMock.mockResolvedValueOnce(sseResponse(sseBody));
+
+    await act(async () => {
+      await result.current.send("What's my week 3?");
+    });
+
+    const assistantMsg = result.current.messages.find((m) => m.role === "assistant");
+    expect(assistantMsg?.toolCalls).toEqual([
+      { type: "tool_result", tool_call_id: "call_1", name: "get_week", status: "success", card_type: "week_schedule", card_data: { week_number: 3 } },
+    ]);
+  });
+
+  it("hydrates toolCalls from tool_calls_json on initial thread load", async () => {
+    const mockInitialData = {
+      messages: [
+        {
+          id: 42,
+          role: "assistant",
+          content: "Here's week 3.",
+          tool_calls_json: [
+            { tool_call_id: "call_1", name: "get_week", status: "success", card_type: "week_schedule", card_data: { week_number: 3 } },
+          ],
+        },
+      ],
+      has_more: false,
+      oldest_id: null,
+    };
+
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(mockInitialData));
+    global.fetch = fetchMock;
+
+    const { result } = renderHookWithApp(() => useCoachChat());
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.messages[0].toolCalls).toEqual([
+      { type: "tool_result", tool_call_id: "call_1", name: "get_week", status: "success", card_type: "week_schedule", card_data: { week_number: 3 } },
+    ]);
+  });
+
+  it("surfaces clarify options and clears them on dismiss", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      jsonResponse({ messages: [], has_more: false, oldest_id: null })
+    );
+    global.fetch = fetchMock;
+
+    const { result } = renderHookWithApp(() => useCoachChat());
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const sseBody =
+      'event: status\ndata: {"type":"status","step":"generating","request_id":"r1"}\n\n' +
+      'event: clarify\ndata: {"type":"clarify","prompt":"Which race?","options":["Dalat Ultra Trail","VMM"]}\n\n' +
+      'event: done\ndata: {"type":"done","request_id":"r1","message_id":42,"replayed":false}\n\n';
+    fetchMock.mockResolvedValueOnce(sseResponse(sseBody));
+
+    await act(async () => {
+      await result.current.send("Give me a pacing plan");
+    });
+
+    expect(result.current.clarifyOptions).toEqual(["Dalat Ultra Trail", "VMM"]);
+    act(() => result.current.dismissClarify());
+    expect(result.current.clarifyOptions).toBeNull();
+  });
 });

@@ -4,6 +4,7 @@ import {
   consumeCoachChatStream,
   CitationItem,
   CoachChatStreamError,
+  ToolResultEvent,
 } from "../lib/coachChatStream";
 
 export interface ChatMessageItem {
@@ -15,6 +16,7 @@ export interface ChatMessageItem {
   citations?: CitationItem[];
   evidence_status?: "available" | "empty" | "unavailable";
   interrupted?: boolean;
+  toolCalls?: ToolResultEvent[];
 }
 
 export type ChatTurnStatus =
@@ -55,6 +57,22 @@ export interface UseCoachChatReturn {
   } | null;
   fetchMessageSources: (messageId: number) => Promise<void>;
   clearMessageSources: () => void;
+  clarifyOptions: string[] | null;
+  dismissClarify: () => void;
+}
+
+function hydrateToolCalls(
+  rawMessages: Array<Record<string, unknown>>
+): ChatMessageItem[] {
+  return rawMessages.map((m) => ({
+    ...m,
+    toolCalls: Array.isArray(m.tool_calls_json)
+      ? (m.tool_calls_json as Record<string, unknown>[]).map((tc) => ({
+          type: "tool_result" as const,
+          ...tc,
+        }))
+      : undefined,
+  }));
 }
 
 function getApiBaseUrl(): string {
@@ -89,6 +107,7 @@ export function useCoachChat(): UseCoachChatReturn {
     citations: CitationItem[];
     evidence: unknown[];
   } | null>(null);
+  const [clarifyOptions, setClarifyOptions] = useState<string[] | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const isExecutingRef = useRef<boolean>(false);
@@ -110,7 +129,7 @@ export function useCoachChat(): UseCoachChatReturn {
         if (!res.ok) return;
         const data = await res.json();
         if (!cancelled && data && Array.isArray(data.messages)) {
-          setMessages(data.messages);
+          setMessages(hydrateToolCalls(data.messages));
           setHasMore(Boolean(data.has_more));
         }
       } catch {
@@ -150,7 +169,7 @@ export function useCoachChat(): UseCoachChatReturn {
       if (!res.ok) return;
       const data = await res.json();
       if (data && Array.isArray(data.messages)) {
-        setMessages((prev) => [...data.messages, ...prev]);
+        setMessages((prev) => [...hydrateToolCalls(data.messages), ...prev]);
         setHasMore(Boolean(data.has_more));
       }
     } finally {
@@ -178,6 +197,7 @@ export function useCoachChat(): UseCoachChatReturn {
       setActiveRequest(activeState);
       setStatus("admitting");
       setError(null);
+      setClarifyOptions(null);
 
       const abortCtrl = new AbortController();
       abortControllerRef.current = abortCtrl;
@@ -258,6 +278,18 @@ export function useCoachChat(): UseCoachChatReturn {
                 }
                 return copy;
               });
+            } else if (event.type === "tool_result") {
+              setMessages((prev) => {
+                const copy = [...prev];
+                const lastIdx = copy.length - 1;
+                if (lastIdx >= 0 && copy[lastIdx].role === "assistant") {
+                  const existing = copy[lastIdx].toolCalls || [];
+                  copy[lastIdx] = { ...copy[lastIdx], toolCalls: [...existing, event] };
+                }
+                return copy;
+              });
+            } else if (event.type === "clarify") {
+              setClarifyOptions(event.options);
             } else if (event.type === "done") {
               setMessages((prev) => {
                 const copy = [...prev];
@@ -464,6 +496,10 @@ export function useCoachChat(): UseCoachChatReturn {
     setSelectedMessageSources(null);
   }, []);
 
+  const dismissClarify = useCallback(() => {
+    setClarifyOptions(null);
+  }, []);
+
   return {
     messages,
     activeRequest,
@@ -479,5 +515,7 @@ export function useCoachChat(): UseCoachChatReturn {
     selectedMessageSources,
     fetchMessageSources,
     clearMessageSources,
+    clarifyOptions,
+    dismissClarify,
   };
 }
