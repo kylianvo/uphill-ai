@@ -25,5 +25,7 @@ def test_get_week_tool_ignores_llm_supplied_user_id_and_uses_closure():
         # Even if a caller tries to smuggle user_id through kwargs, the
         # generated schema has no such field to accept it -- invoke() would
         # reject an unknown field before this ever reaches get_week_impl.
-        get_week_tool.invoke({"week_number": 2})
+        # Here we test with a different user_id value (1) to prove the closure's
+        # user_id=999 is what actually gets passed, not the smuggled value.
+        get_week_tool.invoke({"week_number": 2, "user_id": 1})
     mock_impl.assert_called_once_with(user_id=999, week_number=2)
