@@ -1,3 +1,5 @@
+import datetime
+import decimal
 from unittest.mock import patch
 
 from services.coach_tools.plan_tools import get_week_impl, week_review_impl
@@ -11,15 +13,18 @@ def test_get_week_no_active_plan_returns_error():
 
 
 def test_get_week_defaults_to_current_week():
-    plan = {"id": 42, "current_week": 3}
+    plan = {"id": 42, "current_week": 3, "start_date": "2026-01-01", "race_date": "2026-06-01"}
     workouts = [
         {
+            "id": 100,
             "day_of_week": "Tuesday",
             "title": "Hill Repeats",
             "type": "Hills",
             "distance_km": 10.0,
             "elevation_gain_m": 450.0,
             "description": "6x3min uphill Zone 4",
+            "approved_at": datetime.datetime(2026, 1, 2, 12, 0, 0),
+            "duration_minutes": decimal.Decimal("60"),
         }
     ]
     with (
@@ -33,8 +38,22 @@ def test_get_week_defaults_to_current_week():
     assert result.card_data["week_number"] == 3
     assert result.card_data["total_distance_km"] == 10.0
     assert result.card_data["total_elevation_gain_m"] == 450
-    assert result.card_data["workouts"][0]["day"] == "Tuesday"
-    assert result.card_data["workouts"][0]["name"] == "Hill Repeats"
+    assert result.card_data["plan_start_date"] == "2026-01-01"
+    assert result.card_data["race_date"] == "2026-06-01"
+
+    workout = result.card_data["workouts"][0]
+    # Full row, not the old renamed keys.
+    assert "day" not in workout
+    assert "name" not in workout
+    assert "workout_type" not in workout
+    assert workout["id"] == 100
+    assert workout["day_of_week"] == "Tuesday"
+    assert workout["title"] == "Hill Repeats"
+    assert workout["type"] == "Hills"
+    # JSON-safety: datetime -> isoformat string, Decimal -> float.
+    assert workout["approved_at"] == "2026-01-02T12:00:00"
+    assert workout["duration_minutes"] == 60.0
+    assert isinstance(workout["duration_minutes"], float)
 
 
 def test_get_week_explicit_week_number():
@@ -83,8 +102,29 @@ def test_week_review_computes_current_week_minus_weeks_ago():
     mock_review.assert_called_once_with(user_id=1, plan_id=7, week_number=4, plan_start_date="2026-01-01")
     assert result.status == "success"
     assert result.card_type == "week_review"
-    assert result.card_data["completed_km"] == 42.0
-    assert result.card_data["planned_km"] == 45.0
-    assert result.card_data["compliance_pct"] == 93
-    assert result.card_data["missed_workouts"] == ["Rest Day mobility"]
-    assert "coach_verdict" in result.card_data
+
+    card_data = result.card_data
+    # Raw db.get_week_review shape, unflattened.
+    assert card_data["week_number"] == 4
+    assert card_data["planned"] == review["planned"]
+    assert card_data["actual"] == review["actual"]
+    assert card_data["completion_pct"] == 93
+    assert card_data["checkbox_completion_pct"] == 90
+    assert card_data["per_workout"] == []
+    assert card_data["unplanned"] == []
+    assert card_data["missed"] == review["missed"]
+    assert card_data["coverage"] == {}
+    # Plus the narrative and computed label.
+    assert set(card_data["narrative"].keys()) == {"summary", "highlights", "watch"}
+    assert card_data["week_label"] == "1 Week Ago (Week 4)"
+    # Old flattened keys are gone.
+    for removed_key in (
+        "completed_km",
+        "planned_km",
+        "compliance_pct",
+        "completed_vert_m",
+        "planned_vert_m",
+        "missed_workouts",
+        "coach_verdict",
+    ):
+        assert removed_key not in card_data

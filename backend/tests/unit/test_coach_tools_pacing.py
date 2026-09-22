@@ -49,6 +49,7 @@ def test_pace_strategy_uses_curated_course_profile_when_available():
     assert result.status == "success"
     assert result.card_type == "pacing_splits"
     assert result.card_data["race_name"] == "Dalat Ultra Trail 70K"
+    assert result.card_data["distance_label"] == "70K"
     assert result.card_data["splits"] == paced
 
 

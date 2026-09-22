@@ -1,10 +1,33 @@
 """get_week and week_review tool implementations."""
 
+import datetime
+import decimal
+import uuid
 from typing import Any
 
 import db
 from services.coach_tools.base import ToolResult
 from services.week_review_narrative import _rule_based_narrative
+
+
+def _json_safe(value: Any) -> Any:
+    """Recursively convert a value (row dict, list, or scalar) into
+    something json.dumps can serialize: datetime/date -> isoformat string,
+    Decimal -> float, UUID -> str, everything else unchanged.
+
+    Needed because card_data is json.dumps-ed into chat_messages.tool_calls_json
+    and the SSE stream, and DB rows can carry datetime/Decimal/UUID values."""
+    if isinstance(value, datetime.datetime | datetime.date):
+        return value.isoformat()
+    if isinstance(value, decimal.Decimal):
+        return float(value)
+    if isinstance(value, uuid.UUID):
+        return str(value)
+    if isinstance(value, dict):
+        return {k: _json_safe(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_json_safe(v) for v in value]
+    return value
 
 
 def get_week_impl(user_id: int, week_number: int | None = None) -> ToolResult:
@@ -22,17 +45,9 @@ def get_week_impl(user_id: int, week_number: int | None = None) -> ToolResult:
         "week_number": week,
         "total_distance_km": total_distance_km,
         "total_elevation_gain_m": total_elevation_gain_m,
-        "workouts": [
-            {
-                "day": w.get("day_of_week"),
-                "name": w.get("title"),
-                "workout_type": w.get("type"),
-                "distance_km": w.get("distance_km"),
-                "elevation_gain_m": w.get("elevation_gain_m"),
-                "description": w.get("description"),
-            }
-            for w in workouts
-        ],
+        "plan_start_date": plan.get("start_date"),
+        "race_date": plan.get("race_date"),
+        "workouts": [_json_safe(w) for w in workouts],
     }
     return ToolResult(
         tool_call_id="", name="get_week", status="success", card_type="week_schedule", card_data=card_data
@@ -56,17 +71,9 @@ def week_review_impl(user_id: int, weeks_ago: int = 0) -> ToolResult:
     narrative = _rule_based_narrative(review)
 
     week_label = "Current Week" if weeks_ago == 0 else f"{weeks_ago} Week{'s' if weeks_ago > 1 else ''} Ago"
-    card_data = {
-        "week_label": f"{week_label} (Week {target_week})",
-        "completed_km": review["actual"]["matched_km"],
-        "planned_km": review["planned"]["distance_km"],
-        "compliance_pct": review["completion_pct"],
-        "completed_vert_m": review["actual"]["total_actual_vert_m"],
-        "planned_vert_m": review["planned"]["elevation_gain_m"],
-        "missed_workouts": [w.get("title") for w in review["missed"]],
-        "coach_verdict": narrative.get("summary")
-        or " ".join(narrative.get("highlights", []) + narrative.get("watch", [])),
-    }
+    card_data = _json_safe(review)
+    card_data["narrative"] = narrative
+    card_data["week_label"] = f"{week_label} (Week {target_week})"
     return ToolResult(
         tool_call_id="", name="week_review", status="success", card_type="week_review", card_data=card_data
     )

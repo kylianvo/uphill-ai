@@ -223,3 +223,35 @@ async def test_turn_with_tool_call_persists_tool_calls_json(auth_headers, monkey
     parsed = json.loads(stored) if isinstance(stored, str) else stored
     assert parsed is not None
     assert parsed[0]["name"] == "kb_search"
+
+
+@pytest.mark.asyncio
+async def test_run_turn_constructs_model_with_tools_bound(auth_headers):
+    """Regression test for commit 0772600: run_turn must construct
+    GeminiCoachModel(api_key=..., tools=...) with the per-turn tools when no
+    model is injected. Before that fix, tools were only handed to build_graph,
+    so the real model never gained function-calling ability and could never
+    call a tool -- no test caught it because every other test in this suite
+    injects FakeCoachModel directly, bypassing the GeminiCoachModel
+    construction path entirely."""
+    user_id = auth_headers["user_id"]
+    req_id = uuid.uuid4()
+
+    fake_model = FakeCoachModel(responses=[ModelEvent(kind="text", text="Hello")])
+
+    with patch("services.coach_model.GeminiCoachModel", return_value=fake_model) as mock_ctor:
+        request_data = {
+            "request_id": str(req_id),
+            "message": "What is my tempo pace?",
+            "lang": "en",
+        }
+        events = [e async for e in run_turn(user={"id": user_id}, request=request_data, model=None)]
+
+    assert any(isinstance(e, DoneEvent) for e in events)
+    mock_ctor.assert_called_once()
+    _, kwargs = mock_ctor.call_args
+    assert kwargs.get("api_key")
+    tools = kwargs.get("tools")
+    assert tools
+    tool_names = {t.name for t in tools}
+    assert tool_names == {"get_week", "pace_strategy", "week_review", "kb_search"}

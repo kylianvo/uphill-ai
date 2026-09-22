@@ -62,6 +62,7 @@ def pace_strategy_impl(
     total_distance_km = checkpoints[-1]["distance_meters"] / 1000.0 if checkpoints else matched.distance_km
     card_data = {
         "race_name": matched.race_name,
+        "distance_label": matched.distance_label,
         "total_distance_km": round(total_distance_km, 1) if total_distance_km else matched.distance_km,
         "total_elevation_m": matched.elevation_gain_m,
         "target_time_formatted": f"{int(target_time_hours)}h {round((target_time_hours % 1) * 60)}m"
