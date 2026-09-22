@@ -55,6 +55,11 @@ class TurnState(TypedDict, total=False):
     status: str
     error_code: str | None
 
+    # Sub-project 3: tool loop
+    tool_call_count: int
+    tool_history: list[dict[str, Any]]
+    clarification_options: list[str]
+
 
 # ---------------------------------------------------------------------------
 # Application Event Union
@@ -96,7 +101,34 @@ class ErrorEvent:
     type: str = "error"
 
 
-AppEvent = StatusEvent | TokenEvent | CitationsEvent | DoneEvent | ErrorEvent
+@dataclass(frozen=True)
+class ToolCallEvent:
+    tool_call_id: str
+    name: str
+    args: dict[str, Any]
+    type: str = "tool_call"
+
+
+@dataclass(frozen=True)
+class ToolResultEvent:
+    tool_call_id: str
+    name: str
+    status: Literal["success", "error"]
+    card_type: str | None
+    card_data: dict[str, Any] | None
+    type: str = "tool_result"
+
+
+@dataclass(frozen=True)
+class ClarifyEvent:
+    prompt: str
+    options: list[str]
+    type: str = "clarify"
+
+
+AppEvent = (
+    StatusEvent | TokenEvent | CitationsEvent | ToolCallEvent | ToolResultEvent | ClarifyEvent | DoneEvent | ErrorEvent
+)
 
 
 def _emit_custom(writer: Any, event: dict[str, Any]) -> None:
@@ -141,6 +173,28 @@ def parse_app_event(data: Any) -> AppEvent | None:
         msg_id = data.get("message_id")
         replayed = bool(data.get("replayed", False))
         return DoneEvent(request_id=req_id, message_id=msg_id, replayed=replayed)
+    elif evt_type == "tool_call":
+        return ToolCallEvent(
+            tool_call_id=str(data.get("tool_call_id", "")),
+            name=str(data.get("name", "")),
+            args=dict(data.get("args") or {}),
+        )
+    elif evt_type == "tool_result":
+        status = data.get("status")
+        if status not in ("success", "error"):
+            return None
+        return ToolResultEvent(
+            tool_call_id=str(data.get("tool_call_id", "")),
+            name=str(data.get("name", "")),
+            status=status,
+            card_type=data.get("card_type"),
+            card_data=data.get("card_data"),
+        )
+    elif evt_type == "clarify":
+        return ClarifyEvent(
+            prompt=str(data.get("prompt", "")),
+            options=list(data.get("options") or []),
+        )
     elif evt_type == "error":
         code = str(data.get("code", "unknown_error"))
         msg = data.get("message")
