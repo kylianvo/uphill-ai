@@ -168,4 +168,71 @@ describe("ChatTab", () => {
 
     expect(mockSend).toHaveBeenCalledWith("How do I build aerobic capacity?");
   });
+
+  it("renders a RichCardRenderer card when an assistant message has toolCalls", () => {
+    vi.mocked(useCoachChatModule.useCoachChat).mockReturnValue({
+      ...defaultHookReturn,
+      messages: [
+        {
+          role: "assistant",
+          content: "Here's week 4.",
+          toolCalls: [
+            {
+              type: "tool_result",
+              tool_call_id: "call_1",
+              name: "get_week",
+              status: "success",
+              card_type: "week_schedule",
+              card_data: { week_number: 4, total_distance_km: 48.5, total_elevation_gain_m: 1650, workouts: [] },
+            },
+          ],
+        },
+      ],
+    });
+    renderWithContext(<ChatTab isMobile={false} />);
+    expect(screen.getByText(/Week 4/)).toBeDefined();
+  });
+
+  it("renders Open in Pace Strategy button in a pacing splits card", () => {
+    vi.mocked(useCoachChatModule.useCoachChat).mockReturnValue({
+      ...defaultHookReturn,
+      messages: [
+        {
+          role: "assistant",
+          content: "Here's your pacing plan.",
+          toolCalls: [
+            {
+              type: "tool_result",
+              tool_call_id: "call_2",
+              name: "pace_strategy",
+              status: "success",
+              card_type: "pacing_splits",
+              card_data: { race_name: "Dalat Ultra Trail 70K", total_distance_km: 71.2, splits: [] },
+            },
+          ],
+        },
+      ],
+    });
+
+    renderWithContext(<ChatTab isMobile={false} />);
+
+    const btn = screen.getByText("Open in Pace Strategy");
+    expect(btn).toBeDefined();
+    expect(btn.tagName).toBe("BUTTON");
+  });
+
+  it("shows clarification chips and sends the selected option on click", () => {
+    const dismissClarify = vi.fn();
+
+    vi.mocked(useCoachChatModule.useCoachChat).mockReturnValue({
+      ...defaultHookReturn,
+      clarifyOptions: ["Dalat Ultra Trail", "VMM"],
+      dismissClarify,
+      send: mockSend,
+    });
+    renderWithContext(<ChatTab isMobile={false} />);
+    fireEvent.click(screen.getByText("Dalat Ultra Trail"));
+    expect(mockSend).toHaveBeenCalledWith("Dalat Ultra Trail");
+    expect(dismissClarify).toHaveBeenCalled();
+  });
 });

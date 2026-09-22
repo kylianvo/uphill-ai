@@ -5,9 +5,12 @@ import { translations } from "../app/translations";
 import { useCoachChat } from "../hooks/useCoachChat";
 import ChatSources from "../components/ChatSources";
 import { CitationItem } from "../lib/coachChatStream";
+import RichCardRenderer from "../components/RichCardRenderer";
+import ToolExecutionPill from "../components/ToolExecutionPill";
+import ClarificationChipsBar from "../components/ClarificationChipsBar";
 
 export default function ChatTab({ isMobile }: { isMobile: boolean }) {
-  const { lang } = useAppContext();
+  const { lang, setPaceHandoff, setIsPaceStrategyOpen, handleTabSwitch } = useAppContext();
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const [inputText, setInputText] = useState("");
   const [isSourcesOpen, setIsSourcesOpen] = useState(false);
@@ -30,6 +33,8 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
     selectedMessageSources,
     fetchMessageSources,
     clearMessageSources,
+    clarifyOptions,
+    dismissClarify,
   } = useCoachChat();
 
   const t = (key: keyof typeof translations.en) =>
@@ -339,6 +344,20 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
                     : msg.content}
                 </div>
 
+                {msg.role === "assistant" &&
+                  msg.toolCalls?.map((tc) => (
+                    <RichCardRenderer
+                      key={tc.tool_call_id}
+                      result={tc}
+                      lang={lang}
+                      onOpenPaceStrategy={(payload) => {
+                        setPaceHandoff(payload);
+                        setIsPaceStrategyOpen(true);
+                        handleTabSwitch("tools");
+                      }}
+                    />
+                  ))}
+
                 {/* Assistant footer: interrupted badge, retry button, sources button */}
                 {msg.role === "assistant" && (
                   <div
@@ -479,6 +498,14 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
 
             <div ref={chatBottomRef} />
           </div>
+
+          <ClarificationChipsBar
+            options={clarifyOptions || []}
+            onSelect={(option) => {
+              dismissClarify();
+              send(option);
+            }}
+          />
 
           {/* Quick preset prompts */}
           <div
