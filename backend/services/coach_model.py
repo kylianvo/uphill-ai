@@ -62,14 +62,29 @@ class FakeCoachModel:
         self.token_count = token_count
         self.closed = False
         self.requests: list[ModelRequest] = []
+        self._cursor = 0
 
     async def count_tokens(self, request: ModelRequest) -> int:
         return self.token_count
 
     async def stream(self, request: ModelRequest) -> AsyncIterator[ModelEvent]:
         self.requests.append(request)
-        for event in self.responses:
-            yield event
+        # Each call yields exactly one "round" of a real model turn: either a
+        # contiguous run of tool_call events (a model requesting one or more
+        # parallel tool calls, stopping before it would also stream a final
+        # answer in the same generation -- matching real Gemini function-
+        # calling behavior), or everything remaining when the cursor is
+        # already past the tool-call region (text/usage, drained to the end).
+        if self._cursor >= len(self.responses):
+            return
+        if self.responses[self._cursor].kind == "tool_call":
+            while self._cursor < len(self.responses) and self.responses[self._cursor].kind == "tool_call":
+                yield self.responses[self._cursor]
+                self._cursor += 1
+        else:
+            while self._cursor < len(self.responses):
+                yield self.responses[self._cursor]
+                self._cursor += 1
 
     async def close(self) -> None:
         self.closed = True

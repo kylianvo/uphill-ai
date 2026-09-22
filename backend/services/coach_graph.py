@@ -59,6 +59,7 @@ class TurnState(TypedDict, total=False):
     tool_call_count: int
     tool_history: list[dict[str, Any]]
     clarification_options: list[str]
+    pending_tool_calls: list[dict[str, Any]]
 
 
 # ---------------------------------------------------------------------------
@@ -287,7 +288,10 @@ def _make_retrieve_node(
     return retrieve_node
 
 
-def _make_generate_node(model: CoachModel):
+_TOOL_CALL_CAP = 4
+
+
+def _make_generate_node(model: CoachModel, has_tools: bool = False):
     async def generate_node(state: TurnState, writer: Any = None) -> dict[str, Any]:
         req_id = state.get("request_id", "")
         _emit_custom(writer, {"type": "status", "step": "generating", "request_id": req_id})
@@ -311,6 +315,7 @@ def _make_generate_node(model: CoachModel):
 
         accumulated: list[str] = []
         final_usage: Usage | None = None
+        pending_tool_calls: list[dict[str, Any]] = []
 
         stream_gen = model.stream(model_request)
         try:
@@ -321,10 +326,25 @@ def _make_generate_node(model: CoachModel):
                 elif event.kind == "usage":
                     final_usage = event.usage
                 elif event.kind == "tool_call":
-                    raise ToolCallsNotSupportedError("Tool calls are rejected in Coach Chat Foundation.")
+                    if not has_tools:
+                        raise ToolCallsNotSupportedError("Tool calls are rejected: this graph has no tools bound.")
+                    pending_tool_calls.append(event.tool_call)
         finally:
             if hasattr(stream_gen, "aclose"):
                 await stream_gen.aclose()
+
+        if pending_tool_calls:
+            for tc in pending_tool_calls:
+                _emit_custom(
+                    writer,
+                    {
+                        "type": "tool_call",
+                        "tool_call_id": tc.get("id", ""),
+                        "name": tc.get("name", ""),
+                        "args": tc.get("args", {}),
+                    },
+                )
+            return {"pending_tool_calls": pending_tool_calls, "usage": final_usage}
 
         full_reply = "".join(accumulated)
 
@@ -346,23 +366,113 @@ def _make_generate_node(model: CoachModel):
             "citations": citations,
             "usage": final_usage,
             "status": "ok",
+            "pending_tool_calls": [],
         }
 
     return generate_node
+
+
+def _make_tool_node(tools: list[Any]):
+    tools_by_name = {t.name: t for t in tools}
+
+    async def tool_node(state: TurnState, writer: Any = None) -> dict[str, Any]:
+        pending_all = state.get("pending_tool_calls") or []
+        history = list(state.get("tool_history") or [])
+        count = state.get("tool_call_count", 0)
+        remaining_budget = max(0, _TOOL_CALL_CAP - count)
+        pending = pending_all[:remaining_budget]
+
+        async def run_one(tc: dict[str, Any]) -> dict[str, Any]:
+            tool = tools_by_name.get(tc.get("name", ""))
+            if tool is None:
+                result = {
+                    "tool_call_id": tc.get("id", ""),
+                    "name": tc.get("name", ""),
+                    "status": "error",
+                    "card_type": None,
+                    "card_data": None,
+                    "error": "unknown_tool",
+                }
+            else:
+                try:
+                    raw = await asyncio.wait_for(tool.ainvoke(tc.get("args") or {}), timeout=5.0)
+                    result = dict(raw)
+                    result["tool_call_id"] = tc.get("id", "")
+                except Exception as exc:
+                    result = {
+                        "tool_call_id": tc.get("id", ""),
+                        "name": tc.get("name", ""),
+                        "status": "error",
+                        "card_type": None,
+                        "card_data": None,
+                        "error": type(exc).__name__,
+                    }
+            _emit_custom(
+                writer,
+                {
+                    "type": "tool_result",
+                    "tool_call_id": result["tool_call_id"],
+                    "name": result["name"],
+                    "status": result["status"],
+                    "card_type": result.get("card_type"),
+                    "card_data": result.get("card_data"),
+                },
+            )
+            return result
+
+        results = await asyncio.gather(*(run_one(tc) for tc in pending))
+        history.extend(results)
+
+        # Feed results back as a synthetic user-visible summary the model
+        # continues from -- ChatMessage keeps this provider-neutral (no
+        # LangChain ToolMessage type leaking into TurnState).
+        summary_lines = [f"[Tool {r['name']} result]: {r.get('card_data') or r.get('error')}" for r in results]
+        existing_messages = list(state.get("messages") or [])
+        existing_messages.append(ChatMessage(role="user", content="\n".join(summary_lines)))
+
+        return {
+            "tool_history": history,
+            "tool_call_count": count + len(pending),
+            "messages": existing_messages,
+            "pending_tool_calls": [],
+        }
+
+    return tool_node
+
+
+def _tools_condition(state: TurnState) -> Literal["tools", "END"]:
+    pending = state.get("pending_tool_calls") or []
+    if not pending:
+        return "END"
+    if state.get("tool_call_count", 0) >= _TOOL_CALL_CAP:
+        return "END"
+    return "tools"
 
 
 def build_graph(
     model: CoachModel,
     retrieve_fn: Callable[..., Any] | None = None,
     assemble_context_fn: Callable[..., Any] | None = None,
+    tools: list[Any] | None = None,
 ):
-    """Build and compile the linear retrieve-generate StateGraph without checkpointer."""
+    """Build and compile the retrieve-generate StateGraph. When tools is
+    given, adds a hand-rolled tool loop (generate -> tools_condition ->
+    tool_node -> generate), capped at _TOOL_CALL_CAP calls -- not
+    langgraph.prebuilt.ToolNode/tools_condition, which assume native
+    LangChain BaseMessage.tool_calls state (see plan header)."""
     workflow = StateGraph(TurnState)
     workflow.add_node("retrieve", _make_retrieve_node(retrieve_fn, assemble_context_fn))
-    workflow.add_node("generate", _make_generate_node(model))
+    workflow.add_node("generate", _make_generate_node(model, has_tools=bool(tools)))
     workflow.add_edge(START, "retrieve")
     workflow.add_edge("retrieve", "generate")
-    workflow.add_edge("generate", END)
+
+    if tools:
+        workflow.add_node("tools", _make_tool_node(tools))
+        workflow.add_conditional_edges("generate", _tools_condition, {"tools": "tools", "END": END})
+        workflow.add_edge("tools", "generate")
+    else:
+        workflow.add_edge("generate", END)
+
     return workflow.compile()
 
 
