@@ -87,6 +87,7 @@ from parsers.fit_parser import FitParser
 from parsers.gpx_parser import GpxParser
 from routers.analytics import router as analytics_router
 from routers.integrations import router as integrations_router
+from services import observability
 from services.auth_service import hash_password, verify_password
 from services.calendar_service import CalendarService
 from services.gear_planner import GearParams, gear_planner
@@ -127,10 +128,17 @@ app.add_middleware(
 Instrumentator().instrument(app).expose(app, include_in_schema=False, should_gzip=True)
 
 
-# Initialize SQLite database on startup
+# Initialize the database schema and LLM observability on startup
 @app.on_event("startup")
 def startup_event():
     init_db()
+    observability.init()
+
+
+# Deliver any spans still batched in memory before the process exits
+@app.on_event("shutdown")
+def shutdown_event():
+    observability.flush()
 
 
 # google-genai's Client is constructed per-request (see chat/plan endpoints below,

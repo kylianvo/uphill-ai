@@ -1,0 +1,123 @@
+"""Cost per call. Expected values are hand-computed from the price table in the spec:
+gemini-3.8-flash through 2026-12-31: input 0.75, cached 0.075, output 3.75 (USD/1M);
+from 2027-01-01: input 1.50, cached 0.15, output 7.50. Output price covers thinking."""
+
+import json
+from datetime import date
+
+import pytest
+
+import config
+from services import observability as obs
+
+settings = config.settings
+
+# 10k prompt tokens of which 2k cached, 1k output, 500 thinking.
+USAGE = obs.Usage(input_tokens=10_000, output_tokens=1_000, thinking_tokens=500, cached_tokens=2_000)
+
+
+def test_intro_pricing_subtracts_cached_tokens_and_bills_thinking_as_output():
+    # 8000*0.75 + 2000*0.075 + 1500*3.75 = 6000 + 150 + 5625 = 11775 -> /1e6
+    assert obs.cost_usd("gemini-3.8-flash", USAGE, on=date(2026, 9, 16)) == 0.011775
+
+
+def test_last_day_of_intro_window_still_uses_intro_price():
+    assert obs.cost_usd("gemini-3.8-flash", USAGE, on=date(2026, 12, 31)) == 0.011775
+
+
+def test_standard_pricing_applies_from_2027():
+    # 8000*1.50 + 2000*0.15 + 1500*7.50 = 12000 + 300 + 11250 = 23550 -> /1e6
+    assert obs.cost_usd("gemini-3.8-flash", USAGE, on=date(2027, 1, 1)) == 0.02355
+
+
+def test_unknown_model_is_unpriced_not_guessed():
+    assert obs.cost_usd("some-other-model", USAGE, on=date(2026, 9, 16)) is None
+
+
+def test_open_ended_window_from_an_overridden_table(monkeypatch):
+    monkeypatch.setattr(
+        settings, "LLM_PRICES_USD_PER_M", {"custom-model": [{"input": 1.0, "cached_input": 0.5, "output": 2.0}]}
+    )
+    usage = obs.Usage(input_tokens=1_000_000, output_tokens=250_000, thinking_tokens=250_000)
+
+    # 1M*1.0 + 0 + 500k*2.0 = 2,000,000 -> /1e6
+    assert obs.cost_usd("custom-model", usage, on=date(2030, 1, 1)) == 2.0
+
+
+def test_empty_price_override_is_honored():
+    assert config._parse_llm_prices("{}") == {}
+
+
+def test_adjacent_price_windows_are_valid():
+    table = {
+        "custom-model": [
+            {"until": "2026-12-31", "input": 1.0, "cached_input": 0.5, "output": 2.0},
+            {"from": "2027-01-01", "input": 2.0, "cached_input": 1.0, "output": 4.0},
+        ]
+    }
+
+    assert config._parse_llm_prices(json.dumps(table)) == table
+
+
+@pytest.mark.parametrize(
+    "windows",
+    [
+        [
+            {
+                "from": "2027-01-02",
+                "until": "2027-01-01",
+                "input": 1.0,
+                "cached_input": 0.5,
+                "output": 2.0,
+            }
+        ],
+        [
+            {"until": "2026-12-31", "input": 1.0, "cached_input": 0.5, "output": 2.0},
+            {"from": "2026-12-31", "input": 2.0, "cached_input": 1.0, "output": 4.0},
+        ],
+        [
+            {"from": "2027-01-01", "input": 1.0, "cached_input": 0.5, "output": 2.0},
+            {
+                "from": "2028-01-01",
+                "until": "2028-12-31",
+                "input": 2.0,
+                "cached_input": 1.0,
+                "output": 4.0,
+            },
+        ],
+        [
+            {"input": 1.0, "cached_input": 0.5, "output": 2.0},
+            {"from": "2027-01-01", "input": 2.0, "cached_input": 1.0, "output": 4.0},
+        ],
+    ],
+    ids=["inverted", "inclusive-overlap", "open-ended-overlap", "unbounded-overlap"],
+)
+def test_invalid_or_overlapping_price_windows_fall_back_to_defaults(windows, caplog):
+    raw = json.dumps({"custom-model": windows})
+
+    assert config._parse_llm_prices(raw) == config.DEFAULT_LLM_PRICES_USD_PER_M
+    assert "LLM_PRICES_JSON" in caplog.text
+
+
+def test_malformed_price_override_warns_without_logging_its_content(caplog):
+    secret = "CANARY-price-config-secret"
+
+    parsed = config._parse_llm_prices(f"not-json-{secret}")
+
+    assert parsed == config.DEFAULT_LLM_PRICES_USD_PER_M
+    assert secret not in caplog.text
+    assert "LLM_PRICES_JSON" in caplog.text
+
+
+@pytest.mark.parametrize("invalid_rate", [-1, True, float("inf"), float("nan"), "1.0"])
+def test_invalid_price_rates_fall_back_to_verified_defaults(invalid_rate, caplog):
+    raw = json.dumps(
+        {
+            "custom-model": [
+                {"input": invalid_rate, "cached_input": 0.5, "output": 2.0},
+            ]
+        }
+    )
+
+    assert config._parse_llm_prices(raw) == config.DEFAULT_LLM_PRICES_USD_PER_M
+    assert "LLM_PRICES_JSON" in caplog.text

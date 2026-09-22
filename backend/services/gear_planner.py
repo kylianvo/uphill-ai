@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from config import settings
 from log_utils import get_logger
+from services import observability
 
 _logger = get_logger(__name__)
 
@@ -133,7 +134,12 @@ class GearPlannerService:
             raise RuntimeError("gear KB is empty — run POST /api/kb/distill or /api/kb/import first.")
         catalog_context = render_catalog_context(chunks, "gear")
 
-        prompt = f"""You are an expert running shoe specialist recommending shoes that match an athlete's criteria.
+        with observability.trace(
+            "gear_finder",
+            feature="gear_finder",
+            metadata={"catalog_entries": len(chunks), "cache_hit": False},
+        ):
+            prompt = f"""You are an expert running shoe specialist recommending shoes that match an athlete's criteria.
 
 {catalog_context}
 NEVER invent a shoe model, spec, or price that isn't in the knowledge base above — if you're not confident a detail is accurate, omit that field or say so in "cons" rather than guessing.
@@ -144,80 +150,88 @@ MATCHING: weigh each catalog entry's own fields against the athlete's criteria �
 
 {self._criteria_block(params)}{self._course_context_block(matched_course)}"""
 
-        _logger.info(
-            "gemini prompt sent",
-            extra={
-                "fields": {
-                    "service": "gear_finder",
-                    "engine": "gemini",
-                    "event": "prompt_sent",
-                    "chars_sent": len(prompt),
-                    "catalog_entries": len(chunks),
-                }
-            },
-        )
-        client = genai.Client(api_key=api_key)
-
-        rag_attempts_total.labels(service="gear_finder", engine="gemini", status="attempt").inc()
-        _start = time.time()
-        try:
-            response = await asyncio.to_thread(
-                client.models.generate_content,
-                model=settings.GEMINI_MODEL,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema=GearResponse,
-                    temperature=0.2,
-                    thinking_config=types.ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL),
-                ),
-            )
-            _latency = time.time() - _start
-            rag_latency_seconds.labels(service="gear_finder", engine="gemini").observe(_latency)
-            rag_attempts_total.labels(service="gear_finder", engine="gemini", status="success").inc()
             _logger.info(
-                "gemini response received",
+                "gemini prompt sent",
                 extra={
                     "fields": {
                         "service": "gear_finder",
                         "engine": "gemini",
-                        "event": "response_received",
-                        "chars_received": len(response.text),
-                        "latency_ms": round(_latency * 1000),
+                        "event": "prompt_sent",
+                        "chars_sent": len(prompt),
+                        "catalog_entries": len(chunks),
                     }
                 },
             )
-        except Exception as _gemini_ex:
-            rag_attempts_total.labels(service="gear_finder", engine="gemini", status="error").inc()
-            _logger.error(
-                "gemini request failed",
-                extra={
-                    "fields": {
-                        "service": "gear_finder",
-                        "engine": "gemini",
-                        "event": "error",
-                        "error": str(_gemini_ex),
-                    }
-                },
-                exc_info=True,
-            )
-            raise
+            client = genai.Client(api_key=api_key)
 
-        parsed = json.loads(response.text)
-        parsed["matched_race"] = matched_course.to_dict() if matched_course else None
-        _GEAR_CACHE[cache_key] = json.dumps(parsed)
-        _logger.info(
-            "gemini recommendations parsed",
-            extra={
-                "fields": {
-                    "service": "gear_finder",
-                    "engine": "gemini",
-                    "event": "parsed",
-                    "recommendation_count": len(parsed.get("recommendations", [])),
-                }
-            },
-        )
-        return parsed
+            rag_attempts_total.labels(service="gear_finder", engine="gemini", status="attempt").inc()
+            _start = time.time()
+            try:
+                with observability.generation(
+                    "generation",
+                    feature="gear_finder",
+                    model=settings.GEMINI_MODEL,
+                    metadata={"tier": "primary"},
+                ) as generation:
+                    response = await asyncio.to_thread(
+                        client.models.generate_content,
+                        model=settings.GEMINI_MODEL,
+                        contents=prompt,
+                        config=types.GenerateContentConfig(
+                            response_mime_type="application/json",
+                            response_schema=GearResponse,
+                            temperature=0.2,
+                            thinking_config=types.ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL),
+                        ),
+                    )
+                    generation.set_usage(observability.Usage.from_genai(response.usage_metadata))
+                _latency = time.time() - _start
+                rag_latency_seconds.labels(service="gear_finder", engine="gemini").observe(_latency)
+                rag_attempts_total.labels(service="gear_finder", engine="gemini", status="success").inc()
+                _logger.info(
+                    "gemini response received",
+                    extra={
+                        "fields": {
+                            "service": "gear_finder",
+                            "engine": "gemini",
+                            "event": "response_received",
+                            "chars_received": len(response.text),
+                            "latency_ms": round(_latency * 1000),
+                        }
+                    },
+                )
+            except Exception as _gemini_ex:
+                rag_attempts_total.labels(service="gear_finder", engine="gemini", status="error").inc()
+                _logger.error(
+                    "gemini request failed",
+                    extra={
+                        "fields": {
+                            "service": "gear_finder",
+                            "engine": "gemini",
+                            "event": "error",
+                            "error": str(_gemini_ex),
+                        }
+                    },
+                    exc_info=True,
+                )
+                raise
+
+            parsed = json.loads(response.text)
+            parsed["matched_race"] = matched_course.to_dict() if matched_course else None
+            _GEAR_CACHE[cache_key] = json.dumps(parsed)
+            _logger.info(
+                "gemini recommendations parsed",
+                extra={
+                    "fields": {
+                        "service": "gear_finder",
+                        "engine": "gemini",
+                        "event": "parsed",
+                        "recommendation_count": len(parsed.get("recommendations", [])),
+                    }
+                },
+            )
+            return parsed
 
 
 gear_planner = GearPlannerService()
+GearPlanner = GearPlannerService

@@ -4,7 +4,7 @@ pydantic>=2.0.0
 python-dotenv>=1.0.0
 fitparse>=1.2.0
 gpxpy>=1.6.2
-google-genai>=1.0.0
+google-genai>=2.0.0
 python-multipart
 pypdf
 beautifulsoup4
@@ -45,3 +45,21 @@ pytz
 # has no protobuf dependency, so that specific conflict is gone, but
 # scripts/run_dw_elt.py still runs dbt from an isolated venv at ./warehouse/.venv
 # and hasn't been re-evaluated for merging back into this file's dependency tree.
+# LLM observability -- imported ONLY by services/observability.py, lazily, so a stale
+# prod image without these degrades to "observability disabled" instead of crashing.
+# Exact pins: requirements.txt gaps have taken prod down three times, and these pull in
+# the OpenTelemetry stack. openinference-instrumentation-google-genai 1.4.7 requires
+# google-genai>=2.0.0. See docs/superpowers/specs/llm-observability-design.md.
+langfuse==4.15.3
+openinference-instrumentation-google-genai==1.4.7
+# Second OpenInference instrumentor: the chat agent (backend/services/coach_chat.py)
+# runs on LangGraph for provider-agnosticism (roadmap decision 16/17), so it needs its
+# own auto-instrumentation alongside the google-genai one that covers Plan Gen/Gear/
+# Nutrition's direct Gemini calls. langchain_core is declared as an optional "instruments"
+# extra upstream, but the package's own __init__.py imports it unconditionally, so it is
+# a real runtime dependency here -- pinned explicitly, not left to the extra.
+openinference-instrumentation-langchain==0.1.76
+langchain-core==1.6.3
+opentelemetry-api==1.44.0
+opentelemetry-exporter-otlp-proto-http==1.44.0
+opentelemetry-sdk==1.44.0
