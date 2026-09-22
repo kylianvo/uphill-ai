@@ -478,6 +478,7 @@ def init_db():
             cost_usd                NUMERIC(10, 6),
             latency_ms              INTEGER,
             trace_id                TEXT,
+            tool_calls_json         JSONB DEFAULT NULL,
             created_at              TIMESTAMPTZ DEFAULT NOW()
         )
         """)
@@ -487,6 +488,8 @@ def init_db():
                 "CREATE INDEX IF NOT EXISTS idx_chat_messages_thread_created ON chat_messages (thread_id, created_at DESC)"
             )
         )
+        conn.execute(text("ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS tool_calls_json JSONB DEFAULT NULL"))
+        conn.commit()
 
         try:
             conn.execute(
@@ -4034,6 +4037,7 @@ def update_chat_message(
     cost_usd: Any = None,
     latency_ms: int | None = None,
     trace_id: str | None = None,
+    tool_calls_json: Any = None,
     **kwargs: Any,
 ) -> None:
     fields: dict[str, Any] = dict(kwargs)
@@ -4061,6 +4065,8 @@ def update_chat_message(
         fields["latency_ms"] = latency_ms
     if trace_id is not None:
         fields["trace_id"] = trace_id
+    if tool_calls_json is not None:
+        fields["tool_calls_json"] = tool_calls_json
 
     if not fields:
         return
@@ -4079,13 +4085,14 @@ def update_chat_message(
         "cost_usd",
         "latency_ms",
         "trace_id",
+        "tool_calls_json",
     }
     set_clauses = []
     params: dict[str, Any] = {"mid": message_id}
 
     for col, val in fields.items():
         if col in valid_cols:
-            if col in ("evidence", "citations", "usage") and isinstance(val, dict | list):
+            if col in ("evidence", "citations", "usage", "tool_calls_json") and isinstance(val, dict | list):
                 val = json.dumps(val)
             set_clauses.append(f"{col} = :{col}")
             params[col] = val
@@ -4126,7 +4133,7 @@ def get_chat_message(message_id: int, user_id: int | None = None) -> dict[str, A
         if not row:
             return None
         res = _row_to_dict(row)
-        for json_col in ("evidence", "citations", "usage"):
+        for json_col in ("evidence", "citations", "usage", "tool_calls_json"):
             if isinstance(res.get(json_col), str):
                 try:
                     res[json_col] = json.loads(res[json_col])
@@ -4160,7 +4167,7 @@ def get_chat_thread_messages(
         result = []
         for r in rows:
             d = _row_to_dict(r)
-            for json_col in ("evidence", "citations", "usage"):
+            for json_col in ("evidence", "citations", "usage", "tool_calls_json"):
                 if isinstance(d.get(json_col), str):
                     try:
                         d[json_col] = json.loads(d[json_col])
