@@ -1336,6 +1336,30 @@ def get_plan_workouts(plan_id: int) -> list[dict[str, Any]]:
 get_workouts_for_plan = get_plan_workouts
 
 
+def get_plan_workouts_for_week(plan_id: int, week_number: int) -> list[dict[str, Any]]:
+    """Scoped to one week -- not get_plan_workouts(plan_id), which pulls every
+    week of the plan just to filter one out in Python (same reasoning as
+    get_week_review's own week-scoped query)."""
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("""
+            SELECT * FROM workouts WHERE plan_id = :plan_id AND week_number = :week_number
+            ORDER BY
+            CASE day_of_week
+              WHEN 'Monday'    THEN 1
+              WHEN 'Tuesday'   THEN 2
+              WHEN 'Wednesday' THEN 3
+              WHEN 'Thursday'  THEN 4
+              WHEN 'Friday'    THEN 5
+              WHEN 'Saturday'  THEN 6
+              WHEN 'Sunday'    THEN 7
+            END ASC
+        """),
+            {"plan_id": plan_id, "week_number": week_number},
+        ).fetchall()
+    return [_row_to_dict(r) for r in rows]
+
+
 def update_workout_log(
     workout_id: int,
     is_completed: int | None = None,
