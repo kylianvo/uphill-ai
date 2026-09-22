@@ -12,7 +12,7 @@ import db
 from config import settings
 from db import CoachChatError
 from log_utils import get_logger
-from services import coach_context, kb_retrieval, observability
+from services import coach_context, coach_tools, kb_retrieval, observability
 from services.coach_graph import (
     AppEvent,
     CitationsEvent,
@@ -20,6 +20,7 @@ from services.coach_graph import (
     ErrorEvent,
     StatusEvent,
     TokenEvent,
+    ToolResultEvent,
     TurnState,
     astream_turn_graph,
     build_graph,
@@ -257,7 +258,9 @@ async def run_turn(
                 return kb_retrieval.search_principles(query=q, api_key=api_key)
             return []
 
-        graph = build_graph(model=model, retrieve_fn=_retrieve_kb)
+        api_key = user.get("gemini_api_key") or settings.GEMINI_API_KEY
+        tools = coach_tools.build_tools(user_id=user_id, kb_api_key=api_key) if api_key else []
+        graph = build_graph(model=model, retrieve_fn=_retrieve_kb, tools=tools or None)
         call_id = uuid4()
         initial_state: TurnState = {
             "user_id": user_id,
@@ -273,6 +276,7 @@ async def run_turn(
         last_persisted_time = time.monotonic()
         last_persisted_len = 0
         final_citations: list[dict[str, Any]] = []
+        final_tool_history: list[dict[str, Any]] = []
 
         try:
             async with asyncio.timeout(settings.COACH_CHAT_TURN_TIMEOUT_SECONDS):
@@ -289,6 +293,17 @@ async def run_turn(
                     elif isinstance(event, CitationsEvent):
                         final_citations = event.citations
                         yield event
+                    elif isinstance(event, ToolResultEvent):
+                        final_tool_history.append(
+                            {
+                                "tool_call_id": event.tool_call_id,
+                                "name": event.name,
+                                "status": event.status,
+                                "card_type": event.card_type,
+                                "card_data": event.card_data,
+                            }
+                        )
+                        yield event
                     else:
                         yield event
 
@@ -300,6 +315,7 @@ async def run_turn(
                 content=full_text,
                 status="ok",
                 citations=final_citations,
+                tool_calls_json=final_tool_history or None,
             )
 
             # 2. Finalize turn in DB

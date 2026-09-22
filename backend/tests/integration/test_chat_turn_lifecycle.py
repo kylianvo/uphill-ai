@@ -180,3 +180,46 @@ async def test_turn_lifecycle_db_finalization_failure_emits_no_done(auth_headers
 
         # Confirm done event was NEVER emitted
         assert not any(isinstance(e, DoneEvent) for e in events)
+
+
+@pytest.mark.asyncio
+async def test_turn_with_tool_call_persists_tool_calls_json(auth_headers, monkeypatch):
+    import json
+
+    from services.coach_model import ModelEvent
+
+    user_id = auth_headers["user_id"]
+    req_id = uuid.uuid4()
+
+    fake_model = FakeCoachModel(
+        responses=[
+            ModelEvent(kind="tool_call", tool_call={"id": "call_1", "name": "kb_search", "args": {"query": "zone 2"}}),
+            ModelEvent(kind="text", text="Here's what I found."),
+            ModelEvent(kind="usage", usage=Usage(input_tokens=80, output_tokens=20)),
+        ]
+    )
+
+    from services.coach_tools.base import ToolResult
+
+    monkeypatch.setattr(
+        "services.coach_tools.knowledge_tools.kb_search_impl",
+        lambda **kwargs: ToolResult(
+            tool_call_id="",
+            name="kb_search",
+            status="success",
+            card_type="knowledge_citations",
+            card_data={"citations": []},
+        ),
+    )
+
+    request_data = {"request_id": str(req_id), "message": "What does Scott Johnston say about Zone 2?", "lang": "en"}
+    events = [e async for e in run_turn(user={"id": user_id}, request=request_data, model=fake_model)]
+
+    done_events = [e for e in events if isinstance(e, DoneEvent)]
+    assert len(done_events) == 1
+
+    assistant_msg = db.get_chat_message(done_events[0].message_id)
+    stored = assistant_msg["tool_calls_json"]
+    parsed = json.loads(stored) if isinstance(stored, str) else stored
+    assert parsed is not None
+    assert parsed[0]["name"] == "kb_search"
