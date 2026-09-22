@@ -2,7 +2,7 @@
 
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
-from typing import Any, Literal, Protocol
+from typing import Any, Literal, Protocol, runtime_checkable
 from uuid import UUID
 
 from services import observability
@@ -47,6 +47,7 @@ class ModelEvent:
     tool_call: dict[str, Any] | None = None
 
 
+@runtime_checkable
 class CoachModel(Protocol):
     async def count_tokens(self, request: ModelRequest) -> int: ...
     async def stream(self, request: ModelRequest) -> AsyncIterator[ModelEvent]: ...
@@ -138,6 +139,7 @@ class GeminiCoachModel:
             model=self.model,
             metadata={"call_id": str(request.call_id)},
         ) as gen:
+            final_usage: Usage | None = None
             try:
                 stream_iter = chat.astream(lc_messages)
                 async for chunk in stream_iter:
@@ -184,14 +186,21 @@ class GeminiCoachModel:
                             thinking_tokens=thinking_tokens,
                             cached_tokens=cached_tokens,
                         )
+                        # Captured immediately (before the stream can fail later) so a
+                        # mid-stream error still leaves the latest usage on the trace.
                         gen.set_usage(norm_usage)
-                        yield ModelEvent(kind="usage", usage=norm_usage)
+                        final_usage = norm_usage
 
             except ToolCallsNotSupportedError:
                 raise
             except Exception as exc:
                 err_type = type(exc).__name__
                 raise CoachModelUpstreamError(err_type, error_type=err_type) from None
+
+            # Emitted once, using the last (cumulative) usage seen, so callers never
+            # double-count a provider that reports usage on more than one chunk.
+            if final_usage is not None:
+                yield ModelEvent(kind="usage", usage=final_usage)
 
     async def close(self) -> None:
         self._closed = True

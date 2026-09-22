@@ -1,7 +1,5 @@
 """Unit tests for the typed LangGraph runner in Coach Chat Foundation."""
 
-import asyncio
-from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
@@ -184,10 +182,24 @@ async def test_graph_private_state_and_usage_finalization():
     }
 
     final_state = {}
-    async for mode, payload in graph.astream(initial_state, stream_mode=["custom", "updates"], version="v2"):
-        if mode == "updates":
-            for node_name, updates in payload.items():
-                final_state.update(updates)
+
+    async def collect_updates(state: TurnState):
+        # Mirrors astream_turn_graph's own chunk-shape normalization (dict, 2-tuple,
+        # or 3-tuple depending on LangGraph's namespaced/non-namespaced streaming).
+        async for chunk in graph.astream(state, stream_mode=["custom", "updates"], version="v2"):
+            if isinstance(chunk, dict):
+                mode, payload = chunk.get("type"), chunk.get("data")
+            elif isinstance(chunk, tuple | list) and len(chunk) == 3:
+                mode, payload = chunk[0], chunk[2]
+            elif isinstance(chunk, tuple | list) and len(chunk) == 2:
+                mode, payload = chunk
+            else:
+                continue
+            if mode == "updates":
+                for _node_name, updates in payload.items():
+                    final_state.update(updates)
+
+    await collect_updates(initial_state)
 
     assert final_state.get("reply_text") == "Generated answer"
     assert final_state.get("usage") == Usage(input_tokens=150, output_tokens=45, thinking_tokens=0)

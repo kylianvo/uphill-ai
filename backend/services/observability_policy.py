@@ -170,6 +170,11 @@ _GENERATION_STATUSES = frozenset({"ok", "error", "attempt", "success", "used", "
 _LANGUAGES = frozenset({"en", "vi"})
 _COLLECTIONS = frozenset({"uphill_kb_scheduler", "uphill_kb_nutrition_principles"})
 _CHUNK_REF_RE = re.compile(r"^[0-9a-f]{12}$")
+_PROMPT_NAMES = frozenset({"coach_chat", "chat_summary"})
+_PROMPT_SOURCES = frozenset({"langfuse", "local_fallback"})
+_PROMPT_VERSION_RE = re.compile(r"^[A-Za-z0-9_.-]{1,32}$")
+_TOOL_NAMES = frozenset({"get_week", "pace_strategy", "week_review", "kb_search"})
+_TOOL_ARG_KEY_RE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 _BILLABLE_MODEL_KEYS = frozenset(
     {
         "llm.model_name",
@@ -262,6 +267,24 @@ def _sanitize_metadata_value(key: str, value: Any) -> Any | None:
         return value if isinstance(value, bool) else None
     if key in {"turn_index", "catalog_entries", "workout_count"}:
         return value if _nonnegative_number(value, integer=True) else None
+    if key == "prompt_name":
+        return value if _in_enum(value, _PROMPT_NAMES) else None
+    if key == "prompt_source":
+        return value if _in_enum(value, _PROMPT_SOURCES) else None
+    if key == "prompt_version":
+        return value if isinstance(value, str) and _PROMPT_VERSION_RE.fullmatch(value) else None
+    if key == "tool_names":
+        if isinstance(value, list | tuple) and len(value) <= _MAX_LIST_ITEMS and all(v in _TOOL_NAMES for v in value):
+            return list(value)
+        return None
+    if key == "tool_arg_keys":
+        if (
+            isinstance(value, list | tuple)
+            and len(value) <= _MAX_LIST_ITEMS
+            and all(isinstance(v, str) and _TOOL_ARG_KEY_RE.fullmatch(v) for v in value)
+        ):
+            return list(value)
+        return None
     return None
 
 
