@@ -83,10 +83,12 @@ class GeminiCoachModel:
         api_key: str,
         model: str = "gemini-3.8-flash",
         thinking_level: str | None = "low",
+        tools: list[Any] | None = None,
     ) -> None:
         self.api_key = api_key
         self.model = model
         self.thinking_level = thinking_level
+        self.tools = tools
         self._chat: Any = None
         self._closed = False
 
@@ -95,12 +97,13 @@ class GeminiCoachModel:
             from langchain_google_genai import ChatGoogleGenerativeAI
 
             # max_retries=0: SDK retries are disabled per spec
-            self._chat = ChatGoogleGenerativeAI(
+            chat = ChatGoogleGenerativeAI(
                 model=self.model,
                 api_key=self.api_key,
                 max_retries=0,
                 temperature=0.3,
             )
+            self._chat = chat.bind_tools(self.tools) if self.tools else chat
         return self._chat
 
     async def count_tokens(self, request: ModelRequest) -> int:
@@ -143,10 +146,19 @@ class GeminiCoachModel:
             try:
                 stream_iter = chat.astream(lc_messages)
                 async for chunk in stream_iter:
-                    # 1. Check for tool calls (rejected in Foundation)
-                    tool_calls = getattr(chunk, "tool_calls", None) or getattr(chunk, "tool_call_chunks", None)
+                    # 1. Tool calls: normalized into events when tools are bound,
+                    # rejected outright otherwise (defense in depth -- a caller
+                    # that forgot to pass tools= should fail loudly, not silently
+                    # drop the model's tool call).
+                    tool_calls = getattr(chunk, "tool_calls", None)
                     if tool_calls:
-                        raise ToolCallsNotSupportedError("Tool calls are not supported in foundation phase")
+                        if not self.tools:
+                            raise ToolCallsNotSupportedError("Model returned tool calls but no tools were bound.")
+                        for tc in tool_calls:
+                            yield ModelEvent(
+                                kind="tool_call",
+                                tool_call={"id": tc.get("id"), "name": tc.get("name"), "args": tc.get("args") or {}},
+                            )
 
                     # 2. Exclude thinking blocks
                     kwargs = getattr(chunk, "additional_kwargs", {}) or {}
