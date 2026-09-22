@@ -4,6 +4,7 @@ from typing import Any
 
 import db
 from services.coach_tools.base import ToolResult
+from services.week_review_narrative import _rule_based_narrative
 
 
 def get_week_impl(user_id: int, week_number: int | None = None) -> ToolResult:
@@ -35,4 +36,37 @@ def get_week_impl(user_id: int, week_number: int | None = None) -> ToolResult:
     }
     return ToolResult(
         tool_call_id="", name="get_week", status="success", card_type="week_schedule", card_data=card_data
+    )
+
+
+def week_review_impl(user_id: int, weeks_ago: int = 0) -> ToolResult:
+    plan = db.get_active_plan(user_id)
+    if plan is None:
+        return ToolResult(tool_call_id="", name="week_review", status="error", error="no_active_plan")
+
+    current_week = plan.get("current_week", 1)
+    target_week = max(1, current_week - weeks_ago)
+
+    review = db.get_week_review(
+        user_id=user_id,
+        plan_id=plan["id"],
+        week_number=target_week,
+        plan_start_date=plan.get("start_date"),
+    )
+    narrative = _rule_based_narrative(review)
+
+    week_label = "Current Week" if weeks_ago == 0 else f"{weeks_ago} Week{'s' if weeks_ago > 1 else ''} Ago"
+    card_data = {
+        "week_label": f"{week_label} (Week {target_week})",
+        "completed_km": review["actual"]["matched_km"],
+        "planned_km": review["planned"]["distance_km"],
+        "compliance_pct": review["completion_pct"],
+        "completed_vert_m": review["actual"]["total_actual_vert_m"],
+        "planned_vert_m": review["planned"]["elevation_gain_m"],
+        "missed_workouts": [w.get("title") for w in review["missed"]],
+        "coach_verdict": narrative.get("summary")
+        or " ".join(narrative.get("highlights", []) + narrative.get("watch", [])),
+    }
+    return ToolResult(
+        tool_call_id="", name="week_review", status="success", card_type="week_review", card_data=card_data
     )
