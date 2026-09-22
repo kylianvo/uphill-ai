@@ -72,7 +72,7 @@ function hydrateToolCalls(
           ...tc,
         }))
       : undefined,
-  }));
+  })) as ChatMessageItem[];
 }
 
 function getApiBaseUrl(): string {
