@@ -6,7 +6,6 @@ import { useCoachChat } from "../hooks/useCoachChat";
 import ChatSources from "../components/ChatSources";
 import { CitationItem } from "../lib/coachChatStream";
 import RichCardRenderer from "../components/RichCardRenderer";
-import ToolExecutionPill from "../components/ToolExecutionPill";
 import ClarificationChipsBar from "../components/ClarificationChipsBar";
 
 export default function ChatTab({ isMobile }: { isMobile: boolean }) {

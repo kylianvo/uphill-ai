@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import React from "react";
 import ChatTab from "./ChatTab";
 import * as useCoachChatModule from "../hooks/useCoachChat";
-import { AppProvider } from "../contexts/AppContext";
+import { AppProvider, AppContext } from "../contexts/AppContext";
 
 vi.mock("../hooks/useCoachChat");
 
@@ -13,6 +14,9 @@ describe("ChatTab", () => {
   const mockLoadOlder = vi.fn();
   const mockFetchMessageSources = vi.fn();
   const mockClearMessageSources = vi.fn();
+  const mockSetPaceHandoff = vi.fn();
+  const mockSetIsPaceStrategyOpen = vi.fn();
+  const mockHandleTabSwitch = vi.fn();
 
   const defaultHookReturn: useCoachChatModule.UseCoachChatReturn = {
     messages: [],
@@ -36,7 +40,30 @@ describe("ChatTab", () => {
     vi.mocked(useCoachChatModule.useCoachChat).mockReturnValue(defaultHookReturn);
   });
 
-  const renderWithContext = (ui: React.ReactElement) => {
+  interface TestContextValue {
+    lang?: string;
+    setPaceHandoff?: ReturnType<typeof vi.fn>;
+    setIsPaceStrategyOpen?: ReturnType<typeof vi.fn>;
+    handleTabSwitch?: ReturnType<typeof vi.fn>;
+    [key: string]: unknown;
+  }
+
+  const renderWithContext = (ui: React.ReactElement, contextOverrides?: TestContextValue) => {
+    if (contextOverrides) {
+      // Render with context overrides by wrapping with a context provider that supplies the mocked values
+      const contextValue: TestContextValue = {
+        lang: "en",
+        setPaceHandoff: mockSetPaceHandoff,
+        setIsPaceStrategyOpen: mockSetIsPaceStrategyOpen,
+        handleTabSwitch: mockHandleTabSwitch,
+        ...contextOverrides,
+      };
+      return render(
+        <AppContext.Provider value={contextValue as React.ContextType<typeof AppContext>}>
+          {ui}
+        </AppContext.Provider>
+      );
+    }
     return render(<AppProvider>{ui}</AppProvider>);
   };
 
@@ -193,7 +220,7 @@ describe("ChatTab", () => {
     expect(screen.getByText(/Week 4/)).toBeDefined();
   });
 
-  it("renders Open in Pace Strategy button in a pacing splits card", () => {
+  it("clicking Open in Pace Strategy sets paceHandoff and switches to the tools tab", () => {
     vi.mocked(useCoachChatModule.useCoachChat).mockReturnValue({
       ...defaultHookReturn,
       messages: [
@@ -214,11 +241,19 @@ describe("ChatTab", () => {
       ],
     });
 
-    renderWithContext(<ChatTab isMobile={false} />);
+    renderWithContext(<ChatTab isMobile={false} />, {
+      setPaceHandoff: mockSetPaceHandoff,
+      setIsPaceStrategyOpen: mockSetIsPaceStrategyOpen,
+      handleTabSwitch: mockHandleTabSwitch,
+    });
 
-    const btn = screen.getByText("Open in Pace Strategy");
-    expect(btn).toBeDefined();
-    expect(btn.tagName).toBe("BUTTON");
+    fireEvent.click(screen.getByText("Open in Pace Strategy"));
+
+    expect(mockSetPaceHandoff).toHaveBeenCalledWith(
+      expect.objectContaining({ race_name: "Dalat Ultra Trail 70K" })
+    );
+    expect(mockSetIsPaceStrategyOpen).toHaveBeenCalledWith(true);
+    expect(mockHandleTabSwitch).toHaveBeenCalledWith("tools");
   });
 
   it("shows clarification chips and sends the selected option on click", () => {

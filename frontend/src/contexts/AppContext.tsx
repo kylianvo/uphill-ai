@@ -223,7 +223,7 @@ interface AppContextType {
   setZone2Max: any;
 }
 
-const AppContext = createContext<AppContextType | undefined>(undefined);
+export const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
     const [isNutritionLabOpen, setIsNutritionLabOpen] = useState(false);
