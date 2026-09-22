@@ -7,7 +7,9 @@ import datetime
 import hashlib
 import json
 import math
+import unicodedata
 import uuid
+from contextlib import contextmanager
 from typing import Any
 
 from sqlalchemy import bindparam, create_engine, text
@@ -442,7 +444,140 @@ def init_db():
         )
         conn.execute(text("CREATE INDEX IF NOT EXISTS idx_beta_signups_email ON beta_signups (email)"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS idx_beta_signups_created_at ON beta_signups (created_at DESC)"))
+
+        conn.execute(
+            text("""
+        CREATE TABLE IF NOT EXISTS chat_threads (
+            id                      SERIAL PRIMARY KEY,
+            user_id                 INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+            summary                 TEXT,
+            summarized_through_id   INTEGER,
+            created_at              TIMESTAMPTZ DEFAULT NOW(),
+            updated_at              TIMESTAMPTZ DEFAULT NOW()
+        )
+        """)
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_chat_threads_user_id ON chat_threads (user_id)"))
+
+        conn.execute(
+            text("""
+        CREATE TABLE IF NOT EXISTS chat_messages (
+            id                      SERIAL PRIMARY KEY,
+            thread_id               INTEGER NOT NULL REFERENCES chat_threads(id) ON DELETE CASCADE,
+            role                    TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+            content                 TEXT NOT NULL,
+            lang                    TEXT NOT NULL DEFAULT 'en',
+            status                  TEXT NOT NULL DEFAULT 'ok' CHECK (status IN ('ok', 'error', 'interrupted')),
+            error_code              TEXT,
+            evidence                JSONB,
+            citations               JSONB,
+            prompt_name             TEXT,
+            prompt_version          TEXT,
+            model                   TEXT,
+            usage                   JSONB,
+            cost_usd                NUMERIC(10, 6),
+            latency_ms              INTEGER,
+            trace_id                TEXT,
+            created_at              TIMESTAMPTZ DEFAULT NOW()
+        )
+        """)
+        )
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS idx_chat_messages_thread_created ON chat_messages (thread_id, created_at DESC)"
+            )
+        )
+
+        try:
+            conn.execute(
+                text(
+                    "ALTER TABLE chat_threads ADD CONSTRAINT fk_chat_threads_summarized_through "
+                    "FOREIGN KEY (summarized_through_id) REFERENCES chat_messages(id) ON DELETE SET NULL"
+                )
+            )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+
+        conn.execute(
+            text("""
+        CREATE TABLE IF NOT EXISTS chat_turns (
+            request_id              UUID PRIMARY KEY,
+            user_id                 INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            thread_id               INTEGER REFERENCES chat_threads(id) ON DELETE CASCADE,
+            fingerprint             TEXT NOT NULL,
+            root_turn_id            UUID REFERENCES chat_turns(request_id) ON DELETE SET NULL,
+            attempt_number          INTEGER NOT NULL DEFAULT 1,
+            status                  TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'ok', 'error', 'interrupted', 'cleared')),
+            result_message_id       INTEGER REFERENCES chat_messages(id) ON DELETE SET NULL,
+            created_at              TIMESTAMPTZ DEFAULT NOW(),
+            updated_at              TIMESTAMPTZ DEFAULT NOW()
+        )
+        """)
+        )
+        conn.execute(
+            text("CREATE INDEX IF NOT EXISTS idx_chat_turns_user_created ON chat_turns (user_id, created_at DESC)")
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_chat_turns_root ON chat_turns (root_turn_id)"))
+
+        conn.execute(
+            text("""
+        CREATE TABLE IF NOT EXISTS chat_daily_usage (
+            usage_date              DATE NOT NULL,
+            user_id                 INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            new_turns_count         INTEGER NOT NULL DEFAULT 0,
+            retries_count           INTEGER NOT NULL DEFAULT 0,
+            created_at              TIMESTAMPTZ DEFAULT NOW(),
+            updated_at              TIMESTAMPTZ DEFAULT NOW(),
+            PRIMARY KEY (usage_date, user_id)
+        )
+        """)
+        )
+
+        conn.execute(
+            text("""
+        CREATE TABLE IF NOT EXISTS chat_llm_calls (
+            call_id                 UUID PRIMARY KEY,
+            request_id              UUID NOT NULL REFERENCES chat_turns(request_id) ON DELETE CASCADE,
+            feature                 TEXT NOT NULL,
+            model                   TEXT NOT NULL,
+            usage_known             BOOLEAN NOT NULL DEFAULT FALSE,
+            input_tokens            INTEGER NOT NULL DEFAULT 0,
+            output_tokens           INTEGER NOT NULL DEFAULT 0,
+            thinking_tokens         INTEGER NOT NULL DEFAULT 0,
+            cached_tokens           INTEGER NOT NULL DEFAULT 0,
+            cost_usd                NUMERIC(10, 6),
+            status                  TEXT NOT NULL DEFAULT 'reserved'
+                CONSTRAINT chk_chat_llm_calls_status CHECK (status IN ('reserved', 'ok', 'error', 'unknown', 'interrupted')),
+            latency_ms              INTEGER,
+            created_at              TIMESTAMPTZ DEFAULT NOW(),
+            completed_at            TIMESTAMPTZ
+        )
+        """)
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_chat_llm_calls_request_id ON chat_llm_calls (request_id)"))
         conn.commit()
+
+        # Self-migrate existing dev databases: chat_llm_calls originally lacked
+        # 'interrupted' in its status CHECK constraint (a dropped call couldn't be
+        # recorded distinctly from 'unknown'). CREATE TABLE IF NOT EXISTS above
+        # doesn't touch an already-existing table's constraint. The constraint may
+        # carry either name depending on how the table was originally created: the
+        # explicit name Alembic used, or Postgres's auto-generated
+        # "<table>_<column>_check" name from the unnamed inline CHECK this file used
+        # before it was given an explicit name above.
+        try:
+            conn.execute(text("ALTER TABLE chat_llm_calls DROP CONSTRAINT IF EXISTS chk_chat_llm_calls_status"))
+            conn.execute(text("ALTER TABLE chat_llm_calls DROP CONSTRAINT IF EXISTS chat_llm_calls_status_check"))
+            conn.execute(
+                text(
+                    "ALTER TABLE chat_llm_calls ADD CONSTRAINT chk_chat_llm_calls_status "
+                    "CHECK (status IN ('reserved', 'ok', 'error', 'unknown', 'interrupted'))"
+                )
+            )
+            conn.commit()
+        except Exception:
+            conn.rollback()
 
         for col_sql in [
             # Type upgrades for databases created before treadmill fields became
@@ -894,6 +1029,9 @@ def get_active_plan(user_id: int) -> dict[str, Any] | None:
     return d
 
 
+get_current_active_plan = get_active_plan
+
+
 def get_plan_by_id(plan_id: int) -> dict[str, Any] | None:
     with engine.connect() as conn:
         row = conn.execute(text("SELECT * FROM plans WHERE id = :id"), {"id": plan_id}).fetchone()
@@ -1193,6 +1331,9 @@ def get_plan_workouts(plan_id: int) -> list[dict[str, Any]]:
             {"plan_id": plan_id},
         ).fetchall()
     return [_row_to_dict(r) for r in rows]
+
+
+get_workouts_for_plan = get_plan_workouts
 
 
 def update_workout_log(
@@ -2952,6 +3093,21 @@ def get_activities_for_matching(user_id: int, since, until) -> list[dict[str, An
     return [_row_to_dict(row) for row in rows]
 
 
+def get_activities_for_user(user_id: int, limit: int = 20) -> list[dict[str, Any]]:
+    """Retrieve recent non-duplicate activities for a user ordered by start_time descending."""
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("""
+            SELECT * FROM activities
+            WHERE user_id = :u AND duplicate_of IS NULL
+            ORDER BY start_time DESC, id DESC
+            LIMIT :lim
+            """),
+            {"u": user_id, "lim": limit},
+        ).fetchall()
+    return [_row_to_dict(row) for row in rows]
+
+
 def get_dated_workouts_for_matching(user_id: int, plan_id: int | None = None) -> list[dict[str, Any]]:
     """Every workout on the athlete's active plans, with the plan's start_date
     attached so the caller can derive each workout's calendar date."""
@@ -3606,3 +3762,992 @@ def get_beta_signups(limit: int = 100, offset: int = 0) -> list[dict[str, Any]]:
             {"limit": limit, "offset": offset},
         ).fetchall()
     return [_row_to_dict(r) for r in rows]
+
+
+# ─── Coach Chat Exceptions & Locking ─────────────────────────────────────────
+
+CHAT_ADVISORY_NAMESPACE = 0x43484154  # 'CHAT' in ASCII: 1128812884
+
+
+class CoachChatError(Exception):
+    def __init__(self, code: str, message: str = ""):
+        super().__init__(message or code)
+        self.code = code
+
+
+class ChatInProgressError(CoachChatError):
+    def __init__(self, code: str = "chat_in_progress", message: str = ""):
+        super().__init__(code=code, message=message)
+
+
+class ChatRequestConflictError(CoachChatError):
+    def __init__(self, code: str = "request_conflict", message: str = ""):
+        super().__init__(code=code, message=message)
+
+
+class ChatDailyLimitError(CoachChatError):
+    def __init__(self, code: str = "chat_daily_limit", message: str = ""):
+        super().__init__(code=code, message=message)
+
+
+class ChatRetryLimitError(CoachChatError):
+    def __init__(self, code: str = "chat_retry_limit", message: str = ""):
+        super().__init__(code=code, message=message)
+
+
+class NothingToRetryError(CoachChatError):
+    def __init__(self, code: str = "nothing_to_retry", message: str = ""):
+        super().__init__(code=code, message=message)
+
+
+@contextmanager
+def chat_turn_lock(user_id: int):
+    """Namespaced PostgreSQL session advisory lock on a dedicated checked-out connection.
+
+    Non-blocking: if lock is already held for this user_id, raises ChatInProgressError immediately.
+    Releases lock and closes connection on exit or disconnect.
+    """
+    conn = engine.connect()
+    acquired = False
+    try:
+        res = conn.execute(
+            text("SELECT pg_try_advisory_lock(:ns, :uid)"),
+            {"ns": CHAT_ADVISORY_NAMESPACE, "uid": user_id},
+        ).scalar()
+        if not res:
+            raise ChatInProgressError(code="chat_in_progress")
+        acquired = True
+        yield conn
+    finally:
+        if acquired:
+            try:
+                conn.execute(
+                    text("SELECT pg_advisory_unlock(:ns, :uid)"),
+                    {"ns": CHAT_ADVISORY_NAMESPACE, "uid": user_id},
+                )
+            except Exception:
+                pass
+        conn.close()
+
+
+def compute_chat_fingerprint(
+    message: str | None = None,
+    retry_of: Any = None,
+    lang: str = "en",
+    is_legacy: bool = False,
+) -> str:
+    parts = []
+    if message is not None:
+        norm_msg = unicodedata.normalize("NFC", message.strip())
+        parts.append(f"msg:{norm_msg}")
+    if retry_of is not None:
+        parts.append(f"retry:{str(retry_of)}")
+    norm_lang = (lang or "en").lower().strip()
+    parts.append(f"lang:{norm_lang}")
+    parts.append(f"legacy:{str(is_legacy).lower()}")
+    canonical = "|".join(parts)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+# ─── Coach Chat CRUD ─────────────────────────────────────────────────────────
+
+
+def _to_uuid(val: Any) -> Any:
+    if val is None:
+        return None
+    if isinstance(val, uuid.UUID):
+        return val
+    try:
+        return uuid.UUID(str(val))
+    except (ValueError, AttributeError):
+        return str(val)
+
+
+def get_or_create_chat_thread(user_id: int) -> dict[str, Any]:
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("""
+                SELECT id, user_id, summary, summarized_through_id, created_at, updated_at
+                FROM chat_threads
+                WHERE user_id = :uid
+            """),
+            {"uid": user_id},
+        ).fetchone()
+        if row:
+            return dict(row._mapping)
+
+        row = conn.execute(
+            text("""
+                INSERT INTO chat_threads (user_id)
+                VALUES (:uid)
+                ON CONFLICT (user_id) DO UPDATE SET updated_at = NOW()
+                RETURNING id, user_id, summary, summarized_through_id, created_at, updated_at
+            """),
+            {"uid": user_id},
+        ).fetchone()
+        conn.commit()
+        return dict(row._mapping)
+
+
+def update_chat_thread_summary_cas(
+    thread_id: int,
+    user_id: int,
+    new_summary: str,
+    new_summarized_through_id: int,
+    expected_summarized_through_id: int | None,
+) -> bool:
+    """Compare-and-swap update of chat_threads summary.
+
+    Only updates if thread exists, belongs to user_id, and summarized_through_id
+    matches expected_summarized_through_id (or is NULL if expected is None).
+    """
+    with engine.connect() as conn:
+        if expected_summarized_through_id is None:
+            res = conn.execute(
+                text("""
+                    UPDATE chat_threads
+                    SET summary = :summary,
+                        summarized_through_id = :new_through_id,
+                        updated_at = NOW()
+                    WHERE id = :tid AND user_id = :uid AND summarized_through_id IS NULL
+                """),
+                {
+                    "summary": new_summary,
+                    "new_through_id": new_summarized_through_id,
+                    "tid": thread_id,
+                    "uid": user_id,
+                },
+            )
+        else:
+            res = conn.execute(
+                text("""
+                    UPDATE chat_threads
+                    SET summary = :summary,
+                        summarized_through_id = :new_through_id,
+                        updated_at = NOW()
+                    WHERE id = :tid AND user_id = :uid AND summarized_through_id = :exp_through_id
+                """),
+                {
+                    "summary": new_summary,
+                    "new_through_id": new_summarized_through_id,
+                    "tid": thread_id,
+                    "uid": user_id,
+                    "exp_through_id": expected_summarized_through_id,
+                },
+            )
+        conn.commit()
+        return res.rowcount > 0
+
+
+def append_chat_message(
+    thread_id: int,
+    role: str,
+    content: str,
+    lang: str = "en",
+    status: str = "ok",
+    error_code: str | None = None,
+    evidence: Any = None,
+    citations: Any = None,
+    prompt_name: str | None = None,
+    prompt_version: str | None = None,
+    model: str | None = None,
+    usage: Any = None,
+    cost_usd: Any = None,
+    latency_ms: int | None = None,
+    trace_id: str | None = None,
+) -> int:
+    with engine.connect() as conn:
+        res = conn.execute(
+            text("""
+                INSERT INTO chat_messages (
+                    thread_id, role, content, lang, status, error_code,
+                    evidence, citations, prompt_name, prompt_version,
+                    model, usage, cost_usd, latency_ms, trace_id
+                ) VALUES (
+                    :thread_id, :role, :content, :lang, :status, :error_code,
+                    :evidence, :citations, :prompt_name, :prompt_version,
+                    :model, :usage, :cost_usd, :latency_ms, :trace_id
+                ) RETURNING id
+            """),
+            {
+                "thread_id": thread_id,
+                "role": role,
+                "content": content,
+                "lang": lang,
+                "status": status,
+                "error_code": error_code,
+                "evidence": json.dumps(evidence) if isinstance(evidence, dict | list) else evidence,
+                "citations": json.dumps(citations) if isinstance(citations, dict | list) else citations,
+                "prompt_name": prompt_name,
+                "prompt_version": prompt_version,
+                "model": model,
+                "usage": json.dumps(usage) if isinstance(usage, dict | list) else usage,
+                "cost_usd": cost_usd,
+                "latency_ms": latency_ms,
+                "trace_id": trace_id,
+            },
+        )
+        msg_id = res.scalar()
+        conn.execute(
+            text("UPDATE chat_threads SET updated_at = NOW() WHERE id = :tid"),
+            {"tid": thread_id},
+        )
+        conn.commit()
+        return msg_id
+
+
+def update_chat_message(
+    message_id: int,
+    content: str | None = None,
+    status: str | None = None,
+    error_code: str | None = None,
+    evidence: Any = None,
+    citations: Any = None,
+    prompt_name: str | None = None,
+    prompt_version: str | None = None,
+    model: str | None = None,
+    usage: Any = None,
+    cost_usd: Any = None,
+    latency_ms: int | None = None,
+    trace_id: str | None = None,
+    **kwargs: Any,
+) -> None:
+    fields: dict[str, Any] = dict(kwargs)
+    if content is not None:
+        fields["content"] = content
+    if status is not None:
+        fields["status"] = status
+    if error_code is not None:
+        fields["error_code"] = error_code
+    if evidence is not None:
+        fields["evidence"] = evidence
+    if citations is not None:
+        fields["citations"] = citations
+    if prompt_name is not None:
+        fields["prompt_name"] = prompt_name
+    if prompt_version is not None:
+        fields["prompt_version"] = prompt_version
+    if model is not None:
+        fields["model"] = model
+    if usage is not None:
+        fields["usage"] = usage
+    if cost_usd is not None:
+        fields["cost_usd"] = cost_usd
+    if latency_ms is not None:
+        fields["latency_ms"] = latency_ms
+    if trace_id is not None:
+        fields["trace_id"] = trace_id
+
+    if not fields:
+        return
+
+    valid_cols = {
+        "content",
+        "lang",
+        "status",
+        "error_code",
+        "evidence",
+        "citations",
+        "prompt_name",
+        "prompt_version",
+        "model",
+        "usage",
+        "cost_usd",
+        "latency_ms",
+        "trace_id",
+    }
+    set_clauses = []
+    params: dict[str, Any] = {"mid": message_id}
+
+    for col, val in fields.items():
+        if col in valid_cols:
+            if col in ("evidence", "citations", "usage") and isinstance(val, dict | list):
+                val = json.dumps(val)
+            set_clauses.append(f"{col} = :{col}")
+            params[col] = val
+
+    if not set_clauses:
+        return
+
+    with engine.connect() as conn:
+        conn.execute(
+            text(f"UPDATE chat_messages SET {', '.join(set_clauses)} WHERE id = :mid"),
+            params,
+        )
+        conn.execute(
+            text(
+                "UPDATE chat_threads SET updated_at = NOW() WHERE id = (SELECT thread_id FROM chat_messages WHERE id = :mid)"
+            ),
+            {"mid": message_id},
+        )
+        conn.commit()
+
+
+update_chat_message_content = update_chat_message
+
+
+def get_chat_message(message_id: int, user_id: int | None = None) -> dict[str, Any] | None:
+    with engine.connect() as conn:
+        if user_id is not None:
+            stmt = text("""
+                SELECT m.* FROM chat_messages m
+                JOIN chat_threads t ON m.thread_id = t.id
+                WHERE m.id = :mid AND t.user_id = :uid
+            """)
+            row = conn.execute(stmt, {"mid": message_id, "uid": user_id}).fetchone()
+        else:
+            stmt = text("SELECT * FROM chat_messages WHERE id = :mid")
+            row = conn.execute(stmt, {"mid": message_id}).fetchone()
+
+        if not row:
+            return None
+        res = _row_to_dict(row)
+        for json_col in ("evidence", "citations", "usage"):
+            if isinstance(res.get(json_col), str):
+                try:
+                    res[json_col] = json.loads(res[json_col])
+                except Exception:
+                    pass
+        return res
+
+
+def get_chat_thread_messages(
+    user_id: int,
+    before_id: int | None = None,
+    limit: int = 20,
+) -> list[dict[str, Any]]:
+    with engine.connect() as conn:
+        query = """
+            SELECT * FROM (
+                SELECT m.* FROM chat_messages m
+                JOIN chat_threads t ON m.thread_id = t.id
+                WHERE t.user_id = :uid
+        """
+        params: dict[str, Any] = {"uid": user_id, "limit": limit}
+        if before_id is not None:
+            query += " AND m.id < :before_id"
+            params["before_id"] = before_id
+        query += """
+                ORDER BY m.id DESC
+                LIMIT :limit
+            ) sub ORDER BY sub.id ASC
+        """
+        rows = conn.execute(text(query), params).fetchall()
+        result = []
+        for r in rows:
+            d = _row_to_dict(r)
+            for json_col in ("evidence", "citations", "usage"):
+                if isinstance(d.get(json_col), str):
+                    try:
+                        d[json_col] = json.loads(d[json_col])
+                    except Exception:
+                        pass
+            result.append(d)
+        return result
+
+
+def create_chat_turn(
+    request_id: Any,
+    user_id: int,
+    thread_id: int | None,
+    fingerprint: str,
+    root_turn_id: Any = None,
+    attempt_number: int = 1,
+    status: str = "active",
+    result_message_id: int | None = None,
+) -> None:
+    with engine.connect() as conn:
+        conn.execute(
+            text("""
+                INSERT INTO chat_turns (
+                    request_id, user_id, thread_id, fingerprint,
+                    root_turn_id, attempt_number, status, result_message_id,
+                    created_at, updated_at
+                ) VALUES (
+                    :req_id, :uid, :tid, :fp,
+                    :root_id, :attempt, :status, :result_msg_id,
+                    NOW(), NOW()
+                )
+            """),
+            {
+                "req_id": _to_uuid(request_id),
+                "uid": user_id,
+                "tid": thread_id,
+                "fp": fingerprint,
+                "root_id": _to_uuid(root_turn_id),
+                "attempt": attempt_number,
+                "status": status,
+                "result_msg_id": result_message_id,
+            },
+        )
+        conn.commit()
+
+
+def get_chat_turn(user_id: int | Any = None, request_id: Any = None) -> dict[str, Any] | None:
+    if isinstance(user_id, uuid.UUID | str) and (isinstance(request_id, int) or request_id is None):
+        user_id, request_id = request_id, user_id
+
+    with engine.connect() as conn:
+        if user_id is not None:
+            row = conn.execute(
+                text("""
+                    SELECT * FROM chat_turns
+                    WHERE user_id = :uid AND request_id = :req_id
+                """),
+                {"uid": user_id, "req_id": _to_uuid(request_id)},
+            ).fetchone()
+        else:
+            row = conn.execute(
+                text("""
+                    SELECT * FROM chat_turns
+                    WHERE request_id = :req_id
+                """),
+                {"req_id": _to_uuid(request_id)},
+            ).fetchone()
+        return _row_to_dict(row) if row else None
+
+
+def get_chat_thread_paginated(
+    user_id: int,
+    before_id: int | None = None,
+    limit: int = 50,
+) -> dict[str, Any]:
+    capped_limit = min(max(1, limit), 50)
+    with engine.connect() as conn:
+        thread_row = conn.execute(
+            text("SELECT id, summary FROM chat_threads WHERE user_id = :uid"),
+            {"uid": user_id},
+        ).fetchone()
+        if not thread_row:
+            return {"messages": [], "summary": None, "has_more": False, "oldest_id": None}
+        thread_id = thread_row[0]
+        summary = thread_row[1]
+
+        query = """
+            SELECT * FROM chat_messages
+            WHERE thread_id = :tid
+        """
+        params: dict[str, Any] = {"tid": thread_id, "lim": capped_limit + 1}
+        if before_id is not None:
+            query += " AND id < :bid"
+            params["bid"] = before_id
+        query += " ORDER BY id DESC LIMIT :lim"
+
+        rows = conn.execute(text(query), params).fetchall()
+        has_more = len(rows) > capped_limit
+        paged_rows = rows[:capped_limit]
+        paged_rows.reverse()
+
+        messages = []
+        for r in paged_rows:
+            d = _row_to_dict(r)
+            for json_col in ("evidence", "citations", "usage"):
+                if isinstance(d.get(json_col), str):
+                    try:
+                        d[json_col] = json.loads(d[json_col])
+                    except Exception:
+                        pass
+            messages.append(d)
+
+        oldest_id = messages[0]["id"] if messages else None
+        return {
+            "messages": messages,
+            "summary": summary,
+            "has_more": has_more,
+            "oldest_id": oldest_id,
+        }
+
+
+def get_chat_message_sources(message_id: int, user_id: int) -> dict[str, Any] | None:
+    """Fetch retained retrieval evidence and citations for an owned message."""
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("""
+                SELECT m.id, m.evidence, m.citations, m.status, t.user_id
+                FROM chat_messages m
+                JOIN chat_threads t ON t.id = m.thread_id
+                WHERE m.id = :mid AND t.user_id = :uid
+            """),
+            {"mid": message_id, "uid": user_id},
+        ).fetchone()
+        if not row:
+            return None
+        d = dict(row._mapping)
+        raw_ev = d.get("evidence")
+        evidence = json.loads(raw_ev) if isinstance(raw_ev, str) else (raw_ev or [])
+        raw_cit = d.get("citations")
+        citations = json.loads(raw_cit) if isinstance(raw_cit, str) else (raw_cit or [])
+        return {
+            "message_id": d["id"],
+            "evidence": evidence,
+            "citations": citations,
+            "evidence_status": "available" if evidence else "empty",
+        }
+
+
+def clear_chat_thread(user_id: int) -> bool:
+    """Clear athlete's conversation thread:
+    - Checks if an active turn is currently in progress (raises ChatInProgressError if so).
+    - Deletes all messages in the thread.
+    - Clears the summary and summarized_through_id on chat_threads.
+    - Records a cleared turn tombstone in chat_turns.
+    - Does NOT reset daily usage quotas or delete chat_llm_calls records.
+    """
+    with engine.connect() as conn:
+        # Expire any orphaned turns left in 'active' longer than turn timeout
+        timeout_cutoff = datetime.datetime.now(datetime.UTC) - datetime.timedelta(
+            seconds=settings.COACH_CHAT_TURN_TIMEOUT_SECONDS
+        )
+        conn.execute(
+            text("""
+                UPDATE chat_turns
+                SET status = 'interrupted', updated_at = NOW()
+                WHERE user_id = :uid AND status = 'active' AND updated_at < :cutoff
+            """),
+            {"uid": user_id, "cutoff": timeout_cutoff},
+        )
+        conn.commit()
+
+        active_turn = conn.execute(
+            text("SELECT * FROM chat_turns WHERE user_id = :uid AND status = 'active'"),
+            {"uid": user_id},
+        ).fetchone()
+        if active_turn:
+            raise ChatInProgressError(code="chat_in_progress")
+
+        thread_row = conn.execute(
+            text("SELECT id FROM chat_threads WHERE user_id = :uid"),
+            {"uid": user_id},
+        ).fetchone()
+        if not thread_row:
+            return False
+        thread_id = thread_row[0]
+
+        conn.execute(
+            text("DELETE FROM chat_messages WHERE thread_id = :tid"),
+            {"tid": thread_id},
+        )
+
+        conn.execute(
+            text("""
+                UPDATE chat_threads
+                SET summary = NULL, summarized_through_id = NULL, updated_at = NOW()
+                WHERE id = :tid
+            """),
+            {"tid": thread_id},
+        )
+
+        conn.execute(
+            text("""
+                INSERT INTO chat_turns (request_id, user_id, thread_id, fingerprint, status, created_at, updated_at)
+                VALUES (:req_id, :uid, :tid, :fp, 'cleared', NOW(), NOW())
+            """),
+            {"req_id": uuid.uuid4(), "uid": user_id, "tid": thread_id, "fp": f"thread_cleared:{thread_id}"},
+        )
+
+        conn.commit()
+        return True
+
+
+def update_chat_turn_status(
+    request_id: Any,
+    status: str,
+    result_message_id: int | None = None,
+) -> None:
+    with engine.connect() as conn:
+        if result_message_id is not None:
+            conn.execute(
+                text("""
+                    UPDATE chat_turns
+                    SET status = :status, result_message_id = :mid, updated_at = NOW()
+                    WHERE request_id = :req_id
+                """),
+                {"status": status, "mid": result_message_id, "req_id": _to_uuid(request_id)},
+            )
+        else:
+            conn.execute(
+                text("""
+                    UPDATE chat_turns
+                    SET status = :status, updated_at = NOW()
+                    WHERE request_id = :req_id
+                """),
+                {"status": status, "req_id": _to_uuid(request_id)},
+            )
+        conn.commit()
+
+
+def reserve_chat_call(
+    call_id: Any,
+    request_id: Any,
+    feature: str,
+    model: str,
+) -> None:
+    with engine.connect() as conn:
+        conn.execute(
+            text("""
+                INSERT INTO chat_llm_calls (
+                    call_id, request_id, feature, model,
+                    usage_known, input_tokens, output_tokens, thinking_tokens, cached_tokens,
+                    cost_usd, status, created_at
+                ) VALUES (
+                    :call_id, :req_id, :feature, :model,
+                    FALSE, 0, 0, 0, 0,
+                    NULL, 'reserved', NOW()
+                )
+            """),
+            {
+                "call_id": _to_uuid(call_id),
+                "req_id": _to_uuid(request_id),
+                "feature": feature,
+                "model": model,
+            },
+        )
+        conn.commit()
+
+
+def finish_chat_call(
+    call_id: Any,
+    status: str,
+    usage_known: bool = False,
+    input_tokens: int = 0,
+    output_tokens: int = 0,
+    thinking_tokens: int = 0,
+    cached_tokens: int = 0,
+    cost_usd: Any = None,
+    latency_ms: int | None = None,
+) -> bool:
+    with engine.connect() as conn:
+        res = conn.execute(
+            text("""
+                UPDATE chat_llm_calls
+                SET status = :status,
+                    usage_known = :usage_known,
+                    input_tokens = :input_tokens,
+                    output_tokens = :output_tokens,
+                    thinking_tokens = :thinking_tokens,
+                    cached_tokens = :cached_tokens,
+                    cost_usd = :cost_usd,
+                    latency_ms = :latency_ms,
+                    completed_at = NOW()
+                WHERE call_id = :call_id AND status = 'reserved'
+            """),
+            {
+                "call_id": _to_uuid(call_id),
+                "status": status,
+                "usage_known": usage_known,
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "thinking_tokens": thinking_tokens,
+                "cached_tokens": cached_tokens,
+                "cost_usd": cost_usd,
+                "latency_ms": latency_ms,
+            },
+        )
+        conn.commit()
+        return (res.rowcount or 0) > 0
+
+
+def get_chat_call(call_id: Any) -> dict[str, Any] | None:
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("SELECT * FROM chat_llm_calls WHERE call_id = :call_id"),
+            {"call_id": _to_uuid(call_id)},
+        ).fetchone()
+        return _row_to_dict(row) if row else None
+
+
+def chat_turn_totals(request_id: Any) -> dict[str, Any]:
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("""
+                SELECT
+                    COUNT(*) AS total_calls,
+                    COALESCE(SUM(input_tokens), 0) AS total_input_tokens,
+                    COALESCE(SUM(output_tokens), 0) AS total_output_tokens,
+                    COALESCE(SUM(thinking_tokens), 0) AS total_thinking_tokens,
+                    COALESCE(SUM(cached_tokens), 0) AS total_cached_tokens,
+                    COALESCE(SUM(cost_usd), 0.0) AS total_cost_usd,
+                    BOOL_AND(usage_known) AS all_usage_known
+                FROM chat_llm_calls
+                WHERE request_id = :req_id
+            """),
+            {"req_id": _to_uuid(request_id)},
+        ).fetchone()
+
+        if not row or (row._mapping["total_calls"] or 0) == 0:
+            return {
+                "total_calls": 0,
+                "total_input_tokens": 0,
+                "total_output_tokens": 0,
+                "total_thinking_tokens": 0,
+                "total_cached_tokens": 0,
+                "total_cost_usd": 0.0,
+                "usage_known": False,
+            }
+
+        m = row._mapping
+        return {
+            "total_calls": int(m["total_calls"] or 0),
+            "total_input_tokens": int(m["total_input_tokens"] or 0),
+            "total_output_tokens": int(m["total_output_tokens"] or 0),
+            "total_thinking_tokens": int(m["total_thinking_tokens"] or 0),
+            "total_cached_tokens": int(m["total_cached_tokens"] or 0),
+            "total_cost_usd": float(m["total_cost_usd"]) if m["total_cost_usd"] is not None else 0.0,
+            "usage_known": bool(m["all_usage_known"]) if m["all_usage_known"] is not None else False,
+        }
+
+
+def admit_chat_turn(
+    user_id: int,
+    request_id: Any,
+    thread_id: int | None = None,
+    message: str | None = None,
+    retry_of: Any = None,
+    lang: str = "en",
+    is_legacy: bool = False,
+    now: datetime.datetime | None = None,
+) -> dict[str, Any]:
+    req_uuid = _to_uuid(request_id)
+    fp = compute_chat_fingerprint(message=message, retry_of=retry_of, lang=lang, is_legacy=is_legacy)
+    utc_today = (now or datetime.datetime.now(datetime.UTC)).date()
+
+    with engine.connect() as conn:
+        existing_turn = conn.execute(
+            text("SELECT * FROM chat_turns WHERE request_id = :req_id"),
+            {"req_id": req_uuid},
+        ).fetchone()
+
+        if existing_turn:
+            turn_dict = _row_to_dict(existing_turn)
+            if turn_dict.get("user_id") != user_id or turn_dict.get("fingerprint") != fp:
+                raise ChatRequestConflictError(code="request_conflict")
+            return {
+                "kind": "replay",
+                "request_id": req_uuid,
+                "turn": turn_dict,
+                "status": turn_dict["status"],
+                "result_message_id": turn_dict.get("result_message_id"),
+                "attempt_number": turn_dict.get("attempt_number", 1),
+                "fingerprint": fp,
+            }
+
+        # Expire any orphaned turns left in 'active' longer than turn timeout
+        timeout_cutoff = (now or datetime.datetime.now(datetime.UTC)) - datetime.timedelta(
+            seconds=settings.COACH_CHAT_TURN_TIMEOUT_SECONDS
+        )
+        conn.execute(
+            text("""
+                UPDATE chat_turns
+                SET status = 'interrupted', updated_at = NOW()
+                WHERE user_id = :uid AND status = 'active' AND updated_at < :cutoff
+            """),
+            {"uid": user_id, "cutoff": timeout_cutoff},
+        )
+        conn.commit()
+
+        if retry_of is not None:
+            target_uuid = _to_uuid(retry_of)
+            target_turn = conn.execute(
+                text("SELECT * FROM chat_turns WHERE request_id = :tid AND user_id = :uid"),
+                {"tid": target_uuid, "uid": user_id},
+            ).fetchone()
+
+            if not target_turn:
+                raise NothingToRetryError(code="nothing_to_retry")
+
+            target_dict = _row_to_dict(target_turn)
+            if target_dict.get("status") not in ("error", "interrupted"):
+                raise NothingToRetryError(code="nothing_to_retry")
+
+            root_turn_id = target_dict.get("root_turn_id") or target_dict["request_id"]
+            retries_count_for_root = (
+                conn.execute(
+                    text("SELECT COUNT(*) FROM chat_turns WHERE root_turn_id = :root_id AND user_id = :uid"),
+                    {"root_id": root_turn_id, "uid": user_id},
+                ).scalar()
+                or 0
+            )
+
+            if retries_count_for_root >= settings.COACH_CHAT_MAX_RETRIES_PER_ROOT:
+                raise ChatRetryLimitError(code="chat_retry_limit")
+
+            usage_row = conn.execute(
+                text("SELECT retries_count FROM chat_daily_usage WHERE usage_date = :d AND user_id = :uid"),
+                {"d": utc_today, "uid": user_id},
+            ).fetchone()
+            curr_retries = usage_row[0] if usage_row else 0
+            if curr_retries >= settings.COACH_CHAT_DAILY_RETRIES_LIMIT:
+                raise ChatRetryLimitError(code="chat_retry_limit")
+
+            conn.execute(
+                text("""
+                    INSERT INTO chat_daily_usage (usage_date, user_id, new_turns_count, retries_count)
+                    VALUES (:d, :uid, 0, 1)
+                    ON CONFLICT (usage_date, user_id)
+                    DO UPDATE SET retries_count = chat_daily_usage.retries_count + 1, updated_at = NOW()
+                """),
+                {"d": utc_today, "uid": user_id},
+            )
+
+            # Based on the count of retries under the root (not target's own
+            # attempt_number), so retrying the root itself multiple times still
+            # numbers attempts sequentially instead of always producing root.attempt+1.
+            attempt_number = retries_count_for_root + 2
+            effective_thread_id = thread_id or target_dict.get("thread_id")
+
+            conn.execute(
+                text("""
+                    INSERT INTO chat_turns (
+                        request_id, user_id, thread_id, fingerprint,
+                        root_turn_id, attempt_number, status, created_at, updated_at
+                    ) VALUES (
+                        :req_id, :uid, :tid, :fp,
+                        :root_id, :attempt, 'active', NOW(), NOW()
+                    )
+                """),
+                {
+                    "req_id": req_uuid,
+                    "uid": user_id,
+                    "tid": effective_thread_id,
+                    "fp": fp,
+                    "root_id": root_turn_id,
+                    "attempt": attempt_number,
+                },
+            )
+            conn.commit()
+            return {
+                "kind": "retry",
+                "request_id": req_uuid,
+                "attempt_number": attempt_number,
+                "root_turn_id": root_turn_id,
+                "status": "active",
+                "fingerprint": fp,
+            }
+
+        if message is not None:
+            usage_row = conn.execute(
+                text("SELECT new_turns_count FROM chat_daily_usage WHERE usage_date = :d AND user_id = :uid"),
+                {"d": utc_today, "uid": user_id},
+            ).fetchone()
+            curr_new = usage_row[0] if usage_row else 0
+            if curr_new >= settings.COACH_CHAT_DAILY_NEW_TURNS_LIMIT:
+                raise ChatDailyLimitError(code="chat_daily_limit")
+
+            conn.execute(
+                text("""
+                    INSERT INTO chat_daily_usage (usage_date, user_id, new_turns_count, retries_count)
+                    VALUES (:d, :uid, 1, 0)
+                    ON CONFLICT (usage_date, user_id)
+                    DO UPDATE SET new_turns_count = chat_daily_usage.new_turns_count + 1, updated_at = NOW()
+                """),
+                {"d": utc_today, "uid": user_id},
+            )
+
+            conn.execute(
+                text("""
+                    INSERT INTO chat_turns (
+                        request_id, user_id, thread_id, fingerprint,
+                        root_turn_id, attempt_number, status, created_at, updated_at
+                    ) VALUES (
+                        :req_id, :uid, :tid, :fp,
+                        NULL, 1, 'active', NOW(), NOW()
+                    )
+                """),
+                {
+                    "req_id": req_uuid,
+                    "uid": user_id,
+                    "tid": thread_id,
+                    "fp": fp,
+                },
+            )
+            conn.commit()
+            return {
+                "kind": "new",
+                "request_id": req_uuid,
+                "attempt_number": 1,
+                "root_turn_id": None,
+                "status": "active",
+                "fingerprint": fp,
+            }
+
+        raise CoachChatError(code="invalid_request", message="Either message or retry_of must be specified")
+
+
+def finish_chat_turn(
+    request_id: Any,
+    status: str,
+    result_message_id: int | None = None,
+) -> None:
+    update_chat_turn_status(request_id=request_id, status=status, result_message_id=result_message_id)
+
+
+def prune_coach_chat(
+    now: datetime.datetime | None = None,
+    batch_size: int = 500,
+) -> dict[str, int]:
+    """Idempotently prune expired chat messages, stale summaries, and cleared turn tombstones.
+
+    Retention period is settings.COACH_CHAT_RETENTION_DAYS (default 90 days).
+    Does NOT delete chat_daily_usage or chat_llm_calls.
+    """
+    cutoff = (now or datetime.datetime.now(datetime.UTC)) - datetime.timedelta(days=settings.COACH_CHAT_RETENTION_DAYS)
+    deleted_msgs = 0
+    cleared_summaries = 0
+    deleted_turns = 0
+
+    with engine.connect() as conn:
+        # 1. Delete expired messages in batches
+        res_msgs = conn.execute(
+            text("""
+                DELETE FROM chat_messages
+                WHERE id IN (
+                    SELECT id FROM chat_messages
+                    WHERE created_at < :cutoff
+                    LIMIT :lim
+                )
+            """),
+            {"cutoff": cutoff, "lim": batch_size},
+        )
+        deleted_msgs = res_msgs.rowcount
+
+        # 2. Reset summaries pointing to deleted or expired messages. Also catches
+        # summarized_through_id already NULL with summary still set -- chat_threads'
+        # FK to chat_messages is ON DELETE SET NULL, so step 1's delete above already
+        # nulled summarized_through_id for any thread pointing at a pruned message,
+        # leaving the summary text itself dangling by the time this UPDATE runs.
+        res_sum = conn.execute(
+            text("""
+                UPDATE chat_threads
+                SET summary = NULL, summarized_through_id = NULL, updated_at = NOW()
+                WHERE (summary IS NOT NULL OR summarized_through_id IS NOT NULL)
+                  AND (
+                      summarized_through_id IS NULL
+                      OR summarized_through_id NOT IN (SELECT id FROM chat_messages)
+                      OR updated_at < :cutoff
+                  )
+            """),
+            {"cutoff": cutoff},
+        )
+        cleared_summaries = res_sum.rowcount
+
+        # 3. Delete expired cleared turn tombstones
+        res_turns = conn.execute(
+            text("""
+                DELETE FROM chat_turns
+                WHERE request_id IN (
+                    SELECT request_id FROM chat_turns
+                    WHERE status = 'cleared' AND created_at < :cutoff
+                    LIMIT :lim
+                )
+            """),
+            {"cutoff": cutoff, "lim": batch_size},
+        )
+        deleted_turns = res_turns.rowcount
+
+        conn.commit()
+
+    return {
+        "deleted_messages": deleted_msgs,
+        "cleared_summaries": cleared_summaries,
+        "deleted_turns": deleted_turns,
+    }

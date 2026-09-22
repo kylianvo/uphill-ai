@@ -437,10 +437,12 @@ def test_save_domain_nutrition_replaces_principles_and_appends_products(tmp_path
         patch("db.replace_kb_chunks_by_kind", return_value=1) as replace_mock,
         patch("db.add_kb_chunks", return_value=1) as add_mock,
         patch("db.get_kb_chunks", return_value=full_catalog_after_save),
+        patch("services.kb_retrieval.reindex_nutrition_principles", return_value=1) as reindex_mock,
     ):
         saved = asyncio.run(kb_distiller.save_domain("nutrition", principle_rows + catalog_rows, "test-key"))
     replace_mock.assert_called_once_with("nutrition", "principle", principle_rows)
     add_mock.assert_called_once_with("nutrition", catalog_rows)
+    reindex_mock.assert_called_once_with(principle_rows, "test-key")
     assert saved == 2
 
     with open(f"{tmp_path}/nutrition.json", encoding="utf-8") as f:

@@ -61,6 +61,8 @@ frontend/scripts/
 docs/*
 !docs/agents/
 !docs/observability-release-report.md
+!docs/coach-chat-retention-runbook.md
+!docs/coach-chat-foundation-release-report.md
 
 # MS Office lock files
 ~$*
