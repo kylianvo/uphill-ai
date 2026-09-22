@@ -233,6 +233,9 @@ async def run_turn(
                     question = m.get("content", "")
                     break
 
+        api_key = user.get("gemini_api_key") or settings.GEMINI_API_KEY
+        tools = coach_tools.build_tools(user_id=user_id, kb_api_key=api_key) if api_key else []
+
         try:
             assistant_msg_id = db.append_chat_message(
                 thread_id=thread_id,
@@ -246,8 +249,12 @@ async def run_turn(
             if model is None:
                 from services.coach_model import GeminiCoachModel
 
-                api_key = user.get("gemini_api_key") or settings.GEMINI_API_KEY
-                model = GeminiCoachModel(api_key=api_key)
+                # tools must be bound here, not just handed to build_graph below --
+                # build_graph's tool node only executes calls the model already
+                # decided to make; the model itself only gains function-calling
+                # capability via ChatGoogleGenerativeAI.bind_tools() (see
+                # GeminiCoachModel._get_chat), which requires tools at construction.
+                model = GeminiCoachModel(api_key=api_key, tools=tools or None)
         except Exception:
             db.finish_chat_turn(request_id=req_uuid, status="error")
             raise
@@ -258,8 +265,6 @@ async def run_turn(
                 return kb_retrieval.search_principles(query=q, api_key=api_key)
             return []
 
-        api_key = user.get("gemini_api_key") or settings.GEMINI_API_KEY
-        tools = coach_tools.build_tools(user_id=user_id, kb_api_key=api_key) if api_key else []
         graph = build_graph(model=model, retrieve_fn=_retrieve_kb, tools=tools or None)
         call_id = uuid4()
         initial_state: TurnState = {

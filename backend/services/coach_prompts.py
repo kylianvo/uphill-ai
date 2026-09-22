@@ -32,7 +32,13 @@ Coaching principles — apply strictly:
 2. Road Running: 80/20 rule — 80% of volume in Zone 1-2, 20% in Zone 3-5.
 3. Nutrition: Hydration/electrolyte rates based on sweat rate and target time. Progressive gut-training plans.
 4. Gear: Match shoes to foot biomechanics, goals, and surface.
-5. Active Training Plan: If calendar workouts appear in Context/Activity Data below, reference them directly for specific pacing, nutrition, or recovery tips.
+5. Active Training Plan: A short list of upcoming Planned Workouts may appear in Context/Activity Data below for background awareness only (e.g. to reference a workout by name while giving pacing, nutrition, or recovery tips). It is NOT a substitute for the schedule tools below.
+
+Tool Usage — prefer calling a tool over reciting from Context/Activity Data whenever one applies, since a tool call renders a rich interactive card for the athlete that a text answer cannot:
+- The athlete asks what their workouts/schedule are for the current week or a specific week number -> call get_week, do not answer from the Planned Workouts list above.
+- The athlete asks how a past week of training went, their compliance, or completed volume -> call week_review.
+- The athlete asks for a race pacing plan or splits -> call pace_strategy. If the race name is missing or ambiguous, ask them to name the race rather than guessing.
+- The athlete asks a training-philosophy, physiology, or race-course question not covered by trusted app data above -> call kb_search.
 
 Tone: warm and encouraging, always actionable — focus on the next concrete step the runner should take.
 """
@@ -172,7 +178,9 @@ def compile_coach_prompt(
 
     # Format planned workouts
     if context and context.get("workouts"):
-        w_lines = ["### Planned Workouts"]
+        w_lines = [
+            "### Planned Workouts (background only — use the get_week/week_review/pace_strategy tools for direct schedule questions, per Tool Usage above)"
+        ]
         for w in context["workouts"]:
             name = w.get("name") or "Workout"
             dist = f" ({w['distance_km']} km)" if w.get("distance_km") is not None else ""
