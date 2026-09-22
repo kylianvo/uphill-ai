@@ -1,7 +1,7 @@
 """Integration tests for Coach Chat cross-worker admission, locking, deduplication, and quotas."""
 
 import uuid
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import text
@@ -57,7 +57,14 @@ def test_chat_turn_lock_connection_drop_releases(auth_headers):
     ).scalar()
     assert res is True
 
-    # Closing connection drops the session lock
+    # Simulate a genuinely dropped connection (crash/network loss). A plain
+    # conn.close() on a pooled engine only checks the connection back into the
+    # pool -- the physical Postgres session (and its session-scoped advisory
+    # lock) stays alive and can be handed back out for reuse. invalidate()
+    # forces SQLAlchemy to actually discard the DBAPI connection, which is
+    # what a real disconnect does and is the only way Postgres itself will
+    # release the lock.
+    conn.invalidate()
     conn.close()
 
     # Now chat_turn_lock should succeed immediately

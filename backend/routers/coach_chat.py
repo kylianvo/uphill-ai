@@ -224,6 +224,8 @@ async def get_chat_turn_status(
     turn = db.get_chat_turn(user_id=user_id, request_id=req_uuid)
     if not turn:
         raise HTTPException(status_code=404, detail="Turn not found.")
+    if turn["status"] == "cleared":
+        raise HTTPException(status_code=410, detail="Turn was cleared.")
 
     return {
         "request_id": str(turn["request_id"]),

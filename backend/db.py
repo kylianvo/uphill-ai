@@ -547,7 +547,8 @@ def init_db():
             thinking_tokens         INTEGER NOT NULL DEFAULT 0,
             cached_tokens           INTEGER NOT NULL DEFAULT 0,
             cost_usd                NUMERIC(10, 6),
-            status                  TEXT NOT NULL DEFAULT 'reserved' CHECK (status IN ('reserved', 'ok', 'error', 'unknown')),
+            status                  TEXT NOT NULL DEFAULT 'reserved'
+                CONSTRAINT chk_chat_llm_calls_status CHECK (status IN ('reserved', 'ok', 'error', 'unknown', 'interrupted')),
             latency_ms              INTEGER,
             created_at              TIMESTAMPTZ DEFAULT NOW(),
             completed_at            TIMESTAMPTZ
@@ -556,6 +557,27 @@ def init_db():
         )
         conn.execute(text("CREATE INDEX IF NOT EXISTS idx_chat_llm_calls_request_id ON chat_llm_calls (request_id)"))
         conn.commit()
+
+        # Self-migrate existing dev databases: chat_llm_calls originally lacked
+        # 'interrupted' in its status CHECK constraint (a dropped call couldn't be
+        # recorded distinctly from 'unknown'). CREATE TABLE IF NOT EXISTS above
+        # doesn't touch an already-existing table's constraint. The constraint may
+        # carry either name depending on how the table was originally created: the
+        # explicit name Alembic used, or Postgres's auto-generated
+        # "<table>_<column>_check" name from the unnamed inline CHECK this file used
+        # before it was given an explicit name above.
+        try:
+            conn.execute(text("ALTER TABLE chat_llm_calls DROP CONSTRAINT IF EXISTS chk_chat_llm_calls_status"))
+            conn.execute(text("ALTER TABLE chat_llm_calls DROP CONSTRAINT IF EXISTS chat_llm_calls_status_check"))
+            conn.execute(
+                text(
+                    "ALTER TABLE chat_llm_calls ADD CONSTRAINT chk_chat_llm_calls_status "
+                    "CHECK (status IN ('reserved', 'ok', 'error', 'unknown', 'interrupted'))"
+                )
+            )
+            conn.commit()
+        except Exception:
+            conn.rollback()
 
         for col_sql in [
             # Type upgrades for databases created before treadmill fields became
@@ -4567,7 +4589,10 @@ def admit_chat_turn(
                 {"d": utc_today, "uid": user_id},
             )
 
-            attempt_number = target_dict.get("attempt_number", 1) + 1
+            # Based on the count of retries under the root (not target's own
+            # attempt_number), so retrying the root itself multiple times still
+            # numbers attempts sequentially instead of always producing root.attempt+1.
+            attempt_number = retries_count_for_root + 2
             effective_thread_id = thread_id or target_dict.get("thread_id")
 
             conn.execute(
@@ -4685,14 +4710,19 @@ def prune_coach_chat(
         )
         deleted_msgs = res_msgs.rowcount
 
-        # 2. Reset summaries pointing to deleted or expired messages
+        # 2. Reset summaries pointing to deleted or expired messages. Also catches
+        # summarized_through_id already NULL with summary still set -- chat_threads'
+        # FK to chat_messages is ON DELETE SET NULL, so step 1's delete above already
+        # nulled summarized_through_id for any thread pointing at a pruned message,
+        # leaving the summary text itself dangling by the time this UPDATE runs.
         res_sum = conn.execute(
             text("""
                 UPDATE chat_threads
                 SET summary = NULL, summarized_through_id = NULL, updated_at = NOW()
-                WHERE summarized_through_id IS NOT NULL
+                WHERE (summary IS NOT NULL OR summarized_through_id IS NOT NULL)
                   AND (
-                      summarized_through_id NOT IN (SELECT id FROM chat_messages)
+                      summarized_through_id IS NULL
+                      OR summarized_through_id NOT IN (SELECT id FROM chat_messages)
                       OR updated_at < :cutoff
                   )
             """),

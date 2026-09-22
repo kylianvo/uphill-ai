@@ -3,8 +3,6 @@
 import uuid
 from unittest.mock import patch
 
-import pytest
-
 import db
 from services.coach_graph import DoneEvent, StatusEvent, TokenEvent
 
@@ -104,13 +102,18 @@ def test_get_chat_turn_status(client, auth_headers):
     headers = auth_headers["headers"]
     req_id = uuid.uuid4()
 
+    # result_message_id has a real FK to chat_messages -- create a real row
+    # rather than an arbitrary id, or the insert below violates it.
+    thread = db.get_or_create_chat_thread(user_id)
+    message_id = db.append_chat_message(thread["id"], "assistant", "Pace is 5:00/km")
+
     db.create_chat_turn(
         request_id=req_id,
         user_id=user_id,
-        thread_id=None,
+        thread_id=thread["id"],
         fingerprint="fp-test",
         status="ok",
-        result_message_id=99,
+        result_message_id=message_id,
     )
 
     # 1. Owned turn
@@ -119,7 +122,7 @@ def test_get_chat_turn_status(client, auth_headers):
     data = resp.json()
     assert data["request_id"] == str(req_id)
     assert data["status"] == "ok"
-    assert data["result_message_id"] == 99
+    assert data["result_message_id"] == message_id
 
     # 2. Non-existent turn -> 404
     missing_id = uuid.uuid4()

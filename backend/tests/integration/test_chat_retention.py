@@ -3,8 +3,6 @@
 import uuid
 from datetime import UTC, datetime, timedelta
 
-import pytest
-
 import db
 from db import prune_coach_chat
 
@@ -92,10 +90,12 @@ def test_clear_preserves_counters_and_calls(client, auth_headers):
     req_id = uuid.uuid4()
     call_id = uuid.uuid4()
 
-    # Set up turn, call accounting, and daily usage
+    # Set up turn, call accounting, and daily usage -- finalized, not left 'active',
+    # since clear_chat_thread refuses to clear while a turn is still in progress.
     db.admit_chat_turn(request_id=req_id, user_id=user_id, thread_id=thread["id"], message="Hello")
     db.reserve_chat_call(call_id=call_id, request_id=req_id, feature="coach_chat", model="gemini-3.8-flash")
     db.finish_chat_call(call_id=call_id, status="ok", usage_known=True, input_tokens=50, output_tokens=10)
+    db.update_chat_turn_status(request_id=req_id, status="ok")
 
     # Execute clear
     resp = client.delete("/api/coach/chat/thread", headers=headers)
@@ -149,7 +149,21 @@ def test_account_deletion_cascades_chat_tables(client, auth_headers):
         conn.commit()
 
         # All child chat rows must be cascaded
-        assert conn.execute(db.text("SELECT COUNT(*) FROM chat_threads WHERE user_id = :uid"), {"uid": user_id}).scalar() == 0
-        assert conn.execute(db.text("SELECT COUNT(*) FROM chat_messages WHERE thread_id = :tid"), {"tid": thread["id"]}).scalar() == 0
-        assert conn.execute(db.text("SELECT COUNT(*) FROM chat_turns WHERE user_id = :uid"), {"uid": user_id}).scalar() == 0
-        assert conn.execute(db.text("SELECT COUNT(*) FROM chat_llm_calls WHERE call_id = :cid"), {"cid": call_id}).scalar() == 0
+        assert (
+            conn.execute(db.text("SELECT COUNT(*) FROM chat_threads WHERE user_id = :uid"), {"uid": user_id}).scalar()
+            == 0
+        )
+        assert (
+            conn.execute(
+                db.text("SELECT COUNT(*) FROM chat_messages WHERE thread_id = :tid"), {"tid": thread["id"]}
+            ).scalar()
+            == 0
+        )
+        assert (
+            conn.execute(db.text("SELECT COUNT(*) FROM chat_turns WHERE user_id = :uid"), {"uid": user_id}).scalar()
+            == 0
+        )
+        assert (
+            conn.execute(db.text("SELECT COUNT(*) FROM chat_llm_calls WHERE call_id = :cid"), {"cid": call_id}).scalar()
+            == 0
+        )
