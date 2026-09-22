@@ -12,6 +12,11 @@ from db import engine, init_db
 # Truncated in child-first order isn't strictly required (CASCADE handles FK
 # dependencies), but listed here for readability of the dependency graph.
 ALL_TABLES = [
+    "chat_llm_calls",
+    "chat_turns",
+    "chat_messages",
+    "chat_threads",
+    "chat_daily_usage",
     "kb_chunks",
     "block_reviews",
     "knowledge_cards",
