@@ -272,4 +272,12 @@ describe("ChatTab", () => {
     expect(mockSend).toHaveBeenCalledWith("Dalat Ultra Trail");
     expect(dismissClarify).toHaveBeenCalled();
   });
+
+  it("shows context-aware starter chips built from the active plan when there are no messages", () => {
+    renderWithContext(<ChatTab isMobile={false} />, {
+      activePlan: { race_name: "Dalat Ultra Trail 70K", current_week: 4 },
+    });
+    expect(screen.getByText(/Week 4/)).toBeDefined();
+    expect(screen.getByText(/Dalat Ultra Trail 70K/)).toBeDefined();
+  });
 });

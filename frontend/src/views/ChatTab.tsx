@@ -9,7 +9,7 @@ import RichCardRenderer from "../components/RichCardRenderer";
 import ClarificationChipsBar from "../components/ClarificationChipsBar";
 
 export default function ChatTab({ isMobile }: { isMobile: boolean }) {
-  const { lang, setPaceHandoff, setIsPaceStrategyOpen, handleTabSwitch } = useAppContext();
+  const { lang, setPaceHandoff, setIsPaceStrategyOpen, handleTabSwitch, activePlan } = useAppContext();
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const [inputText, setInputText] = useState("");
   const [isSourcesOpen, setIsSourcesOpen] = useState(false);
@@ -117,6 +117,15 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
         return t("chat_status_ready");
     }
   };
+
+  const starterChips = activePlan
+    ? [
+        `What are my key workouts for Week ${activePlan.current_week}?`,
+        `Calculate a conservative pacing plan for ${activePlan.race_name}.`,
+        "Review my training volume and consistency over the last 2 weeks.",
+        "What does Scott Johnston say about building muscular endurance for steep climbs?",
+      ]
+    : [t("chat_empty_cap_1"), t("chat_empty_cap_2"), t("chat_empty_cap_3"), t("chat_empty_cap_4")];
 
   return (
     <div style={{ width: "100%", display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
@@ -284,7 +293,7 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
                   {t("chat_empty_desc")}
                 </p>
 
-                {/* Capabilities pills */}
+                {/* Starter chips */}
                 <div
                   style={{
                     display: "flex",
@@ -295,18 +304,27 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
                     marginBottom: "16px",
                   }}
                 >
-                  <span style={{ fontSize: "12px", backgroundColor: "rgba(255, 255, 255, 0.75)", border: "1px solid rgba(0, 0, 0, 0.08)", padding: "4px 12px", borderRadius: "16px", color: "var(--text-primary)", boxShadow: "0 1px 2px rgba(0, 0, 0, 0.03)" }}>
-                    {t("chat_empty_cap_1")}
-                  </span>
-                  <span style={{ fontSize: "12px", backgroundColor: "rgba(255, 255, 255, 0.75)", border: "1px solid rgba(0, 0, 0, 0.08)", padding: "4px 12px", borderRadius: "16px", color: "var(--text-primary)", boxShadow: "0 1px 2px rgba(0, 0, 0, 0.03)" }}>
-                    {t("chat_empty_cap_2")}
-                  </span>
-                  <span style={{ fontSize: "12px", backgroundColor: "rgba(255, 255, 255, 0.75)", border: "1px solid rgba(0, 0, 0, 0.08)", padding: "4px 12px", borderRadius: "16px", color: "var(--text-primary)", boxShadow: "0 1px 2px rgba(0, 0, 0, 0.03)" }}>
-                    {t("chat_empty_cap_3")}
-                  </span>
-                  <span style={{ fontSize: "12px", backgroundColor: "rgba(255, 255, 255, 0.75)", border: "1px solid rgba(0, 0, 0, 0.08)", padding: "4px 12px", borderRadius: "16px", color: "var(--text-primary)", boxShadow: "0 1px 2px rgba(0, 0, 0, 0.03)" }}>
-                    {t("chat_empty_cap_4")}
-                  </span>
+                  {starterChips.map((chip, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleSend(chip)}
+                      disabled={isBusy}
+                      style={{
+                        fontSize: "12px",
+                        backgroundColor: "rgba(255, 255, 255, 0.75)",
+                        border: "1px solid rgba(0, 0, 0, 0.08)",
+                        padding: "4px 12px",
+                        borderRadius: "16px",
+                        color: "var(--text-primary)",
+                        boxShadow: "0 1px 2px rgba(0, 0, 0, 0.03)",
+                        cursor: isBusy ? "not-allowed" : "pointer",
+                        opacity: isBusy ? 0.6 : 1,
+                        transition: "opacity 0.2s ease",
+                      }}
+                    >
+                      {chip}
+                    </button>
+                  ))}
                 </div>
 
                 {/* Boundary notice */}
