@@ -52,8 +52,8 @@ nothing is uploaded as a trace.
 
 **Why a separate venv.** `langgraph-cli[inmem]` pulls `langgraph-api`, which needs
 `protobuf<7` and OpenTelemetry 1.42, while the app pins OTel 1.44. It lives only in
-`backend/.venv-studio` (already set up in this worktree -- don't recreate it, just
-`pip install`-upgrade it if `requirements-studio.txt` changes).
+`backend/.venv-studio` -- create it once, then re-run
+`.venv-studio/bin/pip install -r requirements-studio.txt` whenever that file changes.
 
 `backend/.env` may not define `DATABASE_URL` (it doesn't in local dev by default, since
 `config.py` falls back to a default). `dev/studio_graph.py` requires it to be set
