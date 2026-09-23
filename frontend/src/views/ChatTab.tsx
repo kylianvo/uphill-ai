@@ -367,6 +367,7 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
                       key={tc.tool_call_id}
                       result={tc}
                       lang={lang}
+                      isMobile={isMobile}
                       onOpenPaceStrategy={(payload) => {
                         setPaceHandoff(payload);
                         setIsPaceStrategyOpen(true);

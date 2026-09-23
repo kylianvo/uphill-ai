@@ -66,9 +66,9 @@ interface WorkoutCardProps {
   wo: any;
   isMobile: boolean;
   lang: string;
-  onToggleComplete: (id: number, completed: boolean) => void;
+  onToggleComplete?: (id: number, completed: boolean) => void;
   onMarkMissed?: (id: number, missed: boolean) => void;
-  onLogWorkout: (id: number, rpe: number | null, notes: string) => Promise<void>;
+  onLogWorkout?: (id: number, rpe: number | null, notes: string) => Promise<void>;
   getWorkoutDate: (wo: any) => string;
   defaultExpanded?: boolean;
   // True when a coach is viewing this workout on an assigned athlete's
@@ -81,6 +81,11 @@ interface WorkoutCardProps {
   onApproveWorkout?: (id: number) => void;
   onRemoveWorkout?: (id: number) => void;
   onEditWorkout?: (id: number, fields: Record<string, any>) => void;
+  // Read-only display (e.g. a chat tool-result card): hides every control
+  // that mutates state or belongs to the owner's workflow -- completion/missed
+  // toggles, coach approve/remove, edit, coach notes and the RPE/notes log.
+  // Defaults to false so the Scheduler's own behavior is unchanged.
+  readOnly?: boolean;
 }
 
 const RACE_COACH_MESSAGES: Record<string, string[]> = {
@@ -137,6 +142,7 @@ export default function WorkoutCard({
   onApproveWorkout,
   onRemoveWorkout,
   onEditWorkout,
+  readOnly = false,
 }: WorkoutCardProps) {
   const isRest = wo.type === "Rest";
   const isRaceDay = wo.type?.toLowerCase() === "race";
@@ -184,7 +190,7 @@ export default function WorkoutCard({
 
   const handleSave = async () => {
     setSaving(true);
-    await onLogWorkout(wo.id, rpe, notes);
+    await onLogWorkout?.(wo.id, rpe, notes);
     setSaving(false);
     setSaved(true);
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
@@ -310,7 +316,7 @@ export default function WorkoutCard({
                       : "HLV chỉnh sửa"}
                 </span>
               )}
-              {isPending && (
+              {isPending && !readOnly && (
                 <span
                   style={{
                     fontSize: "9px",
@@ -458,7 +464,7 @@ export default function WorkoutCard({
 
           {/* Completion + expand */}
           <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
-            {isCoachActingAsAthlete && (
+            {!readOnly && isCoachActingAsAthlete && (
               <>
                 {!isRest && (wo.is_completed || wo.is_missed) && (
                   <span
@@ -526,7 +532,7 @@ export default function WorkoutCard({
                 )}
               </>
             )}
-            {!isRest && !isCoachActingAsAthlete && (
+            {!readOnly && !isRest && !isCoachActingAsAthlete && (
               <>
                 {onMarkMissed && (
                   <button
@@ -549,7 +555,7 @@ export default function WorkoutCard({
                   </button>
                 )}
                 <button
-                  onClick={() => onToggleComplete(wo.id, !wo.is_completed)}
+                  onClick={() => onToggleComplete?.(wo.id, !wo.is_completed)}
                   style={{
                     background: "none",
                     border: "none",
@@ -588,7 +594,7 @@ export default function WorkoutCard({
         </div>
 
         {/* ── Coach edit form ── */}
-        {editing && (
+        {!readOnly && editing && (
           <div
             style={{
               marginTop: "12px",
@@ -895,7 +901,7 @@ export default function WorkoutCard({
             )}
 
             {/* ── Per-workout coach notes ── */}
-            {athleteId && (
+            {!readOnly && athleteId && (
               <CoachNoteThread
                 athleteId={athleteId}
                 targetType="workout"
@@ -906,6 +912,7 @@ export default function WorkoutCard({
             )}
 
             {/* ── RPE + Notes ── */}
+            {!readOnly && (
             <div style={{ marginTop: "16px", paddingTop: "14px", borderTop: "1px solid rgba(0,0,0,0.06)" }}>
             {isCoachActingAsAthlete ? (
               <p style={{ fontSize: "12px", color: "var(--text-muted)", margin: 0, fontStyle: "italic" }}>
@@ -1035,6 +1042,7 @@ export default function WorkoutCard({
               </>
             )}
             </div>
+            )}
           </div>
         )}
       </div>

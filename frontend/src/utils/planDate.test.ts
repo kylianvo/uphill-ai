@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getMondayOfDate, computeCurrentWeek, resolveCurrentWeek } from "./planDate";
+import { getMondayOfDate, computeCurrentWeek, resolveCurrentWeek, computeWorkoutDate } from "./planDate";
 
 describe("planDate utils", () => {
   describe("getMondayOfDate", () => {
@@ -119,6 +119,54 @@ describe("planDate utils", () => {
 
     it("returns 1 if plan is null", () => {
       expect(resolveCurrentWeek(null, [])).toBe(1);
+    });
+  });
+
+  describe("computeWorkoutDate", () => {
+    it("computes the calendar date from start_date (Week 1, Wednesday)", () => {
+      // Week 1 Monday is Aug 31, 2026 -> Wednesday is Sep 2
+      const plan = { start_date: "2026-08-31", total_weeks: 9 };
+      const d = computeWorkoutDate(plan, [], { day_of_week: "Wednesday", week_number: 1 });
+      expect(d).not.toBeNull();
+      expect(d!.getFullYear()).toBe(2026);
+      expect(d!.getMonth()).toBe(8); // September (0-indexed)
+      expect(d!.getDate()).toBe(2);
+    });
+
+    it("computes the calendar date for a later week from start_date", () => {
+      const plan = { start_date: "2026-08-31", total_weeks: 9 };
+      const d = computeWorkoutDate(plan, [], { day_of_week: "Monday", week_number: 3 });
+      // Week 3 Monday = Aug 31 + 14 days = Sep 14
+      expect(d!.getMonth()).toBe(8);
+      expect(d!.getDate()).toBe(14);
+    });
+
+    it("falls back to race_date anchoring when start_date is absent, using a RACE-type workout", () => {
+      const plan = { race_date: "2026-11-01", total_weeks: 9 };
+      const workouts = [{ title: "Target Event", type: "RACE", week_number: 9 }];
+      const d = computeWorkoutDate(plan, workouts, { day_of_week: "Sunday", week_number: 9 });
+      expect(d).not.toBeNull();
+      // race_date itself falls on the race workout's day
+      expect(d!.getFullYear()).toBe(2026);
+      expect(d!.getMonth()).toBe(10); // November
+      expect(d!.getDate()).toBe(1);
+    });
+
+    it("falls back to race_date anchored by total_weeks when no race workout is found", () => {
+      const plan = { race_date: "2026-11-01", total_weeks: 9 };
+      const d = computeWorkoutDate(plan, [], { day_of_week: "Sunday", week_number: 9 });
+      expect(d).not.toBeNull();
+      expect(d!.getMonth()).toBe(10);
+      expect(d!.getDate()).toBe(1);
+    });
+
+    it("returns null when neither start_date nor race_date is available", () => {
+      expect(computeWorkoutDate({}, [], { day_of_week: "Monday", week_number: 1 })).toBeNull();
+    });
+
+    it("returns null (not an Invalid Date) when race_date has neither a race workout nor total_weeks to anchor from", () => {
+      const plan = { race_date: "2026-11-01" };
+      expect(computeWorkoutDate(plan, [], { day_of_week: "Monday", week_number: 1 })).toBeNull();
     });
   });
 });

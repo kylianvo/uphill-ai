@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { formatIntervalSummary } from "./WorkoutCard";
+import { render, screen } from "@testing-library/react";
+import WorkoutCard, { formatIntervalSummary } from "./WorkoutCard";
 
 describe("formatIntervalSummary", () => {
   it("formats a clean single-block interval as reps x value + unit", () => {
@@ -80,5 +81,42 @@ describe("formatIntervalSummary", () => {
         })
       ).toBe("4x2min");
     });
+  });
+});
+
+describe("WorkoutCard readOnly mode", () => {
+  const wo = {
+    id: 1,
+    day_of_week: "Tuesday",
+    title: "Hill Repeats",
+    type: "Interval",
+    target_zone: "Zone 4",
+    duration_minutes: 45,
+    distance_km: 8,
+    description: "Warm-up. Main: 6x3min uphill Zone 4. Cool-down.",
+    approved_at: "2026-01-01T00:00:00Z",
+    source: "ai_generated",
+    is_completed: false,
+    is_missed: false,
+  };
+
+  it("shows descriptive content but hides every mutating control", () => {
+    render(<WorkoutCard wo={wo} isMobile={false} lang="en" getWorkoutDate={() => "Sep 2"} readOnly defaultExpanded />);
+
+    // Descriptive content stays
+    expect(screen.getByText("Hill Repeats")).toBeInTheDocument();
+    expect(screen.getByText("Sep 2")).toBeInTheDocument();
+
+    // Mutating controls are gone
+    expect(screen.queryByTitle("Mark complete")).not.toBeInTheDocument();
+    expect(screen.queryByTitle("Mark missed")).not.toBeInTheDocument();
+    expect(screen.queryByTitle("Edit")).not.toBeInTheDocument();
+    expect(screen.queryByText(/How did it feel/)).not.toBeInTheDocument();
+  });
+
+  it("does not require onToggleComplete/onLogWorkout callbacks when readOnly", () => {
+    expect(() =>
+      render(<WorkoutCard wo={wo} isMobile={false} lang="en" getWorkoutDate={() => ""} readOnly />)
+    ).not.toThrow();
   });
 });
