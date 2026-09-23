@@ -253,6 +253,8 @@ async def test_run_turn_constructs_model_with_tools_bound(auth_headers):
     assert kwargs.get("api_key")
     tools = kwargs.get("tools")
     assert tools
+    tool_names = {t.name for t in tools}
+    assert tool_names == {"get_week", "pace_strategy", "week_review", "kb_search"}
 
 
 @pytest.mark.asyncio
@@ -286,11 +288,12 @@ async def test_second_turn_includes_prior_history_once(auth_headers):
         events_1 = [e async for e in run_turn(user={"id": user_id}, request=request_1, model=fake_model)]
         assert any(isinstance(e, DoneEvent) for e in events_1)
 
-        fake_model.responses = [
-            ModelEvent(kind="text", text="Got it, 75km. Here's your pacing plan."),
-            ModelEvent(kind="usage", usage=Usage(input_tokens=60, output_tokens=15)),
-        ]
-        fake_model._cursor = 0
+        fake_model_2 = FakeCoachModel(
+            responses=[
+                ModelEvent(kind="text", text="Got it, 75km. Here's your pacing plan."),
+                ModelEvent(kind="usage", usage=Usage(input_tokens=60, output_tokens=15)),
+            ]
+        )
 
         req_id_2 = uuid.uuid4()
         request_2 = {
@@ -298,11 +301,12 @@ async def test_second_turn_includes_prior_history_once(auth_headers):
             "message": "75km",
             "lang": "en",
         }
-        events_2 = [e async for e in run_turn(user={"id": user_id}, request=request_2, model=fake_model)]
+        events_2 = [e async for e in run_turn(user={"id": user_id}, request=request_2, model=fake_model_2)]
         assert any(isinstance(e, DoneEvent) for e in events_2)
 
-    assert len(fake_model.requests) == 2
-    second_request = fake_model.requests[-1]
+    assert len(fake_model.requests) == 1
+    assert len(fake_model_2.requests) == 1
+    second_request = fake_model_2.requests[-1]
     contents = [m.content for m in second_request.messages]
 
     assert contents[0] == "Give me a pacing plan for Dalat Ultra Trail"
