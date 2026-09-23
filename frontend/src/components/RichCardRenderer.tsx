@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import React from "react";
 import { ToolResultEvent } from "../lib/coachChatStream";
 import { translations } from "../app/translations";
 import WorkoutCard from "./WorkoutCard";
@@ -33,6 +34,60 @@ const cardHeaderStyle: React.CSSProperties = { fontWeight: 600, marginBottom: "6
 
 function translate(lang: string, key: keyof typeof translations.en): string {
   return translations[lang as keyof typeof translations]?.[key] || translations.en[key] || key;
+}
+
+// I2: a malformed tool_calls_json row (e.g. written before the card_data
+// shape changed) must not crash the whole app on render -- catch it here and
+// render nothing instead of blanking the page.
+class CardErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: unknown) {
+    console.error("RichCardRenderer: tool card failed to render", error);
+  }
+  render() {
+    if (this.state.hasError) return null;
+    return this.props.children;
+  }
+}
+
+// Minimal shape guards per card_type: render nothing rather than throwing
+// when a row has an unexpected shape.
+function isValidWeekSchedule(data: any): boolean {
+  return Array.isArray(data?.workouts) && data.workouts.every((w: any) => typeof w?.day_of_week === "string");
+}
+function isValidWeekReview(data: any): boolean {
+  return (
+    !!data &&
+    typeof data.planned === "object" &&
+    data.planned !== null &&
+    typeof data.actual === "object" &&
+    data.actual !== null &&
+    Array.isArray(data.per_workout)
+  );
+}
+function isValidPacingSplits(data: any): boolean {
+  return Array.isArray(data?.splits);
+}
+function isValidKnowledgeCitations(data: any): boolean {
+  return Array.isArray(data?.citations);
+}
+
+function buildWeekReviewHeader(data: any, lang: string): string | null {
+  const { weeks_ago, target_week, week_label } = data;
+  if (weeks_ago != null && target_week != null) {
+    if (weeks_ago === 0) {
+      return translate(lang, "chat_week_review_current").replace("{week}", String(target_week));
+    }
+    const key = weeks_ago === 1 ? "chat_week_review_weeks_ago_one" : "chat_week_review_weeks_ago_other";
+    return translate(lang, key).replace("{n}", String(weeks_ago)).replace("{week}", String(target_week));
+  }
+  return week_label || null;
 }
 
 const buttonStyle: React.CSSProperties = {
@@ -78,9 +133,10 @@ function WeekScheduleCard({ data, lang, isMobile }: { data: any; lang: string; i
 }
 
 function WeekReviewCard({ data, lang }: { data: any; lang: string }) {
+  const header = buildWeekReviewHeader(data, lang);
   return (
     <div style={cardWrapStyle}>
-      {data.week_label && <div style={cardHeaderStyle}>{data.week_label}</div>}
+      {header && <div style={cardHeaderStyle}>{header}</div>}
       <WeeklyReview data={data} lang={lang as "en" | "vi"} />
     </div>
   );
@@ -102,7 +158,8 @@ function PacingSplitsCard({
       <div style={cardHeaderStyle}>{data.race_name}</div>
       <div style={{ fontSize: "13px", color: "var(--text-secondary)", marginBottom: "10px" }}>
         {data.distance_label ? `${data.distance_label} · ` : ""}
-        {data.total_distance_km} km · +{data.total_elevation_m} m D+
+        {data.total_distance_km} km
+        {data.total_elevation_m != null ? ` · +${data.total_elevation_m} m D+` : ""}
         {data.target_time_formatted ? ` · ${data.target_time_formatted}` : ""}
       </div>
       {splits.length > 1 && (
@@ -119,6 +176,7 @@ function PacingSplitsCard({
             race_name: data.race_name,
             distance_km: data.total_distance_km,
             distance_label: data.distance_label,
+            target_time_mins: data.target_time_hours != null ? data.target_time_hours * 60 : undefined,
           })
         }
         style={buttonStyle}
@@ -139,19 +197,32 @@ function KnowledgeCitationsCard({ data }: { data: any }) {
   );
 }
 
-export default function RichCardRenderer({ result, lang, onOpenPaceStrategy, isMobile }: RichCardRendererProps) {
+function RichCard({ result, lang, onOpenPaceStrategy, isMobile }: RichCardRendererProps) {
   if (result.status !== "success" || !result.card_data) return null;
+  const data = result.card_data;
 
   switch (result.card_type) {
     case "week_schedule":
-      return <WeekScheduleCard data={result.card_data} lang={lang} isMobile={!!isMobile} />;
+      if (!isValidWeekSchedule(data)) return null;
+      return <WeekScheduleCard data={data} lang={lang} isMobile={!!isMobile} />;
     case "week_review":
-      return <WeekReviewCard data={result.card_data} lang={lang} />;
+      if (!isValidWeekReview(data)) return null;
+      return <WeekReviewCard data={data} lang={lang} />;
     case "pacing_splits":
-      return <PacingSplitsCard data={result.card_data} onOpenPaceStrategy={onOpenPaceStrategy} lang={lang} />;
+      if (!isValidPacingSplits(data)) return null;
+      return <PacingSplitsCard data={data} onOpenPaceStrategy={onOpenPaceStrategy} lang={lang} />;
     case "knowledge_citations":
-      return <KnowledgeCitationsCard data={result.card_data} />;
+      if (!isValidKnowledgeCitations(data)) return null;
+      return <KnowledgeCitationsCard data={data} />;
     default:
       return null;
   }
+}
+
+export default function RichCardRenderer(props: RichCardRendererProps) {
+  return (
+    <CardErrorBoundary>
+      <RichCard {...props} />
+    </CardErrorBoundary>
+  );
 }

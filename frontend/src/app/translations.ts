@@ -357,6 +357,9 @@ export const translations = {
     chat_open_in_pace_strategy: "Open in Pace Strategy",
     chat_clarify_hint: "Coach needs a bit more detail:",
     chat_card_week: "Week",
+    chat_week_review_current: "Current Week (Week {week})",
+    chat_week_review_weeks_ago_one: "1 Week Ago (Week {week})",
+    chat_week_review_weeks_ago_other: "{n} Weeks Ago (Week {week})",
 
     // Knowledge Tab
     know_title: "Knowledge Hub (RAG)",
@@ -815,6 +818,9 @@ export const translations = {
     chat_open_in_pace_strategy: "Mở trong Pace Strategy",
     chat_clarify_hint: "Coach cần thêm thông tin:",
     chat_card_week: "Tuần",
+    chat_week_review_current: "Tuần hiện tại (Tuần {week})",
+    chat_week_review_weeks_ago_one: "1 tuần trước (Tuần {week})",
+    chat_week_review_weeks_ago_other: "{n} tuần trước (Tuần {week})",
 
     // Knowledge Tab
     know_title: "Thư Viện Kiến Thức",

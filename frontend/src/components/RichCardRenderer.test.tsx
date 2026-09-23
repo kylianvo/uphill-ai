@@ -181,3 +181,70 @@ it("renders nothing (or an inline error note) for a failed tool, never crashing"
   const { container } = render(<RichCardRenderer result={errorResult} lang="en" onOpenPaceStrategy={() => {}} />);
   expect(container).toBeTruthy();
 });
+
+it("omits the D+ elevation segment when total_elevation_m is null", () => {
+  const noElevation: ToolResultEvent = {
+    ...pacingResult,
+    card_data: { ...pacingResult.card_data, total_elevation_m: null },
+  };
+  render(<RichCardRenderer result={noElevation} lang="en" onOpenPaceStrategy={() => {}} />);
+  expect(screen.queryByText(/D\+/)).not.toBeInTheDocument();
+});
+
+it("passes target_time_mins through to onOpenPaceStrategy when target_time_hours is present", () => {
+  const withTargetTime: ToolResultEvent = {
+    ...pacingResult,
+    card_data: { ...pacingResult.card_data, target_time_hours: 12.75 },
+  };
+  const onOpenPaceStrategy = vi.fn();
+  render(<RichCardRenderer result={withTargetTime} lang="en" onOpenPaceStrategy={onOpenPaceStrategy} />);
+  screen.getByText("Open in Pace Strategy").click();
+  expect(onOpenPaceStrategy).toHaveBeenCalledWith(
+    expect.objectContaining({ target_time_mins: 12.75 * 60 })
+  );
+});
+
+it("builds a bilingual week_review header from weeks_ago/target_week when present", () => {
+  const withNewFields: ToolResultEvent = {
+    ...weekReviewResult,
+    card_data: { ...weekReviewResult.card_data, weeks_ago: 2, target_week: 3, week_label: "2 Weeks Ago (Week 3)" },
+  };
+  render(<RichCardRenderer result={withNewFields} lang="en" onOpenPaceStrategy={() => {}} />);
+  expect(screen.getByText("2 Weeks Ago (Week 3)")).toBeInTheDocument();
+});
+
+it("does not crash and renders nothing for an old-shape week_schedule payload", () => {
+  const oldShape: ToolResultEvent = {
+    type: "tool_result",
+    tool_call_id: "call_old",
+    name: "get_week",
+    status: "success",
+    card_type: "week_schedule",
+    card_data: { workouts: [{ day: "Tuesday", name: "Easy" }] },
+  };
+  const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+  expect(() =>
+    render(<RichCardRenderer result={oldShape} lang="en" onOpenPaceStrategy={() => {}} />)
+  ).not.toThrow();
+  expect(screen.queryByText("Easy")).not.toBeInTheDocument();
+  spy.mockRestore();
+});
+
+it("catches a render throw from a card component via the error boundary and renders nothing", () => {
+  const malformed: ToolResultEvent = {
+    type: "tool_result",
+    tool_call_id: "call_bad",
+    name: "week_review",
+    status: "success",
+    card_type: "week_review",
+    // Passes the week_review shape guard (planned/actual objects, per_workout
+    // array), but omits `unplanned`, which WeeklyReview reads unconditionally
+    // (`unplanned.length`) and would throw on -- proving the boundary still
+    // holds even when a shape a guard doesn't check slips through.
+    card_data: { planned: {}, actual: {}, per_workout: [] },
+  };
+  const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+  const { container } = render(<RichCardRenderer result={malformed} lang="en" onOpenPaceStrategy={() => {}} />);
+  expect(container.firstChild).toBeNull();
+  spy.mockRestore();
+});
