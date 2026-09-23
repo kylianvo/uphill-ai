@@ -30,6 +30,14 @@ class PaceStrategyInput(BaseModel):
         default="conservative_start",
         description="Pacing distribution strategy.",
     )
+    distance_km: float | None = Field(
+        default=None,
+        description="Race distance in km (e.g. 75). Pass it whenever the athlete names a distance; needed for races offering several distances.",
+    )
+    elevation_gain_m: float | None = Field(
+        default=None,
+        description="Total course elevation gain in meters, if the athlete states it.",
+    )
 
 
 class WeekReviewInput(BaseModel):
@@ -57,9 +65,16 @@ def build_tools(user_id: int, *, kb_api_key: str) -> list[StructuredTool]:
         race_name: str | None = None,
         target_time_hours: float | None = None,
         strategy: Literal["even", "conservative_start", "aggressive"] = "conservative_start",
+        distance_km: float | None = None,
+        elevation_gain_m: float | None = None,
     ) -> dict:
         return pacing_tools.pace_strategy_impl(
-            user_id=user_id, race_name=race_name, target_time_hours=target_time_hours, strategy=strategy
+            user_id=user_id,
+            race_name=race_name,
+            target_time_hours=target_time_hours,
+            strategy=strategy,
+            distance_km=distance_km,
+            elevation_gain_m=elevation_gain_m,
         ).__dict__
 
     def _week_review(weeks_ago: int = 0) -> dict:

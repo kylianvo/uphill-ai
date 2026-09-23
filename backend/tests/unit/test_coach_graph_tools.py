@@ -5,7 +5,7 @@ import pytest
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
-from services.coach_graph import ToolResultEvent, astream_turn_graph, build_graph
+from services.coach_graph import ClarifyEvent, ToolResultEvent, astream_turn_graph, build_graph
 from services.coach_model import FakeCoachModel, ModelEvent
 from services.observability import Usage
 
@@ -91,6 +91,43 @@ async def test_tool_call_cap_forces_final_reply():
     events = [e async for e in astream_turn_graph(graph, initial_state)]
     tool_results = [e for e in events if isinstance(e, ToolResultEvent)]
     assert len(tool_results) <= 4
+
+
+def _clarify_tool(name: str):
+    async def _run(value: str) -> dict:
+        return {
+            "tool_call_id": "",
+            "name": name,
+            "status": "error",
+            "card_type": None,
+            "card_data": None,
+            "error": "distance_required",
+            "clarify": {"prompt": "Which distance are you racing?", "options": ["50km", "75km"]},
+        }
+
+    return StructuredTool.from_function(coroutine=_run, name=name, description="clarify", args_schema=_EchoInput)
+
+
+@pytest.mark.asyncio
+async def test_tool_result_with_clarify_emits_clarify_event():
+    fake_model = FakeCoachModel(
+        responses=[
+            ModelEvent(kind="tool_call", tool_call={"id": "call_1", "name": "pace_strategy", "args": {"value": "x"}}),
+            ModelEvent(kind="text", text="Which distance?"),
+        ]
+    )
+    graph = build_graph(model=fake_model, retrieve_fn=lambda q: [], tools=[_clarify_tool("pace_strategy")])
+    initial_state = {"user_id": 1, "request_id": str(uuid4()), "call_id": uuid4(), "question": "hi", "lang": "en"}
+
+    events = [e async for e in astream_turn_graph(graph, initial_state)]
+    clarify_events = [e for e in events if isinstance(e, ClarifyEvent)]
+    tool_results = [e for e in events if isinstance(e, ToolResultEvent)]
+
+    assert len(clarify_events) == 1
+    assert clarify_events[0].prompt == "Which distance are you racing?"
+    assert clarify_events[0].options == ["50km", "75km"]
+    assert len(tool_results) == 1
+    assert tool_results[0].status == "error"
 
 
 @pytest.mark.asyncio

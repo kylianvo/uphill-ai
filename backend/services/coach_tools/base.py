@@ -16,3 +16,4 @@ class ToolResult:
     card_type: str | None = None
     card_data: dict[str, Any] | None = None
     error: str | None = None
+    clarify: dict[str, Any] | None = None

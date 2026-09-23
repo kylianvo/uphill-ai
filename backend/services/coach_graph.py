@@ -418,6 +418,20 @@ def _make_tool_node(tools: list[Any]):
                     "card_data": result.get("card_data"),
                 },
             )
+            clarify = result.get("clarify")
+            if clarify and clarify.get("options"):
+                _emit_custom(
+                    writer,
+                    {
+                        "type": "clarify",
+                        "prompt": clarify.get("prompt", ""),
+                        "options": clarify.get("options"),
+                    },
+                )
+            # clarify is a transient prompt for this turn's SSE stream only --
+            # don't let it flow into tool_history (persisted as
+            # chat_messages.tool_calls_json).
+            result.pop("clarify", None)
             return result
 
         results = await asyncio.gather(*(run_one(tc) for tc in pending))

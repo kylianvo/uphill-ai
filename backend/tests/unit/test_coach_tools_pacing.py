@@ -19,7 +19,10 @@ def _matched_race(**overrides):
 
 
 def test_pace_strategy_no_race_match_returns_error():
-    with patch("services.race_matcher.match_race", return_value=None):
+    with (
+        patch("db.get_active_plan", return_value=None),
+        patch("services.race_matcher.match_race", return_value=None),
+    ):
         result = pace_strategy_impl(user_id=1, race_name="Nonexistent Race")
     assert result.status == "error"
     assert result.error == "race_not_found"
@@ -31,6 +34,7 @@ def test_pace_strategy_uses_curated_course_profile_when_available():
     paced = [{"name": "Start", "distance_km": 0.0, "elevation_m": 0, "target_pace": "0:00", "split_time": "0:00:00"}]
 
     with (
+        patch("db.get_active_plan", return_value=None),
         patch("services.race_matcher.match_race", return_value=matched),
         patch("services.race_matcher.course_profile", return_value={"checkpoints": checkpoints}) as mock_profile,
         patch("services.race_estimator.RaceEstimator.synthesize_course") as mock_synth,
@@ -59,6 +63,7 @@ def test_pace_strategy_falls_back_to_synthesized_course():
 
     with (
         patch("services.race_matcher.match_race", return_value=matched),
+        patch("db.get_active_plan", return_value=None),
         patch("services.race_matcher.course_profile", return_value=None),
         patch("services.race_estimator.RaceEstimator.synthesize_course", return_value=synthesized) as mock_synth,
         patch("main._calculate_pacing_core", return_value=[]),
@@ -66,4 +71,98 @@ def test_pace_strategy_falls_back_to_synthesized_course():
         result = pace_strategy_impl(user_id=1, race_name="Dalat Ultra Trail", target_time_hours=10.0)
 
     mock_synth.assert_called_once_with(71.2, 3150.0)
+    assert result.status == "success"
+
+
+def test_pace_strategy_uses_active_plan_distance_and_elevation_when_race_matches():
+    # No distance_km given by the athlete/model, but their active plan is
+    # for the same race and has course_distance_km/course_elevation_gain_m
+    # set -> those should be used as defaults instead of erroring out.
+    plan = {"race_name": "Dalat Ultra Trail", "course_distance_km": 75.0, "course_elevation_gain_m": 4200.0}
+    matched_final = _matched_race(distance_km=75.0, elevation_gain_m=4200.0, distance_label="75km")
+    checkpoints = [{"name": "Start", "distance_meters": 0, "segment_gain_meters": 0.0, "segment_loss_meters": 0.0}]
+    paced = [{"name": "Start", "distance_km": 0.0, "elevation_m": 0, "target_pace": "0:00", "split_time": "0:00:00"}]
+
+    with (
+        patch("db.get_active_plan", return_value=plan),
+        # Both the plan-race lookup and the athlete's query resolve to the
+        # same curated race -- proves same-race comparison via matched
+        # race_name, not raw string equality.
+        patch("services.race_matcher.match_race") as mock_match,
+        patch("services.race_matcher.course_profile", return_value={"checkpoints": checkpoints}),
+        patch("main._calculate_pacing_core", return_value=paced) as mock_calc,
+    ):
+        mock_match.side_effect = [
+            _matched_race(race_name="Dalat Ultra Trail 70K"),  # plan race lookup
+            _matched_race(race_name="Dalat Ultra Trail 70K"),  # query race lookup (comparison)
+            matched_final,  # final distance-aware match
+        ]
+        result = pace_strategy_impl(user_id=1, race_name="Dalat Ultra Trail", target_time_hours=13.0)
+
+    # Final match_race call must have been given the plan's course_distance_km.
+    assert mock_match.call_args_list[-1].kwargs.get("distance_km") == 75.0
+    assert mock_calc.call_args.kwargs["request"].checkpoints == checkpoints
+    assert result.status == "success"
+
+
+def test_pace_strategy_multi_distance_race_without_distance_returns_clarify():
+    matched = _matched_race(distance_label=None, distance_km=None, elevation_gain_m=None)
+    distances = [
+        {"label": "50km", "distance_km": 50.0, "elevation_gain_m": 2000.0},
+        {"label": "75km", "distance_km": 75.0, "elevation_gain_m": 3500.0},
+        {"label": "100km", "distance_km": 100.0, "elevation_gain_m": 5000.0},
+    ]
+
+    with (
+        patch("db.get_active_plan", return_value=None),
+        patch("services.race_matcher.match_race", return_value=matched),
+        patch("services.race_matcher.race_distances", return_value=distances) as mock_distances,
+    ):
+        result = pace_strategy_impl(user_id=1, race_name="Dalat Ultra Trail", target_time_hours=13.0)
+
+    mock_distances.assert_called_once_with(matched.race_name)
+    assert result.status == "error"
+    assert result.error == "distance_required"
+    assert result.clarify is not None
+    assert result.clarify["options"] == ["50km", "75km", "100km"]
+    assert "prompt" in result.clarify
+
+
+def test_pace_strategy_distance_given_but_no_elevation_anywhere_returns_error():
+    matched = _matched_race(distance_km=75.0, elevation_gain_m=None, distance_label="75km")
+
+    with (
+        patch("db.get_active_plan", return_value=None),
+        patch("services.race_matcher.match_race", return_value=matched),
+        patch("services.race_matcher.course_profile", return_value=None),
+        patch("services.race_estimator.RaceEstimator.synthesize_course") as mock_synth,
+    ):
+        result = pace_strategy_impl(user_id=1, race_name="Dalat Ultra Trail", distance_km=75.0, target_time_hours=13.0)
+
+    mock_synth.assert_not_called()
+    assert result.status == "error"
+    assert result.error == "elevation_required"
+
+
+def test_pace_strategy_distance_and_elevation_args_succeed_via_synthesize():
+    matched = _matched_race(distance_km=75.0, elevation_gain_m=None, distance_label="75km")
+    synthesized = [{"name": "Start", "distance_meters": 0, "segment_gain_meters": 0.0, "segment_loss_meters": 0.0}]
+    paced = [{"name": "Start", "distance_km": 0.0, "elevation_m": 0, "target_pace": "0:00", "split_time": "0:00:00"}]
+
+    with (
+        patch("db.get_active_plan", return_value=None),
+        patch("services.race_matcher.match_race", return_value=matched),
+        patch("services.race_matcher.course_profile", return_value=None),
+        patch("services.race_estimator.RaceEstimator.synthesize_course", return_value=synthesized) as mock_synth,
+        patch("main._calculate_pacing_core", return_value=paced),
+    ):
+        result = pace_strategy_impl(
+            user_id=1,
+            race_name="Dalat Ultra Trail",
+            distance_km=75.0,
+            elevation_gain_m=3800.0,
+            target_time_hours=13.0,
+        )
+
+    mock_synth.assert_called_once_with(75.0, 3800.0)
     assert result.status == "success"
