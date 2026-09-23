@@ -7,6 +7,8 @@ import WeeklyReview from "./WeeklyReview";
 import { KnowledgeCard } from "./KnowledgeCard";
 import { ProfileChart, PacingSplitsTable } from "./PacingSplitsView";
 import { computeWorkoutDate } from "../utils/planDate";
+import ScheduleProposalCard from "./ScheduleProposalCard";
+import { ProposalState } from "../lib/scheduleProposals";
 
 interface RichCardRendererProps {
   result: ToolResultEvent;
@@ -18,6 +20,8 @@ interface RichCardRendererProps {
     target_time_mins?: number;
   }) => void;
   isMobile?: boolean;
+  proposalStates?: Record<number, ProposalState>;
+  onScheduleApplied?: (workouts: unknown[]) => void;
 }
 
 const cardWrapStyle: React.CSSProperties = {
@@ -76,6 +80,9 @@ function isValidPacingSplits(data: any): boolean {
 }
 function isValidKnowledgeCitations(data: any): boolean {
   return Array.isArray(data?.citations);
+}
+function isValidScheduleProposal(data: any): boolean {
+  return typeof data?.proposal_id === "number" && Array.isArray(data?.diff) && Array.isArray(data?.operations);
 }
 
 function buildWeekReviewHeader(data: any, lang: string): string | null {
@@ -197,7 +204,7 @@ function KnowledgeCitationsCard({ data }: { data: any }) {
   );
 }
 
-function RichCard({ result, lang, onOpenPaceStrategy, isMobile }: RichCardRendererProps) {
+function RichCard({ result, lang, onOpenPaceStrategy, isMobile, proposalStates, onScheduleApplied }: RichCardRendererProps) {
   if (result.status !== "success" || !result.card_data) return null;
   const data = result.card_data;
 
@@ -214,6 +221,17 @@ function RichCard({ result, lang, onOpenPaceStrategy, isMobile }: RichCardRender
     case "knowledge_citations":
       if (!isValidKnowledgeCitations(data)) return null;
       return <KnowledgeCitationsCard data={data} />;
+    case "schedule_proposal":
+      if (!isValidScheduleProposal(data)) return null;
+      return (
+        <ScheduleProposalCard
+          data={data}
+          lang={lang}
+          isMobile={!!isMobile}
+          liveState={proposalStates?.[data.proposal_id as number]}
+          onApplied={onScheduleApplied}
+        />
+      );
     default:
       return null;
   }

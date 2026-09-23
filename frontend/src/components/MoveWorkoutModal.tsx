@@ -3,6 +3,7 @@
 import React from "react";
 import { createPortal } from "react-dom";
 import { ArrowsLeftRight, ArrowRight, X, Moon, CalendarBlank } from "@phosphor-icons/react";
+import { DAY_ORDER, DAY_LABELS } from "../utils/dayLabels";
 
 interface ModalWorkout {
   id?: number;
@@ -22,18 +23,6 @@ interface MoveWorkoutModalProps {
   lang: string;
   onSwapDays: (day1: string, day2: string, weekNumberOverride?: number) => void;
 }
-
-const DAY_ORDER = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-
-const DAY_LABELS: Record<string, { en: string; vi: string }> = {
-  Monday: { en: "Monday", vi: "Thứ Hai" },
-  Tuesday: { en: "Tuesday", vi: "Thứ Ba" },
-  Wednesday: { en: "Wednesday", vi: "Thứ Tư" },
-  Thursday: { en: "Thursday", vi: "Thứ Năm" },
-  Friday: { en: "Friday", vi: "Thứ Sáu" },
-  Saturday: { en: "Saturday", vi: "Thứ Bảy" },
-  Sunday: { en: "Sunday", vi: "Chủ Nhật" },
-};
 
 export function MoveWorkoutModal({
   isOpen,

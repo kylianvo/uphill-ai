@@ -248,3 +248,17 @@ it("catches a render throw from a card component via the error boundary and rend
   expect(container.firstChild).toBeNull();
   spy.mockRestore();
 });
+
+it("renders a schedule_proposal card and ignores a malformed one", () => {
+  const good = {
+    type: "tool_result" as const, tool_call_id: "p1", name: "propose_schedule_change", status: "success" as const,
+    card_type: "schedule_proposal",
+    card_data: { proposal_id: 1, operations: [], diff: [], warnings: [], rationale: "r", status: "proposed" },
+  };
+  const { rerender, container } = render(<RichCardRenderer result={good} lang="en" onOpenPaceStrategy={() => {}} />);
+  expect(screen.getByText("Proposed schedule change")).toBeInTheDocument();
+  rerender(
+    <RichCardRenderer result={{ ...good, card_data: { diff: "nope" } }} lang="en" onOpenPaceStrategy={() => {}} />
+  );
+  expect(container.textContent).toBe("");
+});

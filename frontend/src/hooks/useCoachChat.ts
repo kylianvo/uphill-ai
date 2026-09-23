@@ -6,6 +6,7 @@ import {
   CoachChatStreamError,
   ToolResultEvent,
 } from "../lib/coachChatStream";
+import { localToday, ProposalState } from "../lib/scheduleProposals";
 
 export interface ChatMessageItem {
   id?: number;
@@ -59,6 +60,7 @@ export interface UseCoachChatReturn {
   clearMessageSources: () => void;
   clarifyOptions: string[] | null;
   dismissClarify: () => void;
+  proposalStates: Record<number, ProposalState>;
 }
 
 function hydrateToolCalls(
@@ -93,6 +95,14 @@ function getAuthToken(): string | null {
   return null;
 }
 
+function toProposalStates(raw: unknown): Record<number, ProposalState> {
+  const out: Record<number, ProposalState> = {};
+  if (raw && typeof raw === "object") {
+    for (const [k, v] of Object.entries(raw as Record<string, ProposalState>)) out[Number(k)] = v;
+  }
+  return out;
+}
+
 export function useCoachChat(): UseCoachChatReturn {
   const { lang } = useAppContext();
 
@@ -108,6 +118,7 @@ export function useCoachChat(): UseCoachChatReturn {
     evidence: unknown[];
   } | null>(null);
   const [clarifyOptions, setClarifyOptions] = useState<string[] | null>(null);
+  const [proposalStates, setProposalStates] = useState<Record<number, ProposalState>>({});
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const isExecutingRef = useRef<boolean>(false);
@@ -131,6 +142,7 @@ export function useCoachChat(): UseCoachChatReturn {
         if (!cancelled && data && Array.isArray(data.messages)) {
           setMessages(hydrateToolCalls(data.messages));
           setHasMore(Boolean(data.has_more));
+          setProposalStates(toProposalStates(data.proposals));
         }
       } catch {
         // Silently tolerate initial fetch failures (e.g. offline/starting)
@@ -171,6 +183,7 @@ export function useCoachChat(): UseCoachChatReturn {
       if (data && Array.isArray(data.messages)) {
         setMessages((prev) => [...hydrateToolCalls(data.messages), ...prev]);
         setHasMore(Boolean(data.has_more));
+        setProposalStates((prev) => ({ ...toProposalStates(data.proposals), ...prev }));
       }
     } finally {
       setIsLoadingOlder(false);
@@ -217,6 +230,7 @@ export function useCoachChat(): UseCoachChatReturn {
             message: message ?? null,
             retry_of: retryOf ?? null,
             lang: lang || "en",
+            client_today: localToday(),
           }),
           signal: abortCtrl.signal,
         });
@@ -517,5 +531,6 @@ export function useCoachChat(): UseCoachChatReturn {
     clearMessageSources,
     clarifyOptions,
     dismissClarify,
+    proposalStates,
   };
 }

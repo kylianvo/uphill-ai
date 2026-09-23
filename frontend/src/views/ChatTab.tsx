@@ -9,7 +9,7 @@ import RichCardRenderer from "../components/RichCardRenderer";
 import ClarificationChipsBar from "../components/ClarificationChipsBar";
 
 export default function ChatTab({ isMobile }: { isMobile: boolean }) {
-  const { lang, setPaceHandoff, setIsPaceStrategyOpen, handleTabSwitch, activePlan } = useAppContext();
+  const { lang, setPaceHandoff, setIsPaceStrategyOpen, handleTabSwitch, activePlan, setWorkouts } = useAppContext();
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const [inputText, setInputText] = useState("");
   const [isSourcesOpen, setIsSourcesOpen] = useState(false);
@@ -34,6 +34,7 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
     clearMessageSources,
     clarifyOptions,
     dismissClarify,
+    proposalStates,
   } = useCoachChat();
 
   const t = (key: keyof typeof translations.en) =>
@@ -375,6 +376,8 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
                         setIsPaceStrategyOpen(true);
                         handleTabSwitch("tools");
                       }}
+                      proposalStates={proposalStates}
+                      onScheduleApplied={(workouts) => setWorkouts(workouts)}
                     />
                   ))}
 
