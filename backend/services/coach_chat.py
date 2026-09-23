@@ -217,8 +217,9 @@ async def run_turn(
             return
 
         question = ""
+        current_user_msg_id: int | None = None
         if admission["kind"] == "new":
-            db.append_chat_message(
+            current_user_msg_id = db.append_chat_message(
                 thread_id=thread_id,
                 role="user",
                 content=message or "",
@@ -231,6 +232,7 @@ async def run_turn(
             for m in reversed(recent_msgs):
                 if m.get("role") == "user":
                     question = m.get("content", "")
+                    current_user_msg_id = m.get("id")
                     break
 
         api_key = user.get("gemini_api_key") or settings.GEMINI_API_KEY
@@ -267,6 +269,30 @@ async def run_turn(
 
         graph = build_graph(model=model, retrieve_fn=_retrieve_kb, tools=tools or None)
         call_id = uuid4()
+
+        chat_context = coach_context.build_chat_context(user_id=user_id, question=question, thread_id=thread_id)
+        # The thread row was already fetched above (admission needs it); reuse it
+        # rather than a second DB read, and carry its retained summary into the
+        # prompt so `compile_coach_prompt` can render it (see coach_prompts.py).
+        if thread.get("summary"):
+            chat_context["summary"] = thread["summary"]
+
+        # Prior turns as model messages: reuse context["history"] (oldest -> newest,
+        # status == "ok" only) rather than a second DB read. Exclude the current
+        # turn's own user message (it's already in history -- appended/looked-up
+        # above, before build_chat_context ran) and the interrupted assistant
+        # placeholder (filtered out by build_chat_context's status == "ok" check),
+        # then append the current question once as the final message.
+        prior_messages = [
+            ChatMessage(
+                role="user" if m.get("role") == "user" else "assistant",
+                content=m.get("content") or "",
+            )
+            for m in (chat_context.get("history") or [])
+            if m.get("id") != current_user_msg_id and (m.get("content") or "").strip()
+        ]
+        turn_messages = [*prior_messages, ChatMessage(role="user", content=question)]
+
         initial_state: TurnState = {
             "user_id": user_id,
             "thread_id": thread_id,
@@ -274,7 +300,8 @@ async def run_turn(
             "call_id": call_id,
             "question": question,
             "lang": lang,
-            "context": coach_context.build_chat_context(user_id=user_id, question=question, thread_id=thread_id),
+            "context": chat_context,
+            "messages": turn_messages,
         }
 
         accumulated: list[str] = []
