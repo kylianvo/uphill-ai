@@ -61,7 +61,7 @@ describe("ChatTab", () => {
         ...contextOverrides,
       };
       return render(
-        <AppContext.Provider value={contextValue as React.ContextType<typeof AppContext>}>
+        <AppContext.Provider value={contextValue as unknown as React.ContextType<typeof AppContext>}>
           {ui}
         </AppContext.Provider>
       );

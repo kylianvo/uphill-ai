@@ -63,7 +63,7 @@ const weekReviewResult: ToolResultEvent = {
     unplanned: [],
     missed: [],
     coverage: { completed_count: 2, matched_count: 2, checkbox_only_count: 0 },
-    narrative: { summary: "Strong week.", highlights: [], watch: [] },
+    narrative: { summary: "Strong week.", highlights: ["Hit every long run on target."], watch: [] },
     week_label: "1 Week Ago (Week 4)",
   },
 };
@@ -145,7 +145,12 @@ it("renders week_schedule as a real WorkoutCard", () => {
 
 it("renders week_review with the real WeeklyReview component", () => {
   render(<RichCardRenderer result={weekReviewResult} lang="en" onOpenPaceStrategy={() => {}} />);
+  // The wrapper's own header
   expect(screen.getByText("1 Week Ago (Week 4)")).toBeInTheDocument();
+  // Proof WeeklyReview itself rendered the fixture: its narrative highlight text,
+  // under its own "Highlights" section, is something only WeeklyReview draws.
+  expect(screen.getByText("Highlights")).toBeInTheDocument();
+  expect(screen.getByText("Hit every long run on target.")).toBeInTheDocument();
 });
 
 it("renders pacing_splits with the profile chart, splits table, and an Open in Pace Strategy button", () => {

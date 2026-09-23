@@ -30,6 +30,11 @@ const cardWrapStyle: React.CSSProperties = {
   overflowX: "auto",
 };
 const cardHeaderStyle: React.CSSProperties = { fontWeight: 600, marginBottom: "6px" };
+
+function translate(lang: string, key: keyof typeof translations.en): string {
+  return translations[lang as keyof typeof translations]?.[key] || translations.en[key] || key;
+}
+
 const buttonStyle: React.CSSProperties = {
   marginTop: "8px",
   padding: "6px 12px",
@@ -52,7 +57,7 @@ function WeekScheduleCard({ data, lang, isMobile }: { data: any; lang: string; i
   return (
     <div style={cardWrapStyle}>
       <div style={cardHeaderStyle}>
-        {lang === "en" ? `Week ${data.week_number}` : `Tuần ${data.week_number}`}
+        {translate(lang, "chat_card_week")} {data.week_number}
         {" · "}
         {data.total_distance_km} km · +{data.total_elevation_gain_m} m D+
       </div>
@@ -90,8 +95,6 @@ function PacingSplitsCard({
   onOpenPaceStrategy: RichCardRendererProps["onOpenPaceStrategy"];
   lang: string;
 }) {
-  const t = (key: keyof typeof translations.en) =>
-    translations[lang as keyof typeof translations]?.[key] || translations.en[key] || key;
   const splits = data.splits || [];
 
   return (
@@ -120,7 +123,7 @@ function PacingSplitsCard({
         }
         style={buttonStyle}
       >
-        {t("chat_open_in_pace_strategy")}
+        {translate(lang, "chat_open_in_pace_strategy")}
       </button>
     </div>
   );

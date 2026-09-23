@@ -352,6 +352,7 @@ export const translations = {
     chat_tool_failed: "failed",
     chat_open_in_pace_strategy: "Open in Pace Strategy",
     chat_clarify_hint: "Coach needs a bit more detail:",
+    chat_card_week: "Week",
 
     // Knowledge Tab
     know_title: "Knowledge Hub (RAG)",
@@ -805,6 +806,7 @@ export const translations = {
     chat_tool_failed: "thất bại",
     chat_open_in_pace_strategy: "Mở trong Pace Strategy",
     chat_clarify_hint: "Coach cần thêm thông tin:",
+    chat_card_week: "Tuần",
 
     // Knowledge Tab
     know_title: "Thư Viện Kiến Thức",
