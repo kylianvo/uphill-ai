@@ -114,6 +114,35 @@ def test_span_attributes_require_permitted_values_and_numeric_usage():
     assert rejected["attributes"] == {}
 
 
+def test_coach_graph_node_names_pass_through_allowlist():
+    """The coach LangGraph's static node/tool identifiers are code-level constants,
+    not user or model content, and are explicitly allowlisted so they export under
+    their real names instead of collapsing to the generic "operation" placeholder."""
+    coach_graph_names = {
+        "LangGraph",
+        "retrieve",
+        "generate",
+        "tools",
+        "final_generate",
+        "_tools_condition",
+        "get_week",
+        "pace_strategy",
+        "week_review",
+        "kb_search",
+        "propose_schedule_change",
+    }
+    for name in coach_graph_names:
+        safe = policy.sanitize_span_envelope({"name": name, "attributes": {}, "status": {"code": "OK"}})
+        assert safe is not None
+        assert safe["name"] == name, name
+
+
+def test_unallowlisted_span_name_is_still_masked():
+    safe = policy.sanitize_span_envelope({"name": "user question text", "attributes": {}, "status": {"code": "OK"}})
+    assert safe is not None
+    assert safe["name"] == "operation"
+
+
 def test_metadata_keeps_only_allowlisted_short_values():
     kept = policy.filter_metadata(
         {

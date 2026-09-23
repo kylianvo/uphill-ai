@@ -44,27 +44,18 @@ async def test_graph_nodes_are_exported_as_masked_spans(langfuse_spans, auth_hea
     observability.flush()
     spans = langfuse_spans.get_finished_spans()
 
-    # The LangChain instrumentor does see the LangGraph run -- confirmed by temporarily
-    # intercepting services.observability_policy.sanitize_span_envelope during diagnosis,
-    # which showed the real (pre-mask) span names: 'retrieve', '_tools_condition',
-    # 'generate', 'get_week' (the tool call), 'tools', '_tools_condition', 'generate',
-    # 'LangGraph' (the graph root) -- exactly the retrieve -> generate -> tools -> generate
-    # path this test drives. But services/observability_policy.py's `_SPAN_NAMES` is a
-    # default-deny allowlist for span *names* specifically, and none of the coach graph's
-    # node names are on it, so every one of them is exported as the generic "operation"
-    # placeholder. That masking rule is out of scope for this task (task-2-brief.md: modify
-    # observability.py only, for instrumentor wiring, "masking rules unchanged"), so this
-    # test asserts node-level export via the one identity signal that *is* allowlisted --
-    # `openinference.span.kind` -- instead of by name.
+    # The coach graph's node identifiers (retrieve/generate/tools/etc.) are now on
+    # services/observability_policy.py's _SPAN_NAMES allowlist, so they pass through the
+    # masked Langfuse pipeline under their real names instead of the generic "operation"
+    # placeholder.
     names = {span.name for span in spans}
-    assert names == {"operation"}, sorted(names)
+    assert {"retrieve", "generate", "tools"} <= names, sorted(names)
 
     kinds = [span.attributes.get("openinference.span.kind") for span in spans]
     # retrieve, generate (x2 rounds), tools node wrapper, the _tools_condition routing
     # step, and the LangGraph root are all CHAIN-kind; the get_week tool invocation
-    # itself is TOOL-kind. Asserting both kinds appear, with enough CHAIN spans to cover
-    # more than just the root, is the node-level-granularity check available without
-    # touching the name allowlist.
+    # itself is TOOL-kind. Kept alongside the name check as extra node-level-granularity
+    # evidence.
     assert kinds.count("TOOL") >= 1, kinds
     assert kinds.count("CHAIN") >= 3, kinds
 
