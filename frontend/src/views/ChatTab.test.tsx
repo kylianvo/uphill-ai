@@ -294,4 +294,15 @@ describe("ChatTab", () => {
     expect(screen.getByText(/Week 4/)).toBeDefined();
     expect(screen.getByText(/Dalat Ultra Trail 70K/)).toBeDefined();
   });
+
+  it("localizes plan-aware starter chips to Vietnamese instead of the English template", () => {
+    renderWithContext(<ChatTab isMobile={false} />, {
+      lang: "vi",
+      activePlan: { race_name: "Dalat Ultra Trail 70K", current_week: 4 },
+    });
+    expect(screen.getByText(/Tuần 4/)).toBeDefined();
+    expect(screen.getByText(/Dalat Ultra Trail 70K/)).toBeDefined();
+    expect(screen.queryByText(/What are my key workouts/i)).toBeNull();
+    expect(screen.queryByText(/Calculate a conservative pacing plan/i)).toBeNull();
+  });
 });

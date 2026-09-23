@@ -120,10 +120,10 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
 
   const starterChips = activePlan
     ? [
-        `What are my key workouts for Week ${activePlan.current_week}?`,
-        `Calculate a conservative pacing plan for ${activePlan.race_name}.`,
-        "Review my training volume and consistency over the last 2 weeks.",
-        "What does Scott Johnston say about building muscular endurance for steep climbs?",
+        t("chat_starter_week").replace("{week}", String(activePlan.current_week)),
+        t("chat_starter_pacing").replace("{race}", activePlan.race_name),
+        t("chat_starter_review"),
+        t("chat_starter_kb"),
       ]
     : [t("chat_empty_cap_1"), t("chat_empty_cap_2"), t("chat_empty_cap_3"), t("chat_empty_cap_4")];
 
