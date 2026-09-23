@@ -1,0 +1,5 @@
+{
+  "dependencies": ["."],
+  "graphs": {"coach": "./dev/studio_graph.py:graph"},
+  "env": ".env"
+}

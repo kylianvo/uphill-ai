@@ -1,0 +1,5 @@
+# LangGraph Studio (`langgraph dev`) -- install ONLY into backend/.venv-studio, after
+# requirements.txt. langgraph-api 0.14.4 needs protobuf<7 and the OTel 1.42 line, which
+# conflicts with requirements.txt's exact opentelemetry-*==1.44.0 pins, so it must never
+# be merged into requirements.txt / requirements-dev.txt. See docs/coach-graph-debugging.md.
+langgraph-cli[inmem]==0.4.31

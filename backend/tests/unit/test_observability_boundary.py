@@ -27,6 +27,7 @@ def is_production_file(path: Path) -> bool:
             "tests",
             "alembic",
             ".venv",
+            ".venv-studio",
             "venv",
             "env",
             "__pycache__",
