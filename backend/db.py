@@ -478,6 +478,7 @@ def init_db():
             cost_usd                NUMERIC(10, 6),
             latency_ms              INTEGER,
             trace_id                TEXT,
+            tool_calls_json         JSONB DEFAULT NULL,
             created_at              TIMESTAMPTZ DEFAULT NOW()
         )
         """)
@@ -487,6 +488,8 @@ def init_db():
                 "CREATE INDEX IF NOT EXISTS idx_chat_messages_thread_created ON chat_messages (thread_id, created_at DESC)"
             )
         )
+        conn.execute(text("ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS tool_calls_json JSONB DEFAULT NULL"))
+        conn.commit()
 
         try:
             conn.execute(
@@ -1334,6 +1337,30 @@ def get_plan_workouts(plan_id: int) -> list[dict[str, Any]]:
 
 
 get_workouts_for_plan = get_plan_workouts
+
+
+def get_plan_workouts_for_week(plan_id: int, week_number: int) -> list[dict[str, Any]]:
+    """Scoped to one week -- not get_plan_workouts(plan_id), which pulls every
+    week of the plan just to filter one out in Python (same reasoning as
+    get_week_review's own week-scoped query)."""
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("""
+            SELECT * FROM workouts WHERE plan_id = :plan_id AND week_number = :week_number
+            ORDER BY
+            CASE day_of_week
+              WHEN 'Monday'    THEN 1
+              WHEN 'Tuesday'   THEN 2
+              WHEN 'Wednesday' THEN 3
+              WHEN 'Thursday'  THEN 4
+              WHEN 'Friday'    THEN 5
+              WHEN 'Saturday'  THEN 6
+              WHEN 'Sunday'    THEN 7
+            END ASC
+        """),
+            {"plan_id": plan_id, "week_number": week_number},
+        ).fetchall()
+    return [_row_to_dict(r) for r in rows]
 
 
 def update_workout_log(
@@ -4010,6 +4037,7 @@ def update_chat_message(
     cost_usd: Any = None,
     latency_ms: int | None = None,
     trace_id: str | None = None,
+    tool_calls_json: Any = None,
     **kwargs: Any,
 ) -> None:
     fields: dict[str, Any] = dict(kwargs)
@@ -4037,6 +4065,8 @@ def update_chat_message(
         fields["latency_ms"] = latency_ms
     if trace_id is not None:
         fields["trace_id"] = trace_id
+    if tool_calls_json is not None:
+        fields["tool_calls_json"] = tool_calls_json
 
     if not fields:
         return
@@ -4055,13 +4085,14 @@ def update_chat_message(
         "cost_usd",
         "latency_ms",
         "trace_id",
+        "tool_calls_json",
     }
     set_clauses = []
     params: dict[str, Any] = {"mid": message_id}
 
     for col, val in fields.items():
         if col in valid_cols:
-            if col in ("evidence", "citations", "usage") and isinstance(val, dict | list):
+            if col in ("evidence", "citations", "usage", "tool_calls_json") and isinstance(val, dict | list):
                 val = json.dumps(val)
             set_clauses.append(f"{col} = :{col}")
             params[col] = val
@@ -4102,7 +4133,7 @@ def get_chat_message(message_id: int, user_id: int | None = None) -> dict[str, A
         if not row:
             return None
         res = _row_to_dict(row)
-        for json_col in ("evidence", "citations", "usage"):
+        for json_col in ("evidence", "citations", "usage", "tool_calls_json"):
             if isinstance(res.get(json_col), str):
                 try:
                     res[json_col] = json.loads(res[json_col])
@@ -4136,7 +4167,7 @@ def get_chat_thread_messages(
         result = []
         for r in rows:
             d = _row_to_dict(r)
-            for json_col in ("evidence", "citations", "usage"):
+            for json_col in ("evidence", "citations", "usage", "tool_calls_json"):
                 if isinstance(d.get(json_col), str):
                     try:
                         d[json_col] = json.loads(d[json_col])

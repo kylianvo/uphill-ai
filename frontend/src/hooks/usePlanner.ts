@@ -2,7 +2,7 @@
 import React from "react";
 import { useAppContext } from "../contexts/AppContext";
 import { ActivePlan, Workout } from "../types";
-import { resolveCurrentWeek } from "../utils/planDate";
+import { resolveCurrentWeek, computeWorkoutDate } from "../utils/planDate";
 
 export function usePlanner() {
   const ctx = useAppContext();
@@ -591,59 +591,12 @@ export function usePlanner() {
     return workouts.filter((w: any) => w.week_number === weekNum);
   };
 
-  const DAY_OFFSETS: Record<string, number> = {
-    "Monday": 0, "Tuesday": 1, "Wednesday": 2, "Thursday": 3,
-    "Friday": 4, "Saturday": 5, "Sunday": 6,
-  };
-
-  const getMondayOf = (d: Date) => {
-    const offset = d.getDay() === 0 ? 6 : d.getDay() - 1;
-    const m = new Date(d);
-    m.setDate(d.getDate() - offset);
-    return m;
-  };
-
   // Returns the real calendar Date a workout falls on, or null if it can't be
   // computed (no active plan / malformed dates). Used by getWorkoutDate below
   // and by the calendar grid view, which needs a real Date, not a formatted string.
   const getWorkoutDateObj = (wo: Workout): Date | null => {
     if (!activePlan) return null;
-    try {
-      let startMonday: Date;
-
-      // Prefer plan_start_date (exact user-inputted date) if stored
-      if (activePlan.start_date) {
-        const parts = activePlan.start_date.split("-");
-        const sd = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-        // Week 1 starts on the Monday on or before the start date
-        startMonday = getMondayOf(sd);
-      } else if (activePlan.race_date) {
-        // Fallback: anchor from race date backward (legacy behaviour)
-        const parts = activePlan.race_date.split("-");
-        if (parts.length !== 3) return null;
-        const raceDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-        const raceWo = workouts.find((w: any) => {
-          const title = w.title.toUpperCase();
-          const type = w.type.toUpperCase();
-          return title.includes("TARGET EVENT") || type === "RACE";
-        });
-        const raceWeek = raceWo ? raceWo.week_number : activePlan.total_weeks;
-        const raceWeekMonday = getMondayOf(raceDate);
-        startMonday = new Date(raceWeekMonday);
-        startMonday.setDate(raceWeekMonday.getDate() - (raceWeek - 1) * 7);
-      } else {
-        return null;
-      }
-
-      const workoutDayOffset = DAY_OFFSETS[wo.day_of_week] ?? 0;
-      const workoutDate = new Date(startMonday);
-      workoutDate.setDate(startMonday.getDate() + (wo.week_number - 1) * 7 + workoutDayOffset);
-
-      return workoutDate;
-    } catch (e) {
-      console.error(e);
-      return null;
-    }
+    return computeWorkoutDate(activePlan, workouts, wo);
   };
 
   const getWorkoutDate = (wo: Workout) => {

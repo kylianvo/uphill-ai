@@ -12,7 +12,7 @@ import db
 from config import settings
 from db import CoachChatError
 from log_utils import get_logger
-from services import coach_context, kb_retrieval, observability
+from services import coach_context, coach_tools, kb_retrieval, observability
 from services.coach_graph import (
     AppEvent,
     CitationsEvent,
@@ -20,6 +20,7 @@ from services.coach_graph import (
     ErrorEvent,
     StatusEvent,
     TokenEvent,
+    ToolResultEvent,
     TurnState,
     astream_turn_graph,
     build_graph,
@@ -216,8 +217,9 @@ async def run_turn(
             return
 
         question = ""
+        current_user_msg_id: int | None = None
         if admission["kind"] == "new":
-            db.append_chat_message(
+            current_user_msg_id = db.append_chat_message(
                 thread_id=thread_id,
                 role="user",
                 content=message or "",
@@ -230,7 +232,11 @@ async def run_turn(
             for m in reversed(recent_msgs):
                 if m.get("role") == "user":
                     question = m.get("content", "")
+                    current_user_msg_id = m.get("id")
                     break
+
+        api_key = user.get("gemini_api_key") or settings.GEMINI_API_KEY
+        tools = coach_tools.build_tools(user_id=user_id, kb_api_key=api_key) if api_key else []
 
         try:
             assistant_msg_id = db.append_chat_message(
@@ -245,8 +251,12 @@ async def run_turn(
             if model is None:
                 from services.coach_model import GeminiCoachModel
 
-                api_key = user.get("gemini_api_key") or settings.GEMINI_API_KEY
-                model = GeminiCoachModel(api_key=api_key)
+                # tools must be bound here, not just handed to build_graph below --
+                # build_graph's tool node only executes calls the model already
+                # decided to make; the model itself only gains function-calling
+                # capability via ChatGoogleGenerativeAI.bind_tools() (see
+                # GeminiCoachModel._get_chat), which requires tools at construction.
+                model = GeminiCoachModel(api_key=api_key, tools=tools or None)
         except Exception:
             db.finish_chat_turn(request_id=req_uuid, status="error")
             raise
@@ -257,8 +267,32 @@ async def run_turn(
                 return kb_retrieval.search_principles(query=q, api_key=api_key)
             return []
 
-        graph = build_graph(model=model, retrieve_fn=_retrieve_kb)
+        graph = build_graph(model=model, retrieve_fn=_retrieve_kb, tools=tools or None)
         call_id = uuid4()
+
+        chat_context = coach_context.build_chat_context(user_id=user_id, question=question, thread_id=thread_id)
+        # The thread row was already fetched above (admission needs it); reuse it
+        # rather than a second DB read, and carry its retained summary into the
+        # prompt so `compile_coach_prompt` can render it (see coach_prompts.py).
+        if thread.get("summary"):
+            chat_context["summary"] = thread["summary"]
+
+        # Prior turns as model messages: reuse context["history"] (oldest -> newest,
+        # status == "ok" only) rather than a second DB read. Exclude the current
+        # turn's own user message (it's already in history -- appended/looked-up
+        # above, before build_chat_context ran) and the interrupted assistant
+        # placeholder (filtered out by build_chat_context's status == "ok" check),
+        # then append the current question once as the final message.
+        prior_messages = [
+            ChatMessage(
+                role="user" if m.get("role") == "user" else "assistant",
+                content=m.get("content") or "",
+            )
+            for m in (chat_context.get("history") or [])
+            if m.get("id") != current_user_msg_id and (m.get("content") or "").strip()
+        ]
+        turn_messages = [*prior_messages, ChatMessage(role="user", content=question)]
+
         initial_state: TurnState = {
             "user_id": user_id,
             "thread_id": thread_id,
@@ -266,13 +300,15 @@ async def run_turn(
             "call_id": call_id,
             "question": question,
             "lang": lang,
-            "context": coach_context.build_chat_context(user_id=user_id, question=question, thread_id=thread_id),
+            "context": chat_context,
+            "messages": turn_messages,
         }
 
         accumulated: list[str] = []
         last_persisted_time = time.monotonic()
         last_persisted_len = 0
         final_citations: list[dict[str, Any]] = []
+        final_tool_history: list[dict[str, Any]] = []
 
         try:
             async with asyncio.timeout(settings.COACH_CHAT_TURN_TIMEOUT_SECONDS):
@@ -289,6 +325,17 @@ async def run_turn(
                     elif isinstance(event, CitationsEvent):
                         final_citations = event.citations
                         yield event
+                    elif isinstance(event, ToolResultEvent):
+                        final_tool_history.append(
+                            {
+                                "tool_call_id": event.tool_call_id,
+                                "name": event.name,
+                                "status": event.status,
+                                "card_type": event.card_type,
+                                "card_data": event.card_data,
+                            }
+                        )
+                        yield event
                     else:
                         yield event
 
@@ -300,6 +347,7 @@ async def run_turn(
                 content=full_text,
                 status="ok",
                 citations=final_citations,
+                tool_calls_json=final_tool_history or None,
             )
 
             # 2. Finalize turn in DB

@@ -212,4 +212,31 @@ describe("coachChatStream", () => {
       { type: "done", request_id: "req-json", message_id: 5, replayed: false },
     ]);
   });
+
+  it("dispatches a tool_call event", async () => {
+    const events: ChatStreamEvent[] = [];
+    const body = `event: tool_call\ndata: {"tool_call_id":"call_1","name":"get_week","args":{"week_number":3}}\n\nevent: done\ndata: {"request_id":"r1","message_id":1,"replayed":false}\n\n`;
+    const response = new Response(new TextEncoder().encode(body), { status: 200 });
+    await consumeCoachChatStream(response, (e) => events.push(e));
+    const toolCall = events.find((e) => e.type === "tool_call");
+    expect(toolCall).toEqual({ type: "tool_call", tool_call_id: "call_1", name: "get_week", args: { week_number: 3 } });
+  });
+
+  it("dispatches a tool_result event", async () => {
+    const events: ChatStreamEvent[] = [];
+    const body = `event: tool_result\ndata: {"tool_call_id":"call_1","name":"get_week","status":"success","card_type":"week_schedule","card_data":{"week_number":3}}\n\nevent: done\ndata: {"request_id":"r1","message_id":1,"replayed":false}\n\n`;
+    const response = new Response(new TextEncoder().encode(body), { status: 200 });
+    await consumeCoachChatStream(response, (e) => events.push(e));
+    const toolResult = events.find((e) => e.type === "tool_result");
+    expect(toolResult?.card_data).toEqual({ week_number: 3 });
+  });
+
+  it("dispatches a clarify event", async () => {
+    const events: ChatStreamEvent[] = [];
+    const body = `event: clarify\ndata: {"prompt":"Which race?","options":["Dalat Ultra Trail","VMM"]}\n\nevent: done\ndata: {"request_id":"r1","message_id":1,"replayed":false}\n\n`;
+    const response = new Response(new TextEncoder().encode(body), { status: 200 });
+    await consumeCoachChatStream(response, (e) => events.push(e));
+    const clarify = events.find((e) => e.type === "clarify");
+    expect(clarify?.options).toEqual(["Dalat Ultra Trail", "VMM"]);
+  });
 });

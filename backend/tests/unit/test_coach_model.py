@@ -269,3 +269,42 @@ async def test_gemini_adapter_wraps_in_canonical_generation():
         assert mock_gen.call_args.kwargs["feature"] == "coach_chat"
         assert mock_gen.call_args.kwargs["model"] == "gemini-3.8-flash"
         mock_scope.set_usage.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_gemini_adapter_with_tools_yields_tool_call_event_instead_of_raising():
+    tool_call_chunk = MagicMock()
+    tool_call_chunk.content = ""
+    tool_call_chunk.additional_kwargs = {}
+    tool_call_chunk.tool_calls = [{"id": "call_abc123", "name": "get_week", "args": {"week_number": 4}}]
+    tool_call_chunk.tool_call_chunks = []
+    tool_call_chunk.usage_metadata = {"input_tokens": 50, "output_tokens": 5, "total_tokens": 55}
+
+    async def fake_astream(messages):
+        yield tool_call_chunk
+
+    adapter = GeminiCoachModel(api_key="test-key", tools=[MagicMock(name="get_week")])
+    adapter._chat = MagicMock()
+    adapter._chat.astream = fake_astream
+
+    req = ModelRequest(
+        messages=(ChatMessage(role="user", content="What's my week 4 look like?"),),
+        system="Coach",
+        max_output_tokens=100,
+        call_id=uuid4(),
+    )
+    events = [ev async for ev in adapter.stream(req)]
+
+    tool_call_events = [ev for ev in events if ev.kind == "tool_call"]
+    assert len(tool_call_events) == 1
+    assert tool_call_events[0].tool_call == {"id": "call_abc123", "name": "get_week", "args": {"week_number": 4}}
+
+
+@pytest.mark.asyncio
+async def test_gemini_adapter_binds_tools_when_provided():
+    adapter = GeminiCoachModel(api_key="test-key", tools=["fake-tool"])
+    with patch("langchain_google_genai.ChatGoogleGenerativeAI") as MockChat:
+        mock_instance = MockChat.return_value
+        mock_instance.bind_tools.return_value = mock_instance
+        adapter._get_chat()
+    mock_instance.bind_tools.assert_called_once_with(["fake-tool"])

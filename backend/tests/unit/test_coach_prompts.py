@@ -2,9 +2,7 @@
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
-from services import coach_prompts, observability
+from services import observability
 from services.coach_prompts import (
     COACH_SYSTEM_INSTRUCTION,
     PromptTemplate,
@@ -120,6 +118,22 @@ def test_compile_coach_prompt_vietnamese_rules():
     assert "khối lượng tuần" in compiled
 
 
+def test_tool_usage_instructs_brief_prose_when_card_renders():
+    # The athlete already sees full details in a tool's rendered card, so the
+    # compiled prompt must tell the model not to re-list them in text.
+    assert "already sees the full details in the card" in COACH_SYSTEM_INSTRUCTION
+    assert "do not re-list the workouts, splits, or numbers" in COACH_SYSTEM_INSTRUCTION
+
+
+def test_tool_usage_instructs_distance_and_elevation_clarify_guidance():
+    # The tool can return distance_required (multi-distance race, no
+    # distance given -- the app shows the returned options as chips) or
+    # elevation_required (no elevation anywhere) -- the prompt must tell
+    # the model how to react to each without listing the chip options itself.
+    assert "distance_required" in COACH_SYSTEM_INSTRUCTION
+    assert "elevation_required" in COACH_SYSTEM_INSTRUCTION
+
+
 def test_get_coach_prompt_template_defaults():
     with patch.object(observability, "get_prompt_template") as mock_get:
         mock_get.return_value = PromptTemplate("coach_chat", "1", "tpl", "langfuse")
@@ -144,4 +158,3 @@ def test_prompt_metadata_allowlist():
     assert filtered.get("prompt_source") == "langfuse"
     assert "prompt_text" not in filtered
     assert "athlete_notes" not in filtered
-

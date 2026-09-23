@@ -205,3 +205,40 @@ async def test_graph_private_state_and_usage_finalization():
     assert final_state.get("usage") == Usage(input_tokens=150, output_tokens=45, thinking_tokens=0)
     assert final_state.get("status") == "ok"
     assert final_state.get("evidence_status") == "available"
+
+
+def test_parse_app_event_tool_call():
+    from services.coach_graph import ToolCallEvent, parse_app_event
+
+    evt = parse_app_event(
+        {"type": "tool_call", "tool_call_id": "call_1", "name": "get_week", "args": {"week_number": 3}}
+    )
+    assert isinstance(evt, ToolCallEvent)
+    assert evt.name == "get_week"
+    assert evt.args == {"week_number": 3}
+
+
+def test_parse_app_event_tool_result():
+    from services.coach_graph import ToolResultEvent, parse_app_event
+
+    evt = parse_app_event(
+        {
+            "type": "tool_result",
+            "tool_call_id": "call_1",
+            "name": "get_week",
+            "status": "success",
+            "card_type": "week_schedule",
+            "card_data": {"week_number": 3},
+        }
+    )
+    assert isinstance(evt, ToolResultEvent)
+    assert evt.status == "success"
+    assert evt.card_data == {"week_number": 3}
+
+
+def test_parse_app_event_clarify():
+    from services.coach_graph import ClarifyEvent, parse_app_event
+
+    evt = parse_app_event({"type": "clarify", "prompt": "Which race?", "options": ["Dalat Ultra Trail", "VMM"]})
+    assert isinstance(evt, ClarifyEvent)
+    assert evt.options == ["Dalat Ultra Trail", "VMM"]

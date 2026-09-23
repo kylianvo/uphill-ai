@@ -67,6 +67,67 @@ export function computeCurrentWeek(
   return Math.max(1, Math.min(week, totalWeeks));
 }
 
+const WORKOUT_DAY_OFFSETS: Record<string, number> = {
+  Monday: 0,
+  Tuesday: 1,
+  Wednesday: 2,
+  Thursday: 3,
+  Friday: 4,
+  Saturday: 5,
+  Sunday: 6,
+};
+
+/**
+ * Computes the real calendar Date a workout falls on, or null if it can't be
+ * computed (no start_date/race_date, or malformed dates). Training weeks run
+ * Monday to Sunday: week 1 starts on the Monday on/before plan.start_date, or,
+ * falling back to the legacy race_date anchor, on the Monday (raceWeek - 1)
+ * weeks before the Monday of race_date's week.
+ */
+export function computeWorkoutDate(
+  plan: { start_date?: string | null; race_date?: string | null; total_weeks?: number | null },
+  workouts: Array<{ title: string; type: string; week_number: number }>,
+  wo: { day_of_week: string; week_number: number }
+): Date | null {
+  try {
+    let startMonday: Date;
+
+    // Prefer plan_start_date (exact user-inputted date) if stored
+    if (plan.start_date) {
+      const parts = plan.start_date.split("-");
+      const sd = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      // Week 1 starts on the Monday on or before the start date
+      startMonday = getMondayOfDate(sd);
+    } else if (plan.race_date) {
+      // Fallback: anchor from race date backward (legacy behaviour)
+      const parts = plan.race_date.split("-");
+      if (parts.length !== 3) return null;
+      const raceDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      const raceWo = workouts.find((w) => {
+        const title = w.title.toUpperCase();
+        const type = w.type.toUpperCase();
+        return title.includes("TARGET EVENT") || type === "RACE";
+      });
+      const raceWeek = raceWo ? raceWo.week_number : plan.total_weeks;
+      if (!raceWeek) return null;
+      const raceWeekMonday = getMondayOfDate(raceDate);
+      startMonday = new Date(raceWeekMonday);
+      startMonday.setDate(raceWeekMonday.getDate() - (raceWeek - 1) * 7);
+    } else {
+      return null;
+    }
+
+    const workoutDayOffset = WORKOUT_DAY_OFFSETS[wo.day_of_week] ?? 0;
+    const workoutDate = new Date(startMonday);
+    workoutDate.setDate(startMonday.getDate() + (wo.week_number - 1) * 7 + workoutDayOffset);
+
+    return workoutDate;
+  } catch (e) {
+    console.error(e);
+    return null;
+  }
+}
+
 /**
  * Resolves the week number that should be selected by default when viewing the plan.
  * Takes the calendar-derived current week, clamped to maxGeneratedWeek if workouts

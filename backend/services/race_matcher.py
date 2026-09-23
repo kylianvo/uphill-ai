@@ -329,6 +329,33 @@ def race_benchmarks(name: str | None, distance_km: float | None = None) -> dict[
     return {"race_name": payload.get("race_name", chunk.get("title", "")), "results": results}
 
 
+def race_distances(name: str | None) -> list[dict[str, Any]]:
+    """Curated distance options for a matched race ({"label", "distance_km",
+    "elevation_gain_m"} entries), used to build clarify chips when a race
+    offers several distances and the caller didn't say which one. Returns
+    [] when the race is unknown."""
+    if not name or len(name.strip()) < _MIN_NAME_LENGTH:
+        return []
+
+    import db
+
+    try:
+        chunks = db.get_kb_chunks("race_courses", kind="race_profile")
+    except Exception as e:
+        print(f"[RaceMatcher] Failed to load race_courses KB: {e}")
+        return []
+    if not chunks:
+        return []
+
+    scored = _score_chunks(name.strip().lower(), chunks)
+    if not scored or scored[0][1] < _FUZZY_THRESHOLD:
+        return []
+
+    chunk = scored[0][0]
+    payload = _payload_as_dict(chunk.get("payload"))
+    return payload.get("distances") or []
+
+
 def course_profile(name: str | None, distance_label: str | None, year: int | None = None) -> dict[str, Any] | None:
     """Curated GPX-derived checkpoints for a race+distance, if an admin has
     uploaded one via /api/kb/race-courses/course-profile. When `year` is

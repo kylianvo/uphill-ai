@@ -50,10 +50,35 @@ export interface ErrorEvent {
   message?: string | null;
 }
 
+export interface ToolCallEvent {
+  type: "tool_call";
+  tool_call_id: string;
+  name: string;
+  args: Record<string, unknown>;
+}
+
+export interface ToolResultEvent {
+  type: "tool_result";
+  tool_call_id: string;
+  name: string;
+  status: "success" | "error";
+  card_type: string | null;
+  card_data: Record<string, unknown> | null;
+}
+
+export interface ClarifyEvent {
+  type: "clarify";
+  prompt: string;
+  options: string[];
+}
+
 export type ChatStreamEvent =
   | StatusEvent
   | TokenEvent
   | CitationsEvent
+  | ToolCallEvent
+  | ToolResultEvent
+  | ClarifyEvent
   | DoneEvent
   | ErrorEvent;
 

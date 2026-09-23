@@ -37,6 +37,10 @@ class ModelRequest:
     system: str
     max_output_tokens: int
     call_id: UUID
+    # False for the forced final generation issued once the tool-call budget
+    # is exhausted (spec §5.3 #2): the adapter must stream from an unbound
+    # chat instance so the model cannot emit another tool_call and loop.
+    tools_enabled: bool = True
 
 
 @dataclass(frozen=True)
@@ -57,19 +61,55 @@ class CoachModel(Protocol):
 class FakeCoachModel:
     """Mock CoachModel for orchestration tests and non-Gemini unit tests."""
 
-    def __init__(self, responses: list[ModelEvent] | None = None, token_count: int = 100) -> None:
+    def __init__(
+        self,
+        responses: list[ModelEvent] | list[list[ModelEvent]] | None = None,
+        token_count: int = 100,
+    ) -> None:
         self.responses = responses or []
         self.token_count = token_count
         self.closed = False
         self.requests: list[ModelRequest] = []
+        self._cursor = 0
+        # Explicit-rounds mode: responses is a list of rounds (each round a
+        # list of ModelEvent), one round consumed per stream() call exactly
+        # as given -- needed to script sequential single-tool-call rounds
+        # (e.g. testing the _TOOL_CALL_CAP), which the flat-list contiguity
+        # grouping below can't express since it always groups a run of
+        # tool_call events into one round.
+        self._explicit_rounds = bool(self.responses) and isinstance(self.responses[0], list)
 
     async def count_tokens(self, request: ModelRequest) -> int:
         return self.token_count
 
     async def stream(self, request: ModelRequest) -> AsyncIterator[ModelEvent]:
         self.requests.append(request)
-        for event in self.responses:
-            yield event
+
+        if self._explicit_rounds:
+            if self._cursor >= len(self.responses):
+                return
+            round_events = self.responses[self._cursor]
+            self._cursor += 1
+            for ev in round_events:
+                yield ev
+            return
+
+        # Each call yields exactly one "round" of a real model turn: either a
+        # contiguous run of tool_call events (a model requesting one or more
+        # parallel tool calls, stopping before it would also stream a final
+        # answer in the same generation -- matching real Gemini function-
+        # calling behavior), or everything remaining when the cursor is
+        # already past the tool-call region (text/usage, drained to the end).
+        if self._cursor >= len(self.responses):
+            return
+        if self.responses[self._cursor].kind == "tool_call":
+            while self._cursor < len(self.responses) and self.responses[self._cursor].kind == "tool_call":
+                yield self.responses[self._cursor]
+                self._cursor += 1
+        else:
+            while self._cursor < len(self.responses):
+                yield self.responses[self._cursor]
+                self._cursor += 1
 
     async def close(self) -> None:
         self.closed = True
@@ -83,24 +123,40 @@ class GeminiCoachModel:
         api_key: str,
         model: str = "gemini-3.8-flash",
         thinking_level: str | None = "low",
+        tools: list[Any] | None = None,
     ) -> None:
         self.api_key = api_key
         self.model = model
         self.thinking_level = thinking_level
+        self.tools = tools
         self._chat: Any = None
         self._closed = False
 
-    def _get_chat(self) -> Any:
-        if self._chat is None:
+    def _get_chat(self, tools_enabled: bool = True) -> Any:
+        if not tools_enabled:
+            # Forced final generation (tool budget exhausted): a fresh,
+            # unbound chat instance so the model cannot emit another
+            # tool_call. Not cached on self._chat -- that cache is the
+            # tools-bound instance the rest of the turn uses.
             from langchain_google_genai import ChatGoogleGenerativeAI
 
-            # max_retries=0: SDK retries are disabled per spec
-            self._chat = ChatGoogleGenerativeAI(
+            return ChatGoogleGenerativeAI(
                 model=self.model,
                 api_key=self.api_key,
                 max_retries=0,
                 temperature=0.3,
             )
+        if self._chat is None:
+            from langchain_google_genai import ChatGoogleGenerativeAI
+
+            # max_retries=0: SDK retries are disabled per spec
+            chat = ChatGoogleGenerativeAI(
+                model=self.model,
+                api_key=self.api_key,
+                max_retries=0,
+                temperature=0.3,
+            )
+            self._chat = chat.bind_tools(self.tools) if self.tools else chat
         return self._chat
 
     async def count_tokens(self, request: ModelRequest) -> int:
@@ -123,7 +179,7 @@ class GeminiCoachModel:
 
     async def stream(self, request: ModelRequest) -> AsyncIterator[ModelEvent]:
         """Stream normalized model events inside a single canonical observability.generation scope."""
-        chat = self._get_chat()
+        chat = self._get_chat(tools_enabled=request.tools_enabled)
         from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
         lc_messages = [SystemMessage(content=request.system)]
@@ -143,10 +199,19 @@ class GeminiCoachModel:
             try:
                 stream_iter = chat.astream(lc_messages)
                 async for chunk in stream_iter:
-                    # 1. Check for tool calls (rejected in Foundation)
-                    tool_calls = getattr(chunk, "tool_calls", None) or getattr(chunk, "tool_call_chunks", None)
+                    # 1. Tool calls: normalized into events when tools are bound,
+                    # rejected outright otherwise (defense in depth -- a caller
+                    # that forgot to pass tools= should fail loudly, not silently
+                    # drop the model's tool call).
+                    tool_calls = getattr(chunk, "tool_calls", None)
                     if tool_calls:
-                        raise ToolCallsNotSupportedError("Tool calls are not supported in foundation phase")
+                        if not self.tools:
+                            raise ToolCallsNotSupportedError("Model returned tool calls but no tools were bound.")
+                        for tc in tool_calls:
+                            yield ModelEvent(
+                                kind="tool_call",
+                                tool_call={"id": tc.get("id"), "name": tc.get("name"), "args": tc.get("args") or {}},
+                            )
 
                     # 2. Exclude thinking blocks
                     kwargs = getattr(chunk, "additional_kwargs", {}) or {}

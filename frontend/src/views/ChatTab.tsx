@@ -5,9 +5,11 @@ import { translations } from "../app/translations";
 import { useCoachChat } from "../hooks/useCoachChat";
 import ChatSources from "../components/ChatSources";
 import { CitationItem } from "../lib/coachChatStream";
+import RichCardRenderer from "../components/RichCardRenderer";
+import ClarificationChipsBar from "../components/ClarificationChipsBar";
 
 export default function ChatTab({ isMobile }: { isMobile: boolean }) {
-  const { lang } = useAppContext();
+  const { lang, setPaceHandoff, setIsPaceStrategyOpen, handleTabSwitch, activePlan } = useAppContext();
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const [inputText, setInputText] = useState("");
   const [isSourcesOpen, setIsSourcesOpen] = useState(false);
@@ -30,6 +32,8 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
     selectedMessageSources,
     fetchMessageSources,
     clearMessageSources,
+    clarifyOptions,
+    dismissClarify,
   } = useCoachChat();
 
   const t = (key: keyof typeof translations.en) =>
@@ -113,6 +117,17 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
         return t("chat_status_ready");
     }
   };
+
+  const starterChips = activePlan
+    ? [
+        activePlan.current_week != null
+          ? t("chat_starter_week").replace("{week}", String(activePlan.current_week))
+          : t("chat_empty_cap_1"),
+        t("chat_starter_pacing").replace("{race}", activePlan.race_name),
+        t("chat_starter_review"),
+        t("chat_starter_kb"),
+      ]
+    : [t("chat_empty_cap_1"), t("chat_empty_cap_2"), t("chat_empty_cap_3"), t("chat_empty_cap_4")];
 
   return (
     <div style={{ width: "100%", display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
@@ -280,7 +295,7 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
                   {t("chat_empty_desc")}
                 </p>
 
-                {/* Capabilities pills */}
+                {/* Starter chips */}
                 <div
                   style={{
                     display: "flex",
@@ -291,18 +306,27 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
                     marginBottom: "16px",
                   }}
                 >
-                  <span style={{ fontSize: "12px", backgroundColor: "rgba(255, 255, 255, 0.75)", border: "1px solid rgba(0, 0, 0, 0.08)", padding: "4px 12px", borderRadius: "16px", color: "var(--text-primary)", boxShadow: "0 1px 2px rgba(0, 0, 0, 0.03)" }}>
-                    {t("chat_empty_cap_1")}
-                  </span>
-                  <span style={{ fontSize: "12px", backgroundColor: "rgba(255, 255, 255, 0.75)", border: "1px solid rgba(0, 0, 0, 0.08)", padding: "4px 12px", borderRadius: "16px", color: "var(--text-primary)", boxShadow: "0 1px 2px rgba(0, 0, 0, 0.03)" }}>
-                    {t("chat_empty_cap_2")}
-                  </span>
-                  <span style={{ fontSize: "12px", backgroundColor: "rgba(255, 255, 255, 0.75)", border: "1px solid rgba(0, 0, 0, 0.08)", padding: "4px 12px", borderRadius: "16px", color: "var(--text-primary)", boxShadow: "0 1px 2px rgba(0, 0, 0, 0.03)" }}>
-                    {t("chat_empty_cap_3")}
-                  </span>
-                  <span style={{ fontSize: "12px", backgroundColor: "rgba(255, 255, 255, 0.75)", border: "1px solid rgba(0, 0, 0, 0.08)", padding: "4px 12px", borderRadius: "16px", color: "var(--text-primary)", boxShadow: "0 1px 2px rgba(0, 0, 0, 0.03)" }}>
-                    {t("chat_empty_cap_4")}
-                  </span>
+                  {starterChips.map((chip, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleSend(chip)}
+                      disabled={isBusy}
+                      style={{
+                        fontSize: "12px",
+                        backgroundColor: "rgba(255, 255, 255, 0.75)",
+                        border: "1px solid rgba(0, 0, 0, 0.08)",
+                        padding: "4px 12px",
+                        borderRadius: "16px",
+                        color: "var(--text-primary)",
+                        boxShadow: "0 1px 2px rgba(0, 0, 0, 0.03)",
+                        cursor: isBusy ? "not-allowed" : "pointer",
+                        opacity: isBusy ? 0.6 : 1,
+                        transition: "opacity 0.2s ease",
+                      }}
+                    >
+                      {chip}
+                    </button>
+                  ))}
                 </div>
 
                 {/* Boundary notice */}
@@ -338,6 +362,21 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
                       })
                     : msg.content}
                 </div>
+
+                {msg.role === "assistant" &&
+                  msg.toolCalls?.map((tc) => (
+                    <RichCardRenderer
+                      key={tc.tool_call_id}
+                      result={tc}
+                      lang={lang}
+                      isMobile={isMobile}
+                      onOpenPaceStrategy={(payload) => {
+                        setPaceHandoff(payload);
+                        setIsPaceStrategyOpen(true);
+                        handleTabSwitch("tools");
+                      }}
+                    />
+                  ))}
 
                 {/* Assistant footer: interrupted badge, retry button, sources button */}
                 {msg.role === "assistant" && (
@@ -479,6 +518,15 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
 
             <div ref={chatBottomRef} />
           </div>
+
+          <ClarificationChipsBar
+            options={clarifyOptions || []}
+            onSelect={(option) => {
+              dismissClarify();
+              send(option);
+            }}
+            lang={lang}
+          />
 
           {/* Quick preset prompts */}
           <div

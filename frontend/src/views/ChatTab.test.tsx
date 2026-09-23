@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import React from "react";
 import ChatTab from "./ChatTab";
 import * as useCoachChatModule from "../hooks/useCoachChat";
-import { AppProvider } from "../contexts/AppContext";
+import { AppProvider, AppContext } from "../contexts/AppContext";
 
 vi.mock("../hooks/useCoachChat");
 
@@ -13,6 +14,9 @@ describe("ChatTab", () => {
   const mockLoadOlder = vi.fn();
   const mockFetchMessageSources = vi.fn();
   const mockClearMessageSources = vi.fn();
+  const mockSetPaceHandoff = vi.fn();
+  const mockSetIsPaceStrategyOpen = vi.fn();
+  const mockHandleTabSwitch = vi.fn();
 
   const defaultHookReturn: useCoachChatModule.UseCoachChatReturn = {
     messages: [],
@@ -29,6 +33,8 @@ describe("ChatTab", () => {
     selectedMessageSources: null,
     fetchMessageSources: mockFetchMessageSources,
     clearMessageSources: mockClearMessageSources,
+    clarifyOptions: null,
+    dismissClarify: vi.fn(),
   };
 
   beforeEach(() => {
@@ -36,7 +42,30 @@ describe("ChatTab", () => {
     vi.mocked(useCoachChatModule.useCoachChat).mockReturnValue(defaultHookReturn);
   });
 
-  const renderWithContext = (ui: React.ReactElement) => {
+  interface TestContextValue {
+    lang?: string;
+    setPaceHandoff?: ReturnType<typeof vi.fn>;
+    setIsPaceStrategyOpen?: ReturnType<typeof vi.fn>;
+    handleTabSwitch?: ReturnType<typeof vi.fn>;
+    [key: string]: unknown;
+  }
+
+  const renderWithContext = (ui: React.ReactElement, contextOverrides?: TestContextValue) => {
+    if (contextOverrides) {
+      // Render with context overrides by wrapping with a context provider that supplies the mocked values
+      const contextValue: TestContextValue = {
+        lang: "en",
+        setPaceHandoff: mockSetPaceHandoff,
+        setIsPaceStrategyOpen: mockSetIsPaceStrategyOpen,
+        handleTabSwitch: mockHandleTabSwitch,
+        ...contextOverrides,
+      };
+      return render(
+        <AppContext.Provider value={contextValue as unknown as React.ContextType<typeof AppContext>}>
+          {ui}
+        </AppContext.Provider>
+      );
+    }
     return render(<AppProvider>{ui}</AppProvider>);
   };
 
@@ -167,5 +196,121 @@ describe("ChatTab", () => {
     fireEvent.click(sendBtn);
 
     expect(mockSend).toHaveBeenCalledWith("How do I build aerobic capacity?");
+  });
+
+  it("renders a RichCardRenderer card when an assistant message has toolCalls", () => {
+    vi.mocked(useCoachChatModule.useCoachChat).mockReturnValue({
+      ...defaultHookReturn,
+      messages: [
+        {
+          role: "assistant",
+          content: "Here's week 4.",
+          toolCalls: [
+            {
+              type: "tool_result",
+              tool_call_id: "call_1",
+              name: "get_week",
+              status: "success",
+              card_type: "week_schedule",
+              card_data: {
+                week_number: 4,
+                total_distance_km: 48.5,
+                total_elevation_gain_m: 1650,
+                plan_start_date: "2026-08-31",
+                race_date: "2026-11-01",
+                workouts: [],
+              },
+            },
+          ],
+        },
+      ],
+    });
+    renderWithContext(<ChatTab isMobile={false} />);
+    expect(screen.getByText(/Week 4/)).toBeDefined();
+  });
+
+  it("clicking Open in Pace Strategy sets paceHandoff and switches to the tools tab", () => {
+    vi.mocked(useCoachChatModule.useCoachChat).mockReturnValue({
+      ...defaultHookReturn,
+      messages: [
+        {
+          role: "assistant",
+          content: "Here's your pacing plan.",
+          toolCalls: [
+            {
+              type: "tool_result",
+              tool_call_id: "call_2",
+              name: "pace_strategy",
+              status: "success",
+              card_type: "pacing_splits",
+              card_data: {
+                race_name: "Dalat Ultra Trail 70K",
+                distance_label: "70K",
+                total_distance_km: 71.2,
+                total_elevation_m: 3150.0,
+                target_time_formatted: "12h 45m",
+                splits: [],
+              },
+            },
+          ],
+        },
+      ],
+    });
+
+    renderWithContext(<ChatTab isMobile={false} />, {
+      setPaceHandoff: mockSetPaceHandoff,
+      setIsPaceStrategyOpen: mockSetIsPaceStrategyOpen,
+      handleTabSwitch: mockHandleTabSwitch,
+    });
+
+    fireEvent.click(screen.getByText("Open in Pace Strategy"));
+
+    expect(mockSetPaceHandoff).toHaveBeenCalledWith(
+      expect.objectContaining({ race_name: "Dalat Ultra Trail 70K" })
+    );
+    expect(mockSetIsPaceStrategyOpen).toHaveBeenCalledWith(true);
+    expect(mockHandleTabSwitch).toHaveBeenCalledWith("tools");
+  });
+
+  it("shows clarification chips and sends the selected option on click", () => {
+    const dismissClarify = vi.fn();
+
+    vi.mocked(useCoachChatModule.useCoachChat).mockReturnValue({
+      ...defaultHookReturn,
+      clarifyOptions: ["Dalat Ultra Trail", "VMM"],
+      dismissClarify,
+      send: mockSend,
+    });
+    renderWithContext(<ChatTab isMobile={false} />);
+    fireEvent.click(screen.getByText("Dalat Ultra Trail"));
+    expect(mockSend).toHaveBeenCalledWith("Dalat Ultra Trail");
+    expect(dismissClarify).toHaveBeenCalled();
+  });
+
+  it("shows context-aware starter chips built from the active plan when there are no messages", () => {
+    renderWithContext(<ChatTab isMobile={false} />, {
+      activePlan: { race_name: "Dalat Ultra Trail 70K", current_week: 4 },
+    });
+    expect(screen.getByText(/Week 4/)).toBeDefined();
+    expect(screen.getByText(/Dalat Ultra Trail 70K/)).toBeDefined();
+  });
+
+  it("localizes plan-aware starter chips to Vietnamese instead of the English template", () => {
+    renderWithContext(<ChatTab isMobile={false} />, {
+      lang: "vi",
+      activePlan: { race_name: "Dalat Ultra Trail 70K", current_week: 4 },
+    });
+    expect(screen.getByText(/Tuần 4/)).toBeDefined();
+    expect(screen.getByText(/Dalat Ultra Trail 70K/)).toBeDefined();
+    expect(screen.queryByText(/What are my key workouts/i)).toBeNull();
+    expect(screen.queryByText(/Calculate a conservative pacing plan/i)).toBeNull();
+  });
+
+  it("falls back to the static chip for that slot instead of 'Week undefined' when current_week is missing", () => {
+    renderWithContext(<ChatTab isMobile={false} />, {
+      activePlan: { race_name: "Dalat Ultra Trail 70K", current_week: undefined },
+    });
+    expect(screen.queryByText(/Week undefined/)).toBeNull();
+    expect(screen.getByText("Explain 80/20 intensity distribution")).toBeDefined();
   });
 });
