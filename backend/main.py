@@ -2591,6 +2591,8 @@ async def _adapt_week_for_athlete(request: AdaptWeekRequest, athlete_id: int, jo
             )
 
     prev_wk = request.week_number - 1
+    # Week 1 has no prior week; the volume bounds below still read prev_wos.
+    prev_wos = []
     if prev_wk >= 1:
         prev_wos = [w for w in all_workouts if w.get("week_number") == prev_wk and w.get("type") != "Rest"]
         completed_prev = [w for w in prev_wos if w.get("is_completed") == 1]
