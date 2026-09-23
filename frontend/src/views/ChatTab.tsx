@@ -120,7 +120,9 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
 
   const starterChips = activePlan
     ? [
-        t("chat_starter_week").replace("{week}", String(activePlan.current_week)),
+        activePlan.current_week != null
+          ? t("chat_starter_week").replace("{week}", String(activePlan.current_week))
+          : t("chat_empty_cap_1"),
         t("chat_starter_pacing").replace("{race}", activePlan.race_name),
         t("chat_starter_review"),
         t("chat_starter_kb"),

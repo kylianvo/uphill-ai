@@ -305,4 +305,12 @@ describe("ChatTab", () => {
     expect(screen.queryByText(/What are my key workouts/i)).toBeNull();
     expect(screen.queryByText(/Calculate a conservative pacing plan/i)).toBeNull();
   });
+
+  it("falls back to the static chip for that slot instead of 'Week undefined' when current_week is missing", () => {
+    renderWithContext(<ChatTab isMobile={false} />, {
+      activePlan: { race_name: "Dalat Ultra Trail 70K", current_week: undefined },
+    });
+    expect(screen.queryByText(/Week undefined/)).toBeNull();
+    expect(screen.getByText("Explain 80/20 intensity distribution")).toBeDefined();
+  });
 });
