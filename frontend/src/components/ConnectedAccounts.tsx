@@ -5,6 +5,7 @@ import { Watch, CheckCircle, Warning, Lightning } from "@phosphor-icons/react";
 import { useAppContext } from "../contexts/AppContext";
 import { useDeviceConnection } from "../hooks/useDeviceConnection";
 import CorosAttribution from "./CorosAttribution";
+import { isNativePlatform } from "../utils/native";
 
 // The hook's own fallback error strings (used when the backend response has
 // no `detail`, e.g. a network failure). Arbitrary backend `detail` text
@@ -14,14 +15,25 @@ import CorosAttribution from "./CorosAttribution";
 const ERROR_TRANSLATIONS_VI: Record<string, string> = {
   "Could not load connection status.": "Không thể tải trạng thái kết nối. Vui lòng thử lại.",
   "COROS connection is unavailable.": "Không thể kết nối COROS lúc này. Vui lòng thử lại sau.",
+  "COROS connection failed. Please try again.": "Kết nối COROS thất bại. Vui lòng thử lại.",
+  "COROS connection could not be completed.": "Không thể hoàn tất kết nối COROS.",
   "Sync failed. Please try again.": "Đồng bộ thất bại. Vui lòng thử lại.",
   "Could not disconnect.": "Không thể ngắt kết nối. Vui lòng thử lại.",
 };
 
 export default function ConnectedAccounts() {
   const { lang } = useAppContext();
-  const { status, loading, error, refreshStatus, connectCoros, disconnectCoros, syncNow, syncFitness } =
-    useDeviceConnection();
+  const {
+    status,
+    loading,
+    error,
+    refreshStatus,
+    connectCoros,
+    connectCorosNative,
+    disconnectCoros,
+    syncNow,
+    syncFitness,
+  } = useDeviceConnection();
   const [syncingFitness, setSyncingFitness] = useState(false);
   // Read the OAuth-callback redirect params (?coros=connected|error) during
   // the initial render rather than in an effect -- setState calls in an
@@ -55,6 +67,13 @@ export default function ConnectedAccounts() {
   const displayError = error ? (lang === "vi" ? ERROR_TRANSLATIONS_VI[error] ?? error : error) : "";
 
   const handleConnect = async () => {
+    if (isNativePlatform()) {
+      if (await connectCorosNative()) {
+        setNotice(lang === "vi" ? "Đã kết nối COROS." : "COROS connected.");
+        await refreshStatus();
+      }
+      return;
+    }
     // connectCoros() does NOT throw on failure -- it records the problem in
     // `error` and resolves to "". Navigating unconditionally would send the
     // browser to "" (i.e. reload the current page), silently swallowing the

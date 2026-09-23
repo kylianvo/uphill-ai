@@ -12,15 +12,18 @@ Two facts from the COROS API Reference V2.0.6 shape the webhook handler below:
     the form declares; the GET here is a convenience for probing this path.
 """
 
+import html
+import json
 import secrets
 import time
 from datetime import date, datetime, timedelta
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import urlencode, urlparse
 
 import httpx
 from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Request, Response
-from fastapi.responses import RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
+from pydantic import BaseModel
 
 import db
 from config import settings
@@ -114,6 +117,17 @@ async def get_current_user(authorization: str | None = Header(None)) -> dict[str
 _PENDING_AUTH: dict[str, tuple[int, str, float]] = {}
 _PENDING_AUTH_TTL_SECONDS = 600  # 10 minutes -- generous for a redirect round trip
 
+# Native (iOS/Android app) flows can't use the state cookie: consent happens in
+# a system browser session whose cookie jar is separate from the app's WebView,
+# so the cookie set by /connect never reaches /callback. Instead the callback
+# parks the code here and hands a one-time completion token to the browser that
+# consented, which returns it to the app via NATIVE_CALLBACK_URL; the app then
+# presents it on /coros/complete with its own session. An attacker who started
+# the flow never sees the token, and the victim's app fails the user_id check.
+# state -> (user_id, verifier, code, completion_token, created_at)
+_NATIVE_COMPLETIONS: dict[str, tuple[int, str, str, str, float]] = {}
+NATIVE_CALLBACK_URL = "uphillai://coros/callback"
+
 # The cookie that binds an authorization attempt to the browser that started
 # it (see coros_connect / coros_callback below -- RFC 6749 section 10.12
 # client CSRF). Scoped to the callback path only so it isn't sent on every
@@ -131,6 +145,8 @@ def _prune_pending_auth() -> None:
     expired = [s for s, entry in _PENDING_AUTH.items() if entry[2] < cutoff]
     for s in expired:
         _PENDING_AUTH.pop(s, None)
+    for s in [s for s, entry in _NATIVE_COMPLETIONS.items() if entry[4] < cutoff]:
+        _NATIVE_COMPLETIONS.pop(s, None)
 
 
 def _pop_pending_auth(state: str | None) -> tuple[int, str, str | None] | None:
@@ -189,6 +205,7 @@ async def coros_connect(
     request: Request,
     response: Response,
     return_url: str | None = None,
+    platform: str | None = None,
     user: dict[str, Any] = Depends(get_current_user),
 ):
     # Both must be set before an athlete is sent to COROS: without
@@ -200,6 +217,10 @@ async def coros_connect(
     _prune_pending_auth()
     verifier, challenge = coros_oauth.make_pkce_pair()
     state = secrets.token_urlsafe(32)
+
+    if platform == "native":
+        _PENDING_AUTH[state] = (user["id"], verifier, time.monotonic(), None, True)
+        return {"authorize_url": coros_oauth.build_authorize_url(state, challenge)}
 
     safe_return_url = _validate_return_url(return_url)
     if not safe_return_url and request.headers.get("referer"):
@@ -238,6 +259,16 @@ async def coros_callback(
     state: str | None = None,
     state_cookie: str | None = Cookie(default=None, alias=COROS_OAUTH_STATE_COOKIE),
 ):
+    entry = _PENDING_AUTH.get(state) if state else None
+    if entry is not None and len(entry) > 4 and entry[4]:
+        pending = _pop_pending_auth(state)
+        if not code or not pending:
+            return _native_return_page({"result": "error"})
+        user_id, verifier, _ = pending
+        token = secrets.token_urlsafe(32)
+        _NATIVE_COMPLETIONS[state] = (user_id, verifier, code, token, time.monotonic())
+        return _native_return_page({"state": state, "token": token})
+
     # Check the CSRF-binding cookie before touching _PENDING_AUTH at all. An
     # attacker who replays or guesses someone else's `state` from a different
     # browser (no cookie, or the wrong one) must not be able to consume -- and
@@ -278,6 +309,67 @@ async def coros_callback(
         return _error_redirect()
 
     user_id, verifier, return_url = pending
+    if not await _exchange_and_save(code, verifier, user_id):
+        return _error_redirect(return_url)
+    base = _validate_return_url(return_url) or settings.FRONTEND_URL
+    response = RedirectResponse(url=f"{base.rstrip('/')}/?coros=connected")
+    response.delete_cookie(key=COROS_OAUTH_STATE_COOKIE, path=COROS_CALLBACK_PATH)
+    return response
+
+
+class CorosCompleteRequest(BaseModel):
+    state: str
+    token: str
+
+
+@router.post("/coros/complete")
+async def coros_complete(
+    body: CorosCompleteRequest,
+    user: dict[str, Any] = Depends(get_current_user),
+):
+    # Popped unconditionally: a completion token is single-use even when the
+    # attempt fails, so it can't be retried or brute-forced.
+    entry = _NATIVE_COMPLETIONS.pop(body.state, None)
+    if (
+        entry is None
+        or entry[4] < time.monotonic() - _PENDING_AUTH_TTL_SECONDS
+        or not secrets.compare_digest(entry[3], body.token)
+        or entry[0] != user["id"]
+    ):
+        logger.warning(
+            "coros native completion rejected",
+            extra={
+                "fields": {
+                    "service": "integrations",
+                    "provider": "coros",
+                    "event": "native_completion_rejected",
+                }
+            },
+        )
+        raise HTTPException(status_code=400, detail="COROS connection could not be completed.")
+    user_id, verifier, code, _, _ = entry
+    if not await _exchange_and_save(code, verifier, user_id):
+        raise HTTPException(status_code=502, detail="COROS connection could not be completed.")
+    return {"connected": True}
+
+
+def _native_return_page(params: dict[str, str]) -> HTMLResponse:
+    """Sends the system browser back to the app. An HTML page rather than a
+    302 because Android browsers may refuse to follow a redirect into another
+    app; the link is the manual fallback when the script's navigation is blocked."""
+    target = f"{NATIVE_CALLBACK_URL}?{urlencode(params)}"
+    page = (
+        '<!doctype html><html><head><meta charset="utf-8">'
+        '<meta name="viewport" content="width=device-width,initial-scale=1"><title>Uphill AI</title></head>'
+        '<body style="font-family:-apple-system,system-ui,sans-serif;text-align:center;padding:48px 24px">'
+        f'<p><a href="{html.escape(target, quote=True)}">Return to Uphill AI / Quay lại Uphill AI</a></p>'
+        f"<script>window.location.replace({json.dumps(target)});</script>"
+        "</body></html>"
+    )
+    return HTMLResponse(page, headers={"Cache-Control": "no-store", "Referrer-Policy": "no-referrer"})
+
+
+async def _exchange_and_save(code: str, verifier: str, user_id: int) -> bool:
     try:
         tokens = await coros_oauth.exchange_code(code, verifier)
         # Encryption happens inside this try, not after it: on a fresh deploy
@@ -316,7 +408,7 @@ async def coros_callback(
                 }
             },
         )
-        return _error_redirect(return_url)
+        return False
 
     db.save_connection(
         user_id=user_id,
@@ -326,10 +418,7 @@ async def coros_callback(
         token_expires_at=tokens.expires_at,
         scopes=coros_oauth.SCOPES,
     )
-    base = _validate_return_url(return_url) or settings.FRONTEND_URL
-    response = RedirectResponse(url=f"{base.rstrip('/')}/?coros=connected")
-    response.delete_cookie(key=COROS_OAUTH_STATE_COOKIE, path=COROS_CALLBACK_PATH)
-    return response
+    return True
 
 
 def _resolve_plan_window(plan_id: int, user_id: int) -> tuple[date, date]:

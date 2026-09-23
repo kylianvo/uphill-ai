@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { WebAuthSession } from "../utils/webAuthSession";
 
 function getBackendUrl(): string {
   if (typeof window !== "undefined") {
@@ -138,5 +139,67 @@ export function useDeviceConnection() {
     }
   }, [refreshStatus]);
 
-  return { status, loading, error, refreshStatus, connectCoros, disconnectCoros, syncNow, syncFitness };
+  // The app's WebView and the system browser showing COROS consent don't share
+  // cookies, so the native flow can't use the web redirect. The backend hands a
+  // one-time token to the consent page, which returns it via uphillai://, and
+  // the app redeems it with its own session. Resolves true once connected.
+  const connectCorosNative = useCallback(async (): Promise<boolean> => {
+    const API_BASE_URL = getBackendUrl();
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/integrations/coros/connect?platform=native`, {
+        method: "GET",
+        headers: authHeaders(),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body?.detail || "COROS connection is unavailable.");
+
+      let callbackUrl: string;
+      try {
+        ({ url: callbackUrl } = await WebAuthSession.start({
+          url: body.authorize_url,
+          callbackScheme: "uphillai",
+        }));
+      } catch (e) {
+        if ((e as { code?: string })?.code === "CANCELLED") return false;
+        throw new Error("COROS connection failed. Please try again.");
+      }
+
+      const params = new URL(callbackUrl).searchParams;
+      const state = params.get("state");
+      const token = params.get("token");
+      // Ignore a stray uphillai:// link that isn't the answer to this attempt.
+      const expectedState = new URL(body.authorize_url).searchParams.get("state");
+      if (!state || !token || state !== expectedState) {
+        throw new Error("COROS connection failed. Please try again.");
+      }
+
+      const completeRes = await fetch(`${API_BASE_URL}/api/integrations/coros/complete`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({ state, token }),
+      });
+      const completeBody = await completeRes.json();
+      if (!completeRes.ok) throw new Error(completeBody?.detail || "COROS connection failed. Please try again.");
+      return true;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "COROS connection failed. Please try again.");
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return {
+    status,
+    loading,
+    error,
+    refreshStatus,
+    connectCoros,
+    connectCorosNative,
+    disconnectCoros,
+    syncNow,
+    syncFitness,
+  };
 }

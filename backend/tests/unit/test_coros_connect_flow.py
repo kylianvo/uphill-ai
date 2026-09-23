@@ -33,9 +33,11 @@ def _clean_pending_auth_and_cookies():
     file -- isolate each test from the others, and never carry a cookie from
     one test's client calls into the next."""
     integrations._PENDING_AUTH.clear()
+    integrations._NATIVE_COMPLETIONS.clear()
     client.cookies.clear()
     yield
     integrations._PENDING_AUTH.clear()
+    integrations._NATIVE_COMPLETIONS.clear()
     client.cookies.clear()
 
 
@@ -243,3 +245,155 @@ def test_callback_without_cookie_succeeds_when_cookie_not_required(monkeypatch):
     assert resp.headers["location"] == "https://uphill-ai.io.vn/?coros=connected"
     assert saved["user_id"] == 42
     assert state not in integrations._PENDING_AUTH
+
+
+# --- Native app flow -------------------------------------------------------
+# The app's WebView and the system browser that shows COROS consent have
+# separate cookie jars, so the state cookie never reaches the callback. The
+# native path binds the flow with a one-time completion token instead.
+
+COMPLETE = "/api/integrations/coros/complete"
+
+
+def _seed_native_pending(state: str, user_id: int = 42) -> None:
+    integrations._PENDING_AUTH[state] = (user_id, "verifier123", time.monotonic(), None, True)
+
+
+def _native_callback_params(resp) -> dict[str, str]:
+    from urllib.parse import parse_qs, urlparse
+
+    marker = "window.location.replace("
+    start = resp.text.index(marker) + len(marker) + 1
+    target = resp.text[start : resp.text.index('"', start)]
+    parsed = urlparse(target)
+    assert f"{parsed.scheme}://{parsed.netloc}{parsed.path}" == integrations.NATIVE_CALLBACK_URL
+    return {k: v[0] for k, v in parse_qs(parsed.query).items()}
+
+
+def _complete(state: str, token: str, user_id: int = 42):
+    app.dependency_overrides[integrations.get_current_user] = lambda: {"id": user_id}
+    try:
+        return client.post(COMPLETE, json={"state": state, "token": token})
+    finally:
+        app.dependency_overrides.pop(integrations.get_current_user, None)
+
+
+def _fake_exchange(monkeypatch, saved: dict) -> None:
+    async def fake_exchange_code(code, verifier):
+        assert code == "auth-code"
+        assert verifier == "verifier123"
+        return TokenSet(access_token="at", refresh_token="rt", expires_at=datetime.now(UTC) + timedelta(hours=1))
+
+    monkeypatch.setattr(integrations.coros_oauth, "exchange_code", fake_exchange_code)
+    monkeypatch.setattr(integrations.token_crypto, "encrypt_token", lambda t: f"enc:{t}")
+    monkeypatch.setattr(integrations.db, "save_connection", lambda **kw: saved.update(kw))
+
+
+def test_native_connect_marks_pending_entry_and_sets_no_cookie(monkeypatch):
+    monkeypatch.setattr(integrations.settings, "COROS_CLIENT_ID", "test-client-id")
+    monkeypatch.setattr(integrations.settings, "TOKEN_ENCRYPTION_KEY", "test-encryption-key")
+    monkeypatch.setattr(integrations.coros_oauth, "make_pkce_pair", lambda: ("verifier123", "challenge123"))
+
+    app.dependency_overrides[integrations.get_current_user] = lambda: {"id": 42}
+    try:
+        resp = client.get("/api/integrations/coros/connect", params={"platform": "native"})
+    finally:
+        app.dependency_overrides.pop(integrations.get_current_user, None)
+
+    assert resp.status_code == 200
+    assert COOKIE_NAME not in resp.headers.get("set-cookie", "")
+    [(state, entry)] = integrations._PENDING_AUTH.items()
+    assert entry[0] == 42 and entry[4] is True
+    assert state in resp.json()["authorize_url"]
+
+
+def test_native_flow_connects_without_cookie(monkeypatch):
+    state = "native-state"
+    _seed_native_pending(state)
+    saved = {}
+    _fake_exchange(monkeypatch, saved)
+
+    resp = client.get(CALLBACK, params={"code": "auth-code", "state": state})
+
+    assert resp.status_code == 200
+    assert resp.headers["cache-control"] == "no-store"
+    params = _native_callback_params(resp)
+    assert params["state"] == state
+    # The callback itself never exchanges the code -- only /complete does.
+    assert saved == {}
+    assert state not in integrations._PENDING_AUTH
+
+    resp = _complete(state, params["token"])
+
+    assert resp.status_code == 200
+    assert resp.json() == {"connected": True}
+    assert saved["user_id"] == 42
+    assert saved["access_token_enc"] == "enc:at"
+    assert state not in integrations._NATIVE_COMPLETIONS
+
+
+def test_native_complete_rejects_a_different_user(monkeypatch):
+    # The attacker-started-flow case: the victim consents, the victim's app
+    # receives the token, but the pending flow belongs to the attacker.
+    state = "native-attacker-state"
+    _seed_native_pending(state, user_id=666)
+    saved = {}
+    _fake_exchange(monkeypatch, saved)
+    params = _native_callback_params(client.get(CALLBACK, params={"code": "auth-code", "state": state}))
+
+    resp = _complete(state, params["token"], user_id=42)
+
+    assert resp.status_code == 400
+    assert saved == {}
+    # Single-use: the entry is gone even after a failed attempt.
+    assert state not in integrations._NATIVE_COMPLETIONS
+
+
+def test_native_complete_rejects_wrong_token_and_burns_the_entry(monkeypatch):
+    state = "native-wrong-token"
+    _seed_native_pending(state)
+    saved = {}
+    _fake_exchange(monkeypatch, saved)
+    params = _native_callback_params(client.get(CALLBACK, params={"code": "auth-code", "state": state}))
+
+    assert _complete(state, "guessed-token").status_code == 400
+    assert _complete(state, params["token"]).status_code == 400
+    assert saved == {}
+
+
+def test_native_complete_rejects_expired_entry(monkeypatch):
+    state = "native-expired"
+    saved = {}
+    _fake_exchange(monkeypatch, saved)
+    expired_at = time.monotonic() - integrations._PENDING_AUTH_TTL_SECONDS - 1
+    integrations._NATIVE_COMPLETIONS[state] = (42, "verifier123", "auth-code", "tok", expired_at)
+
+    assert _complete(state, "tok").status_code == 400
+    assert saved == {}
+
+
+def test_native_callback_without_code_returns_error_to_app(monkeypatch):
+    # e.g. the athlete denied consent at COROS
+    state = "native-denied"
+    _seed_native_pending(state)
+
+    resp = client.get(CALLBACK, params={"state": state, "error": "access_denied"})
+
+    assert resp.status_code == 200
+    assert _native_callback_params(resp) == {"result": "error"}
+    assert integrations._NATIVE_COMPLETIONS == {}
+
+
+def test_native_complete_reports_failed_exchange(monkeypatch):
+    state = "native-exchange-fails"
+    saved = {}
+
+    async def failing_exchange(code, verifier):
+        raise integrations.coros_oauth.CorosAuthError("invalid_grant")
+
+    monkeypatch.setattr(integrations.coros_oauth, "exchange_code", failing_exchange)
+    monkeypatch.setattr(integrations.db, "save_connection", lambda **kw: saved.update(kw))
+    integrations._NATIVE_COMPLETIONS[state] = (42, "verifier123", "auth-code", "tok", time.monotonic())
+
+    assert _complete(state, "tok").status_code == 502
+    assert saved == {}
