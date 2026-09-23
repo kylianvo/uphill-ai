@@ -1,33 +1,11 @@
 """get_week and week_review tool implementations."""
 
-import datetime
-import decimal
-import uuid
 from typing import Any
 
 import db
 from services.coach_tools.base import ToolResult
+from services.coach_tools.base import json_safe as _json_safe
 from services.week_review_narrative import _rule_based_narrative
-
-
-def _json_safe(value: Any) -> Any:
-    """Recursively convert a value (row dict, list, or scalar) into
-    something json.dumps can serialize: datetime/date -> isoformat string,
-    Decimal -> float, UUID -> str, everything else unchanged.
-
-    Needed because card_data is json.dumps-ed into chat_messages.tool_calls_json
-    and the SSE stream, and DB rows can carry datetime/Decimal/UUID values."""
-    if isinstance(value, datetime.datetime | datetime.date):
-        return value.isoformat()
-    if isinstance(value, decimal.Decimal):
-        return float(value)
-    if isinstance(value, uuid.UUID):
-        return str(value)
-    if isinstance(value, dict):
-        return {k: _json_safe(v) for k, v in value.items()}
-    if isinstance(value, list):
-        return [_json_safe(v) for v in value]
-    return value
 
 
 def get_week_impl(user_id: int, week_number: int | None = None) -> ToolResult:
