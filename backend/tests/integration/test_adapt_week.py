@@ -566,6 +566,17 @@ class TestAdaptWeekVolumeBounds:
         assert "TOP of the range" in ctx
         assert "Felt easy, I want to run longer" in ctx
 
+    def test_adapting_week_one_has_no_prior_week_and_does_not_crash(self, client, auth_headers):
+        """Production 500: week 1 has no week 0, so the prior-week block never ran
+        and the bounds code read an unassigned `prev_wos`."""
+        plan_id = _create_test_plan(client, auth_headers["headers"])
+        _seed_two_weeks(client, auth_headers["headers"], plan_id, [40, 40, 40], [], week1_completed=0)
+
+        ctx = _adapt_and_capture(client, auth_headers["headers"], plan_id, week_number=1, fatigue_level="moderate")
+
+        assert "Prior Week" not in ctx
+        assert "Prior-Week Adherence" not in ctx
+
     def test_a_beginners_short_sessions_are_not_stretched_to_the_weekday_minimum(self, client, auth_headers):
         plan_id = _create_test_plan(client, auth_headers["headers"])
         _seed_two_weeks(client, auth_headers["headers"], plan_id, [20, 20, 25], [20, 20, 25], week1_completed=3)
