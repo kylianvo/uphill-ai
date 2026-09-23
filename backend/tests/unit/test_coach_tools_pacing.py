@@ -166,3 +166,57 @@ def test_pace_strategy_distance_and_elevation_args_succeed_via_synthesize():
 
     mock_synth.assert_called_once_with(75.0, 3800.0)
     assert result.status == "success"
+
+
+def test_pace_strategy_synthesized_course_reports_athlete_supplied_elevation():
+    # KB has no elevation for this distance (matched.elevation_gain_m is
+    # None); the athlete supplied 3500m directly. card_data.total_elevation_m
+    # must reflect what was actually used to build the course (3500), not
+    # the (missing) KB value.
+    matched = _matched_race(distance_km=75.0, elevation_gain_m=None, distance_label="75km")
+    synthesized = [{"name": "Start", "distance_meters": 0, "segment_gain_meters": 0.0, "segment_loss_meters": 0.0}]
+    paced = [{"name": "Start", "distance_km": 0.0, "elevation_m": 0, "target_pace": "0:00", "split_time": "0:00:00"}]
+
+    with (
+        patch("db.get_active_plan", return_value=None),
+        patch("services.race_matcher.match_race", return_value=matched),
+        patch("services.race_matcher.course_profile", return_value=None),
+        patch("services.race_estimator.RaceEstimator.synthesize_course", return_value=synthesized) as mock_synth,
+        patch("main._calculate_pacing_core", return_value=paced),
+    ):
+        result = pace_strategy_impl(
+            user_id=1,
+            race_name="Dalat Ultra Trail",
+            distance_km=75.0,
+            elevation_gain_m=3500.0,
+            target_time_hours=13.0,
+        )
+
+    mock_synth.assert_called_once_with(75.0, 3500.0)
+    assert result.status == "success"
+    assert result.card_data["total_elevation_m"] == 3500
+
+
+def test_pace_strategy_curated_profile_reports_summed_segment_gains():
+    # A curated profile's actual elevation (sum of the checkpoints' own
+    # segment_gain_meters) can differ from the race-level matched.elevation_gain_m
+    # (e.g. a stale/rounded KB figure); the card must show what the profile
+    # itself totals to, not the KB race-level number.
+    matched = _matched_race(elevation_gain_m=3150.0)
+    checkpoints = [
+        {"name": "Start", "distance_meters": 0, "segment_gain_meters": 0.0, "segment_loss_meters": 0.0},
+        {"name": "CP1", "distance_meters": 20000, "segment_gain_meters": 900.0, "segment_loss_meters": 200.0},
+        {"name": "Finish", "distance_meters": 71200, "segment_gain_meters": 1400.5, "segment_loss_meters": 300.0},
+    ]
+    paced = [{"name": "Start", "distance_km": 0.0, "elevation_m": 0, "target_pace": "0:00", "split_time": "0:00:00"}]
+
+    with (
+        patch("db.get_active_plan", return_value=None),
+        patch("services.race_matcher.match_race", return_value=matched),
+        patch("services.race_matcher.course_profile", return_value={"checkpoints": checkpoints}),
+        patch("main._calculate_pacing_core", return_value=paced),
+    ):
+        result = pace_strategy_impl(user_id=1, race_name="Dalat Ultra Trail", target_time_hours=12.75)
+
+    assert result.status == "success"
+    assert result.card_data["total_elevation_m"] == round(0.0 + 900.0 + 1400.5)

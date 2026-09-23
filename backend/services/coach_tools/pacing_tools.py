@@ -74,6 +74,10 @@ def pace_strategy_impl(
     profile = race_matcher.course_profile(race_name, matched.distance_label)
     if profile is not None:
         checkpoints = profile["checkpoints"]
+        segment_gains = [
+            cp.get("segment_gain_meters") for cp in checkpoints if cp.get("segment_gain_meters") is not None
+        ]
+        used_elevation_m = sum(segment_gains) if segment_gains else matched.elevation_gain_m
     else:
         resolved_elevation_m = matched.elevation_gain_m if matched.elevation_gain_m is not None else elevation_gain_m
         if matched.distance_km is None:
@@ -81,6 +85,7 @@ def pace_strategy_impl(
         if resolved_elevation_m is None:
             return ToolResult(tool_call_id="", name="pace_strategy", status="error", error="elevation_required")
         checkpoints = RaceEstimator.synthesize_course(matched.distance_km, resolved_elevation_m)
+        used_elevation_m = resolved_elevation_m
 
     request = PacingRequest(
         checkpoints=checkpoints,
@@ -100,7 +105,7 @@ def pace_strategy_impl(
         "race_name": matched.race_name,
         "distance_label": matched.distance_label,
         "total_distance_km": round(total_distance_km, 1) if total_distance_km else matched.distance_km,
-        "total_elevation_m": matched.elevation_gain_m,
+        "total_elevation_m": round(used_elevation_m) if used_elevation_m is not None else None,
         "target_time_formatted": f"{int(target_time_hours)}h {round((target_time_hours % 1) * 60)}m"
         if target_time_hours
         else None,
