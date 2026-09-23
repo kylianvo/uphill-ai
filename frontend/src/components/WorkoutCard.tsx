@@ -316,7 +316,7 @@ export default function WorkoutCard({
                       : "HLV chỉnh sửa"}
                 </span>
               )}
-              {isPending && !readOnly && (
+              {isPending && (
                 <span
                   style={{
                     fontSize: "9px",

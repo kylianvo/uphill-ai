@@ -119,4 +119,10 @@ describe("WorkoutCard readOnly mode", () => {
       render(<WorkoutCard wo={wo} isMobile={false} lang="en" getWorkoutDate={() => ""} readOnly />)
     ).not.toThrow();
   });
+
+  it("keeps the Pending review badge in readOnly mode for an unapproved workout", () => {
+    const pendingWo = { ...wo, approved_at: null };
+    render(<WorkoutCard wo={pendingWo} isMobile={false} lang="en" getWorkoutDate={() => "Sep 2"} readOnly />);
+    expect(screen.getByText("Pending review")).toBeInTheDocument();
+  });
 });
