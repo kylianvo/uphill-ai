@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from google import genai
 from google.genai import types as genai_types
 from prometheus_fastapi_instrumentator import Instrumentator
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from config import settings
 from db import (
@@ -72,7 +72,6 @@ from db import (
     set_plan_athlete_tier,
     set_user_is_coach,
     set_user_password,
-    swap_workouts,
     update_onboarding_profile,
     update_plan_schedule,
     update_user_profile,
@@ -88,8 +87,9 @@ from routers.analytics import router as analytics_router
 from routers.coach_chat import ChatMessage
 from routers.coach_chat import router as coach_chat_router
 from routers.integrations import router as integrations_router
-from services import observability
+from services import calendar_ops, observability
 from services.auth_service import hash_password, verify_password
+from services.calendar_rules import GuardViolation, resolve_today
 from services.calendar_service import CalendarService
 from services.gear_planner import GearParams, gear_planner
 from services.matching.block_evaluator import evaluate_block_performance
@@ -217,6 +217,19 @@ class ModifyCalendarRequest(BaseModel):
     week_number: int
     day_1: str
     day_2: str
+    client_today: str | None = None
+
+
+class CalendarMoveOperation(BaseModel):
+    workout_id: int
+    target_week: int
+    target_day: str
+
+
+class CalendarMoveRequest(BaseModel):
+    plan_id: int
+    operations: list[CalendarMoveOperation] = Field(..., min_length=1, max_length=5)
+    client_today: str | None = None
 
 
 class BlockReviewRequest(BaseModel):
@@ -2944,17 +2957,44 @@ def select_plan_endpoint(request: SelectPlanRequest, user: dict[str, Any] = Depe
 
 @app.post("/api/coach/modify-calendar")
 def modify_calendar_swap(request: ModifyCalendarRequest, user: dict[str, Any] = Depends(get_current_user)):
-    # Verify ownership of the plan
-    active_plan = get_active_plan(user["id"])
-    if not active_plan or active_plan["id"] != request.plan_id:
-        raise HTTPException(status_code=403, detail="Not authorized to modify this plan.")
+    # Routed through the guarded calendar engine (Coach Chat sub-project 4a) so a
+    # manual swap can no longer move matched/completed history or push workouts
+    # into the past. Response shape unchanged, plus `warnings`.
+    if request.day_1 == request.day_2:
+        active_plan = get_active_plan(user["id"])
+        if not active_plan or active_plan["id"] != request.plan_id:
+            raise HTTPException(status_code=403, detail="Not authorized to modify this plan.")
+        return {"message": "Swapped successfully", "workouts": get_plan_workouts(request.plan_id), "warnings": []}
+    today = resolve_today(request.client_today, calendar_ops.server_today())
+    op = {"op": "swap_days", "week": request.week_number, "day_1": request.day_1, "day_2": request.day_2}
+    try:
+        changes = calendar_ops.apply(user["id"], request.plan_id, [op], today, agent=False)
+    except GuardViolation as gv:
+        if gv.code == "G1_not_owner":
+            raise HTTPException(status_code=403, detail="Not authorized to modify this plan.")
+        if gv.code in ("NOTHING_to_move", "INVALID_operation"):
+            raise HTTPException(status_code=400, detail="Failed to swap workouts. Check date details.")
+        raise HTTPException(status_code=422, detail={"code": gv.code, "params": gv.params})
+    return {
+        "message": "Swapped successfully",
+        "workouts": get_plan_workouts(request.plan_id),
+        "warnings": changes.warnings,
+    }
 
-    success = swap_workouts(request.plan_id, request.week_number, request.day_1, request.day_2)
-    if not success:
-        raise HTTPException(status_code=400, detail="Failed to swap workouts. Check date details.")
 
-    updated_workouts = get_plan_workouts(request.plan_id)
-    return {"message": "Swapped successfully", "workouts": updated_workouts}
+@app.post("/api/coach/calendar/move")
+def calendar_move(request: CalendarMoveRequest, user: dict[str, Any] = Depends(get_current_user)):
+    """Per-workout moves (same week, or current <-> next week) through the same
+    guarded engine the chat's Apply uses."""
+    today = resolve_today(request.client_today, calendar_ops.server_today())
+    ops = [{"op": "move", **o.model_dump()} for o in request.operations]
+    try:
+        changes = calendar_ops.apply(user["id"], request.plan_id, ops, today, agent=False)
+    except GuardViolation as gv:
+        if gv.code == "G1_not_owner":
+            raise HTTPException(status_code=403, detail="Not authorized to modify this plan.")
+        raise HTTPException(status_code=422, detail={"code": gv.code, "params": gv.params})
+    return {"workouts": get_plan_workouts(request.plan_id), "warnings": changes.warnings}
 
 
 class WorkoutLogRequest(BaseModel):
