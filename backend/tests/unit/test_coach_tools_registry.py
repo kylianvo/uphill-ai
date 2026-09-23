@@ -1,5 +1,7 @@
+import datetime as dt
 from unittest.mock import patch
 
+from services.coach_tools import ProposalContext
 from services.coach_tools.registry import build_tools
 
 
@@ -62,3 +64,41 @@ def test_get_week_tool_ignores_llm_supplied_user_id_and_uses_closure():
         # user_id=999 is what actually gets passed, not the smuggled value.
         get_week_tool.invoke({"week_number": 2, "user_id": 1})
     mock_impl.assert_called_once_with(user_id=999, week_number=2)
+
+
+def test_proposal_tool_absent_without_context():
+    names = {t.name for t in build_tools(user_id=1, kb_api_key="k")}
+    assert "propose_schedule_change" not in names
+
+
+def test_proposal_tool_present_with_context_and_never_takes_identity():
+    ctx = ProposalContext(thread_id=5, plan_id=9, today=dt.date(2026, 9, 23))
+    tools = build_tools(user_id=1, kb_api_key="k", proposals=ctx)
+    tool = next(t for t in tools if t.name == "propose_schedule_change")
+    fields = tool.args_schema.model_fields
+    assert set(fields) == {"operations", "rationale"}
+    op_fields = fields["operations"].annotation.__args__[0].model_fields
+    assert "user_id" not in op_fields and "athlete_id" not in op_fields and "plan_id" not in op_fields
+
+
+def test_proposal_tool_uses_closure_identity(monkeypatch):
+    seen = {}
+
+    def fake_impl(*, user_id, ctx, operations, rationale):
+        seen.update(user_id=user_id, ctx=ctx, operations=operations)
+        from services.coach_tools.base import ToolResult
+
+        return ToolResult(tool_call_id="", name="propose_schedule_change", status="success")
+
+    monkeypatch.setattr("services.coach_tools.proposal_tools.propose_schedule_change_impl", fake_impl)
+    ctx = ProposalContext(thread_id=5, plan_id=9, today=dt.date(2026, 9, 23))
+    tool = next(t for t in build_tools(user_id=1, kb_api_key="k", proposals=ctx) if t.name == "propose_schedule_change")
+    tool.invoke(
+        {
+            "operations": [{"op": "move", "workout_id": 3, "target_week": 4, "target_day": "Monday", "user_id": 42}],
+            "rationale": "travel",
+        }
+    )
+    assert seen["user_id"] == 1
+    assert seen["ctx"] is ctx
+    assert seen["operations"] == [{"op": "move", "workout_id": 3, "target_week": 4, "target_day": "Monday"}]

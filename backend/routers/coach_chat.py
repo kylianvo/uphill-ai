@@ -65,6 +65,9 @@ class ChatStreamRequest(BaseModel):
     message: str | None = Field(None, description="Athlete message for a new turn")
     retry_of: str | None = Field(None, description="Root turn UUID to retry")
     lang: str = Field("en", description="Language ('en' or 'vi')")
+    client_today: str | None = Field(
+        None, description="Athlete's local date YYYY-MM-DD (clamped server-side to ±1 day)"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -142,6 +145,7 @@ async def coach_chat_stream(
                     "message": request.message.strip() if request.message else None,
                     "retry_of": request.retry_of.strip() if request.retry_of else None,
                     "lang": request.lang or "en",
+                    "client_today": request.client_today,
                 }
                 async for app_event in coach_chat.run_turn(user=user, request=req_dict):
                     await event_queue.put(app_event)

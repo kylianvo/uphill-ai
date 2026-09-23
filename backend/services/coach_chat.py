@@ -12,7 +12,8 @@ import db
 from config import settings
 from db import CoachChatError
 from log_utils import get_logger
-from services import coach_context, coach_tools, kb_retrieval, observability
+from services import calendar_ops, coach_context, coach_tools, kb_retrieval, observability
+from services.calendar_rules import resolve_today
 from services.coach_graph import (
     AppEvent,
     CitationsEvent,
@@ -236,7 +237,17 @@ async def run_turn(
                     break
 
         api_key = user.get("gemini_api_key") or settings.GEMINI_API_KEY
-        tools = coach_tools.build_tools(user_id=user_id, kb_api_key=api_key) if api_key else []
+        # Proposal tool only for athletes with an active plan and no active coach
+        # link (roadmap decision 10); identity and today come from the server.
+        proposal_ctx = None
+        active_plan = db.get_active_plan(user_id)
+        if active_plan and not db.get_active_coach_link_for_athlete(user_id):
+            proposal_ctx = coach_tools.ProposalContext(
+                thread_id=thread_id,
+                plan_id=active_plan["id"],
+                today=resolve_today(request.get("client_today"), calendar_ops.server_today()),
+            )
+        tools = coach_tools.build_tools(user_id=user_id, kb_api_key=api_key, proposals=proposal_ctx) if api_key else []
 
         try:
             assistant_msg_id = db.append_chat_message(
@@ -349,6 +360,12 @@ async def run_turn(
                 citations=final_citations,
                 tool_calls_json=final_tool_history or None,
             )
+            proposal_ids = [
+                tc["card_data"]["proposal_id"]
+                for tc in final_tool_history
+                if tc.get("card_type") == "schedule_proposal" and tc.get("status") == "success" and tc.get("card_data")
+            ]
+            db.set_proposals_message_id(thread_id, proposal_ids, assistant_msg_id)
 
             # 2. Finalize turn in DB
             db.finish_chat_turn(

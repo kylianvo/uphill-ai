@@ -158,3 +158,9 @@ def test_prompt_metadata_allowlist():
     assert filtered.get("prompt_source") == "langfuse"
     assert "prompt_text" not in filtered
     assert "athlete_notes" not in filtered
+
+
+def test_prompt_has_propose_then_apply_rules():
+    assert "propose_schedule_change" in COACH_SYSTEM_INSTRUCTION
+    assert "Apply" in COACH_SYSTEM_INSTRUCTION
+    assert "Never say or imply" in COACH_SYSTEM_INSTRUCTION
