@@ -39,13 +39,11 @@ const btn: React.CSSProperties = {
 };
 
 export default function ScheduleProposalCard({ data, lang, isMobile = false, liveState, onApplied }: Props) {
-  const [localState, setLocalState] = React.useState<ProposalState>({
-    status: (data.status as ProposalStatus) || "proposed",
-  });
+  const [localState, setLocalState] = React.useState<ProposalState | null>(null);
   const [busy, setBusy] = React.useState(false);
   const [failed, setFailed] = React.useState(false);
 
-  const state = liveState ?? localState;
+  const state = localState ?? liveState ?? { status: (data.status as ProposalStatus) || "proposed" };
 
   const warnings = state.result?.warnings ?? data.warnings ?? [];
   const planForDates = { start_date: data.plan_start_date, race_date: data.race_date };

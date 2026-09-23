@@ -103,4 +103,20 @@ describe("ScheduleProposalCard", () => {
     expect(screen.getByRole("button", { name: "Áp dụng" })).toBeInTheDocument();
     expect(screen.getByText(/Tuần 4 · Thứ Hai/)).toBeInTheDocument();
   });
+
+  it("a local Apply wins over a stale 'proposed' liveState from thread load", async () => {
+    mockFetch(200, { status: "applied", result: { moves: [], warnings: [] }, workouts: [{ id: 3 }] });
+    render(<ScheduleProposalCard data={data} lang="en" liveState={{ status: "proposed" }} />);
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+    await waitFor(() => expect(screen.getByText("Applied ✓")).toBeInTheDocument());
+    expect(screen.queryByRole("button", { name: "Apply" })).toBeNull();
+  });
+
+  it("a local Discard wins over a stale 'proposed' liveState from thread load", async () => {
+    mockFetch(200, { status: "discarded" });
+    render(<ScheduleProposalCard data={data} lang="en" liveState={{ status: "proposed" }} />);
+    fireEvent.click(screen.getByRole("button", { name: "Discard" }));
+    await waitFor(() => expect(screen.getByText("Discarded")).toBeInTheDocument());
+    expect(screen.queryByRole("button", { name: "Apply" })).toBeNull();
+  });
 });
