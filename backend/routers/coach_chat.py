@@ -8,7 +8,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from google import genai
 from google.genai import types as genai_types
 from pydantic import BaseModel, Field
@@ -25,7 +25,7 @@ from db import (
     verify_session,
 )
 from log_utils import get_logger
-from services import coach_chat
+from services import coach_chat, schedule_proposals
 from services.coach_graph import AppEvent
 from services.coach_prompts import (
     COACH_SYSTEM_INSTRUCTION,
@@ -210,7 +210,41 @@ async def get_chat_thread(
 ):
     """Retrieve chronologically ordered messages in the athlete's thread with pagination cursor."""
     user_id = user["id"]
-    return db.get_chat_thread_paginated(user_id=user_id, before_id=before_id, limit=limit)
+    data = db.get_chat_thread_paginated(user_id=user_id, before_id=before_id, limit=limit)
+    statuses = db.get_chat_proposal_statuses(user_id, [m["id"] for m in data["messages"]])
+    data["proposals"] = {str(pid): s for pid, s in statuses.items()}
+    return data
+
+
+class ProposalApplyRequest(BaseModel):
+    client_today: str | None = None
+
+
+@router.post("/api/coach/chat/proposals/{proposal_id}/apply")
+def apply_chat_proposal(
+    proposal_id: int,
+    body: ProposalApplyRequest | None = None,
+    user: dict[str, Any] = Depends(get_current_user),
+):
+    """The Apply button is the only confirmation (roadmap decision 9)."""
+    status_code, payload = schedule_proposals.apply_proposal(
+        user["id"], proposal_id, body.client_today if body else None
+    )
+    if status_code == 200:
+        plan_id = payload.pop("plan_id")
+        payload["workouts"] = get_plan_workouts(plan_id)
+        return payload
+    if status_code == 404:
+        raise HTTPException(status_code=404, detail="Proposal not found.")
+    return JSONResponse(status_code=status_code, content=payload)
+
+
+@router.post("/api/coach/chat/proposals/{proposal_id}/discard")
+def discard_chat_proposal(proposal_id: int, user: dict[str, Any] = Depends(get_current_user)):
+    status_code, payload = schedule_proposals.discard_proposal(user["id"], proposal_id)
+    if status_code == 404:
+        raise HTTPException(status_code=404, detail="Proposal not found.")
+    return payload
 
 
 @router.get("/api/coach/chat/turns/{request_id}")
