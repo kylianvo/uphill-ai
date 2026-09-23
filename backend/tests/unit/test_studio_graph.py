@@ -29,6 +29,29 @@ def test_remote_database_is_refused(url):
         sf.assert_local_dev("development", url)
 
 
+@pytest.mark.parametrize(
+    "url",
+    [
+        "postgresql://u:p@localhost/db?host=45.119.215.120",
+        "postgresql://u:p@localhost/db?hostaddr=45.119.215.120",
+        "postgresql://u:p@localhost/db?service=x",
+    ],
+)
+def test_query_param_host_bypass_is_refused(url):
+    with pytest.raises(RuntimeError):
+        sf.assert_local_dev("development", url)
+
+
+def test_staging_environment_is_refused():
+    with pytest.raises(RuntimeError, match="ENVIRONMENT"):
+        sf.assert_local_dev("staging", "postgresql://u:p@localhost:5432/uphill_ai")
+
+
+def test_empty_environment_is_refused():
+    with pytest.raises(RuntimeError, match="ENVIRONMENT"):
+        sf.assert_local_dev("", "postgresql://u:p@localhost:5432/uphill_ai")
+
+
 def test_studio_user_id_is_required():
     with pytest.raises(RuntimeError, match="STUDIO_USER_ID"):
         sf.load_studio_user_id({})

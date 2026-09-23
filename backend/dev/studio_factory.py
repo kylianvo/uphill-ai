@@ -6,10 +6,10 @@ local database with test users -- assert_local_dev enforces that."""
 
 from collections.abc import Mapping
 from typing import Any, TypedDict
-from urllib.parse import urlparse
 from uuid import uuid4
 
 from langgraph.graph import END, START, StateGraph
+from sqlalchemy.engine import make_url
 
 import db
 from config import settings
@@ -19,12 +19,31 @@ from services.coach_model import ChatMessage, FakeCoachModel, GeminiCoachModel, 
 from services.observability import Usage
 
 LOCAL_DB_HOSTS = {"localhost", "127.0.0.1", "db"}
+ALLOWED_ENVIRONMENTS = {"development", "test", "local"}
+# libpq/psycopg2 honour these query params to redirect the connection away
+# from the netloc host, so they must be rejected outright rather than
+# trusted to resolve to something in LOCAL_DB_HOSTS.
+FORBIDDEN_QUERY_KEYS = {"host", "hostaddr", "service"}
 
 
 def assert_local_dev(environment: str, database_url: str) -> None:
-    if (environment or "").lower() == "production":
-        raise RuntimeError("LangGraph Studio refuses to run with ENVIRONMENT=production.")
-    host = urlparse(database_url or "").hostname
+    env = (environment or "").lower()
+    if env not in ALLOWED_ENVIRONMENTS:
+        raise RuntimeError(
+            f"LangGraph Studio only runs with ENVIRONMENT in {sorted(ALLOWED_ENVIRONMENTS)}; got {environment!r}."
+        )
+
+    url = make_url(database_url or "")
+    query_keys = {str(k).lower() for k in url.query}
+    forbidden = query_keys & FORBIDDEN_QUERY_KEYS
+    if forbidden:
+        raise RuntimeError(
+            f"LangGraph Studio refuses a DATABASE_URL whose query overrides the connection target "
+            f"({', '.join(sorted(forbidden))}); use a plain local URL instead."
+        )
+
+    _, connect_kwargs = url.get_dialect()().create_connect_args(url)
+    host = connect_kwargs.get("host") or url.host
     if host not in LOCAL_DB_HOSTS:
         raise RuntimeError(
             f"LangGraph Studio only runs against a local database (localhost/127.0.0.1/db); got host {host!r}."
