@@ -109,6 +109,7 @@ def pace_strategy_impl(
         "target_time_formatted": f"{int(target_time_hours)}h {round((target_time_hours % 1) * 60)}m"
         if target_time_hours
         else None,
+        "target_time_hours": target_time_hours,
         "splits": paced_checkpoints,
     }
     return ToolResult(

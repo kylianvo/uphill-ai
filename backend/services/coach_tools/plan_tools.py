@@ -73,7 +73,12 @@ def week_review_impl(user_id: int, weeks_ago: int = 0) -> ToolResult:
     week_label = "Current Week" if weeks_ago == 0 else f"{weeks_ago} Week{'s' if weeks_ago > 1 else ''} Ago"
     card_data = _json_safe(review)
     card_data["narrative"] = narrative
+    # week_label kept for backward compatibility (older clients render it
+    # verbatim); weeks_ago/target_week let the frontend build a bilingual
+    # header from its own translation keys instead of this English string.
     card_data["week_label"] = f"{week_label} (Week {target_week})"
+    card_data["weeks_ago"] = weeks_ago
+    card_data["target_week"] = target_week
     return ToolResult(
         tool_call_id="", name="week_review", status="success", card_type="week_review", card_data=card_data
     )

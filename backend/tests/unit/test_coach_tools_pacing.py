@@ -55,6 +55,9 @@ def test_pace_strategy_uses_curated_course_profile_when_available():
     assert result.card_data["race_name"] == "Dalat Ultra Trail 70K"
     assert result.card_data["distance_label"] == "70K"
     assert result.card_data["splits"] == paced
+    # target_time_hours is carried into card_data so the frontend can pass it
+    # through the "Open in Pace Strategy" deep link.
+    assert result.card_data["target_time_hours"] == 12.75
 
 
 def test_pace_strategy_falls_back_to_synthesized_course():

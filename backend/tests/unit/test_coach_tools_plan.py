@@ -117,6 +117,10 @@ def test_week_review_computes_current_week_minus_weeks_ago():
     # Plus the narrative and computed label.
     assert set(card_data["narrative"].keys()) == {"summary", "highlights", "watch"}
     assert card_data["week_label"] == "1 Week Ago (Week 4)"
+    # weeks_ago/target_week let the frontend build a bilingual header itself
+    # instead of rendering the English week_label string.
+    assert card_data["weeks_ago"] == 1
+    assert card_data["target_week"] == 4
     # Old flattened keys are gone.
     for removed_key in (
         "completed_km",
