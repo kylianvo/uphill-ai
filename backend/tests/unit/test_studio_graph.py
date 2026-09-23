@@ -91,3 +91,32 @@ async def test_fake_run_executes_one_tool_then_replies(monkeypatch):
         assert out["reply_text"]
         assert len(out["tool_history"]) == 1
         assert out["tool_history"][0]["name"] == "get_week"
+
+
+@pytest.mark.asyncio
+async def test_cancelled_run_does_not_desync_cycling_fake_model(monkeypatch):
+    """A run cancelled after only the tool-call round leaves the fake model's
+    _cursor at 1, not 0 or back-to-len(responses). The prepare node must reset
+    it to 0 so the next run still starts with the tool call instead of jumping
+    straight to the reply round."""
+    monkeypatch.setattr(sf.db, "get_or_create_chat_thread", lambda uid: {"id": 7, "summary": None})
+    monkeypatch.setattr(sf.coach_context, "build_chat_context", lambda **kw: {"athlete": {}, "history": []})
+    monkeypatch.setattr("db.get_active_plan", lambda uid: None)
+
+    created = {}
+    orig_init = sf.CyclingFakeCoachModel.__init__
+
+    def capturing_init(self):
+        orig_init(self)
+        created["model"] = self
+
+    monkeypatch.setattr(sf.CyclingFakeCoachModel, "__init__", capturing_init)
+
+    graph = sf.build_studio_graph(1, real_model=False)
+    # Simulate a cancelled run that consumed only round 1 (the tool call).
+    created["model"]._cursor = 1
+
+    out = await graph.ainvoke({"question": "What's my week?", "lang": "en"})
+    assert out["reply_text"]
+    assert len(out["tool_history"]) == 1
+    assert out["tool_history"][0]["name"] == "get_week"

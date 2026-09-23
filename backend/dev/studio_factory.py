@@ -89,8 +89,10 @@ class StudioInput(TypedDict, total=False):
     lang: str
 
 
-def _make_prepare_node(user_id: int):
+def _make_prepare_node(user_id: int, model: Any = None):
     def prepare(state: TurnState) -> dict[str, Any]:
+        if isinstance(model, CyclingFakeCoachModel):
+            model._cursor = 0
         question = state.get("question") or ""
         thread = db.get_or_create_chat_thread(user_id)
         context = coach_context.build_chat_context(user_id=user_id, question=question, thread_id=thread["id"])
@@ -133,7 +135,7 @@ def build_studio_graph(user_id: int, *, real_model: bool):
     coach = build_graph(model=model, retrieve_fn=retrieve, tools=tools)
 
     workflow = StateGraph(TurnState, input_schema=StudioInput)
-    workflow.add_node("prepare", _make_prepare_node(user_id))
+    workflow.add_node("prepare", _make_prepare_node(user_id, model))
     workflow.add_node("coach", coach)
     workflow.add_edge(START, "prepare")
     workflow.add_edge("prepare", "coach")
