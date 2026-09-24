@@ -4476,12 +4476,14 @@ def get_chat_proposal(proposal_id: int) -> dict[str, Any] | None:
 
 
 def get_open_chat_proposals(thread_id: int, plan_id: int) -> list[dict[str, Any]]:
-    """`proposed` rows for a thread+plan, as {id, diff} with diff JSON-decoded."""
+    """`proposed` schedule-move rows for a thread+plan, as {id, diff} with diff
+    JSON-decoded. Only used by 4a's move dedupe, so `kind = 'schedule'` -- a
+    rebuild row's diff is a dict, not a list of moves."""
     with engine.connect() as conn:
         rows = conn.execute(
             text(
                 "SELECT id, diff FROM chat_proposals "
-                "WHERE thread_id = :tid AND plan_id = :pid AND status = 'proposed' ORDER BY id"
+                "WHERE thread_id = :tid AND plan_id = :pid AND status = 'proposed' AND kind = 'schedule' ORDER BY id"
             ),
             {"tid": thread_id, "pid": plan_id},
         ).fetchall()
