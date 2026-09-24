@@ -6,12 +6,16 @@ confirmation) and the chat tool propose_rebuild_week (drafts in the
 background, the athlete taps Apply). The pure rules come first: which days
 are kept (past days, completed, GPS-matched), the diff and the warnings."""
 
+import asyncio
 import datetime as dt
-from dataclasses import dataclass
+import threading
+from collections.abc import Callable, Coroutine
+from dataclasses import asdict, dataclass
 from typing import Any
 
 import db
 from config import settings
+from services import calendar_ops
 from services.calendar_rules import (
     DAYS,
     FINGERPRINT_FIELDS,
@@ -629,3 +633,85 @@ def write_draft(plan: dict[str, Any], week: int, today: dt.date, draft: WeekDraf
         rng = rebuild_range(plan, rows, week, today)
         db.replace_week_workouts(conn, plan["id"], rng.replaceable_ids, filter_draft(draft.workouts, rng))
     db.set_plan_athlete_tier(plan["id"], draft.resolved_tier)
+
+
+REBUILD_TIMEOUT_SECONDS = 180
+
+
+def _spawn_thread(factory: Callable[[], Coroutine[Any, Any, None]]) -> None:
+    # Tool executors may run off the event loop thread, so the job gets its own
+    # loop on a daemon thread. A restart kills it; the orphan rule
+    # (db.expire_orphaned_rebuilds) turns the row `failed` on the next read.
+    threading.Thread(target=lambda: asyncio.run(factory()), daemon=True, name="chat-rebuild").start()
+
+
+spawn: Callable[[Callable[[], Coroutine[Any, Any, None]]], None] = _spawn_thread
+
+
+async def _run_rebuild(proposal_id: int, inputs: RebuildInputs, rng: RebuildRange, rows: list[dict[str, Any]]) -> None:
+    try:
+        draft = await asyncio.wait_for(generate_week_draft(inputs, rng), REBUILD_TIMEOUT_SECONDS)
+    except TimeoutError:
+        db.fail_rebuild_proposal(proposal_id, "generation_timeout")
+        return
+    except Exception as ex:  # noqa: BLE001 -- any generator failure is a failed draft, never a crash
+        print(f"[ChatRebuild][{proposal_id}] generation failed: {type(ex).__name__}")
+        db.fail_rebuild_proposal(proposal_id, "generation_error")
+        return
+    if not draft.workouts:
+        # Applying an empty draft would delete every replaceable workout.
+        db.fail_rebuild_proposal(proposal_id, "generation_empty")
+        return
+    db.finish_rebuild_proposal(
+        proposal_id,
+        draft={"workouts": json_safe(draft.workouts), "resolved_tier": draft.resolved_tier},
+        diff=build_diff(rows, rng, draft.workouts),
+        warnings=rebuild_warnings(rows, rng, draft.workouts),
+    )
+
+
+def request_rebuild(
+    *,
+    user_id: int,
+    thread_id: int,
+    plan_id: int,
+    today: dt.date,
+    request: RebuildRequest,
+    rationale: str,
+) -> dict[str, Any]:
+    """Chat path. Validates, records whole-week fingerprints NOW (a change
+    during generation makes the draft stale), inserts the `generating` row and
+    consumes one daily-cap slot in one transaction, then starts the job."""
+    plan = calendar_ops.check_agent_access(user_id, plan_id)
+    monday = start_monday(plan.get("start_date"))
+    if monday is None:
+        raise GuardViolation("G7_no_dates", {})
+    week = request.week_number
+    cur = current_week(monday, today)
+    if week not in (cur, cur + 1):
+        raise GuardViolation("G4_window", {"week": week, "current_week": cur})
+    rows = load_plan_rows(plan_id)
+    rng = rebuild_range(plan, rows, week, today)
+    inputs = build_rebuild_inputs(user_id, plan, rows, rng, request)
+    outcome, proposal_id = db.create_rebuild_proposal(
+        user_id=user_id,
+        thread_id=thread_id,
+        plan_id=plan_id,
+        week=week,
+        operations={
+            "week": week,
+            "from_day": rng.from_day,
+            "replaceable_ids": list(rng.replaceable_ids),
+            "request": asdict(request),
+        },
+        fingerprints=week_fingerprints(rows, week),
+        rationale=rationale,
+        daily_limit=settings.COACH_CHAT_DAILY_REBUILDS_LIMIT,
+        usage_date=calendar_ops.server_today(),
+    )
+    if outcome == "duplicate":
+        raise GuardViolation("DUPLICATE_pending", {"proposal_id": proposal_id, "week": week})
+    if outcome == "limit":
+        raise GuardViolation("REBUILD_limit", {"limit": settings.COACH_CHAT_DAILY_REBUILDS_LIMIT})
+    spawn(lambda: _run_rebuild(proposal_id, inputs, rng, rows))
+    return {"proposal_id": proposal_id, "week": week, "from_day": rng.from_day}

@@ -26,6 +26,11 @@ def _check_access(user_id: int, plan_id: int, *, agent: bool) -> dict[str, Any]:
     return plan
 
 
+def check_agent_access(user_id: int, plan_id: int) -> dict[str, Any]:
+    """G1 + G6 for agent writes that don't go through preview/apply (week rebuilds)."""
+    return _check_access(user_id, plan_id, agent=True)
+
+
 def preview(user_id: int, plan_id: int, operations: list[dict[str, Any]], today: dt.date, *, agent: bool) -> ChangeSet:
     plan = _check_access(user_id, plan_id, agent=agent)
     with db.engine.connect() as conn:
