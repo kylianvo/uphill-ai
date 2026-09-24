@@ -87,10 +87,11 @@ from routers.analytics import router as analytics_router
 from routers.coach_chat import ChatMessage
 from routers.coach_chat import router as coach_chat_router
 from routers.integrations import router as integrations_router
-from services import calendar_ops, observability
+from services import calendar_ops, observability, week_rebuild
 from services.auth_service import hash_password, verify_password
 from services.calendar_rules import GuardViolation, resolve_today
 from services.calendar_service import CalendarService
+from services.course_match import resolve_course_match as _resolve_course_match
 from services.gear_planner import GearParams, gear_planner
 from services.matching.block_evaluator import evaluate_block_performance
 from services.nutrition_planner import NutritionParams, nutrition_planner
@@ -284,6 +285,7 @@ class AdaptWeekRequest(BaseModel):
     # athlete's training.
     max_continuous_jog_min: int | None = None
     lang: str | None = None
+    client_today: str | None = None  # the athlete's local date; ±1 day of server UTC (calendar_rules.resolve_today)
 
 
 # Phase 3 Request Models
@@ -1089,34 +1091,6 @@ def _session_review_status(w: dict[str, Any]) -> str:
     if w.get("is_missed") == 1:
         return "MISSED"
     return "not logged"
-
-
-def _resolve_course_match(
-    race_name: str | None, course_distance_km: float | None, course_elevation_gain_m: float | None
-) -> tuple[float | None, float | None, str | None]:
-    """Fuzzy-matches race_name against the curated race_courses KB. Returns
-    (resolved_distance_km, resolved_elevation_gain_m, course_context) —
-    numeric fields are backfilled only when the caller passed None; manual
-    entry and GPX-derived values are never overwritten. course_context
-    (qualitative terrain/climate prose) is always returned when there's a
-    match, regardless of whether the numeric fields needed backfilling.
-    Never raises: race matching is enrichment, never allowed to break plan
-    creation or generation, even if the hand-edited KB has malformed data
-    or the matcher's dependencies aren't installed."""
-    try:
-        from services.race_matcher import match_race
-
-        matched = match_race(race_name, distance_km=course_distance_km)
-    except Exception as e:
-        print(f"[CourseMatch] match_race failed unexpectedly: {e}")
-        matched = None
-    if not matched:
-        return course_distance_km, course_elevation_gain_m, None
-    resolved_distance_km = course_distance_km if course_distance_km is not None else matched.distance_km
-    resolved_elevation_gain_m = (
-        course_elevation_gain_m if course_elevation_gain_m is not None else matched.elevation_gain_m
-    )
-    return resolved_distance_km, resolved_elevation_gain_m, matched.course_context
 
 
 @app.get("/api/auth/me")
@@ -2487,347 +2461,27 @@ async def _adapt_week_for_athlete(request: AdaptWeekRequest, athlete_id: int, jo
                 "week_number": request.week_number,
             }
 
+    today = resolve_today(request.client_today, calendar_ops.server_today())
+    plan_rows = week_rebuild.load_plan_rows(request.plan_id)
+    try:
+        rng = week_rebuild.rebuild_range(plan, plan_rows, request.week_number, today)
+    except GuardViolation as gv:
+        raise HTTPException(status_code=422, detail={"code": gv.code, "params": gv.params})
+
     # Record the reported jog time BEFORE reading the profile, so this week's tier and
     # prompt reflect what the athlete just told us rather than last week's number.
     if request.max_continuous_jog_min:
         set_max_continuous_jog_min(athlete_id, request.max_continuous_jog_min)
 
-    all_workouts = get_plan_workouts(request.plan_id)
-    fresh_user = get_user_by_id(athlete_id) or {}
-
-    # Map fatigue_level (5 feelings: very_light/light/moderate/hard/max_effort) and overall_rpe coherently
-    fatigue_level = request.fatigue_level
-    overall_rpe = request.overall_rpe
-    level_to_rpe = {
-        "very_light": 2,
-        "very light": 2,
-        "easy": 3,
-        "light": 4,
-        "medium": 6,
-        "moderate": 6,
-        "hard": 8,
-        "exhausted": 10,
-        "max_effort": 10,
-        "max effort": 10,
-    }
-    if fatigue_level and overall_rpe is None:
-        overall_rpe = level_to_rpe.get(fatigue_level.lower(), 6)
-    elif overall_rpe is not None and not fatigue_level:
-        if overall_rpe <= 2:
-            fatigue_level = "very_light"
-        elif overall_rpe <= 4:
-            fatigue_level = "light"
-        elif overall_rpe <= 6:
-            fatigue_level = "moderate"
-        elif overall_rpe <= 8:
-            fatigue_level = "hard"
-        else:
-            fatigue_level = "max_effort"
-
-    context_lines: list[str] = [
-        f"ADAPTATION & REGENERATION FOR WEEK {request.week_number}:",
-    ]
-    # The beginner progression metric, surfaced so the model can move it deliberately
-    # rather than inferring progress from weekly kilometres.
-    _jog_min = fresh_user.get("max_continuous_jog_min")
-    if _jog_min:
-        context_lines.append(
-            f"  Longest Unbroken Jog: {_jog_min} minutes. For a new runner this is THE progress "
-            f"metric -- move it or hold it deliberately, and name it in the workout descriptions."
-        )
-    if fatigue_level:
-        norm_fl = fatigue_level.lower().replace(" ", "_")
-        fl_display_map = {
-            "very_light": "VERY LIGHT",
-            "light": "LIGHT",
-            "moderate": "MODERATE",
-            "hard": "HARD",
-            "max_effort": "MAX EFFORT",
-            "easy": "LIGHT",
-            "medium": "MODERATE",
-            "exhausted": "MAX EFFORT",
-        }
-        display_feeling = fl_display_map.get(norm_fl, fatigue_level.upper())
-        context_lines.append(f"  Current Athlete Feeling: {display_feeling} (equivalent RPE ~{overall_rpe or 6}/10)")
-        if norm_fl in ("very_light",):
-            context_lines.append(
-                "  Feeling Very Light: Athlete is effortless and underloaded. "
-                "IMPORTANT: Increase training stimulus by adding 5-10% weekly volume or progressing key quality sessions (intervals/tempo) while respecting recovery."
-            )
-        elif norm_fl in ("light", "easy"):
-            context_lines.append(
-                "  Feeling Light / Fresh: Athlete is well recovered and ready to absorb more load. "
-                "IMPORTANT: Do NOT reduce weekly training volume. Match or slightly increase the planned week's total duration and distance. "
-                "Keep all key quality sessions (intervals, tempo, long run) intact. "
-                "You may optionally add 5% more volume to the easy/base runs to capitalise on the athlete's freshness."
-            )
-        elif norm_fl in ("moderate", "medium"):
-            context_lines.append(
-                "  Feeling Moderate: Normal training fatigue, manageable and sustainable. Keep balanced volume with steady progression."
-            )
-        elif norm_fl in ("hard",):
-            context_lines.append(
-                "  Feeling Hard / Tired: Elevated fatigue or heavy legs. Ease off high-intensity sessions and trim volume by 10-15%."
-            )
-        elif norm_fl in ("max_effort", "exhausted"):
-            context_lines.append(
-                "  Feeling Max Effort / Exhausted: High fatigue or overreaching. Prescribe an active recovery/deload week with 20-30% reduced volume and no high-intensity work."
-            )
-    elif overall_rpe is not None:
-        context_lines.append(f"  Current Athlete Exertion / Fatigue RPE: {overall_rpe}/10")
-
-    if request.fatigue_notes:
-        context_lines.append(f'  Fatigue & Adaptation reason: "{request.fatigue_notes}"')
-    if request.athlete_notes:
-        context_lines.append(f'  Athlete notes: "{request.athlete_notes}"')
-    if request.coach_notes:
-        context_lines.append(f'  Coach instructions: "{request.coach_notes}"')
-
-    # Double session preferences in single-week adaptation prompt
-    target_double_sessions = (
-        request.double_session_days if request.double_session_days is not None else plan.get("double_session_days")
-    )
-    if target_double_sessions:
-        if isinstance(target_double_sessions, str):
-            try:
-                import json
-
-                ds_list = json.loads(target_double_sessions)
-            except Exception:
-                ds_list = [d.strip() for d in target_double_sessions.split(",") if d.strip()]
-        else:
-            ds_list = list(target_double_sessions)
-        if ds_list:
-            context_lines.append(
-                f"  Double Session Preference: Athlete requested 2 sessions on: {', '.join(ds_list)} "
-                "(e.g., Morning run + Afternoon run/strength/mobility, or Easy AM + Quality PM). Schedule TWO workouts on these days."
-            )
-
-    prev_wk = request.week_number - 1
-    # Week 1 has no prior week; the volume bounds below still read prev_wos.
-    prev_wos = []
-    if prev_wk >= 1:
-        prev_wos = [w for w in all_workouts if w.get("week_number") == prev_wk and w.get("type") != "Rest"]
-        completed_prev = [w for w in prev_wos if w.get("is_completed") == 1]
-        actual_vol = get_block_actual_volume(
-            user_id=athlete_id,
-            plan_id=request.plan_id,
-            wk_start=prev_wk,
-            wk_end=prev_wk,
-            plan_start_date=plan.get("start_date"),
-        )
-        if actual_vol.get("total_activities_count", 0) > 0:
-            actual_km = actual_vol["total_actual_km"]
-            actual_min = actual_vol["total_actual_minutes"]
-            actual_vert = actual_vol["total_actual_vert_m"]
-        else:
-            actual_km = sum(w.get("distance_km") or 0 for w in completed_prev)
-            actual_min = sum(w.get("duration_minutes") or 0 for w in completed_prev)
-            actual_vert = sum(w.get("elevation_gain_m") or 0 for w in completed_prev)
-        planned_km = sum(w.get("distance_km") or 0 for w in prev_wos)
-        planned_min = sum(w.get("duration_minutes") or 0 for w in prev_wos)
-        context_lines.append(
-            f"  Prior Week ({prev_wk}) Volume: Actual {actual_km:.1f}km / {actual_min/60:.1f}h"
-            + (f" (+{actual_vert:.0f}m D+)" if actual_vert > 0 else "")
-            + f" vs Planned {planned_km:.1f}km / {planned_min/60:.1f}h"
-        )
-        # Check if athlete missed an ME session in previous week (Scott Johnston Rule 7)
-        missed_me = [
-            w
-            for w in prev_wos
-            if (
-                "ME" in (w.get("type") or "").upper()
-                or "MUSCULAR ENDURANCE" in (w.get("title") or "").upper()
-                or "CIRCUIT" in (w.get("title") or "").upper()
-            )
-            and w.get("is_completed") != 1
-        ]
-        if missed_me:
-            context_lines.append(
-                "  ME Progression Adjustment (Scott Johnston Rule 7): Athlete missed a scheduled Muscular Endurance (ME) session in the prior week. "
-                "Drop the ME progression back by 2 workouts (reduce rounds, reps, or pack weight) to allow safe tendon and joint re-adaptation."
-            )
-
-    # Note any workouts already completed/matched in the target week
-    curr_completed = [
-        w for w in all_workouts if w.get("week_number") == request.week_number and w.get("is_completed") == 1
-    ]
-    if curr_completed:
-        context_lines.append(
-            f"  Note: Workouts already completed/matched in Week {request.week_number} will be PRESERVED:"
-        )
-        for cw in curr_completed:
-            context_lines.append(
-                f"    - {cw.get('day_of_week')}: {cw.get('title')} ({cw.get('duration_minutes', 0):.0f}min, {cw.get('distance_km', 0):.1f}km)"
-            )
-
-    # Volume bounds for the target week.
-    #
-    # Two deliberate choices here, both fixing production bugs:
-    #
-    # 1. BOUNDS ARE IN MINUTES, not km. post_process_workouts discards whatever
-    #    distance the model returns and recomputes distance_km = duration / zone2_pace,
-    #    so distance is a pure function of duration. A km bound was therefore a
-    #    disguised minutes bound, converted at a pace the athlete may not run -- for a
-    #    walk-run beginner whose real pace is far slower than her Zone 2 setting, the
-    #    conversion inflated every figure. Minutes are what the athlete actually
-    #    controls and what the model actually sets.
-    #
-    # 2. THE ANCHOR IS PLANNED VOLUME, not completed volume. Anchoring on completed
-    #    volume meant that adapting a week *because you were busy* -- the single most
-    #    common reason to adapt -- shrank the next week in proportion to what you
-    #    missed, while the prompt still described it as a 2-8% increase. Under-
-    #    completion is now reported as its own adherence signal with its own
-    #    instruction, so the model can coach the missed week instead of silently
-    #    rebaselining onto it.
-    target_wos = [w for w in all_workouts if w.get("week_number") == request.week_number and w.get("type") != "Rest"]
-    if target_wos:
-        completed_target = [w for w in target_wos if w.get("is_completed") == 1]
-        completed_min = sum(w.get("duration_minutes") or 0 for w in completed_target)
-        uncompleted_count = max(1, len(target_wos) - len(completed_target))
-
-        target_planned_min = sum(w.get("duration_minutes") or 0 for w in target_wos)
-        # current_weekly_km -> minutes needs a pace; 6 min/km is the same rough
-        # conversion the rule-based fallback uses for its own volume estimate.
-        user_weekly_min = float(fresh_user.get("current_weekly_km") or 0.0) * 6.0
-
-        prior_planned_min = planned_min if prev_wos else 0.0
-        prior_ref_min = (
-            prior_planned_min
-            or (target_planned_min if target_planned_min > 0 else 0.0)
-            or (user_weekly_min if user_weekly_min > 0 else 180.0)
-        )
-
-        # Adherence is a coaching input, never a smaller baseline.
-        adherence_note = ""
-        if prev_wos and prior_planned_min > 0:
-            adherence = (actual_min or 0.0) / prior_planned_min
-            if adherence < 0.8:
-                adherence_note = (
-                    f"  Prior-Week Adherence: the athlete completed {adherence * 100:.0f}% of Week {prev_wk}'s "
-                    f"planned time ({actual_min:.0f} of {prior_planned_min:.0f} min).\n"
-                    f"  IMPORTANT: do NOT progress volume on top of a week that was not completed, and do NOT "
-                    f"shrink the plan as a punishment either. HOLD this week at roughly the same planned volume "
-                    f"as Week {prev_wk} so the athlete gets a second chance at the same stimulus. Say so plainly "
-                    f"in the workout descriptions -- name it as a repeat, not a setback.\n"
-                )
-                # Repeat the week rather than progress off an incomplete one.
-                floor_mult, ceil_mult = 0.95, 1.02
-            else:
-                floor_mult, ceil_mult = None, None
-        else:
-            floor_mult, ceil_mult = None, None
-
-        if floor_mult is None:
-            fatigue_normalized = (fatigue_level or "moderate").lower().replace(" ", "_")
-            if fatigue_normalized in ("very_light", "light", "easy"):
-                floor_mult, ceil_mult = 1.02, 1.08
-            elif fatigue_normalized in ("moderate", "medium"):
-                floor_mult, ceil_mult = 0.98, 1.05
-            elif fatigue_normalized in ("hard", "heavy"):
-                floor_mult, ceil_mult = 0.85, 0.90
-            else:  # max_effort, exhausted
-                floor_mult, ceil_mult = 0.70, 0.80
-
-        target_floor_min = prior_ref_min * floor_mult
-        target_ceil_min = prior_ref_min * ceil_mult
-
-        rem_floor_min = max(0.0, target_floor_min - completed_min)
-        rem_ceil_min = max(rem_floor_min + 15.0, target_ceil_min - completed_min)
-
-        # Precedence. Without this the 5-tier RPE table above ("Very Light ... increase
-        # stimulus") sat as prose above a "MUST ... DO NOT exceed" numeric ceiling with
-        # nothing saying which wins, so the number always won and an athlete asking for
-        # more work while reporting very light effort got less. The request does not
-        # remove the cap -- it decides where inside the band the week lands.
-        precedence_note = (
-            "  Bound Precedence: these bounds are a safety cap, not a target. When the athlete reports "
-            "LIGHT or VERY LIGHT effort AND asks for more work, place the week at the TOP of the range "
-            "(and prefer adding time to easy/base runs rather than adding intensity). When they report "
-            "HARD or MAX EFFORT, place it at the BOTTOM. Never return a week below the floor because a "
-            "previous week was missed -- see the adherence note above if present.\n"
-        )
-
-        volume_guidance = (
-            f"  Week {request.week_number} Volume Bounds (in MINUTES of training time -- "
-            f"distance is derived from duration, so time is the quantity to set):\n"
-            f"    - Reference: Week {prev_wk} planned {prior_ref_min:.0f} min\n"
-            f"    - Target Full Week Total: {target_floor_min:.0f}-{target_ceil_min:.0f} min\n"
-            f"    - Completed So Far: {completed_min:.0f} min ({len(completed_target)} sessions)\n"
-            f"    - Remaining {uncompleted_count} Sessions: total between {rem_floor_min:.0f} and "
-            f"{rem_ceil_min:.0f} min.\n"
-            f"{adherence_note}"
-            f"{precedence_note}"
-            f"  Weekday Session Durations: standard weekday runs (Mon-Fri) are typically 45-75 minutes, "
-            f"but NEVER stretch a session beyond what this athlete's current ability supports -- a "
-            f"beginner's weekday run may be 20-30 minutes and that is correct. Do NOT schedule "
-            f"90-120+ min long runs on weekdays."
-        )
-        context_lines.append(volume_guidance)
-
-    block_context = "\n".join(context_lines)
-
-    _, _, course_context = _resolve_course_match(
-        plan.get("race_name"), plan.get("course_distance_km"), plan.get("course_elevation_gain_m")
-    )
-
-    readiness_summary = get_recent_readiness_summary(athlete_id, days=7)
-    historical_ceiling = get_user_activity_ceiling(athlete_id)
-
-    # Week-specific preference overrides (without mutating plan DB defaults)
-    preferred_days = request.preferred_days if request.preferred_days is not None else plan.get("preferred_run_days")
-    long_run_day = request.long_run_day if request.long_run_day is not None else plan.get("long_run_day")
-    days_per_week = request.days_per_week if request.days_per_week is not None else plan.get("days_per_week")
-    double_session_days = (
-        request.double_session_days if request.double_session_days is not None else plan.get("double_session_days")
-    )
-    has_gym_access = request.has_gym_access if request.has_gym_access is not None else plan.get("has_gym_access", False)
-    use_treadmill = request.use_treadmill if request.use_treadmill is not None else plan.get("use_treadmill", False)
-    training_environment = (
-        request.training_environment
-        if request.training_environment is not None
-        else (plan.get("training_environment") or "flat")
-    )
-
-    race_info = {
-        "name": plan.get("race_name", "Training Plan"),
-        "date": plan.get("race_date"),
-        "terrain": fresh_user.get("terrain", "trail"),
-        "goal_type": plan.get("goal_type"),
-        "target_time_hours": plan.get("target_time_hours"),
-        "course_distance_km": plan.get("course_distance_km"),
-        "course_elevation_gain_m": plan.get("course_elevation_gain_m"),
-        "course_context": course_context,
-        "preferred_days": preferred_days,
-        "long_run_day": long_run_day,
-        "days_per_week": days_per_week,
-        "double_session_days": double_session_days,
-        "has_gym_access": has_gym_access,
-        "use_treadmill": use_treadmill,
-        "training_environment": training_environment,
-        "plan_start_date": plan.get("start_date"),
-        "athlete_notes": request.athlete_notes or plan.get("athlete_notes") or fresh_user.get("athlete_notes"),
-        "historical_ceiling": historical_ceiling,
-        # Explicit per-plan tier override; None means the generator derives it.
-        "athlete_tier": plan.get("athlete_tier"),
-        "readiness_summary": readiness_summary,
-        "lang": (
-            "vi"
-            if (request.lang and request.lang.lower().startswith("vi"))
-            or (fresh_user.get("lang") and fresh_user.get("lang").lower().startswith("vi"))
-            or any(
-                c in "àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ"
-                for c in str(request.fatigue_notes or "")
-                + str(request.athlete_notes or "")
-                + str(request.coach_notes or "")
-            )
-            else (request.lang or fresh_user.get("lang", "en"))
+    inputs = week_rebuild.build_rebuild_inputs(
+        athlete_id,
+        plan,
+        plan_rows,
+        rng,
+        week_rebuild.RebuildRequest(
+            **request.model_dump(exclude={"plan_id", "max_continuous_jog_min", "client_today"})
         ),
-        "coach_notes": request.coach_notes,
-    }
-
-    model_api_key = fresh_user.get("gemini_api_key") or settings.GEMINI_API_KEY
-    block_num = block_number_for_week(request.week_number)
+    )
 
     job_id = str(_uuid.uuid4())
     plan_jobs[job_id] = {
@@ -2842,22 +2496,11 @@ async def _adapt_week_for_athlete(request: AdaptWeekRequest, athlete_id: int, jo
 
     async def _run_adapt_week():
         try:
-            workouts, resolved_tier = await PlanGenerator.generate_plan_workouts(
-                request.plan_id,
-                fresh_user,
-                race_info,
-                total_weeks,
-                api_key=model_api_key,
-                block_number=block_num,
-                weeks_per_block=settings.WEEKS_PER_BLOCK,
-                block_context=block_context,
-                target_week=request.week_number,
-            )
-            save_workouts(request.plan_id, workouts, preserve_completed=True)
-            set_plan_athlete_tier(request.plan_id, resolved_tier)
-            plan_jobs[job_id]["workouts"] = workouts
+            draft = await week_rebuild.generate_week_draft(inputs, rng)
+            week_rebuild.write_draft(plan, request.week_number, today, draft)
+            plan_jobs[job_id]["workouts"] = draft.workouts
             plan_jobs[job_id]["status"] = "done"
-            print(f"[AdaptWeek][{job_id}] Week {request.week_number} complete — {len(workouts)} workouts saved.")
+            print(f"[AdaptWeek][{job_id}] Week {request.week_number} complete — {len(draft.workouts)} workouts saved.")
         except Exception as ex:
             plan_jobs[job_id]["status"] = "error"
             plan_jobs[job_id]["error"] = str(ex)
