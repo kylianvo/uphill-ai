@@ -89,6 +89,23 @@ class ProposeScheduleChangeInput(BaseModel):
     rationale: str = Field(max_length=300, description="One short sentence explaining why, shown on the card.")
 
 
+DayName = Literal["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
+
+class ProposeRebuildWeekInput(BaseModel):
+    week: int = Field(description="Plan week to rebuild: this week or next week only.")
+    fatigue_level: Literal["very_light", "light", "moderate", "hard", "max_effort"] = Field(
+        description="How the athlete says they feel."
+    )
+    reason: str = Field(min_length=1, max_length=300, description="The athlete's reason, in their own words.")
+    available_days: list[DayName] | None = Field(
+        default=None, min_length=1, max_length=7, description="Only if the athlete limits which days they can train."
+    )
+    long_run_day: DayName | None = Field(default=None, description="Only if the athlete names a long-run day.")
+    has_gym_access: bool | None = Field(default=None, description="Only if gym access differs this week.")
+    use_treadmill: bool | None = Field(default=None, description="Only if treadmill use differs this week.")
+
+
 def _monday_aligned_week(user_id: int, today: dt.date) -> int | None:
     """The plan week containing `today`, Monday-aligned like the calendar engine
     (not db.compute_current_week), clamped to the plan for the lookup."""
@@ -186,6 +203,38 @@ def build_tools(user_id: int, *, kb_api_key: str, proposals: ProposalContext | N
                 "Apply/Discard buttons; it changes NOTHING until the athlete taps Apply. Call get_week first to get "
                 "workout ids.",
                 args_schema=ProposeScheduleChangeInput,
+            )
+        )
+
+        def _propose_rebuild_week(
+            week: int,
+            fatigue_level: str,
+            reason: str,
+            available_days: list | None = None,
+            long_run_day: str | None = None,
+            has_gym_access: bool | None = None,
+            use_treadmill: bool | None = None,
+        ) -> dict:
+            return proposal_tools.propose_rebuild_week_impl(
+                user_id=user_id,
+                ctx=proposals,
+                week=week,
+                fatigue_level=fatigue_level,
+                reason=reason,
+                available_days=list(available_days) if available_days else None,
+                long_run_day=long_run_day,
+                has_gym_access=has_gym_access,
+                use_treadmill=use_treadmill,
+            ).__dict__
+
+        tools.append(
+            StructuredTool.from_function(
+                func=_propose_rebuild_week,
+                name="propose_rebuild_week",
+                description="Redraft the rest of this week or next week (lighter/harder, travel, different days). "
+                "Starts a background draft and shows a before/after card with Apply/Discard; it changes NOTHING "
+                "until the athlete taps Apply. For moving 1-5 specific workouts use propose_schedule_change instead.",
+                args_schema=ProposeRebuildWeekInput,
             )
         )
     return tools
