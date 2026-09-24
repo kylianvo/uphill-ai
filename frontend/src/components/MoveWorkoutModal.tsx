@@ -4,8 +4,26 @@ import React from "react";
 import { createPortal } from "react-dom";
 import { ArrowsLeftRight, ArrowRight, X, Moon, CalendarBlank } from "@phosphor-icons/react";
 import { DAY_ORDER, DAY_LABELS, dayLabel } from "../utils/dayLabels";
-import { computeCurrentWeek, computeWorkoutDate } from "../utils/planDate";
+import { computeWorkoutDate, getMondayOfDate } from "../utils/planDate";
 import { tr } from "../lib/scheduleProposals";
+
+// Mirrors backend/services/calendar_rules.py's current_week: the same Monday-
+// aligned, UTC-date-diff calculation computeCurrentWeek (utils/planDate) uses,
+// but WITHOUT its [1, total_weeks] clamp. For a plan that hasn't started yet
+// (start_date in the future) this can be 0 or negative -- the backend's guard
+// rejects a move into a week outside [1, total_weeks] regardless, so the modal
+// must not offer a week that a clamped "current week" would wrongly suggest is
+// valid (e.g. offering "week 2" as next week when the plan hasn't started).
+function unclampedCurrentWeek(startDateStr: string, now: Date): number {
+  const cleanStr = startDateStr.slice(0, 10);
+  const parts = cleanStr.split("-").map(Number);
+  const parsed = new Date(parts[0], parts[1] - 1, parts[2]);
+  const startMonday = getMondayOfDate(parsed);
+  const startUtc = Date.UTC(startMonday.getFullYear(), startMonday.getMonth(), startMonday.getDate());
+  const todayUtc = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  const diffDays = Math.floor((todayUtc - startUtc) / 86400000);
+  return Math.floor(diffDays / 7) + 1;
+}
 
 interface ModalWorkout {
   id?: number;
@@ -63,17 +81,21 @@ export function MoveWorkoutModal({
 
   const canMove = !!onMoveWorkout && !!plan?.start_date && !sourceIsRest;
   const now = today ?? new Date();
-  const curWeek = plan ? computeCurrentWeek(plan.start_date, plan.total_weeks, plan.race_date, now) : weekNumber;
+  const curWeek = plan?.start_date ? unclampedCurrentWeek(plan.start_date, now) : weekNumber;
   const showWeekTabs = canMove && Math.abs(weekNumber - curWeek) <= 1;
-  const nextWeekExists = !!plan?.total_weeks && curWeek + 1 <= plan.total_weeks;
-  const defaultTargetWeek = showWeekTabs ? (weekNumber === curWeek + 1 ? curWeek + 1 : curWeek) : weekNumber;
+  const weekTabs = showWeekTabs
+    ? [curWeek, curWeek + 1].filter((wk) => wk >= 1 && (!plan?.total_weeks || wk <= plan.total_weeks))
+    : [];
+  const defaultTargetWeek = weekTabs.length
+    ? (weekTabs.includes(weekNumber) ? weekNumber : weekTabs[0])
+    : weekNumber;
   const effectiveTargetWeek = targetWeek ?? defaultTargetWeek;
   const selectedId = pickedId ?? (sourceWos.length === 1 ? sourceWos[0].id ?? null : null);
   const pool = allWorkouts ?? weekWos;
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const poolForDate = pool.map((w) => ({ title: w.title ?? "", type: w.type ?? "", week_number: w.week_number ?? weekNumber }));
   const isPastDay = (day: string) => {
     if (!plan) return false;
-    const poolForDate = pool.map((w) => ({ title: w.title ?? "", type: w.type ?? "", week_number: w.week_number ?? weekNumber }));
     const d = computeWorkoutDate(plan, poolForDate, { day_of_week: day, week_number: effectiveTargetWeek });
     return !!d && d < startOfToday;
   };
@@ -217,9 +239,9 @@ export function MoveWorkoutModal({
                 </div>
               </div>
             )}
-            {showWeekTabs && (
+            {weekTabs.length > 0 && (
               <div style={{ display: "flex", gap: "6px" }}>
-                {[curWeek, ...(nextWeekExists ? [curWeek + 1] : [])].map((wk) => (
+                {weekTabs.map((wk) => (
                   <button
                     key={wk}
                     type="button"

@@ -138,4 +138,32 @@ describe("MoveWorkoutModal — move one workout", () => {
     fireEvent.click(screen.getByText("Move one workout"));
     expect(screen.queryByRole("button", { name: "Next week" })).toBeNull();
   });
+
+  it("does not offer an earlier/invalid week when the plan hasn't started yet", () => {
+    // Plan starts Mon 2026-09-28, a week after today (Wed 2026-09-23) -- the
+    // backend's unclamped current_week is 0, so only week 1 ("Next week") is
+    // a valid target; there is no "This week" (week 0) or week-2 option.
+    const futurePlan = { start_date: "2026-09-28", total_weeks: 12 };
+    const wos = [{ id: 5, week_number: 1, day_of_week: "Tuesday", title: "Easy", duration_minutes: 40 }];
+    const onMoveWorkout = vi.fn();
+    render(
+      <MoveWorkoutModal
+        {...base}
+        plan={futurePlan}
+        sourceDay="Tuesday"
+        weekNumber={1}
+        weekWos={wos}
+        allWorkouts={wos}
+        onMoveWorkout={onMoveWorkout}
+      />
+    );
+    fireEvent.click(screen.getByText("Move one workout"));
+    expect(screen.queryByRole("button", { name: "This week" })).toBeNull();
+    const weekTabButtons = screen.queryAllByRole("button", { name: /^(This week|Next week)$/ });
+    expect(weekTabButtons).toHaveLength(1);
+    expect(weekTabButtons[0]).toHaveTextContent("Next week");
+
+    fireEvent.click(screen.getByRole("button", { name: /^Monday/ }));
+    expect(onMoveWorkout).toHaveBeenCalledWith(5, 1, "Monday");
+  });
 });
