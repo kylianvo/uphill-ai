@@ -87,3 +87,55 @@ describe("MoveWorkoutModal", () => {
     expect(screen.getByText("Thứ Ba")).toBeInTheDocument();
   });
 });
+
+describe("MoveWorkoutModal — move one workout", () => {
+  // Plan starts Mon 2026-09-07; today Wed 2026-09-23 = week 3.
+  const plan = { start_date: "2026-09-07", total_weeks: 12 };
+  const today = new Date(2026, 8, 23);
+  const all = [
+    { id: 1, week_number: 3, day_of_week: "Thursday", title: "Tempo", duration_minutes: 50 },
+    { id: 2, week_number: 3, day_of_week: "Thursday", title: "Strength", duration_minutes: 30 },
+    { id: 3, week_number: 3, day_of_week: "Saturday", title: "Long Run", duration_minutes: 120 },
+    { id: 4, week_number: 4, day_of_week: "Tuesday", title: "Easy", duration_minutes: 40 },
+  ];
+  const base = {
+    isOpen: true, onClose: vi.fn(), sourceDay: "Thursday", weekNumber: 3, lang: "en",
+    onSwapDays: vi.fn(), plan, today, allWorkouts: all,
+    weekWos: all.filter((w) => w.week_number === 3),
+  };
+
+  it("offers the move mode only when onMoveWorkout is given", () => {
+    const { rerender } = render(<MoveWorkoutModal {...base} />);
+    expect(screen.queryByText("Move one workout")).toBeNull();
+    rerender(<MoveWorkoutModal {...base} onMoveWorkout={vi.fn()} />);
+    expect(screen.getByText("Move one workout")).toBeInTheDocument();
+  });
+
+  it("on a double day asks which session, then moves it to next week", () => {
+    const onMoveWorkout = vi.fn();
+    render(<MoveWorkoutModal {...base} onMoveWorkout={onMoveWorkout} />);
+    fireEvent.click(screen.getByText("Move one workout"));
+    expect(screen.getByText("Which session?")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Strength/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Next week" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Monday/ }));
+    expect(onMoveWorkout).toHaveBeenCalledWith(2, 4, "Monday");
+  });
+
+  it("disables past days and hints double days", () => {
+    render(<MoveWorkoutModal {...base} onMoveWorkout={vi.fn()} />);
+    fireEvent.click(screen.getByText("Move one workout"));
+    fireEvent.click(screen.getByRole("button", { name: /Tempo/ }));
+    expect(screen.getByRole("button", { name: /^Monday/ })).toBeDisabled(); // week 3 Monday is past
+    expect(screen.getByRole("button", { name: /^Saturday/ })).toHaveTextContent("+1 → double day");
+  });
+
+  it("hides week tabs for a far week (same-week targets only)", () => {
+    const far = [{ id: 9, week_number: 8, day_of_week: "Tuesday", title: "Easy", duration_minutes: 40 }];
+    render(
+      <MoveWorkoutModal {...base} sourceDay="Tuesday" weekNumber={8} weekWos={far} allWorkouts={far} onMoveWorkout={vi.fn()} />
+    );
+    fireEvent.click(screen.getByText("Move one workout"));
+    expect(screen.queryByRole("button", { name: "Next week" })).toBeNull();
+  });
+});

@@ -3,7 +3,9 @@
 import React from "react";
 import { createPortal } from "react-dom";
 import { ArrowsLeftRight, ArrowRight, X, Moon, CalendarBlank } from "@phosphor-icons/react";
-import { DAY_ORDER, DAY_LABELS } from "../utils/dayLabels";
+import { DAY_ORDER, DAY_LABELS, dayLabel } from "../utils/dayLabels";
+import { computeCurrentWeek, computeWorkoutDate } from "../utils/planDate";
+import { tr } from "../lib/scheduleProposals";
 
 interface ModalWorkout {
   id?: number;
@@ -12,6 +14,7 @@ interface ModalWorkout {
   duration_minutes?: number;
   distance_km?: number;
   type?: string;
+  week_number?: number;
 }
 
 interface MoveWorkoutModalProps {
@@ -22,6 +25,10 @@ interface MoveWorkoutModalProps {
   weekWos: ModalWorkout[];
   lang: string;
   onSwapDays: (day1: string, day2: string, weekNumberOverride?: number) => void;
+  allWorkouts?: ModalWorkout[];
+  plan?: { start_date?: string | null; total_weeks?: number | null; race_date?: string | null };
+  onMoveWorkout?: (workoutId: number, targetWeek: number, targetDay: string) => void;
+  today?: Date;
 }
 
 export function MoveWorkoutModal({
@@ -32,7 +39,16 @@ export function MoveWorkoutModal({
   weekWos,
   lang,
   onSwapDays,
+  allWorkouts,
+  plan,
+  onMoveWorkout,
+  today,
 }: MoveWorkoutModalProps) {
+  // React hooks must be declared before any early return below.
+  const [mode, setMode] = React.useState<"swap" | "move">("swap");
+  const [pickedId, setPickedId] = React.useState<number | null>(null);
+  const [targetWeek, setTargetWeek] = React.useState<number | null>(null);
+
   if (!isOpen) return null;
   if (typeof document === "undefined") return null;
 
@@ -44,6 +60,25 @@ export function MoveWorkoutModal({
     onSwapDays(sourceDay, targetDay, weekNumber);
     onClose();
   };
+
+  const canMove = !!onMoveWorkout && !!plan?.start_date && !sourceIsRest;
+  const now = today ?? new Date();
+  const curWeek = plan ? computeCurrentWeek(plan.start_date, plan.total_weeks, plan.race_date, now) : weekNumber;
+  const showWeekTabs = canMove && Math.abs(weekNumber - curWeek) <= 1;
+  const nextWeekExists = !!plan?.total_weeks && curWeek + 1 <= plan.total_weeks;
+  const defaultTargetWeek = showWeekTabs ? (weekNumber === curWeek + 1 ? curWeek + 1 : curWeek) : weekNumber;
+  const effectiveTargetWeek = targetWeek ?? defaultTargetWeek;
+  const selectedId = pickedId ?? (sourceWos.length === 1 ? sourceWos[0].id ?? null : null);
+  const pool = allWorkouts ?? weekWos;
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const isPastDay = (day: string) => {
+    if (!plan) return false;
+    const poolForDate = pool.map((w) => ({ title: w.title ?? "", type: w.type ?? "", week_number: w.week_number ?? weekNumber }));
+    const d = computeWorkoutDate(plan, poolForDate, { day_of_week: day, week_number: effectiveTargetWeek });
+    return !!d && d < startOfToday;
+  };
+  const occupied = (day: string) =>
+    pool.some((w) => (w.week_number ?? weekNumber) === effectiveTargetWeek && w.day_of_week === day && w.id !== selectedId);
 
   return createPortal(
     <div
@@ -138,7 +173,103 @@ export function MoveWorkoutModal({
           </button>
         </div>
 
+        {canMove && (
+          <div style={{ display: "flex", gap: "6px", padding: "12px 16px 0" }}>
+            {(["swap", "move"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setMode(m)}
+                style={{
+                  flex: 1, padding: "8px", borderRadius: "10px", fontSize: "12.5px", fontWeight: 700, cursor: "pointer",
+                  border: "1px solid var(--border-color, rgba(0,0,0,0.08))",
+                  background: mode === m ? "rgba(16, 185, 129, 0.12)" : "transparent",
+                  color: mode === m ? "var(--accent-primary, #10b981)" : "inherit",
+                }}
+              >
+                {tr(lang, m === "swap" ? "sched_mode_swap_day" : "sched_mode_move_one")}
+              </button>
+            ))}
+          </div>
+        )}
+        {canMove && mode === "move" && (
+          <div style={{ padding: "12px 16px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "10px" }}>
+            {sourceWos.length > 1 && (
+              <div>
+                <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted, #9ca3af)", textTransform: "uppercase", marginBottom: "6px" }}>
+                  {tr(lang, "sched_pick_session")}
+                </div>
+                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                  {sourceWos.map((w) => (
+                    <button
+                      key={w.id}
+                      type="button"
+                      onClick={() => setPickedId(w.id ?? null)}
+                      style={{
+                        padding: "6px 10px", borderRadius: "8px", fontSize: "12.5px", cursor: "pointer",
+                        border: selectedId === w.id ? "1px solid var(--accent-primary, #10b981)" : "1px solid var(--border-color, rgba(0,0,0,0.08))",
+                        background: selectedId === w.id ? "rgba(16, 185, 129, 0.08)" : "transparent",
+                      }}
+                    >
+                      {w.title || w.type} ({w.duration_minutes || 0}m)
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {showWeekTabs && (
+              <div style={{ display: "flex", gap: "6px" }}>
+                {[curWeek, ...(nextWeekExists ? [curWeek + 1] : [])].map((wk) => (
+                  <button
+                    key={wk}
+                    type="button"
+                    onClick={() => setTargetWeek(wk)}
+                    style={{
+                      padding: "6px 12px", borderRadius: "8px", fontSize: "12.5px", fontWeight: 600, cursor: "pointer",
+                      border: "1px solid var(--border-color, rgba(0,0,0,0.08))",
+                      background: effectiveTargetWeek === wk ? "rgba(16, 185, 129, 0.12)" : "transparent",
+                    }}
+                  >
+                    {tr(lang, wk === curWeek ? "sched_this_week" : "sched_next_week")}
+                  </button>
+                ))}
+              </div>
+            )}
+            {DAY_ORDER.map((day) => {
+              const isSelf = effectiveTargetWeek === weekNumber && day === sourceDay;
+              if (isSelf) return null;
+              const past = isPastDay(day);
+              const disabled = past || selectedId == null;
+              return (
+                <button
+                  key={day}
+                  type="button"
+                  disabled={disabled}
+                  title={past ? tr(lang, "sched_past_day") : undefined}
+                  onClick={() => {
+                    if (selectedId == null) return;
+                    onMoveWorkout!(selectedId, effectiveTargetWeek, day);
+                    onClose();
+                  }}
+                  style={{
+                    display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 14px",
+                    borderRadius: "12px", minHeight: "48px", textAlign: "left", fontSize: "13px", fontWeight: 700,
+                    border: "1px solid var(--border-color, rgba(0,0,0,0.08))", background: "var(--bg-secondary, rgba(0,0,0,0.02))",
+                    cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.45 : 1, color: "inherit",
+                  }}
+                >
+                  <span>{dayLabel(day, lang)}</span>
+                  <span style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--text-muted, #9ca3af)" }}>
+                    {past ? tr(lang, "sched_past_day") : occupied(day) ? tr(lang, "sched_double_day_hint") : ""}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {/* Day selection list */}
+        {(!canMove || mode === "swap") && (
         <div style={{ padding: "12px 16px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "8px" }}>
           <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted, #9ca3af)", textTransform: "uppercase", letterSpacing: "0.04em", padding: "4px 4px 2px" }}>
             {isVi ? "Chọn ngày đích:" : "Select target day:"}
@@ -233,6 +364,7 @@ export function MoveWorkoutModal({
             );
           })}
         </div>
+        )}
 
         {/* Footer info */}
         <div

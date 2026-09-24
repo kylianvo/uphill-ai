@@ -3,6 +3,9 @@ import React from "react";
 import { useAppContext } from "../contexts/AppContext";
 import { ActivePlan, Workout } from "../types";
 import { resolveCurrentWeek, computeWorkoutDate } from "../utils/planDate";
+import { describeGuard, describeWarning, localToday, tr } from "../lib/scheduleProposals";
+
+export type CalendarNotice = { kind: "error" | "warning"; text: string };
 
 export function usePlanner() {
   const ctx = useAppContext();
@@ -13,6 +16,7 @@ export function usePlanner() {
   const planJobPollerRef = React.useRef<any>(null);
   const [draftPlan, setDraftPlan] = React.useState<ActivePlan | null>(null);
   const [draftWorkouts, setDraftWorkouts] = React.useState<Workout[]>([]);
+  const [calendarNotice, setCalendarNotice] = React.useState<CalendarNotice | null>(null);
 
   // When acting as a coach browsing an assigned athlete's data, every
   // read/generate/draft/approve/edit call goes through the athlete-scoped
@@ -511,23 +515,53 @@ export function usePlanner() {
     }
   };
 
-  const swapDays = async (day1: string, day2: string, weekNumberOverride?: number) => {
-    if (!activePlan || day1 === day2) return;
+  const postCalendarChange = async (path: string, body: Record<string, unknown>) => {
     const token = localStorage.getItem("uphill_session_token");
     try {
-      const response = await fetch(`${API_BASE_URL}/api/coach/modify-calendar`, {
+      const response = await fetch(`${API_BASE_URL}${path}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-        body: JSON.stringify({ plan_id: activePlan.id, week_number: weekNumberOverride ?? selectedWeek, day_1: day1, day_2: day2 }),
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ ...body, client_today: localToday() }),
       });
-      if (response.ok) {
-        const result = await response.json();
+      const result = await response.json().catch(() => null);
+      if (response.ok && result) {
         setWorkouts(result.workouts);
+        const warnings = Array.isArray(result.warnings) ? result.warnings : [];
+        setCalendarNotice(
+          warnings.length
+            ? { kind: "warning", text: `${tr(lang, "sched_heads_up")} ${warnings.map((w: any) => describeWarning(lang, w)).join(" ")}` }
+            : null
+        );
+      } else if (result?.detail?.code) {
+        setCalendarNotice({ kind: "error", text: describeGuard(lang, result.detail.code, result.detail.params) });
+      } else {
+        setCalendarNotice({ kind: "error", text: tr(lang, "guard_unknown") });
       }
     } catch (err) {
-      console.error("Failed to swap days:", err);
+      console.error("Calendar change failed:", err);
+      setCalendarNotice({ kind: "error", text: tr(lang, "guard_unknown") });
     }
   };
+
+  const swapDays = async (day1: string, day2: string, weekNumberOverride?: number) => {
+    if (!activePlan || day1 === day2) return;
+    await postCalendarChange("/api/coach/modify-calendar", {
+      plan_id: activePlan.id,
+      week_number: weekNumberOverride ?? selectedWeek,
+      day_1: day1,
+      day_2: day2,
+    });
+  };
+
+  const moveWorkout = async (workoutId: number, targetWeek: number, targetDay: string) => {
+    if (!activePlan) return;
+    await postCalendarChange("/api/coach/calendar/move", {
+      plan_id: activePlan.id,
+      operations: [{ workout_id: workoutId, target_week: targetWeek, target_day: targetDay }],
+    });
+  };
+
+  const dismissCalendarNotice = () => setCalendarNotice(null);
 
   const handleToggleComplete = async (woId: number, isCompleted: boolean) => {
     setWorkouts((prev: any) =>
@@ -605,5 +639,5 @@ export function usePlanner() {
     return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
-  return { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, handleSwapWorkouts, swapDays, handleToggleComplete, handleMarkMissed, handleLogWorkout, getWeekWorkouts, getWorkoutDate, getWorkoutDateObj, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller, fetchDraftPlan, draftPlan, draftWorkouts, handleApproveWorkout, handleRemoveWorkout, handleAiCreateWorkout, handleCoachEditWorkout, fetchActivePlanForActing, fetchActivePlanWithToken };
+  return { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, handleSwapWorkouts, swapDays, moveWorkout, calendarNotice, dismissCalendarNotice, handleToggleComplete, handleMarkMissed, handleLogWorkout, getWeekWorkouts, getWorkoutDate, getWorkoutDateObj, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller, fetchDraftPlan, draftPlan, draftWorkouts, handleApproveWorkout, handleRemoveWorkout, handleAiCreateWorkout, handleCoachEditWorkout, fetchActivePlanForActing, fetchActivePlanWithToken };
 }
