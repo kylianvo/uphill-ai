@@ -88,6 +88,45 @@ def test_next_week_adapt_prompt_has_no_fixed_days_line(client, auth_headers):
     assert "Old Tue" not in titles and "New Tuesday" in titles
 
 
+def test_empty_generated_week_does_not_wipe_existing_workouts(client, auth_headers):
+    """A filtered draft that comes back empty must not delete the replaceable
+    workouts -- write_draft used to call replace_week_workouts(..., []) unconditionally,
+    which wipes the whole week and reports the job done."""
+
+    async def _empty_gen(plan_id, user_profile, race_info, total_weeks=12, **kwargs):
+        return [], "recreational"
+
+    uid = auth_headers["user_id"]
+    plan_id = make_plan(uid, start_date=this_monday())
+    ids = {d: add_workout(plan_id, 2, d, title=f"Old {d}") for d in DAYS}
+
+    with patch("services.plan_generator.PlanGenerator.generate_plan_workouts", new=AsyncMock(side_effect=_empty_gen)):
+        resp = client.post(
+            "/api/coach/adapt-week",
+            headers=auth_headers["headers"],
+            json={
+                "plan_id": plan_id,
+                "week_number": 2,
+                "fatigue_level": "hard",
+                "client_today": server_today().isoformat(),
+            },
+        )
+        assert resp.status_code == 200
+        job_id = resp.json()["job_id"]
+        status = None
+        for _ in range(40):
+            status = client.get(f"/api/coach/plan-status/{job_id}", headers=auth_headers["headers"]).json()
+            if status.get("status") in ("done", "error"):
+                break
+            time.sleep(0.05)
+
+    assert status["status"] == "error", status
+    week2 = [w for w in db.get_plan_workouts(plan_id) if w["week_number"] == 2]
+    assert {w["id"] for w in week2} == set(ids.values())
+    for d in DAYS:
+        assert any(w["id"] == ids[d] and w["title"] == f"Old {d}" for w in week2)
+
+
 def test_adapting_a_week_that_is_over_is_refused_with_a_code(client, auth_headers):
     uid = auth_headers["user_id"]
     plan_id = make_plan(uid, start_date=this_monday() - dt.timedelta(days=14))

@@ -631,7 +631,11 @@ def write_draft(plan: dict[str, Any], week: int, today: dt.date, draft: WeekDraf
     with db.engine.begin() as conn:
         rows = db.get_plan_workouts_for_placement(conn, plan["id"], lock=True)
         rng = rebuild_range(plan, rows, week, today)
-        db.replace_week_workouts(conn, plan["id"], rng.replaceable_ids, filter_draft(draft.workouts, rng))
+        filtered = filter_draft(draft.workouts, rng)
+        if not filtered:
+            # Writing an empty draft would delete every replaceable workout.
+            raise ValueError("Generated week was empty; nothing was changed.")
+        db.replace_week_workouts(conn, plan["id"], rng.replaceable_ids, filtered)
     db.set_plan_athlete_tier(plan["id"], draft.resolved_tier)
 
 
