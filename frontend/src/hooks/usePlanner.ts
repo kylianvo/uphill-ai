@@ -10,7 +10,7 @@ export type CalendarNotice = { kind: "error" | "warning"; text: string };
 export function usePlanner() {
   const ctx = useAppContext();
   const API_BASE_URL = (typeof window !== "undefined" && localStorage.getItem("UPHILL_API_URL_OVERRIDE")) || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-  const { planForm, setPlanForm, setPlanErrorMsg, setPlanLoading, lang, targetTimeH, targetTimeM, targetTimeS, cutoffTimeH, cutoffTimeM, cutoffTimeS, activePlan, selectedWeek, swapDay1, swapDay2, setSwapDay1, setSwapDay2, setActivePlan, setBackupActivePlan, setBackupWorkouts, setSelectedWeek, setWorkouts, workouts, setPlannerGpxLoading, setPlannerGpxFile, setPlannerGpxError, setCourseInputMode, setRecentPlans, actingAsAthleteId } = ctx;
+  const { planForm, setPlanForm, setPlanErrorMsg, setPlanLoading, lang, targetTimeH, targetTimeM, targetTimeS, cutoffTimeH, cutoffTimeM, cutoffTimeS, activePlan, selectedWeek, setActivePlan, setBackupActivePlan, setBackupWorkouts, setSelectedWeek, setWorkouts, workouts, setPlannerGpxLoading, setPlannerGpxFile, setPlannerGpxError, setCourseInputMode, setRecentPlans, actingAsAthleteId } = ctx;
   const trackEvent = (name: string, props?: any) => { if (typeof window !== "undefined" && (window as any).posthog) { (window as any).posthog.capture(name, props); } };
   const plannerGpxInputRef = React.useRef<HTMLInputElement>(null);
   const planJobPollerRef = React.useRef<any>(null);
@@ -488,33 +488,6 @@ export function usePlanner() {
     }
   };
 
-  const handleSwapWorkouts = async () => {
-    if (!activePlan) return;
-    const token = localStorage.getItem("uphill_session_token");
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/coach/modify-calendar`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          plan_id: activePlan.id,
-          week_number: selectedWeek,
-          day_1: swapDay1,
-          day_2: swapDay2
-        }),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        setWorkouts(result.workouts);
-      }
-    } catch (err) {
-      console.error("Failed to swap workouts:", err);
-    }
-  };
-
   const postCalendarChange = async (path: string, body: Record<string, unknown>) => {
     const token = localStorage.getItem("uphill_session_token");
     try {
@@ -639,5 +612,5 @@ export function usePlanner() {
     return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
-  return { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, handleSwapWorkouts, swapDays, moveWorkout, calendarNotice, dismissCalendarNotice, handleToggleComplete, handleMarkMissed, handleLogWorkout, getWeekWorkouts, getWorkoutDate, getWorkoutDateObj, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller, fetchDraftPlan, draftPlan, draftWorkouts, handleApproveWorkout, handleRemoveWorkout, handleAiCreateWorkout, handleCoachEditWorkout, fetchActivePlanForActing, fetchActivePlanWithToken };
+  return { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, swapDays, moveWorkout, calendarNotice, dismissCalendarNotice, handleToggleComplete, handleMarkMissed, handleLogWorkout, getWeekWorkouts, getWorkoutDate, getWorkoutDateObj, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller, fetchDraftPlan, draftPlan, draftWorkouts, handleApproveWorkout, handleRemoveWorkout, handleAiCreateWorkout, handleCoachEditWorkout, fetchActivePlanForActing, fetchActivePlanWithToken };
 }

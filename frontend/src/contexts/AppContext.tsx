@@ -122,10 +122,6 @@ interface AppContextType {
   setPlannerGpxLoading: any;
   plannerGpxError: any;
   setPlannerGpxError: any;
-  swapDay1: any;
-  setSwapDay1: any;
-  swapDay2: any;
-  setSwapDay2: any;
   targetFlatPace: any;
   setTargetFlatPace: any;
   pacedCheckpoints: any;
@@ -326,8 +322,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [plannerGpxFile, setPlannerGpxFile] = useState<File | null>(null);
   const [plannerGpxLoading, setPlannerGpxLoading] = useState(false);
   const [plannerGpxError, setPlannerGpxError] = useState("");
-  const [swapDay1, setSwapDay1] = useState("Wednesday");
-  const [swapDay2, setSwapDay2] = useState("Thursday");
   const [targetFlatPace, setTargetFlatPace] = useState("6.0");
   const [pacedCheckpoints, setPacedCheckpoints] = useState<PacedCheckpoint[]>([]);
   const [pacingLoading, setPacingLoading] = useState(false);
@@ -557,8 +551,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       plannerGpxFile, setPlannerGpxFile,
       plannerGpxLoading, setPlannerGpxLoading,
       plannerGpxError, setPlannerGpxError,
-      swapDay1, setSwapDay1,
-      swapDay2, setSwapDay2,
       targetFlatPace, setTargetFlatPace,
       pacedCheckpoints, setPacedCheckpoints,
       pacingLoading, setPacingLoading,
