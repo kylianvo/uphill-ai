@@ -1,8 +1,11 @@
 import datetime as dt
 from concurrent.futures import ThreadPoolExecutor
 
+import pytest
+
 import db
 from services import calendar_ops, schedule_proposals
+from services.calendar_rules import GuardViolation
 from tests.integration.calendar_helpers import add_workout, link_coach, make_plan, match_activity, this_monday
 
 TODAY = dt.datetime.now(dt.UTC).date()
@@ -100,14 +103,26 @@ def test_bogus_client_today_is_clamped_to_server_date(client, auth_headers):
     uid = auth_headers["user_id"]
     plan_id = make_plan(uid, start_date=this_monday())
     wid = add_workout(plan_id, 2, "Tuesday")
-    pid = _proposal(uid, plan_id, wid)
-    tomorrow_plus_8 = (TODAY + dt.timedelta(days=9)).isoformat()  # far outside the +-1 clamp -> server today used
+    pid = _proposal(uid, plan_id, wid)  # target: week 2 Friday = this Monday + 11 days
+    bogus = TODAY + dt.timedelta(days=30)  # after the target on any weekday, far outside the +-1 clamp
+    # Honouring the bogus date would make the target a past day (G3)...
+    with pytest.raises(GuardViolation) as gv:
+        calendar_ops.preview(
+            uid,
+            plan_id,
+            [{"op": "move", "workout_id": wid, "target_week": 2, "target_day": "Friday"}],
+            bogus,
+            agent=True,
+        )
+    assert gv.value.code == "G3_past_target"
+    # ...so a 200 proves the endpoint clamped it to the server date.
     resp = client.post(
         f"/api/coach/chat/proposals/{pid}/apply",
         headers=auth_headers["headers"],
-        json={"client_today": tomorrow_plus_8},
+        json={"client_today": bogus.isoformat()},
     )
-    assert resp.status_code == 200  # clamp ignores the bogus client date; target is still in the future
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["status"] == "applied"
 
 
 def test_other_users_proposal_is_404_and_discard_is_idempotent(client, auth_headers):

@@ -188,3 +188,27 @@ def test_different_proposal_touching_same_workout_is_allowed(auth_headers):
     assert _propose(uid, plan_id, [_move(wid, "Friday")]).status == "success"
     assert _propose(uid, plan_id, [_move(wid, "Saturday")]).status == "success"
     assert _proposal_count(uid) == 2
+
+
+def test_nothing_to_move_tells_the_model_not_to_ask_for_apply(auth_headers):
+    uid = auth_headers["user_id"]
+    plan_id = make_plan(uid, start_date=this_monday())
+    wid = add_workout(plan_id, 2, "Friday")
+    result = _propose(uid, plan_id, [_move(wid, "Friday")])
+    assert result.status == "error" and result.error.startswith("NOTHING_to_move")
+    assert "already on those days" in result.error
+    assert "do not ask the athlete to apply anything" in result.error
+    assert _proposal_count(uid) == 0
+
+
+@pytest.mark.asyncio
+async def test_no_proposal_lookups_without_an_api_key(auth_headers, monkeypatch):
+    from config import settings
+
+    uid = auth_headers["user_id"]
+    make_plan(uid, start_date=this_monday())
+    monkeypatch.setattr(settings, "GEMINI_API_KEY", "")
+    calls = []
+    monkeypatch.setattr(db, "get_active_coach_link_for_athlete", lambda user_id: calls.append(user_id))
+    await _turn(uid, FakeCoachModel(responses=[ModelEvent(kind="text", text="ok")]), message="hi")
+    assert calls == []

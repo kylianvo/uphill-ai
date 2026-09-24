@@ -21,7 +21,8 @@ _REASONS = {
     "G5_out_of_plan": "the target week is outside the plan",
     "G6_coach_linked": "the athlete has a coach, so schedule changes must go through the coach",
     "G7_no_dates": "this plan has no start date, so only same-week day swaps are possible",
-    "NOTHING_to_move": "nothing would change",
+    "NOTHING_to_move": "nothing would change -- those workouts are already on those days (the change may already "
+    "have been applied); do not ask the athlete to apply anything",
     "INVALID_operation": "an operation is malformed (check workout ids, week numbers and day names)",
 }
 

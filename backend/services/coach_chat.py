@@ -251,14 +251,17 @@ async def run_turn(
         # Proposal tool only for athletes with an active plan and no active coach
         # link (roadmap decision 10); identity and today come from the server.
         proposal_ctx = None
-        active_plan = db.get_active_plan(user_id)
-        if active_plan and not db.get_active_coach_link_for_athlete(user_id):
-            proposal_ctx = coach_tools.ProposalContext(
-                thread_id=thread_id,
-                plan_id=active_plan["id"],
-                today=resolve_today(request.get("client_today"), calendar_ops.server_today()),
-            )
-        tools = coach_tools.build_tools(user_id=user_id, kb_api_key=api_key, proposals=proposal_ctx) if api_key else []
+        active_plan = None
+        tools = []
+        if api_key:
+            active_plan = db.get_active_plan(user_id)
+            if active_plan and not db.get_active_coach_link_for_athlete(user_id):
+                proposal_ctx = coach_tools.ProposalContext(
+                    thread_id=thread_id,
+                    plan_id=active_plan["id"],
+                    today=resolve_today(request.get("client_today"), calendar_ops.server_today()),
+                )
+            tools = coach_tools.build_tools(user_id=user_id, kb_api_key=api_key, proposals=proposal_ctx)
 
         try:
             assistant_msg_id = db.append_chat_message(
