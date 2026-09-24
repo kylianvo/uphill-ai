@@ -8,6 +8,7 @@ import { KnowledgeCard } from "./KnowledgeCard";
 import { ProfileChart, PacingSplitsTable } from "./PacingSplitsView";
 import { computeWorkoutDate } from "../utils/planDate";
 import ScheduleProposalCard from "./ScheduleProposalCard";
+import ScheduleRebuildCard from "./ScheduleRebuildCard";
 import { ProposalState } from "../lib/scheduleProposals";
 
 interface RichCardRendererProps {
@@ -225,6 +226,17 @@ function RichCard({ result, lang, onOpenPaceStrategy, isMobile, proposalStates, 
       if (!isValidScheduleProposal(data)) return null;
       return (
         <ScheduleProposalCard
+          data={data}
+          lang={lang}
+          isMobile={!!isMobile}
+          liveState={proposalStates?.[data.proposal_id as number]}
+          onApplied={onScheduleApplied}
+        />
+      );
+    case "schedule_rebuild":
+      if (typeof data?.proposal_id !== "number") return null;
+      return (
+        <ScheduleRebuildCard
           data={data}
           lang={lang}
           isMobile={!!isMobile}

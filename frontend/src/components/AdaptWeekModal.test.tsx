@@ -202,4 +202,30 @@ describe("AdaptWeekModal", () => {
     const [url] = fetchSpy.mock.calls[0];
     expect(url).toContain("/api/coaching/athletes/99/adapt-week");
   });
+
+  it("explains a refused adapt with the guard code", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: false,
+      status: 422,
+      json: async () => ({ detail: { code: "G3_past_target", params: { week: 2 } } }),
+    } as Response);
+    render(
+      <AdaptWeekModal
+        isOpen={true}
+        onClose={vi.fn()}
+        planId={10}
+        weekNumber={2}
+        totalWeeks={12}
+        completedWorkoutsCount={0}
+        initialSchedule={defaultSchedule}
+        lang="en"
+        isMobile={false}
+        onAdaptSuccess={vi.fn()}
+      />
+    );
+    fireEvent.click(screen.getByText("Regenerate Week 2"));
+    expect(await screen.findByText("That week is already over.")).toBeInTheDocument();
+    const body = JSON.parse(((globalThis.fetch as unknown as { mock: { calls: [string, RequestInit][] } }).mock.calls[0][1].body) as string);
+    expect(body.client_today).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
 });
