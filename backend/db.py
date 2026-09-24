@@ -614,6 +614,35 @@ def init_db():
         )
         conn.commit()
 
+        conn.execute(
+            text("""
+        CREATE TABLE IF NOT EXISTS coros_plan_links (
+            user_id           INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+            plan_id           INTEGER REFERENCES plans(id) ON DELETE SET NULL,
+            coros_plan_id     TEXT NOT NULL,            -- COROS 64-bit id, kept as text
+            coros_start_date  DATE NOT NULL,
+            total_weeks       INTEGER NOT NULL,
+            window_end        DATE NOT NULL,
+            day_hashes        JSONB NOT NULL DEFAULT '{}'::jsonb,  -- ISO date -> hash of what was sent
+            last_pushed_at    TIMESTAMPTZ,
+            last_summary      JSONB,
+            partial           BOOLEAN NOT NULL DEFAULT FALSE,
+            created_at        TIMESTAMPTZ DEFAULT NOW()
+        )
+        """)
+        )
+        conn.execute(
+            text("""
+        CREATE TABLE IF NOT EXISTS coros_push_usage (
+            user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            usage_date  DATE NOT NULL,
+            pushes      INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (user_id, usage_date)
+        )
+        """)
+        )
+        conn.commit()
+
         for col_sql in [
             # Type upgrades for databases created before treadmill fields became
             # range strings (idempotent: TEXT→TEXT re-runs harmlessly).
@@ -3124,7 +3153,125 @@ def delete_provider_data(user_id: int, provider: str) -> None:
             text("DELETE FROM athlete_connections WHERE user_id = :u AND provider = :p"),
             {"u": user_id, "p": provider},
         )
+        if provider == "coros":
+            conn.execute(text("DELETE FROM coros_plan_links WHERE user_id = :u"), {"u": user_id})
+            conn.execute(text("DELETE FROM coros_push_usage WHERE user_id = :u"), {"u": user_id})
         conn.commit()
+
+
+COROS_PUSH_ADVISORY_NAMESPACE = 0x43505348  # 'CPSH' in ASCII
+
+
+class CorosPushInProgressError(RuntimeError):
+    """Another COROS push for this athlete holds the advisory lock."""
+
+
+@contextmanager
+def coros_push_lock(user_id: int):
+    """Session advisory lock on a dedicated connection, held across the push's
+    MCP calls. Not a transaction lock: those calls take seconds and must not
+    keep a DB transaction open. Mirrors chat_turn_lock."""
+    conn = engine.connect()
+    acquired = False
+    try:
+        acquired = bool(
+            conn.execute(
+                text("SELECT pg_try_advisory_lock(:ns, :uid)"),
+                {"ns": COROS_PUSH_ADVISORY_NAMESPACE, "uid": user_id},
+            ).scalar()
+        )
+        if not acquired:
+            raise CorosPushInProgressError(f"COROS push already running for user {user_id}")
+        yield conn
+    finally:
+        if acquired:
+            try:
+                conn.execute(
+                    text("SELECT pg_advisory_unlock(:ns, :uid)"),
+                    {"ns": COROS_PUSH_ADVISORY_NAMESPACE, "uid": user_id},
+                )
+            except Exception:
+                pass
+        conn.close()
+
+
+def claim_coros_push_slot(user_id: int, usage_date, limit: int) -> bool:
+    """Atomically counts one push attempt; False once `limit` is reached for the day."""
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("""
+            INSERT INTO coros_push_usage (user_id, usage_date, pushes) VALUES (:u, :d, 1)
+            ON CONFLICT (user_id, usage_date) DO UPDATE SET pushes = coros_push_usage.pushes + 1
+            WHERE coros_push_usage.pushes < :limit
+            RETURNING pushes
+            """),
+            {"u": user_id, "d": usage_date, "limit": limit},
+        ).fetchone()
+        conn.commit()
+    return row is not None
+
+
+def get_coros_plan_link(user_id: int) -> dict[str, Any] | None:
+    with engine.connect() as conn:
+        row = conn.execute(text("SELECT * FROM coros_plan_links WHERE user_id = :u"), {"u": user_id}).fetchone()
+    if not row:
+        return None
+    d = dict(row._mapping)
+    d["day_hashes"] = d.get("day_hashes") or {}
+    return d
+
+
+def save_coros_plan_link(
+    user_id: int,
+    *,
+    plan_id: int | None,
+    coros_plan_id: str,
+    coros_start_date,
+    total_weeks: int,
+    window_end,
+    day_hashes: dict[str, str],
+    last_summary: dict[str, Any],
+    partial: bool,
+) -> None:
+    with engine.connect() as conn:
+        conn.execute(
+            text("""
+            INSERT INTO coros_plan_links (
+                user_id, plan_id, coros_plan_id, coros_start_date, total_weeks, window_end,
+                day_hashes, last_pushed_at, last_summary, partial
+            ) VALUES (
+                :u, :pid, :cpid, :start, :weeks, :wend,
+                CAST(:hashes AS JSONB), NOW(), CAST(:summary AS JSONB), :partial
+            )
+            ON CONFLICT (user_id) DO UPDATE SET
+                plan_id = EXCLUDED.plan_id,
+                coros_plan_id = EXCLUDED.coros_plan_id,
+                coros_start_date = EXCLUDED.coros_start_date,
+                total_weeks = EXCLUDED.total_weeks,
+                window_end = EXCLUDED.window_end,
+                day_hashes = EXCLUDED.day_hashes,
+                last_pushed_at = NOW(),
+                last_summary = EXCLUDED.last_summary,
+                partial = EXCLUDED.partial
+            """),
+            {
+                "u": user_id,
+                "pid": plan_id,
+                "cpid": coros_plan_id,
+                "start": coros_start_date,
+                "weeks": total_weeks,
+                "wend": window_end,
+                "hashes": json.dumps(day_hashes),
+                "summary": json.dumps(last_summary),
+                "partial": partial,
+            },
+        )
+        conn.commit()
+
+
+def get_plan_workouts_with_match(plan_id: int) -> list[dict[str, Any]]:
+    with engine.connect() as conn:
+        return get_plan_workouts_for_placement(conn, plan_id, lock=False)
 
 
 def mark_connection_synced(user_id: int, provider: str) -> None:
