@@ -201,6 +201,55 @@ def test_nothing_to_move_tells_the_model_not_to_ask_for_apply(auth_headers):
     assert _proposal_count(uid) == 0
 
 
+def test_move_proposal_succeeds_while_a_rebuild_card_is_open(auth_headers):
+    """get_open_chat_proposals must exclude kind='rebuild' rows: their diff is a
+    dict, and _moves_key(dict) blows up with a TypeError, breaking every 4a move
+    proposal in the thread for as long as any rebuild card is open."""
+    import asyncio
+    from unittest.mock import AsyncMock, patch
+
+    from services import week_rebuild
+    from services.coach_tools import proposal_tools
+    from services.coach_tools.registry import ProposalContext
+
+    uid = auth_headers["user_id"]
+    plan_id = make_plan(uid, start_date=this_monday())
+    wid = add_workout(plan_id, 2, "Tuesday")
+    thread = db.get_or_create_chat_thread(uid)
+    ctx = ProposalContext(thread_id=thread["id"], plan_id=plan_id, today=dt.datetime.now(dt.UTC).date())
+
+    async def _gen(plan_id, user_profile, race_info, total_weeks=12, **kwargs):
+        return [
+            {
+                "week_number": kwargs["target_week"],
+                "day_of_week": "Wednesday",
+                "phase": "Base",
+                "title": "Rebuilt",
+                "type": "Easy",
+                "duration_minutes": 30,
+                "target_zone": "Zone 2",
+                "description": "n",
+            }
+        ], "recreational"
+
+    with (
+        patch.object(week_rebuild, "spawn", lambda factory: asyncio.run(factory())),
+        patch("services.plan_generator.PlanGenerator.generate_plan_workouts", new=AsyncMock(side_effect=_gen)),
+    ):
+        rebuild_res = proposal_tools.propose_rebuild_week_impl(
+            user_id=uid, ctx=ctx, week=2, fatigue_level="hard", reason="tired"
+        )
+    assert rebuild_res.status == "success"
+
+    move_res = proposal_tools.propose_schedule_change_impl(
+        user_id=uid,
+        ctx=ctx,
+        operations=[{"op": "move", "workout_id": wid, "target_week": 2, "target_day": "Friday"}],
+        rationale="Busy Tuesday",
+    )
+    assert move_res.status == "success" and move_res.card_type == "schedule_proposal"
+
+
 @pytest.mark.asyncio
 async def test_no_proposal_lookups_without_an_api_key(auth_headers, monkeypatch):
     from config import settings

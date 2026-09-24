@@ -379,7 +379,9 @@ async def run_turn(
             proposal_ids = [
                 tc["card_data"]["proposal_id"]
                 for tc in final_tool_history
-                if tc.get("card_type") == "schedule_proposal" and tc.get("status") == "success" and tc.get("card_data")
+                if tc.get("card_type") in ("schedule_proposal", "schedule_rebuild")
+                and tc.get("status") == "success"
+                and tc.get("card_data")
             ]
             db.set_proposals_message_id(thread_id, proposal_ids, assistant_msg_id)
 

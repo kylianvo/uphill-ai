@@ -174,3 +174,8 @@ def test_today_line_in_context_renders_into_prompt():
 
 def test_prompt_has_no_today_section_without_today():
     assert "Today is" not in compile_coach_prompt(system_base="base", lang="en", context={})
+
+
+def test_prompt_explains_the_rebuild_tool():
+    assert "propose_rebuild_week" in COACH_SYSTEM_INSTRUCTION
+    assert "Never list or invent the new sessions" in COACH_SYSTEM_INSTRUCTION

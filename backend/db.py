@@ -530,6 +530,7 @@ def init_db():
             user_id                 INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
             new_turns_count         INTEGER NOT NULL DEFAULT 0,
             retries_count           INTEGER NOT NULL DEFAULT 0,
+            rebuilds_count          INTEGER NOT NULL DEFAULT 0,
             created_at              TIMESTAMPTZ DEFAULT NOW(),
             updated_at              TIMESTAMPTZ DEFAULT NOW(),
             PRIMARY KEY (usage_date, user_id)
@@ -590,15 +591,18 @@ def init_db():
             thread_id               INTEGER NOT NULL REFERENCES chat_threads(id) ON DELETE CASCADE,
             message_id              INTEGER REFERENCES chat_messages(id) ON DELETE CASCADE,
             plan_id                 INTEGER NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
+            kind                    TEXT NOT NULL DEFAULT 'schedule'
+                CONSTRAINT chk_chat_proposals_kind CHECK (kind IN ('schedule', 'rebuild')),
             operations              JSONB NOT NULL,
             fingerprints            JSONB NOT NULL,
             diff                    JSONB NOT NULL,
             warnings                JSONB NOT NULL DEFAULT '[]'::jsonb,
             rationale               TEXT,
             status                  TEXT NOT NULL DEFAULT 'proposed'
-                CONSTRAINT chk_chat_proposals_status CHECK (status IN ('proposed', 'applied', 'discarded', 'stale')),
+                CONSTRAINT chk_chat_proposals_status CHECK (status IN ('generating', 'proposed', 'applied', 'discarded', 'stale', 'failed')),
             stale_reason            TEXT,
             result                  JSONB,
+            draft                   JSONB,
             created_at              TIMESTAMPTZ DEFAULT NOW(),
             resolved_at             TIMESTAMPTZ
         )
@@ -676,6 +680,15 @@ def init_db():
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS athlete_notes TEXT",
             "ALTER TABLE block_reviews ADD COLUMN IF NOT EXISTS ai_last_week_review TEXT",
             "ALTER TABLE block_reviews ADD COLUMN IF NOT EXISTS ai_this_week_description TEXT",
+            # Coach Chat 4b (week rebuild) -- see the chat_proposals / chat_daily_usage CREATE TABLEs.
+            "ALTER TABLE chat_daily_usage ADD COLUMN IF NOT EXISTS rebuilds_count INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE chat_proposals ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'schedule'",
+            "ALTER TABLE chat_proposals ADD COLUMN IF NOT EXISTS draft JSONB",
+            "ALTER TABLE chat_proposals DROP CONSTRAINT IF EXISTS chk_chat_proposals_kind",
+            "ALTER TABLE chat_proposals ADD CONSTRAINT chk_chat_proposals_kind CHECK (kind IN ('schedule', 'rebuild'))",
+            "ALTER TABLE chat_proposals DROP CONSTRAINT IF EXISTS chk_chat_proposals_status",
+            "ALTER TABLE chat_proposals ADD CONSTRAINT chk_chat_proposals_status "
+            "CHECK (status IN ('generating', 'proposed', 'applied', 'discarded', 'stale', 'failed'))",
         ]:
             try:
                 conn.execute(text(col_sql))
@@ -934,6 +947,51 @@ def _flatten_llm_text(value: Any) -> Any:
     return value
 
 
+_WORKOUT_INSERT_SQL = """
+    INSERT INTO workouts (plan_id, week_number, day_of_week, phase, title, type,
+        duration_minutes, distance_km, target_zone, target_hr_range, target_pace,
+        treadmill_incline, treadmill_speed, elevation_gain_m, grade_percent,
+        interval_reps, interval_rep_value, interval_rep_unit, walk_interval_value,
+        description, fueling_tip, session_slot, approved_at)
+    VALUES (:plan_id, :week_number, :day_of_week, :phase, :title, :type,
+        :duration_minutes, :distance_km, :target_zone, :target_hr_range, :target_pace,
+        :treadmill_incline, :treadmill_speed, :elevation_gain_m, :grade_percent,
+        :interval_reps, :interval_rep_value, :interval_rep_unit, :walk_interval_value,
+        :description, :fueling_tip, :session_slot, :approved_at)
+"""
+
+
+def _workout_insert_params(plan_id: int, wo: dict[str, Any], auto_approve: bool) -> dict[str, Any]:
+    """Row params for _WORKOUT_INSERT_SQL -- shared by save_workouts and
+    replace_week_workouts so both writers normalise LLM output identically."""
+    return {
+        "approved_at": datetime.datetime.now(datetime.UTC) if auto_approve else None,
+        "plan_id": plan_id,
+        "week_number": wo["week_number"],
+        "day_of_week": _flatten_llm_text(wo["day_of_week"]),
+        "phase": _flatten_llm_text(wo["phase"]),
+        "title": _flatten_llm_text(wo["title"]),
+        "type": _flatten_llm_text(wo["type"]),
+        "duration_minutes": wo["duration_minutes"],
+        "distance_km": wo.get("distance_km"),
+        "target_zone": _flatten_llm_text(wo["target_zone"]),
+        "target_hr_range": _flatten_llm_text(wo.get("target_hr_range")),
+        "target_pace": _flatten_llm_text(wo.get("target_pace")),
+        # Range strings ("8.2-9.2"); legacy numeric values stringify.
+        "treadmill_incline": str(wo.get("treadmill_incline") if wo.get("treadmill_incline") is not None else "0"),
+        "treadmill_speed": str(wo.get("treadmill_speed") if wo.get("treadmill_speed") is not None else "0"),
+        "elevation_gain_m": wo.get("elevation_gain_m", 0.0),
+        "grade_percent": wo.get("grade_percent", 0.0),
+        "interval_reps": wo.get("interval_reps"),
+        "interval_rep_value": wo.get("interval_rep_value"),
+        "interval_rep_unit": wo.get("interval_rep_unit"),
+        "walk_interval_value": wo.get("walk_interval_value"),
+        "description": _flatten_llm_text(wo.get("description")),
+        "fueling_tip": _flatten_llm_text(wo.get("fueling_tip")),
+        "session_slot": _flatten_llm_text(wo.get("session_slot", "main")),
+    }
+
+
 def save_workouts(
     plan_id: int,
     workouts: list[dict[str, Any]],
@@ -998,48 +1056,7 @@ def save_workouts(
             wn_val = wo["week_number"]
             if preserve_completed and (wn_val, day_val, slot_val) in existing_completed_slots:
                 continue
-            conn.execute(
-                text("""
-                INSERT INTO workouts (plan_id, week_number, day_of_week, phase, title, type,
-                    duration_minutes, distance_km, target_zone, target_hr_range, target_pace,
-                    treadmill_incline, treadmill_speed, elevation_gain_m, grade_percent,
-                    interval_reps, interval_rep_value, interval_rep_unit, walk_interval_value,
-                    description, fueling_tip, session_slot, approved_at)
-                VALUES (:plan_id, :week_number, :day_of_week, :phase, :title, :type,
-                    :duration_minutes, :distance_km, :target_zone, :target_hr_range, :target_pace,
-                    :treadmill_incline, :treadmill_speed, :elevation_gain_m, :grade_percent,
-                    :interval_reps, :interval_rep_value, :interval_rep_unit, :walk_interval_value,
-                    :description, :fueling_tip, :session_slot, :approved_at)
-            """),
-                {
-                    "approved_at": datetime.datetime.now(datetime.UTC) if auto_approve else None,
-                    "plan_id": plan_id,
-                    "week_number": wo["week_number"],
-                    "day_of_week": _flatten_llm_text(wo["day_of_week"]),
-                    "phase": _flatten_llm_text(wo["phase"]),
-                    "title": _flatten_llm_text(wo["title"]),
-                    "type": _flatten_llm_text(wo["type"]),
-                    "duration_minutes": wo["duration_minutes"],
-                    "distance_km": wo.get("distance_km"),
-                    "target_zone": _flatten_llm_text(wo["target_zone"]),
-                    "target_hr_range": _flatten_llm_text(wo.get("target_hr_range")),
-                    "target_pace": _flatten_llm_text(wo.get("target_pace")),
-                    # Range strings ("8.2-9.2"); legacy numeric values stringify.
-                    "treadmill_incline": str(
-                        wo.get("treadmill_incline") if wo.get("treadmill_incline") is not None else "0"
-                    ),
-                    "treadmill_speed": str(wo.get("treadmill_speed") if wo.get("treadmill_speed") is not None else "0"),
-                    "elevation_gain_m": wo.get("elevation_gain_m", 0.0),
-                    "grade_percent": wo.get("grade_percent", 0.0),
-                    "interval_reps": wo.get("interval_reps"),
-                    "interval_rep_value": wo.get("interval_rep_value"),
-                    "interval_rep_unit": wo.get("interval_rep_unit"),
-                    "walk_interval_value": wo.get("walk_interval_value"),
-                    "description": _flatten_llm_text(wo.get("description")),
-                    "fueling_tip": _flatten_llm_text(wo.get("fueling_tip")),
-                    "session_slot": _flatten_llm_text(wo.get("session_slot", "main")),
-                },
-            )
+            conn.execute(text(_WORKOUT_INSERT_SQL), _workout_insert_params(plan_id, wo, auto_approve))
         conn.commit()
 
 
@@ -4383,7 +4400,29 @@ def apply_workout_moves(conn, moves: list[dict[str, Any]]) -> None:
         )
 
 
-_PROPOSAL_JSON_COLS = ("operations", "fingerprints", "diff", "warnings", "result")
+def replace_week_workouts(
+    conn,
+    plan_id: int,
+    replaceable_ids,
+    workouts: list[dict[str, Any]],
+    *,
+    auto_approve: bool = True,
+) -> None:
+    """Week rebuild write (Coach Chat 4b and the Scheduler's adapt-week): deletes
+    EXACTLY `replaceable_ids` -- never by predicate, so a workout that became
+    completed/matched/past can't be swept up -- then inserts `workouts`. Runs in
+    the caller's transaction."""
+    ids = [int(i) for i in replaceable_ids]
+    if ids:
+        conn.execute(
+            text("DELETE FROM workouts WHERE plan_id = :pid AND id = ANY(:ids)"),
+            {"pid": plan_id, "ids": ids},
+        )
+    for wo in workouts:
+        conn.execute(text(_WORKOUT_INSERT_SQL), _workout_insert_params(plan_id, wo, auto_approve))
+
+
+_PROPOSAL_JSON_COLS = ("operations", "fingerprints", "diff", "warnings", "result", "draft")
 
 
 def _proposal_row(row) -> dict[str, Any]:
@@ -4437,12 +4476,14 @@ def get_chat_proposal(proposal_id: int) -> dict[str, Any] | None:
 
 
 def get_open_chat_proposals(thread_id: int, plan_id: int) -> list[dict[str, Any]]:
-    """`proposed` rows for a thread+plan, as {id, diff} with diff JSON-decoded."""
+    """`proposed` schedule-move rows for a thread+plan, as {id, diff} with diff
+    JSON-decoded. Only used by 4a's move dedupe, so `kind = 'schedule'` -- a
+    rebuild row's diff is a dict, not a list of moves."""
     with engine.connect() as conn:
         rows = conn.execute(
             text(
                 "SELECT id, diff FROM chat_proposals "
-                "WHERE thread_id = :tid AND plan_id = :pid AND status = 'proposed' ORDER BY id"
+                "WHERE thread_id = :tid AND plan_id = :pid AND status = 'proposed' AND kind = 'schedule' ORDER BY id"
             ),
             {"tid": thread_id, "pid": plan_id},
         ).fetchall()
@@ -4487,7 +4528,7 @@ def discard_chat_proposal(proposal_id: int, user_id: int) -> str | None:
         conn.execute(
             text(
                 "UPDATE chat_proposals SET status = 'discarded', resolved_at = NOW() "
-                "WHERE id = :id AND user_id = :uid AND status = 'proposed'"
+                "WHERE id = :id AND user_id = :uid AND status IN ('proposed', 'generating')"
             ),
             {"id": proposal_id, "uid": user_id},
         )
@@ -4516,12 +4557,141 @@ def get_chat_proposal_statuses(user_id: int, message_ids: list[int]) -> dict[int
     with engine.connect() as conn:
         rows = conn.execute(
             text(
-                "SELECT id, status, stale_reason, result FROM chat_proposals "
+                "SELECT id, status, stale_reason, result, kind FROM chat_proposals "
                 "WHERE user_id = :uid AND message_id = ANY(:mids)"
             ),
             {"uid": user_id, "mids": list(message_ids)},
         ).fetchall()
-    return {r[0]: {"status": r[1], "stale_reason": r[2], "result": _json_value(r[3])} for r in rows}
+    return {r[0]: {"status": r[1], "stale_reason": r[2], "result": _json_value(r[3]), "kind": r[4]} for r in rows}
+
+
+REBUILD_ORPHAN_MINUTES = 5
+
+_EXPIRE_ORPHANS_SQL = """
+    UPDATE chat_proposals
+    SET status = 'failed', stale_reason = 'generation_orphaned', resolved_at = NOW()
+    WHERE user_id = :uid AND kind = 'rebuild' AND status = 'generating'
+      AND created_at < NOW() - make_interval(mins => :mins)
+"""
+
+
+def expire_orphaned_rebuilds(user_id: int) -> None:
+    """A server restart kills in-process rebuild jobs; a `generating` row older
+    than REBUILD_ORPHAN_MINUTES can never finish, so reads mark it failed."""
+    with engine.connect() as conn:
+        conn.execute(text(_EXPIRE_ORPHANS_SQL), {"uid": user_id, "mins": REBUILD_ORPHAN_MINUTES})
+        conn.commit()
+
+
+def create_rebuild_proposal(
+    *,
+    user_id: int,
+    thread_id: int,
+    plan_id: int,
+    week: int,
+    operations: dict[str, Any],
+    fingerprints: dict[str, Any],
+    rationale: str | None,
+    daily_limit: int,
+    usage_date: datetime.date,
+) -> tuple[str, int | None]:
+    """One transaction: refuse a second open rebuild of the same week in this
+    thread, reserve one slot of the daily rebuild cap (atomically, in
+    chat_daily_usage -- so clearing the thread can't reset it), insert the
+    `generating` row. Returns ("created", id) | ("duplicate", open_id) | ("limit", None)."""
+    with engine.begin() as conn:
+        conn.execute(text(_EXPIRE_ORPHANS_SQL), {"uid": user_id, "mins": REBUILD_ORPHAN_MINUTES})
+        open_id = conn.execute(
+            text(
+                """
+                SELECT id FROM chat_proposals
+                WHERE thread_id = :tid AND plan_id = :pid AND kind = 'rebuild'
+                  AND status IN ('generating', 'proposed') AND (operations->>'week')::int = :week
+                ORDER BY id LIMIT 1
+                """
+            ),
+            {"tid": thread_id, "pid": plan_id, "week": week},
+        ).scalar()
+        if open_id is not None:
+            return "duplicate", open_id
+        reserved = conn.execute(
+            text(
+                """
+                INSERT INTO chat_daily_usage (usage_date, user_id, new_turns_count, retries_count, rebuilds_count)
+                SELECT :d, :uid, 0, 0, 1 WHERE CAST(:lim AS INTEGER) > 0
+                ON CONFLICT (usage_date, user_id)
+                DO UPDATE SET rebuilds_count = chat_daily_usage.rebuilds_count + 1, updated_at = NOW()
+                WHERE chat_daily_usage.rebuilds_count < CAST(:lim AS INTEGER)
+                RETURNING rebuilds_count
+                """
+            ),
+            {"d": usage_date, "uid": user_id, "lim": daily_limit},
+        ).fetchone()
+        if reserved is None:
+            return "limit", None
+        pid = conn.execute(
+            text(
+                """
+                INSERT INTO chat_proposals
+                    (user_id, thread_id, plan_id, kind, status, operations, fingerprints, diff, warnings, rationale)
+                VALUES (:uid, :tid, :pid, 'rebuild', 'generating', CAST(:ops AS JSONB), CAST(:fps AS JSONB),
+                        '{}'::jsonb, '[]'::jsonb, :rationale)
+                RETURNING id
+                """
+            ),
+            {
+                "uid": user_id,
+                "tid": thread_id,
+                "pid": plan_id,
+                "ops": json.dumps(operations),
+                "fps": json.dumps(fingerprints),
+                "rationale": rationale,
+            },
+        ).scalar()
+    return "created", pid
+
+
+def finish_rebuild_proposal(
+    proposal_id: int, *, draft: dict[str, Any], diff: dict[str, Any], warnings: list[dict[str, Any]]
+) -> bool:
+    """generating -> proposed. False when the row already left `generating`
+    (discarded or orphan-expired meanwhile): the late result is dropped."""
+    with engine.connect() as conn:
+        n = conn.execute(
+            text(
+                """
+                UPDATE chat_proposals
+                SET status = 'proposed', draft = CAST(:draft AS JSONB), diff = CAST(:diff AS JSONB),
+                    warnings = CAST(:warn AS JSONB)
+                WHERE id = :id AND status = 'generating'
+                """
+            ),
+            {"id": proposal_id, "draft": json.dumps(draft), "diff": json.dumps(diff), "warn": json.dumps(warnings)},
+        ).rowcount
+        conn.commit()
+    return n == 1
+
+
+def fail_rebuild_proposal(proposal_id: int, reason: str) -> bool:
+    with engine.connect() as conn:
+        n = conn.execute(
+            text(
+                "UPDATE chat_proposals SET status = 'failed', stale_reason = :reason, resolved_at = NOW() "
+                "WHERE id = :id AND status = 'generating'"
+            ),
+            {"id": proposal_id, "reason": reason},
+        ).rowcount
+        conn.commit()
+    return n == 1
+
+
+def get_chat_proposal_for_user(proposal_id: int, user_id: int) -> dict[str, Any] | None:
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("SELECT * FROM chat_proposals WHERE id = :id AND user_id = :uid"),
+            {"id": proposal_id, "uid": user_id},
+        ).fetchone()
+    return _proposal_row(row) if row else None
 
 
 def clear_chat_thread(user_id: int) -> bool:

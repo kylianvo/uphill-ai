@@ -4,6 +4,7 @@ import time
 from unittest.mock import AsyncMock, patch
 
 from db import get_plan_by_id, get_plan_workouts, save_workouts
+from services.calendar_rules import DAYS
 
 
 def _create_test_plan(client, headers):
@@ -318,7 +319,20 @@ class TestAdaptWeekEndpoint:
 
         async def _fake_generate(*args, **kwargs):
             captured_args.update(kwargs)
-            return [], "recreational"
+            wk = kwargs["target_week"]
+            return [
+                {
+                    "week_number": wk,
+                    "day_of_week": d,
+                    "phase": "Base",
+                    "title": f"Adapted {d}",
+                    "type": "Easy",
+                    "duration_minutes": 30,
+                    "target_zone": "Zone 2",
+                    "description": "n",
+                }
+                for d in DAYS
+            ], "recreational"
 
         with patch(
             "services.plan_generator.PlanGenerator.generate_plan_workouts",
@@ -386,7 +400,20 @@ class TestAdaptWeekEndpoint:
         async def _fake_generate(plan_id, user_profile, race_info, total_weeks=12, **kwargs):
             captured_args["race_info"] = race_info
             captured_args.update(kwargs)
-            return [], "recreational"
+            wk = kwargs["target_week"]
+            return [
+                {
+                    "week_number": wk,
+                    "day_of_week": d,
+                    "phase": "Base",
+                    "title": f"Adapted {d}",
+                    "type": "Easy",
+                    "duration_minutes": 30,
+                    "target_zone": "Zone 2",
+                    "description": "n",
+                }
+                for d in DAYS
+            ], "recreational"
 
         with patch(
             "services.plan_generator.PlanGenerator.generate_plan_workouts",
@@ -481,7 +508,23 @@ def _adapt_and_capture(client, headers, plan_id, **payload):
 
     async def _fake_generate(plan_id, user_profile, race_info, total_weeks=12, **kwargs):
         captured.update(kwargs)
-        return [], "recreational"
+        # These tests only care about the captured prompt kwargs (block_context),
+        # not the written workouts -- but the draft must survive filter_draft
+        # (write_draft now errors, rather than wiping the week, on an empty draft).
+        wk = kwargs["target_week"]
+        return [
+            {
+                "week_number": wk,
+                "day_of_week": d,
+                "phase": "Base",
+                "title": f"Adapted {d}",
+                "type": "Easy",
+                "duration_minutes": 30,
+                "target_zone": "Zone 2",
+                "description": "n",
+            }
+            for d in DAYS
+        ], "recreational"
 
     with patch(
         "services.plan_generator.PlanGenerator.generate_plan_workouts",

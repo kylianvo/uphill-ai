@@ -49,7 +49,7 @@ def test_statuses_by_message_and_clear_chat_removes_proposals(auth_headers):
     mid = db.append_chat_message(thread["id"], "assistant", "Here's a proposal.")
     db.set_proposals_message_id(thread["id"], [pid], mid)
     assert db.get_chat_proposal_statuses(uid, [mid]) == {
-        pid: {"status": "proposed", "stale_reason": None, "result": None}
+        pid: {"status": "proposed", "stale_reason": None, "result": None, "kind": "schedule"}
     }
     _, orphan = _proposal(uid, plan_id)  # never attached to a message
     db.clear_chat_thread(user_id=uid)

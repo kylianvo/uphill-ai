@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { createPortal } from "react-dom";
 import { Sparkle, X, Lightning, CheckCircle } from "@phosphor-icons/react";
 import { translations } from "../app/translations";
+import { describeGuard, localToday, tr } from "../lib/scheduleProposals";
 
 const API_BASE_URL =
   (typeof window !== "undefined" && localStorage.getItem("UPHILL_API_URL_OVERRIDE")) ||
@@ -108,6 +109,7 @@ export function AdaptWeekModal({
         use_treadmill: schedule.use_treadmill,
         training_environment: schedule.training_environment,
         lang,
+        client_today: localToday(),
       };
 
       const resp = await fetch(url, {
@@ -121,7 +123,18 @@ export function AdaptWeekModal({
 
       const data = await resp.json();
       if (!resp.ok) {
-        throw new Error(data.detail || (lang === "en" ? "Failed to adapt week" : "Không thể tùy chỉnh tuần"));
+        const code = data?.detail?.code as string | undefined;
+        const message =
+          code === "G3_past_target"
+            ? tr(lang, "rebuild_week_over")
+            : code
+              ? describeGuard(lang, code)
+              : typeof data?.detail === "string"
+                ? data.detail
+                : lang === "en"
+                  ? "Failed to adapt week"
+                  : "Không thể tùy chỉnh tuần";
+        throw new Error(message);
       }
 
       onClose();

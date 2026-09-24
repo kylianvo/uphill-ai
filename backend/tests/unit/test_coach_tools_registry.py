@@ -145,3 +145,35 @@ def test_get_week_default_without_context_is_unchanged():
         mock_impl.return_value.__dict__ = {}
         tool.invoke({})
     mock_impl.assert_called_once_with(user_id=1, week_number=None)
+
+
+def test_rebuild_tool_absent_without_context_and_present_with_it():
+    assert "propose_rebuild_week" not in {t.name for t in build_tools(user_id=1, kb_api_key="k")}
+    ctx = ProposalContext(thread_id=5, plan_id=9, today=dt.date(2026, 9, 24))
+    tool = next(t for t in build_tools(user_id=1, kb_api_key="k", proposals=ctx) if t.name == "propose_rebuild_week")
+    assert set(tool.args_schema.model_fields) == {
+        "week",
+        "fatigue_level",
+        "reason",
+        "available_days",
+        "long_run_day",
+        "has_gym_access",
+        "use_treadmill",
+    }
+
+
+def test_rebuild_tool_uses_closure_identity(monkeypatch):
+    seen = {}
+
+    def fake_impl(**kwargs):
+        seen.update(kwargs)
+        from services.coach_tools.base import ToolResult
+
+        return ToolResult(tool_call_id="", name="propose_rebuild_week", status="success")
+
+    monkeypatch.setattr("services.coach_tools.proposal_tools.propose_rebuild_week_impl", fake_impl)
+    ctx = ProposalContext(thread_id=5, plan_id=9, today=dt.date(2026, 9, 24))
+    tool = next(t for t in build_tools(user_id=1, kb_api_key="k", proposals=ctx) if t.name == "propose_rebuild_week")
+    tool.invoke({"week": 4, "fatigue_level": "hard", "reason": "legs heavy", "available_days": ["Tuesday"]})
+    assert seen["user_id"] == 1 and seen["ctx"] is ctx and seen["week"] == 4
+    assert seen["available_days"] == ["Tuesday"]
