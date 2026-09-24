@@ -12,7 +12,8 @@ youtube-transcript-api
 httpx
 # PostgreSQL + SQLAlchemy
 psycopg2-binary>=2.9.0
-sqlalchemy>=2.0.0
+# <2.1: SQLAlchemy 2.1 maps plain postgresql:// URLs to psycopg 3, which isn't installed
+sqlalchemy>=2.0.0,<2.1
 alembic>=1.13.0
 # Auth
 passlib[bcrypt]>=1.7.4
