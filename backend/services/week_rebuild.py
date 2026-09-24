@@ -652,26 +652,38 @@ def _spawn_thread(factory: Callable[[], Coroutine[Any, Any, None]]) -> None:
 spawn: Callable[[Callable[[], Coroutine[Any, Any, None]]], None] = _spawn_thread
 
 
+def _fail_rebuild_safely(proposal_id: int, reason: str) -> None:
+    # The DB write itself must never escape the job thread either.
+    try:
+        db.fail_rebuild_proposal(proposal_id, reason)
+    except Exception as ex:  # noqa: BLE001 -- last-resort guard, nothing left to fall back to
+        print(f"[ChatRebuild][{proposal_id}] finalize failed: {type(ex).__name__}")
+
+
 async def _run_rebuild(proposal_id: int, inputs: RebuildInputs, rng: RebuildRange, rows: list[dict[str, Any]]) -> None:
     try:
         draft = await asyncio.wait_for(generate_week_draft(inputs, rng), REBUILD_TIMEOUT_SECONDS)
     except TimeoutError:
-        db.fail_rebuild_proposal(proposal_id, "generation_timeout")
+        _fail_rebuild_safely(proposal_id, "generation_timeout")
         return
     except Exception as ex:  # noqa: BLE001 -- any generator failure is a failed draft, never a crash
         print(f"[ChatRebuild][{proposal_id}] generation failed: {type(ex).__name__}")
-        db.fail_rebuild_proposal(proposal_id, "generation_error")
+        _fail_rebuild_safely(proposal_id, "generation_error")
         return
-    if not draft.workouts:
-        # Applying an empty draft would delete every replaceable workout.
-        db.fail_rebuild_proposal(proposal_id, "generation_empty")
-        return
-    db.finish_rebuild_proposal(
-        proposal_id,
-        draft={"workouts": json_safe(draft.workouts), "resolved_tier": draft.resolved_tier},
-        diff=build_diff(rows, rng, draft.workouts),
-        warnings=rebuild_warnings(rows, rng, draft.workouts),
-    )
+    try:
+        if not draft.workouts:
+            # Applying an empty draft would delete every replaceable workout.
+            _fail_rebuild_safely(proposal_id, "generation_empty")
+            return
+        db.finish_rebuild_proposal(
+            proposal_id,
+            draft={"workouts": json_safe(draft.workouts), "resolved_tier": draft.resolved_tier},
+            diff=build_diff(rows, rng, draft.workouts),
+            warnings=rebuild_warnings(rows, rng, draft.workouts),
+        )
+    except Exception as ex:  # noqa: BLE001 -- finalize must never crash the job thread
+        print(f"[ChatRebuild][{proposal_id}] finalize failed: {type(ex).__name__}")
+        _fail_rebuild_safely(proposal_id, "generation_error")
 
 
 def request_rebuild(

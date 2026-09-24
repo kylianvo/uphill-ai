@@ -117,6 +117,20 @@ def test_timeout_marks_failed(auth_headers, sync_spawn, monkeypatch):
     assert db.get_chat_proposal(out["proposal_id"])["stale_reason"] == "generation_timeout"
 
 
+def test_finalize_failure_after_generation_marks_failed(auth_headers, sync_spawn, monkeypatch):
+    uid = auth_headers["user_id"]
+    plan_id, thread = _setup(uid)
+
+    def _boom(*a, **k):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(week_rebuild, "build_diff", _boom)
+    with patch("services.plan_generator.PlanGenerator.generate_plan_workouts", new=AsyncMock(side_effect=_gen_ok())):
+        out = _request(uid, plan_id, thread)  # must not raise
+    row = db.get_chat_proposal(out["proposal_id"])
+    assert row["status"] == "failed" and row["stale_reason"] == "generation_error"
+
+
 def test_discard_during_generation_wins(auth_headers, held_spawn):
     uid = auth_headers["user_id"]
     plan_id, thread = _setup(uid)
