@@ -290,6 +290,11 @@ def _make_retrieve_node(
 
 _TOOL_CALL_CAP = 4
 
+# Default per-tool timeout; propose_rebuild_week does several DB round trips
+# plus course matching before it inserts, so it gets a longer budget.
+_TOOL_TIMEOUT_SECONDS = 5.0
+_TOOL_TIMEOUTS: dict[str, float] = {"propose_rebuild_week": 20.0}
+
 
 def _make_generate_node(model: CoachModel, has_tools: bool = False):
     async def generate_node(state: TurnState, writer: Any = None) -> dict[str, Any]:
@@ -472,7 +477,8 @@ def _make_tool_node(tools: list[Any]):
                 }
             else:
                 try:
-                    raw = await asyncio.wait_for(tool.ainvoke(tc.get("args") or {}), timeout=5.0)
+                    timeout = _TOOL_TIMEOUTS.get(tc.get("name", ""), _TOOL_TIMEOUT_SECONDS)
+                    raw = await asyncio.wait_for(tool.ainvoke(tc.get("args") or {}), timeout=timeout)
                     result = dict(raw)
                     result["tool_call_id"] = tc.get("id", "")
                 except Exception as exc:

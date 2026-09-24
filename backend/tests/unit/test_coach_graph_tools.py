@@ -201,6 +201,36 @@ async def test_tool_failure_degrades_gracefully_without_crashing_turn():
 
 
 @pytest.mark.asyncio
+async def test_per_tool_timeout_override_lets_slow_tool_finish(monkeypatch):
+    from services import coach_graph
+
+    monkeypatch.setattr(coach_graph, "_TOOL_TIMEOUT_SECONDS", 0.05)
+    monkeypatch.setattr(coach_graph, "_TOOL_TIMEOUTS", {"propose_rebuild_week": 1.0})
+
+    fake_model = FakeCoachModel(
+        responses=[
+            ModelEvent(
+                kind="tool_call", tool_call={"id": "call_1", "name": "propose_rebuild_week", "args": {"value": "x"}}
+            ),
+            ModelEvent(kind="tool_call", tool_call={"id": "call_2", "name": "echo_a", "args": {"value": "y"}}),
+            ModelEvent(kind="text", text="Done."),
+        ]
+    )
+    graph = build_graph(
+        model=fake_model,
+        retrieve_fn=lambda q: [],
+        tools=[_echo_tool("propose_rebuild_week", delay=0.2), _echo_tool("echo_a", delay=0.2)],
+    )
+    initial_state = {"user_id": 1, "request_id": str(uuid4()), "call_id": uuid4(), "question": "hi", "lang": "en"}
+
+    events = [e async for e in astream_turn_graph(graph, initial_state)]
+    tool_results = {e.tool_call_id: e for e in events if isinstance(e, ToolResultEvent)}
+
+    assert tool_results["call_1"].status == "success"
+    assert tool_results["call_2"].status == "error"
+
+
+@pytest.mark.asyncio
 async def test_tool_result_fed_back_to_model_is_framed_as_untrusted_data():
     # M2: the synthetic message the graph feeds tool results back through
     # must be labeled untrusted -- a malicious card_data payload should not
