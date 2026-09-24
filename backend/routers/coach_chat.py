@@ -210,10 +210,21 @@ async def get_chat_thread(
 ):
     """Retrieve chronologically ordered messages in the athlete's thread with pagination cursor."""
     user_id = user["id"]
+    db.expire_orphaned_rebuilds(user_id)
     data = db.get_chat_thread_paginated(user_id=user_id, before_id=before_id, limit=limit)
     statuses = db.get_chat_proposal_statuses(user_id, [m["id"] for m in data["messages"]])
     data["proposals"] = {str(pid): s for pid, s in statuses.items()}
     return data
+
+
+@router.get("/api/coach/chat/proposals/{proposal_id}")
+def get_chat_proposal(proposal_id: int, user: dict[str, Any] = Depends(get_current_user)):
+    """Poll endpoint for the rebuild card (owner-only; 404 otherwise)."""
+    db.expire_orphaned_rebuilds(user["id"])
+    row = db.get_chat_proposal_for_user(proposal_id, user["id"])
+    if row is None:
+        raise HTTPException(status_code=404, detail="Proposal not found.")
+    return {k: row.get(k) for k in ("id", "kind", "status", "diff", "warnings", "stale_reason", "result")}
 
 
 class ProposalApplyRequest(BaseModel):

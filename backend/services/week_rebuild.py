@@ -715,3 +715,22 @@ def request_rebuild(
         raise GuardViolation("REBUILD_limit", {"limit": settings.COACH_CHAT_DAILY_REBUILDS_LIMIT})
     spawn(lambda: _run_rebuild(proposal_id, inputs, rng, rows))
     return {"proposal_id": proposal_id, "week": week, "from_day": rng.from_day}
+
+
+def apply_rebuild(user_id: int, proposal: dict[str, Any], today: dt.date, conn) -> dict[str, Any]:
+    """Apply a `proposed` rebuild inside the caller's transaction (proposal row
+    already locked). Locks the plan's workouts, then refuses -- writing nothing --
+    if the day rolled past the draft's first day or anything in the week changed."""
+    plan = calendar_ops.check_agent_access(user_id, proposal["plan_id"])
+    ops = proposal["operations"]
+    rows = db.get_plan_workouts_for_placement(conn, plan["id"], lock=True)
+    rng = rebuild_range(plan, rows, int(ops["week"]), today)
+    if rng.from_day != ops["from_day"]:
+        raise GuardViolation("STALE_rolled_over", {"week": rng.week, "from_day": ops["from_day"]})
+    if week_fingerprints(rows, rng.week) != proposal["fingerprints"] or sorted(rng.replaceable_ids) != sorted(
+        ops["replaceable_ids"]
+    ):
+        raise GuardViolation("STALE_changed", {})
+    workouts = (proposal.get("draft") or {}).get("workouts") or []
+    db.replace_week_workouts(conn, plan["id"], rng.replaceable_ids, workouts)
+    return {"week": rng.week, "from_day": rng.from_day, "replaced": len(rng.replaceable_ids), "inserted": len(workouts)}
