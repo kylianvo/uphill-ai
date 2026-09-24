@@ -130,6 +130,7 @@ def test_coach_graph_node_names_pass_through_allowlist():
         "week_review",
         "kb_search",
         "propose_schedule_change",
+        "propose_rebuild_week",
     }
     for name in coach_graph_names:
         safe = policy.sanitize_span_envelope({"name": name, "attributes": {}, "status": {"code": "OK"}})

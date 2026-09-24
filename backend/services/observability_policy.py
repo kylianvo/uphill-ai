@@ -92,6 +92,7 @@ _SPAN_NAMES = frozenset(
         "pace_strategy",
         "persist",
         "plan_generation",
+        "propose_rebuild_week",
         "propose_schedule_change",
         "retrieval",
         "retrieve",
