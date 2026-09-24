@@ -59,7 +59,8 @@ describe("ScheduleRebuildCard", () => {
   it("shows the before/after diff, totals and Apply once the draft is ready", async () => {
     mockFetch([detail("proposed")]);
     render(<ScheduleRebuildCard data={{ ...card, status: "proposed" }} lang="en" />);
-    expect(await screen.findByText(/Tempo · 50′ → Easy Recovery · 35′/)).toBeInTheDocument();
+    expect(await screen.findByText("was: Tempo · 50′")).toBeInTheDocument();
+    expect(screen.getAllByText("Easy Recovery").length).toBeGreaterThan(0);
     expect(screen.getByText(/280 min · 46.7 km/)).toBeInTheDocument();
     expect(screen.getByText(/190 min · 31.7 km/)).toBeInTheDocument();
     expect(screen.getByText(/kept/)).toBeInTheDocument();
@@ -114,10 +115,33 @@ describe("ScheduleRebuildCard", () => {
     expect(screen.getByText(/The first day of this draft has already passed/)).toBeInTheDocument();
   });
 
-  it("expands a day to the full new workout", async () => {
-    mockFetch([detail("proposed")]);
+  it("shows a rest-only change as a compact line, not a workout card", async () => {
+    const restDiff = {
+      ...diff,
+      days: diff.days.map((d) =>
+        d.day === "Friday"
+          ? {
+              day: "Friday",
+              kept: [],
+              before: [{ id: 8, title: "Easy", duration_minutes: 40 }],
+              after: [
+                {
+                  title: "Rest Day",
+                  type: "Rest",
+                  duration_minutes: 0,
+                  day_of_week: "Friday",
+                  week_number: 3,
+                  target_zone: "Zone 1",
+                  phase: "Base",
+                },
+              ],
+            }
+          : d
+      ),
+    };
+    mockFetch([detail("proposed", { diff: restDiff })]);
     render(<ScheduleRebuildCard data={{ ...card, status: "proposed" }} lang="en" />);
-    fireEvent.click(await screen.findByText(/Tempo · 50′ → Easy Recovery · 35′/));
-    expect(await screen.findAllByText("Easy Recovery")).not.toHaveLength(0);
+    expect(await screen.findByText(/Easy · 40′ → Rest Day · 0′/)).toBeInTheDocument();
+    expect(screen.queryByText("was: Easy · 40′")).toBeNull();
   });
 });

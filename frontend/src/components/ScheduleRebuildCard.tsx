@@ -40,6 +40,7 @@ const btn: React.CSSProperties = { padding: "6px 14px", borderRadius: "8px", bor
 
 const brief = (w: any) => `${w.title} · ${Math.round(Number(w.duration_minutes) || 0)}′`;
 const joined = (rows: any[], lang: string) => (rows.length ? rows.map(brief).join(" + ") : tr(lang, "rebuild_rest"));
+const isRest = (w: any) => String(w.type).toLowerCase() === "rest" || Number(w.duration_minutes) === 0;
 
 function totalsLine(lang: string, t: any): string {
   return tr(lang, "rebuild_totals_line")
@@ -54,7 +55,6 @@ export default function ScheduleRebuildCard({ data, lang, isMobile = false, live
   const [timedOut, setTimedOut] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [failed, setFailed] = React.useState(false);
-  const [openDay, setOpenDay] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -143,25 +143,31 @@ export default function ScheduleRebuildCard({ data, lang, isMobile = false, live
               const changed = d.before.length > 0 || d.after.length > 0;
               if (!changed && d.kept.length === 0) return null;
               const same = changed && joined(d.before, lang) === joined(d.after, lang);
-              return (
-                <div key={d.day} style={{ opacity: !changed || same ? 0.55 : 1 }}>
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => d.after.length > 0 && setOpenDay(openDay === d.day ? null : d.day)}
-                    onKeyDown={(e) => e.key === "Enter" && d.after.length > 0 && setOpenDay(openDay === d.day ? null : d.day)}
-                    style={{ fontSize: "12.5px", cursor: d.after.length ? "pointer" : "default" }}
-                  >
-                    <strong>{dayLabel(d.day, lang)}</strong>{" "}
-                    {d.kept.map((k: any, i: number) => (
-                      <span key={`k${i}`}>
-                        {brief(k)} <em style={{ color: "var(--text-muted)" }}>({tr(lang, "rebuild_kept")})</em>{" "}
-                      </span>
-                    ))}
-                    {changed && <span>{joined(d.before, lang)} → {joined(d.after, lang)}</span>}
-                  </div>
-                  {openDay === d.day &&
-                    d.after.map((wo: any, i: number) => (
+              const trainingAfter = d.after.filter((s: any) => !isRest(s));
+              const expand = changed && !same && trainingAfter.length > 0;
+
+              if (expand) {
+                return (
+                  <div key={d.day}>
+                    <div style={{ fontSize: "12.5px" }}>
+                      <strong>{dayLabel(d.day, lang)}</strong>
+                      {d.kept.length > 0 && (
+                        <span>
+                          {" "}
+                          {d.kept.map((k: any, i: number) => (
+                            <span key={`k${i}`}>
+                              {brief(k)} <em style={{ color: "var(--text-muted)" }}>({tr(lang, "rebuild_kept")})</em>{" "}
+                            </span>
+                          ))}
+                        </span>
+                      )}
+                    </div>
+                    {d.before.length > 0 && (
+                      <div style={{ fontSize: "12.5px", color: "var(--text-muted)", textDecoration: "line-through" }}>
+                        {tr(lang, "rebuild_was").replace("{sessions}", joined(d.before, lang))}
+                      </div>
+                    )}
+                    {d.after.map((wo: any, i: number) => (
                       <WorkoutCard
                         key={i}
                         wo={{ ...wo, week_number: diff.week }}
@@ -171,6 +177,21 @@ export default function ScheduleRebuildCard({ data, lang, isMobile = false, live
                         readOnly
                       />
                     ))}
+                  </div>
+                );
+              }
+
+              return (
+                <div key={d.day} style={{ opacity: !changed || same ? 0.55 : 1 }}>
+                  <div style={{ fontSize: "12.5px" }}>
+                    <strong>{dayLabel(d.day, lang)}</strong>{" "}
+                    {d.kept.map((k: any, i: number) => (
+                      <span key={`k${i}`}>
+                        {brief(k)} <em style={{ color: "var(--text-muted)" }}>({tr(lang, "rebuild_kept")})</em>{" "}
+                      </span>
+                    ))}
+                    {changed && <span>{joined(d.before, lang)} → {joined(d.after, lang)}</span>}
+                  </div>
                 </div>
               );
             })}
