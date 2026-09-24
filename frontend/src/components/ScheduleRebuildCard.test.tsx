@@ -61,6 +61,7 @@ describe("ScheduleRebuildCard", () => {
     render(<ScheduleRebuildCard data={{ ...card, status: "proposed" }} lang="en" />);
     expect(await screen.findByText("was: Tempo · 50′")).toBeInTheDocument();
     expect(screen.getAllByText("Easy Recovery").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Pending review")).toBeNull();
     expect(screen.getByText(/280 min · 46.7 km/)).toBeInTheDocument();
     expect(screen.getByText(/190 min · 31.7 km/)).toBeInTheDocument();
     expect(screen.getByText(/kept/)).toBeInTheDocument();

@@ -170,7 +170,9 @@ export default function ScheduleRebuildCard({ data, lang, isMobile = false, live
                     {d.after.map((wo: any, i: number) => (
                       <WorkoutCard
                         key={i}
-                        wo={{ ...wo, week_number: diff.week }}
+                        // Rebuild drafts are inserted already approved (auto_approve=True) and
+                        // have no approved_at; WorkoutCard only checks truthiness, so fill it.
+                        wo={{ ...wo, week_number: diff.week, approved_at: wo.approved_at ?? "draft" }}
                         lang={lang}
                         isMobile={isMobile}
                         getWorkoutDate={getWorkoutDate}
