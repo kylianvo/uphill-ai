@@ -117,6 +117,16 @@ async def test_typed_yes_writes_nothing(auth_headers):
     assert db.get_workout_by_id(wid)["day_of_week"] == "Tuesday"
 
 
+@pytest.mark.asyncio
+async def test_turn_prompt_tells_the_model_today(auth_headers):
+    uid = auth_headers["user_id"]
+    make_plan(uid, start_date=this_monday())
+    model = FakeCoachModel(responses=[ModelEvent(kind="text", text="ok")])
+    await _turn(uid, model, message="what's on tomorrow?")
+    today = dt.datetime.now(dt.UTC).date()
+    assert f"Today is {today.strftime('%A')} {today.isoformat()} (plan week 1," in model.requests[0].system
+
+
 def _propose(uid, plan_id, operations):
     from services.coach_tools.proposal_tools import propose_schedule_change_impl
     from services.coach_tools.registry import ProposalContext

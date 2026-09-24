@@ -9,6 +9,7 @@ from typing import Literal
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
+import db
 from services.coach_tools import knowledge_tools, pacing_tools, plan_tools, proposal_tools
 
 
@@ -88,8 +89,26 @@ class ProposeScheduleChangeInput(BaseModel):
     rationale: str = Field(max_length=300, description="One short sentence explaining why, shown on the card.")
 
 
+def _monday_aligned_week(user_id: int, today: dt.date) -> int | None:
+    """The plan week containing `today`, Monday-aligned like the calendar engine
+    (not db.compute_current_week), clamped to the plan for the lookup."""
+    # Imported lazily: services.calendar_rules imports services.coach_tools.base
+    # at module scope, so a module-level import here would cycle the packages.
+    from services.calendar_rules import current_week, start_monday
+
+    plan = db.get_active_plan(user_id)
+    monday = start_monday(plan.get("start_date")) if plan else None
+    if monday is None:
+        return None
+    week = current_week(monday, today)
+    total_weeks = int(plan.get("total_weeks") or 0)
+    return max(1, min(week, total_weeks)) if total_weeks else max(1, week)
+
+
 def build_tools(user_id: int, *, kb_api_key: str, proposals: ProposalContext | None = None) -> list[StructuredTool]:
     def _get_week(week_number: int | None = None) -> dict:
+        if week_number is None and proposals is not None:
+            week_number = _monday_aligned_week(user_id, proposals.today)
         return plan_tools.get_week_impl(user_id=user_id, week_number=week_number).__dict__
 
     def _pace_strategy(

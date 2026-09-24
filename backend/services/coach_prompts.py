@@ -149,6 +149,10 @@ def compile_coach_prompt(
     if vi_rule:
         parts.append(vi_rule.strip())
 
+    # Server-built date line (coach_chat.today_line), never from the athlete.
+    if context and context.get("today"):
+        parts.append("### Today\n" + str(context["today"]).strip())
+
     # Format athlete profile from structured context
     if context and context.get("athlete"):
         ath = context["athlete"]

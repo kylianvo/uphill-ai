@@ -1,6 +1,7 @@
 """Coach Chat lifecycle, turn runner, and call accounting orchestration."""
 
 import asyncio
+import datetime as dt
 import json
 import time
 from collections.abc import AsyncIterator
@@ -13,7 +14,7 @@ from config import settings
 from db import CoachChatError
 from log_utils import get_logger
 from services import calendar_ops, coach_context, coach_tools, kb_retrieval, observability
-from services.calendar_rules import resolve_today
+from services.calendar_rules import current_week, resolve_today, start_monday
 from services.coach_graph import (
     AppEvent,
     CitationsEvent,
@@ -35,6 +36,16 @@ from services.coach_model import (
 from services.observability import Usage
 
 logger = get_logger(__name__)
+
+
+def today_line(plan: dict[str, Any], today: dt.date) -> str:
+    """Server-built "today" line for the prompt so the model can resolve
+    "tomorrow" / "this Saturday"; the week is Monday-aligned like the engine."""
+    line = f"Today is {today.strftime('%A')} {today.isoformat()}"
+    monday = start_monday(plan.get("start_date"))
+    if monday is None:
+        return line
+    return f"{line} (plan week {current_week(monday, today)}, days Monday–Sunday)"
 
 
 async def track_chat_call(
@@ -287,6 +298,8 @@ async def run_turn(
         # prompt so `compile_coach_prompt` can render it (see coach_prompts.py).
         if thread.get("summary"):
             chat_context["summary"] = thread["summary"]
+        if proposal_ctx is not None:
+            chat_context["today"] = today_line(active_plan, proposal_ctx.today)
 
         # Prior turns as model messages: reuse context["history"] (oldest -> newest,
         # status == "ok" only) rather than a second DB read. Exclude the current

@@ -102,3 +102,46 @@ def test_proposal_tool_uses_closure_identity(monkeypatch):
     assert seen["user_id"] == 1
     assert seen["ctx"] is ctx
     assert seen["operations"] == [{"op": "move", "workout_id": 3, "target_week": 4, "target_day": "Monday"}]
+
+
+def _get_week_with_ctx(today, plan):
+    ctx = ProposalContext(thread_id=5, plan_id=9, today=today)
+    tool = next(t for t in build_tools(user_id=1, kb_api_key="k", proposals=ctx) if t.name == "get_week")
+    with (
+        patch("db.get_active_plan", return_value=plan),
+        patch("services.coach_tools.plan_tools.get_week_impl") as mock_impl,
+    ):
+        mock_impl.return_value.__dict__ = {}
+        tool.invoke({})
+    return mock_impl
+
+
+def test_get_week_default_uses_monday_aligned_week_with_context():
+    # start 2026-09-09 is a Wednesday -> week 1 starts Mon 2026-09-07; Mon 2026-09-14 is week 2
+    # (db.compute_current_week would say week 1: only 5 days since the start date).
+    plan = {"id": 9, "start_date": "2026-09-09", "total_weeks": 12, "current_week": 1}
+    mock_impl = _get_week_with_ctx(dt.date(2026, 9, 14), plan)
+    mock_impl.assert_called_once_with(user_id=1, week_number=2)
+
+
+def test_get_week_default_is_clamped_to_plan_weeks():
+    plan = {"id": 9, "start_date": "2026-09-09", "total_weeks": 12, "current_week": 1}
+    assert _get_week_with_ctx(dt.date(2026, 9, 1), plan).call_args.kwargs["week_number"] == 1
+    assert _get_week_with_ctx(dt.date(2027, 9, 1), plan).call_args.kwargs["week_number"] == 12
+
+
+def test_get_week_explicit_week_wins_over_context_default():
+    ctx = ProposalContext(thread_id=5, plan_id=9, today=dt.date(2026, 9, 14))
+    tool = next(t for t in build_tools(user_id=1, kb_api_key="k", proposals=ctx) if t.name == "get_week")
+    with patch("services.coach_tools.plan_tools.get_week_impl") as mock_impl:
+        mock_impl.return_value.__dict__ = {}
+        tool.invoke({"week_number": 5})
+    mock_impl.assert_called_once_with(user_id=1, week_number=5)
+
+
+def test_get_week_default_without_context_is_unchanged():
+    tool = next(t for t in build_tools(user_id=1, kb_api_key="k") if t.name == "get_week")
+    with patch("services.coach_tools.plan_tools.get_week_impl") as mock_impl:
+        mock_impl.return_value.__dict__ = {}
+        tool.invoke({})
+    mock_impl.assert_called_once_with(user_id=1, week_number=None)
