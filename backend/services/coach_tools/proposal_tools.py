@@ -26,6 +26,10 @@ _REASONS = {
 }
 
 
+def _moves_key(moves: list[dict[str, Any]]) -> list[tuple[Any, Any, Any]]:
+    return sorted((m["workout_id"], m["to_week"], m["to_day"]) for m in moves)
+
+
 def propose_schedule_change_impl(
     *, user_id: int, ctx: Any, operations: list[dict[str, Any]], rationale: str
 ) -> ToolResult:
@@ -46,6 +50,18 @@ def propose_schedule_change_impl(
             status="error",
             error=f"{gv.code}: {reason}. details={json.dumps(gv.params, default=str)}",
         )
+    # A typed "yes" can make the model call this again with the same change:
+    # never create a second card for a change that is already waiting on Apply.
+    key = _moves_key(changes.moves)
+    for open_proposal in db.get_open_chat_proposals(ctx.thread_id, ctx.plan_id):
+        if _moves_key(open_proposal["diff"]) == key:
+            return ToolResult(
+                tool_call_id="",
+                name=NAME,
+                status="error",
+                error=f"DUPLICATE_pending: this exact change is already proposed on card #{open_proposal['id']} "
+                "and is waiting for the athlete -- do not propose it again; tell them to tap Apply on that card.",
+            )
     plan = db.get_active_plan(user_id) or {}
     proposal_id = db.create_chat_proposal(
         user_id=user_id,

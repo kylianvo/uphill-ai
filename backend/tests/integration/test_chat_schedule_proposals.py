@@ -115,3 +115,66 @@ async def test_typed_yes_writes_nothing(auth_headers):
     reply_only = FakeCoachModel(responses=[ModelEvent(kind="text", text="Tap Apply on the card to confirm.")])
     await _turn(uid, reply_only, message="yes")
     assert db.get_workout_by_id(wid)["day_of_week"] == "Tuesday"
+
+
+def _propose(uid, plan_id, operations):
+    from services.coach_tools.proposal_tools import propose_schedule_change_impl
+    from services.coach_tools.registry import ProposalContext
+
+    thread = db.get_or_create_chat_thread(uid)
+    ctx = ProposalContext(thread_id=thread["id"], plan_id=plan_id, today=dt.datetime.now(dt.UTC).date())
+    return propose_schedule_change_impl(user_id=uid, ctx=ctx, operations=operations, rationale="r")
+
+
+def _proposal_count(uid):
+    with db.engine.connect() as conn:
+        return conn.execute(text("SELECT COUNT(*) FROM chat_proposals WHERE user_id = :u"), {"u": uid}).scalar()
+
+
+def _move(wid, day, week=2):
+    return {"op": "move", "workout_id": wid, "target_week": week, "target_day": day}
+
+
+def test_same_move_twice_is_deduped_while_pending(auth_headers):
+    uid = auth_headers["user_id"]
+    plan_id = make_plan(uid, start_date=this_monday())
+    wid = add_workout(plan_id, 2, "Tuesday")
+    first = _propose(uid, plan_id, [_move(wid, "Friday")])
+    assert first.status == "success"
+    second = _propose(uid, plan_id, [_move(wid, "Friday")])
+    assert second.status == "error"
+    assert second.error.startswith("DUPLICATE_pending")
+    assert f"#{first.card_data['proposal_id']}" in second.error
+    assert _proposal_count(uid) == 1
+
+
+def test_same_move_can_be_proposed_again_after_discard(auth_headers):
+    uid = auth_headers["user_id"]
+    plan_id = make_plan(uid, start_date=this_monday())
+    wid = add_workout(plan_id, 2, "Tuesday")
+    first = _propose(uid, plan_id, [_move(wid, "Friday")])
+    assert db.discard_chat_proposal(first.card_data["proposal_id"], uid) == "discarded"
+    again = _propose(uid, plan_id, [_move(wid, "Friday")])
+    assert again.status == "success"
+    assert again.card_data["proposal_id"] != first.card_data["proposal_id"]
+    assert _proposal_count(uid) == 2
+
+
+def test_swap_days_matching_an_open_proposal_is_deduped(auth_headers):
+    uid = auth_headers["user_id"]
+    plan_id = make_plan(uid, start_date=this_monday())
+    w_tue = add_workout(plan_id, 2, "Tuesday")
+    w_fri = add_workout(plan_id, 2, "Friday")
+    assert _propose(uid, plan_id, [_move(w_tue, "Friday"), _move(w_fri, "Tuesday")]).status == "success"
+    swap = _propose(uid, plan_id, [{"op": "swap_days", "week": 2, "day_1": "Tuesday", "day_2": "Friday"}])
+    assert swap.status == "error" and swap.error.startswith("DUPLICATE_pending")
+    assert _proposal_count(uid) == 1
+
+
+def test_different_proposal_touching_same_workout_is_allowed(auth_headers):
+    uid = auth_headers["user_id"]
+    plan_id = make_plan(uid, start_date=this_monday())
+    wid = add_workout(plan_id, 2, "Tuesday")
+    assert _propose(uid, plan_id, [_move(wid, "Friday")]).status == "success"
+    assert _propose(uid, plan_id, [_move(wid, "Saturday")]).status == "success"
+    assert _proposal_count(uid) == 2

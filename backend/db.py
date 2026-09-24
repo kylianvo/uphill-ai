@@ -4436,6 +4436,19 @@ def get_chat_proposal(proposal_id: int) -> dict[str, Any] | None:
     return _proposal_row(row) if row else None
 
 
+def get_open_chat_proposals(thread_id: int, plan_id: int) -> list[dict[str, Any]]:
+    """`proposed` rows for a thread+plan, as {id, diff} with diff JSON-decoded."""
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text(
+                "SELECT id, diff FROM chat_proposals "
+                "WHERE thread_id = :tid AND plan_id = :pid AND status = 'proposed' ORDER BY id"
+            ),
+            {"tid": thread_id, "pid": plan_id},
+        ).fetchall()
+    return [{"id": r[0], "diff": _json_value(r[1]) or []} for r in rows]
+
+
 def lock_chat_proposal(conn, proposal_id: int, user_id: int) -> dict[str, Any] | None:
     row = conn.execute(
         text("SELECT * FROM chat_proposals WHERE id = :id AND user_id = :uid FOR UPDATE"),
