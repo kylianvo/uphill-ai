@@ -9,7 +9,7 @@ import RichCardRenderer from "../components/RichCardRenderer";
 import ClarificationChipsBar from "../components/ClarificationChipsBar";
 
 export default function ChatTab({ isMobile }: { isMobile: boolean }) {
-  const { lang, setPaceHandoff, setIsPaceStrategyOpen, handleTabSwitch, activePlan } = useAppContext();
+  const { lang, setPaceHandoff, setIsPaceStrategyOpen, handleTabSwitch, activePlan, setWorkouts, actingAsAthleteId } = useAppContext();
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const [inputText, setInputText] = useState("");
   const [isSourcesOpen, setIsSourcesOpen] = useState(false);
@@ -34,6 +34,7 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
     clearMessageSources,
     clarifyOptions,
     dismissClarify,
+    proposalStates,
   } = useCoachChat();
 
   const t = (key: keyof typeof translations.en) =>
@@ -374,6 +375,12 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
                         setPaceHandoff(payload);
                         setIsPaceStrategyOpen(true);
                         handleTabSwitch("tools");
+                      }}
+                      proposalStates={proposalStates}
+                      onScheduleApplied={(workouts) => {
+                        // Chat is always the signed-in athlete's own plan: never overwrite
+                        // the calendar a coach is viewing while acting as an athlete.
+                        if (actingAsAthleteId == null) setWorkouts(workouts);
                       }}
                     />
                   ))}

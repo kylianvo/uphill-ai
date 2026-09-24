@@ -149,3 +149,33 @@ def test_swap_same_day_returns_200(client, auth_headers):
         },
     )
     assert resp.status_code == 200
+
+
+def test_swap_refuses_a_day_with_a_matched_workout(client, auth_headers):
+    from tests.integration.calendar_helpers import match_activity
+
+    plan_id = _setup_test_plan(client, auth_headers)
+    monday = next(w for w in get_plan_workouts(plan_id) if w["day_of_week"] == "Monday")
+    match_activity(auth_headers["user_id"], monday["id"])
+    resp = client.post(
+        "/api/coach/modify-calendar",
+        headers=auth_headers["headers"],
+        json={"plan_id": plan_id, "week_number": 1, "day_1": "Monday", "day_2": "Tuesday"},
+    )
+    assert resp.status_code == 422
+    assert resp.json()["detail"]["code"] == "G2_history"
+    by_day = {w["day_of_week"]: w["title"] for w in get_plan_workouts(plan_id)}
+    assert by_day["Monday"] == "Monday Easy Run"
+
+
+def test_swap_success_keeps_response_shape_and_adds_warnings(client, auth_headers):
+    plan_id = _setup_test_plan(client, auth_headers)
+    resp = client.post(
+        "/api/coach/modify-calendar",
+        headers=auth_headers["headers"],
+        json={"plan_id": plan_id, "week_number": 1, "day_1": "Monday", "day_2": "Wednesday"},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["message"] == "Swapped successfully"
+    assert isinstance(body["workouts"], list) and isinstance(body["warnings"], list)

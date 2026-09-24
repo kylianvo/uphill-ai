@@ -487,7 +487,6 @@ export default function AppPage() {
     backupWorkouts,
     recentPlans,
     workouts,
-    selectedWeek,
     setBackupWorkouts,
     setRecentPlans,
     setWorkouts,
@@ -519,16 +518,12 @@ export default function AppPage() {
     plannerGpxFile,
     plannerGpxLoading,
     plannerGpxError,
-    swapDay1,
     setPlannerGpxFile,
     setPlannerGpxLoading,
     setPlannerGpxError,
-    setSwapDay1,
-    swapDay2,
     targetFlatPace,
     pacedCheckpoints,
     pacingLoading,
-    setSwapDay2,
     setTargetFlatPace,
     setPacedCheckpoints,
     setPacingLoading,
@@ -2052,35 +2047,6 @@ export default function AppPage() {
       setPlanErrorMsg(err.message);
     } finally {
       setPlanLoading(false);
-    }
-  };
-  // Workout swap action
-  const handleSwapWorkouts = async () => {
-    if (!activePlan) return;
-    const token = localStorage.getItem("uphill_session_token");
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/coach/modify-calendar`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            plan_id: activePlan.id,
-            week_number: selectedWeek,
-            day_1: swapDay1,
-            day_2: swapDay2,
-          }),
-        },
-      );
-      if (response.ok) {
-        const result = await response.json();
-        setWorkouts(result.workouts);
-      }
-    } catch (err) {
-      console.error("Failed to swap workouts:", err);
     }
   };
   // Mark workout complete (locally)

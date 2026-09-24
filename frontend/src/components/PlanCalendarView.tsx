@@ -47,12 +47,14 @@ interface PlanCalendarViewProps {
   onApproveWorkout?: (id: number) => void;
   onRemoveWorkout?: (id: number) => void;
   onEditWorkout?: (id: number, fields: Record<string, any>) => void;
+  plan?: { start_date?: string | null; total_weeks?: number | null; race_date?: string | null };
+  onMoveWorkout?: (workoutId: number, targetWeek: number, targetDay: string) => void;
 }
 
 export default function PlanCalendarView({
   workouts, lang, isMobile, getWorkoutDateObj, getWorkoutDate,
   onSwapDays, onToggleComplete, onMarkMissed, onLogWorkout, isCoachActingAsAthlete,
-  athleteId, onApproveWorkout, onRemoveWorkout, onEditWorkout,
+  athleteId, onApproveWorkout, onRemoveWorkout, onEditWorkout, plan, onMoveWorkout,
 }: PlanCalendarViewProps) {
   const dbTypes = useWorkoutTypes(lang);
   const zoneColorOf = (wo: any) =>
@@ -273,6 +275,9 @@ export default function PlanCalendarView({
                   weekWos={openWeekWos}
                   lang={lang}
                   onSwapDays={onSwapDays}
+                  plan={plan}
+                  allWorkouts={workouts}
+                  onMoveWorkout={onMoveWorkout}
                 />
               );
             })()}

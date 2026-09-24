@@ -582,6 +582,34 @@ def init_db():
         except Exception:
             conn.rollback()
 
+        conn.execute(
+            text("""
+        CREATE TABLE IF NOT EXISTS chat_proposals (
+            id                      SERIAL PRIMARY KEY,
+            user_id                 INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            thread_id               INTEGER NOT NULL REFERENCES chat_threads(id) ON DELETE CASCADE,
+            message_id              INTEGER REFERENCES chat_messages(id) ON DELETE CASCADE,
+            plan_id                 INTEGER NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
+            operations              JSONB NOT NULL,
+            fingerprints            JSONB NOT NULL,
+            diff                    JSONB NOT NULL,
+            warnings                JSONB NOT NULL DEFAULT '[]'::jsonb,
+            rationale               TEXT,
+            status                  TEXT NOT NULL DEFAULT 'proposed'
+                CONSTRAINT chk_chat_proposals_status CHECK (status IN ('proposed', 'applied', 'discarded', 'stale')),
+            stale_reason            TEXT,
+            result                  JSONB,
+            created_at              TIMESTAMPTZ DEFAULT NOW(),
+            resolved_at             TIMESTAMPTZ
+        )
+        """)
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_chat_proposals_thread ON chat_proposals (thread_id)"))
+        conn.execute(
+            text("CREATE INDEX IF NOT EXISTS idx_chat_proposals_user_status ON chat_proposals (user_id, status)")
+        )
+        conn.commit()
+
         for col_sql in [
             # Type upgrades for databases created before treadmill fields became
             # range strings (idempotent: TEXT→TEXT re-runs harmlessly).
@@ -4316,6 +4344,186 @@ def get_chat_message_sources(message_id: int, user_id: int) -> dict[str, Any] | 
         }
 
 
+# ─── Calendar placement + chat proposals (Coach Chat sub-project 4a) ─────────
+
+
+def _json_value(value: Any) -> Any:
+    if isinstance(value, str):
+        try:
+            return json.loads(value)
+        except ValueError:
+            return value
+    return value
+
+
+def get_plan_workouts_for_placement(conn, plan_id: int, *, lock: bool) -> list[dict[str, Any]]:
+    """Every workout of the plan plus its matched activity id, for
+    services.calendar_rules. lock=True takes FOR UPDATE on the plan's workout
+    rows (inside the caller's transaction) so concurrent placement edits -- and
+    a concurrent activity match, whose FK check needs a KEY SHARE lock on the
+    workout row -- serialize behind it."""
+    sql = """
+        SELECT w.*,
+               (SELECT a.id FROM activities a WHERE a.matched_workout_id = w.id ORDER BY a.id LIMIT 1)
+                   AS matched_activity_id
+        FROM workouts w
+        WHERE w.plan_id = :pid
+        ORDER BY w.week_number, w.id
+    """
+    if lock:
+        sql += " FOR UPDATE OF w"
+    return [_row_to_dict(r) for r in conn.execute(text(sql), {"pid": plan_id}).fetchall()]
+
+
+def apply_workout_moves(conn, moves: list[dict[str, Any]]) -> None:
+    for m in moves:
+        conn.execute(
+            text("UPDATE workouts SET week_number = :wk, day_of_week = :day, is_missed = 0 WHERE id = :id"),
+            {"wk": m["to_week"], "day": m["to_day"], "id": m["workout_id"]},
+        )
+
+
+_PROPOSAL_JSON_COLS = ("operations", "fingerprints", "diff", "warnings", "result")
+
+
+def _proposal_row(row) -> dict[str, Any]:
+    d = _row_to_dict(row)
+    for col in _PROPOSAL_JSON_COLS:
+        d[col] = _json_value(d.get(col))
+    return d
+
+
+def create_chat_proposal(
+    *,
+    user_id: int,
+    thread_id: int,
+    plan_id: int,
+    operations: list[dict[str, Any]],
+    fingerprints: dict[str, Any],
+    diff: list[dict[str, Any]],
+    warnings: list[dict[str, Any]],
+    rationale: str | None,
+) -> int:
+    with engine.connect() as conn:
+        pid = conn.execute(
+            text(
+                """
+                INSERT INTO chat_proposals
+                    (user_id, thread_id, plan_id, operations, fingerprints, diff, warnings, rationale)
+                VALUES (:uid, :tid, :pid, CAST(:ops AS JSONB), CAST(:fps AS JSONB), CAST(:diff AS JSONB),
+                        CAST(:warn AS JSONB), :rationale)
+                RETURNING id
+                """
+            ),
+            {
+                "uid": user_id,
+                "tid": thread_id,
+                "pid": plan_id,
+                "ops": json.dumps(operations),
+                "fps": json.dumps(fingerprints),
+                "diff": json.dumps(diff),
+                "warn": json.dumps(warnings),
+                "rationale": rationale,
+            },
+        ).scalar()
+        conn.commit()
+    return pid
+
+
+def get_chat_proposal(proposal_id: int) -> dict[str, Any] | None:
+    with engine.connect() as conn:
+        row = conn.execute(text("SELECT * FROM chat_proposals WHERE id = :id"), {"id": proposal_id}).fetchone()
+    return _proposal_row(row) if row else None
+
+
+def get_open_chat_proposals(thread_id: int, plan_id: int) -> list[dict[str, Any]]:
+    """`proposed` rows for a thread+plan, as {id, diff} with diff JSON-decoded."""
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text(
+                "SELECT id, diff FROM chat_proposals "
+                "WHERE thread_id = :tid AND plan_id = :pid AND status = 'proposed' ORDER BY id"
+            ),
+            {"tid": thread_id, "pid": plan_id},
+        ).fetchall()
+    return [{"id": r[0], "diff": _json_value(r[1]) or []} for r in rows]
+
+
+def lock_chat_proposal(conn, proposal_id: int, user_id: int) -> dict[str, Any] | None:
+    row = conn.execute(
+        text("SELECT * FROM chat_proposals WHERE id = :id AND user_id = :uid FOR UPDATE"),
+        {"id": proposal_id, "uid": user_id},
+    ).fetchone()
+    return _proposal_row(row) if row else None
+
+
+def resolve_chat_proposal(
+    conn,
+    proposal_id: int,
+    *,
+    status: str,
+    stale_reason: str | None = None,
+    result: dict[str, Any] | None = None,
+) -> None:
+    conn.execute(
+        text(
+            """
+            UPDATE chat_proposals
+            SET status = :status, stale_reason = :reason, result = CAST(:result AS JSONB), resolved_at = NOW()
+            WHERE id = :id
+            """
+        ),
+        {
+            "status": status,
+            "reason": stale_reason,
+            "result": json.dumps(result) if result is not None else None,
+            "id": proposal_id,
+        },
+    )
+
+
+def discard_chat_proposal(proposal_id: int, user_id: int) -> str | None:
+    with engine.connect() as conn:
+        conn.execute(
+            text(
+                "UPDATE chat_proposals SET status = 'discarded', resolved_at = NOW() "
+                "WHERE id = :id AND user_id = :uid AND status = 'proposed'"
+            ),
+            {"id": proposal_id, "uid": user_id},
+        )
+        conn.commit()
+        row = conn.execute(
+            text("SELECT status FROM chat_proposals WHERE id = :id AND user_id = :uid"),
+            {"id": proposal_id, "uid": user_id},
+        ).fetchone()
+    return row[0] if row else None
+
+
+def set_proposals_message_id(thread_id: int, proposal_ids: list[int], message_id: int) -> None:
+    if not proposal_ids:
+        return
+    with engine.connect() as conn:
+        conn.execute(
+            text("UPDATE chat_proposals SET message_id = :mid WHERE thread_id = :tid AND id = ANY(:ids)"),
+            {"mid": message_id, "tid": thread_id, "ids": list(proposal_ids)},
+        )
+        conn.commit()
+
+
+def get_chat_proposal_statuses(user_id: int, message_ids: list[int]) -> dict[int, dict[str, Any]]:
+    if not message_ids:
+        return {}
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text(
+                "SELECT id, status, stale_reason, result FROM chat_proposals "
+                "WHERE user_id = :uid AND message_id = ANY(:mids)"
+            ),
+            {"uid": user_id, "mids": list(message_ids)},
+        ).fetchall()
+    return {r[0]: {"status": r[1], "stale_reason": r[2], "result": _json_value(r[3])} for r in rows}
+
+
 def clear_chat_thread(user_id: int) -> bool:
     """Clear athlete's conversation thread:
     - Checks if an active turn is currently in progress (raises ChatInProgressError if so).
@@ -4353,6 +4561,8 @@ def clear_chat_thread(user_id: int) -> bool:
         if not thread_row:
             return False
         thread_id = thread_row[0]
+
+        conn.execute(text("DELETE FROM chat_proposals WHERE thread_id = :tid"), {"tid": thread_id})
 
         conn.execute(
             text("DELETE FROM chat_messages WHERE thread_id = :tid"),

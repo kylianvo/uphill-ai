@@ -6,6 +6,7 @@ import { usePlanner } from "../hooks/usePlanner";
 import { translations } from "../app/translations";
 import WorkoutCard from "../components/WorkoutCard";
 import PlanCalendarView from "../components/PlanCalendarView";
+import CalendarNoticeBanner from "../components/CalendarNoticeBanner";
 import { KnowledgeCard } from "../components/KnowledgeCard";
 import { DndContext, DragEndEvent, DragOverEvent, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, TouchSensor, KeyboardSensor } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
@@ -35,10 +36,10 @@ const WEEKS_PER_BLOCK = 1;
 
 export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   const ctx = useAppContext();
-  const { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, handleSwapWorkouts, swapDays, handleToggleComplete, handleMarkMissed, handleLogWorkout, getWeekWorkouts, getWorkoutDate, getWorkoutDateObj, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller, fetchDraftPlan, draftPlan, handleApproveWorkout, handleRemoveWorkout, handleAiCreateWorkout, handleCoachEditWorkout, fetchActivePlanForActing } = usePlanner();
+  const { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, swapDays, moveWorkout, calendarNotice, dismissCalendarNotice, handleToggleComplete, handleMarkMissed, handleLogWorkout, getWeekWorkouts, getWorkoutDate, getWorkoutDateObj, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller, fetchDraftPlan, draftPlan, handleApproveWorkout, handleRemoveWorkout, handleAiCreateWorkout, handleCoachEditWorkout, fetchActivePlanForActing } = usePlanner();
   const [planViewMode, setPlanViewMode] = useState<"list" | "calendar">("list");
   const [addWorkoutTarget, setAddWorkoutTarget] = useState<{ week: number; day: string } | null>(null);
-  const { lang, activePlan, planLoading, planErrorMsg, planForm, setPlanForm, targetTimeH, setTargetTimeH, targetTimeM, setTargetTimeM, targetTimeS, setTargetTimeS, cutoffTimeH, setCutoffTimeH, cutoffTimeM, setCutoffTimeM, cutoffTimeS, setCutoffTimeS, recentPlans, selectedWeek, setSelectedWeek, swapDay1, setSwapDay1, swapDay2, setSwapDay2, setWorkouts, setBackupWorkouts, setActivePlan, workouts, backupWorkouts, backupActivePlan, setBackupActivePlan, courseInputMode, setCourseInputMode, plannerGpxLoading, plannerGpxFile, plannerGpxError, showExportOptions, setShowExportOptions, exportTimePref, setExportTimePref, setIsGoalDeterminerOpen, settingsHandoff, setSettingsHandoff, setPaceHandoff, setIsPaceStrategyOpen, user, actingAsAthleteId, actingAsAthleteName, setActingAsAthleteId, setActingAsAthleteName, handleTabSwitch, activePlanLoading } = ctx;
+  const { lang, activePlan, planLoading, planErrorMsg, planForm, setPlanForm, targetTimeH, setTargetTimeH, targetTimeM, setTargetTimeM, targetTimeS, setTargetTimeS, cutoffTimeH, setCutoffTimeH, cutoffTimeM, setCutoffTimeM, cutoffTimeS, setCutoffTimeS, recentPlans, selectedWeek, setSelectedWeek, setWorkouts, setBackupWorkouts, setActivePlan, workouts, backupWorkouts, backupActivePlan, setBackupActivePlan, courseInputMode, setCourseInputMode, plannerGpxLoading, plannerGpxFile, plannerGpxError, showExportOptions, setShowExportOptions, exportTimePref, setExportTimePref, setIsGoalDeterminerOpen, settingsHandoff, setSettingsHandoff, setPaceHandoff, setIsPaceStrategyOpen, user, actingAsAthleteId, actingAsAthleteName, setActingAsAthleteId, setActingAsAthleteName, handleTabSwitch, activePlanLoading } = ctx;
   const isCoachActingAsAthlete = !!actingAsAthleteId;
   const workoutAthleteId: number | null = actingAsAthleteId ?? (user?.id ?? null);
   const [switchingAthlete, setSwitchingAthlete] = useState(false);
@@ -1715,6 +1716,8 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
             )}
             </>)}
 
+            <CalendarNoticeBanner notice={calendarNotice} onDismiss={dismissCalendarNotice} />
+
             {/* Generating plan skeleton */}
             {planLoading && workouts.length === 0 ? (
               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
@@ -1773,6 +1776,8 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 onApproveWorkout={handleApproveWorkoutClick}
                 onRemoveWorkout={handleRemoveWorkoutClick}
                 onEditWorkout={handleEditWorkoutClick}
+                plan={activePlan}
+                onMoveWorkout={isCoachActingAsAthlete ? undefined : moveWorkout}
               />
             ) : (
               /* Week Workouts — grouped by day with drag-and-drop swap */
@@ -1805,6 +1810,9 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 onRemoveWorkout={handleRemoveWorkoutClick}
                 onEditWorkout={handleEditWorkoutClick}
                 onAddWorkout={isCoachActingAsAthlete ? (week, day) => setAddWorkoutTarget({ week, day }) : undefined}
+                plan={activePlan}
+                allWorkouts={workouts}
+                onMoveWorkout={isCoachActingAsAthlete ? undefined : moveWorkout}
                 matches={matchActivities}
                 onConfirmMatch={handleConfirmMatch}
                 onUnlinkMatch={handleUnlinkMatch}
@@ -2837,6 +2845,9 @@ interface WeekDayListProps {
   onConfirmMatch?: (activityId: number, workoutId: number) => Promise<boolean>;
   onUnlinkMatch?: (activityId: number) => Promise<boolean>;
   getWorkoutDateObj?: (wo: any) => Date | null;
+  plan?: { start_date?: string | null; total_weeks?: number | null; race_date?: string | null };
+  allWorkouts?: any[];
+  onMoveWorkout?: (workoutId: number, targetWeek: number, targetDay: string) => void;
 }
 
 function WeekDayList({
@@ -2858,6 +2869,9 @@ function WeekDayList({
   onConfirmMatch,
   onUnlinkMatch,
   getWorkoutDateObj,
+  plan,
+  allWorkouts,
+  onMoveWorkout,
 }: WeekDayListProps) {
   const [overId, setOverId] = React.useState<string | null>(null);
   const [swapModalDay, setSwapModalDay] = React.useState<string | null>(null);
@@ -2943,6 +2957,9 @@ function WeekDayList({
           weekWos={weekWos}
           lang={lang}
           onSwapDays={onSwapDays}
+          plan={plan}
+          allWorkouts={allWorkouts}
+          onMoveWorkout={onMoveWorkout}
         />
       )}
     </>

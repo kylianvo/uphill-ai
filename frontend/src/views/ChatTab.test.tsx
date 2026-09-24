@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import React from "react";
 import ChatTab from "./ChatTab";
 import * as useCoachChatModule from "../hooks/useCoachChat";
@@ -35,6 +35,7 @@ describe("ChatTab", () => {
     clearMessageSources: mockClearMessageSources,
     clarifyOptions: null,
     dismissClarify: vi.fn(),
+    proposalStates: {},
   };
 
   beforeEach(() => {
@@ -312,5 +313,62 @@ describe("ChatTab", () => {
     });
     expect(screen.queryByText(/Week undefined/)).toBeNull();
     expect(screen.getByText("Explain 80/20 intensity distribution")).toBeDefined();
+  });
+
+  describe("applying a schedule proposal", () => {
+    const proposalMessage: useCoachChatModule.ChatMessageItem = {
+      role: "assistant",
+      content: "Here's a proposal.",
+      toolCalls: [
+        {
+          type: "tool_result",
+          tool_call_id: "call_p",
+          name: "propose_schedule_change",
+          status: "success",
+          card_type: "schedule_proposal",
+          card_data: {
+            proposal_id: 7,
+            status: "proposed",
+            rationale: "Travel",
+            plan_start_date: "2026-09-07",
+            race_date: null,
+            operations: [{ op: "move", workout_id: 3, target_week: 2, target_day: "Friday" }],
+            warnings: [],
+            diff: [
+              {
+                workout_id: 3, from_week: 2, from_day: "Tuesday", to_week: 2, to_day: "Friday",
+                workout: { id: 3, week_number: 2, day_of_week: "Friday", title: "Easy Run", type: "Easy", duration_minutes: 45, target_zone: "Zone 2", phase: "base" },
+              },
+            ],
+          },
+        },
+      ],
+    };
+
+    const applyAndWait = async (contextOverrides: TestContextValue) => {
+      global.fetch = vi.fn().mockImplementation((url: string) =>
+        Promise.resolve(
+          String(url).includes("/proposals/")
+            ? new Response(JSON.stringify({ status: "applied", result: { moves: [], warnings: [] }, workouts: [{ id: 3 }] }), { status: 200, headers: { "Content-Type": "application/json" } })
+            : new Response("[]", { status: 200, headers: { "Content-Type": "application/json" } })
+        )
+      );
+      vi.mocked(useCoachChatModule.useCoachChat).mockReturnValue({ ...defaultHookReturn, messages: [proposalMessage] });
+      renderWithContext(<ChatTab isMobile={false} />, contextOverrides);
+      fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+      await waitFor(() => expect(screen.getByText("Applied ✓")).toBeInTheDocument());
+    };
+
+    it("refreshes the athlete's own workouts after Apply", async () => {
+      const setWorkouts = vi.fn();
+      await applyAndWait({ setWorkouts, actingAsAthleteId: null });
+      expect(setWorkouts).toHaveBeenCalledWith([{ id: 3 }]);
+    });
+
+    it("does not overwrite the calendar in view while a coach is acting as an athlete", async () => {
+      const setWorkouts = vi.fn();
+      await applyAndWait({ setWorkouts, actingAsAthleteId: 42 });
+      expect(setWorkouts).not.toHaveBeenCalled();
+    });
   });
 });

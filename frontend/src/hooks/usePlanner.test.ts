@@ -322,3 +322,69 @@ describe("usePlanner acting-as-athlete endpoint scoping", () => {
     );
   });
 });
+
+describe("usePlanner calendar moves", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn());
+    localStorage.setItem("uphill_session_token", "tok-abc");
+  });
+
+  function setup() {
+    const { result } = renderHookWithApp(() => ({ ctx: useAppContext(), planner: usePlanner() }));
+    act(() => {
+      result.current.ctx.setActivePlan({
+        id: 9,
+        race_name: "Test Race",
+        race_date: "2027-01-01",
+        start_date: "2026-09-07",
+        goal_type: "time",
+        total_weeks: 12,
+      });
+    });
+    return result;
+  }
+
+  it("moveWorkout posts one move with client_today and applies returned workouts", async () => {
+    const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>;
+    fetchMock.mockResolvedValueOnce(jsonResponse({ workouts: [{ id: 3, week_number: 4, day_of_week: "Monday" }], warnings: [] }));
+    const result = setup();
+    await act(async () => {
+      await result.current.planner.moveWorkout(3, 4, "Monday");
+    });
+    const [url, opts] = fetchMock.mock.calls[0];
+    expect(url).toContain("/api/coach/calendar/move");
+    const body = JSON.parse(opts.body);
+    expect(body).toMatchObject({ plan_id: 9, operations: [{ workout_id: 3, target_week: 4, target_day: "Monday" }] });
+    expect(body.client_today).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(result.current.ctx.workouts).toEqual([{ id: 3, week_number: 4, day_of_week: "Monday" }]);
+    expect(result.current.planner.calendarNotice).toBeNull();
+  });
+
+  it("a guard refusal sets an error notice and leaves workouts alone", async () => {
+    const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>;
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 422, json: async () => ({ detail: { code: "G2_history", params: {} } }) } as Response);
+    const result = setup();
+    await act(async () => {
+      await result.current.planner.moveWorkout(3, 4, "Monday");
+    });
+    expect(result.current.planner.calendarNotice).toEqual({
+      kind: "error",
+      text: "This workout is already completed or matched to an activity, so it can't be moved.",
+    });
+  });
+
+  it("swapDays sends client_today and surfaces warnings", async () => {
+    const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>;
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ workouts: [], warnings: [{ code: "W1_hard_stacking", params: { kind: "same_day", week: 3, day: "Friday" } }] })
+    );
+    const result = setup();
+    await act(async () => {
+      await result.current.planner.swapDays("Monday", "Friday", 3);
+    });
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body.client_today).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(result.current.planner.calendarNotice?.kind).toBe("warning");
+    expect(result.current.planner.calendarNotice?.text).toContain("Two hard sessions on Friday");
+  });
+});

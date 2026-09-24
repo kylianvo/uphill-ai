@@ -158,3 +158,19 @@ def test_prompt_metadata_allowlist():
     assert filtered.get("prompt_source") == "langfuse"
     assert "prompt_text" not in filtered
     assert "athlete_notes" not in filtered
+
+
+def test_prompt_has_propose_then_apply_rules():
+    assert "propose_schedule_change" in COACH_SYSTEM_INSTRUCTION
+    assert "Apply" in COACH_SYSTEM_INSTRUCTION
+    assert "Never say or imply" in COACH_SYSTEM_INSTRUCTION
+
+
+def test_today_line_in_context_renders_into_prompt():
+    line = "Today is Monday 2026-09-14 (plan week 2, days Monday-Sunday)"
+    prompt = compile_coach_prompt(system_base="base", lang="en", context={"today": line})
+    assert line in prompt
+
+
+def test_prompt_has_no_today_section_without_today():
+    assert "Today is" not in compile_coach_prompt(system_base="base", lang="en", context={})

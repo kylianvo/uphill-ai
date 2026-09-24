@@ -1,6 +1,7 @@
 """Coach Chat lifecycle, turn runner, and call accounting orchestration."""
 
 import asyncio
+import datetime as dt
 import json
 import time
 from collections.abc import AsyncIterator
@@ -12,7 +13,8 @@ import db
 from config import settings
 from db import CoachChatError
 from log_utils import get_logger
-from services import coach_context, coach_tools, kb_retrieval, observability
+from services import calendar_ops, coach_context, coach_tools, kb_retrieval, observability
+from services.calendar_rules import current_week, resolve_today, start_monday
 from services.coach_graph import (
     AppEvent,
     CitationsEvent,
@@ -34,6 +36,16 @@ from services.coach_model import (
 from services.observability import Usage
 
 logger = get_logger(__name__)
+
+
+def today_line(plan: dict[str, Any], today: dt.date) -> str:
+    """Server-built "today" line for the prompt so the model can resolve
+    "tomorrow" / "this Saturday"; the week is Monday-aligned like the engine."""
+    line = f"Today is {today.strftime('%A')} {today.isoformat()}"
+    monday = start_monday(plan.get("start_date"))
+    if monday is None:
+        return line
+    return f"{line} (plan week {current_week(monday, today)}, days Monday–Sunday)"
 
 
 async def track_chat_call(
@@ -236,7 +248,20 @@ async def run_turn(
                     break
 
         api_key = user.get("gemini_api_key") or settings.GEMINI_API_KEY
-        tools = coach_tools.build_tools(user_id=user_id, kb_api_key=api_key) if api_key else []
+        # Proposal tool only for athletes with an active plan and no active coach
+        # link (roadmap decision 10); identity and today come from the server.
+        proposal_ctx = None
+        active_plan = None
+        tools = []
+        if api_key:
+            active_plan = db.get_active_plan(user_id)
+            if active_plan and not db.get_active_coach_link_for_athlete(user_id):
+                proposal_ctx = coach_tools.ProposalContext(
+                    thread_id=thread_id,
+                    plan_id=active_plan["id"],
+                    today=resolve_today(request.get("client_today"), calendar_ops.server_today()),
+                )
+            tools = coach_tools.build_tools(user_id=user_id, kb_api_key=api_key, proposals=proposal_ctx)
 
         try:
             assistant_msg_id = db.append_chat_message(
@@ -276,6 +301,8 @@ async def run_turn(
         # prompt so `compile_coach_prompt` can render it (see coach_prompts.py).
         if thread.get("summary"):
             chat_context["summary"] = thread["summary"]
+        if proposal_ctx is not None:
+            chat_context["today"] = today_line(active_plan, proposal_ctx.today)
 
         # Prior turns as model messages: reuse context["history"] (oldest -> newest,
         # status == "ok" only) rather than a second DB read. Exclude the current
@@ -349,6 +376,12 @@ async def run_turn(
                 citations=final_citations,
                 tool_calls_json=final_tool_history or None,
             )
+            proposal_ids = [
+                tc["card_data"]["proposal_id"]
+                for tc in final_tool_history
+                if tc.get("card_type") == "schedule_proposal" and tc.get("status") == "success" and tc.get("card_data")
+            ]
+            db.set_proposals_message_id(thread_id, proposal_ids, assistant_msg_id)
 
             # 2. Finalize turn in DB
             db.finish_chat_turn(

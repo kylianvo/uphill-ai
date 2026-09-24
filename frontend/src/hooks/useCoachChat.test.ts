@@ -361,4 +361,18 @@ describe("useCoachChat", () => {
     act(() => result.current.dismissClarify());
     expect(result.current.clarifyOptions).toBeNull();
   });
+
+  it("loads live proposal states and sends client_today with each turn", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ messages: [], has_more: false, proposals: { "5": { status: "applied" } } }))
+      .mockResolvedValueOnce(sseResponse("event: done\ndata: {\"type\":\"done\",\"request_id\":\"r\",\"message_id\":1,\"replayed\":false}\n\n"));
+    global.fetch = fetchMock as unknown as typeof fetch;
+    const { result } = renderHookWithApp(() => useCoachChat());
+    await vi.waitFor(() => expect(result.current.proposalStates[5]?.status).toBe("applied"));
+    await act(async () => {
+      await result.current.send("move my run");
+    });
+    const body = JSON.parse(fetchMock.mock.calls[1][1].body);
+    expect(body.client_today).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
 });
