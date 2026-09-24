@@ -530,6 +530,7 @@ def init_db():
             user_id                 INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
             new_turns_count         INTEGER NOT NULL DEFAULT 0,
             retries_count           INTEGER NOT NULL DEFAULT 0,
+            rebuilds_count          INTEGER NOT NULL DEFAULT 0,
             created_at              TIMESTAMPTZ DEFAULT NOW(),
             updated_at              TIMESTAMPTZ DEFAULT NOW(),
             PRIMARY KEY (usage_date, user_id)
@@ -590,15 +591,18 @@ def init_db():
             thread_id               INTEGER NOT NULL REFERENCES chat_threads(id) ON DELETE CASCADE,
             message_id              INTEGER REFERENCES chat_messages(id) ON DELETE CASCADE,
             plan_id                 INTEGER NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
+            kind                    TEXT NOT NULL DEFAULT 'schedule'
+                CONSTRAINT chk_chat_proposals_kind CHECK (kind IN ('schedule', 'rebuild')),
             operations              JSONB NOT NULL,
             fingerprints            JSONB NOT NULL,
             diff                    JSONB NOT NULL,
             warnings                JSONB NOT NULL DEFAULT '[]'::jsonb,
             rationale               TEXT,
             status                  TEXT NOT NULL DEFAULT 'proposed'
-                CONSTRAINT chk_chat_proposals_status CHECK (status IN ('proposed', 'applied', 'discarded', 'stale')),
+                CONSTRAINT chk_chat_proposals_status CHECK (status IN ('generating', 'proposed', 'applied', 'discarded', 'stale', 'failed')),
             stale_reason            TEXT,
             result                  JSONB,
+            draft                   JSONB,
             created_at              TIMESTAMPTZ DEFAULT NOW(),
             resolved_at             TIMESTAMPTZ
         )
@@ -676,6 +680,15 @@ def init_db():
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS athlete_notes TEXT",
             "ALTER TABLE block_reviews ADD COLUMN IF NOT EXISTS ai_last_week_review TEXT",
             "ALTER TABLE block_reviews ADD COLUMN IF NOT EXISTS ai_this_week_description TEXT",
+            # Coach Chat 4b (week rebuild) -- see the chat_proposals / chat_daily_usage CREATE TABLEs.
+            "ALTER TABLE chat_daily_usage ADD COLUMN IF NOT EXISTS rebuilds_count INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE chat_proposals ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'schedule'",
+            "ALTER TABLE chat_proposals ADD COLUMN IF NOT EXISTS draft JSONB",
+            "ALTER TABLE chat_proposals DROP CONSTRAINT IF EXISTS chk_chat_proposals_kind",
+            "ALTER TABLE chat_proposals ADD CONSTRAINT chk_chat_proposals_kind CHECK (kind IN ('schedule', 'rebuild'))",
+            "ALTER TABLE chat_proposals DROP CONSTRAINT IF EXISTS chk_chat_proposals_status",
+            "ALTER TABLE chat_proposals ADD CONSTRAINT chk_chat_proposals_status "
+            "CHECK (status IN ('generating', 'proposed', 'applied', 'discarded', 'stale', 'failed'))",
         ]:
             try:
                 conn.execute(text(col_sql))
@@ -4383,7 +4396,7 @@ def apply_workout_moves(conn, moves: list[dict[str, Any]]) -> None:
         )
 
 
-_PROPOSAL_JSON_COLS = ("operations", "fingerprints", "diff", "warnings", "result")
+_PROPOSAL_JSON_COLS = ("operations", "fingerprints", "diff", "warnings", "result", "draft")
 
 
 def _proposal_row(row) -> dict[str, Any]:
