@@ -5,6 +5,7 @@ import { fetchPushStatus, pushCopy, pushToCoros, type PushOutcome, type PushStat
 import { localToday } from "../lib/scheduleProposals";
 
 const MARK_SRC = `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/brand/coros-mark.webp`;
+const STATUS_RETRY_MS = [1000, 3000, 8000];
 
 /** "2027-05-31" -> "31 May" / "31 thg 5", read as a local calendar date. */
 function shortDate(iso: unknown, lang: string): string {
@@ -36,12 +37,21 @@ export default function CorosPushButton({
   const [outcome, setOutcome] = useState<PushOutcome | null>(null);
 
   useEffect(() => {
+    // A failed check (backend restarting, network blip) would otherwise hide
+    // the button until a reload, so retry a few times with growing gaps.
     let cancelled = false;
-    fetchPushStatus().then((s) => {
-      if (!cancelled && s) setStatus(s);
-    });
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const attempt = (n: number) => {
+      fetchPushStatus().then((s) => {
+        if (cancelled) return;
+        if (s) setStatus(s);
+        else if (n < STATUS_RETRY_MS.length) timer = setTimeout(() => attempt(n + 1), STATUS_RETRY_MS[n]);
+      });
+    };
+    attempt(0);
     return () => {
       cancelled = true;
+      clearTimeout(timer);
     };
   }, [refreshKey]);
 

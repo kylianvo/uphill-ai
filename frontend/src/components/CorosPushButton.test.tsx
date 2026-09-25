@@ -84,6 +84,22 @@ describe("CorosPushButton", () => {
     resolve({ kind: "error", code: "COROS_unavailable", params: {} });
   });
 
+  it("retries a failed status check instead of staying hidden", async () => {
+    fetchPushStatus.mockResolvedValueOnce(null).mockResolvedValueOnce(null).mockResolvedValue({ connected: true });
+    render(<CorosPushButton lang="en" refreshKey={1} />);
+    expect(await screen.findByRole("button", { name: /send to coros/i }, { timeout: 10000 })).toBeInTheDocument();
+    expect(fetchPushStatus).toHaveBeenCalledTimes(3);
+  }, 15000);
+
+  it("stops retrying once unmounted", async () => {
+    fetchPushStatus.mockResolvedValue(null);
+    const { unmount } = render(<CorosPushButton lang="en" refreshKey={1} />);
+    await waitFor(() => expect(fetchPushStatus).toHaveBeenCalledTimes(1));
+    unmount();
+    await new Promise((r) => setTimeout(r, 3000));
+    expect(fetchPushStatus).toHaveBeenCalledTimes(1);
+  }, 10000);
+
   it("refetches status when refreshKey changes", async () => {
     fetchPushStatus.mockResolvedValue({ connected: true });
     const { rerender } = render(<CorosPushButton lang="en" refreshKey={1} />);
