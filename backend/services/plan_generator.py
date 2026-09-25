@@ -826,6 +826,20 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
         # because the tier decides the pace default as well as the rules block -- see
         # services/athlete_tier.py for why the tier follows the plan, not the athlete.
         _historical_ceiling = race_info.get("historical_ceiling") or user_profile.get("historical_ceiling")
+        race_history_text = ""
+        if user_profile.get("id"):
+            try:
+                from services.race_history import prompt_summary, tier_distance
+
+                race_history_text = prompt_summary(user_profile["id"], race_info.get("lang") or "en")
+                imported_distance = tier_distance(user_profile["id"])
+                if imported_distance:
+                    _historical_ceiling = dict(_historical_ceiling or {})
+                    _historical_ceiling["max_distance_km"] = max(
+                        _historical_ceiling.get("max_distance_km") or 0, imported_distance
+                    )
+            except Exception as exc:
+                print(f"[PlanGen] Race history unavailable: {exc}")
         _max_jog_min = user_profile.get("max_continuous_jog_min")
         athlete_tier = resolve_tier(
             explicit_tier=race_info.get("athlete_tier"),
@@ -993,6 +1007,8 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                 )
             if injury_history:
                 scheduling_notes += f"- Injury history: {injury_history}\n"
+            if race_history_text:
+                scheduling_notes += f"- {race_history_text}\n"
 
             # Historical Ceiling & Athlete Notes
             ceiling_notes = ""

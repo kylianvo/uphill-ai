@@ -41,6 +41,7 @@ interface GoalEstimate {
   reference_profile_source?: "gpx" | "synthetic" | null;
   target_course_year?: number | null;
   reference_course_year?: number | null;
+  reference_confidence?: "low";
 }
 
 function getBaseUrl(): string {
@@ -345,6 +346,7 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
     actingAsAthleteId,
     actingAsAthleteName,
     planForm,
+    setProfileSettingsOpen,
   } = useAppContext();
 
   // Pre-fill from the race date already entered in Plan creation, so the
@@ -396,6 +398,18 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
   const [refDistance, setRefDistance] = useState("");
   const [refGain, setRefGain] = useState("");
   const [refTime, setRefTime] = useState("");
+  const [historyResults, setHistoryResults] = useState<Array<{ id: number; race_name: string; race_date: string; discipline: string; distance_km: number; finish_time_sec: number; selected: boolean; is_dnf: boolean }>>([]);
+  const [selectedHistoryId, setSelectedHistoryId] = useState<number | null>(null);
+  useEffect(() => {
+    if (!isOpen) return;
+    const token = localStorage.getItem("uphill_session_token");
+    if (!token) return;
+    const path = actingAsAthleteId ? `/api/coaching/athletes/${actingAsAthleteId}/race-history` : "/api/race-history";
+    fetch(`${getBaseUrl()}${path}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((response) => response.ok ? response.json() : null)
+      .then((data) => setHistoryResults((data?.results || []).filter((result: { selected: boolean; is_dnf: boolean; finish_time_sec: number | null }) => result.selected && !result.is_dnf && result.finish_time_sec)))
+      .catch(() => setHistoryResults([]));
+  }, [isOpen, actingAsAthleteId]);
   const [flatPace, setFlatPace] = useState("");
 
   const [estimate, setEstimate] = useState<GoalEstimate | null>(null);
@@ -418,7 +432,7 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
       ? !!parseFloat(flatPace)
       : fitnessMode === "profile"
         ? !!profileBasePace
-        : !!refTime && !!refDistanceKm);
+        : !!selectedHistoryId || (!!refTime && !!refDistanceKm));
 
   const handleEstimate = async () => {
     setLoading(true);
@@ -436,19 +450,20 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
       } else if (fitnessMode === "profile") {
         payload.flat_pace_min_km = profileBasePace;
       } else {
-        payload.reference_race_name = refRaceName || null;
-        payload.reference_distance_km = refDistanceKm;
-        payload.reference_elevation_gain_m = refGainM;
-        payload.reference_time = refTime;
+        if (selectedHistoryId) payload.reference_result_id = selectedHistoryId;
+        else {
+          payload.reference_race_name = refRaceName || null;
+          payload.reference_distance_km = refDistanceKm;
+          payload.reference_elevation_gain_m = refGainM;
+          payload.reference_time = refTime;
+        }
       }
       const url = actingAsAthleteId
         ? `${getBaseUrl()}/api/coaching/athletes/${actingAsAthleteId}/goal-estimate`
         : `${getBaseUrl()}/api/coach/goal-estimate`;
       const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (actingAsAthleteId) {
-        const token = typeof window !== "undefined" ? localStorage.getItem("uphill_session_token") : null;
-        headers.Authorization = `Bearer ${token}`;
-      }
+      const token = typeof window !== "undefined" ? localStorage.getItem("uphill_session_token") : null;
+      if (token) headers.Authorization = `Bearer ${token}`;
       const response = await fetch(url, {
         method: "POST",
         headers,
@@ -710,6 +725,22 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
           ) : fitnessMode === "result" ? (
             <>
               <div style={{ ...boxStyle, gridColumn: "1 / -1" }}>
+                <label style={labelStyle}>{t("Use a past result", "Dùng kết quả Race trước")}</label>
+                {historyResults.length > 0 ? <select style={inputStyle} value={selectedHistoryId || ""} onChange={(event) => {
+                  const id = Number(event.target.value) || null;
+                  setSelectedHistoryId(id);
+                  if (id) { setRefRaceName(""); setRefDistance(""); setRefGain(""); setRefTime(""); }
+                }}>
+                  <option value="">{t("Enter a result manually", "Nhập kết quả bằng tay")}</option>
+                  {[...historyResults].sort((a, b) => a.discipline === b.discipline ? Math.abs(a.distance_km - (targetDistance || a.distance_km)) - Math.abs(b.distance_km - (targetDistance || b.distance_km)) : a.discipline === "trail" ? -1 : 1).map((result) =>
+                    <option key={result.id} value={result.id}>{result.discipline === "trail" ? "Trail" : "Road"} · {result.race_name} · {result.race_date}</option>
+                  )}
+                </select> : <button type="button" style={{ ...inputStyle, cursor: "pointer", textAlign: "left" }} onClick={() => { onClose(); setProfileSettingsOpen(true); }}>
+                  {t("Link UTMB / VBM results or add one in Profile Settings", "Liên kết UTMB / VBM hoặc thêm Race trong Cài đặt hồ sơ")}
+                </button>}
+              </div>
+              {!selectedHistoryId && <>
+              <div style={{ ...boxStyle, gridColumn: "1 / -1" }}>
                 <label style={labelStyle}>{t("Race you finished", "Giải bạn đã hoàn thành")}</label>
                 <RaceNameField
                   placeholder={t("e.g. VMM 50k — or leave blank and enter numbers", "vd. VMM 50k — hoặc bỏ trống và nhập số")}
@@ -753,6 +784,7 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
                 <label style={labelStyle}>{t("Your finish time", "Thời gian hoàn thành")}</label>
                 <input type="text" placeholder="e.g. 7:30:00" value={refTime} onChange={(e) => setRefTime(e.target.value)} style={inputStyle} />
               </div>
+              </>}
             </>
           ) : (
             <div style={boxStyle}>
@@ -790,6 +822,9 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
 
         {estimate && (
           <div style={{ marginTop: "28px", paddingTop: "24px", borderTop: "1px solid rgba(0,0,0,0.1)" }}>
+            {estimate.reference_confidence === "low" && <p style={{ color: "#b45309", fontSize: 13 }}>
+              {t("Road speed may overestimate your trail ability.", "Pace Road có thể ước tính quá cao khả năng Trail của bạn.")}
+            </p>}
             <p style={{ fontSize: "13.5px", color: "var(--text-secondary)", marginBottom: "16px" }}>
               {t("Current predicted time on", "Dự đoán thành tích hiện tại cho")}{" "}
               <strong>

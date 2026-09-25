@@ -23,6 +23,7 @@ import WorkoutTypeMixChart from "../components/WorkoutTypeMixChart";
 import AdherenceTrendChart from "../components/AdherenceTrendChart";
 import MissedByDayChart from "../components/MissedByDayChart";
 import RaceBreakdownCard from "../components/RaceBreakdownCard";
+import RaceHistoryPanel from "../components/RaceHistoryPanel";
 import { matchesFilters, type RosterFilters } from "../utils/coachRosterFilters";
 
 export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) {
@@ -40,6 +41,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
   const [selectedRace, setSelectedRace] = useState<string | null>(null);
   const [rosterVisibleLimit, setRosterVisibleLimit] = useState(8);
   const [rosterTabSearch, setRosterTabSearch] = useState("");
+  const [historyAthleteId, setHistoryAthleteId] = useState<number | null>(null);
 
   const {
     roster,
@@ -324,6 +326,12 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
                       </div>
                       <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                         {row.status === "active" && (
+                          <button type="button" onClick={() => setHistoryAthleteId(historyAthleteId === row.athlete_id ? null : row.athlete_id)}
+                            style={{ padding: "6px 10px", fontSize: "12px", borderRadius: "8px", border: "1px solid var(--border-color)", background: "transparent", color: "var(--text-primary)", cursor: "pointer" }}>
+                            {lang === "en" ? "Race history" : "Lịch sử Race"}
+                          </button>
+                        )}
+                        {row.status === "active" && (
                           <button
                             onClick={() => enterAthleteView(row.athlete_id, row.athlete_name || row.athlete_email)}
                             style={{
@@ -353,6 +361,7 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
                       </div>
                     </div>
                   ))}
+                  {historyAthleteId && <RaceHistoryPanel key={historyAthleteId} lang={lang} athleteId={historyAthleteId} initiallyOpen />}
                 </div>
               );
             })()}

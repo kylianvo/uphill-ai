@@ -141,6 +141,7 @@ def init_db():
             -- athlete's data. Lives on the plan, not the user: the same athlete can
             -- hold a start-running plan and a race plan at once.
             athlete_tier            TEXT,
+            prediction              JSONB,
             created_by_user_id      INTEGER REFERENCES users(id),
             plan_status             TEXT NOT NULL DEFAULT 'active',  -- 'draft' | 'active'
             approved_by_user_id     INTEGER REFERENCES users(id),
@@ -387,6 +388,100 @@ def init_db():
         )
         """)
         )
+
+        conn.execute(
+            text("""
+        CREATE TABLE IF NOT EXISTS race_profile_claims (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            source TEXT NOT NULL CHECK (source IN ('utmb', 'vbm')),
+            external_id TEXT NOT NULL,
+            display_name TEXT NOT NULL,
+            meta JSONB NOT NULL DEFAULT '{}'::jsonb,
+            verified BOOLEAN NOT NULL DEFAULT FALSE,
+            verification_methods TEXT[] NOT NULL DEFAULT '{}',
+            sync_status TEXT NOT NULL DEFAULT 'pending',
+            sync_error TEXT,
+            sync_attempts INTEGER NOT NULL DEFAULT 0,
+            sync_requested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            last_synced_at TIMESTAMPTZ,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            UNIQUE (user_id, source, external_id),
+            UNIQUE (id, user_id)
+        )
+        """)
+        )
+        conn.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_race_claim_utmb ON race_profile_claims (external_id) WHERE source = 'utmb'"
+            )
+        )
+
+        conn.execute(
+            text("""
+        CREATE TABLE IF NOT EXISTS race_results (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            claim_id INTEGER,
+            source TEXT NOT NULL CHECK (source IN ('utmb', 'vbm', 'manual')),
+            source_key TEXT NOT NULL,
+            discipline TEXT NOT NULL CHECK (discipline IN ('trail', 'road')),
+            race_name TEXT NOT NULL,
+            event_name TEXT,
+            race_date DATE NOT NULL,
+            country_code TEXT,
+            distance_km REAL NOT NULL,
+            elevation_gain_m REAL,
+            utmb_category TEXT,
+            finish_time_sec INTEGER,
+            is_dnf BOOLEAN NOT NULL DEFAULT FALSE,
+            rank_overall INTEGER,
+            total_overall INTEGER,
+            rank_gender INTEGER,
+            total_gender INTEGER,
+            rank_age_group INTEGER,
+            total_age_group INTEGER,
+            bib TEXT,
+            result_url TEXT,
+            source_race_uri TEXT,
+            is_pr BOOLEAN NOT NULL DEFAULT FALSE,
+            selected BOOLEAN NOT NULL DEFAULT TRUE,
+            hidden BOOLEAN NOT NULL DEFAULT FALSE,
+            user_note TEXT,
+            verified BOOLEAN NOT NULL DEFAULT FALSE,
+            verification_methods TEXT[] NOT NULL DEFAULT '{}',
+            matched_activity_id INTEGER REFERENCES activities(id) ON DELETE SET NULL,
+            raw JSONB NOT NULL DEFAULT '{}'::jsonb,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            FOREIGN KEY (claim_id, user_id) REFERENCES race_profile_claims(id, user_id) ON DELETE CASCADE,
+            UNIQUE (claim_id, source_key)
+        )
+        """)
+        )
+        conn.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_race_result_manual_key ON race_results (source_key) WHERE source = 'manual'"
+            )
+        )
+        conn.execute(
+            text("CREATE INDEX IF NOT EXISTS idx_race_results_user_date ON race_results (user_id, race_date DESC)")
+        )
+
+        conn.execute(
+            text("""
+        CREATE TABLE IF NOT EXISTS vbm_athletes (
+            vbm_id TEXT PRIMARY KEY,
+            full_name TEXT NOT NULL,
+            name_norm TEXT NOT NULL,
+            sex_band TEXT,
+            events JSONB NOT NULL DEFAULT '{}'::jsonb,
+            clubs JSONB NOT NULL DEFAULT '[]'::jsonb,
+            refreshed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        """)
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_vbm_athletes_name ON vbm_athletes (name_norm)"))
 
         conn.execute(
             text("""
@@ -665,6 +760,7 @@ def init_db():
             # blocks above; these ALTERs self-migrate existing dev databases).
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS max_continuous_jog_min INTEGER",
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS athlete_tier TEXT",
+            "ALTER TABLE plans ADD COLUMN IF NOT EXISTS prediction JSONB",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS rpe INTEGER",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS notes TEXT",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS session_slot TEXT DEFAULT 'main'",

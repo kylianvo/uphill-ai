@@ -17,6 +17,7 @@ import {
 } from '../utils/notifications';
 import { triggerHaptic } from '../utils/native';
 import ConnectedAccounts from '../components/ConnectedAccounts';
+import RaceHistoryPanel from '../components/RaceHistoryPanel';
 
 export default function ProfileSettingsModal() {
   const ctx = useAppContext();
@@ -844,6 +845,7 @@ export default function ProfileSettingsModal() {
 
 
 
+          <RaceHistoryPanel lang={lang} />
           <form onSubmit={handleSaveProfile} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
 
 
