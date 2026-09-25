@@ -71,6 +71,7 @@ describe("ConnectedAccounts", () => {
     render(<ConnectedAccounts />);
     expect(screen.getByText(/Last synced/)).toBeInTheDocument();
     expect(screen.getByText(/Data provided by COROS/)).toBeInTheDocument();
+    expect(screen.getByAltText("COROS")).toHaveAttribute("src", expect.stringContaining("/brand/coros-logo.webp"));
     expect(screen.getByRole("button", { name: "Sync now" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Disconnect" })).toBeInTheDocument();
   });

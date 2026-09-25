@@ -144,6 +144,7 @@ class Config:
         "COROS_REDIRECT_URI", "https://api.uphill-ai.io.vn/api/integrations/coros/callback"
     )
     COROS_MCP_ENDPOINT: str = os.getenv("COROS_MCP_ENDPOINT", "https://mcp.coros.com/mcp")
+    COROS_DAILY_PUSH_LIMIT: int = int(os.getenv("COROS_DAILY_PUSH_LIMIT", "10"))
 
     # Where the OAuth callback redirects the athlete's browser after a COROS
     # connect attempt (success or failure) -- the static-export frontend, not the API.

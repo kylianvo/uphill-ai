@@ -132,7 +132,13 @@ export default function ConnectedAccounts() {
 
       <div className="device-row">
         <div>
-          <strong className="device-name">COROS</strong>
+          <img
+            className="device-name"
+            src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/brand/coros-logo.webp`}
+            alt="COROS"
+            height={18}
+            style={{ height: "18px", width: "auto", display: "block" }}
+          />
           <div className="device-state">
             {checkingConnection
               ? lang === "vi"

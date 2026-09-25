@@ -25,6 +25,8 @@ ALL_TABLES = [
     "shoes",
     "analytics_events",
     "nutrition_products",
+    "coros_plan_links",
+    "coros_push_usage",
     "workouts",
     "plans",
     "sessions",

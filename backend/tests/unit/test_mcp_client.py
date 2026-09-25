@@ -223,3 +223,32 @@ async def test_call_tool_unquotes_json_encoded_string_response():
     client = McpClient(ENDPOINT, "tok", transport=_transport(handler))
     await client.initialize()
     assert await client.call_tool("querySportRecords", {}) == "Line 1\nLine 2\nLine 3"
+
+
+@pytest.mark.asyncio
+async def test_tool_error_raises_mcp_tool_error_with_reason():
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        if body["method"] == "notifications/initialized":
+            return httpx.Response(202)
+        if body["method"] == "initialize":
+            return httpx.Response(
+                200, json={"jsonrpc": "2.0", "id": body["id"], "result": {}}, headers={"Mcp-Session-Id": "s"}
+            )
+        return httpx.Response(
+            200,
+            json={
+                "jsonrpc": "2.0",
+                "id": body["id"],
+                "result": {"isError": True, "content": [{"type": "text", "text": "courseName must not be empty"}]},
+            },
+        )
+
+    from services.mcp_client import McpToolError
+
+    client = McpClient(ENDPOINT, "tok", transport=_transport(handler))
+    await client.initialize()
+    with pytest.raises(McpToolError) as info:
+        await client.call_tool("createTrainingPlan", {})
+    assert isinstance(info.value, McpError)
+    assert "courseName must not be empty" in info.value.reason

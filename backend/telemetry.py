@@ -39,3 +39,5 @@ llm_unknown_usage_calls_total = Counter(
     "Gemini calls whose final token usage was unavailable",
     ["feature", "status"],
 )
+
+coros_push_total = Counter("coros_push_total", "Send-to-COROS pushes by result code", ["result"])
