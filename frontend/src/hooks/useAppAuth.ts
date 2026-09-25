@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useAppContext } from "../contexts/AppContext";
 import { usePlanner } from "./usePlanner";
+import { GOOGLE_IOS_CLIENT_ID, GOOGLE_WEB_CLIENT_ID } from "../lib/googleClientIds";
 
 export function useAppAuth() {
   const ctx = useAppContext();
@@ -128,9 +129,9 @@ export function useAppAuth() {
       const { SocialLogin } = await import("@capgo/capacitor-social-login");
       await SocialLogin.initialize({
         google: {
-          iOSClientId: process.env.NEXT_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-          webClientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
-          iOSServerClientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+          iOSClientId: GOOGLE_IOS_CLIENT_ID,
+          webClientId: GOOGLE_WEB_CLIENT_ID,
+          iOSServerClientId: GOOGLE_WEB_CLIENT_ID,
         },
       });
       // No custom `scopes` here: the plugin's Android GoogleProvider hard-
