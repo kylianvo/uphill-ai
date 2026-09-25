@@ -16,7 +16,7 @@ from typing import Any, Literal
 SPORT_RUNNING = 1
 SPORT_REST = 4
 SECTION_WARMUP, SECTION_TRAINING, SECTION_RECOVERY, SECTION_COOLDOWN = 1, 2, 3, 4
-TARGET_DISTANCE, TARGET_TIME = 1, 2
+TARGET_DISTANCE, TARGET_TIME, TARGET_FREE = 1, 2, 4
 INTENSITY_HR = 1
 MAX_REPEATS = 20
 MAX_NAME = 100
@@ -43,12 +43,16 @@ _TEXT = {
         "rest_desc": "Recovery day. No structured training.",
         "hr": "Keep heart rate {lo}–{hi} bpm.",
         "climb": "About {m} m of climbing.",
+        "race_name": "Race day: {race}",
+        "race_desc": "Race day. Uphill AI adds your race-day plan here once it's generated.",
     },
     "vi": {
         "rest_name": "Nghỉ",
         "rest_desc": "Ngày hồi phục. Không có buổi tập.",
         "hr": "Giữ nhịp tim {lo}–{hi} bpm.",
         "climb": "Khoảng {m} m leo dốc.",
+        "race_name": "Ngày đua: {race}",
+        "race_desc": "Ngày đua. Uphill AI sẽ thêm plan cho ngày đua vào đây khi đã tạo xong.",
     },
 }
 
@@ -167,7 +171,26 @@ def _interval_group(w: dict[str, Any], main: dict[str, int]) -> dict[str, Any] |
     }
 
 
+def race_day_course(race_name: str | None, distance_km: Any, lang: str) -> dict[str, Any]:
+    """Race-day placeholder until Uphill generates the real race-day workout: the
+    race distance as a distance target (free mode when unknown) and deliberately
+    no heart-rate target -- a placeholder shouldn't guess race effort."""
+    t = _t(lang)
+    meters = int(round(_float(distance_km) * 1000))
+    section: dict[str, Any] = {"sectionType": SECTION_TRAINING, "targetType": TARGET_FREE}
+    if meters > 0:
+        section = _section(SECTION_TRAINING, TARGET_DISTANCE, meters, {})
+    return {
+        "sportType": SPORT_RUNNING,
+        "courseName": t["race_name"].format(race=race_name or "Race")[:MAX_NAME],
+        "courseDescription": t["race_desc"],
+        "sections": [section],
+    }
+
+
 def build_course(w: dict[str, Any], lang: str) -> dict[str, Any] | None:
+    if w.get("race_placeholder"):
+        return race_day_course(w.get("race_name"), w.get("course_distance_km"), lang)
     if workout_kind(w) != "run":
         return None
     minutes = _int(w.get("duration_minutes"))
@@ -244,10 +267,13 @@ def _section_errors(s: dict[str, Any]) -> list[str]:
     errs = []
     if s.get("sectionType") not in (1, 2, 3, 4):
         errs.append("section_type")
-    if s.get("targetType") not in (TARGET_DISTANCE, TARGET_TIME):
-        errs.append("target_type")
     value = s.get("targetValue")
-    if not isinstance(value, int) or value <= 0:
+    if s.get("targetType") == TARGET_FREE:
+        if value not in (None, 0):
+            errs.append("target_value")
+    elif s.get("targetType") not in (TARGET_DISTANCE, TARGET_TIME):
+        errs.append("target_type")
+    elif not isinstance(value, int) or value <= 0:
         errs.append("target_value")
     formats = sum(1 for k in _FORMAT_KEYS if k in s)
     if "intensityType" in s:

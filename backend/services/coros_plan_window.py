@@ -13,10 +13,13 @@ from typing import Any
 
 from services.calendar_rules import DAYS, start_monday, workout_date
 from services.coach_tools.base import json_safe
-from services.coros_workouts import SPORT_REST, build_day, rest_course, validate_course
+from services.coros_workouts import SPORT_REST, build_day, rest_course, validate_course, workout_kind
 
 WINDOW_WEEKS = 4
+MIN_PLAN_WEEKS = 4
 MAX_PLAN_WEEKS = 16
+MAX_START_DELAY_DAYS = 14  # COROS: planStartDate within [today, today + 14]
+RACE_GOALS = frozenset({"finish", "time", "optimal"})
 DEFAULT_PHASE = 1  # COROS "preparation"
 PHASE_TYPES = {
     "base": 2,
@@ -48,6 +51,9 @@ HASH_FIELDS = (
     "is_completed",
     "matched_activity_id",
     "approved_at",
+    "race_placeholder",
+    "race_name",
+    "course_distance_km",
 )
 
 
@@ -90,7 +96,118 @@ def _day_hash(rows: list[dict[str, Any]]) -> str:
 
 
 def day_hashes(by_date: dict[dt.date, list[dict[str, Any]]], start: dt.date, end: dt.date) -> dict[str, str]:
-    return {d.isoformat(): _day_hash(by_date.get(d, [])) for d in _dates(start, end)}
+    return day_hashes_for(by_date, _dates(start, end))
+
+
+def day_hashes_for(by_date: dict[dt.date, list[dict[str, Any]]], dates: list[dt.date]) -> dict[str, str]:
+    return {d.isoformat(): _day_hash(by_date.get(d, [])) for d in dates}
+
+
+def _as_date(value: Any) -> dt.date | None:
+    if isinstance(value, dt.datetime):
+        return value.date()
+    if isinstance(value, dt.date):
+        return value
+    try:
+        return dt.date.fromisoformat(str(value)[:10]) if value else None
+    except ValueError:
+        return None
+
+
+def race_date_of(plan: dict[str, Any]) -> dt.date | None:
+    return _as_date(plan.get("race_date"))
+
+
+def is_race_goal(plan: dict[str, Any]) -> bool:
+    """A real race to anchor a COROS plan on. Non-race goals store a synthetic
+    race_date at the plan's end, which must not become a "Race day"."""
+    return str(plan.get("goal_type") or "").lower() in RACE_GOALS and race_date_of(plan) is not None
+
+
+def with_race_day(
+    plan: dict[str, Any], by_date: dict[dt.date, list[dict[str, Any]]]
+) -> dict[dt.date, list[dict[str, Any]]]:
+    """by_date plus a race-day placeholder row when the race day has no generated run.
+    The row carries race name/distance so the day hash follows race edits."""
+    race = race_date_of(plan)
+    if not is_race_goal(plan) or race is None:
+        return by_date
+    if any(workout_kind(r) == "run" for r in by_date.get(race, [])):
+        return by_date
+    placeholder = {
+        "id": None,
+        "race_placeholder": True,
+        "race_name": plan.get("race_name"),
+        "course_distance_km": plan.get("course_distance_km"),
+        "type": "Race",
+        "approved_at": "race",
+        "session_slot": "main",
+    }
+    return {**by_date, race: [*by_date.get(race, []), placeholder]}
+
+
+def last_generated_date(by_date: dict[dt.date, list[dict[str, Any]]]) -> dt.date | None:
+    return max(by_date) if by_date else None
+
+
+def last_run_date(by_date: dict[dt.date, list[dict[str, Any]]]) -> dt.date | None:
+    runs = [d for d, rows in by_date.items() if any(workout_kind(r) == "run" for r in rows)]
+    return max(runs) if runs else None
+
+
+class GeometryRefusal(Exception):
+    def __init__(self, code: str, params: dict[str, Any]) -> None:
+        super().__init__(code)
+        self.code = code
+        self.params = params
+
+
+@dataclass(frozen=True)
+class PlanGeometry:
+    start: dt.date
+    end: dt.date  # Sunday of the final week
+    weeks: int
+
+
+def plan_geometry(race: dt.date, last_run: dt.date | None, today: dt.date) -> PlanGeometry:
+    """A new COROS plan anchored on race day: it starts today, or later (up to
+    14 days, the COROS limit) so a far race still fits in 16 weeks; it ends on
+    race week, or on a later generated run's week, capped at 16 weeks."""
+    race_monday = monday_of(race)
+    earliest = race_monday - dt.timedelta(weeks=MAX_PLAN_WEEKS - 1)
+    start = max(today, earliest)
+    if start > today + dt.timedelta(days=MAX_START_DELAY_DAYS):
+        opens_on = earliest - dt.timedelta(days=MAX_START_DELAY_DAYS)
+        raise GeometryRefusal("RACE_too_far", {"opens_on": opens_on.isoformat()})
+    end_monday = max(race_monday, monday_of(last_run)) if last_run else race_monday
+    end_monday = min(end_monday, monday_of(start) + dt.timedelta(weeks=MAX_PLAN_WEEKS - 1))
+    end = end_monday + dt.timedelta(days=6)
+    weeks = natural_weeks(start, end)
+    if weeks < MIN_PLAN_WEEKS:
+        raise GeometryRefusal("RACE_too_close", {"weeks": natural_weeks(today, race)})
+    return PlanGeometry(start=start, end=end, weeks=weeks)
+
+
+def send_dates(frm: dt.date, last_generated: dt.date | None, race: dt.date | None) -> list[dt.date]:
+    """Every date from `frm` through the last generated date, plus race day.
+    Ungenerated days are not sent, so COROS shows them empty rather than "Rest"."""
+    dates = _dates(frm, last_generated) if last_generated and last_generated >= frm else []
+    if race and race >= frm and race not in dates:
+        dates.append(race)
+    return sorted(dates)
+
+
+def clear_dates(stored: dict[str, str], sent: list[dt.date], frm: dt.date, until: dt.date) -> list[dt.date]:
+    """Days sent before that aren't sent now (a moved workout, a moved race):
+    a rest entry clears them. Only within [frm, until] -- COROS can't edit the past
+    or days beyond the plan's end."""
+    sent_set = set(sent)
+    out = []
+    for key in stored:
+        d = _as_date(key)
+        if d and frm <= d <= until and d not in sent_set:
+            out.append(d)
+    return sorted(out)
 
 
 @dataclass
@@ -109,11 +226,21 @@ class PushWindow:
     invalid: int = 0
 
 
-def build_window(by_date: dict[dt.date, list[dict[str, Any]]], start: dt.date, end: dt.date, lang: str) -> PushWindow:
-    """One DayPush per date in [start, end], except locked days (a completed or
-    matched Uphill workout) which are omitted so COROS keeps what it has."""
+def build_window(
+    by_date: dict[dt.date, list[dict[str, Any]]],
+    start: dt.date,
+    end: dt.date,
+    lang: str,
+    *,
+    dates: list[dt.date] | None = None,
+    clear: list[dt.date] | None = None,
+) -> PushWindow:
+    """One DayPush per date in `dates` (default: every date in [start, end]),
+    plus a rest entry for each `clear` date. Locked days (a completed or matched
+    Uphill workout) are omitted so COROS keeps what it has."""
     window = PushWindow(start=start, end=end)
-    for d in _dates(start, end):
+    wanted = _dates(start, end) if dates is None else list(dates)
+    for d in sorted({*wanted, *(clear or [])}):
         rows = by_date.get(d, [])
         if any(r.get("is_completed") or r.get("matched_activity_id") for r in rows):
             window.locked_dates.append(d)
@@ -123,6 +250,22 @@ def build_window(by_date: dict[dt.date, list[dict[str, Any]]], start: dt.date, e
         window.invalid += len(courses) - len(valid)
         window.left_in_uphill += left
         window.days.append(DayPush(d, valid or [rest_course(lang)]))
+    return window
+
+
+def standalone_window(
+    by_date: dict[dt.date, list[dict[str, Any]]], start: dt.date, end: dt.date, lang: str
+) -> PushWindow:
+    """Standalone COROS workouts can only be runs: rest days are skipped and
+    strength sessions (a rest-type placeholder in plan mode) stay in Uphill."""
+    full = build_window(by_date, start, end, lang)
+    window = PushWindow(start=start, end=end, locked_dates=full.locked_dates, invalid=full.invalid)
+    for day in full.days:
+        rows = [r for r in by_date.get(day.date, []) if r.get("approved_at") is not None]
+        runs = [c for c in day.courses if c["sportType"] != SPORT_REST]
+        window.left_in_uphill += sum(1 for r in rows if workout_kind(r) == "other")
+        if runs:
+            window.days.append(DayPush(day.date, runs))
     return window
 
 
