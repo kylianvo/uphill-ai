@@ -85,3 +85,99 @@ class TestMeAndLogout:
 
         me_resp = client.get("/api/auth/me", headers=auth_headers["headers"])
         assert me_resp.status_code in (401, 403)
+
+
+class TestSessionLifetime:
+    """Sessions slide: a returning athlete stays logged in as long as they
+    open the app within JWT_EXPIRE_DAYS of their last visit."""
+
+    def _expires_at(self, token):
+        from sqlalchemy import text
+
+        from db import engine
+
+        with engine.connect() as conn:
+            return conn.execute(
+                text("SELECT expires_at FROM sessions WHERE session_token = :t"), {"t": token}
+            ).scalar_one()
+
+    def _set_expires_in(self, token, days):
+        from sqlalchemy import text
+
+        from db import engine
+
+        with engine.connect() as conn:
+            conn.execute(
+                text("UPDATE sessions SET expires_at = NOW() + make_interval(days => :d) WHERE session_token = :t"),
+                {"d": days, "t": token},
+            )
+            conn.commit()
+
+    def test_new_session_lasts_jwt_expire_days(self, client, auth_headers):
+        import datetime
+
+        from config import settings
+
+        token = auth_headers["headers"]["Authorization"].split(" ", 1)[1]
+        remaining = self._expires_at(token) - datetime.datetime.now(datetime.UTC)
+        assert remaining > datetime.timedelta(days=settings.JWT_EXPIRE_DAYS - 1)
+
+    def test_using_an_aging_session_extends_it(self, client, auth_headers):
+        import datetime
+
+        from config import settings
+
+        token = auth_headers["headers"]["Authorization"].split(" ", 1)[1]
+        self._set_expires_in(token, 1)
+
+        resp = client.get("/api/auth/me", headers=auth_headers["headers"])
+        assert resp.status_code == 200
+
+        remaining = self._expires_at(token) - datetime.datetime.now(datetime.UTC)
+        assert remaining > datetime.timedelta(days=settings.JWT_EXPIRE_DAYS - 1)
+
+    def test_a_session_past_its_jwt_exp_still_works_while_the_db_row_is_live(self, client):
+        """Tokens minted before sliding sessions carry a 7-day JWT exp; the DB
+        row is the source of truth, so extending it must keep them valid."""
+        import datetime
+
+        import jwt
+
+        from config import settings
+        from db import verify_session
+
+        resp = client.post("/api/auth/mock-login", json={"email": "old-token@uphill.ai"})
+        user_id = resp.json()["user"]["id"]
+        past = datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=1)
+        old_token = jwt.encode(
+            {"sub": str(user_id), "exp": past, "iat": past - datetime.timedelta(days=7), "jti": "old"},
+            settings.JWT_SECRET,
+            algorithm=settings.JWT_ALGORITHM,
+        )
+        from sqlalchemy import text
+
+        from db import engine
+
+        with engine.connect() as conn:
+            conn.execute(
+                text(
+                    "INSERT INTO sessions (session_token, user_id, expires_at) VALUES (:t, :u, NOW() + interval '1 day')"
+                ),
+                {"t": old_token, "u": user_id},
+            )
+            conn.commit()
+
+        assert verify_session(old_token)["id"] == user_id
+
+    def test_an_expired_db_row_is_rejected(self, client, auth_headers):
+        token = auth_headers["headers"]["Authorization"].split(" ", 1)[1]
+        self._set_expires_in(token, -1)
+        resp = client.get("/api/auth/me", headers=auth_headers["headers"])
+        assert resp.status_code == 401
+
+    def test_a_forged_token_is_rejected(self, client, auth_headers):
+        import jwt
+
+        forged = jwt.encode({"sub": str(auth_headers["user_id"])}, "wrong-secret", algorithm="HS256")
+        resp = client.get("/api/auth/me", headers={"Authorization": f"Bearer {forged}"})
+        assert resp.status_code == 401

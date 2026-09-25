@@ -24,6 +24,8 @@ import { GoalDeterminer } from "../../components/GoalDeterminer";
 import { translations } from "../translations";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { getApiBaseUrl } from "@/lib/apiUrlOverride";
+import { clearCachedUser, loadCachedUser } from "@/utils/cachedUser";
+import type { User } from "@/types";
 import {
   House,
   Robot,
@@ -971,13 +973,37 @@ export default function AppPage() {
       });
     }
   }, [profileForm.age, onboardingMode, zone2Max, onboardingOpen]);
+  const applyProfileForm = (userData: User) => {
+    setProfileForm({
+      age: String(userData.age ?? 30),
+      gender: userData.gender ?? "",
+      height_cm: userData.height_cm != null ? String(userData.height_cm) : "",
+      weight_kg: userData.weight_kg != null ? String(userData.weight_kg) : "",
+      max_hr: String(userData.max_hr ?? 185),
+      resting_hr: String(userData.resting_hr ?? 60),
+      aet_hr: String(userData.aet_hr ?? 135),
+      ant_hr: String(userData.ant_hr ?? 165),
+      gemini_api_key: userData.gemini_api_key ?? "",
+      zone2_pace_min: userData.zone2_pace_min ?? "6:30",
+      zone2_pace_max: userData.zone2_pace_max ?? "5:45",
+    });
+  };
   // Load backend health, active session, and training plans on mount
   useEffect(() => {
     checkHealth();
     // Check local session storage
     const token = localStorage.getItem("uphill_session_token");
     if (token) {
-      setAuthLoading(true);
+      // Show the last known profile straight away and revalidate below, so a
+      // slow mobile network doesn't hold the app on a signed-out screen.
+      // Only without a cached profile do we block on /api/auth/me.
+      const cachedUser = loadCachedUser();
+      if (cachedUser) {
+        setUser(cachedUser);
+        applyProfileForm(cachedUser);
+      } else {
+        setAuthLoading(true);
+      }
       // Fired in parallel with /api/auth/me below, not chained after it --
       // active-plan only needs the bearer token, so waiting for the user
       // profile first just added a second sequential round-trip to the time
@@ -997,30 +1023,30 @@ export default function AppPage() {
         })
         .then((userData) => {
           setUser(userData);
-          setProfileForm({
-            age: String(userData.age ?? 30),
-            gender: userData.gender ?? "",
-            height_cm: userData.height_cm != null ? String(userData.height_cm) : "",
-            weight_kg: userData.weight_kg != null ? String(userData.weight_kg) : "",
-            max_hr: String(userData.max_hr ?? 185),
-            resting_hr: String(userData.resting_hr ?? 60),
-            aet_hr: String(userData.aet_hr ?? 135),
-            ant_hr: String(userData.ant_hr ?? 165),
-            gemini_api_key: userData.gemini_api_key ?? "",
-            zone2_pace_min: userData.zone2_pace_min ?? "6:30",
-            zone2_pace_max: userData.zone2_pace_max ?? "5:45",
-          });
+          applyProfileForm(userData);
           fetchSourcesWithToken(userData, token);
         })
         .catch((err) => {
           // Only a confirmed 401/403 means the session is actually invalid.
           // A network blip or backend hiccup at launch must not delete a
-          // valid 7-day session token -- that's what was logging mobile
-          // users out on every flaky connection.
+          // valid session token -- that's what was logging mobile users out
+          // on every flaky connection -- nor drop the cached profile.
           if (err instanceof Error && err.message === "unauthorized") {
             localStorage.removeItem("uphill_session_token");
+            clearCachedUser();
+            setUser(null);
+            if (cachedUser) {
+              // The app was already showing them signed in: undo that and ask
+              // them to log in, off any tab that needs an account.
+              setActivePlan(null);
+              setWorkouts([]);
+              setSources([]);
+              setActiveTab((prev: string) => (prev === "chat" || prev === "planner" ? (isNativePlatform() ? "home" : "tools") : prev));
+              setAuthModalOpen(true);
+            }
+          } else if (!cachedUser) {
+            setUser(null);
           }
-          setUser(null);
         })
         .finally(() => {
           setAuthLoading(false);
@@ -1654,6 +1680,7 @@ export default function AppPage() {
       }
     }
     localStorage.removeItem("uphill_session_token");
+    clearCachedUser();
     setUser(null);
     setActivePlan(null);
     setWorkouts([]);

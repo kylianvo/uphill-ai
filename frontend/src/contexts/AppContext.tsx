@@ -8,6 +8,7 @@ import { Message, ParsedSummary, RagSource, Workout, ActivePlan, PacedCheckpoint
 import { isNativePlatform } from "../utils/native";
 import { hasNotificationPermission, scheduleDailyKnowledgeReminder, scheduleNotification, buildWorkoutReminderContent, DAILY_WORKOUT_REMINDER_ID } from "../utils/notifications";
 import { resolveCurrentWeek } from "../utils/planDate";
+import { clearCachedUser, saveCachedUser } from "../utils/cachedUser";
 
 interface AppContextType {
   isNutritionLabOpen: any;
@@ -416,6 +417,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const handleLogout = () => {
     localStorage.removeItem("uphill_session_token");
+    clearCachedUser();
     setUser(null);
     setActivePlan(null);
     setWorkouts([]);
@@ -425,13 +427,29 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     setActingAsAthleteName("");
   };
 
+  // Keep the relaunch cache in step with every sign-in and profile change.
+  useEffect(() => {
+    if (user) saveCachedUser(user);
+  }, [user]);
+
+  // A gated tab tapped while the stored session is still being restored at
+  // launch (/api/auth/me in flight -- slow on mobile). Opening AuthModal then
+  // would ask an already-signed-in athlete to log in again, so hold the tab
+  // until the restore settles.
+  const [pendingTab, setPendingTab] = useState<"chat" | "planner" | null>(null);
+
   const handleTabSwitch = (
     tab: "home" | "about" | "chat" | "planner" | "tools" | "knowledge" | "coach",
   ) => {
     if ((tab === "chat" || tab === "planner") && !user) {
+      if (authLoading) {
+        setPendingTab(tab);
+        return;
+      }
       setAuthModalOpen(true);
       return;
     }
+    setPendingTab(null);
     setActiveTab(tab);
     if (tab === "planner") {
       setPlanJobStatus("idle");
@@ -440,6 +458,18 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       }
     }
   };
+
+  useEffect(() => {
+    if (!pendingTab || authLoading) return;
+    if (user) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      handleTabSwitch(pendingTab);
+    } else {
+      setPendingTab(null);
+      setAuthModalOpen(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingTab, authLoading, user]);
 
   // Re-arm local notifications whenever activePlan/workouts change (including
   // cold start) so their content stays fresh -- both the workout reminder's
