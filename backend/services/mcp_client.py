@@ -24,6 +24,17 @@ class McpError(RuntimeError):
     """The MCP server returned a JSON-RPC error or an unusable response."""
 
 
+class McpToolError(McpError):
+    """The server answered, but the tool refused the call (JSON-RPC error or
+    isError result) -- e.g. a COROS validation failure. Distinct from a
+    transport failure so callers can tell "rejected" from "unreachable".
+    `reason` is the server's text, for logs only (truncate before logging)."""
+
+    def __init__(self, message: str, reason: str = "") -> None:
+        super().__init__(message)
+        self.reason = reason
+
+
 class McpClient:
     def __init__(
         self,
@@ -156,11 +167,15 @@ class McpClient:
         )
         payload = self._decode(response, request_id)
         if "error" in payload:
-            raise McpError(str(payload["error"].get("message", payload["error"])))
+            reason = str(payload["error"].get("message", payload["error"]))
+            raise McpToolError(reason, reason=reason)
 
         result = payload.get("result", {})
         if result.get("isError"):
-            raise McpError(f"tool {name} reported an error")
+            reason = "".join(
+                b.get("text", "") for b in result.get("content", []) if isinstance(b, dict) and b.get("type") == "text"
+            )
+            raise McpToolError(f"tool {name} reported an error", reason=reason)
         text_blocks: list[str] = []
         for block in result.get("content", []):
             if block.get("type") == "text":
