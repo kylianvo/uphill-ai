@@ -208,6 +208,11 @@ def compile_coach_prompt(
             a_lines.append(f"- {name}{dist}")
         parts.append("\n".join(a_lines))
 
+    # Race history: its first line is the "RACE HISTORY" title. Result notes in it
+    # are athlete-written, like their chat messages -- context, not instructions.
+    if context and context.get("race_history"):
+        parts.append("### " + str(context["race_history"]).strip())
+
     # Retained thread summary -- untrusted, same framing as athlete chat messages:
     # it is Coach Uphill's own prior recap, not a source of new instructions, and
     # can't override the core instructions above.

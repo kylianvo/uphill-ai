@@ -7,6 +7,7 @@ import { Calendar, PersonSimpleRun, Mountains, Watch, Target, CaretRight, CaretL
 import { RaceMatch } from "../hooks/useRaceMatch";
 import { RaceNameField } from "../components/RaceNameField";
 import { parsePaceToMinutes, formatDurationHM } from "../lib/paceStrategy";
+import RaceHistoryPanel from "../components/RaceHistoryPanel";
 
 export default function OnboardingWizard() {
   const ctx = useAppContext();
@@ -291,6 +292,8 @@ export default function OnboardingWizard() {
 
     else steps.push("schedule", "double_session");
 
+    const fitnessIndex = steps.findIndex((step) => step === "fitness" || step === "fitness_start" || step === "fitness_return");
+    if (fitnessIndex >= 0) steps.splice(fitnessIndex + 1, 0, "race_history");
     steps.push("generate");
 
 
@@ -379,6 +382,13 @@ export default function OnboardingWizard() {
     const renderStep = () => {
 
       switch (currentStepKey) {
+
+        case "race_history":
+          return <div>
+            <h2 style={{ fontSize: 20, marginBottom: 8 }}>{lang === "en" ? "Find your race history" : "Tìm lịch sử Race"}</h2>
+            <p style={{ fontSize: 13, color: "var(--text-muted)" }}>{lang === "en" ? "Link UTMB or VBM, or add a result yourself. You can skip this step." : "Liên kết UTMB hoặc VBM, hay tự thêm kết quả. Bạn có thể bỏ qua bước này."}</p>
+            <RaceHistoryPanel lang={lang} initiallyOpen />
+          </div>;
 
         case "dob":
 

@@ -91,6 +91,13 @@ async def persist(user_id: int, adapter, days: int) -> dict[str, int]:
         raise CorosSyncPersistError(f"all {len(metrics)} daily metrics failed to persist for user {user_id}")
 
     db.mark_connection_synced(user_id, PROVIDER)
+    if stored_activities:
+        try:
+            from services.race_history import verify_results
+
+            verify_results(user_id)
+        except Exception:
+            logger.exception("race history verification failed after COROS sync")
     return {"activities": stored_activities, "daily_metrics": stored_metrics}
 
 

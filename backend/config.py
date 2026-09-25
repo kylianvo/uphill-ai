@@ -109,6 +109,14 @@ class Config:
 
     # Tavily search API — used by gear's web-discovery sweep (RunRepeat/BelieveInTheRun)
     TAVILY_API_KEY: str = os.getenv("TAVILY_API_KEY", "")
+    RACE_HISTORY_UTMB_ENABLED: bool = os.getenv("RACE_HISTORY_UTMB_ENABLED", "true").lower() == "true"
+    RACE_HISTORY_VBM_ENABLED: bool = os.getenv("RACE_HISTORY_VBM_ENABLED", "true").lower() == "true"
+    # Background thread that syncs pending claims and runs the weekly refresh;
+    # off in tests so it does not race the test database.
+    RACE_HISTORY_WORKER_ENABLED: bool = os.getenv("RACE_HISTORY_WORKER_ENABLED", "true").lower() == "true"
+    RACE_HISTORY_WEEKLY_REFRESH_ENABLED: bool = (
+        os.getenv("RACE_HISTORY_WEEKLY_REFRESH_ENABLED", "false").lower() == "true"
+    )
 
     QDRANT_URL: str = os.getenv(
         "QDRANT_URL", "http://qdrant:6333" if os.path.exists("/.dockerenv") else "http://localhost:6333"

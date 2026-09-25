@@ -103,11 +103,20 @@ def build_chat_context(
     # Cap to most recent 20 messages
     valid_history = valid_history[-20:]
 
+    # 5. Race record (claimed UTMB/VBM profiles + self-reported), <= 800 chars
+    try:
+        from services.race_history import prompt_summary
+
+        race_history = prompt_summary(user_id)
+    except Exception:
+        race_history = ""
+
     return {
         "athlete": athlete_context,
         "plan": {"id": plan.get("id")} if plan else None,
         "workouts": plan_workouts,
         "recent_activities": recent_activities,
+        "race_history": race_history,
         "history": valid_history,
         "evidence": list(retrieval_evidence or []),
         "question": question,

@@ -826,6 +826,20 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
         # because the tier decides the pace default as well as the rules block -- see
         # services/athlete_tier.py for why the tier follows the plan, not the athlete.
         _historical_ceiling = race_info.get("historical_ceiling") or user_profile.get("historical_ceiling")
+        race_history_text = ""
+        if user_profile.get("id"):
+            try:
+                from services.race_history import prompt_summary, tier_distance
+
+                race_history_text = prompt_summary(user_profile["id"], race_info.get("lang") or "en")
+                imported_distance = tier_distance(user_profile["id"])
+                if imported_distance:
+                    _historical_ceiling = dict(_historical_ceiling or {})
+                    _historical_ceiling["max_distance_km"] = max(
+                        _historical_ceiling.get("max_distance_km") or 0, imported_distance
+                    )
+            except Exception as exc:
+                print(f"[PlanGen] Race history unavailable: {exc}")
         _max_jog_min = user_profile.get("max_continuous_jog_min")
         athlete_tier = resolve_tier(
             explicit_tier=race_info.get("athlete_tier"),
@@ -1011,6 +1025,10 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                         f"Rule: Respect the athlete's proven endurance ceiling. Single long runs must not exceed 15-20% above this ceiling without multi-block progression.\n"
                     )
 
+            # Race record from claimed UTMB/VBM profiles and self-reported results;
+            # sits beside the ceiling because both describe proven capacity.
+            race_history_notes = f"\n{race_history_text}\n" if race_history_text else ""
+
             athlete_notes = race_info.get("athlete_notes") or user_profile.get("athlete_notes")
             constraints_notes = ""
             if athlete_notes:
@@ -1071,6 +1089,7 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                 f"{female_note}"
                 f"{scheduling_notes}"
                 f"{ceiling_notes}"
+                f"{race_history_notes}"
                 f"{constraints_notes}"
             )
 
