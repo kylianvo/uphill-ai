@@ -46,17 +46,21 @@ test("onboarding wizard sends the chosen Plan Start Date, not today", async ({ p
   await page.getByRole("button", { name: "Next →" }).click();
   await page.getByRole("button", { name: "Got it, continue →" }).click();
 
-  // Step 4: Schedule -- set Plan Start Date. Native date inputs need an
+  // Step 4: Race history (optional) -- skip it.
+  await expect(page.getByRole("heading", { name: "Find your race history" })).toBeVisible();
+  await page.getByRole("button", { name: "Next →" }).click();
+
+  // Step 5: Schedule -- set Plan Start Date. Native date inputs need an
   // ISO (YYYY-MM-DD) value regardless of display locale.
   const startDateInput = page.locator('input[type="date"]');
   await startDateInput.fill(CHOSEN_START_DATE);
   await expect(startDateInput).toHaveValue(CHOSEN_START_DATE);
   await page.getByRole("button", { name: "Next →" }).click();
 
-  // Step 5: Double Session Days (optional) -- skip straight to review.
+  // Step 6: Double Session Days (optional) -- skip straight to review.
   await page.getByRole("button", { name: "Review →" }).click();
 
-  // Step 6: Review -- the summary should already display the chosen date.
+  // Step 7: Review -- the summary should already display the chosen date.
   await expect(page.getByText(CHOSEN_START_DATE)).toBeVisible();
 
   const [onboardingResponse] = await Promise.all([
