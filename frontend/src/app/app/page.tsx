@@ -26,6 +26,7 @@ import { useAnalytics } from "@/hooks/useAnalytics";
 import { getApiBaseUrl } from "@/lib/apiUrlOverride";
 import { clearCachedUser, loadCachedUser } from "@/utils/cachedUser";
 import type { User } from "@/types";
+import { GOOGLE_WEB_CLIENT_ID } from "@/lib/googleClientIds";
 import {
   House,
   Robot,
@@ -1072,9 +1073,7 @@ export default function AppPage() {
     const initGoogleSignIn = () => {
       const g = (window as any).google;
       if (g && g.accounts && g.accounts.id) {
-        const client_id =
-          process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
-          "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com";
+        const client_id = GOOGLE_WEB_CLIENT_ID;
         g.accounts.id.initialize({
           client_id: client_id,
           callback: (response: any) => {
