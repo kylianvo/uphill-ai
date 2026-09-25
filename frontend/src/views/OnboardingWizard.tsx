@@ -7,6 +7,7 @@ import { Calendar, PersonSimpleRun, Mountains, Watch, Target, CaretRight, CaretL
 import { RaceMatch } from "../hooks/useRaceMatch";
 import { RaceNameField } from "../components/RaceNameField";
 import { parsePaceToMinutes, formatDurationHM } from "../lib/paceStrategy";
+import WatchZonesGuideModal from "../components/WatchZonesGuideModal";
 
 export default function OnboardingWizard() {
   const ctx = useAppContext();
@@ -14,6 +15,7 @@ export default function OnboardingWizard() {
   const fetchActivePlanWithToken = fetchRecentPlansWithToken; // just alias if needed or handle properly.
   const { activeTab, setActiveTab, lang, setLang, user, setUser, setProfileForm, setActivePlan, setAuthErrorMsg, onboardingOpen, setOnboardingOpen, onboardingAnswers, setOnboardingAnswers, onboardingStep, setOnboardingStep, onboardingGenerating, setOnboardingGenerating, setIsGoalDeterminerOpen } = ctx;
   const [showFitnessWarning, setShowFitnessWarning] = React.useState(false);
+  const [watchGuideOpen, setWatchGuideOpen] = React.useState(false);
   const handleRaceMatchChange = (match: RaceMatch | null) => {
     if (match?.elevation_gain_m && !onboardingAnswers.course_elevation_gain_m) {
       setOnboardingAnswers((prev: any) => ({ ...prev, course_elevation_gain_m: String(match.elevation_gain_m) }));
@@ -654,13 +656,55 @@ export default function OnboardingWizard() {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
 
                   <div>
-                    <label style={labelS}>AeT HR (bpm)</label>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <label style={labelS}>AeT HR (bpm)</label>
+                      <button
+                        type="button"
+                        onClick={() => setWatchGuideOpen(true)}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          color: "#3b82f6",
+                          fontSize: "11px",
+                          cursor: "pointer",
+                          padding: 0,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "3px",
+                          textDecoration: "underline"
+                        }}
+                      >
+                        <Sparkle size={12} weight="fill" />
+                        {lang === "vi" ? "Lấy từ đồng hồ / AI" : "Watch / AI Guide"}
+                      </button>
+                    </div>
                     <input type="number" className="chat-input" style={inputS} placeholder="135" value={onboardingAnswers.aet_hr} onChange={e => setAns("aet_hr", e.target.value)} />
                     <p style={{ fontSize: "11px", color: "var(--text-muted)", margin: "4px 0 0 0" }}>{t("profile_aet_hint")}</p>
                   </div>
 
                   <div>
-                    <label style={labelS}>AnT HR (bpm)</label>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <label style={labelS}>AnT HR (bpm)</label>
+                      <button
+                        type="button"
+                        onClick={() => setWatchGuideOpen(true)}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          color: "#3b82f6",
+                          fontSize: "11px",
+                          cursor: "pointer",
+                          padding: 0,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "3px",
+                          textDecoration: "underline"
+                        }}
+                      >
+                        <Sparkle size={12} weight="fill" />
+                        {lang === "vi" ? "Lấy từ đồng hồ / AI" : "Watch / AI Guide"}
+                      </button>
+                    </div>
                     <input type="number" className="chat-input" style={inputS} placeholder="165" value={onboardingAnswers.ant_hr} onChange={e => setAns("ant_hr", e.target.value)} />
                     <p style={{ fontSize: "11px", color: "var(--text-muted)", margin: "4px 0 0 0" }}>{t("profile_ant_hint")}</p>
                   </div>
@@ -1264,13 +1308,55 @@ export default function OnboardingWizard() {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "14px" }}>
 
                   <div>
-                    <label style={labelS}>AeT HR (bpm)</label>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <label style={labelS}>AeT HR (bpm)</label>
+                      <button
+                        type="button"
+                        onClick={() => setWatchGuideOpen(true)}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          color: "#3b82f6",
+                          fontSize: "11px",
+                          cursor: "pointer",
+                          padding: 0,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "3px",
+                          textDecoration: "underline"
+                        }}
+                      >
+                        <Sparkle size={12} weight="fill" />
+                        {lang === "vi" ? "Lấy từ đồng hồ / AI" : "Watch / AI Guide"}
+                      </button>
+                    </div>
                     <input type="number" className="chat-input" style={inputS} placeholder="135" value={onboardingAnswers.aet_hr || ""} onChange={e => setAns("aet_hr", e.target.value)} />
                     <p style={{ fontSize: "11px", color: "var(--text-muted)", margin: "4px 0 0 0" }}>{t("profile_aet_hint")}</p>
                   </div>
 
                   <div>
-                    <label style={labelS}>AnT HR (bpm)</label>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <label style={labelS}>AnT HR (bpm)</label>
+                      <button
+                        type="button"
+                        onClick={() => setWatchGuideOpen(true)}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          color: "#3b82f6",
+                          fontSize: "11px",
+                          cursor: "pointer",
+                          padding: 0,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "3px",
+                          textDecoration: "underline"
+                        }}
+                      >
+                        <Sparkle size={12} weight="fill" />
+                        {lang === "vi" ? "Lấy từ đồng hồ / AI" : "Watch / AI Guide"}
+                      </button>
+                    </div>
                     <input type="number" className="chat-input" style={inputS} placeholder="165" value={onboardingAnswers.ant_hr || ""} onChange={e => setAns("ant_hr", e.target.value)} />
                     <p style={{ fontSize: "11px", color: "var(--text-muted)", margin: "4px 0 0 0" }}>{t("profile_ant_hint")}</p>
                   </div>
@@ -1847,6 +1933,11 @@ export default function OnboardingWizard() {
 
       </div>
 
+      <WatchZonesGuideModal
+        isOpen={watchGuideOpen}
+        onClose={() => setWatchGuideOpen(false)}
+        lang={lang}
+      />
       </>
 
     );

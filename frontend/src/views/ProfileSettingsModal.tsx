@@ -17,6 +17,7 @@ import {
 } from '../utils/notifications';
 import { triggerHaptic } from '../utils/native';
 import ConnectedAccounts from '../components/ConnectedAccounts';
+import WatchZonesGuideModal from '../components/WatchZonesGuideModal';
 
 export default function ProfileSettingsModal() {
   const ctx = useAppContext();
@@ -27,6 +28,7 @@ export default function ProfileSettingsModal() {
   );
   const [thresholdPace, setThresholdPace] = useState<string>(user?.threshold_pace || "");
   const [syncMsg, setSyncMsg] = useState<string>("");
+  const [watchGuideOpen, setWatchGuideOpen] = useState<boolean>(false);
 
   const [prevUser, setPrevUser] = useState(user);
   if (user !== prevUser) {
@@ -980,7 +982,28 @@ export default function ProfileSettingsModal() {
 
 
 
-                  <label style={labelStyle}>{t("profile_aet_hr")}</label>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+                    <label style={{ ...labelStyle, marginBottom: 0 }}>{t("profile_aet_hr")}</label>
+                    <button
+                      type="button"
+                      onClick={() => setWatchGuideOpen(true)}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: "#3b82f6",
+                        fontSize: "11px",
+                        cursor: "pointer",
+                        padding: 0,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "3px",
+                        textDecoration: "underline",
+                      }}
+                    >
+                      <Sparkle size={12} weight="fill" />
+                      {lang === "vi" ? "Cách lấy từ đồng hồ / AI" : "How to get from watch / AI"}
+                    </button>
+                  </div>
 
 
 
@@ -1013,7 +1036,28 @@ export default function ProfileSettingsModal() {
 
 
 
-                  <label style={labelStyle}>{t("profile_ant_hr")}</label>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+                    <label style={{ ...labelStyle, marginBottom: 0 }}>{t("profile_ant_hr")}</label>
+                    <button
+                      type="button"
+                      onClick={() => setWatchGuideOpen(true)}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: "#3b82f6",
+                        fontSize: "11px",
+                        cursor: "pointer",
+                        padding: 0,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "3px",
+                        textDecoration: "underline",
+                      }}
+                    >
+                      <Sparkle size={12} weight="fill" />
+                      {lang === "vi" ? "Cách lấy từ đồng hồ / AI" : "How to get from watch / AI"}
+                    </button>
+                  </div>
 
 
 
@@ -2494,6 +2538,11 @@ export default function ProfileSettingsModal() {
 
 
 
+        <WatchZonesGuideModal
+          isOpen={watchGuideOpen}
+          onClose={() => setWatchGuideOpen(false)}
+          lang={lang}
+        />
       </div>
 
 
