@@ -52,6 +52,8 @@ from services.coros_plan_window import (
     race_date_of,
     rows_by_date,
     send_dates,
+    standalone_window,
+    window_end,
     with_race_day,
     ymd,
 )
@@ -128,6 +130,15 @@ def created_plan_id(create_text: str, records: list[PlanRecord], name: str) -> s
         return m[1]
     match = next((r for r in records if r.name == name and r.role == "execution" and r.editable), None)
     return match.plan_id if match else None
+
+
+_ID_IN_PLAN = re.compile(r"idInPlan\W{0,3}(\d+)")
+
+
+def parse_id_in_plan(text: str) -> str | None:
+    """The scheduled workout's id from a create/updateScheduledWorkout result."""
+    m = _ID_IN_PLAN.search(text or "")
+    return m[1] if m else None
 
 
 def _live(records: list[PlanRecord], plan_id: str | None = None, name: str | None = None) -> PlanRecord | None:
@@ -272,13 +283,16 @@ def _current_link(user_id: int, plan: dict[str, Any]) -> dict[str, Any] | None:
 async def _push_locked(user_id, plan, connection, today, lang, client_factory) -> dict[str, Any]:
     st = _state(plan)
     link = _current_link(user_id, plan)
+    standalone = None
     if _mode(plan) == "plan":
         if st.race < today:
             raise PushError("NOTHING_to_push", 409)
         if link is None:
             _geometry(st, today)  # refuse a plan COROS can't hold before spending a push or calling COROS
     else:
-        raise PushError("NOTHING_to_push", 409)  # standalone mode lands in Task 11
+        standalone = standalone_window(st.by_date, today, window_end(today), lang)
+        if not standalone.days:
+            raise PushError("NOTHING_to_push", 409)
     limit = settings.COROS_DAILY_PUSH_LIMIT
     if not db.claim_coros_push_slot(user_id, today, limit):
         raise PushError("PUSH_limit", 429, {"limit": limit})
@@ -290,6 +304,8 @@ async def _push_locked(user_id, plan, connection, today, lang, client_factory) -
     client = client_factory(token)
     try:
         await client.initialize()
+        if standalone is not None:
+            return await _sync_standalone(client, user_id, plan, st, link, standalone, today)
         return await _sync_plan(client, user_id, plan, st, link, today, lang)
     except McpToolError as exc:
         logger.warning(
@@ -412,6 +428,86 @@ async def _rollover(client, user_id, plan, st, target, stored, today, lang, name
     )
 
 
+async def _sync_standalone(client, user_id, plan, st, link, window: PushWindow, today) -> dict[str, Any]:
+    """One COROS scheduled workout per Uphill run. A changed day is rewritten in
+    place (updateScheduledWorkout); scheduled workouts can't be moved or deleted
+    over MCP, so a copy Uphill no longer has stays on COROS as `stale` until the
+    athlete deletes it -- tracked, and reused if that day gets a run again.
+    Progress is saved even when a call fails, so a retry never duplicates."""
+    stored = dict(link["day_hashes"]) if link else {}
+    scheduled = {k: list(v) for k, v in (link["scheduled"] if link else {}).items() if k >= today.isoformat()}
+    desired = {d.date: d.courses for d in window.days}
+    current = day_hashes_for(st.by_date, sorted(desired))
+    hashes = {k: v for k, v in stored.items() if k >= today.isoformat()}
+    sent_days = sent = 0
+    partial = False
+    try:
+        for d, courses in sorted(desired.items()):
+            key = d.isoformat()
+            ids = scheduled.get(key, [])
+            if stored.get(key) == current[key] and len(ids) >= len(courses):
+                continue
+            for i, course in enumerate(courses):
+                args = {"date": str(ymd(d)), "course": course}
+                if i < len(ids):
+                    text = await client.call_tool("updateScheduledWorkout", {**args, "idInPlan": ids[i]})
+                    ids[i] = parse_id_in_plan(text) or ids[i]
+                else:
+                    new_id = parse_id_in_plan(await client.call_tool("createScheduledWorkout", args))
+                    if new_id is None:
+                        raise McpError("createScheduledWorkout returned no idInPlan")
+                    ids.append(new_id)
+                scheduled[key] = ids
+                sent += 1
+            hashes[key] = current[key]
+            sent_days += 1
+    except McpError as exc:
+        if not sent:
+            raise
+        partial = True
+        logger.warning(
+            "coros standalone push stopped part-way",
+            extra={
+                "fields": {
+                    "service": "coros_push",
+                    "event": "push_partial",
+                    "user_id": user_id,
+                    "reason": (getattr(exc, "reason", "") or str(exc))[:REASON_LOG_MAX],
+                }
+            },
+        )
+    locked = set(window.locked_dates)
+    stale = 0
+    for key, ids in scheduled.items():
+        d = dt.date.fromisoformat(key)
+        if d in locked:
+            continue
+        extra = len(ids) - len(desired.get(d, []))
+        if extra > 0:
+            stale += extra
+            if d not in desired:
+                hashes[key] = day_hashes_for(st.by_date, [d])[key]
+    summary = {
+        **_summary([window], window.end, mode="standalone", stale=stale),
+        "days_sent": sent_days,
+        "workouts_sent": sent,
+    }
+    db.save_coros_plan_link(
+        user_id,
+        plan_id=plan["id"],
+        coros_plan_id=None,
+        coros_start_date=None,
+        total_weeks=None,
+        window_end=window.end,
+        day_hashes=hashes,
+        last_summary=summary,
+        partial=partial,
+        mode="standalone",
+        scheduled=scheduled,
+    )
+    return _result(user_id, summary, partial)
+
+
 def _save(user_id, plan, st, coros_plan_id, start, total_weeks, end, tracked, windows, *, partial) -> dict[str, Any]:
     summary = _summary(windows, end, mode="plan", plan_start=start)
     db.save_coros_plan_link(
@@ -443,6 +539,12 @@ def _out_of_date(link: dict[str, Any], plan: dict[str, Any], today: dt.date) -> 
         return True
     st = _state(plan)
     stored = link.get("day_hashes") or {}
+    if link.get("mode") == "standalone":
+        end = window_end(today)
+        runs = [d.date for d in standalone_window(st.by_date, today, end, "en").days]
+        keys = {*runs, *(d for k in stored if today <= (d := dt.date.fromisoformat(k)) <= end)}
+        current = day_hashes_for(st.by_date, sorted(keys))
+        return any(stored.get(k) != v for k, v in current.items())
     start, end = link.get("coros_start_date") or today, link["window_end"]
     if st.race and st.race > end and st.race >= today:
         return True  # race moved past the COROS plan
