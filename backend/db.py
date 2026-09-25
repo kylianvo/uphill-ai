@@ -2669,12 +2669,14 @@ def get_pending_invites_for_athlete(athlete_id: int) -> list[dict[str, Any]]:
 # ─── Sessions (JWT-based, stored for revocation) ─────────────────────────────
 
 
-def create_session(user_id: int, duration_days: int = 7) -> dict[str, Any]:
+def create_session(user_id: int, duration_days: int | None = None) -> dict[str, Any]:
     """Creates a DB session record alongside JWT. Returns JWT token."""
     import jwt
 
     from config import settings
 
+    if duration_days is None:
+        duration_days = settings.JWT_EXPIRE_DAYS
     now = datetime.datetime.now(datetime.UTC)
     expires_at = now + datetime.timedelta(days=duration_days)
 
@@ -2704,13 +2706,22 @@ def create_session(user_id: int, duration_days: int = 7) -> dict[str, Any]:
 
 
 def verify_session(session_token: str) -> dict[str, Any] | None:
-    """Verifies JWT signature + expiry, then loads user from DB."""
+    """Verifies the JWT signature, then the live DB session row, then loads the user.
+
+    The DB row's expires_at is the source of truth for expiry (the JWT's own
+    exp is not checked): it slides, so using a session past its halfway point
+    extends it to the full JWT_EXPIRE_DAYS window again."""
     import jwt
 
     from config import settings
 
     try:
-        payload = jwt.decode(session_token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+        payload = jwt.decode(
+            session_token,
+            settings.JWT_SECRET,
+            algorithms=[settings.JWT_ALGORITHM],
+            options={"verify_exp": False},
+        )
         user_id = int(payload["sub"])
     except Exception:
         return None
@@ -2722,6 +2733,15 @@ def verify_session(session_token: str) -> dict[str, Any] | None:
         ).fetchone()
         if not row:
             return None
+        # Only write when past halfway, so most requests stay read-only.
+        conn.execute(
+            text("""
+            UPDATE sessions SET expires_at = NOW() + make_interval(days => :days)
+            WHERE session_token = :tok AND expires_at < NOW() + make_interval(days => :days) / 2
+        """),
+            {"tok": session_token, "days": settings.JWT_EXPIRE_DAYS},
+        )
+        conn.commit()
         user_row = conn.execute(text("SELECT * FROM users WHERE id = :id"), {"id": user_id}).fetchone()
     return _row_to_dict(user_row) if user_row else None
 

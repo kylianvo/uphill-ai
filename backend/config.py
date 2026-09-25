@@ -81,7 +81,10 @@ class Config:
     # JWT secret (generate a strong random key in production)
     JWT_SECRET: str = os.getenv("JWT_SECRET", "uphill-ai-super-secret-dev-key-change-in-prod")
     JWT_ALGORITHM: str = "HS256"
-    JWT_EXPIRE_DAYS: int = 7
+    # Session lifetime. Sliding: every use past the halfway point pushes
+    # expiry back out to the full window (db.verify_session), so an athlete
+    # who opens the app at least once per window never has to log in again.
+    JWT_EXPIRE_DAYS: int = int(os.getenv("JWT_EXPIRE_DAYS", "30"))
 
     # Encrypts third-party OAuth tokens in athlete_connections. Generate with
     # services.token_crypto.generate_key(). Rotating it invalidates every stored
