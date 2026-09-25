@@ -460,3 +460,43 @@ async def test_plan_generator_readiness_clean_formatting_when_none():
     assert "None%" not in prompt
     assert "Rolling HRV: N/A" in prompt
     assert "ACWR (Acute:Chronic Load Ratio): N/A (Latest: N/A)" in prompt
+
+
+@pytest.mark.asyncio
+async def test_plan_prompt_places_race_history_beside_ceiling():
+    mock_resp = MagicMock()
+    mock_resp.text = "invalid json to trigger fallback"
+    mock_client = MagicMock()
+    mock_client.models.generate_content.return_value = mock_resp
+    history = "RACE HISTORY\n2025-09-20 VMM 70km 13:05 [UTMB]"
+
+    with (
+        patch("google.genai.Client", return_value=mock_client),
+        patch("services.kb_retrieval.search_scheduler_chunks", return_value=[]),
+        patch("services.race_history.prompt_summary", return_value=history),
+        patch("services.race_history.tier_distance", return_value=70.0),
+    ):
+        await PlanGenerator.generate_plan_workouts(
+            plan_id=1,
+            user_profile={
+                "id": 7,
+                "current_weekly_km": 40.0,
+                "injury_history": "knee",
+                "historical_ceiling": {"max_distance_km": 30.0, "max_elevation_gain_m": 1500},
+            },
+            race_info={
+                "name": "VMM",
+                "date": "2026-09-20",
+                "goal_type": "finish",
+                "course_distance_km": 70.0,
+                "course_elevation_gain_m": 3800.0,
+                "preferred_run_days": ["Monday", "Saturday"],
+            },
+            total_weeks=12,
+            api_key="fake-gemini-key",
+        )
+
+    prompt = mock_client.models.generate_content.call_args.kwargs.get("contents", "")
+    assert history in prompt
+    assert "- RACE HISTORY" not in prompt  # no longer a scheduling bullet
+    assert prompt.index("Athlete Historical Ceiling") < prompt.index("RACE HISTORY")

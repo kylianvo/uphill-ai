@@ -67,6 +67,7 @@ def test_build_chat_context_filters_expired_and_error_messages():
         patch("db.get_plan_workouts", return_value=mock_workouts),
         patch("db.get_activities_for_user", return_value=mock_activities),
         patch("db.get_chat_thread_messages", return_value=mock_messages),
+        patch("services.race_history.prompt_summary", return_value="RACE HISTORY\n2025-09-20 VMM 70.0km 13:05 [UTMB]"),
     ):
         ctx = build_chat_context(
             user_id=1,
@@ -84,6 +85,7 @@ def test_build_chat_context_filters_expired_and_error_messages():
         assert len(ctx["history"]) == 2
         assert [m["id"] for m in ctx["history"]] == [1, 2]
         assert ctx["question"] == "What is my next workout?"
+        assert ctx["race_history"].startswith("RACE HISTORY")
 
 
 def test_trim_context_to_budget_trims_history_then_evidence():

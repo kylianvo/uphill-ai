@@ -179,3 +179,10 @@ def test_prompt_has_no_today_section_without_today():
 def test_prompt_explains_the_rebuild_tool():
     assert "propose_rebuild_week" in COACH_SYSTEM_INSTRUCTION
     assert "Never list or invent the new sessions" in COACH_SYSTEM_INSTRUCTION
+
+
+def test_compile_prompt_renders_race_history_section():
+    history = "RACE HISTORY\n2025-09-20 VMM 70.0km 13:05 [UTMB]"
+    compiled = compile_coach_prompt(template="Base", lang="en", context={"race_history": history})
+    assert "### RACE HISTORY\n2025-09-20 VMM 70.0km 13:05 [UTMB]" in compiled
+    assert "RACE HISTORY" not in compile_coach_prompt(template="Base", lang="en", context={"race_history": ""})

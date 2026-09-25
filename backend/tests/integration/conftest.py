@@ -12,6 +12,10 @@ from db import engine, init_db
 # Truncated in child-first order isn't strictly required (CASCADE handles FK
 # dependencies), but listed here for readability of the dependency graph.
 ALL_TABLES = [
+    "race_results",
+    "race_profile_claims",
+    "vbm_athletes",
+    "utmb_runners",
     "chat_proposals",
     "chat_llm_calls",
     "chat_turns",

@@ -3,7 +3,7 @@ import uuid as _uuid
 from typing import Any
 
 import httpx
-from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Request, Response, UploadFile
+from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, Header, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from google import genai
 from google.genai import types as genai_types
@@ -88,7 +88,7 @@ from routers.analytics import router as analytics_router
 from routers.coach_chat import ChatMessage
 from routers.coach_chat import router as coach_chat_router
 from routers.integrations import router as integrations_router
-from services import calendar_ops, observability, week_rebuild
+from services import calendar_ops, observability, race_history, week_rebuild
 from services.auth_service import hash_password, verify_password
 from services.calendar_rules import GuardViolation, resolve_today
 from services.calendar_service import CalendarService
@@ -133,15 +133,27 @@ Instrumentator().instrument(app).expose(app, include_in_schema=False, should_gzi
 
 
 # Initialize the database schema and LLM observability on startup
+_race_worker_stop = None
+
+
 @app.on_event("startup")
 def startup_event():
     init_db()
     observability.init()
+    from threading import Event, Thread
+
+    global _race_worker_stop
+    if not settings.RACE_HISTORY_WORKER_ENABLED:
+        return
+    _race_worker_stop = Event()
+    Thread(target=race_history.run_worker, args=(_race_worker_stop,), daemon=True, name="race-history-worker").start()
 
 
 # Deliver any spans still batched in memory before the process exits
 @app.on_event("shutdown")
 def shutdown_event():
+    if _race_worker_stop:
+        _race_worker_stop.set()
     observability.flush()
 
 
@@ -984,6 +996,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         training_environment=request.training_environment or "flat",
         athlete_notes=request.athlete_notes,
     )
+    race_history.store_plan_scenario(user["id"], plan_id)
 
     # Mark onboarding complete immediately so the user can enter the app
     mark_onboarding_complete(user["id"])
@@ -1434,6 +1447,9 @@ def _build_athlete_context_block(athlete: dict[str, Any]) -> str:
         f"Athlete: {athlete.get('name') or athlete.get('email')}",
         f"Active Plan: {plan['race_name']} on {plan['race_date']} ({plan['goal_type']}, week {current_week} of {plan['total_weeks']})",
     ]
+    history_text = race_history.prompt_summary(athlete["id"])
+    if history_text:
+        lines.append(history_text)
     if athlete.get("threshold_pace"):
         lines.append(f"Threshold Pace: {athlete['threshold_pace']}/km | VO2max: {athlete.get('coros_vo2max') or 'N/A'}")
 
@@ -1783,6 +1799,7 @@ async def _generate_plan_for_athlete(
         plan_status=plan_status,
         athlete_notes=request.athlete_notes,
     )
+    race_history.store_plan_scenario(athlete_id, plan_id)
 
     # Fetch latest athlete details from database to ensure fresh physiological values
     fresh_user = get_user_by_id(athlete_id) or {"id": athlete_id}
@@ -3125,6 +3142,225 @@ def match_race_course(name: str, distance_km: float | None = None, distance_labe
     return response
 
 
+class RaceClaimRequest(BaseModel):
+    source: str
+    external_id: str
+
+
+class RaceBibRequest(BaseModel):
+    bib: str
+
+
+class RaceResultInput(BaseModel):
+    discipline: str
+    race_name: str
+    race_date: str
+    distance_km: float
+    elevation_gain_m: float | None = None
+    finish_time_sec: int | None = None
+    is_dnf: bool = False
+    rank_overall: int | None = None
+    total_overall: int | None = None
+
+
+class RaceResultPatch(BaseModel):
+    selected: bool | None = None
+    hidden: bool | None = None
+    user_note: str | None = None
+    discipline: str | None = None
+    race_name: str | None = None
+    race_date: str | None = None
+    distance_km: float | None = None
+    elevation_gain_m: float | None = None
+    finish_time_sec: int | None = None
+    is_dnf: bool | None = None
+    rank_overall: int | None = None
+    total_overall: int | None = None
+
+
+def _validate_race_result(data: dict[str, Any]) -> None:
+    from datetime import date
+
+    if data.get("discipline") not in ("trail", "road") or not (data.get("race_name") or "").strip():
+        raise HTTPException(status_code=422, detail="Race name and discipline are required")
+    try:
+        date.fromisoformat(data["race_date"])
+    except (KeyError, TypeError, ValueError):
+        raise HTTPException(status_code=422, detail="Invalid race date")
+    if not 0 < (data.get("distance_km") or 0) <= 1000:
+        raise HTTPException(status_code=422, detail="Invalid race distance")
+    if data.get("elevation_gain_m") is not None and data["elevation_gain_m"] < 0:
+        raise HTTPException(status_code=422, detail="Invalid elevation gain")
+    rank, total = data.get("rank_overall"), data.get("total_overall")
+    if (rank is not None and rank < 1) or (total is not None and total < 1) or (rank and total and rank > total):
+        raise HTTPException(status_code=422, detail="Invalid overall rank")
+    if data.get("is_dnf"):
+        data["finish_time_sec"] = None
+    elif not data.get("finish_time_sec") or data["finish_time_sec"] <= 0:
+        raise HTTPException(status_code=422, detail="Finish time is required for a finish")
+
+
+@app.get("/api/race-history/search")
+def search_race_history(source: str, q: str, user: dict[str, Any] = Depends(get_current_user)):
+    if source not in ("utmb", "vbm") or len(q.strip()) < 2 or len(q) > 100:
+        raise HTTPException(status_code=422, detail="Choose a source and enter a name")
+    if not getattr(settings, f"RACE_HISTORY_{source.upper()}_ENABLED"):
+        raise HTTPException(status_code=503, detail="Source temporarily unavailable")
+    try:
+        rows = race_history.search_utmb(q) if source == "utmb" else race_history.search_vbm(q)
+    except Exception:
+        raise HTTPException(status_code=503, detail="Source search unavailable")
+    wanted = set(race_history.normalize_name(q).split())
+    for row in rows:
+        found = set(race_history.normalize_name(row.get("display_name") or "").split())
+        row["score"] = round(len(wanted & found) / max(1, len(wanted | found)), 3)
+    return sorted(rows, key=lambda row: row["score"], reverse=True)
+
+
+@app.post("/api/race-history/claims", status_code=202)
+def create_race_claim(
+    request: RaceClaimRequest, background_tasks: BackgroundTasks, user: dict[str, Any] = Depends(get_current_user)
+):
+    if request.source not in ("utmb", "vbm") or not getattr(settings, f"RACE_HISTORY_{request.source.upper()}_ENABLED"):
+        raise HTTPException(status_code=503, detail="Source unavailable")
+    try:
+        claim = race_history.create_claim(user["id"], request.source, request.external_id.strip())
+        background_tasks.add_task(race_history.sync_claim_now, claim["id"])
+        return claim
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except Exception as exc:
+        from sqlalchemy.exc import IntegrityError
+
+        if isinstance(exc, IntegrityError):
+            raise HTTPException(status_code=409, detail="Profile already linked")
+        raise
+
+
+@app.get("/api/race-history/claims")
+def get_race_claims(user: dict[str, Any] = Depends(get_current_user)):
+    return race_history.list_claims(user["id"])
+
+
+@app.delete("/api/race-history/claims/{claim_id}")
+def remove_race_claim(claim_id: int, user: dict[str, Any] = Depends(get_current_user)):
+    if not race_history.delete_claim(claim_id, user["id"]):
+        raise HTTPException(status_code=404, detail="Claim not found")
+    return {"ok": True}
+
+
+@app.post("/api/race-history/claims/{claim_id}/verify-bib")
+def verify_race_bib(claim_id: int, request: RaceBibRequest, user: dict[str, Any] = Depends(get_current_user)):
+    claim = race_history.get_claim(claim_id, user["id"])
+    if not claim or claim["source"] != "vbm":
+        raise HTTPException(status_code=404, detail="VBM claim not found")
+    if not any(
+        r["claim_id"] == claim_id and r["selected"] and r["bib"] == request.bib.strip()
+        for r in race_history.list_results(user["id"])
+    ):
+        raise HTTPException(status_code=422, detail="Bib does not match a selected result")
+    race_history.set_verified_bib(claim_id, user["id"], request.bib.strip())
+    return race_history.get_claim(claim_id, user["id"])
+
+
+@app.post("/api/race-history/claims/{claim_id}/refresh", status_code=202)
+def refresh_race_claim(
+    claim_id: int, background_tasks: BackgroundTasks, user: dict[str, Any] = Depends(get_current_user)
+):
+    if not race_history.get_claim(claim_id, user["id"]):
+        raise HTTPException(status_code=404, detail="Claim not found")
+    if not race_history.queue_refresh(claim_id, user["id"]):
+        raise HTTPException(status_code=429, detail="Refresh available once per hour")
+    background_tasks.add_task(race_history.sync_claim_now, claim_id)
+    return race_history.get_claim(claim_id, user["id"])
+
+
+def _race_history_payload(user_id: int) -> dict[str, Any]:
+    try:
+        scenario_data = race_history.scenarios(user_id)
+    except ValueError:
+        scenario_data = {}
+    return {
+        "claims": race_history.list_claims(user_id),
+        "results": race_history.list_results(user_id),
+        "summary": race_history.build_summary(user_id),
+        "scenarios": scenario_data,
+    }
+
+
+@app.get("/api/race-history")
+def get_race_history(user: dict[str, Any] = Depends(get_current_user)):
+    return _race_history_payload(user["id"])
+
+
+@app.get("/api/coaching/athletes/{athlete_id}/race-history")
+def get_coach_race_history(athlete_id: int, acting_user: dict[str, Any] = Depends(require_athlete_access)):
+    return _race_history_payload(athlete_id)
+
+
+@app.post("/api/race-history/results")
+def create_manual_race_result(request: RaceResultInput, user: dict[str, Any] = Depends(get_current_user)):
+    data = request.model_dump()
+    _validate_race_result(data)
+    return race_history.create_manual(user["id"], data)
+
+
+@app.patch("/api/race-history/results/{result_id}")
+def patch_race_result(result_id: int, request: RaceResultPatch, user: dict[str, Any] = Depends(get_current_user)):
+    existing = race_history.get_result(result_id, user["id"])
+    if not existing:
+        raise HTTPException(status_code=404, detail="Result not found")
+    changes = request.model_dump(exclude_unset=True)
+    if existing["source"] == "manual" and any(
+        k in changes for k in ("race_name", "race_date", "distance_km", "finish_time_sec", "is_dnf", "discipline")
+    ):
+        merged = {**existing, **changes}
+        _validate_race_result(merged)
+        changes["finish_time_sec"] = merged["finish_time_sec"]
+    try:
+        return race_history.update_result(result_id, user["id"], changes)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+
+@app.delete("/api/race-history/results/{result_id}")
+def remove_manual_race_result(result_id: int, user: dict[str, Any] = Depends(get_current_user)):
+    if not race_history.delete_manual(result_id, user["id"]):
+        raise HTTPException(status_code=404, detail="Manual result not found")
+    return {"ok": True}
+
+
+@app.get("/api/race-history/admin/mirrors/status")
+def get_race_mirror_status(admin: dict[str, Any] = Depends(require_admin)):
+    return race_history.mirror_status()
+
+
+@app.post("/api/race-history/admin/mirrors/refresh", status_code=202)
+def refresh_race_mirrors(
+    background_tasks: BackgroundTasks, source: str = "all", admin: dict[str, Any] = Depends(require_admin)
+):
+    """Re-copy the UTMB/VBM runner search index (minutes of paced requests),
+    in the background. Poll .../mirrors/status for progress."""
+    if source not in ("utmb", "vbm", "all"):
+        raise HTTPException(status_code=422, detail="source must be utmb, vbm or all")
+    if race_history.mirror_job.get("state") == "running":
+        raise HTTPException(status_code=409, detail="Mirror refresh already running")
+    background_tasks.add_task(race_history.run_mirror_refresh, ["utmb", "vbm"] if source == "all" else [source])
+    return {"queued": source}
+
+
+@app.post("/api/race-history/admin/sync-claims")
+def sync_race_claims(admin: dict[str, Any] = Depends(require_admin)):
+    return {"queued": race_history.queue_all_claims()}
+
+
+@app.delete("/api/race-history/admin/claims/{claim_id}")
+def admin_remove_race_claim(claim_id: int, admin: dict[str, Any] = Depends(require_admin)):
+    if not race_history.delete_claim(claim_id):
+        raise HTTPException(status_code=404, detail="Claim not found")
+    return {"ok": True}
+
+
 class GoalEstimateRequest(BaseModel):
     # target course: a KB race name and/or explicit numbers
     race_name: str | None = None
@@ -3136,6 +3372,7 @@ class GoalEstimateRequest(BaseModel):
     reference_distance_km: float | None = None
     reference_elevation_gain_m: float | None = None
     reference_time: str | None = None  # "h:mm:ss" or "h:mm"
+    reference_result_id: int | None = None
     weeks_to_race: float | None = None
     race_date: str | None = None  # "YYYY-MM-DD"; derives weeks_to_race when weeks_to_race isn't given directly
 
@@ -3334,16 +3571,51 @@ def _goal_estimate_core(request: GoalEstimateRequest) -> dict[str, Any]:
     return response
 
 
+def _estimate_with_history(request: GoalEstimateRequest, athlete_id: int | None) -> dict[str, Any]:
+    if not request.reference_result_id:
+        return _goal_estimate_core(request)
+    if athlete_id is None:
+        raise HTTPException(status_code=401, detail="Sign in to use a saved result")
+    result = race_history.get_result(request.reference_result_id, athlete_id)
+    if not result or not result["selected"] or result["is_dnf"] or not result["finish_time_sec"]:
+        raise HTTPException(status_code=404, detail="Usable reference result not found")
+    explicit = [request.reference_distance_km, request.reference_time]
+    if any(value is not None for value in explicit) and not all(value is not None for value in explicit):
+        raise HTTPException(status_code=422, detail="Provide a complete reference override")
+    if all(value is not None for value in explicit):
+        return _goal_estimate_core(request)
+    seconds = result["finish_time_sec"]
+    merged = request.model_copy(
+        update={
+            "reference_race_name": result["race_name"],
+            "reference_distance_km": result["distance_km"],
+            "reference_elevation_gain_m": result["elevation_gain_m"] or 0,
+            "reference_time": f"{seconds // 3600}:{seconds % 3600 // 60:02d}:{seconds % 60:02d}",
+        }
+    )
+    response = _goal_estimate_core(merged)
+    if result["discipline"] == "road" and (
+        (request.elevation_gain_m or 0) / max(request.distance_km or 1, 1) > 20
+        or (request.race_name and "trail" in request.race_name.lower())
+    ):
+        response["reference_confidence"] = "low"
+    return response
+
+
 @app.post("/api/coach/goal-estimate")
-def goal_estimate(request: GoalEstimateRequest):
-    return _goal_estimate_core(request)
+def goal_estimate(request: GoalEstimateRequest, authorization: str | None = Header(None)):
+    athlete_id = None
+    if authorization and authorization.startswith("Bearer "):
+        user = verify_session(authorization.split(" ", 1)[1])
+        athlete_id = user["id"] if user else None
+    return _estimate_with_history(request, athlete_id)
 
 
 @app.post("/api/coaching/athletes/{athlete_id}/goal-estimate")
 def coach_goal_estimate(
     athlete_id: int, request: GoalEstimateRequest, coach: dict[str, Any] = Depends(require_athlete_access)
 ):
-    return _goal_estimate_core(request)
+    return _estimate_with_history(request, athlete_id)
 
 
 @app.get("/api/coach/pace-strategy/benchmarks")

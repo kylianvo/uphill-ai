@@ -28,6 +28,7 @@ import { AdaptWeekModal } from "../components/AdaptWeekModal";
 import ConfirmActionModal from "../components/ConfirmActionModal";
 import CorosPushButton from "../components/CorosPushButton";
 import { FeelingSelector, rpeToFeelingId } from "../components/FeelingSelector";
+import RaceHistoryPlanInfo from "../components/RaceHistoryPlanInfo";
 import { triggerHaptic } from "../utils/native";
 import { resolveCurrentWeek } from "../utils/planDate";
 
@@ -97,7 +98,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
         setBackupActivePlan(null);
         setBackupWorkouts([]);
       }
-      await fetchRecentPlansWithToken();
+      await fetchRecentPlansWithToken(token);
       setPlanToDelete(null);
     } catch (err: any) {
       console.error("Error deleting plan:", err);
@@ -994,6 +995,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
               : `Bản nháp — xem lại từng bài tập bên dưới và duyệt riêng từng bài (${draftPlan.race_name}). Kế hoạch sẽ hiển thị cho vận động viên ngay khi bài tập đầu tiên được duyệt.`}
           </div>
         )}
+        <RaceHistoryPlanInfo lang={lang} planId={activePlan?.id} />
         {switchingAthlete ? (
           <div style={{ background: "rgba(255, 255, 255, 0.95)", border: "1px solid var(--border-color)", padding: isMobile ? "40px 20px" : "60px 32px", borderRadius: "16px", display: "flex", flexDirection: "column", alignItems: "center", gap: "12px" }}>
             <ArrowsClockwise size={28} className="match-spin" color="var(--accent-primary)" aria-hidden="true" />

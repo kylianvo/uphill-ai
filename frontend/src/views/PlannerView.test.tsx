@@ -202,12 +202,12 @@ describe("PlannerView Early Adopter Improvements", () => {
   });
 
   it("renders formatted race target time in active plan header", () => {
-    render(<PlannerView />);
+    render(<PlannerView isMobile={false} />);
     expect(screen.getByText(/Time Target \(8h 30m\)/i)).toBeInTheDocument();
   });
 
   it("opens recent plans dropdown and displays delete button for each plan", async () => {
-    render(<PlannerView />);
+    render(<PlannerView isMobile={false} />);
 
     // Find the Recent Plans dropdown button
     const dropdownBtn = screen.getByRole("button", { name: /recent plans|lịch tập gần đây/i });
@@ -222,7 +222,7 @@ describe("PlannerView Early Adopter Improvements", () => {
   });
 
   it("opens confirmation modal when delete plan is clicked and sends DELETE request on confirm", async () => {
-    render(<PlannerView />);
+    render(<PlannerView isMobile={false} />);
 
     const dropdownBtn = screen.getByRole("button", { name: /recent plans|lịch tập gần đây/i });
     fireEvent.click(dropdownBtn);
@@ -250,7 +250,7 @@ describe("PlannerView Early Adopter Improvements", () => {
   it("prompts confirmation modal before generating a new plan", async () => {
     // When there is no active plan
     mockAppContext.activePlan = null;
-    render(<PlannerView />);
+    render(<PlannerView isMobile={false} />);
 
     const submitBtn = screen.getByRole("button", { name: /build custom calendar/i });
     fireEvent.click(submitBtn);
@@ -278,7 +278,7 @@ describe("PlannerView Early Adopter Improvements", () => {
     mockAppContext.workouts = [
       { id: 1, week_number: 1, day_of_week: "Monday", is_completed: 1 },
     ];
-    render(<PlannerView />);
+    render(<PlannerView isMobile={false} />);
 
     const reviewBtn = screen.queryByRole("button", { name: /review & generate block 2|tạo block 2/i });
     if (reviewBtn) {
