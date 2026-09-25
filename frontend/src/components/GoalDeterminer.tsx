@@ -8,7 +8,6 @@ import { RaceMatch } from "@/hooks/useRaceMatch";
 import { RaceNameField } from "@/components/RaceNameField";
 import {
   formatDurationHM,
-  parsePaceToMinutes,
   percentilePoints,
   fieldAnchors,
   percentileForAnchors,
@@ -16,7 +15,9 @@ import {
   RaceBenchmark,
   averageBenchmarks,
 } from "@/lib/paceStrategy";
-import { Crosshair, XCircle, Gauge, Target, TrendUp, ShieldCheck, Lightning } from "@phosphor-icons/react";
+import { Crosshair, XCircle, Gauge, Target } from "@phosphor-icons/react";
+import { GoalResult } from "@/components/GoalResult";
+import { assessGoal, GoalAssessment } from "@/lib/goalAssessment";
 
 interface GoalDeterminerProps {
   isOpen: boolean;
@@ -24,24 +25,6 @@ interface GoalDeterminerProps {
   lang: "en" | "vi";
   user?: any;
   activePlan?: any;
-}
-
-interface GoalEstimate {
-  base_flat_pace_min_km: number;
-  predicted_time_mins: number;
-  adjusted_time_mins: number;
-  improvement_pct: number;
-  goals: { ambitious: number; realistic: number; safe: number };
-  distance_km: number;
-  elevation_gain_m: number;
-  race_name?: string;
-  benchmarks?: RaceBenchmark[];
-  rank_transfer_mins?: number;
-  target_profile_source?: "gpx" | "synthetic";
-  reference_profile_source?: "gpx" | "synthetic" | null;
-  target_course_year?: number | null;
-  reference_course_year?: number | null;
-  reference_confidence?: "low";
 }
 
 function getBaseUrl(): string {
@@ -332,7 +315,7 @@ function FieldCurve({
   );
 }
 
-export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose, lang, user }) => {
+export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose, lang }) => {
   const [raceName, setRaceName] = useState("");
   const [raceMatch, setRaceMatch] = useState<RaceMatch | null>(null);
   const [distance, setDistance] = useState("");
@@ -358,61 +341,20 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, planForm?.race_date]);
 
-  // When a coach is acting as an athlete, "the profile" means the athlete's
-  // stored zones, not the coach's own — fetch it fresh rather than reading
-  // the coach's `user` prop.
-  const [athleteProfile, setAthleteProfile] = useState<any>(null);
-  useEffect(() => {
-    if (!isOpen || !actingAsAthleteId) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setAthleteProfile(null);
-      return;
-    }
-    const token = typeof window !== "undefined" ? localStorage.getItem("uphill_session_token") : null;
-    fetch(`${getBaseUrl()}/api/coaching/athletes/${actingAsAthleteId}/profile`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => setAthleteProfile(data))
-      .catch(() => setAthleteProfile(null));
-  }, [isOpen, actingAsAthleteId]);
-
-  const effectiveProfile = actingAsAthleteId ? athleteProfile : user;
-
-  // Stored aerobic zone pace from onboarding/profile — the zero-input default
-  const profileZonePace =
-    parsePaceToMinutes(effectiveProfile?.zone2_pace_max || "") ??
-    parsePaceToMinutes(effectiveProfile?.zone2_pace_min || "") ??
-    null;
-  const [fitnessMode, setFitnessMode] = useState<"profile" | "result" | "pace">(
-    profileZonePace ? "profile" : "result",
-  );
-  // Re-evaluate the default once the athlete's profile finishes loading —
-  // it arrives async, after the initial "result" default above is chosen.
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (profileZonePace) setFitnessMode("profile");
-  }, [profileZonePace]);
+  // Signed in: the backend gathers the athlete's own context (race history,
+  // UTMB index, watch, profile). Signed out: the manual inputs are all we have.
+  const signedIn = typeof window !== "undefined" && !!localStorage.getItem("uphill_session_token");
+  const [manualMode, setManualMode] = useState<"result" | "pace">("result");
+  const [showManualRef, setShowManualRef] = useState(false);
+  const [exclude, setExclude] = useState<string[]>([]);
   const [refRaceName, setRefRaceName] = useState("");
   const [refMatch, setRefMatch] = useState<RaceMatch | null>(null);
   const [refDistance, setRefDistance] = useState("");
   const [refGain, setRefGain] = useState("");
   const [refTime, setRefTime] = useState("");
-  const [historyResults, setHistoryResults] = useState<Array<{ id: number; race_name: string; race_date: string; discipline: string; distance_km: number; finish_time_sec: number; selected: boolean; is_dnf: boolean }>>([]);
-  const [selectedHistoryId, setSelectedHistoryId] = useState<number | null>(null);
-  useEffect(() => {
-    if (!isOpen) return;
-    const token = localStorage.getItem("uphill_session_token");
-    if (!token) return;
-    const path = actingAsAthleteId ? `/api/coaching/athletes/${actingAsAthleteId}/race-history` : "/api/race-history";
-    fetch(`${getBaseUrl()}${path}`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((response) => response.ok ? response.json() : null)
-      .then((data) => setHistoryResults((data?.results || []).filter((result: { selected: boolean; is_dnf: boolean; finish_time_sec: number | null }) => result.selected && !result.is_dnf && result.finish_time_sec)))
-      .catch(() => setHistoryResults([]));
-  }, [isOpen, actingAsAthleteId]);
   const [flatPace, setFlatPace] = useState("");
 
-  const [estimate, setEstimate] = useState<GoalEstimate | null>(null);
+  const [estimate, setEstimate] = useState<GoalAssessment | null>(null);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -425,56 +367,35 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
   const targetGain = parseFloat(gain) || raceMatch?.elevation_gain_m || 0;
   const refDistanceKm = parseFloat(refDistance) || refMatch?.distance_km || null;
   const refGainM = parseFloat(refGain) || refMatch?.elevation_gain_m || 0;
-  const profileBasePace = profileZonePace ? Math.round(profileZonePace * 0.95 * 100) / 100 : null;
+  const hasManualRef = !!refTime && !!refDistanceKm;
+  const usesManualRef = signedIn ? showManualRef && hasManualRef : manualMode === "result";
   const canEstimate =
     !!targetDistance &&
-    (fitnessMode === "pace"
-      ? !!parseFloat(flatPace)
-      : fitnessMode === "profile"
-        ? !!profileBasePace
-        : !!selectedHistoryId || (!!refTime && !!refDistanceKm));
+    (signedIn || (manualMode === "pace" ? !!parseFloat(flatPace) : hasManualRef));
 
-  const handleEstimate = async () => {
+  const runEstimate = async (nextExclude: string[]) => {
     setLoading(true);
     setErrorMsg("");
-    setEstimate(null);
     try {
       const payload: Record<string, unknown> = {
         race_name: raceName || null,
         distance_km: targetDistance,
         elevation_gain_m: targetGain,
         race_date: raceDate || null,
+        exclude: nextExclude,
+        lang,
       };
-      if (fitnessMode === "pace") {
-        payload.flat_pace_min_km = parseFloat(flatPace);
-      } else if (fitnessMode === "profile") {
-        payload.flat_pace_min_km = profileBasePace;
-      } else {
-        if (selectedHistoryId) payload.reference_result_id = selectedHistoryId;
-        else {
-          payload.reference_race_name = refRaceName || null;
-          payload.reference_distance_km = refDistanceKm;
-          payload.reference_elevation_gain_m = refGainM;
-          payload.reference_time = refTime;
-        }
+      if (usesManualRef && hasManualRef) {
+        payload.reference = {
+          race_name: refRaceName || null,
+          distance_km: refDistanceKm,
+          elevation_gain_m: refGainM,
+          time: refTime,
+        };
       }
-      const url = actingAsAthleteId
-        ? `${getBaseUrl()}/api/coaching/athletes/${actingAsAthleteId}/goal-estimate`
-        : `${getBaseUrl()}/api/coach/goal-estimate`;
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      const token = typeof window !== "undefined" ? localStorage.getItem("uphill_session_token") : null;
-      if (token) headers.Authorization = `Bearer ${token}`;
-      const response = await fetch(url, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(payload),
-      });
-      if (!response.ok) {
-        const detail = await response.json().catch(() => null);
-        throw new Error(typeof detail?.detail === "string" ? detail.detail : `HTTP ${response.status}`);
-      }
-      setEstimate(await response.json());
-      trackEvent("goal_determiner_used", { fitness_mode: fitnessMode });
+      if (!signedIn && manualMode === "pace") payload.flat_pace_min_km = parseFloat(flatPace);
+      setEstimate(await assessGoal(payload, actingAsAthleteId));
+      trackEvent("goal_determiner_used", { fitness_mode: signedIn ? "context" : manualMode });
     } catch (err: any) {
       const detail = `${err?.message || "network error"} · ${getBaseUrl()}`;
       const overrideHint = localStorage.getItem("UPHILL_API_URL_OVERRIDE")
@@ -489,6 +410,12 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
     } finally {
       setLoading(false);
     }
+  };
+
+  const toggleSource = (key: string) => {
+    const next = exclude.includes(key) ? exclude.filter((k) => k !== key) : [...exclude, key];
+    setExclude(next);
+    runEstimate(next);
   };
 
   const handlePlanPacing = (targetTimeMins: number) => {
@@ -513,31 +440,46 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
 
   if (!isOpen) return null;
 
-  const goalCards = estimate
-    ? ([
-        {
-          key: "ambitious",
-          icon: <Lightning size={20} weight="duotone" />,
-          label: t("Ambitious", "Tham vọng"),
-          note: t("Everything goes right", "Khi mọi thứ thuận lợi"),
-          mins: estimate.goals.ambitious,
-        },
-        {
-          key: "realistic",
-          icon: <TrendUp size={20} weight="duotone" />,
-          label: t("Realistic", "Thực tế"),
-          note: t("Your most likely day", "Khả năng cao nhất"),
-          mins: estimate.goals.realistic,
-        },
-        {
-          key: "safe",
-          icon: <ShieldCheck size={20} weight="duotone" />,
-          label: t("Safe", "An toàn"),
-          note: t("Margin for problems", "Dự phòng sự cố"),
-          mins: estimate.goals.safe,
-        },
-      ] as const)
-    : [];
+  const actionButton: React.CSSProperties = {
+    width: "100%", padding: "7px", borderRadius: "10px", background: "transparent", border: "1px solid var(--border-color)",
+    color: "var(--text-primary)", fontSize: "12px", fontWeight: 600, cursor: "pointer", display: "flex",
+    alignItems: "center", justifyContent: "center", gap: "5px",
+  };
+
+  const manualRefFields = (
+    <>
+      <div style={{ ...boxStyle, gridColumn: "1 / -1" }}>
+        <label style={labelStyle}>{t("Race you finished", "Giải bạn đã hoàn thành")}</label>
+        <RaceNameField
+          placeholder={t("e.g. VMM 50k — or leave blank and enter numbers", "vd. VMM 50k — hoặc bỏ trống và nhập số")}
+          value={refRaceName}
+          onChange={setRefRaceName}
+          onMatchChange={setRefMatch}
+          distanceKm={refDistance}
+          lang={lang}
+          style={inputStyle}
+        />
+      </div>
+      <div style={boxStyle}>
+        <label style={labelStyle}>
+          {t("Its distance (km)", "Cự ly (km)")}
+          {refMatch?.distance_km && !refDistance ? ` · ${t("from race DB", "theo dữ liệu giải")}` : ""}
+        </label>
+        <input type="number" min="1" placeholder={refMatch?.distance_km ? String(refMatch.distance_km) : "e.g. 50"} value={refDistance} onChange={(e) => setRefDistance(e.target.value)} style={inputStyle} />
+      </div>
+      <div style={boxStyle}>
+        <label style={labelStyle}>
+          {t("Its elevation gain (m)", "Elevation Gain (D+) (m)")}
+          {refMatch?.elevation_gain_m && !refGain ? ` · ${t("from race DB", "theo dữ liệu giải")}` : ""}
+        </label>
+        <input type="number" min="0" placeholder={refMatch?.elevation_gain_m ? String(refMatch.elevation_gain_m) : "e.g. 2500"} value={refGain} onChange={(e) => setRefGain(e.target.value)} style={inputStyle} />
+      </div>
+      <div style={boxStyle}>
+        <label style={labelStyle}>{t("Your finish time", "Thời gian hoàn thành")}</label>
+        <input type="text" placeholder="e.g. 7:30:00" value={refTime} onChange={(e) => setRefTime(e.target.value)} style={inputStyle} />
+      </div>
+    </>
+  );
 
   return (
     <div
@@ -573,6 +515,7 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
       >
         <button
           onClick={onClose}
+          aria-label={t("Close", "Đóng")}
           style={{ position: "absolute", top: "20px", right: "20px", background: "none", border: "none", cursor: "pointer", color: "var(--text-secondary)" }}
         >
           <XCircle size={32} weight="duotone" />
@@ -584,8 +527,8 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
         </h2>
         <p style={{ color: "var(--text-secondary)", marginBottom: actingAsAthleteId ? "8px" : "28px", fontSize: "15px" }}>
           {t(
-            "What could you realistically run at your target race? Grounded in the same physics as Pace Strategy, anchored by real field history.",
-            "Bạn có thể đạt thành tích nào ở giải mục tiêu? Dựa trên cùng mô hình thể chất với Pace Strategy, đối chiếu với dữ liệu thi đấu thực tế.",
+            "Ambitious, realistic and safe goals for your target race, from your race history, training data and the race's real field results.",
+            "Mục tiêu tham vọng, thực tế và an toàn cho race mục tiêu, dựa trên lịch sử race, dữ liệu tập và kết quả thực tế của giải.",
           )}
         </p>
         {actingAsAthleteId && (
@@ -656,146 +599,91 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
           </div>
         </div>
 
-        {/* Fitness source */}
-        <div style={{ display: "flex", gap: "8px", marginBottom: "16px", flexWrap: "wrap" }}>
-          {(["profile", "result", "pace"] as const).map((mode) => {
-            const disabled = mode === "profile" && !profileBasePace;
-            return (
-              <button
-                key={mode}
-                onClick={() => !disabled && setFitnessMode(mode)}
-                disabled={disabled}
-                title={
-                  disabled
-                    ? actingAsAthleteId
-                      ? t("This athlete hasn't set pace zones yet", "Vận động viên này chưa thiết lập vùng Pace")
-                      : t("Sign in and set your pace zones first", "Đăng nhập và thiết lập vùng Pace trước")
-                    : undefined
-                }
-                style={{
-                  padding: "8px 20px",
-                  borderRadius: "20px",
-                  border: fitnessMode === mode ? "none" : "1px solid var(--border-color)",
-                  background: fitnessMode === mode ? "var(--text-primary)" : "transparent",
-                  color: fitnessMode === mode ? "white" : "var(--text-primary)",
-                  fontSize: "14px",
-                  fontWeight: 600,
-                  cursor: disabled ? "not-allowed" : "pointer",
-                  opacity: disabled ? 0.45 : 1,
-                }}
-              >
-                {mode === "profile"
-                  ? actingAsAthleteId
-                    ? t("Their current fitness", "Thể lực hiện tại của họ")
-                    : t("My current fitness", "Thể lực hiện tại")
-                  : mode === "result"
-                    ? t("A recent race result", "Kết quả giải gần đây")
-                    : actingAsAthleteId
-                      ? t("Their flat pace", "Pace đường bằng của họ")
-                      : t("My flat pace", "Pace đường bằng")}
-              </button>
-            );
-          })}
-        </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "16px", marginBottom: "24px" }}>
-          {fitnessMode === "profile" ? (
-            <div style={{ ...boxStyle, gridColumn: "1 / -1" }}>
-              <label style={labelStyle}>
-                {actingAsAthleteId
-                  ? t(`From ${actingAsAthleteName}'s profile`, `Từ hồ sơ của ${actingAsAthleteName}`)
-                  : t("From your profile", "Từ hồ sơ của bạn")}
-              </label>
-              <div style={{ fontSize: "14.5px", color: "var(--text-primary)", fontWeight: 600 }}>
-                {t("Aerobic zone pace", "Pace vùng hiếu khí (Zone 2)")}: {profileZonePace?.toFixed(1)} min/km →{" "}
-                {t("race-effort base", "Base Flat Pace khi đua")} {profileBasePace?.toFixed(1)} min/km
+        {signedIn ? (
+          <div style={{ ...boxStyle, marginBottom: "24px" }}>
+            <label style={labelStyle}>{t("What we use", "Dữ liệu được dùng")}</label>
+            {estimate && estimate.sources.length > 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                {estimate.sources.map((source) => (
+                  <label key={source.key} style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13.5px", fontWeight: 500, color: "var(--text-primary)", textTransform: "none", letterSpacing: "normal", cursor: loading ? "wait" : "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={!exclude.includes(source.key) && source.included}
+                      disabled={loading || source.key === "result:manual"}
+                      onChange={() => toggleSource(source.key)}
+                    />
+                    {source.label}
+                  </label>
+                ))}
               </div>
-              <div style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "4px" }}>
+            ) : (
+              <div style={{ fontSize: "13.5px", color: "var(--text-secondary)" }}>
                 {actingAsAthleteId
                   ? t(
-                      "Same seeding as Pace Strategy. Update their zones in the athlete's Profile Settings to refine it.",
-                      "Cùng phương pháp tính với Pace Strategy. Cập nhật vùng Pace trong Cài đặt hồ sơ của vận động viên để chính xác hơn.",
+                      "Their linked race results, UTMB index, watch data and profile.",
+                      "Kết quả race đã liên kết, UTMB index, dữ liệu đồng hồ và hồ sơ của họ.",
                     )
                   : t(
-                      "Same seeding as Pace Strategy. Update your zones in Profile Settings to refine it.",
-                      "Cùng phương pháp tính với Pace Strategy. Cập nhật vùng Pace trong Cài đặt hồ sơ để chính xác hơn.",
-                    )}
+                      "Your linked race results, UTMB index, watch data and profile.",
+                      "Kết quả race đã liên kết, UTMB index, dữ liệu đồng hồ và hồ sơ của bạn.",
+                    )}{" "}
+                {!actingAsAthleteId && (
+                  <button type="button" onClick={() => { onClose(); setProfileSettingsOpen(true); }} style={{ background: "none", border: "none", padding: 0, color: "var(--accent-primary)", fontWeight: 600, cursor: "pointer", fontSize: "13.5px" }}>
+                    {t("Link UTMB / VBM", "Liên kết UTMB / VBM")}
+                  </button>
+                )}
               </div>
+            )}
+            <button
+              type="button"
+              onClick={() => setShowManualRef(!showManualRef)}
+              style={{ marginTop: "10px", background: "none", border: "none", padding: 0, color: "var(--accent-primary)", fontWeight: 600, cursor: "pointer", fontSize: "13px" }}
+            >
+              {showManualRef ? t("− Hide extra result", "− Ẩn kết quả thêm") : t("+ Add a result that isn't linked", "+ Thêm kết quả chưa liên kết")}
+            </button>
+            {showManualRef && (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "12px", marginTop: "12px" }}>
+                {manualRefFields}
+              </div>
+            )}
+          </div>
+        ) : (
+          <>
+            <div style={{ display: "flex", gap: "8px", marginBottom: "16px", flexWrap: "wrap" }}>
+              {(["result", "pace"] as const).map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => setManualMode(mode)}
+                  style={{
+                    padding: "8px 20px",
+                    borderRadius: "20px",
+                    border: manualMode === mode ? "none" : "1px solid var(--border-color)",
+                    background: manualMode === mode ? "var(--text-primary)" : "transparent",
+                    color: manualMode === mode ? "white" : "var(--text-primary)",
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  {mode === "result" ? t("A recent race result", "Kết quả giải gần đây") : t("My flat pace", "Pace đường bằng")}
+                </button>
+              ))}
             </div>
-          ) : fitnessMode === "result" ? (
-            <>
-              <div style={{ ...boxStyle, gridColumn: "1 / -1" }}>
-                <label style={labelStyle}>{t("Use a past result", "Dùng kết quả Race trước")}</label>
-                {historyResults.length > 0 ? <select style={inputStyle} value={selectedHistoryId || ""} onChange={(event) => {
-                  const id = Number(event.target.value) || null;
-                  setSelectedHistoryId(id);
-                  if (id) { setRefRaceName(""); setRefDistance(""); setRefGain(""); setRefTime(""); }
-                }}>
-                  <option value="">{t("Enter a result manually", "Nhập kết quả bằng tay")}</option>
-                  {[...historyResults].sort((a, b) => a.discipline === b.discipline ? Math.abs(a.distance_km - (targetDistance || a.distance_km)) - Math.abs(b.distance_km - (targetDistance || b.distance_km)) : a.discipline === "trail" ? -1 : 1).map((result) =>
-                    <option key={result.id} value={result.id}>{result.discipline === "trail" ? "Trail" : "Road"} · {result.race_name} · {result.race_date}</option>
-                  )}
-                </select> : <button type="button" style={{ ...inputStyle, cursor: "pointer", textAlign: "left" }} onClick={() => { onClose(); setProfileSettingsOpen(true); }}>
-                  {t("Link UTMB / VBM results or add one in Profile Settings", "Liên kết UTMB / VBM hoặc thêm Race trong Cài đặt hồ sơ")}
-                </button>}
-              </div>
-              {!selectedHistoryId && <>
-              <div style={{ ...boxStyle, gridColumn: "1 / -1" }}>
-                <label style={labelStyle}>{t("Race you finished", "Giải bạn đã hoàn thành")}</label>
-                <RaceNameField
-                  placeholder={t("e.g. VMM 50k — or leave blank and enter numbers", "vd. VMM 50k — hoặc bỏ trống và nhập số")}
-                  value={refRaceName}
-                  onChange={setRefRaceName}
-                  onMatchChange={setRefMatch}
-                  distanceKm={refDistance}
-                  lang={lang}
-                  style={inputStyle}
-                />
-              </div>
-              <div style={boxStyle}>
-                <label style={labelStyle}>
-                  {t("Its distance (km)", "Cự ly (km)")}
-                  {refMatch?.distance_km && !refDistance ? ` · ${t("from race DB", "theo dữ liệu giải")}` : ""}
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  placeholder={refMatch?.distance_km ? String(refMatch.distance_km) : "e.g. 50"}
-                  value={refDistance}
-                  onChange={(e) => setRefDistance(e.target.value)}
-                  style={inputStyle}
-                />
-              </div>
-              <div style={boxStyle}>
-                <label style={labelStyle}>
-                  {t("Its elevation gain (m)", "Elevation Gain (D+) (m)")}
-                  {refMatch?.elevation_gain_m && !refGain ? ` · ${t("from race DB", "theo dữ liệu giải")}` : ""}
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  placeholder={refMatch?.elevation_gain_m ? String(refMatch.elevation_gain_m) : "e.g. 2500"}
-                  value={refGain}
-                  onChange={(e) => setRefGain(e.target.value)}
-                  style={inputStyle}
-                />
-              </div>
-              <div style={boxStyle}>
-                <label style={labelStyle}>{t("Your finish time", "Thời gian hoàn thành")}</label>
-                <input type="text" placeholder="e.g. 7:30:00" value={refTime} onChange={(e) => setRefTime(e.target.value)} style={inputStyle} />
-              </div>
-              </>}
-            </>
-          ) : (
-            <div style={boxStyle}>
-              <label style={labelStyle}>{t("Flat pace (min/km)", "Pace đường bằng (min/km)")}</label>
-              <input type="number" step="0.1" min="3" max="15" placeholder="e.g. 6.5" value={flatPace} onChange={(e) => setFlatPace(e.target.value)} style={inputStyle} />
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "16px", marginBottom: "24px" }}>
+              {manualMode === "result" ? (
+                manualRefFields
+              ) : (
+                <div style={boxStyle}>
+                  <label style={labelStyle}>{t("Flat pace (min/km)", "Pace đường bằng (min/km)")}</label>
+                  <input type="number" step="0.1" min="3" max="15" placeholder="e.g. 6.5" value={flatPace} onChange={(e) => setFlatPace(e.target.value)} style={inputStyle} />
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </>
+        )}
 
         <button
-          onClick={handleEstimate}
+          onClick={() => runEstimate(exclude)}
           disabled={loading || !canEstimate}
           style={{
             width: "100%",
@@ -811,7 +699,11 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
             transition: "0.2s",
           }}
         >
-          {loading ? t("Estimating…", "Đang ước tính…") : t("Estimate my goal", "Ước tính mục tiêu")}
+          {loading
+            ? t("Estimating…", "Đang ước tính…")
+            : estimate
+              ? t("Re-estimate", "Ước tính lại")
+              : t("Estimate my goal", "Ước tính mục tiêu")}
         </button>
 
         {errorMsg && (
@@ -821,159 +713,40 @@ export const GoalDeterminer: React.FC<GoalDeterminerProps> = ({ isOpen, onClose,
         )}
 
         {estimate && (
-          <div style={{ marginTop: "28px", paddingTop: "24px", borderTop: "1px solid rgba(0,0,0,0.1)" }}>
-            {estimate.reference_confidence === "low" && <p style={{ color: "#b45309", fontSize: 13 }}>
-              {t("Road speed may overestimate your trail ability.", "Pace Road có thể ước tính quá cao khả năng Trail của bạn.")}
-            </p>}
+          <div style={{ marginTop: "28px", paddingTop: "24px", borderTop: "1px solid rgba(0,0,0,0.1)", opacity: loading ? 0.5 : 1 }}>
             <p style={{ fontSize: "13.5px", color: "var(--text-secondary)", marginBottom: "16px" }}>
-              {t("Current predicted time on", "Dự đoán thành tích hiện tại cho")}{" "}
+              {t("Goals for", "Mục tiêu cho")}{" "}
               <strong>
                 {estimate.race_name || `${Math.round(estimate.distance_km)}k / ${Math.round(estimate.elevation_gain_m)}m D+`}
               </strong>
-              : <strong style={{ fontFamily: "var(--font-mono)" }}>{formatDurationHM(estimate.predicted_time_mins)}</strong>
-              {estimate.improvement_pct > 0 &&
-                ` · ${t("with your training block", "sau chu kỳ tập luyện")}: ${formatDurationHM(estimate.adjusted_time_mins)} (−${estimate.improvement_pct}%)`}
-              {` · ${t("base flat pace", "Base Flat Pace")} ${estimate.base_flat_pace_min_km.toFixed(1)} min/km`}
             </p>
-
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "12px" }}>
-              {goalCards.map((g) => (
-                <div key={g.key} className="snow-glass" style={{ borderRadius: "16px", padding: "16px", border: "1px solid rgba(0,0,0,0.06)" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--accent-primary)", fontWeight: 700, fontSize: "13px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                    {g.icon} {g.label}
-                  </div>
-                  <div style={{ fontFamily: "var(--font-mono)", fontSize: "28px", fontWeight: 700, color: "var(--text-primary)", margin: "8px 0 2px" }}>
-                    {formatDurationHM(g.mins)}
-                  </div>
-                  <div style={{ fontSize: "11.5px", color: "var(--text-muted)", marginBottom: "2px" }}>
-                    {(() => {
-                      const paceSecs = Math.round((g.mins / estimate.distance_km) * 60);
-                      return `${Math.floor(paceSecs / 60)}:${String(paceSecs % 60).padStart(2, "0")}/km ${t("average", "trung bình")}`;
-                    })()}
-                  </div>
-                  <div style={{ fontSize: "11.5px", color: "var(--text-muted)", marginBottom: "10px" }}>
-                    {g.note}
-                    {(() => {
-                      const bench0 = estimate.benchmarks?.[0];
-                      if (!bench0?.percentiles?.overall) return null;
-                      const anchors = fieldAnchors({
-                        percentiles: bench0.percentiles.overall,
-                        topTimes: bench0.top_times?.overall,
-                        winner: bench0.winner_time,
-                        finishers: bench0.finishers,
-                      });
-                      const res = percentileForAnchors(anchors, g.mins);
-                      if (!res) return null;
-                      const fmt = (pct: number) => (pct < 5 ? pct.toFixed(1) : String(Math.round(pct)));
-                      const label =
-                        res.clamped === "fast"
-                          ? `top ${fmt(res.pct)}%+`
-                          : res.clamped === "slow"
-                            ? t("back of field", "cuối đoàn")
-                            : `top ${fmt(res.pct)}%`;
-                      return (
-                        <span style={{ display: "inline-block", marginLeft: "6px", background: "rgba(0,0,0,0.05)", padding: "1px 8px", borderRadius: "8px", fontWeight: 700, color: "var(--text-secondary)" }}>
-                          ≈ {label}
-                        </span>
-                      );
-                    })()}
-                  </div>
-                  <div style={{ display: "flex", gap: "6px" }}>
-                    <button
-                      onClick={() => handlePlanPacing(g.mins)}
-                      style={{ flex: 1, padding: "8px", borderRadius: "10px", background: "transparent", border: "1px solid var(--border-color)", color: "var(--text-primary)", fontSize: "12.5px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "5px" }}
-                    >
-                      <Gauge size={15} /> {t("Plan pacing", "Lên Pace Strategy")}
-                    </button>
-                    <button
-                      onClick={() => handlePlanTarget(g.mins, g.label)}
-                      style={{ flex: 1, padding: "8px", borderRadius: "10px", background: "transparent", border: "1px solid var(--border-color)", color: "var(--text-primary)", fontSize: "12.5px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "5px" }}
-                    >
-                      <Target size={15} /> {t("Use for plan", "Dùng cho giáo án")}
-                    </button>
-                  </div>
+            <GoalResult
+              assessment={estimate}
+              lang={lang}
+              highlight="b"
+              renderActions={(mins, label) => (
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <button onClick={() => handlePlanTarget(mins, label)} style={actionButton}>
+                    <Target size={14} /> {t("Use for plan", "Dùng cho plan")}
+                  </button>
+                  <button onClick={() => handlePlanPacing(mins)} style={actionButton}>
+                    <Gauge size={14} /> {t("Plan pacing", "Lên Pace Strategy")}
+                  </button>
                 </div>
-              ))}
-            </div>
+              )}
+            />
 
-            {estimate.benchmarks && estimate.benchmarks.length > 0 && (
+            {estimate.goals && estimate.benchmarks && estimate.benchmarks.length > 0 && (
               <FieldCurve
                 benchmarks={estimate.benchmarks}
-                goals={goalCards.map((g) => ({ label: g.label, short: g.label[0], mins: g.mins }))}
-                rankTransferMins={estimate.rank_transfer_mins}
+                goals={[
+                  { label: t("Ambitious", "Tham vọng"), short: "A", mins: estimate.goals.a },
+                  { label: t("Realistic", "Thực tế"), short: "B", mins: estimate.goals.b },
+                  { label: t("Safe", "An toàn"), short: "C", mins: estimate.goals.c },
+                ]}
                 lang={lang}
               />
             )}
-
-            <div style={{ marginTop: "20px", background: "rgba(0,0,0,0.02)", border: "1px solid var(--border-color)", borderRadius: "14px", padding: "16px", fontSize: "12px", color: "var(--text-secondary)", lineHeight: 1.55 }}>
-              <div style={{ fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", fontSize: "11px", color: "var(--text-primary)", marginBottom: "12px" }}>
-                {t("How this goal was calculated", "Cách tính mục tiêu chi tiết")}
-              </div>
-
-              {/* Layer 1: Physics Engine */}
-              <div style={{ paddingBottom: "10px", marginBottom: "10px", borderBottom: "1px dashed var(--border-color)" }}>
-                <div style={{ fontWeight: 600, color: "var(--text-primary)", marginBottom: "2px" }}>
-                  1. {t("Course Physics Model", "Mô hình vật lý đường đua")}: {formatDurationHM(estimate.predicted_time_mins)}
-                </div>
-                <div>
-                  {t("Paced at", "Tính từ pace nền")} {estimate.base_flat_pace_min_km.toFixed(1)} min/km{" "}
-                  {t("over", "trên cự ly")} {Math.round(estimate.distance_km)}km / {Math.round(estimate.elevation_gain_m)}m D+{" "}
-                  ({t("Minetti grade curve and fatigue cost", "đường cong Minetti và mệt mỏi theo độ dốc")}).
-                  {" "}
-                  {estimate.target_profile_source === "gpx"
-                    ? t(`Course profile: Real route (GPX ${estimate.target_course_year}).`, `Đường đua: Thực tế (GPX ${estimate.target_course_year}).`)
-                    : t("Course profile: Synthesized from distance and elevation.", "Đường đua: Ước tính từ cự ly và độ cao.")}
-                </div>
-              </div>
-
-              {/* Layer 2: Historical Field Calibration */}
-              {estimate.benchmarks && estimate.benchmarks.length > 0 && (
-                <div style={{ paddingBottom: "10px", marginBottom: "10px", borderBottom: "1px dashed var(--border-color)" }}>
-                  <div style={{ fontWeight: 600, color: "var(--text-primary)", marginBottom: "2px", display: "flex", alignItems: "center", gap: "6px" }}>
-                    <span>2. {t("Historical Field Calibration", "Hiệu chuẩn theo lịch sử giải đấu")}</span>
-                    <span style={{ fontSize: "10px", fontWeight: 600, padding: "1px 6px", borderRadius: "6px", background: "rgba(0,0,0,0.06)", color: "var(--text-secondary)" }}>
-                      {t("UTMB Index Verified", "Xác thực UTMB Index")}
-                    </span>
-                  </div>
-                  <div>
-                    {estimate.rank_transfer_mins != null ? (
-                      <div>
-                        {t("Cross-check against reference race puts a runner of your rank at approx.", "Đối chiếu kết quả giải tham chiếu tương ứng với thành tích khoảng")}{" "}
-                        <strong style={{ color: "var(--text-primary)" }}>{formatDurationHM(estimate.rank_transfer_mins)}</strong>.
-                      </div>
-                    ) : null}
-                    <div>
-                      {t("Course benchmark data", "Dữ liệu giải đấu")}: {estimate.benchmarks.length} {t("editions recorded", "mùa giải")} ({estimate.benchmarks.map((b) => b.year).filter((y) => y > 0).join(", ")}).
-                      {" "}
-                      {estimate.benchmarks[0].winner_time ? `${t("Latest winner", "Vô địch gần nhất")}: ${estimate.benchmarks[0].winner_time} (${estimate.benchmarks[0].finishers || 0} ${t("finishers", "vận động viên hoàn thành")}).` : ""}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Layer 3: Goal Targets & Training Adjustment */}
-              <div>
-                <div style={{ fontWeight: 600, color: "var(--text-primary)", marginBottom: "2px" }}>
-                  3. {t("Final Goal Targets", "Mục tiêu tối ưu cuối cùng")}
-                </div>
-                {estimate.improvement_pct > 0 && (
-                  <div style={{ marginBottom: "4px" }}>
-                    {t("Training block progression", "Tiến độ chu kỳ tập luyện")}: -{estimate.improvement_pct}%{" "}
-                    {t("projected gain before race day", "cải thiện dự kiến trước ngày đua")} →{" "}
-                    <strong>{formatDurationHM(estimate.adjusted_time_mins)}</strong>.
-                  </div>
-                )}
-                <div style={{ color: "var(--text-muted)", fontSize: "11.5px" }}>
-                  {t("Ambitious (-5%): Optimal race day execution · Realistic: Expected baseline · Safe (+8%): Contingency margin.", "Tham vọng (-5%): Điều kiện tối ưu · Thực tế: Dự báo chuẩn · An toàn (+8%): Dự phòng rủi ro.")}
-                </div>
-              </div>
-            </div>
-            <p style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "8px" }}>
-              {t(
-                "Same engine as Pace Strategy — the two tools will never disagree about the same runner on the same course.",
-                "Cùng một mô hình với Pace Strategy — hai công cụ luôn thống nhất về cùng một runner trên cùng một đường đua.",
-              )}
-            </p>
           </div>
         )}
       </div>
