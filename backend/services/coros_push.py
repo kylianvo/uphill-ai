@@ -53,7 +53,7 @@ _OVERVIEW = {
         "edits made to this plan in COROS are overwritten on the next send."
     ),
     "vi": (
-        "Đồng bộ từ Uphill AI. Hãy chỉnh kế hoạch trong Uphill AI rồi bấm Gửi sang COROS lần nữa; "
+        "Đồng bộ từ Uphill AI. Hãy chỉnh plan trong Uphill AI rồi bấm Gửi sang COROS lần nữa; "
         "các thay đổi làm trực tiếp trên COROS sẽ bị ghi đè ở lần gửi tiếp theo."
     ),
 }

@@ -25,6 +25,7 @@ import UnplannedActivityCard from "../components/UnplannedActivityCard";
 import WeeklyReview, { CompletionRing, ringColor, computeCreditedActual, type WeekReviewData } from "../components/WeeklyReview";
 import { MoveWorkoutModal } from "../components/MoveWorkoutModal";
 import { AdaptWeekModal } from "../components/AdaptWeekModal";
+import CorosPushButton from "../components/CorosPushButton";
 import { FeelingSelector, rpeToFeelingId } from "../components/FeelingSelector";
 import { triggerHaptic } from "../utils/native";
 import { resolveCurrentWeek } from "../utils/planDate";
@@ -1322,6 +1323,13 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                         : (lang === "en" ? "Sync Watch" : "Đồng bộ đồng hồ")}
                     </span>
                   </button>
+                  {!isCoachActingAsAthlete && (
+                    <CorosPushButton
+                      lang={lang}
+                      refreshKey={workouts}
+                      onReconnect={() => ctx.setProfileSettingsOpen(true)}
+                    />
+                  )}
 
                   <button
                     className="btn btn-primary"
