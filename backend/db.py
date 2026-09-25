@@ -619,11 +619,13 @@ def init_db():
         CREATE TABLE IF NOT EXISTS coros_plan_links (
             user_id           INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
             plan_id           INTEGER REFERENCES plans(id) ON DELETE SET NULL,
-            coros_plan_id     TEXT NOT NULL,            -- COROS 64-bit id, kept as text
-            coros_start_date  DATE NOT NULL,
-            total_weeks       INTEGER NOT NULL,
+            mode              TEXT NOT NULL DEFAULT 'plan',  -- 'plan' (race goals) | 'standalone'
+            coros_plan_id     TEXT,                     -- COROS 64-bit id, kept as text; NULL in standalone mode
+            coros_start_date  DATE,
+            total_weeks       INTEGER,
             window_end        DATE NOT NULL,
             day_hashes        JSONB NOT NULL DEFAULT '{}'::jsonb,  -- ISO date -> hash of what was sent
+            scheduled         JSONB NOT NULL DEFAULT '{}'::jsonb,  -- standalone: ISO date -> [COROS idInPlan]
             last_pushed_at    TIMESTAMPTZ,
             last_summary      JSONB,
             partial           BOOLEAN NOT NULL DEFAULT FALSE,
@@ -631,6 +633,15 @@ def init_db():
         )
         """)
         )
+        # Self-migrate databases created before standalone mode (idempotent).
+        for col_sql in [
+            "ALTER TABLE coros_plan_links ADD COLUMN IF NOT EXISTS mode TEXT NOT NULL DEFAULT 'plan'",
+            "ALTER TABLE coros_plan_links ADD COLUMN IF NOT EXISTS scheduled JSONB NOT NULL DEFAULT '{}'::jsonb",
+            "ALTER TABLE coros_plan_links ALTER COLUMN coros_plan_id DROP NOT NULL",
+            "ALTER TABLE coros_plan_links ALTER COLUMN coros_start_date DROP NOT NULL",
+            "ALTER TABLE coros_plan_links ALTER COLUMN total_weeks DROP NOT NULL",
+        ]:
+            conn.execute(text(col_sql))
         conn.execute(
             text("""
         CREATE TABLE IF NOT EXISTS coros_push_usage (
@@ -3218,6 +3229,7 @@ def get_coros_plan_link(user_id: int) -> dict[str, Any] | None:
         return None
     d = dict(row._mapping)
     d["day_hashes"] = d.get("day_hashes") or {}
+    d["scheduled"] = d.get("scheduled") or {}
     return d
 
 
@@ -3225,31 +3237,35 @@ def save_coros_plan_link(
     user_id: int,
     *,
     plan_id: int | None,
-    coros_plan_id: str,
+    coros_plan_id: str | None,
     coros_start_date,
-    total_weeks: int,
+    total_weeks: int | None,
     window_end,
     day_hashes: dict[str, str],
     last_summary: dict[str, Any],
     partial: bool,
+    mode: str = "plan",
+    scheduled: dict[str, list[str]] | None = None,
 ) -> None:
     with engine.connect() as conn:
         conn.execute(
             text("""
             INSERT INTO coros_plan_links (
-                user_id, plan_id, coros_plan_id, coros_start_date, total_weeks, window_end,
-                day_hashes, last_pushed_at, last_summary, partial
+                user_id, plan_id, mode, coros_plan_id, coros_start_date, total_weeks, window_end,
+                day_hashes, scheduled, last_pushed_at, last_summary, partial
             ) VALUES (
-                :u, :pid, :cpid, :start, :weeks, :wend,
-                CAST(:hashes AS JSONB), NOW(), CAST(:summary AS JSONB), :partial
+                :u, :pid, :mode, :cpid, :start, :weeks, :wend,
+                CAST(:hashes AS JSONB), CAST(:scheduled AS JSONB), NOW(), CAST(:summary AS JSONB), :partial
             )
             ON CONFLICT (user_id) DO UPDATE SET
                 plan_id = EXCLUDED.plan_id,
+                mode = EXCLUDED.mode,
                 coros_plan_id = EXCLUDED.coros_plan_id,
                 coros_start_date = EXCLUDED.coros_start_date,
                 total_weeks = EXCLUDED.total_weeks,
                 window_end = EXCLUDED.window_end,
                 day_hashes = EXCLUDED.day_hashes,
+                scheduled = EXCLUDED.scheduled,
                 last_pushed_at = NOW(),
                 last_summary = EXCLUDED.last_summary,
                 partial = EXCLUDED.partial
@@ -3257,11 +3273,13 @@ def save_coros_plan_link(
             {
                 "u": user_id,
                 "pid": plan_id,
+                "mode": mode,
                 "cpid": coros_plan_id,
                 "start": coros_start_date,
                 "weeks": total_weeks,
                 "wend": window_end,
                 "hashes": json.dumps(day_hashes),
+                "scheduled": json.dumps(scheduled or {}),
                 "summary": json.dumps(last_summary),
                 "partial": partial,
             },

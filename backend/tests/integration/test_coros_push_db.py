@@ -32,6 +32,8 @@ def test_tables_have_expected_columns():
         "total_weeks",
         "window_end",
         "day_hashes",
+        "mode",
+        "scheduled",
         "last_pushed_at",
         "last_summary",
         "partial",
@@ -75,6 +77,27 @@ def test_save_and_get_link_roundtrip(client):
     )
     link = db.get_coros_plan_link(uid)
     assert (link["coros_plan_id"], link["total_weeks"], link["partial"]) == ("99", 5, True)
+    assert (link["mode"], link["scheduled"]) == ("plan", {})
+
+
+def test_standalone_link_has_no_plan_fields(client):
+    uid = _user(client)
+    db.save_coros_plan_link(
+        uid,
+        plan_id=None,
+        coros_plan_id=None,
+        coros_start_date=None,
+        total_weeks=None,
+        window_end=dt.date(2027, 5, 2),
+        day_hashes={"2027-04-08": "h"},
+        last_summary={},
+        partial=False,
+        mode="standalone",
+        scheduled={"2027-04-08": ["123", "456"]},
+    )
+    link = db.get_coros_plan_link(uid)
+    assert (link["mode"], link["coros_plan_id"], link["total_weeks"]) == ("standalone", None, None)
+    assert link["scheduled"] == {"2027-04-08": ["123", "456"]}
 
 
 def test_claim_push_slot_enforces_daily_limit(client):
