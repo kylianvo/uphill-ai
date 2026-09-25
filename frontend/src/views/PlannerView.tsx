@@ -25,10 +25,21 @@ import UnplannedActivityCard from "../components/UnplannedActivityCard";
 import WeeklyReview, { CompletionRing, ringColor, computeCreditedActual, type WeekReviewData } from "../components/WeeklyReview";
 import { MoveWorkoutModal } from "../components/MoveWorkoutModal";
 import { AdaptWeekModal } from "../components/AdaptWeekModal";
+import ConfirmActionModal from "../components/ConfirmActionModal";
 import CorosPushButton from "../components/CorosPushButton";
 import { FeelingSelector, rpeToFeelingId } from "../components/FeelingSelector";
 import { triggerHaptic } from "../utils/native";
 import { resolveCurrentWeek } from "../utils/planDate";
+
+export function formatTargetTimeHours(hours: number | null | undefined): string {
+  if (hours == null || isNaN(hours) || hours <= 0) return "";
+  const totalMinutes = Math.round(hours * 60);
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
 
 // Must match backend/config.py's settings.WEEKS_PER_BLOCK -- the training
 // block size plan generation, the 70% completion gate, and block review all
@@ -40,10 +51,213 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   const { handleGeneratePlan, getPlanDistance, getPlanElevation, formatPlanName, handleSelectPlan, swapDays, moveWorkout, calendarNotice, dismissCalendarNotice, handleToggleComplete, handleMarkMissed, handleLogWorkout, getWeekWorkouts, getWorkoutDate, getWorkoutDateObj, handlePlannerGpxFileChange, plannerGpxInputRef, trackEvent, API_BASE_URL, fetchRecentPlansWithToken, startPlanJobPoller, fetchDraftPlan, draftPlan, handleApproveWorkout, handleRemoveWorkout, handleAiCreateWorkout, handleCoachEditWorkout, fetchActivePlanForActing } = usePlanner();
   const [planViewMode, setPlanViewMode] = useState<"list" | "calendar">("list");
   const [addWorkoutTarget, setAddWorkoutTarget] = useState<{ week: number; day: string } | null>(null);
-  const { lang, activePlan, planLoading, planErrorMsg, planForm, setPlanForm, targetTimeH, setTargetTimeH, targetTimeM, setTargetTimeM, targetTimeS, setTargetTimeS, cutoffTimeH, setCutoffTimeH, cutoffTimeM, setCutoffTimeM, cutoffTimeS, setCutoffTimeS, recentPlans, selectedWeek, setSelectedWeek, setWorkouts, setBackupWorkouts, setActivePlan, workouts, backupWorkouts, backupActivePlan, setBackupActivePlan, courseInputMode, setCourseInputMode, plannerGpxLoading, plannerGpxFile, plannerGpxError, showExportOptions, setShowExportOptions, exportTimePref, setExportTimePref, setIsGoalDeterminerOpen, settingsHandoff, setSettingsHandoff, setPaceHandoff, setIsPaceStrategyOpen, user, actingAsAthleteId, actingAsAthleteName, setActingAsAthleteId, setActingAsAthleteName, handleTabSwitch, activePlanLoading } = ctx;
+  const { lang, activePlan, planLoading, planErrorMsg, setPlanErrorMsg, planForm, setPlanForm, targetTimeH, setTargetTimeH, targetTimeM, setTargetTimeM, targetTimeS, setTargetTimeS, cutoffTimeH, setCutoffTimeH, cutoffTimeM, setCutoffTimeM, cutoffTimeS, setCutoffTimeS, recentPlans, selectedWeek, setSelectedWeek, setWorkouts, setBackupWorkouts, setActivePlan, workouts, backupWorkouts, backupActivePlan, setBackupActivePlan, courseInputMode, setCourseInputMode, plannerGpxLoading, plannerGpxFile, plannerGpxError, showExportOptions, setShowExportOptions, exportTimePref, setExportTimePref, setIsGoalDeterminerOpen, settingsHandoff, setSettingsHandoff, setPaceHandoff, setIsPaceStrategyOpen, user, actingAsAthleteId, actingAsAthleteName, setActingAsAthleteId, setActingAsAthleteName, handleTabSwitch, activePlanLoading } = ctx;
   const isCoachActingAsAthlete = !!actingAsAthleteId;
   const workoutAthleteId: number | null = actingAsAthleteId ?? (user?.id ?? null);
   const [switchingAthlete, setSwitchingAthlete] = useState(false);
+  const [recentPlansDropdownOpen, setRecentPlansDropdownOpen] = useState(false);
+  const [planToDelete, setPlanToDelete] = useState<any | null>(null);
+  const [isDeletingPlan, setIsDeletingPlan] = useState(false);
+  const [confirmCreatePlanOpen, setConfirmCreatePlanOpen] = useState(false);
+  const [confirmNextBlockOpen, setConfirmNextBlockOpen] = useState(false);
+  const recentPlansMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (recentPlansMenuRef.current && !recentPlansMenuRef.current.contains(event.target as Node)) {
+        setRecentPlansDropdownOpen(false);
+      }
+    }
+    if (recentPlansDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [recentPlansDropdownOpen]);
+
+  const confirmDeletePlan = async () => {
+    if (!planToDelete) return;
+    setIsDeletingPlan(true);
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('uphill_session_token') || '' : '';
+      const res = await fetch(`${API_BASE_URL}/api/coach/plans/${planToDelete.id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!res.ok) {
+        throw new Error("Failed to delete plan");
+      }
+      triggerHaptic();
+      if (activePlan?.id === planToDelete.id) {
+        setActivePlan(null);
+        setWorkouts([]);
+        setBackupActivePlan(null);
+        setBackupWorkouts([]);
+      }
+      await fetchRecentPlansWithToken();
+      setPlanToDelete(null);
+    } catch (err: any) {
+      console.error("Error deleting plan:", err);
+      alert(lang === "en" ? "Failed to delete plan. Please try again." : "Không thể xóa lịch tập. Vui lòng thử lại.");
+    } finally {
+      setIsDeletingPlan(false);
+    }
+  };
+
+  const onPlanFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const isRaceOrDistVal = planForm.plan_goal_category === "race" || planForm.plan_goal_category === "distance";
+    if (isRaceOrDistVal && (!planForm.race_name || !planForm.race_date)) {
+      setPlanErrorMsg?.(lang === "en" ? "Race Name and Race Date are required for Race/Distance goals." : "Vui lòng nhập Tên giải và Ngày đua.");
+      return;
+    }
+    if (!isRaceOrDistVal && !planForm.plan_start_date) {
+      setPlanErrorMsg?.(lang === "en" ? "Please select a Plan Start Date." : "Vui lòng chọn Ngày bắt đầu giáo án.");
+      return;
+    }
+    if (!planForm.current_weekly_km) {
+      setPlanErrorMsg?.(lang === "en" ? "Please enter your current weekly mileage." : "Vui lòng nhập quãng đường tuần hiện tại.");
+      return;
+    }
+    setPlanErrorMsg?.("");
+    setConfirmCreatePlanOpen(true);
+  };
+
+  const renderRecentPlansDropdown = () => (
+    <div ref={recentPlansMenuRef} style={{ position: "relative", minWidth: "140px" }}>
+      <button
+        type="button"
+        className="btn btn-secondary"
+        aria-haspopup="true"
+        aria-expanded={recentPlansDropdownOpen}
+        aria-label={lang === "en" ? "Recent Plans" : "Lịch tập gần đây"}
+        style={{
+          width: "100%",
+          height: "36px",
+          fontSize: "12px",
+          padding: "0 12px",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          borderRadius: "9999px",
+          border: "1px solid rgba(0, 0, 0, 0.1)",
+          background: "rgba(0, 0, 0, 0.06)",
+          color: "#111111",
+          cursor: "pointer",
+          gap: "6px",
+        }}
+        onClick={() => setRecentPlansDropdownOpen(!recentPlansDropdownOpen)}
+      >
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {lang === "en" ? "Recent Plans" : "Lịch tập gần đây"}
+        </span>
+        <CaretDown size={13} weight="bold" />
+      </button>
+
+      {recentPlansDropdownOpen && (
+        <div
+          style={{
+            position: "absolute",
+            top: "calc(100% + 6px)",
+            right: 0,
+            zIndex: 100,
+            minWidth: "260px",
+            maxWidth: "340px",
+            maxHeight: "280px",
+            overflowY: "auto",
+            background: "#ffffff",
+            border: "1px solid rgba(0, 0, 0, 0.12)",
+            borderRadius: "12px",
+            boxShadow: "0 12px 28px rgba(0, 0, 0, 0.18)",
+            padding: "6px",
+          }}
+        >
+          {(!recentPlans || recentPlans.length === 0) ? (
+            <div style={{ padding: "12px 14px", fontSize: "12.5px", color: "var(--text-muted)", textAlign: "center" }}>
+              {lang === "en" ? "— No plans available —" : "— Không có lịch tập —"}
+            </div>
+          ) : (
+            recentPlans.map((p: any) => {
+              const isActive = activePlan?.id === p.id;
+              return (
+                <div
+                  key={p.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "8px 10px",
+                    borderRadius: "8px",
+                    background: isActive ? "rgba(16, 185, 129, 0.08)" : "transparent",
+                    cursor: "pointer",
+                    gap: "8px",
+                    transition: "background 0.15s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isActive) e.currentTarget.style.background = "rgba(0, 0, 0, 0.04)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = isActive ? "rgba(16, 185, 129, 0.08)" : "transparent";
+                  }}
+                >
+                  <div
+                    style={{ flex: 1, minWidth: 0 }}
+                    onClick={() => {
+                      handleSelectPlan(p.id);
+                      setRecentPlansDropdownOpen(false);
+                    }}
+                  >
+                    <div style={{ fontSize: "12.5px", fontWeight: isActive ? "700" : "500", color: isActive ? "var(--accent-primary)" : "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {formatPlanName(p)}
+                    </div>
+                    {p.race_date && (
+                      <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "2px" }}>
+                        {p.race_date} {p.target_time_hours ? `• ${formatTargetTimeHours(p.target_time_hours)}` : ""}
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    aria-label={lang === "en" ? `Delete ${p.race_name || "plan"}` : `Xóa ${p.race_name || "lịch tập"}`}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      padding: "6px",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      color: "#ef4444",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      opacity: 0.75,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.opacity = "1";
+                      e.currentTarget.style.background = "rgba(239, 68, 68, 0.1)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.opacity = "0.75";
+                      e.currentTarget.style.background = "none";
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPlanToDelete(p);
+                      setRecentPlansDropdownOpen(false);
+                    }}
+                  >
+                    <Trash size={15} weight="bold" />
+                  </button>
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+    </div>
+  );
 
   // When entering/leaving "acting as athlete" mode, load that athlete's
   // active plan + draft (instead of whatever the coach's own self-serve
@@ -651,7 +865,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
     setShowBlockReview(true);
   };
 
-  const handleGenerateNextBlock = async () => {
+  const executeGenerateNextBlock = async () => {
     if (!activePlan) return;
     setNextBlockLoading(true);
     const token = typeof window !== "undefined" ? localStorage.getItem("uphill_session_token") : null;
@@ -709,6 +923,11 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
       alert(err.message || "Failed to generate next block");
       setNextBlockLoading(false);
     }
+  };
+
+  const handleGenerateNextBlock = () => {
+    if (!activePlan) return;
+    setConfirmNextBlockOpen(true);
   };
 
   const handleRaceMatchChange = (match: RaceMatch | null) => {
@@ -790,11 +1009,12 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
             </p>
           </div>
         ) : !activePlan ? (
-          <form onSubmit={handleGeneratePlan} style={{ background: "rgba(255, 255, 255, 0.95)", border: "1px solid var(--border-color)", padding: isMobile ? "20px" : "32px", borderRadius: "16px" }}>
+          <form onSubmit={onPlanFormSubmit} style={{ background: "rgba(255, 255, 255, 0.95)", border: "1px solid var(--border-color)", padding: isMobile ? "20px" : "32px", borderRadius: "16px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "8px" }}>
               <h3 style={{ fontSize: isMobile ? "18px" : "22px", margin: 0, color: "var(--accent-primary)" }}>
                 {lang === "en" ? "Plan Settings" : "Thiết lập Giáo án"}
               </h3>
+              {recentPlans && recentPlans.length > 0 && renderRecentPlansDropdown()}
             </div>
 
             {/* ── Step 1: Plan Goal Category ────────────────────── */}
@@ -1254,6 +1474,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                       : activePlan.goal_type === "optimal"
                         ? (lang === "en" ? "Optimal Performance" : "Hiệu suất Tối ưu")
                         : activePlan.goal_type.toUpperCase().replace("_", " ")}
+                  {activePlan.target_time_hours ? ` (${formatTargetTimeHours(activePlan.target_time_hours)})` : ""}
                 </p>
                 <CoachNoteThread
                   athleteId={actingAsAthleteId ?? (user?.id ?? null)}
@@ -1339,49 +1560,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                     {lang === "en" ? "Export Calendar" : "Xuất lịch tập"}
                   </button>
 
-                  <select
-                    className="btn btn-secondary"
-                    style={{
-                      flex: 1,
-                      minWidth: "120px",
-                      fontSize: "12px",
-                      height: "36px",
-                      padding: "0 8px",
-                      cursor: "pointer",
-                      outline: "none",
-                      border: "1px solid rgba(0, 0, 0, 0.1)",
-                      background: "rgba(0, 0, 0, 0.06)",
-                      color: "#111111",
-                      textAlignLast: "center",
-                      WebkitAppearance: "none",
-                      MozAppearance: "none",
-                      appearance: "none",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      borderRadius: "9999px",
-                    }}
-                    value=""
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (val) handleSelectPlan(Number(val));
-                    }}
-                  >
-                    <option value="" style={{ color: "var(--text-primary)" }}>
-                      {lang === "en" ? "Load Recent Plan..." : "Tải lịch tập gần đây..."}
-                    </option>
-                    {recentPlans.length === 0 ? (
-                      <option value="" disabled style={{ color: "var(--text-muted)" }}>
-                        {lang === "en" ? "— No plans available —" : "— Không có lịch tập —"}
-                      </option>
-                    ) : (
-                      recentPlans.map((p: any) => (
-                        <option key={p.id} value={p.id} style={{ color: "var(--text-primary)" }}>
-                          {formatPlanName(p)}
-                        </option>
-                      ))
-                    )}
-                  </select>
+                  {renderRecentPlansDropdown()}
 
                   <button
                     className="btn btn-primary"
@@ -2245,7 +2424,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
             actingAsAthleteId={actingAsAthleteId}
           />
         )}
-{addWorkoutTarget && (
+        {addWorkoutTarget && (
           <AiCreateWorkoutModal
             lang={lang}
             weekNumber={addWorkoutTarget.week}
@@ -2256,6 +2435,106 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
               await handleAiCreateWorkout(activePlan.id, fields);
               setAddWorkoutTarget(null);
             }}
+          />
+        )}
+
+        {planToDelete && (
+          <ConfirmActionModal
+            isOpen={true}
+            title={lang === "en" ? "Delete Training Plan?" : "Xóa Giáo án Tập luyện?"}
+            message={
+              lang === "en"
+                ? `Are you sure you want to permanently delete "${formatPlanName(planToDelete)}"? All workouts and progress in this plan will be removed. This action cannot be undone.`
+                : `Bạn có chắc chắn muốn xóa vĩnh viễn giáo án "${formatPlanName(planToDelete)}"? Toàn bộ bài tập và tiến độ trong giáo án này sẽ bị xóa. Thao tác này không thể hoàn tác.`
+            }
+            confirmLabel={isDeletingPlan ? (lang === "en" ? "Deleting..." : "Đang xóa...") : (lang === "en" ? "Delete Plan" : "Xóa Giáo án")}
+            cancelLabel={lang === "en" ? "Keep Plan" : "Giữ lại"}
+            isDestructive={true}
+            isLoading={isDeletingPlan}
+            onConfirm={confirmDeletePlan}
+            onClose={() => {
+              if (!isDeletingPlan) setPlanToDelete(null);
+            }}
+          />
+        )}
+
+        {confirmCreatePlanOpen && (
+          <ConfirmActionModal
+            isOpen={true}
+            title={lang === "en" ? "Create Training Plan?" : "Xác nhận Tạo Giáo án?"}
+            message={
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                <p style={{ margin: 0 }}>
+                  {lang === "en"
+                    ? "Uphill AI Coach will generate your personalized periodized training calendar and initial block workouts."
+                    : "Huấn luyện viên Uphill AI sẽ lập kế hoạch chu kỳ hóa và thiết kế các bài tập block đầu tiên cho bạn."}
+                </p>
+                <div style={{ background: "rgba(255, 255, 255, 0.05)", border: "1px solid var(--border-color)", borderRadius: "8px", padding: "10px 12px", fontSize: "13px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+                    <span style={{ color: "var(--text-muted)" }}>{lang === "en" ? "Goal:" : "Mục tiêu:"}</span>
+                    <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>
+                      {planForm.plan_goal_category === "race" || planForm.plan_goal_category === "distance"
+                        ? `${planForm.race_name || "Goal"} (${planForm.race_date || ""})`
+                        : planForm.plan_goal_category.replace("_", " ")}
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+                    <span style={{ color: "var(--text-muted)" }}>{lang === "en" ? "Schedule:" : "Lịch tập:"}</span>
+                    <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>
+                      {planForm.days_per_week} {lang === "en" ? "days/week" : "buổi/tuần"} • {planForm.current_weekly_km} km
+                    </span>
+                  </div>
+                  {(targetTimeH || targetTimeM) && (
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span style={{ color: "var(--text-muted)" }}>{lang === "en" ? "Target Time:" : "Mục tiêu thời gian:"}</span>
+                      <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>
+                        {targetTimeH || 0}h {targetTimeM || 0}m
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            }
+            confirmLabel={lang === "en" ? "Generate Plan" : "Tạo Giáo án"}
+            cancelLabel={lang === "en" ? "Review Settings" : "Xem lại Thiết lập"}
+            onConfirm={() => {
+              setConfirmCreatePlanOpen(false);
+              handleGeneratePlan({ preventDefault: () => {} } as any);
+            }}
+            onClose={() => setConfirmCreatePlanOpen(false)}
+          />
+        )}
+
+        {confirmNextBlockOpen && (
+          <ConfirmActionModal
+            isOpen={true}
+            title={lang === "en" ? `Generate Block ${nextBlockNum}?` : `Tạo Block ${nextBlockNum}?`}
+            message={
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                <p style={{ margin: 0 }}>
+                  {lang === "en"
+                    ? `Uphill AI Coach will generate training workouts for Block ${nextBlockNum} based on your recent training completion and feedback.`
+                    : `Huấn luyện viên Uphill AI sẽ tạo các bài tập cho Block ${nextBlockNum} dựa trên tỉ lệ hoàn thành và phản hồi tập luyện gần nhất của bạn.`}
+                </p>
+                <div style={{ background: "rgba(255, 255, 255, 0.05)", border: "1px solid var(--border-color)", borderRadius: "8px", padding: "10px 12px", fontSize: "13px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+                    <span style={{ color: "var(--text-muted)" }}>{lang === "en" ? "Plan:" : "Giáo án:"}</span>
+                    <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{activePlan?.race_name || "Plan"}</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span style={{ color: "var(--text-muted)" }}>{lang === "en" ? "Next Block:" : "Block tiếp theo:"}</span>
+                    <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>Block {nextBlockNum} ({nextBlockSchedule.days_per_week} {lang === "en" ? "days/week" : "buổi/tuần"})</span>
+                  </div>
+                </div>
+              </div>
+            }
+            confirmLabel={lang === "en" ? `Confirm & Generate Block ${nextBlockNum}` : `Xác nhận & Tạo Block ${nextBlockNum}`}
+            cancelLabel={lang === "en" ? "Cancel" : "Hủy"}
+            onConfirm={() => {
+              setConfirmNextBlockOpen(false);
+              executeGenerateNextBlock();
+            }}
+            onClose={() => setConfirmNextBlockOpen(false)}
           />
         )}
       </div>

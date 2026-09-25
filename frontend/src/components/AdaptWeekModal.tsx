@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Sparkle, X, Lightning, CheckCircle } from "@phosphor-icons/react";
 import { translations } from "../app/translations";
 import { describeGuard, localToday, tr } from "../lib/scheduleProposals";
+import ConfirmActionModal from "./ConfirmActionModal";
 
 const API_BASE_URL =
   (typeof window !== "undefined" && localStorage.getItem("UPHILL_API_URL_OVERRIDE")) ||
@@ -65,6 +66,7 @@ export function AdaptWeekModal({
   });
   const [loading, setLoading] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [confirmAdaptOpen, setConfirmAdaptOpen] = useState<boolean>(false);
 
   if (!isOpen) return null;
   if (typeof document === "undefined") return null;
@@ -74,8 +76,13 @@ export function AdaptWeekModal({
     return dict[key] || translations.en[key] || key;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setConfirmAdaptOpen(true);
+  };
+
+  const handleConfirmedAdapt = async () => {
+    setConfirmAdaptOpen(false);
     setLoading(true);
     setErrorMsg(null);
 
@@ -596,6 +603,21 @@ export function AdaptWeekModal({
             </button>
           </div>
         </form>
+
+        <ConfirmActionModal
+          isOpen={confirmAdaptOpen}
+          onClose={() => setConfirmAdaptOpen(false)}
+          onConfirm={handleConfirmedAdapt}
+          title={lang === "vi" ? `Xác nhận điều chỉnh Tuần ${weekNumber}` : `Confirm Week ${weekNumber} Adaptation`}
+          message={
+            lang === "vi"
+              ? "Bạn có chắc muốn tái tạo các bài tập của tuần này? Các bài tập chưa hoàn thành sẽ được điều chỉnh theo mức độ mệt mỏi và ràng buộc bạn đã chọn."
+              : "Are you sure you want to regenerate this week's workouts? Uncompleted workouts in this week will be adapted according to your fatigue level and constraints."
+          }
+          confirmLabel={lang === "vi" ? "Tái tạo tuần" : "Regenerate Week"}
+          cancelLabel={lang === "vi" ? "Huỷ" : "Cancel"}
+          isLoading={loading}
+        />
       </div>
     </div>,
     document.body
