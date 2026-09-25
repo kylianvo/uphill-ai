@@ -263,7 +263,10 @@ export default function WorkoutCard({
           </div>
 
           {/* Title + type badge */}
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div
+            style={{ flex: 1, minWidth: 0, cursor: !isRest ? "pointer" : "default" }}
+            onClick={() => !isRest && setExpanded(!expanded)}
+          >
             <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
               <h4
                 style={{
@@ -1107,7 +1110,7 @@ function ExecutionTimeline({
   targets?: Array<{ label: string; value: string; color: string; icon: React.ReactNode }>;
 }) {
   const parsed = parseExecutionSteps(execution);
-  const [mainExpanded, setMainExpanded] = useState(false);
+  const [mainExpanded, setMainExpanded] = useState(true);
 
   const phases: Array<{
     key: string;
@@ -1292,7 +1295,7 @@ function ExecutionTimeline({
                         {phase.steps.length > 1 && (
                           <span style={{ fontSize: "10px", color: phase.color, flexShrink: 0, marginTop: "3px", fontWeight: "700" }}>›</span>
                         )}
-                        <span style={{ fontSize: "12.5px", color: "var(--text-secondary)", lineHeight: "1.55" }}>
+                        <span style={{ fontSize: "14px", color: "var(--text-secondary)", lineHeight: "1.6" }}>
                           {step}
                         </span>
                       </div>
@@ -1308,7 +1311,7 @@ function ExecutionTimeline({
                     {phase.steps.length > 1 && (
                       <span style={{ fontSize: "10px", color: phase.found ? phase.color : "var(--text-muted)", flexShrink: 0, marginTop: "3px", fontWeight: "700" }}>›</span>
                     )}
-                    <span style={{ fontSize: "12.5px", color: phase.found ? "var(--text-secondary)" : "var(--text-muted)", lineHeight: "1.55", fontStyle: phase.found ? "normal" : "italic" }}>
+                    <span style={{ fontSize: "14px", color: phase.found ? "var(--text-secondary)" : "var(--text-muted)", lineHeight: "1.6", fontStyle: phase.found ? "normal" : "italic" }}>
                       {step}
                     </span>
                   </div>
@@ -1521,7 +1524,7 @@ function WorkoutLibrarySection({
               </div>
               <ul style={{ margin: 0, padding: "0 0 0 14px", display: "flex", flexDirection: "column" as const, gap: "5px" }}>
                 {(RACE_STRATEGY_TIPS[lang] || RACE_STRATEGY_TIPS.en).map((tip, i) => (
-                  <li key={i} style={{ fontSize: "12.5px", color: "var(--text-secondary)", lineHeight: "1.55" }}>
+                  <li key={i} style={{ fontSize: "14px", color: "var(--text-secondary)", lineHeight: "1.6" }}>
                     {tip}
                   </li>
                 ))}
@@ -1578,7 +1581,7 @@ function CoachNotesSections({ description }: { description: string }) {
 
   if (!content.hasSections) {
     return (
-      <p style={{ fontSize: "12.5px", color: "var(--text-secondary)", margin: 0, lineHeight: "1.65" }}>
+      <p style={{ fontSize: "14px", color: "var(--text-secondary)", margin: 0, lineHeight: "1.6" }}>
         {content.fallbackText}
       </p>
     );
@@ -1587,20 +1590,20 @@ function CoachNotesSections({ description }: { description: string }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
       {content.overall && (
-        <p style={{ fontSize: "13px", color: "var(--text-primary)", margin: 0, lineHeight: "1.65" }}>
+        <p style={{ fontSize: "14.5px", color: "var(--text-primary)", margin: 0, lineHeight: "1.6", fontWeight: "500" }}>
           {content.overall}
         </p>
       )}
       {content.reason && (
-        <p style={{ fontSize: "12.5px", color: "var(--text-secondary)", margin: 0, lineHeight: "1.65" }}>
+        <p style={{ fontSize: "14px", color: "var(--text-secondary)", margin: 0, lineHeight: "1.6" }}>
           {content.reason}
         </p>
       )}
       {content.benefit && (
-        <p style={{ fontSize: "12.5px", color: "#10b981", margin: 0, lineHeight: "1.65" }}>{content.benefit}</p>
+        <p style={{ fontSize: "14px", color: "#10b981", margin: 0, lineHeight: "1.6" }}>{content.benefit}</p>
       )}
       {content.warning && (
-        <p style={{ fontSize: "12.5px", color: "#ef4444", margin: 0, lineHeight: "1.65" }}>{content.warning}</p>
+        <p style={{ fontSize: "14px", color: "#ef4444", margin: 0, lineHeight: "1.6" }}>{content.warning}</p>
       )}
     </div>
   );
@@ -1619,10 +1622,10 @@ function RawDescription({ description }: { description: string }) {
     return (
       <p
         style={{
-          fontSize: "12.5px",
+          fontSize: "14px",
           color: "var(--text-secondary)",
           margin: 0,
-          lineHeight: "1.65",
+          lineHeight: "1.6",
         }}
       >
         {description}
@@ -1633,18 +1636,18 @@ function RawDescription({ description }: { description: string }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
       {overall && (
-        <p style={{ fontSize: "13px", color: "var(--text-primary)", margin: 0, lineHeight: "1.65" }}>{overall}</p>
+        <p style={{ fontSize: "14.5px", color: "var(--text-primary)", margin: 0, lineHeight: "1.6", fontWeight: "500" }}>{overall}</p>
       )}
       {process && (
-        <p style={{ fontSize: "12.5px", color: "var(--text-secondary)", margin: 0, lineHeight: "1.65" }}>
+        <p style={{ fontSize: "14px", color: "var(--text-secondary)", margin: 0, lineHeight: "1.6" }}>
           {process}
         </p>
       )}
       {benefit && (
-        <p style={{ fontSize: "12.5px", color: "#10b981", margin: 0, lineHeight: "1.65" }}>{benefit}</p>
+        <p style={{ fontSize: "14px", color: "#10b981", margin: 0, lineHeight: "1.6" }}>{benefit}</p>
       )}
       {warning && (
-        <p style={{ fontSize: "12.5px", color: "#ef4444", margin: 0, lineHeight: "1.65" }}>{warning}</p>
+        <p style={{ fontSize: "14px", color: "#ef4444", margin: 0, lineHeight: "1.6" }}>{warning}</p>
       )}
     </div>
   );

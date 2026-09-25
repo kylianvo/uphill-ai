@@ -63,6 +63,7 @@ docs/*
 !docs/observability-release-report.md
 !docs/coach-chat-retention-runbook.md
 !docs/coach-chat-foundation-release-report.md
+!docs/superpowers/
 
 # MS Office lock files
 ~$*

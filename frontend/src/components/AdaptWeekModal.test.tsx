@@ -97,9 +97,10 @@ describe("AdaptWeekModal", () => {
     const textarea = screen.getByPlaceholderText(/Why are you adapting this week/i);
     fireEvent.change(textarea, { target: { value: "Hamstring stiffness after long run" } });
 
-    // Submit
+    // Submit and confirm
     const submitBtn = screen.getByRole("button", { name: /Regenerate Week 2/i });
     fireEvent.click(submitBtn);
+    fireEvent.click(screen.getByRole("button", { name: /^Regenerate Week$/i }));
 
     await waitFor(() => {
       expect(fetchSpy).toHaveBeenCalledTimes(1);
@@ -155,6 +156,7 @@ describe("AdaptWeekModal", () => {
 
     const submitBtn = screen.getByRole("button", { name: /Regenerate Week 2/i });
     fireEvent.click(submitBtn);
+    fireEvent.click(screen.getByRole("button", { name: /^Regenerate Week$/i }));
 
     await waitFor(() => {
       expect(fetchSpy).toHaveBeenCalledTimes(1);
@@ -194,6 +196,7 @@ describe("AdaptWeekModal", () => {
 
     const submitBtn = screen.getByRole("button", { name: /Regenerate Week 3/i });
     fireEvent.click(submitBtn);
+    fireEvent.click(screen.getByRole("button", { name: /^Regenerate Week$/i }));
 
     await waitFor(() => {
       expect(fetchSpy).toHaveBeenCalledTimes(1);
@@ -224,6 +227,7 @@ describe("AdaptWeekModal", () => {
       />
     );
     fireEvent.click(screen.getByText("Regenerate Week 2"));
+    fireEvent.click(screen.getByRole("button", { name: /^Regenerate Week$/i }));
     expect(await screen.findByText("That week is already over.")).toBeInTheDocument();
     const body = JSON.parse(((globalThis.fetch as unknown as { mock: { calls: [string, RequestInit][] } }).mock.calls[0][1].body) as string);
     expect(body.client_today).toMatch(/^\d{4}-\d{2}-\d{2}$/);
