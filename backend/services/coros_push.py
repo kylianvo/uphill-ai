@@ -60,6 +60,7 @@ from services.coros_plan_window import (
 from services.coros_workouts import SPORT_REST
 from services.mcp_client import McpClient, McpError, McpToolError
 from services.providers.coros import PROVIDER
+from services.training_rules import TrainingRules
 
 logger = get_logger(__name__)
 
@@ -182,6 +183,19 @@ class _State:
     race: dt.date | None
     last_generated: dt.date | None
     last_run: dt.date | None
+    hr_zones: dict[str, dict[str, int]] | None = None  # the athlete's Uphill zones in bpm
+
+
+def _hr_zones(user_id: int) -> dict[str, dict[str, int]] | None:
+    """The same zone table the plan generator prescribes from, so each workout
+    step's heart rate on COROS matches what Uphill shows."""
+    user = db.get_user_by_id(user_id) or {}
+    max_hr = user.get("max_hr")
+    if not max_hr:
+        return None
+    return TrainingRules.calculate_heart_rate_zones(
+        int(max_hr), int(user.get("resting_hr") or 60), user.get("aet_hr"), user.get("ant_hr")
+    )
 
 
 def _state(plan: dict[str, Any]) -> _State:
@@ -191,6 +205,7 @@ def _state(plan: dict[str, Any]) -> _State:
         race=race_date_of(plan) if is_race_goal(plan) else None,
         last_generated=last_generated_date(raw),
         last_run=last_run_date(raw),
+        hr_zones=_hr_zones(plan["user_id"]),
     )
 
 
@@ -290,7 +305,7 @@ async def _push_locked(user_id, plan, connection, today, lang, client_factory) -
         if link is None:
             _geometry(st, today)  # refuse a plan COROS can't hold before spending a push or calling COROS
     else:
-        standalone = standalone_window(st.by_date, today, window_end(today), lang)
+        standalone = standalone_window(st.by_date, today, window_end(today), lang, st.hr_zones)
         if not standalone.days:
             raise PushError("NOTHING_to_push", 409)
     limit = settings.COROS_DAILY_PUSH_LIMIT
@@ -346,7 +361,7 @@ async def _sync_plan(client, user_id, plan, st, link, today, lang) -> dict[str, 
 def _window(st, start, end, today, lang, stored) -> tuple[PushWindow, list[dt.date]]:
     """What to send for a COROS plan spanning [start, end], and every date it tracks."""
     dates, clear = _plan_dates(st, start, end, today, stored)
-    window = build_window(st.by_date, max(today, start), end, lang, dates=dates, clear=clear)
+    window = build_window(st.by_date, max(today, start), end, lang, dates=dates, clear=clear, hr_zones=st.hr_zones)
     return window, sorted({*dates, *clear})
 
 

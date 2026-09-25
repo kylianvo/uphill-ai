@@ -86,7 +86,7 @@ def test_invalid_course_is_dropped_counted_and_day_falls_back_to_rest(monkeypatc
     import services.coros_plan_window as cpw
 
     broken = {"sportType": 1, "courseName": "", "courseDescription": "d", "sections": []}
-    monkeypatch.setattr(cpw, "build_day", lambda rows, lang: ([broken], 0))
+    monkeypatch.setattr(cpw, "build_day", lambda rows, lang, hr_zones=None: ([broken], 0))
     w = build_window(rows_by_date(PLAN, [row(1, 1, "Friday")]), dt.date(2027, 4, 9), dt.date(2027, 4, 9), "en")
     assert w.invalid == 1
     assert w.days[0].courses[0]["sportType"] == 4

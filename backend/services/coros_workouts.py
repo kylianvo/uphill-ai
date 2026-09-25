@@ -8,9 +8,17 @@ description is shown to the athlete verbatim, so no internal labels.
 Guidance is heart rate (spec Q4): the workout's own target_hr_range in bpm, else
 the COROS HR zone matching target_zone. Runs go out as sportType 1 (running):
 the plan is time-based and COROS trail running forbids time targets.
+
+Structure comes from the description's Process chain ("Warm up 15 min ... in
+Zone 2 -> 10 min tempo ... in Zone 3 -> ..."), which the generator guarantees
+sums to duration_minutes. Each step gets its own zone's heart rate; repeated
+effort/recovery pairs become an interval group. When the chain can't be read,
+a quality session goes out with no heart-rate target rather than holding the
+whole session at its effort zone.
 """
 
 import re
+from dataclasses import dataclass
 from typing import Any, Literal
 
 SPORT_RUNNING = 1
@@ -27,7 +35,11 @@ COOLDOWN_SECONDS = 300
 STRUCTURED_MIN_MINUTES = 30
 MIN_CLIMB_NOTE_M = 50
 
+PROCESS_TOLERANCE_MINUTES = 1
+
 NON_RUN_TYPES = frozenset({"strength", "muscular endurance", "cross-training", "cross training", "mobility", "yoga"})
+# Sessions where one effort zone over the whole run would be wrong (and hard).
+QUALITY_MARKERS = ("tempo", "interval", "threshold", "hill", "fartlek", "vo2", "speed", "surge", "race pace")
 REST_TYPES = frozenset({"", "rest", "off", "rest day"})
 UNIT_TARGET = {
     "s": (TARGET_TIME, 1),
@@ -61,6 +73,14 @@ _BELOW = re.compile(r"<\s*(\d{2,3})")
 _ABOVE = re.compile(r">\s*(\d{2,3})")
 _SINGLE = re.compile(r"(\d{2,3})")
 _ZONE = re.compile(r"([1-5])")
+_PROCESS = re.compile(r"Process\s*[:\-]\s*(.*?)(?=\b(?:Overall|Reason|Benefit|Warning)\s*[:\-]|$)", re.I | re.S)
+_STEP_SPLIT = re.compile(r"\s*(?:→|->)\s*")
+_STEP_MINUTES = re.compile(r"(\d+(?:\.\d+)?)\s*(?:min|mins|minutes)\b", re.I)
+_STEP_SECONDS = re.compile(r"(\d+)\s*(?:s|sec|secs|seconds)\b", re.I)
+_STEP_ZONE = re.compile(r"\bZone\s*([1-5])\b", re.I)
+_WARM = re.compile(r"\bwarm", re.I)
+_COOL = re.compile(r"\bcool", re.I)
+_EASY_STEP = re.compile(r"recover|jog|walk|rest|easy", re.I)
 
 
 def _t(lang: str) -> dict[str, str]:
@@ -148,7 +168,141 @@ def _description(w: dict[str, Any], lang: str) -> str:
     tip = str(w.get("fueling_tip") or "").strip()
     if tip:
         parts.append(tip)
-    return ("\n\n".join(parts) or course_name(w))[:MAX_DESCRIPTION]
+    return clip_text("\n\n".join(parts) or course_name(w))
+
+
+def clip_text(text: str, limit: int = MAX_DESCRIPTION) -> str:
+    """Fit COROS's description limit, cutting at a word boundary with an ellipsis."""
+    if len(text) <= limit:
+        return text
+    cut = text[: limit - 1]
+    if " " in cut:
+        cut = cut[: cut.rfind(" ")]
+    return cut.rstrip(" ,.;:-–—") + "…"
+
+
+@dataclass(frozen=True)
+class ProcessStep:
+    minutes: float
+    zone: int | None
+    role: Literal["warmup", "training", "recovery", "cooldown"]
+
+
+def parse_process_steps(description: str | None) -> list[ProcessStep] | None:
+    """The description's Process chain as timed steps, or None when it has no
+    Process section or any step lacks a duration."""
+    m = _PROCESS.search(description or "")
+    if not m:
+        return None
+    raw = [s.strip(" .") for s in _STEP_SPLIT.split(m[1].strip()) if s.strip(" .")]
+    if len(raw) < 2:
+        return None
+    parsed: list[tuple[str, float, int | None]] = []
+    for text in raw:
+        mins = _STEP_MINUTES.search(text)
+        secs = _STEP_SECONDS.search(text)
+        if mins:
+            minutes = float(mins[1])
+        elif secs:
+            minutes = int(secs[1]) / 60
+        else:
+            return None
+        zone = _STEP_ZONE.search(text)
+        parsed.append((text, minutes, int(zone[1]) if zone else None))
+    middle_zones = [z for _, _, z in parsed[1:-1] if z is not None]
+    hardest = max(middle_zones) if middle_zones else None
+    steps = []
+    for i, (text, minutes, zone) in enumerate(parsed):
+        if i == 0 and _WARM.search(text):
+            role = "warmup"
+        elif i == len(parsed) - 1 and _COOL.search(text):
+            role = "cooldown"
+        elif _EASY_STEP.search(text) and zone is not None and hardest is not None and zone < hardest:
+            role = "recovery"
+        else:
+            role = "training"
+        steps.append(ProcessStep(minutes, zone, role))
+    return steps
+
+
+_ROLE_SECTION = {
+    "warmup": SECTION_WARMUP,
+    "training": SECTION_TRAINING,
+    "recovery": SECTION_RECOVERY,
+    "cooldown": SECTION_COOLDOWN,
+}
+
+
+def _zone_number(text: Any) -> int | None:
+    m = _ZONE.search(str(text or ""))
+    return int(m[1]) if m else None
+
+
+def _step_intensity(
+    step: ProcessStep, main_zone: int | None, main: dict[str, int], hr_zones: dict[str, dict[str, int]] | None
+) -> dict[str, int]:
+    """The workout's own range for steps in its zone; the athlete's zone table
+    (in bpm) for the rest; COROS's zone number when no table is available."""
+    if step.zone is None:
+        return main if step.role == "training" else EASY
+    if step.zone == main_zone and main:
+        return main
+    band = (hr_zones or {}).get(f"Zone {step.zone}")
+    if band:
+        return {
+            "intensityType": INTENSITY_HR,
+            "intensityValueStart": _clamp_hr(int(band["min"])),
+            "intensityValueEnd": _clamp_hr(int(band["max"])),
+        }
+    return {"intensityType": INTENSITY_HR, "sectionIntensity": step.zone}
+
+
+def _process_sections(
+    w: dict[str, Any], main: dict[str, int], hr_zones: dict[str, dict[str, int]] | None
+) -> list[dict[str, Any]] | None:
+    """Sections from the Process chain; None unless its minutes add up to the workout."""
+    steps = parse_process_steps(w.get("description"))
+    if not steps:
+        return None
+    if abs(sum(s.minutes for s in steps) - _float(w.get("duration_minutes"))) > PROCESS_TOLERANCE_MINUTES:
+        return None
+    main_zone = _zone_number(w.get("target_zone"))
+    if main_zone is None:
+        main_zone = max((s.zone for s in steps if s.role == "training" and s.zone), default=None)
+    plain = [
+        _section(
+            _ROLE_SECTION[s.role],
+            TARGET_TIME,
+            max(1, round(s.minutes * 60)),
+            _step_intensity(s, main_zone, main, hr_zones),
+        )
+        for s in steps
+    ]
+    return _group_repeats(plain)
+
+
+def _group_repeats(sections: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Consecutive identical (effort, recovery) pairs -> one interval group."""
+    out: list[dict[str, Any]] = []
+    i = 0
+    while i < len(sections):
+        pair = sections[i : i + 2]
+        is_pair = len(pair) == 2 and [s["sectionType"] for s in pair] == [SECTION_TRAINING, SECTION_RECOVERY]
+        reps = 1
+        while is_pair and sections[i + 2 * reps : i + 2 * reps + 2] == pair:
+            reps += 1
+        if is_pair and reps >= 2:
+            out.append({"intervalGroup": True, "repeats": min(reps, MAX_REPEATS), "sets": pair})
+            i += 2 * reps
+        else:
+            out.append(sections[i])
+            i += 1
+    return out
+
+
+def is_quality(w: dict[str, Any]) -> bool:
+    t = f"{w.get('type') or ''} {w.get('title') or ''}".lower()
+    return any(marker in t for marker in QUALITY_MARKERS)
 
 
 def _interval_group(w: dict[str, Any], main: dict[str, int]) -> dict[str, Any] | None:
@@ -188,7 +342,9 @@ def race_day_course(race_name: str | None, distance_km: Any, lang: str) -> dict[
     }
 
 
-def build_course(w: dict[str, Any], lang: str) -> dict[str, Any] | None:
+def build_course(
+    w: dict[str, Any], lang: str, hr_zones: dict[str, dict[str, int]] | None = None
+) -> dict[str, Any] | None:
     if w.get("race_placeholder"):
         return race_day_course(w.get("race_name"), w.get("course_distance_km"), lang)
     if workout_kind(w) != "run":
@@ -196,37 +352,43 @@ def build_course(w: dict[str, Any], lang: str) -> dict[str, Any] | None:
     minutes = _int(w.get("duration_minutes"))
     if minutes <= 0:
         return None
-    total = minutes * 60
     main = _main_intensity(w)
-    group = _interval_group(w, main)
-    if group is not None:
-        if str(w.get("type") or "").strip().lower() == "walk/run":
-            sections = [group]
-        else:
-            work, rec = group["sets"]
-            cooldown = COOLDOWN_SECONDS
-            if work["targetType"] == TARGET_TIME:
-                used = WARMUP_SECONDS + group["repeats"] * (work["targetValue"] + rec["targetValue"])
-                cooldown = max(COOLDOWN_SECONDS, total - used)
-            sections = [
-                _section(SECTION_WARMUP, TARGET_TIME, WARMUP_SECONDS, EASY),
-                group,
-                _section(SECTION_COOLDOWN, TARGET_TIME, cooldown, EASY),
-            ]
-    elif minutes >= STRUCTURED_MIN_MINUTES:
-        sections = [
-            _section(SECTION_WARMUP, TARGET_TIME, WARMUP_SECONDS, EASY),
-            _section(SECTION_TRAINING, TARGET_TIME, total - WARMUP_SECONDS - COOLDOWN_SECONDS, main),
-            _section(SECTION_COOLDOWN, TARGET_TIME, COOLDOWN_SECONDS, EASY),
-        ]
-    else:
-        sections = [_section(SECTION_TRAINING, TARGET_TIME, total, main)]
     return {
         "sportType": SPORT_RUNNING,
         "courseName": course_name(w),
         "courseDescription": _description(w, lang),
-        "sections": sections,
+        "sections": _process_sections(w, main, hr_zones) or _fallback_sections(w, main, minutes),
     }
+
+
+def _fallback_sections(w: dict[str, Any], main: dict[str, int], minutes: int) -> list[dict[str, Any]]:
+    """Shapes for a workout whose Process chain can't be read."""
+    total = minutes * 60
+    group = _interval_group(w, main)
+    if group is not None:
+        if str(w.get("type") or "").strip().lower() == "walk/run":
+            return [group]
+        work, rec = group["sets"]
+        cooldown = COOLDOWN_SECONDS
+        if work["targetType"] == TARGET_TIME:
+            used = WARMUP_SECONDS + group["repeats"] * (work["targetValue"] + rec["targetValue"])
+            cooldown = max(COOLDOWN_SECONDS, total - used)
+        return [
+            _section(SECTION_WARMUP, TARGET_TIME, WARMUP_SECONDS, EASY),
+            group,
+            _section(SECTION_COOLDOWN, TARGET_TIME, cooldown, EASY),
+        ]
+    if is_quality(w):
+        # Structure unknown: one timed block with no heart-rate target (the
+        # description says what to do) beats a whole session at effort HR.
+        return [_section(SECTION_TRAINING, TARGET_TIME, total, {})]
+    if minutes >= STRUCTURED_MIN_MINUTES:
+        return [
+            _section(SECTION_WARMUP, TARGET_TIME, WARMUP_SECONDS, EASY),
+            _section(SECTION_TRAINING, TARGET_TIME, total - WARMUP_SECONDS - COOLDOWN_SECONDS, main),
+            _section(SECTION_COOLDOWN, TARGET_TIME, COOLDOWN_SECONDS, EASY),
+        ]
+    return [_section(SECTION_TRAINING, TARGET_TIME, total, main)]
 
 
 def rest_course(lang: str) -> dict[str, Any]:
@@ -238,10 +400,12 @@ def placeholder_course(w: dict[str, Any], lang: str) -> dict[str, Any]:
     """A non-run session (strength, gym ME) shown on COROS as a rest day carrying its name and notes."""
     name = course_name(w)
     desc = str(w.get("description") or "").strip() or name
-    return {"sportType": SPORT_REST, "courseName": name, "courseDescription": desc[:MAX_DESCRIPTION], "sections": []}
+    return {"sportType": SPORT_REST, "courseName": name, "courseDescription": clip_text(desc), "sections": []}
 
 
-def build_day(rows: list[dict[str, Any]], lang: str) -> tuple[list[dict[str, Any]], int]:
+def build_day(
+    rows: list[dict[str, Any]], lang: str, hr_zones: dict[str, dict[str, int]] | None = None
+) -> tuple[list[dict[str, Any]], int]:
     """Courses for one day, plus how many sessions stay in Uphill only.
 
     Pending coach-review workouts are never pushed. Runs win the day; a
@@ -251,7 +415,7 @@ def build_day(rows: list[dict[str, Any]], lang: str) -> tuple[list[dict[str, Any
     ordered = sorted(
         pushable, key=lambda r: (0 if (r.get("session_slot") or "main") == "main" else 1, r.get("id") or 0)
     )
-    runs = [c for c in (build_course(r, lang) for r in ordered) if c]
+    runs = [c for c in (build_course(r, lang, hr_zones) for r in ordered) if c]
     others = [r for r in ordered if workout_kind(r) == "other"]
     if runs:
         return runs, len(others)

@@ -237,6 +237,7 @@ def build_window(
     *,
     dates: list[dt.date] | None = None,
     clear: list[dt.date] | None = None,
+    hr_zones: dict[str, dict[str, int]] | None = None,
 ) -> PushWindow:
     """One DayPush per date in `dates` (default: every date in [start, end]),
     plus a rest entry for each `clear` date. Locked days (a completed or matched
@@ -248,7 +249,7 @@ def build_window(
         if any(r.get("is_completed") or r.get("matched_activity_id") for r in rows):
             window.locked_dates.append(d)
             continue
-        courses, left = build_day(rows, lang)
+        courses, left = build_day(rows, lang, hr_zones)
         valid = [c for c in courses if not validate_course(c)]
         window.invalid += len(courses) - len(valid)
         window.left_in_uphill += left
@@ -257,11 +258,15 @@ def build_window(
 
 
 def standalone_window(
-    by_date: dict[dt.date, list[dict[str, Any]]], start: dt.date, end: dt.date, lang: str
+    by_date: dict[dt.date, list[dict[str, Any]]],
+    start: dt.date,
+    end: dt.date,
+    lang: str,
+    hr_zones: dict[str, dict[str, int]] | None = None,
 ) -> PushWindow:
     """Standalone COROS workouts can only be runs: rest days are skipped and
     strength sessions (a rest-type placeholder in plan mode) stay in Uphill."""
-    full = build_window(by_date, start, end, lang)
+    full = build_window(by_date, start, end, lang, hr_zones=hr_zones)
     window = PushWindow(start=start, end=end, locked_dates=full.locked_dates, invalid=full.invalid)
     for day in full.days:
         rows = [r for r in by_date.get(day.date, []) if r.get("approved_at") is not None]
