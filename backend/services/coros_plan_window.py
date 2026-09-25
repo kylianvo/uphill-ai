@@ -140,6 +140,7 @@ def with_race_day(
         "race_name": plan.get("race_name"),
         "course_distance_km": plan.get("course_distance_km"),
         "type": "Race",
+        "phase": "Race",  # an ungenerated race week is still labelled as the race phase on COROS
         "approved_at": "race",
         "session_slot": "main",
     }
@@ -147,7 +148,9 @@ def with_race_day(
 
 
 def last_generated_date(by_date: dict[dt.date, list[dict[str, Any]]]) -> dt.date | None:
-    return max(by_date) if by_date else None
+    """Sunday of the last generated week: Uphill generates whole weeks, so a day
+    without a row inside one is a real rest day, not an ungenerated one."""
+    return monday_of(max(by_date)) + dt.timedelta(days=6) if by_date else None
 
 
 def last_run_date(by_date: dict[dt.date, list[dict[str, Any]]]) -> dt.date | None:
