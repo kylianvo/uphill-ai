@@ -3,7 +3,7 @@ import uuid as _uuid
 from typing import Any
 
 import httpx
-from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Request, Response, UploadFile
+from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, Header, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from google import genai
 from google.genai import types as genai_types
@@ -142,6 +142,8 @@ def startup_event():
     from threading import Event, Thread
 
     global _race_worker_stop
+    if not settings.RACE_HISTORY_WORKER_ENABLED:
+        return
     _race_worker_stop = Event()
     Thread(target=race_history.run_worker, args=(_race_worker_stop,), daemon=True, name="race-history-worker").start()
 
@@ -993,10 +995,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         training_environment=request.training_environment or "flat",
         athlete_notes=request.athlete_notes,
     )
-    try:
-        race_history.store_plan_scenario(user["id"], plan_id)
-    except ValueError:
-        pass
+    race_history.store_plan_scenario(user["id"], plan_id)
 
     # Mark onboarding complete immediately so the user can enter the app
     mark_onboarding_complete(user["id"])
@@ -1799,10 +1798,7 @@ async def _generate_plan_for_athlete(
         plan_status=plan_status,
         athlete_notes=request.athlete_notes,
     )
-    try:
-        race_history.store_plan_scenario(athlete_id, plan_id)
-    except ValueError:
-        pass
+    race_history.store_plan_scenario(athlete_id, plan_id)
 
     # Fetch latest athlete details from database to ensure fresh physiological values
     fresh_user = get_user_by_id(athlete_id) or {"id": athlete_id}
@@ -3211,11 +3207,15 @@ def search_race_history(source: str, q: str, user: dict[str, Any] = Depends(get_
 
 
 @app.post("/api/race-history/claims", status_code=202)
-def create_race_claim(request: RaceClaimRequest, user: dict[str, Any] = Depends(get_current_user)):
+def create_race_claim(
+    request: RaceClaimRequest, background_tasks: BackgroundTasks, user: dict[str, Any] = Depends(get_current_user)
+):
     if request.source not in ("utmb", "vbm") or not getattr(settings, f"RACE_HISTORY_{request.source.upper()}_ENABLED"):
         raise HTTPException(status_code=503, detail="Source unavailable")
     try:
-        return race_history.create_claim(user["id"], request.source, request.external_id.strip())
+        claim = race_history.create_claim(user["id"], request.source, request.external_id.strip())
+        background_tasks.add_task(race_history.sync_claim_now, claim["id"])
+        return claim
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
     except Exception as exc:
@@ -3253,11 +3253,14 @@ def verify_race_bib(claim_id: int, request: RaceBibRequest, user: dict[str, Any]
 
 
 @app.post("/api/race-history/claims/{claim_id}/refresh", status_code=202)
-def refresh_race_claim(claim_id: int, user: dict[str, Any] = Depends(get_current_user)):
+def refresh_race_claim(
+    claim_id: int, background_tasks: BackgroundTasks, user: dict[str, Any] = Depends(get_current_user)
+):
     if not race_history.get_claim(claim_id, user["id"]):
         raise HTTPException(status_code=404, detail="Claim not found")
     if not race_history.queue_refresh(claim_id, user["id"]):
         raise HTTPException(status_code=429, detail="Refresh available once per hour")
+    background_tasks.add_task(race_history.sync_claim_now, claim_id)
     return race_history.get_claim(claim_id, user["id"])
 
 
@@ -3316,14 +3319,23 @@ def remove_manual_race_result(result_id: int, user: dict[str, Any] = Depends(get
     return {"ok": True}
 
 
-@app.get("/api/race-history/admin/vbm-mirror/status")
-def get_vbm_mirror_status(admin: dict[str, Any] = Depends(require_admin)):
+@app.get("/api/race-history/admin/mirrors/status")
+def get_race_mirror_status(admin: dict[str, Any] = Depends(require_admin)):
     return race_history.mirror_status()
 
 
-@app.post("/api/race-history/admin/vbm-mirror/refresh")
-def refresh_vbm_mirror(admin: dict[str, Any] = Depends(require_admin)):
-    return {"processed": race_history.refresh_vbm_mirror()}
+@app.post("/api/race-history/admin/mirrors/refresh", status_code=202)
+def refresh_race_mirrors(
+    background_tasks: BackgroundTasks, source: str = "all", admin: dict[str, Any] = Depends(require_admin)
+):
+    """Re-copy the UTMB/VBM runner search index (minutes of paced requests),
+    in the background. Poll .../mirrors/status for progress."""
+    if source not in ("utmb", "vbm", "all"):
+        raise HTTPException(status_code=422, detail="source must be utmb, vbm or all")
+    if race_history.mirror_job.get("state") == "running":
+        raise HTTPException(status_code=409, detail="Mirror refresh already running")
+    background_tasks.add_task(race_history.run_mirror_refresh, ["utmb", "vbm"] if source == "all" else [source])
+    return {"queued": source}
 
 
 @app.post("/api/race-history/admin/sync-claims")

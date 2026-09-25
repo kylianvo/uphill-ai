@@ -124,3 +124,98 @@ def test_vbm_selection_and_bib_evidence_survive_refresh(client, auth_headers, mo
     refreshed = client.get("/api/race-history", headers=headers).json()
     assert next(row for row in refreshed["results"] if row["id"] == selected["id"])["verified"]
     assert sum(row["selected"] for row in refreshed["results"]) == 1
+
+
+def _fail_fetch(*args, **kwargs):
+    raise AssertionError("search must use the local mirror")
+
+
+def test_vbm_search_matches_partial_names_locally(monkeypatch):
+    from sqlalchemy import text
+
+    from db import engine
+    from services import race_history
+
+    with engine.begin() as conn:
+        for vbm_id in ("HOAI TRAN", "HOA THI TRAN", "HOANG VAN MINH"):
+            conn.execute(
+                text("INSERT INTO vbm_athletes (vbm_id, full_name, name_norm) VALUES (:id, :id, :norm)"),
+                {"id": vbm_id, "norm": race_history.normalize_name(vbm_id)},
+            )
+    monkeypatch.setattr(race_history, "_fetch", _fail_fetch)
+    # whole-word "HOA" outranks the shorter prefix-only "HOAI TRAN"
+    assert [r["external_id"] for r in race_history.search_vbm("Tran Hoa")] == ["HOA THI TRAN", "HOAI TRAN"]
+    assert race_history.search_vbm("Nguyen") == []
+
+
+def test_utmb_mirror_refresh_pages_and_search_stays_local(monkeypatch):
+    from services import race_history
+
+    pages = {
+        0: [
+            {"uri": "1.van.vietvo", "fullname": "Van Viet VO", "sex": "H", "ageGroup": "35-39", "ip": 0},
+            {"uri": "2.toan.vovan", "fullname": "Toàn VO VAN", "sex": "H", "ageGroup": "40-44", "ip": 612},
+        ],
+        1000: [{"uri": "3.hau.hathi", "fullname": "HAU HA THI", "sex": "F", "ageGroup": "35-39", "ip": 796}],
+    }
+    calls = []
+
+    def fake_fetch(url, params=None, utmb=False):
+        calls.append(params["offset"])
+        return {"nbHits": 1001, "runners": pages[params["offset"]]}
+
+    monkeypatch.setattr(race_history, "_fetch", fake_fetch)
+    monkeypatch.setattr(race_history.time, "sleep", lambda _: None)
+    assert race_history.refresh_utmb_mirror() == 3
+    assert calls == [0, 1000]
+
+    monkeypatch.setattr(race_history, "_fetch", _fail_fetch)
+    found = race_history.search_utmb("vo van")
+    assert [r["external_id"] for r in found] == ["2.toan.vovan", "1.van.vietvo"]  # indexed runner breaks the tie
+    assert race_history.search_utmb("hau ha")[0]["external_id"] == "3.hau.hathi"
+    assert found[0]["index"] == 612 and found[1]["index"] is None
+
+
+def test_mirror_refresh_records_errors_and_skips_when_locked(monkeypatch):
+    from sqlalchemy import text
+
+    from db import engine
+    from services import race_history
+
+    def boom():
+        raise RuntimeError("source down")
+
+    monkeypatch.setitem(race_history._MIRRORS, "utmb", ("utmb_runners", boom))
+    job = race_history.run_mirror_refresh(["utmb"])
+    assert job["state"] == "error" and "source down" in job["error"]
+
+    with engine.connect() as holder:
+        holder.execute(text("SELECT pg_advisory_lock(:k)"), {"k": race_history._MIRROR_LOCK_ID})
+        try:
+            assert race_history.run_mirror_refresh(["utmb"]) is None
+        finally:
+            holder.execute(text("SELECT pg_advisory_unlock(:k)"), {"k": race_history._MIRROR_LOCK_ID})
+
+
+def test_plan_prediction_failure_never_raises(monkeypatch):
+    from services import race_history
+
+    def boom(*args, **kwargs):
+        raise RuntimeError("estimator exploded")
+
+    monkeypatch.setattr(race_history, "scenarios", boom)
+    race_history.store_plan_scenario(1, 1)  # must not raise
+
+
+def test_linking_a_profile_syncs_immediately(client, auth_headers, monkeypatch):
+    from services import race_history
+
+    synced = []
+    monkeypatch.setattr(race_history, "sync_claim_now", synced.append)
+    claim = client.post(
+        "/api/race-history/claims",
+        headers=auth_headers["headers"],
+        json={"source": "utmb", "external_id": "4133959.hau.hathi"},
+    )
+    assert claim.status_code == 202, claim.text
+    assert synced == [claim.json()["id"]]

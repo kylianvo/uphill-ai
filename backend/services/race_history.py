@@ -24,6 +24,11 @@ _VBM_EVENTS = ("fmm", "fmf", "hmm", "hmf", "road100", "trail100")
 _VBM_KM = {"FMM": 42.195, "FMF": 42.195, "HMM": 21.0975, "HMF": 21.0975}
 logger = logging.getLogger(__name__)
 _WORKER_LOCK_ID = 521749231
+_MIRROR_LOCK_ID = _WORKER_LOCK_ID + 1
+_MIRROR_RETRY_SECONDS = 6 * 3600
+_MIRROR_MAX_ROWS = 200_000  # runaway-pagination guard; VN UTMB is ~50k today
+_last_scheduled_mirror_attempt: float | None = None
+mirror_job: dict[str, Any] = {"state": "idle"}
 _RESULT_COLUMNS = (
     "source_key",
     "discipline",
@@ -133,10 +138,18 @@ def normalize_utmb(raw: dict[str, Any]) -> dict[str, Any] | None:
 
 def normalize_vbm(parent: dict[str, Any], result: dict[str, Any]) -> dict[str, Any] | None:
     event = str(parent.get("event") or "").upper()
-    distance = _VBM_KM.get(event) or float(parent.get("distance_km") or 0)
     race_name = result.get("race") or parent.get("race_full_name") or parent.get("race") or "Race"
     race_date = _race_date(result.get("race_day")) or _race_date(race_name)
     seconds = _seconds(result.get("total_sec") or result.get("mark_sec") or result.get("time") or result.get("mark"))
+    # The parent row describes the athlete's PR race for this event; only that
+    # race's own entry in other_results_full may borrow its distance and link.
+    parent_seconds = _seconds(parent.get("mark_sec") or parent.get("mark"))
+    is_parent_race = result is parent or (
+        seconds == parent_seconds and str(result.get("bib") or "") == str(parent.get("bib") or "")
+    )
+    # Ultra events carry a distance only for the PR race; other ultras in the
+    # list have none, and guessing would corrupt the tier hint and estimates.
+    distance = _VBM_KM.get(event) or (float(parent.get("distance_km") or 0) if is_parent_race else 0)
     if not race_date or distance <= 0 or not seconds:
         return None
     bib = str(result.get("bib") or "").strip() or None
@@ -161,14 +174,55 @@ def normalize_vbm(parent: dict[str, Any], result: dict[str, Any]) -> dict[str, A
         "rank_age_group": None,
         "total_age_group": None,
         "bib": bib,
-        "result_url": parent.get("result_url"),
+        "result_url": parent.get("result_url") if is_parent_race else None,
         "source_race_uri": None,
         "is_pr": bool(result.get("is_pr", result is parent)),
         "raw": {"parent": parent, "result": result},
     }
 
 
+def _name_filter(name: str) -> tuple[str, str, dict[str, str]] | None:
+    """SQL condition matching every query word as a word prefix of name_norm,
+    in any order, so "Tran Hoa" finds "HOA THI TRAN"; plus an ORDER BY key that
+    puts whole-word matches first, so common names keep the exact hit in the
+    LIMIT."""
+    tokens = normalize_name(name).split()
+    if not tokens:
+        return None
+    where = " AND ".join(f"(' ' || name_norm) LIKE :t{i}" for i in range(len(tokens)))
+    exact = " + ".join(f"((' ' || name_norm || ' ') LIKE :w{i})::int" for i in range(len(tokens)))
+    params = {f"t{i}": f"% {token}%" for i, token in enumerate(tokens)}
+    params.update({f"w{i}": f"% {token} %" for i, token in enumerate(tokens)})
+    return where, f"({exact}) DESC, length(name_norm)", params
+
+
 def search_utmb(name: str) -> list[dict[str, Any]]:
+    name_filter = _name_filter(name)
+    if not name_filter:
+        return []
+    where, order, params = name_filter
+    with engine.connect() as conn:
+        mirrored = conn.execute(text("SELECT EXISTS (SELECT 1 FROM utmb_runners)")).scalar()
+        if mirrored:
+            rows = conn.execute(
+                text(f"""
+                    SELECT uri, full_name, age_group, utmb_index, sex FROM utmb_runners
+                    WHERE {where} ORDER BY {order}, utmb_index DESC NULLS LAST LIMIT 30
+                """),
+                params,
+            ).mappings()
+            return [
+                {
+                    "external_id": row["uri"],
+                    "display_name": row["full_name"],
+                    "age_group": row["age_group"],
+                    "index": row["utmb_index"],
+                    "sex": row["sex"],
+                    "source": "utmb",
+                }
+                for row in rows
+            ]
+    # Mirror not filled yet: fall back to the live search.
     data = _fetch(
         f"{_UTMB_URL}/search/runners",
         {"category": "general", "nationality": "VN", "search": name, "limit": 15, "offset": 0},
@@ -189,19 +243,25 @@ def search_utmb(name: str) -> list[dict[str, Any]]:
 
 
 def search_vbm(name: str) -> list[dict[str, Any]]:
-    norm = normalize_name(name)
-    if not norm:
+    name_filter = _name_filter(name)
+    if not name_filter:
         return []
+    where, order, params = name_filter
     with engine.connect() as conn:
+        mirrored = conn.execute(text("SELECT EXISTS (SELECT 1 FROM vbm_athletes)")).scalar()
         rows = (
             conn.execute(
-                text("SELECT vbm_id, full_name, sex_band, events FROM vbm_athletes WHERE name_norm LIKE :q LIMIT 20"),
-                {"q": f"%{norm}%"},
+                text(
+                    f"SELECT vbm_id, full_name, sex_band, events FROM vbm_athletes WHERE {where} "
+                    f"ORDER BY {order} LIMIT 30"
+                ),
+                params,
             )
             .mappings()
             .all()
         )
-    if not rows:
+    # Mirror not filled yet: fall back to the live leaderboards.
+    if not mirrored:
         found: dict[str, dict[str, Any]] = {}
         for event in _VBM_EVENTS:
             data = _fetch(_VBM_URL, {"action": "jp_bxh_list", "event": event, "page": 1, "per_page": 15, "q": name})
@@ -320,13 +380,12 @@ def queue_all_claims() -> int:
 
 
 def mirror_status() -> dict[str, Any]:
+    status: dict[str, Any] = {"job": dict(mirror_job)}
     with engine.connect() as conn:
-        row = (
-            conn.execute(text("SELECT COUNT(*) AS count, MAX(refreshed_at) AS refreshed_at FROM vbm_athletes"))
-            .mappings()
-            .one()
-        )
-    return _row_dict(row)
+        for source, (table, _) in _MIRRORS.items():
+            row = conn.execute(text(f"SELECT COUNT(*) AS count, MAX(refreshed_at) AS refreshed_at FROM {table}"))
+            status[source] = _row_dict(row.mappings().one())
+    return status
 
 
 def set_verified_bib(claim_id: int, user_id: int, bib: str) -> None:
@@ -536,6 +595,16 @@ def sync_claim(claim_id: int) -> int:
         raise
 
 
+def sync_claim_now(claim_id: int) -> None:
+    """First sync right after linking/refresh (run as a background task) so the
+    user is not waiting on the worker's next tick. Failures are recorded on
+    the claim by sync_claim and retried by the worker."""
+    try:
+        sync_claim(claim_id)
+    except Exception:
+        logger.exception("race claim sync failed", extra={"claim_id": claim_id})
+
+
 def run_pending_claims(limit: int = 20) -> int:
     # The session advisory lock is held across source requests. If a worker
     # dies, Postgres releases it and another process picks up pending claims.
@@ -567,42 +636,91 @@ def run_pending_claims(limit: int = 20) -> int:
 
 def run_worker(stop_event: Any) -> None:
     """Process-local scheduler; durable state and advisory lock live in Postgres."""
+    global _last_scheduled_mirror_attempt
     while not stop_event.is_set():
         try:
             run_pending_claims()
-            if settings.RACE_HISTORY_WEEKLY_REFRESH_ENABLED:
-                with engine.connect() as lock_conn:
-                    key = _WORKER_LOCK_ID + 1
-                    if lock_conn.execute(text("SELECT pg_try_advisory_lock(:key)"), {"key": key}).scalar():
-                        try:
-                            due = lock_conn.execute(
-                                text("""
-                                SELECT NOT EXISTS (
-                                  SELECT 1 FROM vbm_athletes WHERE refreshed_at > NOW() - INTERVAL '7 days'
-                                )
-                            """)
-                            ).scalar()
-                            if due:
-                                refresh_vbm_mirror()
-                                queue_all_claims()
-                        finally:
-                            lock_conn.execute(text("SELECT pg_advisory_unlock(:key)"), {"key": key})
+            # A failed refresh is retried after _MIRROR_RETRY_SECONDS, not on the
+            # next 60 s tick, so a broken source is not hammered.
+            retry_ok = (
+                _last_scheduled_mirror_attempt is None
+                or time.monotonic() - _last_scheduled_mirror_attempt > _MIRROR_RETRY_SECONDS
+            )
+            if settings.RACE_HISTORY_WEEKLY_REFRESH_ENABLED and retry_ok:
+                due = _due_mirrors()
+                if due:
+                    _last_scheduled_mirror_attempt = time.monotonic()
+                    job = run_mirror_refresh(due)
+                    if job and job["state"] == "done":
+                        queue_all_claims()
         except Exception:
             logger.exception("race history worker failed")
         stop_event.wait(60)
+
+
+def refresh_utmb_mirror() -> int:
+    """Copy the UTMB runner search index for Vietnamese runners (identity
+    fields only; results are fetched per claimed profile)."""
+    count, offset = 0, 0
+    while offset < _MIRROR_MAX_ROWS:
+        data = _fetch(
+            f"{_UTMB_URL}/search/runners",
+            {"category": "general", "nationality": "VN", "limit": 1000, "offset": offset},
+            True,
+        )
+        page = data.get("runners") or []
+        rows = [
+            {
+                "uri": row["uri"],
+                "name": row["fullname"],
+                "norm": normalize_name(row["fullname"]),
+                "sex": row.get("sex"),
+                "age": row.get("ageGroup"),
+                "index": row.get("ip") or None,
+            }
+            for row in page
+            if row.get("uri") and row.get("fullname")
+        ]
+        if rows:
+            with engine.begin() as conn:
+                conn.execute(
+                    text("""
+                    INSERT INTO utmb_runners (uri, full_name, name_norm, sex, age_group, utmb_index)
+                    VALUES (:uri, :name, :norm, :sex, :age, :index)
+                    ON CONFLICT (uri) DO UPDATE SET full_name=EXCLUDED.full_name,
+                      name_norm=EXCLUDED.name_norm, sex=EXCLUDED.sex, age_group=EXCLUDED.age_group,
+                      utmb_index=EXCLUDED.utmb_index, refreshed_at=NOW()
+                """),
+                    rows,
+                )
+            count += len(rows)
+        offset += 1000
+        if not page or offset >= int(data.get("nbHits") or 0):
+            break
+        time.sleep(1)
+    return count
 
 
 def refresh_vbm_mirror() -> int:
     count = 0
     for event in _VBM_EVENTS:
         page = 1
-        while True:
+        while page * 500 <= _MIRROR_MAX_ROWS:
             data = _fetch(_VBM_URL, {"action": "jp_bxh_list", "event": event, "page": page, "per_page": 500, "q": ""})
-            rows = data.get("data") or []
-            with engine.begin() as conn:
-                for row in rows:
-                    if not row.get("vbm_id"):
-                        continue
+            rows = [
+                {
+                    "id": row["vbm_id"],
+                    "name": row.get("full_name") or row["vbm_id"],
+                    "norm": normalize_name(row.get("full_name") or row["vbm_id"]),
+                    "sex": row.get("sex"),
+                    "events": json.dumps({str(row.get("event")): row}),
+                    "clubs": json.dumps(row.get("clubs") or []),
+                }
+                for row in data.get("data") or []
+                if row.get("vbm_id")
+            ]
+            if rows:
+                with engine.begin() as conn:
                     conn.execute(
                         text("""
                         INSERT INTO vbm_athletes (vbm_id, full_name, name_norm, sex_band, events, clubs)
@@ -612,21 +730,58 @@ def refresh_vbm_mirror() -> int:
                           events=vbm_athletes.events || EXCLUDED.events, clubs=EXCLUDED.clubs,
                           refreshed_at=NOW()
                     """),
-                        {
-                            "id": row["vbm_id"],
-                            "name": row.get("full_name") or row["vbm_id"],
-                            "norm": normalize_name(row.get("full_name") or row["vbm_id"]),
-                            "sex": row.get("sex"),
-                            "events": json.dumps({str(row.get("event")): row}),
-                            "clubs": json.dumps(row.get("clubs") or []),
-                        },
+                        rows,
                     )
-                    count += 1
-            if not rows or page >= int(data.get("total_pages") or 1):
+                count += len(rows)
+            if not data.get("data") or page >= int(data.get("total_pages") or 1):
                 break
             page += 1
             time.sleep(1)
     return count
+
+
+_MIRRORS = {"utmb": ("utmb_runners", refresh_utmb_mirror), "vbm": ("vbm_athletes", refresh_vbm_mirror)}
+
+
+def _due_mirrors() -> list[str]:
+    with engine.connect() as conn:
+        return [
+            source
+            for source, (table, _) in _MIRRORS.items()
+            if not conn.execute(
+                text(f"SELECT EXISTS (SELECT 1 FROM {table} WHERE refreshed_at > NOW() - INTERVAL '7 days')")
+            ).scalar()
+        ]
+
+
+def run_mirror_refresh(sources: list[str]) -> dict[str, Any] | None:
+    """Refresh the search mirrors under a Postgres advisory lock, so the admin
+    trigger and the weekly worker never overlap. None when already running."""
+    with engine.connect() as lock_conn:
+        if not lock_conn.execute(text("SELECT pg_try_advisory_lock(:key)"), {"key": _MIRROR_LOCK_ID}).scalar():
+            return None
+        try:
+            mirror_job.clear()
+            mirror_job.update(
+                state="running",
+                sources=sources,
+                processed={},
+                error=None,
+                started_at=datetime.now(UTC).isoformat(),
+                finished_at=None,
+            )
+            for source in sources:
+                if not getattr(settings, f"RACE_HISTORY_{source.upper()}_ENABLED", True):
+                    continue
+                mirror_job["processed"][source] = _MIRRORS[source][1]()
+            mirror_job["state"] = "done"
+        except Exception as exc:
+            logger.exception("race history mirror refresh failed")
+            mirror_job.update(state="error", error=str(exc)[:500])
+        finally:
+            mirror_job["finished_at"] = datetime.now(UTC).isoformat()
+            lock_conn.execute(text("SELECT pg_advisory_unlock(:key)"), {"key": _MIRROR_LOCK_ID})
+        return dict(mirror_job)
 
 
 def verify_results(user_id: int) -> None:
@@ -834,6 +989,15 @@ def scenarios(user_id: int, plan_id: int | None = None) -> dict[str, Any]:
 
 
 def store_plan_scenario(user_id: int, plan_id: int) -> None:
+    """Snapshot the prediction on the plan. Best effort: the plan already
+    exists, so a failure here is logged and never fails plan creation."""
+    try:
+        _store_plan_scenario(user_id, plan_id)
+    except Exception:
+        logger.exception("storing plan prediction failed", extra={"plan_id": plan_id})
+
+
+def _store_plan_scenario(user_id: int, plan_id: int) -> None:
     snapshot = scenarios(user_id, plan_id)
     if not snapshot or not (snapshot.get("target") or snapshot.get("road")):
         return

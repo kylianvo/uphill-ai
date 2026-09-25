@@ -483,6 +483,22 @@ def init_db():
         )
         conn.execute(text("CREATE INDEX IF NOT EXISTS idx_vbm_athletes_name ON vbm_athletes (name_norm)"))
 
+        # Search-only copy of UTMB's runner index for Vietnamese runners (identity
+        # fields, no results); results are fetched per claimed profile.
+        conn.execute(
+            text("""
+        CREATE TABLE IF NOT EXISTS utmb_runners (
+            uri TEXT PRIMARY KEY,
+            full_name TEXT NOT NULL,
+            name_norm TEXT NOT NULL,
+            sex TEXT,
+            age_group TEXT,
+            utmb_index INTEGER,
+            refreshed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        """)
+        )
+
         conn.execute(
             text("""
         CREATE TABLE IF NOT EXISTS daily_metrics (

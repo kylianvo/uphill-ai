@@ -1007,8 +1007,6 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                 )
             if injury_history:
                 scheduling_notes += f"- Injury history: {injury_history}\n"
-            if race_history_text:
-                scheduling_notes += f"- {race_history_text}\n"
 
             # Historical Ceiling & Athlete Notes
             ceiling_notes = ""
@@ -1026,6 +1024,10 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                         f"- Synced activities on record: {total_c}\n"
                         f"Rule: Respect the athlete's proven endurance ceiling. Single long runs must not exceed 15-20% above this ceiling without multi-block progression.\n"
                     )
+
+            # Race record from claimed UTMB/VBM profiles and self-reported results;
+            # sits beside the ceiling because both describe proven capacity.
+            race_history_notes = f"\n{race_history_text}\n" if race_history_text else ""
 
             athlete_notes = race_info.get("athlete_notes") or user_profile.get("athlete_notes")
             constraints_notes = ""
@@ -1087,6 +1089,7 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                 f"{female_note}"
                 f"{scheduling_notes}"
                 f"{ceiling_notes}"
+                f"{race_history_notes}"
                 f"{constraints_notes}"
             )
 

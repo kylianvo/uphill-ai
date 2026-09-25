@@ -15,6 +15,7 @@ ALL_TABLES = [
     "race_results",
     "race_profile_claims",
     "vbm_athletes",
+    "utmb_runners",
     "chat_proposals",
     "chat_llm_calls",
     "chat_turns",

@@ -1,4 +1,4 @@
-"""Add race history, VBM search mirror, and plan scenarios.
+"""Add race history, UTMB/VBM search mirrors, and plan scenarios.
 
 Revision ID: b2c3d4e5f6a7
 Revises: a1b2c3d4e5f7
@@ -94,9 +94,23 @@ def upgrade() -> None:
         )
     """)
     op.execute("CREATE INDEX idx_vbm_athletes_name ON vbm_athletes (name_norm)")
+    # Search-only copy of UTMB's runner index for Vietnamese runners (identity
+    # fields, no results); results are fetched per claimed profile.
+    op.execute("""
+        CREATE TABLE utmb_runners (
+            uri TEXT PRIMARY KEY,
+            full_name TEXT NOT NULL,
+            name_norm TEXT NOT NULL,
+            sex TEXT,
+            age_group TEXT,
+            utmb_index INTEGER,
+            refreshed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    """)
 
 
 def downgrade() -> None:
+    op.drop_table("utmb_runners")
     op.drop_table("vbm_athletes")
     op.drop_table("race_results")
     op.drop_table("race_profile_claims")
