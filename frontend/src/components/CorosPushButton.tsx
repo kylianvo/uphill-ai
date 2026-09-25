@@ -2,8 +2,18 @@
 
 import { useEffect, useState } from "react";
 import { fetchPushStatus, pushCopy, pushToCoros, type PushOutcome, type PushStatus } from "../lib/corosPush";
+import { localToday } from "../lib/scheduleProposals";
 
 const MARK_SRC = `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/brand/coros-mark.webp`;
+
+/** "2027-05-31" -> "31 May" / "31 thg 5", read as a local calendar date. */
+function shortDate(iso: unknown, lang: string): string {
+  if (typeof iso !== "string" || !iso) return "";
+  return new Date(`${iso.slice(0, 10)}T00:00:00`).toLocaleDateString(lang === "vi" ? "vi-VN" : "en-GB", {
+    day: "numeric",
+    month: "short",
+  });
+}
 
 /**
  * "Send to COROS" for the Scheduler header (COROS push, phase 1). Owns its own
@@ -93,18 +103,19 @@ export default function CorosPushButton({
         <span role="status" style={{ fontSize: "11px", color: "var(--text-secondary)" }}>
           {pushCopy(lang, "result", {
             n: outcome.summary.workouts_sent,
-            end: new Date(`${outcome.summary.window_end}T00:00:00`).toLocaleDateString(lang === "vi" ? "vi-VN" : "en-GB", {
-              day: "numeric",
-              month: "short",
-            }),
+            end: shortDate(outcome.summary.window_end, lang),
           })}
+          {outcome.summary.plan_start &&
+            outcome.summary.plan_start > localToday() &&
+            ` ${pushCopy(lang, "plan_start", { date: shortDate(outcome.summary.plan_start, lang) })}`}
           {outcome.summary.left_in_uphill > 0 && ` ${pushCopy(lang, "left", { n: outcome.summary.left_in_uphill })}`}
           {outcome.summary.locked_days > 0 && ` ${pushCopy(lang, "locked")}`}
+          {(outcome.summary.stale ?? 0) > 0 && ` ${pushCopy(lang, "stale", { n: outcome.summary.stale })}`}
         </span>
       )}
       {outcome?.kind === "error" && (
         <span role="alert" style={{ fontSize: "11px", color: "var(--accent-alert)" }}>
-          {pushCopy(lang, outcome.code, outcome.params)}
+          {pushCopy(lang, outcome.code, { ...outcome.params, date: shortDate(outcome.params.opens_on, lang) })}
           {outcome.code === "COROS_not_connected" && (
             <>
               {" "}

@@ -91,4 +91,47 @@ describe("CorosPushButton", () => {
     rerender(<CorosPushButton lang="en" refreshKey={2} />);
     await waitFor(() => expect(fetchPushStatus).toHaveBeenCalledTimes(2));
   });
+
+  const summary = {
+    mode: "plan", days_sent: 4, workouts_sent: 3, left_in_uphill: 0, locked_days: 0, invalid: 0,
+    stale: 0, window_end: "2027-07-04", plan_start: "2027-04-07",
+  };
+
+  it("says when a far race opens for sending, with a readable date", async () => {
+    fetchPushStatus.mockResolvedValue({ connected: true });
+    pushToCoros.mockResolvedValue({ kind: "error", code: "RACE_too_far", params: { opens_on: "2027-05-31" } });
+    render(<CorosPushButton lang="en" refreshKey={1} />);
+    await userEvent.click(await screen.findByRole("button", { name: /send to coros/i }));
+    expect(await screen.findByText(/Send to COROS opens on 31 May/)).toBeInTheDocument();
+  });
+
+  it("explains a race that is too close, in Vietnamese", async () => {
+    fetchPushStatus.mockResolvedValue({ connected: true });
+    pushToCoros.mockResolvedValue({ kind: "error", code: "RACE_too_close", params: { weeks: 3 } });
+    render(<CorosPushButton lang="vi" refreshKey={1} />);
+    await userEvent.click(await screen.findByRole("button", { name: /gửi sang coros/i }));
+    expect(await screen.findByText(/chỉ còn 3 tuần/)).toBeInTheDocument();
+  });
+
+  it("mentions a COROS plan that starts later than today", async () => {
+    fetchPushStatus.mockResolvedValue({ connected: true });
+    pushToCoros.mockResolvedValue({
+      kind: "ok", status: "sent", last_pushed_at: null, summary: { ...summary, plan_start: "2099-04-19" },
+    });
+    render(<CorosPushButton lang="en" refreshKey={1} />);
+    await userEvent.click(await screen.findByRole("button", { name: /send to coros/i }));
+    expect(await screen.findByText(/Your COROS plan starts on 19 Apr/)).toBeInTheDocument();
+  });
+
+  it("tells the athlete to delete stale standalone workouts in the COROS app", async () => {
+    fetchPushStatus.mockResolvedValue({ connected: true });
+    pushToCoros.mockResolvedValue({
+      kind: "ok", status: "sent", last_pushed_at: null,
+      summary: { ...summary, mode: "standalone", plan_start: null, stale: 2 },
+    });
+    render(<CorosPushButton lang="en" refreshKey={1} />);
+    await userEvent.click(await screen.findByRole("button", { name: /send to coros/i }));
+    expect(await screen.findByText(/2 workouts that changed in Uphill are still on COROS/)).toBeInTheDocument();
+    expect(screen.queryByText(/Your COROS plan starts/)).not.toBeInTheDocument();
+  });
 });

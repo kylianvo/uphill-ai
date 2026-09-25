@@ -1,12 +1,15 @@
 import { localToday } from "./scheduleProposals";
 
 export interface PushSummary {
+  mode?: "plan" | "standalone";
   days_sent: number;
   workouts_sent: number;
   left_in_uphill: number;
   locked_days: number;
   invalid: number;
+  stale?: number;
   window_end: string;
+  plan_start?: string | null;
 }
 export interface PushStatus {
   connected: boolean;
@@ -77,7 +80,10 @@ const COPY: Record<string, Record<string, string>> = {
     reconnect: "Reconnect COROS",
     COROS_not_connected: "COROS isn't connected. Reconnect it in your profile.",
     NOTHING_to_push: "Nothing to send: there are no upcoming runs in your plan.",
-    PLAN_too_short: "COROS plans need at least 4 weeks, and your plan ends sooner.",
+    plan_start: "Your COROS plan starts on {date}.",
+    stale: "{n} workouts that changed in Uphill are still on COROS on their old day. Delete them in the COROS app.",
+    RACE_too_far: "COROS plans cover up to 16 weeks. Send to COROS opens on {date}.",
+    RACE_too_close: "COROS plans must be at least 4 weeks long, and your race is in {weeks} weeks.",
     PUSH_in_progress: "A send is already running. Try again in a moment.",
     PUSH_limit: "You've sent to COROS {limit} times today. Try again tomorrow.",
     COROS_rejected: "COROS didn't accept the plan. Nothing changed on your watch.",
@@ -95,7 +101,10 @@ const COPY: Record<string, Record<string, string>> = {
     reconnect: "Kết nối lại COROS",
     COROS_not_connected: "Chưa kết nối COROS. Hãy kết nối lại trong hồ sơ.",
     NOTHING_to_push: "Không có gì để gửi: plan không còn buổi chạy sắp tới.",
-    PLAN_too_short: "Plan trên COROS cần ít nhất 4 tuần, còn plan của bạn kết thúc sớm hơn.",
+    plan_start: "Plan trên COROS bắt đầu từ {date}.",
+    stale: "{n} buổi tập đã đổi trong Uphill vẫn còn trên COROS ở ngày cũ. Hãy xoá chúng trong app COROS.",
+    RACE_too_far: "Plan trên COROS dài tối đa 16 tuần. Bạn có thể gửi sang COROS từ {date}.",
+    RACE_too_close: "Plan trên COROS phải dài ít nhất 4 tuần, còn race của bạn chỉ còn {weeks} tuần.",
     PUSH_in_progress: "Đang có một lần gửi. Hãy thử lại sau giây lát.",
     PUSH_limit: "Hôm nay bạn đã gửi sang COROS {limit} lần. Hãy thử lại vào ngày mai.",
     COROS_rejected: "COROS không nhận plan. Đồng hồ không có thay đổi nào.",
