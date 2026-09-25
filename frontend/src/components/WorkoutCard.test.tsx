@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import WorkoutCard, { formatIntervalSummary } from "./WorkoutCard";
 
 describe("formatIntervalSummary", () => {
@@ -124,5 +124,30 @@ describe("WorkoutCard readOnly mode", () => {
     const pendingWo = { ...wo, approved_at: null };
     render(<WorkoutCard wo={pendingWo} isMobile={false} lang="en" getWorkoutDate={() => "Sep 2"} readOnly />);
     expect(screen.getByText("Pending review")).toBeInTheDocument();
+  });
+
+  it("shows execution guide expanded by default when card is expanded with 1-click header toggle", () => {
+    const woWithExecution = {
+      ...wo,
+      description: "Process: Warm up 10 min easy jog → 4 x 6min @ Zone 4, 2min jog recovery → cool down 10 min stretch",
+    };
+    render(
+      <WorkoutCard
+        wo={woWithExecution}
+        isMobile={false}
+        lang="en"
+        getWorkoutDate={() => "Sep 2"}
+        defaultExpanded={false}
+      />
+    );
+
+    // Click on the workout header title to expand the card in 1 click
+    const titleElement = screen.getByText("Hill Repeats");
+    fireEvent.click(titleElement);
+
+    // The execution step should be visible immediately without a second click
+    expect(screen.getByText("4 x 6min @ Zone 4, 2min jog recovery")).toBeInTheDocument();
+    // And "Hide guide" toggle is visible
+    expect(screen.getByText("Hide guide")).toBeInTheDocument();
   });
 });
