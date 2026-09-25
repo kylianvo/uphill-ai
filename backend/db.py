@@ -763,6 +763,45 @@ def init_db():
         )
         """)
         )
+
+        conn.execute(
+            text("""
+        CREATE TABLE IF NOT EXISTS goal_assessments (
+            id                SERIAL PRIMARY KEY,
+            user_id           INTEGER REFERENCES users(id) ON DELETE CASCADE,  -- NULL = signed-out estimate
+            plan_id           INTEGER REFERENCES plans(id) ON DELETE CASCADE,
+            race_name         TEXT,
+            race_date         DATE,
+            distance_km       REAL NOT NULL,
+            elevation_gain_m  REAL NOT NULL DEFAULT 0,
+            input_hash        TEXT NOT NULL,
+            context_summary   JSONB NOT NULL DEFAULT '{}'::jsonb,
+            anchors           JSONB NOT NULL DEFAULT '[]'::jsonb,
+            output            JSONB,                           -- NULL = no estimate possible
+            engine            TEXT NOT NULL,                   -- 'gemini' | 'gemini_retry' | 'rules' | 'none'
+            confidence        TEXT,
+            lang              TEXT NOT NULL DEFAULT 'en',
+            trigger           TEXT NOT NULL,                   -- 'pre_plan' | 'manual' | 'weekly'
+            plan_week         INTEGER,
+            actual_finish_sec INTEGER,
+            created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        """)
+        )
+
+        conn.execute(
+            text("CREATE INDEX IF NOT EXISTS idx_goal_assessments_plan ON goal_assessments (plan_id, created_at DESC)")
+        )
+        conn.execute(
+            text("CREATE INDEX IF NOT EXISTS idx_goal_assessments_user ON goal_assessments (user_id, created_at DESC)")
+        )
+        # One weekly assessment per plan week, even when two page loads race.
+        conn.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_goal_assessments_weekly "
+                "ON goal_assessments (plan_id, plan_week) WHERE trigger = 'weekly'"
+            )
+        )
         conn.commit()
 
         for col_sql in [
@@ -5484,3 +5523,154 @@ def prune_coach_chat(
         "cleared_summaries": cleared_summaries,
         "deleted_turns": deleted_turns,
     }
+
+
+# ─── Goal assessments (LLM goal estimation) ──────────────────────────────────
+
+_ON_FOOT_TYPES = ("run", "outdoor_run", "indoor_run", "trail_run", "track_run", "hike")
+
+
+def get_utmb_index(user_id: int) -> int | None:
+    """UTMB index from the athlete's claimed UTMB profile, via the runner mirror."""
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("""
+            SELECT u.utmb_index FROM race_profile_claims c
+            JOIN utmb_runners u ON u.uri = c.external_id
+            WHERE c.user_id = :uid AND c.source = 'utmb' AND u.utmb_index IS NOT NULL
+            ORDER BY c.created_at DESC LIMIT 1
+        """),
+            {"uid": user_id},
+        ).fetchone()
+    return int(row[0]) if row else None
+
+
+def get_weekly_training_trend(user_id: int, weeks: int = 8) -> dict[str, Any] | None:
+    """Average weekly on-foot volume and vert over the last `weeks` weeks of
+    synced activities (duplicates excluded). None without any activity."""
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("""
+            SELECT COUNT(*) AS runs, COALESCE(SUM(distance_km), 0) AS km,
+                   COALESCE(SUM(elevation_gain_m), 0) AS vert, MAX(start_time) AS last_activity
+            FROM activities
+            WHERE user_id = :uid AND duplicate_of IS NULL AND activity_type = ANY(:types)
+              AND start_time >= NOW() - make_interval(weeks => :weeks)
+        """),
+            {"uid": user_id, "types": list(_ON_FOOT_TYPES), "weeks": weeks},
+        ).fetchone()
+    if not row or not row.runs:
+        return None
+    return {
+        "weeks": weeks,
+        "runs": int(row.runs),
+        "avg_weekly_km": round(float(row.km) / weeks, 1),
+        "avg_weekly_vert_m": round(float(row.vert) / weeks),
+        "last_activity": row.last_activity.date().isoformat() if row.last_activity else None,
+    }
+
+
+def get_latest_daily_metrics(user_id: int) -> dict[str, Any] | None:
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("""
+            SELECT metric_date, resting_hr, hrv_ms, hrv_baseline_ms, hrv_status, load_ratio, recovery_percent
+            FROM daily_metrics WHERE user_id = :uid AND metric_date >= CURRENT_DATE - 14
+            ORDER BY metric_date DESC LIMIT 1
+        """),
+            {"uid": user_id},
+        ).fetchone()
+    if not row:
+        return None
+    data = _row_to_dict(row)
+    data["metric_date"] = data["metric_date"].isoformat()
+    return data
+
+
+_GOAL_JSON_COLUMNS = ("context_summary", "anchors", "output")
+
+
+def _goal_row(row: Any) -> dict[str, Any]:
+    data = _row_to_dict(row)
+    for key in ("race_date", "created_at"):
+        if data.get(key) is not None:
+            data[key] = data[key].isoformat()
+    return data
+
+
+def insert_goal_assessment(values: dict[str, Any]) -> dict[str, Any]:
+    params = {**values}
+    for key in _GOAL_JSON_COLUMNS:
+        params[key] = json.dumps(params.get(key), default=str) if params.get(key) is not None else None
+    with engine.begin() as conn:
+        row = conn.execute(
+            text("""
+            INSERT INTO goal_assessments (user_id, plan_id, race_name, race_date, distance_km, elevation_gain_m,
+              input_hash, context_summary, anchors, output, engine, confidence, lang, trigger, plan_week)
+            VALUES (:user_id, :plan_id, :race_name, :race_date, :distance_km, :elevation_gain_m, :input_hash,
+              CAST(:context_summary AS jsonb), CAST(:anchors AS jsonb), CAST(:output AS jsonb), :engine,
+              :confidence, :lang, :trigger, :plan_week)
+            RETURNING *
+        """),
+            params,
+        ).fetchone()
+    return _goal_row(row)
+
+
+def find_goal_assessment(user_id: int, plan_id: int | None, input_hash: str) -> dict[str, Any] | None:
+    """An earlier assessment of identical inputs (same user, plan and hash)."""
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("""
+            SELECT * FROM goal_assessments
+            WHERE user_id = :uid AND plan_id IS NOT DISTINCT FROM :pid AND input_hash = :hash
+            ORDER BY created_at DESC LIMIT 1
+        """),
+            {"uid": user_id, "pid": plan_id, "hash": input_hash},
+        ).fetchone()
+    return _goal_row(row) if row else None
+
+
+def get_latest_goal_assessment(plan_id: int) -> dict[str, Any] | None:
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("SELECT * FROM goal_assessments WHERE plan_id = :pid ORDER BY created_at DESC, id DESC LIMIT 1"),
+            {"pid": plan_id},
+        ).fetchone()
+    return _goal_row(row) if row else None
+
+
+def count_manual_goal_assessments_today(user_id: int) -> int:
+    with engine.connect() as conn:
+        return int(
+            conn.execute(
+                text("""
+                SELECT COUNT(*) FROM goal_assessments
+                WHERE user_id = :uid AND trigger = 'manual' AND created_at >= date_trunc('day', NOW())
+            """),
+                {"uid": user_id},
+            ).scalar()
+            or 0
+        )
+
+
+def has_weekly_goal_assessment(plan_id: int, plan_week: int) -> bool:
+    with engine.connect() as conn:
+        return (
+            conn.execute(
+                text("""
+                SELECT 1 FROM goal_assessments
+                WHERE plan_id = :pid AND trigger = 'weekly' AND plan_week = :week LIMIT 1
+            """),
+                {"pid": plan_id, "week": plan_week},
+            ).fetchone()
+            is not None
+        )
+
+
+def update_plan_target_time(plan_id: int, target_time_hours: float) -> None:
+    with engine.begin() as conn:
+        conn.execute(
+            text("UPDATE plans SET target_time_hours = :tth WHERE id = :pid"),
+            {"tth": target_time_hours, "pid": plan_id},
+        )

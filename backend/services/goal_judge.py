@@ -19,6 +19,9 @@ from services.race_estimator import AMBITIOUS_FACTOR, IMPROVEMENT_CAP, IMPROVEME
 
 _logger = get_logger(__name__)
 
+# Bump when the prompt or validator changes: it is part of the input hash, so
+# stored assessments made under an older prompt are not reused.
+PROMPT_VERSION = 2
 ANCHOR_SLACK = 0.15
 MAX_SPREAD = {"low": 1.35, "medium": 1.20, "high": 1.20}
 WINNER_FLOOR = 0.97
@@ -47,8 +50,11 @@ class GoalOutput(BaseModel):
 _INSTRUCTIONS = {
     "en": "Write every reasoning bullet in English.",
     "vi": (
-        "Write every reasoning bullet in Vietnamese, in a natural coaching voice. Keep running terms "
-        "athletes use in English (trail, ultra, pace, vert, block, race, UTMB index, VO2max)."
+        "Write every reasoning bullet in Vietnamese, like a coach talking to a runner in a club chat: "
+        "plain, direct, second person 'bạn', one idea per sentence, no exclamation marks. Keep these in "
+        "English: trail, ultra, race, pace, block, plan, D+, Elevation Gain, Zone 1-5, AeT, AnT, HR, VO2max, "
+        "UTMB index, DNF, cutoff. Say 'khối lượng' for volume and 'chỉ số thể chất' for physiology. Never use: "
+        "bứt phá, chinh phục, tối ưu hóa, toàn diện, vượt trội, hành trình, giải pháp, đột phá, mạnh mẽ."
     ),
 }
 
@@ -80,8 +86,10 @@ race evidence does. With no anchors, stay inside the race's field curve and set 
 
 Goals, in minutes: a = ambitious (a great day), b = realistic, c = safe (banks margin for
 problems). Keep a < b < c. confidence: high only with several recent similar trail results;
-low when the estimate rests on priors. reasoning: 3 to 5 short bullets, each citing a specific
-input (a result, an anchor, a metric). anchors_weighted: the anchor ids you relied on with
+low when the estimate rests on priors. reasoning: 3 to 5 bullets of at most 25 words, each
+citing a specific input (a race result, a metric, the field). The athlete reads these: write
+finish times as h:mm (8:48), never as minutes, and never mention anchor ids, percentile keys
+or field names from the JSON. anchors_weighted: the anchor ids you relied on with
 weights summing to about 1. missing: short keys for data that would sharpen this (for example
 "recent_trail_result", "watch", "utmb_index").
 {_INSTRUCTIONS.get(lang, _INSTRUCTIONS["en"])}

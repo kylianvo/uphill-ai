@@ -34,9 +34,16 @@ def _variant_filtered_results(
     return [r for r in results if variants.get(r.get("year")) == target_variant]
 
 
-def resolve_course(race_name: str | None, distance_km: float | None, elevation_gain_m: float | None) -> dict[str, Any]:
+def resolve_course(
+    race_name: str | None,
+    distance_km: float | None,
+    elevation_gain_m: float | None,
+    before_year: int | None = None,
+) -> dict[str, Any]:
     """Target (or reference) course: KB match, GPX checkpoints, terrain and
-    the field curve. Explicit numbers win over the KB's; 0 counts as missing."""
+    the field curve. Explicit numbers win over the KB's; 0 counts as missing.
+    `before_year` keeps only field years before it (the backtest's hold-out
+    race must not see its own year's results)."""
     from services.race_matcher import course_profile, course_profile_variants, match_race, race_benchmarks
 
     matched = match_race(race_name, distance_km=distance_km) if race_name else None
@@ -64,6 +71,8 @@ def resolve_course(race_name: str | None, distance_km: float | None, elevation_g
         return course
     variants = course_profile_variants(race_name, matched.distance_label) if matched and matched.distance_label else {}
     results = _variant_filtered_results(bench["results"], variants, profile["variant"] if profile else None)
+    if before_year:
+        results = [r for r in results if (r.get("year") or 0) < before_year]
     curve = RaceEstimator.percentile_curve(results)
     winners = [m for m in (_parse_hms_to_mins(r.get("winner_time")) for r in results) if m]
     course["field"] = {
@@ -120,6 +129,7 @@ def compute_anchors(
     weekly_km: float | None = None,
     ultra_finishes: int = 0,
     easy_pace_min_km: float | None = None,
+    base_pace_min_km: float | None = None,
     as_of: date | None = None,
 ) -> list[dict[str, Any]]:
     """Finish-time anchors on the target course.
@@ -134,6 +144,10 @@ def compute_anchors(
     field = target.get("field") or {}
     target_curve = field.get("curve")
     anchors: list[dict[str, Any]] = []
+    if base_pace_min_km:
+        anchors.append(
+            _pace_anchor(target, "base_pace", base_pace_min_km, f"flat base pace {base_pace_min_km:.2f} min/km")
+        )
 
     for r in select_anchor_results(results, target_km, as_of):
         ref = resolve_course(r["race_name"], r["distance_km"], r.get("elevation_gain_m"))
@@ -192,20 +206,26 @@ def compute_anchors(
             }
         )
     elif easy_pace_min_km:
-        estimate = RaceEstimator.estimate(
-            distance_km=target_km,
-            elevation_gain_m=target["elevation_gain_m"],
-            base_flat_pace_min_km=easy_pace_min_km,
-            terrain_tags=target["terrain"] or None,
-            target_checkpoints=target["checkpoints"],
-        )
         anchors.append(
-            {
-                "id": "prior_pace",
-                "method": "easy_pace",
-                "minutes": estimate["predicted_time_mins"],
-                "source_result_id": None,
-                "notes": [f"prior: profile easy pace {easy_pace_min_km:.2f} min/km on a flat base"],
-            }
+            _pace_anchor(
+                target, "easy_pace", easy_pace_min_km, f"prior: profile easy pace {easy_pace_min_km:.2f} min/km"
+            )
         )
     return anchors
+
+
+def _pace_anchor(target: dict[str, Any], method: str, pace_min_km: float, note: str) -> dict[str, Any]:
+    estimate = RaceEstimator.estimate(
+        distance_km=target["distance_km"],
+        elevation_gain_m=target["elevation_gain_m"],
+        base_flat_pace_min_km=pace_min_km,
+        terrain_tags=target["terrain"] or None,
+        target_checkpoints=target["checkpoints"],
+    )
+    return {
+        "id": f"prior_{method}" if method == "easy_pace" else method,
+        "method": method,
+        "minutes": estimate["predicted_time_mins"],
+        "source_result_id": None,
+        "notes": [note],
+    }

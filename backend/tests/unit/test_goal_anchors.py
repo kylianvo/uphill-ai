@@ -106,8 +106,13 @@ def test_field_prior_without_results():
 
 def test_easy_pace_prior_when_no_field_curve():
     anchors = goal_anchors.compute_anchors(_target(field=False), [], weekly_km=40.0, easy_pace_min_km=6.5, as_of=AS_OF)
-    assert [a["method"] for a in anchors] == ["easy_pace"]
+    assert [a["id"] for a in anchors] == ["prior_easy_pace"]
 
 
 def test_no_data_means_no_anchors():
     assert goal_anchors.compute_anchors(_target(field=False), [], as_of=AS_OF) == []
+
+
+def test_explicit_base_pace_is_always_an_anchor():
+    anchors = goal_anchors.compute_anchors(_target(), [_result(1)], base_pace_min_km=6.0, as_of=AS_OF)
+    assert [a["id"] for a in anchors] == ["base_pace", "phys_r1"]

@@ -216,11 +216,24 @@ and date; Metabase panel for live hit rate and error by confidence.
 2. Staging: run the backtest against staging data; review Langfuse traces (metadata only).
 3. Prod: enable after the gate passes.
 
-## Open items for the implementation plan
+## Resolved during implementation
 
-- Verify whether changing `target_time_hours` recalculates workout target paces or only Pace Strategy;
-  the "Update target" confirmation copy depends on it.
-- Pick the exact field-position prior mapping (volume/experience → percentile) and document it.
+- Changing `target_time_hours` does **not** recalculate existing workouts; it is read when a block or
+  week is generated (race pace, next block, week rebuild). The "Update target" confirmation says so.
+- Field-position prior: weekly km ≥70 → p40, ≥50 → p55, ≥30 → p70, else p85; any ultra finish −10
+  (`goal_anchors._VOLUME_PERCENTILE`). An explicit flat pace (signed-out input) is always an anchor.
+- Each result also yields a `field_rank` anchor from its own UTMB rank/total mapped onto the target curve.
+- Orchestration and persistence live in `services/goal_service.py`; the old `/api/coach/goal-estimate`
+  endpoints and `_goal_estimate_core` are left in place (unused by the new UI) rather than moved.
+- `goal_judge.PROMPT_VERSION` is part of `input_hash`, so a prompt change is never answered from an
+  older stored row.
+- Weekly re-assess dedupe: an in-process in-flight set plus a partial unique index
+  `uq_goal_assessments_weekly (plan_id, plan_week) WHERE trigger = 'weekly'`.
+- New plans are assessed in a background thread at creation (`GOAL_ASSESS_ON_PLAN_CREATE`, off in tests).
+- The race-history panel's scenario cards (same inconsistent number, plus road PR scenarios) were
+  removed along with `race_history.scenarios()`.
+- Backtest: `scripts/goal_backtest.py`, reachable as `golden_eval.py compare --service goal`; the target's
+  field curve excludes the held-out year (`resolve_course(before_year=...)`).
 
 ## Out of scope
 

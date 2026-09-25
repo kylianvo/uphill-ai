@@ -117,6 +117,12 @@ class Config:
     # Background thread that syncs pending claims and runs the weekly refresh;
     # off in tests so it does not race the test database.
     RACE_HISTORY_WORKER_ENABLED: bool = os.getenv("RACE_HISTORY_WORKER_ENABLED", "true").lower() == "true"
+    # LLM goal judge (services/goal_judge.py). Off = deterministic A/B/C from the
+    # anchors, same API and UI. Enable once golden_eval --service goal passes.
+    GOAL_LLM_ENABLED: bool = os.getenv("GOAL_LLM_ENABLED", "false").lower() == "true"
+    # Assess a new plan's goal in a background thread at creation; off in tests
+    # so the thread can't outlive a test and write into the next one's data.
+    GOAL_ASSESS_ON_PLAN_CREATE: bool = os.getenv("GOAL_ASSESS_ON_PLAN_CREATE", "true").lower() == "true"
     RACE_HISTORY_WEEKLY_REFRESH_ENABLED: bool = (
         os.getenv("RACE_HISTORY_WEEKLY_REFRESH_ENABLED", "false").lower() == "true"
     )
