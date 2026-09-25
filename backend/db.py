@@ -1131,6 +1131,31 @@ def get_plan_by_id(plan_id: int) -> dict[str, Any] | None:
     return d
 
 
+def delete_plan(plan_id: int, user_id: int) -> bool:
+    """Delete a plan belonging to the specified user.
+    Cleans up dependent records in coros_plan_links, workouts, block_reviews,
+    and chat_proposals to ensure referential integrity.
+    Returns True if a row was deleted, False otherwise."""
+    with engine.begin() as conn:
+        row = conn.execute(
+            text("SELECT id FROM plans WHERE id = :id AND user_id = :user_id"),
+            {"id": plan_id, "user_id": user_id},
+        ).fetchone()
+        if not row:
+            return False
+
+        conn.execute(text("UPDATE coros_plan_links SET plan_id = NULL WHERE plan_id = :id"), {"id": plan_id})
+        conn.execute(text("DELETE FROM workouts WHERE plan_id = :id"), {"id": plan_id})
+        conn.execute(text("DELETE FROM block_reviews WHERE plan_id = :id"), {"id": plan_id})
+        conn.execute(text("DELETE FROM chat_proposals WHERE plan_id = :id"), {"id": plan_id})
+
+        result = conn.execute(
+            text("DELETE FROM plans WHERE id = :id AND user_id = :user_id"),
+            {"id": plan_id, "user_id": user_id},
+        )
+        return (result.rowcount or 0) > 0
+
+
 def update_plan_schedule(
     plan_id: int,
     preferred_run_days: list | None = None,

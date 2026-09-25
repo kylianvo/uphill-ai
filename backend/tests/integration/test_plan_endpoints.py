@@ -123,3 +123,32 @@ class TestSelectPlan:
 
         resp = client.post("/api/coach/select-plan", headers=other_headers, json={"plan_id": plan_id})
         assert resp.status_code == 404
+
+
+class TestDeletePlan:
+    def test_delete_plan_success(self, client, auth_headers, mock_plan_generation):
+        gen_resp = _generate_plan(client, auth_headers["headers"], race_name="Plan To Delete")
+        plan_id = gen_resp.json()["plan"]["id"]
+
+        del_resp = client.delete(f"/api/coach/plans/{plan_id}", headers=auth_headers["headers"])
+        assert del_resp.status_code == 200
+        assert del_resp.json()["success"] is True
+
+        # Ensure it no longer appears in recent plans
+        recent_resp = client.get("/api/coach/recent-plans", headers=auth_headers["headers"])
+        plan_ids = [p["id"] for p in recent_resp.json()["plans"]]
+        assert plan_id not in plan_ids
+
+    def test_delete_another_users_plan_is_rejected(self, client, auth_headers, mock_plan_generation):
+        gen_resp = _generate_plan(client, auth_headers["headers"])
+        plan_id = gen_resp.json()["plan"]["id"]
+
+        other_login = client.post("/api/auth/mock-login", json={"email": "delete-other-user@uphill.ai"})
+        other_headers = {"Authorization": f"Bearer {other_login.json()['session_token']}"}
+
+        resp = client.delete(f"/api/coach/plans/{plan_id}", headers=other_headers)
+        assert resp.status_code == 404
+
+    def test_delete_nonexistent_plan_returns_404(self, client, auth_headers):
+        resp = client.delete("/api/coach/plans/999999", headers=auth_headers["headers"])
+        assert resp.status_code == 404

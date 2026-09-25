@@ -27,6 +27,7 @@ from db import (
     create_session,
     create_user_with_password,
     decline_coach_invite,
+    delete_plan,
     delete_session,
     delete_source,
     get_active_coach_link_for_athlete,
@@ -2012,6 +2013,16 @@ def get_plan_week_review(plan_id: int, week_number: int, user: dict[str, Any] = 
     review = get_week_review(user["id"], plan_id, week_number, plan.get("start_date") if plan else None)
     review["narrative"] = generate_week_narrative(review)
     return review
+
+
+@app.delete("/api/coach/plans/{plan_id}")
+def delete_plan_endpoint(plan_id: int, user: dict[str, Any] = Depends(get_current_user)):
+    """Delete a plan belonging to the current user."""
+    _verify_plan_ownership(plan_id, user["id"])
+    deleted = delete_plan(plan_id, user["id"])
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Plan not found.")
+    return {"success": True, "message": "Plan deleted successfully", "plan_id": plan_id}
 
 
 async def _generate_next_block_for_athlete(
