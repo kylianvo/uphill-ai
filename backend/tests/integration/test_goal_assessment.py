@@ -178,3 +178,47 @@ def test_coach_needs_roster_link(client, auth_headers):
 
 def test_race_history_payload_drops_scenarios(client, auth_headers):
     assert "scenarios" not in client.get("/api/race-history", headers=auth_headers["headers"]).json()
+
+
+def test_signed_out_never_calls_gemini(client, monkeypatch):
+    monkeypatch.setattr(settings, "GOAL_LLM_ENABLED", True)
+    monkeypatch.setattr(goal_judge, "_call_gemini", lambda p, k: pytest.fail("signed-out request reached Gemini"))
+    data = _assess(client, reference={"distance_km": 50, "elevation_gain_m": 2500, "time": "7:00:00"}).json()
+    assert data["engine"] == "rules"
+
+
+def test_daily_llm_budget_falls_back_to_rules(client, auth_headers, monkeypatch):
+    from services import goal_service
+
+    _add_result(auth_headers["user_id"])
+    monkeypatch.setattr(settings, "GOAL_LLM_ENABLED", True)
+    monkeypatch.setattr(goal_service, "LLM_DAILY_LIMIT", 1)
+    calls = []
+
+    def fake(prompt, key):
+        calls.append(1)
+        anchors = json.loads(prompt.split("ANCHORS:\n", 1)[1])
+        b = anchors[0]["minutes"]
+        return json.dumps(
+            {
+                "goals": {"a": b * 0.95, "b": b, "c": b * 1.08},
+                "confidence": "medium",
+                "reasoning": ["one", "two", "three"],
+                "anchors_weighted": [],
+                "missing": [],
+            }
+        )
+
+    monkeypatch.setattr(goal_judge, "_call_gemini", fake)
+    first = _assess(client, auth_headers["headers"]).json()
+    # different exclusions defeat hash reuse, but not the budget
+    second = _assess(client, auth_headers["headers"], exclude=["vo2max"], lang="vi").json()
+    assert first["engine"] == "gemini" and second["engine"] == "rules"
+    assert len(calls) == 1
+
+
+def test_unknown_lang_is_normalised(client, auth_headers):
+    _add_result(auth_headers["user_id"])
+    first = _assess(client, auth_headers["headers"], lang="xx").json()
+    again = _assess(client, auth_headers["headers"], lang="en").json()
+    assert again["id"] == first["id"] and again["lang"] == "en"

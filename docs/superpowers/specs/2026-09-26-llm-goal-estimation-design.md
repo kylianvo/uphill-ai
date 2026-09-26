@@ -229,6 +229,10 @@ and date; Metabase panel for live hit rate and error by confidence.
   older stored row.
 - Weekly re-assess dedupe: an in-process in-flight set plus a partial unique index
   `uq_goal_assessments_weekly (plan_id, plan_week) WHERE trigger = 'weekly'`.
+- `POST /api/goal/assess` is unauthenticated, so signed-out estimates are rules-tier only (never Gemini).
+  Signed-in users get `LLM_DAILY_LIMIT` (20) non-weekly assessments per day on Gemini; past that the rules
+  tier answers. Changing exclusions or the reference defeats hash reuse, so the budget is what bounds cost.
+  `lang` is normalised to en/vi.
 - New plans are assessed in a background thread at creation (`GOAL_ASSESS_ON_PLAN_CREATE`, off in tests).
 - The race-history panel's scenario cards (same inconsistent number, plus road PR scenarios) were
   removed along with `race_history.scenarios()`.

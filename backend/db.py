@@ -5654,6 +5654,22 @@ def count_manual_goal_assessments_today(user_id: int) -> int:
         )
 
 
+def count_llm_goal_assessments_today(user_id: int) -> int:
+    """Non-weekly assessments today, whatever tier answered: a call that fell
+    back to the rules tier still spent Gemini requests (the daily LLM budget)."""
+    with engine.connect() as conn:
+        return int(
+            conn.execute(
+                text("""
+                SELECT COUNT(*) FROM goal_assessments
+                WHERE user_id = :uid AND trigger <> 'weekly' AND created_at >= date_trunc('day', NOW())
+            """),
+                {"uid": user_id},
+            ).scalar()
+            or 0
+        )
+
+
 def has_weekly_goal_assessment(plan_id: int, plan_week: int) -> bool:
     with engine.connect() as conn:
         return (

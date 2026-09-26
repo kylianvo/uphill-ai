@@ -11,6 +11,9 @@ from config import settings
 from services import goal_anchors, goal_context, goal_judge
 
 MANUAL_DAILY_LIMIT = 3
+# Gemini calls per user per day across the modal and manual re-assess (weekly
+# runs are bounded by the plan calendar). Past it, the rules tier answers.
+LLM_DAILY_LIMIT = 20
 DRIFT_THRESHOLD = 0.03
 
 
@@ -84,6 +87,7 @@ def run(
     trigger: str = "pre_plan",
 ) -> dict[str, Any]:
     """One assessment. Raises ValueError when the course has no distance."""
+    lang = "vi" if lang == "vi" else "en"
     target = goal_anchors.resolve_course(race_name, distance_km, elevation_gain_m)
     if not target["distance_km"] or target["distance_km"] <= 0:
         raise ValueError("Target course needs a distance (km)")
@@ -115,6 +119,14 @@ def run(
         if trigger == "manual" and db.count_manual_goal_assessments_today(user["id"]) >= MANUAL_DAILY_LIMIT:
             raise RateLimited(f"Re-assess is limited to {MANUAL_DAILY_LIMIT} per day")
 
+    # Signed-out estimates never reach Gemini: the endpoint is unauthenticated,
+    # so the server key would be open to anyone. Signed-in users share a daily
+    # budget, since changing exclusions or the reference defeats hash reuse.
+    llm_allowed = (
+        settings.GOAL_LLM_ENABLED
+        and user is not None
+        and (trigger == "weekly" or db.count_llm_goal_assessments_today(user["id"]) < LLM_DAILY_LIMIT)
+    )
     api_key = (user or {}).get("gemini_api_key") or settings.GEMINI_API_KEY
     output = goal_judge.assess(
         ctx.prompt,
@@ -122,7 +134,7 @@ def run(
         api_key=api_key,
         lang=lang,
         cutoff_mins=cutoff_mins,
-        llm_enabled=settings.GOAL_LLM_ENABLED,
+        llm_enabled=llm_allowed,
     )
     row = db.insert_goal_assessment(
         {
