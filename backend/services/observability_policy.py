@@ -84,6 +84,7 @@ _SPAN_NAMES = frozenset(
         "generate",
         "generation",
         "get_week",
+        "goal_estimate",
         "kb_distill",
         "kb_retrieval",
         "kb_search",
@@ -115,6 +116,7 @@ _FEATURES = frozenset(
         "knowledge_cards",
         "embeddings",
         "evaluation",
+        "goal_estimate",
     }
 )
 _STATUS_CODES = frozenset({"UNSET", "OK", "ERROR"})

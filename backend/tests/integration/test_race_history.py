@@ -197,16 +197,6 @@ def test_mirror_refresh_records_errors_and_skips_when_locked(monkeypatch):
             holder.execute(text("SELECT pg_advisory_unlock(:k)"), {"k": race_history._MIRROR_LOCK_ID})
 
 
-def test_plan_prediction_failure_never_raises(monkeypatch):
-    from services import race_history
-
-    def boom(*args, **kwargs):
-        raise RuntimeError("estimator exploded")
-
-    monkeypatch.setattr(race_history, "scenarios", boom)
-    race_history.store_plan_scenario(1, 1)  # must not raise
-
-
 def test_linking_a_profile_syncs_immediately(client, auth_headers, monkeypatch):
     from services import race_history
 

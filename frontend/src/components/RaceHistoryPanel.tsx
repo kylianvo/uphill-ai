@@ -26,11 +26,6 @@ type History = {
     road_hm_pr: { time_sec: number; stale: boolean } | null;
     road_fm_pr: { time_sec: number; stale: boolean } | null;
   };
-  scenarios: {
-    improvement_pct?: number; weeks?: number;
-    target?: { adjusted_time_mins: number; target_profile_source: string } | null;
-    road?: Record<string, { baseline_sec: number; scenario_sec: number }>;
-  };
 };
 
 function duration(seconds: number | null): string {
@@ -260,8 +255,6 @@ export default function RaceHistoryPanel({ lang, athleteId, initiallyOpen = fals
             </details>)}</div>
           </div>}
 
-          {history.scenarios?.target && <div className={styles.scenario}><strong>{t("After this block · scenario", "Sau Block này · kịch bản")}</strong><span className={styles.scenarioTime}>{duration(Math.round(history.scenarios.target.adjusted_time_mins * 60))}</span><small className={styles.muted}>{t(`Assumes ${history.scenarios.improvement_pct}% improvement over ${history.scenarios.weeks} weeks. No gain is guaranteed.`, `Giả định cải thiện ${history.scenarios.improvement_pct}% trong ${history.scenarios.weeks} tuần. Không bảo đảm thành tích.`)} {t("Course:", "Cung đường:")} {history.scenarios.target.target_profile_source === "gpx" ? "GPX" : t("estimated profile", "ước tính")}</small></div>}
-          {history.scenarios?.road && Object.keys(history.scenarios.road).length > 0 && <div className={styles.scenario}><strong>{t("Road PR scenarios", "Kịch bản PR Road")}</strong>{Object.entries(history.scenarios.road).map(([label, value]) => <span key={label}>{label.toUpperCase()} · {duration(value.baseline_sec)} → {duration(value.scenario_sec)}</span>)}<small className={styles.muted}>{t(`Assumes ${history.scenarios.improvement_pct}% improvement over ${history.scenarios.weeks} weeks; no gain is guaranteed.`, `Giả định cải thiện ${history.scenarios.improvement_pct}% trong ${history.scenarios.weeks} tuần; không bảo đảm thành tích.`)}</small></div>}
         </>}
       </div>}
     </section>

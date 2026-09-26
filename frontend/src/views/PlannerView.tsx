@@ -28,7 +28,7 @@ import { AdaptWeekModal } from "../components/AdaptWeekModal";
 import ConfirmActionModal from "../components/ConfirmActionModal";
 import CorosPushButton from "../components/CorosPushButton";
 import { FeelingSelector, rpeToFeelingId } from "../components/FeelingSelector";
-import RaceHistoryPlanInfo from "../components/RaceHistoryPlanInfo";
+import { GoalPill } from "../components/GoalPill";
 import { triggerHaptic } from "../utils/native";
 import { resolveCurrentWeek } from "../utils/planDate";
 
@@ -995,7 +995,6 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
               : `Bản nháp — xem lại từng bài tập bên dưới và duyệt riêng từng bài (${draftPlan.race_name}). Kế hoạch sẽ hiển thị cho vận động viên ngay khi bài tập đầu tiên được duyệt.`}
           </div>
         )}
-        <RaceHistoryPlanInfo lang={lang} planId={activePlan?.id} />
         {switchingAthlete ? (
           <div style={{ background: "rgba(255, 255, 255, 0.95)", border: "1px solid var(--border-color)", padding: isMobile ? "40px 20px" : "60px 32px", borderRadius: "16px", display: "flex", flexDirection: "column", alignItems: "center", gap: "12px" }}>
             <ArrowsClockwise size={28} className="match-spin" color="var(--accent-primary)" aria-hidden="true" />
@@ -1478,13 +1477,23 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                         : activePlan.goal_type.toUpperCase().replace("_", " ")}
                   {activePlan.target_time_hours ? ` (${formatTargetTimeHours(activePlan.target_time_hours)})` : ""}
                 </p>
-                <CoachNoteThread
-                  athleteId={actingAsAthleteId ?? (user?.id ?? null)}
-                  targetType="plan"
-                  targetId={null}
-                  lang={lang}
-                  canAdd={isCoachActingAsAthlete}
-                />
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "flex-start" }}>
+                  <CoachNoteThread
+                    athleteId={actingAsAthleteId ?? (user?.id ?? null)}
+                    targetType="plan"
+                    targetId={null}
+                    lang={lang}
+                    canAdd={isCoachActingAsAthlete}
+                  />
+                  {activePlan.id && activePlan.course_distance_km > 0 && (
+                    <GoalPill
+                      planId={activePlan.id}
+                      lang={lang}
+                      athleteId={actingAsAthleteId}
+                      onTargetChange={(hours) => setActivePlan({ ...activePlan, target_time_hours: hours })}
+                    />
+                  )}
+                </div>
               </div>
 
               <div style={{ display: "flex", background: "rgba(0,0,0,0.05)", border: "1px solid var(--border-color)", borderRadius: "999px", padding: "3px", gap: "2px", alignSelf: "flex-start" }}>

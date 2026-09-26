@@ -74,12 +74,9 @@
 .selection { display: grid; gap: 12px; }
 .selection .check { align-items: flex-start; }
 .selection .check input { margin-top: 3px; }
-.scenario { border-left: 3px solid var(--accent-primary); padding: 12px 14px; background: rgba(25,206,139,.05); border-radius: 0 12px 12px 0; display: grid; gap: 7px; }
-.scenario strong { font-size: 13px; }
-.scenarioTime { font-size: 23px; font-weight: 650; letter-spacing: -.4px; font-variant-numeric: tabular-nums; }
 .loading { display: flex; align-items: center; gap: 8px; padding: 18px 0; font-size: 13px; color: var(--text-secondary); }
 .spin { animation: raceSpin 1.5s linear infinite; }
 @keyframes raceSpin { to { transform: rotate(360deg); } }
 @media (max-width: 420px) { .stat { padding: 0 9px; } .stat strong { font-size: 21px; } .surface { padding: 13px; } .toolbar > button { flex: 1; padding-inline: 10px; } .searchRow { flex-wrap: wrap; } .searchRow > label { flex-basis: 100%; } .searchRow > button { width: 100%; } }
 @media (prefers-reduced-motion: reduce) { .spin { animation: none; } .panel button, .chevron { transition: none; } }
-.button, .primary, .quiet, .danger, .scenario { font-family: var(--font-outfit), sans-serif; }
+.button, .primary, .quiet, .danger { font-family: var(--font-outfit), sans-serif; }

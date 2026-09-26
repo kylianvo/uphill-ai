@@ -2,6 +2,7 @@
 
   python scripts/golden_eval.py capture --service gear      # snapshot today's output as the baseline
   python scripts/golden_eval.py compare --service gear      # re-run and diff against that baseline
+  python scripts/golden_eval.py compare --service goal      # goal estimation hold-out backtest (goal_backtest.py)
 
 Originally a NotebookLM-vs-Gemini bake-off used to decide which engine to ship. That
 decision is settled and NotebookLM is gone, so this is now a plain before/after harness:
@@ -256,7 +257,9 @@ def compare(service: str, push_langfuse: bool = False, synthetic_only: bool = Fa
     from services.kb_context import find_uncatalogued
 
     lines = [f"# Golden report — {service}\n"]
-    catalog_titles = [c["title"] for c in get_kb_chunks(service, kind="catalog_item")] if service in ("gear", "nutrition") else []
+    catalog_titles = (
+        [c["title"] for c in get_kb_chunks(service, kind="catalog_item")] if service in ("gear", "nutrition") else []
+    )
     items: list[dict] = []
     results: list[dict | list] = []
     scores: list[dict] = []
@@ -279,7 +282,9 @@ def compare(service: str, push_langfuse: bool = False, synthetic_only: bool = Fa
 
     for path, fixture in fixture_items:
         if (service == "chat" or synthetic_only) and not fixture.get("synthetic"):
-            raise ValueError(f"Non-synthetic fixture rejected under synthetic-only evaluation: {fixture.get('id', path)}")
+            raise ValueError(
+                f"Non-synthetic fixture rejected under synthetic-only evaluation: {fixture.get('id', path)}"
+            )
 
         ref_path = path.replace(".json", ".ref.json")
         ref = json.load(open(ref_path, encoding="utf-8")) if os.path.exists(ref_path) else None
@@ -374,9 +379,15 @@ def compare(service: str, push_langfuse: bool = False, synthetic_only: bool = Fa
 
     if service == "chat":
         lines.append("\n# Deterministic Release Gates Summary\n")
-        lines.append(f"- Zero Critical Safety Violations: {'✅ PASS (0 violations)' if critical_violations == 0 else f'❌ FAIL ({critical_violations} violations)'}")
-        lines.append(f"- English Quality: {en_acceptable}/{en_total} acceptable ({'✅ PASS (>= 18/20)' if en_acceptable >= 18 else '❌ FAIL'})")
-        lines.append(f"- Vietnamese Quality: {vi_acceptable}/{vi_total} acceptable ({'✅ PASS (>= 18/20)' if vi_acceptable >= 18 else '❌ FAIL'})")
+        lines.append(
+            f"- Zero Critical Safety Violations: {'✅ PASS (0 violations)' if critical_violations == 0 else f'❌ FAIL ({critical_violations} violations)'}"
+        )
+        lines.append(
+            f"- English Quality: {en_acceptable}/{en_total} acceptable ({'✅ PASS (>= 18/20)' if en_acceptable >= 18 else '❌ FAIL'})"
+        )
+        lines.append(
+            f"- Vietnamese Quality: {vi_acceptable}/{vi_total} acceptable ({'✅ PASS (>= 18/20)' if vi_acceptable >= 18 else '❌ FAIL'})"
+        )
 
     report_path = os.path.join(GOLDEN_DIR, f"report_{service}.md")
     open(report_path, "w", encoding="utf-8").write("\n".join(lines))
@@ -411,7 +422,7 @@ def compare(service: str, push_langfuse: bool = False, synthetic_only: bool = Fa
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("mode", choices=["capture", "compare"])
-    parser.add_argument("--service", required=True, choices=["gear", "nutrition", "scheduler", "chat"])
+    parser.add_argument("--service", required=True, choices=["gear", "nutrition", "scheduler", "chat", "goal"])
     parser.add_argument(
         "--synthetic-only",
         action="store_true",
@@ -431,6 +442,15 @@ def main():
         help="Publish precomputed experiment results to Langfuse (requires synthetic fixtures)",
     )
     args = parser.parse_args()
+    if args.service == "goal":
+        # A hold-out backtest against real finishes, not a snapshot diff: there is
+        # no baseline to capture (scripts/goal_backtest.py).
+        if args.mode == "capture":
+            sys.exit("goal has no baseline to capture; run: golden_eval.py compare --service goal")
+        from scripts.goal_backtest import run as goal_backtest
+
+        goal_backtest()
+        return
     if args.mode == "capture":
         capture(args.service, overwrite=args.overwrite)
     else:

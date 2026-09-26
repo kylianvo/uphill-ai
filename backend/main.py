@@ -1,4 +1,5 @@
 import os
+import threading
 import uuid as _uuid
 from typing import Any
 
@@ -75,6 +76,7 @@ from db import (
     set_user_password,
     update_onboarding_profile,
     update_plan_schedule,
+    update_plan_target_time,
     update_user_profile,
     update_user_weekly_km,
     update_workout_log,
@@ -82,6 +84,7 @@ from db import (
     verify_session,
     week_range_for_block,
 )
+from log_utils import get_logger
 from parsers.fit_parser import FitParser
 from parsers.gpx_parser import GpxParser
 from routers.analytics import router as analytics_router
@@ -996,7 +999,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         training_environment=request.training_environment or "flat",
         athlete_notes=request.athlete_notes,
     )
-    race_history.store_plan_scenario(user["id"], plan_id)
+    _assess_new_plan(user["id"], plan_id)
 
     # Mark onboarding complete immediately so the user can enter the app
     mark_onboarding_complete(user["id"])
@@ -1799,7 +1802,7 @@ async def _generate_plan_for_athlete(
         plan_status=plan_status,
         athlete_notes=request.athlete_notes,
     )
-    race_history.store_plan_scenario(athlete_id, plan_id)
+    _assess_new_plan(athlete_id, plan_id)
 
     # Fetch latest athlete details from database to ensure fresh physiological values
     fresh_user = get_user_by_id(athlete_id) or {"id": athlete_id}
@@ -3276,15 +3279,10 @@ def refresh_race_claim(
 
 
 def _race_history_payload(user_id: int) -> dict[str, Any]:
-    try:
-        scenario_data = race_history.scenarios(user_id)
-    except ValueError:
-        scenario_data = {}
     return {
         "claims": race_history.list_claims(user_id),
         "results": race_history.list_results(user_id),
         "summary": race_history.build_summary(user_id),
-        "scenarios": scenario_data,
     }
 
 
@@ -3616,6 +3614,235 @@ def coach_goal_estimate(
     athlete_id: int, request: GoalEstimateRequest, coach: dict[str, Any] = Depends(require_athlete_access)
 ):
     return _estimate_with_history(request, athlete_id)
+
+
+# ─── Goal assessment (LLM goal estimation) ───────────────────────────────────
+# docs/superpowers/specs/2026-09-26-llm-goal-estimation-design.md
+
+
+class GoalReference(BaseModel):
+    race_name: str | None = None
+    distance_km: float
+    elevation_gain_m: float | None = None
+    time: str  # "h:mm:ss" or "h:mm"
+    race_date: str | None = None
+    discipline: str | None = None
+
+
+class GoalAssessRequest(BaseModel):
+    race_name: str | None = None
+    distance_km: float | None = None
+    elevation_gain_m: float | None = None
+    race_date: str | None = None
+    cutoff_mins: float | None = None
+    exclude: list[str] = []
+    reference: GoalReference | None = None
+    flat_pace_min_km: float | None = None
+    lang: str = "en"
+
+
+class GoalReassessRequest(BaseModel):
+    exclude: list[str] = []
+    lang: str = "en"
+
+
+class GoalApplyRequest(BaseModel):
+    target_mins: float
+
+
+_goal_logger = get_logger("goal_assessment")
+
+
+def _goal_user(authorization: str | None) -> dict[str, Any] | None:
+    if authorization and authorization.startswith("Bearer "):
+        user = verify_session(authorization.split(" ", 1)[1])
+        if user:
+            return get_user_by_id(user["id"]) or user
+    return None
+
+
+def _run_goal(**kwargs: Any) -> dict[str, Any]:
+    from services import goal_service
+
+    try:
+        return goal_service.run(**kwargs)
+    except goal_service.RateLimited as e:
+        raise HTTPException(status_code=429, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+
+def _goal_assess(request: GoalAssessRequest, user: dict[str, Any] | None) -> dict[str, Any]:
+    return _run_goal(
+        user=user,
+        race_name=request.race_name,
+        distance_km=request.distance_km,
+        elevation_gain_m=request.elevation_gain_m,
+        race_date=request.race_date,
+        exclude=set(request.exclude),
+        manual_reference=request.reference.model_dump() if request.reference else None,
+        flat_pace_min_km=request.flat_pace_min_km,
+        cutoff_mins=request.cutoff_mins,
+        lang=request.lang,
+        trigger="pre_plan",
+    )
+
+
+def _goal_plan(plan_id: int, owner_id: int) -> dict[str, Any]:
+    _verify_plan_ownership(plan_id, owner_id)
+    plan = get_plan_by_id(plan_id)
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found.")
+    return plan
+
+
+def _assess_new_plan(owner_id: int, plan_id: int) -> None:
+    """Best effort, off the request thread: the plan already exists, so the
+    pill shows "Not assessed" until this lands and a failure is only logged."""
+
+    from services import goal_service
+
+    if not settings.GOAL_ASSESS_ON_PLAN_CREATE:
+        return
+
+    def work() -> None:
+        try:
+            plan = get_plan_by_id(plan_id)
+            owner = get_user_by_id(owner_id)
+            if plan and owner and plan.get("course_distance_km"):
+                goal_service.run_for_plan(owner, plan, "pre_plan")
+        except Exception:
+            _goal_logger.exception("new plan goal assessment failed", extra={"fields": {"plan_id": plan_id}})
+
+    threading.Thread(target=work, daemon=True).start()
+
+
+# Plans with a weekly assessment running in this process: the plan page loads
+# /goal more than once at a time, and each load would otherwise start one.
+# The partial unique index on goal_assessments is the cross-process backstop.
+_weekly_goal_inflight: set[int] = set()
+_weekly_goal_lock = threading.Lock()
+
+
+def _run_weekly_goal(owner_id: int, plan_id: int, lang: str = "en") -> None:
+    from services import goal_service
+
+    with _weekly_goal_lock:
+        if plan_id in _weekly_goal_inflight:
+            return
+        _weekly_goal_inflight.add(plan_id)
+    try:
+        plan = get_plan_by_id(plan_id)
+        owner = get_user_by_id(owner_id)
+        if plan and owner and goal_service.weekly_due(plan):
+            goal_service.run_for_plan(owner, plan, "weekly", lang=lang)
+    except Exception:
+        _goal_logger.exception("weekly goal assessment failed", extra={"fields": {"plan_id": plan_id}})
+    finally:
+        with _weekly_goal_lock:
+            _weekly_goal_inflight.discard(plan_id)
+
+
+def _get_plan_goal(plan_id: int, owner_id: int, background_tasks: BackgroundTasks, lang: str) -> dict[str, Any]:
+    from services import goal_service
+
+    plan = _goal_plan(plan_id, owner_id)
+    if goal_service.weekly_due(plan):
+        background_tasks.add_task(_run_weekly_goal, owner_id, plan_id, "vi" if lang == "vi" else "en")
+    return goal_service.plan_goal(plan)
+
+
+def _reassess_plan_goal(plan_id: int, owner_id: int, request: GoalReassessRequest) -> dict[str, Any]:
+    from services import goal_service
+
+    plan = _goal_plan(plan_id, owner_id)
+    owner = get_user_by_id(owner_id)
+    assessment = _run_goal(
+        user=owner,
+        race_name=plan.get("race_name"),
+        distance_km=plan.get("course_distance_km"),
+        elevation_gain_m=plan.get("course_elevation_gain_m"),
+        race_date=plan.get("race_date"),
+        plan=plan,
+        exclude=set(request.exclude),
+        lang=request.lang,
+        trigger="manual",
+    )
+    return {
+        "assessment": assessment,
+        "status": goal_service.status(assessment, plan.get("target_time_hours")),
+        "target_time_hours": plan.get("target_time_hours"),
+    }
+
+
+def _apply_plan_goal(plan_id: int, owner_id: int, request: GoalApplyRequest) -> dict[str, Any]:
+    from services import goal_service
+
+    if not 10 <= request.target_mins <= 60 * 120:
+        raise HTTPException(status_code=422, detail="Target time out of range")
+    _goal_plan(plan_id, owner_id)
+    update_plan_target_time(plan_id, round(request.target_mins / 60, 4))
+    return goal_service.plan_goal(get_plan_by_id(plan_id))
+
+
+@app.post("/api/goal/assess")
+def goal_assess(request: GoalAssessRequest, authorization: str | None = Header(None)):
+    return _goal_assess(request, _goal_user(authorization))
+
+
+@app.get("/api/plans/{plan_id}/goal")
+def get_plan_goal(
+    plan_id: int, background_tasks: BackgroundTasks, lang: str = "en", user: dict[str, Any] = Depends(get_current_user)
+):
+    return _get_plan_goal(plan_id, user["id"], background_tasks, lang)
+
+
+@app.post("/api/plans/{plan_id}/goal/reassess")
+def reassess_plan_goal(plan_id: int, request: GoalReassessRequest, user: dict[str, Any] = Depends(get_current_user)):
+    return _reassess_plan_goal(plan_id, user["id"], request)
+
+
+@app.post("/api/plans/{plan_id}/goal/apply")
+def apply_plan_goal(plan_id: int, request: GoalApplyRequest, user: dict[str, Any] = Depends(get_current_user)):
+    return _apply_plan_goal(plan_id, user["id"], request)
+
+
+@app.post("/api/coaching/athletes/{athlete_id}/goal/assess")
+def coach_goal_assess(
+    athlete_id: int, request: GoalAssessRequest, acting_user: dict[str, Any] = Depends(require_athlete_access)
+):
+    return _goal_assess(request, get_user_by_id(athlete_id))
+
+
+@app.get("/api/coaching/athletes/{athlete_id}/plans/{plan_id}/goal")
+def coach_get_plan_goal(
+    athlete_id: int,
+    plan_id: int,
+    background_tasks: BackgroundTasks,
+    lang: str = "en",
+    acting_user: dict[str, Any] = Depends(require_athlete_access),
+):
+    return _get_plan_goal(plan_id, athlete_id, background_tasks, lang)
+
+
+@app.post("/api/coaching/athletes/{athlete_id}/plans/{plan_id}/goal/reassess")
+def coach_reassess_plan_goal(
+    athlete_id: int,
+    plan_id: int,
+    request: GoalReassessRequest,
+    acting_user: dict[str, Any] = Depends(require_athlete_access),
+):
+    return _reassess_plan_goal(plan_id, athlete_id, request)
+
+
+@app.post("/api/coaching/athletes/{athlete_id}/plans/{plan_id}/goal/apply")
+def coach_apply_plan_goal(
+    athlete_id: int,
+    plan_id: int,
+    request: GoalApplyRequest,
+    acting_user: dict[str, Any] = Depends(require_athlete_access),
+):
+    return _apply_plan_goal(plan_id, athlete_id, request)
 
 
 @app.get("/api/coach/pace-strategy/benchmarks")

@@ -49,6 +49,7 @@ FEATURES = frozenset(
         "knowledge_cards",
         "embeddings",
         "evaluation",
+        "goal_estimate",
     }
 )
 METRIC_MODELS = frozenset({"gemini-3.8-flash"})
