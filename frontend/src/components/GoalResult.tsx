@@ -9,15 +9,7 @@ import {
   Lang,
   missingHints,
 } from "@/lib/goalAssessment";
-
-const METHOD_LABELS: Record<string, [string, string]> = {
-  physics: ["Course physics from this result", "Mô hình cung đường từ kết quả này"],
-  field_rank: ["Your finishing rank on this field", "Thứ hạng của bạn áp vào giải này"],
-  percentile_transfer: ["Field percentile transfer", "Quy đổi theo percentile"],
-  field_prior: ["Field position from weekly volume", "Vị trí trong đoàn theo khối lượng tuần"],
-  easy_pace: ["Course physics from your easy pace", "Mô hình cung đường từ pace Easy"],
-  base_pace: ["Course physics from your flat pace", "Mô hình cung đường từ pace đường bằng"],
-};
+import { GoalContextView } from "@/components/GoalContextView";
 
 export type GoalKey = "a" | "b" | "c";
 
@@ -111,22 +103,12 @@ export function GoalResult({
 
       <Hints assessment={assessment} lang={lang} />
 
-      {assessment.anchors.length > 0 && (
+      {(assessment.context || assessment.anchors.length > 0) && (
         <details style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
           <summary style={{ cursor: "pointer", fontWeight: 600 }}>
-            {t(`Numbers behind this (${assessment.anchors.length})`, `Các con số tham chiếu (${assessment.anchors.length})`)}
+            {t("What Coach Uphill looked at", "Dữ liệu Coach Uphill đã xem")}
           </summary>
-          <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "8px" }}>
-            {assessment.anchors.map((anchor) => (
-              <div key={anchor.id} style={{ display: "flex", justifyContent: "space-between", gap: "12px" }}>
-                <span>
-                  {(METHOD_LABELS[anchor.method] || [anchor.method, anchor.method])[lang === "en" ? 0 : 1]}
-                  {anchor.notes.length > 0 && <span style={{ color: "var(--text-muted)" }}> · {anchor.notes.join(" · ")}</span>}
-                </span>
-                <strong style={{ fontFamily: "var(--font-mono)", color: "var(--text-primary)" }}>{formatGoalTime(anchor.minutes)}</strong>
-              </div>
-            ))}
-          </div>
+          <GoalContextView context={assessment.context} anchors={assessment.anchors} lang={lang} />
         </details>
       )}
 

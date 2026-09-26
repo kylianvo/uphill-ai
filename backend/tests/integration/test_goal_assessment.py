@@ -222,3 +222,16 @@ def test_unknown_lang_is_normalised(client, auth_headers):
     first = _assess(client, auth_headers["headers"], lang="xx").json()
     again = _assess(client, auth_headers["headers"], lang="en").json()
     assert again["id"] == first["id"] and again["lang"] == "en"
+
+
+def test_context_is_returned_and_stored(client, auth_headers):
+    uid = auth_headers["user_id"]
+    _add_result(uid)
+    first = _assess(client, auth_headers["headers"]).json()
+    assert first["context"]["race"]["distance_km"] == 70
+    assert first["context"]["history"][0]["race"] == "Some Mountain 50K"
+    assert _assess(client, auth_headers["headers"]).json()["context"] == first["context"]  # reused row
+    plan_id = _plan(uid)
+    client.post(f"/api/plans/{plan_id}/goal/reassess", json={}, headers=auth_headers["headers"])
+    stored = client.get(f"/api/plans/{plan_id}/goal", headers=auth_headers["headers"]).json()
+    assert stored["assessment"]["context"]["history"][0]["time"] == "7:00"

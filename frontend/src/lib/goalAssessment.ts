@@ -18,6 +18,38 @@ export interface GoalSource {
   included: boolean;
 }
 
+/** The CONTEXT block Gemini saw (services/goal_context.py `prompt`). */
+export interface GoalPromptContext {
+  race?: {
+    name?: string | null;
+    date?: string | null;
+    distance_km?: number | null;
+    gain_m?: number | null;
+    terrain?: string[] | null;
+    key_climbs?: unknown[] | null;
+    profile_source?: "gpx" | "synthetic" | null;
+    field?: {
+      years?: number[] | null;
+      winner_mins?: number | null;
+      finishers?: number | null;
+      percentile_mins?: Record<string, number> | null;
+    } | null;
+  };
+  athlete?: Record<string, unknown>;
+  history?: {
+    date: string;
+    race: string;
+    discipline?: string | null;
+    distance_km: number;
+    gain_m?: number | null;
+    time?: string | null;
+    rank?: string;
+  }[];
+  block?: Record<string, unknown> | null;
+  weeks_to_race?: number | null;
+  current_target_mins?: number | null;
+}
+
 export interface GoalAssessment {
   id: number;
   plan_id: number | null;
@@ -30,6 +62,7 @@ export interface GoalAssessment {
   missing: string[];
   anchors: GoalAnchor[];
   sources: GoalSource[];
+  context?: GoalPromptContext | null;
   engine: "gemini" | "gemini_retry" | "rules" | "none";
   trigger: "pre_plan" | "manual" | "weekly";
   plan_week: number | null;

@@ -62,6 +62,7 @@ def _present(row: dict[str, Any], extra: dict[str, Any] | None = None) -> dict[s
         "missing": sorted(set((output.get("missing") or []) + (summary.get("missing") or []))),
         "anchors": row.get("anchors") or [],
         "sources": summary.get("sources") or [],
+        "context": summary.get("prompt"),
         "engine": row["engine"],
         "trigger": row.get("trigger"),
         "lang": row.get("lang"),
@@ -115,7 +116,8 @@ def run(
     if user:
         previous = db.find_goal_assessment(user["id"], plan["id"] if plan else None, digest)
         if previous:
-            return _present(previous, {"benchmarks": benchmarks, "reused": True})
+            # same hash = same context; rows saved before the context was stored lack it
+            return _present(previous, {"benchmarks": benchmarks, "reused": True, "context": ctx.prompt})
         if trigger == "manual" and db.count_manual_goal_assessments_today(user["id"]) >= MANUAL_DAILY_LIMIT:
             raise RateLimited(f"Re-assess is limited to {MANUAL_DAILY_LIMIT} per day")
 
@@ -145,7 +147,12 @@ def run(
             "distance_km": target["distance_km"],
             "elevation_gain_m": target["elevation_gain_m"],
             "input_hash": digest,
-            "context_summary": {"sources": ctx.sources, "missing": ctx.missing, "weeks_to_race": weeks},
+            "context_summary": {
+                "sources": ctx.sources,
+                "missing": ctx.missing,
+                "weeks_to_race": weeks,
+                "prompt": ctx.prompt,
+            },
             "anchors": anchors,
             "output": output,
             "engine": output["engine"] if output else "none",
