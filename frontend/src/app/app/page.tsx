@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useAppContext } from "@/contexts/AppContext";
+import workspaceStyles from "./Workspace.module.css";
 import HomeTab from "@/views/HomeTab";
 import ChatTab from "@/views/ChatTab";
 import AboutTab from "@/views/AboutTab";
@@ -2191,6 +2192,7 @@ export default function AppPage() {
   // ─── Profile Settings Modal ───────────────────────────────────────────────
   return (
     <div
+      className={workspaceStyles.shell}
       style={{
         position: "fixed",
         top: 0,
@@ -2702,7 +2704,7 @@ export default function AppPage() {
                       minHeight: activeTab === "chat" ? 0 : "100%",
                       display: "flex",
                       flexDirection: "column",
-                      maxWidth: activeTab === "chat" ? "680px" : undefined,
+                      maxWidth: activeTab === "chat" ? "920px" : undefined,
                     }}
                   >
                     {/* Panel header breadcrumb */}
@@ -2899,8 +2901,8 @@ export default function AppPage() {
               {(
                 [
                   ...(isNative ? (["home"] as const) : []),
-                  "chat",
                   "planner",
+                  "chat",
                   "knowledge",
                   "tools",
                   "about",
@@ -2997,8 +2999,8 @@ export default function AppPage() {
               {(
                 [
                   ...(isNative ? (["home"] as const) : []),
-                  "chat",
                   "planner",
+                  "chat",
                   "knowledge",
                   "tools",
                   "about",
@@ -3023,6 +3025,7 @@ export default function AppPage() {
                   <button
                     key={tab}
                     className={`top-nav-tab ${activeTab === tab ? "active" : ""}`}
+                    aria-current={activeTab === tab ? "page" : undefined}
                     onClick={() => handleTabSwitch(tab)}
                     style={{
                       display: "flex",
@@ -3136,7 +3139,7 @@ export default function AppPage() {
                     minHeight: activeTab === "chat" ? 0 : "100%",
                     display: "flex",
                     flexDirection: "column",
-                    maxWidth: activeTab === "chat" ? "680px" : undefined,
+                    maxWidth: activeTab === "chat" ? "920px" : undefined,
                     padding:
                       activeTab === "chat" && isViewportMobile
                         ? "0px"

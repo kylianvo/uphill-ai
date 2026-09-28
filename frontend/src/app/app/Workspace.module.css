@@ -1,0 +1,26 @@
+.shell {
+  --accent-primary: #19ce8b;
+  --accent-success: #19ce8b;
+  --bg-main: rgba(243,246,244,.4);
+  --bg-card: rgba(255,255,255,.82);
+  --bg-card-hover: #edf5f0;
+  --border-color: #dce5df;
+  --text-primary: #172b26;
+  --text-secondary: #455c52;
+  --text-muted: #5d7167;
+  background: var(--bg-main);
+  color: var(--text-primary);
+}
+
+.shell :global(.top-nav) { background: rgba(255,255,255,.78); border-bottom: 1px solid var(--border-color); box-shadow: 0 8px 24px rgba(23,43,38,.04); backdrop-filter: blur(20px); }
+.shell :global(.top-nav-tab) { border-radius: 8px; min-height: 42px; font-weight: 600; }
+.shell :global(.top-nav-tab.active) { background: rgba(25,206,139,.16); color: #08764f; box-shadow: none; }
+.shell :global(.content-panel) { background: transparent; border: 0; box-shadow: none; border-radius: 0; backdrop-filter: blur(20px); }
+.shell :global(.content-panel-inner) { max-width: 1240px; padding: 32px; margin-inline: auto; }
+.shell :global(.btn) { border-radius: 8px; box-shadow: none; min-height: 38px; }
+.shell :global(.btn-primary) { background: #19ce8b; color: #063e2b; }
+.shell button, .shell a, .shell input, .shell textarea, .shell select { transition: background-color .16s ease, border-color .16s ease; }
+.shell :focus-visible { outline: 2px solid #08764f; outline-offset: 3px; }
+.shell :global(.mobile-bottom-nav-tabs) { background: rgba(255,255,255,.88); border-top: 1px solid var(--border-color); backdrop-filter: blur(20px); }
+@media(max-width:800px) { .shell :global(.content-panel-inner) { padding: 16px; } }
+@media(prefers-reduced-motion:reduce) { .shell *, .shell *::before, .shell *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }

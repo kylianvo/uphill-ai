@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import styles from "./TrainingWorkspace.module.css";
 import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useAppContext } from "../contexts/AppContext";
@@ -11,7 +12,7 @@ import { KnowledgeCard } from "../components/KnowledgeCard";
 import { DndContext, DragEndEvent, DragOverEvent, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, TouchSensor, KeyboardSensor } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import ToolsView from "./ToolsView";
-import { UploadSimple, FileArrowUp, Heart, Clock, Mountains, MapPin, Footprints, ArrowsMerge, PlayCircle, CheckCircle, Fire, Path, RoadHorizon, Info, Check, Question, WarningCircle, Plus, Trash, Archive, LockKey, LockKeyOpen, Trophy, Target, Sneaker, PersonSimpleRun, Bed, XCircle, DownloadSimple, Gauge, Sun, Moon, DotsSixVertical, ArrowsClockwise, LinkSimple, Flag, TrendUp, TrendDown, Drop, Leaf, Lightning, PencilSimple, X, ArrowLeft, ArrowsLeftRight, ShieldCheck, Sparkle, CaretDown, CaretUp } from '@phosphor-icons/react';
+import { UploadSimple, FileArrowUp, Heart, Clock, Mountains, MapPin, Footprints, ArrowsMerge, PlayCircle, CheckCircle, Fire, Path, RoadHorizon, Info, Check, Question, WarningCircle, Plus, Trash, Archive, LockKey, LockKeyOpen, Trophy, Target, Sneaker, PersonSimpleRun, Bed, XCircle, DownloadSimple, Gauge, Sun, Moon, DotsSixVertical, ArrowsClockwise, Flag, TrendUp, TrendDown, Drop, Leaf, Lightning, PencilSimple, X, ArrowLeft, ArrowsLeftRight, ShieldCheck, Sparkle, CaretDown, CaretUp } from '@phosphor-icons/react';
 import { RaceMatch } from "../hooks/useRaceMatch";
 import { RaceNameField } from "../components/RaceNameField";
 import { CoachNoteThread } from "../components/CoachNoteThread";
@@ -956,7 +957,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   }, [recentPlans, activePlan, setPlanForm]);
 
     return (
-      <div>
+      <div className={styles.planner}>
         {actingAsAthleteId && (
           <div
             style={{
@@ -996,7 +997,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
           </div>
         )}
         {switchingAthlete ? (
-          <div style={{ background: "rgba(255, 255, 255, 0.95)", border: "1px solid var(--border-color)", padding: isMobile ? "40px 20px" : "60px 32px", borderRadius: "16px", display: "flex", flexDirection: "column", alignItems: "center", gap: "12px" }}>
+          <div className={styles.planSurface} style={{ background: "rgba(255, 255, 255, 0.95)", border: "1px solid var(--border-color)", padding: isMobile ? "40px 20px" : "60px 32px", borderRadius: "16px", display: "flex", flexDirection: "column", alignItems: "center", gap: "12px" }}>
             <ArrowsClockwise size={28} className="match-spin" color="var(--accent-primary)" aria-hidden="true" />
             <p style={{ fontSize: "13px", color: "var(--text-secondary)", margin: 0 }}>
               {lang === "en" ? `Loading ${actingAsAthleteName}'s plan…` : `Đang tải giáo án của ${actingAsAthleteName}…`}
@@ -1500,6 +1501,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 {(["list", "calendar"] as const).map((mode) => (
                   <button
                     key={mode}
+                    aria-pressed={planViewMode === mode}
                     type="button"
                     onClick={() => setPlanViewMode(mode)}
                     style={{
@@ -1643,7 +1645,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
 
             {/* Week Selector Tabs, Weekly Volume, and coach message only apply to the week-scoped list view */}
             {planViewMode === "list" && (<>
-            <div style={{ display: "flex", gap: "6px", overflowX: "auto", paddingBottom: "8px", marginBottom: "16px" }}>
+            <div className={styles.weekNavigation} aria-label={lang === "en" ? "Training weeks" : "Các tuần tập"} style={{ display: "flex", gap: "6px", overflowX: "auto", paddingBottom: "8px", marginBottom: "16px" }}>
               {Array.from({ length: activePlan.total_weeks }).map((_, i) => {
                 const w = i + 1;
                 const isLocked = w > maxGeneratedWeek;
@@ -1675,6 +1677,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 return (
                   <button
                     key={w}
+                    aria-pressed={active}
                     className={`btn ${active ? "btn-primary" : "btn-secondary"}`}
                     style={{
                       padding: "6px 12px", borderRadius: "8px", flexShrink: 0,
@@ -1947,6 +1950,8 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
               </div>
             ) : planViewMode === "calendar" ? (
               <PlanCalendarView
+                focusWeek={selectedWeek}
+                onWeekChange={setSelectedWeek}
                 workouts={(() => {
                   // Week 1: hide workouts on days before the plan's actual start date
                   // (matches WeekDayList's behavior below, but applied across the whole
@@ -2932,7 +2937,7 @@ function DayGroup({
   const setRef = (node: HTMLElement | null) => { setDragRef(node); setDropRef(node); };
 
   return (
-    <div ref={setRef} style={{ ...style, ...containerStyle }}>
+    <div className={styles.workoutDay} ref={setRef} style={{ ...style, ...containerStyle }}>
       {/* Day header — drag handle */}
       <div
         {...listeners}
@@ -3050,56 +3055,20 @@ function DayGroup({
               )}
 
               {matchedActivity ? (
-                isMobile ? (
-                  /* Mobile: stacked with connector indicator */
-                  <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <div className={styles.matchedPair}>
+                  <div className={styles.matchedPlan}>
+                    <span className={styles.plannedLabel}>{lang === "en" ? "Planned workout" : "Buổi tập theo plan"}</span>
                     {workoutCardEl}
-                    <div style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
-                      paddingLeft: "12px",
-                      color: "var(--accent-primary)",
-                    }}>
-                      <LinkSimple size={13} weight="bold" aria-hidden="true" />
-                      <span style={{ fontSize: "10px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                        {lang === "vi" ? "Hoạt động ghi nhận trên đồng hồ" : "Recorded watch session"}
-                      </span>
-                    </div>
-                    <MatchedActivityCard
-                      activity={matchedActivity}
-                      plannedWorkout={wo}
-                      lang={lang as "en" | "vi"}
-                      isMobile={isMobile}
-                      onConfirmMatch={onConfirmMatch}
-                      onUnlinkMatch={onUnlinkMatch}
-                    />
                   </div>
-                ) : (
-                  /* Desktop / Tablet: 2-column side-by-side */
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "1fr 1fr",
-                      gap: "12px",
-                      alignItems: "stretch",
-                    }}
-                  >
-                    <div style={{ minWidth: 0 }}>
-                      {workoutCardEl}
-                    </div>
-                    <div style={{ minWidth: 0, display: "flex", flexDirection: "column" }}>
-                      <MatchedActivityCard
-                        activity={matchedActivity}
-                        plannedWorkout={wo}
-                        lang={lang as "en" | "vi"}
-                        isMobile={isMobile}
-                        onConfirmMatch={onConfirmMatch}
-                        onUnlinkMatch={onUnlinkMatch}
-                      />
-                    </div>
-                  </div>
-                )
+                  <MatchedActivityCard
+                    activity={matchedActivity}
+                    plannedWorkout={wo}
+                    lang={lang as "en" | "vi"}
+                    isMobile={isMobile}
+                    onConfirmMatch={onConfirmMatch}
+                    onUnlinkMatch={onUnlinkMatch}
+                  />
+                </div>
               ) : (
                 workoutCardEl
               )}

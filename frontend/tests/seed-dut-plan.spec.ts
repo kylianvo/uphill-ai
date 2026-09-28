@@ -205,7 +205,7 @@ test.use({
   viewport: { width: 1140, height: 860 },
 });
 
-test("seed Dalat Ultra Trail 100km plan and capture screenshots", async ({ page }) => {
+test("seed Dalat Ultra Trail 100km plan and capture screenshots", async ({ page }, testInfo) => {
   page.on("console", (msg) => console.log("PAGE LOG:", msg.text()));
   page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
 
@@ -344,7 +344,7 @@ test("seed Dalat Ultra Trail 100km plan and capture screenshots", async ({ page 
 
   // A. Take a full-screen zoomed marketing capture (Dalat Ultra Trail active plan)
   await page.screenshot({
-    path: "test-results/dut-100km-marketing-overview.png",
+    path: testInfo.outputPath("dut-100km-marketing-overview.png"),
     fullPage: false,
   });
   console.log("Captured test-results/dut-100km-marketing-overview.png");
@@ -356,17 +356,17 @@ test("seed Dalat Ultra Trail 100km plan and capture screenshots", async ({ page 
   await page.waitForTimeout(400);
 
   await page.screenshot({
-    path: "test-results/dut-100km-zoomed-in-plan.png",
+    path: testInfo.outputPath("dut-100km-zoomed-in-plan.png"),
     fullPage: false,
   });
   console.log("Captured test-results/dut-100km-zoomed-in-plan.png");
 
   // Copy to public/screenshots/current-planner-view.png for marketing landing page Step 1
   await page.screenshot({
-    path: "public/screenshots/current-planner-view.png",
+    path: testInfo.outputPath("current-planner-view.png"),
     fullPage: false,
   });
-  console.log("Updated public/screenshots/current-planner-view.png with Dalat Ultra Trail plan");
+  console.log("Captured current-planner-view.png in test artifacts");
 
   // C. Expand the Tuesday workout card to show the coach guidance and AeT ceiling
   const tuesdayCard = page.locator('div:has-text("Aerobic Base Run (AeT Focus)")').filter({ hasText: "Zone 2" }).first();
@@ -377,7 +377,7 @@ test("seed Dalat Ultra Trail 100km plan and capture screenshots", async ({ page 
       await page.waitForTimeout(500);
 
       await page.screenshot({
-        path: "test-results/dut-100km-expanded-workout.png",
+        path: testInfo.outputPath("dut-100km-expanded-workout.png"),
         fullPage: false,
       });
       console.log("Captured test-results/dut-100km-expanded-workout.png");
@@ -398,7 +398,7 @@ test("seed Dalat Ultra Trail 100km plan and capture screenshots", async ({ page 
 
     // Capture zoomed modal screenshot showing Coach Evaluation (Grade A, 94%, AeT adherence)
     await page.screenshot({
-      path: "test-results/dut-next-block-modal-evaluation.png",
+      path: testInfo.outputPath("dut-next-block-modal-evaluation.png"),
       fullPage: false,
     });
     console.log("Captured test-results/dut-next-block-modal-evaluation.png");
@@ -414,16 +414,16 @@ test("seed Dalat Ultra Trail 100km plan and capture screenshots", async ({ page 
     await page.waitForTimeout(600);
 
     await page.screenshot({
-      path: "test-results/dut-next-block-modal-constraints.png",
+      path: testInfo.outputPath("dut-next-block-modal-constraints.png"),
       fullPage: false,
     });
     console.log("Captured test-results/dut-next-block-modal-constraints.png");
 
     await page.screenshot({
-      path: "public/screenshots/next-block-modal-constraints.png",
+      path: testInfo.outputPath("next-block-modal-constraints.png"),
       fullPage: false,
     });
-    console.log("Updated public/screenshots/next-block-modal-constraints.png");
+    console.log("Captured next-block-modal-constraints.png in test artifacts");
 
     // Close the review modal
     const cancelBtn = page.getByRole("button", { name: /Cancel|Hủy/i });
@@ -475,7 +475,7 @@ test("seed Dalat Ultra Trail 100km plan and capture screenshots", async ({ page 
 
     // A. Zoomed-in form screenshot
     await page.screenshot({
-      path: "test-results/dut-plan-generation-form-zoomed.png",
+      path: testInfo.outputPath("dut-plan-generation-form-zoomed.png"),
       fullPage: false,
     });
     console.log("Captured test-results/dut-plan-generation-form-zoomed.png");

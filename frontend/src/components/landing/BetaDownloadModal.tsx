@@ -37,16 +37,36 @@ export function BetaDownloadModal({ isOpen, onClose, lang }: BetaDownloadModalPr
   const t = (key: keyof typeof translations.en) =>
     translations[lang]?.[key] || translations.en[key] || key;
 
-  // Handle ESC key to close
+  // Keep keyboard focus inside the dialog and restore it when dismissed.
   useEffect(() => {
     if (!isOpen) return;
+    const trigger = document.activeElement as HTMLElement | null;
+    modalRef.current?.focus();
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         onClose();
       }
+      if (e.key === "Tab") {
+        const controls = Array.from(modalRef.current?.querySelectorAll<HTMLElement>(
+          'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex="0"]'
+        ) ?? []).filter((element) => element.getClientRects().length > 0);
+        const first = controls[0];
+        const last = controls[controls.length - 1];
+        if (!first || !last) { e.preventDefault(); return; }
+        if (e.shiftKey && (document.activeElement === first || document.activeElement === modalRef.current)) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && (document.activeElement === last || document.activeElement === modalRef.current)) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     };
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      trigger?.focus();
+    };
   }, [isOpen, onClose]);
 
   // Prevent background body scroll when open
@@ -151,6 +171,10 @@ export function BetaDownloadModal({ isOpen, onClose, lang }: BetaDownloadModalPr
     >
       <div
         ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={t("beta_modal_title")}
+        tabIndex={-1}
         style={{
           position: "relative",
           width: "100%",

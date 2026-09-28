@@ -1,0 +1,358 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-28T06:44:11.335049+00:00",
+  "title": "Design System: Uphill AI",
+  "extensions": {
+    "colorMeta": {
+      "workspace-accent": {
+        "role": "primary",
+        "displayName": "Original light green",
+        "tonalRamp": [
+          "oklch(15% 0.1 160)",
+          "oklch(26% 0.1 160)",
+          "oklch(38% 0.1 160)",
+          "oklch(49% 0.1 160)",
+          "oklch(61% 0.1 160)",
+          "oklch(72% 0.1 160)",
+          "oklch(84% 0.1 160)",
+          "oklch(95% 0.1 160)"
+        ]
+      },
+      "brand-emerald": {
+        "role": "primary",
+        "displayName": "Brand emerald",
+        "tonalRamp": [
+          "oklch(15% 0.14 160)",
+          "oklch(26% 0.14 160)",
+          "oklch(38% 0.14 160)",
+          "oklch(49% 0.14 160)",
+          "oklch(61% 0.14 160)",
+          "oklch(72% 0.14 160)",
+          "oklch(84% 0.14 160)",
+          "oklch(95% 0.14 160)"
+        ]
+      },
+      "brand-lime": {
+        "role": "secondary",
+        "displayName": "Brand lime",
+        "tonalRamp": [
+          "oklch(15% 0.13 125)",
+          "oklch(26% 0.13 125)",
+          "oklch(38% 0.13 125)",
+          "oklch(49% 0.13 125)",
+          "oklch(61% 0.13 125)",
+          "oklch(72% 0.13 125)",
+          "oklch(84% 0.13 125)",
+          "oklch(95% 0.13 125)"
+        ]
+      },
+      "workspace-ink": {
+        "role": "neutral",
+        "displayName": "Workspace ink",
+        "tonalRamp": [
+          "oklch(15% 0.025 165)",
+          "oklch(26% 0.025 165)",
+          "oklch(38% 0.025 165)",
+          "oklch(49% 0.025 165)",
+          "oklch(61% 0.025 165)",
+          "oklch(72% 0.025 165)",
+          "oklch(84% 0.025 165)",
+          "oklch(95% 0.025 165)"
+        ]
+      },
+      "workspace-secondary": {
+        "role": "neutral",
+        "displayName": "Secondary ink",
+        "tonalRamp": [
+          "oklch(15% 0.025 160)",
+          "oklch(26% 0.025 160)",
+          "oklch(38% 0.025 160)",
+          "oklch(49% 0.025 160)",
+          "oklch(61% 0.025 160)",
+          "oklch(72% 0.025 160)",
+          "oklch(84% 0.025 160)",
+          "oklch(95% 0.025 160)"
+        ]
+      },
+      "workspace-muted": {
+        "role": "neutral",
+        "displayName": "Muted ink",
+        "tonalRamp": [
+          "oklch(15% 0.02 160)",
+          "oklch(26% 0.02 160)",
+          "oklch(38% 0.02 160)",
+          "oklch(49% 0.02 160)",
+          "oklch(61% 0.02 160)",
+          "oklch(72% 0.02 160)",
+          "oklch(84% 0.02 160)",
+          "oklch(95% 0.02 160)"
+        ]
+      },
+      "workspace-line": {
+        "role": "neutral",
+        "displayName": "Workspace border",
+        "tonalRamp": [
+          "oklch(15% 0.012 155)",
+          "oklch(26% 0.012 155)",
+          "oklch(38% 0.012 155)",
+          "oklch(49% 0.012 155)",
+          "oklch(61% 0.012 155)",
+          "oklch(72% 0.012 155)",
+          "oklch(84% 0.012 155)",
+          "oklch(95% 0.012 155)"
+        ]
+      },
+      "workspace-active": {
+        "role": "neutral",
+        "displayName": "Selected tint",
+        "tonalRamp": [
+          "oklch(15% 0.025 155)",
+          "oklch(26% 0.025 155)",
+          "oklch(38% 0.025 155)",
+          "oklch(49% 0.025 155)",
+          "oklch(61% 0.025 155)",
+          "oklch(72% 0.025 155)",
+          "oklch(84% 0.025 155)",
+          "oklch(95% 0.025 155)"
+        ]
+      },
+      "workspace-active-ink": {
+        "role": "primary",
+        "displayName": "Selected emerald ink",
+        "tonalRamp": [
+          "oklch(15% 0.09 160)",
+          "oklch(26% 0.09 160)",
+          "oklch(38% 0.09 160)",
+          "oklch(49% 0.09 160)",
+          "oklch(61% 0.09 160)",
+          "oklch(72% 0.09 160)",
+          "oklch(84% 0.09 160)",
+          "oklch(95% 0.09 160)"
+        ]
+      },
+      "workspace-hover": {
+        "role": "neutral",
+        "displayName": "Hover tint",
+        "tonalRamp": [
+          "oklch(15% 0.02 155)",
+          "oklch(26% 0.02 155)",
+          "oklch(38% 0.02 155)",
+          "oklch(49% 0.02 155)",
+          "oklch(61% 0.02 155)",
+          "oklch(72% 0.02 155)",
+          "oklch(84% 0.02 155)",
+          "oklch(95% 0.02 155)"
+        ]
+      },
+      "workspace-background": {
+        "role": "neutral",
+        "displayName": "Workspace veil",
+        "tonalRamp": [
+          "oklch(15% 0.012 155)",
+          "oklch(26% 0.012 155)",
+          "oklch(38% 0.012 155)",
+          "oklch(49% 0.012 155)",
+          "oklch(61% 0.012 155)",
+          "oklch(72% 0.012 155)",
+          "oklch(84% 0.012 155)",
+          "oklch(95% 0.012 155)"
+        ]
+      },
+      "workspace-glass": {
+        "role": "neutral",
+        "displayName": "Workspace glass",
+        "tonalRamp": [
+          "oklch(15% 0 0)",
+          "oklch(26% 0 0)",
+          "oklch(38% 0 0)",
+          "oklch(49% 0 0)",
+          "oklch(61% 0 0)",
+          "oklch(72% 0 0)",
+          "oklch(84% 0 0)",
+          "oklch(95% 0 0)"
+        ]
+      },
+      "science-glass": {
+        "role": "neutral",
+        "displayName": "Science glass",
+        "tonalRamp": [
+          "oklch(15% 0 0)",
+          "oklch(26% 0 0)",
+          "oklch(38% 0 0)",
+          "oklch(49% 0 0)",
+          "oklch(61% 0 0)",
+          "oklch(72% 0 0)",
+          "oklch(84% 0 0)",
+          "oklch(95% 0 0)"
+        ]
+      },
+      "landing-surface": {
+        "role": "neutral",
+        "displayName": "Landing surface",
+        "tonalRamp": [
+          "oklch(15% 0.009 150)",
+          "oklch(26% 0.009 150)",
+          "oklch(38% 0.009 150)",
+          "oklch(49% 0.009 150)",
+          "oklch(61% 0.009 150)",
+          "oklch(72% 0.009 150)",
+          "oklch(84% 0.009 150)",
+          "oklch(95% 0.009 150)"
+        ]
+      },
+      "landing-ink": {
+        "role": "neutral",
+        "displayName": "Landing ink",
+        "tonalRamp": [
+          "oklch(15% 0.025 265)",
+          "oklch(26% 0.025 265)",
+          "oklch(38% 0.025 265)",
+          "oklch(49% 0.025 265)",
+          "oklch(61% 0.025 265)",
+          "oklch(72% 0.025 265)",
+          "oklch(84% 0.025 265)",
+          "oklch(95% 0.025 265)"
+        ]
+      },
+      "white": {
+        "role": "neutral",
+        "displayName": "White",
+        "tonalRamp": [
+          "oklch(15% 0 0)",
+          "oklch(26% 0 0)",
+          "oklch(38% 0 0)",
+          "oklch(49% 0 0)",
+          "oklch(61% 0 0)",
+          "oklch(72% 0 0)",
+          "oklch(84% 0 0)",
+          "oklch(95% 0 0)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "body-family": {
+        "displayName": "Installed body family",
+        "purpose": "Plus Jakarta Sans behind legacy --font-outfit."
+      },
+      "reading-body": {
+        "displayName": "Science reading",
+        "purpose": "Long-form science paragraphs, maximum 72ch."
+      }
+    },
+    "shadows": [
+      {
+        "name": "workspace-nav",
+        "value": "0 8px 24px rgba(23,43,38,.04)",
+        "purpose": "Soft app navigation depth."
+      },
+      {
+        "name": "calendar-selection",
+        "value": "0 2px 4px #172b2610",
+        "purpose": "Selected calendar scope option."
+      },
+      {
+        "name": "landing-comparison",
+        "value": "0 20px 70px rgba(23, 54, 39, .08)",
+        "purpose": "Public comparison panel."
+      }
+    ],
+    "motion": [
+      {
+        "name": "workspace-control",
+        "value": ".16s ease",
+        "purpose": "Control background and border feedback."
+      },
+      {
+        "name": "landing-reveal",
+        "value": ".75s cubic-bezier(.16, 1, .3, 1)",
+        "purpose": "Public scroll reveals only; reduced-motion disables transformation."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "workspace-and-science-mobile",
+        "value": "800px"
+      },
+      {
+        "name": "matched-metrics-container",
+        "value": "480px"
+      },
+      {
+        "name": "landing-compact-actions",
+        "value": "600px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Workspace primary button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Scoped emerald action.",
+      "html": "<button class=\"ds-primary\">Save changes</button>",
+      "css": ".ds-primary{display:inline-flex;align-items:center;justify-content:center;padding:10px 20px;border-radius:8px;min-height:38px;font-size:14px;font-weight:600;cursor:pointer;transition:background-color .16s ease,border-color .16s ease;background:#19ce8b;color:#063e2b;border:1px solid #111111;box-shadow:none}.ds-primary:hover{transform:translateY(-1px)}.ds-primary:focus-visible{outline:2px solid #08764f;outline-offset:3px}"
+    },
+    {
+      "name": "Workspace secondary button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Secondary workspace action.",
+      "html": "<button class=\"ds-secondary\">Cancel</button>",
+      "css": ".ds-secondary{display:inline-flex;align-items:center;justify-content:center;padding:10px 20px;border-radius:8px;min-height:38px;font-size:14px;font-weight:600;cursor:pointer;transition:background-color .16s ease,border-color .16s ease;background:rgba(0,0,0,.06);color:#111;border:1px solid rgba(0,0,0,.1)}.ds-secondary:hover{background:rgba(0,0,0,.1);transform:translateY(-1px)}.ds-secondary:focus-visible{outline:2px solid #08764f;outline-offset:3px}"
+    },
+    {
+      "name": "Chat field",
+      "kind": "input",
+      "refersTo": "chat-input",
+      "description": "Existing translucent coaching input.",
+      "html": "<input class=\"ds-chat\" aria-label=\"Message\" placeholder=\"Message\" />",
+      "css": ".ds-chat{background:rgba(255,255,255,.85);backdrop-filter:blur(12px);border:1px solid rgba(0,0,0,.12);color:#000;font-weight:500;padding:10px 14px;border-radius:9999px;font-size:14px;font-family:var(--font-outfit),sans-serif;transition:border-color .16s ease}.ds-chat::placeholder{color:rgba(0,0,0,.4)}.ds-chat:focus{border-color:#08764f}.ds-chat:focus-visible{outline:2px solid #08764f;outline-offset:3px}"
+    },
+    {
+      "name": "Calendar scope",
+      "kind": "chip",
+      "refersTo": "calendar-scope",
+      "description": "Selected and unselected calendar scope options.",
+      "html": "<div class=\"ds-scope\"><button aria-pressed=\"true\">Week</button><button aria-pressed=\"false\">Month</button></div>",
+      "css": ".ds-scope{display:flex;width:fit-content;padding:4px;border:1px solid #dce5df;background:#f3f6f4;border-radius:10px;gap:0}.ds-scope button{min-height:36px;padding:8px 20px;border:0;border-radius:6px;background:transparent;color:#455c52;font-size:13px;font-weight:600;cursor:pointer;transition:background-color .16s ease}.ds-scope button[aria-pressed=true]{background:rgba(255,255,255,.84);backdrop-filter:blur(24px);color:#08764f;box-shadow:0 2px 4px #172b2610}.ds-scope button:focus-visible{outline:2px solid #08764f;outline-offset:3px}"
+    },
+    {
+      "name": "Workspace tabs",
+      "kind": "nav",
+      "description": "Compact navigation with tinted active state.",
+      "html": "<nav class=\"ds-tabs\" aria-label=\"Workspace\"><button class=\"ds-active\" aria-current=\"page\">Scheduler</button><button>Coach</button></nav>",
+      "css": ".ds-tabs{display:flex;gap:2px;padding:12px 16px;border:1px solid #dce5df;border-radius:9999px;background:rgba(255,255,255,.78);backdrop-filter:blur(20px);box-shadow:0 8px 24px rgba(23,43,38,.04)}.ds-tabs button{font-family:var(--font-outfit),sans-serif;font-size:14.5px;font-weight:600;color:#455c52;padding:8px 12px;border-radius:8px;min-height:42px;border:0;background:transparent;cursor:pointer;transition:background-color .16s ease}.ds-tabs button:hover{color:#172b26;background:rgba(255,255,255,.04)}.ds-tabs .ds-active{background:#e2f2e9;color:#065d3f}.ds-tabs button:focus-visible{outline:2px solid #08764f;outline-offset:3px}"
+    },
+    {
+      "name": "Tool card",
+      "kind": "card",
+      "refersTo": "tool-card",
+      "description": "Glass action surface with title and supporting text.",
+      "html": "<button class=\"ds-tool\"><span><span class=\"ds-tool-title\">Race preparation</span><span class=\"ds-tool-description\">Review the details for your next race.</span></span></button>",
+      "css": ".ds-tool{display:flex;align-items:flex-start;gap:20px;text-align:left;padding:28px;border:1px solid #dce5df;border-radius:12px;background:rgba(255,255,255,.84);backdrop-filter:blur(24px);color:#172b26;cursor:pointer;font-family:var(--font-outfit),sans-serif;transition:background-color .16s ease,border-color .16s ease}.ds-tool:hover{border-color:#08764f;background:#f8fcfa}.ds-tool span{display:block}.ds-tool-title{font-size:19px;font-weight:650;margin-bottom:12px}.ds-tool-description{font-size:14px;line-height:1.7;color:#455c52}.ds-tool:focus-visible{outline:2px solid #08764f;outline-offset:3px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Readable training over the mountain",
+    "overview": "Uphill AI retains its mountain video, emerald identity and translucent white glass surfaces. The workspace places readable training information over that setting; science uses the same material for longer reading. The public landing page also contains opaque pale panels and open editorial rows, so glass is a shared material rather than a requirement for every container.\n\nThis is a source-backed record of the current implementation, not a new visual identity. The north-star wording describes the approved mountain, glass and readability commitments; it is not an additional user-selected brand metaphor. Scope: the app shell, training workspace, matched activities, science page and existing landing styles. Source authority is `Workspace.module.css`, `TrainingWorkspace.module.css`, `MatchedActivityCard.module.css`, `Science.module.css`, `LandingPage.module.css`, `ComparisonSection.module.css`, `globals.css` and `layout.tsx` under `frontend/src`.",
+    "keyCharacteristics": [
+      "Mountain video behind translucent, blurred working surfaces.",
+      "Original light-green controls and accents with forest ink and darker readable green labels.",
+      "Compact controls, distinct workout days and tabular metric numerals.",
+      "Larger public-page typography and more measured science reading.",
+      "Completed watch activities collapse to a compact metrics summary; suggested matches start expanded for confirmation."
+    ],
+    "rules": [],
+    "dos": [
+      "Do retain the mountain video, emerald identity and glass material confirmed in PRODUCT.md.",
+      "Do distinguish workspace tokens from global and landing tokens when extending a surface.",
+      "Do preserve visible keyboard focus and reduced-motion behavior.",
+      "Do retain the weekly planning context when extending scheduler views."
+    ],
+    "donts": [
+      "Don't promote the workspace radius or compact type scale into a universal landing-page rule.",
+      "Don't replace readable glass panels with unfiltered text over the video.",
+      "Don't treat legacy font aliases as evidence that their named fonts are installed."
+    ]
+  }
+}

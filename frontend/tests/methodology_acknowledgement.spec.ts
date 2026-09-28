@@ -68,7 +68,7 @@ test.describe("Methodology & Acknowledgement Section Verification", () => {
     await expect(viBtn).toBeVisible();
     await viBtn.click();
 
-    await expect(methodologySec.getByText(/Xây Dựng Từ Khoa Học Của Những Huyền Thoại Chạy Núi/i)).toBeVisible();
+    await expect(methodologySec.getByText(/Xây Dựng Từ Khoa Học Của Những Huyền Thoại Chạy Trail/i)).toBeVisible();
     await expect(methodologySec.getByText(/HLV CÁC NHÀ VÔ ĐỊCH UTMB 2025/i).first()).toBeVisible();
     await expect(methodologySec.getByText(/Tom Evans/i).first()).toBeVisible();
     await expect(methodologySec.getByText(/Ruth Croft/i).first()).toBeVisible();
@@ -82,6 +82,6 @@ test.describe("Methodology & Acknowledgement Section Verification", () => {
     await expect(enBtn).toBeVisible();
     await enBtn.click();
 
-    await expect(methodologySec.getByText(/Built on the Science of Mountain Endurance Legends/i)).toBeVisible();
+    await expect(methodologySec.getByText(/Built on the Science of Trail Running Legends/i)).toBeVisible();
   });
 });

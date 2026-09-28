@@ -1,5 +1,6 @@
 "use client";
 
+import styles from "./MatchedActivityCard.module.css";
 import React, { useState, useEffect, useRef } from "react";
 import {
   Watch,
@@ -196,7 +197,9 @@ export default function MatchedActivityCard({
   const qStyle = getQualityColor(qualityGrade);
 
   return (
-    <div
+    <details
+      open={isSuggest || undefined}
+      className={styles.card}
       style={{
         display: "flex",
         flexDirection: "column",
@@ -211,8 +214,23 @@ export default function MatchedActivityCard({
         position: "relative",
       }}
     >
+      <summary className={styles.summary}>
+        <span className={styles.summaryTop}>
+          <span className={styles.heading}><Watch size={18} weight="duotone" aria-hidden="true" />{activity.device_model || activity.source_provider?.toUpperCase() || (lang === "vi" ? "Đồng hồ" : "Watch")}</span>
+          <span className={styles.disclosure}><span>{lang === "vi" ? "Chi tiết" : "Details"}</span><CaretDown size={16} aria-hidden="true" /></span>
+        </span>
+        <span className={styles.summaryMetrics}>
+          {!isStrength && displayDistance != null && <span>{displayDistance.toFixed(1)} km</span>}
+          <span>{formatDuration(displayDuration)}</span>
+          {isStrength && activity.sets != null && <span>{activity.sets} {lang === "vi" ? "hiệp" : "sets"}</span>}
+          {displayHr != null && <span>{displayHr} bpm</span>}
+          <span className={styles.summaryStatus}>{isSuggest ? (lang === "vi" ? "Chờ xác nhận" : "Needs confirmation") : (lang === "vi" ? "Đã khớp" : "Matched")}</span>
+        </span>
+        <span className={styles.attribution}><CorosAttribution deviceModel={activity.device_model} provider={activity.source_provider} /></span>
+      </summary>
+      <div className={styles.expanded}>
       {/* Header bar: Watch device, sport type, start time, confidence badge & quality pill */}
-      <div
+      <div className={styles.header}
         style={{
           display: "flex",
           alignItems: "center",
@@ -278,6 +296,7 @@ export default function MatchedActivityCard({
                 cursor: "pointer",
                 transition: "opacity 0.15s ease",
               }}
+              aria-expanded={showQualityDetails}
               aria-label={lang === "vi" ? "Xem nhận xét từ HLV" : "View coach insights"}
             >
               <Sparkle size={12} weight="fill" aria-hidden="true" />
@@ -388,7 +407,7 @@ export default function MatchedActivityCard({
       )}
 
       {/* Metrics Grid */}
-      <div
+      <div className={styles.metrics}
         style={{
           display: "grid",
           gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : isStrength ? "repeat(3, 1fr)" : "repeat(3, 1fr)",
@@ -421,6 +440,7 @@ export default function MatchedActivityCard({
                   color: Math.abs(distanceDeltaKm) <= 0.5 ? "var(--accent-primary)" : "var(--text-muted)",
                 }}
               >
+                <span className={styles.planValue}>{lang === "vi" ? "Plan" : "Planned"}: {plannedWorkout?.distance_km?.toFixed(1)} km</span>
                 {distanceDeltaKm >= 0 ? `+${distanceDeltaKm.toFixed(1)} km` : `${distanceDeltaKm.toFixed(1)} km`}
                 <span style={{ opacity: 0.75, marginLeft: "3px" }}>{lang === "vi" ? "so với kế hoạch" : "vs plan"}</span>
               </div>
@@ -453,6 +473,7 @@ export default function MatchedActivityCard({
                 color: Math.abs(durationDeltaMin) <= 5 ? "var(--accent-primary)" : "var(--text-muted)",
               }}
             >
+              <span className={styles.planValue}>{lang === "vi" ? "Plan" : "Planned"}: {plannedWorkout?.duration_minutes} min</span>
               {durationDeltaMin >= 0 ? `+${durationDeltaMin}m` : `${durationDeltaMin}m`}
               <span style={{ opacity: 0.75, marginLeft: "3px" }}>{lang === "vi" ? "so với kế hoạch" : "vs plan"}</span>
             </div>
@@ -625,7 +646,7 @@ export default function MatchedActivityCard({
       )}
 
       {/* Footer bar: Actions and mandatory legal attribution */}
-      <div
+      <div className={styles.footer}
         style={{
           display: "flex",
           alignItems: "center",
@@ -715,6 +736,7 @@ export default function MatchedActivityCard({
           )}
         </div>
       </div>
-    </div>
+      </div>
+    </details>
   );
 }

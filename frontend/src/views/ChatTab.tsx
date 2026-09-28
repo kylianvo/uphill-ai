@@ -1,3 +1,4 @@
+import styles from "./TrainingWorkspace.module.css";
 import React, { useEffect, useRef, useState } from "react";
 import { useAppContext } from "../contexts/AppContext";
 import { parseMarkdown } from "../utils/markdown";
@@ -43,7 +44,7 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
   const isBusy = status === "admitting" || status === "retrieving" || status === "generating";
 
   useEffect(() => {
-    chatBottomRef.current?.scrollIntoView?.({ behavior: "smooth" });
+    chatBottomRef.current?.scrollIntoView?.({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
   }, [messages, status]);
 
   const handleSend = async (textToSend?: string) => {
@@ -131,7 +132,7 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
     : [t("chat_empty_cap_1"), t("chat_empty_cap_2"), t("chat_empty_cap_3"), t("chat_empty_cap_4")];
 
   return (
-    <div style={{ width: "100%", display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+    <div className={styles.coach} style={{ width: "100%", display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
       <div style={{ display: "flex", flexDirection: "column", flex: 1, width: "100%", minHeight: 0 }}>
         {!isMobile && (
           <h3 style={{ marginBottom: "12px", fontSize: "20px" }}>
@@ -258,6 +259,7 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
             {/* Empty State */}
             {messages.length === 0 && (
               <div
+                className={styles.coachEmpty}
                 style={{
                   display: "flex",
                   flexDirection: "column",
@@ -298,6 +300,7 @@ export default function ChatTab({ isMobile }: { isMobile: boolean }) {
 
                 {/* Starter chips */}
                 <div
+                  className={styles.starters}
                   style={{
                     display: "flex",
                     flexWrap: "wrap",

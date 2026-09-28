@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import styles from "./TrainingWorkspace.module.css";
 import React, { useState, useEffect, useRef } from "react";
 import { useAppContext } from "../contexts/AppContext";
 import { translations } from "../app/translations";
@@ -15,7 +16,7 @@ export default function AboutTab({ isMobile, handleTabSwitch }: { isMobile: bool
 
     return (
 
-      <div style={{ maxWidth: '1100px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      <div className={styles.about} style={{ maxWidth: '1100px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '8px', padding: '0 16px' }}>
 
