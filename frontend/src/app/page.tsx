@@ -25,6 +25,8 @@ import { isNativePlatform } from "@/utils/native";
 import { TrustBanner } from "@/components/landing/TrustBanner";
 import { LANDING_FEATURES } from "@/data/landingFeatures";
 import { BetaDownloadModal } from "@/components/landing/BetaDownloadModal";
+import { ComparisonSection } from "@/components/landing/ComparisonSection";
+import landingStyles from "./LandingPage.module.css";
 
 // Whether the Proof section renders real numbers/testimonials yet.
 // TODO(proof-section): flip on once we have plans-generated counts,
@@ -160,28 +162,45 @@ export default function MarketingHome() {
   // Scroll reveal observer for landing page elements (ui-ux-pro-max standard)
   useEffect(() => {
     if (!showMarketing || typeof window === "undefined") return;
-    const isReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (isReducedMotion) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("revealed");
-            observer.unobserve(entry.target);
-          }
-        });
-      },
-      {
-        threshold: 0.08,
-        rootMargin: "0px 0px -40px 0px",
+    const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const elements = document.querySelectorAll<HTMLElement>(".landing-page .scroll-reveal");
+    let observer: IntersectionObserver | undefined;
+    const setup = () => {
+      observer?.disconnect();
+      if (preference.matches) {
+        elements.forEach((el) => { delete el.dataset.revealPending; el.classList.add("revealed"); });
+        return;
       }
-    );
+      observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add("revealed");
+              delete (entry.target as HTMLElement).dataset.revealPending;
+              observer?.unobserve(entry.target);
+            }
+          });
+        },
+        {
+          threshold: 0.08,
+          rootMargin: "0px 0px -40px 0px",
+        }
+      );
 
-    const elements = document.querySelectorAll(".scroll-reveal");
-    elements.forEach((el) => observer.observe(el));
-
-    return () => observer.disconnect();
+      elements.forEach((el) => {
+        if (!el.classList.contains("revealed")) {
+          el.dataset.revealPending = "true";
+          observer?.observe(el);
+        }
+      });
+    };
+    setup();
+    preference.addEventListener("change", setup);
+    return () => {
+      observer?.disconnect();
+      preference.removeEventListener("change", setup);
+      elements.forEach((el) => { delete el.dataset.revealPending; });
+    };
   }, [showMarketing]);
 
   // Video background refs — dual-video crossfade engine
@@ -284,7 +303,7 @@ export default function MarketingHome() {
   ).filter((f): f is (typeof LANDING_FEATURES)[number] => !!f);
 
   return (
-    <div style={{ position: "relative", minHeight: "100dvh", color: "#111827" }}>
+    <div className={`landing-page ${landingStyles.page}`} style={{ position: "relative", minHeight: "100dvh", color: "#111827" }}>
       {/* ── Fixed Video Background Layer ─────────────────────────────── */}
       <div
         className="video-bg-container"
@@ -1626,6 +1645,10 @@ export default function MarketingHome() {
               </div>
             </div>
           </section>
+
+          <div id="comparison" style={{ padding: "0 24px", display: "flex", justifyContent: "center", scrollMarginTop: "96px" }}>
+            <ComparisonSection lang={lang} />
+          </div>
 
           {/* ── Connected Mountain Trail Ecosystem Strip ─────────────── */}
           <section style={{ padding: "64px 24px" }}>
