@@ -1,0 +1,75 @@
+.planner, .coach, .about, .tools { width: 100%; min-width: 0; color: var(--text-primary); }
+.planSurface { padding: 28px !important; border-radius: 12px !important; background: rgba(255,255,255,.84) !important; backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); }
+.planSurface > div:first-child { border-bottom: 1px solid var(--border-color); padding-bottom: 24px; margin-bottom: 24px !important; }
+.planSurface h3 { font-size: 26px !important; letter-spacing: -.025em; line-height: 1.25; }
+.weekNavigation { gap: 8px !important; padding-block: 4px 12px; scrollbar-width: thin; }
+.weekNavigation button { min-width: 78px !important; min-height: 56px !important; }
+.weekNavigation button span:last-child { font-size: 11px !important; }
+.workoutDay { background: rgba(255,255,255,.84) !important; backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1px solid var(--border-color) !important; border-radius: 10px !important; padding: 16px !important; margin-bottom: 12px; }
+.workoutDay > div:first-child { padding-bottom: 10px !important; margin-bottom: 12px !important; }
+.workoutDay > div:first-child span { font-size: 13px !important; }
+.calendar { font-variant-numeric: tabular-nums; }
+.calendarScope { display: flex; width: fit-content; padding: 4px; border: 1px solid var(--border-color); background: #f3f6f4; border-radius: 10px; margin-bottom: 20px; }
+.calendarScope button { min-height: 36px; padding: 8px 20px; border: 0; border-radius: 6px; background: transparent; color: var(--text-secondary); font-size: 13px; font-weight: 600; cursor: pointer; }
+.calendarScope button[aria-pressed=true] { background: rgba(255,255,255,.84); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); color: #08764f; box-shadow: 0 2px 4px #172b2610; }
+.calendar [role=button] { min-height: 110px !important; }
+.calendar [role=button]:hover { border-color: #19ce8b !important; }
+.coach :global(.chat-pane) { background: rgba(255,255,255,.84) !important; backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); box-shadow: none !important; border-color: var(--border-color) !important; backdrop-filter: blur(24px) !important; }
+.coach :global(.chat-header) { background: rgba(255,255,255,.84) !important; backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); padding: 18px 24px !important; gap: 12px; flex-wrap: wrap; }
+.coach :global(.chat-header) > div { flex-wrap: wrap; }
+.coach :global(.chat-history) { padding: 24px !important; }
+.coach :global(.chat-bubble) { box-shadow: none !important; line-height: 1.75 !important; }
+.coach :global(.chat-bubble-user) { background: #e2f2e9 !important; color: #172b26 !important; }
+.coach :global(.chat-bubble-assistant) { border: 0 !important; padding-left: 0 !important; max-width: 95% !important; }
+.coachEmpty { align-items: flex-start !important; text-align: left !important; padding: 32px 16px !important; max-width: 700px; width: 100%; align-self: center; }
+.coachEmpty h4 { font-size: 28px !important; line-height: 1.25; letter-spacing: -.025em; }
+.coachEmpty p { font-size: 15px !important; line-height: 1.7 !important; }
+.starters { display: grid !important; grid-template-columns: 1fr 1fr; max-width: none !important; width: 100%; margin-block: 12px 24px !important; }
+.starters button { min-height: 72px; text-align: left; padding: 16px !important; border-radius: 10px !important; box-shadow: none !important; font-size: 14px !important; background: rgba(245,248,246,.7) !important; line-height: 1.5; }
+.starters button:hover { border-color: #19ce8b !important; background: #edf5f0 !important; }
+.coach textarea { font-size: 16px !important; line-height: 1.6; }
+.about { max-width: 1000px !important; gap: 32px !important; }
+.about > div:first-child { padding: 0 !important; }
+.about > div:nth-child(2) { padding: 0 !important; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) !important; gap: 24px !important; }
+.about :global(.snow-glass) { background: rgba(255,255,255,.84) !important; backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); box-shadow: none; border: 1px solid var(--border-color); border-radius: 12px !important; padding: 28px !important; }
+.about :global(.snow-glass):first-child { grid-column: 1 !important; }
+.about :global(.snow-glass):last-child { grid-column: 1 / -1 !important; }
+.about h3 { font-size: 30px !important; }
+.about h4 { line-height: 1.35; }
+.about p { max-width: 70ch; }
+.tools { max-width: 960px; margin-inline: auto; }
+.tools h2 { font-size: 28px; line-height: 1.2; margin: 0 0 28px; letter-spacing: -.025em; }
+.toolList { display: grid; grid-template-columns: 1fr; gap: 12px; }
+.tool { display: flex; align-items: flex-start; gap: 20px; text-align: left; padding: 28px; border: 1px solid var(--border-color); border-radius: 12px; background: rgba(255,255,255,.84); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); color: var(--text-primary); cursor: pointer; }
+.tool:hover { border-color: #19ce8b; background: #f8fcfa; }
+.tool > svg { flex-shrink: 0; color: #19ce8b; }
+.tool > svg:last-child { margin-left: auto; align-self: center; }
+.tool span { display: block; }
+.toolTitle { font-size: 19px; font-weight: 650; margin-bottom: 12px; }
+.toolDescription { font-size: 14px; line-height: 1.7; color: var(--text-secondary); }
+@media(max-width:800px) {
+ .planSurface { padding: 16px !important; }
+ .planSurface h3 { font-size: 22px !important; }
+ .calendar [role=button] { min-height: 60px !important; }
+ .coach :global(.chat-header) { padding: 12px !important; }
+ .coach :global(.chat-history) { padding: 16px !important; }
+ .coachEmpty { padding: 16px 0 !important; }
+ .coachEmpty h4 { font-size: 23px !important; }
+ .starters, .toolList { grid-template-columns: 1fr; }
+ .starters button { min-height: 48px; }
+ .about > div:nth-child(2) { grid-template-columns: 1fr !important; }
+ .about :global(.snow-glass) { grid-column: 1 !important; padding: 22px !important; }
+ .tool { padding: 22px; gap: 16px; }
+}
+
+.calendarBoard { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; }
+@media(max-width:800px) { .calendarBoard[data-week=true] > div { min-width: 770px; } }
+
+.matchedPair { display: grid; gap: 12px; }
+.matchedPlan { min-width: 0; }
+.plannedLabel { display: block; font-size: 12px; font-weight: 650; color: var(--text-secondary); margin: 0 0 8px; }
+
+.calendarScrollHint { display: none; }
+@media(max-width:800px) { .calendarScrollHint { display: block; margin: 0 0 10px; color: var(--text-secondary); font-size: 13px; } }
+
+.weekNavigation button[aria-pressed=true] { color: #063e2b !important; }

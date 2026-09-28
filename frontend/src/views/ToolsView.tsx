@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import styles from "./TrainingWorkspace.module.css";
 import { useAppContext } from "../contexts/AppContext";
 import { BowlFood, Sneaker, Gauge, Crosshair, CaretRight } from '@phosphor-icons/react';
 
@@ -49,123 +49,19 @@ export default function ToolsView({ isMobile }: { isMobile: boolean }) {
     },
   ];
 
-  if (isMobile) {
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: "12px", padding: "4px 0" }}>
+  return (
+    <section className={styles.tools} data-mobile={isMobile}>
+      <h2>{lang === "en" ? "Tools" : "Công cụ"}</h2>
+      <div className={styles.toolList}>
         {tools.map((tool) => {
-          const IconComponent = tool.icon;
-          return (
-            <div
-              key={tool.id}
-              className="card"
-              onClick={tool.onClick}
-              style={{
-                padding: "16px",
-                display: "flex",
-                flexDirection: "row",
-                alignItems: "center",
-                gap: "14px",
-                cursor: "pointer",
-                background: "var(--bg-card)",
-                border: "1px solid rgba(0, 0, 0, 0.08)",
-                borderRadius: "16px",
-                boxShadow: "0 2px 10px rgba(0, 0, 0, 0.04)",
-                transition: "all 0.15s ease",
-              }}
-            >
-              <div
-                style={{
-                  width: "48px",
-                  height: "48px",
-                  borderRadius: "14px",
-                  background: "rgba(16, 185, 129, 0.1)",
-                  border: "1px solid rgba(16, 185, 129, 0.2)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                }}
-              >
-                <IconComponent size={26} color="#059669" weight="duotone" />
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <h3
-                  style={{
-                    fontSize: "16px",
-                    fontWeight: "700",
-                    margin: "0 0 4px 0",
-                    color: "#0f172a",
-                    lineHeight: "1.25",
-                  }}
-                >
-                  {tool.title}
-                </h3>
-                <p
-                  style={{
-                    color: "#475569",
-                    fontSize: "13px",
-                    lineHeight: "1.4",
-                    margin: 0,
-                  }}
-                >
-                  {tool.desc}
-                </p>
-              </div>
-              <CaretRight size={20} color="#94a3b8" weight="bold" style={{ flexShrink: 0 }} />
-            </div>
-          );
+          const Icon = tool.icon;
+          return <button type="button" key={tool.id} className={styles.tool} onClick={tool.onClick}>
+            <Icon size={28} weight="duotone" aria-hidden="true" />
+            <span><span className={styles.toolTitle}>{tool.title}</span><span className={styles.toolDescription}>{tool.desc}</span></span>
+            <CaretRight size={20} aria-hidden="true" />
+          </button>;
         })}
       </div>
-    );
-  }
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-      {tools.map((tool) => {
-        const IconComponent = tool.icon;
-        return (
-          <div
-            key={tool.id}
-            className="card"
-            style={{
-              padding: "24px",
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "center",
-              alignItems: "center",
-              textAlign: "center",
-              cursor: "pointer",
-              border: "1px solid var(--accent-primary)",
-            }}
-            onClick={tool.onClick}
-          >
-            <IconComponent
-              size={48}
-              color="var(--accent-primary)"
-              weight="duotone"
-              style={{ marginBottom: "16px" }}
-            />
-            <h3
-              style={{
-                fontSize: "20px",
-                marginBottom: "8px",
-                color: "var(--text-primary)",
-              }}
-            >
-              {tool.title}
-            </h3>
-            <p
-              style={{
-                color: "var(--text-secondary)",
-                fontSize: "13px",
-                marginBottom: "0",
-              }}
-            >
-              {tool.desc}
-            </p>
-          </div>
-        );
-      })}
-    </div>
+    </section>
   );
 }

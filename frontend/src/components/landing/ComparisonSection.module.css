@@ -1,4 +1,4 @@
-/* Preserve the app's light mountain/emerald identity; no section-level theme switch. */
+/* Mountain/emerald identity with a contrasting athlete-context panel. */
 .section {
   --comparison-ink: #172b26;
   --comparison-muted: #52645d;
@@ -9,10 +9,10 @@
   width: 100%;
   max-width: 1120px;
   box-sizing: border-box;
-  padding: 48px 40px 32px;
+  padding: 56px 40px 40px;
   margin: 56px 0 32px;
   border: 1px solid rgba(255, 255, 255, .8);
-  border-radius: 24px;
+  border-radius: 16px;
   background: #f8faf8;
   box-shadow: 0 20px 70px rgba(23, 54, 39, .08);
   flex-shrink: 0;
@@ -23,10 +23,10 @@
 .header h2 {
   max-width: 640px;
   font-family: var(--font-schibsted), sans-serif;
-  font-size: clamp(30px, 3.6vw, 44px);
+  font-size: clamp(36px, 4.5vw, 60px);
   font-weight: 600;
   line-height: 1.16;
-  letter-spacing: -1.5px;
+  letter-spacing: -.03em;
   text-wrap: balance;
   margin: 0 0 20px;
 }
@@ -41,7 +41,7 @@
 .highlight { grid-area: grounding; padding: 22px 0; }
 .highlight:last-child { grid-area: guardrails; border-top: 1px solid var(--comparison-line); }
 .highlightTitle { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-.highlight svg { flex-shrink: 0; color: var(--comparison-accent); }
+.highlight svg { flex-shrink: 0; color: #19ce8b; }
 .highlight h3 { font-size: 18px; line-height: 1.4; font-weight: 600; letter-spacing: -.3px; margin: 0; }
 .highlight p { font-size: 14px; line-height: 1.8; margin: 0; color: var(--comparison-muted); }
 .context {
@@ -119,24 +119,26 @@
   .footer a:hover svg { transform: translate(2px, -2px); }
 }
 
-/* Match the landing page's frosted surfaces and neutral typography. */
+/* Solid surfaces keep the comparison legible over the mountain footage. */
 .section {
   --comparison-ink: var(--text-primary, #111827);
   --comparison-muted: #4b5563;
   --comparison-tint: #e8f8f0;
-  background: var(--landing-surface, rgba(255, 255, 255, .86));
-  border-color: var(--landing-border, rgba(255, 255, 255, .94));
-  box-shadow: var(--landing-shadow, 0 16px 44px rgba(25, 55, 43, .07));
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: #f8faf8;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 .header h2 { font-weight: 700; }
-.context { background: linear-gradient(145deg, #e4f6ec, #f0faf5); border: 1px solid #d5ebdf; }
-.contextSignals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; margin-top: 26px; padding-top: 22px; border-top: 1px solid #cce4d6; }
-.contextSignals span { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #345547; }
+.context { background: #172b26; border: 0; color: #ffffff; }
+.context p { color: #e8f8f0; }
+.context svg { color: #19ce8b; }
+.contextSignals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; margin-top: 26px; padding-top: 22px; border-top: 1px solid #52645d; }
+.contextSignals span { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #e8f8f0; }
 .contextSignals svg { width: 18px; height: 18px; margin: 0; }
-.categoryIcon { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; margin-bottom: 16px; border: 1px solid #dee7e2; border-radius: 12px; background: #f5f8f6; color: #52645d; }
-.table th:nth-child(2) .categoryIcon { background: #d4f1e2; color: var(--comparison-accent); border-color: #bce2cd; }
+.categoryIcon { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; margin-bottom: 16px; border: 0; border-radius: 0; background: transparent; color: #52645d; }
+.table th:nth-child(2) .categoryIcon { background: transparent; color: #19ce8b; }
 .rowLabel { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
 .rowLabel svg { color: #638273; flex-shrink: 0; }
 .table tbody tr:hover td { background-color: rgba(225, 241, 233, .55); }

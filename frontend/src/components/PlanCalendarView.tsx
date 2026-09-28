@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import styles from "../views/TrainingWorkspace.module.css";
 import React, { useMemo, useState } from "react";
 import { DndContext, DragEndEvent, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, KeyboardSensor } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
@@ -33,6 +34,8 @@ function mondayOf(d: Date) {
 }
 
 interface PlanCalendarViewProps {
+  focusWeek?: number;
+  onWeekChange?: (week: number) => void;
   workouts: any[];
   lang: string;
   isMobile: boolean;
@@ -51,7 +54,7 @@ interface PlanCalendarViewProps {
   onMoveWorkout?: (workoutId: number, targetWeek: number, targetDay: string) => void;
 }
 
-export default function PlanCalendarView({
+export default function PlanCalendarView({ focusWeek, onWeekChange,
   workouts, lang, isMobile, getWorkoutDateObj, getWorkoutDate,
   onSwapDays, onToggleComplete, onMarkMissed, onLogWorkout, isCoachActingAsAthlete,
   athleteId, onApproveWorkout, onRemoveWorkout, onEditWorkout, plan, onMoveWorkout,
@@ -80,13 +83,27 @@ export default function PlanCalendarView({
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
+  const [scope, setScope] = useState<"week" | "month">("week");
+  const [viewWeek, setViewWeek] = useState(() => {
+    const focused = workouts.find((wo) => wo.week_number === focusWeek);
+    return mondayOf((focused && getWorkoutDateObj(focused)) || today);
+  });
   const [viewMonth, setViewMonth] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
+  const navigateWeek = (offset: number) => {
+    const next = new Date(viewWeek.getFullYear(), viewWeek.getMonth(), viewWeek.getDate() + offset);
+    setViewWeek(next);
+    const workout = workouts.find((wo) => {
+      const date = getWorkoutDateObj(wo);
+      return date && isoDate(mondayOf(date)) === isoDate(next);
+    });
+    if (workout) onWeekChange?.(workout.week_number);
+  };
   const monthLabel = viewMonth.toLocaleDateString(lang === "vi" ? "vi-VN" : "en-US", { month: "long", year: "numeric" });
 
-  const gridStart = mondayOf(new Date(viewMonth.getFullYear(), viewMonth.getMonth(), 1));
+  const gridStart = scope === "week" ? viewWeek : mondayOf(new Date(viewMonth.getFullYear(), viewMonth.getMonth(), 1));
   const monthEnd = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 0);
   const lastRowStart = mondayOf(monthEnd);
-  const weekCount = Math.round((lastRowStart.getTime() - gridStart.getTime()) / 86400000 / 7) + 1;
+  const weekCount = scope === "week" ? 1 : Math.round((lastRowStart.getTime() - gridStart.getTime()) / 86400000 / 7) + 1;
 
   const weeks: Date[][] = [];
   for (let w = 0; w < weekCount; w++) {
@@ -102,7 +119,7 @@ export default function PlanCalendarView({
   // Exclude the leading/trailing days from adjacent months that fill out the
   // Monday-start grid — otherwise "This month" silently includes their volume.
   const monthWorkouts = weeks.flat()
-    .filter((d) => d.getMonth() === viewMonth.getMonth() && d.getFullYear() === viewMonth.getFullYear())
+    .filter((d) => scope === "week" || (d.getMonth() === viewMonth.getMonth() && d.getFullYear() === viewMonth.getFullYear()))
     .flatMap((d) => byDate.get(isoDate(d)) || []);
   const monthKm = monthWorkouts.reduce((s, w) => s + (w.distance_km || 0), 0);
   const monthMins = monthWorkouts.reduce((s, w) => s + (w.duration_minutes || 0), 0);
@@ -127,7 +144,12 @@ export default function PlanCalendarView({
   ];
 
   return (
-    <div>
+    <div className={styles.calendar}>
+      <div className={styles.calendarScope}>
+        {(["week", "month"] as const).map((value) => <button key={value} type="button" aria-pressed={scope === value} onClick={() => { setScope(value); if (value === "month") setViewMonth(new Date(viewWeek.getFullYear(), viewWeek.getMonth(), 1)); }}>
+          {value === "week" ? (lang === "en" ? "Week" : "Tuần") : (lang === "en" ? "Month" : "Tháng")}
+        </button>)}
+      </div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: "12px", fontSize: "11px", color: "var(--text-muted)", marginBottom: "14px", alignItems: "center" }}>
         {zoneLegend.map((z) => (
           <span key={z.label} style={{ display: "flex", alignItems: "center", gap: "5px" }}>
@@ -141,28 +163,29 @@ export default function PlanCalendarView({
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <button
             type="button"
-            onClick={() => setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() - 1, 1))}
+            onClick={() => scope === "week" ? navigateWeek(-7) : setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() - 1, 1))}
             style={{ width: "30px", height: "30px", borderRadius: "50%", border: "1px solid var(--border-color)", background: "var(--bg-card)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-            aria-label={lang === "en" ? "Previous month" : "Tháng trước"}
+            aria-label={scope === "week" ? (lang === "en" ? "Previous week" : "Tuần trước") : (lang === "en" ? "Previous month" : "Tháng trước")}
           >
             <CaretLeft size={13} weight="bold" />
           </button>
-          <h4 style={{ margin: 0, fontSize: "16px", fontWeight: 700, minWidth: "150px", textAlign: "center" }}>{monthLabel}</h4>
+          <h4 style={{ margin: 0, fontSize: "16px", fontWeight: 700, minWidth: "150px", textAlign: "center" }}>{scope === "week" ? `${viewWeek.toLocaleDateString(lang === "vi" ? "vi-VN" : "en-US", { day: "numeric", month: "short" })} – ${new Date(viewWeek.getFullYear(), viewWeek.getMonth(), viewWeek.getDate() + 6).toLocaleDateString(lang === "vi" ? "vi-VN" : "en-US", { day: "numeric", month: "short", year: "numeric" })}` : monthLabel}</h4>
           <button
             type="button"
-            onClick={() => setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 1))}
+            onClick={() => scope === "week" ? navigateWeek(7) : setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 1))}
             style={{ width: "30px", height: "30px", borderRadius: "50%", border: "1px solid var(--border-color)", background: "var(--bg-card)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-            aria-label={lang === "en" ? "Next month" : "Tháng sau"}
+            aria-label={scope === "week" ? (lang === "en" ? "Next week" : "Tuần sau") : (lang === "en" ? "Next month" : "Tháng sau")}
           >
             <CaretRight size={13} weight="bold" />
           </button>
         </div>
         <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-secondary)", background: "var(--bg-card)", border: "1px solid var(--border-color)", padding: "6px 12px", borderRadius: "999px" }}>
-          {lang === "en" ? "This month" : "Tháng này"}: <span style={{ color: "var(--accent-primary)" }}>~{monthKm.toFixed(0)} km</span> · {(monthMins / 60).toFixed(1)}h
+          {scope === "week" ? (lang === "en" ? "This week" : "Tuần này") : (lang === "en" ? "This month" : "Tháng này")}: <span style={{ color: "var(--accent-primary)" }}>~{monthKm.toFixed(0)} km</span> · {(monthMins / 60).toFixed(1)}h
         </div>
       </div>
 
-      <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-color)", borderRadius: "16px", padding: isMobile ? "8px" : "14px", backdropFilter: "blur(24px)" }}>
+      {scope === "week" && <p className={styles.calendarScrollHint}>{lang === "vi" ? "Vuốt ngang để xem đủ 7 ngày trong tuần." : "Scroll horizontally to see all 7 days of your week."}</p>}
+      <div tabIndex={0} aria-label={lang === "vi" ? "Lịch tập trong tuần, cuộn ngang để xem thêm" : "Training calendar, scroll horizontally for more days"} className={styles.calendarBoard} data-week={scope === "week"} style={{ background: "var(--bg-card)", border: "1px solid var(--border-color)", borderRadius: "16px", padding: isMobile ? "8px" : "14px", backdropFilter: "blur(24px)" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: isMobile ? "4px" : "8px", padding: "0 2px 8px" }}>
           {(lang === "vi" ? DAY_SHORT_VI : DAY_SHORT_EN).map((d) => (
             <span key={d} style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", color: "var(--text-muted)" }}>
@@ -179,7 +202,7 @@ export default function PlanCalendarView({
             today={today}
             viewMonth={viewMonth}
             lang={lang}
-            isMobile={isMobile}
+            isMobile={isMobile && scope === "month"}
             onSwapDays={onSwapDays}
             onOpenDay={setOpenDayKey}
             onToggleComplete={onToggleComplete}
@@ -433,6 +456,10 @@ function CalendarDayCell({
     return (
       <div
         ref={setRef}
+        role="button"
+        tabIndex={0}
+        aria-label={date.toLocaleDateString(lang === "vi" ? "vi-VN" : "en-US", { weekday: "long", day: "numeric", month: "long" })}
+        onKeyDown={(event) => { if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); onOpenDay(dayKey); } }}
         onClick={() => onOpenDay(dayKey)}
         style={{
           minHeight: isMobile ? "48px" : "100px",
@@ -464,7 +491,11 @@ function CalendarDayCell({
     <div
       ref={setRef}
       {...(isDraggable ? { ...listeners, ...attributes } : {})}
-      onClick={() => onOpenDay(dayKey)}
+      role="button"
+        tabIndex={0}
+        aria-label={date.toLocaleDateString(lang === "vi" ? "vi-VN" : "en-US", { weekday: "long", day: "numeric", month: "long" })}
+        onKeyDown={(event) => { if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); onOpenDay(dayKey); } }}
+        onClick={() => onOpenDay(dayKey)}
       title={isDraggable ? (lang === "en" ? "Click to view, drag to reschedule" : "Nhấn để xem, kéo để đổi lịch") : undefined}
       style={{
         ...style,

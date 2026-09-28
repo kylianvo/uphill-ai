@@ -1,5 +1,6 @@
 "use client";
-import React from "react";
+import styles from "./Science.module.css";
+import React, { useEffect, useRef } from "react";
 import Link from "next/link";
 import {
   MapPin,
@@ -33,6 +34,15 @@ export default function SciencePage() {
   const t = (key: keyof typeof translations.en) =>
     translations[lang]?.[key] || translations.en[key] || key;
   const isMobile = useIsMobileViewport();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const video = videoRef.current;
+    const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const apply = () => { if (preference.matches) video?.pause(); else video?.play().catch(() => {}); };
+    apply();
+    preference.addEventListener("change", apply);
+    return () => { preference.removeEventListener("change", apply); video?.pause(); };
+  }, []);
 
   const sectionStyle: React.CSSProperties = {
     scrollMarginTop: "90px",
@@ -51,7 +61,7 @@ export default function SciencePage() {
     alignItems: "center",
     gap: "6px",
     background: "rgba(25, 206, 139, 0.12)",
-    color: "var(--accent-primary)",
+    color: "#08764f",
     padding: "4px 12px",
     borderRadius: "9999px",
     fontSize: "12px",
@@ -72,6 +82,7 @@ export default function SciencePage() {
 
   return (
     <main
+      className={styles.page}
       style={{
         minHeight: "100dvh",
         padding: "32px 16px 96px",
@@ -80,7 +91,9 @@ export default function SciencePage() {
         color: "#111827",
       }}
     >
-      <div style={{ maxWidth: "1000px", margin: "0 auto" }}>
+      <video ref={videoRef} className={styles.video} src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/bg.mp4`} muted loop playsInline aria-hidden="true" />
+      <div className={styles.veil} aria-hidden="true" />
+      <div className={styles.container}>
         {/* Top bar with back link and lang switcher */}
         <div
           style={{
@@ -98,7 +111,7 @@ export default function SciencePage() {
               gap: "6px",
               fontSize: "14px",
               fontWeight: 600,
-              color: "var(--accent-primary)",
+              color: "#08764f",
               textDecoration: "none",
             }}
           >
@@ -201,8 +214,9 @@ export default function SciencePage() {
           </p>
         </div>
 
-        {/* Quick Navigation Jump Bar */}
-        <div
+        <div className={styles.readingLayout}>
+        {/* Persistent topic navigation */}
+        <nav className={styles.topics} aria-label={lang === "en" ? "Science topics" : "Chủ đề khoa học"}
           style={{
             background: "#ffffff",
             padding: "12px 16px",
@@ -248,7 +262,8 @@ export default function SciencePage() {
               {item.label}
             </a>
           ))}
-        </div>
+        </nav>
+        <div className={styles.article}>
 
         {/* Profile Explainer */}
         <div style={{ marginBottom: "40px", display: "flex", justifyContent: "center" }}>
@@ -582,6 +597,8 @@ export default function SciencePage() {
           <div style={{ display: "flex", justifyContent: "center" }}>
             <FeatureGrid lang={lang} isMobile={isMobile} />
           </div>
+        </div>
+        </div>
         </div>
       </div>
     </main>

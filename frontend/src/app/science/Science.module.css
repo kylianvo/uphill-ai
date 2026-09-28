@@ -1,0 +1,28 @@
+.page { background: transparent !important; --accent-primary: #19ce8b; }
+.container { max-width: 1200px; margin-inline: auto; }
+.container > div:nth-child(2) { text-align: left !important; max-width: 900px; padding-block: 32px; }
+.page h1 { font-size: clamp(32px, 4vw, 52px) !important; letter-spacing: -.03em; line-height: 1.12; text-wrap: balance; }
+.container > div:nth-child(2) p { margin-inline: 0 !important; line-height: 1.7 !important; }
+.readingLayout { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 48px; align-items: start; }
+.topics { position: sticky; top: 24px; display: flex !important; flex-direction: column; align-items: stretch !important; border: 0 !important; background: transparent !important; padding: 0 !important; box-shadow: none !important; gap: 4px !important; }
+.topics > span { padding: 12px; }
+.topics a { min-height: 40px; display: flex; align-items: center; padding: 10px 12px !important; border-radius: 6px !important; background: transparent !important; font-size: 13px !important; }
+.topics a:hover, .topics a:focus-visible { background: #e2f2e9 !important; color: #08764f !important; }
+.article { min-width: 0; }
+.article > section { padding: 32px !important; border: 1px solid #dce5df !important; border-radius: 12px !important; background: rgba(255,255,255,.88) !important; box-shadow: none !important; backdrop-filter: blur(24px) !important; scroll-margin-top: 24px !important; }
+.article section:target { border-color: #19ce8b !important; }
+.article h2 { font-size: 24px !important; letter-spacing: -.025em; line-height: 1.3; text-wrap: balance; }
+.article section > p { font-size: 16px !important; line-height: 1.85 !important; max-width: 72ch; }
+.article section > div:last-child { border-left-width: 1px !important; border-radius: 8px !important; }
+.page :focus-visible { outline: 2px solid #08764f; outline-offset: 3px; }
+@media(max-width:800px) {
+ .readingLayout { grid-template-columns: 1fr; gap: 24px; }
+ .topics { position: static; flex-direction: row; flex-wrap: wrap; }
+ .topics > span { flex-basis: 100%; }
+ .topics a { background: rgba(255,255,255,.88) !important; border: 1px solid #dce5df; }
+ .article > section { padding: 24px 20px !important; }
+}
+
+.video { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; }
+.veil { position: fixed; inset: 0; background: rgba(245,248,246,.72); z-index: -1; }
+.page { position: relative; isolation: isolate; }

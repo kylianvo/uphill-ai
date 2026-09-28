@@ -217,6 +217,7 @@ export default function MarketingHome() {
     if (!vidA || !vidB) return;
     const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
     const SRC = basePath + "/bg.mp4";
+    const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
     const FADE_MS = 250;
     const FADE_THRESHOLD = 0.55;
     vidA.src = SRC;
@@ -248,7 +249,7 @@ export default function MarketingHome() {
     };
 
     const triggerCrossfade = () => {
-      if (crossfadingRef.current) return;
+      if (motionPreference.matches || crossfadingRef.current) return;
       crossfadingRef.current = true;
       const outVid = activeVideoRef.current === "A" ? vidA : vidB;
       const inVid = activeVideoRef.current === "A" ? vidB : vidA;
@@ -282,10 +283,24 @@ export default function MarketingHome() {
 
     vidA.addEventListener("timeupdate", handleTimeUpdateA);
     vidB.addEventListener("timeupdate", handleTimeUpdateB);
-    vidA.style.opacity = "1";
-    vidA.play().catch(() => {});
+    const applyMotionPreference = () => {
+      if (crossfadeRafARef.current !== null) cancelAnimationFrame(crossfadeRafARef.current);
+      if (crossfadeRafBRef.current !== null) cancelAnimationFrame(crossfadeRafBRef.current);
+      vidA.pause();
+      vidB.pause();
+      crossfadingRef.current = false;
+      activeVideoRef.current = "A";
+      vidA.style.opacity = "1";
+      vidB.style.opacity = "0";
+      if (!motionPreference.matches) vidA.play().catch(() => {});
+    };
+    applyMotionPreference();
+    motionPreference.addEventListener("change", applyMotionPreference);
 
     return () => {
+      motionPreference.removeEventListener("change", applyMotionPreference);
+      vidA.pause();
+      vidB.pause();
       vidA.removeEventListener("timeupdate", handleTimeUpdateA);
       vidB.removeEventListener("timeupdate", handleTimeUpdateB);
       if (crossfadeRafARef.current !== null)
@@ -318,7 +333,6 @@ export default function MarketingHome() {
       >
         <video
           ref={videoARef}
-          autoPlay
           muted
           playsInline
           style={{
@@ -338,7 +352,6 @@ export default function MarketingHome() {
         />
         <video
           ref={videoBRef}
-          autoPlay
           muted
           playsInline
           style={{
@@ -441,7 +454,7 @@ export default function MarketingHome() {
                   letterSpacing: "-0.8px",
                 }}
               >
-                Uphill<span style={{ color: "var(--accent-primary)" }}>.AI</span>
+                Uphill<span style={{ color: "var(--landing-accent)" }}>.AI</span>
               </span>
             </Link>
 
@@ -479,6 +492,7 @@ export default function MarketingHome() {
                     alignItems: "center",
                     gap: "4px",
                   }}
+                  aria-pressed={lang === "en"}
                   aria-label="Switch to English"
                 >
                   <span>🇺🇸</span>
@@ -502,6 +516,7 @@ export default function MarketingHome() {
                     alignItems: "center",
                     gap: "4px",
                   }}
+                  aria-pressed={lang === "vi"}
                   aria-label="Switch to Vietnamese"
                 >
                   <span>🇻🇳</span>
@@ -569,93 +584,19 @@ export default function MarketingHome() {
         {/* ── Main Marketing Body ────────────────────────────────────── */}
         <main>
           {/* ── Hero Section (Product-Led Presentation over Video) ───── */}
-          <section
-            style={{
-              position: "relative",
-              padding: "64px 24px 72px",
-            }}
-          >
-            <div
-              className="motion-fade-up"
-              style={{
-                maxWidth: "960px",
-                margin: "0 auto",
-                textAlign: "center",
-              }}
-            >
-              {/* Eyebrow badge */}
-              <div
-                className="hero-anim-badge"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  padding: "6px 14px",
-                  borderRadius: "9999px",
-                  background: "rgba(25, 206, 139, 0.12)",
-                  backdropFilter: "blur(12px)",
-                  border: "1px solid rgba(25, 206, 139, 0.3)",
-                  color: "var(--accent-primary)",
-                  fontSize: "13px",
-                  fontWeight: 700,
-                  marginBottom: "20px",
-                }}
-              >
-                <ShieldCheck size={16} weight="bold" />
-                <span>
-                  {lang === "vi"
-                    ? "KHOA HỌC CHẠY TRAIL"
-                    : "GROUNDED IN EXERCISE PHYSIOLOGY"}
-                </span>
-              </div>
-
-              {/* H1 Headline: strictly max 2 lines */}
-              <h1
-                className="hero-anim-title"
-                style={{
-                  fontFamily: "var(--font-schibsted), sans-serif",
-                  fontSize: "clamp(38px, 5.5vw, 62px)",
-                  fontWeight: 800,
-                  lineHeight: 1.08,
-                  letterSpacing: "-1.8px",
-                  color: "#111827",
-                  marginBottom: "18px",
-                  textShadow: "0 2px 20px rgba(255, 255, 255, 0.8)",
-                }}
-              >
-                {lang === "vi"
-                  ? "Tập Luyện Thông Minh, Chinh Phục Đỉnh Cao"
-                  : "Train Smarter, Go Higher"}
+          <section className={landingStyles.hero}>
+            <div className={landingStyles.heroInner}>
+              <h1 className={`hero-anim-title ${landingStyles.heroTitle}`}>
+                <span>{lang === "vi" ? "Tập Luyện Thông Minh," : "Train Smarter,"}</span>{" "}
+                <span>{lang === "vi" ? "Chinh Phục Đỉnh Cao" : "Go Higher"}</span>
               </h1>
 
-              {/* Subtext: under 20 words */}
-              <p
-                className="hero-anim-sub"
-                style={{
-                  fontSize: "clamp(16px, 2vw, 19px)",
-                  lineHeight: 1.5,
-                  color: "#0f172a",
-                  maxWidth: "640px",
-                  margin: "0 auto 32px",
-                  fontWeight: 500,
-                  textShadow: "0 1px 16px rgba(255, 255, 255, 0.95), 0 0 2px rgba(255, 255, 255, 0.8)",
-                }}
-              >
+              <p className={`hero-anim-sub ${landingStyles.heroSubtitle}`}>
                 {t("landing_subtitle")}
               </p>
 
               {/* Primary & Secondary Action Cluster */}
-              <div
-                className="hero-anim-cta"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "16px",
-                  marginBottom: "36px",
-                  flexWrap: "wrap",
-                }}
-              >
+              <div className={`hero-anim-cta ${landingStyles.heroActions}`}>
                 <Link
                   href="/app"
                   className="btn-primary-motion"
@@ -735,7 +676,11 @@ export default function MarketingHome() {
               </div>
 
               {/* Trust Statement (Hero Integration) */}
-              <div className="hero-anim-trust" style={{ display: "flex", justifyContent: "center" }}>
+              <div className={landingStyles.heroProof}>
+                <ShieldCheck size={18} weight="bold" aria-hidden="true" />
+                <span>{lang === "vi" ? "KHOA HỌC CHẠY TRAIL" : "GROUNDED IN EXERCISE PHYSIOLOGY"}</span>
+              </div>
+              <div className={`hero-anim-trust ${landingStyles.heroTrust}`}>
                 <TrustBanner lang={lang} />
               </div>
             </div>
@@ -748,7 +693,7 @@ export default function MarketingHome() {
             id="how-it-works"
             className="landing-section-how-it-works"
           >
-            <div style={{ textAlign: "center", marginBottom: "48px" }}>
+            <div className={landingStyles.sectionHeading}>
               <h2
                 style={{
                   fontFamily: "var(--font-schibsted), sans-serif",
@@ -795,7 +740,7 @@ export default function MarketingHome() {
                           padding: "6px 12px",
                           borderRadius: "8px",
                           background: "rgba(25, 206, 139, 0.12)",
-                          color: "var(--accent-primary)",
+                          color: "var(--landing-accent-ink)",
                           fontSize: "12.5px",
                           fontWeight: 700,
                           marginBottom: "16px",
@@ -838,7 +783,7 @@ export default function MarketingHome() {
                           gap: "6px",
                           fontSize: "14.5px",
                           fontWeight: 600,
-                          color: "var(--accent-primary)",
+                          color: "var(--landing-accent-ink)",
                           textDecoration: "none",
                         }}
                       >
@@ -875,27 +820,7 @@ export default function MarketingHome() {
             }}
           >
             {/* Header */}
-            <div style={{ textAlign: "center", marginBottom: "56px" }}>
-              <div
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  padding: "4px 14px",
-                  borderRadius: "999px",
-                  background: "rgba(25, 206, 139, 0.12)",
-                  border: "1px solid rgba(25, 206, 139, 0.28)",
-                  color: "var(--accent-primary)",
-                  fontSize: "11px",
-                  fontWeight: 700,
-                  letterSpacing: "0.12em",
-                  textTransform: "uppercase",
-                  marginBottom: "14px",
-                }}
-              >
-                <Mountains size={14} weight="bold" />
-                <span>{t("landing_ack_eyebrow")}</span>
-              </div>
+            <div className={landingStyles.sectionHeading}>
               <h2
                 style={{
                   fontFamily: "var(--font-schibsted), sans-serif",
@@ -909,6 +834,27 @@ export default function MarketingHome() {
               >
                 {t("landing_ack_title")}
               </h2>
+              <div
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  padding: "4px 14px",
+                  borderRadius: "999px",
+                  background: "rgba(25, 206, 139, 0.12)",
+                  border: "1px solid rgba(25, 206, 139, 0.28)",
+                  color: "var(--landing-accent-ink)",
+                  fontSize: "11px",
+                  fontWeight: 700,
+                  letterSpacing: "0.12em",
+                  textTransform: "uppercase",
+                  marginBottom: "14px",
+                }}
+              >
+                <Mountains size={14} weight="bold" />
+                <span>{t("landing_ack_eyebrow")}</span>
+              </div>
+
               <p
                 style={{
                   fontSize: "17px",
@@ -1023,7 +969,7 @@ export default function MarketingHome() {
                         fontWeight: 700,
                         letterSpacing: "0.1em",
                         textTransform: "uppercase",
-                        color: "var(--accent-primary)",
+                        color: "var(--landing-accent-ink)",
                         background: "rgba(25, 206, 139, 0.12)",
                         padding: "3px 10px",
                         borderRadius: "6px",
@@ -1103,7 +1049,7 @@ export default function MarketingHome() {
                       style={{
                         fontSize: "12.5px",
                         fontWeight: 600,
-                        color: "var(--accent-primary)",
+                        color: "var(--landing-accent-ink)",
                       }}
                     >
                       {t("landing_ack_quote_author")}
@@ -1177,7 +1123,7 @@ export default function MarketingHome() {
                     fontWeight: 700,
                     letterSpacing: "0.1em",
                     textTransform: "uppercase",
-                    color: "var(--accent-primary)",
+                    color: "var(--landing-accent-ink)",
                     display: "inline-flex",
                     alignItems: "center",
                     gap: "6px",
@@ -1221,7 +1167,7 @@ export default function MarketingHome() {
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        color: "var(--accent-primary)",
+                        color: "var(--landing-accent-ink)",
                         flexShrink: 0,
                       }}
                     >
@@ -1234,7 +1180,7 @@ export default function MarketingHome() {
                           fontWeight: 700,
                           letterSpacing: "0.08em",
                           textTransform: "uppercase",
-                          color: "var(--accent-primary)",
+                          color: "var(--landing-accent-ink)",
                           display: "block",
                         }}
                       >
@@ -1295,7 +1241,7 @@ export default function MarketingHome() {
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        color: "var(--accent-primary)",
+                        color: "var(--landing-accent-ink)",
                         flexShrink: 0,
                       }}
                     >
@@ -1308,7 +1254,7 @@ export default function MarketingHome() {
                           fontWeight: 700,
                           letterSpacing: "0.08em",
                           textTransform: "uppercase",
-                          color: "var(--accent-primary)",
+                          color: "var(--landing-accent-ink)",
                           display: "block",
                         }}
                       >
@@ -1369,7 +1315,7 @@ export default function MarketingHome() {
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        color: "var(--accent-primary)",
+                        color: "var(--landing-accent-ink)",
                         flexShrink: 0,
                       }}
                     >
@@ -1382,7 +1328,7 @@ export default function MarketingHome() {
                           fontWeight: 700,
                           letterSpacing: "0.08em",
                           textTransform: "uppercase",
-                          color: "var(--accent-primary)",
+                          color: "var(--landing-accent-ink)",
                           display: "block",
                         }}
                       >
@@ -1429,24 +1375,6 @@ export default function MarketingHome() {
               className="card-interactive-lift landing-coach-card scroll-reveal"
             >
               <div>
-                <div
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    padding: "6px 14px",
-                    borderRadius: "9999px",
-                    background: "rgba(25, 206, 139, 0.12)",
-                    color: "var(--accent-primary)",
-                    fontSize: "12.5px",
-                    fontWeight: 700,
-                    marginBottom: "16px",
-                  }}
-                >
-                  <Robot size={18} weight="bold" />
-                  <span>{t("landing_coach_eyebrow")}</span>
-                </div>
-
                 <h2
                   style={{
                     fontFamily: "var(--font-schibsted), sans-serif",
@@ -1460,6 +1388,25 @@ export default function MarketingHome() {
                 >
                   {t("landing_coach_title")}
                 </h2>
+                <div
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    padding: "6px 14px",
+                    borderRadius: "9999px",
+                    background: "rgba(25, 206, 139, 0.12)",
+                    color: "var(--landing-accent-ink)",
+                    fontSize: "12.5px",
+                    fontWeight: 700,
+                    marginBottom: "16px",
+                  }}
+                >
+                  <Robot size={18} weight="bold" />
+                  <span>{t("landing_coach_eyebrow")}</span>
+                </div>
+
+
 
                 <p
                   style={{
@@ -1480,7 +1427,7 @@ export default function MarketingHome() {
                     gap: "8px",
                     fontSize: "15px",
                     fontWeight: 700,
-                    color: "var(--accent-primary)",
+                    color: "var(--landing-accent-ink)",
                     textDecoration: "none",
                   }}
                 >
@@ -1509,7 +1456,7 @@ export default function MarketingHome() {
             className="landing-tools-section"
           >
             <div style={{ maxWidth: "1140px", margin: "0 auto" }}>
-              <div style={{ textAlign: "center", marginBottom: "48px" }}>
+              <div className={landingStyles.sectionHeading}>
                 <h2
                   style={{
                     fontFamily: "var(--font-schibsted), sans-serif",
@@ -1560,7 +1507,7 @@ export default function MarketingHome() {
                             height: "44px",
                             borderRadius: "12px",
                             background: "rgba(25, 206, 139, 0.12)",
-                            color: "var(--accent-primary)",
+                            color: "var(--landing-accent-ink)",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
@@ -1615,7 +1562,7 @@ export default function MarketingHome() {
                             gap: "6px",
                             fontSize: "14px",
                             fontWeight: 700,
-                            color: "var(--accent-primary)",
+                            color: "var(--landing-accent-ink)",
                             textDecoration: "none",
                           }}
                         >
@@ -1633,7 +1580,7 @@ export default function MarketingHome() {
                   style={{
                     fontSize: "15px",
                     fontWeight: 700,
-                    color: "var(--accent-primary)",
+                    color: "var(--landing-accent-ink)",
                     textDecoration: "none",
                     display: "inline-flex",
                     alignItems: "center",
@@ -1723,7 +1670,7 @@ export default function MarketingHome() {
                       fontWeight: 700,
                       textTransform: "uppercase",
                       letterSpacing: "0.5px",
-                      color: "var(--accent-primary)",
+                      color: "var(--landing-accent-ink)",
                       background: "rgba(25, 206, 139, 0.2)",
                       padding: "2px 7px",
                       borderRadius: "4px",
@@ -1749,7 +1696,7 @@ export default function MarketingHome() {
                       color: "#6b7280",
                       fontSize: "14.5px",
                       fontWeight: 500,
-                      opacity: 0.55,
+                      opacity: 1,
                     }}
                   >
                     <span>{item.name}</span>
@@ -1804,9 +1751,9 @@ export default function MarketingHome() {
             }}
           >
             <div
-              className="scroll-reveal"
+              className={`scroll-reveal ${landingStyles.closing}`}
               style={{
-                maxWidth: "680px",
+                maxWidth: "1120px",
                 margin: "0 auto",
                 background: "rgba(255, 255, 255, 0.82)",
                 backdropFilter: "blur(24px)",
@@ -1939,7 +1886,7 @@ export default function MarketingHome() {
                   marginBottom: "4px",
                 }}
               >
-                Uphill<span style={{ color: "var(--accent-primary)" }}>.AI</span>
+                Uphill<span style={{ color: "var(--landing-accent)" }}>.AI</span>
               </div>
               <p style={{ color: "#6b7280", fontSize: "13px", margin: 0 }}>
                 {t("landing_footer_tagline")}
@@ -1948,6 +1895,7 @@ export default function MarketingHome() {
 
             {/* Footer Links & Copyright */}
             <div
+              className={landingStyles.footerLinks}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -1981,7 +1929,7 @@ export default function MarketingHome() {
               >
                 {lang === "en" ? "Tiếng Việt" : "English"}
               </button>
-              <span style={{ color: "#9ca3af" }}>
+              <span className={landingStyles.copyright}>
                 © {new Date().getFullYear()} Uphill.AI. {t("landing_footer_rights")}
               </span>
             </div>
