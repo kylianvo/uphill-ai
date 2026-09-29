@@ -87,10 +87,11 @@ export default function ConnectedAccounts() {
   const handleSync = async () => {
     const result = await syncNow();
     if (result) {
+      const { activities, daily_metrics: days } = result;
       setNotice(
         lang === "vi"
-          ? `Đã đồng bộ ${result.activities} hoạt động và ${result.daily_metrics} ngày dữ liệu sức khỏe.`
-          : `Synced ${result.activities} activities and ${result.daily_metrics} days of health data.`
+          ? `Đồng bộ thành công: đã lấy ${activities} buổi tập và ${days} ngày dữ liệu sức khỏe.`
+          : `Sync successful: fetched ${activities} ${activities === 1 ? "workout" : "workouts"} and ${days} ${days === 1 ? "day" : "days"} of health data.`
       );
       await refreshStatus();
     }
@@ -101,10 +102,15 @@ export default function ConnectedAccounts() {
     try {
       const result = await syncFitness();
       if (result) {
+        const noData = result.status === "no_data";
         setNotice(
-          lang === "vi"
-            ? `Đã đồng bộ EvoLab: Ngưỡng pace ${result.threshold_pace || "—"}/km, VO2max ${result.coros_vo2max || "—"}.`
-            : `Synced EvoLab: Threshold pace ${result.threshold_pace || "—"}/km, VO2max ${result.coros_vo2max || "—"}.`
+          noData
+            ? lang === "vi"
+              ? "Đồng bộ EvoLab thành công, nhưng COROS chưa có dữ liệu thể lực."
+              : "EvoLab synced successfully, but COROS has no fitness data yet."
+            : lang === "vi"
+              ? `Đồng bộ EvoLab thành công: ngưỡng pace ${result.threshold_pace || "—"}/km, VO2max ${result.coros_vo2max || "—"}.`
+              : `EvoLab synced successfully: threshold pace ${result.threshold_pace || "—"}/km, VO2max ${result.coros_vo2max || "—"}.`
         );
         await refreshStatus();
       }

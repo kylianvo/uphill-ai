@@ -160,7 +160,7 @@ describe("ConnectedAccounts", () => {
     await user.click(syncBtn);
     expect(syncFitness).toHaveBeenCalledTimes(1);
     await waitFor(() => {
-      expect(screen.getByText(/Synced EvoLab: Threshold pace 4:34/)).toBeInTheDocument();
+      expect(screen.getByText(/EvoLab synced successfully: threshold pace 4:34/)).toBeInTheDocument();
     });
   });
 });
