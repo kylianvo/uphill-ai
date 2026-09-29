@@ -1,6 +1,6 @@
 /* eslint-disable */
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type CSSProperties } from "react";
 import Link from "next/link";
 import { useAppContext } from "@/contexts/AppContext";
 import workspaceStyles from "./Workspace.module.css";
@@ -2188,6 +2188,12 @@ export default function AppPage() {
       window.history.pushState(null, "", url.pathname + url.search);
     }
   };
+  const mobileTabs = [
+    ...(isNative ? (["home"] as const) : []),
+    "chat", "planner", "knowledge", "tools", "about",
+    ...(user?.is_coach ? (["coach"] as const) : []),
+  ] as const;
+  const mobileTabIndex = mobileTabs.findIndex((tab) => tab === activeTab);
   // ─── Onboarding Wizard ────────────────────────────────────────────────────
   // ─── Profile Settings Modal ───────────────────────────────────────────────
   return (
@@ -3157,18 +3163,15 @@ export default function AppPage() {
             )}
           </div>
           {/* Mobile Bottom Navigation Tabs (visible only on mobile viewports via CSS) */}
-          <div className="mobile-bottom-nav-tabs">
-            {(
-              [
-                ...(isNative ? (["home"] as const) : []),
-                "chat",
-                "planner",
-                "knowledge",
-                "tools",
-                "about",
-                ...(user?.is_coach ? (["coach"] as const) : []),
-              ] as const
-            ).map((tab) => {
+          <div
+            className={`mobile-bottom-nav-tabs${isNative ? " native-nav-motion" : ""}`}
+            style={{
+              "--nav-count": mobileTabs.length,
+              "--nav-index": Math.max(0, mobileTabIndex),
+              "--nav-indicator-opacity": mobileTabIndex < 0 ? 0 : 1,
+            } as CSSProperties}
+          >
+            {mobileTabs.map((tab) => {
               const active = activeTab === tab;
               const tabLabel =
                 tab === "home"
@@ -3188,6 +3191,7 @@ export default function AppPage() {
                 <button
                   key={tab}
                   className={`mobile-bottom-nav-tab ${active ? "active" : ""}`}
+                  aria-current={active ? "page" : undefined}
                   onClick={() => handleTabSwitch(tab)}
                 >
                   <span className="mobile-bottom-nav-tab-icon">
