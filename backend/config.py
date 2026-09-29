@@ -70,7 +70,7 @@ class Config:
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
     GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
-    GEMINI_THINKING_LEVEL: str = os.getenv("GEMINI_THINKING_LEVEL", "medium")
+    GEMINI_THINKING_LEVEL: str = os.getenv("GEMINI_THINKING_LEVEL", "low")
     API_PORT: int = int(os.getenv("PORT", "8000"))
     API_HOST: str = os.getenv("HOST", "0.0.0.0")
     GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID", "")
