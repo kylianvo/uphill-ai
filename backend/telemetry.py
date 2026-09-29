@@ -41,3 +41,12 @@ llm_unknown_usage_calls_total = Counter(
 )
 
 coros_push_total = Counter("coros_push_total", "Send-to-COROS pushes by result code", ["result"])
+
+# End-to-end background plan job time (queue + Gemini + DB), which the HTTP
+# histogram can't see because the client only polls /plan-status.
+plan_job_duration_seconds = Histogram(
+    "plan_job_duration_seconds",
+    "Background plan job wall time from start to done/error",
+    ["kind", "status"],
+    buckets=(5, 10, 20, 30, 45, 60, 90, 120, 180, 300, 600),
+)

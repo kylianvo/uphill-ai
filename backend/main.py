@@ -1,5 +1,6 @@
 import os
 import threading
+import time
 import uuid as _uuid
 from typing import Any
 
@@ -8,7 +9,7 @@ from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, Header, HTTPE
 from fastapi.middleware.cors import CORSMiddleware
 from google import genai
 from google.genai import types as genai_types
-from prometheus_fastapi_instrumentator import Instrumentator
+from prometheus_fastapi_instrumentator import Instrumentator, metrics
 from pydantic import BaseModel, Field
 
 from config import settings
@@ -105,6 +106,7 @@ from services.rag_service import RagService
 from services.training_rules import TrainingRules, resolve_zone2_pace
 from services.weather_service import WeatherService
 from services.week_review_narrative import generate_week_narrative
+from telemetry import plan_job_duration_seconds
 
 _is_prod = os.getenv("ENVIRONMENT", "development") == "production"
 app = FastAPI(
@@ -132,7 +134,10 @@ app.add_middleware(
 )
 
 # Instrument FastAPI for Prometheus metrics
-Instrumentator().instrument(app).expose(app, include_in_schema=False, should_gzip=True)
+# Per-handler buckets reach 120s (library default stops at 1s) so the 60s latency alert can fire.
+Instrumentator().add(
+    metrics.default(latency_lowr_buckets=(0.1, 0.5, 1, 2.5, 5, 10, 20, 30, 45, 60, 90, 120))
+).instrument(app).expose(app, include_in_schema=False, should_gzip=True)
 
 
 # Initialize the database schema and LLM observability on startup
@@ -1043,6 +1048,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
     }
 
     async def _run_plan_gen():
+        _t0 = time.monotonic()
         try:
             workouts, resolved_tier = await PlanGenerator.generate_plan_workouts(
                 plan_id,
@@ -1057,9 +1063,11 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
             set_plan_athlete_tier(plan_id, resolved_tier)
             plan_jobs[job_id]["workouts"] = workouts
             plan_jobs[job_id]["status"] = "done"
+            plan_job_duration_seconds.labels(kind="onboarding", status="done").observe(time.monotonic() - _t0)
             print(f"[PlanJob][{job_id}] Onboarding plan generation complete — {len(workouts)} workouts saved.")
         except Exception as ex:
             plan_jobs[job_id]["status"] = "error"
+            plan_job_duration_seconds.labels(kind="onboarding", status="error").observe(time.monotonic() - _t0)
             plan_jobs[job_id]["error"] = str(ex)
             print(f"[PlanJob][{job_id}] Onboarding plan generation FAILED: {ex}")
 
@@ -1868,6 +1876,7 @@ async def _generate_plan_for_athlete(
     }
 
     async def _run_gen():
+        _t0 = time.monotonic()
         try:
             workouts, resolved_tier = await PlanGenerator.generate_plan_workouts(
                 plan_id,
@@ -1883,9 +1892,11 @@ async def _generate_plan_for_athlete(
             set_plan_athlete_tier(plan_id, resolved_tier)
             plan_jobs[job_id]["workouts"] = workouts
             plan_jobs[job_id]["status"] = "done"
+            plan_job_duration_seconds.labels(kind="generate", status="done").observe(time.monotonic() - _t0)
             print(f"[PlanJob][{job_id}] generate-plan complete — {len(workouts)} workouts saved.")
         except Exception as ex:
             plan_jobs[job_id]["status"] = "error"
+            plan_job_duration_seconds.labels(kind="generate", status="error").observe(time.monotonic() - _t0)
             plan_jobs[job_id]["error"] = str(ex)
             print(f"[PlanJob][{job_id}] generate-plan FAILED: {ex}")
 
@@ -2382,6 +2393,7 @@ async def _generate_next_block_for_athlete(
     }
 
     async def _run_next_block():
+        _t0 = time.monotonic()
         try:
             workouts, resolved_tier = await PlanGenerator.generate_plan_workouts(
                 request.plan_id,
@@ -2397,6 +2409,7 @@ async def _generate_next_block_for_athlete(
             set_plan_athlete_tier(request.plan_id, resolved_tier)
             plan_jobs[job_id]["workouts"] = workouts
             plan_jobs[job_id]["status"] = "done"
+            plan_job_duration_seconds.labels(kind="next_block", status="done").observe(time.monotonic() - _t0)
             print(f"[NextBlock][{job_id}] Block {request.block_number} complete — {len(workouts)} workouts saved.")
 
             # Best-effort athlete-facing narrative, from the same Gemini response
@@ -2419,6 +2432,7 @@ async def _generate_next_block_for_athlete(
                 print(f"[NextBlock][{job_id}] Week narrative FAILED (non-fatal): {ex}")
         except Exception as ex:
             plan_jobs[job_id]["status"] = "error"
+            plan_job_duration_seconds.labels(kind="next_block", status="error").observe(time.monotonic() - _t0)
             plan_jobs[job_id]["error"] = str(ex)
             print(f"[NextBlock][{job_id}] Block {request.block_number} FAILED: {ex}")
 
@@ -2526,14 +2540,17 @@ async def _adapt_week_for_athlete(request: AdaptWeekRequest, athlete_id: int, jo
     }
 
     async def _run_adapt_week():
+        _t0 = time.monotonic()
         try:
             draft = await week_rebuild.generate_week_draft(inputs, rng)
             week_rebuild.write_draft(plan, request.week_number, today, draft)
             plan_jobs[job_id]["workouts"] = draft.workouts
             plan_jobs[job_id]["status"] = "done"
+            plan_job_duration_seconds.labels(kind="adapt_week", status="done").observe(time.monotonic() - _t0)
             print(f"[AdaptWeek][{job_id}] Week {request.week_number} complete — {len(draft.workouts)} workouts saved.")
         except Exception as ex:
             plan_jobs[job_id]["status"] = "error"
+            plan_job_duration_seconds.labels(kind="adapt_week", status="error").observe(time.monotonic() - _t0)
             plan_jobs[job_id]["error"] = str(ex)
             print(f"[AdaptWeek][{job_id}] Week {request.week_number} FAILED: {ex}")
 
