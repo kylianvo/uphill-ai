@@ -310,6 +310,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
     syncing: watchSyncing,
   } = useMatching();
 
+  const [watchSyncNotice, setWatchSyncNotice] = useState<{ kind: "success" | "error"; text: string } | null>(null);
   const [matchActivities, setMatchActivities] = useState<RawMatchActivity[]>([]);
 
   const loadPlanMatches = React.useCallback(async () => {
@@ -335,9 +336,24 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   const handleHeaderSync = async () => {
     if (!activePlan?.id || watchSyncing || matchingRunning) return;
     triggerHaptic();
-    await syncWatch({ planId: activePlan.id });
+    const synced = await syncWatch({ planId: activePlan.id });
     await runMatching({ planId: activePlan.id });
     await loadPlanMatches();
+    if (synced) {
+      const { activities, daily_metrics: days } = synced;
+      setWatchSyncNotice({
+        kind: "success",
+        text:
+          lang === "en"
+            ? `Sync successful: fetched ${activities} ${activities === 1 ? "workout" : "workouts"} and ${days} ${days === 1 ? "day" : "days"} of health data.`
+            : `Đồng bộ thành công: đã lấy ${activities} buổi tập và ${days} ngày dữ liệu sức khỏe.`,
+      });
+    } else {
+      setWatchSyncNotice({
+        kind: "error",
+        text: lang === "en" ? "Watch sync failed. Please try again." : "Đồng bộ đồng hồ thất bại. Vui lòng thử lại.",
+      });
+    }
   };
 
   const handleConfirmMatch = async (activityId: number, workoutId: number): Promise<boolean> => {
@@ -1520,6 +1536,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
 
               {!showExportOptions ? (
                 <div style={{ display: "flex", gap: "10px", width: "100%", flexWrap: "wrap" }}>
+                  <div style={{ flex: 1, minWidth: "120px", display: "flex", flexDirection: "column", gap: "4px" }}>
                   <button
                     type="button"
                     className="btn btn-secondary"
@@ -1527,8 +1544,6 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                     disabled={watchSyncing || matchingRunning}
                     aria-label={lang === "en" ? "Sync watch activities" : "Đồng bộ hoạt động từ đồng hồ"}
                     style={{
-                      flex: 1,
-                      minWidth: "120px",
                       fontSize: "12px",
                       height: "36px",
                       display: "inline-flex",
@@ -1557,6 +1572,18 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                         : (lang === "en" ? "Sync Watch" : "Đồng bộ đồng hồ")}
                     </span>
                   </button>
+                  {watchSyncNotice && (
+                    <span
+                      role={watchSyncNotice.kind === "error" ? "alert" : "status"}
+                      style={{
+                        fontSize: "11px",
+                        color: watchSyncNotice.kind === "error" ? "var(--accent-alert)" : "var(--text-secondary)",
+                      }}
+                    >
+                      {watchSyncNotice.text}
+                    </span>
+                  )}
+                  </div>
                   {!isCoachActingAsAthlete && (
                     <CorosPushButton
                       lang={lang}

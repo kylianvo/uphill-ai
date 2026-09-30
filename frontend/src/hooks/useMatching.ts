@@ -192,7 +192,7 @@ export function useMatching() {
   );
 
   const syncWatch = useCallback(
-    async (options?: { days?: number; planId?: number | null }): Promise<boolean> => {
+    async (options?: { days?: number; planId?: number | null }): Promise<{ activities: number; daily_metrics: number } | null> => {
       const API_BASE_URL = getBackendUrl();
       setSyncing(true);
       setError("");
@@ -208,10 +208,10 @@ export function useMatching() {
         });
         const body = await res.json();
         if (!res.ok) throw new Error(body?.detail || "Watch sync failed.");
-        return true;
+        return body as { activities: number; daily_metrics: number };
       } catch (e) {
         setError(e instanceof Error ? e.message : "Watch sync failed.");
-        return false;
+        return null;
       } finally {
         setSyncing(false);
       }
