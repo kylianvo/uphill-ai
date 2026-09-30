@@ -86,6 +86,10 @@ interface WorkoutCardProps {
   // toggles, coach approve/remove, edit, coach notes and the RPE/notes log.
   // Defaults to false so the Scheduler's own behavior is unchanged.
   readOnly?: boolean;
+  // V2 shell only: shows the coach-set PRIORITY label + accent outline and an
+  // optional TODAY/TOMORROW eyebrow. V1 ignores both.
+  shellV2?: boolean;
+  eyebrow?: string;
 }
 
 const RACE_COACH_MESSAGES: Record<string, string[]> = {
@@ -143,6 +147,8 @@ export default function WorkoutCard({
   onRemoveWorkout,
   onEditWorkout,
   readOnly = false,
+  shellV2 = false,
+  eyebrow,
 }: WorkoutCardProps) {
   const isRest = wo.type === "Rest";
   const isRaceDay = wo.type?.toLowerCase() === "race";
@@ -171,6 +177,7 @@ export default function WorkoutCard({
     interval_reps: String(wo.interval_reps ?? ""),
     interval_rep_value: String(wo.interval_rep_value ?? ""),
     interval_rep_unit: wo.interval_rep_unit || "m",
+    is_priority: !!wo.is_priority,
   });
 
   const dayShort =
@@ -208,6 +215,7 @@ export default function WorkoutCard({
       interval_reps: isInterval ? parseInt(editFields.interval_reps, 10) || null : null,
       interval_rep_value: isInterval ? parseFloat(editFields.interval_rep_value) || null : null,
       interval_rep_unit: isInterval ? editFields.interval_rep_unit : null,
+      is_priority: editFields.is_priority,
     });
     setEditing(false);
   };
@@ -230,8 +238,15 @@ export default function WorkoutCard({
           ? "none"
           : "0 1px 3px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.6)",
         opacity: isRest ? 0.6 : 1,
+        ...(shellV2 && wo.is_priority === true ? { outline: "1.5px solid var(--accent-primary)", outlineOffset: "0" } : {}),
       }}
     >
+      {shellV2 && (eyebrow || wo.is_priority === true) && (
+        <div style={{ display: "flex", gap: "8px", padding: "8px 14px 0 18px", fontSize: "10px", fontWeight: 700, letterSpacing: "0.06em" }}>
+          {eyebrow && <span style={{ color: "var(--text-muted)" }}>{eyebrow}</span>}
+          {wo.is_priority === true && <span style={{ color: "var(--accent-primary)" }}>PRIORITY</span>}
+        </div>
+      )}
       {/* Zone color left stripe */}
       {!isRest && (
         <div
@@ -681,6 +696,15 @@ export default function WorkoutCard({
                 </select>
               </div>
             )}
+            <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12.5px", cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={editFields.is_priority}
+                onChange={(e) => setEditFields({ ...editFields, is_priority: e.target.checked })}
+                style={{ accentColor: "var(--accent-primary)" }}
+              />
+              Priority
+            </label>
             <textarea
               value={editFields.description}
               onChange={(e) => setEditFields({ ...editFields, description: e.target.value })}

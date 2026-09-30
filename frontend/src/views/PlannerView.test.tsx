@@ -288,4 +288,25 @@ describe("PlannerView Early Adopter Improvements", () => {
       expect(await screen.findByText(/Generate Block 2\?/i)).toBeInTheDocument();
     }
   });
+
+  describe("rest days", () => {
+    const restWos = [
+      { id: 5, week_number: 1, day_of_week: "Wednesday", type: "Rest", title: "Rest", duration_minutes: 0 },
+      { id: 6, week_number: 1, day_of_week: "Thursday", type: "Easy Run", title: "Easy", duration_minutes: 40 },
+    ];
+    it("collapses rest days into a single row under V2", () => {
+      mockAppContext.shellV2 = true;
+      mockPlanner.getWeekWorkouts = vi.fn().mockReturnValue(restWos);
+      render(<PlannerView isMobile={false} />);
+      expect(screen.getByTestId("rest-row")).toHaveTextContent("Wed \u00b7 Rest");
+      expect(screen.getAllByTestId("workout-card")).toHaveLength(1);
+    });
+    it("leaves rest days unchanged under V1", () => {
+      mockAppContext.shellV2 = false;
+      mockPlanner.getWeekWorkouts = vi.fn().mockReturnValue(restWos);
+      render(<PlannerView isMobile={false} />);
+      expect(screen.queryByTestId("rest-row")).toBeNull();
+      expect(screen.getAllByTestId("workout-card")).toHaveLength(2);
+    });
+  });
 });

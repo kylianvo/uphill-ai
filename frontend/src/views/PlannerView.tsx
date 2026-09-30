@@ -2188,6 +2188,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 onConfirmMatch={handleConfirmMatch}
                 onUnlinkMatch={handleUnlinkMatch}
                 getWorkoutDateObj={getWorkoutDateObj}
+                shellV2={shellV2}
               />
             )}
 
@@ -3020,6 +3021,7 @@ interface DayGroupProps {
   onUnlinkMatch?: (activityId: number) => Promise<boolean>;
   getWorkoutDateObj?: (wo: any) => Date | null;
   onInitiateSwap?: (day: string) => void;
+  shellV2?: boolean;
 }
 
 function DayGroup({
@@ -3044,6 +3046,7 @@ function DayGroup({
   onUnlinkMatch,
   getWorkoutDateObj,
   onInitiateSwap,
+  shellV2,
 }: DayGroupProps) {
   const { attributes, listeners, setNodeRef: setDragRef, transform, isDragging } = useDraggable({ id: day });
   const { setNodeRef: setDropRef } = useDroppable({ id: day });
@@ -3104,8 +3107,45 @@ function DayGroup({
   // Combine refs
   const setRef = (node: HTMLElement | null) => { setDragRef(node); setDropRef(node); };
 
+  // V2: local-timezone TODAY / TOMORROW eyebrow from the workout's own date.
+  const localYmd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const nowLocal = new Date();
+  const tomorrowLocal = new Date(nowLocal.getFullYear(), nowLocal.getMonth(), nowLocal.getDate() + 1);
+  const isToday = !!dayDateStr && dayDateStr === localYmd(nowLocal);
+  const dayEyebrow = shellV2 ? (isToday ? "TODAY" : dayDateStr && dayDateStr === localYmd(tomorrowLocal) ? "TOMORROW" : undefined) : undefined;
+
+  if (shellV2 && allRest) {
+    return (
+      <div className={styles.workoutDay} ref={setRef} style={{ ...style, ...containerStyle }} data-today={isToday ? "true" : undefined} data-testid="rest-row">
+        <div
+          {...listeners}
+          {...attributes}
+          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: "44px", cursor: "grab", userSelect: "none" }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
+            <DotsSixVertical size={14} weight="bold" color="rgba(0,0,0,0.25)" aria-hidden="true" style={{ flexShrink: 0 }} />
+            <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-muted)" }}>
+              {`${day.slice(0, 3)} \u00b7 Rest`}
+            </span>
+          </div>
+          {onAddWorkout && (
+            <button
+              type="button"
+              onClick={() => onAddWorkout(dayWos[0]?.week_number ?? 1, day)}
+              onPointerDown={(e) => e.stopPropagation()}
+              title={lang === "en" ? "Add workout" : "Thêm bài tập"}
+              style={{ width: "22px", height: "22px", borderRadius: "50%", border: "1px solid var(--accent-primary)", background: "transparent", color: "var(--accent-primary)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, padding: 0 }}
+            >
+              <Plus size={12} weight="bold" aria-hidden="true" />
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className={styles.workoutDay} ref={setRef} style={{ ...style, ...containerStyle }}>
+    <div className={styles.workoutDay} ref={setRef} style={{ ...style, ...containerStyle }} data-today={isToday ? "true" : undefined}>
       {/* Day header — drag handle */}
       <div
         {...listeners}
@@ -3203,6 +3243,8 @@ function DayGroup({
               onApproveWorkout={onApproveWorkout}
               onRemoveWorkout={onRemoveWorkout}
               onEditWorkout={onEditWorkout}
+              shellV2={shellV2}
+              eyebrow={dayEyebrow}
             />
           );
 
@@ -3283,6 +3325,7 @@ interface WeekDayListProps {
   plan?: { start_date?: string | null; total_weeks?: number | null; race_date?: string | null };
   allWorkouts?: any[];
   onMoveWorkout?: (workoutId: number, targetWeek: number, targetDay: string) => void;
+  shellV2?: boolean;
 }
 
 function WeekDayList({
@@ -3307,8 +3350,23 @@ function WeekDayList({
   plan,
   allWorkouts,
   onMoveWorkout,
+  shellV2,
 }: WeekDayListProps) {
   const [overId, setOverId] = React.useState<string | null>(null);
+  const listRef = React.useRef<HTMLDivElement>(null);
+  const scrolledPlanRef = React.useRef<unknown>(null);
+  const planKey = (plan as { id?: number } | undefined)?.id ?? "none";
+  // V2: once per plan load, bring today's card into view (scroll container is
+  // .content-panel; scrollIntoView walks up to it). No-op if today isn't in
+  // the selected week.
+  React.useEffect(() => {
+    if (!shellV2 || weekWos.length === 0 || scrolledPlanRef.current === planKey) return;
+    scrolledPlanRef.current = planKey;
+    const el = listRef.current?.querySelector('[data-today="true"]') as HTMLElement | null;
+    if (!el || typeof el.scrollIntoView !== "function") return;
+    const reduce = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el.scrollIntoView({ block: "start", ...(reduce ? {} : { behavior: "smooth" as const }) });
+  }, [shellV2, weekWos.length, planKey]);
   const [swapModalDay, setSwapModalDay] = React.useState<string | null>(null);
 
   // Default PointerSensor activates on the slightest movement, which on a
@@ -3349,7 +3407,7 @@ function WeekDayList({
   return (
     <>
       <DndContext sensors={sensors} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
-        <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+        <div ref={listRef} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
           {DAY_ORDER.map((day, di) => {
             const dayWos = byDay[day];
             if (!dayWos || dayWos.length === 0) return null;
@@ -3377,6 +3435,7 @@ function WeekDayList({
                 onUnlinkMatch={onUnlinkMatch}
                 getWorkoutDateObj={getWorkoutDateObj}
                 onInitiateSwap={setSwapModalDay}
+                shellV2={shellV2}
               />
             );
           })}
