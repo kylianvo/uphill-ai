@@ -63,3 +63,9 @@ export const shouldMirrorTab = (tab: TabName, signedIn: boolean): boolean =>
 // openedFromMe is only meaningful while a Me sub-screen is showing.
 export const reconcileOpenedFromMe = (openedFromMe: boolean, tab: TabName): boolean =>
   openedFromMe && ME_SUBTABS.includes(tab);
+
+// A ?tab= deep link; the Athletes tab is ignored for non-coaches.
+export const deepLinkTab = (value: string | null | undefined, isCoach: boolean): TabName | null => {
+  const tab = tabFromQuery(value);
+  return tab === "coach" && !isCoach ? null : tab;
+};

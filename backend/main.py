@@ -505,6 +505,7 @@ class CoachWorkoutCreateRequest(BaseModel):
     description: str | None = None
     fueling_tip: str | None = None
     session_slot: str | None = "main"
+    is_priority: StrictBool | None = None
 
 
 class CoachWorkoutAiCreateRequest(BaseModel):

@@ -3119,17 +3119,28 @@ function DayGroup({
   if (shellV2 && allRest && !hasPending && !hasMatched && unplannedActivities.length === 0) {
     return (
       <div className={styles.workoutDay} ref={setRef} style={{ ...style, ...containerStyle }} data-today={isToday ? "true" : undefined} data-testid="rest-row">
-        <div
-          {...listeners}
-          {...attributes}
-          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: "44px", cursor: "grab", userSelect: "none" }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: "44px", userSelect: "none" }}>
+          <div
+            {...listeners}
+            {...attributes}
+            style={{ display: "flex", alignItems: "center", gap: "7px", flex: 1, height: "100%", cursor: "grab" }}
+          >
             <DotsSixVertical size={14} weight="bold" color="rgba(0,0,0,0.25)" aria-hidden="true" style={{ flexShrink: 0 }} />
             <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-muted)" }}>
               {`${day.slice(0, 3)} \u00b7 Rest`}
             </span>
           </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          {onInitiateSwap && (
+            <button
+              type="button"
+              onClick={() => onInitiateSwap(day)}
+              title="Move or swap this day"
+              style={{ border: "none", background: "transparent", color: "var(--text-secondary)", fontSize: "11px", fontWeight: 600, cursor: "pointer", padding: "4px 6px" }}
+            >
+              Swap
+            </button>
+          )}
           {onAddWorkout && (
             <button
               type="button"
@@ -3141,6 +3152,7 @@ function DayGroup({
               <Plus size={12} weight="bold" aria-hidden="true" />
             </button>
           )}
+          </div>
         </div>
       </div>
     );

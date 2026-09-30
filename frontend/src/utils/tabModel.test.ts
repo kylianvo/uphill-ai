@@ -4,6 +4,7 @@ import {
   shouldMirrorTab,
   isNavTabActive,
   shouldApplyV2Default,
+  deepLinkTab,
   tabFromQuery,
   tabToQuery,
   v2NavTabs,
@@ -64,5 +65,11 @@ describe("tabModel", () => {
     expect(reconcileOpenedFromMe(true, "planner")).toBe(false);
     expect(reconcileOpenedFromMe(true, "me")).toBe(false);
     expect(reconcileOpenedFromMe(false, "tools")).toBe(false);
+  });
+
+  it("ignores the athletes deep link for non-coaches", () => {
+    expect(deepLinkTab("athletes", false)).toBeNull();
+    expect(deepLinkTab("athletes", true)).toBe("coach");
+    expect(deepLinkTab("plan", false)).toBe("planner");
   });
 });

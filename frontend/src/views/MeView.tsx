@@ -58,7 +58,7 @@ export default function MeView({ isMobile }: { isMobile: boolean }) {
 
   return (
     <div style={{ maxWidth: isMobile ? undefined : 640, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
-      <style>{`.me-row:focus-visible,.me-edit:focus-visible{outline:2px solid var(--accent-color, #22c55e);outline-offset:2px}`}</style>
+      <style>{`.me-row:focus-visible,.me-edit:focus-visible{outline:2px solid var(--accent-primary);outline-offset:2px}`}</style>
       <h2 style={{ margin: 0 }}>Me</h2>
 
       <section style={{ ...card, display: "flex", alignItems: "center", gap: 12 }}>

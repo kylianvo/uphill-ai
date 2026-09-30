@@ -7,7 +7,7 @@ import { Keyboard } from "@capacitor/keyboard";
 import { Message, ParsedSummary, RagSource, Workout, ActivePlan, PacedCheckpoint, FuelStrategy, Shoe, User } from "../types";
 import { isNativePlatform } from "../utils/native";
 import { isShellV2 } from "../utils/uiVersion";
-import { ME_SUBTABS, TabName, reconcileOpenedFromMe, shouldApplyV2Default, shouldMirrorTab, tabFromQuery, withTabParam } from "../utils/tabModel";
+import { ME_SUBTABS, TabName, deepLinkTab, reconcileOpenedFromMe, shouldApplyV2Default, shouldMirrorTab, withTabParam } from "../utils/tabModel";
 import { hasNotificationPermission, scheduleDailyKnowledgeReminder, scheduleNotification, buildWorkoutReminderContent, DAILY_WORKOUT_REMINDER_ID } from "../utils/notifications";
 import { resolveCurrentWeek } from "../utils/planDate";
 import { clearCachedUser, saveCachedUser } from "../utils/cachedUser";
@@ -488,7 +488,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   // Shell v2: read ?tab= once on boot (a deep link wins over the default).
   useEffect(() => {
     if (!shellV2 || tabSynced) return;
-    const fromQuery = tabFromQuery(new URLSearchParams(window.location.search).get("tab"));
+    const fromQuery = deepLinkTab(new URLSearchParams(window.location.search).get("tab"), !!user?.is_coach);
     if (fromQuery) {
       tabChosenRef.current = true;
       if ((fromQuery === "chat" || fromQuery === "planner") && !user) {
