@@ -15,7 +15,8 @@ class FakeScores:
         self.by_name = by_name
         self.calls = []
 
-    def get_many_v3(self, *, limit, cursor, name, **filters):
+    def get_many_v3(self, *, limit, cursor, name, fields, **filters):
+        assert "subject" in fields  # without it the API omits which trace a score is on
         self.calls.append((name, filters))
         return NS(data=self.by_name.get(name, []), meta=NS(cursor=None))
 

@@ -2,8 +2,9 @@
 
   python scripts/triage_traces.py [--days 7] [--dry-run]
 
-Flags a trace when any of these scores landed on it in the window:
-  thumbs = -1, judge_safe < 0.75, judge_grounded < 0.5, plan_engine = rules.
+Flags a trace when any score in RULES below landed on it in the window (chat thumbs and
+judge scores, plan fallbacks/rework/checks/compliance, missed goals, gear/nutrition
+catalog and brand misses).
 Already-queued traces are skipped. Langfuse holds no content (LANGFUSE_EXPORT_CONTENT=false),
 so for coach turns the script also prints the chat message id stored with each trace id:
 look the reply up in the database, and if the verdict is needs_fixture write a *synthetic*
@@ -24,6 +25,12 @@ RULES = [
     ("judge_safe", {"data_type": "NUMERIC", "value_max": 0.74}, "judge_safe < 0.75"),
     ("judge_grounded", {"data_type": "NUMERIC", "value_max": 0.49}, "judge_grounded < 0.5"),
     ("plan_engine", {"data_type": "CATEGORICAL", "value": "rules"}, "rule-based plan fallback"),
+    ("plan_reworked", {"data_type": "NUMERIC", "value_min": 0.5}, "plan regenerated within 72 h"),
+    ("plan_checks", {"data_type": "NUMERIC", "value_max": 0.66}, "plan failed a quality check"),
+    ("block_compliance", {"data_type": "NUMERIC", "value_max": 0.49}, "athlete completed < 50% of the block"),
+    ("goal_hit", {"data_type": "NUMERIC", "value_max": 0.5}, "race finish outside the A..C range"),
+    ("catalog_valid", {"data_type": "NUMERIC", "value_max": 0.5}, "recommended an uncatalogued product"),
+    ("brand_respected", {"data_type": "NUMERIC", "value_max": 0.5}, "ignored the preferred brands"),
 ]
 
 
@@ -40,18 +47,20 @@ def _all_pages(fetch):
 def _scores_v3(api, **filters):
     cursor = None
     while True:
-        res = api.scores_v3.get_many_v3(limit=100, cursor=cursor, **filters)
+        # The subject (which trace a score belongs to) is only returned when requested.
+        res = api.scores_v3.get_many_v3(limit=100, cursor=cursor, fields="core,subject", **filters)
         yield from res.data
         cursor = res.meta.cursor
         if not cursor:
             return
 
 
-def flagged_traces(api, since: datetime) -> dict[str, list[str]]:
+def flagged_traces(api, since: datetime, environment: str | None = None) -> dict[str, list[str]]:
     """trace_id -> reasons, from the scores written since `since`."""
     flagged: dict[str, list[str]] = {}
     for name, filters, reason in RULES:
-        for score in _scores_v3(api, name=name, from_timestamp=since, **filters):
+        env = {"environment": environment} if environment else {}
+        for score in _scores_v3(api, name=name, from_timestamp=since, **env, **filters):
             if getattr(score.subject, "kind", None) == "trace":
                 flagged.setdefault(score.subject.id, []).append(reason)
     return flagged
@@ -83,6 +92,11 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--days", type=int, default=7)
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument(
+        "--environment",
+        default="production",
+        help="Langfuse environment to triage (experiments run in test/development)",
+    )
     args = parser.parse_args()
 
     from services import observability
@@ -98,7 +112,7 @@ def main() -> None:
         sys.exit(f"Annotation queue {QUEUE_NAME!r} not found in this Langfuse project.")
 
     since = datetime.now(UTC) - timedelta(days=args.days)
-    flagged = flagged_traces(api, since)
+    flagged = flagged_traces(api, since, args.environment)
     new = {t: r for t, r in flagged.items() if t not in queued_trace_ids(api, queue.id)}
     messages = message_ids_for(list(new))
 
