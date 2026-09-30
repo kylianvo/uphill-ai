@@ -2438,6 +2438,7 @@ export default function AppPage() {
               <div className="laptop-sidebar-logo">
                 Uphill<span>.AI</span>
               </div>
+              <nav aria-label="Main">
               <ul className="sidebar-nav-list">
                 {(shellV2 ? v2NavTabs(!!user?.is_coach) : (
                   [
@@ -2452,8 +2453,10 @@ export default function AppPage() {
                 )).map((tab: any) => {
                   const active = isNavTabActive(tab as never, activeTab, shellV2);
                   return (
-                    <li
-                      key={tab}
+                    <li key={tab}>
+                    <button
+                      type="button"
+                      aria-current={active ? "page" : undefined}
                       onClick={() => handleTabSwitch(tab)}
                       className={`sidebar-nav-item ${active ? "sidebar-nav-item-active" : ""}`}
                     >
@@ -2473,10 +2476,12 @@ export default function AppPage() {
                                     ? t("tab_about")
                                     : t("tab_tools"))}
                       </span>
+                    </button>
                     </li>
                   );
                 })}
               </ul>
+              </nav>
             </div>
             {/* Sidebar Profile trigger */}
             <div style={{ padding: "0 8px" }}>
@@ -2736,7 +2741,7 @@ export default function AppPage() {
                   }
                 >
                   <div
-                    className="content-panel-inner"
+                    className={`content-panel-inner${shellV2 && activeTab === "planner" ? " content-panel-inner--plan-v2" : ""}`}
                     style={{
                       width: "100%",
                       height: activeTab === "chat" ? undefined : "auto",
@@ -2941,7 +2946,7 @@ export default function AppPage() {
               {renderActiveTab(true)}
             </div>
             {/* Persistent Bottom Tab Bar */}
-            <nav className="phone-bottom-tab-bar">
+            <nav className="phone-bottom-tab-bar" aria-label="Main">
               {(shellV2 ? v2NavTabs(!!user?.is_coach) : (
                 [
                   ...(isNative ? (["home"] as const) : []),
@@ -2971,8 +2976,10 @@ navLabel(tab, tab === "home"
                               ? "Calculators"
                               : "Philosophy");
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={tab}
+                    aria-current={active ? "page" : undefined}
                     onClick={() => handleTabSwitch(tab)}
                     className={`tab-bar-item ${active ? "tab-bar-item-active" : ""}`}
                   >
@@ -2983,7 +2990,7 @@ navLabel(tab, tab === "home"
                     >
                       {tabLabel}
                     </span>
-                  </div>
+                  </button>
                 );
               })}
             </nav>
@@ -3002,7 +3009,7 @@ navLabel(tab, tab === "home"
           }}
         >
           {/* ── Top Navigation ──────────────────────────────────── */}
-          <nav className="top-nav" style={{ flexShrink: 0 }}>
+          <nav className="top-nav" aria-label="Main" style={{ flexShrink: 0 }}>
             {/* Logo */}
             <Link
               className="top-nav-logo"
@@ -3067,6 +3074,7 @@ navLabel(tab, tab === "home"
                               : `${t("tab_tools")}`);
                 return (
                   <button
+                    type="button"
                     key={tab}
                     className={`top-nav-tab ${isNavTabActive(tab as never, activeTab, shellV2) ? "active" : ""}`}
                     aria-current={isNavTabActive(tab as never, activeTab, shellV2) ? "page" : undefined}
@@ -3175,7 +3183,7 @@ navLabel(tab, tab === "home"
                 }
               >
                 <div
-                  className="content-panel-inner"
+                  className={`content-panel-inner${shellV2 && activeTab === "planner" ? " content-panel-inner--plan-v2" : ""}`}
                   style={{
                     width: "100%",
                     height: activeTab === "chat" ? undefined : "auto",
@@ -3201,7 +3209,8 @@ navLabel(tab, tab === "home"
             )}
           </div>
           {/* Mobile Bottom Navigation Tabs (visible only on mobile viewports via CSS) */}
-          <div
+          <nav
+            aria-label="Main"
             className={`mobile-bottom-nav-tabs${isNative ? " native-nav-motion" : ""}`}
             style={{
               "--nav-count": mobileTabs.length,
@@ -3227,6 +3236,7 @@ navLabel(tab, tab === "home"
                             : t("tab_about"));
               return (
                 <button
+                  type="button"
                   key={tab}
                   className={`mobile-bottom-nav-tab ${active ? "active" : ""}`}
                   aria-current={active ? "page" : undefined}
@@ -3241,7 +3251,7 @@ navLabel(tab, tab === "home"
                 </button>
               );
             })}
-          </div>
+          </nav>
         </div>
       )}
       {/* Global Modals */}
