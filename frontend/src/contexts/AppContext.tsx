@@ -6,6 +6,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { Keyboard } from "@capacitor/keyboard";
 import { Message, ParsedSummary, RagSource, Workout, ActivePlan, PacedCheckpoint, FuelStrategy, Shoe, User } from "../types";
 import { isNativePlatform } from "../utils/native";
+import { isShellV2 } from "../utils/uiVersion";
 import { hasNotificationPermission, scheduleDailyKnowledgeReminder, scheduleNotification, buildWorkoutReminderContent, DAILY_WORKOUT_REMINDER_ID } from "../utils/notifications";
 import { resolveCurrentWeek } from "../utils/planDate";
 import { clearCachedUser, saveCachedUser } from "../utils/cachedUser";
@@ -27,6 +28,7 @@ interface AppContextType {
   setActiveTab: any;
   handleTabSwitch: (tab: "home" | "about" | "chat" | "planner" | "tools" | "knowledge" | "coach") => void;
   isNative: boolean;
+  shellV2: boolean;
   lang: "en" | "vi";
   setLang: any;
   startBtnHovered: any;
@@ -251,6 +253,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       setIsNative(true);
       setActiveTab((prev) => (prev === "tools" ? "home" : prev));
     }
+  }, []);
+  const [shellV2, setShellV2] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setShellV2(isShellV2());
   }, []);
   const [lang, setLang] = useState<"en" | "vi">("en");
   const [startBtnHovered, setStartBtnHovered] = useState(false);
@@ -630,6 +637,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       zone2Min, setZone2Min,
       zone2Max, setZone2Max,
       isNative,
+      shellV2,
     }}>
       {children}
     </AppContext.Provider>
