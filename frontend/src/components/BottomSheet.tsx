@@ -8,16 +8,22 @@ export interface BottomSheetProps {
   onClose: () => void;
   title: string;
   children: React.ReactNode;
+  /** Disable Esc handling and the focus trap (e.g. while a nested dialog is open). */
+  suspended?: boolean;
 }
 
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /** Bottom sheet on mobile, centered dialog at >=768px. */
-export default function BottomSheet({ isOpen, onClose, title, children }: BottomSheetProps) {
+export default function BottomSheet({ isOpen, onClose, title, children, suspended = false }: BottomSheetProps) {
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
+  const suspendedRef = useRef(suspended);
+  useEffect(() => {
+    suspendedRef.current = suspended;
+  });
   useEffect(() => {
     onCloseRef.current = onClose;
   });
@@ -32,6 +38,7 @@ export default function BottomSheet({ isOpen, onClose, title, children }: Bottom
     (first ?? panel)?.focus();
 
     const onKey = (e: KeyboardEvent) => {
+      if (suspendedRef.current) return;
       if (e.key === "Escape") {
         e.stopPropagation();
         onCloseRef.current();

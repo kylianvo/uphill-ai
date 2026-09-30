@@ -31,7 +31,7 @@ export default function ManagePlanSheet(p: ManagePlanSheetProps) {
 
   return (
     <>
-      <BottomSheet isOpen={p.isOpen} onClose={p.onClose} title="Manage plan">
+      <BottomSheet isOpen={p.isOpen} onClose={p.onClose} title="Manage plan" suspended={confirmNew}>
         <button type="button" className="manage-row" onClick={p.onSync} disabled={p.syncing}>
           {p.syncing ? "Syncing..." : "Sync watch"}
         </button>

@@ -72,4 +72,23 @@ describe("ManagePlanSheet", () => {
     render(<ManagePlanSheet {...base({ syncNotice: { kind: "info", text: "done" } })} />);
     expect(screen.getByRole("status").textContent).toBe("done");
   });
+  it("Esc with the confirm open closes only the confirm", () => {
+    const p = base();
+    render(<ManagePlanSheet {...p} />);
+    fireEvent.click(screen.getByText("Start a new plan"));
+    expect(screen.getByText("Start a new plan?")).toBeTruthy();
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByText("Start a new plan?")).toBeNull();
+    expect(screen.getByRole("dialog", { name: "Manage plan" })).toBeTruthy();
+    expect(p.onClose).not.toHaveBeenCalled();
+  });
+  it("Tab is not trapped back into the sheet while the confirm is open", () => {
+    render(<ManagePlanSheet {...base()} />);
+    fireEvent.click(screen.getByText("Start a new plan"));
+    const confirm = screen.getByText("Confirm");
+    confirm.focus();
+    const notPrevented = fireEvent.keyDown(confirm, { key: "Tab" });
+    expect(notPrevented).toBe(true);
+    expect(document.activeElement).toBe(confirm);
+  });
 });
