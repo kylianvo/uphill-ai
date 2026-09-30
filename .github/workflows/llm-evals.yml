@@ -2,26 +2,10 @@ name: LLM Evals
 
 # Release gate for prompt / LLM-service changes (see .claude/skills/llm-change-process).
 # Runs the synthetic golden sets against real Gemini, pushes each run to Langfuse as an
-# experiment, and fails the PR when a gate rule fails. Costs ~150 Gemini calls per run,
-# so it only triggers on paths that can change LLM behaviour.
+# experiment, and fails when a gate rule fails. Manual trigger only (it costs money).
 on:
-  pull_request:
-    branches: ["main"]
-    paths:
-      - "backend/services/coach_*.py"
-      - "backend/services/gear_planner.py"
-      - "backend/services/nutrition_planner.py"
-      - "backend/services/plan_generator.py"
-      - "backend/services/plan_rules.py"
-      - "backend/services/goal_judge.py"
-      - "backend/services/llm_judge.py"
-      - "backend/services/kb_*.py"
-      - "backend/services/observability*.py"
-      - "backend/scripts/golden_eval.py"
-      - "backend/scripts/judge_calibration.py"
-      - "backend/tests/golden/**"
-      - "backend/kb_seed/**"
-      - ".github/workflows/llm-evals.yml"
+  # Manual only: every run makes ~150 paid Gemini calls. Start it from the Actions tab
+  # (optionally with a prompt label) when a prompt or LLM service change needs the gate.
   workflow_dispatch:
     inputs:
       prompt_label:
@@ -49,7 +33,6 @@ env:
 jobs:
   golden:
     # Fork PRs have no secrets; skip rather than fail.
-    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -105,7 +88,6 @@ jobs:
           if-no-files-found: ignore
 
   judge-calibration:
-    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

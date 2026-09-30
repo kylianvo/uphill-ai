@@ -47,9 +47,10 @@ No code deploy needed when only the template text changes.
    - gear/nutrition: any recommendation outside the catalog
    - goal_judge: goals not ordered a < b < c, or b outside the anchors' range
    No regression versus the last run. Read `tests/golden/report_<svc>.md` for the diffs.
-   CI runs this automatically (`.github/workflows/llm-evals.yml`) on PRs touching LLM code,
-   prompts' fallbacks, fixtures or KB seeds; `workflow_dispatch` accepts a `prompt_label` to
-   evaluate a Langfuse-only prompt change before promoting it.
+   GitHub can run the same gate (`.github/workflows/llm-evals.yml`), but only when started by
+   hand from the Actions tab, since each run costs ~150 Gemini calls. It accepts a
+   `prompt_label` to evaluate a Langfuse-only prompt change before promoting it. It needs the
+   `GEMINI_API_KEY`, `LANGFUSE_*` and `OBSERVABILITY_ID_SALT` repo secrets; running locally does not.
 4. **Promote:** move the `production` label to the new version. Live within 300 s.
 5. **Watch** the "Uphill AI – LLM Ops" dashboard (cost, p95 latency, errors per feature) and the
    "Uphill AI – Quality" dashboard (thumbs, proposal apply rate, live judge scores, quality by
