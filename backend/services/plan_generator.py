@@ -779,7 +779,8 @@ class PlanGenerator:
         if isinstance(user_id, bool) or not isinstance(user_id, int):
             user_id = None
         with observability.trace("plan_generation", feature="plan_generation", user_id=user_id):
-            return await PlanGenerator._generate_plan_workouts(
+            trace_id = observability.current_trace_id()
+            workouts, tier = await PlanGenerator._generate_plan_workouts(
                 plan_id=plan_id,
                 user_profile=user_profile,
                 race_info=race_info,
@@ -791,6 +792,12 @@ class PlanGenerator:
                 block_context=block_context,
                 target_week=target_week,
             )
+            from services import plan_signals
+
+            plan_signals.record_generation(
+                plan_id=plan_id, user_id=user_id, block_number=block_number, workouts=workouts, trace_id=trace_id
+            )
+            return workouts, tier
 
     @staticmethod
     async def _generate_plan_workouts(

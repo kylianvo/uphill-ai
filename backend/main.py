@@ -2859,6 +2859,27 @@ async def coach_calculate_fueling(
     return await _calculate_fueling_core(request)
 
 
+class ResultFeedbackRequest(BaseModel):
+    token: str
+    value: int
+
+
+@app.post("/api/feedback/result")
+def post_result_feedback(request: ResultFeedbackRequest):
+    """Thumbs on a Gear Finder / Nutrition Lab result, keyed by the signed feedback_token
+    returned with it (these tools work signed-out, so there is no row to attach to)."""
+    from services import quality_signals
+
+    if request.value not in (-1, 1):
+        raise HTTPException(status_code=422, detail="value must be 1 or -1.")
+    verified = quality_signals.verify_feedback_token(request.token)
+    if verified is None:
+        raise HTTPException(status_code=400, detail="Invalid feedback token.")
+    trace_id, feature = verified
+    observability.score(trace_id=trace_id, name="thumbs", value=request.value, score_id=f"thumbs-{trace_id}")
+    return {"feature": feature, "feedback": request.value}
+
+
 async def _recommend_shoes_core(request: GearParams) -> dict[str, Any]:
     """Matches athlete profiles with suitable shoe catalogs. Shared by the
     self-serve /api/coach/recommend-shoes and the coach-triggered
@@ -3799,6 +3820,9 @@ def _apply_plan_goal(plan_id: int, owner_id: int, request: GoalApplyRequest) -> 
         raise HTTPException(status_code=422, detail="Target time out of range")
     _goal_plan(plan_id, owner_id)
     update_plan_target_time(plan_id, round(request.target_mins / 60, 4))
+    from services import goal_outcomes
+
+    goal_outcomes.score_applied(plan_id, request.target_mins)
     return goal_service.plan_goal(get_plan_by_id(plan_id))
 
 
