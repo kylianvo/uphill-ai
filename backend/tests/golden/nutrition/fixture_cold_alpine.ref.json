@@ -1,0 +1,93 @@
+{
+  "latency_s": 6.2,
+  "engine_used": "gemini",
+  "output": {
+    "products": [
+      {
+        "brand": "Precision Fuel & Hydration",
+        "name": "Carb & Electrolyte Drink Mix",
+        "total_quantity": 3,
+        "carbs_per_unit": 60,
+        "sodium_per_unit": 1000,
+        "protein_per_unit": 0,
+        "tech_notes": "Formulated with a scientifically backed 2:1 glucose-to-fructose ratio to maximize carbohydrate absorption. It is designed to deliver a steady stream of rapidly digestible energy during high-intensity efforts lasting several hours, helping to replace fluid and sweat losses simultaneously. It is engineered with a very mild, neutral taste to minimize palate fatigue and stomach issues during hard efforts, making it highly palatable even when breathing hard. Certified by Informed Sport and uses 100% recyclable packaging."
+      },
+      {
+        "brand": "Bix",
+        "name": "Bix 30 Energy Gel – Salted Strawberry",
+        "total_quantity": 4,
+        "carbs_per_unit": 30,
+        "sodium_per_unit": 300,
+        "protein_per_unit": 0,
+        "tech_notes": "Formulated with a 1:0.8 glucose-to-fructose ratio, this gel is vegan, uses natural flavors and colors, and is Informed Sport batch tested. It is designed specifically for longer efforts, hotter conditions, or heavy sweat to maintain an ideal balance between quick energy and robust electrolyte replenishment. Its natural strawberry flavor with a slightly salty finish is smooth, light, and engineered to prevent palate fatigue during long sessions."
+      },
+      {
+        "brand": "Precision Fuel & Hydration",
+        "name": "30 Energy Chew",
+        "total_quantity": 4,
+        "carbs_per_unit": 30,
+        "sodium_per_unit": 0,
+        "protein_per_unit": 0,
+        "tech_notes": "Features an exceptionally high carbohydrate-to-weight ratio, making it a great choice when traveling light is essential. Chews provide a solid, satisfying bite that can feel more gratifying than liquid gels during lower-intensity sections or longer races, actively helping to break up flavor fatigue. Available in Original (mild, neutral flavor), Watermelon, and Mint & Lemon. Independently batch-tested for WADA-prohibited substances."
+      },
+      {
+        "brand": "Precision Fuel & Hydration",
+        "name": "Electrolyte Capsules",
+        "total_quantity": 4,
+        "carbs_per_unit": 0,
+        "sodium_per_unit": 250,
+        "protein_per_unit": 0,
+        "tech_notes": "Blister-packed swallowable capsules containing highly concentrated sodium. Designed to give athletes the ultimate flexibility to decouple their hydration/electrolyte intake from their carbohydrate fueling. This allows athletes to consume plain water or customized drink mixes from aid stations and separately ingest capsules to precisely match their genetically determined sweat sodium losses without altering their carbohydrate math or causing stomach upset."
+      }
+    ],
+    "hourly_plan": [
+      {
+        "hour": 1,
+        "action": "Sip 0.5 packet of Carb & Electrolyte Drink Mix dissolved in water across the hour (30g carbs, 500mg sodium) plus 1 Bix 30 Energy Gel - Salted Strawberry (30g carbs, 300mg sodium).",
+        "carbs": 60,
+        "sodium": 800
+      },
+      {
+        "hour": 2,
+        "action": "Consume 1 packet of 30 Energy Chew (30g carbs, 0mg sodium) and 1 Bix 30 Energy Gel - Salted Strawberry (30g carbs, 300mg sodium) with plain water, plus 1 Electrolyte Capsule (250mg sodium).",
+        "carbs": 60,
+        "sodium": 550
+      },
+      {
+        "hour": 3,
+        "action": "Sip 0.5 packet of Carb & Electrolyte Drink Mix in water (30g carbs, 500mg sodium) and consume 1 packet of 30 Energy Chew (30g carbs, 0mg sodium).",
+        "carbs": 60,
+        "sodium": 500
+      },
+      {
+        "hour": 4,
+        "action": "Sip 0.5 packet of Carb & Electrolyte Drink Mix in water (30g carbs, 500mg sodium) plus 1 Bix 30 Energy Gel - Salted Strawberry (30g carbs, 300mg sodium).",
+        "carbs": 60,
+        "sodium": 800
+      },
+      {
+        "hour": 5,
+        "action": "Consume 1 packet of 30 Energy Chew (30g carbs, 0mg sodium) and 1 Bix 30 Energy Gel - Salted Strawberry (30g carbs, 300mg sodium) with plain water, plus 1 Electrolyte Capsule (250mg sodium).",
+        "carbs": 60,
+        "sodium": 550
+      },
+      {
+        "hour": 6,
+        "action": "Sip 0.5 packet of Carb & Electrolyte Drink Mix in water (30g carbs, 500mg sodium) and consume 1 packet of 30 Energy Chew (30g carbs, 0mg sodium).",
+        "carbs": 60,
+        "sodium": 500
+      },
+      {
+        "hour": 7,
+        "action": "Sip 1.0 packet of Carb & Electrolyte Drink Mix in water over the final hour to easily meet your energy and electrolyte goals.",
+        "carbs": 60,
+        "sodium": 1000
+      }
+    ],
+    "tips": [
+      "Cold temperatures and high altitude reduce the sensation of thirst while respiratory water loss increases; drink proactively on a strict timer rather than relying on thirst cues.",
+      "Always wash down solid chews and gels with plain water to optimize gastric emptying and prevent gastrointestinal distress on steep mountain climbs.",
+      "Keep energy chews and gels in an internal jacket pocket close to body heat so they do not freeze or become difficult to chew in sub-freezing mountain conditions."
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "synthetic": true,
+  "provenance": "scheduler",
+  "_comment": "Return goal: conservative ramp, no intensity in early weeks.",
+  "user_profile": {
+    "age": 44,
+    "gender": "male",
+    "max_hr": 176,
+    "resting_hr": 56,
+    "current_weekly_km": 10.0,
+    "days_per_week": 3
+  },
+  "race_info": {
+    "lang": "en",
+    "terrain": "road",
+    "goal_type": "return",
+    "name": "Back to Running"
+  },
+  "total_weeks": 8
+}

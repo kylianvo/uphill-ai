@@ -1,0 +1,78 @@
+{
+  "latency_s": 6.7,
+  "engine_used": "gemini",
+  "output": {
+    "recommendations": [
+      {
+        "model": "Pegasus 42",
+        "brand": "Nike",
+        "foam_material": "ReactX daily foam (EVA)",
+        "outsole_compound": "High-longevity road rubber",
+        "lug_depth": "0 mm",
+        "drop": "10.0 mm",
+        "stack": "37.0/27.0 mm",
+        "weight": "10.5 oz / 297 g",
+        "price": "$145",
+        "pros": "A classic everyday cruiser that offers a stable platform and outstanding outsole durability. Extremely comfortable mesh upper suited for beginner mileage.",
+        "cons": "Lacks high-energy rebound and features a steep drop that may feel firm in the forefoot."
+      },
+      {
+        "model": "Aero Blaze 4",
+        "brand": "Salomon",
+        "foam_material": "Optifoam2 (eTPU)",
+        "outsole_compound": "Road ContaGrip",
+        "lug_depth": "None",
+        "drop": "8 mm",
+        "stack": "36 mm heel / 28 mm forefoot",
+        "weight": "8.0 oz / 226 g",
+        "price": "$140",
+        "pros": "Lightweight and agile everyday road trainer with balanced cushioning. Provides a responsive and snappy eTPU ride for daily runs.",
+        "cons": "The fit runs snug through the midfoot and lacks added structural support."
+      },
+      {
+        "model": "Velocity Nitro 4",
+        "brand": "Puma",
+        "foam_material": "Reformulated Nitrofoam (TPU)",
+        "outsole_compound": "Pumagrip",
+        "lug_depth": "0.0 mm",
+        "drop": "10 mm",
+        "stack": "36/26 mm",
+        "weight": "Not available",
+        "price": "$140",
+        "pros": "Delivers outstanding wet and dry traction with high outsole durability. Balanced cushioning provides a bouncy, versatile daily platform.",
+        "cons": "Fit runs quite narrow in the toe box and the 10 mm drop may feel steep."
+      },
+      {
+        "model": "Ride 19",
+        "brand": "Saucony",
+        "foam_material": "High-energy daily foam (EVA)",
+        "outsole_compound": "XT-900 high-traction rubber",
+        "lug_depth": "0.0 mm",
+        "drop": "8.0 mm",
+        "stack": "Heel 38.7 mm / Forefoot 30.2 mm",
+        "weight": "9 oz / 255 g",
+        "price": "$145 (best price $117)",
+        "pros": "A highly dependable neutral trainer with a wide, stable landing platform. Offers breathable comfort and balanced daily protection.",
+        "cons": "Slightly heavier than previous versions and features zoned outsole rubber coverage."
+      },
+      {
+        "model": "Torin 8",
+        "brand": "Altra",
+        "foam_material": "Standard daily training foam (EVA)",
+        "outsole_compound": "High-traction road rubber",
+        "lug_depth": "0.0 mm",
+        "drop": "0 mm",
+        "stack": "27.6 mm heel / 27.7 mm forefoot",
+        "weight": "10.1 oz / 287 g",
+        "price": "$150 - $160",
+        "pros": "Features a balanced cushion profile and a standard foot-shaped fit that encourages natural toe splay. Reliable lockdown for easy daily runs and walking.",
+        "cons": "The zero-drop platform requires an adjustment period for new runners, and the foam lacks superfoam bounce."
+      }
+    ],
+    "tips": [
+      "Note that no options in the catalog strictly meet a $90 retail budget, though several models like the Saucony Ride 19 frequently see price drops near $117.",
+      "As a new runner starting at 10 km per week, focus on consistent, comfortable mileage in a balanced, unplated trainer before exploring fast day or racing models."
+    ],
+    "matched_race": null
+  }
+}

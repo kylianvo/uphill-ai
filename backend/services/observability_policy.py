@@ -184,7 +184,18 @@ _GENERATION_STATUSES = frozenset({"ok", "error", "attempt", "success", "used", "
 _LANGUAGES = frozenset({"en", "vi"})
 _COLLECTIONS = frozenset({"uphill_kb_scheduler", "uphill_kb_nutrition_principles"})
 _CHUNK_REF_RE = re.compile(r"^[0-9a-f]{12}$")
-_PROMPT_NAMES = frozenset({"coach_chat", "chat_summary"})
+_PROMPT_NAMES = frozenset(
+    {
+        "coach_chat",
+        "chat_summary",
+        "gear_finder",
+        "nutrition_planner",
+        "goal_judge",
+        "plan_generation",
+        "plan_single_workout",
+        "block_narrative",
+    }
+)
 _PROMPT_SOURCES = frozenset({"langfuse", "local_fallback"})
 _PROMPT_VERSION_RE = re.compile(r"^[A-Za-z0-9_.-]{1,32}$")
 _TOOL_NAMES = frozenset({"get_week", "pace_strategy", "week_review", "kb_search"})
@@ -345,6 +356,10 @@ def _sanitize_attribute(key: str, value: Any) -> Any | None:
         return _numeric_json(value, _COST_DETAIL_KEYS, integer=False)
     if key == "exception.type":
         return value if _in_enum(value, _ERROR_TYPES) else None
+    if key == "langfuse.observation.prompt.name":
+        return value if _in_enum(value, _PROMPT_NAMES) else None
+    if key == "langfuse.observation.prompt.version":
+        return value if _nonnegative_number(value, integer=True) else None
     if key.startswith(_METADATA_ATTRIBUTE_PREFIXES):
         return _metadata_attribute(key, value)
     return None

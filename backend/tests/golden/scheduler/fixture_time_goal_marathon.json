@@ -1,0 +1,26 @@
+{
+  "synthetic": true,
+  "provenance": "scheduler",
+  "_comment": "Time goal on road: target paces should reflect sub-3:30.",
+  "user_profile": {
+    "age": 38,
+    "gender": "female",
+    "max_hr": 182,
+    "resting_hr": 50,
+    "aet_hr": 145,
+    "ant_hr": 165,
+    "current_weekly_km": 60.0,
+    "days_per_week": 5
+  },
+  "race_info": {
+    "lang": "en",
+    "terrain": "road",
+    "goal_type": "time",
+    "name": "City Marathon",
+    "date": "2026-12-15",
+    "course_distance_km": 42.2,
+    "course_elevation_gain_m": 100,
+    "target_time_hours": 3.5
+  },
+  "total_weeks": 16
+}

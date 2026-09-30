@@ -144,14 +144,16 @@ async def _update_thread_summary(
             formatted_lines.append(f"{role.capitalize()}: {content}")
 
         summary_input = "\n\n".join(formatted_lines)
-        from services.coach_prompts import COACH_SUMMARY_INSTRUCTION
+        from services.coach_prompts import get_coach_prompt_template
 
+        summary_prompt = get_coach_prompt_template(name="chat_summary")
         summary_call_id = uuid4()
         model_req = ModelRequest(
             messages=(ChatMessage(role="user", content=summary_input),),
-            system=COACH_SUMMARY_INSTRUCTION,
+            system=summary_prompt.template.strip(),
             max_output_tokens=512,
             call_id=summary_call_id,
+            prompt=summary_prompt,
         )
 
         summary_chunks: list[str] = []

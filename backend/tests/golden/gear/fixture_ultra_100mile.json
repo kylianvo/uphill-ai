@@ -1,0 +1,15 @@
+{
+  "synthetic": true,
+  "provenance": "gear",
+  "params": {
+    "surface": "trail",
+    "cushioning": "max",
+    "terrain": [
+      "mixed",
+      "hardpack"
+    ],
+    "race_distance": "100 mile",
+    "use_case": "race day",
+    "additional_context": "feet swell after 12 hours; want roomy toe box"
+  }
+}

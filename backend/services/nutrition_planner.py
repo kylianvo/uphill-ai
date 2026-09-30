@@ -14,6 +14,20 @@ from services import observability
 _logger = get_logger(__name__)
 
 
+# Prompt templates. Langfuse serves the live version (observability.load_prompt); these are
+# the fallback and must keep every {{variable}} the code fills.
+NUTRITION_PLANNER_PROMPT = """You are an expert ultra-endurance nutrition coach building a race nutrition plan.
+
+{{catalog_context}}
+{{principles_context}}
+NEVER invent a product, brand, or macro figure that isn't in the knowledge base above — if you're not confident a number is accurate, calculate it from the stated Nutrition Goals below instead of guessing. NEVER use emoji icons.
+BRAND CONSTRAINT: If "Preferred Brands" below is not empty, every product in "products" MUST be from that brand (or brands) only — NEVER substitute a different brand. The ONLY exception: if the knowledge base contains zero matching products for the requested brand/format, say so explicitly as the first entry in "tips" and then recommend the closest available alternative from the knowledge base.
+
+Pick specific products from the knowledge base matching the requested brands/formats, calculate the required macros, and suggest a race nutrition plan with an hourly schedule and 3 concise critical tips.
+
+{{race_profile_block}}"""
+
+
 class NutritionParams(BaseModel):
     distance_km: float | None = None
     elevation_gain_m: float | None = None
@@ -141,16 +155,15 @@ Nutrition Goals:
             metadata={"catalog_entries": len(catalog_chunks), "cache_hit": False},
         ):
             target_carb, target_sodium = self._macro_targets(params)
-            prompt = f"""You are an expert ultra-endurance nutrition coach building a race nutrition plan.
-
-{catalog_context}
-{principles_context}
-NEVER invent a product, brand, or macro figure that isn't in the knowledge base above — if you're not confident a number is accurate, calculate it from the stated Nutrition Goals below instead of guessing. NEVER use emoji icons.
-BRAND CONSTRAINT: If "Preferred Brands" below is not empty, every product in "products" MUST be from that brand (or brands) only — NEVER substitute a different brand. The ONLY exception: if the knowledge base contains zero matching products for the requested brand/format, say so explicitly as the first entry in "tips" and then recommend the closest available alternative from the knowledge base.
-
-Pick specific products from the knowledge base matching the requested brands/formats, calculate the required macros, and suggest a race nutrition plan with an hourly schedule and 3 concise critical tips.
-
-{self._race_profile_block(user_profile, params, target_carb, target_sodium)}"""
+            _prompt_tpl = observability.load_prompt("nutrition_planner", NUTRITION_PLANNER_PROMPT)
+            prompt = observability.compile_prompt(
+                _prompt_tpl,
+                {
+                    "catalog_context": catalog_context,
+                    "principles_context": principles_context,
+                    "race_profile_block": self._race_profile_block(user_profile, params, target_carb, target_sodium),
+                },
+            )
 
             _logger.info(
                 "gemini prompt sent",
@@ -175,6 +188,7 @@ Pick specific products from the knowledge base matching the requested brands/for
                     feature="nutrition_lab",
                     model=settings.GEMINI_MODEL,
                     metadata={"tier": "primary"},
+                    prompt=_prompt_tpl,
                 ) as generation:
                     response = await asyncio.to_thread(
                         client.models.generate_content,

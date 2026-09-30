@@ -1,0 +1,78 @@
+{
+  "latency_s": 6.0,
+  "engine_used": "gemini",
+  "output": {
+    "recommendations": [
+      {
+        "model": "Speedgoat 7",
+        "brand": "Hoka",
+        "foam_material": "Supercritical EVA (EVA)",
+        "outsole_compound": "Vibram Megagrip",
+        "lug_depth": "5.0 mm",
+        "drop": "5.0 mm",
+        "stack": "37.0/32.0 mm",
+        "weight": "9.55 oz / 271 g",
+        "price": "$165",
+        "pros": "A dependable, highly cushioned mountain workhorse offering a livelier supercritical midsole. Features exceptional Vibram traction and a secure fit for rugged miles.",
+        "cons": "The high stack can feel disconnected on technical terrain, and it tends to run slightly short."
+      },
+      {
+        "model": "Genesis 2",
+        "brand": "Salomon",
+        "foam_material": "OptiFoam (EVA / Olefin block copolymer)",
+        "outsole_compound": "All-Terrain ContaGrip",
+        "lug_depth": "4.5 mm",
+        "drop": "8 mm",
+        "stack": "34 mm heel / 26 mm forefoot",
+        "weight": "9.6 oz / 264 g",
+        "price": "$150",
+        "pros": "Built with an indestructible Matryx upper and Active Chassis stability. Provides forgiving moderate cushioning and reliable grip over varied terrain.",
+        "cons": "It lacks the high energy return of PEBA-based super-shoes, and the Quicklace pocket can feel snug."
+      },
+      {
+        "model": "Tecton X 4",
+        "brand": "Hoka",
+        "foam_material": "Dual-density PEBA (PEBA)",
+        "outsole_compound": "Vibram Megagrip Litebase with Traction Lug",
+        "lug_depth": "4.0 mm",
+        "drop": "5 mm",
+        "stack": "40 mm heel / 35 mm forefoot",
+        "weight": "9.2 oz / 261 g",
+        "price": "$275",
+        "pros": "Flagship trail racer featuring ultra-bouncy dual PEBA foam and parallel carbon plates for maximum propulsion. The durable Matryx upper locks down securely on rolling trails.",
+        "cons": "Carries a premium $275 price tag, and the dual plate design can feel rigid on severe off-camber terrain."
+      },
+      {
+        "model": "M1",
+        "brand": "Mount to Coast",
+        "foam_material": "JetCell Aliphatic TPU (A-TPU)",
+        "outsole_compound": "Vibram MegaGrip Litebase",
+        "lug_depth": "4.0 mm",
+        "drop": "4 mm",
+        "stack": "38 mm heel / 34 mm forefoot",
+        "weight": "9.7 oz / 274 g",
+        "price": "$195",
+        "pros": "Engineered for technical ultras with ultra-resilient A-TPU JetCell foam for fatigue resistance. Includes a customizable two-zone lacing system and top-tier Vibram grip.",
+        "cons": "The brand is relatively new to the trail scene, and the forefoot taper may feel snug for broader feet."
+      },
+      {
+        "model": "Terrex Agravic Speed Ultra 2",
+        "brand": "adidas",
+        "foam_material": "Lightstrike Pro (TPE)",
+        "outsole_compound": "Continental Rubber",
+        "lug_depth": "4 mm",
+        "drop": "8 mm",
+        "stack": "44 mm heel / 36 mm forefoot",
+        "weight": "9.35 oz / 265 g",
+        "price": "$225",
+        "pros": "A maximal-stack, highly propulsive off-road racer featuring Lightstrike Pro and TPE Energy Rods. Excellent for maintaining leg freshness on fast trail and ultra distances.",
+        "cons": "The towering 44 mm stack can feel unstable on highly technical, uneven surfaces."
+      }
+    ],
+    "tips": [
+      "When selecting a trail shoe, pair lug depth with your typical terrain: 3.5–4.5 mm lugs offer great all-around versatility on hardpack and rock, whereas 5 mm or deeper lugs excel in mud and loose grit.",
+      "Consider whether you prefer a plated trail racer for dynamic propulsion on runnable courses or an unplated daily workhorse for better ground feel and control on technical singletrack."
+    ],
+    "matched_race": null
+  }
+}

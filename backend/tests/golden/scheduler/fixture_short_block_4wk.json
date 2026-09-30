@@ -1,0 +1,25 @@
+{
+  "synthetic": true,
+  "provenance": "scheduler",
+  "_comment": "Very short block: must still produce a sensible taper without Peak spam.",
+  "user_profile": {
+    "age": 30,
+    "gender": "male",
+    "max_hr": 190,
+    "resting_hr": 50,
+    "aet_hr": 150,
+    "ant_hr": 170,
+    "current_weekly_km": 50.0,
+    "days_per_week": 5
+  },
+  "race_info": {
+    "lang": "en",
+    "terrain": "trail",
+    "goal_type": "finish",
+    "name": "Local 21K Trail",
+    "date": "2026-12-15",
+    "course_distance_km": 21,
+    "course_elevation_gain_m": 1000
+  },
+  "total_weeks": 4
+}

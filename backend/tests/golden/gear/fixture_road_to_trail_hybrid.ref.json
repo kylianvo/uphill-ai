@@ -1,0 +1,78 @@
+{
+  "latency_s": 8.3,
+  "engine_used": "gemini",
+  "output": {
+    "recommendations": [
+      {
+        "model": "Cascadia Elite",
+        "brand": "Brooks",
+        "foam_material": "PEBA foam",
+        "outsole_compound": "Vibram Megagrip Elite",
+        "lug_depth": "3.2 mm",
+        "drop": "6.0 mm",
+        "stack": "40/34 mm",
+        "weight": "9.7 oz / 275 g",
+        "price": "$275",
+        "pros": "Pairs soft and responsive PEBA superfoam with protective plate technology. Ideal for gravel, hardpack, and road-to-trail hybrid transitions with elite wet/dry grip.",
+        "cons": "Very expensive and features a narrower-fitting toebox with lower upper durability."
+      },
+      {
+        "model": "Peregrine 16",
+        "brand": "Saucony",
+        "foam_material": "PWRRUN+ (EVA-blend)",
+        "outsole_compound": "Vibram Megagrip",
+        "lug_depth": "3.5 mm",
+        "drop": "4.0 mm",
+        "stack": "31.7 mm heel / 26.9 mm forefoot",
+        "weight": "9.6 oz / 271 g",
+        "price": "$145",
+        "pros": "Delivers balanced, protective cushioning with versatile multi-terrain traction. Outstanding for hardpack, gravel paths, and light road transitions.",
+        "cons": "The toe box tapers tightly up front, and it has gained slight weight over previous editions."
+      },
+      {
+        "model": "Cascadia 19",
+        "brand": "Brooks",
+        "foam_material": "Nitrogen-infused EVA",
+        "outsole_compound": "TrailTack Green",
+        "lug_depth": "4.0 mm",
+        "drop": "6.0 mm",
+        "stack": "35/29 mm",
+        "weight": "10.7 oz / 303 g",
+        "price": "$150",
+        "pros": "A predictable, stable workhorse offering moderate cushioning and excellent platform protection. Ideal for gravel and mixed surface cruising.",
+        "cons": "Heavier overall build that can feel clunky if running extensive pavement miles."
+      },
+      {
+        "model": "Catamount 4",
+        "brand": "Brooks",
+        "foam_material": "Nitrogen-infused EVA",
+        "outsole_compound": "TrailTack Green",
+        "lug_depth": "3.5 mm",
+        "drop": "Not specified",
+        "stack": "34 / 28 mm",
+        "weight": "8.5 oz / 241 g",
+        "price": "$170",
+        "pros": "Lightweight, agile build designed for fast turnover on hardpack and light gravel trails. Features a dialed locked-in fit and dependable traction.",
+        "cons": "Underfoot cushioning feels firmer and less plush on prolonged paved road stretches."
+      },
+      {
+        "model": "Ride 19",
+        "brand": "Saucony",
+        "foam_material": "High-energy daily foam (EVA-blend)",
+        "outsole_compound": "XT-900 high-traction rubber",
+        "lug_depth": "0.0 mm",
+        "drop": "8.0 mm",
+        "stack": "38.7 mm heel / 30.2 mm forefoot",
+        "weight": "9 oz / 255 g",
+        "price": "$145",
+        "pros": "Dependable road daily cruiser that comfortably handles smooth gravel and hardpack surfaces. Balanced cushioning provides a smooth, stable transition.",
+        "cons": "Lacks trail lugs, making it unsuitable for loose dirt or muddy terrain."
+      }
+    ],
+    "tips": [
+      "When doing door-to-trail runs on gravel and hardpack, moderate lug depths between 3.0 mm and 3.5 mm provide the best balance of traction without causing instability on paved roads.",
+      "If your route features mostly hard-packed crushed gravel, a protective daily road shoe with durable rubber can double as a capable door-to-trail hybrid."
+    ],
+    "matched_race": null
+  }
+}

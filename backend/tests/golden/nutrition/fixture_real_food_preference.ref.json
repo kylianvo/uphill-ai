@@ -1,0 +1,162 @@
+{
+  "latency_s": 10.9,
+  "engine_used": "gemini",
+  "output": {
+    "products": [
+      {
+        "brand": "Precision Fuel & Hydration",
+        "name": "60 Energy Chew Bar",
+        "total_quantity": 10,
+        "carbs_per_unit": 60.0,
+        "sodium_per_unit": 0.0,
+        "protein_per_unit": 0.0,
+        "tech_notes": "Offers an outstanding energy-to-weight ratio, delivering 60g of carbohydrates for just 68g of weight. Provides a satisfying, solid chew format that helps prevent flavor fatigue and sits easily on sensitive stomachs during long training runs and ultra events. Available in Original (mild, neutral flavor), Mint & Lemon, and Combo Box formats. Certified vegan, uses no artificial ingredients, and is independently batch-tested."
+      },
+      {
+        "brand": "Näak",
+        "name": "Näak Ultra Energy™ Puree | Sweet Potatoes Butternut Squash",
+        "total_quantity": 20,
+        "carbs_per_unit": 26.0,
+        "sodium_per_unit": 0.0,
+        "protein_per_unit": 5.0,
+        "tech_notes": "Developed as a savory food option for ultra-endurance athletes to provide 200 calories while actively breaking up sweet flavor fatigue during long training days or races. Constructed with a low glycemic index to deliver a slow, highly stable, and long-lasting stream of energy. Blends natural simple sugars (maple syrup) with complex carbohydrates (hydrolyzed oat flour). Utilizes highly digestible soy and pea proteins. Made using sustainable, upcycled, and organic ingredients, including sustainably grown Oregon sweet potatoes and malting barley protein upcycled from beer by-products."
+      },
+      {
+        "brand": "Precision Fuel & Hydration",
+        "name": "Electrolyte Capsules",
+        "total_quantity": 40,
+        "carbs_per_unit": 0.0,
+        "sodium_per_unit": 250.0,
+        "protein_per_unit": 0.0,
+        "tech_notes": "Blister-packed swallowable capsules containing highly concentrated sodium. Designed to give athletes the ultimate flexibility to decouple their hydration/electrolyte intake from their carbohydrate fueling. This allows athletes to consume plain water or customized drink mixes from aid stations and separately ingest capsules to precisely match their genetically determined sweat sodium losses without altering their carbohydrate math or causing stomach upset."
+      }
+    ],
+    "hourly_plan": [
+      {
+        "hour": 1,
+        "action": "Consume 1 PF 60 Energy Chew Bar across the hour, paired with 2 PF Electrolyte Capsules and 500-750ml plain water.",
+        "carbs": 60.0,
+        "sodium": 500.0
+      },
+      {
+        "hour": 2,
+        "action": "Consume 2 pouches of Näak Ultra Energy Puree (approx. 52g carbs) along with 2 PF Electrolyte Capsules and fluid.",
+        "carbs": 52.0,
+        "sodium": 500.0
+      },
+      {
+        "hour": 3,
+        "action": "Consume 1 PF 60 Energy Chew Bar across the hour, paired with 2 PF Electrolyte Capsules and 500-750ml plain water.",
+        "carbs": 60.0,
+        "sodium": 500.0
+      },
+      {
+        "hour": 4,
+        "action": "Consume 2 pouches of Näak Ultra Energy Puree (approx. 52g carbs) along with 2 PF Electrolyte Capsules and fluid.",
+        "carbs": 52.0,
+        "sodium": 500.0
+      },
+      {
+        "hour": 5,
+        "action": "Consume 1 PF 60 Energy Chew Bar across the hour, paired with 2 PF Electrolyte Capsules and 500-750ml plain water.",
+        "carbs": 60.0,
+        "sodium": 500.0
+      },
+      {
+        "hour": 6,
+        "action": "Consume 2 pouches of Näak Ultra Energy Puree (approx. 52g carbs) along with 2 PF Electrolyte Capsules and fluid.",
+        "carbs": 52.0,
+        "sodium": 500.0
+      },
+      {
+        "hour": 7,
+        "action": "Consume 1 PF 60 Energy Chew Bar across the hour, paired with 2 PF Electrolyte Capsules and 500-750ml plain water.",
+        "carbs": 60.0,
+        "sodium": 500.0
+      },
+      {
+        "hour": 8,
+        "action": "Consume 2 pouches of Näak Ultra Energy Puree (approx. 52g carbs) along with 2 PF Electrolyte Capsules and fluid.",
+        "carbs": 52.0,
+        "sodium": 500.0
+      },
+      {
+        "hour": 9,
+        "action": "Consume 1 PF 60 Energy Chew Bar across the hour, paired with 2 PF Electrolyte Capsules and 500-750ml plain water.",
+        "carbs": 60.0,
+        "sodium": 500.0
+      },
+      {
+        "hour": 10,
+        "action": "Consume 2 pouches of Näak Ultra Energy Puree (approx. 52g carbs) along with 2 PF Electrolyte Capsules and fluid.",
+        "carbs": 52.0,
+        "sodium": 500.0
+      },
+      {
+        "hour": 11,
+        "action": "Consume 1 PF 60 Energy Chew Bar across the hour, paired with 2 PF Electrolyte Capsules and 500-750ml plain water.",
+        "carbs": 60.0,
+        "sodium": 500.0
+      },
+      {
+        "hour": 12,
+        "action": "Consume 2 pouches of Näak Ultra Energy Puree (approx. 52g carbs) along with 2 PF Electrolyte Capsules and fluid.",
+        "carbs": 52.0,
+        "sodium": 500.0
+      },
+      {
+        "hour": 13,
+        "action": "Consume 1 PF 60 Energy Chew Bar across the hour, paired with 2 PF Electrolyte Capsules and 500-750ml plain water.",
+        "carbs": 60.0,
+        "sodium": 500.0
+      },
+      {
+        "hour": 14,
+        "action": "Consume 2 pouches of Näak Ultra Energy Puree (approx. 52g carbs) along with 2 PF Electrolyte Capsules and fluid.",
+        "carbs": 52.0,
+        "sodium": 500.0
+      },
+      {
+        "hour": 15,
+        "action": "Consume 1 PF 60 Energy Chew Bar across the hour, paired with 2 PF Electrolyte Capsules and 500-750ml plain water.",
+        "carbs": 60.0,
+        "sodium": 500.0
+      },
+      {
+        "hour": 16,
+        "action": "Consume 2 pouches of Näak Ultra Energy Puree (approx. 52g carbs) along with 2 PF Electrolyte Capsules and fluid.",
+        "carbs": 52.0,
+        "sodium": 500.0
+      },
+      {
+        "hour": 17,
+        "action": "Consume 1 PF 60 Energy Chew Bar across the hour, paired with 2 PF Electrolyte Capsules and 500-750ml plain water.",
+        "carbs": 60.0,
+        "sodium": 500.0
+      },
+      {
+        "hour": 18,
+        "action": "Consume 2 pouches of Näak Ultra Energy Puree (approx. 52g carbs) along with 2 PF Electrolyte Capsules and fluid.",
+        "carbs": 52.0,
+        "sodium": 500.0
+      },
+      {
+        "hour": 19,
+        "action": "Consume 1 PF 60 Energy Chew Bar across the hour, paired with 2 PF Electrolyte Capsules and 500-750ml plain water.",
+        "carbs": 60.0,
+        "sodium": 500.0
+      },
+      {
+        "hour": 20,
+        "action": "Consume 2 pouches of Näak Ultra Energy Puree (approx. 52g carbs) along with 2 PF Electrolyte Capsules and fluid.",
+        "carbs": 52.0,
+        "sodium": 500.0
+      }
+    ],
+    "tips": [
+      "Manage heat-induced GI stress at 28C by decoupling carbohydrates from fluids; consume chews and purees in small nibbles every 15-20 minutes alongside plain water.",
+      "Utilize 2 Precision Fuel Electrolyte Capsules per hour (500mg sodium) to hit your sodium target independently without altering food digestion or causing gut distress.",
+      "Alternate between solid chews and savory vegetable purees across the 20 hours to prevent palate fatigue and avoid gastric slowdown from excessive sweetness."
+    ]
+  }
+}

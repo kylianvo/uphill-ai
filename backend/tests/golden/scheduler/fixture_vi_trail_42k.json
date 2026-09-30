@@ -1,0 +1,25 @@
+{
+  "synthetic": true,
+  "provenance": "scheduler",
+  "_comment": "Vietnamese-language plan: check VI copy and terrain handling.",
+  "user_profile": {
+    "age": 36,
+    "gender": "male",
+    "max_hr": 184,
+    "resting_hr": 54,
+    "aet_hr": 142,
+    "ant_hr": 164,
+    "current_weekly_km": 40.0,
+    "days_per_week": 5
+  },
+  "race_info": {
+    "lang": "vi",
+    "terrain": "trail",
+    "goal_type": "finish",
+    "name": "Dalat Ultra Trail 42K",
+    "date": "2026-12-15",
+    "course_distance_km": 42,
+    "course_elevation_gain_m": 2200
+  },
+  "total_weeks": 14
+}

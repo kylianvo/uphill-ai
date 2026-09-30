@@ -1,0 +1,26 @@
+{
+  "synthetic": true,
+  "provenance": "scheduler",
+  "_comment": "Older athlete: extra recovery, strength emphasis.",
+  "user_profile": {
+    "age": 58,
+    "gender": "female",
+    "max_hr": 165,
+    "resting_hr": 52,
+    "aet_hr": 128,
+    "ant_hr": 150,
+    "current_weekly_km": 45.0,
+    "days_per_week": 4,
+    "has_gym_access": true
+  },
+  "race_info": {
+    "lang": "en",
+    "terrain": "trail",
+    "goal_type": "finish",
+    "name": "Masters 50K",
+    "date": "2026-12-15",
+    "course_distance_km": 50,
+    "course_elevation_gain_m": 2000
+  },
+  "total_weeks": 14
+}

@@ -1,0 +1,16 @@
+{
+  "synthetic": true,
+  "provenance": "gear",
+  "params": {
+    "surface": "trail",
+    "cushioning": "low",
+    "terrain": [
+      "technical",
+      "muddy",
+      "steep"
+    ],
+    "race_distance": "25k",
+    "preferred_brands": "Salomon",
+    "additional_context": "skyrace with 2000m D+, needs aggressive lugs"
+  }
+}

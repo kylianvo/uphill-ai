@@ -1,0 +1,11 @@
+{
+  "synthetic": true,
+  "provenance": "nutrition",
+  "params": {
+    "distance_km": 42.2,
+    "elevation_gain_m": 150,
+    "target_time_hours": 3.5,
+    "weather_temp": "cool (12C)",
+    "athlete_level": "intermediate"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "synthetic": true,
+  "provenance": "nutrition",
+  "params": {
+    "distance_km": 50,
+    "elevation_gain_m": 2000,
+    "target_time_hours": 7,
+    "weather_temp": "warm (25C)",
+    "preferred_format": [
+      "drink mix"
+    ],
+    "preferred_brands": "Tailwind Nutrition",
+    "additional_context": "gels upset stomach"
+  }
+}

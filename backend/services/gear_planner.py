@@ -14,6 +14,20 @@ from services import observability
 _logger = get_logger(__name__)
 
 
+# Prompt templates. Langfuse serves the live version (observability.load_prompt); these are
+# the fallback and must keep every {{variable}} the code fills.
+GEAR_FINDER_PROMPT = """You are an expert running shoe specialist recommending shoes that match an athlete's criteria.
+
+{{catalog_context}}
+NEVER invent a shoe model, spec, or price that isn't in the knowledge base above — if you're not confident a detail is accurate, omit that field or say so in "cons" rather than guessing.
+BRAND CONSTRAINT: If "Preferred Brands" below is not empty, every recommendation MUST be from that brand (or brands) only — NEVER substitute a different brand. The ONLY exception: if the knowledge base contains zero matching shoes for the requested brand, say so explicitly in "tips" and then recommend the closest available alternative from the knowledge base.
+
+Field guidance: "foam_material" names the foam ALONG WITH its material type in parentheses (e.g. ZoomX (PEBA), PWRRUN PB (PEBA), optiFOAM (EVA)); "outsole_compound" e.g. Vibram Megagrip, Contagrip, None for road; "lug_depth"/"drop"/"stack" in mm; "weight" is a SHORT summary of the shoe's own weight from that catalog entry's "weight" field — output ONLY the primary oz/g figure (e.g. "9.6 oz / 272 g"), dropping any parenthetical breakdown (actual vs. stated, men's vs. women's, multiple model variants) — never invent a number that isn't present in that field; "pros" is 2-3 short sentences on what the shoe is best for; "cons" is 1-2 short sentences on drawbacks or who shouldn't buy it; "tips" are 2 short gear tips based on user context.
+MATCHING: weigh each catalog entry's own fields against the athlete's criteria — "foot_shape" against the requested Width, "carbon_plate" against the Carbon Plate preference, "arch_support" and "suitability" against the athlete profile and special requirements (e.g. injury history, stability needs, heavier runners), "terrain"/"cushioning" against the requested Trail Terrain/Cushioning, and "intended_use"/"overview" against the Road Use Case and Race Distance. Prefer entries whose fields explicitly match over entries where the detail is missing.
+
+{{criteria_block}}{{course_context_block}}"""
+
+
 class GearParams(BaseModel):
     surface: str | None = None
     cushioning: str | None = None
@@ -139,16 +153,15 @@ class GearPlannerService:
             feature="gear_finder",
             metadata={"catalog_entries": len(chunks), "cache_hit": False},
         ):
-            prompt = f"""You are an expert running shoe specialist recommending shoes that match an athlete's criteria.
-
-{catalog_context}
-NEVER invent a shoe model, spec, or price that isn't in the knowledge base above — if you're not confident a detail is accurate, omit that field or say so in "cons" rather than guessing.
-BRAND CONSTRAINT: If "Preferred Brands" below is not empty, every recommendation MUST be from that brand (or brands) only — NEVER substitute a different brand. The ONLY exception: if the knowledge base contains zero matching shoes for the requested brand, say so explicitly in "tips" and then recommend the closest available alternative from the knowledge base.
-
-Field guidance: "foam_material" names the foam ALONG WITH its material type in parentheses (e.g. ZoomX (PEBA), PWRRUN PB (PEBA), optiFOAM (EVA)); "outsole_compound" e.g. Vibram Megagrip, Contagrip, None for road; "lug_depth"/"drop"/"stack" in mm; "weight" is a SHORT summary of the shoe's own weight from that catalog entry's "weight" field — output ONLY the primary oz/g figure (e.g. "9.6 oz / 272 g"), dropping any parenthetical breakdown (actual vs. stated, men's vs. women's, multiple model variants) — never invent a number that isn't present in that field; "pros" is 2-3 short sentences on what the shoe is best for; "cons" is 1-2 short sentences on drawbacks or who shouldn't buy it; "tips" are 2 short gear tips based on user context.
-MATCHING: weigh each catalog entry's own fields against the athlete's criteria — "foot_shape" against the requested Width, "carbon_plate" against the Carbon Plate preference, "arch_support" and "suitability" against the athlete profile and special requirements (e.g. injury history, stability needs, heavier runners), "terrain"/"cushioning" against the requested Trail Terrain/Cushioning, and "intended_use"/"overview" against the Road Use Case and Race Distance. Prefer entries whose fields explicitly match over entries where the detail is missing.
-
-{self._criteria_block(params)}{self._course_context_block(matched_course)}"""
+            _prompt_tpl = observability.load_prompt("gear_finder", GEAR_FINDER_PROMPT)
+            prompt = observability.compile_prompt(
+                _prompt_tpl,
+                {
+                    "catalog_context": catalog_context,
+                    "criteria_block": self._criteria_block(params),
+                    "course_context_block": self._course_context_block(matched_course),
+                },
+            )
 
             _logger.info(
                 "gemini prompt sent",
@@ -172,6 +185,7 @@ MATCHING: weigh each catalog entry's own fields against the athlete's criteria �
                     feature="gear_finder",
                     model=settings.GEMINI_MODEL,
                     metadata={"tier": "primary"},
+                    prompt=_prompt_tpl,
                 ) as generation:
                     response = await asyncio.to_thread(
                         client.models.generate_content,

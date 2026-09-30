@@ -1,0 +1,39 @@
+{
+  "latency_s": 4.5,
+  "engine_used": "gemini",
+  "output": {
+    "recommendations": [
+      {
+        "model": "Speedgoat 7",
+        "brand": "Hoka",
+        "foam_material": "Supercritical EVA (EVA)",
+        "outsole_compound": "Vibram Megagrip",
+        "lug_depth": "5.0 mm with Traction Lug",
+        "drop": "5.0 mm",
+        "stack": "37.0/32.0 mm",
+        "weight": "9.55 oz / 271 g",
+        "price": "$165",
+        "pros": "Responsive fresh-legs cushioning and outstanding Vibram wet/dry traction for rugged trails. The 5.0 mm Traction Lugs excel in mud, loose dirt, and technical roots.",
+        "cons": "Tall stack can feel somewhat clunky on off-camber technical sections, and the fit runs slightly short."
+      },
+      {
+        "model": "Mafate 5",
+        "brand": "Hoka",
+        "foam_material": "Supercritical EVA (EVA)",
+        "outsole_compound": "Vibram Megagrip with asymmetric chevrons",
+        "lug_depth": "4.4 mm",
+        "drop": "9.0 mm",
+        "stack": "42.9/33.9 mm",
+        "weight": "11.7 oz / 332 g",
+        "price": "$185",
+        "pros": "A maximalist trail workhorse providing endless joint protection and high platform stability. Grippy 4.4 mm chevron lugs bite securely into mixed and muddy off-trail surfaces.",
+        "cons": "Heavy and bulky underfoot compared to pure race shoes, and the non-gusseted tongue design may require adjustment."
+      }
+    ],
+    "tips": [
+      "Hoka's catalog contains only two trail models meeting your max cushion, technical trail, and under-$200 budget criteria: the Speedgoat 7 and Mafate 5.",
+      "For technical 50K distances with mud, consider sizing up a half-size in the Speedgoat 7 to account for foot swelling and its slightly short fit."
+    ],
+    "matched_race": null
+  }
+}

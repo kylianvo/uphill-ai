@@ -1,0 +1,8 @@
+{
+  "synthetic": true,
+  "provenance": "nutrition",
+  "params": {
+    "distance_km": 50,
+    "target_time_hours": 8
+  }
+}

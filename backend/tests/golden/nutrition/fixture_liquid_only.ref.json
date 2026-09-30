@@ -1,0 +1,75 @@
+{
+  "latency_s": 5.0,
+  "engine_used": "gemini",
+  "output": {
+    "products": [
+      {
+        "brand": "Tailwind Nutrition",
+        "name": "Tailwind Endurance Fuel",
+        "total_quantity": 14,
+        "carbs_per_unit": 25.0,
+        "sodium_per_unit": 310,
+        "protein_per_unit": 0.0,
+        "tech_notes": "Employs a dual-carbohydrate formula of non-GMO dextrose (glucose) and non-GMO sucrose designed to match what the small intestine is built to absorb. This allows the carbohydrates to enter the bloodstream rapidly without causing digestive distress or \"gut bombs\". It provides complete calories, hydration, and electrolytes (sodium, potassium, magnesium, calcium) in a single mix, eliminating the need to supplement with other fuels like gels or salt pills. It contains no artificial dyes, preservatives, or complex chemical additives."
+      },
+      {
+        "brand": "Tailwind Nutrition",
+        "name": "Tailwind High Carb Fuel (Lemonade)",
+        "total_quantity": 2,
+        "carbs_per_unit": 90.0,
+        "sodium_per_unit": 660,
+        "protein_per_unit": 0.0,
+        "tech_notes": "A power-packed drink mix engineered specifically for high-intensity efforts, delivering a higher carbohydrate concentration to maximize energy per sip. It utilizes an optimized 2:1 glucose-to-fructose ratio to increase carbohydrate absorption, lower perceived exertion, and accelerate recovery. It features a clean, refreshing, and light taste designed to mix easily and prevent sickliness or flavor fatigue even at high concentrations."
+      }
+    ],
+    "hourly_plan": [
+      {
+        "hour": 1,
+        "action": "Sip 2 servings (approx. 500-600ml) of Tailwind Endurance Fuel steadily across the hour",
+        "carbs": 50.0,
+        "sodium": 620
+      },
+      {
+        "hour": 2,
+        "action": "Sip 2 servings (approx. 500-600ml) of Tailwind Endurance Fuel steadily across the hour",
+        "carbs": 50.0,
+        "sodium": 620
+      },
+      {
+        "hour": 3,
+        "action": "Sip 2/3 packet (approx. 500-600ml) of Tailwind High Carb Fuel steadily across the hour",
+        "carbs": 60.0,
+        "sodium": 440
+      },
+      {
+        "hour": 4,
+        "action": "Sip 2 servings (approx. 500-600ml) of Tailwind Endurance Fuel steadily across the hour",
+        "carbs": 50.0,
+        "sodium": 620
+      },
+      {
+        "hour": 5,
+        "action": "Sip 2/3 packet (approx. 500-600ml) of Tailwind High Carb Fuel steadily across the hour",
+        "carbs": 60.0,
+        "sodium": 440
+      },
+      {
+        "hour": 6,
+        "action": "Sip 2 servings (approx. 500-600ml) of Tailwind Endurance Fuel steadily across the hour",
+        "carbs": 50.0,
+        "sodium": 620
+      },
+      {
+        "hour": 7,
+        "action": "Sip 2 servings (approx. 500-600ml) of Tailwind Endurance Fuel steadily across the hour",
+        "carbs": 50.0,
+        "sodium": 620
+      }
+    ],
+    "tips": [
+      "Sip fluid consistently every 10 to 15 minutes rather than drinking large volumes at aid stations to support rapid gastric emptying and avoid gut distension.",
+      "In warm 25C conditions, monitor sweat rate and carry an extra flask of plain water to sip as needed if elevated thirst occurs alongside the electrolyte drink mix.",
+      "Practice using your specific bottle concentrations in training long runs under race-intensity conditions to train gut tolerance and ensure complete digestive comfort."
+    ]
+  }
+}

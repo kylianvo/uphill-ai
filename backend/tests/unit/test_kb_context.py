@@ -43,3 +43,10 @@ def test_find_uncatalogued_flags_unknown_products():
     missing = find_uncatalogued(recs, catalog)
     assert missing == ["nike imaginary trail 9"]
     assert find_uncatalogued([], catalog) == []
+
+
+def test_find_uncatalogued_accepts_catalog_titles_that_abbreviate_the_brand():
+    from services.kb_context import find_uncatalogued
+
+    recs = [{"brand": "Precision Fuel & Hydration", "name": "PF 30 Energy Gel"}]
+    assert find_uncatalogued(recs, ["PF 30 Energy Gel"]) == []

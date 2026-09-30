@@ -137,7 +137,7 @@ Backend reads from `backend/.env`. Key variables:
 - `COACH_CHAT_DAILY_NEW_TURNS_LIMIT`, `COACH_CHAT_DAILY_RETRIES_LIMIT`, `COACH_CHAT_MAX_RETRIES_PER_ROOT` — daily athlete turn and retry limits (50 new turns, 10 retries, 2 retries per root)
 - `COACH_CHAT_TURN_TIMEOUT_SECONDS`, `COACH_CHAT_SUMMARY_TIMEOUT_SECONDS` — turn execution (45s) and summary generation (10s) deadlines
 - `COACH_CHAT_RETENTION_DAYS`, `COACH_CHAT_MAX_INPUT_CHARS` — conversation retention (90d) and maximum user prompt length (2000 chars)
-- `COACH_CHAT_PROMPT_LABEL`, `COACH_CHAT_PROMPT_CACHE_TTL_SECONDS` — Langfuse prompt template label ("production"/"staging") and SDK cache TTL (300s)
+- `COACH_CHAT_PROMPT_LABEL`, `COACH_CHAT_PROMPT_CACHE_TTL_SECONDS` — Langfuse prompt label ("production"/"staging") and SDK cache TTL (300s) for **every** managed prompt (coach_chat, chat_summary, plan_generation, plan_single_workout, block_narrative, gear_finder, nutrition_planner, goal_judge), not just coach chat. The in-code template constants are the fallback
 
 Per-user Gemini API keys are stored in the `users` table (`gemini_api_key` column) and take precedence over the server-level key for chat and plan generation (NOT yet for the gear/nutrition Gemini engines, which use the server key).
 
@@ -148,6 +148,7 @@ Per-user Gemini API keys are stored in the `users` table (`gemini_api_key` colum
 - **Bilingual support**: The app supports English and Vietnamese (`lang: "en" | "vi"`). Knowledge cards and plan generation respect the `lang` parameter.
 - **Qdrant**: A Qdrant vector DB container is in docker-compose. The KB RAG engine uses it via `services/kb_retrieval.py` (plain qdrant-client + `gemini-embedding-2`, collection `uphill_kb_scheduler`). `services/vector_service.py` is legacy (langchain-based, deps not in requirements.txt) kept only for the old `scripts/index_*.py`.
 - **Dual schema**: every table/column change goes in BOTH `db.py:init_db()` and a hand-written Alembic migration (see the `db-migration` skill). `init_db()` also self-migrates existing dev databases via idempotent ALTERs at startup.
+- **Prompt management**: all LLM prompts are Langfuse text prompts with `{{variables}}`, fetched by `observability.load_prompt(name, FALLBACK)` and compiled locally by `observability.compile_prompt` (athlete data never leaves the process). A Langfuse version that drops a variable is rejected in favour of the fallback. Prompt name/version is linked to each generation span. Change process: `.claude/skills/llm-change-process/SKILL.md`.
 - **LLM Observability**: Unified tracing and cost accounting across Coach Plan Generator, Gear Finder, Nutrition Lab, KB Distiller, and Knowledge Cards via `services/observability.py`. Metadata-only export to EU Langfuse (`LANGFUSE_EXPORT_CONTENT=false`); Prometheus counters record calls, tokens, latency, and costs. See [docs/observability-release-report.md](docs/observability-release-report.md).
 
 ## Agent skills
@@ -163,6 +164,10 @@ Default label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `read
 ### Domain docs
 
 Single-context layout: one `CONTEXT.md` + `docs/adr/` at the repo root (created lazily, not yet present). See `docs/agents/domain.md`.
+
+### LLM changes
+
+Any prompt edit, new Gemini call, or new LLM-powered service goes through Langfuse prompt versioning, a golden-set eval pushed to Langfuse, and staging → production label promotion. Follow `.claude/skills/llm-change-process/SKILL.md` and put its checklist in the PR description.
 
 ### UI changes
 

@@ -1,0 +1,99 @@
+{
+  "latency_s": 6.1,
+  "engine_used": "gemini",
+  "output": {
+    "products": [
+      {
+        "brand": "Precision Fuel & Hydration",
+        "name": "Carb & Electrolyte Drink Mix",
+        "total_quantity": 11,
+        "carbs_per_unit": 60,
+        "sodium_per_unit": 1000,
+        "protein_per_unit": 0,
+        "tech_notes": "Formulated with a scientifically backed 2:1 glucose-to-fructose ratio to maximize carbohydrate absorption. It is designed to deliver a steady stream of rapidly digestible energy during high-intensity efforts lasting several hours, helping to replace fluid and sweat losses simultaneously. It is engineered with a very mild, neutral taste to minimize palate fatigue and stomach issues during hard efforts, making it highly palatable even when breathing hard. Certified by Informed Sport and uses 100% recyclable packaging."
+      },
+      {
+        "brand": "Maurten",
+        "name": "Gel 160",
+        "total_quantity": 11,
+        "carbs_per_unit": 40,
+        "sodium_per_unit": 0,
+        "protein_per_unit": 0,
+        "tech_notes": "Developed as a larger hydrogel option for endurance athletes who want to meet higher hourly carbohydrate targets with less packaging to carry and less trail waste to carry out. It utilizes Hydrogel Technology to carry 40 grams of carbohydrates cleanly through the stomach in an optimal 0.8:1 fructose-to-glucose ratio. Features a firm, Jell-O-like consistency that is only slightly sweet and goes down smoothly. Formulated with only 6 natural ingredients, is suitable for vegetarians and vegans, and contains no artificial colors, preservatives, or flavors."
+      }
+    ],
+    "hourly_plan": [
+      {
+        "hour": 1,
+        "action": "Sip 1 serving of Precision Fuel & Hydration Carb & Electrolyte Drink Mix diluted in 500-750ml water across the hour; take 1 Maurten Gel 160 at minute 30.",
+        "carbs": 100,
+        "sodium": 1000
+      },
+      {
+        "hour": 2,
+        "action": "Sip 1 serving of Precision Fuel & Hydration Carb & Electrolyte Drink Mix diluted in 500-750ml water across the hour; take 1 Maurten Gel 160 at minute 30.",
+        "carbs": 100,
+        "sodium": 1000
+      },
+      {
+        "hour": 3,
+        "action": "Sip 1 serving of Precision Fuel & Hydration Carb & Electrolyte Drink Mix diluted in 500-750ml water across the hour; take 1 Maurten Gel 160 at minute 30.",
+        "carbs": 100,
+        "sodium": 1000
+      },
+      {
+        "hour": 4,
+        "action": "Sip 1 serving of Precision Fuel & Hydration Carb & Electrolyte Drink Mix diluted in 500-750ml water across the hour; take 1 Maurten Gel 160 at minute 30.",
+        "carbs": 100,
+        "sodium": 1000
+      },
+      {
+        "hour": 5,
+        "action": "Sip 1 serving of Precision Fuel & Hydration Carb & Electrolyte Drink Mix diluted in 500-750ml water across the hour; take 1 Maurten Gel 160 at minute 30.",
+        "carbs": 100,
+        "sodium": 1000
+      },
+      {
+        "hour": 6,
+        "action": "Sip 1 serving of Precision Fuel & Hydration Carb & Electrolyte Drink Mix diluted in 500-750ml water across the hour; take 1 Maurten Gel 160 at minute 30.",
+        "carbs": 100,
+        "sodium": 1000
+      },
+      {
+        "hour": 7,
+        "action": "Sip 1 serving of Precision Fuel & Hydration Carb & Electrolyte Drink Mix diluted in 500-750ml water across the hour; take 1 Maurten Gel 160 at minute 30.",
+        "carbs": 100,
+        "sodium": 1000
+      },
+      {
+        "hour": 8,
+        "action": "Sip 1 serving of Precision Fuel & Hydration Carb & Electrolyte Drink Mix diluted in 500-750ml water across the hour; take 1 Maurten Gel 160 at minute 30.",
+        "carbs": 100,
+        "sodium": 1000
+      },
+      {
+        "hour": 9,
+        "action": "Sip 1 serving of Precision Fuel & Hydration Carb & Electrolyte Drink Mix diluted in 500-750ml water across the hour; take 1 Maurten Gel 160 at minute 30.",
+        "carbs": 100,
+        "sodium": 1000
+      },
+      {
+        "hour": 10,
+        "action": "Sip 1 serving of Precision Fuel & Hydration Carb & Electrolyte Drink Mix diluted in 500-750ml water across the hour; take 1 Maurten Gel 160 at minute 30.",
+        "carbs": 100,
+        "sodium": 1000
+      },
+      {
+        "hour": 11,
+        "action": "Sip 1 serving of Precision Fuel & Hydration Carb & Electrolyte Drink Mix diluted in 500-750ml water across the hour; take 1 Maurten Gel 160 at minute 30.",
+        "carbs": 100,
+        "sodium": 1000
+      }
+    ],
+    "tips": [
+      "Execute gut training during long workouts 6 to 8 weeks out to adapt intestinal transporters to the 100g/h carbohydrate intake.",
+      "Preload with a high-sodium electrolyte drink the night before and 90 minutes before the race start to expand blood plasma volume.",
+      "Consume plain water alongside concentrated hydrogels to maintain gastric emptying rates and prevent gastrointestinal distress."
+    ]
+  }
+}

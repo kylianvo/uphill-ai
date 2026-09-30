@@ -1,0 +1,90 @@
+{
+  "latency_s": 6.2,
+  "engine_used": "gemini",
+  "output": {
+    "products": [
+      {
+        "brand": "Maurten",
+        "name": "Drink Mix 160",
+        "total_quantity": 8,
+        "carbs_per_unit": 40.0,
+        "sodium_per_unit": 0.0,
+        "protein_per_unit": 0.0,
+        "tech_notes": "Based on patented Hydrogel Technology. Unlike other sports drinks, the liquid instantly converts into a hydrogel upon coming into contact with the acidity of stomach acid. This encapsulates the carbohydrates, carrying them through the stomach safely to reduce gastrointestinal distress and minimize the sensation of liquid sloshing in the gut. Designed for longer, lower-intensity training and racing. It dissolves quickly and has a very basic, neutral taste with no excessive sugars or artificial flavorings."
+      },
+      {
+        "brand": "Maurten",
+        "name": "Gel 100",
+        "total_quantity": 7,
+        "carbs_per_unit": 25.0,
+        "sodium_per_unit": 0.0,
+        "protein_per_unit": 0.0,
+        "tech_notes": "Uses patented Hydrogel Technology to encapsulate carbohydrates, allowing them to safely pass through the stomach acid to be absorbed directly in the intestine, which prevents the gastrointestinal distress common with simple sugars. Unlike traditional syrupy gels, it has a firm, Jell-O-like texture that is easy to swallow during high-intensity efforts and does not require water to wash it down. Built with only 6 natural ingredients in an optimal 0.8:1 ratio of fructose to glucose. Contains no added colors, preservatives, or flavorings."
+      },
+      {
+        "brand": "Maurten",
+        "name": "Gel 100 Caf 100",
+        "total_quantity": 1,
+        "carbs_per_unit": 25.0,
+        "sodium_per_unit": 0.0,
+        "protein_per_unit": 0.0,
+        "tech_notes": "Features the same patented Hydrogel Technology and firm, non-syrupy consistency as Gel 100. It encapsulates both the carbohydrates and the caffeine to carry them safely through the stomach to reduce gastrointestinal distress and remove any bitter caffeine aftertaste. Built with only 7 natural ingredients in a 0.8:1 ratio of fructose to glucose. Contains no added colors, preservatives, or flavorings."
+      }
+    ],
+    "hourly_plan": [
+      {
+        "hour": 1,
+        "action": "Sip 1 serving of Maurten Drink Mix 160 mixed in 500ml water across the hour, and consume 1 Maurten Gel 100 at minute 30.",
+        "carbs": 65.0,
+        "sodium": 0.0
+      },
+      {
+        "hour": 2,
+        "action": "Sip 1 serving of Maurten Drink Mix 160 mixed in 500ml water across the hour, and consume 1 Maurten Gel 100 at minute 30.",
+        "carbs": 65.0,
+        "sodium": 0.0
+      },
+      {
+        "hour": 3,
+        "action": "Sip 1 serving of Maurten Drink Mix 160 mixed in 500ml water across the hour, and consume 1 Maurten Gel 100 at minute 30.",
+        "carbs": 65.0,
+        "sodium": 0.0
+      },
+      {
+        "hour": 4,
+        "action": "Sip 1 serving of Maurten Drink Mix 160 mixed in 500ml water across the hour, and consume 1 Maurten Gel 100 Caf 100 at minute 30 for a mid-race mental boost.",
+        "carbs": 65.0,
+        "sodium": 0.0
+      },
+      {
+        "hour": 5,
+        "action": "Sip 1 serving of Maurten Drink Mix 160 mixed in 500ml water across the hour, and consume 1 Maurten Gel 100 at minute 30.",
+        "carbs": 65.0,
+        "sodium": 0.0
+      },
+      {
+        "hour": 6,
+        "action": "Sip 1 serving of Maurten Drink Mix 160 mixed in 500ml water across the hour, and consume 1 Maurten Gel 100 at minute 30.",
+        "carbs": 65.0,
+        "sodium": 0.0
+      },
+      {
+        "hour": 7,
+        "action": "Sip 1 serving of Maurten Drink Mix 160 mixed in 500ml water across the hour, and consume 1 Maurten Gel 100 at minute 30.",
+        "carbs": 65.0,
+        "sodium": 0.0
+      },
+      {
+        "hour": 8,
+        "action": "Sip 1 serving of Maurten Drink Mix 160 mixed in 500ml water across the hour, and consume 1 Maurten Gel 100 at minute 30 to power the final climb and finish.",
+        "carbs": 65.0,
+        "sodium": 0.0
+      }
+    ],
+    "tips": [
+      "The Maurten catalog in the knowledge base does not include standalone sodium or electrolyte products; to meet your 1000mg/hour sodium goal in 30C heat, you must decouple hydration and integrate a dedicated electrolyte supplement like Precision Fuel & Hydration Electrolyte Capsules or 1000 drink mix.",
+      "Maurten products rely on Hydrogel Technology to safely pass carbohydrates through the stomach into the intestine without gastrointestinal distress, so ensure drink mixes are mixed strictly to instructions and not over-diluted.",
+      "In 30C hot conditions with high elevation gain, consume consistent fluid amounts (around 500-750ml per hour) and use proactive cooling techniques like dousing with cold water to maintain plasma volume and core temperature."
+    ]
+  }
+}

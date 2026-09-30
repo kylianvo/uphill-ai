@@ -1,4 +1,6 @@
 {
+  "synthetic": true,
+  "provenance": "scheduler",
   "_comment": "Novice tier (15-40 km/wk band). Doctrine forbids intensity for BEGINNERS explicitly but says nothing of the sort about novices, and structured ME blocks start at recreational -- this fixture is the one place a regression would show a novice either wrongly denied all quality work (over-restricted) or wrongly given ME circuits (under-restricted).",
   "user_profile": {
     "age": 32,

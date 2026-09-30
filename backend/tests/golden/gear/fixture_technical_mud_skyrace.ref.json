@@ -1,0 +1,78 @@
+{
+  "latency_s": 7.1,
+  "engine_used": "gemini",
+  "output": {
+    "recommendations": [
+      {
+        "model": "Speedcross 6",
+        "brand": "Salomon",
+        "foam_material": "EnergyCell+ (EVA)",
+        "outsole_compound": "Mud Contagrip",
+        "lug_depth": "5.8 mm",
+        "drop": "14.1 mm",
+        "stack": "36.5/22.4 mm",
+        "weight": "10.5 oz / 298 g",
+        "price": "$145",
+        "pros": "Exceptional claw-like grip built specifically for steep mud and loose, technical conditions. Offers unrivaled mud shedding and supreme agility when carving through rugged alpine terrain.",
+        "cons": "The ride is remarkably firm and concrete-like, and upper breathability is poor in warmer conditions."
+      },
+      {
+        "model": "S/Lab Genesis 2",
+        "brand": "Salomon",
+        "foam_material": "Dual-density OptiFoam2 (eTPU)",
+        "outsole_compound": "All-Terrain Contagrip with revised wet-rock lug geometry",
+        "lug_depth": "4.5 mm",
+        "drop": "6 mm",
+        "stack": "31 mm heel / 25 mm forefoot",
+        "weight": "9.3 oz / 264 g",
+        "price": "$200",
+        "pros": "Delivers outstanding low-stack ground feel and precise foot placement across technical mountain ridgelines. Built with reengineered activeCHASSIS stability and an indestructible Matryx upper.",
+        "cons": "Low-to-moderate stack focuses heavily on ground feedback over soft cushion, and the precision race fit can feel narrow."
+      },
+      {
+        "model": "S/Lab Genesis",
+        "brand": "Salomon",
+        "foam_material": "Energy Foam (EVA/OBC)",
+        "outsole_compound": "Contagrip",
+        "lug_depth": "4.3 mm",
+        "drop": "7.8 mm",
+        "stack": "31.9/24.1 mm",
+        "weight": "9.1 oz / 258 g",
+        "price": "$199",
+        "pros": "Exceptionally lightweight with a secure lock tailored for rapid technical descents. Features low shock absorption and direct ground feel alongside protective Matryx durability.",
+        "cons": "Midsole foam lacks energetic bounce, and outsole lugs can wear down quickly on abrasive rock."
+      },
+      {
+        "model": "Genesis 2",
+        "brand": "Salomon",
+        "foam_material": "OptiFoam (EVA / Olefin block copolymer)",
+        "outsole_compound": "All-Terrain ContaGrip",
+        "lug_depth": "4.5 mm",
+        "drop": "8 mm",
+        "stack": "34 mm heel / 26 mm forefoot",
+        "weight": "9.6 oz / 264 g",
+        "price": "$150",
+        "pros": "Great grip on mud and slick rock with deep 4.5 mm lugs. Provides confidence-inspiring Active Chassis stability combined with a tear-resistant Matryx upper.",
+        "cons": "Lacks the springy pop of super-critical racing foams, and the Quicklace lace garage can be difficult to use."
+      },
+      {
+        "model": "Genesis",
+        "brand": "Salomon",
+        "foam_material": "Energy Foam (EVA/OBC)",
+        "outsole_compound": "Contagrip",
+        "lug_depth": "4.0 mm",
+        "drop": "9.0 mm",
+        "stack": "33.5/24.5 mm",
+        "weight": "9.7 oz / 275 g",
+        "price": "$150",
+        "pros": "Provides superb platform stability and rock protection for high-elevation, technical terrain. Highly breathable with a protective Kevlar-infused upper.",
+        "cons": "The 9.0 mm drop is relatively steep for pure forefoot climbing, and outsole durability is slightly below average."
+      }
+    ],
+    "tips": [
+      "For a steep 2000m D+ skyrace with mud and loose scree, deeper lugs (such as the 5.8 mm chevrons on the Speedcross 6 or 4.5 mm on the S/Lab Genesis 2) will provide crucial bite on both steep climbs and precipitous descents.",
+      "Choose a lower-stack, firm-to-balanced platform to maintain agile proprioception and avoid ankle roll on off-camber technical slopes."
+    ],
+    "matched_race": null
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "latency_s": 6.5,
+  "engine_used": "gemini",
+  "output": {
+    "recommendations": [
+      {
+        "model": "Cascadia 19",
+        "brand": "Brooks",
+        "foam_material": "Nitrogen-infused EVA (EVA)",
+        "outsole_compound": "TrailTack Green",
+        "lug_depth": "4.0 mm",
+        "drop": "6.0 mm",
+        "stack": "35/29 mm",
+        "weight": "10.7 oz / 303 g",
+        "price": "$150",
+        "pros": "Outstanding platform stability and rock plate protection make it ideal for rocky trails. Available in wide sizing to accommodate wider feet comfortably.",
+        "cons": "Heavy daily layout and overbuilt platform that feels slow on flatter paths."
+      },
+      {
+        "model": "Trabuco 14",
+        "brand": "Asics",
+        "foam_material": "FF Blast Max (supercritical)",
+        "outsole_compound": "ASICSGRIP",
+        "lug_depth": "3.7 mm",
+        "drop": "8 mm",
+        "stack": "32.1/25.8 mm",
+        "weight": "9.9 oz / 281 g",
+        "price": "$145",
+        "pros": "Inherently wide fit with a roomy toe box built for stable off-road traction. Provides great rock protection and moderate cushioning for 30k distances.",
+        "cons": "Fairly heavy chassis and low ankle collar that can let in debris."
+      },
+      {
+        "model": "Genesis",
+        "brand": "Salomon",
+        "foam_material": "Energy Foam (EVA/OBC)",
+        "outsole_compound": "Contagrip",
+        "lug_depth": "4.0 mm",
+        "drop": "9.0 mm",
+        "stack": "33.5/24.5 mm",
+        "weight": "9.7 oz / 275 g",
+        "price": "$150",
+        "pros": "Accommodating, roomy foot shape with durable Matryx construction. Offers balanced cushioning and great platform stability on rocky terrain.",
+        "cons": "Contagrip outsole wears down quickly over high pavement mileage, and high drop may not suit all."
+      },
+      {
+        "model": "Olympus 275",
+        "brand": "Altra",
+        "foam_material": "CMEVA (EVA)",
+        "outsole_compound": "Vibram Megagrip",
+        "lug_depth": "3.5 mm",
+        "drop": "0.3 mm",
+        "stack": "30.8 mm heel / 30.5 mm forefoot",
+        "weight": "10.8 oz / 305 g",
+        "price": "$185",
+        "pros": "Extremely wide footprint with an 81.0 mm toe splay area designed for wide-footed athletes. Balanced underfoot cushion with reliable Vibram Megagrip.",
+        "cons": "Low-rebound CMEVA foam feels flat and lacks high energy return."
+      },
+      {
+        "model": "ACG Zegama Trail",
+        "brand": "Nike",
+        "foam_material": "ZoomX (PEBA) & Cushlon 3.0 (EVA)",
+        "outsole_compound": "Vibram Megagrip with Traction Lug",
+        "lug_depth": "4.0 mm",
+        "drop": "4 mm",
+        "stack": "38 mm heel / 34 mm forefoot",
+        "weight": "11.8 oz / 336 g",
+        "price": "$180",
+        "pros": "Generous wide fit with a very spacious toe box. Dual-density ZoomX cushioning protects joints on technical, rocky surfaces.",
+        "cons": "Heavy and bulky build that feels slow on non-technical flats."
+      }
+    ],
+    "tips": [
+      "The catalog contains zero trail running shoes from your preferred brand (New Balance), so the closest trail models matching wide fit and medium/balanced cushioning from other brands are recommended.",
+      "For rocky hardpack 30k races, prioritize shoes equipped with rock plates or firm dual-density midsoles to shield against sharp stone bruising."
+    ],
+    "matched_race": null
+  }
+}

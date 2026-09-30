@@ -1,0 +1,78 @@
+{
+  "latency_s": 6.0,
+  "engine_used": "gemini",
+  "output": {
+    "recommendations": [
+      {
+        "model": "Cascadia 19",
+        "brand": "Brooks",
+        "foam_material": "Nitrogen-infused EVA",
+        "outsole_compound": "TrailTack Green",
+        "lug_depth": "4.0 mm",
+        "drop": "6.0 mm",
+        "stack": "35/29 mm",
+        "weight": "10.7 oz / 303 g",
+        "price": "$150",
+        "pros": "Built specifically with a protective rock plate and an exceptionally stable platform for rocky, technical trails. Delivers predictable, durable protection for 50k and ultra-distance efforts.",
+        "cons": "Heavy overall build and somewhat overkill for flat, smooth surfaces."
+      },
+      {
+        "model": "Catamount 4",
+        "brand": "Brooks",
+        "foam_material": "Nitrogen-infused EVA",
+        "outsole_compound": "TrailTack Green",
+        "lug_depth": "3.5 mm",
+        "drop": "Not specified",
+        "stack": "34 / 28 mm",
+        "weight": "8.5 oz / 241 g",
+        "price": "$170",
+        "pros": "Features a dedicated protective TPE plate to shield against sharp stones and scree. Offers locked-in agility and precise footing on steep, technical mountain terrain.",
+        "cons": "Ride is firm with minimal plush padding, which can cause fatigue over ultra-long distances."
+      },
+      {
+        "model": "Peregrine 16",
+        "brand": "Saucony",
+        "foam_material": "Comfort trail foam with premium PWRRUN+ insole",
+        "outsole_compound": "Vibram Megagrip",
+        "lug_depth": "3.5 mm",
+        "drop": "4.0 mm",
+        "stack": "31.7 mm heel / 26.9 mm forefoot",
+        "weight": "9.6 oz / 271 g",
+        "price": "$145",
+        "pros": "Equipped with an integrated rock plate to deflect sharp rock bruising on technical courses. Delivers exceptional Vibram Megagrip traction and moderate, protective cushioning.",
+        "cons": "Narrow tapered forefoot limits wide toe splay and the shoe has gained slight weight over past versions."
+      },
+      {
+        "model": "Trabuco 14",
+        "brand": "Asics",
+        "foam_material": "FF Blast Max (supercritical)",
+        "outsole_compound": "ASICSGRIP",
+        "lug_depth": "3.7 mm",
+        "drop": "8 mm",
+        "stack": "32.1/25.8 mm",
+        "weight": "9.9 oz / 281 g",
+        "price": "$145",
+        "pros": "Features a built-in rock plate to safeguard against aggressive stone strikes. Provides reliable, stable ASICSGRIP traction and balanced moderate cushioning for rugged trails.",
+        "cons": "Runs slightly heavy and the low collar may allow trail scree to enter."
+      },
+      {
+        "model": "S/Lab Genesis 2",
+        "brand": "Salomon",
+        "foam_material": "Dual-density OptiFoam2 (eTPU)",
+        "outsole_compound": "All-Terrain Contagrip with revised wet-rock lug geometry",
+        "lug_depth": "4.5 mm",
+        "drop": "6 mm",
+        "stack": "31 mm heel / 25 mm forefoot",
+        "weight": "9.3 oz / 264 g",
+        "price": "$200",
+        "pros": "Incorporates a Profeel Film rock filter to absorb sharp stone impacts over rocky alpine descents. Provides precision handling, activeCHASSIS stability, and a bombproof Matryx upper.",
+        "cons": "Premium price point and a low-to-moderate stack designed strictly for agile racing rather than plush cushioning."
+      }
+    ],
+    "tips": [
+      "To fully protect against bruised forefeet on sharp rocks and scree, ensure your chosen shoe incorporates an embedded rock plate or protective film filter beneath the ball of the foot.",
+      "Pair your rock-plated shoes with gaiters or tall technical socks on scree-heavy 50ks to prevent small stones and debris from slipping past the ankle collar."
+    ],
+    "matched_race": null
+  }
+}

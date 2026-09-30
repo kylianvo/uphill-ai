@@ -1,0 +1,16 @@
+{
+  "synthetic": true,
+  "provenance": "gear",
+  "params": {
+    "surface": "trail",
+    "cushioning": "high",
+    "terrain": [
+      "muddy",
+      "technical",
+      "wet rock"
+    ],
+    "race_name": "Vietnam Mountain Marathon",
+    "race_distance": "70k",
+    "budget": "$180"
+  }
+}

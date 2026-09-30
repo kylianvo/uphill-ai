@@ -13,6 +13,84 @@ from services.training_rules import TrainingRules, default_zone2_pace, resolve_z
 _logger = get_logger(__name__)
 
 
+# Prompt templates. Langfuse serves the live version (observability.load_prompt); these are
+# the fallback and must keep every {{variable}} the code fills.
+PLAN_SINGLE_WORKOUT_PROMPT = """You are Coach Uphill, an expert trail-running coach following Scott Johnston's
+"Training for the Uphill Athlete" principles. A human coach is manually adding ONE workout to an
+athlete's training week and wants you to fill in the remaining detail. Do not invent a whole
+week -- just this one session.
+
+Athlete zones: Zone 1 {{zone1_pace}} /km, Zone 2 {{zone2_pace}} /km,
+Zone 3 {{zone3_pace}} /km, Zone 4 {{zone4_pace}} /km, Zone 5 {{zone5_pace}} /km.
+AeT {{aet_hr}} bpm, AnT {{ant_hr}} bpm, max HR {{max_hr}} bpm.
+
+Workout type: {{workout_type}}
+Main set duration: {{duration_minutes}} minutes (warm-up/cool-down are separate, don't fold them into this number)
+Day: {{day_of_week}}, week {{week_number}}
+{{zone_instruction}}
+{{interval_instruction}}
+{{intent_line}}
+{{vi_instruction}}
+
+Return ONLY a single JSON object (no markdown fences, no prose) with exactly these keys:
+{"title": "short session title", "target_zone": "Zone 1|Zone 2|Zone 3|Zone 4|Zone 5",
+"description": "warm-up, main set (with any intervals), cool-down as one paragraph",
+"fueling_tip": "one sentence, or null if not applicable"}"""
+
+PLAN_GENERATION_PROMPT = """You are a world-class running coach training athletes based on the 'Training for the Uphill Athlete' philosophy.
+{{goal_intro}}
+
+OUTPUT CONTRACT — this is the most important instruction and applies no matter what follows:
+You MUST return ONLY a JSON array of workout objects. NEVER wrap it in markdown fences like ```json, NEVER add prose before or after it. Each workout object MUST follow this exact schema:
+   - `week_number` (integer: MUST be within the block range specified below)
+   - `day_of_week` (string: 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')
+   - `phase` (string: 'Base', 'Build', 'Peak', 'Taper', 'Race Week', 'Recovery'. IMPORTANT: Follow this exact progression — Base (early weeks) → Build (mid weeks) → Peak (highest intensity week, 1-2 weeks before taper) → Taper (the week immediately before Race Week, reduce volume to ~50%) → Race Week (the week containing the actual race event) → Recovery (final week after the race).)
+   - `title` (string: name of workout)
+   - `type` (string: 'Easy', 'Tempo', 'Interval', 'Long Run', 'Strength', 'Rest', 'Race', 'Recovery', 'Muscular Endurance', 'Walk/Run'. Use 'Walk/Run' for ANY session built from alternating jog and walk intervals — never label such a session 'Interval', which means high-intensity repeats and is displayed to the athlete as hard, maximal work.)
+   - `duration_minutes` (number: duration of workout)
+   - `target_zone` (string: 'Zone 1', 'Zone 2', 'Zone 3', 'Zone 4', 'Zone 5')
+   - `target_hr_range` (string: heart rate bounds based on athlete's thresholds, e.g. '125-140 bpm')
+   - `target_pace` (string: recommended target pace, matching or referencing their custom pace zones, e.g. '6:00 /km')
+   - `distance_km` (number: estimated distance in kilometers. Calculate this as duration_minutes / (target_pace in decimal minutes), e.g. 60 mins at 6:00/km is 10.0 km)
+   - `walk_interval_value` (number, ONLY for `type` 'Walk/Run': the WALK recovery per rep, in the same unit as `interval_rep_unit`. Together with the three interval fields below this makes the session renderable as '5 x 2 min jog / 1 min walk' rather than a sentence the athlete has to parse.)
+   - `interval_reps`, `interval_rep_value`, `interval_rep_unit` (for `type` 'Interval' or 'Walk/Run', AND ONLY when the session is a single clean rep block — e.g. 8 reps of 12-second hill sprints, or 5 reps of 400m repeats. `interval_reps` is the integer rep count, `interval_rep_value` is the number per rep, `interval_rep_unit` is one of 's'/'m'/'min'/'km' matching how that rep is measured. OMIT all three (do not guess) when the session has a warm-up/main/cool-down structure that doesn't reduce to one rep block, a pyramid, or mixed rep durations — the `description` Process section still carries the full detail for those.)
+   - `elevation_gain_m` and `grade_percent` (numbers, ONLY for `type` Easy/Tempo/Interval/Long Run AND only when the athlete's terrain is trail/mountain — omit or use 0 otherwise): give this specific run a plausible amount of climbing, using the race's overall course_elevation_gain_m/course_distance_km (given below in the athlete/race profile) as context for what's typical, and this run's own distance/phase/role to vary it — a Base-phase Easy run climbs less than a Peak-phase Long Run. `grade_percent` should be consistent with `elevation_gain_m` and this run's own `distance_km` (grade ≈ elevation_gain_m / (distance_km × 10)), not just the race's average. NEVER invent a figure wildly inconsistent with the race's overall elevation profile.
+   - `description` (string: highly detailed description containing specific sections, each introduced by its keyword — Process, Overall, Reason, Benefit, Warning — appearing in that order and each appearing EXACTLY ONCE: Process (step-by-step execution using → to separate segments — EVERY exercise or effort chunk MUST be its own → segment; NEVER chain multiple exercises together with semicolons or commas inside a single segment, and NEVER wrap them in a label like 'Main Circuit: ...'. The warm-up, main, and cool-down minutes stated MUST sum exactly to duration_minutes.
+     * Easy/Tempo/Interval/Long Run, e.g. 'Warm up 10 min easy → 4 x 6min @ Zone 4, 2min jog recovery → cool down 10 min'.
+     * Strength (general/max-strength): straight sets — one → segment per exercise, each naming the exercise plus sets x reps and a 60-180s rest interval BETWEEN SETS OF THAT SAME EXERCISE (appropriate for near-maximal loads), e.g. 'Warm up 5 min mobility → Bodyweight Squats: 3x10, 90s rest → Walking Lunges: 3x10 each leg, 90s rest → Cool down 5 min stretching'.
+{{me_format_spec}}     * Interval: state exact rep count, distance or duration per rep, and recovery between reps.
+NEVER substitute a placeholder segment like 'Perform the bodyweight strength circuit for 20 minutes' for the actual named-exercise segments, and NEVER place the exercise breakdown anywhere outside this Process → chain (in particular, never append it after Warning or any other section) — every exercise MUST live inside Process and nowhere else), Overall (2-3 sentence summary of the session), Reason (why it is scheduled now), Benefit (expected physiological adaptation), and Warning (ONLY injury risks or execution precautions — NEVER exercise prescriptions, sets, or reps; those belong exclusively in Process). Provide extensive context.)
+{{fueling_spec}}   - `treadmill_incline` (number, optional: recommended incline percentage if using treadmill. Inform this from the route's actual grade instead of a flat generic default: for trail-terrain Easy/Tempo/Interval/Long Run workouts, set it consistent with this same workout's own `grade_percent` above (a flat 1% belt incline under-trains the specific climbing demand of a genuinely hilly race). {{hill_incline_exception}}Omit or use 0 when treadmill access isn't relevant.)
+   - `treadmill_speed` (number, optional: recommended speed in kph if using treadmill, reduced appropriately for the incline set above — a steeper incline needs a slower speed to hold the same target effort)
+   - `session_slot` (string, optional: ONLY set this on double-session days. Use 'morning' for the first/shorter session and 'afternoon' for the main/longer session. Omit entirely for single-session days.)
+
+{{block_scope_instruction}}{{start_date_constraint}}{{week_schedule_constraints}}{{rules_block}}{{equipment_terrain_rule}}{{lang_rule}}
+
+Athlete Profile:
+{{user_summary}}
+
+{{program_details}}Plan Start Date: {{current_date_str}} ({{current_weekday}})
+{{target_date_details}}Full Plan Length: {{total_weeks}} weeks.
+- Week 1 starts on: {{current_date_str}} ({{current_weekday}}).
+{{feedback_instruction}}"""
+
+BLOCK_NARRATIVE_PROMPT = """You are Coach Uphill, an expert trail-running coach. An athlete's training plan
+just advanced to a new block. Using the training history below and the newly generated
+block's sessions, write two short pieces of athlete-facing text.
+
+TRAINING HISTORY:
+{{block_context}}
+
+NEWLY GENERATED BLOCK'S SESSIONS:
+{{workout_lines}}
+
+{{lang_instruction}}
+
+Return ONLY a single JSON object (no markdown fences, no prose) with exactly these keys:
+{"last_week_review": "2-3 sentences reviewing how the most recently completed block went, encouraging and specific to the numbers above -- or null if the history above has nothing to review",
+"this_week_description": "2-3 sentences describing this new block's focus and why, addressed directly to the athlete"}"""
+
+
 class PlanGenerator:
     @staticmethod
     def parse_pace_to_decimal(pace_str: str) -> float:
@@ -587,27 +665,28 @@ class PlanGenerator:
                     if resolved_lang == "vi"
                     else ""
                 )
-                prompt = f"""You are Coach Uphill, an expert trail-running coach following Scott Johnston's
-"Training for the Uphill Athlete" principles. A human coach is manually adding ONE workout to an
-athlete's training week and wants you to fill in the remaining detail. Do not invent a whole
-week -- just this one session.
-
-Athlete zones: Zone 1 {est_zones["zone1_pace"]} /km, Zone 2 {est_zones["zone2_pace"]} /km,
-Zone 3 {est_zones["zone3_pace"]} /km, Zone 4 {est_zones["zone4_pace"]} /km, Zone 5 {est_zones["zone5_pace"]} /km.
-AeT {aet_hr} bpm, AnT {ant_hr} bpm, max HR {max_hr} bpm.
-
-Workout type: {workout_type}
-Main set duration: {int(duration_minutes)} minutes (warm-up/cool-down are separate, don't fold them into this number)
-Day: {day_of_week}, week {week_number}
-{zone_instruction}
-{interval_instruction}
-{f"Coach's intent: {intent}" if intent else ""}
-{vi_instruction}
-
-Return ONLY a single JSON object (no markdown fences, no prose) with exactly these keys:
-{{"title": "short session title", "target_zone": "Zone 1|Zone 2|Zone 3|Zone 4|Zone 5",
-"description": "warm-up, main set (with any intervals), cool-down as one paragraph",
-"fueling_tip": "one sentence, or null if not applicable"}}"""
+                _prompt_tpl = observability.load_prompt("plan_single_workout", PLAN_SINGLE_WORKOUT_PROMPT)
+                prompt = observability.compile_prompt(
+                    _prompt_tpl,
+                    {
+                        "zone1_pace": est_zones["zone1_pace"],
+                        "zone2_pace": est_zones["zone2_pace"],
+                        "zone3_pace": est_zones["zone3_pace"],
+                        "zone4_pace": est_zones["zone4_pace"],
+                        "zone5_pace": est_zones["zone5_pace"],
+                        "aet_hr": aet_hr,
+                        "ant_hr": ant_hr,
+                        "max_hr": max_hr,
+                        "workout_type": workout_type,
+                        "duration_minutes": int(duration_minutes),
+                        "day_of_week": day_of_week,
+                        "week_number": week_number,
+                        "zone_instruction": zone_instruction,
+                        "interval_instruction": interval_instruction,
+                        "intent_line": f"Coach's intent: {intent}" if intent else "",
+                        "vi_instruction": vi_instruction,
+                    },
+                )
 
                 _client = _genai.Client(api_key=api_key)
                 import asyncio
@@ -617,6 +696,7 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                     feature="workout_ai_create",
                     model=settings.GEMINI_MODEL,
                     metadata={"tier": "primary"},
+                    prompt=_prompt_tpl,
                 ) as generation:
                     _response = await asyncio.to_thread(
                         _client.models.generate_content,
@@ -981,6 +1061,7 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
         # Build the AI prompt (Gemini is the only engine; a reduced retry and the
         # rule-based schedule below are the fallbacks).
         _ai_prompt = None
+        _plan_prompt_tpl = None
         try:
             scheduling_notes = ""
             all_days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
@@ -1376,57 +1457,28 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                 else ""
             )
 
-            _ai_prompt = (
-                "You are a world-class running coach training athletes based on the 'Training for the Uphill Athlete' philosophy.\n"
-                f"{goal_intro}\n\n"
-                "OUTPUT CONTRACT — this is the most important instruction and applies no matter what follows:\n"
-                "You MUST return ONLY a JSON array of workout objects. NEVER wrap it in markdown fences like ```json, "
-                "NEVER add prose before or after it. Each workout object MUST follow this exact schema:\n"
-                "   - `week_number` (integer: MUST be within the block range specified below)\n"
-                "   - `day_of_week` (string: 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')\n"
-                "   - `phase` (string: 'Base', 'Build', 'Peak', 'Taper', 'Race Week', 'Recovery'. IMPORTANT: Follow this exact progression — Base (early weeks) → Build (mid weeks) → Peak (highest intensity week, 1-2 weeks before taper) → Taper (the week immediately before Race Week, reduce volume to ~50%) → Race Week (the week containing the actual race event) → Recovery (final week after the race).)\n"
-                "   - `title` (string: name of workout)\n"
-                "   - `type` (string: 'Easy', 'Tempo', 'Interval', 'Long Run', 'Strength', 'Rest', "
-                "'Race', 'Recovery', 'Muscular Endurance', 'Walk/Run'. Use 'Walk/Run' for ANY session "
-                "built from alternating jog and walk intervals — never label such a session 'Interval', "
-                "which means high-intensity repeats and is displayed to the athlete as hard, maximal work.)\n"
-                "   - `duration_minutes` (number: duration of workout)\n"
-                "   - `target_zone` (string: 'Zone 1', 'Zone 2', 'Zone 3', 'Zone 4', 'Zone 5')\n"
-                "   - `target_hr_range` (string: heart rate bounds based on athlete's thresholds, e.g. '125-140 bpm')\n"
-                "   - `target_pace` (string: recommended target pace, matching or referencing their custom pace zones, e.g. '6:00 /km')\n"
-                "   - `distance_km` (number: estimated distance in kilometers. Calculate this as duration_minutes / (target_pace in decimal minutes), e.g. 60 mins at 6:00/km is 10.0 km)\n"
-                "   - `walk_interval_value` (number, ONLY for `type` 'Walk/Run': the WALK recovery per "
-                "rep, in the same unit as `interval_rep_unit`. Together with the three interval fields "
-                "below this makes the session renderable as '5 x 2 min jog / 1 min walk' rather than a "
-                "sentence the athlete has to parse.)\n"
-                "   - `interval_reps`, `interval_rep_value`, `interval_rep_unit` (for `type` 'Interval' or "
-                "'Walk/Run', AND ONLY when the session is a single clean rep block — e.g. 8 reps of 12-second hill sprints, or 5 reps of 400m repeats. `interval_reps` is the integer rep count, `interval_rep_value` is the number per rep, `interval_rep_unit` is one of 's'/'m'/'min'/'km' matching how that rep is measured. OMIT all three (do not guess) when the session has a warm-up/main/cool-down structure that doesn't reduce to one rep block, a pyramid, or mixed rep durations — the `description` Process section still carries the full detail for those.)\n"
-                "   - `elevation_gain_m` and `grade_percent` (numbers, ONLY for `type` Easy/Tempo/Interval/Long Run AND only when the athlete's terrain is trail/mountain — omit or use 0 otherwise): give this specific run a plausible amount of climbing, using the race's overall course_elevation_gain_m/course_distance_km (given below in the athlete/race profile) as context for what's typical, and this run's own distance/phase/role to vary it — a Base-phase Easy run climbs less than a Peak-phase Long Run. `grade_percent` should be consistent with `elevation_gain_m` and this run's own `distance_km` (grade ≈ elevation_gain_m / (distance_km × 10)), not just the race's average. NEVER invent a figure wildly inconsistent with the race's overall elevation profile.\n"
-                "   - `description` (string: highly detailed description containing specific sections, each introduced by its keyword — Process, Overall, Reason, Benefit, Warning — appearing in that order and each appearing EXACTLY ONCE: "
-                "Process (step-by-step execution using → to separate segments — EVERY exercise or effort chunk MUST be its own → segment; NEVER chain multiple exercises together with semicolons or commas inside a single segment, and NEVER wrap them in a label like 'Main Circuit: ...'. The warm-up, main, and cool-down minutes stated MUST sum exactly to duration_minutes.\n"
-                "     * Easy/Tempo/Interval/Long Run, e.g. 'Warm up 10 min easy → 4 x 6min @ Zone 4, 2min jog recovery → cool down 10 min'.\n"
-                "     * Strength (general/max-strength): straight sets — one → segment per exercise, each naming the exercise plus sets x reps and a 60-180s rest interval BETWEEN SETS OF THAT SAME EXERCISE (appropriate for near-maximal loads), e.g. 'Warm up 5 min mobility → Bodyweight Squats: 3x10, 90s rest → Walking Lunges: 3x10 each leg, 90s rest → Cool down 5 min stretching'.\n"
-                f"{me_format_spec}"
-                "     * Interval: state exact rep count, distance or duration per rep, and recovery between reps.\n"
-                "NEVER substitute a placeholder segment like 'Perform the bodyweight strength circuit for 20 minutes' for the actual named-exercise segments, and NEVER place the exercise breakdown anywhere outside this Process → chain (in particular, never append it after Warning or any other section) — every exercise MUST live inside Process and nowhere else), "
-                "Overall (2-3 sentence summary of the session), Reason (why it is scheduled now), Benefit (expected physiological adaptation), and Warning (ONLY injury risks or execution precautions — NEVER exercise prescriptions, sets, or reps; those belong exclusively in Process). Provide extensive context.)\n"
-                f"{fueling_spec}"
-                f"   - `treadmill_incline` (number, optional: recommended incline percentage if using treadmill. Inform this from the route's actual grade instead of a flat generic default: for trail-terrain Easy/Tempo/Interval/Long Run workouts, set it consistent with this same workout's own `grade_percent` above (a flat 1% belt incline under-trains the specific climbing demand of a genuinely hilly race). {hill_incline_exception}Omit or use 0 when treadmill access isn't relevant.)\n"
-                "   - `treadmill_speed` (number, optional: recommended speed in kph if using treadmill, reduced appropriately for the incline set above — a steeper incline needs a slower speed to hold the same target effort)\n"
-                "   - `session_slot` (string, optional: ONLY set this on double-session days. Use 'morning' for the first/shorter session and 'afternoon' for the main/longer session. Omit entirely for single-session days.)\n\n"
-                f"{block_scope_instruction}"
-                f"{_start_date_constraint}"
-                f"{week_schedule_constraints}"
-                f"{rules_block}"
-                f"{equipment_terrain_rule}"
-                f"{lang_rule}\n\n"
-                f"Athlete Profile:\n{user_summary}\n\n"
-                f"{program_details}"
-                f"Plan Start Date: {current_date_str} ({current_weekday})\n"
-                f"{target_date_details}"
-                f"Full Plan Length: {total_weeks} weeks.\n"
-                f"- Week 1 starts on: {current_date_str} ({current_weekday}).\n"
-                f"{feedback_instruction}"
+            _plan_prompt_tpl = observability.load_prompt("plan_generation", PLAN_GENERATION_PROMPT)
+            _ai_prompt = observability.compile_prompt(
+                _plan_prompt_tpl,
+                {
+                    "goal_intro": goal_intro,
+                    "me_format_spec": me_format_spec,
+                    "fueling_spec": fueling_spec,
+                    "hill_incline_exception": hill_incline_exception,
+                    "block_scope_instruction": block_scope_instruction,
+                    "start_date_constraint": _start_date_constraint,
+                    "week_schedule_constraints": week_schedule_constraints,
+                    "rules_block": rules_block,
+                    "equipment_terrain_rule": equipment_terrain_rule,
+                    "lang_rule": lang_rule,
+                    "user_summary": user_summary,
+                    "program_details": program_details,
+                    "current_date_str": current_date_str,
+                    "current_weekday": current_weekday,
+                    "target_date_details": target_date_details,
+                    "total_weeks": total_weeks,
+                    "feedback_instruction": feedback_instruction,
+                },
             )
 
         except Exception as _prompt_ex:
@@ -1503,6 +1555,7 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                         feature="plan_generation",
                         model=settings.GEMINI_MODEL,
                         metadata={"engine": _engine, "tier": _tier},
+                        prompt=_plan_prompt_tpl,
                     ) as generation:
                         _response = await asyncio.to_thread(
                             _client.models.generate_content,
@@ -2213,21 +2266,15 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                 if w.get("type") != "Rest"
             )
 
-            prompt = f"""You are Coach Uphill, an expert trail-running coach. An athlete's training plan
-just advanced to a new block. Using the training history below and the newly generated
-block's sessions, write two short pieces of athlete-facing text.
-
-TRAINING HISTORY:
-{block_context}
-
-NEWLY GENERATED BLOCK'S SESSIONS:
-{workout_lines or "(no sessions)"}
-
-{lang_instruction}
-
-Return ONLY a single JSON object (no markdown fences, no prose) with exactly these keys:
-{{"last_week_review": "2-3 sentences reviewing how the most recently completed block went, encouraging and specific to the numbers above -- or null if the history above has nothing to review",
-"this_week_description": "2-3 sentences describing this new block's focus and why, addressed directly to the athlete"}}"""
+            _prompt_tpl = observability.load_prompt("block_narrative", BLOCK_NARRATIVE_PROMPT)
+            prompt = observability.compile_prompt(
+                _prompt_tpl,
+                {
+                    "block_context": block_context,
+                    "workout_lines": workout_lines or "(no sessions)",
+                    "lang_instruction": lang_instruction,
+                },
+            )
 
             _client = _genai.Client(api_key=api_key)
             with observability.generation(
@@ -2235,6 +2282,7 @@ Return ONLY a single JSON object (no markdown fences, no prose) with exactly the
                 feature="block_narrative",
                 model=settings.GEMINI_MODEL,
                 metadata={"tier": "primary"},
+                prompt=_prompt_tpl,
             ) as generation:
                 _response = await asyncio.to_thread(
                     _client.models.generate_content,

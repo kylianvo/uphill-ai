@@ -1,0 +1,14 @@
+{
+  "synthetic": true,
+  "provenance": "gear",
+  "params": {
+    "surface": "trail",
+    "cushioning": "medium",
+    "terrain": [
+      "rocky",
+      "scree"
+    ],
+    "race_distance": "50k",
+    "additional_context": "bruised forefoot on sharp rocks last race, wants rock plate"
+  }
+}

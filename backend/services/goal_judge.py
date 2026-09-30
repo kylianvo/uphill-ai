@@ -28,6 +28,36 @@ WINNER_FLOOR = 0.97
 REDUCED_HISTORY = 5
 
 
+# Prompt templates. Langfuse serves the live version (observability.load_prompt); these are
+# the fallback and must keep every {{variable}} the code fills.
+GOAL_JUDGE_PROMPT = """You are Coach Uphill, a trail and mountain running coach following Scott Johnston's
+Training for the Uphill Athlete. Set race-day goals for this athlete on the target race.
+
+ANCHORS are finish-time estimates (minutes) already computed from the athlete's past results
+and the race's field data. Weigh them; do NOT invent new arithmetic or numbers not supported
+by the anchors or the field curve. Anchors describe current fitness: `weeks_to_race` of
+structured training may improve that by up to about 5%. Recent, similar trail results
+outweigh old or road results. Training-block execution (`block`) moves the goal less than
+race evidence does. With no anchors, stay inside the race's field curve and set confidence low.
+
+Goals, in minutes: a = ambitious (a great day), b = realistic, c = safe (banks margin for
+problems). Keep a < b < c. confidence: high only with several recent similar trail results;
+low when the estimate rests on priors. reasoning: 3 to 5 bullets of at most 25 words, each
+citing a specific input (a race result, a metric, the field). The athlete reads these: write
+finish times as h:mm (8:48), never as minutes, and never mention anchor ids, percentile keys
+or field names from the JSON. anchors_weighted: the anchor ids you relied on with
+weights summing to about 1. missing: short keys for data that would sharpen this (for example
+"recent_trail_result", "watch", "utmb_index").
+{{language_instructions}}
+{{retry_note}}
+CONTEXT:
+{{context_json}}
+
+ANCHORS:
+{{anchors_json}}
+"""
+
+
 class Goals(BaseModel):
     a: float
     b: float
@@ -74,32 +104,16 @@ def build_prompt(
         race.pop("key_climbs", None)
         payload["race"] = race
     retry_note = f"\nYour previous answer was rejected: {previous_error}. Fix exactly that.\n" if previous_error else ""
-    return f"""You are Coach Uphill, a trail and mountain running coach following Scott Johnston's
-Training for the Uphill Athlete. Set race-day goals for this athlete on the target race.
-
-ANCHORS are finish-time estimates (minutes) already computed from the athlete's past results
-and the race's field data. Weigh them; do NOT invent new arithmetic or numbers not supported
-by the anchors or the field curve. Anchors describe current fitness: `weeks_to_race` of
-structured training may improve that by up to about 5%. Recent, similar trail results
-outweigh old or road results. Training-block execution (`block`) moves the goal less than
-race evidence does. With no anchors, stay inside the race's field curve and set confidence low.
-
-Goals, in minutes: a = ambitious (a great day), b = realistic, c = safe (banks margin for
-problems). Keep a < b < c. confidence: high only with several recent similar trail results;
-low when the estimate rests on priors. reasoning: 3 to 5 bullets of at most 25 words, each
-citing a specific input (a race result, a metric, the field). The athlete reads these: write
-finish times as h:mm (8:48), never as minutes, and never mention anchor ids, percentile keys
-or field names from the JSON. anchors_weighted: the anchor ids you relied on with
-weights summing to about 1. missing: short keys for data that would sharpen this (for example
-"recent_trail_result", "watch", "utmb_index").
-{_INSTRUCTIONS.get(lang, _INSTRUCTIONS["en"])}
-{retry_note}
-CONTEXT:
-{json.dumps(payload, ensure_ascii=False, default=str)}
-
-ANCHORS:
-{json.dumps(anchors, ensure_ascii=False, default=str)}
-"""
+    _prompt_tpl = observability.load_prompt("goal_judge", GOAL_JUDGE_PROMPT)
+    return observability.compile_prompt(
+        _prompt_tpl,
+        {
+            "language_instructions": _INSTRUCTIONS.get(lang, _INSTRUCTIONS["en"]),
+            "retry_note": retry_note,
+            "context_json": json.dumps(payload, ensure_ascii=False, default=str),
+            "anchors_json": json.dumps(anchors, ensure_ascii=False, default=str),
+        },
+    )
 
 
 def _call_gemini(prompt: str, api_key: str) -> str:
@@ -107,7 +121,12 @@ def _call_gemini(prompt: str, api_key: str) -> str:
     from google.genai import types
 
     client = genai.Client(api_key=api_key)
-    with observability.generation("generation", feature="goal_estimate", model=settings.GEMINI_MODEL) as generation:
+    with observability.generation(
+        "generation",
+        feature="goal_estimate",
+        model=settings.GEMINI_MODEL,
+        prompt=observability.load_prompt("goal_judge", GOAL_JUDGE_PROMPT),
+    ) as generation:
         response = client.models.generate_content(
             model=settings.GEMINI_MODEL,
             contents=prompt,

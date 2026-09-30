@@ -9,7 +9,7 @@ from uuid import UUID, uuid4
 from langgraph.graph import END, START, StateGraph
 
 from log_utils import get_logger
-from services import coach_context, coach_prompts
+from services import coach_context, coach_prompts, observability
 from services.coach_model import (
     ChatMessage,
     CoachModel,
@@ -288,6 +288,18 @@ def _make_retrieve_node(
     return retrieve_node
 
 
+def _state_prompt(state: TurnState) -> observability.PromptTemplate | None:
+    """The Langfuse prompt retrieve_node compiled, for linking to the generation (never its text)."""
+    if state.get("prompt_source") != "langfuse":
+        return None
+    return observability.PromptTemplate(
+        name=state.get("prompt_name", ""),
+        version=state.get("prompt_version", ""),
+        template="",
+        source="langfuse",
+    )
+
+
 _TOOL_CALL_CAP = 4
 
 # Default per-tool timeout; propose_rebuild_week does several DB round trips
@@ -316,6 +328,7 @@ def _make_generate_node(model: CoachModel, has_tools: bool = False):
             system=system_prompt,
             max_output_tokens=max_output_tokens,
             call_id=call_id,
+            prompt=_state_prompt(state),
         )
 
         accumulated: list[str] = []
@@ -411,6 +424,7 @@ def _make_final_generate_node(model: CoachModel):
             max_output_tokens=max_output_tokens,
             call_id=call_id,
             tools_enabled=False,
+            prompt=_state_prompt(state),
         )
 
         accumulated: list[str] = []
