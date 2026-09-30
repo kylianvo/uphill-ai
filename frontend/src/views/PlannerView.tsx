@@ -31,6 +31,8 @@ import ManagePlanSheet from "../components/ManagePlanSheet";
 import CorosPushButton from "../components/CorosPushButton";
 import { FeelingSelector, rpeToFeelingId } from "../components/FeelingSelector";
 import { GoalPill } from "../components/GoalPill";
+import PlanSummaryCarousel from "../components/PlanSummaryCarousel";
+import { weekVolume } from "../utils/planSummary";
 import { triggerHaptic } from "../utils/native";
 import { resolveCurrentWeek } from "../utils/planDate";
 
@@ -1487,14 +1489,26 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                     Manage
                   </button>
                 </div>
-                {activePlan.id && activePlan.course_distance_km > 0 && (
-                  <GoalPill
-                    planId={activePlan.id}
-                    lang={lang}
-                    athleteId={actingAsAthleteId}
-                    onTargetChange={(hours) => setActivePlan({ ...activePlan, target_time_hours: hours })}
-                  />
-                )}
+                <PlanSummaryCarousel
+                  activePlan={activePlan}
+                  workouts={workouts}
+                  selectedWeek={selectedWeek}
+                  maxGeneratedWeek={maxGeneratedWeek}
+                  distanceKm={getPlanDistance(activePlan) || 0}
+                  elevationM={getPlanElevation(activePlan) || 0}
+                  goalPill={activePlan.id && activePlan.course_distance_km > 0 ? (
+                    <GoalPill
+                      planId={activePlan.id}
+                      lang={lang}
+                      athleteId={actingAsAthleteId}
+                      onTargetChange={(hours) => setActivePlan({ ...activePlan, target_time_hours: hours })}
+                    />
+                  ) : null}
+                  onAdaptWeek={() => handleOpenAdaptWeek(selectedWeek)}
+                  onOpenPaceStrategy={() => setIsPaceStrategyOpen(true)}
+                  onOpenGoalDeterminer={() => setIsGoalDeterminerOpen(true)}
+                  onOpenNutrition={() => ctx.setIsNutritionLabOpen(true)}
+                />
                 <CoachNoteThread
                   athleteId={actingAsAthleteId ?? (user?.id ?? null)}
                   targetType="plan"
@@ -1848,11 +1862,9 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
 
             {/* Weekly Volume + Review (combined: planned volume, actual-so-far, and the
                 full planned-vs-actual breakdown behind a "Show details" toggle) */}
-            {(() => {
+            {!shellV2 && (() => {
               const weekWorkouts = getWeekWorkouts(selectedWeek);
-              const weeklyKm = weekWorkouts.reduce((sum: any, wo: any) => sum + (wo.distance_km || 0), 0);
-              const weeklyMins = weekWorkouts.reduce((sum: any, wo: any) => sum + (wo.duration_minutes || 0), 0);
-              const weeklyHours = parseFloat((weeklyMins / 60).toFixed(1));
+              const { km: weeklyKm, mins: weeklyMins, hours: weeklyHours } = weekVolume(weekWorkouts);
 
               // Small progression indicator: this week's planned volume vs. last week's,
               // the week-over-week overload signal a training plan is supposed to show.
@@ -2034,7 +2046,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
             )}
 
             {/* Coach message for this week */}
-            {coachMessage && (
+            {coachMessage && !shellV2 && (
               <div style={{
                 display: "flex", alignItems: "flex-start", gap: "10px",
                 padding: "12px 16px", borderRadius: "10px", marginBottom: "12px",
