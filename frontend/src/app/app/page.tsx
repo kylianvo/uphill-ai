@@ -2216,6 +2216,8 @@ export default function AppPage() {
       window.history.pushState(null, "", url.pathname + url.search);
     }
   };
+  const navLabel = (tab: string, legacy: string) =>
+    (shellV2 ? v2TabLabel(tab as never) : null) ?? legacy;
   const mobileTabs: readonly string[] = shellV2
     ? v2NavTabs(!!user?.is_coach)
     : [
@@ -2457,7 +2459,7 @@ export default function AppPage() {
                     >
                       {getTabIcon(tab, active)}
                       <span>
-                        {shellV2 && v2TabLabel(tab as never) ? v2TabLabel(tab as never) : tab === "home"
+                        {navLabel(tab, tab === "home"
                           ? (lang === "en" ? "Home" : "Trang chủ")
                           : tab === "chat"
                             ? t("tab_chat")
@@ -2469,7 +2471,7 @@ export default function AppPage() {
                                   ? t("tab_coach")
                                   : tab === "about"
                                     ? t("tab_about")
-                                    : t("tab_tools")}
+                                    : t("tab_tools"))}
                       </span>
                     </li>
                   );
@@ -2953,7 +2955,7 @@ export default function AppPage() {
               )).map((tab: any) => {
                 const active = isNavTabActive(tab as never, activeTab, shellV2);
                 const tabLabel =
-shellV2 && v2TabLabel(tab as never) ? v2TabLabel(tab as never) :                   tab === "home"
+navLabel(tab, tab === "home"
                     ? (lang === "en" ? "Home" : "Trang chủ")
                     : tab === "chat"
                       ? "Coach"
@@ -2967,7 +2969,7 @@ shellV2 && v2TabLabel(tab as never) ? v2TabLabel(tab as never) :                
                               : "HLV"
                             : tab === "tools"
                               ? "Calculators"
-                              : "Philosophy";
+                              : "Philosophy");
                 return (
                   <div
                     key={tab}
@@ -3050,7 +3052,7 @@ shellV2 && v2TabLabel(tab as never) ? v2TabLabel(tab as never) :                
                 ] as const
               )).map((tab: any) => {
                 const label =
-shellV2 && v2TabLabel(tab as never) ? v2TabLabel(tab as never) :                   tab === "home"
+navLabel(tab, tab === "home"
                     ? (lang === "en" ? "Home" : "Trang chủ")
                     : tab === "chat"
                       ? `${t("tab_chat")}`
@@ -3062,7 +3064,7 @@ shellV2 && v2TabLabel(tab as never) ? v2TabLabel(tab as never) :                
                             ? `${t("tab_coach")}`
                             : tab === "about"
                               ? `${t("tab_about")}`
-                              : `${t("tab_tools")}`;
+                              : `${t("tab_tools")}`);
                 return (
                   <button
                     key={tab}
@@ -3210,7 +3212,7 @@ shellV2 && v2TabLabel(tab as never) ? v2TabLabel(tab as never) :                
             {mobileTabs.map((tab) => {
               const active = isNavTabActive(tab as never, activeTab, shellV2);
               const tabLabel =
-shellV2 && v2TabLabel(tab as never) ? v2TabLabel(tab as never) :                 tab === "home"
+navLabel(tab, tab === "home"
                   ? (lang === "en" ? "Home" : "Trang chủ")
                   : tab === "chat"
                     ? t("tab_chat")
@@ -3222,7 +3224,7 @@ shellV2 && v2TabLabel(tab as never) ? v2TabLabel(tab as never) :                
                           ? t("tab_coach")
                           : tab === "tools"
                             ? t("tab_tools")
-                            : t("tab_about");
+                            : t("tab_about"));
               return (
                 <button
                   key={tab}

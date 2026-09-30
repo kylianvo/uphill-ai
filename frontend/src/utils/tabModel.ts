@@ -55,3 +55,11 @@ export const isNavTabActive = (tab: TabName, activeTab: TabName, shellV2: boolea
 // The v2 default replaces the old defaults only; a tab the user already chose is kept.
 export const shouldApplyV2Default = (current: TabName): boolean =>
   current === "tools" || current === "home";
+
+// Only mirror ?tab= for signed-in users, and only for tabs reachable in the v2 shell.
+export const shouldMirrorTab = (tab: TabName, signedIn: boolean): boolean =>
+  signedIn && (v2NavTabs(true).includes(tab) || ME_SUBTABS.includes(tab));
+
+// openedFromMe is only meaningful while a Me sub-screen is showing.
+export const reconcileOpenedFromMe = (openedFromMe: boolean, tab: TabName): boolean =>
+  openedFromMe && ME_SUBTABS.includes(tab);

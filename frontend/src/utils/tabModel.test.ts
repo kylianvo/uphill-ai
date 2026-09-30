@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  reconcileOpenedFromMe,
+  shouldMirrorTab,
   isNavTabActive,
   shouldApplyV2Default,
   tabFromQuery,
@@ -47,5 +49,20 @@ describe("tabModel", () => {
     expect(shouldApplyV2Default("home")).toBe(true);
     expect(shouldApplyV2Default("me")).toBe(false);
     expect(shouldApplyV2Default("knowledge")).toBe(false);
+  });
+
+  it("mirrors ?tab= only for signed-in users on nav or Me sub-tabs", () => {
+    expect(shouldMirrorTab("tools", false)).toBe(false);
+    expect(shouldMirrorTab("planner", false)).toBe(false);
+    expect(shouldMirrorTab("planner", true)).toBe(true);
+    expect(shouldMirrorTab("knowledge", true)).toBe(true);
+    expect(shouldMirrorTab("home", true)).toBe(false);
+  });
+
+  it("drops openedFromMe once a Me sub-screen is left", () => {
+    expect(reconcileOpenedFromMe(true, "tools")).toBe(true);
+    expect(reconcileOpenedFromMe(true, "planner")).toBe(false);
+    expect(reconcileOpenedFromMe(true, "me")).toBe(false);
+    expect(reconcileOpenedFromMe(false, "tools")).toBe(false);
   });
 });

@@ -7,7 +7,7 @@ import { Keyboard } from "@capacitor/keyboard";
 import { Message, ParsedSummary, RagSource, Workout, ActivePlan, PacedCheckpoint, FuelStrategy, Shoe, User } from "../types";
 import { isNativePlatform } from "../utils/native";
 import { isShellV2 } from "../utils/uiVersion";
-import { ME_SUBTABS, TabName, shouldApplyV2Default, tabFromQuery, withTabParam } from "../utils/tabModel";
+import { ME_SUBTABS, TabName, reconcileOpenedFromMe, shouldApplyV2Default, shouldMirrorTab, tabFromQuery, withTabParam } from "../utils/tabModel";
 import { hasNotificationPermission, scheduleDailyKnowledgeReminder, scheduleNotification, buildWorkoutReminderContent, DAILY_WORKOUT_REMINDER_ID } from "../utils/notifications";
 import { resolveCurrentWeek } from "../utils/planDate";
 import { clearCachedUser, saveCachedUser } from "../utils/cachedUser";
@@ -512,12 +512,19 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   // Shell v2: mirror the active tab into ?tab= (other params preserved).
   useEffect(() => {
-    if (!shellV2 || !tabSynced) return;
+    if (!shellV2 || !tabSynced || !shouldMirrorTab(activeTab, !!user)) return;
     const search = withTabParam(window.location.search, activeTab);
     if (search !== window.location.search) {
       window.history.replaceState(null, "", window.location.pathname + search + window.location.hash);
     }
-  }, [shellV2, tabSynced, activeTab]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shellV2, tabSynced, activeTab, !!user]);
+
+  // Tabs can be set directly (race card, onboarding) without handleTabSwitch.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setOpenedFromMe((prev) => reconcileOpenedFromMe(prev, activeTab));
+  }, [activeTab]);
 
   // Re-arm local notifications whenever activePlan/workouts change (including
   // cold start) so their content stays fresh -- both the workout reminder's
