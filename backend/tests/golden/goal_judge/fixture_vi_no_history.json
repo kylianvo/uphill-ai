@@ -1,0 +1,30 @@
+{
+  "synthetic": true,
+  "provenance": "goal_judge",
+  "lang": "vi",
+  "cutoff_mins": null,
+  "context": {
+    "race": {
+      "name": "Mountain 50K",
+      "distance_km": 50,
+      "elevation_gain_m": 3000,
+      "terrain": "trail",
+      "field": {
+        "fastest_winner_mins": 330
+      }
+    },
+    "history": [],
+    "weeks_to_race": 16
+  },
+  "anchors": [
+    {
+      "id": "prior_easy_pace",
+      "method": "easy_pace",
+      "minutes": 560,
+      "source_result_id": null,
+      "notes": [
+        "from easy pace 8:00/km"
+      ]
+    }
+  ]
+}

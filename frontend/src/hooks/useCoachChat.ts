@@ -18,6 +18,7 @@ export interface ChatMessageItem {
   evidence_status?: "available" | "empty" | "unavailable";
   interrupted?: boolean;
   toolCalls?: ToolResultEvent[];
+  feedback?: 1 | -1 | null;
 }
 
 export type ChatTurnStatus =
@@ -57,6 +58,7 @@ export interface UseCoachChatReturn {
     evidence: unknown[];
   } | null;
   fetchMessageSources: (messageId: number) => Promise<void>;
+  sendFeedback: (messageId: number, value: 1 | -1) => Promise<void>;
   clearMessageSources: () => void;
   clarifyOptions: string[] | null;
   dismissClarify: () => void;
@@ -506,6 +508,30 @@ export function useCoachChat(): UseCoachChatReturn {
     }
   }, []);
 
+  // Thumbs on a coach reply: optimistic, reverted if the server rejects it.
+  const sendFeedback = useCallback(async (messageId: number, value: 1 | -1) => {
+    const token = getAuthToken();
+    if (!token || !messageId) return;
+    let previous: 1 | -1 | null | undefined;
+    setMessages((prev) =>
+      prev.map((m) => {
+        if (m.id !== messageId) return m;
+        previous = m.feedback;
+        return { ...m, feedback: value };
+      })
+    );
+    try {
+      const res = await fetch(`${getApiBaseUrl()}/api/coach/chat/messages/${messageId}/feedback`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ value }),
+      });
+      if (!res.ok) throw new Error(String(res.status));
+    } catch {
+      setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, feedback: previous ?? null } : m)));
+    }
+  }, []);
+
   const clearMessageSources = useCallback(() => {
     setSelectedMessageSources(null);
   }, []);
@@ -528,6 +554,7 @@ export function useCoachChat(): UseCoachChatReturn {
     refreshTurn,
     selectedMessageSources,
     fetchMessageSources,
+    sendFeedback,
     clearMessageSources,
     clarifyOptions,
     dismissClarify,

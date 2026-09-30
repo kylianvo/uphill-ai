@@ -189,6 +189,11 @@ class Config:
     LANGFUSE_SAMPLE_RATE: float = float(os.getenv("LANGFUSE_SAMPLE_RATE", "1.0"))
     # Seconds; bounds background export and shutdown flush only, never a request.
     LANGFUSE_TIMEOUT: int = int(os.getenv("LANGFUSE_TIMEOUT", "5"))
+    # Git SHA of the deployed build, tagged on every trace so monitoring can compare releases.
+    LANGFUSE_RELEASE: str = os.getenv("LANGFUSE_RELEASE", "")
+    # Share of finished coach turns graded in-process by services/llm_judge.py (one extra
+    # Gemini call each). Only the scores reach Langfuse. 0 disables.
+    LLM_JUDGE_SAMPLE_RATE: float = float(os.getenv("LLM_JUDGE_SAMPLE_RATE", "0.1"))
     # Must stay false: only metadata and scores may leave our infrastructure
     # (coach-chat roadmap decision 5). Flipping it needs a new product decision.
     LANGFUSE_EXPORT_CONTENT: bool = os.getenv("LANGFUSE_EXPORT_CONTENT", "false").lower() == "true"

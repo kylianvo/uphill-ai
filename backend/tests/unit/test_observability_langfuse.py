@@ -186,3 +186,15 @@ def test_load_prompt_keeps_a_langfuse_version_with_every_variable(monkeypatch):
     monkeypatch.setattr(obs, "get_prompt_template", lambda *a, **k: remote)
 
     assert obs.load_prompt("gear_finder", "catalog: {{catalog_context}}") is remote
+
+
+@pytest.fixture
+def release_sha(monkeypatch):
+    monkeypatch.setattr(settings, "LANGFUSE_RELEASE", "52d941a")
+
+
+def test_traces_carry_the_configured_release(release_sha, langfuse_spans):
+    with obs.trace("plan_generation", feature="plan_generation"):
+        pass
+
+    assert _attrs(_by_name(langfuse_spans, "plan_generation"))["langfuse.release"] == "52d941a"

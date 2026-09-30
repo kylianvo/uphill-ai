@@ -1,0 +1,38 @@
+{
+  "latency_s": 3.8,
+  "engine_used": "gemini",
+  "output": {
+    "goals": {
+      "a": 345.0,
+      "b": 362.0,
+      "c": 385.0
+    },
+    "confidence": "high",
+    "reasoning": [
+      "Kết quả VMM 42K với 7:00 cho thấy bạn kiểm soát tốt cự ly và D+ tương đương.",
+      "Thành tích Ba Den 30K với thời gian 4:20 phản ánh nền tảng aerobic ổn định trên dốc gắt.",
+      "Bạn còn 12 tuần tập luyện có cấu trúc để cải thiện thêm khoảng 5% thể lực cho race này.",
+      "Mục tiêu an toàn tính thêm thời gian dự phòng 6:25 nếu thời tiết xấu hoặc gặp sự cố dinh dưỡng."
+    ],
+    "anchors_weighted": [
+      {
+        "id": "phys_r8",
+        "weight": 0.45
+      },
+      {
+        "id": "pct_r9",
+        "weight": 0.25
+      },
+      {
+        "id": "rank_r10",
+        "weight": 0.3
+      }
+    ],
+    "missing": [
+      "watch",
+      "utmb_index",
+      "weekly_mileage"
+    ],
+    "engine": "gemini"
+  }
+}

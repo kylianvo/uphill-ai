@@ -1,0 +1,30 @@
+{
+  "latency_s": 2.7,
+  "engine_used": "gemini",
+  "output": {
+    "goals": {
+      "a": 370.0,
+      "b": 390.0,
+      "c": 420.0
+    },
+    "confidence": "low",
+    "reasoning": [
+      "Your baseline estimate relies on a 3:35 road marathon from 2023, requiring significant translation to steep mountain terrain.",
+      "A realistic target of 6:30 reflects current conversion models, while 16 weeks of specific uphill training could bring 6:10 into reach.",
+      "Given 2,800 meters of climbing, a conservative safe goal of 7:00 buffers against pacing errors and late-race muscular fatigue.",
+      "The winning time around 4:40 highlights the course severity, demanding disciplined aerobic pacing on steep ascents."
+    ],
+    "anchors_weighted": [
+      {
+        "id": "phys_r7",
+        "weight": 1.0
+      }
+    ],
+    "missing": [
+      "recent_trail_result",
+      "utmb_index",
+      "vertical_training_volume"
+    ],
+    "engine": "gemini"
+  }
+}
