@@ -1,0 +1,51 @@
+import { describe, expect, it } from "vitest";
+import {
+  isNavTabActive,
+  shouldApplyV2Default,
+  tabFromQuery,
+  tabToQuery,
+  v2NavTabs,
+  v2TabLabel,
+  withTabParam,
+} from "./tabModel";
+
+describe("tabModel", () => {
+  it("maps query values to tabs and back", () => {
+    expect(tabFromQuery("plan")).toBe("planner");
+    expect(tabFromQuery("coach")).toBe("chat");
+    expect(tabFromQuery("athletes")).toBe("coach");
+    expect(tabFromQuery("me")).toBe("me");
+    expect(tabFromQuery("bogus")).toBeNull();
+    expect(tabFromQuery(null)).toBeNull();
+    expect(tabToQuery("planner")).toBe("plan");
+    expect(tabToQuery("chat")).toBe("coach");
+    expect(tabToQuery("coach")).toBe("athletes");
+    expect(tabToQuery("home")).toBeNull();
+  });
+
+  it("preserves other query params", () => {
+    expect(withTabParam("?api=x&ui=v2&mode=desktop", "me")).toBe("?api=x&ui=v2&mode=desktop&tab=me");
+    expect(withTabParam("?tab=me&ui=v2", "planner")).toBe("?tab=plan&ui=v2");
+    expect(withTabParam("?tab=me", "home")).toBe("");
+  });
+
+  it("builds the v2 nav", () => {
+    expect(v2NavTabs(false)).toEqual(["planner", "chat", "me"]);
+    expect(v2NavTabs(true)).toEqual(["planner", "chat", "me", "coach"]);
+    expect(["planner", "chat", "me", "coach"].map((t) => v2TabLabel(t as never))).toEqual(["Plan", "Coach", "Me", "Athletes"]);
+  });
+
+  it("highlights Me for sub-screens under v2 only", () => {
+    expect(isNavTabActive("me", "tools", true)).toBe(true);
+    expect(isNavTabActive("me", "about", true)).toBe(true);
+    expect(isNavTabActive("me", "tools", false)).toBe(false);
+    expect(isNavTabActive("planner", "tools", true)).toBe(false);
+  });
+
+  it("only replaces the old default tabs", () => {
+    expect(shouldApplyV2Default("tools")).toBe(true);
+    expect(shouldApplyV2Default("home")).toBe(true);
+    expect(shouldApplyV2Default("me")).toBe(false);
+    expect(shouldApplyV2Default("knowledge")).toBe(false);
+  });
+});

@@ -2,11 +2,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react";
 import { Keyboard } from "@capacitor/keyboard";
 import { Message, ParsedSummary, RagSource, Workout, ActivePlan, PacedCheckpoint, FuelStrategy, Shoe, User } from "../types";
 import { isNativePlatform } from "../utils/native";
 import { isShellV2 } from "../utils/uiVersion";
+import { ME_SUBTABS, TabName, shouldApplyV2Default, tabFromQuery, withTabParam } from "../utils/tabModel";
 import { hasNotificationPermission, scheduleDailyKnowledgeReminder, scheduleNotification, buildWorkoutReminderContent, DAILY_WORKOUT_REMINDER_ID } from "../utils/notifications";
 import { resolveCurrentWeek } from "../utils/planDate";
 import { clearCachedUser, saveCachedUser } from "../utils/cachedUser";
@@ -26,9 +27,10 @@ interface AppContextType {
   setIsGoalDeterminerOpen: any;
   activeTab: any;
   setActiveTab: any;
-  handleTabSwitch: (tab: "home" | "about" | "chat" | "planner" | "tools" | "knowledge" | "coach") => void;
+  handleTabSwitch: (tab: TabName) => void;
   isNative: boolean;
   shellV2: boolean;
+  openedFromMe: boolean;
   lang: "en" | "vi";
   setLang: any;
   startBtnHovered: any;
@@ -245,7 +247,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     target_time_mins?: number;
     source_label?: string;
   } | null>(null);
-  const [activeTab, setActiveTab] = useState<"home" | "about" | "chat" | "planner" | "tools" | "knowledge" | "coach">("tools");
+  const [activeTab, setActiveTab] = useState<TabName>("tools");
   const [isNative, setIsNative] = useState(false);
   useEffect(() => {
     if (isNativePlatform()) {
@@ -254,6 +256,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       setActiveTab((prev) => (prev === "tools" ? "home" : prev));
     }
   }, []);
+  const [openedFromMe, setOpenedFromMe] = useState(false);
+  const tabChosenRef = useRef(false);
+  const [tabSynced, setTabSynced] = useState(false);
   const [shellV2, setShellV2] = useState(false);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -446,7 +451,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [pendingTab, setPendingTab] = useState<"chat" | "planner" | null>(null);
 
   const handleTabSwitch = (
-    tab: "home" | "about" | "chat" | "planner" | "tools" | "knowledge" | "coach",
+    tab: TabName,
   ) => {
     if ((tab === "chat" || tab === "planner") && !user) {
       if (authLoading) {
@@ -457,6 +462,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
     setPendingTab(null);
+    tabChosenRef.current = true;
+    setOpenedFromMe(activeTab === "me" && ME_SUBTABS.includes(tab));
     setActiveTab(tab);
     if (tab === "planner") {
       setPlanJobStatus("idle");
@@ -477,6 +484,40 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingTab, authLoading, user]);
+
+  // Shell v2: read ?tab= once on boot (a deep link wins over the default).
+  useEffect(() => {
+    if (!shellV2 || tabSynced) return;
+    const fromQuery = tabFromQuery(new URLSearchParams(window.location.search).get("tab"));
+    if (fromQuery) {
+      tabChosenRef.current = true;
+      if ((fromQuery === "chat" || fromQuery === "planner") && !user) {
+        // Gated tab: same auth handling as a tap (opens the modal / waits for session restore).
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        handleTabSwitch(fromQuery);
+      } else {
+        setActiveTab(fromQuery);
+      }
+    }
+    setTabSynced(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shellV2]);
+
+  // Shell v2 default: signed-in users land on Plan instead of the old Tools/Home default.
+  useEffect(() => {
+    if (!shellV2 || !user || tabChosenRef.current) return;
+    tabChosenRef.current = true;
+    setActiveTab((prev) => (shouldApplyV2Default(prev) ? "planner" : prev));
+  }, [shellV2, user]);
+
+  // Shell v2: mirror the active tab into ?tab= (other params preserved).
+  useEffect(() => {
+    if (!shellV2 || !tabSynced) return;
+    const search = withTabParam(window.location.search, activeTab);
+    if (search !== window.location.search) {
+      window.history.replaceState(null, "", window.location.pathname + search + window.location.hash);
+    }
+  }, [shellV2, tabSynced, activeTab]);
 
   // Re-arm local notifications whenever activePlan/workouts change (including
   // cold start) so their content stays fresh -- both the workout reminder's
@@ -638,6 +679,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       zone2Max, setZone2Max,
       isNative,
       shellV2,
+      openedFromMe,
     }}>
       {children}
     </AppContext.Provider>
