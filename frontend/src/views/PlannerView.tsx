@@ -12,7 +12,7 @@ import { KnowledgeCard } from "../components/KnowledgeCard";
 import { DndContext, DragEndEvent, DragOverEvent, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, TouchSensor, KeyboardSensor } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import ToolsView from "./ToolsView";
-import { UploadSimple, FileArrowUp, Heart, Clock, Mountains, MapPin, Footprints, ArrowsMerge, PlayCircle, CheckCircle, Fire, Path, RoadHorizon, Info, Check, Question, WarningCircle, Plus, Trash, Archive, LockKey, LockKeyOpen, Trophy, Target, Sneaker, PersonSimpleRun, Bed, XCircle, DownloadSimple, Gauge, Sun, Moon, DotsSixVertical, ArrowsClockwise, Flag, TrendUp, TrendDown, Drop, Leaf, Lightning, PencilSimple, X, ArrowLeft, ArrowsLeftRight, ShieldCheck, Sparkle, CaretDown, CaretUp } from '@phosphor-icons/react';
+import { UploadSimple, FileArrowUp, Heart, Clock, Mountains, MapPin, Footprints, ArrowsMerge, PlayCircle, CheckCircle, Fire, Path, RoadHorizon, Info, Check, Question, WarningCircle, Plus, Trash, Archive, LockKey, LockKeyOpen, Trophy, Target, Sneaker, PersonSimpleRun, Bed, XCircle, DownloadSimple, Gauge, Sun, Moon, DotsSixVertical, ArrowsClockwise, Flag, TrendUp, TrendDown, Drop, Leaf, Lightning, PencilSimple, X, ArrowLeft, ArrowsLeftRight, ShieldCheck, Sparkle, CaretDown, CaretUp, ListBullets, CalendarBlank } from '@phosphor-icons/react';
 import { RaceMatch } from "../hooks/useRaceMatch";
 import { RaceNameField } from "../components/RaceNameField";
 import { CoachNoteThread } from "../components/CoachNoteThread";
@@ -27,6 +27,7 @@ import WeeklyReview, { CompletionRing, ringColor, computeCreditedActual, type We
 import { MoveWorkoutModal } from "../components/MoveWorkoutModal";
 import { AdaptWeekModal } from "../components/AdaptWeekModal";
 import ConfirmActionModal from "../components/ConfirmActionModal";
+import ManagePlanSheet from "../components/ManagePlanSheet";
 import CorosPushButton from "../components/CorosPushButton";
 import { FeelingSelector, rpeToFeelingId } from "../components/FeelingSelector";
 import { GoalPill } from "../components/GoalPill";
@@ -57,6 +58,8 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   const isCoachActingAsAthlete = !!actingAsAthleteId;
   const workoutAthleteId: number | null = actingAsAthleteId ?? (user?.id ?? null);
   const [switchingAthlete, setSwitchingAthlete] = useState(false);
+  const { shellV2 } = ctx;
+  const [manageOpen, setManageOpen] = useState(false);
   const [recentPlansDropdownOpen, setRecentPlansDropdownOpen] = useState(false);
   const [planToDelete, setPlanToDelete] = useState<any | null>(null);
   const [isDeletingPlan, setIsDeletingPlan] = useState(false);
@@ -1467,6 +1470,107 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
         ) : (
           <div style={{ background: "rgba(255, 255, 255, 0.95)", border: "1px solid var(--border-color)", padding: isMobile ? "20px" : "32px", borderRadius: "16px" }}>
             {/* Header info */}
+            {shellV2 ? (
+              <>
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px", marginBottom: "8px" }}>
+                  <div style={{ minWidth: 0 }}>
+                    <h3 style={{ fontSize: "18px", margin: 0 }}>{activePlan.race_name}</h3>
+                    <p style={{ color: "var(--text-secondary)", fontSize: "12px", margin: "2px 0 0", fontWeight: 500 }}>
+                      {[
+                        getPlanDistance(activePlan) ? `${getPlanDistance(activePlan)}km` : "",
+                        getPlanElevation(activePlan) ? `+${getPlanElevation(activePlan)}m` : "",
+                        activePlan.race_date,
+                      ].filter(Boolean).join(" · ")}
+                    </p>
+                  </div>
+                  <button type="button" className="btn btn-secondary" style={{ flexShrink: 0, minHeight: "44px", padding: "0 16px", borderRadius: "9999px", fontSize: "13px", fontWeight: 600 }} onClick={() => setManageOpen(true)}>
+                    Manage
+                  </button>
+                </div>
+                {activePlan.id && activePlan.course_distance_km > 0 && (
+                  <GoalPill
+                    planId={activePlan.id}
+                    lang={lang}
+                    athleteId={actingAsAthleteId}
+                    onTargetChange={(hours) => setActivePlan({ ...activePlan, target_time_hours: hours })}
+                  />
+                )}
+                <CoachNoteThread
+                  athleteId={actingAsAthleteId ?? (user?.id ?? null)}
+                  targetType="plan"
+                  targetId={null}
+                  lang={lang}
+                  canAdd={isCoachActingAsAthlete}
+                />
+                <div style={{ display: "flex", justifyContent: "flex-end", margin: "8px 0 12px" }}>
+                  <div style={{ display: "flex", background: "rgba(0,0,0,0.05)", border: "1px solid var(--border-color)", borderRadius: "999px", padding: "3px", gap: "2px" }}>
+                    {([["list", "List view", ListBullets], ["calendar", "Calendar view", CalendarBlank]] as const).map(([mode, label, Icon]) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        aria-label={label}
+                        aria-pressed={planViewMode === mode}
+                        onClick={() => setPlanViewMode(mode)}
+                        style={{ border: "none", borderRadius: "999px", minWidth: "44px", minHeight: "36px", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer", background: planViewMode === mode ? "var(--accent-primary)" : "transparent", color: planViewMode === mode ? "#ffffff" : "var(--text-secondary)" }}
+                      >
+                        <Icon size={18} weight="bold" aria-hidden="true" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <ManagePlanSheet
+                  isOpen={manageOpen}
+                  onClose={() => setManageOpen(false)}
+                  onSync={handleHeaderSync}
+                  syncing={watchSyncing || matchingRunning}
+                  syncNotice={watchSyncNotice}
+                  showExportOptions={showExportOptions}
+                  onExport={() => setShowExportOptions(true)}
+                  exportOptions={
+                    <div style={{ display: "flex", gap: "8px", padding: "8px" }}>
+                      <select
+                        aria-label="Preferred workout time"
+                        className="chat-input"
+                        style={{ flex: 1, borderRadius: "6px", padding: "6px", height: "36px", fontSize: "13px" }}
+                        value={exportTimePref}
+                        onChange={(e) => setExportTimePref(e.target.value)}
+                      >
+                        <option value="all_day">All day</option>
+                        <option value="morning">Morning</option>
+                        <option value="afternoon">Afternoon</option>
+                        <option value="evening">Evening</option>
+                      </select>
+                      <a
+                        href={`${API_BASE_URL}/api/coach/export-ics?plan_id=${activePlan.id}&race_date=${activePlan.race_date}&time_pref=${exportTimePref}&token=${typeof window !== 'undefined' ? localStorage.getItem('uphill_session_token') || '' : ''}`}
+                        className="btn btn-primary"
+                        style={{ fontSize: "13px", padding: "0 14px", height: "36px", display: "flex", alignItems: "center", textDecoration: "none" }}
+                        onClick={() => {
+                          trackEvent('plan_exported', { plan_id: activePlan.id, export_format: 'ics', time_pref: exportTimePref });
+                          setShowExportOptions(false);
+                        }}
+                      >
+                        Add to calendar (.ics)
+                      </a>
+                    </div>
+                  }
+                  extraRows={!isCoachActingAsAthlete ? (
+                    <CorosPushButton lang={lang} refreshKey={workouts} onReconnect={() => ctx.setProfileSettingsOpen(true)} />
+                  ) : null}
+                  recentPlans={recentPlans || []}
+                  activePlanId={activePlan?.id}
+                  formatPlanName={formatPlanName}
+                  onSelectPlan={handleSelectPlan}
+                  onPlanSettings={() => { setManageOpen(false); ctx.setProfileSettingsOpen(true); }}
+                  onNewPlan={() => {
+                    trackEvent('create_new_plan', { previous_plan_id: activePlan?.id });
+                    setBackupActivePlan(activePlan);
+                    setBackupWorkouts(workouts);
+                    setActivePlan(null);
+                    setTargetTimeHintLabel(null);
+                  }}
+                />
+              </>
+            ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "16px" }}>
               <div>
                 <h3 style={{ fontSize: isMobile ? "18px" : "22px", margin: 0 }}>
@@ -1669,6 +1773,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 </div>
               )}
             </div>
+            )}
 
             {/* Week Selector Tabs, Weekly Volume, and coach message only apply to the week-scoped list view */}
             {planViewMode === "list" && (<>
