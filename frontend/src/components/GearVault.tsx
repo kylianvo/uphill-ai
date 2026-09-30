@@ -7,6 +7,7 @@ import { RaceMatch } from '@/hooks/useRaceMatch';
 import { RaceMatchChip } from '@/components/RaceMatchChip';
 import { RaceNameField } from '@/components/RaceNameField';
 import { Sneaker, XCircle, Target, CaretDown, WarningCircle, CheckCircle, Ruler, Path, RocketLaunch, Scales } from "@phosphor-icons/react";
+import ResultFeedback from "./ResultFeedback";
 import { notifyGearPlanReady } from "@/utils/notifications";
 
 interface ShoeRecommendation {
@@ -27,6 +28,7 @@ interface GearPlanResponse {
   recommendations: ShoeRecommendation[];
   tips: string[];
   matched_race?: RaceMatch | null;
+  feedback_token?: string | null;
 }
 
 interface GearVaultProps {
@@ -435,6 +437,7 @@ export const GearVault: React.FC<GearVaultProps> = ({ isOpen, onClose, lang, use
                 </ul>
               </div>
             )}
+            <ResultFeedback token={gearPlan.feedback_token} lang={lang} />
           </div>
         )}
       </div>

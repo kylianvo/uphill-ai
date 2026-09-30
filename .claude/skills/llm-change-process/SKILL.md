@@ -94,11 +94,23 @@ Traces reviewers mark `judge_wrong` in the triage queue are new calibration case
 
 ## D. The feedback loop (weekly)
 
-- Live signals on each coach turn's trace (`coach_chat.turn`, trace id stored on the message):
-  `thumbs` (UI), `proposal_applied` (Apply/Discard), `judge_*` (in-process judge on
-  `LLM_JUDGE_SAMPLE_RATE` of turns; only scores leave the server). Plans get `plan_engine`.
-- `python scripts/triage_traces.py` queues low-scored traces into the `uphill-triage`
-  annotation queue and prints the chat message id for each. Review, set `triage_verdict`, and for
+- Live signals (all numbers only, attached to the feature's trace):
+  - Coach chat (`coach_chat.turn`, trace id on the message): `thumbs`, `proposal_applied`,
+    `judge_*` (in-process judge on `LLM_JUDGE_SAMPLE_RATE` of turns).
+  - Plans (`plan_generation`, trace id on `plans.generation_trace_id`): `plan_engine`,
+    `plan_checks` (services/plan_checks.py), `plan_reworked` (same block regenerated within
+    72 h), `block_compliance` (share of the block completed, scored when the next block is
+    generated) -- services/plan_signals.py.
+  - Goals (`goal_assessment`, trace id on `goal_assessments.trace_id`): `goal_applied` (which
+    option became the Time Target) and, when a matching race result arrives, `goal_hit` /
+    `goal_error` -- services/goal_outcomes.py. This is the ground truth for goal estimation.
+  - Gear / Nutrition (`gear_finder` / `nutrition_lab`): `catalog_valid`, `brand_respected`, and
+    `thumbs` via the signed `feedback_token` returned with each fresh result
+    (`POST /api/feedback/result`) -- services/quality_signals.py.
+- A new LLM feature should add at least one live signal here (a user action or a
+  deterministic check) before it ships.
+- `python scripts/triage_traces.py` (production traces by default) queues low-scored traces into
+  the `uphill-triage` annotation queue and prints the chat message id for coach turns. Review, set `triage_verdict`, and for
   `needs_fixture` write a synthetic look-alike golden case — never copy the athlete's words.
 - New score names must be added to `_SCORE_SPECS` in `observability.py` (and a Langfuse score
   config) or they are dropped.

@@ -70,6 +70,18 @@ _SCORE_SPECS: dict[str, Any] = {
     "judge_safe": _UNIT_INTERVAL,
     "judge_actionable": _UNIT_INTERVAL,
     "judge_language": _UNIT_INTERVAL,
+    # Plans: share of the previous block's sessions completed; a rework soon after
+    # generation; deterministic plan checks (share passed).
+    "block_compliance": _UNIT_INTERVAL,
+    "plan_reworked": frozenset({0, 1}),
+    "plan_checks": _UNIT_INTERVAL,
+    # Goals: race outcome against the A..C range and B, and which option was applied.
+    "goal_hit": frozenset({0, 1}),
+    "goal_error": _UNIT_INTERVAL,
+    "goal_applied": frozenset({"ambitious", "realistic", "safe", "custom"}),
+    # Gear / Nutrition: recommendations exist in the catalog; preferred brands respected.
+    "catalog_valid": frozenset({0, 1}),
+    "brand_respected": frozenset({0, 1}),
 }
 _SCORE_NAMES = frozenset(_SCORE_SPECS)
 _SCORE_ID_RE = re.compile(r"^[A-Za-z0-9_.:-]{1,128}$")

@@ -370,6 +370,8 @@ def compare(
         )
 
         if service == "scheduler":
+            from services import plan_checks
+
             attribution = f"- Tier attribution: **{engine_used}**"
             if engine_used != "gemini":
                 attribution = f"- ❌ fell through to {engine_used} — do not trust this comparison row"
@@ -387,6 +389,7 @@ def compare(
                 "engine_is_gemini": engine_is_gemini,
                 "engine": engine_used,
                 "workout_count": summary["workout_count"],
+                "plan_checks": plan_checks.pass_share(plan_checks.run_checks(result)),
             }
         elif service == "chat":
             eval_metrics = evaluate_chat_case(result, fixture)

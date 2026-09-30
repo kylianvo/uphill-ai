@@ -9,7 +9,7 @@ from pydantic import BaseModel
 
 from config import settings
 from log_utils import get_logger
-from services import observability
+from services import observability, quality_signals
 
 _logger = get_logger(__name__)
 
@@ -154,6 +154,7 @@ Nutrition Goals:
             feature="nutrition_lab",
             metadata={"catalog_entries": len(catalog_chunks), "cache_hit": False},
         ):
+            trace_id = observability.current_trace_id()
             target_carb, target_sodium = self._macro_targets(params)
             _prompt_tpl = observability.load_prompt("nutrition_planner", NUTRITION_PLANNER_PROMPT)
             prompt = observability.compile_prompt(
@@ -246,7 +247,14 @@ Nutrition Goals:
                     }
                 },
             )
-            return parsed
+            # After the cache write: a cached answer must never carry another request's token.
+            quality_signals.score_recommendations(
+                trace_id,
+                parsed.get("products") or [],
+                [c["title"] for c in catalog_chunks],
+                params.preferred_brands,
+            )
+            return {**parsed, "feedback_token": quality_signals.feedback_token(trace_id, "nutrition_lab")}
 
 
 nutrition_planner = NutritionPlannerService()

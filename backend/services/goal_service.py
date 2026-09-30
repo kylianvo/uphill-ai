@@ -1,6 +1,7 @@
 """Goal assessment orchestration: context -> anchors -> judge -> stored row
 (docs/superpowers/specs/2026-09-26-llm-goal-estimation-design.md)."""
 
+import contextlib
 import hashlib
 import json
 from datetime import date
@@ -8,7 +9,7 @@ from typing import Any
 
 import db
 from config import settings
-from services import goal_anchors, goal_context, goal_judge
+from services import goal_anchors, goal_context, goal_judge, observability
 
 MANUAL_DAILY_LIMIT = 3
 # Gemini calls per user per day across the modal and manual re-assess (weekly
@@ -129,39 +130,45 @@ def run(
         and user is not None
         and (trigger == "weekly" or db.count_llm_goal_assessments_today(user["id"]) < LLM_DAILY_LIMIT)
     )
-    api_key = (user or {}).get("gemini_api_key") or settings.GEMINI_API_KEY
-    output = goal_judge.assess(
-        ctx.prompt,
-        anchors,
-        api_key=api_key,
-        lang=lang,
-        cutoff_mins=cutoff_mins,
-        llm_enabled=llm_allowed,
-    )
-    row = db.insert_goal_assessment(
-        {
-            "user_id": user["id"] if user else None,
-            "plan_id": plan["id"] if plan else None,
-            "race_name": target["race_name"],
-            "race_date": race_date[:10] if race_date else None,
-            "distance_km": target["distance_km"],
-            "elevation_gain_m": target["elevation_gain_m"],
-            "input_hash": digest,
-            "context_summary": {
-                "sources": ctx.sources,
-                "missing": ctx.missing,
-                "weeks_to_race": weeks,
-                "prompt": ctx.prompt,
-            },
-            "anchors": anchors,
-            "output": output,
-            "engine": output["engine"] if output else "none",
-            "confidence": output["confidence"] if output else "low",
-            "lang": lang,
-            "trigger": trigger,
-            "plan_week": (int(plan.get("current_week") or 1) - 1) if plan else None,
-        }
-    )
+    # Signed-in assessments get a trace so the race outcome can be scored against it later
+    # (services/goal_outcomes.py). Signed-out estimates are never scored.
+    traced = observability.trace("goal_assessment", feature="goal_estimate", user_id=user["id"]) if user else None
+    with traced or contextlib.nullcontext():
+        trace_id = observability.current_trace_id() if user else None
+        api_key = (user or {}).get("gemini_api_key") or settings.GEMINI_API_KEY
+        output = goal_judge.assess(
+            ctx.prompt,
+            anchors,
+            api_key=api_key,
+            lang=lang,
+            cutoff_mins=cutoff_mins,
+            llm_enabled=llm_allowed,
+        )
+        row = db.insert_goal_assessment(
+            {
+                "user_id": user["id"] if user else None,
+                "plan_id": plan["id"] if plan else None,
+                "race_name": target["race_name"],
+                "race_date": race_date[:10] if race_date else None,
+                "distance_km": target["distance_km"],
+                "elevation_gain_m": target["elevation_gain_m"],
+                "input_hash": digest,
+                "context_summary": {
+                    "sources": ctx.sources,
+                    "missing": ctx.missing,
+                    "weeks_to_race": weeks,
+                    "prompt": ctx.prompt,
+                },
+                "anchors": anchors,
+                "output": output,
+                "engine": output["engine"] if output else "none",
+                "confidence": output["confidence"] if output else "low",
+                "lang": lang,
+                "trigger": trigger,
+                "plan_week": (int(plan.get("current_week") or 1) - 1) if plan else None,
+                "trace_id": trace_id,
+            }
+        )
     return _present(row, {"benchmarks": benchmarks, "reused": False})
 
 

@@ -84,6 +84,7 @@ _SPAN_NAMES = frozenset(
         "generate",
         "generation",
         "get_week",
+        "goal_assessment",
         "goal_estimate",
         "kb_distill",
         "kb_retrieval",
