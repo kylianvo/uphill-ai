@@ -1,4 +1,9 @@
 apiVersion: 1
+# Recreate Prometheus once so it gets the fixed uid the alert rules reference
+# (Grafana can't change the uid of an existing provisioned datasource in place).
+deleteDatasources:
+  - name: Prometheus
+    orgId: 1
 datasources:
   - name: Prometheus
     uid: prometheus
