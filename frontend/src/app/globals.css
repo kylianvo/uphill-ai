@@ -1213,7 +1213,7 @@ label {
   }
 
   .content-panel.chat-panel-active .content-panel-inner {
-    padding: 0px 0px calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 16px));
+    padding: 0px 0px calc(80px + env(safe-area-inset-bottom, 16px));
   }
 
   .mobile-bottom-nav-tabs {
