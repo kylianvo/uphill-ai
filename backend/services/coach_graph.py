@@ -208,6 +208,10 @@ def parse_app_event(data: Any) -> AppEvent | None:
 # ---------------------------------------------------------------------------
 
 
+# A slow KB lookup must not stall the turn; on timeout the coach answers without evidence.
+_RETRIEVAL_TIMEOUT_SECONDS = 8.0
+
+
 def _make_retrieve_node(
     retrieve_fn: Callable[..., Any] | None,
     assemble_context_fn: Callable[..., Any] | None,
@@ -223,13 +227,19 @@ def _make_retrieve_node(
 
         if retrieve_fn is not None:
             try:
-                res = retrieve_fn(question)
-                if asyncio.iscoroutine(res):
-                    res = await res
+                # retrieve_fn is usually sync (blocking embedding + Qdrant calls); run it
+                # off the event loop so SSE heartbeats and other requests keep flowing.
+                async with asyncio.timeout(_RETRIEVAL_TIMEOUT_SECONDS):
+                    if asyncio.iscoroutinefunction(retrieve_fn):
+                        res = await retrieve_fn(question)
+                    else:
+                        res = await asyncio.to_thread(retrieve_fn, question)
+                        if asyncio.iscoroutine(res):
+                            res = await res
                 evidence = list(res or [])
                 evidence_status = "available" if len(evidence) > 0 else "empty"
             except Exception as exc:
-                logger.warning(f"KB retrieval failed/unavailable: {exc}")
+                logger.warning(f"KB retrieval failed/unavailable: {type(exc).__name__}: {exc}")
                 evidence = []
                 evidence_status = "unavailable"
         else:
@@ -256,7 +266,7 @@ def _make_retrieve_node(
         context["evidence"] = evidence
 
         # Prompt template with local fallback
-        prompt_tpl = coach_prompts.get_coach_prompt_template(name="coach_chat")
+        prompt_tpl = await asyncio.to_thread(coach_prompts.get_coach_prompt_template, name="coach_chat")
 
         system_prompt = coach_prompts.compile_coach_prompt(
             template=prompt_tpl,
