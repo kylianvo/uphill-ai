@@ -1,0 +1,15 @@
+{
+  "synthetic": true,
+  "provenance": "nutrition",
+  "params": {
+    "distance_km": 100,
+    "elevation_gain_m": 5000,
+    "target_time_hours": 20,
+    "weather_temp": "warm day (28C)",
+    "preferred_format": [
+      "real food",
+      "chews"
+    ],
+    "athlete_level": "intermediate"
+  }
+}

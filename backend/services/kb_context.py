@@ -48,7 +48,10 @@ def find_uncatalogued(recommended: list[dict[str, Any]], catalog_titles: list[st
     titles = [t.lower().strip() for t in catalog_titles]
     missing = []
     for rec in recommended:
-        name = f"{rec.get('brand', '')} {rec.get('model') or rec.get('name') or ''}".strip().lower()
-        if name and not any(name in t or t in name for t in titles):
+        model = (rec.get("model") or rec.get("name") or "").strip().lower()
+        name = f"{rec.get('brand', '')} {model}".strip().lower()
+        # Catalog titles may abbreviate the brand ("PF 30 Energy Gel" for Precision Fuel & Hydration),
+        # so the model name alone matching a title also counts as catalogued.
+        if name and not any(name in t or t in name or (model and model in t) for t in titles):
             missing.append(name)
     return missing

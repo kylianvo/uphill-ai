@@ -1,0 +1,15 @@
+{
+  "synthetic": true,
+  "provenance": "gear",
+  "params": {
+    "surface": "trail",
+    "cushioning": "medium",
+    "width": "wide",
+    "terrain": [
+      "rocky",
+      "hardpack"
+    ],
+    "race_distance": "30k",
+    "preferred_brands": "New Balance"
+  }
+}

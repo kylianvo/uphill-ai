@@ -1,0 +1,13 @@
+{
+  "synthetic": true,
+  "provenance": "nutrition",
+  "params": {
+    "distance_km": 30,
+    "elevation_gain_m": 1500,
+    "target_time_hours": 4.5,
+    "weather_temp": "mild (16C)",
+    "target_carb_h": 50,
+    "target_sodium_h": 300,
+    "athlete_level": "beginner"
+  }
+}

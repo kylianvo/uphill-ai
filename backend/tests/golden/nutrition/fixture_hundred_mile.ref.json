@@ -1,0 +1,240 @@
+{
+  "latency_s": 10.2,
+  "engine_used": "gemini",
+  "output": {
+    "products": [
+      {
+        "brand": "Precision Fuel & Hydration",
+        "name": "Carb & Electrolyte Drink Mix",
+        "total_quantity": 10,
+        "carbs_per_unit": 60,
+        "sodium_per_unit": 1000,
+        "protein_per_unit": 0,
+        "tech_notes": "Formulated with a scientifically backed 2:1 glucose-to-fructose ratio to maximize carbohydrate absorption. It is designed to deliver a steady stream of rapidly digestible energy during high-intensity efforts lasting several hours, helping to replace fluid and sweat losses simultaneously. It is engineered with a very mild, neutral taste to minimize palate fatigue and stomach issues during hard efforts, making it highly palatable even when breathing hard. Certified by Informed Sport and uses 100% recyclable packaging."
+      },
+      {
+        "brand": "Bix",
+        "name": "The Big 40 Energy Gel",
+        "total_quantity": 10,
+        "carbs_per_unit": 40,
+        "sodium_per_unit": 200,
+        "protein_per_unit": 0,
+        "tech_notes": "This gel features an optimal 1:0.8 glucose-to-fructose ratio to maximize absorption, increase carbohydrate utilization, and decrease stomach distress. It is vegan, uses natural flavors and colors, is manufactured in a UK GMP-certified facility, and is Informed Sport batch tested. Engineered to deliver double the carbs and sodium of typical market gels, it simplifies fueling logistics for endurance athletes. Its light, fluid consistency reduces stickiness and makes it easy to ingest, while its 'stay-on' tab packaging keeps the torn tip attached to prevent trail litter. The caffeinated variant is noted for being highly effective while remaining remarkably gentle on the stomach."
+      },
+      {
+        "brand": "Näak",
+        "name": "Näak Ultra Energy™ Puree | Sweet Potatoes Butternut Squash",
+        "total_quantity": 10,
+        "carbs_per_unit": 26,
+        "sodium_per_unit": 0,
+        "protein_per_unit": 5,
+        "tech_notes": "Developed as a savory food option for ultra-endurance athletes to provide 200 calories while actively breaking up sweet flavor fatigue during long training days or races. Constructed with a low glycemic index to deliver a slow, highly stable, and long-lasting stream of energy. Blends natural simple sugars (maple syrup) with complex carbohydrates (hydrolyzed oat flour). Utilizes highly digestible soy and pea proteins. Made using sustainable, upcycled, and organic ingredients, including sustainably grown Oregon sweet potatoes and malting barley protein upcycled from beer by-products."
+      },
+      {
+        "brand": "Precision Fuel & Hydration",
+        "name": "30 Energy Gel",
+        "total_quantity": 10,
+        "carbs_per_unit": 30,
+        "sodium_per_unit": 0,
+        "protein_per_unit": 0,
+        "tech_notes": "Employs a 2:1 glucose-to-fructose ratio for fast-acting and highly efficient carbohydrate absorption. It is designed with a mild, neutral 'Original' flavor profile to actively minimize the sweet taste overload and palate fatigue common during long efforts. The gel's texture is specifically engineered to reduce stickiness in the mouth, allowing it to be easily swallowed without requiring an immediate wash-down of plain water. Certified by Informed Sport."
+      },
+      {
+        "brand": "Precision Fuel & Hydration",
+        "name": "Electrolyte Capsules",
+        "total_quantity": 25,
+        "carbs_per_unit": 0,
+        "sodium_per_unit": 250,
+        "protein_per_unit": 0,
+        "tech_notes": "Blister-packed swallowable capsules containing highly concentrated sodium. Designed to give athletes the ultimate flexibility to decouple their hydration/electrolyte intake from their carbohydrate fueling. This allows athletes to consume plain water or customized drink mixes from aid stations and separately ingest capsules to precisely match their genetically determined sweat sodium losses without altering their carbohydrate math or causing stomach upset."
+      }
+    ],
+    "hourly_plan": [
+      {
+        "hour": 1,
+        "action": "Sip 1 serving of PF&H Carb & Electrolyte Drink Mix diluted across the hour with plain water.",
+        "carbs": 60,
+        "sodium": 1000
+      },
+      {
+        "hour": 2,
+        "action": "Consume 1 Bix The Big 40 Energy Gel at 20 min, 1 PF&H Electrolyte Capsule at 40 min, and wash down with plain water.",
+        "carbs": 40,
+        "sodium": 450
+      },
+      {
+        "hour": 3,
+        "action": "Eat 1 Näak Ultra Energy Puree and 1 PF&H 30 Energy Gel with 2 PF&H Electrolyte Capsules and water.",
+        "carbs": 56,
+        "sodium": 500
+      },
+      {
+        "hour": 4,
+        "action": "Sip 1 serving of PF&H Carb & Electrolyte Drink Mix diluted across the hour with plain water.",
+        "carbs": 60,
+        "sodium": 1000
+      },
+      {
+        "hour": 5,
+        "action": "Consume 1 Bix The Big 40 Energy Gel at 20 min, 1 PF&H Electrolyte Capsule at 40 min, and wash down with plain water.",
+        "carbs": 40,
+        "sodium": 450
+      },
+      {
+        "hour": 6,
+        "action": "Eat 1 Näak Ultra Energy Puree and 1 PF&H 30 Energy Gel with 2 PF&H Electrolyte Capsules and water.",
+        "carbs": 56,
+        "sodium": 500
+      },
+      {
+        "hour": 7,
+        "action": "Sip 1 serving of PF&H Carb & Electrolyte Drink Mix diluted across the hour with plain water.",
+        "carbs": 60,
+        "sodium": 1000
+      },
+      {
+        "hour": 8,
+        "action": "Consume 1 Bix The Big 40 Energy Gel at 20 min, 1 PF&H Electrolyte Capsule at 40 min, and wash down with plain water.",
+        "carbs": 40,
+        "sodium": 450
+      },
+      {
+        "hour": 9,
+        "action": "Eat 1 Näak Ultra Energy Puree and 1 PF&H 30 Energy Gel with 2 PF&H Electrolyte Capsules and water.",
+        "carbs": 56,
+        "sodium": 500
+      },
+      {
+        "hour": 10,
+        "action": "Sip 1 serving of PF&H Carb & Electrolyte Drink Mix diluted across the hour with plain water.",
+        "carbs": 60,
+        "sodium": 1000
+      },
+      {
+        "hour": 11,
+        "action": "Consume 1 Bix The Big 40 Energy Gel at 20 min, 1 PF&H Electrolyte Capsule at 40 min, and wash down with plain water.",
+        "carbs": 40,
+        "sodium": 450
+      },
+      {
+        "hour": 12,
+        "action": "Eat 1 Näak Ultra Energy Puree and 1 PF&H 30 Energy Gel with 2 PF&H Electrolyte Capsules and water.",
+        "carbs": 56,
+        "sodium": 500
+      },
+      {
+        "hour": 13,
+        "action": "Sip 1 serving of PF&H Carb & Electrolyte Drink Mix diluted across the hour with plain water.",
+        "carbs": 60,
+        "sodium": 1000
+      },
+      {
+        "hour": 14,
+        "action": "Consume 1 Bix The Big 40 Energy Gel at 20 min, 1 PF&H Electrolyte Capsule at 40 min, and wash down with plain water.",
+        "carbs": 40,
+        "sodium": 450
+      },
+      {
+        "hour": 15,
+        "action": "Eat 1 Näak Ultra Energy Puree and 1 PF&H 30 Energy Gel with 2 PF&H Electrolyte Capsules and water.",
+        "carbs": 56,
+        "sodium": 500
+      },
+      {
+        "hour": 16,
+        "action": "Sip 1 serving of PF&H Carb & Electrolyte Drink Mix diluted across the hour with plain water.",
+        "carbs": 60,
+        "sodium": 1000
+      },
+      {
+        "hour": 17,
+        "action": "Consume 1 Bix The Big 40 Energy Gel at 20 min, 1 PF&H Electrolyte Capsule at 40 min, and wash down with plain water.",
+        "carbs": 40,
+        "sodium": 450
+      },
+      {
+        "hour": 18,
+        "action": "Eat 1 Näak Ultra Energy Puree and 1 PF&H 30 Energy Gel with 2 PF&H Electrolyte Capsules and water.",
+        "carbs": 56,
+        "sodium": 500
+      },
+      {
+        "hour": 19,
+        "action": "Sip 1 serving of PF&H Carb & Electrolyte Drink Mix diluted across the hour with plain water.",
+        "carbs": 60,
+        "sodium": 1000
+      },
+      {
+        "hour": 20,
+        "action": "Consume 1 Bix The Big 40 Energy Gel at 20 min, 1 PF&H Electrolyte Capsule at 40 min, and wash down with plain water.",
+        "carbs": 40,
+        "sodium": 450
+      },
+      {
+        "hour": 21,
+        "action": "Eat 1 Näak Ultra Energy Puree and 1 PF&H 30 Energy Gel with 2 PF&H Electrolyte Capsules and water.",
+        "carbs": 56,
+        "sodium": 500
+      },
+      {
+        "hour": 22,
+        "action": "Sip 1 serving of PF&H Carb & Electrolyte Drink Mix diluted across the hour with plain water.",
+        "carbs": 60,
+        "sodium": 1000
+      },
+      {
+        "hour": 23,
+        "action": "Consume 1 Bix The Big 40 Energy Gel at 20 min, 1 PF&H Electrolyte Capsule at 40 min, and wash down with plain water.",
+        "carbs": 40,
+        "sodium": 450
+      },
+      {
+        "hour": 24,
+        "action": "Eat 1 Näak Ultra Energy Puree and 1 PF&H 30 Energy Gel with 2 PF&H Electrolyte Capsules and water.",
+        "carbs": 56,
+        "sodium": 500
+      },
+      {
+        "hour": 25,
+        "action": "Sip 1 serving of PF&H Carb & Electrolyte Drink Mix diluted across the hour with plain water.",
+        "carbs": 60,
+        "sodium": 1000
+      },
+      {
+        "hour": 26,
+        "action": "Consume 1 Bix The Big 40 Energy Gel at 20 min, 1 PF&H Electrolyte Capsule at 40 min, and wash down with plain water.",
+        "carbs": 40,
+        "sodium": 450
+      },
+      {
+        "hour": 27,
+        "action": "Eat 1 Näak Ultra Energy Puree and 1 PF&H 30 Energy Gel with 2 PF&H Electrolyte Capsules and water.",
+        "carbs": 56,
+        "sodium": 500
+      },
+      {
+        "hour": 28,
+        "action": "Sip 1 serving of PF&H Carb & Electrolyte Drink Mix diluted across the hour with plain water.",
+        "carbs": 60,
+        "sodium": 1000
+      },
+      {
+        "hour": 29,
+        "action": "Consume 1 Bix The Big 40 Energy Gel at 20 min, 1 PF&H Electrolyte Capsule at 40 min, and wash down with plain water.",
+        "carbs": 40,
+        "sodium": 450
+      },
+      {
+        "hour": 30,
+        "action": "Eat 1 Näak Ultra Energy Puree and 1 PF&H 30 Energy Gel with 2 PF&H Electrolyte Capsules and water.",
+        "carbs": 56,
+        "sodium": 500
+      }
+    ],
+    "tips": [
+      "Rotate formats every hour between drink mix, high-density gels, and savory purees to prevent flavor fatigue and gastrointestinal distress across 30 hours.",
+      "Always consume plain water alongside concentrated gels and purees to maintain optimal gut osmolality and prevent dehydration-induced gut shutdown.",
+      "Decouple hydration from electrolytes as temperatures drop during the night segment, using PF&H Electrolyte Capsules to match sodium targets independently of fluid intake."
+    ]
+  }
+}

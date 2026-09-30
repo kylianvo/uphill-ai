@@ -1,0 +1,78 @@
+{
+  "latency_s": 5.7,
+  "engine_used": "gemini",
+  "output": {
+    "recommendations": [
+      {
+        "model": "Alphafly 3",
+        "brand": "Nike",
+        "foam_material": "ZoomX (PEBA) paired with Air Pods",
+        "outsole_compound": "Fast Shot outsole with high-abrasion rubber",
+        "lug_depth": "0 mm",
+        "drop": "8.0 mm",
+        "stack": "40.0/32.0 mm",
+        "weight": "7 oz / 198 g",
+        "price": "$285",
+        "pros": "Exceptionally lightweight, best-in-class breathability, and massive underfoot energy return. Smooth forward-rolling efficiency built specifically for elite marathon racing.",
+        "cons": "Glued-down non-removable insole and potential outsole durability issues for heavy heel strikers."
+      },
+      {
+        "model": "Adizero Adios Pro 4",
+        "brand": "adidas",
+        "foam_material": "Soft Lightstrike Pro (TPE)",
+        "outsole_compound": "High-traction road rubber",
+        "lug_depth": "0.0 mm",
+        "drop": "6 mm",
+        "stack": "39/33 mm",
+        "weight": "7.1 oz / 200 g",
+        "price": "$250",
+        "pros": "Exceptional energy return and an invisible on-foot feel. Highly rockered geometry maximizing propulsion across marathon distances.",
+        "cons": "Narrow toe box may cause discomfort and the heel pocket design can cause friction or blisters."
+      },
+      {
+        "model": "Vaporfly 4",
+        "brand": "Nike",
+        "foam_material": "ZoomX (PEBA)",
+        "outsole_compound": "Fast Shot rubber",
+        "lug_depth": "0 mm",
+        "drop": "6.0 mm",
+        "stack": "35.0/29.0 mm",
+        "weight": "6.5 oz / 184 g",
+        "price": "$260",
+        "pros": "Incredibly bouncy ride with an extremely lightweight build. Spring-loaded feel that excels at high-speed efforts and tempo intervals.",
+        "cons": "Narrow heel and midfoot limit landing stability, and outsole durability is relatively low."
+      },
+      {
+        "model": "Adizero Boston 13",
+        "brand": "adidas",
+        "foam_material": "Lightstrike Pro (TPE) & Lightstrike (EVA)",
+        "outsole_compound": "Continental rubber in forefoot & LightTraxion lateral rubber",
+        "lug_depth": "0.0 mm",
+        "drop": "6 mm",
+        "stack": "36/30 mm",
+        "weight": "9 oz / 255 g",
+        "price": "$160",
+        "pros": "Great step-in feel with durable performance lasting hundreds of miles. Carbon fiber EnergyRods offer snappy propulsion at a budget-friendly race price.",
+        "cons": "Laces can be frustratingly difficult to dial in and tie securely."
+      },
+      {
+        "model": "Zoom Fly 6",
+        "brand": "Nike",
+        "foam_material": "ZoomX (PEBA) & SR-02 (EVA) dual-density midsole",
+        "outsole_compound": "High-durability road rubber",
+        "lug_depth": "0 mm",
+        "drop": "8.0 mm",
+        "stack": "40.0/32.0 mm",
+        "weight": "8.6 oz / 244 g",
+        "price": "$170",
+        "pros": "Versatile performance that bridges marathon training with race day speed. Outstanding outsole durability with a full carbon Flyplate propulsion.",
+        "cons": "Narrow fit with a restrictive toe box that may feel unstable on uneven road camber."
+      }
+    ],
+    "tips": [
+      "Be sure to complete at least one marathon-pace long run in your chosen carbon-plated shoe to adapt to its aggressive rocker and stiff plate geometry.",
+      "Since racing super-shoes often feature snug upper profiles, test your race-day socks during training to avoid midfoot or heel blisters on race morning."
+    ],
+    "matched_race": null
+  }
+}

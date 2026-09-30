@@ -1,0 +1,90 @@
+{
+  "latency_s": 6.2,
+  "engine_used": "gemini",
+  "output": {
+    "products": [
+      {
+        "brand": "Precision Fuel & Hydration",
+        "name": "30 Energy Gel",
+        "total_quantity": 8,
+        "carbs_per_unit": 30.0,
+        "sodium_per_unit": 0.0,
+        "protein_per_unit": 0.0,
+        "tech_notes": "Employs a 2:1 glucose-to-fructose ratio for fast-acting and highly efficient carbohydrate absorption. It is designed with a mild, neutral \"Original\" flavor profile to actively minimize the sweet taste overload and palate fatigue common during long efforts. The gel's texture is specifically engineered to reduce stickiness in the mouth, allowing it to be easily swallowed without requiring an immediate wash-down of plain water. Certified by Informed Sport."
+      },
+      {
+        "brand": "Bix",
+        "name": "Bix 30 Energy Gel – Salted Strawberry",
+        "total_quantity": 8,
+        "carbs_per_unit": 30.0,
+        "sodium_per_unit": 300.0,
+        "protein_per_unit": 0.0,
+        "tech_notes": "Formulated with a 1:0.8 glucose-to-fructose ratio, this gel is vegan, uses natural flavors and colors, and is Informed Sport batch tested. It is designed specifically for longer efforts, hotter conditions, or heavy sweat to maintain an ideal balance between quick energy and robust electrolyte replenishment. Its natural strawberry flavor with a slightly salty finish is smooth, light, and engineered to prevent palate fatigue during long sessions."
+      },
+      {
+        "brand": "Precision Fuel & Hydration",
+        "name": "Electrolyte Capsules",
+        "total_quantity": 8,
+        "carbs_per_unit": 0.0,
+        "sodium_per_unit": 250.0,
+        "protein_per_unit": 0.0,
+        "tech_notes": "Blister-packed swallowable capsules containing highly concentrated sodium. Designed to give athletes the ultimate flexibility to decouple their hydration/electrolyte intake from their carbohydrate fueling. This allows athletes to consume plain water or customized drink mixes from aid stations and separately ingest capsules to precisely match their genetically determined sweat sodium losses without altering their carbohydrate math or causing stomach upset."
+      }
+    ],
+    "hourly_plan": [
+      {
+        "hour": 1,
+        "action": "Take 1 Bix 30 Energy Gel – Salted Strawberry at minute 20, 1 PF 30 Energy Gel at minute 40, and 1 PF Electrolyte Capsule with water across the hour.",
+        "carbs": 60.0,
+        "sodium": 550.0
+      },
+      {
+        "hour": 2,
+        "action": "Take 1 Bix 30 Energy Gel – Salted Strawberry at minute 20, 1 PF 30 Energy Gel at minute 40, and 1 PF Electrolyte Capsule with water across the hour.",
+        "carbs": 60.0,
+        "sodium": 550.0
+      },
+      {
+        "hour": 3,
+        "action": "Take 1 Bix 30 Energy Gel – Salted Strawberry at minute 20, 1 PF 30 Energy Gel at minute 40, and 1 PF Electrolyte Capsule with water across the hour.",
+        "carbs": 60.0,
+        "sodium": 550.0
+      },
+      {
+        "hour": 4,
+        "action": "Take 1 Bix 30 Energy Gel – Salted Strawberry at minute 20, 1 PF 30 Energy Gel at minute 40, and 1 PF Electrolyte Capsule with water across the hour.",
+        "carbs": 60.0,
+        "sodium": 550.0
+      },
+      {
+        "hour": 5,
+        "action": "Take 1 Bix 30 Energy Gel – Salted Strawberry at minute 20, 1 PF 30 Energy Gel at minute 40, and 1 PF Electrolyte Capsule with water across the hour.",
+        "carbs": 60.0,
+        "sodium": 550.0
+      },
+      {
+        "hour": 6,
+        "action": "Take 1 Bix 30 Energy Gel – Salted Strawberry at minute 20, 1 PF 30 Energy Gel at minute 40, and 1 PF Electrolyte Capsule with water across the hour.",
+        "carbs": 60.0,
+        "sodium": 550.0
+      },
+      {
+        "hour": 7,
+        "action": "Take 1 Bix 30 Energy Gel – Salted Strawberry at minute 20, 1 PF 30 Energy Gel at minute 40, and 1 PF Electrolyte Capsule with water across the hour.",
+        "carbs": 60.0,
+        "sodium": 550.0
+      },
+      {
+        "hour": 8,
+        "action": "Take 1 Bix 30 Energy Gel – Salted Strawberry at minute 20, 1 PF 30 Energy Gel at minute 40, and 1 PF Electrolyte Capsule with water across the hour.",
+        "carbs": 60.0,
+        "sodium": 550.0
+      }
+    ],
+    "tips": [
+      "Always consume 300ml to 600ml of plain water per hour alongside gels to optimize gastric emptying and prevent hypertonic gut distress.",
+      "Decoupling your sodium intake via electrolyte capsules allows dynamic electrolyte management without altering hourly carbohydrate math.",
+      "Split carbohydrate intake into manageable 20 to 30 minute micro-doses instead of taking high single boluses to preserve GI comfort."
+    ]
+  }
+}

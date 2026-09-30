@@ -1,0 +1,78 @@
+{
+  "latency_s": 6.3,
+  "engine_used": "gemini",
+  "output": {
+    "recommendations": [
+      {
+        "model": "Timp 6",
+        "brand": "Altra",
+        "foam_material": "Ego Max (EVA)",
+        "outsole_compound": "Vibram Megagrip",
+        "lug_depth": "3.5 mm",
+        "drop": "0 mm",
+        "stack": "30 mm",
+        "weight": "11.45 oz / 324 g",
+        "price": "$165",
+        "pros": "Outstanding wet and dry Vibram traction that easily sheds mud, snow, and trail debris. Delivers nimble and high protective cushioning well-suited for ultra-distance races.",
+        "cons": "The lower heel counter design can cause heel slippage inside the roomy toe box."
+      },
+      {
+        "model": "Genesis 2",
+        "brand": "Salomon",
+        "foam_material": "OptiFoam (EVA / Olefin block copolymer)",
+        "outsole_compound": "All-Terrain ContaGrip",
+        "lug_depth": "4.5 mm",
+        "drop": "8 mm",
+        "stack": "34 mm heel / 26 mm forefoot",
+        "weight": "9.6 oz / 264 g",
+        "price": "$150",
+        "pros": "Features aggressive 4.5 mm lugs that grip exceptionally well across mud, technical roots, and wet rocks. Bombproof Matryx upper and Active Chassis provide great stability over 70k ultra terrain.",
+        "cons": "Lacks the springy energy return found in modern PEBA super-shoes."
+      },
+      {
+        "model": "Speedgoat 7",
+        "brand": "Hoka",
+        "foam_material": "Supercritical EVA (EVA)",
+        "outsole_compound": "Vibram Megagrip",
+        "lug_depth": "5.0 mm with Traction Lug",
+        "drop": "5.0 mm",
+        "stack": "37.0/32.0 mm",
+        "weight": "9.55 oz / 271 g",
+        "price": "$165",
+        "pros": "Deep 5.0 mm Vibram Traction Lugs provide dependable grip over technical, rugged, and muddy paths. Maximum supercritical cushioning keeps legs fresh across high-mileage mountain ultras.",
+        "cons": "The towering stack can feel disconnected on tight technical sections, and the fit runs slightly short."
+      },
+      {
+        "model": "Tomir 2.0",
+        "brand": "NNormal",
+        "foam_material": "EExpure supercritical foam",
+        "outsole_compound": "Vibram Megagrip Litebase",
+        "lug_depth": "5.0 mm",
+        "drop": "8 mm",
+        "stack": "Not specified",
+        "weight": "9.9 oz / 280 g",
+        "price": "$170",
+        "pros": "Incredible traction and bite in slick conditions like mud, streams, and wet granite thanks to 5.0 mm Vibram lugs. Highly durable design built to withstand rugged ultra training and racing.",
+        "cons": "The slim Ripstop TPE upper is not accommodating for wider feet and can run warm in humid weather."
+      },
+      {
+        "model": "Trabuco 14",
+        "brand": "Asics",
+        "foam_material": "FF Blast Max (supercritical)",
+        "outsole_compound": "ASICSGRIP",
+        "lug_depth": "3.7 mm",
+        "drop": "8 mm",
+        "stack": "32.1/25.8 mm",
+        "weight": "9.9 oz / 281 g",
+        "price": "$145",
+        "pros": "Aggressive chevrons and ASICSGRIP deliver elite wet and dry traction on slippery surfaces. Includes a protective rock plate and durable cushioning suited for rugged ultra distances.",
+        "cons": "The shoe runs slightly heavy and the low collar can let in loose trail debris."
+      }
+    ],
+    "tips": [
+      "For a 70k race across mud and wet rock, prioritize deep lug patterning (4.0 mm to 5.0 mm) paired with proven sticky compounds like Vibram Megagrip or ASICSGRIP.",
+      "Ensure your shoe selection allows slight forefoot swelling space while keeping the midfoot and heel securely locked down to avoid blisters on steep technical descents."
+    ],
+    "matched_race": null
+  }
+}

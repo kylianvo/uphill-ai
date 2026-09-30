@@ -1,0 +1,13 @@
+{
+  "synthetic": true,
+  "provenance": "gear",
+  "params": {
+    "surface": "road",
+    "cushioning": "high",
+    "carbon_plate": "yes",
+    "budget": "$280",
+    "use_case": "race day",
+    "race_distance": "marathon",
+    "preferred_brands": "Nike, adidas"
+  }
+}

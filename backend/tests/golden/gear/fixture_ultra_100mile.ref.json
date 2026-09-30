@@ -1,0 +1,78 @@
+{
+  "latency_s": 6.5,
+  "engine_used": "gemini",
+  "output": {
+    "recommendations": [
+      {
+        "model": "055",
+        "brand": "Norda",
+        "foam_material": "Arnitel TPEE",
+        "outsole_compound": "Vibram Megagrip Elite",
+        "lug_depth": "4.5 mm",
+        "drop": "7 mm",
+        "stack": "38 mm heel / 31 mm forefoot",
+        "weight": "11.6 oz / 330 g",
+        "price": "$325",
+        "pros": "Delivers incredible maximal cushion and underfoot protection for 100+ mile races. The accommodating forefoot gives swelling toes ample room over long hours. Features top-tier Vibram Megagrip Elite traction paired with an indestructible Dyneema upper.",
+        "cons": "Heavier than standard racing flats and can cause minor heel rubbing on steep ascents."
+      },
+      {
+        "model": "Cadi",
+        "brand": "NNormal",
+        "foam_material": "Supercritical foam",
+        "outsole_compound": "Vibram Megagrip",
+        "lug_depth": "3.5-4.0 mm",
+        "drop": "6 mm",
+        "stack": "35 mm heel / 29 mm forefoot",
+        "weight": "10.1 oz / 286 g",
+        "price": "$175",
+        "pros": "Built on a wider toe box inspired by the Kjerag to easily handle foot swelling. Offers all-day protective max/moderate cushioning designed specifically for long ultra races. Provides full Vibram Megagrip underfoot security across smooth and mixed hardpack trails.",
+        "cons": "The supercritical midsole lacks a hyper-bouncy feel and runs slightly heavier than expected."
+      },
+      {
+        "model": "M1",
+        "brand": "Mount to Coast",
+        "foam_material": "JetCell Aliphatic TPU (A-TPU)",
+        "outsole_compound": "Vibram MegaGrip Litebase",
+        "lug_depth": "4.0 mm",
+        "drop": "4 mm",
+        "stack": "38 mm heel / 34 mm forefoot",
+        "weight": "9.7 oz / 274 g",
+        "price": "$195",
+        "pros": "Super high-energy return JetCell A-TPU foam resists long-haul fatigue during ultra distances. TunedFit dual-zone lacing allows easy mid-race adjustments when feet begin to swell. Excellent 38 mm stack provides deep impact absorption.",
+        "cons": "Forefoot taper might feel snug for ultra-wide feet, and the brand is relatively new to the trail scene."
+      },
+      {
+        "model": "Terrex Agravic Speed Ultra 2",
+        "brand": "adidas",
+        "foam_material": "Lightstrike Pro (TPE)",
+        "outsole_compound": "Continental Rubber",
+        "lug_depth": "4 mm",
+        "drop": "8 mm",
+        "stack": "44 mm heel / 36 mm forefoot",
+        "weight": "9.35 oz / 265 g",
+        "price": "$225",
+        "pros": "Max-stack 44 mm platform designed for elite propulsion and fatigue resistance in 100-mile ultras. Dynamic TPE Energy Rods keep turnover efficient on runnable, mixed hardpack terrain. Continental rubber provides dependable traction across various surfaces.",
+        "cons": "The rocker profile and high stack require strong ankle stability on off-camber sections."
+      },
+      {
+        "model": "MetaFuji Trail 2",
+        "brand": "Asics",
+        "foam_material": "FF Leap (PEBA) & FF Blast Plus (EVA)",
+        "outsole_compound": "ASICSGRIP",
+        "lug_depth": "4.5 mm",
+        "drop": "5 mm",
+        "stack": "41.5 mm heel / 36.5 mm forefoot",
+        "weight": "9.0 oz / 255 g",
+        "price": "$280",
+        "pros": "Features a towering 41.5 mm dual-superfoam stack that preserves leg freshness over 100 miles. Full-length carbon plate generates effortless propulsion on rolling, hardpack trails. Grippy ASICSGRIP outsole handles diverse terrain with ease.",
+        "cons": "Priced at a steep $280 and can feel tippy on sharp technical descents."
+      }
+    ],
+    "tips": [
+      "Since your feet swell substantially after 12 hours, consider sizing up by a half size or swapping to thinner performance socks at a late-race drop bag.",
+      "Utilize dual-zone lacing systems or loosen the lower eyelets midway through the race to ease forefoot pressure while keeping your heel locked in."
+    ],
+    "matched_race": null
+  }
+}

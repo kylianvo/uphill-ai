@@ -1,0 +1,78 @@
+{
+  "latency_s": 7.0,
+  "engine_used": "gemini",
+  "output": {
+    "recommendations": [
+      {
+        "model": "Mach 7",
+        "brand": "Hoka",
+        "foam_material": "Balanced daily EVA-blend (EVA)",
+        "outsole_compound": "Segmented road rubber",
+        "lug_depth": "0.0 mm",
+        "drop": "5 mm",
+        "stack": "Heel 35.6 mm / Forefoot 26.2 mm",
+        "weight": "8.5 oz / 241 g",
+        "price": "$145",
+        "pros": "Elite-level upper breathability and an exceptionally lightweight build. Provides an agile, forward-rolling rocker suitable for daily runs and tempos.",
+        "cons": "The narrow fit may pinch wider toes, and the ride can feel firm to some."
+      },
+      {
+        "model": "Aero Blaze 4",
+        "brand": "Salomon",
+        "foam_material": "Optifoam2 (eTPU)",
+        "outsole_compound": "Road ContaGrip",
+        "lug_depth": "None (road)",
+        "drop": "8 mm",
+        "stack": "36 mm heel / 28 mm forefoot",
+        "weight": "8.0 oz / 226 g",
+        "price": "$140",
+        "pros": "Very lightweight with a snappy, bouncy eTPU midsole ride. Offers versatile performance for daily road miles and tempo paces at an approachable price.",
+        "cons": "Narrow midfoot fit is not ideal for wider feet, and pure neutral geometry lacks inherent stability elements."
+      },
+      {
+        "model": "Aero Blaze 3",
+        "brand": "Salomon",
+        "foam_material": "Optifoam2 (eTPU)",
+        "outsole_compound": "Road rubber",
+        "lug_depth": "Road (0.0 mm)",
+        "drop": "8.0 mm",
+        "stack": "35.0/27.0 mm",
+        "weight": "7.9 oz / 223 g",
+        "price": "$140",
+        "pros": "Exceptionally lightweight build with soft and energetic bounce. Reverse camber geometry aids smooth transitions for daily miles and uptempo work.",
+        "cons": "Lacks robust midfoot upper support, and heavier runners over 190-200 lbs may bottom out the foam."
+      },
+      {
+        "model": "FuelCell Rebel v5",
+        "brand": "New Balance",
+        "foam_material": "PEBA-blended FuelCell (PEBA-blended)",
+        "outsole_compound": "High-traction road rubber",
+        "lug_depth": "0.0 mm",
+        "drop": "6.3 mm",
+        "stack": "33.0/26.7 mm",
+        "weight": "7.9 oz / 225 g",
+        "price": "$140",
+        "pros": "Delivers an exceptionally lightweight and flexible ride powered by bouncy supercritical foam. Fantomfit upper locks down comfortably for daily miles and half-marathon pace work.",
+        "cons": "Toebox durability is relatively weak, and the foam may compress too quickly under heavier runners."
+      },
+      {
+        "model": "Pegasus 42",
+        "brand": "Nike",
+        "foam_material": "ReactX daily foam",
+        "outsole_compound": "High-longevity road rubber",
+        "lug_depth": "Road (0 mm)",
+        "drop": "10.0 mm",
+        "stack": "37.0/27.0 mm",
+        "weight": "10.5 oz / 297 g",
+        "price": "$145",
+        "pros": "Dependable daily cruiser featuring a stable platform and outstanding outsole durability. Exceptionally soft and comfortable upper mesh built for daily wear.",
+        "cons": "Feels relatively heavy and lacks energetic forefoot rebound."
+      }
+    ],
+    "tips": [
+      "For daily road training paired with half marathon prep, moderate-cushion trainers provide a sweet spot of impact protection without unnecessary bulk or mushiness.",
+      "Be mindful of differing heel-to-toe drops; lower-drop options like 5-6 mm engage the calves and Achilles more, while 8-10 mm designs shift workload toward the knees and hips."
+    ],
+    "matched_race": null
+  }
+}

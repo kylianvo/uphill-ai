@@ -365,3 +365,28 @@ def test_mask_payload_redacts_json_strings_in_lists():
             except (json.JSONDecodeError, ValueError):
                 # Non-JSON strings pass through unchanged
                 pass
+
+
+def test_prompt_link_attributes_export_only_known_names_and_integer_versions():
+    safe = policy.sanitize_span_envelope(
+        {
+            "name": "generation",
+            "attributes": {
+                "langfuse.observation.prompt.name": "coach_chat",
+                "langfuse.observation.prompt.version": 2,
+            },
+        }
+    )
+    assert safe["attributes"]["langfuse.observation.prompt.name"] == "coach_chat"
+    assert safe["attributes"]["langfuse.observation.prompt.version"] == 2
+
+    unsafe = policy.sanitize_span_envelope(
+        {
+            "name": "generation",
+            "attributes": {
+                "langfuse.observation.prompt.name": CANARY,
+                "langfuse.observation.prompt.version": CANARY,
+            },
+        }
+    )
+    assert CANARY not in json.dumps(unsafe)

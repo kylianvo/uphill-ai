@@ -1,0 +1,15 @@
+{
+  "synthetic": true,
+  "provenance": "gear",
+  "params": {
+    "surface": "mixed",
+    "cushioning": "medium",
+    "terrain": [
+      "road",
+      "gravel",
+      "hardpack"
+    ],
+    "use_case": "door-to-trail runs",
+    "preferred_brands": "Brooks, Saucony"
+  }
+}

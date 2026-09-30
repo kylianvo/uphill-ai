@@ -1,4 +1,6 @@
 {
+  "synthetic": true,
+  "provenance": "scheduler",
   "_comment": "Recreational tier (40-80 km/wk band, the corrected floor -- doctrine states '40 km/wk baseline for 50K training'). First tier where structured ME blocks and Zone 3+ intensity both apply; Zone 4 weekly cap (40 min) should appear. Distinct from the pre-existing fixture_trail_8wk.json, which omits current_weekly_km and defaults to 30.0 -- landing in NOVICE under the corrected bands, not recreational. This fixture sets it explicitly so the tier under test is unambiguous.",
   "user_profile": {
     "age": 34,

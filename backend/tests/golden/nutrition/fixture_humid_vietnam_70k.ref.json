@@ -1,0 +1,108 @@
+{
+  "latency_s": 5.5,
+  "engine_used": "gemini",
+  "output": {
+    "products": [
+      {
+        "brand": "Precision Fuel & Hydration",
+        "name": "Carb & Electrolyte Drink Mix",
+        "total_quantity": 14,
+        "carbs_per_unit": 60,
+        "sodium_per_unit": 1000,
+        "protein_per_unit": 0,
+        "tech_notes": "Formulated with a scientifically backed 2:1 glucose-to-fructose ratio to maximize carbohydrate absorption. It is designed to deliver a steady stream of rapidly digestible energy during high-intensity efforts lasting several hours, helping to replace fluid and sweat losses simultaneously. It is engineered with a very mild, neutral taste to minimize palate fatigue and stomach issues during hard efforts, making it highly palatable even when breathing hard. Certified by Informed Sport and uses 100% recyclable packaging."
+      }
+    ],
+    "hourly_plan": [
+      {
+        "hour": 1,
+        "action": "Consume 1 serving of Carb & Electrolyte Drink Mix mixed in 500-750ml water, sipping consistently throughout the hour.",
+        "carbs": 60,
+        "sodium": 1000
+      },
+      {
+        "hour": 2,
+        "action": "Consume 1 serving of Carb & Electrolyte Drink Mix mixed in 500-750ml water, sipping consistently throughout the hour.",
+        "carbs": 60,
+        "sodium": 1000
+      },
+      {
+        "hour": 3,
+        "action": "Consume 1 serving of Carb & Electrolyte Drink Mix mixed in 500-750ml water, sipping consistently throughout the hour.",
+        "carbs": 60,
+        "sodium": 1000
+      },
+      {
+        "hour": 4,
+        "action": "Consume 1 serving of Carb & Electrolyte Drink Mix mixed in 500-750ml water, sipping consistently throughout the hour.",
+        "carbs": 60,
+        "sodium": 1000
+      },
+      {
+        "hour": 5,
+        "action": "Consume 1 serving of Carb & Electrolyte Drink Mix mixed in 500-750ml water, sipping consistently throughout the hour.",
+        "carbs": 60,
+        "sodium": 1000
+      },
+      {
+        "hour": 6,
+        "action": "Consume 1 serving of Carb & Electrolyte Drink Mix mixed in 500-750ml water, sipping consistently throughout the hour.",
+        "carbs": 60,
+        "sodium": 1000
+      },
+      {
+        "hour": 7,
+        "action": "Consume 1 serving of Carb & Electrolyte Drink Mix mixed in 500-750ml water, sipping consistently throughout the hour.",
+        "carbs": 60,
+        "sodium": 1000
+      },
+      {
+        "hour": 8,
+        "action": "Consume 1 serving of Carb & Electrolyte Drink Mix mixed in 500-750ml water, sipping consistently throughout the hour.",
+        "carbs": 60,
+        "sodium": 1000
+      },
+      {
+        "hour": 9,
+        "action": "Consume 1 serving of Carb & Electrolyte Drink Mix mixed in 500-750ml water, sipping consistently throughout the hour.",
+        "carbs": 60,
+        "sodium": 1000
+      },
+      {
+        "hour": 10,
+        "action": "Consume 1 serving of Carb & Electrolyte Drink Mix mixed in 500-750ml water, sipping consistently throughout the hour.",
+        "carbs": 60,
+        "sodium": 1000
+      },
+      {
+        "hour": 11,
+        "action": "Consume 1 serving of Carb & Electrolyte Drink Mix mixed in 500-750ml water, sipping consistently throughout the hour.",
+        "carbs": 60,
+        "sodium": 1000
+      },
+      {
+        "hour": 12,
+        "action": "Consume 1 serving of Carb & Electrolyte Drink Mix mixed in 500-750ml water, sipping consistently throughout the hour.",
+        "carbs": 60,
+        "sodium": 1000
+      },
+      {
+        "hour": 13,
+        "action": "Consume 1 serving of Carb & Electrolyte Drink Mix mixed in 500-750ml water, sipping consistently throughout the hour.",
+        "carbs": 60,
+        "sodium": 1000
+      },
+      {
+        "hour": 14,
+        "action": "Consume 1 serving of Carb & Electrolyte Drink Mix mixed in 500-750ml water, sipping consistently throughout the hour.",
+        "carbs": 60,
+        "sodium": 1000
+      }
+    ],
+    "tips": [
+      "Manage extreme heat and humidity (32C, 85% RH) by dissolving each serving of drink mix into at least 500-750ml of water to keep beverage osmolality low, assist gastric emptying, and match high sweat fluid losses.",
+      "Execute a preloading protocol by drinking 500ml of a high-sodium electrolyte solution the evening before and another 500ml on race morning, finishing 45-60 minutes before the start to expand blood plasma volume.",
+      "Proactively cool your body using external methods like ice bandanas or pouring cold water over your head and neck at aid stations to mitigate thermal strain and reduce sweat sodium losses."
+    ]
+  }
+}

@@ -817,8 +817,13 @@ def generation(
     model: str,
     user_id: int | None = None,
     metadata: dict[str, Any] | None = None,
+    prompt: PromptTemplate | None = None,
 ) -> Iterator[GenerationRecorder]:
-    """Record one provider invocation with one canonical billing owner."""
+    """Record one provider invocation with one canonical billing owner.
+
+    A prompt fetched from Langfuse is linked to the generation by name and version,
+    so traces can be filtered by prompt version. Local fallbacks are not linked.
+    """
     invocation_id = secrets.token_hex(16)
     invocation_token = _current_invocation_id.set(invocation_id)
     started = time.monotonic()
@@ -849,7 +854,11 @@ def generation(
             )
             from opentelemetry.trace import get_current_span
 
-            get_current_span().set_attribute(_INVOCATION_OWNER_ATTRIBUTE, invocation_id)
+            current_span = get_current_span()
+            current_span.set_attribute(_INVOCATION_OWNER_ATTRIBUTE, invocation_id)
+            if prompt is not None and prompt.source == "langfuse" and prompt.version.isdigit():
+                current_span.set_attribute("langfuse.observation.prompt.name", prompt.name)
+                current_span.set_attribute("langfuse.observation.prompt.version", int(prompt.version))
         except Exception as exc:
             _close(stack)
             stack = contextlib.ExitStack()
@@ -958,7 +967,7 @@ def flush() -> None:
         _warn_once("flush", exc)
 
 
-_SYNTHETIC_PROVENANCES = {"gear", "nutrition", "scheduler"}
+_SYNTHETIC_PROVENANCES = {"gear", "nutrition", "scheduler", "chat"}
 
 
 def push_experiment(
@@ -1034,18 +1043,19 @@ def push_experiment(
                 },
             )
 
-            run_item = _client.api.dataset_run_items.create(
+            # The API requires a trace per run item; a deterministic id links the
+            # item's scores to it without exporting any span content.
+            trace_id = _client.create_trace_id(seed=f"{run_name}:{item['id']}")
+            _client.api.dataset_run_items.create(
                 run_name=run_name,
                 dataset_item_id=getattr(dataset_item, "id", None) or item["id"],
+                trace_id=trace_id,
                 run_description=description,
                 metadata={
                     "synthetic": True,
                     **policy.filter_metadata(metadata or {}),
                 },
             )
-
-            dataset_run_id = getattr(run_item, "dataset_run_id", None)
-            trace_id = getattr(run_item, "trace_id", None)
 
             for score_name, score_value in item_scores.items():
                 if score_value is None:
@@ -1060,11 +1070,8 @@ def push_experiment(
                     "name": score_name,
                     "value": val,
                     "data_type": dtype,
+                    "trace_id": trace_id,
                 }
-                if dataset_run_id:
-                    score_kwargs["dataset_run_id"] = dataset_run_id
-                elif trace_id:
-                    score_kwargs["trace_id"] = trace_id
                 _client.create_score(**score_kwargs)
 
         _client.flush()
@@ -1122,4 +1129,34 @@ def get_prompt_template(
         version="local",
         template=fallback,
         source="local_fallback",
+    )
+
+
+_PROMPT_VARIABLE_RE = re.compile(r"\{\{(\w+)\}\}")
+
+
+def load_prompt(name: str, fallback: str) -> PromptTemplate:
+    """Fetch a service prompt at the configured label, falling back to the in-code template.
+
+    A Langfuse version that drops any {{variable}} the fallback uses is rejected, so an
+    edit in the Langfuse UI can never silently leave athlete data out of the prompt.
+    """
+    tpl = get_prompt_template(
+        name,
+        label=settings.COACH_CHAT_PROMPT_LABEL,
+        fallback=fallback,
+        cache_ttl_seconds=settings.COACH_CHAT_PROMPT_CACHE_TTL_SECONDS,
+    )
+    required = set(_PROMPT_VARIABLE_RE.findall(fallback))
+    if tpl.source == "langfuse" and not required <= set(_PROMPT_VARIABLE_RE.findall(tpl.template)):
+        _warn_once("prompt_missing_variables", ValueError(name))
+        return PromptTemplate(name=name, version="local", template=fallback, source="local_fallback")
+    return tpl
+
+
+def compile_prompt(template: PromptTemplate, variables: dict[str, Any]) -> str:
+    """Fill {{variable}} placeholders locally in one pass (substituted values are never re-scanned)."""
+    return _PROMPT_VARIABLE_RE.sub(
+        lambda m: str(variables[m.group(1)]) if m.group(1) in variables else m.group(0),
+        template.template,
     )

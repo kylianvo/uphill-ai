@@ -1,0 +1,78 @@
+{
+  "latency_s": 6.6,
+  "engine_used": "gemini",
+  "output": {
+    "recommendations": [
+      {
+        "model": "SuperComp Rebel V1",
+        "brand": "New Balance",
+        "foam_material": "Infinion Aliphatic TPU (A-TPU)",
+        "outsole_compound": "Targeted lightweight rubber",
+        "lug_depth": "None (road)",
+        "drop": "4 mm",
+        "stack": "40 mm heel / 36 mm forefoot",
+        "weight": "7.7 oz / 218 g",
+        "price": "$200",
+        "pros": "Built for tempo runs, intervals, and versatile road racing with an energetic carbon-infused plate. Delivers lightweight bounce at an airy weight while providing protective cushioning.",
+        "cons": "Pricier than non-plated trainers, and slightly less aggressive than pure marathon racing flats."
+      },
+      {
+        "model": "Cloudboom Strike",
+        "brand": "On",
+        "foam_material": "Helion HF (Pebax)",
+        "outsole_compound": "Mission Grip",
+        "lug_depth": "0.0 mm",
+        "drop": "4 mm",
+        "stack": "38.1/34.9 mm",
+        "weight": "7.4 oz / 210 g",
+        "price": "$280",
+        "pros": "Delivers outstanding 72.1% energy return with a propulsive carbon Speedboard for high-speed intervals. Extremely light on foot with fantastic forward turnover.",
+        "cons": "Expensive and not suitable for heel strikers due to limited landing stability and polarizing heel security."
+      },
+      {
+        "model": "Mach 7",
+        "brand": "Hoka",
+        "foam_material": "Balanced daily EVA-blend (EVA)",
+        "outsole_compound": "Segmented road rubber",
+        "lug_depth": "0.0 mm lugs",
+        "drop": "5 mm",
+        "stack": "Heel 35.6 mm / Forefoot 26.2 mm",
+        "weight": "8.5 oz / 241 g",
+        "price": "$145",
+        "pros": "Features moderate, balanced cushioning that excels during tempo workouts and agile intervals. Very lightweight with elite-level upper breathability and a smooth rolling rocker.",
+        "cons": "Drop is slightly above the 0-4 mm range at 5 mm, and narrow fit can pinch wide toes."
+      },
+      {
+        "model": "Mach X 3",
+        "brand": "Hoka",
+        "foam_material": "Dual-density PEBA & EVA dual foam",
+        "outsole_compound": "Durable road rubber",
+        "lug_depth": "0.0 mm lugs",
+        "drop": "5 mm",
+        "stack": "Heel 42.9 mm / Forefoot 33.4 mm",
+        "weight": "8.9 oz / 252 g",
+        "price": "$190",
+        "pros": "Designed specifically for fast tempo workouts and daily mileage with bouncy forefoot propulsion. Full-length plate and rocker provide snappy transitions to keep legs fresh.",
+        "cons": "At 5 mm drop it sits just above the 4 mm cutoff, and the layout runs slightly heavy with a non-gusseted tongue."
+      },
+      {
+        "model": "Torin 8",
+        "brand": "Altra",
+        "foam_material": "Standard daily training foam",
+        "outsole_compound": "High-traction road rubber",
+        "lug_depth": "Road (0.0 mm)",
+        "drop": "0 mm",
+        "stack": "27.6 mm heel / 27.7 mm forefoot",
+        "weight": "10.1 oz / 287 g",
+        "price": "$150 - $160",
+        "pros": "True zero-drop geometry with balanced, medium-level cushioning for a natural foot strike. Features improved heel lockdown and comfortable toe splay for neutral running.",
+        "cons": "Lacks the snappy supercritical bounce ideal for aggressive speedwork, and feels heavy for pure interval sessions."
+      }
+    ],
+    "tips": [
+      "Transitioning from a 10 mm drop directly down to low-drop or zero-drop shoes places significantly increased strain on your calves and Achilles tendons; alternate with your current pair and introduce the lower-drop shoe gradually.",
+      "For faster tempo workouts and interval sessions, a shoe with 4-5 mm drop and an energetic foam or plate will provide responsiveness while smoothing your transition down from 10 mm."
+    ],
+    "matched_race": null
+  }
+}

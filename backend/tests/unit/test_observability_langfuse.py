@@ -143,3 +143,46 @@ def test_langchain_runnables_are_auto_traced_alongside_gemini_calls(langfuse_spa
     obs.flush()
     names = [s.name for s in langfuse_spans.get_finished_spans()]
     assert any("RunnableLambda" in n for n in names), f"no LangChain-instrumented span found; got {names}"
+
+
+def test_generation_links_a_langfuse_prompt_by_name_and_version(langfuse_spans):
+    prompt = obs.PromptTemplate(name="coach_chat", version="3", template="", source="langfuse")
+    with obs.generation("generation", feature="coach_chat", model="gemini-3.8-flash", prompt=prompt):
+        pass
+
+    attrs = _attrs(_by_name(langfuse_spans, "generation"))
+    assert attrs["langfuse.observation.prompt.name"] == "coach_chat"
+    assert attrs["langfuse.observation.prompt.version"] == 3
+
+
+def test_generation_does_not_link_a_local_fallback_prompt(langfuse_spans):
+    prompt = obs.PromptTemplate(name="coach_chat", version="local", template="", source="local_fallback")
+    with obs.generation("generation", feature="coach_chat", model="gemini-3.8-flash", prompt=prompt):
+        pass
+
+    attrs = _attrs(_by_name(langfuse_spans, "generation"))
+    assert "langfuse.observation.prompt.name" not in attrs
+    assert "langfuse.observation.prompt.version" not in attrs
+
+
+def test_compile_prompt_fills_variables_in_one_pass():
+    tpl = obs.PromptTemplate(name="gear_finder", version="1", template="A {{x}} B {{y}} {{z}}", source="langfuse")
+    # A value that itself looks like a placeholder is not re-substituted; unknown ones stay literal.
+    assert obs.compile_prompt(tpl, {"x": "{{y}}", "y": 2}) == "A {{y}} B 2 {{z}}"
+
+
+def test_load_prompt_rejects_a_langfuse_version_that_drops_a_variable(monkeypatch):
+    remote = obs.PromptTemplate(name="gear_finder", version="4", template="no vars here", source="langfuse")
+    monkeypatch.setattr(obs, "get_prompt_template", lambda *a, **k: remote)
+
+    tpl = obs.load_prompt("gear_finder", "catalog: {{catalog_context}}")
+
+    assert tpl.source == "local_fallback"
+    assert tpl.template == "catalog: {{catalog_context}}"
+
+
+def test_load_prompt_keeps_a_langfuse_version_with_every_variable(monkeypatch):
+    remote = obs.PromptTemplate(name="gear_finder", version="4", template="new {{catalog_context}}", source="langfuse")
+    monkeypatch.setattr(obs, "get_prompt_template", lambda *a, **k: remote)
+
+    assert obs.load_prompt("gear_finder", "catalog: {{catalog_context}}") is remote

@@ -1,0 +1,72 @@
+{
+  "latency_s": 5.7,
+  "engine_used": "gemini",
+  "output": {
+    "products": [
+      {
+        "brand": "Precision Fuel & Hydration",
+        "name": "30 Energy Gel",
+        "total_quantity": 5,
+        "carbs_per_unit": 30.0,
+        "sodium_per_unit": 0.0,
+        "protein_per_unit": 0.0,
+        "tech_notes": "Employs a 2:1 glucose-to-fructose ratio for fast-acting and highly efficient carbohydrate absorption. It is designed with a mild, neutral \"Original\" flavor profile to actively minimize the sweet taste overload and palate fatigue common during long efforts. The gel's texture is specifically engineered to reduce stickiness in the mouth, allowing it to be easily swallowed without requiring an immediate wash-down of plain water. Certified by Informed Sport."
+      },
+      {
+        "brand": "GU",
+        "name": "Original Energy Gel",
+        "total_quantity": 4,
+        "carbs_per_unit": 22.0,
+        "sodium_per_unit": 60.0,
+        "protein_per_unit": 0.0,
+        "tech_notes": "Uses a dual-source carbohydrate blend of maltodextrin and fructose. The maltodextrin converts quickly to energy molecules within minutes, while the fructose absorbs more slowly to provide a steady stream of energy, preventing the insulin spikes and subsequent sugar crashes associated with simple sugars. Formulated with a BCAA blend (L-Leucine, L-Valine, and L-Isoleucine) to help protect working muscles from breakdown, aid in energy production, and prevent mental fatigue during exertion. Contains sodium to maintain fluid balance and aid carbohydrate absorption. Contains 450mg of branched-chain amino acids (BCAAs)."
+      },
+      {
+        "brand": "Precision Fuel & Hydration",
+        "name": "Electrolyte Capsules",
+        "total_quantity": 5,
+        "carbs_per_unit": 0.0,
+        "sodium_per_unit": 250.0,
+        "protein_per_unit": 0.0,
+        "tech_notes": "Blister-packed swallowable capsules containing highly concentrated sodium. Designed to give athletes the ultimate flexibility to decouple their hydration/electrolyte intake from their carbohydrate fueling. This allows athletes to consume plain water or customized drink mixes from aid stations and separately ingest capsules to precisely match their genetically determined sweat sodium losses without altering their carbohydrate math or causing stomach upset."
+      }
+    ],
+    "hourly_plan": [
+      {
+        "hour": 1,
+        "action": "Consume 1 PF 30 Energy Gel at minute 20, 1 GU Original Energy Gel at minute 45, and take 1 PF Electrolyte Capsule with 400-500ml of plain water across the hour.",
+        "carbs": 52.0,
+        "sodium": 310.0
+      },
+      {
+        "hour": 2,
+        "action": "Consume 1 PF 30 Energy Gel at minute 20, 1 GU Original Energy Gel at minute 45, and take 1 PF Electrolyte Capsule with 400-500ml of plain water across the hour.",
+        "carbs": 52.0,
+        "sodium": 310.0
+      },
+      {
+        "hour": 3,
+        "action": "Consume 1 PF 30 Energy Gel at minute 20, 1 GU Original Energy Gel at minute 45, and take 1 PF Electrolyte Capsule with 400-500ml of plain water across the hour.",
+        "carbs": 52.0,
+        "sodium": 310.0
+      },
+      {
+        "hour": 4,
+        "action": "Consume 1 PF 30 Energy Gel at minute 20, 1 GU Original Energy Gel at minute 45, and take 1 PF Electrolyte Capsule with 400-500ml of plain water across the hour.",
+        "carbs": 52.0,
+        "sodium": 310.0
+      },
+      {
+        "hour": 5,
+        "action": "During the final 30 minutes, consume 1 PF 30 Energy Gel at minute 15 and take 1 PF Electrolyte Capsule with 200-250ml plain water.",
+        "carbs": 30.0,
+        "sodium": 250.0
+      }
+    ],
+    "tips": [
+      "Always ingest 300ml to 500ml of plain water per hour alongside gels and electrolyte capsules to maintain appropriate gut osmolality and prevent delayed gastric emptying or nausea.",
+      "Split your hourly carbohydrate target into smaller, frequent doses every 20 to 25 minutes rather than taking all fuel in a single bolus, reducing gastrointestinal stress on climbs.",
+      "Carry one extra gel and electrolyte capsule as emergency spares to accommodate pacing fluctuations or accidental drops on technical terrain."
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "synthetic": true,
+  "provenance": "gear",
+  "params": {
+    "surface": "road",
+    "cushioning": "medium",
+    "budget": "$150",
+    "use_case": "daily training",
+    "race_distance": "half marathon"
+  }
+}

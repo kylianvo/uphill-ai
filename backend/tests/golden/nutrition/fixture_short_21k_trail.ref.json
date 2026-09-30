@@ -1,0 +1,51 @@
+{
+  "latency_s": 4.5,
+  "engine_used": "gemini",
+  "output": {
+    "products": [
+      {
+        "brand": "Precision Fuel & Hydration",
+        "name": "30 Energy Gel",
+        "total_quantity": 4,
+        "carbs_per_unit": 30.0,
+        "sodium_per_unit": 0.0,
+        "protein_per_unit": 0.0,
+        "tech_notes": "Employs a 2:1 glucose-to-fructose ratio for fast-acting and highly efficient carbohydrate absorption. It is designed with a mild, neutral \"Original\" flavor profile to actively minimize the sweet taste overload and palate fatigue common during long efforts. The gel's texture is specifically engineered to reduce stickiness in the mouth, allowing it to be easily swallowed without requiring an immediate wash-down of plain water. Certified by Informed Sport."
+      },
+      {
+        "brand": "Precision Fuel & Hydration",
+        "name": "500",
+        "total_quantity": 3,
+        "carbs_per_unit": 0.0,
+        "sodium_per_unit": 500.0,
+        "protein_per_unit": 0.0,
+        "tech_notes": "Designed to support standard hydration and electrolyte maintenance for athletes with low sweat sodium concentration or for shorter efforts in mild conditions."
+      }
+    ],
+    "hourly_plan": [
+      {
+        "hour": 1,
+        "action": "Take one Precision Fuel & Hydration 30 Energy Gel at minute 20 and another at minute 40. Sip 500ml of water mixed with one Precision Fuel & Hydration 500 tablet across the hour.",
+        "carbs": 60.0,
+        "sodium": 500.0
+      },
+      {
+        "hour": 2,
+        "action": "Take one Precision Fuel & Hydration 30 Energy Gel at minute 80 and another at minute 100. Sip 500ml of water mixed with one Precision Fuel & Hydration 500 tablet across the hour.",
+        "carbs": 60.0,
+        "sodium": 500.0
+      },
+      {
+        "hour": 3,
+        "action": "For the remaining 30 minutes, sip 250ml of water containing half a Precision Fuel & Hydration 500 tablet to maintain hydration through the finish.",
+        "carbs": 0.0,
+        "sodium": 250.0
+      }
+    ],
+    "tips": [
+      "Take gels in small, regular doses every 20 minutes with sips of fluid rather than consuming a full packet at once, which optimizes stomach emptying and prevents GI distress.",
+      "Decoupling your sodium and fluids from your carbohydrate gels allows you to scale fluid intake based on temperature without disrupting your hourly carbohydrate math.",
+      "Practice this exact fueling plan in training at least 6 to 8 weeks out during your longest sessions to train your gut to absorb 60g of carbohydrates per hour comfortably."
+    ]
+  }
+}

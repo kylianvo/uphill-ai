@@ -1,0 +1,27 @@
+{
+  "synthetic": true,
+  "provenance": "scheduler",
+  "_comment": "Vertical-heavy short race, no gym: ME must use bodyweight/hill options.",
+  "user_profile": {
+    "age": 27,
+    "gender": "female",
+    "max_hr": 194,
+    "resting_hr": 48,
+    "aet_hr": 155,
+    "ant_hr": 176,
+    "current_weekly_km": 55.0,
+    "days_per_week": 6,
+    "has_gym_access": false
+  },
+  "race_info": {
+    "lang": "en",
+    "terrain": "trail",
+    "goal_type": "finish",
+    "name": "Vertical K",
+    "date": "2026-12-15",
+    "course_distance_km": 5,
+    "course_elevation_gain_m": 1000,
+    "has_gym_access": false
+  },
+  "total_weeks": 10
+}

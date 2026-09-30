@@ -24,8 +24,10 @@ import asyncio
 import glob
 import json
 import os
+import re
 import sys
 import time
+from uuid import uuid4
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -131,18 +133,20 @@ async def _run_chat(fixture: dict) -> tuple[dict, str]:
         evidence=[],
     )
 
-    model = coach_model.get_coach_model(api_key=settings.GEMINI_API_KEY)
+    model = coach_model.GeminiCoachModel(api_key=settings.GEMINI_API_KEY, model=settings.GEMINI_MODEL)
     model_request = coach_model.ModelRequest(
-        system_instruction=system_prompt,
-        messages=[coach_model.ChatMessage(role="user", content=question)],
-        temperature=0.0,
+        messages=(coach_model.ChatMessage(role="user", content=question),),
+        system=system_prompt,
         max_output_tokens=1024,
+        call_id=uuid4(),
+        prompt=template,
     )
 
     reply_text = ""
     try:
-        async for chunk in model.generate_stream(model_request):
-            reply_text += chunk.text
+        async for event in model.stream(model_request):
+            if event.kind == "text" and event.text:
+                reply_text += event.text
         status = "success"
     except Exception as exc:
         reply_text = f"Simulated evaluation: {type(exc).__name__}"
@@ -183,7 +187,8 @@ def evaluate_chat_case(result: dict, fixture: dict) -> dict:
     # 2. Forbidden strings
     no_forbidden_strings = True
     must_not = invariants.get("must_not_contain", [])
-    if any(s.lower() in reply for s in must_not):
+    # Whole-word match, so a refusal like "no prescriptions" doesn't trip "prescription".
+    if any(re.search(rf"(?<!\w){re.escape(s.lower())}(?!\w)", reply) for s in must_not):
         no_forbidden_strings = False
 
     # 3. Prompt leakage
@@ -269,8 +274,10 @@ def compare(service: str, push_langfuse: bool = False, synthetic_only: bool = Fa
     for path in _fixtures(service):
         fixture_data = json.load(open(path, encoding="utf-8"))
         if service == "chat" and "cases" in fixture_data and isinstance(fixture_data["cases"], list):
+            # Cases inherit the file-level synthetic/provenance flags unless they set their own.
+            inherited = {k: fixture_data[k] for k in ("synthetic", "provenance") if k in fixture_data}
             for c in fixture_data["cases"]:
-                fixture_items.append((path, c))
+                fixture_items.append((path, {**inherited, **c}))
         else:
             fixture_items.append((path, fixture_data))
 
@@ -411,6 +418,9 @@ def compare(service: str, push_langfuse: bool = False, synthetic_only: bool = Fa
             synthetic=True,
             description=f"Synthetic golden evaluation run for {service}",
         )
+        from services.observability import flush
+
+        flush()
         if pushed:
             print(f"[compare] Pushed experiment run to Langfuse: {run_name}")
         else:
@@ -442,6 +452,10 @@ def main():
         help="Publish precomputed experiment results to Langfuse (requires synthetic fixtures)",
     )
     args = parser.parse_args()
+    if args.push_langfuse:
+        from services import observability
+
+        observability.init()
     if args.service == "goal":
         # A hold-out backtest against real finishes, not a snapshot diff: there is
         # no baseline to capture (scripts/goal_backtest.py).

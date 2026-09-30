@@ -325,3 +325,46 @@ def test_compare_with_push_langfuse_calls_push_experiment_with_precomputed_resul
         assert kwargs["scores"][0]["catalog_membership_valid"] is True
         assert "latency_s" in kwargs["scores"][0]
         assert "engine_is_gemini" in kwargs["scores"][0]
+
+
+def test_push_experiment_accepts_synthetic_chat_items_up_to_the_client():
+    from unittest.mock import patch
+
+    from services import observability as obs
+
+    with patch.object(obs, "_client", None):
+        # Validation passes for chat provenance; only the missing client stops the push.
+        assert (
+            obs.push_experiment(
+                dataset_name="test_ds",
+                run_name="run1",
+                items=[{"id": "chat_1", "synthetic": True, "provenance": "chat"}],
+                results=[{}],
+                scores=[{}],
+                synthetic=True,
+            )
+            is False
+        )
+    assert "chat" in obs._SYNTHETIC_PROVENANCES
+
+
+def test_compare_passes_file_level_synthetic_flag_down_to_chat_cases(tmp_path, monkeypatch):
+    chat_dir = tmp_path / "chat"
+    chat_dir.mkdir()
+    (chat_dir / "fixture_bench.json").write_text(
+        json.dumps({"synthetic": True, "provenance": "chat", "cases": [{"id": "c1", "lang": "en", "question": "q"}]})
+    )
+    monkeypatch.setattr(golden_eval, "GOLDEN_DIR", str(tmp_path))
+    seen = []
+
+    async def fake_run(service, fixture):
+        seen.append(fixture)
+        return {"id": fixture["id"], "reply_text": "", "status": "success"}, "gemini"
+
+    monkeypatch.setattr(golden_eval, "_run", fake_run)
+    monkeypatch.setitem(sys.modules, "db", type(sys)("db"))
+    sys.modules["db"].get_kb_chunks = lambda *a, **k: []
+
+    golden_eval.compare("chat", synthetic_only=True)
+
+    assert seen == [{"synthetic": True, "provenance": "chat", "id": "c1", "lang": "en", "question": "q"}]

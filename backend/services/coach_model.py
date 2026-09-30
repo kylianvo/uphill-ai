@@ -41,6 +41,8 @@ class ModelRequest:
     # is exhausted (spec §5.3 #2): the adapter must stream from an unbound
     # chat instance so the model cannot emit another tool_call and loop.
     tools_enabled: bool = True
+    # Langfuse prompt behind `system`, linked to the generation for per-version filtering.
+    prompt: observability.PromptTemplate | None = None
 
 
 @dataclass(frozen=True)
@@ -194,6 +196,7 @@ class GeminiCoachModel:
             feature="coach_chat",
             model=self.model,
             metadata={"call_id": str(request.call_id)},
+            prompt=request.prompt,
         ) as gen:
             final_usage: Usage | None = None
             try:

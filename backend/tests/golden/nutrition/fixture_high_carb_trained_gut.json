@@ -1,0 +1,14 @@
+{
+  "synthetic": true,
+  "provenance": "nutrition",
+  "params": {
+    "distance_km": 80,
+    "elevation_gain_m": 4500,
+    "target_time_hours": 11,
+    "weather_temp": "mild (20C)",
+    "target_carb_h": 100,
+    "target_sodium_h": 800,
+    "athlete_level": "elite",
+    "preferred_brands": "Maurten, Precision Fuel & Hydration"
+  }
+}

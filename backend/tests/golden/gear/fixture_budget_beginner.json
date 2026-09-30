@@ -1,0 +1,11 @@
+{
+  "synthetic": true,
+  "provenance": "gear",
+  "params": {
+    "surface": "road",
+    "cushioning": "medium",
+    "budget": "$90",
+    "use_case": "first running shoe",
+    "user_profile": "new runner, 3 runs/week, 10 km/week"
+  }
+}

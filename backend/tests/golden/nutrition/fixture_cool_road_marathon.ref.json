@@ -1,0 +1,66 @@
+{
+  "latency_s": 4.8,
+  "engine_used": "gemini",
+  "output": {
+    "products": [
+      {
+        "brand": "Precision Fuel & Hydration",
+        "name": "30 Energy Gel",
+        "total_quantity": 4,
+        "carbs_per_unit": 30.0,
+        "sodium_per_unit": 0.0,
+        "protein_per_unit": 0.0,
+        "tech_notes": "Employs a 2:1 glucose-to-fructose ratio for fast-acting and highly efficient carbohydrate absorption. It is designed with a mild, neutral \"Original\" flavor profile to actively minimize the sweet taste overload and palate fatigue common during long efforts. The gel's texture is specifically engineered to reduce stickiness in the mouth, allowing it to be easily swallowed without requiring an immediate wash-down of plain water. Certified by Informed Sport."
+      },
+      {
+        "brand": "Precision Fuel & Hydration",
+        "name": "30 Caffeine Gel",
+        "total_quantity": 3,
+        "carbs_per_unit": 30.0,
+        "sodium_per_unit": 0.0,
+        "protein_per_unit": 0.0,
+        "tech_notes": "Blends 30g of carbohydrates in a 2:1 glucose-to-fructose ratio with a powerful 100mg caffeine kick to stave off physical and mental fatigue, increase alertness, and lower perceived exertion during races. Designed to taste significantly better than typical caffeinated gels, offering a smooth, palatable consistency that goes down easily under race stress. Certified by Informed Sport."
+      },
+      {
+        "brand": "Precision Fuel & Hydration",
+        "name": "Electrolyte Capsules",
+        "total_quantity": 7,
+        "carbs_per_unit": 0.0,
+        "sodium_per_unit": 250.0,
+        "protein_per_unit": 0.0,
+        "tech_notes": "Blister-packed swallowable capsules containing highly concentrated sodium. Designed to give athletes the ultimate flexibility to decouple their hydration/electrolyte intake from their carbohydrate fueling. This allows athletes to consume plain water or customized drink mixes from aid stations and separately ingest capsules to precisely match their genetically determined sweat sodium losses without altering their carbohydrate math or causing stomach upset."
+      }
+    ],
+    "hourly_plan": [
+      {
+        "hour": 1,
+        "action": "Consume 1 Precision Fuel 30 Energy Gel at minute 20 and 1 Precision Fuel 30 Energy Gel at minute 40. Ingest 2 Precision Fuel Electrolyte Capsules with 400-500ml of plain water across the hour.",
+        "carbs": 60.0,
+        "sodium": 500.0
+      },
+      {
+        "hour": 2,
+        "action": "Consume 1 Precision Fuel 30 Energy Gel at minute 20 and 1 Precision Fuel 30 Caffeine Gel at minute 40 for a mental boost. Ingest 2 Precision Fuel Electrolyte Capsules with 400-500ml of plain water.",
+        "carbs": 60.0,
+        "sodium": 500.0
+      },
+      {
+        "hour": 3,
+        "action": "Consume 1 Precision Fuel 30 Energy Gel at minute 20 and 1 Precision Fuel 30 Caffeine Gel at minute 40. Ingest 2 Precision Fuel Electrolyte Capsules with 400-500ml of plain water.",
+        "carbs": 60.0,
+        "sodium": 500.0
+      },
+      {
+        "hour": 4,
+        "action": "For the remaining 30 minutes of racing, consume 1 Precision Fuel 30 Caffeine Gel at minute 15. Ingest 1 Precision Fuel Electrolyte Capsule with 200-250ml of plain water.",
+        "carbs": 30.0,
+        "sodium": 250.0
+      }
+    ],
+    "tips": [
+      "Decouple hydration from fueling by taking electrolyte capsules alongside plain water to hit precise sodium targets without altering carbohydrate intake.",
+      "Take gels in split doses every 20 to 30 minutes with water to optimize gastric emptying and prevent gut distress in cool conditions.",
+      "Utilize caffeine strategically in the second half of the marathon to reduce perceived exertion and sustain focus through the final miles."
+    ]
+  }
+}

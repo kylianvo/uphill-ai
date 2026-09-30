@@ -1,0 +1,10 @@
+{
+  "synthetic": true,
+  "provenance": "gear",
+  "params": {
+    "surface": "road",
+    "cushioning": "medium",
+    "use_case": "tempo and intervals",
+    "additional_context": "wants low drop (0-4 mm), currently in 10 mm drop shoes"
+  }
+}
