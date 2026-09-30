@@ -1,0 +1,148 @@
+# Provisioned: edit here, not in the Grafana UI.
+apiVersion: 1
+contactPoints:
+- orgId: 1
+  name: uphill-email
+  receivers:
+  - uid: uphill-email
+    type: email
+    settings:
+      addresses: viet.vo@uphill-ai.io.vn
+      singleEmail: true
+policies:
+- orgId: 1
+  receiver: uphill-email
+  group_by:
+  - alertname
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+groups:
+- orgId: 1
+  name: latency
+  folder: Uphill AI
+  interval: 1m
+  rules:
+  - uid: api-latency-60s
+    title: API endpoint p95 latency > 60s
+    condition: C
+    for: 5m
+    noDataState: OK
+    execErrState: Error
+    annotations:
+      summary: An API endpoint's p95 latency has been over 60s for 5 minutes
+      description: '{{ $labels }} p95 = {{ humanizeDuration $values.B.Value }} (threshold
+        60s)'
+    labels:
+      severity: warning
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 900
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{handler!~"/metrics|/health.*"}[5m]))
+          by (le, handler))
+        instant: true
+    - refId: B
+      datasourceUid: __expr__
+      model:
+        refId: B
+        type: reduce
+        expression: A
+        reducer: last
+    - refId: C
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: B
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 60
+  - uid: plan-job-latency-60s
+    title: Plan job p95 duration > 60s
+    condition: C
+    for: 5m
+    noDataState: OK
+    execErrState: Error
+    annotations:
+      summary: Background plan generation p95 has been over 60s for 5 minutes
+      description: '{{ $labels }} p95 = {{ humanizeDuration $values.B.Value }} (threshold
+        60s)'
+    labels:
+      severity: warning
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 900
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: histogram_quantile(0.95, sum(rate(plan_job_duration_seconds_bucket[15m]))
+          by (le, kind))
+        instant: true
+    - refId: B
+      datasourceUid: __expr__
+      model:
+        refId: B
+        type: reduce
+        expression: A
+        reducer: last
+    - refId: C
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: B
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 60
+  - uid: gemini-latency-60s
+    title: Gemini call p95 latency > 60s
+    condition: C
+    for: 5m
+    noDataState: OK
+    execErrState: Error
+    annotations:
+      summary: A Gemini feature's p95 latency has been over 60s for 5 minutes
+      description: '{{ $labels }} p95 = {{ humanizeDuration $values.B.Value }} (threshold
+        60s)'
+    labels:
+      severity: warning
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 900
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: histogram_quantile(0.95, sum(rate(llm_latency_seconds_bucket[5m])) by
+          (le, feature))
+        instant: true
+    - refId: B
+      datasourceUid: __expr__
+      model:
+        refId: B
+        type: reduce
+        expression: A
+        reducer: last
+    - refId: C
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: B
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 60
