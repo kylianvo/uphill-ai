@@ -90,6 +90,7 @@ interface Workout {
   description?: string;
   fueling_tip?: string;
   is_completed: number;
+  is_priority?: boolean;
 }
 interface ActivePlan {
   id: number;

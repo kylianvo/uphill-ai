@@ -168,6 +168,11 @@ describe("WorkoutCard priority", () => {
     expect(screen.queryByText("PRIORITY")).toBeNull();
   });
 
+  it("shows no label when is_priority is undefined under V2", () => {
+    render(<WorkoutCard {...props} wo={base} shellV2 />);
+    expect(screen.queryByText("PRIORITY")).toBeNull();
+  });
+
   it("shows the eyebrow only under V2", () => {
     render(<WorkoutCard {...props} wo={base} shellV2 eyebrow="TODAY" />);
     expect(screen.getByText("TODAY")).toBeInTheDocument();

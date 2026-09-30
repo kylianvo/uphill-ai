@@ -3114,7 +3114,9 @@ function DayGroup({
   const isToday = !!dayDateStr && dayDateStr === localYmd(nowLocal);
   const dayEyebrow = shellV2 ? (isToday ? "TODAY" : dayDateStr && dayDateStr === localYmd(tomorrowLocal) ? "TOMORROW" : undefined) : undefined;
 
-  if (shellV2 && allRest) {
+  const hasPending = !!isCoachActingAsAthlete && dayWos.some((w: any) => !w.approved_at);
+  const hasMatched = dayWos.some((w: any) => matches.some((a) => a.workout_id === w.id));
+  if (shellV2 && allRest && !hasPending && !hasMatched && unplannedActivities.length === 0) {
     return (
       <div className={styles.workoutDay} ref={setRef} style={{ ...style, ...containerStyle }} data-today={isToday ? "true" : undefined} data-testid="rest-row">
         <div
@@ -3145,7 +3147,7 @@ function DayGroup({
   }
 
   return (
-    <div className={styles.workoutDay} ref={setRef} style={{ ...style, ...containerStyle }} data-today={isToday ? "true" : undefined}>
+    <div className={styles.workoutDay} ref={setRef} style={{ ...style, ...containerStyle }} data-today={shellV2 && isToday ? "true" : undefined}>
       {/* Day header — drag handle */}
       <div
         {...listeners}
