@@ -31,6 +31,7 @@ os.environ.setdefault("ENVIRONMENT", "development")  # required for /api/auth/mo
 os.environ.setdefault("GEMINI_API_KEY", "test-key-not-real")
 os.environ.setdefault("RACE_HISTORY_WORKER_ENABLED", "false")
 os.environ.setdefault("GOAL_ASSESS_ON_PLAN_CREATE", "false")
+os.environ.setdefault("LLM_JUDGE_SAMPLE_RATE", "0")
 os.environ.setdefault("JWT_SECRET", "test-jwt-secret-not-for-prod")
 
 import logging

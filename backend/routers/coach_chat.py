@@ -25,7 +25,7 @@ from db import (
     verify_session,
 )
 from log_utils import get_logger
-from services import coach_chat, schedule_proposals
+from services import coach_chat, observability, schedule_proposals
 from services.coach_graph import AppEvent
 from services.coach_prompts import (
     COACH_SYSTEM_INSTRUCTION,
@@ -231,6 +231,48 @@ class ProposalApplyRequest(BaseModel):
     client_today: str | None = None
 
 
+def _score_proposal_outcome(proposal_id: int, user_id: int, applied: bool) -> None:
+    """Mirror Apply/Discard onto the turn that proposed the change (one score per proposal)."""
+    row = db.get_chat_proposal_for_user(proposal_id, user_id)
+    message = db.get_chat_message(row["message_id"], user_id=user_id) if row and row.get("message_id") else None
+    if message and message.get("trace_id"):
+        observability.score(
+            trace_id=message["trace_id"],
+            name="proposal_applied",
+            value=1 if applied else 0,
+            score_id=f"proposal-{proposal_id}",
+        )
+
+
+class MessageFeedbackRequest(BaseModel):
+    value: int = Field(..., description="1 = thumbs up, -1 = thumbs down")
+    category: str | None = Field(None, description="Optional reason: helpful/incorrect/unsafe/irrelevant/other")
+
+
+@router.post("/api/coach/chat/messages/{message_id}/feedback")
+def post_chat_message_feedback(
+    message_id: int,
+    body: MessageFeedbackRequest,
+    user: dict[str, Any] = Depends(get_current_user),
+):
+    """Thumbs on a coach reply. Stored on the message and mirrored to Langfuse as the
+    "thumbs" score; voting again updates the same score."""
+    if body.value not in (-1, 1):
+        raise HTTPException(status_code=422, detail="value must be 1 or -1.")
+    row = db.set_chat_message_feedback(message_id, user["id"], body.value)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Message not found.")
+    if row.get("trace_id"):
+        observability.score(
+            trace_id=row["trace_id"],
+            name="thumbs",
+            value=body.value,
+            category=body.category,
+            score_id=f"thumbs-{message_id}",
+        )
+    return {"message_id": message_id, "feedback": row["feedback"]}
+
+
 @router.post("/api/coach/chat/proposals/{proposal_id}/apply")
 def apply_chat_proposal(
     proposal_id: int,
@@ -242,6 +284,7 @@ def apply_chat_proposal(
         user["id"], proposal_id, body.client_today if body else None
     )
     if status_code == 200:
+        _score_proposal_outcome(proposal_id, user["id"], applied=True)
         plan_id = payload.pop("plan_id")
         payload["workouts"] = get_plan_workouts(plan_id)
         return payload
@@ -255,6 +298,8 @@ def discard_chat_proposal(proposal_id: int, user: dict[str, Any] = Depends(get_c
     status_code, payload = schedule_proposals.discard_proposal(user["id"], proposal_id)
     if status_code == 404:
         raise HTTPException(status_code=404, detail="Proposal not found.")
+    if status_code == 200:
+        _score_proposal_outcome(proposal_id, user["id"], applied=False)
     return payload
 
 

@@ -1,0 +1,48 @@
+{
+  "synthetic": true,
+  "provenance": "goal_judge",
+  "lang": "en",
+  "cutoff_mins": null,
+  "context": {
+    "race": {
+      "name": "Trail 30K",
+      "distance_km": 30,
+      "elevation_gain_m": 1500,
+      "terrain": "trail",
+      "field": {
+        "fastest_winner_mins": 160
+      }
+    },
+    "history": [
+      {
+        "race": "Trail 25K",
+        "date": "2026-06-01",
+        "distance_km": 25,
+        "elevation_gain_m": 1200,
+        "finish_mins": 190,
+        "rank_pct": 55
+      }
+    ],
+    "weeks_to_race": 2
+  },
+  "anchors": [
+    {
+      "id": "phys_r11",
+      "method": "physics",
+      "minutes": 235,
+      "source_result_id": 11,
+      "notes": [
+        "synthetic"
+      ]
+    },
+    {
+      "id": "rank_r11",
+      "method": "field_rank",
+      "minutes": 240,
+      "source_result_id": 11,
+      "notes": [
+        "synthetic"
+      ]
+    }
+  ]
+}

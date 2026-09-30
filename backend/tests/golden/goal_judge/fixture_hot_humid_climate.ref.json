@@ -1,0 +1,34 @@
+{
+  "latency_s": 5.3,
+  "engine_used": "gemini",
+  "output": {
+    "goals": {
+      "a": 525.0,
+      "b": 552.0,
+      "c": 590.0
+    },
+    "confidence": "medium",
+    "reasoning": [
+      "Your 6:20 finish at Hill 50K provides a solid endurance base on comparable climbing terrain.",
+      "A realistic target of 9:12 reflects your estimated pace, factoring in 12 weeks of aerobic development.",
+      "Hot and humid 32C conditions demand a conservative 9:50 safe goal to manage thermal stress.",
+      "With strong execution and race-day cooling, an ambitious 8:45 finish is achievable."
+    ],
+    "anchors_weighted": [
+      {
+        "id": "phys_r6",
+        "weight": 0.5
+      },
+      {
+        "id": "rank_r6",
+        "weight": 0.5
+      }
+    ],
+    "missing": [
+      "heat_acclimation_history",
+      "training_volume_weekly",
+      "recent_long_run_heart_rate"
+    ],
+    "engine": "gemini"
+  }
+}

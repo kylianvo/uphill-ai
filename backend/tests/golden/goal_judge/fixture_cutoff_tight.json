@@ -1,0 +1,48 @@
+{
+  "synthetic": true,
+  "provenance": "goal_judge",
+  "lang": "en",
+  "cutoff_mins": 600,
+  "context": {
+    "race": {
+      "name": "Sky 50K",
+      "distance_km": 50,
+      "elevation_gain_m": 3500,
+      "terrain": "trail",
+      "field": {
+        "fastest_winner_mins": 330
+      }
+    },
+    "history": [
+      {
+        "race": "Sky 30K",
+        "date": "2026-04-01",
+        "distance_km": 30,
+        "elevation_gain_m": 2200,
+        "finish_mins": 330,
+        "rank_pct": 85
+      }
+    ],
+    "weeks_to_race": 8
+  },
+  "anchors": [
+    {
+      "id": "phys_r3",
+      "method": "physics",
+      "minutes": 560,
+      "source_result_id": 3,
+      "notes": [
+        "synthetic"
+      ]
+    },
+    {
+      "id": "pct_r3",
+      "method": "percentile_transfer",
+      "minutes": 575,
+      "source_result_id": 3,
+      "notes": [
+        "synthetic"
+      ]
+    }
+  ]
+}

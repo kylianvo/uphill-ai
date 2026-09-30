@@ -1,0 +1,31 @@
+{
+  "latency_s": 2.8,
+  "engine_used": "gemini",
+  "output": {
+    "goals": {
+      "a": 535.0,
+      "b": 560.0,
+      "c": 605.0
+    },
+    "confidence": "low",
+    "reasoning": [
+      "Dữ liệu duy nhất hiện có là ước tính từ pace chạy nhẹ, chưa có thành tích race trail thực tế nào.",
+      "Mục tiêu thực tế được đặt quanh mức 9:20 dựa trên pace nền tảng hiện tại của bạn.",
+      "Nếu hoàn thành tốt 16 tuần tập đúng plan và tăng khối lượng tốt, bạn có thể đạt mốc 8:55.",
+      "Cần chuẩn bị mốc an toàn 10:05 để phòng ngừa rủi ro với cung đường 3000m D+ này."
+    ],
+    "anchors_weighted": [
+      {
+        "id": "prior_easy_pace",
+        "weight": 1.0
+      }
+    ],
+    "missing": [
+      "recent_trail_result",
+      "utmb_index",
+      "watch",
+      "block_volume"
+    ],
+    "engine": "gemini"
+  }
+}

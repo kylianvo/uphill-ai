@@ -1,0 +1,56 @@
+{
+  "synthetic": true,
+  "provenance": "goal_judge",
+  "lang": "en",
+  "cutoff_mins": null,
+  "context": {
+    "race": {
+      "name": "Alpine 60K",
+      "distance_km": 60,
+      "elevation_gain_m": 3800,
+      "terrain": "trail",
+      "field": {
+        "fastest_winner_mins": 420
+      }
+    },
+    "history": [
+      {
+        "race": "Flat 50K",
+        "date": "2026-04-01",
+        "distance_km": 50,
+        "elevation_gain_m": 300,
+        "finish_mins": 290,
+        "rank_pct": 20
+      },
+      {
+        "race": "Steep 40K",
+        "date": "2026-02-01",
+        "distance_km": 40,
+        "elevation_gain_m": 3000,
+        "finish_mins": 470,
+        "rank_pct": 70
+      }
+    ],
+    "weeks_to_race": 12
+  },
+  "anchors": [
+    {
+      "id": "phys_r12",
+      "method": "physics",
+      "minutes": 520,
+      "source_result_id": 12,
+      "notes": [
+        "synthetic"
+      ]
+    },
+    {
+      "id": "phys_r13",
+      "method": "physics",
+      "minutes": 690,
+      "source_result_id": 13,
+      "notes": [
+        "synthetic"
+      ]
+    }
+  ]
+}

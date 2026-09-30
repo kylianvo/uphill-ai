@@ -1,0 +1,73 @@
+{
+  "synthetic": true,
+  "provenance": "goal_judge",
+  "lang": "en",
+  "cutoff_mins": null,
+  "context": {
+    "race": {
+      "name": "Regional 50K",
+      "distance_km": 50,
+      "elevation_gain_m": 2500,
+      "terrain": "trail",
+      "field": {
+        "fastest_winner_mins": 300
+      }
+    },
+    "history": [
+      {
+        "race": "Hill 42K",
+        "date": "2026-05-10",
+        "distance_km": 42,
+        "elevation_gain_m": 2000,
+        "finish_mins": 330,
+        "rank_pct": 40
+      },
+      {
+        "race": "Forest 50K",
+        "date": "2026-03-02",
+        "distance_km": 50,
+        "elevation_gain_m": 2200,
+        "finish_mins": 400,
+        "rank_pct": 45
+      },
+      {
+        "race": "Ridge 30K",
+        "date": "2026-01-15",
+        "distance_km": 30,
+        "elevation_gain_m": 1500,
+        "finish_mins": 220,
+        "rank_pct": 35
+      }
+    ],
+    "weeks_to_race": 12
+  },
+  "anchors": [
+    {
+      "id": "phys_r1",
+      "method": "physics",
+      "minutes": 405,
+      "source_result_id": 1,
+      "notes": [
+        "synthetic"
+      ]
+    },
+    {
+      "id": "rank_r1",
+      "method": "field_rank",
+      "minutes": 395,
+      "source_result_id": 1,
+      "notes": [
+        "synthetic"
+      ]
+    },
+    {
+      "id": "pct_r2",
+      "method": "percentile_transfer",
+      "minutes": 410,
+      "source_result_id": 2,
+      "notes": [
+        "synthetic"
+      ]
+    }
+  ]
+}
