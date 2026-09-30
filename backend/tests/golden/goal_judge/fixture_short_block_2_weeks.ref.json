@@ -1,0 +1,34 @@
+{
+  "latency_s": 2.8,
+  "engine_used": "gemini",
+  "output": {
+    "goals": {
+      "a": 230.0,
+      "b": 238.0,
+      "c": 252.0
+    },
+    "confidence": "medium",
+    "reasoning": [
+      "Your 25K trail finish in 3:10 provides a strong baseline, closely matching the target race's climbing ratio.",
+      "A realistic target of 3:58 aligns with your mid-pack placing on comparable vertical terrain.",
+      "With only two weeks remaining, fitness is locked in, allowing for an ambitious 3:50 with peak execution.",
+      "A conservative 4:12 finish accounts for late-race fatigue across an additional 300 meters of elevation gain."
+    ],
+    "anchors_weighted": [
+      {
+        "id": "phys_r11",
+        "weight": 0.6
+      },
+      {
+        "id": "rank_r11",
+        "weight": 0.4
+      }
+    ],
+    "missing": [
+      "recent_long_run_data",
+      "training_volume",
+      "watch_data"
+    ],
+    "engine": "gemini"
+  }
+}

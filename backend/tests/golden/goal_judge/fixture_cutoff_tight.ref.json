@@ -1,0 +1,35 @@
+{
+  "latency_s": 6.7,
+  "engine_used": "gemini_retry",
+  "output": {
+    "goals": {
+      "a": 535.0,
+      "b": 565.0,
+      "c": 595.0
+    },
+    "confidence": "medium",
+    "reasoning": [
+      "Your 5:30 finish at Sky 30K demonstrates solid climbing fitness on comparable steep mountain terrain.",
+      "Eight weeks of structured aerobic training can yield modest gains toward a 8:55 target on your best day.",
+      "A realistic pacing target of 9:25 aligns well with both climbing modeling and field percentiles.",
+      "The conservative 9:55 goal leaves buffer for late-race fatigue while staying safely under the 10:00 cutoff."
+    ],
+    "anchors_weighted": [
+      {
+        "id": "phys_r3",
+        "weight": 0.6
+      },
+      {
+        "id": "pct_r3",
+        "weight": 0.4
+      }
+    ],
+    "missing": [
+      "weekly_vertical_gain",
+      "recent_long_run_heart_rate",
+      "utmb_index"
+    ],
+    "engine": "gemini_retry"
+  },
+  "engine_mismatch": true
+}

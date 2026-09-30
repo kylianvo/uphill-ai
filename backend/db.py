@@ -590,6 +590,7 @@ def init_db():
             latency_ms              INTEGER,
             trace_id                TEXT,
             tool_calls_json         JSONB DEFAULT NULL,
+            feedback                SMALLINT CHECK (feedback IN (-1, 1)),  -- athlete thumbs; NULL = no vote
             created_at              TIMESTAMPTZ DEFAULT NOW()
         )
         """)
@@ -600,6 +601,9 @@ def init_db():
             )
         )
         conn.execute(text("ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS tool_calls_json JSONB DEFAULT NULL"))
+        conn.execute(
+            text("ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS feedback SMALLINT CHECK (feedback IN (-1, 1))")
+        )
         conn.commit()
 
         try:
@@ -5690,3 +5694,18 @@ def update_plan_target_time(plan_id: int, target_time_hours: float) -> None:
             text("UPDATE plans SET target_time_hours = :tth WHERE id = :pid"),
             {"tth": target_time_hours, "pid": plan_id},
         )
+
+
+def set_chat_message_feedback(message_id: int, user_id: int, value: int) -> dict[str, Any] | None:
+    """Record the athlete's thumbs (-1/1) on their own assistant message; returns the row, or None."""
+    with engine.begin() as conn:
+        row = conn.execute(
+            text("""
+                UPDATE chat_messages m SET feedback = :value
+                FROM chat_threads t
+                WHERE m.id = :mid AND m.thread_id = t.id AND t.user_id = :uid AND m.role = 'assistant'
+                RETURNING m.id, m.trace_id, m.feedback
+            """),
+            {"value": value, "mid": message_id, "uid": user_id},
+        ).fetchone()
+    return _row_to_dict(row) if row else None

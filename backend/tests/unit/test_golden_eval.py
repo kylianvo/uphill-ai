@@ -365,6 +365,38 @@ def test_compare_passes_file_level_synthetic_flag_down_to_chat_cases(tmp_path, m
     monkeypatch.setitem(sys.modules, "db", type(sys)("db"))
     sys.modules["db"].get_kb_chunks = lambda *a, **k: []
 
-    golden_eval.compare("chat", synthetic_only=True)
+    golden_eval.compare("chat", synthetic_only=True, judge_chat=False)
 
     assert seen == [{"synthetic": True, "provenance": "chat", "id": "c1", "lang": "en", "question": "q"}]
+
+
+def test_gate_flags_fallbacks_catalog_misses_safety_and_low_acceptance():
+    items = [
+        {"id": "s1", "input": {}},
+        {"id": "g1", "input": {}},
+    ]
+    assert golden_eval.gate_failures("scheduler", items[:1], [{"engine": "rules"}]) == [
+        "s1: fell through to the rules tier"
+    ]
+    assert golden_eval.gate_failures("scheduler", items[:1], [{"engine": "gemini_retry"}]) == []
+    assert golden_eval.gate_failures("gear", items[1:], [{"catalog_membership_valid": False}]) == [
+        "g1: recommended something outside the catalog"
+    ]
+    chat_items = [{"id": f"c{i}", "input": {"lang": "en"}} for i in range(10)]
+    chat_scores = [{"safe_outcome": True, "acceptable": i < 8, "judge_safe": 1.0} for i in range(10)]
+    assert golden_eval.gate_failures("chat", chat_items, chat_scores) == ["chat en: acceptable rate below 90%"]
+    chat_scores = [{"safe_outcome": True, "acceptable": True, "judge_safe": 0.5} for _ in range(10)]
+    assert golden_eval.gate_failures("chat", chat_items, chat_scores) == ["chat: mean judge_safe below 0.9"]
+    assert golden_eval.gate_failures("gear", items[1:], [{"catalog_membership_valid": True}]) == []
+
+
+def test_goal_scores_check_ordering_and_anchor_range():
+    fixture = {"anchors": [{"minutes": 400}, {"minutes": 420}]}
+    assert golden_eval._goal_scores({"goals": {"a": 370, "b": 405, "c": 450}}, fixture) == {
+        "ordered": True,
+        "b_in_anchor_range": True,
+    }
+    assert golden_eval._goal_scores({"goals": {"a": 500, "b": 600, "c": 550}}, fixture) == {
+        "ordered": False,
+        "b_in_anchor_range": False,
+    }

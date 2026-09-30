@@ -1672,12 +1672,18 @@ class PlanGenerator:
         # Gemini is the only engine. One reduced-prompt retry covers the common transient
         # failure (a truncated or unparseable response) before falling through to the
         # deterministic rule-based schedule below.
+        _trace_id = observability.current_trace_id()
         for _reduced in (False, True):
             _result = await _try_gemini(reduced=_reduced)
             if _result:
+                if _trace_id:
+                    _engine_used = "gemini_retry" if _reduced else "gemini"
+                    observability.score(trace_id=_trace_id, name="plan_engine", value=_engine_used)
                 return _result
 
         # --- Rule-Based Fallback Schedule ---
+        if _trace_id:
+            observability.score(trace_id=_trace_id, name="plan_engine", value="rules")
 
         _rule_started = time.monotonic()
 
