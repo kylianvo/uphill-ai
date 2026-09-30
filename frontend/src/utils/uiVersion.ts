@@ -16,5 +16,6 @@ export const isShellV2 = (): boolean => {
       // Ignore localStorage access errors
     }
   }
-  return typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_UI_V2 === 'true';
+  // Literal form required: Next.js only inlines `process.env.NEXT_PUBLIC_X` verbatim.
+  return process.env.NEXT_PUBLIC_UI_V2 === 'true';
 };
