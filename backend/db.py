@@ -210,7 +210,9 @@ def init_db():
             last_edited_by_user_id INTEGER REFERENCES users(id),
             is_completed        INTEGER DEFAULT 0,
             is_missed           INTEGER DEFAULT 0,
-            approved_at         TIMESTAMPTZ  -- NULL = pending coach review; set on insert for self-serve plans
+            approved_at         TIMESTAMPTZ,  -- NULL = pending coach review; set on insert for self-serve plans
+            -- explicit "this session matters most this week" flag, set by the AI or a coach
+            is_priority         BOOLEAN NOT NULL DEFAULT FALSE
         )
         """)
         )
@@ -819,6 +821,7 @@ def init_db():
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS rpe INTEGER",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS notes TEXT",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS session_slot TEXT DEFAULT 'main'",
+            "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS is_priority BOOLEAN NOT NULL DEFAULT FALSE",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS elevation_gain_m REAL DEFAULT 0.0",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS grade_percent REAL DEFAULT 0.0",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS interval_reps INTEGER",
@@ -1143,12 +1146,12 @@ _WORKOUT_INSERT_SQL = """
         duration_minutes, distance_km, target_zone, target_hr_range, target_pace,
         treadmill_incline, treadmill_speed, elevation_gain_m, grade_percent,
         interval_reps, interval_rep_value, interval_rep_unit, walk_interval_value,
-        description, fueling_tip, session_slot, approved_at)
+        description, fueling_tip, session_slot, approved_at, is_priority)
     VALUES (:plan_id, :week_number, :day_of_week, :phase, :title, :type,
         :duration_minutes, :distance_km, :target_zone, :target_hr_range, :target_pace,
         :treadmill_incline, :treadmill_speed, :elevation_gain_m, :grade_percent,
         :interval_reps, :interval_rep_value, :interval_rep_unit, :walk_interval_value,
-        :description, :fueling_tip, :session_slot, :approved_at)
+        :description, :fueling_tip, :session_slot, :approved_at, :is_priority)
 """
 
 
@@ -1180,6 +1183,7 @@ def _workout_insert_params(plan_id: int, wo: dict[str, Any], auto_approve: bool)
         "description": _flatten_llm_text(wo.get("description")),
         "fueling_tip": _flatten_llm_text(wo.get("fueling_tip")),
         "session_slot": _flatten_llm_text(wo.get("session_slot", "main")),
+        "is_priority": wo.get("is_priority") is True,
     }
 
 
@@ -1396,6 +1400,7 @@ def coach_update_workout(workout_id: int, editor_user_id: int, fields: dict[str,
         "interval_rep_value",
         "interval_rep_unit",
         "walk_interval_value",
+        "is_priority",
     )
     with engine.connect() as conn:
         row = conn.execute(text("SELECT id FROM workouts WHERE id = :id"), {"id": workout_id}).fetchone()
@@ -1455,11 +1460,11 @@ def create_coach_workout(plan_id: int, creator_user_id: int, fields: dict[str, A
                 INSERT INTO workouts (plan_id, week_number, day_of_week, phase, title, type,
                     duration_minutes, distance_km, target_zone, target_hr_range, target_pace,
                     description, fueling_tip, session_slot, source, last_edited_by_user_id, approved_at,
-                    interval_reps, interval_rep_value, interval_rep_unit, walk_interval_value)
+                    interval_reps, interval_rep_value, interval_rep_unit, walk_interval_value, is_priority)
                 VALUES (:plan_id, :week_number, :day_of_week, :phase, :title, :type,
                     :duration_minutes, :distance_km, :target_zone, :target_hr_range, :target_pace,
                     :description, :fueling_tip, :session_slot, 'coach_created', :creator, NULL,
-                    :interval_reps, :interval_rep_value, :interval_rep_unit, :walk_interval_value)
+                    :interval_reps, :interval_rep_value, :interval_rep_unit, :walk_interval_value, :is_priority)
                 RETURNING *
             """),
             {
@@ -1481,6 +1486,7 @@ def create_coach_workout(plan_id: int, creator_user_id: int, fields: dict[str, A
                 "interval_reps": fields.get("interval_reps"),
                 "interval_rep_value": fields.get("interval_rep_value"),
                 "interval_rep_unit": fields.get("interval_rep_unit"),
+                "is_priority": fields.get("is_priority") is True,
                 "walk_interval_value": fields.get("walk_interval_value"),
             },
         ).fetchone()
@@ -1555,7 +1561,7 @@ def make_rest_day(workout_id: int, editor_user_id: int) -> dict[str, Any] | None
                     treadmill_incline = '0', treadmill_speed = '0',
                     elevation_gain_m = 0, grade_percent = 0,
                     interval_reps = NULL, interval_rep_value = NULL, interval_rep_unit = NULL,
-                    description = NULL, fueling_tip = NULL,
+                    description = NULL, fueling_tip = NULL, is_priority = FALSE,
                     source = 'coach_edited', last_edited_by_user_id = :editor, approved_at = NULL
                 WHERE id = :id
             """),
