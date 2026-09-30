@@ -1505,6 +1505,30 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                     />
                   ) : null}
                   onAdaptWeek={() => handleOpenAdaptWeek(selectedWeek)}
+                  reviewContent={(() => {
+                    const cur = weekVolume(getWeekWorkouts(selectedWeek));
+                    const prevMins = selectedWeek > 1 ? weekVolume(getWeekWorkouts(selectedWeek - 1)).mins : 0;
+                    const changePct = prevMins > 0 ? Math.round(((cur.mins - prevMins) / prevMins) * 100) : null;
+                    const review = weekReviews[`${activePlan?.id ?? 0}_${selectedWeek}`] || null;
+                    const credited = review ? computeCreditedActual(review) : null;
+                    return (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                        <div style={{ fontSize: "13px", fontWeight: 600 }}>
+                          Planned {cur.hours} hrs · ~{cur.km.toFixed(1)} km
+                          {changePct !== null && <span style={{ color: "var(--text-muted)" }}> · {changePct >= 0 ? `+${changePct}` : changePct}% vs last wk</span>}
+                        </div>
+                        {credited && (
+                          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                            <CompletionRing pct={credited.pct} size={38} />
+                            <span style={{ fontSize: "12px", fontWeight: 700, color: ringColor(credited.pct) }}>
+                              Actual: {(credited.minutes / 60).toFixed(1)}h · {credited.km.toFixed(1)}km
+                            </span>
+                          </div>
+                        )}
+                        {review ? <WeeklyReview data={review} lang={lang} /> : <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>No review available yet.</span>}
+                      </div>
+                    );
+                  })()}
                   onOpenPaceStrategy={() => setIsPaceStrategyOpen(true)}
                   onOpenGoalDeterminer={() => setIsGoalDeterminerOpen(true)}
                   onOpenNutrition={() => ctx.setIsNutritionLabOpen(true)}

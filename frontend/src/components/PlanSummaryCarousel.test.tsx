@@ -41,8 +41,19 @@ describe("PlanSummaryCarousel", () => {
     }
     fireEvent.click(screen.getByText("pill"));
     expect(screen.queryByRole("dialog")).toBeNull();
-    fireEvent.click(screen.getByText("UTMB"));
+    fireEvent.click(screen.getByRole("button", { name: "Race tools" }));
     fireEvent.click(screen.getByText("Nutrition Lab"));
     expect(props.onOpenNutrition).toHaveBeenCalled();
+  });
+
+  it("opens the week review sheet", () => {
+    render(<PlanSummaryCarousel {...props} reviewContent={<p>review body</p>} />);
+    fireEvent.click(screen.getByRole("button", { name: "Review week" }));
+    expect(screen.getByRole("dialog", { name: "Week 1 review" })).toBeTruthy();
+    expect(screen.getByText("review body")).toBeTruthy();
+  });
+  it("does not nest the goal pill inside a button", () => {
+    render(<PlanSummaryCarousel {...props} goalPill={<button>pillbtn</button>} />);
+    expect(screen.getByText("pillbtn").closest("[role=button]")).toBeNull();
   });
 });
