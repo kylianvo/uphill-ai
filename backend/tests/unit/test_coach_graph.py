@@ -1,9 +1,12 @@
 """Unit tests for the typed LangGraph runner in Coach Chat Foundation."""
 
+import asyncio
+import time
 from uuid import uuid4
 
 import pytest
 
+from services import coach_graph
 from services.coach_graph import (
     CitationsEvent,
     StatusEvent,
@@ -137,6 +140,69 @@ async def test_graph_retrieval_unavailable():
     assert citations_events[0].evidence_status == "unavailable"
     tokens = [e.text for e in events if isinstance(e, TokenEvent)]
     assert "".join(tokens) == "General answer without KB"
+
+
+def _slow_retrieval_state() -> TurnState:
+    return {
+        "user_id": 1,
+        "request_id": str(uuid4()),
+        "call_id": uuid4(),
+        "question": "Tell me about trails",
+        "lang": "en",
+    }
+
+
+def _slow_retrieval_model() -> FakeCoachModel:
+    return FakeCoachModel(
+        responses=[
+            ModelEvent(kind="text", text="ok"),
+            ModelEvent(kind="usage", usage=Usage(input_tokens=1, output_tokens=1)),
+        ]
+    )
+
+
+@pytest.mark.asyncio
+async def test_graph_sync_retrieval_does_not_block_event_loop():
+    def slow_retrieve(query: str):
+        time.sleep(0.4)  # blocking, like the embedding + Qdrant calls
+        return []
+
+    graph = build_graph(model=_slow_retrieval_model(), retrieve_fn=slow_retrieve)
+
+    ticks = 0
+
+    async def ticker():
+        nonlocal ticks
+        while True:
+            await asyncio.sleep(0.05)
+            ticks += 1
+
+    task = asyncio.create_task(ticker())
+    try:
+        async for _ in astream_turn_graph(graph, _slow_retrieval_state()):
+            pass
+    finally:
+        task.cancel()
+
+    # A loop blocked for the whole 0.4s lookup would tick ~0 times.
+    assert ticks >= 4
+
+
+@pytest.mark.asyncio
+async def test_graph_retrieval_timeout_falls_back_to_unavailable(monkeypatch):
+    monkeypatch.setattr(coach_graph, "_RETRIEVAL_TIMEOUT_SECONDS", 0.1)
+
+    async def hung_retrieve(query: str):
+        await asyncio.sleep(5)
+        return [{"ref": "r", "title": "T", "content": "C"}]
+
+    graph = build_graph(model=_slow_retrieval_model(), retrieve_fn=hung_retrieve)
+
+    events = [e async for e in astream_turn_graph(graph, _slow_retrieval_state())]
+
+    citations_events = [e for e in events if isinstance(e, CitationsEvent)]
+    assert citations_events[0].evidence_status == "unavailable"
+    assert "".join(e.text for e in events if isinstance(e, TokenEvent)) == "ok"
 
 
 @pytest.mark.asyncio
