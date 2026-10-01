@@ -92,6 +92,23 @@ final class PlanViewModel {
         if resetWeek { selectedWeek = currentWeek }
     }
 
+    /// A freshly generated plan or week from a finished job.
+    func adopt(_ snapshot: PlanSnapshot) {
+        apply(snapshot, resetWeek: true)
+        cachedAt = nil
+        actionError = nil
+        if isSignedIn() { cache.save(snapshot, as: .plan) }
+    }
+
+    func reset() {
+        state = .loading
+        snapshot = nil
+        cachedAt = nil
+        selectedWeek = 1
+        actionError = nil
+        lastCompletedID = nil
+    }
+
     // MARK: Derived values
 
     var currentWeek: Int {

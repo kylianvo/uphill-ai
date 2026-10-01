@@ -68,4 +68,14 @@ struct AppModelTests {
         await app.signOut()
         #expect(cache.load(User.self, .user) == nil)
     }
+    @Test func signingOutResetsPlanAndGeneration() async throws {
+        let response = try Fixture.decode(AuthResponse.self, "auth_login.json")
+        let app = AppModel(tokenStore: InMemoryTokenStore(), makeAuth: { _ in FakeAuthService(.success(response)) }, cache: .inMemory())
+        app.session.didSignIn(response)
+        app.plan.adopt(PlanSnapshot(plan: TestData.plan(), workouts: []))
+        app.session.signOut()
+        #expect(app.plan.snapshot == nil)
+        #expect(app.plan.state == .loading)
+        #expect(app.generation.running == nil)
+    }
 }
