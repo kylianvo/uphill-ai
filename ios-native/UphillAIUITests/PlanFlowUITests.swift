@@ -16,33 +16,74 @@ final class PlanFlowUITests: XCTestCase {
 
         let email = app.textFields["signin.email"]
         let today = app.descendants(matching: .any)["day.today"]
-        // The session lives in the Keychain, which survives reinstalls on the
-        // simulator, so the app may open straight on the plan.
-        XCTAssertTrue(email.waitForExistence(timeout: 10) || today.exists, "Expected sign-in or the plan")
-        if email.exists {
-            email.tap()
-            email.typeText("ios-preview@uphill.ai")
-            let password = app.secureTextFields["signin.password"]
-            password.tap()
-            password.typeText("uphill-preview-1")
-            app.buttons["signin.submit"].tap()
+        XCTAssertTrue(email.waitForExistence(timeout: 10) || today.waitForExistence(timeout: 10),
+                      "Expected sign-in or the plan")
+
+        // The Keychain session survives reinstalls on the simulator: sign out
+        // first so the sign-in typing path runs every time.
+        if !email.exists {
+            app.tabBars.buttons["Me"].tap()
+            let signOut = app.buttons["Sign out"]
+            for _ in 0..<4 where !signOut.isHittable { app.swipeUp() }
+            XCTAssertTrue(signOut.waitForExistence(timeout: 5))
+            signOut.tap()
+            XCTAssertTrue(email.waitForExistence(timeout: 10), "Sign out should return to sign-in")
         }
 
-        XCTAssertTrue(today.waitForExistence(timeout: 15), "Plan should open scrolled to today")
+        email.tap()
+        email.typeText("ios-preview@uphill.ai")
+        let password = app.secureTextFields["signin.password"]
+        password.tap()
+        password.typeText("uphill-preview-1")
+        app.buttons["signin.submit"].tap()
 
-        let firstWorkout = today.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'workout.'")).firstMatch
-        guard firstWorkout.exists else {
-            // Today is a rest day in the seeded week: nothing to mark.
+        // iOS offers to save the password after sign-in; it blocks taps until dismissed.
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        for host in [app, springboard] {
+            let notNow = host.descendants(matching: .any).matching(identifier: "Not Now").firstMatch
+            if notNow.waitForExistence(timeout: 4) { notNow.tap(); break }
+        }
+
+        XCTAssertTrue(today.waitForExistence(timeout: 30), "Plan should open scrolled to today")
+
+        // Let the scroll-to-today animation settle so tap coordinates are stable.
+        _ = XCTWaiter.wait(for: [expectation(description: "settle")], timeout: 2)
+
+        // Today's workout if it has one; otherwise the first hittable workout row
+        // anywhere in the list (the seeded Thursday is a rest day).
+        let workoutPredicate = NSPredicate(format: "identifier BEGINSWITH 'workout.'")
+        let workouts = app.buttons.matching(workoutPredicate)
+        func firstHittable() -> XCUIElement? {
+            let window = app.windows.firstMatch.frame
+            // Visible below the nav bar and above the tab bar (isHittable is unreliable for these rows).
+            return workouts.allElementsBoundByIndex.first {
+                $0.exists && !$0.label.hasSuffix("done") && $0.frame.midY > window.minY + 130 && $0.frame.midY < window.maxY - 100
+            }
+        }
+        _ = workouts.firstMatch.waitForExistence(timeout: 10)
+        var found = firstHittable()
+        for _ in 0..<6 where found == nil { app.swipeUp(); found = firstHittable() }
+        for _ in 0..<12 where found == nil { app.swipeDown(); found = firstHittable() }
+        guard let target = found else {
+            XCTFail("No hittable workout row found anywhere in the plan")
             return
         }
-        firstWorkout.tap()
+        let targetLabel = target.label
+        target.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        let sheetOpened = app.buttons["Done"].waitForExistence(timeout: 10)
+        let tree = app.debugDescription.split(separator: "\n").filter { $0.contains("Sheet") || $0.contains("Done") || $0.contains("Mark") }
+        XCTAssertTrue(sheetOpened, "Detail sheet should open for \(targetLabel); tree: \(tree.prefix(8))")
 
         let markDone = app.buttons["detail.markDone"]
         let undoDone = app.buttons["detail.undoDone"]
-        if undoDone.waitForExistence(timeout: 3) {
+        // The sheet opens at a medium detent: the action buttons may sit below the fold.
+        _ = markDone.waitForExistence(timeout: 5)
+        for _ in 0..<4 where !markDone.exists && !undoDone.exists { app.swipeUp() }
+        XCTAssertTrue(markDone.exists || undoDone.exists, "Workout sheet should offer Mark as done or Undo done")
+        if undoDone.exists {
             undoDone.tap()   // seeded as done already: reset first
         }
-        XCTAssertTrue(markDone.waitForExistence(timeout: 5))
+        XCTAssertTrue(markDone.waitForExistence(timeout: 10))
         markDone.tap()
         XCTAssertTrue(undoDone.waitForExistence(timeout: 10))
         undoDone.tap()
