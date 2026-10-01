@@ -12,6 +12,10 @@ settings:
     MARKETING_VERSION: "2.0.0"
     CURRENT_PROJECT_VERSION: "1"
     TARGETED_DEVICE_FAMILY: "1"
+packages:
+  GoogleSignIn:
+    url: https://github.com/google/GoogleSignIn-iOS
+    exactVersion: 10.0.0
 targets:
   UphillAI:
     type: application
@@ -29,6 +33,17 @@ targets:
         ITSAppUsesNonExemptEncryption: false
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
+        GIDClientID: 451637841654-ncj3jhv24t9rq665noctori05faajiej.apps.googleusercontent.com
+        CFBundleURLTypes:
+          - CFBundleURLSchemes:
+              - com.googleusercontent.apps.451637841654-ncj3jhv24t9rq665noctori05faajiej
+    dependencies:
+      - package: GoogleSignIn
+        product: GoogleSignIn
+    entitlements:
+      path: UphillAI/UphillAI.entitlements
+      properties:
+        com.apple.developer.applesignin: [Default]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ai.uphill.app
