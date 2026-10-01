@@ -4,6 +4,7 @@
 import React, { useState } from "react";
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { BowlFood, XCircle, WarningCircle, Clock, Package } from "@phosphor-icons/react";
+import ResultFeedback from "./ResultFeedback";
 import { notifyNutritionPlanReady } from "@/utils/notifications";
 
 interface NutritionProduct {
@@ -27,6 +28,7 @@ interface NutritionPlan {
   products: NutritionProduct[];
   hourly_plan: HourlyEntry[];
   tips: string[];
+  feedback_token?: string | null;
 }
 
 interface NutritionLabProps {
@@ -474,6 +476,7 @@ export const NutritionLab: React.FC<NutritionLabProps> = ({ isOpen, onClose, lan
               </div>
             )}
 
+            <ResultFeedback token={plan.feedback_token} lang={lang} />
           </div>
         )}
       </div>

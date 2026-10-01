@@ -9,7 +9,7 @@ from pydantic import BaseModel
 
 from config import settings
 from log_utils import get_logger
-from services import observability
+from services import observability, quality_signals
 
 _logger = get_logger(__name__)
 
@@ -153,6 +153,7 @@ class GearPlannerService:
             feature="gear_finder",
             metadata={"catalog_entries": len(chunks), "cache_hit": False},
         ):
+            trace_id = observability.current_trace_id()
             _prompt_tpl = observability.load_prompt("gear_finder", GEAR_FINDER_PROMPT)
             prompt = observability.compile_prompt(
                 _prompt_tpl,
@@ -244,7 +245,11 @@ class GearPlannerService:
                     }
                 },
             )
-            return parsed
+            # After the cache write: a cached answer must never carry another request's token.
+            quality_signals.score_recommendations(
+                trace_id, parsed.get("recommendations") or [], [c["title"] for c in chunks], params.preferred_brands
+            )
+            return {**parsed, "feedback_token": quality_signals.feedback_token(trace_id, "gear_finder")}
 
 
 gear_planner = GearPlannerService()

@@ -590,6 +590,7 @@ def init_db():
             latency_ms              INTEGER,
             trace_id                TEXT,
             tool_calls_json         JSONB DEFAULT NULL,
+            feedback                SMALLINT CHECK (feedback IN (-1, 1)),  -- athlete thumbs; NULL = no vote
             created_at              TIMESTAMPTZ DEFAULT NOW()
         )
         """)
@@ -600,6 +601,9 @@ def init_db():
             )
         )
         conn.execute(text("ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS tool_calls_json JSONB DEFAULT NULL"))
+        conn.execute(
+            text("ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS feedback SMALLINT CHECK (feedback IN (-1, 1))")
+        )
         conn.commit()
 
         try:
@@ -784,6 +788,7 @@ def init_db():
             trigger           TEXT NOT NULL,                   -- 'pre_plan' | 'manual' | 'weekly'
             plan_week         INTEGER,
             actual_finish_sec INTEGER,
+            trace_id          TEXT,                            -- Langfuse trace; race-outcome scores attach here
             created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
         """)
@@ -868,6 +873,11 @@ def init_db():
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS pace_zone_model TEXT DEFAULT '5_zone'",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_pace_zones JSONB",
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS athlete_notes TEXT",
+            # Langfuse trace of the latest block generation: block_compliance and plan_reworked scores attach to it.
+            "ALTER TABLE plans ADD COLUMN IF NOT EXISTS generation_trace_id TEXT",
+            "ALTER TABLE plans ADD COLUMN IF NOT EXISTS generation_block INTEGER",
+            "ALTER TABLE plans ADD COLUMN IF NOT EXISTS generation_traced_at TIMESTAMPTZ",
+            "ALTER TABLE goal_assessments ADD COLUMN IF NOT EXISTS trace_id TEXT",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS athlete_notes TEXT",
             "ALTER TABLE block_reviews ADD COLUMN IF NOT EXISTS ai_last_week_review TEXT",
             "ALTER TABLE block_reviews ADD COLUMN IF NOT EXISTS ai_this_week_description TEXT",
@@ -1922,6 +1932,13 @@ def create_or_get_user(
     with engine.connect() as conn:
         row = conn.execute(text("SELECT * FROM users WHERE email = :e"), {"e": email}).fetchone()
         if row:
+            if provider == "apple" and (row.provider, row.provider_user_id) != (provider, provider_user_id):
+                conn.execute(
+                    text("UPDATE users SET provider = :p, provider_user_id = :pid WHERE id = :id"),
+                    {"p": provider, "pid": provider_user_id, "id": row.id},
+                )
+                conn.commit()
+                row = conn.execute(text("SELECT * FROM users WHERE id = :id"), {"id": row.id}).fetchone()
             return _row_to_dict(row)
         conn.execute(
             text("""
@@ -1933,6 +1950,15 @@ def create_or_get_user(
         conn.commit()
         row = conn.execute(text("SELECT * FROM users WHERE email = :e"), {"e": email}).fetchone()
         return _row_to_dict(row)
+
+
+def get_user_by_provider(provider: str, provider_user_id: str) -> dict[str, Any] | None:
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("SELECT * FROM users WHERE provider = :p AND provider_user_id = :pid ORDER BY id LIMIT 1"),
+            {"p": provider, "pid": provider_user_id},
+        ).fetchone()
+    return _row_to_dict(row) if row else None
 
 
 def create_user_with_password(email: str, name: str, password_hash: str) -> dict[str, Any]:
@@ -5599,17 +5625,17 @@ def _goal_row(row: Any) -> dict[str, Any]:
 
 
 def insert_goal_assessment(values: dict[str, Any]) -> dict[str, Any]:
-    params = {**values}
+    params = {"trace_id": None, **values}
     for key in _GOAL_JSON_COLUMNS:
         params[key] = json.dumps(params.get(key), default=str) if params.get(key) is not None else None
     with engine.begin() as conn:
         row = conn.execute(
             text("""
             INSERT INTO goal_assessments (user_id, plan_id, race_name, race_date, distance_km, elevation_gain_m,
-              input_hash, context_summary, anchors, output, engine, confidence, lang, trigger, plan_week)
+              input_hash, context_summary, anchors, output, engine, confidence, lang, trigger, plan_week, trace_id)
             VALUES (:user_id, :plan_id, :race_name, :race_date, :distance_km, :elevation_gain_m, :input_hash,
               CAST(:context_summary AS jsonb), CAST(:anchors AS jsonb), CAST(:output AS jsonb), :engine,
-              :confidence, :lang, :trigger, :plan_week)
+              :confidence, :lang, :trigger, :plan_week, :trace_id)
             RETURNING *
         """),
             params,
@@ -5689,4 +5715,82 @@ def update_plan_target_time(plan_id: int, target_time_hours: float) -> None:
         conn.execute(
             text("UPDATE plans SET target_time_hours = :tth WHERE id = :pid"),
             {"tth": target_time_hours, "pid": plan_id},
+        )
+
+
+def set_chat_message_feedback(message_id: int, user_id: int, value: int) -> dict[str, Any] | None:
+    """Record the athlete's thumbs (-1/1) on their own assistant message; returns the row, or None."""
+    with engine.begin() as conn:
+        row = conn.execute(
+            text("""
+                UPDATE chat_messages m SET feedback = :value
+                FROM chat_threads t
+                WHERE m.id = :mid AND m.thread_id = t.id AND t.user_id = :uid AND m.role = 'assistant'
+                RETURNING m.id, m.trace_id, m.feedback
+            """),
+            {"value": value, "mid": message_id, "uid": user_id},
+        ).fetchone()
+    return _row_to_dict(row) if row else None
+
+
+def match_goal_outcomes(user_id: int) -> list[dict[str, Any]]:
+    """Unresolved goal assessments of this user whose race now has a finished result:
+    same user, race date within 2 days, distance within 15%. One row per assessment."""
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("""
+            SELECT DISTINCT ON (ga.id) ga.id, ga.trace_id, ga.output, rr.finish_time_sec
+            FROM goal_assessments ga
+            JOIN race_results rr ON rr.user_id = ga.user_id
+              AND rr.finish_time_sec IS NOT NULL AND NOT rr.is_dnf
+              AND ABS(rr.race_date - ga.race_date) <= 2
+              AND rr.distance_km BETWEEN ga.distance_km * 0.85 AND ga.distance_km * 1.15
+            WHERE ga.user_id = :uid AND ga.actual_finish_sec IS NULL AND ga.race_date IS NOT NULL
+            ORDER BY ga.id, ABS(rr.race_date - ga.race_date), ABS(rr.distance_km - ga.distance_km)
+        """),
+            {"uid": user_id},
+        ).fetchall()
+    out = []
+    for r in rows:
+        d = _row_to_dict(r)
+        if isinstance(d.get("output"), str):
+            d["output"] = json.loads(d["output"])
+        out.append(d)
+    return out
+
+
+def set_goal_actual_finish(assessment_id: int, finish_sec: int) -> None:
+    with engine.begin() as conn:
+        conn.execute(
+            text("UPDATE goal_assessments SET actual_finish_sec = :sec WHERE id = :id"),
+            {"sec": finish_sec, "id": assessment_id},
+        )
+
+
+def latest_goal_assessment_for_plan(plan_id: int) -> dict[str, Any] | None:
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("SELECT * FROM goal_assessments WHERE plan_id = :pid ORDER BY created_at DESC, id DESC LIMIT 1"),
+            {"pid": plan_id},
+        ).fetchone()
+    return _goal_row(row) if row else None
+
+
+def get_plan_generation_trace(plan_id: int) -> dict[str, Any] | None:
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("SELECT generation_trace_id, generation_block, generation_traced_at FROM plans WHERE id = :pid"),
+            {"pid": plan_id},
+        ).fetchone()
+    return _row_to_dict(row) if row else None
+
+
+def set_plan_generation_trace(plan_id: int, trace_id: str, block_number: int) -> None:
+    with engine.begin() as conn:
+        conn.execute(
+            text("""
+            UPDATE plans SET generation_trace_id = :tid, generation_block = :block, generation_traced_at = NOW()
+            WHERE id = :pid
+        """),
+            {"tid": trace_id, "block": block_number, "pid": plan_id},
         )

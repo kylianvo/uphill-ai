@@ -1,0 +1,39 @@
+{
+  "synthetic": true,
+  "provenance": "goal_judge",
+  "lang": "en",
+  "cutoff_mins": null,
+  "context": {
+    "race": {
+      "name": "Mountain 42K",
+      "distance_km": 42,
+      "elevation_gain_m": 2800,
+      "terrain": "trail",
+      "field": {
+        "fastest_winner_mins": 280
+      }
+    },
+    "history": [
+      {
+        "race": "City Marathon",
+        "date": "2023-10-01",
+        "distance_km": 42.2,
+        "elevation_gain_m": 100,
+        "finish_mins": 215,
+        "rank_pct": 30
+      }
+    ],
+    "weeks_to_race": 16
+  },
+  "anchors": [
+    {
+      "id": "phys_r7",
+      "method": "physics",
+      "minutes": 390,
+      "source_result_id": 7,
+      "notes": [
+        "road result, 3 years old"
+      ]
+    }
+  ]
+}

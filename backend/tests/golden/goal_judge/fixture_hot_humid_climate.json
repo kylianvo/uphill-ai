@@ -1,0 +1,49 @@
+{
+  "synthetic": true,
+  "provenance": "goal_judge",
+  "lang": "en",
+  "cutoff_mins": null,
+  "context": {
+    "race": {
+      "name": "Coastal 70K",
+      "distance_km": 70,
+      "elevation_gain_m": 3000,
+      "terrain": "trail",
+      "field": {
+        "fastest_winner_mins": 450
+      },
+      "climate": "hot and humid, 32C"
+    },
+    "history": [
+      {
+        "race": "Hill 50K",
+        "date": "2026-03-15",
+        "distance_km": 50,
+        "elevation_gain_m": 2400,
+        "finish_mins": 380,
+        "rank_pct": 40
+      }
+    ],
+    "weeks_to_race": 12
+  },
+  "anchors": [
+    {
+      "id": "phys_r6",
+      "method": "physics",
+      "minutes": 560,
+      "source_result_id": 6,
+      "notes": [
+        "synthetic"
+      ]
+    },
+    {
+      "id": "rank_r6",
+      "method": "field_rank",
+      "minutes": 545,
+      "source_result_id": 6,
+      "notes": [
+        "synthetic"
+      ]
+    }
+  ]
+}

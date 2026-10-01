@@ -133,6 +133,8 @@ Backend reads from `backend/.env`. Key variables:
 - `OBSERVABILITY_ID_SALT` — HMAC salt for pseudonymous user/thread ids; required when Langfuse keys are set
 - `LANGFUSE_EXPORT_CONTENT` — must stay `false`: traces are metadata and scores only (no prompts, replies or health notes)
 - `LANGFUSE_ENVIRONMENT`, `LANGFUSE_SAMPLE_RATE`, `LANGFUSE_TIMEOUT` — trace tagging, sampling, background export timeout
+- `LANGFUSE_RELEASE` — git SHA of the deployed build, tagged on every trace (set at deploy: `git rev-parse --short HEAD`)
+- `LLM_JUDGE_SAMPLE_RATE` — share of coach turns graded in-process by `services/llm_judge.py` (default 0.1; one extra Gemini call each; only scores are exported; 0 in tests)
 - `LLM_PRICES_JSON` — optional override of the per-model USD price table in `config.py` used by the `llm_cost_usd_total` Prometheus counter
 - `COACH_CHAT_DAILY_NEW_TURNS_LIMIT`, `COACH_CHAT_DAILY_RETRIES_LIMIT`, `COACH_CHAT_MAX_RETRIES_PER_ROOT` — daily athlete turn and retry limits (50 new turns, 10 retries, 2 retries per root)
 - `COACH_CHAT_TURN_TIMEOUT_SECONDS`, `COACH_CHAT_SUMMARY_TIMEOUT_SECONDS` — turn execution (45s) and summary generation (10s) deadlines

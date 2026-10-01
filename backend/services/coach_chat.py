@@ -1,6 +1,7 @@
 """Coach Chat lifecycle, turn runner, and call accounting orchestration."""
 
 import asyncio
+import contextlib
 import datetime as dt
 import json
 import time
@@ -13,7 +14,7 @@ import db
 from config import settings
 from db import CoachChatError
 from log_utils import get_logger
-from services import calendar_ops, coach_context, coach_tools, kb_retrieval, observability
+from services import calendar_ops, coach_context, coach_tools, kb_retrieval, llm_judge, observability
 from services.calendar_rules import current_week, resolve_today, start_monday
 from services.coach_graph import (
     AppEvent,
@@ -339,6 +340,16 @@ async def run_turn(
         final_citations: list[dict[str, Any]] = []
         final_tool_history: list[dict[str, Any]] = []
 
+        # Root trace for the turn: feedback, proposal outcomes and judge scores attach to
+        # its id, stored on the assistant message.
+        turn_trace = contextlib.ExitStack()
+        turn_trace.enter_context(
+            observability.trace(
+                "coach_chat.turn", feature="coach_chat", user_id=user_id, thread_id=thread_id, metadata={"lang": lang}
+            )
+        )
+        trace_id = observability.current_trace_id()
+
         try:
             async with asyncio.timeout(settings.COACH_CHAT_TURN_TIMEOUT_SECONDS):
                 async for event in astream_turn_graph(graph, initial_state):
@@ -377,6 +388,7 @@ async def run_turn(
                 status="ok",
                 citations=final_citations,
                 tool_calls_json=final_tool_history or None,
+                trace_id=trace_id,
             )
             proposal_ids = [
                 tc["card_data"]["proposal_id"]
@@ -399,6 +411,23 @@ async def run_turn(
                 request_id=str(req_uuid),
                 message_id=assistant_msg_id,
                 replayed=False,
+            )
+
+            # Background quality grading for a sampled share of turns (scores only leave the process).
+            llm_judge.maybe_judge_turn(
+                trace_id=trace_id,
+                message_id=assistant_msg_id,
+                question=question,
+                reply=full_text,
+                evidence={
+                    "citations": final_citations,
+                    "tool_results": [
+                        {"name": tc["name"], "status": tc["status"], "card": tc["card_data"]}
+                        for tc in final_tool_history
+                    ],
+                },
+                lang=lang,
+                api_key=api_key,
             )
 
             # 4. Trigger bounded summary update under same lock
@@ -437,3 +466,5 @@ async def run_turn(
             )
             db.finish_chat_turn(request_id=req_uuid, status="error", result_message_id=assistant_msg_id)
             yield ErrorEvent(code="coach_upstream_error", message=str(exc))
+        finally:
+            turn_trace.close()

@@ -1,0 +1,30 @@
+{
+  "synthetic": true,
+  "provenance": "goal_judge",
+  "lang": "en",
+  "cutoff_mins": null,
+  "context": {
+    "race": {
+      "name": "Trail 21K",
+      "distance_km": 21,
+      "elevation_gain_m": 900,
+      "terrain": "trail",
+      "field": {
+        "fastest_winner_mins": 110
+      }
+    },
+    "history": [],
+    "weeks_to_race": 20
+  },
+  "anchors": [
+    {
+      "id": "prior_easy_pace",
+      "method": "easy_pace",
+      "minutes": 205,
+      "source_result_id": null,
+      "notes": [
+        "from easy pace 7:30/km"
+      ]
+    }
+  ]
+}

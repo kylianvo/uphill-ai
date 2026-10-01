@@ -1,0 +1,31 @@
+{
+  "latency_s": 3.0,
+  "engine_used": "gemini",
+  "output": {
+    "goals": {
+      "a": 185.0,
+      "b": 195.0,
+      "c": 215.0
+    },
+    "confidence": "low",
+    "reasoning": [
+      "Baseline fitness relies solely on general easy pace, estimating a current race capability of around 3:25.",
+      "A 20-week structured training block allows for progressive aerobic adaptation, targeting an ambitious 3:05 finish on race day.",
+      "A realistic target of 3:15 balances the 900m vertical gain against the lack of race-specific trail data.",
+      "A conservative safe goal of 3:35 provides adequate cushion for trail-specific fatigue or technical pacing issues."
+    ],
+    "anchors_weighted": [
+      {
+        "id": "prior_easy_pace",
+        "weight": 1.0
+      }
+    ],
+    "missing": [
+      "recent_trail_result",
+      "recent_race_data",
+      "utmb_index",
+      "training_volume"
+    ],
+    "engine": "gemini"
+  }
+}
