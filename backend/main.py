@@ -57,6 +57,7 @@ from db import (
     get_user_activity_ceiling,
     get_user_by_email,
     get_user_by_id,
+    get_user_by_provider,
     get_week_planned_volume,
     get_week_review,
     get_workout_by_id,
@@ -92,7 +93,7 @@ from routers.analytics import router as analytics_router
 from routers.coach_chat import ChatMessage
 from routers.coach_chat import router as coach_chat_router
 from routers.integrations import router as integrations_router
-from services import calendar_ops, observability, race_history, week_rebuild
+from services import apple_auth, calendar_ops, observability, race_history, week_rebuild
 from services.auth_service import hash_password, verify_password
 from services.calendar_rules import GuardViolation, resolve_today
 from services.calendar_service import CalendarService
@@ -336,6 +337,12 @@ class ShoeRecommendRequest(BaseModel):
 # Auth Request Models
 class GoogleAuthRequest(BaseModel):
     credential: str
+
+
+class AppleAuthRequest(BaseModel):
+    identity_token: str
+    # Apple shares the name only on the first authorization, with the app.
+    full_name: str | None = None
 
 
 class FacebookAuthRequest(BaseModel):
@@ -705,6 +712,11 @@ async def auth_google(request: GoogleAuthRequest):
             raise HTTPException(status_code=400, detail="Invalid Google credential token.")
 
         token_info = response.json()
+        allowed_audiences = set(settings.GOOGLE_CLIENT_IDS)
+        if settings.GOOGLE_CLIENT_ID:
+            allowed_audiences.add(settings.GOOGLE_CLIENT_ID)
+        if token_info.get("aud") not in allowed_audiences:
+            raise HTTPException(status_code=401, detail="Google credential was not issued for Uphill AI.")
         email = token_info.get("email")
         name = token_info.get("name", email.split("@")[0])
         sub = token_info.get("sub")
@@ -725,6 +737,37 @@ async def auth_google(request: GoogleAuthRequest):
         if isinstance(e, HTTPException):
             raise e
         raise HTTPException(status_code=500, detail=f"Google authentication error: {str(e)}")
+
+
+@app.post("/api/auth/apple")
+async def auth_apple(request: AppleAuthRequest):
+    """Sign in with Apple from the native iOS app."""
+    import asyncio
+
+    try:
+        claims = await asyncio.to_thread(
+            apple_auth.verify_identity_token, request.identity_token, settings.APPLE_AUDIENCES
+        )
+    except apple_auth.AppleTokenError:
+        raise HTTPException(status_code=401, detail="Invalid Apple identity token.")
+
+    sub = claims["sub"]
+    user = get_user_by_provider("apple", sub)
+    if not user:
+        email = (claims.get("email") or "").lower().strip()
+        email_verified = str(claims.get("email_verified", "")).lower() == "true"
+        if not email or not email_verified:
+            raise HTTPException(status_code=400, detail="Apple did not share a verified email address.")
+        name = (request.full_name or "").strip() or email.split("@")[0]
+        role = "admin" if email == "admin@uphill.ai" else "user"
+        user = create_or_get_user(email=email, name=name, provider="apple", provider_user_id=sub, role=role)
+
+    session = create_session(user["id"])
+    return {
+        "session_token": session["session_token"],
+        "expires_at": session["expires_at"],
+        "user": format_user_response(user),
+    }
 
 
 @app.post("/api/auth/facebook")

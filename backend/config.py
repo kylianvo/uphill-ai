@@ -74,6 +74,19 @@ class Config:
     API_PORT: int = int(os.getenv("PORT", "8000"))
     API_HOST: str = os.getenv("HOST", "0.0.0.0")
     GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID", "")
+    # Public OAuth IDs for the web/Android and native iOS clients.
+    GOOGLE_CLIENT_IDS: list[str] = [
+        c.strip()
+        for c in os.getenv(
+            "GOOGLE_CLIENT_IDS",
+            "451637841654-0eoo8qsa5fgnpm4cq0br8phgkhh92c5a.apps.googleusercontent.com,"
+            "451637841654-ncj3jhv24t9rq665noctori05faajiej.apps.googleusercontent.com",
+        ).split(",")
+        if c.strip()
+    ]
+    APPLE_AUDIENCES: list[str] = [
+        c.strip() for c in os.getenv("APPLE_AUDIENCES", "ai.uphill.app").split(",") if c.strip()
+    ]
 
     # PostgreSQL connection URL
     DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://uphill:uphill_secret@localhost:5432/uphill_ai")
