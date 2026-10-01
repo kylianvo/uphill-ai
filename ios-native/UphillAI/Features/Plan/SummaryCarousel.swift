@@ -48,14 +48,23 @@ struct SummaryCarousel: View {
                     ProgressView()
                     Text("Adapting week \(adapting)\u{2026}").font(UH.TextStyle.label)
                 } else {
-                    Button("Review week", action: onReview).accessibilityIdentifier("plan.review")
+                    Button(action: onReview) {
+                        Text("Review week").font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
+                            .padding(.horizontal, UH.Space.medium).frame(minHeight: 44)
+                            .overlay(Capsule().stroke(UH.Palette.ink.opacity(0.35), lineWidth: 1.5))
+                    }
+                    .accessibilityIdentifier("plan.review")
                     if model.canAdapt(week: model.selectedWeek) {
-                        Button("Adapt this week", action: onAdapt).accessibilityIdentifier("plan.adapt")
+                        Button(action: onAdapt) {
+                            Text("Adapt this week").font(UH.TextStyle.label).foregroundStyle(UH.Palette.buttonInk)
+                                .padding(.horizontal, UH.Space.medium).frame(minHeight: 44)
+                                .background(UH.Palette.accent, in: Capsule())
+                        }
+                        .accessibilityIdentifier("plan.adapt")
                     }
                 }
             }
-            .font(UH.TextStyle.label).frame(minHeight: 44).tint(UH.Palette.accentInk)
-            .buttonStyle(.bordered).controlSize(.regular)
+            .buttonStyle(.plain).frame(minHeight: 44)
         }
     }
 
