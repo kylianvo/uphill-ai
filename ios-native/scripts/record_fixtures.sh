@@ -7,10 +7,10 @@ BASE="${1:-http://localhost:8000}"
 OUT="$(cd "$(dirname "$0")/.." && pwd)/UphillAITests/Fixtures"
 mkdir -p "$OUT"
 
-case "$BASE" in
-  http://localhost*|http://127.0.0.1*) ;;
-  *) echo "Refusing to record from $BASE: local backends only." >&2; exit 1 ;;
-esac
+if [[ ! "$BASE" =~ ^http://(localhost|127\.0\.0\.1)(:[0-9]+)?(/|$) ]]; then
+  echo "Refusing to record from $BASE: local backends only." >&2
+  exit 1
+fi
 
 # Replaces the live session token so fixtures never hold a usable credential,
 # and drops the per-user Gemini key the backend echoes back.
@@ -39,7 +39,16 @@ LOGIN=$(curl -sf -X POST "$BASE/api/auth/mock-login" \
 TOKEN=$(printf '%s' "$LOGIN" | python3 -c 'import json,sys; print(json.load(sys.stdin)["session_token"])')
 printf '%s' "$LOGIN" | scrub > "$OUT/auth_login.json"
 
-get() { curl -sf "$BASE$1" -H "Authorization: Bearer $TOKEN" | scrub > "$OUT/$2"; }
+get() {
+  local tmp
+  tmp=$(mktemp)
+  if curl -sf "$BASE$1" -H "Authorization: Bearer $TOKEN" | scrub > "$tmp"; then
+    mv "$tmp" "$OUT/$2"
+  else
+    rm -f "$tmp"
+    return 1
+  fi
+}
 
 get /api/auth/me auth_me.json
 
