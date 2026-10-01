@@ -8,7 +8,24 @@ final class AppModel {
     let client: APIClient
     let auth: any AuthServicing
     let planService: any PlanServicing
+    let generationService: any GenerationServicing
+    let generation: GenerationCenter
+    let plan: PlanViewModel
     let cache: OfflineCache
+    var onboardingDeferred = false
+    var needsOnboarding: Bool {
+        session.user?.onboardingComplete == false && generation.running == nil && !onboardingDeferred
+    }
+
+    /// The setup behind the last generation, so "Try again" re-submits the same answers.
+    private(set) var lastSetup: PlanSetupViewModel?
+
+    func makeSetup(mode: PlanSetupViewModel.Mode) -> PlanSetupViewModel {
+        let setup = PlanSetupViewModel(mode: mode, user: session.user, service: generationService, generation: generation, session: session)
+        lastSetup = setup
+        return setup
+    }
+
     private(set) var restoreError: String?
     /// True when the last restore had to fall back to cached data.
     private(set) var isOffline = false
@@ -21,8 +38,9 @@ final class AppModel {
         cache: OfflineCache = .onDisk()
     ) {
         self.cache = cache
+        var onSignedOut: @MainActor () -> Void = {}
         let session = SessionStore(tokenStore: tokenStore) { user in
-            if let user { cache.save(user, as: .user) } else { cache.clearAll() }
+            if let user { cache.save(user, as: .user) } else { cache.clearAll(); onSignedOut() }
         }
         self.session = session
         client = APIClient(
@@ -33,6 +51,25 @@ final class AppModel {
         )
         auth = makeAuth(client)
         planService = PlanService(client: client)
+        generationService = GenerationService(client: client)
+        generation = GenerationCenter(service: generationService)
+        plan = PlanViewModel(service: planService, cache: cache, isSignedIn: { [session] in session.user != nil },
+                             generation: generation, generationService: generationService)
+        onSignedOut = { [weak self] in
+            self?.generation.reset()
+            self?.plan.reset()
+            self?.onboardingDeferred = false
+            self?.lastSetup = nil
+        }
+        generation.onFinished = { [weak self] kind, outcome in
+            guard let self, self.session.user != nil else { return }
+            switch outcome {
+            case .done(let snapshot?): self.plan.adopt(snapshot)
+            case .done(nil), .lost: await self.plan.load()
+            case .failed, .cancelled: return
+            }
+            if kind == .newPlan { await self.refreshUser() }
+        }
     }
 
     /// Confirms a stored token with /api/auth/me. Offline, it signs in with the
@@ -54,6 +91,13 @@ final class AppModel {
             }
         } catch {
             restoreError = error.localizedDescription
+        }
+    }
+
+    func refreshUser() async {
+        let userID = session.user?.id
+        if let user = try? await auth.me(), session.user?.id == userID, userID != nil {
+            session.setUser(user)
         }
     }
 

@@ -9,6 +9,9 @@ final class FakePlanService: PlanServicing {
     let moveResult = Mutex<Result<[Workout], APIError>>(.success([]))
     let recentResult = Mutex<Result<[Plan], APIError>>(.success([]))
     let selectResult = Mutex<Result<PlanSnapshot?, APIError>>(.success(nil))
+    let completionResult = Mutex<Result<BlockCompletionResponse, APIError>>(.failure(.http(status: 404, message: nil, code: nil)))
+    let reviewResult = Mutex<Result<WeekReview, APIError>>(.failure(.http(status: 404, message: nil, code: nil)))
+    let goalResult = Mutex<Result<PlanGoal, APIError>>(.failure(.http(status: 404, message: nil, code: nil)))
     let calls = Mutex<[String]>([])
 
     private func record(_ call: String) { calls.withLock { $0.append(call) } }
@@ -36,5 +39,30 @@ final class FakePlanService: PlanServicing {
     func selectPlan(id: Int) async throws -> PlanSnapshot? {
         record("select \(id)")
         return try selectResult.withLock { $0 }.get()
+    }
+
+    func blockCompletion(planID: Int) async throws -> BlockCompletionResponse {
+        record("completion \(planID)")
+        return try completionResult.withLock { $0 }.get()
+    }
+
+    func weekReview(planID: Int, week: Int) async throws -> WeekReview {
+        record("review \(planID) w\(week)")
+        return try reviewResult.withLock { $0 }.get()
+    }
+
+    func goal(planID: Int) async throws -> PlanGoal {
+        record("goal \(planID)")
+        return try goalResult.withLock { $0 }.get()
+    }
+
+    func reassessGoal(planID: Int) async throws -> PlanGoal {
+        record("reassess \(planID)")
+        return try goalResult.withLock { $0 }.get()
+    }
+
+    func applyGoal(planID: Int, targetMinutes: Double) async throws -> PlanGoal {
+        record("apply \(planID) \(Int(targetMinutes))")
+        return try goalResult.withLock { $0 }.get()
     }
 }

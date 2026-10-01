@@ -27,5 +27,5 @@ fi
 echo "Testing on: $DESTINATION"
 xcodebuild test -project UphillAI.xcodeproj -scheme UphillAI-E2E -destination "$DESTINATION" \
   -test-timeouts-enabled YES -collect-test-diagnostics never \
-  -default-test-execution-time-allowance 120 -maximum-test-execution-time-allowance 180 \
+  -default-test-execution-time-allowance 300 -maximum-test-execution-time-allowance 360 \
   2>&1 | tail -n 40

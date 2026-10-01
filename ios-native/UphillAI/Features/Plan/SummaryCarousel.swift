@@ -2,15 +2,20 @@ import Charts
 import SwiftUI
 
 struct SummaryCarousel: View {
-    let model: PlanViewModel
+    static let cardHeight: CGFloat = 188
     @State private var page: Int? = 0
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private let pageNames = ["Volume", "Race", "This week", "Phase"]
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let model: PlanViewModel
+    var adapting: Int? = nil
+    var onReview: () -> Void = {}
+    var onAdapt: () -> Void = {}
+    var onGoal: () -> Void = {}
 
     var body: some View {
         VStack(spacing: UH.Space.compact) {
-            ScrollView(.horizontal) {
-                HStack(spacing: UH.Space.small) {
+            ScrollView(.vertical) {
+                VStack(spacing: 0) {
                     volumeCard.id(0)
                     raceCard.id(1)
                     weekCard.id(2)
@@ -18,35 +23,66 @@ struct SummaryCarousel: View {
                 }
                 .scrollTargetLayout()
             }
-            .scrollTargetBehavior(.viewAligned)
+            .scrollTargetBehavior(.paging)
             .scrollPosition(id: $page)
             .scrollIndicators(.hidden)
-            .contentMargins(.horizontal, UH.Space.medium, for: .scrollContent)
+            .frame(height: Self.cardHeight)
+            .clipShape(RoundedRectangle(cornerRadius: UH.Radius.panel))
+            .overlay(RoundedRectangle(cornerRadius: UH.Radius.panel).stroke(UH.Palette.line))
+            .overlay(alignment: .trailing) { pageDots }
+            .padding(.horizontal, UH.Space.regular)
 
-            HStack(spacing: UH.Space.compact) {
-                ForEach(0..<4, id: \.self) { index in
-                    Button {
-                        withAnimation(reduceMotion ? nil : UH.Motion.standard) { page = index }
-                    } label: {
-                        Circle()
-                            .fill(index == (page ?? 0) ? UH.Palette.accentInk : UH.Palette.line)
-                            .frame(width: 6, height: 6)
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
+            HStack(spacing: UH.Space.small) {
+                if let adapting {
+                    ProgressView()
+                    Text("Adapting week \(adapting)\u{2026}").font(UH.TextStyle.label)
+                } else {
+                    Button(action: onReview) {
+                        Text("Review week").font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
+                            .padding(.horizontal, UH.Space.medium).frame(minHeight: 44)
+                            .overlay(Capsule().stroke(UH.Palette.ink.opacity(0.35), lineWidth: 1.5))
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("\(pageNames[index]) summary")
-                    .accessibilityAddTraits(index == (page ?? 0) ? .isSelected : [])
+                    .accessibilityIdentifier("plan.review")
+                    if model.canAdapt(week: model.selectedWeek) {
+                        Button(action: onAdapt) {
+                            Text("Adapt this week").font(UH.TextStyle.label).foregroundStyle(UH.Palette.buttonInk)
+                                .padding(.horizontal, UH.Space.medium).frame(minHeight: 44)
+                                .background(UH.Palette.accent, in: Capsule())
+                        }
+                        .accessibilityIdentifier("plan.adapt")
+                    }
                 }
             }
+            .buttonStyle(.plain).frame(minHeight: 44)
         }
     }
 
     private func card(_ content: some View) -> some View {
         content
-            .uhCard()
-            .containerRelativeFrame(.horizontal) { width, _ in width - 2 * UH.Space.medium - UH.Space.section }
-            .frame(minHeight: 176)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .padding(UH.Space.regular)
+            .padding(.trailing, UH.Space.small)
+            .frame(height: Self.cardHeight)
+            .background(UH.Palette.card)
+    }
+
+    private var pageDots: some View {
+        VStack(spacing: 0) {
+            ForEach(0..<4, id: \.self) { index in
+                Button {
+                    withAnimation(reduceMotion ? nil : UH.Motion.standard) { page = index }
+                } label: {
+                    Circle()
+                        .fill(index == (page ?? 0) ? UH.Palette.accentInk : UH.Palette.line)
+                        .frame(width: 6, height: 6)
+                        .frame(width: 28, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(pageNames[index]) summary")
+                .accessibilityAddTraits(index == (page ?? 0) ? .isSelected : [])
+            }
+        }
     }
 
     private func eyebrow(_ text: String) -> some View {
@@ -72,7 +108,7 @@ struct SummaryCarousel: View {
                         .foregroundStyle(week.week == model.selectedWeek ? UH.Palette.accent : UH.Palette.line)
                         .cornerRadius(UH.Radius.topic)
                 }
-                .frame(height: 52)
+                .frame(height: 40)
                 .chartXAxis(.hidden)
                 .chartYAxis(.hidden)
                 .accessibilityHidden(true)
@@ -102,7 +138,15 @@ struct SummaryCarousel: View {
                         .font(UH.TextStyle.label)
                         .foregroundStyle(UH.Palette.accentInk)
                 }
-                if let goal = model.goalText {
+                if let pill = model.goalPillText {
+                    Button(action: onGoal) {
+                        Text(pill).font(UH.TextStyle.label)
+                            .foregroundStyle(model.goal?.status.kind == .behind ? UH.Palette.danger : UH.Palette.accentInk)
+                            .padding(.horizontal, UH.Space.small).frame(minHeight: 32)
+                            .background(UH.Palette.hover, in: Capsule())
+                    }
+                    .accessibilityIdentifier("plan.goalpill")
+                } else if let goal = model.goalText {
                     Text(goal).font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary)
                 }
             }
@@ -127,7 +171,6 @@ struct SummaryCarousel: View {
                         .accessibilityLabel("\(item.weekday.rawValue), \(label(item.state))")
                     }
                 }
-                Spacer(minLength: 0)
                 let done = model.dayStates.filter { $0.state == .done }.count
                 let active = model.dayStates.filter { $0.state != .rest }.count
                 Text("\(done) of \(active) sessions done")
@@ -170,8 +213,7 @@ struct SummaryCarousel: View {
                 Text("Week \(model.selectedWeek) of \(model.snapshot?.plan.totalWeeks ?? 0)")
                     .font(UH.TextStyle.caption)
                     .foregroundStyle(UH.Palette.secondary)
-            }
-        )
+            })
         .accessibilityElement(children: .combine)
     }
 }

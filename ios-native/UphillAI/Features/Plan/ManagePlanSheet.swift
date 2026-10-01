@@ -2,9 +2,11 @@ import SwiftUI
 
 struct ManagePlanSheet: View {
     let model: PlanViewModel
+    let onStartNew: () -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var plans: [Plan]?
     @State private var loadError: String?
+    @State private var confirmNew = false
 
     var body: some View {
         NavigationStack {
@@ -46,11 +48,25 @@ struct ManagePlanSheet: View {
                 if let error = model.actionError {
                     Text(error).font(UH.TextStyle.caption).foregroundStyle(UH.Palette.danger)
                 }
+                Section("New plan") {
+                    Button("Start new plan") { confirmNew = true }
+                        .frame(minHeight: 44).accessibilityIdentifier("manage.startNew")
+                }
+                .listRowBackground(UH.Palette.card)
                 Section {
-                    Text("Plan settings, new plans, watch sync and calendar export are on the web for now.")
+                    Text("Plan settings, watch sync and calendar export are on the web for now.")
                         .font(UH.TextStyle.caption)
                         .foregroundStyle(UH.Palette.muted)
                 }
+            }
+            .listRowBackground(UH.Palette.card)
+            .scrollContentBackground(.hidden)
+            .background(UH.Palette.surface)
+            .confirmationDialog("Start a new plan?", isPresented: $confirmNew, titleVisibility: .visible) {
+                Button("Start new plan") { onStartNew(); dismiss() }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Your current plan stays in Recent plans. The new plan becomes your active plan.")
             }
             .navigationTitle("Manage plan")
             .navigationBarTitleDisplayMode(.inline)
@@ -66,6 +82,7 @@ struct ManagePlanSheet: View {
             }
         }
         .presentationDetents([.medium, .large])
+        .presentationBackground(UH.Palette.surface)
         .onDisappear { model.clearActionError() }
     }
 
