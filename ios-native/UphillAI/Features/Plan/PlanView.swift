@@ -8,6 +8,8 @@ struct PlanView: View {
     @State private var selectedWorkout: Workout?
     @State private var showManage = false
     @State private var startNewAfterManage = false
+    @State private var showNextWeek = false
+    @State private var readyBanner: String?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -24,6 +26,9 @@ struct PlanView: View {
                 }
                 .sheet(item: $selectedWorkout) { workout in
                     WorkoutDetailSheet(model: model, workoutID: workout.id)
+                }
+                .sheet(isPresented: $showNextWeek) {
+                    if let offer = model.nextWeekOffer { NextWeekSheet(model: model, offer: offer) }
                 }
                 .sheet(isPresented: $showManage, onDismiss: {
                     if startNewAfterManage { startNewAfterManage = false; onBuildPlan() }
@@ -75,10 +80,33 @@ struct PlanView: View {
                             }
                         }
                         .padding(.horizontal, UH.Space.regular)
+                        nextWeekCard
                     }
                     .padding(.vertical, UH.Space.regular)
                 }
                 .refreshable { await model.load() }
+                .onChange(of: model.selectedWeek) { Task { await model.refreshNextWeekOffer() } }
+                .onChange(of: generation.lastOutcome) { _, outcome in
+                    guard let outcome, outcome.kind == .nextWeek else { return }
+                    generation.clearOutcome()
+                    if case .done = outcome.outcome {
+                        readyBanner = "New week is ready"
+                        Task { try? await Task.sleep(for: .seconds(3)); readyBanner = nil }
+                    }
+                }
+                .sensoryFeedback(.success, trigger: readyBanner)
+                .overlay(alignment: .top) {
+                    if let readyBanner {
+                        Label(readyBanner, systemImage: "checkmark.circle.fill")
+                            .font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
+                            .padding(UH.Space.small)
+                            .background(UH.Palette.card, in: RoundedRectangle(cornerRadius: UH.Radius.control))
+                            .overlay(RoundedRectangle(cornerRadius: UH.Radius.control).stroke(UH.Palette.line))
+                            .padding(.top, UH.Space.small)
+                            .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
+                    }
+                }
+                .animation(reduceMotion ? nil : UH.Motion.standard, value: readyBanner)
                 .task(id: "\(model.selectedWeek)-\(model.days.count)") {
                     guard model.selectedWeek == model.currentWeek else { return }
                     // Let the lazy list lay out its rows before scrolling.
@@ -96,6 +124,27 @@ struct PlanView: View {
             proxy.scrollTo(today.id, anchor: .top)
         } else {
             withAnimation(UH.Motion.standard) { proxy.scrollTo(today.id, anchor: .top) }
+        }
+    }
+
+    @ViewBuilder
+    private var nextWeekCard: some View {
+        if generation.running?.kind == .nextWeek {
+            HStack(spacing: UH.Space.small) {
+                ProgressView()
+                Text("Building the next week…").font(UH.TextStyle.label)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading).uhCard().padding(.horizontal, UH.Space.regular)
+        } else if let offer = model.nextWeekOffer {
+            VStack(alignment: .leading, spacing: UH.Space.small) {
+                Text(offer.title).font(UH.TextStyle.sectionTitle)
+                Text("Coach Uphill uses how this week went to shape the next one.").foregroundStyle(UH.Palette.secondary)
+                if let pct = offer.previousCompletionPct {
+                    Text("This week: \(Int(pct)) % done").font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary)
+                }
+                Button(offer.title) { showNextWeek = true }.buttonStyle(.uhPrimary).accessibilityIdentifier("plan.nextweek")
+            }
+            .frame(maxWidth: .infinity, alignment: .leading).uhCard().padding(.horizontal, UH.Space.regular)
         }
     }
 

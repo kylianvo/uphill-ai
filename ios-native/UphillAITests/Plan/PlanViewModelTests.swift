@@ -251,4 +251,79 @@ struct PlanViewModelTests {
         let model = make(service)
         await #expect(throws: APIError.self) { try await model.recentPlans() }
     }
+
+    private func completion(_ pct: Double, unlocked: Bool, maxWeek: Int = 3) -> BlockCompletionResponse {
+        try! JSONCoding.decoder.decode(BlockCompletionResponse.self, from: json([
+            "plan_id": 7, "max_generated_week": maxWeek,
+            "blocks": (1...maxWeek).map { ["block_number": $0, "week_start": $0, "week_end": $0,
+                                           "completion_pct": $0 == maxWeek ? pct : 100, "unlocked": $0 == maxWeek ? unlocked : true] as [String: Any] },
+        ]))
+    }
+
+    private func makeWithGeneration(_ service: FakePlanService, gen: FakeGenerationService) -> (PlanViewModel, GenerationCenter) {
+        let center = GenerationCenter(service: gen, defaults: UserDefaults(suiteName: UUID().uuidString)!,
+                                      makePoller: { JobPoller(service: $0, interval: .seconds(60), timeout: .seconds(120)) })
+        let now = self.now
+        return (PlanViewModel(service: service, cache: .inMemory(), now: { now }, calendar: cal,
+                              generation: center, generationService: gen), center)
+    }
+
+    @Test func offerAppearsOnLastGeneratedWeek() async {
+        let service = FakePlanService()
+        service.activeResult.withLock { $0 = .success(snapshot()) }
+        service.completionResult.withLock { $0 = .success(completion(80, unlocked: true)) }
+        let (model, _) = makeWithGeneration(service, gen: FakeGenerationService())
+        await model.load()
+        model.selectedWeek = 3
+        await model.refreshNextWeekOffer()
+        #expect(model.nextWeekOffer == NextWeekOffer(blockNumber: 4, weekStart: 4, weekEnd: 4, previousCompletionPct: 80, unlocked: true))
+        #expect(model.nextWeekOffer?.title == "Build week 4")
+        model.selectedWeek = 2
+        await model.refreshNextWeekOffer()
+        #expect(model.nextWeekOffer == nil)
+    }
+
+    @Test func gateNeedsConfirmationThenOverride() async {
+        let service = FakePlanService()
+        service.activeResult.withLock { $0 = .success(snapshot()) }
+        service.completionResult.withLock { $0 = .success(completion(40, unlocked: false)) }
+        let gen = FakeGenerationService()
+        gen.startResult.withLock { $0 = .failure(.http(status: 403, message: "Block 3 is 40% complete. Need 70% to unlock the next block.", code: nil)) }
+        let (model, center) = makeWithGeneration(service, gen: gen)
+        await model.load()
+        model.selectedWeek = 3
+        await model.refreshNextWeekOffer()
+        let first = await model.buildNextWeek(rpe: 6, notes: "", override: false)
+        #expect(first == .needsConfirmation("Block 3 is 40% complete. Need 70% to unlock the next block."))
+        gen.startResult.withLock { $0 = .success(JobStart(jobId: "nb")) }
+        #expect(await model.buildNextWeek(rpe: 6, notes: "", override: true) == .started)
+        #expect(gen.calls.withLock { $0.filter { $0.hasPrefix("next") } } == ["next 4 override=false", "next 4 override=true"])
+        #expect(center.running?.kind == .nextWeek)
+    }
+
+    @Test func everythingGeneratedClearsOfferOn400() async {
+        let service = FakePlanService()
+        service.activeResult.withLock { $0 = .success(snapshot()) }
+        service.completionResult.withLock { $0 = .success(completion(90, unlocked: true)) }
+        let gen = FakeGenerationService()
+        gen.startResult.withLock { $0 = .failure(.http(status: 400, message: "All blocks generated.", code: nil)) }
+        let (model, _) = makeWithGeneration(service, gen: gen)
+        await model.load()
+        model.selectedWeek = 3
+        await model.refreshNextWeekOffer()
+        #expect(await model.buildNextWeek(rpe: nil, notes: "", override: false) == .failed("All blocks generated."))
+        #expect(model.nextWeekOffer == nil)
+    }
+
+    /// Phase 1 offered "next week" even when it was not generated yet.
+    @Test func moveTargetsStopAtLastGeneratedWeek() async {
+        let service = FakePlanService()
+        var snap = snapshot()
+        snap.workouts = snap.workouts.filter { $0.weekNumber <= 2 }   // weeks 1-2 generated; current week is 2
+        service.activeResult.withLock { $0 = .success(snap) }
+        let model = make(service)
+        await model.load()
+        let targets = model.moveTargets(for: snap.workouts.first { $0.weekNumber == 2 }!)
+        #expect(targets.allSatisfy { $0.week <= 2 })
+    }
 }

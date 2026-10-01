@@ -53,7 +53,8 @@ final class AppModel {
         planService = PlanService(client: client)
         generationService = GenerationService(client: client)
         generation = GenerationCenter(service: generationService)
-        plan = PlanViewModel(service: planService, cache: cache, isSignedIn: { [session] in session.user != nil })
+        plan = PlanViewModel(service: planService, cache: cache, isSignedIn: { [session] in session.user != nil },
+                             generation: generation, generationService: generationService)
         onSignedOut = { [weak self] in
             self?.generation.reset()
             self?.plan.reset()

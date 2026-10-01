@@ -22,6 +22,20 @@ struct MoveTarget: Identifiable, Hashable {
     var id: String { "\(week)-\(weekday.rawValue)" }
 }
 
+struct NextWeekOffer: Equatable {
+    let blockNumber: Int
+    let weekStart: Int
+    let weekEnd: Int
+    let previousCompletionPct: Double?
+    let unlocked: Bool
+
+    var title: String { weekStart == weekEnd ? "Build week \(weekStart)" : "Build weeks \(weekStart)\u{2013}\(weekEnd)" }
+}
+
+enum NextWeekResult: Equatable {
+    case started, needsConfirmation(String), failed(String)
+}
+
 @Observable
 @MainActor
 final class PlanViewModel {
@@ -38,7 +52,11 @@ final class PlanViewModel {
     /// Last workout marked done; the view keys its success haptic on it.
     private(set) var lastCompletedID: Int?
 
+    private(set) var nextWeekOffer: NextWeekOffer?
+
     private let service: any PlanServicing
+    private let generation: GenerationCenter?
+    private let generationService: (any GenerationServicing)?
     private let cache: OfflineCache
     private let now: @MainActor () -> Date
     private let calendar: Calendar
@@ -47,8 +65,11 @@ final class PlanViewModel {
 
     init(service: any PlanServicing, cache: OfflineCache,
          now: @escaping @MainActor () -> Date = { .now }, calendar: Calendar = PlanCalendar.calendar,
-         isSignedIn: @escaping @MainActor () -> Bool = { true }) {
+         isSignedIn: @escaping @MainActor () -> Bool = { true },
+         generation: GenerationCenter? = nil, generationService: (any GenerationServicing)? = nil) {
         self.isSignedIn = isSignedIn
+        self.generation = generation
+        self.generationService = generationService
         self.service = service
         self.cache = cache
         self.now = now
@@ -69,6 +90,7 @@ final class PlanViewModel {
                 apply(fresh, resetWeek: resetWeek)
                 cachedAt = nil
                 if isSignedIn() { cache.save(fresh, as: .plan) }
+                await refreshNextWeekOffer()
             } else {
                 snapshot = nil
                 cachedAt = nil
@@ -98,9 +120,11 @@ final class PlanViewModel {
         cachedAt = nil
         actionError = nil
         if isSignedIn() { cache.save(snapshot, as: .plan) }
+        Task { await refreshNextWeekOffer() }
     }
 
     func reset() {
+        nextWeekOffer = nil
         state = .loading
         snapshot = nil
         cachedAt = nil
@@ -188,7 +212,8 @@ final class PlanViewModel {
     func moveTargets(for workout: Workout) -> [MoveTarget] {
         guard let snapshot else { return [] }
         let today = calendar.startOfDay(for: now())
-        let lastWeek = min(currentWeek + 1, snapshot.plan.totalWeeks)
+        let generatedWeeks = snapshot.workouts.map(\.weekNumber).max() ?? currentWeek
+        let lastWeek = min(currentWeek + 1, snapshot.plan.totalWeeks, generatedWeeks)
         var targets: [MoveTarget] = []
         for week in currentWeek...max(currentWeek, lastWeek) {
             for weekday in Weekday.allCases {
@@ -244,6 +269,51 @@ final class PlanViewModel {
             actionError = error.localizedDescription
         }
         return false
+    }
+
+    // MARK: Next week
+
+    /// The offer exists only on the last generated week while later weeks are still to come.
+    func refreshNextWeekOffer() async {
+        guard let snapshot, cachedAt == nil,
+              let generatedWeeks = snapshot.workouts.map(\.weekNumber).max(),
+              generatedWeeks < snapshot.plan.totalWeeks, selectedWeek == generatedWeeks else {
+            nextWeekOffer = nil
+            return
+        }
+        guard let response = try? await service.blockCompletion(planID: snapshot.plan.id),
+              let last = response.blocks.max(by: { $0.blockNumber < $1.blockNumber }) else {
+            nextWeekOffer = nil
+            return
+        }
+        let start = response.maxGeneratedWeek + 1
+        nextWeekOffer = NextWeekOffer(
+            blockNumber: last.blockNumber + 1, weekStart: start,
+            weekEnd: min(start + (last.weekEnd - last.weekStart), snapshot.plan.totalWeeks),
+            previousCompletionPct: last.completionPct, unlocked: last.unlocked)
+    }
+
+    func buildNextWeek(rpe: Int?, notes: String, override: Bool) async -> NextWeekResult {
+        guard let offer = nextWeekOffer, let planID = snapshot?.plan.id,
+              let generation, let generationService else { return .failed("Couldn't start the next week. Try again.") }
+        guard cachedAt == nil else { return .failed(Self.offlineMessage) }
+        let trimmed = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        do {
+            let job = try await generationService.generateNextBlock(NextBlockBody(
+                planId: planID, blockNumber: offer.blockNumber, overallRpe: rpe,
+                notes: trimmed.isEmpty ? nil : trimmed, overrideGate: override, lang: "en"))
+            generation.track(kind: .nextWeek, jobID: job.jobId, summary: [])
+            return .started
+        } catch APIError.http(403, let message?, _) where !override {
+            return .needsConfirmation(message)
+        } catch APIError.http(400, let message, _) {
+            nextWeekOffer = nil
+            return .failed(message ?? "Every week of this plan is already built.")
+        } catch let error as APIError {
+            return .failed(error.userMessage)
+        } catch {
+            return .failed(error.localizedDescription)
+        }
     }
 
     // MARK: Recent plans
