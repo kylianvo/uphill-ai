@@ -1,0 +1,55 @@
+name: UphillAI
+options:
+  bundleIdPrefix: ai.uphill
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    DEVELOPMENT_TEAM: 2JR7MV87X6
+    MARKETING_VERSION: "2.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    TARGETED_DEVICE_FAMILY: "1"
+targets:
+  UphillAI:
+    type: application
+    platform: iOS
+    sources:
+      - path: UphillAI
+    info:
+      path: UphillAI/Info.plist
+      properties:
+        CFBundleDisplayName: Uphill AI
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        ITSAppUsesNonExemptEncryption: false
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ai.uphill.app
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+  UphillAITests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: UphillAITests
+    dependencies:
+      - target: UphillAI
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ai.uphill.app.tests
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  UphillAI:
+    build:
+      targets:
+        UphillAI: all
+        UphillAITests: [test]
+    test:
+      targets:
+        - UphillAITests
