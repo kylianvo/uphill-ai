@@ -159,7 +159,7 @@ struct WorkoutDetailSheet: View {
     private func logSection(_ w: Workout) -> some View {
         VStack(alignment: .leading, spacing: UH.Space.small) {
             Text("YOUR LOG").font(UH.TextStyle.eyebrow).foregroundStyle(UH.Palette.muted)
-            Stepper(value: Binding(get: { rpe ?? 5 }, set: { rpe = $0 }), in: 1...10) {
+            Stepper(value: Binding(get: { rpe ?? 5 }, set: { rpe = rpe == nil ? 5 : $0 }), in: 1...10) {
                 LabeledContent("Effort (RPE)", value: rpe.map(String.init) ?? "Not set")
             }
             TextField("Notes", text: $notes, axis: .vertical)

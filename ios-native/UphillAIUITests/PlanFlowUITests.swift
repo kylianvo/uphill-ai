@@ -38,11 +38,7 @@ final class PlanFlowUITests: XCTestCase {
         app.buttons["signin.submit"].tap()
 
         // iOS offers to save the password after sign-in; it blocks taps until dismissed.
-        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
-        for host in [app, springboard] {
-            let notNow = host.descendants(matching: .any).matching(identifier: "Not Now").firstMatch
-            if notNow.waitForExistence(timeout: 4) { notNow.tap(); break }
-        }
+        dismissSavePrompt(app, wait: 10)
 
         XCTAssertTrue(today.waitForExistence(timeout: 30), "Plan should open scrolled to today")
 
@@ -68,6 +64,7 @@ final class PlanFlowUITests: XCTestCase {
             XCTFail("No hittable workout row found anywhere in the plan")
             return
         }
+        dismissSavePrompt(app, wait: 1)   // it can appear late; it blocks every tap
         let targetLabel = target.label
         target.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         let sheetOpened = app.buttons["Done"].waitForExistence(timeout: 10)
@@ -88,5 +85,16 @@ final class PlanFlowUITests: XCTestCase {
         XCTAssertTrue(undoDone.waitForExistence(timeout: 10))
         undoDone.tap()
         XCTAssertTrue(markDone.waitForExistence(timeout: 10))
+    }
+
+    /// iOS offers to save the password after sign-in; it blocks taps until dismissed.
+    @MainActor
+    private func dismissSavePrompt(_ app: XCUIApplication, wait: TimeInterval) {
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let predicate = NSPredicate(format: "label == 'Not Now' OR identifier == 'Not Now'")
+        for host in [app, springboard] {
+            let notNow = host.descendants(matching: .any).matching(predicate).firstMatch
+            if notNow.waitForExistence(timeout: wait) { notNow.tap(); return }
+        }
     }
 }

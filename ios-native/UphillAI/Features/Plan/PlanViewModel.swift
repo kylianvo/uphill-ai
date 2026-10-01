@@ -42,9 +42,13 @@ final class PlanViewModel {
     private let cache: OfflineCache
     private let now: @MainActor () -> Date
     private let calendar: Calendar
+    /// Writes finishing after sign-out must not repopulate the offline cache.
+    private let isSignedIn: @MainActor () -> Bool
 
     init(service: any PlanServicing, cache: OfflineCache,
-         now: @escaping @MainActor () -> Date = { .now }, calendar: Calendar = PlanCalendar.calendar) {
+         now: @escaping @MainActor () -> Date = { .now }, calendar: Calendar = PlanCalendar.calendar,
+         isSignedIn: @escaping @MainActor () -> Bool = { true }) {
+        self.isSignedIn = isSignedIn
         self.service = service
         self.cache = cache
         self.now = now
@@ -64,7 +68,7 @@ final class PlanViewModel {
                 let resetWeek = !hadSnapshot && cachedAt == nil
                 apply(fresh, resetWeek: resetWeek)
                 cachedAt = nil
-                cache.save(fresh, as: .plan)
+                if isSignedIn() { cache.save(fresh, as: .plan) }
             } else {
                 snapshot = nil
                 cachedAt = nil
@@ -213,7 +217,7 @@ final class PlanViewModel {
             guard var snapshot else { return false }
             snapshot.workouts = workouts
             self.snapshot = snapshot
-            cache.save(snapshot, as: .plan)
+            if isSignedIn() { cache.save(snapshot, as: .plan) }
             return true
         } catch APIError.http(422, _, let code?) {
             actionError = Self.moveMessage(code: code)
@@ -227,8 +231,9 @@ final class PlanViewModel {
 
     // MARK: Recent plans
 
-    func recentPlans() async -> [Plan] {
-        (try? await service.recentPlans()) ?? []
+    /// Throws on failure so the sheet can show why the list is missing.
+    func recentPlans() async throws -> [Plan] {
+        try await service.recentPlans()
     }
 
     func select(_ plan: Plan) async {
@@ -239,7 +244,7 @@ final class PlanViewModel {
         do {
             if let snapshot = try await service.selectPlan(id: plan.id) {
                 apply(snapshot, resetWeek: true)
-                cache.save(snapshot, as: .plan)
+                if isSignedIn() { cache.save(snapshot, as: .plan) }
             }
         } catch let error as APIError {
             actionError = error.userMessage

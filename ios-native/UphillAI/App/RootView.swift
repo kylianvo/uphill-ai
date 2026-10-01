@@ -60,7 +60,8 @@ private struct MainTabs: View {
 
     init(app: AppModel) {
         self.app = app
-        _plan = State(initialValue: PlanViewModel(service: app.planService, cache: app.cache))
+        _plan = State(initialValue: PlanViewModel(service: app.planService, cache: app.cache,
+                                                         isSignedIn: { [session = app.session] in session.user != nil }))
     }
 
     var body: some View {

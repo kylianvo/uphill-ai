@@ -227,4 +227,28 @@ struct PlanViewModelTests {
         await relaunched.load()
         #expect(relaunched.snapshot == nil)
     }
+
+    @Test func writeCompletingAfterSignOutDoesNotCache() async throws {
+        let snap = snapshot()
+        let service = FakePlanService()
+        service.activeResult.withLock { $0 = .success(snap) }
+        let target = snap.workouts.first { $0.weekNumber == 2 && $0.weekday == .wednesday }!
+        service.logResult.withLock { $0 = .success(snap.workouts) }
+        let cache = OfflineCache.inMemory()
+        var signedIn = true
+        let now = self.now
+        let model = PlanViewModel(service: service, cache: cache, now: { now }, calendar: cal, isSignedIn: { signedIn })
+        await model.load()
+        cache.remove(.plan)          // as the sign-out wipe does
+        signedIn = false             // signed out while the write was in flight
+        await model.setDone(target, true)
+        #expect(cache.load(PlanSnapshot.self, .plan) == nil)
+    }
+
+    @Test func recentPlansPropagatesErrors() async {
+        let service = FakePlanService()
+        service.recentResult.withLock { $0 = .failure(.transport("offline")) }
+        let model = make(service)
+        await #expect(throws: APIError.self) { try await model.recentPlans() }
+    }
 }

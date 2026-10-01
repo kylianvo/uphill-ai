@@ -6,6 +6,8 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 curl -sf http://localhost:8000/api/health >/dev/null || { echo "Local backend is not running on :8000" >&2; exit 1; }
 PY="${PYTHON:-python3}"
 [ -x "$ROOT/backend/.venv/bin/python" ] && PY="$ROOT/backend/.venv/bin/python"
+"$PY" -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)" ||
+  { echo "Python >= 3.10 required for the backend seed ($PY is too old). Set PYTHON=/path/to/backend/.venv/bin/python" >&2; exit 1; }
 (cd "$ROOT/backend" && DATABASE_URL=postgresql://uphill:uphill_secret@localhost:5433/uphill_ai "$PY" scripts/seed_ios_preview.py)
 cd "$ROOT/ios-native"
 xcodegen generate --quiet

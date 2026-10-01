@@ -4,13 +4,16 @@ struct ManagePlanSheet: View {
     let model: PlanViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var plans: [Plan]?
+    @State private var loadError: String?
 
     var body: some View {
         NavigationStack {
             List {
                 Section("Recent plans") {
-                    if let plans {
-                        if plans.isEmpty {
+                    if let loadError {
+                        Text(loadError).font(UH.TextStyle.caption).foregroundStyle(UH.Palette.danger)
+                    } else if let plans {
+                        if plans.allSatisfy({ $0.id == model.snapshot?.plan.id }) {
                             Text("No other plans yet.").foregroundStyle(UH.Palette.secondary)
                         }
                         ForEach(plans) { plan in
@@ -52,7 +55,15 @@ struct ManagePlanSheet: View {
             .navigationTitle("Manage plan")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { Button("Done") { dismiss() } }
-            .task { plans = await model.recentPlans() }
+            .task {
+                do {
+                    plans = try await model.recentPlans()
+                } catch let error as APIError {
+                    if case .transport = error { loadError = PlanViewModel.offlineMessage } else { loadError = error.userMessage }
+                } catch {
+                    loadError = error.localizedDescription
+                }
+            }
         }
         .presentationDetents([.medium, .large])
         .onDisappear { model.clearActionError() }
