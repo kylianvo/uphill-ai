@@ -1,0 +1,177 @@
+import Charts
+import SwiftUI
+
+struct SummaryCarousel: View {
+    let model: PlanViewModel
+    @State private var page: Int? = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    private let pageNames = ["Volume", "Race", "This week", "Phase"]
+
+    var body: some View {
+        VStack(spacing: UH.Space.compact) {
+            ScrollView(.horizontal) {
+                HStack(spacing: UH.Space.small) {
+                    volumeCard.id(0)
+                    raceCard.id(1)
+                    weekCard.id(2)
+                    phaseCard.id(3)
+                }
+                .scrollTargetLayout()
+            }
+            .scrollTargetBehavior(.viewAligned)
+            .scrollPosition(id: $page)
+            .scrollIndicators(.hidden)
+            .contentMargins(.horizontal, UH.Space.medium, for: .scrollContent)
+
+            HStack(spacing: UH.Space.compact) {
+                ForEach(0..<4, id: \.self) { index in
+                    Button {
+                        withAnimation(reduceMotion ? nil : UH.Motion.standard) { page = index }
+                    } label: {
+                        Circle()
+                            .fill(index == (page ?? 0) ? UH.Palette.accentInk : UH.Palette.line)
+                            .frame(width: 6, height: 6)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("\(pageNames[index]) summary")
+                    .accessibilityAddTraits(index == (page ?? 0) ? .isSelected : [])
+                }
+            }
+        }
+    }
+
+    private func card(_ content: some View) -> some View {
+        content
+            .uhCard()
+            .containerRelativeFrame(.horizontal) { width, _ in width - 2 * UH.Space.medium - UH.Space.section }
+            .frame(minHeight: 176)
+    }
+
+    private func eyebrow(_ text: String) -> some View {
+        Text(text.uppercased()).font(UH.TextStyle.eyebrow).tracking(0.6).foregroundStyle(UH.Palette.muted)
+    }
+
+    private var volumeCard: some View {
+        let volume = model.selectedVolume
+        return card(
+            VStack(alignment: .leading, spacing: UH.Space.compact) {
+                eyebrow("Week \(model.selectedWeek) volume")
+                HStack(alignment: .firstTextBaseline, spacing: UH.Space.compact) {
+                    Text(volume.km, format: .number.precision(.fractionLength(0...1)))
+                        .font(UH.TextStyle.metric)
+                    Text("km").font(UH.TextStyle.label).foregroundStyle(UH.Palette.secondary)
+                }
+                .foregroundStyle(UH.Palette.ink)
+                Text("\(volume.hours, format: .number.precision(.fractionLength(0...1))) h · \(Int(volume.gainM)) m gain")
+                    .font(UH.TextStyle.caption)
+                    .foregroundStyle(UH.Palette.secondary)
+                Chart(model.weeklyVolumes.filter(\.generated), id: \.week) { week in
+                    BarMark(x: .value("Week", week.week), y: .value("km", week.km))
+                        .foregroundStyle(week.week == model.selectedWeek ? UH.Palette.accent : UH.Palette.line)
+                        .cornerRadius(UH.Radius.topic)
+                }
+                .frame(height: 52)
+                .chartXAxis(.hidden)
+                .chartYAxis(.hidden)
+                .accessibilityHidden(true)
+            }
+        )
+        .accessibilityElement(children: .combine)
+    }
+
+    private var raceCard: some View {
+        let plan = model.snapshot?.plan
+        let raceDay = PlanCalendar.day(from: plan?.raceDate)
+        return card(
+            VStack(alignment: .leading, spacing: UH.Space.compact) {
+                eyebrow("Race")
+                Text(plan?.raceName ?? "")
+                    .font(UH.TextStyle.sectionTitle)
+                    .foregroundStyle(UH.Palette.ink)
+                    .lineLimit(2)
+                if let raceDay {
+                    Text(raceDay, format: .dateTime.weekday(.abbreviated).day().month(.abbreviated))
+                        .font(UH.TextStyle.caption)
+                        .foregroundStyle(UH.Palette.secondary)
+                }
+                Spacer(minLength: 0)
+                if let days = model.daysToRace {
+                    Text(days < 7 ? "Race week" : "\(days) days to go")
+                        .font(UH.TextStyle.label)
+                        .foregroundStyle(UH.Palette.accentInk)
+                }
+                if let goal = model.goalText {
+                    Text(goal).font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary)
+                }
+            }
+        )
+        .accessibilityElement(children: .combine)
+    }
+
+    private var weekCard: some View {
+        card(
+            VStack(alignment: .leading, spacing: UH.Space.small) {
+                eyebrow(model.selectedWeek == model.currentWeek ? "This week" : "Week \(model.selectedWeek)")
+                HStack(spacing: 0) {
+                    ForEach(model.dayStates, id: \.weekday) { item in
+                        VStack(spacing: UH.Space.compact) {
+                            Text(String(item.weekday.rawValue.prefix(1)))
+                                .font(UH.TextStyle.eyebrow)
+                                .foregroundStyle(UH.Palette.muted)
+                            dot(item.state)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("\(item.weekday.rawValue), \(label(item.state))")
+                    }
+                }
+                Spacer(minLength: 0)
+                let done = model.dayStates.filter { $0.state == .done }.count
+                let active = model.dayStates.filter { $0.state != .rest }.count
+                Text("\(done) of \(active) sessions done")
+                    .font(UH.TextStyle.caption)
+                    .foregroundStyle(UH.Palette.secondary)
+            }
+        )
+    }
+
+    @ViewBuilder
+    private func dot(_ state: DayState) -> some View {
+        switch state {
+        case .done:
+            Image(systemName: "checkmark.circle.fill").foregroundStyle(UH.Palette.accentInk).font(.title3)
+        case .missed:
+            Image(systemName: "xmark.circle").foregroundStyle(UH.Palette.danger).font(.title3)
+        case .planned:
+            Image(systemName: "circle").foregroundStyle(UH.Palette.secondary).font(.title3)
+        case .rest:
+            Circle().fill(UH.Palette.line).frame(width: 6, height: 6).frame(height: 22)
+        }
+    }
+
+    private func label(_ state: DayState) -> String {
+        switch state {
+        case .done: "done"
+        case .missed: "missed"
+        case .planned: "planned"
+        case .rest: "rest"
+        }
+    }
+
+    private var phaseCard: some View {
+        card(
+            VStack(alignment: .leading, spacing: UH.Space.compact) {
+                eyebrow("Phase")
+                Text(model.phase ?? "Not generated yet")
+                    .font(UH.TextStyle.metric)
+                    .foregroundStyle(UH.Palette.ink)
+                Text("Week \(model.selectedWeek) of \(model.snapshot?.plan.totalWeeks ?? 0)")
+                    .font(UH.TextStyle.caption)
+                    .foregroundStyle(UH.Palette.secondary)
+            }
+        )
+        .accessibilityElement(children: .combine)
+    }
+}

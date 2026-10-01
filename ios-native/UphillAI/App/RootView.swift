@@ -12,7 +12,7 @@ struct RootView: View {
             case .restoring:
                 restoringView
             case .signedIn:
-                ProfileView(app: app)
+                MainTabs(app: app)
             }
         }
         .animation(reduceMotion ? nil : UH.Motion.standard, value: app.session.state)
@@ -50,5 +50,27 @@ private struct SignInScreen: View {
 
     var body: some View {
         SignInView(model: model)
+    }
+}
+
+/// Owns the per-session Plan view model. Recreated after sign-out/in.
+private struct MainTabs: View {
+    let app: AppModel
+    @State private var plan: PlanViewModel
+
+    init(app: AppModel) {
+        self.app = app
+        _plan = State(initialValue: PlanViewModel(service: app.planService, cache: app.cache))
+    }
+
+    var body: some View {
+        TabView {
+            Tab("Plan", systemImage: "figure.run") {
+                PlanView(model: plan)
+            }
+            Tab("Me", systemImage: "person.crop.circle") {
+                ProfileView(app: app)
+            }
+        }
     }
 }
