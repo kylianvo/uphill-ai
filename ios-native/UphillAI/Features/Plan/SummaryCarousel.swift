@@ -2,6 +2,9 @@ import Charts
 import SwiftUI
 
 struct SummaryCarousel: View {
+    /// Each card extends this far under the next one, so the cards read as a deck.
+    static let stackInset: CGFloat = 44
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let model: PlanViewModel
     var adapting: Int? = nil
     var onReview: () -> Void = {}
@@ -10,11 +13,16 @@ struct SummaryCarousel: View {
 
     var body: some View {
         VStack(spacing: UH.Space.compact) {
-            VStack(spacing: UH.Space.small) {
-                volumeCard
-                raceCard
-                weekCard
-                phaseCard
+            VStack(spacing: -Self.stackInset) {
+                ForEach(Array([AnyView(volumeCard), AnyView(raceCard), AnyView(weekCard), AnyView(phaseCard)].enumerated()), id: \.offset) { index, view in
+                    view
+                        .zIndex(Double(index))
+                        .scrollTransition(axis: .vertical) { content, phase in
+                            content
+                                .scaleEffect(phase.isIdentity || reduceMotion ? 1 : 0.94)
+                                .opacity(phase.isIdentity || reduceMotion ? 1 : 0.55)
+                        }
+                }
             }
             .padding(.horizontal, UH.Space.regular)
 
@@ -43,10 +51,12 @@ struct SummaryCarousel: View {
         }
     }
 
-    private func card(_ content: some View) -> some View {
+    private func card(_ content: some View, covered: Bool = true) -> some View {
         content
             .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.bottom, covered ? Self.stackInset : 0)
             .uhCard()
+            .shadow(color: UH.Palette.ink.opacity(0.10), radius: 10, x: 0, y: -3)
     }
 
     private func eyebrow(_ text: String) -> some View {
@@ -178,7 +188,7 @@ struct SummaryCarousel: View {
                     .font(UH.TextStyle.caption)
                     .foregroundStyle(UH.Palette.secondary)
             }
-        )
+        , covered: false)
         .accessibilityElement(children: .combine)
     }
 }
