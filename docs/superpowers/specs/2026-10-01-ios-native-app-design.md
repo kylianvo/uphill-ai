@@ -60,6 +60,14 @@ Rules:
 
 Tokens come from `DESIGN.md` and the web Phase 1 shell: emerald accent `#19ce8b`, accent ink `#08764f`, button ink `#063e2b`, ink `#172b26`, secondary `#455c52`, muted `#5d7167`, line `#dce5df`, radii 6/8/10/12/16, spacing 8/12/16/20/24/28/32. Typography uses the system font (SF Pro) with Dynamic Type; we do not bundle Plus Jakarta Sans in v1. The app is light-only until Phase 7 decides on dark mode. No mountain video; native screens use the opaque `landing-surface` `#f8faf8` background.
 
+Motion and feel follow the `apple-design` skill (`.claude/skills/apple-design/SKILL.md`), translated to SwiftUI:
+
+- Default animation is a critically damped spring: `.spring(response: 0.35, dampingFraction: 1.0)`. Bounce (`dampingFraction: 0.8`) only after a gesture that carried momentum (a flick, a drag release).
+- Prefer system components (`TabView`, `.sheet` with detents, `ScrollView` paging, `Menu`): they already track the finger, carry velocity and can be interrupted. Write a custom gesture only where no system component fits.
+- Haptics through `.sensoryFeedback` on the causal event only: `.success` when a workout is marked done, `.error` on a failed save, `.selection` when the week changes. Nothing else buzzes.
+- Respect `accessibilityReduceMotion` (cross-fade instead of slide/spring) and Dynamic Type (no fixed-height text containers).
+- Press feedback is instant: buttons use a `ButtonStyle` that scales to 0.97 on press.
+
 ### Backend changes the app needs
 
 | Change | Phase |
@@ -68,6 +76,7 @@ Tokens come from `DESIGN.md` and the web Phase 1 shell: emerald accent `#19ce8b`
 | `/api/auth/google` checks the token's `aud` against an allow-list (`GOOGLE_CLIENT_IDS`: web + iOS client IDs). Today it accepts any Google ID token | 0 |
 | HealthKit run import endpoint (reuses the activity matching pipeline) | 4 |
 | APNs device registration + push sender | 4 |
+| `DELETE /api/auth/account` (App Store guideline 5.1.1(v): apps that allow sign-up must offer in-app account deletion) plus a Delete account row in Me | 7, before App Store submission |
 
 Each backend change follows the repo rules: dual schema for any table change, integration tests only against a scratch database.
 
