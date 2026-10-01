@@ -9,6 +9,7 @@ struct PlanDay: Identifiable, Equatable {
     let eyebrow: String?
 
     var id: String { "\(week)-\(weekday.rawValue)" }
+    var isToday: Bool { eyebrow == "TODAY" }
     var isRest: Bool { PlanSummary.isRestDay(workouts) }
     /// Rest days collapse unless something on them was logged.
     var isCollapsed: Bool { isRest && !workouts.contains { $0.isDone || $0.isMissedFlag } }

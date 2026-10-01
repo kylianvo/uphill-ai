@@ -37,14 +37,12 @@ struct DayRow: View {
 
     private var workoutCard: some View {
         VStack(alignment: .leading, spacing: UH.Space.compact) {
-            HStack(spacing: UH.Space.compact) {
-                if let eyebrow = day.eyebrow {
-                    Text(eyebrow).font(UH.TextStyle.eyebrow).tracking(0.6).foregroundStyle(UH.Palette.accentInk)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: UH.Space.compact) { markers; dateCaption }
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: UH.Space.compact) { markers }
+                    dateCaption
                 }
-                if isPriority {
-                    Text("PRIORITY").font(UH.TextStyle.eyebrow).tracking(0.6).foregroundStyle(UH.Palette.accentInk)
-                }
-                Text(dateText).font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary)
             }
             ForEach(day.workouts) { workout in
                 Button { onSelect(workout) } label: { workoutRow(workout) }
@@ -53,12 +51,26 @@ struct DayRow: View {
         }
         .padding(UH.Space.regular)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(day.eyebrow == "TODAY" ? UH.Palette.activeFill : UH.Palette.card,
+        .background(day.isToday ? UH.Palette.activeFill : UH.Palette.card,
                     in: RoundedRectangle(cornerRadius: UH.Radius.workoutDay))
         .overlay(
             RoundedRectangle(cornerRadius: UH.Radius.workoutDay)
                 .stroke(isPriority ? UH.Palette.accentInk : UH.Palette.line, lineWidth: isPriority ? 1.5 : 1)
         )
+    }
+
+    @ViewBuilder
+    private var markers: some View {
+        if let eyebrow = day.eyebrow {
+            Text(eyebrow).font(UH.TextStyle.eyebrow).tracking(0.6).foregroundStyle(UH.Palette.accentInk)
+        }
+        if isPriority {
+            Text("PRIORITY").font(UH.TextStyle.eyebrow).tracking(0.6).foregroundStyle(UH.Palette.accentInk)
+        }
+    }
+
+    private var dateCaption: some View {
+        Text(dateText).font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary)
     }
 
     private func workoutRow(_ workout: Workout) -> some View {
@@ -91,7 +103,7 @@ struct DayRow: View {
         } else if w.isMissedFlag {
             Image(systemName: "xmark.circle").foregroundStyle(UH.Palette.danger)
         } else {
-            Image(systemName: "chevron.right").foregroundStyle(UH.Palette.muted).font(.footnote.weight(.semibold))
+            Image(systemName: "chevron.right").foregroundStyle(UH.Palette.muted).font(UH.TextStyle.disclosure)
         }
     }
 

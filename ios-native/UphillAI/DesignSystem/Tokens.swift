@@ -42,6 +42,7 @@ enum UH {
         static let body = Font.body
         static let label = Font.subheadline.weight(.semibold)
         static let caption = Font.footnote
+        static let disclosure = Font.footnote.weight(.semibold)
         static let eyebrow = Font.caption.weight(.bold)
         static let metric = Font.title2.weight(.bold).monospacedDigit()
     }

@@ -55,16 +55,19 @@ struct PlanView: View {
                     .padding(.vertical, UH.Space.regular)
                 }
                 .refreshable { await model.load() }
-                .onAppear { scrollToToday(proxy) }
-                .onChange(of: model.selectedWeek) { _, week in
-                    if week == model.currentWeek { scrollToToday(proxy) }
+                .task(id: "\(model.selectedWeek)-\(model.days.count)") {
+                    guard model.selectedWeek == model.currentWeek else { return }
+                    // Let the lazy list lay out its rows before scrolling.
+                    await Task.yield()
+                    try? await Task.sleep(for: .milliseconds(150))
+                    scrollToToday(proxy)
                 }
             }
         }
     }
 
     private func scrollToToday(_ proxy: ScrollViewProxy) {
-        guard let today = model.days.first(where: { $0.eyebrow == "TODAY" }) else { return }
+        guard let today = model.days.first(where: { $0.isToday }) else { return }
         if reduceMotion {
             proxy.scrollTo(today.id, anchor: .top)
         } else {
