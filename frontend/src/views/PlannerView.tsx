@@ -3118,7 +3118,7 @@ function DayGroup({
   const hasMatched = dayWos.some((w: any) => matches.some((a) => a.workout_id === w.id));
   if (shellV2 && allRest && !hasPending && !hasMatched && unplannedActivities.length === 0) {
     return (
-      <div className={styles.workoutDay} ref={setRef} style={{ ...style, ...containerStyle }} data-today={isToday ? "true" : undefined} data-testid="rest-row">
+      <div className={styles.restRow} ref={setRef} style={{ ...style, ...containerStyle }} data-today={isToday ? "true" : undefined} data-testid="rest-row">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: "44px", userSelect: "none" }}>
           <div
             {...listeners}
@@ -3136,9 +3136,11 @@ function DayGroup({
               type="button"
               onClick={() => onInitiateSwap(day)}
               title="Move or swap this day"
-              style={{ border: "none", background: "transparent", color: "var(--text-secondary)", fontSize: "11px", fontWeight: 600, cursor: "pointer", padding: "4px 6px" }}
+              onPointerDown={(e) => e.stopPropagation()}
+              style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "2px 7px", borderRadius: "6px", border: "1px solid var(--border-color, rgba(0,0,0,0.12))", background: "var(--bg-secondary, rgba(0,0,0,0.03))", color: "var(--text-secondary, #4b5563)", fontSize: "11px", fontWeight: 600, cursor: "pointer", height: "22px" }}
             >
-              Swap
+              <ArrowsLeftRight size={11} weight="bold" />
+              <span>Swap</span>
             </button>
           )}
           {onAddWorkout && (

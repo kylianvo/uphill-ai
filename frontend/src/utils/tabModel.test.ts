@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  deepLinkNeedsRole,
+  resolveHeldDeepLink,
   reconcileOpenedFromMe,
   shouldMirrorTab,
   isNavTabActive,
@@ -71,5 +73,20 @@ describe("tabModel", () => {
     expect(deepLinkTab("athletes", false)).toBeNull();
     expect(deepLinkTab("athletes", true)).toBe("coach");
     expect(deepLinkTab("plan", false)).toBe("planner");
+  });
+});
+
+describe("held role-gated deep link", () => {
+  it("only the Athletes tab needs a role", () => {
+    expect(deepLinkNeedsRole("coach")).toBe(true);
+    expect(deepLinkNeedsRole("planner")).toBe(false);
+    expect(deepLinkNeedsRole(null)).toBe(false);
+  });
+  it("waits for the user, applies for coaches, drops for everyone else", () => {
+    expect(resolveHeldDeepLink(null)).toBe("wait");
+    expect(resolveHeldDeepLink(undefined)).toBe("wait");
+    expect(resolveHeldDeepLink({ is_coach: true })).toBe("apply");
+    expect(resolveHeldDeepLink({ is_coach: false })).toBe("drop");
+    expect(resolveHeldDeepLink({})).toBe("drop");
   });
 });

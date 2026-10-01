@@ -464,8 +464,11 @@ body {
   padding: 20px;
 }
 
-.content-panel .content-panel-inner--plan-v2 {
-  max-width: 720px;
+/* Doubled class beats the Workspace.module.css `.shell .content-panel-inner` 1240px cap. */
+@media (min-width: 769px) {
+  .content-panel .content-panel-inner.content-panel-inner--plan-v2 {
+    max-width: 720px;
+  }
 }
 
 .content-panel-inner {
@@ -2110,7 +2113,7 @@ label {
 
 /* BottomSheet (V2 Manage plan) */
 .bottom-sheet-backdrop { position: fixed; inset: 0; z-index: 9000; background: rgba(0,0,0,0.5); display: flex; align-items: flex-end; justify-content: center; }
-.bottom-sheet-panel { background: var(--bg-card, #fff); color: var(--text-primary); width: 100%; max-height: 85vh; overflow-y: auto; border-radius: 16px 16px 0 0; padding: 16px 16px calc(16px + env(safe-area-inset-bottom)); animation: bottomSheetUp 0.22s ease-out; outline: none; }
+.bottom-sheet-panel { background: #fff; color: var(--text-primary); width: 100%; max-height: 85vh; overflow-y: auto; border-radius: 16px 16px 0 0; padding: 16px 16px calc(16px + env(safe-area-inset-bottom)); animation: bottomSheetUp 0.22s ease-out; outline: none; }
 .bottom-sheet-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 .bottom-sheet-title { margin: 0; font-size: 17px; font-weight: 700; }
 .bottom-sheet-close { background: none; border: none; font-size: 24px; line-height: 1; min-width: 44px; min-height: 44px; cursor: pointer; color: var(--text-muted); }

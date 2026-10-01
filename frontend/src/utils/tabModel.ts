@@ -69,3 +69,11 @@ export const deepLinkTab = (value: string | null | undefined, isCoach: boolean):
   const tab = tabFromQuery(value);
   return tab === "coach" && !isCoach ? null : tab;
 };
+
+// Tabs a ?tab= deep link may only open for a signed-in user with the right role.
+export const deepLinkNeedsRole = (tab: TabName | null): boolean => tab === "coach";
+
+// What to do with a role-gated deep link held since boot: wait for the user to load,
+// open it for a coach, or drop it for anyone else.
+export const resolveHeldDeepLink = (user: { is_coach?: boolean } | null | undefined): "wait" | "apply" | "drop" =>
+  !user ? "wait" : user.is_coach ? "apply" : "drop";
