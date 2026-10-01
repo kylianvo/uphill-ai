@@ -12,8 +12,21 @@ enum GoogleSignInProvider {
             .compactMap({ ($0 as? UIWindowScene)?.keyWindow?.rootViewController })
             .first
         else { throw Failure.noPresenter }
-        let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: presenter)
-        guard let token = result.user.idToken?.tokenString else { throw Failure.noIDToken }
+        // Callback API: only a String crosses the continuation, because older Xcode
+        // rejects sending the non-Sendable GIDSignInResult out of the async overload.
+        let token: String = try await withCheckedThrowingContinuation { continuation in
+            GIDSignIn.sharedInstance.signIn(withPresenting: presenter) { result, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                guard let token = result?.user.idToken?.tokenString else {
+                    continuation.resume(throwing: Failure.noIDToken)
+                    return
+                }
+                continuation.resume(returning: token)
+            }
+        }
         return token
     }
 }
