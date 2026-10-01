@@ -19,7 +19,7 @@ struct SetupSteps: View {
 private struct SetupGoalStep: View {
     @Bindable var model: PlanSetupViewModel
     var body: some View {
-        Text("What are you training for?").font(UH.TextStyle.screenTitle)
+        Text("What are you training for?").font(.system(size: 34, weight: .heavy)).tracking(-0.6)
         ForEach(SetupGoal.allCases, id: \.self) { goal in
             SetupOption(title: goal.title, subtitle: goal.subtitle, symbol: goal.systemImage, selected: model.draft.goal == goal) {
                 model.selectGoal(goal)
@@ -207,17 +207,24 @@ private struct SetupOption: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: UH.Space.small) {
-                if let symbol { Image(systemName: symbol).frame(width: 28).foregroundStyle(UH.Palette.accentInk) }
+                if let symbol {
+                    Image(systemName: symbol).font(.title2.weight(.semibold)).frame(width: 36)
+                        .foregroundStyle(selected ? UH.Palette.buttonInk : UH.Palette.accentInk)
+                }
                 VStack(alignment: .leading, spacing: UH.Space.compact) {
-                    Text(title).font(UH.TextStyle.label)
-                    if let subtitle { Text(subtitle).font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary) }
+                    Text(title).font(.title3.weight(.bold))
+                    if let subtitle {
+                        Text(subtitle).font(UH.TextStyle.caption)
+                            .foregroundStyle(selected ? UH.Palette.buttonInk : UH.Palette.secondary)
+                    }
                 }
                 Spacer(minLength: 0)
-                if selected { Image(systemName: "checkmark.circle.fill").foregroundStyle(UH.Palette.accentInk) }
+                if selected { Image(systemName: "checkmark.circle.fill").font(.title2).foregroundStyle(UH.Palette.buttonInk) }
             }
-            .multilineTextAlignment(.leading).padding(UH.Space.regular).frame(maxWidth: .infinity, minHeight: 64)
-            .background(selected ? UH.Palette.activeFill : UH.Palette.card, in: RoundedRectangle(cornerRadius: UH.Radius.control))
-            .overlay(RoundedRectangle(cornerRadius: UH.Radius.control).stroke(selected ? UH.Palette.accentInk : UH.Palette.line, lineWidth: selected ? 1.5 : 1))
+            .foregroundStyle(selected ? UH.Palette.buttonInk : UH.Palette.ink)
+            .multilineTextAlignment(.leading).padding(UH.Space.regular).frame(maxWidth: .infinity, minHeight: 72)
+            .background(selected ? UH.Palette.accent : UH.Palette.card, in: RoundedRectangle(cornerRadius: UH.Radius.panel))
+            .overlay(RoundedRectangle(cornerRadius: UH.Radius.panel).stroke(selected ? Color.clear : UH.Palette.line, lineWidth: 1))
         }.buttonStyle(.plain).sensoryFeedback(.selection, trigger: selected)
     }
 }

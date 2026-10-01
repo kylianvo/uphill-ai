@@ -48,7 +48,7 @@ struct GenerationProgressView: View {
     private func running(_ job: GenerationCenter.Running) -> some View {
         VStack(alignment: .leading, spacing: UH.Space.section) {
             VStack(alignment: .leading, spacing: UH.Space.small) {
-                Text("Building your plan").font(UH.TextStyle.screenTitle)
+                Text("Building your plan").font(.system(size: 38, weight: .heavy)).tracking(-0.7)
                 Text("This usually takes under a minute. You can leave this screen; we'll keep working.")
                     .foregroundStyle(UH.Palette.secondary)
             }
@@ -58,7 +58,7 @@ struct GenerationProgressView: View {
                     HStack(spacing: UH.Space.small) {
                         ProgressView()
                         Text(String(format: "%d:%02d", elapsed / 60, elapsed % 60))
-                            .font(UH.TextStyle.metric)
+                            .font(.system(size: 64, weight: .heavy).monospacedDigit())
                             .accessibilityLabel("Elapsed \(elapsed / 60) minutes \(elapsed % 60) seconds")
                     }
                     if elapsed >= 90 {
@@ -84,11 +84,11 @@ struct GenerationProgressView: View {
     private var done: some View {
         VStack(spacing: UH.Space.section) {
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 64)).foregroundStyle(UH.Palette.accent)
+                .font(.system(size: 120)).foregroundStyle(UH.Palette.accent)
                 .scaleEffect(checkShown || reduceMotion ? 1 : 0.6)
                 .opacity(checkShown ? 1 : 0)
                 .accessibilityHidden(true)
-            Text("Your plan is ready").font(UH.TextStyle.screenTitle).multilineTextAlignment(.center)
+            Text("Your plan is ready").font(.system(size: 38, weight: .heavy)).tracking(-0.7).multilineTextAlignment(.center)
             Button("See my plan", action: onShowPlan).buttonStyle(.uhPrimary).accessibilityIdentifier("generation.seePlan")
         }
         .padding(.top, UH.Space.reading)
@@ -99,7 +99,7 @@ struct GenerationProgressView: View {
         VStack(spacing: UH.Space.section) {
             Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 48)).foregroundStyle(UH.Palette.danger)
                 .accessibilityHidden(true)
-            Text("We couldn't build your plan").font(UH.TextStyle.screenTitle).multilineTextAlignment(.center)
+            Text("We couldn't build your plan").font(.system(size: 34, weight: .heavy)).tracking(-0.6).multilineTextAlignment(.center)
             Text(message).foregroundStyle(UH.Palette.secondary).multilineTextAlignment(.center)
             Button("Try again", action: onRetry).buttonStyle(.uhPrimary).accessibilityIdentifier("generation.retry")
             Button("Edit answers", action: onEditAnswers).buttonStyle(.uhSecondary)
