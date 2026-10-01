@@ -1,0 +1,27 @@
+name: ios-native
+
+on:
+  pull_request:
+    paths:
+      - "ios-native/**"
+      - ".github/workflows/ios-native.yml"
+  push:
+    branches: [main]
+    paths:
+      - "ios-native/**"
+
+concurrency:
+  group: ios-native-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Test
+        # test.sh picks the newest iPhone simulator on the newest iOS runtime itself.
+        run: ios-native/scripts/test.sh

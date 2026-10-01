@@ -1,0 +1,72 @@
+name: UphillAI
+options:
+  bundleIdPrefix: ai.uphill
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    DEVELOPMENT_TEAM: 2JR7MV87X6
+    MARKETING_VERSION: "2.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    TARGETED_DEVICE_FAMILY: "1"
+packages:
+  GoogleSignIn:
+    url: https://github.com/google/GoogleSignIn-iOS
+    exactVersion: 10.0.0
+targets:
+  UphillAI:
+    type: application
+    platform: iOS
+    sources:
+      - path: UphillAI
+    info:
+      path: UphillAI/Info.plist
+      properties:
+        CFBundleDisplayName: Uphill AI
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        ITSAppUsesNonExemptEncryption: false
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+        GIDClientID: 451637841654-ncj3jhv24t9rq665noctori05faajiej.apps.googleusercontent.com
+        CFBundleURLTypes:
+          - CFBundleURLSchemes:
+              - com.googleusercontent.apps.451637841654-ncj3jhv24t9rq665noctori05faajiej
+    dependencies:
+      - package: GoogleSignIn
+        product: GoogleSignIn
+    entitlements:
+      path: UphillAI/UphillAI.entitlements
+      properties:
+        com.apple.developer.applesignin: [Default]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ai.uphill.app
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        TARGETED_DEVICE_FAMILY: "1"
+  UphillAITests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: UphillAITests
+    dependencies:
+      - target: UphillAI
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ai.uphill.app.tests
+        GENERATE_INFOPLIST_FILE: YES
+        TARGETED_DEVICE_FAMILY: "1"
+schemes:
+  UphillAI:
+    build:
+      targets:
+        UphillAI: all
+        UphillAITests: [test]
+    test:
+      targets:
+        - UphillAITests
