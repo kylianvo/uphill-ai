@@ -11,7 +11,7 @@ final class PlanFlowUITests: XCTestCase {
     func testSignInSeeTodayMarkDoneAndUndo() {
         let app = XCUIApplication()
         // `-KEY value` launch arguments land in UserDefaults' argument domain.
-        app.launchArguments = ["-UPHILL_ENVIRONMENT", "local"]
+        app.launchArguments = ["-UPHILL_ENVIRONMENT", "local", "-UITEST_NO_AUTOFILL", "YES"]
         app.launch()
 
         let email = app.textFields["signin.email"]
@@ -64,12 +64,30 @@ final class PlanFlowUITests: XCTestCase {
             XCTFail("No hittable workout row found anywhere in the plan")
             return
         }
-        dismissSavePrompt(app, wait: 1)   // it can appear late; it blocks every tap
+        dismissSavePrompt(app, wait: 1)   // belt and braces; the launch flag should prevent it
         let targetLabel = target.label
-        target.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-        let sheetOpened = app.buttons["Done"].waitForExistence(timeout: 10)
-        let tree = app.debugDescription.split(separator: "\n").filter { $0.contains("Sheet") || $0.contains("Done") || $0.contains("Mark") }
-        XCTAssertTrue(sheetOpened, "Detail sheet should open for \(targetLabel); tree: \(tree.prefix(8))")
+
+        // Bring the row to the middle of the screen (clear of nav bar and tab bar), then tap its centre.
+        let window = app.windows.firstMatch.frame
+        if target.frame.midY < window.height * 0.3 || target.frame.midY > window.height * 0.65 {
+            let from = target.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            let to = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.45))
+            from.press(forDuration: 0.1, thenDragTo: to)
+            _ = XCTWaiter.wait(for: [expectation(description: "settle")], timeout: 1.5)
+        }
+        let sheetMarker = app.buttons["Done"]
+        for attempt in 1...2 {
+            let row = app.buttons[target.identifier]
+            row.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            if sheetMarker.waitForExistence(timeout: 6) { break }
+            if attempt == 2 {
+                let shot = XCTAttachment(screenshot: app.screenshot())
+                shot.lifetime = .keepAlways
+                add(shot)
+                XCTFail("Detail sheet should open for \(targetLabel)")
+                return
+            }
+        }
 
         let markDone = app.buttons["detail.markDone"]
         let undoDone = app.buttons["detail.undoDone"]

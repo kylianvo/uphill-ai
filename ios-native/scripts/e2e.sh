@@ -25,4 +25,7 @@ for rt in sorted((r for r in devs if "SimRuntime.iOS-" in r), key=ver, reverse=T
 ')"
 fi
 echo "Testing on: $DESTINATION"
-xcodebuild test -project UphillAI.xcodeproj -scheme UphillAI-E2E -destination "$DESTINATION" -quiet
+xcodebuild test -project UphillAI.xcodeproj -scheme UphillAI-E2E -destination "$DESTINATION" \
+  -test-timeouts-enabled YES -collect-test-diagnostics never \
+  -default-test-execution-time-allowance 120 -maximum-test-execution-time-allowance 180 \
+  2>&1 | tail -n 40
