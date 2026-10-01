@@ -7,8 +7,8 @@ enum APIError: Error, Equatable, Sendable {
     case decoding(String)
     case transport(String)
 
-    static func from(status: Int, data: Data) -> APIError {
-        if status == 401 { return .unauthorized }
+    static func from(status: Int, data: Data, treating401AsSessionExpiry: Bool = true) -> APIError {
+        if status == 401, treating401AsSessionExpiry { return .unauthorized }
         let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
         switch object?["detail"] {
         case let message as String:

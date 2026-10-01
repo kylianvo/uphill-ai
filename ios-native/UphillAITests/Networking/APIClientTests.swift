@@ -55,6 +55,17 @@ struct APIClientTests {
         #expect(called.withLock { $0 })
     }
 
+    @Test func unauthenticatedEndpoint401SurfacesServerMessageWithoutSignOut() async {
+        let called = Mutex(false)
+        let client = makeStubClient(onUnauthorized: { called.withLock { $0 = true } }) { _ in
+            (401, json(["detail": "Invalid email or password."]))
+        }
+        await #expect(throws: APIError.http(status: 401, message: "Invalid email or password.", code: nil)) {
+            let _: EmptyResponse = try await client.send(.get("/api/auth/login", requiresAuth: false))
+        }
+        #expect(called.withLock { $0 } == false)
+    }
+
     @Test func parsesStringDetail() async {
         let client = makeStubClient { _ in (409, json(["detail": "An account with this email already exists."])) }
         await #expect(throws: APIError.http(status: 409, message: "An account with this email already exists.", code: nil)) {

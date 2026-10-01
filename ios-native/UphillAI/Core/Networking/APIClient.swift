@@ -29,11 +29,13 @@ final class APIClient: Sendable {
         }
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         guard (200..<300).contains(status) else {
-            let error = APIError.from(status: status, data: data)
-            if error == .unauthorized, endpoint.requiresAuth {
+            // A 401 from an endpoint that sends no token (login, register) is a credential
+            // failure with the server's own message, not an expired session.
+            if status == 401, endpoint.requiresAuth {
                 await onUnauthorized()
+                throw APIError.unauthorized
             }
-            throw error
+            throw APIError.from(status: status, data: data, treating401AsSessionExpiry: endpoint.requiresAuth)
         }
         do {
             return try JSONCoding.decoder.decode(R.self, from: data)
