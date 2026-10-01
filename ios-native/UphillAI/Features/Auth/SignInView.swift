@@ -71,16 +71,18 @@ struct SignInView: View {
                     .textContentType(.name)
             }
             textField("Email", text: $model.email, field: .email)
-                .textContentType(.username)
+                .accessibilityIdentifier("signin.email")
+                .textContentType(Self.autofillDisabled ? nil : .username)
                 .keyboardType(.emailAddress)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
             SecureField("Password (8+ characters)", text: $model.password)
-                .textContentType(model.mode == .register ? .newPassword : .password)
+                .textContentType(Self.autofillDisabled ? nil : (model.mode == .register ? .newPassword : .password))
                 .focused($focused, equals: .password)
                 .submitLabel(.go)
                 .onSubmit { if model.canSubmit { Task { await model.submitEmail() } } }
                 .inputBox()
+                .accessibilityIdentifier("signin.password")
 
             Button {
                 Task { await model.submitEmail() }
@@ -93,6 +95,7 @@ struct SignInView: View {
             }
             .buttonStyle(.uhPrimary)
             .disabled(!model.canSubmit)
+            .accessibilityIdentifier("signin.submit")
 
             Button(model.mode == .signIn ? "New to Uphill? Create an account" : "Have an account? Sign in") {
                 withAnimation(reduceMotion ? nil : UH.Motion.standard) {
@@ -103,6 +106,16 @@ struct SignInView: View {
             .foregroundStyle(UH.Palette.accentInk)
             .frame(minHeight: 44)
         }
+    }
+
+    /// UI tests launch with `-UITEST_NO_AUTOFILL YES` so iOS never offers "Save Password?".
+    /// Debug builds only; release builds always keep autofill.
+    private static var autofillDisabled: Bool {
+        #if DEBUG
+        UserDefaults.standard.bool(forKey: "UITEST_NO_AUTOFILL")
+        #else
+        false
+        #endif
     }
 
     private func textField(_ title: String, text: Binding<String>, field: Field) -> some View {

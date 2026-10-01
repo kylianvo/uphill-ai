@@ -61,6 +61,19 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: ai.uphill.app.tests
         GENERATE_INFOPLIST_FILE: YES
         TARGETED_DEVICE_FAMILY: "1"
+  UphillAIUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: UphillAIUITests
+    dependencies:
+      - target: UphillAI
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ai.uphill.app.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: UphillAI
+        TARGETED_DEVICE_FAMILY: "1"
 schemes:
   UphillAI:
     build:
@@ -70,3 +83,11 @@ schemes:
     test:
       targets:
         - UphillAITests
+  UphillAI-E2E:
+    build:
+      targets:
+        UphillAI: all
+        UphillAIUITests: [test]
+    test:
+      targets:
+        - UphillAIUITests

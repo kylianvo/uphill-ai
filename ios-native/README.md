@@ -36,6 +36,15 @@ pkill -f DTServiceHub; pkill testmanagerd; killall com.apple.CoreSimulator.CoreS
 
 CI (`.github/workflows/ios-native.yml`) runs the same script on a macOS runner for PRs touching `ios-native/**`.
 
+## End-to-end (local backend)
+
+```bash
+ios-native/scripts/e2e.sh
+```
+
+Seeds `ios-preview@uphill.ai` (password `uphill-preview-1`, local only) with plans around today, then runs
+`UphillAIUITests`. Not part of CI: it needs the local Docker stack.
+
 ## Backends
 
 Debug builds default to the local Docker backend (`http://localhost:8000`; `docker compose up -d` at the repo root).

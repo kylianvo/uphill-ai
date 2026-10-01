@@ -52,4 +52,13 @@ get() {
 
 get /api/auth/me auth_me.json
 
+get /api/coach/active-plan active_plan_none.json   # ios-fixtures has no plan
+
+# The preview athlete (backend/scripts/seed_ios_preview.py) has plans.
+PREVIEW=$(curl -sf -X POST "$BASE/api/auth/mock-login" \
+  -H 'Content-Type: application/json' -d '{"email":"ios-preview@uphill.ai"}')
+TOKEN=$(printf '%s' "$PREVIEW" | python3 -c 'import json,sys; print(json.load(sys.stdin)["session_token"])')
+get /api/coach/active-plan active_plan.json
+get /api/coach/recent-plans recent_plans.json
+
 echo "Recorded fixtures into $OUT"
