@@ -2,7 +2,8 @@ import SwiftUI
 
 struct PlanView: View {
     @Bindable var model: PlanViewModel
-    @State private var selectedWorkout: Workout?   // Task 9's detail sheet reads this
+    @State private var selectedWorkout: Workout?
+    @State private var showManage = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -13,10 +14,14 @@ struct PlanView: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
-                        Button("Manage") {}
-                            .disabled(true)   // Task 9
+                        Button("Manage") { showManage = true }
+                            .disabled(model.snapshot == nil)
                     }
                 }
+                .sheet(item: $selectedWorkout) { workout in
+                    WorkoutDetailSheet(model: model, workoutID: workout.id)
+                }
+                .sheet(isPresented: $showManage) { ManagePlanSheet(model: model) }
         }
         .task { if model.state == .loading { await model.load() } }
     }
