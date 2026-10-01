@@ -16,8 +16,11 @@ final class PlanFlowUITests: XCTestCase {
 
         let email = app.textFields["signin.email"]
         let today = app.descendants(matching: .any)["day.today"]
-        XCTAssertTrue(email.waitForExistence(timeout: 10) || today.waitForExistence(timeout: 10),
-                      "Expected sign-in or the plan")
+        // A previous test may have left a brand-new account signed in: its Welcome cover blocks the app.
+        let notNow = app.buttons["Not now"]
+        if notNow.waitForExistence(timeout: 5) { notNow.tap() }
+        // Signed out, or signed in as whoever the last run left behind (maybe a plan-less new account).
+        _ = email.waitForExistence(timeout: 10)
 
         // The Keychain session survives reinstalls on the simulator: sign out
         // first so the sign-in typing path runs every time.

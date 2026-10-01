@@ -69,6 +69,7 @@ struct SignInView: View {
             if model.mode == .register {
                 textField("Name", text: $model.name, field: .name)
                     .textContentType(.name)
+                    .accessibilityIdentifier("signin.name")
             }
             textField("Email", text: $model.email, field: .email)
                 .accessibilityIdentifier("signin.email")

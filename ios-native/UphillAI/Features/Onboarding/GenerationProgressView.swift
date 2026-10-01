@@ -49,6 +49,7 @@ struct GenerationProgressView: View {
         VStack(alignment: .leading, spacing: UH.Space.section) {
             VStack(alignment: .leading, spacing: UH.Space.small) {
                 Text("Building your plan").font(.system(size: 38, weight: .heavy)).tracking(-0.7)
+                    .accessibilityAddTraits(.isHeader).accessibilityIdentifier("generation.running")
                 Text("This usually takes under a minute. You can leave this screen; we'll keep working.")
                     .foregroundStyle(UH.Palette.secondary)
             }
@@ -88,11 +89,15 @@ struct GenerationProgressView: View {
                 .scaleEffect(checkShown || reduceMotion ? 1 : 0.6)
                 .opacity(checkShown ? 1 : 0)
                 .accessibilityHidden(true)
-            Text("Your plan is ready").font(.system(size: 38, weight: .heavy)).tracking(-0.7).multilineTextAlignment(.center)
+            Text("Your plan is ready").font(.system(size: 38, weight: .heavy)).tracking(-0.7)
+                .accessibilityAddTraits(.isHeader).accessibilityIdentifier("generation.done").multilineTextAlignment(.center)
             Button("See my plan", action: onShowPlan).buttonStyle(.uhPrimary).accessibilityIdentifier("generation.seePlan")
         }
         .padding(.top, UH.Space.reading)
-        .onAppear { withAnimation(reduceMotion ? .easeOut(duration: 0.15) : UH.Motion.standard) { checkShown = true } }
+        .onAppear {
+            withAnimation(reduceMotion ? .easeOut(duration: 0.15) : UH.Motion.standard) { checkShown = true }
+            AccessibilityNotification.Announcement("Your plan is ready").post()
+        }
     }
 
     private func failed(_ message: String) -> some View {

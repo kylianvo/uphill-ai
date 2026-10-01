@@ -72,3 +72,5 @@ Re-record after a backend response changes. Never hand-edit a recorded fixture; 
 3. Upload `ios-native/build/export/UphillAI.ipa` with Xcode Organizer or Transporter.
 
 The script builds the `.ipa` only; it never uploads.
+
+OnboardingFlowUITests registers a new `ios-e2e-<timestamp>@uphill.ai` account on each run (local database only).
