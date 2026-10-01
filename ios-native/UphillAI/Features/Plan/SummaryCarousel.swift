@@ -3,6 +3,9 @@ import SwiftUI
 
 struct SummaryCarousel: View {
     let model: PlanViewModel
+    var adapting: Int? = nil
+    var onReview: () -> Void = {}
+    var onAdapt: () -> Void = {}
     @State private var page: Int? = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private let pageNames = ["Volume", "Race", "This week", "Phase"]
@@ -39,6 +42,19 @@ struct SummaryCarousel: View {
                     .accessibilityAddTraits(index == (page ?? 0) ? .isSelected : [])
                 }
             }
+            HStack(spacing: UH.Space.small) {
+                if let adapting {
+                    ProgressView()
+                    Text("Adapting week \(adapting)\u{2026}").font(UH.TextStyle.label)
+                } else {
+                    Button("Review week", action: onReview).accessibilityIdentifier("plan.review")
+                    if model.canAdapt(week: model.selectedWeek) {
+                        Button("Adapt this week", action: onAdapt).accessibilityIdentifier("plan.adapt")
+                    }
+                }
+            }
+            .font(UH.TextStyle.label).frame(minHeight: 44).tint(UH.Palette.accentInk)
+            .buttonStyle(.bordered).controlSize(.regular)
         }
     }
 

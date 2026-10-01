@@ -326,4 +326,45 @@ struct PlanViewModelTests {
         let targets = model.moveTargets(for: snap.workouts.first { $0.weekNumber == 2 }!)
         #expect(targets.allSatisfy { $0.week <= 2 })
     }
+
+    @Test func adaptSendsFatigueAndTracksJob() async {
+        let service = FakePlanService()
+        service.activeResult.withLock { $0 = .success(snapshot()) }
+        let gen = FakeGenerationService()
+        gen.startResult.withLock { $0 = .success(JobStart(jobId: "ad")) }
+        let (model, center) = makeWithGeneration(service, gen: gen)
+        await model.load()
+        #expect(model.canAdapt(week: 2))
+        #expect(!model.canAdapt(week: 1))      // past week
+        #expect(!model.canAdapt(week: 4))      // not generated
+        let error = await model.adaptWeek(2, fatigue: .hard, rpe: 8, notes: "Bad sleep")
+        #expect(error == nil)
+        #expect(gen.calls.withLock { $0.filter { $0.hasPrefix("adapt") } } == ["adapt 2 hard"])
+        #expect(center.running?.kind == .adaptWeek)
+    }
+
+    @Test func adaptBlockedOffline() async {
+        let cache = OfflineCache.inMemory()
+        cache.save(snapshot(), as: .plan)
+        let service = FakePlanService()
+        service.activeResult.withLock { $0 = .failure(.transport("offline")) }
+        let gen = FakeGenerationService()
+        let center = GenerationCenter(service: gen, defaults: UserDefaults(suiteName: UUID().uuidString)!)
+        let now = self.now
+        let model = PlanViewModel(service: service, cache: cache, now: { now }, calendar: cal, generation: center, generationService: gen)
+        await model.load()
+        #expect(await model.adaptWeek(2, fatigue: .easy, rpe: nil, notes: "") == PlanViewModel.offlineMessage)
+        #expect(gen.calls.withLock { $0 }.isEmpty)
+    }
+
+    @Test func weekReviewPassesThroughService() async {
+        let service = FakePlanService()
+        service.activeResult.withLock { $0 = .success(snapshot()) }
+        service.reviewResult.withLock { $0 = .success(try! Fixture.decode(WeekReview.self, "week_review.json")) }
+        let model = make(service)
+        await model.load()
+        let result = await model.weekReview(1)
+        #expect((try? result.get())?.weekNumber == 1)
+        #expect(service.calls.withLock { $0 }.contains("review 7 w1"))
+    }
 }

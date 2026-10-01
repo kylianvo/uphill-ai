@@ -36,6 +36,28 @@ enum NextWeekResult: Equatable {
     case started, needsConfirmation(String), failed(String)
 }
 
+enum FatigueLevel: String, CaseIterable, Identifiable {
+    case easy, medium, hard, exhausted
+
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .easy: "Fresh"
+        case .medium: "Normal tiredness"
+        case .hard: "Heavy legs"
+        case .exhausted: "Exhausted"
+        }
+    }
+    var subtitle: String {
+        switch self {
+        case .easy: "Ready for more"
+        case .medium: "About what I expected"
+        case .hard: "Struggling to hit the paces"
+        case .exhausted: "I need a lighter week"
+        }
+    }
+}
+
 @Observable
 @MainActor
 final class PlanViewModel {
@@ -313,6 +335,45 @@ final class PlanViewModel {
             return .failed(error.userMessage)
         } catch {
             return .failed(error.localizedDescription)
+        }
+    }
+
+    // MARK: Adapt and review
+
+    func canAdapt(week: Int) -> Bool {
+        guard let snapshot, let last = snapshot.workouts.map(\.weekNumber).max() else { return false }
+        return week >= currentWeek && week <= last
+    }
+
+    /// Returns an error message, or nil once the job has started.
+    func adaptWeek(_ week: Int, fatigue: FatigueLevel, rpe: Int?, notes: String) async -> String? {
+        guard let planID = snapshot?.plan.id, let generation, let generationService else {
+            return "Couldn't start adapting this week. Try again."
+        }
+        guard cachedAt == nil else { return Self.offlineMessage }
+        let trimmed = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        do {
+            let job = try await generationService.adaptWeek(AdaptWeekBody(
+                planId: planID, weekNumber: week, overallRpe: rpe, fatigueLevel: fatigue.rawValue,
+                fatigueNotes: trimmed.isEmpty ? nil : trimmed, lang: "en",
+                clientToday: PlanCalendar.ymd(now(), calendar: calendar)))
+            generation.track(kind: .adaptWeek, jobID: job.jobId, summary: [])
+            return nil
+        } catch let error as APIError {
+            return error.userMessage
+        } catch {
+            return error.localizedDescription
+        }
+    }
+
+    func weekReview(_ week: Int) async -> Result<WeekReview, APIError> {
+        guard let planID = snapshot?.plan.id else { return .failure(.http(status: 404, message: nil, code: nil)) }
+        do {
+            return .success(try await service.weekReview(planID: planID, week: week))
+        } catch let error as APIError {
+            return .failure(error)
+        } catch {
+            return .failure(.transport(error.localizedDescription))
         }
     }
 

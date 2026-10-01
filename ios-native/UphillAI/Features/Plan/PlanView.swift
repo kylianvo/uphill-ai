@@ -9,6 +9,8 @@ struct PlanView: View {
     @State private var showManage = false
     @State private var startNewAfterManage = false
     @State private var showNextWeek = false
+    @State private var showAdapt = false
+    @State private var showReview = false
     @State private var readyBanner: String?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -27,6 +29,8 @@ struct PlanView: View {
                 .sheet(item: $selectedWorkout) { workout in
                     WorkoutDetailSheet(model: model, workoutID: workout.id)
                 }
+                .sheet(isPresented: $showAdapt) { AdaptWeekSheet(model: model, week: model.selectedWeek) }
+                .sheet(isPresented: $showReview) { WeekReviewSheet(model: model, week: model.selectedWeek) }
                 .sheet(isPresented: $showNextWeek) {
                     if let offer = model.nextWeekOffer { NextWeekSheet(model: model, offer: offer) }
                 }
@@ -70,7 +74,9 @@ struct PlanView: View {
                     VStack(alignment: .leading, spacing: UH.Space.regular) {
                         if generation.running?.kind == .newPlan { buildingBanner }
                         if let cachedAt = model.cachedAt { offlineBanner(cachedAt) }
-                        SummaryCarousel(model: model)
+                        SummaryCarousel(model: model,
+                                        adapting: generation.running?.kind == .adaptWeek ? model.selectedWeek : nil,
+                                        onReview: { showReview = true }, onAdapt: { showAdapt = true })
                         WeekSwitcher(weeks: model.weeks, selected: $model.selectedWeek, currentWeek: model.currentWeek)
                             .padding(.horizontal, UH.Space.regular)
                         LazyVStack(spacing: UH.Space.compact) {
@@ -87,10 +93,10 @@ struct PlanView: View {
                 .refreshable { await model.load() }
                 .onChange(of: model.selectedWeek) { Task { await model.refreshNextWeekOffer() } }
                 .onChange(of: generation.lastOutcome) { _, outcome in
-                    guard let outcome, outcome.kind == .nextWeek else { return }
+                    guard let outcome, outcome.kind == .nextWeek || outcome.kind == .adaptWeek else { return }
                     generation.clearOutcome()
                     if case .done = outcome.outcome {
-                        readyBanner = "New week is ready"
+                        readyBanner = outcome.kind == .adaptWeek ? "Week updated" : "New week is ready"
                         Task { try? await Task.sleep(for: .seconds(3)); readyBanner = nil }
                     }
                 }
