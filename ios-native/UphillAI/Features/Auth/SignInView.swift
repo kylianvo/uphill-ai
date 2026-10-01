@@ -71,6 +71,7 @@ struct SignInView: View {
                     .textContentType(.name)
             }
             textField("Email", text: $model.email, field: .email)
+                .accessibilityIdentifier("signin.email")
                 .textContentType(.username)
                 .keyboardType(.emailAddress)
                 .textInputAutocapitalization(.never)
@@ -81,6 +82,7 @@ struct SignInView: View {
                 .submitLabel(.go)
                 .onSubmit { if model.canSubmit { Task { await model.submitEmail() } } }
                 .inputBox()
+                .accessibilityIdentifier("signin.password")
 
             Button {
                 Task { await model.submitEmail() }
@@ -93,6 +95,7 @@ struct SignInView: View {
             }
             .buttonStyle(.uhPrimary)
             .disabled(!model.canSubmit)
+            .accessibilityIdentifier("signin.submit")
 
             Button(model.mode == .signIn ? "New to Uphill? Create an account" : "Have an account? Sign in") {
                 withAnimation(reduceMotion ? nil : UH.Motion.standard) {

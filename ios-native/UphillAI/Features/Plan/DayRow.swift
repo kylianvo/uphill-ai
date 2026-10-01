@@ -33,7 +33,10 @@ struct DayRow: View {
         .padding(.horizontal, UH.Space.regular)
         .frame(minHeight: 44)
         .accessibilityElement(children: .combine)
+        .accessibilityIdentifier(dayIdentifier)
     }
+
+    private var dayIdentifier: String { day.eyebrow == "TODAY" ? "day.today" : "day.\(day.weekday.rawValue)" }
 
     private var workoutCard: some View {
         VStack(alignment: .leading, spacing: UH.Space.compact) {
@@ -47,8 +50,11 @@ struct DayRow: View {
             ForEach(day.workouts) { workout in
                 Button { onSelect(workout) } label: { workoutRow(workout) }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier("workout.\(workout.id)")
             }
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(dayIdentifier)
         .padding(UH.Space.regular)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(day.isToday ? UH.Palette.activeFill : UH.Palette.card,

@@ -123,9 +123,9 @@ struct WorkoutDetailSheet: View {
     private func actions(_ w: Workout) -> some View {
         VStack(spacing: UH.Space.small) {
             if w.isDone {
-                Button("Undo done") { run { await model.setDone(w, false) } }.buttonStyle(.uhSecondary)
+                Button("Undo done") { run { await model.setDone(w, false) } }.buttonStyle(.uhSecondary).accessibilityIdentifier("detail.undoDone")
             } else if !w.isRest {
-                Button("Mark as done") { run { await model.setDone(w, true) } }.buttonStyle(.uhPrimary)
+                Button("Mark as done") { run { await model.setDone(w, true) } }.buttonStyle(.uhPrimary).accessibilityIdentifier("detail.markDone")
                 if !w.isMissedFlag {
                     Button("Mark as missed") { run { await model.setMissed(w) } }.buttonStyle(.uhSecondary)
                 } else {
