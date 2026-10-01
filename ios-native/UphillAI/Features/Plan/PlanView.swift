@@ -2,8 +2,12 @@ import SwiftUI
 
 struct PlanView: View {
     @Bindable var model: PlanViewModel
+    let generation: GenerationCenter
+    let onBuildPlan: () -> Void
+    let onViewProgress: () -> Void
     @State private var selectedWorkout: Workout?
     @State private var showManage = false
+    @State private var startNewAfterManage = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -21,7 +25,9 @@ struct PlanView: View {
                 .sheet(item: $selectedWorkout) { workout in
                     WorkoutDetailSheet(model: model, workoutID: workout.id)
                 }
-                .sheet(isPresented: $showManage) { ManagePlanSheet(model: model) }
+                .sheet(isPresented: $showManage, onDismiss: {
+                    if startNewAfterManage { startNewAfterManage = false; onBuildPlan() }
+                }) { ManagePlanSheet(model: model) { startNewAfterManage = true } }
         }
         .task { if model.state == .loading { await model.load() } }
     }
@@ -32,8 +38,20 @@ struct PlanView: View {
         case .loading:
             ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
         case .empty:
-            message(title: "No active plan yet",
-                    body: "Create your first plan on uphill-ai.io.vn for now. Plan creation is coming to the app soon.")
+            VStack(spacing: UH.Space.section) {
+                if generation.running?.kind == .newPlan { buildingBanner }
+                VStack(spacing: UH.Space.compact) {
+                    Image(systemName: "mountain.2").font(.system(size: 48)).foregroundStyle(UH.Palette.accentInk)
+                        .accessibilityHidden(true)
+                    Text("No plan yet").font(UH.TextStyle.sectionTitle).foregroundStyle(UH.Palette.ink)
+                    Text("Your weekly workouts show up here once Coach Uphill builds your plan.")
+                        .font(UH.TextStyle.body).foregroundStyle(UH.Palette.secondary).multilineTextAlignment(.center)
+                }
+                Button("Build my plan", action: onBuildPlan)
+                    .buttonStyle(.uhPrimary).frame(maxWidth: 280).accessibilityIdentifier("plan.build")
+            }
+            .padding(UH.Space.section)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         case .failed(let error):
             VStack(spacing: UH.Space.regular) {
                 message(title: "Couldn't load your plan", body: error)
@@ -45,6 +63,7 @@ struct PlanView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: UH.Space.regular) {
+                        if generation.running?.kind == .newPlan { buildingBanner }
                         if let cachedAt = model.cachedAt { offlineBanner(cachedAt) }
                         SummaryCarousel(model: model)
                         WeekSwitcher(weeks: model.weeks, selected: $model.selectedWeek, currentWeek: model.currentWeek)
@@ -77,6 +96,22 @@ struct PlanView: View {
             proxy.scrollTo(today.id, anchor: .top)
         } else {
             withAnimation(UH.Motion.standard) { proxy.scrollTo(today.id, anchor: .top) }
+        }
+    }
+
+    private var buildingBanner: some View {
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            let elapsed = max(0, Int(context.date.timeIntervalSince(generation.running?.startedAt ?? context.date)))
+            HStack(spacing: UH.Space.small) {
+                ProgressView()
+                Text("Building your plan… \(elapsed / 60):\(String(format: "%02d", elapsed % 60))")
+                    .font(UH.TextStyle.caption).foregroundStyle(UH.Palette.ink)
+                Spacer(minLength: 0)
+                Button("View", action: onViewProgress).font(UH.TextStyle.disclosure).frame(minWidth: 44, minHeight: 44)
+            }
+            .padding(.horizontal, UH.Space.small)
+            .background(UH.Palette.hover, in: RoundedRectangle(cornerRadius: UH.Radius.control))
+            .padding(.horizontal, UH.Space.regular)
         }
     }
 

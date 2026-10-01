@@ -133,4 +133,13 @@ struct PlanSetupViewModelTests {
         model.selectRaceGoal(.time)
         #expect(model.draft.targetMinutes == 390)
     }
+    @Test func reopenAtReviewKeepsAnswersAndAllowsResubmit() {
+        let (model, _, _, _) = make(.newPlan)
+        model.selectGoal(.startRunning)
+        model.next()
+        model.reopenAtReview()
+        #expect(model.step == .review)
+        #expect(!model.didStart)
+        #expect(model.draft.goal == .startRunning)
+    }
 }

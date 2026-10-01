@@ -36,6 +36,11 @@ final class PlanSetupViewModel {
     var today: Date { calendar.startOfDay(for: now()) }
     var earliestRaceDate: Date { calendar.date(byAdding: .day, value: 14, to: today)! }
 
+    func reopenAtReview() {
+        didStart = false
+        jump(to: .review)
+    }
+
     func jump(to step: SetupStep) {
         guard let index = steps.firstIndex(of: step) else { return }
         direction = index < stepIndex ? .backward : .forward

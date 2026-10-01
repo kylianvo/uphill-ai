@@ -92,4 +92,13 @@ struct AppModelTests {
         app.session.signOut()
         #expect(!app.onboardingDeferred)
     }
+    @Test func makeSetupRemembersTheLastSetupUntilSignOut() throws {
+        let app = AppModel(tokenStore: InMemoryTokenStore(), cache: .inMemory())
+        app.session.setUser(try JSONCoding.decoder.decode(User.self, from: Fixture.data("auth_me.json")))
+        #expect(app.lastSetup == nil)
+        let setup = app.makeSetup(mode: .newPlan)
+        #expect(app.lastSetup === setup)
+        app.session.signOut()
+        #expect(app.lastSetup == nil)
+    }
 }

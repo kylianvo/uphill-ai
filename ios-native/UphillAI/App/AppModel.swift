@@ -17,8 +17,13 @@ final class AppModel {
         session.user?.onboardingComplete == false && generation.running == nil && !onboardingDeferred
     }
 
+    /// The setup behind the last generation, so "Try again" re-submits the same answers.
+    private(set) var lastSetup: PlanSetupViewModel?
+
     func makeSetup(mode: PlanSetupViewModel.Mode) -> PlanSetupViewModel {
-        PlanSetupViewModel(mode: mode, user: session.user, service: generationService, generation: generation, session: session)
+        let setup = PlanSetupViewModel(mode: mode, user: session.user, service: generationService, generation: generation, session: session)
+        lastSetup = setup
+        return setup
     }
 
     private(set) var restoreError: String?
@@ -53,6 +58,7 @@ final class AppModel {
             self?.generation.reset()
             self?.plan.reset()
             self?.onboardingDeferred = false
+            self?.lastSetup = nil
         }
         generation.onFinished = { [weak self] kind, outcome in
             guard let self, self.session.user != nil else { return }

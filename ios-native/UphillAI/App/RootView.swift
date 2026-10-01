@@ -13,9 +13,6 @@ struct RootView: View {
                 restoringView
             case .signedIn:
                 MainTabs(app: app)
-                    .fullScreenCover(isPresented: Binding(get: { app.needsOnboarding }, set: { if !$0 { app.onboardingDeferred = true } })) {
-                        OnboardingScreen(app: app)
-                    }
             }
         }
         .animation(reduceMotion ? nil : UH.Motion.standard, value: app.session.state)
@@ -59,30 +56,86 @@ private struct SignInScreen: View {
     }
 }
 
+private enum Overlay: Identifiable {
+    case onboarding, progress, setup(PlanSetupViewModel)
+
+    var id: String {
+        switch self {
+        case .onboarding: "onboarding"
+        case .progress: "progress"
+        case .setup(let model): "setup-\(ObjectIdentifier(model).hashValue)"
+        }
+    }
+}
+
 private struct MainTabs: View {
     let app: AppModel
+    @State private var overlay: Overlay?
+    @State private var selection = Tab.plan
+
+    private enum Tab { case plan, me }
 
     var body: some View {
-        TabView {
-            Tab("Plan", systemImage: "figure.run") {
-                PlanView(model: app.plan)
+        TabView(selection: $selection) {
+            SwiftUI.Tab("Plan", systemImage: "figure.run", value: Tab.plan) {
+                PlanView(model: app.plan, generation: app.generation,
+                         onBuildPlan: { overlay = .setup(app.makeSetup(mode: app.session.user?.onboardingComplete == false ? .onboarding : .newPlan)) },
+                         onViewProgress: { overlay = .progress })
             }
-            Tab("Me", systemImage: "person.crop.circle") {
+            SwiftUI.Tab("Me", systemImage: "person.crop.circle", value: Tab.me) {
                 ProfileView(app: app)
             }
         }
+        .fullScreenCover(item: $overlay) { current in
+            switch current {
+            case .onboarding: OnboardingScreen(app: app, close: closeSetup)
+            case .progress:
+                GenerationProgressView(
+                    generation: app.generation,
+                    hasPlan: app.plan.snapshot != nil,
+                    onShowPlan: { app.generation.clearOutcome(); selection = .plan; overlay = nil },
+                    onLeave: { overlay = nil },
+                    onRetry: { reopen(at: .review) },
+                    onEditAnswers: { reopen(at: .goal) })
+            case .setup(let model): PlanSetupFlow(model: model, onClose: closeSetup)
+            }
+        }
+        .onChange(of: app.needsOnboarding, initial: true) { _, needs in
+            if needs, overlay == nil { overlay = .onboarding }
+        }
+        .onChange(of: app.generation.running?.jobID, initial: true) { _, job in
+            if job != nil, app.generation.running?.kind == .newPlan { overlay = .progress }
+        }
+        .onChange(of: app.generation.lastOutcome) { _, outcome in
+            if outcome?.kind == .newPlan { overlay = .progress }
+        }
+    }
+
+    /// The flow calls this after a successful start too; that must not hide the progress screen.
+    private func closeSetup() {
+        app.onboardingDeferred = true
+        if case .progress = overlay { return }
+        overlay = nil
+    }
+
+    private func reopen(at step: SetupStep) {
+        guard let setup = app.lastSetup else { overlay = nil; return }
+        app.generation.clearOutcome()
+        if step == .review { setup.reopenAtReview() } else { setup.jump(to: step) }
+        overlay = .setup(setup)
     }
 }
 
 private struct OnboardingScreen: View {
     let app: AppModel
+    let close: () -> Void
     @State private var setup: PlanSetupViewModel?
 
     var body: some View {
         if let setup {
-            PlanSetupFlow(model: setup) { app.onboardingDeferred = true }
+            PlanSetupFlow(model: setup, onClose: close)
         } else {
-            WelcomeView(onStart: { setup = app.makeSetup(mode: .onboarding) }, onNotNow: { app.onboardingDeferred = true })
+            WelcomeView(onStart: { setup = app.makeSetup(mode: .onboarding) }, onNotNow: close)
         }
     }
 }
