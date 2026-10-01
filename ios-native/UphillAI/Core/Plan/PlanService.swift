@@ -13,6 +13,11 @@ protocol PlanServicing: Sendable {
     func move(planID: Int, workoutID: Int, toWeek: Int, toDay: Weekday, clientToday: String) async throws -> [Workout]
     func recentPlans() async throws -> [Plan]
     func selectPlan(id: Int) async throws -> PlanSnapshot?
+    func blockCompletion(planID: Int) async throws -> BlockCompletionResponse
+    func weekReview(planID: Int, week: Int) async throws -> WeekReview
+    func goal(planID: Int) async throws -> PlanGoal
+    func reassessGoal(planID: Int) async throws -> PlanGoal
+    func applyGoal(planID: Int, targetMinutes: Double) async throws -> PlanGoal
 }
 
 struct PlanService: PlanServicing {
@@ -66,5 +71,27 @@ struct PlanService: PlanServicing {
     func selectPlan(id: Int) async throws -> PlanSnapshot? {
         let response: ActivePlanResponse = try await client.send(.send(.post, "/api/coach/select-plan", body: SelectBody(planId: id)))
         return response.snapshot
+    }
+
+    func blockCompletion(planID: Int) async throws -> BlockCompletionResponse {
+        try await client.send(.get("/api/coach/block-completion/\(planID)"))
+    }
+
+    func weekReview(planID: Int, week: Int) async throws -> WeekReview {
+        try await client.send(.get("/api/coach/week-review/\(planID)/\(week)"))
+    }
+
+    func goal(planID: Int) async throws -> PlanGoal {
+        try await client.send(.get("/api/plans/\(planID)/goal", query: [URLQueryItem(name: "lang", value: "en")]))
+    }
+
+    func reassessGoal(planID: Int) async throws -> PlanGoal {
+        struct Body: Encodable { let exclude: [String]; let lang: String }
+        return try await client.send(.send(.post, "/api/plans/\(planID)/goal/reassess", body: Body(exclude: [], lang: "en")))
+    }
+
+    func applyGoal(planID: Int, targetMinutes: Double) async throws -> PlanGoal {
+        struct Body: Encodable { let targetMins: Double }
+        return try await client.send(.send(.post, "/api/plans/\(planID)/goal/apply", body: Body(targetMins: targetMinutes)))
     }
 }
