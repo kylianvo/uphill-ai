@@ -7,42 +7,17 @@ struct SummaryCarousel: View {
     var onReview: () -> Void = {}
     var onAdapt: () -> Void = {}
     var onGoal: () -> Void = {}
-    @State private var page: Int? = 0
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    private let pageNames = ["Volume", "Race", "This week", "Phase"]
 
     var body: some View {
         VStack(spacing: UH.Space.compact) {
-            ScrollView(.horizontal) {
-                HStack(spacing: UH.Space.small) {
-                    volumeCard.id(0)
-                    raceCard.id(1)
-                    weekCard.id(2)
-                    phaseCard.id(3)
-                }
-                .scrollTargetLayout()
+            VStack(spacing: UH.Space.small) {
+                volumeCard
+                raceCard
+                weekCard
+                phaseCard
             }
-            .scrollTargetBehavior(.viewAligned)
-            .scrollPosition(id: $page)
-            .scrollIndicators(.hidden)
-            .contentMargins(.horizontal, UH.Space.medium, for: .scrollContent)
+            .padding(.horizontal, UH.Space.regular)
 
-            HStack(spacing: UH.Space.compact) {
-                ForEach(0..<4, id: \.self) { index in
-                    Button {
-                        withAnimation(reduceMotion ? nil : UH.Motion.standard) { page = index }
-                    } label: {
-                        Circle()
-                            .fill(index == (page ?? 0) ? UH.Palette.accentInk : UH.Palette.line)
-                            .frame(width: 6, height: 6)
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("\(pageNames[index]) summary")
-                    .accessibilityAddTraits(index == (page ?? 0) ? .isSelected : [])
-                }
-            }
             HStack(spacing: UH.Space.small) {
                 if let adapting {
                     ProgressView()
@@ -70,9 +45,8 @@ struct SummaryCarousel: View {
 
     private func card(_ content: some View) -> some View {
         content
+            .frame(maxWidth: .infinity, alignment: .leading)
             .uhCard()
-            .containerRelativeFrame(.horizontal) { width, _ in width - 2 * UH.Space.medium - UH.Space.section }
-            .frame(minHeight: 176)
     }
 
     private func eyebrow(_ text: String) -> some View {
@@ -98,7 +72,7 @@ struct SummaryCarousel: View {
                         .foregroundStyle(week.week == model.selectedWeek ? UH.Palette.accent : UH.Palette.line)
                         .cornerRadius(UH.Radius.topic)
                 }
-                .frame(height: 52)
+                .frame(height: 40)
                 .chartXAxis(.hidden)
                 .chartYAxis(.hidden)
                 .accessibilityHidden(true)
@@ -161,7 +135,6 @@ struct SummaryCarousel: View {
                         .accessibilityLabel("\(item.weekday.rawValue), \(label(item.state))")
                     }
                 }
-                Spacer(minLength: 0)
                 let done = model.dayStates.filter { $0.state == .done }.count
                 let active = model.dayStates.filter { $0.state != .rest }.count
                 Text("\(done) of \(active) sessions done")
