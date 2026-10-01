@@ -12,6 +12,15 @@ final class AppModel {
     let generation: GenerationCenter
     let plan: PlanViewModel
     let cache: OfflineCache
+    var onboardingDeferred = false
+    var needsOnboarding: Bool {
+        session.user?.onboardingComplete == false && generation.running == nil && !onboardingDeferred
+    }
+
+    func makeSetup(mode: PlanSetupViewModel.Mode) -> PlanSetupViewModel {
+        PlanSetupViewModel(mode: mode, user: session.user, service: generationService, generation: generation, session: session)
+    }
+
     private(set) var restoreError: String?
     /// True when the last restore had to fall back to cached data.
     private(set) var isOffline = false
@@ -43,6 +52,7 @@ final class AppModel {
         onSignedOut = { [weak self] in
             self?.generation.reset()
             self?.plan.reset()
+            self?.onboardingDeferred = false
         }
         generation.onFinished = { [weak self] kind, outcome in
             guard let self, self.session.user != nil else { return }

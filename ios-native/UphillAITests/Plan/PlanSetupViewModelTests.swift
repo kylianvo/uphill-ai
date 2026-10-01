@@ -117,4 +117,20 @@ struct PlanSetupViewModelTests {
         #expect(model.step == .review)
         #expect(model.primaryTitle == "Build my plan")
     }
+    @Test func reviewCanReturnToScheduleWithoutLosingAnswers() {
+        let (model, _, _, _) = make(.newPlan)
+        model.selectGoal(.startRunning)
+        model.next()
+        model.jump(to: .schedule)
+        #expect(model.step == .schedule)
+        #expect(model.direction == .backward)
+        #expect(model.draft.goal == .startRunning)
+    }
+    @Test func eventDefaultsMatchTheVisiblePickers() {
+        let (model, _, _, _) = make(.newPlan)
+        model.selectGoal(.race)
+        #expect(model.draft.raceDate == model.earliestRaceDate)
+        model.selectRaceGoal(.time)
+        #expect(model.draft.targetMinutes == 390)
+    }
 }

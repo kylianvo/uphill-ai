@@ -13,6 +13,9 @@ struct RootView: View {
                 restoringView
             case .signedIn:
                 MainTabs(app: app)
+                    .fullScreenCover(isPresented: Binding(get: { app.needsOnboarding }, set: { if !$0 { app.onboardingDeferred = true } })) {
+                        OnboardingScreen(app: app)
+                    }
             }
         }
         .animation(reduceMotion ? nil : UH.Motion.standard, value: app.session.state)
@@ -67,6 +70,19 @@ private struct MainTabs: View {
             Tab("Me", systemImage: "person.crop.circle") {
                 ProfileView(app: app)
             }
+        }
+    }
+}
+
+private struct OnboardingScreen: View {
+    let app: AppModel
+    @State private var setup: PlanSetupViewModel?
+
+    var body: some View {
+        if let setup {
+            PlanSetupFlow(model: setup) { app.onboardingDeferred = true }
+        } else {
+            WelcomeView(onStart: { setup = app.makeSetup(mode: .onboarding) }, onNotNow: { app.onboardingDeferred = true })
         }
     }
 }

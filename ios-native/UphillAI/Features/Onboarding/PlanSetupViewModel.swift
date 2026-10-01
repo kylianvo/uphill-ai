@@ -33,6 +33,16 @@ final class PlanSetupViewModel {
         draft = PlanSetupDraft(prefill: user, today: now(), calendar: calendar)
     }
 
+    var today: Date { calendar.startOfDay(for: now()) }
+    var earliestRaceDate: Date { calendar.date(byAdding: .day, value: 14, to: today)! }
+
+    func jump(to step: SetupStep) {
+        guard let index = steps.firstIndex(of: step) else { return }
+        direction = index < stepIndex ? .backward : .forward
+        stepIndex = index
+        showIssues = false
+    }
+
     var steps: [SetupStep] { SetupStep.steps(for: draft.goal, includeAboutYou: mode == .onboarding) }
     var step: SetupStep { steps[min(stepIndex, steps.count - 1)] }
     var progress: Double { Double(min(stepIndex, steps.count - 1) + 1) / Double(max(steps.count, 1)) }
@@ -50,7 +60,13 @@ final class PlanSetupViewModel {
 
     func selectGoal(_ goal: SetupGoal) {
         draft.goal = goal
+        if goal.isEvent, draft.raceDate == nil { draft.raceDate = earliestRaceDate }
         next()
+    }
+
+    func selectRaceGoal(_ goal: RaceGoal) {
+        draft.raceGoal = goal
+        if goal == .time, draft.targetMinutes == nil { draft.targetMinutes = 390 }
     }
 
     func next() {
