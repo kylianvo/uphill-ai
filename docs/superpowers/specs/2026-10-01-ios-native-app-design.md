@@ -98,6 +98,15 @@ Each phase ends with an internal TestFlight build. A phase is done when its plan
 
 Order rationale: Plan core first because it is what athletes open daily. Chat before Watch because chat only needs an existing endpoint, while Watch/Health need new backend endpoints and Apple entitlements review.
 
+## Plans
+
+Run each in a fresh session with `superpowers:subagent-driven-development`, in order:
+
+1. `docs/superpowers/plans/2026-10-01-ios-native-phase0-foundations.md`
+2. `docs/superpowers/plans/2026-10-01-ios-native-phase1-plan-core.md` (after Phase 0 and the web Phase 1 branch are merged)
+
+Phases 2-7: write the plan with `superpowers:writing-plans` at the start of each phase, from this spec and the code as it then exists.
+
 ## Testing
 
 - **Unit (Swift Testing):** DTO decoding against fixtures, view-model logic with fake services, date/week maths shared with the web (`planDate`, `planSummary` equivalents ported with the same test cases).
