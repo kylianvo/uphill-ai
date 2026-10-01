@@ -60,6 +60,11 @@ final class OfflineCache {
         return Cached(value: value, savedAt: entry.savedAt)
     }
 
+    func remove(_ key: CacheKey) {
+        if let entry = entry(key) { context.delete(entry) }
+        try? context.save()
+    }
+
     func clearAll() {
         try? context.delete(model: CacheEntry.self)
         try? context.save()
