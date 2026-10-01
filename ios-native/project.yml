@@ -33,6 +33,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ai.uphill.app
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        TARGETED_DEVICE_FAMILY: "1"
   UphillAITests:
     type: bundle.unit-test
     platform: iOS
@@ -44,6 +45,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ai.uphill.app.tests
         GENERATE_INFOPLIST_FILE: YES
+        TARGETED_DEVICE_FAMILY: "1"
 schemes:
   UphillAI:
     build:
