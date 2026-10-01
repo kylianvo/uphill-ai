@@ -2,8 +2,9 @@ import Charts
 import SwiftUI
 
 struct SummaryCarousel: View {
-    /// Each card extends this far under the next one, so the cards read as a deck.
-    static let stackInset: CGFloat = 44
+    static let cardHeight: CGFloat = 188
+    @State private var page: Int? = 0
+    private let pageNames = ["Volume", "Race", "This week", "Phase"]
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let model: PlanViewModel
     var adapting: Int? = nil
@@ -13,17 +14,22 @@ struct SummaryCarousel: View {
 
     var body: some View {
         VStack(spacing: UH.Space.compact) {
-            VStack(spacing: -Self.stackInset) {
-                ForEach(Array([AnyView(volumeCard), AnyView(raceCard), AnyView(weekCard), AnyView(phaseCard)].enumerated()), id: \.offset) { index, view in
-                    view
-                        .zIndex(Double(index))
-                        .scrollTransition(axis: .vertical) { content, phase in
-                            content
-                                .scaleEffect(phase.isIdentity || reduceMotion ? 1 : 0.94)
-                                .opacity(phase.isIdentity || reduceMotion ? 1 : 0.55)
-                        }
+            ScrollView(.vertical) {
+                VStack(spacing: 0) {
+                    volumeCard.id(0)
+                    raceCard.id(1)
+                    weekCard.id(2)
+                    phaseCard.id(3)
                 }
+                .scrollTargetLayout()
             }
+            .scrollTargetBehavior(.paging)
+            .scrollPosition(id: $page)
+            .scrollIndicators(.hidden)
+            .frame(height: Self.cardHeight)
+            .clipShape(RoundedRectangle(cornerRadius: UH.Radius.panel))
+            .overlay(RoundedRectangle(cornerRadius: UH.Radius.panel).stroke(UH.Palette.line))
+            .overlay(alignment: .trailing) { pageDots }
             .padding(.horizontal, UH.Space.regular)
 
             HStack(spacing: UH.Space.small) {
@@ -51,12 +57,32 @@ struct SummaryCarousel: View {
         }
     }
 
-    private func card(_ content: some View, covered: Bool = true) -> some View {
+    private func card(_ content: some View) -> some View {
         content
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.bottom, covered ? Self.stackInset : 0)
-            .uhCard()
-            .shadow(color: UH.Palette.ink.opacity(0.10), radius: 10, x: 0, y: -3)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .padding(UH.Space.regular)
+            .padding(.trailing, UH.Space.small)
+            .frame(height: Self.cardHeight)
+            .background(UH.Palette.card)
+    }
+
+    private var pageDots: some View {
+        VStack(spacing: 0) {
+            ForEach(0..<4, id: \.self) { index in
+                Button {
+                    withAnimation(reduceMotion ? nil : UH.Motion.standard) { page = index }
+                } label: {
+                    Circle()
+                        .fill(index == (page ?? 0) ? UH.Palette.accentInk : UH.Palette.line)
+                        .frame(width: 6, height: 6)
+                        .frame(width: 28, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(pageNames[index]) summary")
+                .accessibilityAddTraits(index == (page ?? 0) ? .isSelected : [])
+            }
+        }
     }
 
     private func eyebrow(_ text: String) -> some View {
@@ -187,8 +213,7 @@ struct SummaryCarousel: View {
                 Text("Week \(model.selectedWeek) of \(model.snapshot?.plan.totalWeeks ?? 0)")
                     .font(UH.TextStyle.caption)
                     .foregroundStyle(UH.Palette.secondary)
-            }
-        , covered: false)
+            })
         .accessibilityElement(children: .combine)
     }
 }
