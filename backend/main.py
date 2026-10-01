@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from google import genai
 from google.genai import types as genai_types
 from prometheus_fastapi_instrumentator import Instrumentator, metrics
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StrictBool
 
 from config import settings
 from db import (
@@ -486,6 +486,9 @@ class CoachWorkoutUpdateRequest(BaseModel):
     interval_reps: int | None = None
     interval_rep_value: float | None = None
     interval_rep_unit: str | None = None
+    # StrictBool: a non-bool (e.g. "yes", 1) is rejected with a 422. The
+    # 2-per-week cap applies to AI output only, never to coach edits.
+    is_priority: StrictBool | None = None
 
 
 class CoachWorkoutCreateRequest(BaseModel):
@@ -502,6 +505,7 @@ class CoachWorkoutCreateRequest(BaseModel):
     description: str | None = None
     fueling_tip: str | None = None
     session_slot: str | None = "main"
+    is_priority: StrictBool | None = None
 
 
 class CoachWorkoutAiCreateRequest(BaseModel):

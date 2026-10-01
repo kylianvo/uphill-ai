@@ -1,0 +1,12 @@
+.track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; gap: 0; }
+.track::-webkit-scrollbar { display: none; }
+.card { flex: 0 0 100%; scroll-snap-align: start; height: 148px; box-sizing: border-box; padding: 12px 16px; border: 1px solid var(--border-color); border-radius: 12px; background: rgba(255,255,255,0.45); overflow: hidden; display: flex; flex-direction: column; gap: 6px; text-align: left; font: inherit; color: inherit; }
+.dots { display: flex; justify-content: center; }
+.dot { width: 44px; height: 44px; border: none; background: none; padding: 0; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.dotMark { width: 24px; height: 6px; border-radius: 3px; background: rgba(0,0,0,0.15); }
+.dotActive { background: var(--accent-primary); }
+@media (min-width: 768px) {
+  .track { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; overflow: visible; }
+  .card { flex: none; }
+  .dots { display: none; }
+}

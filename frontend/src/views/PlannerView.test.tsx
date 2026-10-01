@@ -61,6 +61,20 @@ vi.mock("../utils/native", () => ({
   triggerHaptic: () => mockTriggerHaptic(),
 }));
 
+let mockMatches: any[] = [];
+const mockFetchMatches = vi.fn(async () => mockMatches);
+vi.mock("../hooks/useMatching", () => ({
+  useMatching: () => ({
+    fetchMatches: mockFetchMatches,
+    runMatching: vi.fn(),
+    syncWatch: vi.fn(),
+    confirmMatch: vi.fn(),
+    clearMatch: vi.fn(),
+    running: false,
+    syncing: false,
+  }),
+}));
+
 // Shared mock states
 let mockAppContext: any = {};
 let mockPlanner: any = {};
@@ -287,5 +301,85 @@ describe("PlannerView Early Adopter Improvements", () => {
       fireEvent.click(generateBlockBtn);
       expect(await screen.findByText(/Generate Block 2\?/i)).toBeInTheDocument();
     }
+  });
+
+  describe("rest days", () => {
+    const restWos = [
+      { id: 5, week_number: 1, day_of_week: "Wednesday", type: "Rest", title: "Rest", duration_minutes: 0 },
+      { id: 6, week_number: 1, day_of_week: "Thursday", type: "Easy Run", title: "Easy", duration_minutes: 40 },
+    ];
+    it("collapses rest days into a single row under V2", () => {
+      mockAppContext.shellV2 = true;
+      mockPlanner.getWeekWorkouts = vi.fn().mockReturnValue(restWos);
+      render(<PlannerView isMobile={false} />);
+      expect(screen.getByTestId("rest-row")).toHaveTextContent("Wed \u00b7 Rest");
+      expect(screen.getAllByTestId("workout-card")).toHaveLength(1);
+    });
+    it("keeps the full card for a pending rest workout when a coach is acting", async () => {
+      mockAppContext.shellV2 = true;
+      mockAppContext.actingAsAthleteId = 7;
+      mockPlanner.getWeekWorkouts = vi.fn().mockReturnValue([restWos[0]]);
+      render(<PlannerView isMobile={false} />);
+      expect((await screen.findAllByTestId("workout-card"))).toHaveLength(1);
+      expect(screen.queryByTestId("rest-row")).toBeNull();
+    });
+    it("keeps the card when a matched activity exists on the rest day", async () => {
+      mockAppContext.shellV2 = true;
+      mockMatches = [{ activity_id: 1, workout_id: 5, start_time: new Date().toISOString() }];
+      mockPlanner.getWeekWorkouts = vi.fn().mockReturnValue([restWos[0]]);
+      render(<PlannerView isMobile={false} />);
+      await waitFor(() => expect(screen.queryByTestId("rest-row")).toBeNull());
+      mockMatches = [];
+    });
+    it("keeps the day when an unplanned activity exists on the rest day", async () => {
+      mockAppContext.shellV2 = true;
+      mockMatches = [{ activity_id: 2, workout_id: null, start_time: new Date().toISOString() }];
+      mockPlanner.getWeekWorkouts = vi.fn().mockReturnValue([restWos[0]]);
+      render(<PlannerView isMobile={false} />);
+      await waitFor(() => expect(screen.queryByTestId("rest-row")).toBeNull());
+      mockMatches = [];
+    });
+    it("leaves rest days unchanged under V1", () => {
+      mockAppContext.shellV2 = false;
+      mockPlanner.getWeekWorkouts = vi.fn().mockReturnValue(restWos);
+      render(<PlannerView isMobile={false} />);
+      expect(screen.queryByTestId("rest-row")).toBeNull();
+      expect(screen.getAllByTestId("workout-card")).toHaveLength(2);
+    });
+  });
+
+  describe("auto-scroll to today", () => {
+    const wos = [{ id: 6, week_number: 1, day_of_week: "Thursday", type: "Easy Run", title: "Easy", duration_minutes: 40 }];
+    const setMotion = (reduce: boolean) => {
+      window.matchMedia = vi.fn().mockReturnValue({ matches: reduce }) as any;
+    };
+    it("scrolls once per plan, smooth by default", () => {
+      const spy = vi.fn();
+      Element.prototype.scrollIntoView = spy;
+      setMotion(false);
+      mockAppContext.shellV2 = true;
+      mockPlanner.getWeekWorkouts = vi.fn().mockReturnValue(wos);
+      const { rerender } = render(<PlannerView isMobile={false} />);
+      rerender(<PlannerView isMobile={false} />);
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(spy).toHaveBeenCalledWith({ block: "start", behavior: "smooth" });
+    });
+    it("does not animate under reduced motion", () => {
+      const spy = vi.fn();
+      Element.prototype.scrollIntoView = spy;
+      setMotion(true);
+      mockAppContext.shellV2 = true;
+      mockPlanner.getWeekWorkouts = vi.fn().mockReturnValue(wos);
+      render(<PlannerView isMobile={false} />);
+      expect(spy).toHaveBeenCalledWith({ block: "start" });
+    });
+    it("does not scroll under V1", () => {
+      const spy = vi.fn();
+      Element.prototype.scrollIntoView = spy;
+      mockAppContext.shellV2 = false;
+      mockPlanner.getWeekWorkouts = vi.fn().mockReturnValue(wos);
+      render(<PlannerView isMobile={false} />);
+      expect(spy).not.toHaveBeenCalled();
+    });
   });
 });

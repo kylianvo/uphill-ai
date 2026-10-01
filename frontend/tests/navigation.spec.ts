@@ -118,3 +118,55 @@ test.describe('Navigation and landing page split', () => {
     await expect(heroHeader).toBeVisible();
   });
 });
+
+test.describe('Shell v2 tab model (?ui=v2)', () => {
+  const signIn = async (page: import('@playwright/test').Page, isCoach: boolean) => {
+    const user = { id: 902, name: 'E2E Runner', email: 'e2e@example.test', onboarding_complete: true, is_coach: isCoach };
+    await page.route('**/api/**', async route => {
+      const path = new URL(route.request().url()).pathname;
+      let body: unknown;
+      if (path === '/api/auth/me') body = user;
+      else if (path === '/api/health') body = { status: 'healthy' };
+      else if (path === '/api/coach/active-plan') body = { active: false };
+      else if (path === '/api/coach/recent-plans') body = { plans: [] };
+      await route.fulfill(body === undefined ? { status: 404, json: { detail: 'Not part of this fixture' } } : { json: body });
+    });
+    await page.addInitScript((u) => {
+      localStorage.setItem('uphill_session_token', 'e2e-fixture');
+      localStorage.setItem('uphill_user', JSON.stringify(u));
+    }, user);
+  };
+  const navButton = (page: import('@playwright/test').Page, name: string) =>
+    page.locator('.top-nav-tab').filter({ hasText: new RegExp(`^${name}$`) });
+
+  test('signed-in user lands on Plan and sees Plan/Coach/Me only', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await signIn(page, false);
+    await page.goto('/app?ui=v2');
+    await expect(navButton(page, 'Plan')).toHaveAttribute('aria-current', 'page');
+    await expect(navButton(page, 'Coach')).toBeVisible();
+    await expect(navButton(page, 'Me')).toBeVisible();
+    await expect(navButton(page, 'Athletes')).toHaveCount(0);
+    await expect(page).toHaveURL(/tab=plan/);
+    await expect(page).toHaveURL(/ui=v2/);
+  });
+
+  test('coaches see Athletes', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await signIn(page, true);
+    await page.goto('/app?ui=v2');
+    await expect(navButton(page, 'Athletes')).toBeVisible();
+  });
+
+  test('?tab=me deep-links and Back to Me returns from Gear Finder', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await signIn(page, false);
+    await page.goto('/app?ui=v2&tab=me');
+    await expect(navButton(page, 'Me')).toHaveAttribute('aria-current', 'page');
+    await page.getByRole('button', { name: 'Gear Finder' }).click();
+    await expect(navButton(page, 'Me')).toHaveAttribute('aria-current', 'page');
+    await page.getByRole('button', { name: /Back to Me/ }).click();
+    await expect(page.getByRole('heading', { name: 'Me', exact: true })).toBeVisible();
+    await expect(page).toHaveURL(/tab=me/);
+  });
+});

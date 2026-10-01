@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import WorkoutCard, { formatIntervalSummary } from "./WorkoutCard";
 
@@ -149,5 +149,41 @@ describe("WorkoutCard readOnly mode", () => {
     expect(screen.getByText("4 x 6min @ Zone 4, 2min jog recovery")).toBeInTheDocument();
     // And "Hide guide" toggle is visible
     expect(screen.getByText("Hide guide")).toBeInTheDocument();
+  });
+});
+
+describe("WorkoutCard priority", () => {
+  const base = {
+    id: 9, day_of_week: "Monday", type: "Tempo", title: "Tempo", duration_minutes: 45,
+    target_zone: "Zone 3", approved_at: "2026-10-01",
+  };
+  const props = { isMobile: false, lang: "en", getWorkoutDate: () => "Oct 1" };
+
+  it("shows PRIORITY only for is_priority under V2", () => {
+    const { rerender } = render(<WorkoutCard {...props} wo={{ ...base, is_priority: true }} shellV2 />);
+    expect(screen.getByText("PRIORITY")).toBeInTheDocument();
+    rerender(<WorkoutCard {...props} wo={{ ...base, is_priority: false }} shellV2 />);
+    expect(screen.queryByText("PRIORITY")).toBeNull();
+    rerender(<WorkoutCard {...props} wo={{ ...base, is_priority: true }} />);
+    expect(screen.queryByText("PRIORITY")).toBeNull();
+  });
+
+  it("shows no label when is_priority is undefined under V2", () => {
+    render(<WorkoutCard {...props} wo={base} shellV2 />);
+    expect(screen.queryByText("PRIORITY")).toBeNull();
+  });
+
+  it("shows the eyebrow only under V2", () => {
+    render(<WorkoutCard {...props} wo={base} shellV2 eyebrow="TODAY" />);
+    expect(screen.getByText("TODAY")).toBeInTheDocument();
+  });
+
+  it("coach edit sends is_priority", () => {
+    const onEdit = vi.fn();
+    render(<WorkoutCard {...props} wo={base} isCoachActingAsAthlete onEditWorkout={onEdit} />);
+    fireEvent.click(screen.getByTitle("Edit"));
+    fireEvent.click(screen.getByLabelText("Priority"));
+    fireEvent.click(screen.getByText("Save"));
+    expect(onEdit).toHaveBeenCalledWith(9, expect.objectContaining({ is_priority: true }));
   });
 });
