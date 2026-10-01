@@ -1922,6 +1922,13 @@ def create_or_get_user(
     with engine.connect() as conn:
         row = conn.execute(text("SELECT * FROM users WHERE email = :e"), {"e": email}).fetchone()
         if row:
+            if provider == "apple" and (row.provider, row.provider_user_id) != (provider, provider_user_id):
+                conn.execute(
+                    text("UPDATE users SET provider = :p, provider_user_id = :pid WHERE id = :id"),
+                    {"p": provider, "pid": provider_user_id, "id": row.id},
+                )
+                conn.commit()
+                row = conn.execute(text("SELECT * FROM users WHERE id = :id"), {"id": row.id}).fetchone()
             return _row_to_dict(row)
         conn.execute(
             text("""
@@ -1933,6 +1940,15 @@ def create_or_get_user(
         conn.commit()
         row = conn.execute(text("SELECT * FROM users WHERE email = :e"), {"e": email}).fetchone()
         return _row_to_dict(row)
+
+
+def get_user_by_provider(provider: str, provider_user_id: str) -> dict[str, Any] | None:
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("SELECT * FROM users WHERE provider = :p AND provider_user_id = :pid ORDER BY id LIMIT 1"),
+            {"p": provider, "pid": provider_user_id},
+        ).fetchone()
+    return _row_to_dict(row) if row else None
 
 
 def create_user_with_password(email: str, name: str, password_hash: str) -> dict[str, Any]:
