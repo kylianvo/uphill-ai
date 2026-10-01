@@ -2,6 +2,8 @@ import SwiftUI
 
 struct PlanView: View {
     @Bindable var model: PlanViewModel
+    @State private var selectedWorkout: Workout?   // Task 9's detail sheet reads this
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         NavigationStack {
@@ -35,17 +37,38 @@ struct PlanView: View {
                     .frame(maxWidth: 220)
             }
         case .loaded:
-            ScrollView {
-                VStack(alignment: .leading, spacing: UH.Space.regular) {
-                    if let cachedAt = model.cachedAt { offlineBanner(cachedAt) }
-                    SummaryCarousel(model: model)
-                    WeekSwitcher(weeks: model.weeks, selected: $model.selectedWeek, currentWeek: model.currentWeek)
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: UH.Space.regular) {
+                        if let cachedAt = model.cachedAt { offlineBanner(cachedAt) }
+                        SummaryCarousel(model: model)
+                        WeekSwitcher(weeks: model.weeks, selected: $model.selectedWeek, currentWeek: model.currentWeek)
+                            .padding(.horizontal, UH.Space.regular)
+                        LazyVStack(spacing: UH.Space.compact) {
+                            ForEach(model.days) { day in
+                                DayRow(day: day) { selectedWorkout = $0 }
+                                    .id(day.id)
+                            }
+                        }
                         .padding(.horizontal, UH.Space.regular)
-                    // Task 8 adds the day list here.
+                    }
+                    .padding(.vertical, UH.Space.regular)
                 }
-                .padding(.vertical, UH.Space.regular)
+                .refreshable { await model.load() }
+                .onAppear { scrollToToday(proxy) }
+                .onChange(of: model.selectedWeek) { _, week in
+                    if week == model.currentWeek { scrollToToday(proxy) }
+                }
             }
-            .refreshable { await model.load() }
+        }
+    }
+
+    private func scrollToToday(_ proxy: ScrollViewProxy) {
+        guard let today = model.days.first(where: { $0.eyebrow == "TODAY" }) else { return }
+        if reduceMotion {
+            proxy.scrollTo(today.id, anchor: .top)
+        } else {
+            withAnimation(UH.Motion.standard) { proxy.scrollTo(today.id, anchor: .top) }
         }
     }
 
