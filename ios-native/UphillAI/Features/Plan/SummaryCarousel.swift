@@ -6,6 +6,7 @@ struct SummaryCarousel: View {
     var adapting: Int? = nil
     var onReview: () -> Void = {}
     var onAdapt: () -> Void = {}
+    var onGoal: () -> Void = {}
     @State private var page: Int? = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private let pageNames = ["Volume", "Race", "This week", "Phase"]
@@ -118,7 +119,15 @@ struct SummaryCarousel: View {
                         .font(UH.TextStyle.label)
                         .foregroundStyle(UH.Palette.accentInk)
                 }
-                if let goal = model.goalText {
+                if let pill = model.goalPillText {
+                    Button(action: onGoal) {
+                        Text(pill).font(UH.TextStyle.label)
+                            .foregroundStyle(model.goal?.status.kind == .behind ? UH.Palette.danger : UH.Palette.accentInk)
+                            .padding(.horizontal, UH.Space.small).frame(minHeight: 32)
+                            .background(UH.Palette.hover, in: Capsule())
+                    }
+                    .accessibilityIdentifier("plan.goalpill")
+                } else if let goal = model.goalText {
                     Text(goal).font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary)
                 }
             }

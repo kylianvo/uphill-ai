@@ -75,6 +75,7 @@ final class PlanViewModel {
     private(set) var lastCompletedID: Int?
 
     private(set) var nextWeekOffer: NextWeekOffer?
+    private(set) var goal: PlanGoal?
 
     private let service: any PlanServicing
     private let generation: GenerationCenter?
@@ -113,6 +114,7 @@ final class PlanViewModel {
                 cachedAt = nil
                 if isSignedIn() { cache.save(fresh, as: .plan) }
                 await refreshNextWeekOffer()
+                await loadGoal()
             } else {
                 snapshot = nil
                 cachedAt = nil
@@ -142,11 +144,12 @@ final class PlanViewModel {
         cachedAt = nil
         actionError = nil
         if isSignedIn() { cache.save(snapshot, as: .plan) }
-        Task { await refreshNextWeekOffer() }
+        Task { await refreshNextWeekOffer(); await loadGoal() }
     }
 
     func reset() {
         nextWeekOffer = nil
+        goal = nil
         state = .loading
         snapshot = nil
         cachedAt = nil
@@ -374,6 +377,68 @@ final class PlanViewModel {
             return .failure(error)
         } catch {
             return .failure(.transport(error.localizedDescription))
+        }
+    }
+
+    // MARK: Goal
+
+    static func formatMinutes(_ minutes: Double) -> String {
+        let total = Int(minutes.rounded())
+        return "\(total / 60):\(String(format: "%02d", total % 60))"
+    }
+
+    /// The suggested time to offer as a new target, when it differs from the current one.
+    var suggestedMinutes: Double? {
+        guard let goal else { return nil }
+        let suggestion = goal.status.suggestedMins ?? goal.assessment?.goals?.b
+        guard let suggestion else { return nil }
+        if let hours = goal.targetTimeHours, Int((hours * 60).rounded()) == Int(suggestion.rounded()) { return nil }
+        return suggestion
+    }
+
+    var goalPillText: String? {
+        guard let goal, snapshot?.plan.courseDistanceKm != nil else { return nil }
+        switch goal.status.kind {
+        case .onTrack: return "On track"
+        case .ahead: return "Ahead of target"
+        case .behind: return "Behind target"
+        case .noTarget: return goal.status.suggestedMins.map { "Suggested \(Self.formatMinutes($0))" } ?? "Not assessed yet"
+        case .notAssessed: return "Not assessed yet"
+        }
+    }
+
+    func loadGoal() async {
+        guard let plan = snapshot?.plan, plan.courseDistanceKm != nil, cachedAt == nil else { return }
+        if let fresh = try? await service.goal(planID: plan.id) { goal = fresh }
+    }
+
+    /// Returns an error message, or nil on success.
+    func reassessGoal() async -> String? {
+        guard let planID = snapshot?.plan.id else { return nil }
+        guard cachedAt == nil else { return Self.offlineMessage }
+        do {
+            goal = try await service.reassessGoal(planID: planID)
+            return nil
+        } catch APIError.http(429, _, _) {
+            return "You've used today's goal checks. Try again tomorrow."
+        } catch let error as APIError {
+            return error.userMessage
+        } catch {
+            return error.localizedDescription
+        }
+    }
+
+    func applySuggestedGoal() async -> String? {
+        guard let planID = snapshot?.plan.id, let minutes = suggestedMinutes else { return nil }
+        guard cachedAt == nil else { return Self.offlineMessage }
+        do {
+            goal = try await service.applyGoal(planID: planID, targetMinutes: minutes)
+            await load()
+            return nil
+        } catch let error as APIError {
+            return error.userMessage
+        } catch {
+            return error.localizedDescription
         }
     }
 

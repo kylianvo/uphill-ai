@@ -11,6 +11,7 @@ struct PlanView: View {
     @State private var showNextWeek = false
     @State private var showAdapt = false
     @State private var showReview = false
+    @State private var showGoal = false
     @State private var readyBanner: String?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -30,6 +31,7 @@ struct PlanView: View {
                     WorkoutDetailSheet(model: model, workoutID: workout.id)
                 }
                 .sheet(isPresented: $showAdapt) { AdaptWeekSheet(model: model, week: model.selectedWeek) }
+                .sheet(isPresented: $showGoal) { GoalSheet(model: model) }
                 .sheet(isPresented: $showReview) { WeekReviewSheet(model: model, week: model.selectedWeek) }
                 .sheet(isPresented: $showNextWeek) {
                     if let offer = model.nextWeekOffer { NextWeekSheet(model: model, offer: offer) }
@@ -76,7 +78,8 @@ struct PlanView: View {
                         if let cachedAt = model.cachedAt { offlineBanner(cachedAt) }
                         SummaryCarousel(model: model,
                                         adapting: generation.running?.kind == .adaptWeek ? model.selectedWeek : nil,
-                                        onReview: { showReview = true }, onAdapt: { showAdapt = true })
+                                        onReview: { showReview = true }, onAdapt: { showAdapt = true },
+                                        onGoal: { showGoal = true })
                         WeekSwitcher(weeks: model.weeks, selected: $model.selectedWeek, currentWeek: model.currentWeek)
                             .padding(.horizontal, UH.Space.regular)
                         LazyVStack(spacing: UH.Space.compact) {

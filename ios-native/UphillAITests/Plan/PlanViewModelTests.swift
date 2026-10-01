@@ -367,4 +367,34 @@ struct PlanViewModelTests {
         #expect((try? result.get())?.weekNumber == 1)
         #expect(service.calls.withLock { $0 }.contains("review 7 w1"))
     }
+
+    @Test func goalPillTextAndApply() async throws {
+        let service = FakePlanService()
+        var event = snapshot()
+        event = PlanSnapshot(plan: TestData.plan(["id": 7, "start_date": "2026-09-28", "total_weeks": 12, "race_date": "2026-12-19",
+                                                  "goal_type": "time", "target_time_hours": 6.0, "course_distance_km": 42]),
+                             workouts: event.workouts)
+        service.activeResult.withLock { $0 = .success(event) }
+        let behind = try JSONCoding.decoder.decode(PlanGoal.self, from: json([
+            "assessment": ["id": 1, "goals": ["a": 360, "b": 385, "c": 410], "reasoning": [], "missing": [], "engine": "rules"],
+            "status": ["state": "behind", "suggested_mins": 385], "target_time_hours": 6.0,
+        ]))
+        service.goalResult.withLock { $0 = .success(behind) }
+        let model = make(service)
+        await model.load()
+        await model.loadGoal()
+        #expect(model.goalPillText == "Behind target")
+        #expect(PlanViewModel.formatMinutes(385) == "6:25")
+        _ = await model.applySuggestedGoal()
+        #expect(service.calls.withLock { $0 }.contains("apply 7 385"))
+    }
+
+    @Test func reassessRateLimitMessage() async {
+        let service = FakePlanService()
+        service.activeResult.withLock { $0 = .success(snapshot()) }
+        service.goalResult.withLock { $0 = .failure(.http(status: 429, message: "limit", code: nil)) }
+        let model = make(service)
+        await model.load()
+        #expect(await model.reassessGoal() == "You've used today's goal checks. Try again tomorrow.")
+    }
 }
