@@ -71,6 +71,7 @@ final class PlanViewModel {
     private(set) var cachedAt: Date?
     var selectedWeek = 1
     private(set) var actionError: String?
+    private(set) var calendarNotice: ScheduleNotice?
     /// Last workout marked done; the view keys its success haptic on it.
     private(set) var lastCompletedID: Int?
 
@@ -156,6 +157,7 @@ final class PlanViewModel {
         selectedWeek = 1
         actionError = nil
         lastCompletedID = nil
+        calendarNotice = nil
     }
 
     // MARK: Derived values
@@ -218,6 +220,7 @@ final class PlanViewModel {
     // MARK: Writes
 
     func clearActionError() { actionError = nil }
+    func dismissCalendarNotice() { calendarNotice = nil }
 
     func setDone(_ workout: Workout, _ done: Bool) async {
         let update = done ? WorkoutLogUpdate(isCompleted: 1) : WorkoutLogUpdate(isCompleted: 0, isMissed: 0)
@@ -239,8 +242,11 @@ final class PlanViewModel {
         let today = calendar.startOfDay(for: now())
         let generatedWeeks = snapshot.workouts.map(\.weekNumber).max() ?? currentWeek
         let lastWeek = min(currentWeek + 1, snapshot.plan.totalWeeks, generatedWeeks)
+        guard lastWeek >= currentWeek else { return [] }
+        let generated = Set(snapshot.workouts.map(\.weekNumber))
         var targets: [MoveTarget] = []
         for week in currentWeek...max(currentWeek, lastWeek) {
+            guard generated.contains(week) else { continue }
             for weekday in Weekday.allCases {
                 if week == workout.weekNumber && weekday == workout.weekday { continue }
                 guard let date = PlanCalendar.date(week: week, weekday: weekday, plan: snapshot.plan,
@@ -253,23 +259,21 @@ final class PlanViewModel {
     }
 
     func move(_ workout: Workout, to target: MoveTarget) async -> Bool {
+        calendarNotice = nil
         guard let planID = snapshot?.plan.id else { return false }
         let today = PlanCalendar.ymd(now(), calendar: calendar)
         return await write {
-            try await self.service.move(planID: planID, workoutID: workout.id,
+            let result = try await self.service.move(planID: planID, workoutID: workout.id,
                                         toWeek: target.week, toDay: target.weekday, clientToday: today)
+            if !result.warnings.isEmpty {
+                self.calendarNotice = ScheduleNotice(text: "Heads-up: " + result.warnings.map(ScheduleMessages.warningText).joined(separator: "\n"), style: .warning)
+            }
+            return result.workouts
         }
     }
 
     static func moveMessage(code: String?) -> String {
-        switch code {
-        case "G2_history": "Completed or synced workouts can't be moved."
-        case "G3_past_target": "Workouts can't be moved into the past."
-        case "G4_window": "Workouts can only move within this week or into next week."
-        case "G5_out_of_plan": "That day is outside your plan."
-        case "G6_coach_linked": "Your coach manages this workout."
-        default: "This workout can't be moved right now."
-        }
+        ScheduleMessages.guardText(code: code ?? "unknown")
     }
 
     /// Runs a write that returns the plan's workouts. Returns true on success.
@@ -286,8 +290,12 @@ final class PlanViewModel {
             self.snapshot = snapshot
             if isSignedIn() { cache.save(snapshot, as: .plan) }
             return true
+        } catch APIError.scheduleGuard(_, let code, let params) {
+            actionError = ScheduleMessages.guardText(code: code, params: params)
+            calendarNotice = ScheduleNotice(text: actionError!, style: .error)
         } catch APIError.http(422, _, let code?) {
             actionError = Self.moveMessage(code: code)
+            calendarNotice = ScheduleNotice(text: actionError!, style: .error)
         } catch let error as APIError {
             actionError = error.userMessage
         } catch {

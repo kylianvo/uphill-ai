@@ -164,7 +164,7 @@ struct PlanViewModelTests {
         let ok = await model.move(workout, to: target)
         #expect(!ok)
         #expect(service.calls.withLock { $0 }.last == "move \(workout.id) -> w3 Tuesday today=2026-10-07")
-        #expect(model.actionError == "Workouts can only move within this week or into next week.")
+        #expect(model.actionError == "Workouts can only move between this week and next week.")
     }
 
     @Test func summaryValues() async {

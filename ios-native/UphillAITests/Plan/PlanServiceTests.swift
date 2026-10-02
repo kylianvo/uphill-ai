@@ -58,7 +58,7 @@ struct PlanServiceTests {
         let service = PlanService(client: makeStubClient { _ in
             (422, json(["detail": ["code": "G4_window", "params": [:]]]))
         })
-        await #expect(throws: APIError.http(status: 422, message: nil, code: "G4_window")) {
+        await #expect(throws: APIError.scheduleGuard(status: 422, code: "G4_window", params: [:])) {
             _ = try await service.move(planID: 7, workoutID: 42, toWeek: 9, toDay: .monday, clientToday: "2026-10-01")
         }
     }

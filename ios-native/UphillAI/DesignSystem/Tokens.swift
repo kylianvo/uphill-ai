@@ -14,6 +14,8 @@ enum UH {
         static let surface = Color(hex: "#f8faf8")
         static let card = Color.white
         static let activeFill = Color(hex: "#19ce8b").opacity(0.16)
+        static let warningInk = Color(hex: "#92400e")
+        static let warningFill = Color(hex: "#f59e0b").opacity(0.12)
         static let danger = Color(hex: "#b42318")
     }
 

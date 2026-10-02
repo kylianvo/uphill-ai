@@ -84,6 +84,10 @@ struct PlanView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: UH.Space.regular) {
                         if generation.running?.kind == .newPlan { buildingBanner }
+                        if let notice = model.calendarNotice {
+                            ScheduleNoticeBanner(notice: notice, onDismiss: model.dismissCalendarNotice)
+                                .padding(.horizontal, UH.Space.regular)
+                        }
                         if let cachedAt = model.cachedAt { offlineBanner(cachedAt) }
                         SummaryCarousel(model: model,
                                         adapting: generation.running?.kind == .adaptWeek ? model.selectedWeek : nil,
