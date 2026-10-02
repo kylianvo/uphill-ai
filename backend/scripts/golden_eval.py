@@ -129,6 +129,13 @@ async def _run_scheduler(fixture: dict) -> tuple[list[dict], str]:
         total_weeks=fixture.get("total_weeks", 8),
         api_key=settings.GEMINI_API_KEY,
         block_number=1,
+        # Snapshot gates score the first full week. Production currently generates
+        # one-week blocks, so these offline cases must explicitly include week 2.
+        weeks_per_block=(
+            max(2, settings.WEEKS_PER_BLOCK)
+            if (fixture.get("expect") or {}).get("week2_km")
+            else settings.WEEKS_PER_BLOCK
+        ),
     )
     fixture["_resolved_tier"] = tier
     return workouts, _scheduler_engine_used(before, _scheduler_counters())

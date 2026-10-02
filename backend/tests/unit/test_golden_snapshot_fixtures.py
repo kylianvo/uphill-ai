@@ -3,7 +3,7 @@
 import asyncio
 import json
 import os
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -55,3 +55,15 @@ def test_week_km_sums_one_week():
         {"week_number": 3, "distance_km": 99.0},
     ]
     assert golden_eval._week_km(workouts, 2) == 10.0
+
+
+@pytest.mark.parametrize("expect,block_weeks", [({"week2_km": [110, 145]}, 2), ({}, 1)])
+def test_week2_gate_requests_a_block_that_contains_week2(expect, block_weeks, monkeypatch):
+    from services.plan_generator import PlanGenerator
+
+    monkeypatch.setattr(golden_eval.settings, "WEEKS_PER_BLOCK", 1)
+    generate = AsyncMock(return_value=([], "sub_elite"))
+    monkeypatch.setattr(PlanGenerator, "generate_plan_workouts", generate)
+    fixture = {"user_profile": {}, "race_info": {}, "expect": expect}
+    asyncio.run(golden_eval._run_scheduler(fixture))
+    assert generate.call_args.kwargs["weeks_per_block"] == block_weeks
