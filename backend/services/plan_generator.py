@@ -941,6 +941,7 @@ class PlanGenerator:
             # is only evidence when it was actually measured.
             aet_hr=user_profile.get("aet_hr"),
             ant_hr=user_profile.get("ant_hr"),
+            threshold_source=user_profile.get("threshold_source"),
         )
         tier_profile = get_profile(athlete_tier)
 

@@ -29,6 +29,7 @@ WHERE THE NUMBERS COME FROM
 """
 
 from dataclasses import dataclass
+from typing import Any
 
 BEGINNER = "beginner"
 NOVICE = "novice"
@@ -227,6 +228,35 @@ BEGINNER_GOAL_TYPES = ("start_running",)
 # continuous-running plan, and that is the plainest possible evidence of it.
 CONTINUOUS_JOG_BEGINNER_CEILING_MIN = 10
 
+# Performance bands for the one-step promotion. CONVENTIONAL DEFAULTS, UNSOURCED, like
+# the volume bands above: gathered here so a coach can correct them in one place.
+# Marathon thresholds are men's; women's are FEMALE_PACE_FACTOR slower. Unknown gender
+# uses men's thresholds, which can only under-promote.
+PERF_BANDS: dict[str, dict[str, float]] = {
+    ELITE: {"marathon_sec": 2 * 3600 + 40 * 60, "utmb_index": 700},
+    SUB_ELITE: {"marathon_sec": 3 * 3600 + 10 * 60, "utmb_index": 550},
+    RECREATIONAL: {"marathon_sec": 4 * 3600 + 15 * 60, "utmb_index": 400},
+}
+FEMALE_PACE_FACTOR = 1.12
+
+# Threshold provenance that makes the AeT/AnT gap real evidence. "estimated" and
+# "unknown" (the default for every existing athlete) never demote.
+MEASURED_THRESHOLD_SOURCES = ("lab", "field")
+
+
+def performance_tier(
+    marathon_prediction_sec: float | None, gender: str | None, utmb_index: int | None
+) -> str | None:
+    """Highest tier any performance signal reaches, or None when none reaches a band."""
+    factor = FEMALE_PACE_FACTOR if (gender or "").lower() == "female" else 1.0
+    for key in (ELITE, SUB_ELITE, RECREATIONAL):
+        band = PERF_BANDS[key]
+        if marathon_prediction_sec and marathon_prediction_sec <= band["marathon_sec"] * factor:
+            return key
+        if utmb_index and utmb_index >= band["utmb_index"]:
+            return key
+    return None
+
 
 def get_profile(tier: str | None) -> TierProfile:
     """The profile for a tier, falling back to the default rather than raising: a plan
@@ -251,15 +281,19 @@ def aet_ant_gap(aet_hr: float | None, ant_hr: float | None) -> float | None:
     return (ant_hr - aet_hr) / ant_hr
 
 
-def derive_tier(
+def explain_tier(
     goal_type: str | None = None,
     current_weekly_km: float | None = None,
     max_continuous_jog_min: int | None = None,
     historical_max_distance_km: float | None = None,
     aet_hr: float | None = None,
     ant_hr: float | None = None,
-) -> str:
-    """Infer a tier from what is known about the athlete.
+    threshold_source: str | None = None,
+    marathon_prediction_sec: float | None = None,
+    gender: str | None = None,
+    utmb_index: int | None = None,
+) -> tuple[str, list[str]]:
+    """Infer a tier, and the reasons for it, from what is known about the athlete.
 
     Ordered by how much each signal can be trusted:
 
@@ -271,66 +305,97 @@ def derive_tier(
     3. Weekly volume, the conventional axis.
     4. A proven long run, which can only raise the tier, never lower it -- one big day
        does not make someone elite, but it does rule out `beginner`.
+    5. Performance (race predictor, UTMB index) can promote at most ONE step.
+    6. A wide AeT/AnT spread demotes only when the thresholds were measured.
     """
     if (goal_type or "").strip().lower() in BEGINNER_GOAL_TYPES:
-        return BEGINNER
+        return BEGINNER, ["start-running goal"]
 
     if max_continuous_jog_min is not None and max_continuous_jog_min < CONTINUOUS_JOG_BEGINNER_CEILING_MIN:
-        return BEGINNER
+        return BEGINNER, [f"cannot jog {CONTINUOUS_JOG_BEGINNER_CEILING_MIN} min continuously"]
 
     if current_weekly_km is None or current_weekly_km <= 0:
-        return DEFAULT_TIER
-
-    tier = DEFAULT_TIER
-    for key in TIER_ORDER:
-        profile = TIER_PROFILES[key]
-        if current_weekly_km >= profile.weekly_km_min and (
-            profile.weekly_km_max is None or current_weekly_km < profile.weekly_km_max
-        ):
-            tier = key
-            break
+        tier, reasons = DEFAULT_TIER, ["volume unknown, default tier"]
+    else:
+        tier = DEFAULT_TIER
+        for key in TIER_ORDER:
+            profile = TIER_PROFILES[key]
+            if current_weekly_km >= profile.weekly_km_min and (
+                profile.weekly_km_max is None or current_weekly_km < profile.weekly_km_max
+            ):
+                tier = key
+                break
+        reasons = [f"volume {current_weekly_km:.0f} km/week -> {tier}"]
 
     # A proven long run can only promote. Someone whose weekly volume reads low but who
     # has completed a 30 km run is not a beginner -- more likely they are returning, or
     # their profile is stale.
     if historical_max_distance_km and historical_max_distance_km >= 25.0 and tier == BEGINNER:
         tier = NOVICE
+        reasons.append(f"proven long run {historical_max_distance_km:.0f} km -> {NOVICE}")
 
-    # A wide AeT/AnT spread can only DEMOTE, never promote. Weekly volume is
-    # self-reported and often aspirational; the threshold spread is measured. An athlete
-    # claiming 90 km/week while carrying a 35% spread has an aerobic deficiency, not a
-    # sub-elite engine, and prescribing them sub-elite work would be the exact mistake
-    # the ADS rule exists to prevent. Demotion stops at RECREATIONAL rather than running
-    # all the way to BEGINNER: they demonstrably run, they just are not competitive.
+    # Performance can lift the tier by one step, never more: a fast marathon prediction
+    # on 50 km/week is a talented athlete, not yet one who can absorb elite volume.
+    perf = performance_tier(marathon_prediction_sec, gender, utmb_index)
+    if perf and tier != BEGINNER and TIER_ORDER.index(perf) > TIER_ORDER.index(tier):
+        tier = TIER_ORDER[TIER_ORDER.index(tier) + 1]
+        reasons.append(f"performance reaches {perf}, promoted one step -> {tier}")
+
+    # A wide AeT/AnT spread can only DEMOTE, never promote, and only when the thresholds
+    # were MEASURED. Weekly volume is self-reported and often aspirational; a tested
+    # threshold spread is not. An athlete claiming 90 km/week while carrying a tested 35%
+    # spread has an aerobic deficiency, not a sub-elite engine. But stored values of
+    # unknown provenance sit next to the DB defaults and prove nothing: they once demoted
+    # a 130 km/week athlete to recreational. Demotion stops at RECREATIONAL rather than
+    # running all the way to BEGINNER: they demonstrably run, they just are not competitive.
     gap = aet_ant_gap(aet_hr, ant_hr)
-    if gap is not None:
+    if gap is not None and (threshold_source or "").lower() not in MEASURED_THRESHOLD_SOURCES:
+        reasons.append(f"AeT/AnT gap {gap:.0%} not used (source: {threshold_source or 'unknown'})")
+    elif gap is not None:
         for candidate in (SUB_ELITE, ELITE):
             if tier == candidate and gap > TIER_PROFILES[candidate].aet_ant_gap_max:
                 tier = RECREATIONAL
+                reasons.append(f"measured AeT/AnT gap {gap:.0%} -> {RECREATIONAL}")
                 break
 
-    return tier
+    return tier, reasons
 
 
-def resolve_tier(
-    explicit_tier: str | None = None,
+def derive_tier(
     goal_type: str | None = None,
     current_weekly_km: float | None = None,
     max_continuous_jog_min: int | None = None,
     historical_max_distance_km: float | None = None,
     aet_hr: float | None = None,
     ant_hr: float | None = None,
+    threshold_source: str | None = None,
+    marathon_prediction_sec: float | None = None,
+    gender: str | None = None,
+    utmb_index: int | None = None,
 ) -> str:
-    """An explicit per-plan override when one is set, otherwise the derived tier.
-    An unrecognised override is ignored rather than honoured, so a typo degrades to
-    derivation instead of silently selecting the default profile."""
-    if explicit_tier and explicit_tier.strip().lower() in TIER_PROFILES:
-        return explicit_tier.strip().lower()
-    return derive_tier(
+    """Tier only; see explain_tier."""
+    return explain_tier(
         goal_type=goal_type,
         current_weekly_km=current_weekly_km,
         max_continuous_jog_min=max_continuous_jog_min,
         historical_max_distance_km=historical_max_distance_km,
         aet_hr=aet_hr,
         ant_hr=ant_hr,
-    )
+        threshold_source=threshold_source,
+        marathon_prediction_sec=marathon_prediction_sec,
+        gender=gender,
+        utmb_index=utmb_index,
+    )[0]
+
+
+def resolve_tier_explained(explicit_tier: str | None = None, **kwargs: Any) -> tuple[str, list[str]]:
+    """An explicit per-plan override when one is set, otherwise the derived tier.
+    An unrecognised override is ignored rather than honoured, so a typo degrades to
+    derivation instead of silently selecting the default profile."""
+    if explicit_tier and explicit_tier.strip().lower() in TIER_PROFILES:
+        return explicit_tier.strip().lower(), ["explicit plan override"]
+    return explain_tier(**kwargs)
+
+
+def resolve_tier(explicit_tier: str | None = None, **kwargs: Any) -> str:
+    return resolve_tier_explained(explicit_tier, **kwargs)[0]
