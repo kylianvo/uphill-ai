@@ -83,23 +83,32 @@ struct PlanView: View {
         case .loaded:
             ScrollViewReader { proxy in
                 ScrollView {
-                    VStack(alignment: .leading, spacing: UH.Space.regular) {
+                    VStack(alignment: .leading, spacing: UH.Space.small) {
                         if generation.running?.kind == .newPlan { buildingBanner }
                         if let notice = model.calendarNotice {
                             ScheduleNoticeBanner(notice: notice, onDismiss: model.dismissCalendarNotice)
                                 .padding(.horizontal, UH.Space.regular)
                         }
                         if let cachedAt = model.cachedAt { offlineBanner(cachedAt) }
+
+                        // 1. Race and goal header
+                        raceGoalHeader
+
+                        // 2. Summary carousel
                         SummaryCarousel(model: model,
                                         adapting: generation.running?.kind == .adaptWeek ? model.selectedWeek : nil,
                                         onReview: { showReview = true }, onAdapt: { showAdapt = true },
                                         onGoal: { showGoal = true })
-                        if let user, let plan = model.snapshot?.plan {
-                            SharpenChecklistCard(user: user, plan: plan, onOpen: onSharpen)
-                                .padding(.horizontal, UH.Space.regular)
-                        }
+
+                        // 3. Coach review card
+                        CoachReviewCard(model: model, onOpenReview: { showReview = true })
+                            .padding(.horizontal, UH.Space.regular)
+
+                        // 4. Week switcher
                         WeekSwitcher(weeks: model.weeks, selected: $model.selectedWeek, currentWeek: model.currentWeek)
                             .padding(.horizontal, UH.Space.regular)
+
+                        // 5. Day list
                         LazyVStack(spacing: UH.Space.compact) {
                             ForEach(model.days) { day in
                                 DayRow(day: day, onToggleDone: { workout in
@@ -109,6 +118,8 @@ struct PlanView: View {
                             }
                         }
                         .padding(.horizontal, UH.Space.regular)
+
+                        // 6. Next week card
                         nextWeekCard
                     }
                     .padding(.vertical, UH.Space.regular)
@@ -216,4 +227,79 @@ struct PlanView: View {
         .padding(UH.Space.section)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
+
+    // MARK: - Race and Goal Header
+
+    private var raceGoalHeader: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if let plan = model.snapshot?.plan {
+                HStack(alignment: .firstTextBaseline) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(plan.raceName)
+                            .font(.system(size: 19, weight: .bold))
+                            .foregroundStyle(UH.Palette.ink)
+                            .lineLimit(1)
+
+                        HStack(spacing: 6) {
+                            if let date = PlanCalendar.day(from: plan.raceDate) {
+                                Text(date, format: .dateTime.month(.abbreviated).day().year())
+                                    .font(UH.TextStyle.caption)
+                                    .foregroundStyle(UH.Palette.secondary)
+                            }
+                            if let days = model.daysToRace {
+                                Text("· \(days / 7) weeks to go")
+                                    .font(UH.TextStyle.caption)
+                                    .foregroundStyle(UH.Palette.accentInk)
+                            }
+                        }
+                    }
+
+                    Spacer()
+
+                    if let pill = model.goalPillText {
+                        Button { showGoal = true } label: {
+                            Text(pill)
+                                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                .foregroundStyle(model.goal?.status.kind == .behind ? UH.Palette.danger : UH.Palette.accentInk)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(UH.Palette.hover, in: Capsule())
+                                .overlay(Capsule().stroke(UH.Palette.line, lineWidth: 1))
+                        }
+                        .accessibilityIdentifier("plan.goalpill")
+                    }
+                }
+
+                // Disabled Coming Soon rows until Phase 5
+                HStack(spacing: 8) {
+                    comingSoonBadge("Plan your pace →")
+                    comingSoonBadge("Refine in Goal Determiner →")
+                }
+                .padding(.top, 2)
+            }
+        }
+        .padding(.horizontal, UH.Space.regular)
+    }
+
+    private func comingSoonBadge(_ text: String) -> some View {
+        HStack(spacing: 4) {
+            Text(text)
+                .font(.system(size: 10.5, weight: .medium))
+                .foregroundStyle(UH.Palette.muted)
+            Text("Soon")
+                .font(.system(size: 8.5, weight: .bold, design: .monospaced))
+                .foregroundStyle(UH.Palette.muted)
+                .padding(.horizontal, 4)
+                .padding(.vertical, 1)
+                .background(UH.Palette.line.opacity(0.6), in: Capsule())
+        }
+        .padding(.horizontal, 7)
+        .padding(.vertical, 3.5)
+        .background(UH.Palette.surface, in: Capsule())
+        .overlay(Capsule().stroke(UH.Palette.line, lineWidth: 0.8))
+        .opacity(0.85)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(text) Coming soon")
+    }
+
 }
