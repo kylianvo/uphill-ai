@@ -94,7 +94,7 @@ Each signal carries `value`, `source` (`coros | race_history | self_reported`),
 |---|---|---|---|
 | Weekly volume (km, vert) | Mean of the last 4 complete Mon–Sun weeks of running activities | Typed km/week | A week counts only if it ended before `last_sync_at`; at least 3 counted weeks required. Running = the activity types `get_user_activity_ceiling` treats as running, excluding duplicates |
 | Threshold pace | Latest assessment | Typed `users.threshold_pace` | Assessment ≤ 60 days old |
-| Performance | Race predictor, VO2max (latest assessment); UTMB index; race results | None | Assessment ≤ 60 days; results ≤ 12 months |
+| Performance (tiering) | Marathon prediction (latest assessment); UTMB index | None | Assessment ≤ 60 days. VO2max and the other predictions are prompt context only; race results stay in the existing RACE HISTORY block and long-run ceiling |
 | AeT/AnT | Typed values | None | Usable for tiering only when `threshold_source` is `lab` or `field` |
 | Load and recovery | `daily_metrics`, last 14 days: load ratio, HRV trend, resting HR | None | Prompt context only, never tiering |
 
@@ -156,7 +156,7 @@ ATHLETE FITNESS SNAPSHOT
 ```
 
 The tier profile still sets caps; the block is calibration context for the model.
-Bilingual: block labels follow the plan `lang`.
+The block is English, like the rest of the scheduler prompt; the plan `lang` already controls the output language.
 
 ## UI
 

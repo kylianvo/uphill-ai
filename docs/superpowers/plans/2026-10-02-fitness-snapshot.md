@@ -1,0 +1,1539 @@
+# Fitness Snapshot Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Plan tier and volume baseline come from measured COROS signals (with typed fallbacks), so a high-volume athlete is never demoted to `recreational` by unmeasured AeT/AnT values.
+
+**Architecture:** A new `services/fitness_snapshot.py` assembles a per-athlete snapshot on read from existing tables plus a new append-only `fitness_assessments` table. The snapshot decides the tier (volume base, one-step performance promotion, gap demotion only for measured thresholds), supplies `current_weekly_km`, and renders an `ATHLETE FITNESS SNAPSHOT` prompt block. The plan endpoints build it inside their async jobs and store it on `plans.fitness_snapshot`.
+
+**Tech Stack:** FastAPI, SQLAlchemy Core `text()`, Alembic, pytest (+ pytest-asyncio), Next.js 16 / React, vitest.
+
+**Spec:** `docs/superpowers/specs/2026-10-02-fitness-snapshot-design.md`
+
+## Global Constraints
+
+- Every schema change goes in BOTH `backend/db.py:init_db()` and a hand-written Alembic migration (see the `db-migration` skill).
+- `tests/integration` TRUNCATEs every table: run it only against the scratch `uphill_ai_test` database the root `conftest.py` sets up, never a real one.
+- `threshold_source` values: exactly `lab | field | estimated | unknown`, default `unknown`. Only `lab` and `field` allow gap demotion.
+- Measured volume: last 4 complete Mon–Sun weeks; a week counts only if it starts on/after the athlete's first synced COROS activity and ends on/before `last_sync_at`; at least 3 counted weeks.
+- Assessment freshness for tiering: ≤ 60 days. On-demand refresh threshold: 7 days.
+- Performance bands (men; women ×1.12; unknown gender uses men's): marathon prediction elite ≤ 2:40:00, sub-elite ≤ 3:10:00, recreational ≤ 4:15:00. UTMB index elite ≥ 700, sub-elite ≥ 550, recreational ≥ 400.
+- Promotion is at most ONE step above the volume tier.
+- A COROS failure never blocks or fails a plan.
+- Any rendered UI change needs a local screenshot (`ui-screenshot-evidence` skill); Vietnamese copy follows the `uphill-ai-vietnamese-copy` skill.
+- Commit messages end with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
+
+## File Structure
+
+| File | Responsibility |
+|---|---|
+| `backend/db.py` (modify) | Schema in `init_db`; helpers `record_fitness_assessment`, `get_latest_fitness_assessment`, `get_weekly_run_volumes`, `get_first_activity_at`, `set_plan_fitness_snapshot`; `threshold_source` in profile writes; disconnect cleanup |
+| `backend/alembic/versions/<rev>_fitness_snapshot.py` (create) | Migration for the three schema changes |
+| `backend/services/athlete_tier.py` (modify) | `PERF_BANDS`, `performance_tier`, `explain_tier`; `derive_tier`/`resolve_tier` gain `threshold_source`, `marathon_prediction_sec`, `gender`, `utmb_index` |
+| `backend/services/fitness_snapshot.py` (create) | `measured_weekly_volume` (pure), `FitnessSnapshot`, `build()` |
+| `backend/services/coros_sync.py` (modify) | Record assessments on sync; `ensure_fresh_assessment` |
+| `backend/services/plan_generator.py` (modify) | Use the snapshot for volume, tier and prompt block when present |
+| `backend/main.py` (modify) | Build/store the snapshot in onboarding, generate-plan and next-block jobs; `threshold_source` on profile; `GET /api/auth/fitness-snapshot`; `weekly_km_from_watch` |
+| `backend/services/week_rebuild.py` (modify) | Snapshot for adapt-week |
+| `backend/services/goal_context.py`, `backend/services/coach_context.py` (modify) | Read predictor / snapshot |
+| `frontend/src/views/ProfileSettingsModal.tsx`, `frontend/src/views/OnboardingWizard.tsx`, `frontend/src/views/PlannerView.tsx`, `frontend/src/hooks/usePlanner.ts`, `frontend/src/types/index.ts`, `frontend/src/app/translations.ts` (modify) | Threshold-source select, km prefill + hint |
+
+---
+
+### Task 0: Sync the branch with main
+
+The branch was cut from `2942d0a`; `origin/main` is several commits ahead (LLMOps, auth, iOS native). Line numbers below refer to the pre-sync tree; search by the quoted code, not by line.
+
+- [ ] **Step 1:** Call the ccd_host `sync_with_base_branch` tool. Resolve any conflicts it reports.
+- [ ] **Step 2:** Find the current Alembic head for Task 1:
+
+Run: `cd backend && alembic heads`
+Expected: one revision id (prod was at `43dfcba89eff` on 2026-09-30). Note it as `<HEAD>`.
+
+---
+
+### Task 1: Schema and DB helpers
+
+**Files:**
+- Modify: `backend/db.py` (`init_db()`, near the `coros_plan_links` table and the `ALTER TABLE plans ADD COLUMN IF NOT EXISTS athlete_tier TEXT` list; `delete_provider_data`; `update_user_profile`; `format`-free helpers at the end of the activities section near `get_weekly_training_trend`)
+- Create: `backend/alembic/versions/b4f1c2d3e5a6_fitness_snapshot.py`
+- Modify: `backend/tests/integration/conftest.py` (add `"fitness_assessments"` to `ALL_TABLES`, before `"plans"`)
+- Test: `backend/tests/integration/test_fitness_assessments_db.py`
+
+**Interfaces:**
+- Produces:
+  - `db.record_fitness_assessment(user_id: int, source: str, data: dict) -> bool` — inserts when any of `vo2max, running_level, threshold_pace, pred_5k_sec, pred_10k_sec, pred_hm_sec, pred_marathon_sec` differs from the latest row for `(user_id, source)`; returns True if inserted.
+  - `db.get_latest_fitness_assessment(user_id: int) -> dict | None` — latest row, `measured_at` as an aware `datetime`.
+  - `db.get_weekly_run_volumes(user_id: int, since: date) -> list[dict]` — `[{"week_start": date, "km": float, "vert_m": float}]`, Mon-start weeks (UTC), on-foot types, duplicates excluded, only weeks with activities.
+  - `db.get_first_activity_at(user_id: int, provider: str) -> datetime | None`
+  - `db.set_plan_fitness_snapshot(plan_id: int, snapshot: dict) -> None`
+  - `users.threshold_source` readable via `get_user_by_id`.
+
+- [ ] **Step 1: Write the failing integration test**
+
+```python
+"""fitness_assessments history + weekly run volumes. Scratch DB only."""
+
+from datetime import UTC, date, datetime
+
+from sqlalchemy import text
+
+import db
+from db import engine
+
+
+def _user(email="fs@test.io"):
+    with engine.connect() as conn:
+        uid = conn.execute(
+            text("INSERT INTO users (email, name) VALUES (:e, 'FS') RETURNING id"), {"e": email}
+        ).scalar_one()
+        conn.commit()
+    return uid
+
+
+def _activity(uid, start, km, vert=0.0, kind="trail_run", ext="x"):
+    with engine.connect() as conn:
+        conn.execute(
+            text("""
+            INSERT INTO activities (user_id, source_provider, external_ids, activity_type,
+                                    start_time, duration_seconds, distance_km, elevation_gain_m)
+            VALUES (:u, 'coros', CAST(:ext AS jsonb), :k, :s, 3600, :km, :v)
+        """),
+            {"u": uid, "ext": f'{{"coros": "{ext}"}}', "k": kind, "s": start, "km": km, "v": vert},
+        )
+        conn.commit()
+
+
+def test_threshold_source_defaults_to_unknown():
+    uid = _user()
+    assert db.get_user_by_id(uid)["threshold_source"] == "unknown"
+
+
+def test_assessment_inserted_only_when_values_change():
+    uid = _user()
+    data = {"vo2max": 61.0, "running_level": 92.0, "threshold_pace": "3:53", "pred_marathon_sec": 10200.0}
+    assert db.record_fitness_assessment(uid, "coros", data) is True
+    assert db.record_fitness_assessment(uid, "coros", data) is False
+    assert db.record_fitness_assessment(uid, "coros", {**data, "vo2max": 61.0000001}) is False
+    assert db.record_fitness_assessment(uid, "coros", {**data, "vo2max": 62.0}) is True
+    latest = db.get_latest_fitness_assessment(uid)
+    assert latest["vo2max"] == 62.0
+    assert latest["pred_marathon_sec"] == 10200.0
+    assert latest["measured_at"].tzinfo is not None
+
+
+def test_weekly_run_volumes_groups_by_monday_and_skips_non_runs():
+    uid = _user()
+    _activity(uid, datetime(2026, 9, 14, 6, tzinfo=UTC), 20.0, 800, ext="a")
+    _activity(uid, datetime(2026, 9, 20, 6, tzinfo=UTC), 30.0, 1200, ext="b")
+    _activity(uid, datetime(2026, 9, 21, 6, tzinfo=UTC), 10.0, 0, kind="indoor_run", ext="c")
+    _activity(uid, datetime(2026, 9, 21, 7, tzinfo=UTC), 5.0, 0, kind="strength", ext="d")
+    rows = db.get_weekly_run_volumes(uid, since=date(2026, 9, 1))
+    assert rows == [
+        {"week_start": date(2026, 9, 14), "km": 50.0, "vert_m": 2000.0},
+        {"week_start": date(2026, 9, 21), "km": 10.0, "vert_m": 0.0},
+    ]
+    assert db.get_first_activity_at(uid, "coros") == datetime(2026, 9, 14, 6, tzinfo=UTC)
+
+
+def test_plan_fitness_snapshot_round_trips_and_disconnect_clears_assessments():
+    uid = _user()
+    with engine.connect() as conn:
+        pid = conn.execute(
+            text("""INSERT INTO plans (user_id, race_name, race_date, goal_type, total_weeks)
+                    VALUES (:u, 'R', '2026-12-01', 'race', 10) RETURNING id"""),
+            {"u": uid},
+        ).scalar_one()
+        conn.commit()
+    db.set_plan_fitness_snapshot(pid, {"tier": "sub_elite"})
+    with engine.connect() as conn:
+        stored = conn.execute(text("SELECT fitness_snapshot FROM plans WHERE id=:p"), {"p": pid}).scalar_one()
+    assert stored == {"tier": "sub_elite"}
+
+    db.record_fitness_assessment(uid, "coros", {"vo2max": 50.0})
+    db.delete_provider_data(uid, "coros")
+    assert db.get_latest_fitness_assessment(uid) is None
+```
+
+- [ ] **Step 2: Run it to verify it fails**
+
+Run: `cd backend && pytest tests/integration/test_fitness_assessments_db.py -v`
+Expected: FAIL — `KeyError: 'threshold_source'` / `AttributeError: module 'db' has no attribute 'record_fitness_assessment'`.
+
+- [ ] **Step 3: Add the schema to `init_db()`**
+
+After the `CREATE TABLE IF NOT EXISTS coros_push_usage (...)` statement, add:
+
+```python
+        CREATE TABLE IF NOT EXISTS fitness_assessments (
+            id                SERIAL PRIMARY KEY,
+            user_id           INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            source            TEXT NOT NULL,
+            vo2max            REAL,
+            running_level     REAL,
+            threshold_pace    TEXT,
+            pred_5k_sec       REAL,
+            pred_10k_sec      REAL,
+            pred_hm_sec       REAL,
+            pred_marathon_sec REAL,
+            measured_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+```
+
+(match the surrounding statement style — each table is its own `conn.execute(text("""..."""))` call), plus:
+
+```python
+        "CREATE INDEX IF NOT EXISTS idx_fitness_assessments_user ON fitness_assessments (user_id, measured_at DESC)",
+```
+
+And in the idempotent ALTER list next to `"ALTER TABLE plans ADD COLUMN IF NOT EXISTS athlete_tier TEXT"`:
+
+```python
+            "ALTER TABLE plans ADD COLUMN IF NOT EXISTS fitness_snapshot JSONB",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS threshold_source TEXT NOT NULL DEFAULT 'unknown'",
+```
+
+- [ ] **Step 4: Add the helpers to `db.py`** (after `get_weekly_training_trend`)
+
+```python
+_ASSESSMENT_FIELDS = (
+    "vo2max", "running_level", "threshold_pace",
+    "pred_5k_sec", "pred_10k_sec", "pred_hm_sec", "pred_marathon_sec",
+)
+
+
+def _same(stored: Any, new: Any) -> bool:
+    """REAL columns are float32, so 61.3 comes back as 61.2999...; compare with tolerance."""
+    if stored is None or new is None:
+        return stored is None and new is None
+    if isinstance(new, str):
+        return stored == new
+    return abs(float(stored) - float(new)) < 1e-3
+
+
+def get_latest_fitness_assessment(user_id: int) -> dict[str, Any] | None:
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("""
+            SELECT * FROM fitness_assessments WHERE user_id = :uid
+            ORDER BY measured_at DESC, id DESC LIMIT 1
+        """),
+            {"uid": user_id},
+        ).fetchone()
+    return _row_to_dict(row) if row else None
+
+
+def record_fitness_assessment(user_id: int, source: str, data: dict[str, Any]) -> bool:
+    """Append an assessment only when it differs from the latest one for this source,
+    so repeated syncs do not fill the history with identical rows."""
+    values = {f: data.get(f) for f in _ASSESSMENT_FIELDS}
+    if all(v is None for v in values.values()):
+        return False
+    with engine.connect() as conn:
+        latest = conn.execute(
+            text(f"""
+            SELECT {", ".join(_ASSESSMENT_FIELDS)} FROM fitness_assessments
+            WHERE user_id = :uid AND source = :src ORDER BY measured_at DESC, id DESC LIMIT 1
+        """),
+            {"uid": user_id, "src": source},
+        ).fetchone()
+        if latest and all(_same(getattr(latest, f), values[f]) for f in _ASSESSMENT_FIELDS):
+            return False
+        conn.execute(
+            text(f"""
+            INSERT INTO fitness_assessments (user_id, source, {", ".join(_ASSESSMENT_FIELDS)})
+            VALUES (:uid, :src, {", ".join(":" + f for f in _ASSESSMENT_FIELDS)})
+        """),
+            {"uid": user_id, "src": source, **values},
+        )
+        conn.commit()
+    return True
+
+
+def get_weekly_run_volumes(user_id: int, since: date) -> list[dict[str, Any]]:
+    """On-foot km and vert per Monday-start week (UTC), from `since`. Weeks with no
+    activity are absent; the caller decides whether such a week was covered by a sync."""
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("""
+            SELECT date_trunc('week', start_time AT TIME ZONE 'UTC')::date AS week_start,
+                   COALESCE(SUM(distance_km), 0) AS km, COALESCE(SUM(elevation_gain_m), 0) AS vert
+            FROM activities
+            WHERE user_id = :uid AND duplicate_of IS NULL AND activity_type = ANY(:types)
+              AND start_time >= :since
+            GROUP BY 1 ORDER BY 1
+        """),
+            {"uid": user_id, "types": list(_ON_FOOT_TYPES), "since": since},
+        ).fetchall()
+    return [{"week_start": r.week_start, "km": round(float(r.km), 1), "vert_m": round(float(r.vert), 1)} for r in rows]
+
+
+def get_first_activity_at(user_id: int, provider: str) -> datetime | None:
+    with engine.connect() as conn:
+        return conn.execute(
+            text("SELECT MIN(start_time) FROM activities WHERE user_id = :uid AND source_provider = :p"),
+            {"uid": user_id, "p": provider},
+        ).scalar()
+
+
+def set_plan_fitness_snapshot(plan_id: int, snapshot: dict[str, Any]) -> None:
+    with engine.connect() as conn:
+        conn.execute(
+            text("UPDATE plans SET fitness_snapshot = CAST(:s AS jsonb) WHERE id = :id"),
+            {"s": json.dumps(snapshot, default=str), "id": plan_id},
+        )
+        conn.commit()
+```
+
+Check the top of `db.py` imports `date` and `datetime`; add them to the existing `from datetime import ...` line if missing.
+
+- [ ] **Step 5: Disconnect cleanup** — in `delete_provider_data`, inside `if provider == "coros":` add:
+
+```python
+            conn.execute(text("DELETE FROM fitness_assessments WHERE user_id = :u AND source = 'coros'"), {"u": user_id})
+```
+
+- [ ] **Step 6: Write the Alembic migration** `backend/alembic/versions/b4f1c2d3e5a6_fitness_snapshot.py`
+
+```python
+"""fitness snapshot: fitness_assessments history, users.threshold_source, plans.fitness_snapshot
+
+Revision ID: b4f1c2d3e5a6
+Revises: <HEAD>
+"""
+
+from collections.abc import Sequence
+
+import sqlalchemy as sa
+from alembic import op
+from sqlalchemy.dialects import postgresql
+
+revision: str = "b4f1c2d3e5a6"
+down_revision: str | Sequence[str] | None = "<HEAD>"  # from Task 0 Step 2
+branch_labels = None
+depends_on = None
+
+
+def upgrade() -> None:
+    op.create_table(
+        "fitness_assessments",
+        sa.Column("id", sa.Integer(), primary_key=True),
+        sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+        sa.Column("source", sa.Text(), nullable=False),
+        sa.Column("vo2max", sa.REAL()),
+        sa.Column("running_level", sa.REAL()),
+        sa.Column("threshold_pace", sa.Text()),
+        sa.Column("pred_5k_sec", sa.REAL()),
+        sa.Column("pred_10k_sec", sa.REAL()),
+        sa.Column("pred_hm_sec", sa.REAL()),
+        sa.Column("pred_marathon_sec", sa.REAL()),
+        sa.Column("measured_at", sa.TIMESTAMP(timezone=True), nullable=False, server_default=sa.text("NOW()")),
+    )
+    op.create_index("idx_fitness_assessments_user", "fitness_assessments", ["user_id", sa.text("measured_at DESC")])
+    op.add_column("plans", sa.Column("fitness_snapshot", postgresql.JSONB()))
+    op.add_column(
+        "users", sa.Column("threshold_source", sa.Text(), nullable=False, server_default="unknown")
+    )
+
+
+def downgrade() -> None:
+    op.drop_column("users", "threshold_source")
+    op.drop_column("plans", "fitness_snapshot")
+    op.drop_index("idx_fitness_assessments_user", table_name="fitness_assessments")
+    op.drop_table("fitness_assessments")
+```
+
+Replace both `<HEAD>` with the id from Task 0.
+
+- [ ] **Step 7: Add `"fitness_assessments"` to `ALL_TABLES`** in `backend/tests/integration/conftest.py`, directly before `"plans"`.
+
+- [ ] **Step 8: Run tests**
+
+Run: `cd backend && pytest tests/integration/test_fitness_assessments_db.py -v && alembic upgrade head --sql > /dev/null`
+Expected: 4 passed; the offline SQL render succeeds.
+
+- [ ] **Step 9: Commit**
+
+```bash
+git add backend/db.py backend/alembic/versions/b4f1c2d3e5a6_fitness_snapshot.py backend/tests/integration/conftest.py backend/tests/integration/test_fitness_assessments_db.py
+git commit -m "feat(db): fitness_assessments history, threshold_source, plans.fitness_snapshot"
+```
+
+---
+
+### Task 2: Tier rule — performance promotion and measured-only gap demotion
+
+**Files:**
+- Modify: `backend/services/athlete_tier.py`
+- Test: `backend/tests/unit/test_athlete_tier.py`
+
+**Interfaces:**
+- Produces:
+  - `PERF_BANDS: dict[str, dict[str, float]]`, `FEMALE_PACE_FACTOR = 1.12`, `MEASURED_THRESHOLD_SOURCES = ("lab", "field")`
+  - `performance_tier(marathon_prediction_sec: float | None, gender: str | None, utmb_index: int | None) -> str | None`
+  - `explain_tier(**same kwargs as derive_tier) -> tuple[str, list[str]]`
+  - `derive_tier(goal_type=None, current_weekly_km=None, max_continuous_jog_min=None, historical_max_distance_km=None, aet_hr=None, ant_hr=None, threshold_source=None, marathon_prediction_sec=None, gender=None, utmb_index=None) -> str`
+  - `resolve_tier(explicit_tier=None, **derive_tier kwargs) -> str` and `resolve_tier_explained(explicit_tier=None, **derive_tier kwargs) -> tuple[str, list[str]]`
+
+- [ ] **Step 1: Update the existing gap tests and add new ones**
+
+In `TestAetAntGapSignal`, the three tests that expect a demotion or a measured gap must now say the thresholds were measured. Change:
+
+```python
+        assert derive_tier(current_weekly_km=90.0, aet_hr=110, ant_hr=170) == RECREATIONAL
+```
+to
+```python
+        assert derive_tier(current_weekly_km=90.0, aet_hr=110, ant_hr=170, threshold_source="field") == RECREATIONAL
+```
+and likewise add `threshold_source="field"` to `test_a_narrow_measured_gap_leaves_the_volume_tier_alone`, `test_the_gap_can_only_demote_never_promote` and `test_demotion_stops_at_recreational`. Update the import list with `MEASURED_THRESHOLD_SOURCES, explain_tier, performance_tier, resolve_tier_explained`. Then append:
+
+```python
+class TestThresholdProvenance:
+    """The gap is evidence only when the athlete says the thresholds were measured."""
+
+    @pytest.mark.parametrize("source", [None, "unknown", "estimated"])
+    def test_an_unmeasured_gap_never_demotes(self, source):
+        assert derive_tier(current_weekly_km=90.0, aet_hr=110, ant_hr=170, threshold_source=source) == SUB_ELITE
+
+    @pytest.mark.parametrize("source", MEASURED_THRESHOLD_SOURCES)
+    def test_a_measured_gap_demotes(self, source):
+        assert derive_tier(current_weekly_km=90.0, aet_hr=110, ant_hr=170, threshold_source=source) == RECREATIONAL
+
+    def test_regression_high_volume_athlete_with_default_like_thresholds(self):
+        """REGRESSION (prod, 2026-09). 120 km/week, AeT 134 / AnT 163 (17.8% gap, values
+        next to the 135/165 defaults, provenance unknown) was demoted to recreational and
+        handed 40-60 km weeks while running 125-160 km."""
+        assert derive_tier(current_weekly_km=134.0, aet_hr=134, ant_hr=163, threshold_source="unknown") == SUB_ELITE
+
+
+class TestPerformancePromotion:
+    def test_performance_tier_from_marathon_prediction(self):
+        assert performance_tier(2 * 3600 + 35 * 60, "male", None) == ELITE
+        assert performance_tier(3 * 3600, "male", None) == SUB_ELITE
+        assert performance_tier(4 * 3600, None, None) == RECREATIONAL
+        assert performance_tier(5 * 3600, "male", None) is None
+
+    def test_women_get_slower_thresholds(self):
+        assert performance_tier(2 * 3600 + 55 * 60, "female", None) == ELITE
+        assert performance_tier(2 * 3600 + 55 * 60, "male", None) == SUB_ELITE
+
+    def test_best_signal_wins(self):
+        assert performance_tier(4 * 3600, "male", 720) == ELITE
+
+    def test_promotes_at_most_one_step(self):
+        assert derive_tier(current_weekly_km=50.0, marathon_prediction_sec=2 * 3600 + 30 * 60) == SUB_ELITE
+
+    def test_performance_never_demotes(self):
+        assert derive_tier(current_weekly_km=200.0, marathon_prediction_sec=5 * 3600) == ELITE
+
+    def test_performance_does_not_lift_a_beginner_goal(self):
+        assert derive_tier(goal_type="start_running", current_weekly_km=50.0, utmb_index=700) == BEGINNER
+
+    def test_measured_gap_still_demotes_after_promotion(self):
+        tier = derive_tier(
+            current_weekly_km=100.0, marathon_prediction_sec=2 * 3600 + 30 * 60,
+            aet_hr=110, ant_hr=170, threshold_source="lab",
+        )
+        assert tier == RECREATIONAL
+
+    def test_explain_tier_reports_each_step(self):
+        tier, reasons = explain_tier(current_weekly_km=134.0, utmb_index=720, aet_hr=134, ant_hr=163)
+        assert tier == ELITE
+        assert any("volume" in r for r in reasons)
+        assert any("promoted" in r for r in reasons)
+        assert any("not used" in r for r in reasons)
+
+    def test_resolve_tier_explained_honours_the_override(self):
+        assert resolve_tier_explained(explicit_tier="elite", current_weekly_km=20.0) == (ELITE, ["explicit plan override"])
+```
+
+- [ ] **Step 2: Run to verify failure**
+
+Run: `cd backend && pytest tests/unit/test_athlete_tier.py -v`
+Expected: FAIL — `ImportError: cannot import name 'MEASURED_THRESHOLD_SOURCES'`.
+
+- [ ] **Step 3: Implement** in `services/athlete_tier.py`. Add after `CONTINUOUS_JOG_BEGINNER_CEILING_MIN`:
+
+```python
+# Performance bands for the one-step promotion. CONVENTIONAL DEFAULTS, UNSOURCED, like
+# the volume bands above: gathered here so a coach can correct them in one place.
+# Marathon thresholds are men's; women's are FEMALE_PACE_FACTOR slower. Unknown gender
+# uses men's thresholds, which can only under-promote.
+PERF_BANDS: dict[str, dict[str, float]] = {
+    ELITE: {"marathon_sec": 2 * 3600 + 40 * 60, "utmb_index": 700},
+    SUB_ELITE: {"marathon_sec": 3 * 3600 + 10 * 60, "utmb_index": 550},
+    RECREATIONAL: {"marathon_sec": 4 * 3600 + 15 * 60, "utmb_index": 400},
+}
+FEMALE_PACE_FACTOR = 1.12
+
+# Threshold provenance that makes the AeT/AnT gap real evidence. "estimated" and
+# "unknown" (the default for every existing athlete) never demote.
+MEASURED_THRESHOLD_SOURCES = ("lab", "field")
+
+
+def performance_tier(
+    marathon_prediction_sec: float | None, gender: str | None, utmb_index: int | None
+) -> str | None:
+    """Highest tier any performance signal reaches, or None when none reaches a band."""
+    factor = FEMALE_PACE_FACTOR if (gender or "").lower() == "female" else 1.0
+    for key in (ELITE, SUB_ELITE, RECREATIONAL):
+        band = PERF_BANDS[key]
+        if marathon_prediction_sec and marathon_prediction_sec <= band["marathon_sec"] * factor:
+            return key
+        if utmb_index and utmb_index >= band["utmb_index"]:
+            return key
+    return None
+```
+
+Replace the body of `derive_tier` with a call into a new `explain_tier`, keeping the existing docstring on `explain_tier` and extending it with points 5 and 6:
+
+```python
+def explain_tier(
+    goal_type: str | None = None,
+    current_weekly_km: float | None = None,
+    max_continuous_jog_min: int | None = None,
+    historical_max_distance_km: float | None = None,
+    aet_hr: float | None = None,
+    ant_hr: float | None = None,
+    threshold_source: str | None = None,
+    marathon_prediction_sec: float | None = None,
+    gender: str | None = None,
+    utmb_index: int | None = None,
+) -> tuple[str, list[str]]:
+    """<existing derive_tier docstring, points 1-4>
+    5. Performance (race predictor, UTMB index) can promote at most ONE step.
+    6. A wide AeT/AnT spread demotes only when the thresholds were measured."""
+    if (goal_type or "").strip().lower() in BEGINNER_GOAL_TYPES:
+        return BEGINNER, ["start-running goal"]
+    if max_continuous_jog_min is not None and max_continuous_jog_min < CONTINUOUS_JOG_BEGINNER_CEILING_MIN:
+        return BEGINNER, [f"cannot jog {CONTINUOUS_JOG_BEGINNER_CEILING_MIN} min continuously"]
+    if current_weekly_km is None or current_weekly_km <= 0:
+        tier, reasons = DEFAULT_TIER, ["volume unknown, default tier"]
+    else:
+        tier = DEFAULT_TIER
+        for key in TIER_ORDER:
+            profile = TIER_PROFILES[key]
+            if current_weekly_km >= profile.weekly_km_min and (
+                profile.weekly_km_max is None or current_weekly_km < profile.weekly_km_max
+            ):
+                tier = key
+                break
+        reasons = [f"volume {current_weekly_km:.0f} km/week -> {tier}"]
+
+    if historical_max_distance_km and historical_max_distance_km >= 25.0 and tier == BEGINNER:
+        tier = NOVICE
+        reasons.append(f"proven long run {historical_max_distance_km:.0f} km -> {NOVICE}")
+
+    perf = performance_tier(marathon_prediction_sec, gender, utmb_index)
+    if perf and tier != BEGINNER and TIER_ORDER.index(perf) > TIER_ORDER.index(tier):
+        tier = TIER_ORDER[TIER_ORDER.index(tier) + 1]
+        reasons.append(f"performance reaches {perf}, promoted one step -> {tier}")
+
+    gap = aet_ant_gap(aet_hr, ant_hr)
+    if gap is not None and (threshold_source or "").lower() not in MEASURED_THRESHOLD_SOURCES:
+        reasons.append(f"AeT/AnT gap {gap:.0%} not used (source: {threshold_source or 'unknown'})")
+    elif gap is not None:
+        for candidate in (SUB_ELITE, ELITE):
+            if tier == candidate and gap > TIER_PROFILES[candidate].aet_ant_gap_max:
+                tier = RECREATIONAL
+                reasons.append(f"measured AeT/AnT gap {gap:.0%} -> {RECREATIONAL}")
+                break
+    return tier, reasons
+
+
+def derive_tier(
+    goal_type: str | None = None,
+    current_weekly_km: float | None = None,
+    max_continuous_jog_min: int | None = None,
+    historical_max_distance_km: float | None = None,
+    aet_hr: float | None = None,
+    ant_hr: float | None = None,
+    threshold_source: str | None = None,
+    marathon_prediction_sec: float | None = None,
+    gender: str | None = None,
+    utmb_index: int | None = None,
+) -> str:
+    """Tier only; see explain_tier."""
+    return explain_tier(
+        goal_type=goal_type,
+        current_weekly_km=current_weekly_km,
+        max_continuous_jog_min=max_continuous_jog_min,
+        historical_max_distance_km=historical_max_distance_km,
+        aet_hr=aet_hr,
+        ant_hr=ant_hr,
+        threshold_source=threshold_source,
+        marathon_prediction_sec=marathon_prediction_sec,
+        gender=gender,
+        utmb_index=utmb_index,
+    )[0]
+```
+
+Add `from typing import Any` at the top (used by `resolve_tier_explained` below).
+
+Replace `resolve_tier` with:
+
+```python
+def resolve_tier_explained(explicit_tier: str | None = None, **kwargs: Any) -> tuple[str, list[str]]:
+    """An explicit per-plan override when one is set, otherwise the derived tier.
+    An unrecognised override is ignored rather than honoured, so a typo degrades to
+    derivation instead of silently selecting the default profile."""
+    if explicit_tier and explicit_tier.strip().lower() in TIER_PROFILES:
+        return explicit_tier.strip().lower(), ["explicit plan override"]
+    return explain_tier(**kwargs)
+
+
+def resolve_tier(explicit_tier: str | None = None, **kwargs: Any) -> str:
+    return resolve_tier_explained(explicit_tier, **kwargs)[0]
+```
+
+- [ ] **Step 4: Pass `threshold_source` from the existing generator call** so the non-snapshot path matches the new rule. In `services/plan_generator.py`, inside the `resolve_tier(...)` call (search `aet_hr=user_profile.get("aet_hr"),`), add:
+
+```python
+            threshold_source=user_profile.get("threshold_source"),
+```
+
+- [ ] **Step 5: Run tests**
+
+Run: `cd backend && pytest tests/unit/test_athlete_tier.py tests/unit/test_pace_tier_defaults.py tests/unit/test_kb_seed_tiers.py -v`
+Expected: all pass.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add backend/services/athlete_tier.py backend/services/plan_generator.py backend/tests/unit/test_athlete_tier.py
+git commit -m "feat(tier): one-step performance promotion; AeT/AnT gap demotes only when measured"
+```
+
+---
+
+### Task 3: Fitness snapshot service
+
+**Files:**
+- Create: `backend/services/fitness_snapshot.py`
+- Test: `backend/tests/unit/test_fitness_snapshot.py`
+
+**Interfaces:**
+- Consumes: Task 1 db helpers; `db.get_user_by_id`, `db.get_connection(user_id, "coros")`, `db.get_utmb_index`, `db.get_recent_readiness_summary(user_id, days=7)`; Task 2 `resolve_tier_explained`.
+- Produces:
+  - `measured_weekly_volume(weeks: list[dict], first_activity_at: datetime | None, last_sync_at: datetime | None, today: date) -> tuple[float, float, date] | None` → `(avg_km, avg_vert_m, last_counted_week_end)`
+  - `@dataclass FitnessSnapshot` with fields `weekly_km: float`, `weekly_km_source: str`, `weekly_vert_m: float | None`, `volume_as_of: str | None`, `threshold_pace: str | None`, `threshold_pace_source: str | None`, `assessment: dict | None` (fresh, ≤ 60 days, else None), `utmb_index: int | None`, `threshold_source: str`, `gender: str | None`, `readiness: dict | None`, `notes: list[str]`, `tier: str | None = None`, `tier_reasons: list[str]`
+  - `FitnessSnapshot.resolve_tier(explicit_tier, goal_type, max_continuous_jog_min, historical_max_distance_km, aet_hr, ant_hr) -> str` — sets and returns `self.tier`, sets `self.tier_reasons`
+  - `FitnessSnapshot.prompt_block(lang: str) -> str`
+  - `FitnessSnapshot.to_dict() -> dict`
+  - `build(user_id: int, typed_weekly_km: float | None = None, typed_is_override: bool = False, today: date | None = None) -> FitnessSnapshot`
+
+- [ ] **Step 1: Write the failing tests**
+
+```python
+"""Snapshot priority rules. DB is stubbed; the pure volume rule is tested directly."""
+
+from datetime import UTC, date, datetime, timedelta
+
+import pytest
+
+from services import fitness_snapshot as fs
+
+TODAY = date(2026, 10, 2)  # Thursday; current week starts Mon Sep 28
+WEEKS = [
+    {"week_start": date(2026, 8, 31), "km": 148.7, "vert_m": 8146.0},
+    {"week_start": date(2026, 9, 7), "km": 125.5, "vert_m": 1837.0},
+    {"week_start": date(2026, 9, 14), "km": 126.8, "vert_m": 5808.0},
+    {"week_start": date(2026, 9, 21), "km": 27.5, "vert_m": 0.0},
+]
+FIRST = datetime(2026, 8, 23, tzinfo=UTC)
+
+
+class TestMeasuredWeeklyVolume:
+    def test_partial_week_after_last_sync_is_excluded(self):
+        """REGRESSION: sync stopped Sep 25, so the Sep 21 week (27.5 km) is incomplete."""
+        km, vert, end = fs.measured_weekly_volume(WEEKS, FIRST, datetime(2026, 9, 25, 1, 54, tzinfo=UTC), TODAY)
+        assert km == pytest.approx((148.7 + 125.5 + 126.8) / 3, abs=0.1)
+        assert end == date(2026, 9, 20)
+
+    def test_covered_week_without_activity_counts_as_zero(self):
+        weeks = [w for w in WEEKS if w["week_start"] != date(2026, 9, 7)]
+        km, _, _ = fs.measured_weekly_volume(weeks, FIRST, datetime(2026, 10, 1, tzinfo=UTC), TODAY)
+        assert km == pytest.approx((148.7 + 0 + 126.8 + 27.5) / 4, abs=0.1)
+
+    def test_weeks_before_the_first_synced_activity_do_not_count(self):
+        assert fs.measured_weekly_volume(WEEKS, datetime(2026, 9, 10, tzinfo=UTC), datetime(2026, 10, 1, tzinfo=UTC), TODAY) is None
+
+    def test_fewer_than_three_weeks_returns_none(self):
+        assert fs.measured_weekly_volume(WEEKS, FIRST, datetime(2026, 9, 15, tzinfo=UTC), TODAY) is None
+
+    def test_no_sync_returns_none(self):
+        assert fs.measured_weekly_volume(WEEKS, FIRST, None, TODAY) is None
+
+
+@pytest.fixture
+def stub_db(monkeypatch):
+    state = {
+        "user": {"id": 30, "current_weekly_km": 120.0, "threshold_pace": "4:10", "threshold_source": "unknown",
+                 "gender": None, "aet_hr": 134, "ant_hr": 163},
+        "connection": {"status": "active", "last_sync_at": datetime(2026, 9, 25, 1, 54, tzinfo=UTC)},
+        "assessment": {"vo2max": 61.0, "running_level": 92.0, "threshold_pace": "3:53", "pred_marathon_sec": 10320.0,
+                       "pred_hm_sec": 4860.0, "measured_at": datetime(2026, 9, 25, tzinfo=UTC)},
+        "utmb": None,
+    }
+    monkeypatch.setattr(fs.db, "get_user_by_id", lambda uid: state["user"])
+    monkeypatch.setattr(fs.db, "get_connection", lambda uid, p: state["connection"])
+    monkeypatch.setattr(fs.db, "get_latest_fitness_assessment", lambda uid: state["assessment"])
+    monkeypatch.setattr(fs.db, "get_weekly_run_volumes", lambda uid, since: WEEKS)
+    monkeypatch.setattr(fs.db, "get_first_activity_at", lambda uid, p: FIRST)
+    monkeypatch.setattr(fs.db, "get_utmb_index", lambda uid: state["utmb"])
+    monkeypatch.setattr(fs.db, "get_recent_readiness_summary", lambda uid, days=7: {"days_recorded": 0})
+    return state
+
+
+class TestBuild:
+    def test_measured_volume_beats_profile_value(self, stub_db):
+        snap = fs.build(30, today=TODAY)
+        assert snap.weekly_km_source == "coros"
+        assert snap.weekly_km == pytest.approx(133.7, abs=0.1)
+
+    def test_measured_volume_beats_a_typed_prefill(self, stub_db):
+        assert fs.build(30, typed_weekly_km=90.0, today=TODAY).weekly_km_source == "coros"
+
+    def test_athlete_override_wins(self, stub_db):
+        snap = fs.build(30, typed_weekly_km=90.0, typed_is_override=True, today=TODAY)
+        assert (snap.weekly_km, snap.weekly_km_source) == (90.0, "self_reported")
+        assert any("athlete override" in n for n in snap.notes)
+
+    def test_no_connection_falls_back_to_typed_then_profile(self, stub_db):
+        stub_db["connection"] = None
+        assert fs.build(30, typed_weekly_km=80.0, today=TODAY).weekly_km == 80.0
+        assert fs.build(30, today=TODAY).weekly_km == 120.0
+
+    def test_fresh_assessment_threshold_pace_beats_typed(self, stub_db):
+        snap = fs.build(30, today=TODAY)
+        assert (snap.threshold_pace, snap.threshold_pace_source) == ("3:53", "coros")
+
+    def test_stale_assessment_is_ignored(self, stub_db):
+        stub_db["assessment"]["measured_at"] = datetime(2026, 7, 1, tzinfo=UTC)
+        snap = fs.build(30, today=TODAY)
+        assert snap.assessment is None
+        assert (snap.threshold_pace, snap.threshold_pace_source) == ("4:10", "self_reported")
+
+    def test_regression_tier_is_not_recreational(self, stub_db):
+        snap = fs.build(30, today=TODAY)
+        tier = snap.resolve_tier(None, "race", None, 80.0, 134, 163)
+        assert tier in ("sub_elite", "elite")
+        assert snap.to_dict()["tier"] == tier
+
+    def test_prompt_block_lists_sources_and_skips_missing(self, stub_db):
+        snap = fs.build(30, today=TODAY)
+        snap.resolve_tier(None, "race", None, None, 134, 163)
+        block = snap.prompt_block("en")
+        assert block.startswith("ATHLETE FITNESS SNAPSHOT")
+        assert "134 km/week" in block and "COROS" in block
+        assert "Marathon prediction 2:52:00" in block
+        assert "UTMB" not in block
+        assert "not used" in block
+```
+
+- [ ] **Step 2: Run to verify failure**
+
+Run: `cd backend && pytest tests/unit/test_fitness_snapshot.py -v`
+Expected: FAIL — `ModuleNotFoundError: No module named 'services.fitness_snapshot'`.
+
+- [ ] **Step 3: Implement `backend/services/fitness_snapshot.py`**
+
+```python
+"""What we know about an athlete's current fitness, and where each number came from.
+
+Plan generation used to read the km/week typed into a form and the stored AeT/AnT pair,
+and nothing the watch measured. A 130 km/week athlete with default-looking thresholds was
+demoted to `recreational` and handed 40-60 km weeks. This module assembles the measured
+signals first and falls back to typed values, recording the source of each so a plan's
+tier can be audited from plans.fitness_snapshot. Spec:
+docs/superpowers/specs/2026-10-02-fitness-snapshot-design.md
+"""
+
+from dataclasses import asdict, dataclass, field
+from datetime import UTC, date, datetime, timedelta
+from typing import Any
+
+import db
+from services.athlete_tier import resolve_tier_explained
+
+PROVIDER = "coros"
+VOLUME_WEEKS = 4
+MIN_COUNTED_WEEKS = 3
+ASSESSMENT_MAX_AGE = timedelta(days=60)
+
+
+def _monday(d: date) -> date:
+    return d - timedelta(days=d.weekday())
+
+
+def _aware(ts: datetime) -> datetime:
+    return ts if ts.tzinfo else ts.replace(tzinfo=UTC)
+
+
+def measured_weekly_volume(
+    weeks: list[dict[str, Any]],
+    first_activity_at: datetime | None,
+    last_sync_at: datetime | None,
+    today: date,
+) -> tuple[float, float, date] | None:
+    """Mean km and vert over the last complete weeks a sync actually covered.
+
+    A week counts when it starts on or after the first synced activity (before that we
+    simply have no data) and ends before the last sync (after that the week is partial).
+    A counted week with no activity is a real zero. None when fewer than
+    MIN_COUNTED_WEEKS weeks qualify."""
+    if not last_sync_at or not first_activity_at:
+        return None
+    first_day = _aware(first_activity_at).date()
+    sync = _aware(last_sync_at)
+    by_start = {w["week_start"]: w for w in weeks}
+    counted = []
+    for i in range(1, VOLUME_WEEKS + 1):
+        start = _monday(today) - timedelta(weeks=i)
+        end = datetime.combine(start + timedelta(days=7), datetime.min.time(), tzinfo=UTC)
+        if start >= first_day and end <= sync:
+            counted.append((start, by_start.get(start, {"km": 0.0, "vert_m": 0.0})))
+    if len(counted) < MIN_COUNTED_WEEKS:
+        return None
+    km = sum(w["km"] for _, w in counted) / len(counted)
+    vert = sum(w["vert_m"] for _, w in counted) / len(counted)
+    last_end = max(s for s, _ in counted) + timedelta(days=6)
+    return round(km, 1), round(vert), last_end
+
+
+def _hms(seconds: float) -> str:
+    s = int(round(seconds))
+    return f"{s // 3600}:{s % 3600 // 60:02d}:{s % 60:02d}"
+
+
+@dataclass
+class FitnessSnapshot:
+    weekly_km: float
+    weekly_km_source: str
+    weekly_vert_m: float | None
+    volume_as_of: str | None
+    threshold_pace: str | None
+    threshold_pace_source: str | None
+    assessment: dict[str, Any] | None
+    utmb_index: int | None
+    threshold_source: str
+    gender: str | None
+    readiness: dict[str, Any] | None
+    notes: list[str] = field(default_factory=list)
+    tier: str | None = None
+    tier_reasons: list[str] = field(default_factory=list)
+
+    def resolve_tier(
+        self,
+        explicit_tier: str | None,
+        goal_type: str | None,
+        max_continuous_jog_min: int | None,
+        historical_max_distance_km: float | None,
+        aet_hr: float | None,
+        ant_hr: float | None,
+    ) -> str:
+        self.tier, self.tier_reasons = resolve_tier_explained(
+            explicit_tier=explicit_tier,
+            goal_type=goal_type,
+            current_weekly_km=self.weekly_km,
+            max_continuous_jog_min=max_continuous_jog_min,
+            historical_max_distance_km=historical_max_distance_km,
+            aet_hr=aet_hr,
+            ant_hr=ant_hr,
+            threshold_source=self.threshold_source,
+            marathon_prediction_sec=(self.assessment or {}).get("pred_marathon_sec"),
+            gender=self.gender,
+            utmb_index=self.utmb_index,
+        )
+        return self.tier
+
+    def prompt_block(self, lang: str = "en") -> str:
+        # English like the rest of the scheduler prompt; `lang` steers the output elsewhere.
+        src = {"coros": "COROS", "self_reported": "self-reported"}
+        lines = ["ATHLETE FITNESS SNAPSHOT"]
+        vol = f"- Volume: {self.weekly_km:.0f} km/week"
+        if self.weekly_vert_m:
+            vol += f", {self.weekly_vert_m:,.0f} m vert"
+        vol += f" ({src[self.weekly_km_source]}"
+        vol += f", 4-week avg to {self.volume_as_of})" if self.volume_as_of else ")"
+        lines.append(vol)
+        a = self.assessment
+        if a:
+            day = _aware(a["measured_at"]).date().isoformat()
+            preds = []
+            if a.get("pred_marathon_sec"):
+                preds.append(f"Marathon prediction {_hms(a['pred_marathon_sec'])}")
+            if a.get("pred_hm_sec"):
+                preds.append(f"half {_hms(a['pred_hm_sec'])}")
+            if preds:
+                lines.append(f"- {', '.join(preds)} (COROS, {day})")
+            if a.get("vo2max"):
+                lines.append(f"- VO2max {a['vo2max']:.0f} (COROS, {day})")
+        if self.threshold_pace:
+            lines.append(f"- Threshold pace {self.threshold_pace}/km ({src[self.threshold_pace_source or 'self_reported']})")
+        if self.utmb_index:
+            lines.append(f"- UTMB index {self.utmb_index}")
+        r = self.readiness or {}
+        if r.get("days_recorded"):
+            bits = []
+            if r.get("latest_load_ratio") is not None:
+                bits.append(f"load ratio {r['latest_load_ratio']:.2f}")
+            if r.get("latest_hrv_status"):
+                bits.append(f"HRV {r['latest_hrv_status']}")
+            if bits:
+                lines.append(f"- {', '.join(bits)} (COROS, last 7 days)")
+        if self.tier:
+            lines.append(f"- Level: {self.tier} ({'; '.join(self.tier_reasons)})")
+        return "\n".join(lines)
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+def build(
+    user_id: int,
+    typed_weekly_km: float | None = None,
+    typed_is_override: bool = False,
+    today: date | None = None,
+) -> FitnessSnapshot:
+    today = today or date.today()
+    user = db.get_user_by_id(user_id) or {}
+    connection = db.get_connection(user_id, PROVIDER)
+    connected = bool(connection and connection.get("status") == "active")
+    notes: list[str] = []
+
+    measured = None
+    if connected:
+        weeks = db.get_weekly_run_volumes(user_id, since=_monday(today) - timedelta(weeks=VOLUME_WEEKS))
+        measured = measured_weekly_volume(
+            weeks, db.get_first_activity_at(user_id, PROVIDER), connection.get("last_sync_at"), today
+        )
+        if measured is None:
+            notes.append("COROS volume unused: fewer than 3 complete synced weeks")
+
+    fallback_km = typed_weekly_km if typed_weekly_km is not None else user.get("current_weekly_km") or 30.0
+    if typed_is_override and typed_weekly_km is not None:
+        km, vert, as_of, km_src = float(typed_weekly_km), None, None, "self_reported"
+        if measured:
+            notes.append(f"athlete override of measured {measured[0]:.0f} km/week")
+    elif measured:
+        km, vert, as_of, km_src = measured[0], measured[1], measured[2].isoformat(), "coros"
+    else:
+        km, vert, as_of, km_src = float(fallback_km), None, None, "self_reported"
+
+    assessment = db.get_latest_fitness_assessment(user_id)
+    if assessment and today - _aware(assessment["measured_at"]).date() > ASSESSMENT_MAX_AGE:
+        notes.append("COROS assessment older than 60 days, unused")
+        assessment = None
+
+    if assessment and assessment.get("threshold_pace"):
+        tp, tp_src = assessment["threshold_pace"], "coros"
+    elif user.get("threshold_pace"):
+        tp, tp_src = user["threshold_pace"], "self_reported"
+    else:
+        tp, tp_src = None, None
+
+    return FitnessSnapshot(
+        weekly_km=km,
+        weekly_km_source=km_src,
+        weekly_vert_m=vert,
+        volume_as_of=as_of,
+        threshold_pace=tp,
+        threshold_pace_source=tp_src,
+        assessment=assessment,
+        utmb_index=db.get_utmb_index(user_id),
+        threshold_source=user.get("threshold_source") or "unknown",
+        gender=user.get("gender"),
+        readiness=db.get_recent_readiness_summary(user_id, days=7) if connected else None,
+        notes=notes,
+    )
+```
+
+- [ ] **Step 4: Run tests**
+
+Run: `cd backend && pytest tests/unit/test_fitness_snapshot.py -v`
+Expected: all pass. If `test_measured_volume_beats_profile_value` reports 133.7 vs the Task 2 regression's 134, both are fine — the prompt test asserts the rounded `134 km/week`.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add backend/services/fitness_snapshot.py backend/tests/unit/test_fitness_snapshot.py
+git commit -m "feat: fitness snapshot assembles measured COROS signals with typed fallbacks"
+```
+
+---
+
+### Task 4: Record COROS assessments on sync, refresh on demand
+
+**Files:**
+- Modify: `backend/services/coros_sync.py`
+- Test: `backend/tests/unit/test_coros_sync.py`
+
+**Interfaces:**
+- Consumes: `db.record_fitness_assessment`, `db.get_latest_fitness_assessment`, `CorosAdapter.fetch_fitness_overview()` (returns the `parse_fitness_overview` dict: `vo2max, running_level, threshold_pace, prediction_5k_sec, prediction_10k_sec, prediction_half_marathon_sec, prediction_marathon_sec`).
+- Produces:
+  - `coros_sync.store_overview(user_id: int, overview: dict) -> None`
+  - `async coros_sync.ensure_fresh_assessment(user_id: int, max_age: timedelta = timedelta(days=7)) -> None` — never raises.
+
+- [ ] **Step 1: Write the failing tests** (append to `test_coros_sync.py`)
+
+```python
+OVERVIEW = {
+    "vo2max": 61.0, "running_level": 92.0, "threshold_pace": "3:53",
+    "prediction_5k_sec": 1000.0, "prediction_10k_sec": 2100.0,
+    "prediction_half_marathon_sec": 4860.0, "prediction_marathon_sec": 10320.0,
+}
+
+
+def test_store_overview_records_history_and_profile(monkeypatch):
+    recorded, profile = [], []
+    monkeypatch.setattr(coros_sync.db, "record_fitness_assessment", lambda uid, src, d: recorded.append((uid, src, d)) or True)
+    monkeypatch.setattr(coros_sync.db, "update_user_fitness", lambda **kw: profile.append(kw) or True)
+    coros_sync.store_overview(30, OVERVIEW)
+    assert recorded[0][2]["pred_marathon_sec"] == 10320.0
+    assert recorded[0][2]["pred_hm_sec"] == 4860.0
+    assert profile[0]["coros_vo2max"] == 61.0
+
+
+@pytest.mark.asyncio
+async def test_ensure_fresh_skips_when_recent(monkeypatch):
+    monkeypatch.setattr(coros_sync.db, "get_connection", lambda uid, p: {"status": "active"})
+    monkeypatch.setattr(
+        coros_sync.db, "get_latest_fitness_assessment",
+        lambda uid: {"measured_at": datetime.now(UTC) - timedelta(days=2)},
+    )
+
+    async def boom(uid):
+        raise AssertionError("must not pull")
+
+    monkeypatch.setattr(coros_sync, "sync_fitness", boom)
+    await coros_sync.ensure_fresh_assessment(30)
+
+
+@pytest.mark.asyncio
+async def test_ensure_fresh_swallows_coros_failures(monkeypatch):
+    monkeypatch.setattr(coros_sync.db, "get_connection", lambda uid, p: {"status": "active"})
+    monkeypatch.setattr(coros_sync.db, "get_latest_fitness_assessment", lambda uid: None)
+
+    async def fail(uid):
+        raise RuntimeError("COROS down")
+
+    monkeypatch.setattr(coros_sync, "sync_fitness", fail)
+    await coros_sync.ensure_fresh_assessment(30)  # no exception
+
+
+@pytest.mark.asyncio
+async def test_ensure_fresh_does_nothing_without_connection(monkeypatch):
+    monkeypatch.setattr(coros_sync.db, "get_connection", lambda uid, p: None)
+
+    async def boom(uid):
+        raise AssertionError("must not pull")
+
+    monkeypatch.setattr(coros_sync, "sync_fitness", boom)
+    await coros_sync.ensure_fresh_assessment(30)
+```
+
+- [ ] **Step 2: Run to verify failure**
+
+Run: `cd backend && pytest tests/unit/test_coros_sync.py -v -k "overview or ensure_fresh"`
+Expected: FAIL — `AttributeError: module 'services.coros_sync' has no attribute 'store_overview'`.
+
+- [ ] **Step 3: Implement** in `coros_sync.py`. Add:
+
+```python
+FITNESS_REFRESH_TIMEOUT_SECONDS = 15
+
+
+def store_overview(user_id: int, overview: dict[str, Any]) -> None:
+    """Keep the profile columns current and append the assessment to the history."""
+    db.update_user_fitness(
+        user_id=user_id,
+        threshold_pace=overview.get("threshold_pace"),
+        coros_vo2max=overview.get("vo2max"),
+        coros_running_level=overview.get("running_level"),
+    )
+    db.record_fitness_assessment(
+        user_id,
+        PROVIDER,
+        {
+            "vo2max": overview.get("vo2max"),
+            "running_level": overview.get("running_level"),
+            "threshold_pace": overview.get("threshold_pace"),
+            "pred_5k_sec": overview.get("prediction_5k_sec"),
+            "pred_10k_sec": overview.get("prediction_10k_sec"),
+            "pred_hm_sec": overview.get("prediction_half_marathon_sec"),
+            "pred_marathon_sec": overview.get("prediction_marathon_sec"),
+        },
+    )
+
+
+async def ensure_fresh_assessment(user_id: int, max_age: timedelta = timedelta(days=7)) -> None:
+    """Pull a fitness overview when the latest is missing or older than max_age.
+    Best effort: a plan must never wait on, or fail because of, COROS."""
+    connection = db.get_connection(user_id, PROVIDER)
+    if not connection or connection.get("status") != "active":
+        return
+    latest = db.get_latest_fitness_assessment(user_id)
+    if latest and datetime.now(UTC) - latest["measured_at"] < max_age:
+        return
+    try:
+        await asyncio.wait_for(sync_fitness(user_id), timeout=FITNESS_REFRESH_TIMEOUT_SECONDS)
+    except Exception:
+        logger.exception("on-demand COROS fitness refresh failed", extra={"fields": {"service": "coros_sync", "event": "fitness_refresh_failed"}})
+```
+
+Add `import asyncio` at the top. In `sync_fitness`, replace the `db.update_user_fitness(...)` call with `store_overview(user_id, overview)` (keep its return dict). In `sync_user`, after `return await persist(...)` change to:
+
+```python
+        result = await persist(user_id, CorosAdapter(client), days)
+        try:
+            overview = await CorosAdapter(client).fetch_fitness_overview()
+            if overview:
+                store_overview(user_id, overview)
+        except Exception:
+            logger.exception("fitness overview during sync failed", extra={"fields": {"service": "coros_sync", "event": "fitness_overview_failed"}})
+        return result
+```
+
+- [ ] **Step 4: Run tests**
+
+Run: `cd backend && pytest tests/unit/test_coros_sync.py tests/unit/test_coros_sync_route.py -v`
+Expected: all pass (existing tests still pass: `persist` is unchanged).
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add backend/services/coros_sync.py backend/tests/unit/test_coros_sync.py
+git commit -m "feat(coros): keep fitness assessment history; refresh on demand before planning"
+```
+
+---
+
+### Task 5: Plan generator reads the snapshot
+
+**Files:**
+- Modify: `backend/services/plan_generator.py` (`generate_plan_workouts`: the `current_weekly_km = float(...)` line, the `athlete_tier = resolve_tier(...)` block, the `user_summary` f-string)
+- Test: `backend/tests/unit/test_plan_generator_snapshot.py`
+
+**Interfaces:**
+- Consumes: `race_info["fitness_snapshot"]: FitnessSnapshot | None` (Task 3).
+- Produces: when present, `snapshot.tier`/`tier_reasons` are set after the call; the prompt contains `snapshot.prompt_block(lang)`; `current_weekly_km == snapshot.weekly_km`; pace zones use `snapshot.threshold_pace`.
+
+- [ ] **Step 1: Write the failing test** — same mocking pattern as `tests/unit/test_prompt_enrichment.py::test_plan_prompt_places_race_history_beside_ceiling` (invalid Gemini JSON forces the rule-based fallback after the prompt is sent, so the prompt can be read from the mock):
+
+```python
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+from services.fitness_snapshot import FitnessSnapshot
+from services.plan_generator import PlanGenerator
+
+PROFILE = {"id": 7, "current_weekly_km": 120.0, "aet_hr": 134, "ant_hr": 163, "max_hr": 183, "resting_hr": 60}
+RACE = {"name": "APTRC", "date": "2026-11-27", "goal_type": "race", "course_distance_km": 80.0,
+        "course_elevation_gain_m": 4000.0}
+
+
+def _snapshot():
+    return FitnessSnapshot(
+        weekly_km=134.0, weekly_km_source="coros", weekly_vert_m=5000.0, volume_as_of="2026-09-20",
+        threshold_pace="3:53", threshold_pace_source="coros", assessment=None, utmb_index=None,
+        threshold_source="unknown", gender=None, readiness=None,
+    )
+
+
+async def _generate(race_info):
+    mock_resp = MagicMock()
+    mock_resp.text = "invalid json to trigger fallback"
+    client = MagicMock()
+    client.models.generate_content.return_value = mock_resp
+    with (
+        patch("google.genai.Client", return_value=client),
+        patch("services.kb_retrieval.search_scheduler_chunks", return_value=[]),
+        patch("services.race_history.prompt_summary", return_value=""),
+        patch("services.race_history.tier_distance", return_value=None),
+    ):
+        _, tier = await PlanGenerator.generate_plan_workouts(
+            plan_id=1, user_profile=dict(PROFILE), race_info=race_info, total_weeks=8, api_key="fake-gemini-key"
+        )
+    return tier, client.models.generate_content.call_args.kwargs.get("contents", "")
+
+
+@pytest.mark.asyncio
+async def test_snapshot_sets_tier_volume_and_prompt_block():
+    snap = _snapshot()
+    tier, prompt = await _generate({**RACE, "fitness_snapshot": snap})
+    assert tier == "sub_elite"
+    assert snap.tier == "sub_elite" and snap.tier_reasons
+    assert "ATHLETE FITNESS SNAPSHOT" in prompt
+    assert "Weekly volume base: 134.0 km" in prompt
+
+
+@pytest.mark.asyncio
+async def test_without_snapshot_unknown_threshold_source_no_longer_demotes():
+    tier, prompt = await _generate(dict(RACE))
+    assert tier == "sub_elite"
+    assert "ATHLETE FITNESS SNAPSHOT" not in prompt
+```
+
+- [ ] **Step 2: Run to verify failure**
+
+Run: `cd backend && pytest tests/unit/test_plan_generator_snapshot.py -v`
+Expected: the first test FAILS (snapshot ignored: no prompt block, volume 120.0). The second already passes after Task 2.
+
+- [ ] **Step 3: Implement.** In `generate_plan_workouts`:
+
+Replace
+```python
+        current_weekly_km = float(user_profile.get("current_weekly_km", 30.0))
+```
+with
+```python
+        snapshot = race_info.get("fitness_snapshot")
+        current_weekly_km = (
+            float(snapshot.weekly_km) if snapshot else float(user_profile.get("current_weekly_km", 30.0))
+        )
+        if snapshot and snapshot.threshold_pace:
+            user_profile = {**user_profile, "threshold_pace": snapshot.threshold_pace}
+```
+
+Replace the `athlete_tier = resolve_tier(...)` call with:
+
+```python
+        _tier_args = dict(
+            explicit_tier=race_info.get("athlete_tier"),
+            goal_type=race_info.get("goal_type") or user_profile.get("goal_type"),
+            max_continuous_jog_min=_max_jog_min,
+            historical_max_distance_km=(_historical_ceiling or {}).get("max_distance_km"),
+            # RAW stored thresholds -- see the comment this replaces about derived values.
+            aet_hr=user_profile.get("aet_hr"),
+            ant_hr=user_profile.get("ant_hr"),
+        )
+        if snapshot:
+            athlete_tier = snapshot.resolve_tier(**_tier_args)
+        else:
+            athlete_tier = resolve_tier(
+                **_tier_args,
+                current_weekly_km=current_weekly_km,
+                threshold_source=user_profile.get("threshold_source"),
+            )
+```
+
+Keep the existing explanatory comment about RAW thresholds above `aet_hr=`.
+
+In the prompt assembly, next to `race_history_notes = f"\n{race_history_text}\n" if race_history_text else ""`, add:
+
+```python
+            snapshot_notes = f"\n{snapshot.prompt_block(lang)}\n" if snapshot else ""
+```
+
+and append `f"{snapshot_notes}"` right after `f"{race_history_notes}"` in `user_summary`.
+
+- [ ] **Step 4: Run tests**
+
+Run: `cd backend && pytest tests/unit -q -m "not kafka"`
+Expected: all pass.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add backend/services/plan_generator.py backend/tests/unit/test_plan_generator_snapshot.py
+git commit -m "feat(plan): generator uses the fitness snapshot for tier, volume and prompt"
+```
+
+---
+
+### Task 6: Wire the snapshot into every plan path, goal context and coach chat
+
+**Files:**
+- Modify: `backend/main.py` (onboarding job `_run_plan_gen`, generate-plan job `_run_gen`, next-block job `_run_next_block`; `GeneratePlanRequest`)
+- Modify: `backend/services/week_rebuild.py` (`generate_week_draft`, `write_draft`, `RebuildInputs` users)
+- Modify: `backend/services/schedule_proposals.py` (where it calls `db.set_plan_athlete_tier` from a draft)
+- Modify: `backend/services/goal_context.py`, `backend/services/coach_context.py`
+- Test: `backend/tests/integration/test_plan_fitness_snapshot.py`, `backend/tests/unit/test_goal_context.py` (or the existing goal-context unit test file)
+
+**Interfaces:**
+- Consumes: `fitness_snapshot.build`, `coros_sync.ensure_fresh_assessment`, `db.set_plan_fitness_snapshot`.
+- Produces: `GeneratePlanRequest.weekly_km_from_watch: bool = False`; `plans.fitness_snapshot` populated after every generation; `WeekDraft.fitness_snapshot: dict | None`.
+
+- [ ] **Step 1: Write the failing integration test.** Copy the client/auth setup from an existing generate-plan integration test (search `tests/integration` for `"/api/coach/generate-plan"`), run with no Gemini key (rule-based), then:
+
+```python
+def test_generate_plan_stores_snapshot_and_uses_measured_volume(client, athlete_headers, athlete_id, monkeypatch):
+    import dataclasses
+
+    from services import coros_sync, fitness_snapshot
+
+    async def no_refresh(uid, **kw):
+        return None
+
+    monkeypatch.setattr(coros_sync, "ensure_fresh_assessment", no_refresh)
+    real_build = fitness_snapshot.build
+    monkeypatch.setattr(
+        fitness_snapshot, "build",
+        lambda uid, **kw: dataclasses.replace(real_build(uid, **kw), weekly_km=134.0, weekly_km_source="coros"),
+    )
+    payload = {**MINIMAL_GENERATE_PAYLOAD, "current_weekly_km": 120, "weekly_km_from_watch": True}
+    job = client.post("/api/coach/generate-plan", json=payload, headers=athlete_headers).json()
+    wait_for_job(client, job["job_id"], athlete_headers)  # copy helper from the existing test
+    with engine.connect() as conn:
+        snap = conn.execute(text("SELECT fitness_snapshot FROM plans WHERE id=:p"), {"p": job["plan_id"]}).scalar_one()
+    assert snap["weekly_km"] == 134.0
+    assert snap["tier"] == "sub_elite"
+```
+
+`MINIMAL_GENERATE_PAYLOAD` and `wait_for_job` come from the existing test you copied; import or duplicate them.
+
+- [ ] **Step 2: Run to verify failure**
+
+Run: `cd backend && pytest tests/integration/test_plan_fitness_snapshot.py -v`
+Expected: FAIL — `snap` is `None`.
+
+- [ ] **Step 3: Add a shared helper in `main.py`** (near `_assess_new_plan`):
+
+```python
+async def _plan_snapshot(user_id: int, typed_weekly_km: float | None = None, typed_is_override: bool = False):
+    """Refresh COROS fitness if stale, then assemble the snapshot. Never raises: a plan
+    falls back to the profile path rather than failing on fitness data."""
+    try:
+        await coros_sync.ensure_fresh_assessment(user_id)
+        return fitness_snapshot.build(user_id, typed_weekly_km=typed_weekly_km, typed_is_override=typed_is_override)
+    except Exception:
+        logger.exception("fitness snapshot unavailable; using profile values")
+        return None
+
+
+def _store_plan_snapshot(plan_id: int, snapshot) -> None:
+    if snapshot is not None:
+        set_plan_fitness_snapshot(plan_id, snapshot.to_dict())
+```
+
+Import `fitness_snapshot` and `coros_sync` from `services`, and `set_plan_fitness_snapshot` from `db` alongside `set_plan_athlete_tier`. Use the module's existing logger (search `logger =` in `main.py`; if it only uses `print`, use `print(f"[PlanGen] fitness snapshot unavailable: {exc}")` with `except Exception as exc`).
+
+- [ ] **Step 4: Use it in the three jobs.**
+  - Onboarding `_run_plan_gen`: first line inside `try:` → `race_info["fitness_snapshot"] = await _plan_snapshot(user["id"], request.current_weekly_km)`; after `set_plan_athlete_tier(plan_id, resolved_tier)` → `_store_plan_snapshot(plan_id, race_info["fitness_snapshot"])`.
+  - Generate-plan `_run_gen`: `race_info["fitness_snapshot"] = await _plan_snapshot(athlete_id, request.current_weekly_km, typed_is_override=not request.weekly_km_from_watch)`; store after `set_plan_athlete_tier`.
+  - Next block `_run_next_block`: `race_info["fitness_snapshot"] = await _plan_snapshot(athlete_id)`; store after `set_plan_athlete_tier`.
+  - Add `weekly_km_from_watch: bool = False` to the generate-plan request model (the model that declares `current_weekly_km: float  # current training volume, entered fresh for every plan`).
+
+`race_info` is also passed to `generate_week_narrative` in next-block; the snapshot object there is harmless (it only reads known keys). If a JSON dump of `race_info` happens anywhere (search `json.dumps(race_info`), pop the key first.
+
+- [ ] **Step 5: Adapt week.** In `week_rebuild.py`, add `fitness_snapshot: dict[str, Any] | None = None` to `WeekDraft`. In `generate_week_draft`:
+
+```python
+    from services import coros_sync, fitness_snapshot
+
+    snapshot = None
+    try:
+        await coros_sync.ensure_fresh_assessment(inputs.user["id"])
+        snapshot = fitness_snapshot.build(inputs.user["id"])
+    except Exception:
+        snapshot = None
+    race_info = {**inputs.race_info, "fitness_snapshot": snapshot}
+```
+
+pass `race_info` instead of `inputs.race_info` to `generate_plan_workouts`, and return `WeekDraft(..., fitness_snapshot=snapshot.to_dict() if snapshot else None)`. In `write_draft` (and in `schedule_proposals.py` where a proposal draft's `resolved_tier` is applied), after `set_plan_athlete_tier`, add `if draft.fitness_snapshot: db.set_plan_fitness_snapshot(plan["id"], draft.fitness_snapshot)` (for the proposal path read it from `(row.get("draft") or {}).get("fitness_snapshot")`). Check how `WeekDraft` is serialised into a proposal (`asdict`) — the new field is a plain dict, so it serialises.
+
+- [ ] **Step 6: Goal context and coach chat.**
+  - `goal_context.gather`: after the VO2max block add:
+
+```python
+        assessment = _safe("predictor", db.get_latest_fitness_assessment, missing, uid)
+        if assessment and assessment.get("pred_marathon_sec") and use(
+            "predictor", f"COROS marathon prediction {_hms(int(assessment['pred_marathon_sec']))}"
+        ):
+            athlete["marathon_prediction_sec"] = assessment["pred_marathon_sec"]
+```
+
+  Add a unit test next to the existing goal-context tests asserting `marathon_prediction_sec` appears when the stubbed assessment has one. If `_hms` is not defined above that point, it is in the same module (line ~48).
+  - `coach_context`: add `"threshold_source": athlete_row.get("threshold_source")` and `"fitness_snapshot": _snapshot_or_none(user_id)` to `athlete_context`, where:
+
+```python
+def _snapshot_or_none(user_id: int) -> dict[str, Any] | None:
+    try:
+        from services.fitness_snapshot import build
+
+        return build(user_id).to_dict()
+    except Exception:
+        return None
+```
+
+  Check the coach-context unit tests stub `db` broadly enough; if a test breaks on the new db calls, monkeypatch `coach_context._snapshot_or_none` to `lambda uid: None` in that test's fixture.
+
+- [ ] **Step 7: Run tests**
+
+Run: `cd backend && pytest tests/unit -q -m "not kafka" && pytest tests/integration/test_plan_fitness_snapshot.py tests/integration/test_adapt_week.py -v`
+Expected: all pass.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add backend/main.py backend/services/week_rebuild.py backend/services/schedule_proposals.py backend/services/goal_context.py backend/services/coach_context.py backend/tests
+git commit -m "feat(plan): build and store the fitness snapshot on every plan path"
+```
+
+---
+
+### Task 7: API — threshold source and snapshot endpoint
+
+**Files:**
+- Modify: `backend/main.py` (`UpdateProfileRequest`, the onboarding request model with `aet_hr`, `format_user_response`, new route next to `GET /api/auth/pace-zones`)
+- Modify: `backend/db.py` (`update_user_profile` and the onboarding profile write)
+- Test: `backend/tests/integration/test_threshold_source_api.py`
+
+**Interfaces:**
+- Produces: `threshold_source` accepted on profile update and onboarding, returned on the user payload; `GET /api/auth/fitness-snapshot` → `FitnessSnapshot.to_dict()` (no tier fields set).
+
+- [ ] **Step 1: Write the failing test** (copy client/auth fixtures from `tests/integration/test_auth_flow.py`):
+
+```python
+def test_profile_update_round_trips_threshold_source(client, user_headers):
+    body = {"age": 37, "max_hr": 183, "resting_hr": 60, "aet_hr": 150, "ant_hr": 165, "threshold_source": "field"}
+    assert client.put("/api/auth/profile", json=body, headers=user_headers).status_code == 200
+    me = client.get("/api/auth/me", headers=user_headers).json()
+    assert me["threshold_source"] == "field"
+
+
+def test_profile_update_rejects_unknown_threshold_source(client, user_headers):
+    body = {"age": 37, "max_hr": 183, "resting_hr": 60, "aet_hr": 150, "ant_hr": 165, "threshold_source": "guess"}
+    assert client.put("/api/auth/profile", json=body, headers=user_headers).status_code == 422
+
+
+def test_fitness_snapshot_endpoint_without_coros(client, user_headers):
+    snap = client.get("/api/auth/fitness-snapshot", headers=user_headers).json()
+    assert snap["weekly_km_source"] == "self_reported"
+    assert snap["threshold_source"] in ("unknown", "field")
+```
+
+Use the real profile-update route and `me` route names (search `main.py` for `UpdateProfileRequest` usage and `/api/auth/me`).
+
+- [ ] **Step 2: Run to verify failure** — Run: `cd backend && pytest tests/integration/test_threshold_source_api.py -v`. Expected: FAIL (`threshold_source` missing / 404).
+
+- [ ] **Step 3: Implement.**
+  - `UpdateProfileRequest` and the onboarding request model: `threshold_source: Literal["lab", "field", "estimated", "unknown"] | None = None` (import `Literal` from `typing` if not already).
+  - `update_user_profile` in `db.py`: add `threshold_source = COALESCE(:threshold_source, threshold_source),` to the `SET` list and `"threshold_source": profile_data.get("threshold_source"),` to the params. Do the same in the onboarding profile write (search for the `INSERT`/`UPDATE` that writes `aet_hr` during onboarding).
+  - `format_user_response`: add `"threshold_source": user.get("threshold_source") or "unknown",`.
+  - New route:
+
+```python
+@app.get("/api/auth/fitness-snapshot")
+def get_fitness_snapshot(user: dict[str, Any] = Depends(get_current_user)):
+    """What the planner would use right now: measured volume (or the profile value),
+    threshold pace and the latest COROS assessment, each with its source."""
+    return fitness_snapshot.build(user["id"]).to_dict()
+```
+
+- [ ] **Step 4: Run tests** — Run: `cd backend && pytest tests/integration/test_threshold_source_api.py tests/integration/test_auth_flow.py -v`. Expected: pass.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add backend/main.py backend/db.py backend/tests/integration/test_threshold_source_api.py
+git commit -m "feat(api): threshold_source on profile; GET /api/auth/fitness-snapshot"
+```
+
+---
+
+### Task 8: Frontend — threshold-source select and km prefill
+
+**Files:**
+- Modify: `frontend/src/types/index.ts` (User type: `threshold_source?: "lab" | "field" | "estimated" | "unknown"`)
+- Modify: `frontend/src/app/translations.ts`
+- Modify: `frontend/src/views/ProfileSettingsModal.tsx` (AeT block; payload near `aet_hr: parseInt(profileForm.aet_hr)`)
+- Modify: `frontend/src/views/OnboardingWizard.tsx` (both AeT inputs; payload near `if (onboardingAnswers.aet_hr) payload.aet_hr = ...`)
+- Modify: `frontend/src/views/PlannerView.tsx` (Current Weekly Mileage block), `frontend/src/hooks/usePlanner.ts` (payload near `current_weekly_km: parseFloat(planForm.current_weekly_km)`)
+- Test: `frontend/src/views/ProfileSettingsModal.test.tsx` (extend)
+
+- [ ] **Step 1: Translations.** Add to both `en` and `vi` objects (VI per the `uphill-ai-vietnamese-copy` skill):
+
+```ts
+  // en
+  threshold_source_label: "How did you get your AeT/AnT?",
+  threshold_source_lab: "Lab test",
+  threshold_source_field: "Field test (e.g. heart-rate drift)",
+  threshold_source_estimated: "Estimated (watch or formula)",
+  threshold_source_unknown: "Not sure",
+  threshold_source_hint: "Only tested values are used to judge your training level.",
+  weekly_km_from_watch_hint: "From your COROS: {km} km/week (last 4 complete weeks)",
+  // vi
+  threshold_source_label: "Bạn có chỉ số AeT/AnT từ đâu?",
+  threshold_source_lab: "Đo tại phòng lab",
+  threshold_source_field: "Tự test ngoài thực địa (vd. độ trôi nhịp tim)",
+  threshold_source_estimated: "Ước tính (đồng hồ hoặc công thức)",
+  threshold_source_unknown: "Không rõ",
+  threshold_source_hint: "Chỉ số đo bằng test mới được dùng để đánh giá trình độ của bạn.",
+  weekly_km_from_watch_hint: "Theo COROS của bạn: {km} km/tuần (4 tuần gần nhất)",
+```
+
+- [ ] **Step 2: Failing component test** — in `ProfileSettingsModal.test.tsx`, following the file's existing render/submit pattern, add a test that selects `field` in the select labelled by `t("threshold_source_label")`, submits, and asserts the PUT body contains `threshold_source: "field"`.
+
+Run: `cd frontend && npx vitest run src/views/ProfileSettingsModal.test.tsx` — Expected: FAIL (no such select).
+
+- [ ] **Step 3: Profile select.** Below the AnT input block, add (match the modal's `labelStyle`/`inputStyle`):
+
+```tsx
+<div>
+  <label style={labelStyle} htmlFor="threshold-source">{t("threshold_source_label")}</label>
+  <select
+    id="threshold-source"
+    style={inputStyle}
+    value={profileForm.threshold_source ?? "unknown"}
+    onChange={e => setProfileForm({ ...profileForm, threshold_source: e.target.value })}
+  >
+    {(["lab", "field", "estimated", "unknown"] as const).map(v => (
+      <option key={v} value={v}>{t(`threshold_source_${v}`)}</option>
+    ))}
+  </select>
+  <p style={{ fontSize: "11px", color: "var(--text-muted)", margin: "4px 0 0 0" }}>{t("threshold_source_hint")}</p>
+</div>
+```
+
+Initialise `profileForm.threshold_source` from the user (where `aet_hr` is initialised) and send `threshold_source: profileForm.threshold_source` in the payload.
+
+- [ ] **Step 4: Onboarding select.** Add the same `<select>` after each of the two AeT/AnT input pairs in `OnboardingWizard.tsx` (using the wizard's `inputS` style and `setAns("threshold_source", ...)`), and `if (onboardingAnswers.threshold_source) payload.threshold_source = onboardingAnswers.threshold_source;` beside the `aet_hr` payload line.
+
+- [ ] **Step 5: Planner prefill.** In `PlannerView.tsx`:
+
+```tsx
+const [watchKm, setWatchKm] = useState<number | null>(null);
+const [kmFromWatch, setKmFromWatch] = useState(false);
+
+useEffect(() => {
+  const token = typeof window !== "undefined" ? localStorage.getItem("uphill_session_token") : null;
+  if (!token) return;
+  fetch(`${getBackendUrl()}/api/auth/fitness-snapshot`, { headers: { Authorization: `Bearer ${token}` } })
+    .then(r => (r.ok ? r.json() : null))
+    .then(s => {
+      if (s?.weekly_km_source !== "coros") return;
+      const km = Math.round(s.weekly_km);
+      setWatchKm(km);
+      setPlanForm(f => (f.current_weekly_km ? f : { ...f, current_weekly_km: String(km) }));
+      setKmFromWatch(true);
+    })
+    .catch(() => {});
+}, []);
+```
+
+Use whatever backend-URL helper `PlannerView`/`usePlanner` already imports (`getBackendUrl` or `API_BASE_URL`). In the km input's `onChange`, add `setKmFromWatch(false);`. Under the input, when `watchKm !== null`, render `{t("weekly_km_from_watch_hint").replace("{km}", String(watchKm))}` with the existing hint style. Pass `kmFromWatch` into the generate call and, in `usePlanner.ts`, add `weekly_km_from_watch: kmFromWatch` next to `current_weekly_km` (thread it as a parameter the same way `planForm` reaches that function).
+
+- [ ] **Step 6: Run checks** — Run: `cd frontend && npx tsc --noEmit && npm run lint && npx vitest run`. Expected: clean, all pass.
+
+- [ ] **Step 7: Screenshot evidence.** Follow `.claude/skills/ui-screenshot-evidence/SKILL.md`: run the local stack, open Profile settings (select visible, EN and VI) and the Planner's new-plan form for a user with seeded COROS activities (hint visible, value prefilled). Save the screenshots and attach them to the PR.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add frontend/src
+git commit -m "feat(ui): AeT/AnT source select; prefill weekly km from COROS"
+```
+
+---
+
+### Task 9: Verification before PR
+
+- [ ] **Step 1:** Run: `cd backend && ruff check . && ruff format --check . && pytest tests/unit -q -m "not kafka"` — Expected: clean, all pass.
+- [ ] **Step 2:** Run against the scratch DB only: `cd backend && pytest tests/integration -q -m "not kafka"` — Expected: all pass.
+- [ ] **Step 3:** Plan drift for other users: `cd backend && python scripts/golden_eval.py compare --service scheduler` — Expected: tier changes only where `threshold_source` was the reason (cases previously demoted by an unmeasured gap) or measured volume differs from the profile value. Record the diff summary in the PR description.
+- [ ] **Step 4:** Rehearse the migration on staging (memory: staging schema comes from `init_db`, so stop backend, rsync, start, then `alembic stamp head`).
+- [ ] **Step 5:** Open the PR. Post-merge operator steps (not code): deploy by hand per the prod-server notes, `alembic stamp head` after `init_db` creates the objects, then for the affected athlete trigger a COROS sync (backfills an assessment row) and regenerate their plan.
