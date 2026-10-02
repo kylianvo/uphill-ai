@@ -20,6 +20,11 @@ VOLUME_WEEKS = 4
 MIN_COUNTED_WEEKS = 3
 ASSESSMENT_MAX_AGE = timedelta(days=60)
 READINESS_DAYS = 14
+CHRONIC_WEEKS = 12
+MIN_CHRONIC_WEEKS = 8
+# A 4-week block may run this far above the 12-week mean before the cap bites:
+# roughly the 10%/week progression ceiling compounded over a short build.
+CHRONIC_SPIKE_ALLOWANCE = 1.15
 
 
 def _monday(d: date) -> date:
@@ -30,35 +35,60 @@ def _aware(ts: datetime) -> datetime:
     return ts if ts.tzinfo else ts.replace(tzinfo=UTC)
 
 
+def _counted_weeks(
+    weeks: list[dict[str, Any]],
+    first_activity_at: datetime | None,
+    last_sync_at: datetime | None,
+    today: date,
+    n: int,
+) -> list[tuple[date, dict[str, Any]]]:
+    """The last `n` complete Mon-Sun weeks a sync actually covered.
+
+    A week counts when it starts on or after the first synced activity (before that we
+    simply have no data) and ends before the last sync (after that the week is partial).
+    A counted week with no activity is a real zero."""
+    if not last_sync_at or not first_activity_at:
+        return []
+    first_day = _aware(first_activity_at).date()
+    sync = _aware(last_sync_at)
+    by_start = {w["week_start"]: w for w in weeks}
+    counted = []
+    for i in range(1, n + 1):
+        start = _monday(today) - timedelta(weeks=i)
+        end = datetime.combine(start + timedelta(days=7), datetime.min.time(), tzinfo=UTC)
+        if start >= first_day and end <= sync:
+            counted.append((start, by_start.get(start, {"km": 0.0, "vert_m": 0.0})))
+    return counted
+
+
 def measured_weekly_volume(
     weeks: list[dict[str, Any]],
     first_activity_at: datetime | None,
     last_sync_at: datetime | None,
     today: date,
 ) -> tuple[float, float, date] | None:
-    """Mean km and vert over the last complete weeks a sync actually covered.
-
-    A week counts when it starts on or after the first synced activity (before that we
-    simply have no data) and ends before the last sync (after that the week is partial).
-    A counted week with no activity is a real zero. None when fewer than
-    MIN_COUNTED_WEEKS weeks qualify."""
-    if not last_sync_at or not first_activity_at:
-        return None
-    first_day = _aware(first_activity_at).date()
-    sync = _aware(last_sync_at)
-    by_start = {w["week_start"]: w for w in weeks}
-    counted = []
-    for i in range(1, VOLUME_WEEKS + 1):
-        start = _monday(today) - timedelta(weeks=i)
-        end = datetime.combine(start + timedelta(days=7), datetime.min.time(), tzinfo=UTC)
-        if start >= first_day and end <= sync:
-            counted.append((start, by_start.get(start, {"km": 0.0, "vert_m": 0.0})))
+    """Mean km and vert over the last VOLUME_WEEKS covered weeks, and the end of the
+    last counted week. None when fewer than MIN_COUNTED_WEEKS weeks qualify."""
+    counted = _counted_weeks(weeks, first_activity_at, last_sync_at, today, VOLUME_WEEKS)
     if len(counted) < MIN_COUNTED_WEEKS:
         return None
     km = sum(w["km"] for _, w in counted) / len(counted)
     vert = sum(w["vert_m"] for _, w in counted) / len(counted)
     last_end = max(s for s, _ in counted) + timedelta(days=6)
     return round(km, 1), round(vert), last_end
+
+
+def chronic_weekly_volume(
+    weeks: list[dict[str, Any]],
+    first_activity_at: datetime | None,
+    last_sync_at: datetime | None,
+    today: date,
+) -> float | None:
+    """12-week mean km over covered weeks; None under MIN_CHRONIC_WEEKS weeks."""
+    counted = _counted_weeks(weeks, first_activity_at, last_sync_at, today, CHRONIC_WEEKS)
+    if len(counted) < MIN_CHRONIC_WEEKS:
+        return None
+    return round(sum(w["km"] for _, w in counted) / len(counted), 1)
 
 
 def _pace_sec(pace: str | None) -> float | None:
@@ -154,7 +184,9 @@ class FitnessSnapshot:
             if a.get("vo2max"):
                 lines.append(f"- VO2max {a['vo2max']:.0f} (COROS, {day})")
         if self.threshold_pace:
-            lines.append(f"- Threshold pace {self.threshold_pace}/km ({src[self.threshold_pace_source or 'self_reported']})")
+            lines.append(
+                f"- Threshold pace {self.threshold_pace}/km ({src[self.threshold_pace_source or 'self_reported']})"
+            )
         if self.utmb_index:
             lines.append(f"- UTMB index {self.utmb_index}")
         r = self.readiness or {}
@@ -188,12 +220,25 @@ def build(
 
     measured = None
     if connected:
-        weeks = db.get_weekly_run_volumes(user_id, since=_monday(today) - timedelta(weeks=VOLUME_WEEKS))
-        measured = measured_weekly_volume(
-            weeks, db.get_first_activity_at(user_id, PROVIDER), connection.get("last_sync_at"), today
-        )
+        # One query serves both the 4-week mean and the 12-week chronic cap.
+        weeks = db.get_weekly_run_volumes(user_id, since=_monday(today) - timedelta(weeks=CHRONIC_WEEKS))
+        first_at = db.get_first_activity_at(user_id, PROVIDER)
+        last_sync_at = connection.get("last_sync_at")
+        measured = measured_weekly_volume(weeks, first_at, last_sync_at, today)
         if measured is None:
             notes.append("COROS volume unused: fewer than 3 complete synced weeks")
+        else:
+            # A spike cannot lift the tier past what the long-term load supports; a dip
+            # still uses the lower 4-week value.
+            chronic = chronic_weekly_volume(weeks, first_at, last_sync_at, today)
+            ceiling = chronic * CHRONIC_SPIKE_ALLOWANCE if chronic else None
+            if ceiling and measured[0] > ceiling:
+                factor = ceiling / measured[0]
+                notes.append(
+                    f"4-week {measured[0]:.0f} km capped to {ceiling:.0f} km "
+                    f"(12-week chronic {chronic:.0f} km x {CHRONIC_SPIKE_ALLOWANCE})"
+                )
+                measured = (round(ceiling, 1), round(measured[1] * factor), measured[2])
 
     fallback_km = typed_weekly_km if typed_weekly_km is not None else user.get("current_weekly_km") or 30.0
     if typed_is_override and typed_weekly_km is not None:

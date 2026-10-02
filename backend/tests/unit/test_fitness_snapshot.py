@@ -29,7 +29,12 @@ class TestMeasuredWeeklyVolume:
         assert km == pytest.approx((148.7 + 0 + 126.8 + 27.5) / 4, abs=0.1)
 
     def test_weeks_before_the_first_synced_activity_do_not_count(self):
-        assert fs.measured_weekly_volume(WEEKS, datetime(2026, 9, 10, tzinfo=UTC), datetime(2026, 10, 1, tzinfo=UTC), TODAY) is None
+        assert (
+            fs.measured_weekly_volume(
+                WEEKS, datetime(2026, 9, 10, tzinfo=UTC), datetime(2026, 10, 1, tzinfo=UTC), TODAY
+            )
+            is None
+        )
 
     def test_fewer_than_three_weeks_returns_none(self):
         assert fs.measured_weekly_volume(WEEKS, FIRST, datetime(2026, 9, 15, tzinfo=UTC), TODAY) is None
@@ -41,11 +46,24 @@ class TestMeasuredWeeklyVolume:
 @pytest.fixture
 def stub_db(monkeypatch):
     state = {
-        "user": {"id": 30, "current_weekly_km": 120.0, "threshold_pace": "4:10", "threshold_source": "unknown",
-                 "gender": None, "aet_hr": 134, "ant_hr": 163},
+        "user": {
+            "id": 30,
+            "current_weekly_km": 120.0,
+            "threshold_pace": "4:10",
+            "threshold_source": "unknown",
+            "gender": None,
+            "aet_hr": 134,
+            "ant_hr": 163,
+        },
         "connection": {"status": "active", "last_sync_at": datetime(2026, 9, 25, 1, 54, tzinfo=UTC)},
-        "assessment": {"vo2max": 61.0, "running_level": 92.0, "threshold_pace": "3:53", "pred_marathon_sec": 10320.0,
-                       "pred_hm_sec": 4860.0, "measured_at": datetime(2026, 9, 25, tzinfo=UTC)},
+        "assessment": {
+            "vo2max": 61.0,
+            "running_level": 92.0,
+            "threshold_pace": "3:53",
+            "pred_marathon_sec": 10320.0,
+            "pred_hm_sec": 4860.0,
+            "measured_at": datetime(2026, 9, 25, tzinfo=UTC),
+        },
         "utmb": None,
     }
     monkeypatch.setattr(fs.db, "get_user_by_id", lambda uid: state["user"])
@@ -132,3 +150,42 @@ class TestCompositeInputs:
         stub_db["user"] = {**stub_db["user"], "current_weekly_km": 84.0, "threshold_pace": None}
         snap = fs.build(30, today=TODAY)
         assert snap.resolve_tier(None, "race", None, None, None, None, previous_tier="recreational") == "recreational"
+
+
+def _steady(km, n=12, start=date(2026, 7, 6)):
+    return [{"week_start": start + timedelta(weeks=i), "km": km, "vert_m": km * 10} for i in range(n)]
+
+
+class TestChronicCap:
+    SYNC = datetime(2026, 10, 1, tzinfo=UTC)
+    FIRST12 = datetime(2026, 7, 1, tzinfo=UTC)
+
+    def test_chronic_mean_needs_eight_weeks(self):
+        assert fs.chronic_weekly_volume(_steady(70.0), self.FIRST12, self.SYNC, TODAY) == 70.0
+        assert fs.chronic_weekly_volume(_steady(70.0), datetime(2026, 8, 20, tzinfo=UTC), self.SYNC, TODAY) is None
+
+    def test_a_recent_spike_is_capped(self, stub_db, monkeypatch):
+        weeks = _steady(60.0, n=8) + [
+            {"week_start": date(2026, 8, 31) + timedelta(weeks=i), "km": 120.0, "vert_m": 1200.0} for i in range(4)
+        ]
+        monkeypatch.setattr(fs.db, "get_weekly_run_volumes", lambda uid, since: weeks)
+        monkeypatch.setattr(fs.db, "get_first_activity_at", lambda uid, p: self.FIRST12)
+        stub_db["connection"]["last_sync_at"] = self.SYNC
+        snap = fs.build(30, today=TODAY)
+        chronic = (60.0 * 8 + 120.0 * 4) / 12  # 80.0
+        assert snap.weekly_km == pytest.approx(chronic * 1.15, abs=0.1)
+        assert snap.weekly_vert_m == pytest.approx(1200.0 * (chronic * 1.15) / 120.0, abs=1)
+        assert any("chronic" in n for n in snap.notes)
+
+    def test_a_recent_dip_is_not_raised(self, stub_db, monkeypatch):
+        weeks = _steady(100.0, n=8) + [
+            {"week_start": date(2026, 8, 31) + timedelta(weeks=i), "km": 50.0, "vert_m": 500.0} for i in range(4)
+        ]
+        monkeypatch.setattr(fs.db, "get_weekly_run_volumes", lambda uid, since: weeks)
+        monkeypatch.setattr(fs.db, "get_first_activity_at", lambda uid, p: self.FIRST12)
+        stub_db["connection"]["last_sync_at"] = self.SYNC
+        assert fs.build(30, today=TODAY).weekly_km == 50.0
+
+    def test_short_history_skips_the_cap(self, stub_db):
+        # the default stub has data from 2026-08-23 only: < 8 weeks, cap not applied
+        assert fs.build(30, today=TODAY).weekly_km == pytest.approx(133.7, abs=0.1)
