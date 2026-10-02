@@ -900,7 +900,12 @@ class PlanGenerator:
         course_distance_km = race_info.get("course_distance_km")
         course_elevation_gain_m = race_info.get("course_elevation_gain_m")
         target_time_hours = race_info.get("target_time_hours")
-        current_weekly_km = float(user_profile.get("current_weekly_km", 30.0))
+        snapshot = race_info.get("fitness_snapshot")
+        current_weekly_km = (
+            float(snapshot.weekly_km) if snapshot else float(user_profile.get("current_weekly_km", 30.0))
+        )
+        if snapshot and snapshot.threshold_pace:
+            user_profile = {**user_profile, "threshold_pace": snapshot.threshold_pace}
 
         # Pre-compute goal race pace if we have both a target time and distance
         if target_time_hours and course_distance_km:
@@ -928,10 +933,9 @@ class PlanGenerator:
             except Exception as exc:
                 print(f"[PlanGen] Race history unavailable: {exc}")
         _max_jog_min = user_profile.get("max_continuous_jog_min")
-        athlete_tier = resolve_tier(
+        _tier_args = dict(
             explicit_tier=race_info.get("athlete_tier"),
             goal_type=race_info.get("goal_type") or user_profile.get("goal_type"),
-            current_weekly_km=current_weekly_km,
             max_continuous_jog_min=_max_jog_min,
             historical_max_distance_km=(_historical_ceiling or {}).get("max_distance_km"),
             # RAW stored thresholds, deliberately not the derived aet_hr/ant_hr above.
@@ -941,8 +945,15 @@ class PlanGenerator:
             # is only evidence when it was actually measured.
             aet_hr=user_profile.get("aet_hr"),
             ant_hr=user_profile.get("ant_hr"),
-            threshold_source=user_profile.get("threshold_source"),
         )
+        if snapshot:
+            athlete_tier = snapshot.resolve_tier(**_tier_args)
+        else:
+            athlete_tier = resolve_tier(
+                **_tier_args,
+                current_weekly_km=current_weekly_km,
+                threshold_source=user_profile.get("threshold_source"),
+            )
         tier_profile = get_profile(athlete_tier)
 
         # Extract Zone 2 bounds and calculate personalized pacing zone ranges.
@@ -1117,6 +1128,7 @@ class PlanGenerator:
             # Race record from claimed UTMB/VBM profiles and self-reported results;
             # sits beside the ceiling because both describe proven capacity.
             race_history_notes = f"\n{race_history_text}\n" if race_history_text else ""
+            snapshot_notes = f"\n{snapshot.prompt_block(lang)}\n" if snapshot else ""
 
             athlete_notes = race_info.get("athlete_notes") or user_profile.get("athlete_notes")
             constraints_notes = ""
@@ -1179,6 +1191,7 @@ class PlanGenerator:
                 f"{scheduling_notes}"
                 f"{ceiling_notes}"
                 f"{race_history_notes}"
+                f"{snapshot_notes}"
                 f"{constraints_notes}"
             )
 
