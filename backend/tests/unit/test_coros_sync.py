@@ -198,13 +198,13 @@ async def test_access_token_requires_reconnect_when_access_token_cannot_be_decry
 
 
 OVERVIEW = {
-    "vo2max": 61.0,
+    "vo2max": 63.0,
     "running_level": 92.0,
-    "threshold_pace": "3:53",
+    "threshold_pace": "3:57",
     "prediction_5k_sec": 1000.0,
     "prediction_10k_sec": 2100.0,
     "prediction_half_marathon_sec": 4860.0,
-    "prediction_marathon_sec": 10320.0,
+    "prediction_marathon_sec": 10560.0,
 }
 
 
@@ -215,9 +215,9 @@ def test_store_overview_records_history_and_profile(monkeypatch):
     )
     monkeypatch.setattr(coros_sync.db, "update_user_fitness", lambda **kw: profile.append(kw) or True)
     coros_sync.store_overview(30, OVERVIEW)
-    assert recorded[0][2]["pred_marathon_sec"] == 10320.0
+    assert recorded[0][2]["pred_marathon_sec"] == 10560.0
     assert recorded[0][2]["pred_hm_sec"] == 4860.0
-    assert profile[0]["coros_vo2max"] == 61.0
+    assert profile[0]["coros_vo2max"] == 63.0
 
 
 @pytest.mark.asyncio

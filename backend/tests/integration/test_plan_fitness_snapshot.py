@@ -21,7 +21,7 @@ def _generate(client, headers, **overrides):
         "race_date": "2027-05-01",
         "plan_start_date": "2027-03-15",
         "days_per_week": 6,
-        "current_weekly_km": 120,
+        "current_weekly_km": 112,
         "course_distance_km": 80,
         "course_elevation_gain_m": 4000,
     }
@@ -56,7 +56,7 @@ def test_generate_plan_stores_snapshot_and_uses_measured_volume(client, auth_hea
     monkeypatch.setattr(
         fitness_snapshot,
         "build",
-        lambda uid, **kw: dataclasses.replace(real_build(uid, **kw), weekly_km=134.0, weekly_km_source="coros"),
+        lambda uid, **kw: dataclasses.replace(real_build(uid, **kw), weekly_km=138.0, weekly_km_source="coros"),
     )
     resp = _generate(client, auth_headers["headers"], weekly_km_from_watch=True)
     assert resp.status_code == 200, resp.text
@@ -67,7 +67,7 @@ def test_generate_plan_stores_snapshot_and_uses_measured_volume(client, auth_hea
             text("SELECT fitness_snapshot, athlete_tier FROM plans WHERE id=:p"), {"p": body["plan"]["id"]}
         ).one()
     snap = row.fitness_snapshot
-    assert snap["weekly_km"] == 134.0
+    assert snap["weekly_km"] == 138.0
     assert snap["tier"] == "sub_elite" == row.athlete_tier
     assert snap["tier_levels"]["load"] is not None
 
@@ -91,7 +91,7 @@ def test_typed_volume_is_an_override_unless_it_came_from_the_watch(
     monkeypatch.setattr(fitness_snapshot, "build", spy)
     body = _generate(client, auth_headers["headers"]).json()
     _wait_for_job(client, body["job_id"], auth_headers["headers"])
-    assert calls[-1] == {"typed_weekly_km": 120.0, "typed_is_override": True}
+    assert calls[-1] == {"typed_weekly_km": 112.0, "typed_is_override": True}
 
 
 def test_snapshot_failure_never_blocks_the_plan(client, auth_headers, mock_gemini, no_kb, monkeypatch):

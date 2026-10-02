@@ -18,7 +18,7 @@
     "weekly_km": 136.0,
     "weekly_km_source": "coros",
     "weekly_vert_m": 5200.0,
-    "volume_as_of": "2026-09-20",
+    "volume_as_of": "2026-08-23",
     "threshold_pace": "3:55",
     "threshold_pace_source": "coros",
     "assessment": {
@@ -26,8 +26,8 @@
       "running_level": 90.0,
       "threshold_pace": "3:55",
       "pred_hm_sec": 4920.0,
-      "pred_marathon_sec": 10380.0,
-      "measured_at": "2026-09-24T00:00:00+00:00"
+      "pred_marathon_sec": 10560.0,
+      "measured_at": "2026-08-27T00:00:00+00:00"
     },
     "utmb_index": null,
     "threshold_source": "unknown",

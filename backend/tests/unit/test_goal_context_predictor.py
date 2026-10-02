@@ -12,7 +12,7 @@ USER = {"id": 7, "gender": "male", "current_weekly_km": 70.0}
 
 @pytest.fixture
 def stub(monkeypatch):
-    state = {"assessment": {"pred_marathon_sec": 10380.0, "measured_at": datetime(2026, 9, 24, tzinfo=UTC)}}
+    state = {"assessment": {"pred_marathon_sec": 10560.0, "measured_at": datetime(2026, 8, 27, tzinfo=UTC)}}
     monkeypatch.setattr(goal_context.race_history, "list_results", lambda uid, sel: [])
     monkeypatch.setattr(goal_context.db, "get_utmb_index", lambda uid: None)
     monkeypatch.setattr(goal_context.db, "get_weekly_training_trend", lambda uid: None)
@@ -22,8 +22,8 @@ def stub(monkeypatch):
 
 def test_marathon_prediction_reaches_the_prompt(stub):
     ctx = goal_context.gather(user=USER, target=TARGET, race_date="2026-12-06")
-    assert ctx.prompt["athlete"]["marathon_prediction_sec"] == 10380.0
-    assert any(s["key"] == "predictor" and "2:53" in s["label"] for s in ctx.sources)
+    assert ctx.prompt["athlete"]["marathon_prediction_sec"] == 10560.0
+    assert any(s["key"] == "predictor" and "2:56" in s["label"] for s in ctx.sources)
 
 
 def test_the_predictor_can_be_excluded(stub):

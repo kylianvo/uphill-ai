@@ -71,7 +71,7 @@ class TestTierProfiles:
         assert lows == sorted(lows)
 
     def test_the_long_run_share_cap_tightens_as_volume_rises(self):
-        """A 30% long run is a different session at 10 km/week than at 120."""
+        """A 30% long run is a different session at 10 km/week than at 112."""
         caps = [TIER_PROFILES[k].long_run_share_cap for k in TIER_ORDER]
         assert caps == sorted(caps, reverse=True)
 
@@ -263,7 +263,7 @@ class TestPerformanceChain:
 class TestComposite:
     @pytest.mark.parametrize(
         "weekly_km,expected",
-        [(5.0, BEGINNER), (20.0, NOVICE), (60.0, RECREATIONAL), (120.0, SUB_ELITE), (200.0, ELITE)],
+        [(5.0, BEGINNER), (20.0, NOVICE), (60.0, RECREATIONAL), (112.0, SUB_ELITE), (200.0, ELITE)],
     )
     def test_load_alone_reproduces_the_bands(self, weekly_km, expected):
         assert derive_tier(current_weekly_km=weekly_km) == expected
@@ -275,17 +275,17 @@ class TestComposite:
         assert derive_tier(goal_type="start_running", current_weekly_km=100.0, utmb_index=800) == BEGINNER
         assert derive_tier(max_continuous_jog_min=5, current_weekly_km=100.0) == BEGINNER
 
-    def test_regression_elite_reporter_is_sub_elite_not_recreational(self):
-        """REGRESSION (prod, 2026-09): high measured load, 18% AeT/AnT gap of unknown
+    def test_synthetic_high_load_is_sub_elite_not_recreational(self):
+        """REGRESSION: synthetic high measured load, 18% AeT/AnT gap of unknown
         source. The old rule demoted this athlete to recreational."""
         d = explain_tier(
-            current_weekly_km=134.0,
-            weekly_vert_m=5300.0,
-            marathon_prediction_sec=10380.0,
+            current_weekly_km=138.0,
+            weekly_vert_m=4600.0,
+            marathon_prediction_sec=10560.0,
             historical_max_distance_km=50.0,
-            aet_hr=134,
-            ant_hr=163,
-            max_hr=183,
+            aet_hr=138,
+            ant_hr=168,
+            max_hr=188,
             threshold_source="unknown",
             gender="male",
         )
@@ -294,7 +294,7 @@ class TestComposite:
         assert any("not used" in r for r in d.reasons)
 
     def test_load_only_vert_heavy_athlete_reaches_elite(self):
-        assert derive_tier(current_weekly_km=134.0, weekly_vert_m=5300.0) == ELITE
+        assert derive_tier(current_weekly_km=138.0, weekly_vert_m=4600.0) == ELITE
 
     def test_fast_runner_on_low_volume_moves_up_one(self):
         assert derive_tier(current_weekly_km=50.0, marathon_prediction_sec=2 * 3600 + 35 * 60) == SUB_ELITE
@@ -370,7 +370,7 @@ class TestHysteresis:
         assert derive_tier(current_weekly_km=84.0) == SUB_ELITE
 
     def test_never_holds_across_two_tiers(self):
-        assert derive_tier(current_weekly_km=134.0, weekly_vert_m=5300.0, previous_tier=RECREATIONAL) == ELITE
+        assert derive_tier(current_weekly_km=138.0, weekly_vert_m=4600.0, previous_tier=RECREATIONAL) == ELITE
 
     def test_hysteresis_band_is_a_tenth_of_a_level(self):
         assert HYSTERESIS_LEVEL == 0.1
@@ -392,4 +392,4 @@ class TestResolveTier:
     def test_a_stored_tier_no_longer_freezes_a_replan(self):
         """REGRESSION: next block passed plans.athlete_tier as the override, so a plan first
         resolved as recreational stayed recreational forever."""
-        assert resolve_tier(explicit_tier=None, current_weekly_km=134.0, previous_tier=RECREATIONAL) == SUB_ELITE
+        assert resolve_tier(explicit_tier=None, current_weekly_km=138.0, previous_tier=RECREATIONAL) == SUB_ELITE

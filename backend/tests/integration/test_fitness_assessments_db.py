@@ -37,13 +37,13 @@ def test_threshold_source_defaults_to_unknown():
 
 def test_assessment_inserted_only_when_values_change():
     uid = _user()
-    data = {"vo2max": 61.0, "running_level": 92.0, "threshold_pace": "3:53", "pred_marathon_sec": 10200.0}
+    data = {"vo2max": 63.0, "running_level": 92.0, "threshold_pace": "3:57", "pred_marathon_sec": 10200.0}
     assert db.record_fitness_assessment(uid, "coros", data) is True
     assert db.record_fitness_assessment(uid, "coros", data) is False
-    assert db.record_fitness_assessment(uid, "coros", {**data, "vo2max": 61.0000001}) is False
-    assert db.record_fitness_assessment(uid, "coros", {**data, "vo2max": 62.0}) is True
+    assert db.record_fitness_assessment(uid, "coros", {**data, "vo2max": 63.0000001}) is False
+    assert db.record_fitness_assessment(uid, "coros", {**data, "vo2max": 64.0}) is True
     latest = db.get_latest_fitness_assessment(uid)
-    assert latest["vo2max"] == 62.0
+    assert latest["vo2max"] == 64.0
     assert latest["pred_marathon_sec"] == 10200.0
     assert latest["measured_at"].tzinfo is not None
 

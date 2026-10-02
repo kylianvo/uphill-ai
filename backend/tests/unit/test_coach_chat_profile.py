@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from routers import coach_chat
 
-SUMMARY = {"weekly_km": 134.0, "weekly_km_source": "coros", "athlete_tier": "sub_elite"}
+SUMMARY = {"weekly_km": 138.0, "weekly_km_source": "coros", "athlete_tier": "sub_elite"}
 
 
 def test_profile_uses_snapshot_volume_and_plan_tier():
@@ -13,7 +13,7 @@ def test_profile_uses_snapshot_volume_and_plan_tier():
     with patch("services.fitness_snapshot.chat_summary", return_value=SUMMARY):
         profile = coach_chat._profile_for(user, plan)
     text = f"\nUser Running Profile: {profile}"
-    assert "'current_weekly_km': 134.0" in text
+    assert "'current_weekly_km': 138.0" in text
     assert "'weekly_km_source': 'coros'" in text
     assert profile["athlete_tier"] == "sub_elite"
 

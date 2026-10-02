@@ -6,7 +6,7 @@ import pytest
 from services.fitness_snapshot import FitnessSnapshot
 from services.plan_generator import PlanGenerator
 
-PROFILE = {"id": 7, "current_weekly_km": 120.0, "aet_hr": 134, "ant_hr": 163, "max_hr": 183, "resting_hr": 60}
+PROFILE = {"id": 7, "current_weekly_km": 112.0, "aet_hr": 138, "ant_hr": 168, "max_hr": 188, "resting_hr": 60}
 RACE = {
     "name": "APTRC",
     "date": "2026-11-27",
@@ -18,11 +18,11 @@ RACE = {
 
 def _snapshot():
     return FitnessSnapshot(
-        weekly_km=134.0,
+        weekly_km=138.0,
         weekly_km_source="coros",
-        weekly_vert_m=5000.0,
-        volume_as_of="2026-09-20",
-        threshold_pace="3:53",
+        weekly_vert_m=4600.0,
+        volume_as_of="2026-08-23",
+        threshold_pace="3:57",
         threshold_pace_source="coros",
         assessment=None,
         utmb_index=None,
@@ -57,11 +57,11 @@ async def _generate(race_info, profile=None):
 async def test_snapshot_sets_tier_volume_and_prompt_block():
     snap = _snapshot()
     tier, prompt = await _generate({**RACE, "fitness_snapshot": snap})
-    # load 184 effort-km -> 4.15; performance from threshold pace 3:53 -> 3.63; score 3.94
+    # load 184 effort-km -> 4.150; pace 237 s -> 3.514; weighted score 3.896
     assert tier == "sub_elite"
     assert snap.tier == "sub_elite" and snap.tier_reasons
     assert "ATHLETE FITNESS SNAPSHOT" in prompt
-    assert "Weekly volume base: 134.0 km" in prompt
+    assert "Weekly volume base: 138.0 km" in prompt
 
 
 @pytest.mark.asyncio
@@ -75,9 +75,9 @@ async def test_without_snapshot_unknown_threshold_source_no_longer_demotes():
 async def test_snapshot_path_passes_max_hr_to_the_physiology_level():
     snap = dataclasses.replace(_snapshot(), threshold_source="lab")
     await _generate({**RACE, "fitness_snapshot": snap})
-    # gap 17.8% -> 2.61 and AnT 163/183 = 0.891 of max -> 3.52; mean 3.07. Without
-    # max_hr only the gap level (2.61) would be present.
-    assert snap.tier_levels["physiology"] == pytest.approx(3.07, abs=0.01)
+    # gap 30/168 -> 2.607; AnT/max 168/188 -> 3.590; mean 3.099. Without
+    # max_hr only the gap level (2.607) would be present.
+    assert snap.tier_levels["physiology"] == pytest.approx(3.099, abs=0.01)
 
 
 @pytest.mark.asyncio

@@ -180,7 +180,7 @@ def test_build_chat_context_uses_snapshot_volume_and_the_plan_tier():
     from services.coach_prompts import compile_coach_prompt
 
     now = datetime(2026, 9, 20, 12, 0, tzinfo=UTC)
-    summary = {"weekly_km": 134.0, "weekly_km_source": "coros", "athlete_tier": "sub_elite"}
+    summary = {"weekly_km": 138.0, "weekly_km_source": "coros", "athlete_tier": "sub_elite"}
     with (
         patch("db.get_user_by_id", return_value={"id": 1, "current_weekly_km": 70.0, "threshold_source": "field"}),
         patch("db.get_active_plan", return_value={"id": 1, "athlete_tier": "sub_elite", "fitness_snapshot": None}),
@@ -193,10 +193,10 @@ def test_build_chat_context_uses_snapshot_volume_and_the_plan_tier():
         ctx = build_chat_context(user_id=1, question="How fit am I?", now=now)
     ath = ctx["athlete"]
     assert ath["athlete_tier"] == "sub_elite"
-    assert ath["current_weekly_km"] == 134.0
+    assert ath["current_weekly_km"] == 138.0
     assert ath["weekly_km_source"] == "coros"
     assert ath["threshold_source"] == "field"
     assert "fitness_snapshot" not in ath
     prompt = compile_coach_prompt(context=ctx)
     assert "Tier: sub_elite" in prompt
-    assert "Weekly km: 134.0 (coros)" in prompt
+    assert "Weekly km: 138.0 (coros)" in prompt

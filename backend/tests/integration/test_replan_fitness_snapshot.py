@@ -114,10 +114,10 @@ def test_direct_write_stores_the_snapshot(auth_headers):
             for d in DAYS
         ],
         resolved_tier="sub_elite",
-        fitness_snapshot={"weekly_km": 134.0, "tier": "sub_elite"},
+        fitness_snapshot={"weekly_km": 138.0, "tier": "sub_elite"},
     )
     week_rebuild.write_draft(plan, 2, TODAY, draft)
-    assert db.get_plan_by_id(plan_id)["fitness_snapshot"] == {"weekly_km": 134.0, "tier": "sub_elite"}
+    assert db.get_plan_by_id(plan_id)["fitness_snapshot"] == {"weekly_km": 138.0, "tier": "sub_elite"}
 
 
 def test_snapshot_failure_never_blocks_the_rebuild(auth_headers, monkeypatch):
