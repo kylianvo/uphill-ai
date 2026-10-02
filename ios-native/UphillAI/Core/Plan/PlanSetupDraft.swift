@@ -52,16 +52,18 @@ enum Terrain: String, CaseIterable, Sendable { case trail, road, mixed }
 enum TrainingEnvironment: String, CaseIterable, Sendable { case flat, hilly, mixed }
 
 enum SetupStep: Equatable, Sendable {
-    case goal, details, schedule, aboutYou, review
+    case goal, details, raceDate, fitnessFeel, daysSinceRace, recoveryFeel, schedule, startDate, aboutYou, review
 
     static func steps(for goal: SetupGoal?, includeAboutYou: Bool) -> [SetupStep] {
         guard let goal else { return [.goal] }
-        var steps: [SetupStep] = [.goal]
-        if goal != .startRunning { steps.append(.details) }
-        steps.append(.schedule)
-        if includeAboutYou { steps.append(.aboutYou) }
-        steps.append(.review)
-        return steps
+        let questions: [SetupStep]
+        switch goal {
+        case .race, .distance: questions = [.details, .raceDate]
+        case .returning: questions = [.details, .fitnessFeel]
+        case .recovery: questions = [.details, .daysSinceRace, .recoveryFeel]
+        case .startRunning: questions = []
+        }
+        return [.goal] + questions + [.schedule, .startDate, .review]
     }
 }
 
@@ -112,7 +114,7 @@ struct PlanSetupDraft: Equatable, Sendable {
     var daysPerWeek = 4
     var preferredDays: Set<Weekday> = [.tuesday, .thursday, .saturday, .sunday]
     var longRunDay: Weekday = .saturday
-    var currentWeeklyKm: Double = 20
+    var currentWeeklyKm: Double = 30
     var environment: TrainingEnvironment = .flat
     var hasGymAccess = false
     var startDate: Date
@@ -161,6 +163,13 @@ struct PlanSetupDraft: Equatable, Sendable {
     }
 
     var orderedDays: [Weekday] { Weekday.allCases.filter(preferredDays.contains) }
+    private var requestDays: [Weekday] {
+        let days = preferredDays.count == daysPerWeek ? preferredDays : Self.defaultDays(count: daysPerWeek)
+        return Weekday.allCases.filter(days.contains)
+    }
+    private var requestLongRunDay: Weekday {
+        requestDays.contains(longRunDay) ? longRunDay : requestDays.last!
+    }
 
     // MARK: Validation
 
@@ -173,42 +182,23 @@ struct PlanSetupDraft: Equatable, Sendable {
         case .goal:
             if goal == nil { add(.goal, "Choose what you're training for.") }
         case .details:
-            switch goal {
-            case .race, .distance:
+            if goal?.isEvent == true {
                 if goal == .race, raceName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     add(.raceName, "Add the race name.")
                 }
-                let earliest = calendar.date(byAdding: .day, value: 14, to: start)!
-                if raceDate.map({ $0 < earliest }) ?? true {
-                    add(.raceDate, "Pick a date at least 2 weeks away so the plan has room to build.")
-                }
                 if !(1...400).contains(distanceKm ?? 0) { add(.distance, "Enter a distance between 1 and 400 km.") }
-                if raceGoal == .time, !(10...7200).contains(targetMinutes ?? 0) {
-                    add(.targetTime, "Enter your target time, for example 6:30.")
-                }
-            case .returning:
-                if timeAway == nil { add(.timeAway, "Choose how long you've been away.") }
-                if fitnessFeel == nil { add(.fitnessFeel, "Choose how you feel right now.") }
-            case .recovery:
-                if raceDistanceCompleted == nil { add(.raceCompleted, "Choose the race you just finished.") }
-                if !(0...60).contains(daysSinceRace) { add(.daysSinceRace, "Enter 0 to 60 days.") }
-                if recoveryFeel == nil { add(.recoveryFeel, "Choose how your body feels.") }
-            case .startRunning, nil:
-                break
+            }
+        case .raceDate:
+            let earliest = calendar.date(byAdding: .day, value: 14, to: start)!
+            if raceDate.map({ $0 < earliest }) ?? true {
+                add(.raceDate, "Pick a date at least 2 weeks away so the plan has room to build.")
             }
         case .schedule:
-            if preferredDays.count != daysPerWeek {
-                add(.preferredDays, "Pick \(daysPerWeek) days to match \(daysPerWeek) runs a week.")
-            }
-            if !preferredDays.contains(longRunDay) { add(.longRunDay, "Your long run day must be one of your running days.") }
             if !(0...250).contains(currentWeeklyKm) { add(.weeklyKm, "Enter 0 to 250 km.") }
-            if calendar.startOfDay(for: startDate) < start { add(.startDate, "Start today or later.") }
-        case .aboutYou:
-            if let h = heightCm, !(100...230).contains(h) { add(.height, "Height should be between 100 and 230 cm.") }
-            if let w = weightKg, !(30...200).contains(w) { add(.weight, "Weight should be between 30 and 200 kg.") }
-            if let hr = maxHr, !(120...230).contains(hr) { add(.maxHr, "Max heart rate should be between 120 and 230.") }
-            if let hr = restingHr, !(30...110).contains(hr) { add(.restingHr, "Resting heart rate should be between 30 and 110.") }
-        case .review:
+        case .startDate:
+            let latest = calendar.date(byAdding: .day, value: 14, to: start)!
+            if !(start...latest).contains(calendar.startOfDay(for: startDate)) { add(.startDate, "Start today or later.") }
+        case .aboutYou, .fitnessFeel, .daysSinceRace, .recoveryFeel, .review:
             break
         }
         return issues
@@ -250,12 +240,12 @@ struct PlanSetupDraft: Equatable, Sendable {
             raceDate: event ? raceDate.map { PlanCalendar.ymd($0, calendar: calendar) } : nil,
             courseDistanceKm: event ? distanceKm : nil,
             courseElevationGainM: event ? elevationGainM : nil,
-            terrain: event ? terrain.rawValue : nil,
-            raceGoal: event ? raceGoal.rawValue : nil,
+            terrain: terrain.rawValue,
+            raceGoal: raceGoal.rawValue,
             expectedFinishTime: targetText,
             daysPerWeek: daysPerWeek,
-            preferredRunDays: orderedDays.map(\.rawValue),
-            longRunDay: longRunDay.rawValue,
+            preferredRunDays: requestDays.map(\.rawValue),
+            longRunDay: requestLongRunDay.rawValue,
             currentWeeklyKm: currentWeeklyKm,
             hasGymAccess: hasGymAccess,
             trainingEnvironment: environment.rawValue,
@@ -279,11 +269,11 @@ struct PlanSetupDraft: Equatable, Sendable {
             goalType: event ? raceGoal.rawValue : (goal ?? .startRunning).rawValue,
             currentWeeklyKm: currentWeeklyKm,
             targetTimeHours: (event && raceGoal == .time) ? targetMinutes.map { Double($0) / 60 } : nil,
-            terrain: event ? terrain.rawValue : nil,
+            terrain: terrain.rawValue,
             courseDistanceKm: event ? distanceKm : nil,
             courseElevationGainM: event ? elevationGainM : nil,
-            preferredDays: orderedDays.map(\.rawValue),
-            longRunDay: longRunDay.rawValue,
+            preferredDays: requestDays.map(\.rawValue),
+            longRunDay: requestLongRunDay.rawValue,
             daysPerWeek: daysPerWeek,
             hasGymAccess: hasGymAccess,
             trainingEnvironment: environment.rawValue,

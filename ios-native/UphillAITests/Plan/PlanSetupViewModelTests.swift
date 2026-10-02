@@ -22,19 +22,35 @@ struct PlanSetupViewModelTests {
         return (model, service, center, session)
     }
 
+    @Test func raceAndNonRacePathsHaveSingleQuestionScreens() {
+        let (model, _, _, _) = make(.onboarding)
+        model.selectGoal(.race)
+        #expect(model.steps.count == 6)
+        model.back()
+        model.selectGoal(.recovery)
+        #expect(model.steps == [.goal, .details, .daysSinceRace, .recoveryFeel, .schedule, .startDate, .review])
+    }
+
+    @Test func choosingRaceAppliesCourseValues() {
+        let (model, _, _, _) = make(.onboarding)
+        model.selectRace(RaceMatch(raceName: "VMM", distanceLabel: "42K", distanceKm: 42, elevationGainM: 2400))
+        #expect(model.draft.distanceKm == 42)
+        #expect(model.draft.elevationGainM == 2400)
+    }
+
     @Test func goalTapAdvances() {
         let (model, _, _, _) = make(.onboarding)
         #expect(model.step == .goal)
         model.selectGoal(.startRunning)
         #expect(model.step == .schedule)
-        #expect(model.steps == [.goal, .schedule, .aboutYou, .review])
+        #expect(model.steps == [.goal, .schedule, .startDate, .review])
         #expect(model.direction == .forward)
     }
 
     @Test func newPlanSkipsAboutYou() {
         let (model, _, _, _) = make(.newPlan)
         model.selectGoal(.race)
-        #expect(model.steps == [.goal, .details, .schedule, .review])
+        #expect(model.steps == [.goal, .details, .raceDate, .schedule, .startDate, .review])
     }
 
     @Test func nextStaysAndShowsIssuesWhenInvalid() {
@@ -113,6 +129,7 @@ struct PlanSetupViewModelTests {
         let (model, _, _, _) = make(.newPlan)
         model.selectGoal(.startRunning)
         #expect(model.primaryTitle == "Next")
+        model.next()
         model.next()
         #expect(model.step == .review)
         #expect(model.primaryTitle == "Build my plan")

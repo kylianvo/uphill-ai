@@ -34,6 +34,11 @@ print()
 '
 }
 
+if [[ "${2:-}" == "race" ]]; then
+  curl -sf "$BASE/api/kb/match-race?name=Vietnam%20Mountain%20Marathon" | scrub > "$OUT/race_match.json"
+  exit 0
+fi
+
 LOGIN=$(curl -sf -X POST "$BASE/api/auth/mock-login" \
   -H 'Content-Type: application/json' -d '{"email":"ios-fixtures@uphill.ai"}')
 TOKEN=$(printf '%s' "$LOGIN" | python3 -c 'import json,sys; print(json.load(sys.stdin)["session_token"])')

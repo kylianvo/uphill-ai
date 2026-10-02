@@ -21,9 +21,13 @@ final class PlanSetupViewModel {
     private let session: SessionStore
     private let now: () -> Date
     private let calendar: Calendar
+    private let raceService: RaceMatchService?
+    var selectedRace: RaceMatch?
+    var raceCandidates: [RaceMatch] = []
 
     init(mode: Mode, user: User?, service: any GenerationServicing, generation: GenerationCenter,
-         session: SessionStore, now: @escaping () -> Date = { .now }, calendar: Calendar = PlanCalendar.calendar) {
+         session: SessionStore, now: @escaping () -> Date = { .now }, calendar: Calendar = PlanCalendar.calendar, raceService: RaceMatchService? = nil) {
+        self.raceService = raceService
         self.mode = mode
         self.service = service
         self.generation = generation
@@ -61,6 +65,31 @@ final class PlanSetupViewModel {
 
     func issue(for field: SetupField) -> String? {
         issues.first { $0.field == field }?.message
+    }
+
+    var latestStartDate: Date { calendar.date(byAdding: .day, value: 14, to: today)! }
+    var weeksToRace: Int { max(0, calendar.dateComponents([.day], from: today, to: draft.raceDate ?? earliestRaceDate).day ?? 0) / 7 }
+
+    func searchRace() async {
+        let name = draft.raceName.trimmingCharacters(in: .whitespacesAndNewlines)
+        selectedRace = nil
+        raceCandidates = []
+        guard name.count >= 3, let raceService else { return }
+        do {
+            try await Task.sleep(for: .milliseconds(500))
+            let result = try await raceService.match(name: name)
+            try Task.checkCancellation()
+            guard draft.raceName.trimmingCharacters(in: .whitespacesAndNewlines) == name else { return }
+            if result.autoApply == true, let match = result.match { selectRace(match) }
+            else { raceCandidates = result.candidates ?? [] }
+        } catch { }
+    }
+
+    func selectRace(_ race: RaceMatch) {
+        selectedRace = race
+        raceCandidates = []
+        draft.distanceKm = race.distanceKm
+        draft.elevationGainM = race.elevationGainM
     }
 
     func selectGoal(_ goal: SetupGoal) {

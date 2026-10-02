@@ -32,11 +32,36 @@ struct PlanSetupDraftTests {
         return d
     }
 
+    @Test func decodesRecordedRaceSearch() throws {
+        let response = try Fixture.decode(RaceMatchResponse.self, "race_match.json")
+        #expect(!response.matched)
+        #expect(response.match == nil)
+    }
+
+    @Test func onlyRequiredAnswersBuildBothBodies() throws {
+        var d = PlanSetupDraft(prefill: nil, today: today, calendar: cal)
+        d.goal = .startRunning
+        d.preferredDays = []
+        d.maxHr = 250
+        d.heightCm = 90
+        for step in SetupStep.steps(for: .startRunning, includeAboutYou: true) {
+            #expect(d.issues(for: step, today: today, calendar: cal).isEmpty)
+        }
+        let onboarding = try encoded(d.onboardingBody(skipPlan: false, calendar: cal))
+        let plan = try encoded(d.planBody(calendar: cal))
+        for body in [onboarding, plan] {
+            #expect(body["days_per_week"] as? Int == 4)
+            #expect(body["current_weekly_km"] as? Double == 30)
+            #expect(body["training_environment"] as? String == "flat")
+            #expect(body["has_gym_access"] as? Bool == false)
+        }
+    }
+
     @Test func stepsDependOnGoal() {
         #expect(SetupStep.steps(for: nil, includeAboutYou: true) == [.goal])
-        #expect(SetupStep.steps(for: .race, includeAboutYou: true) == [.goal, .details, .schedule, .aboutYou, .review])
-        #expect(SetupStep.steps(for: .startRunning, includeAboutYou: true) == [.goal, .schedule, .aboutYou, .review])
-        #expect(SetupStep.steps(for: .returning, includeAboutYou: false) == [.goal, .details, .schedule, .review])
+        #expect(SetupStep.steps(for: .race, includeAboutYou: true) == [.goal, .details, .raceDate, .schedule, .startDate, .review])
+        #expect(SetupStep.steps(for: .startRunning, includeAboutYou: true) == [.goal, .schedule, .startDate, .review])
+        #expect(SetupStep.steps(for: .returning, includeAboutYou: false) == [.goal, .details, .fitnessFeel, .schedule, .startDate, .review])
     }
 
     @Test func defaultsFromPrefillAndToday() throws {
@@ -61,7 +86,8 @@ struct PlanSetupDraftTests {
         d.distanceKm = 0
         d.targetMinutes = nil
         let fields = d.issues(for: .details, today: today, calendar: cal).map(\.field)
-        #expect(fields == [.raceName, .raceDate, .distance, .targetTime])
+        #expect(fields == [.raceName, .distance])
+        #expect(d.issues(for: .raceDate, today: today, calendar: cal).map(\.field) == [.raceDate])
         #expect(d.issues(for: .details, today: today, calendar: cal).first?.message == "Add the race name.")
     }
 
@@ -79,24 +105,24 @@ struct PlanSetupDraftTests {
         d.currentWeeklyKm = 300
         d.startDate = day("2026-10-06")
         let issues = d.issues(for: .schedule, today: today, calendar: cal)
-        #expect(issues.map(\.field) == [.preferredDays, .longRunDay, .weeklyKm, .startDate])
-        #expect(issues[0].message == "Pick 5 days to match 5 runs a week.")
+        #expect(issues.map(\.field) == [.weeklyKm])
+        #expect(d.issues(for: .startDate, today: today, calendar: cal).map(\.field) == [.startDate])
     }
 
     @Test func returnAndRecoveryDetails() {
         var d = PlanSetupDraft(prefill: nil, today: today, calendar: cal)
         d.goal = .returning
-        #expect(d.issues(for: .details, today: today, calendar: cal).map(\.field) == [.timeAway, .fitnessFeel])
+        #expect(d.issues(for: .details, today: today, calendar: cal).map(\.field) == [])
         d.goal = .recovery
         d.daysSinceRace = 90
-        #expect(d.issues(for: .details, today: today, calendar: cal).map(\.field) == [.raceCompleted, .daysSinceRace, .recoveryFeel])
+        #expect(d.issues(for: .details, today: today, calendar: cal).map(\.field) == [])
     }
 
     @Test func aboutYouRanges() {
         var d = raceDraft()
         d.heightCm = 90
         d.maxHr = 250
-        #expect(d.issues(for: .aboutYou, today: today, calendar: cal).map(\.field) == [.height, .maxHr])
+        #expect(d.issues(for: .aboutYou, today: today, calendar: cal).map(\.field) == [])
     }
 
     @Test func onboardingBodyForTimedRace() throws {
