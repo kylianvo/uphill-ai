@@ -4,7 +4,7 @@
 
 **Goal:** Plan tier and volume baseline come from measured COROS signals (with typed fallbacks), so a high-volume athlete is never demoted to `recreational` by unmeasured AeT/AnT values.
 
-**Architecture:** A new `services/fitness_snapshot.py` assembles a per-athlete snapshot on read from existing tables plus a new append-only `fitness_assessments` table. The snapshot decides the tier (volume base, one-step performance promotion, gap demotion only for measured thresholds), supplies `current_weekly_km`, and renders an `ATHLETE FITNESS SNAPSHOT` prompt block. The plan endpoints build it inside their async jobs and store it on `plans.fitness_snapshot`.
+**Architecture:** A new `services/fitness_snapshot.py` assembles a per-athlete snapshot on read from existing tables plus a new append-only `fitness_assessments` table. The snapshot feeds a composite tier (load, performance, experience, physiology, clamped to within one tier of load), supplies `current_weekly_km`, and renders an `ATHLETE FITNESS SNAPSHOT` prompt block. The plan endpoints build it inside their async jobs and store it on `plans.fitness_snapshot`.
 
 **Tech Stack:** FastAPI, SQLAlchemy Core `text()`, Alembic, pytest (+ pytest-asyncio), Next.js 16 / React, vitest.
 
@@ -17,8 +17,13 @@
 - `threshold_source` values: exactly `lab | field | estimated | unknown`, default `unknown`. Only `lab` and `field` allow gap demotion.
 - Measured volume: last 4 complete Mon–Sun weeks; a week counts only if it starts on/after the athlete's first synced COROS activity and ends on/before `last_sync_at`; at least 3 counted weeks.
 - Assessment freshness for tiering: ≤ 60 days. On-demand refresh threshold: 7 days.
-- Performance bands (men; women ×1.12; unknown gender uses men's): marathon prediction elite ≤ 2:40:00, sub-elite ≤ 3:10:00, recreational ≤ 4:15:00. UTMB index elite ≥ 700, sub-elite ≥ 550, recreational ≥ 400.
-- Promotion is at most ONE step above the volume tier.
+- Tier = composite level score: weights load 0.45, performance 0.30, experience 0.15 (lift-only), physiology 0.10 (measured thresholds only); tier = floor(score) clamped to within one tier of the load tier. Anchors: the spec's "Tier rule" table, copied verbatim into `athlete_tier.py`.
+- Performance chain: best of {faster of COROS marathon prediction and Riegel road equivalent, UTMB index}; else VO2max; else threshold pace. No field percentiles.
+- Chronic cap: effective weekly volume = min(4-week mean, 1.15 × 12-week mean) when ≥ 8 complete covered weeks exist; km and vert scaled by the same factor.
+- Road equivalent: Riegel T × (42.195 / D)^1.06, imported VBM road results, 5–42.2 km, last 12 months, not DNF or hidden.
+- Volume bands are applied to effort-km = weekly km + weekly vert / 100 (vert only when measured), for every plan.
+- Hysteresis on re-plans: keep the previous tier when the composite score is within 0.1 of the boundary between it and the new tier (adjacent tiers only).
+- `plans.athlete_tier` is the last resolved tier, never an override: re-plan paths pass it as `previous_tier` and `explicit_tier=None`.
 - A COROS failure never blocks or fails a plan.
 - Any rendered UI change needs a local screenshot (`ui-screenshot-evidence` skill); Vietnamese copy follows the `uphill-ai-vietnamese-copy` skill.
 - Commit messages end with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
@@ -32,8 +37,8 @@
 |---|---|
 | `backend/db.py` (modify) | Schema in `init_db`; helpers `record_fitness_assessment`, `get_latest_fitness_assessment`, `get_weekly_run_volumes`, `get_first_activity_at`, `set_plan_fitness_snapshot`; `threshold_source` in profile writes; disconnect cleanup |
 | `backend/alembic/versions/<rev>_fitness_snapshot.py` (create) | Migration for the three schema changes |
-| `backend/services/athlete_tier.py` (modify) | `PERF_BANDS`, `performance_tier`, `explain_tier`; `derive_tier`/`resolve_tier` gain `threshold_source`, `marathon_prediction_sec`, `gender`, `utmb_index` |
-| `backend/services/fitness_snapshot.py` (create) | `measured_weekly_volume` (pure), `FitnessSnapshot`, `build()` |
+| `backend/services/athlete_tier.py` (modify) | Composite tier: anchors, weights, `level_from`, `performance_level`, `TierDecision`, `explain_tier`; `derive_tier`/`resolve_tier` become wrappers |
+| `backend/services/fitness_snapshot.py` (create) | `measured_weekly_volume`, `chronic_weekly_volume`, `best_road_marathon_equivalent` (pure), `FitnessSnapshot`, `build()` |
 | `backend/services/coros_sync.py` (modify) | Record assessments on sync; `ensure_fresh_assessment` |
 | `backend/services/plan_generator.py` (modify) | Use the snapshot for volume, tier and prompt block when present |
 | `backend/main.py` (modify) | Build/store the snapshot in onboarding, generate-plan and next-block jobs; `threshold_source` on profile; `GET /api/auth/fitness-snapshot`; `weekly_km_from_watch` |
@@ -369,248 +374,403 @@ git commit -m "feat(db): fitness_assessments history, threshold_source, plans.fi
 
 ---
 
-### Task 2: Tier rule — performance promotion and measured-only gap demotion
+### Task 2: Composite tier — four dimensions, load guardrail, hysteresis
+
+Replaces `derive_tier`'s "volume band, then nudges" logic with the composite level score from the spec's "Tier rule" section. Read that section first: the anchor table there is the source of truth for every number below.
 
 **Files:**
 - Modify: `backend/services/athlete_tier.py`
+- Modify: `backend/services/plan_generator.py` (one call site, Step 6)
 - Test: `backend/tests/unit/test_athlete_tier.py`
 
 **Interfaces:**
-- Produces:
-  - `PERF_BANDS: dict[str, dict[str, float]]`, `FEMALE_PACE_FACTOR = 1.12`, `MEASURED_THRESHOLD_SOURCES = ("lab", "field")`
-  - `performance_tier(marathon_prediction_sec: float | None, gender: str | None, utmb_index: int | None) -> str | None`
-  - `explain_tier(**same kwargs as derive_tier) -> tuple[str, list[str]]`
-  - `derive_tier(goal_type=None, current_weekly_km=None, max_continuous_jog_min=None, historical_max_distance_km=None, aet_hr=None, ant_hr=None, threshold_source=None, marathon_prediction_sec=None, gender=None, utmb_index=None) -> str`
-  - `resolve_tier(explicit_tier=None, **derive_tier kwargs) -> str` and `resolve_tier_explained(explicit_tier=None, **derive_tier kwargs) -> tuple[str, list[str]]`
+- Produces (all in `services/athlete_tier.py`):
+  - Constants: `WEIGHTS = {"load": 0.45, "performance": 0.30, "experience": 0.15, "physiology": 0.10}`, `MEASURED_THRESHOLD_SOURCES = ("lab", "field")`, `VERT_M_PER_EFFORT_KM = 100.0`, `HYSTERESIS_LEVEL = 0.1`, `FEMALE_PACE_FACTOR = 1.12`, `FEMALE_VO2_FACTOR = 0.9`, anchor lists `LOAD_ANCHORS`, `MARATHON_ANCHORS`, `UTMB_ANCHORS`, `VO2_ANCHORS`, `THRESHOLD_PACE_ANCHORS`, `EXPERIENCE_ANCHORS`, `GAP_ANCHORS`, `ANT_MAX_ANCHORS` — each `list[tuple[float, float]]` of `(value, level)`.
+  - `effort_km(weekly_km: float | None, weekly_vert_m: float | None) -> float | None`
+  - `level_from(value: float | None, anchors: list[tuple[float, float]]) -> float | None` — piecewise-linear; clamps to the end anchors; result clamped to `[0, 4.99]`.
+  - `performance_level(marathon_sec, utmb_index, vo2max, threshold_pace_sec, gender) -> tuple[float, str] | None` — the fallback chain; the str names the source used.
+  - `@dataclass TierDecision: tier: str; score: float | None; levels: dict[str, float | None]; reasons: list[str]`
+  - `explain_tier(*, goal_type=None, current_weekly_km=None, weekly_vert_m=None, max_continuous_jog_min=None, historical_max_distance_km=None, aet_hr=None, ant_hr=None, max_hr=None, threshold_source=None, marathon_prediction_sec=None, utmb_index=None, vo2max=None, threshold_pace_sec=None, gender=None, previous_tier=None) -> TierDecision`
+  - `derive_tier(**same kwargs) -> str` (= `explain_tier(...).tier`)
+  - `resolve_tier_explained(explicit_tier=None, **same kwargs) -> TierDecision` and `resolve_tier(explicit_tier=None, **same kwargs) -> str`
+  - `aet_ant_gap` unchanged.
 
-- [ ] **Step 1: Update the existing gap tests and add new ones**
-
-In `TestAetAntGapSignal`, the three tests that expect a demotion or a measured gap must now say the thresholds were measured. Change:
-
-```python
-        assert derive_tier(current_weekly_km=90.0, aet_hr=110, ant_hr=170) == RECREATIONAL
-```
-to
-```python
-        assert derive_tier(current_weekly_km=90.0, aet_hr=110, ant_hr=170, threshold_source="field") == RECREATIONAL
-```
-and likewise add `threshold_source="field"` to `test_a_narrow_measured_gap_leaves_the_volume_tier_alone`, `test_the_gap_can_only_demote_never_promote` and `test_demotion_stops_at_recreational`. Update the import list with `MEASURED_THRESHOLD_SOURCES, explain_tier, performance_tier, resolve_tier_explained`. Then append:
+- [ ] **Step 1: Rewrite the derivation tests.** In `test_athlete_tier.py`, keep the profile and rules-block test classes untouched. Delete the classes that test derivation, the AeT/AnT gap and `resolve_tier` (they contain `test_weekly_volume_selects_the_band`, `test_a_wide_measured_gap_demotes_a_high_volume_claim` and `test_an_explicit_override_wins`) and replace them with the classes below, which cover the same behaviours under the composite rule. Add imports: `HYSTERESIS_LEVEL, MEASURED_THRESHOLD_SOURCES, TierDecision, effort_km, explain_tier, level_from, performance_level, resolve_tier_explained`.
 
 ```python
-class TestThresholdProvenance:
-    """The gap is evidence only when the athlete says the thresholds were measured."""
+class TestLevels:
+    def test_level_interpolates_between_anchors(self):
+        assert level_from(60.0, [(40.0, 2.0), (80.0, 3.0)]) == 2.5
 
-    @pytest.mark.parametrize("source", [None, "unknown", "estimated"])
-    def test_an_unmeasured_gap_never_demotes(self, source):
-        assert derive_tier(current_weekly_km=90.0, aet_hr=110, ant_hr=170, threshold_source=source) == SUB_ELITE
+    def test_level_clamps_at_the_ends(self):
+        assert level_from(10_000.0, [(40.0, 2.0), (80.0, 3.0)]) == 3.0
+        assert level_from(0.0, [(40.0, 2.0), (80.0, 3.0)]) == 2.0
+        assert level_from(None, [(40.0, 2.0)]) is None
+
+    def test_decreasing_anchors_work_for_times(self):
+        # marathon: lower time is a higher level
+        assert level_from(10_500.0, [(11_400.0, 3.0), (9_600.0, 4.0)]) == 3.5
+
+    def test_effort_km(self):
+        assert effort_km(127.0, 5800.0) == 185.0
+        assert effort_km(70.0, None) == 70.0
+        assert effort_km(None, 500.0) is None
+
+
+class TestPerformanceChain:
+    def test_best_of_marathon_and_utmb(self):
+        level, source = performance_level(4 * 3600, 720, None, None, "male")
+        assert source == "utmb_index" and level > 4.0
+
+    def test_vo2max_only_when_no_race_signal(self):
+        assert performance_level(None, None, 55.0, None, "male") == (3.0, "vo2max")
+        assert performance_level(3 * 3600, None, 70.0, None, "male")[1] == "marathon"
+
+    def test_threshold_pace_is_the_last_fallback(self):
+        assert performance_level(None, None, None, 255.0, "male") == (3.0, "threshold_pace")
+
+    def test_women_are_judged_on_scaled_anchors(self):
+        men = performance_level(2 * 3600 + 55 * 60, None, None, None, "male")[0]
+        women = performance_level(2 * 3600 + 55 * 60, None, None, None, "female")[0]
+        assert women > men
+
+    def test_nothing_gives_none(self):
+        assert performance_level(None, None, None, None, None) is None
+
+
+class TestComposite:
+    @pytest.mark.parametrize(
+        "weekly_km,expected",
+        [(5.0, BEGINNER), (20.0, NOVICE), (60.0, RECREATIONAL), (120.0, SUB_ELITE), (200.0, ELITE)],
+    )
+    def test_load_alone_reproduces_the_bands(self, weekly_km, expected):
+        assert derive_tier(current_weekly_km=weekly_km) == expected
+
+    def test_unknown_volume_and_nothing_else_is_the_default(self):
+        assert derive_tier() == DEFAULT_TIER
+
+    def test_beginner_rules_still_win(self):
+        assert derive_tier(goal_type="start_running", current_weekly_km=100.0, utmb_index=800) == BEGINNER
+        assert derive_tier(max_continuous_jog_min=5, current_weekly_km=100.0) == BEGINNER
+
+    def test_regression_elite_reporter_is_sub_elite_not_recreational(self):
+        """REGRESSION (prod, 2026-09): high measured load, 18% AeT/AnT gap of unknown
+        source. The old rule demoted this athlete to recreational."""
+        d = explain_tier(
+            current_weekly_km=134.0, weekly_vert_m=5300.0, marathon_prediction_sec=10380.0,
+            historical_max_distance_km=50.0, aet_hr=134, ant_hr=163, max_hr=183,
+            threshold_source="unknown", gender="male",
+        )
+        assert d.tier == SUB_ELITE
+        assert d.levels["physiology"] is None
+        assert any("not used" in r for r in d.reasons)
+
+    def test_load_only_vert_heavy_athlete_reaches_elite(self):
+        assert derive_tier(current_weekly_km=134.0, weekly_vert_m=5300.0) == ELITE
+
+    def test_fast_runner_on_low_volume_moves_up_one(self):
+        assert derive_tier(current_weekly_km=50.0, marathon_prediction_sec=2 * 3600 + 35 * 60) == SUB_ELITE
+
+    def test_guardrail_caps_at_one_tier_above_load(self):
+        d = explain_tier(
+            current_weekly_km=30.0, marathon_prediction_sec=2 * 3600 + 12 * 60,
+            aet_hr=165, ant_hr=172, max_hr=182, threshold_source="lab",
+        )
+        assert d.score >= 3.0
+        assert d.tier == RECREATIONAL  # load tier is novice
 
     @pytest.mark.parametrize("source", MEASURED_THRESHOLD_SOURCES)
-    def test_a_measured_gap_demotes(self, source):
+    def test_measured_wide_gap_pulls_down(self, source):
         assert derive_tier(current_weekly_km=90.0, aet_hr=110, ant_hr=170, threshold_source=source) == RECREATIONAL
 
-    def test_regression_high_volume_athlete_with_default_like_thresholds(self):
-        """REGRESSION (prod, 2026-09). 120 km/week, AeT 134 / AnT 163 (17.8% gap, values
-        next to the 135/165 defaults, provenance unknown) was demoted to recreational and
-        handed 40-60 km weeks while running 125-160 km."""
-        assert derive_tier(current_weekly_km=134.0, aet_hr=134, ant_hr=163, threshold_source="unknown") == SUB_ELITE
+    @pytest.mark.parametrize("source", [None, "unknown", "estimated"])
+    def test_unmeasured_gap_is_ignored(self, source):
+        assert derive_tier(current_weekly_km=90.0, aet_hr=110, ant_hr=170, threshold_source=source) == SUB_ELITE
+
+    def test_measured_narrow_gap_keeps_a_high_volume_runner(self):
+        assert derive_tier(current_weekly_km=90.0, aet_hr=155, ant_hr=169, threshold_source="field") == SUB_ELITE
+
+    def test_measured_gap_never_drops_two_tiers(self):
+        assert derive_tier(current_weekly_km=200.0, aet_hr=100, ant_hr=180, threshold_source="lab") == SUB_ELITE
+
+    def test_experience_lifts_but_never_drags(self):
+        assert derive_tier(current_weekly_km=50.0, historical_max_distance_km=5.0) == RECREATIONAL
+        assert derive_tier(current_weekly_km=10.0, historical_max_distance_km=30.0) == NOVICE
+
+    def test_unusable_threshold_inputs_are_ignored(self):
+        assert derive_tier(current_weekly_km=200.0, aet_hr=180, ant_hr=170, threshold_source="lab") == ELITE
+
+    def test_reasons_name_every_dimension(self):
+        d = explain_tier(current_weekly_km=70.0, vo2max=57.0, gender="male")
+        assert d.levels["load"] is not None and d.levels["performance"] is not None
+        text = " ".join(d.reasons)
+        assert "load" in text and "performance" in text and "score" in text
 
 
-class TestPerformancePromotion:
-    def test_performance_tier_from_marathon_prediction(self):
-        assert performance_tier(2 * 3600 + 35 * 60, "male", None) == ELITE
-        assert performance_tier(3 * 3600, "male", None) == SUB_ELITE
-        assert performance_tier(4 * 3600, None, None) == RECREATIONAL
-        assert performance_tier(5 * 3600, "male", None) is None
+class TestHysteresis:
+    def test_keeps_previous_tier_just_over_the_boundary(self):
+        assert derive_tier(current_weekly_km=84.0, previous_tier=RECREATIONAL) == RECREATIONAL  # score 3.05
 
-    def test_women_get_slower_thresholds(self):
-        assert performance_tier(2 * 3600 + 55 * 60, "female", None) == ELITE
-        assert performance_tier(2 * 3600 + 55 * 60, "male", None) == SUB_ELITE
+    def test_keeps_previous_tier_just_under_the_boundary(self):
+        assert derive_tier(current_weekly_km=78.0, previous_tier=SUB_ELITE) == SUB_ELITE  # score 2.95
 
-    def test_best_signal_wins(self):
-        assert performance_tier(4 * 3600, "male", 720) == ELITE
+    def test_moves_once_clearly_past(self):
+        assert derive_tier(current_weekly_km=96.0, previous_tier=RECREATIONAL) == SUB_ELITE  # score 3.2
 
-    def test_promotes_at_most_one_step(self):
-        assert derive_tier(current_weekly_km=50.0, marathon_prediction_sec=2 * 3600 + 30 * 60) == SUB_ELITE
+    def test_new_plans_use_the_plain_score(self):
+        assert derive_tier(current_weekly_km=84.0) == SUB_ELITE
 
-    def test_performance_never_demotes(self):
-        assert derive_tier(current_weekly_km=200.0, marathon_prediction_sec=5 * 3600) == ELITE
+    def test_never_holds_across_two_tiers(self):
+        assert derive_tier(current_weekly_km=134.0, weekly_vert_m=5300.0, previous_tier=RECREATIONAL) == ELITE
 
-    def test_performance_does_not_lift_a_beginner_goal(self):
-        assert derive_tier(goal_type="start_running", current_weekly_km=50.0, utmb_index=700) == BEGINNER
 
-    def test_measured_gap_still_demotes_after_promotion(self):
-        tier = derive_tier(
-            current_weekly_km=100.0, marathon_prediction_sec=2 * 3600 + 30 * 60,
-            aet_hr=110, ant_hr=170, threshold_source="lab",
-        )
-        assert tier == RECREATIONAL
+class TestResolveTier:
+    def test_an_explicit_override_wins(self):
+        assert resolve_tier(explicit_tier="elite", current_weekly_km=20.0) == ELITE
+        assert resolve_tier_explained(explicit_tier="elite").reasons == ["explicit plan override"]
 
-    def test_explain_tier_reports_each_step(self):
-        tier, reasons = explain_tier(current_weekly_km=134.0, utmb_index=720, aet_hr=134, ant_hr=163)
-        assert tier == ELITE
-        assert any("volume" in r for r in reasons)
-        assert any("promoted" in r for r in reasons)
-        assert any("not used" in r for r in reasons)
+    def test_an_unrecognised_override_is_ignored(self):
+        assert resolve_tier(explicit_tier="pro", current_weekly_km=20.0) == NOVICE
 
-    def test_resolve_tier_explained_honours_the_override(self):
-        assert resolve_tier_explained(explicit_tier="elite", current_weekly_km=20.0) == (ELITE, ["explicit plan override"])
+    def test_override_is_case_and_whitespace_insensitive(self):
+        assert resolve_tier(explicit_tier="  Sub_Elite ", current_weekly_km=20.0) == SUB_ELITE
+
+    def test_a_stored_tier_no_longer_freezes_a_replan(self):
+        """REGRESSION: next block passed plans.athlete_tier as the override, so a plan first
+        resolved as recreational stayed recreational forever."""
+        assert resolve_tier(explicit_tier=None, current_weekly_km=134.0, previous_tier=RECREATIONAL) == SUB_ELITE
 ```
 
-- [ ] **Step 2: Run to verify failure**
+Move `test_derived_thresholds_must_not_cap_the_entire_user_base` into `TestComposite` unchanged before deleting its class: its first assertion still holds (no thresholds, 200 km → elite) and its `aet_ant_gap` assertion is untouched.
 
-Run: `cd backend && pytest tests/unit/test_athlete_tier.py -v`
-Expected: FAIL — `ImportError: cannot import name 'MEASURED_THRESHOLD_SOURCES'`.
+- [ ] **Step 2: Run to verify failure** — `cd backend && pytest tests/unit/test_athlete_tier.py -v` → FAIL (`ImportError: cannot import name 'TierDecision'`).
 
-- [ ] **Step 3: Implement** in `services/athlete_tier.py`. Add after `CONTINUOUS_JOG_BEGINNER_CEILING_MIN`:
+- [ ] **Step 3: Implement the anchors and helpers** in `athlete_tier.py`, after `CONTINUOUS_JOG_BEGINNER_CEILING_MIN`. Add `import math` and extend the dataclass import with `field`.
 
 ```python
-# Performance bands for the one-step promotion. CONVENTIONAL DEFAULTS, UNSOURCED, like
-# the volume bands above: gathered here so a coach can correct them in one place.
-# Marathon thresholds are men's; women's are FEMALE_PACE_FACTOR slower. Unknown gender
-# uses men's thresholds, which can only under-promote.
-PERF_BANDS: dict[str, dict[str, float]] = {
-    ELITE: {"marathon_sec": 2 * 3600 + 40 * 60, "utmb_index": 700},
-    SUB_ELITE: {"marathon_sec": 3 * 3600 + 10 * 60, "utmb_index": 550},
-    RECREATIONAL: {"marathon_sec": 4 * 3600 + 15 * 60, "utmb_index": 400},
-}
-FEMALE_PACE_FACTOR = 1.12
+# --- Composite tier --------------------------------------------------------------
+# The tier is a weighted mean of four dimensions, each mapped to a continuous level on
+# the TIER_ORDER scale (0 beginner .. 4 elite). ALL ANCHORS AND WEIGHTS ARE CONVENTIONAL
+# DEFAULTS, UNSOURCED, gathered here so a coach can correct them in one place.
+# Spec: docs/superpowers/specs/2026-10-02-fitness-snapshot-design.md ("Tier rule").
 
-# Threshold provenance that makes the AeT/AnT gap real evidence. "estimated" and
-# "unknown" (the default for every existing athlete) never demote.
+WEIGHTS = {"load": 0.45, "performance": 0.30, "experience": 0.15, "physiology": 0.10}
+MAX_LEVEL = 4.99
+HYSTERESIS_LEVEL = 0.1
+VERT_M_PER_EFFORT_KM = 100.0
+FEMALE_PACE_FACTOR = 1.12
+FEMALE_VO2_FACTOR = 0.9
 MEASURED_THRESHOLD_SOURCES = ("lab", "field")
 
+# Matches the old volume bands exactly, so load alone reproduces the old tiers.
+LOAD_ANCHORS = [(0.0, 0.0), (15.0, 1.0), (40.0, 2.0), (80.0, 3.0), (160.0, 4.0), (320.0, 5.0)]
+MARATHON_ANCHORS = [(25200.0, 0.0), (19800.0, 1.0), (15300.0, 2.0), (11400.0, 3.0), (9600.0, 4.0), (7800.0, 5.0)]
+UTMB_ANCHORS = [(250.0, 1.0), (400.0, 2.0), (550.0, 3.0), (700.0, 4.0), (850.0, 5.0)]
+VO2_ANCHORS = [(38.0, 1.0), (45.0, 2.0), (55.0, 3.0), (65.0, 4.0), (75.0, 5.0)]
+THRESHOLD_PACE_ANCHORS = [(360.0, 1.0), (300.0, 2.0), (255.0, 3.0), (220.0, 4.0), (190.0, 5.0)]
+EXPERIENCE_ANCHORS = [(0.0, 0.0), (10.0, 1.0), (21.0, 2.0), (42.0, 3.0), (80.0, 4.0), (160.0, 5.0)]
+GAP_ANCHORS = [(0.50, 0.0), (0.35, 1.0), (0.30, 2.0), (0.10, 3.0), (0.07, 4.0), (0.04, 5.0)]
+ANT_MAX_ANCHORS = [(0.80, 2.0), (0.87, 3.0), (0.91, 4.0), (0.94, 5.0)]
 
-def performance_tier(
-    marathon_prediction_sec: float | None, gender: str | None, utmb_index: int | None
-) -> str | None:
-    """Highest tier any performance signal reaches, or None when none reaches a band."""
-    factor = FEMALE_PACE_FACTOR if (gender or "").lower() == "female" else 1.0
-    for key in (ELITE, SUB_ELITE, RECREATIONAL):
-        band = PERF_BANDS[key]
-        if marathon_prediction_sec and marathon_prediction_sec <= band["marathon_sec"] * factor:
-            return key
-        if utmb_index and utmb_index >= band["utmb_index"]:
-            return key
+
+def effort_km(weekly_km: float | None, weekly_vert_m: float | None) -> float | None:
+    """A kilometre plus 100 m of climbing counts as two."""
+    if weekly_km is None:
+        return None
+    return round(weekly_km + (weekly_vert_m or 0.0) / VERT_M_PER_EFFORT_KM, 1)
+
+
+def level_from(value: float | None, anchors: list[tuple[float, float]]) -> float | None:
+    """Piecewise-linear level for `value`; works for rising (km) and falling (time,
+    gap) anchors. Clamped to the end anchors and to [0, MAX_LEVEL]."""
+    if value is None:
+        return None
+    pts = sorted(anchors)
+    if value <= pts[0][0]:
+        level = pts[0][1]
+    elif value >= pts[-1][0]:
+        level = pts[-1][1]
+    else:
+        for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+            if x0 <= value <= x1:
+                level = y0 + (y1 - y0) * (value - x0) / (x1 - x0)
+                break
+    return round(min(max(level, 0.0), MAX_LEVEL), 3)
+
+
+def _scaled(anchors: list[tuple[float, float]], factor: float) -> list[tuple[float, float]]:
+    return [(x * factor, y) for x, y in anchors]
+
+
+def performance_level(
+    marathon_sec: float | None,
+    utmb_index: float | None,
+    vo2max: float | None,
+    threshold_pace_sec: float | None,
+    gender: str | None,
+) -> tuple[float, str] | None:
+    """Fallback chain. Race-derived signals first (best of the two); VO2max and threshold
+    pace only when there is none, because COROS derives its predictor from them and
+    counting both would weight one measurement twice."""
+    female = (gender or "").lower() == "female"
+    race = [
+        (level_from(marathon_sec, _scaled(MARATHON_ANCHORS, FEMALE_PACE_FACTOR if female else 1.0)), "marathon"),
+        (level_from(utmb_index, UTMB_ANCHORS), "utmb_index"),
+    ]
+    race = [(lv, src) for lv, src in race if lv is not None]
+    if race:
+        return max(race)
+    if vo2max:
+        return level_from(vo2max, _scaled(VO2_ANCHORS, FEMALE_VO2_FACTOR if female else 1.0)), "vo2max"
+    if threshold_pace_sec:
+        anchors = _scaled(THRESHOLD_PACE_ANCHORS, FEMALE_PACE_FACTOR if female else 1.0)
+        return level_from(threshold_pace_sec, anchors), "threshold_pace"
     return None
+
+
+def _tier_at(level: float) -> str:
+    return TIER_ORDER[min(int(math.floor(level)), len(TIER_ORDER) - 1)]
+
+
+@dataclass
+class TierDecision:
+    tier: str
+    score: float | None = None
+    levels: dict[str, float | None] = field(default_factory=dict)
+    reasons: list[str] = field(default_factory=list)
 ```
 
-Replace the body of `derive_tier` with a call into a new `explain_tier`, keeping the existing docstring on `explain_tier` and extending it with points 5 and 6:
+Check the level examples in Step 1 against these anchors before moving on: VO2max 55 → 3.0; threshold 255 s (4:15) → 3.0; 60 km → 2.5.
+
+- [ ] **Step 4: Implement `explain_tier` and the wrappers.** Replace the bodies of `derive_tier` and `resolve_tier` (keep the module's existing docstrings where they still describe the behaviour; update the `derive_tier` docstring to describe the composite and point to the spec):
 
 ```python
 def explain_tier(
+    *,
     goal_type: str | None = None,
     current_weekly_km: float | None = None,
+    weekly_vert_m: float | None = None,
     max_continuous_jog_min: int | None = None,
     historical_max_distance_km: float | None = None,
     aet_hr: float | None = None,
     ant_hr: float | None = None,
+    max_hr: float | None = None,
     threshold_source: str | None = None,
     marathon_prediction_sec: float | None = None,
+    utmb_index: float | None = None,
+    vo2max: float | None = None,
+    threshold_pace_sec: float | None = None,
     gender: str | None = None,
-    utmb_index: int | None = None,
-) -> tuple[str, list[str]]:
-    """<existing derive_tier docstring, points 1-4>
-    5. Performance (race predictor, UTMB index) can promote at most ONE step.
-    6. A wide AeT/AnT spread demotes only when the thresholds were measured."""
+    previous_tier: str | None = None,
+) -> TierDecision:
     if (goal_type or "").strip().lower() in BEGINNER_GOAL_TYPES:
-        return BEGINNER, ["start-running goal"]
+        return TierDecision(BEGINNER, reasons=["start-running goal"])
     if max_continuous_jog_min is not None and max_continuous_jog_min < CONTINUOUS_JOG_BEGINNER_CEILING_MIN:
-        return BEGINNER, [f"cannot jog {CONTINUOUS_JOG_BEGINNER_CEILING_MIN} min continuously"]
-    if current_weekly_km is None or current_weekly_km <= 0:
-        tier, reasons = DEFAULT_TIER, ["volume unknown, default tier"]
-    else:
-        tier = DEFAULT_TIER
-        for key in TIER_ORDER:
-            profile = TIER_PROFILES[key]
-            if current_weekly_km >= profile.weekly_km_min and (
-                profile.weekly_km_max is None or current_weekly_km < profile.weekly_km_max
-            ):
-                tier = key
-                break
-        reasons = [f"volume {current_weekly_km:.0f} km/week -> {tier}"]
+        return TierDecision(BEGINNER, reasons=[f"cannot jog {CONTINUOUS_JOG_BEGINNER_CEILING_MIN} min continuously"])
 
-    if historical_max_distance_km and historical_max_distance_km >= 25.0 and tier == BEGINNER:
-        tier = NOVICE
-        reasons.append(f"proven long run {historical_max_distance_km:.0f} km -> {NOVICE}")
+    reasons: list[str] = []
+    levels: dict[str, float | None] = {}
 
-    perf = performance_tier(marathon_prediction_sec, gender, utmb_index)
-    if perf and tier != BEGINNER and TIER_ORDER.index(perf) > TIER_ORDER.index(tier):
-        tier = TIER_ORDER[TIER_ORDER.index(tier) + 1]
-        reasons.append(f"performance reaches {perf}, promoted one step -> {tier}")
+    load = effort_km(current_weekly_km, weekly_vert_m)
+    levels["load"] = level_from(load, LOAD_ANCHORS) if load and load > 0 else None
+    if levels["load"] is not None:
+        reasons.append(f"load {levels['load']:.1f} ({load:.0f} effort-km)")
+
+    perf = performance_level(marathon_prediction_sec, utmb_index, vo2max, threshold_pace_sec, gender)
+    levels["performance"] = perf[0] if perf else None
+    if perf:
+        reasons.append(f"performance {perf[0]:.1f} ({perf[1]})")
 
     gap = aet_ant_gap(aet_hr, ant_hr)
-    if gap is not None and (threshold_source or "").lower() not in MEASURED_THRESHOLD_SOURCES:
-        reasons.append(f"AeT/AnT gap {gap:.0%} not used (source: {threshold_source or 'unknown'})")
+    measured = (threshold_source or "").lower() in MEASURED_THRESHOLD_SOURCES
+    phys = []
+    if measured and gap is not None:
+        phys.append(level_from(gap, GAP_ANCHORS))
+        if max_hr and ant_hr and ant_hr < max_hr:
+            phys.append(level_from(ant_hr / max_hr, ANT_MAX_ANCHORS))
+    levels["physiology"] = round(sum(phys) / len(phys), 3) if phys else None
+    if levels["physiology"] is not None:
+        reasons.append(f"physiology {levels['physiology']:.1f} (measured, {threshold_source})")
     elif gap is not None:
-        for candidate in (SUB_ELITE, ELITE):
-            if tier == candidate and gap > TIER_PROFILES[candidate].aet_ant_gap_max:
-                tier = RECREATIONAL
-                reasons.append(f"measured AeT/AnT gap {gap:.0%} -> {RECREATIONAL}")
-                break
-    return tier, reasons
+        reasons.append(f"physiology not used: AeT/AnT gap {gap:.0%}, source {threshold_source or 'unknown'}")
+
+    def _mean(keys: list[str]) -> float | None:
+        present = [(levels[k], WEIGHTS[k]) for k in keys if levels.get(k) is not None]
+        if not present:
+            return None
+        return sum(v * w for v, w in present) / sum(w for _, w in present)
+
+    base_keys = ["load", "performance", "physiology"]
+    score = _mean(base_keys)
+    # Experience lifts only: a short or missing long run in our data (30-day backfill,
+    # no imported races) is not evidence of inexperience.
+    exp = level_from(historical_max_distance_km, EXPERIENCE_ANCHORS) if historical_max_distance_km else None
+    levels["experience"] = exp
+    if exp is not None and (score is None or exp > score):
+        score = _mean(base_keys + ["experience"])
+        reasons.append(f"experience {exp:.1f} (longest {historical_max_distance_km:.0f} km)")
+    elif exp is not None:
+        reasons.append(f"experience {exp:.1f} not above the other dimensions, unused")
+
+    if score is None:
+        return TierDecision(DEFAULT_TIER, None, levels, ["no usable signal, default tier"])
+
+    tier = _tier_at(score)
+    load_tier = _tier_at(levels["load"]) if levels["load"] is not None else DEFAULT_TIER
+    lo = max(TIER_ORDER.index(load_tier) - 1, 0)
+    hi = min(TIER_ORDER.index(load_tier) + 1, len(TIER_ORDER) - 1)
+    clamped = TIER_ORDER[min(max(TIER_ORDER.index(tier), lo), hi)]
+    if clamped != tier:
+        reasons.append(f"kept within one tier of load ({load_tier})")
+        tier = clamped
+
+    if previous_tier in TIER_PROFILES and previous_tier != tier:
+        a, b = TIER_ORDER.index(tier), TIER_ORDER.index(previous_tier)
+        if abs(a - b) == 1 and abs(score - max(a, b)) <= HYSTERESIS_LEVEL:
+            reasons.append(f"within {HYSTERESIS_LEVEL} of the boundary, kept previous tier {previous_tier}")
+            tier = previous_tier
+
+    reasons.append(f"score {score:.2f} -> {tier}")
+    return TierDecision(tier, round(score, 3), levels, reasons)
 
 
-def derive_tier(
-    goal_type: str | None = None,
-    current_weekly_km: float | None = None,
-    max_continuous_jog_min: int | None = None,
-    historical_max_distance_km: float | None = None,
-    aet_hr: float | None = None,
-    ant_hr: float | None = None,
-    threshold_source: str | None = None,
-    marathon_prediction_sec: float | None = None,
-    gender: str | None = None,
-    utmb_index: int | None = None,
-) -> str:
+def derive_tier(**kwargs: Any) -> str:
     """Tier only; see explain_tier."""
-    return explain_tier(
-        goal_type=goal_type,
-        current_weekly_km=current_weekly_km,
-        max_continuous_jog_min=max_continuous_jog_min,
-        historical_max_distance_km=historical_max_distance_km,
-        aet_hr=aet_hr,
-        ant_hr=ant_hr,
-        threshold_source=threshold_source,
-        marathon_prediction_sec=marathon_prediction_sec,
-        gender=gender,
-        utmb_index=utmb_index,
-    )[0]
-```
+    return explain_tier(**kwargs).tier
 
-Add `from typing import Any` at the top (used by `resolve_tier_explained` below).
 
-Replace `resolve_tier` with:
-
-```python
-def resolve_tier_explained(explicit_tier: str | None = None, **kwargs: Any) -> tuple[str, list[str]]:
-    """An explicit per-plan override when one is set, otherwise the derived tier.
+def resolve_tier_explained(explicit_tier: str | None = None, **kwargs: Any) -> TierDecision:
+    """An explicit per-plan override when one is set, otherwise the composite.
     An unrecognised override is ignored rather than honoured, so a typo degrades to
     derivation instead of silently selecting the default profile."""
     if explicit_tier and explicit_tier.strip().lower() in TIER_PROFILES:
-        return explicit_tier.strip().lower(), ["explicit plan override"]
+        return TierDecision(explicit_tier.strip().lower(), reasons=["explicit plan override"])
     return explain_tier(**kwargs)
 
 
 def resolve_tier(explicit_tier: str | None = None, **kwargs: Any) -> str:
-    return resolve_tier_explained(explicit_tier, **kwargs)[0]
+    return resolve_tier_explained(explicit_tier, **kwargs).tier
 ```
 
-- [ ] **Step 4: Pass `threshold_source` from the existing generator call** so the non-snapshot path matches the new rule. In `services/plan_generator.py`, inside the `resolve_tier(...)` call (search `aet_hr=user_profile.get("aet_hr"),`), add:
+`explain_tier` is keyword-only, so an unknown kwarg fails loudly in tests. Add `from typing import Any`. Delete the old `aet_ant_gap_max`-based demotion block and the old long-run promotion block (both subsumed). Leave `TierProfile.aet_ant_gap_max` and `weekly_km_min/max` in place: `test_the_volume_bands_are_contiguous_and_ascending` and prompt rules still read them; add a comment on `weekly_km_min` that `LOAD_ANCHORS` must match these bands.
+
+- [ ] **Step 5: Run tests** — `cd backend && pytest tests/unit/test_athlete_tier.py -v`. Expected: all pass. If a composite example misses by a hair, recompute it from the anchors (the expected levels are in the test comments) — do not loosen an assertion without writing down why in the test.
+
+- [ ] **Step 6: Keep the non-snapshot generator path working.** In `_generate_plan_workouts`, the existing `resolve_tier(...)` call passes `current_weekly_km`, `goal_type`, `max_continuous_jog_min`, `historical_max_distance_km`, `aet_hr`, `ant_hr`, `explicit_tier` by keyword — still valid. Add:
 
 ```python
+            max_hr=max_hr,
             threshold_source=user_profile.get("threshold_source"),
+            gender=gender,
 ```
 
-- [ ] **Step 5: Run tests**
+Run: `cd backend && pytest tests/unit -q -m "not kafka"` → pass (`test_pace_tier_defaults.py`, `test_kb_seed_tiers.py`, `test_prompt_enrichment.py` included).
 
-Run: `cd backend && pytest tests/unit/test_athlete_tier.py tests/unit/test_pace_tier_defaults.py tests/unit/test_kb_seed_tiers.py -v`
-Expected: all pass.
-
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add backend/services/athlete_tier.py backend/services/plan_generator.py backend/tests/unit/test_athlete_tier.py
-git commit -m "feat(tier): one-step performance promotion; AeT/AnT gap demotes only when measured"
+git commit -m "feat(tier): composite level from load, performance, experience, physiology"
 ```
 
 ---
@@ -626,7 +786,7 @@ git commit -m "feat(tier): one-step performance promotion; AeT/AnT gap demotes o
 - Produces:
   - `measured_weekly_volume(weeks: list[dict], first_activity_at: datetime | None, last_sync_at: datetime | None, today: date) -> tuple[float, float, date] | None` → `(avg_km, avg_vert_m, last_counted_week_end)`
   - `@dataclass FitnessSnapshot` with fields `weekly_km: float`, `weekly_km_source: str`, `weekly_vert_m: float | None`, `volume_as_of: str | None`, `threshold_pace: str | None`, `threshold_pace_source: str | None`, `assessment: dict | None` (fresh, ≤ 60 days, else None), `utmb_index: int | None`, `threshold_source: str`, `gender: str | None`, `readiness: dict | None`, `notes: list[str]`, `tier: str | None = None`, `tier_reasons: list[str]`
-  - `FitnessSnapshot.resolve_tier(explicit_tier, goal_type, max_continuous_jog_min, historical_max_distance_km, aet_hr, ant_hr) -> str` — sets and returns `self.tier`, sets `self.tier_reasons`
+  - `FitnessSnapshot.resolve_tier(explicit_tier, goal_type, max_continuous_jog_min, historical_max_distance_km, aet_hr, ant_hr, max_hr=None, previous_tier=None) -> str` — sets and returns `self.tier`; sets `self.tier_reasons`, `self.tier_score`, `self.tier_levels`
   - `FitnessSnapshot.prompt_block(lang: str) -> str`
   - `FitnessSnapshot.to_dict() -> dict`
   - `build(user_id: int, typed_weekly_km: float | None = None, typed_is_override: bool = False, today: date | None = None) -> FitnessSnapshot`
@@ -810,6 +970,15 @@ def measured_weekly_volume(
     return round(km, 1), round(vert), last_end
 
 
+def _pace_sec(pace: str | None) -> float | None:
+    """'3:53' -> 233.0; None or unparsable -> None."""
+    try:
+        m, sec = str(pace).split("/")[0].strip().split(":")
+        return int(m) * 60 + float(sec)
+    except (AttributeError, ValueError):
+        return None
+
+
 def _hms(seconds: float) -> str:
     s = int(round(seconds))
     return f"{s // 3600}:{s % 3600 // 60:02d}:{s % 60:02d}"
@@ -831,6 +1000,8 @@ class FitnessSnapshot:
     notes: list[str] = field(default_factory=list)
     tier: str | None = None
     tier_reasons: list[str] = field(default_factory=list)
+    tier_score: float | None = None
+    tier_levels: dict[str, float | None] = field(default_factory=dict)
 
     def resolve_tier(
         self,
@@ -840,20 +1011,33 @@ class FitnessSnapshot:
         historical_max_distance_km: float | None,
         aet_hr: float | None,
         ant_hr: float | None,
+        max_hr: float | None = None,
+        previous_tier: str | None = None,
     ) -> str:
-        self.tier, self.tier_reasons = resolve_tier_explained(
+        a = self.assessment or {}
+        marathons = [m for m in (a.get("pred_marathon_sec"), getattr(self, "road_marathon_sec", None)) if m]
+        decision = resolve_tier_explained(
             explicit_tier=explicit_tier,
             goal_type=goal_type,
             current_weekly_km=self.weekly_km,
+            # Vert only when measured: typed volume has none, and inventing it would
+            # move the level on a guess.
+            weekly_vert_m=self.weekly_vert_m if self.weekly_km_source == "coros" else None,
             max_continuous_jog_min=max_continuous_jog_min,
             historical_max_distance_km=historical_max_distance_km,
             aet_hr=aet_hr,
             ant_hr=ant_hr,
+            max_hr=max_hr,
             threshold_source=self.threshold_source,
-            marathon_prediction_sec=(self.assessment or {}).get("pred_marathon_sec"),
-            gender=self.gender,
+            marathon_prediction_sec=min(marathons) if marathons else None,
             utmb_index=self.utmb_index,
+            vo2max=a.get("vo2max"),
+            threshold_pace_sec=_pace_sec(self.threshold_pace),
+            gender=self.gender,
+            previous_tier=previous_tier,
         )
+        self.tier, self.tier_reasons = decision.tier, decision.reasons
+        self.tier_score, self.tier_levels = decision.score, decision.levels
         return self.tier
 
     def prompt_block(self, lang: str = "en") -> str:
@@ -968,6 +1152,244 @@ Expected: all pass. If `test_measured_volume_beats_profile_value` reports 133.7 
 ```bash
 git add backend/services/fitness_snapshot.py backend/tests/unit/test_fitness_snapshot.py
 git commit -m "feat: fitness snapshot assembles measured COROS signals with typed fallbacks"
+```
+
+---
+
+### Task 3b: Chronic-load cap on measured volume
+
+**Files:**
+- Modify: `backend/services/fitness_snapshot.py`
+- Test: `backend/tests/unit/test_fitness_snapshot.py`
+
+**Interfaces:**
+- Consumes: Task 3's `measured_weekly_volume`, `build`.
+- Produces: `chronic_weekly_volume(weeks, first_activity_at, last_sync_at, today) -> float | None` (12-week mean km over complete covered weeks; None under 8 weeks); `CHRONIC_WEEKS = 12`, `MIN_CHRONIC_WEEKS = 8`, `CHRONIC_SPIKE_ALLOWANCE = 1.15`. `build` applies the cap to measured volume and appends a note when it bites.
+
+- [ ] **Step 1: Failing tests** (append):
+
+```python
+def _steady(km, n=12, start=date(2026, 7, 6)):
+    return [{"week_start": start + timedelta(weeks=i), "km": km, "vert_m": km * 10} for i in range(n)]
+
+
+class TestChronicCap:
+    SYNC = datetime(2026, 10, 1, tzinfo=UTC)
+    FIRST12 = datetime(2026, 7, 1, tzinfo=UTC)
+
+    def test_chronic_mean_needs_eight_weeks(self):
+        assert fs.chronic_weekly_volume(_steady(70.0), self.FIRST12, self.SYNC, TODAY) == 70.0
+        assert fs.chronic_weekly_volume(_steady(70.0), datetime(2026, 8, 20, tzinfo=UTC), self.SYNC, TODAY) is None
+
+    def test_a_recent_spike_is_capped(self, stub_db, monkeypatch):
+        weeks = _steady(60.0, n=8) + [
+            {"week_start": date(2026, 8, 31) + timedelta(weeks=i), "km": 120.0, "vert_m": 1200.0} for i in range(4)
+        ]
+        monkeypatch.setattr(fs.db, "get_weekly_run_volumes", lambda uid, since: weeks)
+        monkeypatch.setattr(fs.db, "get_first_activity_at", lambda uid, p: self.FIRST12)
+        stub_db["connection"]["last_sync_at"] = self.SYNC
+        snap = fs.build(30, today=TODAY)
+        chronic = (60.0 * 8 + 120.0 * 4) / 12  # 80.0
+        assert snap.weekly_km == pytest.approx(chronic * 1.15, abs=0.1)
+        assert snap.weekly_vert_m == pytest.approx(1200.0 * (chronic * 1.15) / 120.0, abs=1)
+        assert any("chronic" in n for n in snap.notes)
+
+    def test_a_recent_dip_is_not_raised(self, stub_db, monkeypatch):
+        weeks = _steady(100.0, n=8) + [
+            {"week_start": date(2026, 8, 31) + timedelta(weeks=i), "km": 50.0, "vert_m": 500.0} for i in range(4)
+        ]
+        monkeypatch.setattr(fs.db, "get_weekly_run_volumes", lambda uid, since: weeks)
+        monkeypatch.setattr(fs.db, "get_first_activity_at", lambda uid, p: self.FIRST12)
+        stub_db["connection"]["last_sync_at"] = self.SYNC
+        assert fs.build(30, today=TODAY).weekly_km == 50.0
+
+    def test_short_history_skips_the_cap(self, stub_db):
+        # the default stub has data from 2026-08-23 only: < 8 weeks, cap not applied
+        assert fs.build(30, today=TODAY).weekly_km == pytest.approx(133.7, abs=0.1)
+```
+
+- [ ] **Step 2: Run to verify failure** — `cd backend && pytest tests/unit/test_fitness_snapshot.py -v -k Chronic` → FAIL (`chronic_weekly_volume` missing).
+
+- [ ] **Step 3: Implement.** Factor the week-counting loop out of `measured_weekly_volume` so both use it:
+
+```python
+CHRONIC_WEEKS = 12
+MIN_CHRONIC_WEEKS = 8
+# A 4-week block may run this far above the 12-week mean before the cap bites:
+# roughly the 10%/week progression ceiling compounded over a short build.
+CHRONIC_SPIKE_ALLOWANCE = 1.15
+
+
+def _counted_weeks(weeks, first_activity_at, last_sync_at, today, n):
+    if not last_sync_at or not first_activity_at:
+        return []
+    first_day = _aware(first_activity_at).date()
+    sync = _aware(last_sync_at)
+    by_start = {w["week_start"]: w for w in weeks}
+    counted = []
+    for i in range(1, n + 1):
+        start = _monday(today) - timedelta(weeks=i)
+        end = datetime.combine(start + timedelta(days=7), datetime.min.time(), tzinfo=UTC)
+        if start >= first_day and end <= sync:
+            counted.append((start, by_start.get(start, {"km": 0.0, "vert_m": 0.0})))
+    return counted
+
+
+def chronic_weekly_volume(weeks, first_activity_at, last_sync_at, today) -> float | None:
+    counted = _counted_weeks(weeks, first_activity_at, last_sync_at, today, CHRONIC_WEEKS)
+    if len(counted) < MIN_CHRONIC_WEEKS:
+        return None
+    return round(sum(w["km"] for _, w in counted) / len(counted), 1)
+```
+
+Rewrite `measured_weekly_volume` to call `_counted_weeks(..., VOLUME_WEEKS)` and keep its return value unchanged. In `build`, fetch `since=_monday(today) - timedelta(weeks=CHRONIC_WEEKS)` (one query serves both), and after `measured` is computed:
+
+```python
+        if measured:
+            chronic = chronic_weekly_volume(weeks, first_at, connection.get("last_sync_at"), today)
+            ceiling = chronic * CHRONIC_SPIKE_ALLOWANCE if chronic else None
+            if ceiling and measured[0] > ceiling:
+                factor = ceiling / measured[0]
+                notes.append(
+                    f"4-week {measured[0]:.0f} km capped to {ceiling:.0f} km (12-week chronic {chronic:.0f} km x 1.15)"
+                )
+                measured = (round(ceiling, 1), round(measured[1] * factor), measured[2])
+```
+
+(store `first_at = db.get_first_activity_at(user_id, PROVIDER)` in a variable so it is not queried twice).
+
+- [ ] **Step 4: Run tests** — `cd backend && pytest tests/unit/test_fitness_snapshot.py -v` → all pass.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add backend/services/fitness_snapshot.py backend/tests/unit/test_fitness_snapshot.py
+git commit -m "feat(snapshot): cap measured volume at 1.15x the 12-week chronic load"
+```
+
+---
+
+### Task 3c: Road results as a marathon equivalent (performance signal)
+
+Field percentiles are not used: field depth differs too much between races and countries. Road times are absolute, so a recent road result converted with Riegel feeds the same marathon anchors as the COROS predictor. Trail results already count through the UTMB index.
+
+**Files:**
+- Modify: `backend/services/fitness_snapshot.py`
+- Test: `backend/tests/unit/test_fitness_snapshot.py`
+
+**Interfaces:**
+- Consumes: `services.race_history.list_results(user_id, include_unselected=False) -> list[dict]` (rows of `race_results`: `source`, `discipline`, `race_name`, `race_date` (date or ISO str), `distance_km`, `finish_time_sec`, `is_dnf`, `hidden`); `FitnessSnapshot.resolve_tier` (Task 3) already reads `road_marathon_sec` via `getattr`.
+- Produces: `RIEGEL_EXPONENT = 1.06`; `riegel_marathon_sec(finish_sec: float, distance_km: float) -> float`; `best_road_marathon_equivalent(results: list[dict], today: date) -> tuple[float, str] | None` (seconds, label like `"Hanoi HM 2026-03-14"`); `FitnessSnapshot.road_marathon_sec: float | None = None`, `road_marathon_label: str | None = None`.
+
+- [ ] **Step 1: Failing tests** (append to `test_fitness_snapshot.py`; add `monkeypatch.setattr(fs, "_race_results", lambda uid: [])` to the `stub_db` fixture):
+
+```python
+def _road(**kw):
+    base = {"source": "vbm", "discipline": "road", "race_name": "City HM", "race_date": "2026-03-14",
+            "distance_km": 21.0975, "finish_time_sec": 4800, "is_dnf": False, "hidden": False}
+    return {**base, **kw}
+
+
+class TestRoadEquivalent:
+    def test_riegel(self):
+        # 1:20:00 half -> about 2:46:46 marathon with exponent 1.06
+        assert fs.riegel_marathon_sec(4800, 21.0975) == pytest.approx(10006, abs=5)
+        assert fs.riegel_marathon_sec(10800, 42.195) == pytest.approx(10800, abs=1)
+
+    def test_fastest_eligible_result_wins(self):
+        sec, label = fs.best_road_marathon_equivalent([_road(), _road(race_name="10K", distance_km=10.0, finish_time_sec=2100)], TODAY)
+        assert sec == pytest.approx(fs.riegel_marathon_sec(2100, 10.0), abs=1)
+        assert "10K" in label
+
+    @pytest.mark.parametrize("bad", [
+        {"source": "manual"}, {"source": "utmb"}, {"discipline": "trail"}, {"is_dnf": True}, {"hidden": True},
+        {"race_date": "2025-06-01"}, {"distance_km": 3.0}, {"distance_km": 50.0}, {"finish_time_sec": None},
+    ])
+    def test_ineligible_results_are_ignored(self, bad):
+        assert fs.best_road_marathon_equivalent([_road(**bad)], TODAY) is None
+
+    def test_road_result_feeds_the_tier_when_faster_than_the_predictor(self, stub_db, monkeypatch):
+        stub_db["assessment"]["pred_marathon_sec"] = 12000.0  # 3:20
+        monkeypatch.setattr(fs, "_race_results", lambda uid: [_road()])  # ~2:46:46 equivalent
+        snap = fs.build(30, today=TODAY)
+        assert snap.road_marathon_sec == pytest.approx(10006, abs=5)
+        snap.resolve_tier(None, "race", None, None, None, None)
+        assert any("performance" in r and "marathon" in r for r in snap.tier_reasons)
+        assert snap.tier_levels["performance"] > 3.7
+        assert "Road result" in snap.prompt_block("en")
+
+    def test_race_history_failure_never_blocks(self, stub_db, monkeypatch):
+        def boom(uid):
+            raise RuntimeError("db down")
+
+        monkeypatch.setattr(fs, "_race_results", boom)
+        assert fs.build(30, today=TODAY).road_marathon_sec is None
+```
+
+- [ ] **Step 2: Run to verify failure** — `cd backend && pytest tests/unit/test_fitness_snapshot.py -v -k Road` → FAIL (`riegel_marathon_sec` missing).
+
+- [ ] **Step 3: Implement** in `fitness_snapshot.py`:
+
+```python
+RIEGEL_EXPONENT = 1.06
+MARATHON_KM = 42.195
+ROAD_MIN_KM, ROAD_MAX_KM = 5.0, 42.5
+RESULT_MAX_AGE = timedelta(days=365)
+
+
+def _race_results(user_id: int) -> list[dict[str, Any]]:
+    from services.race_history import list_results
+
+    return list_results(user_id, include_unselected=False)
+
+
+def riegel_marathon_sec(finish_sec: float, distance_km: float) -> float:
+    """Riegel's rule of thumb; most reliable from 10 km to the marathon."""
+    return finish_sec * (MARATHON_KM / distance_km) ** RIEGEL_EXPONENT
+
+
+def best_road_marathon_equivalent(results: list[dict[str, Any]], today: date) -> tuple[float, str] | None:
+    """Fastest marathon equivalent among recent imported road finishes. Road times are
+    absolute, unlike field percentiles, which depend on how deep each race's field is."""
+    best = None
+    for r in results:
+        if r.get("source") != "vbm" or r.get("discipline") != "road" or r.get("is_dnf") or r.get("hidden"):
+            continue
+        km, sec = r.get("distance_km"), r.get("finish_time_sec")
+        if not km or not sec or not (ROAD_MIN_KM <= float(km) <= ROAD_MAX_KM):
+            continue
+        raced = r["race_date"] if isinstance(r["race_date"], date) else date.fromisoformat(str(r["race_date"]))
+        if today - raced > RESULT_MAX_AGE:
+            continue
+        equiv = round(riegel_marathon_sec(float(sec), float(km)))
+        if best is None or equiv < best[0]:
+            best = (equiv, f"{r['race_name']} {raced.isoformat()}")
+    return best
+```
+
+Add fields `road_marathon_sec: float | None = None` and `road_marathon_label: str | None = None` to `FitnessSnapshot` after `readiness` (fields with defaults must follow those without). In `build`:
+
+```python
+    try:
+        road = best_road_marathon_equivalent(_race_results(user_id), today)
+    except Exception:
+        road = None  # race history must never block a plan
+```
+
+and pass `road_marathon_sec=road[0] if road else None, road_marathon_label=road[1] if road else None`. In `resolve_tier`, replace `getattr(self, "road_marathon_sec", None)` with `self.road_marathon_sec`. In `prompt_block`, after the predictions line:
+
+```python
+        if self.road_marathon_sec:
+            lines.append(f"- Road result: marathon equivalent {_hms(self.road_marathon_sec)} ({self.road_marathon_label})")
+```
+
+- [ ] **Step 4: Run tests** — `cd backend && pytest tests/unit/test_fitness_snapshot.py tests/unit/test_athlete_tier.py -v` → all pass.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add backend/services/fitness_snapshot.py backend/tests/unit/test_fitness_snapshot.py
+git commit -m "feat(snapshot): recent road results count as a marathon equivalent"
 ```
 
 ---
@@ -1172,6 +1594,7 @@ async def _generate(race_info):
 async def test_snapshot_sets_tier_volume_and_prompt_block():
     snap = _snapshot()
     tier, prompt = await _generate({**RACE, "fitness_snapshot": snap})
+    # load 184 effort-km -> 4.15; performance from threshold pace 3:53 -> 3.63; score 3.94
     assert tier == "sub_elite"
     assert snap.tier == "sub_elite" and snap.tier_reasons
     assert "ATHLETE FITNESS SNAPSHOT" in prompt
@@ -1188,7 +1611,7 @@ async def test_without_snapshot_unknown_threshold_source_no_longer_demotes():
 - [ ] **Step 2: Run to verify failure**
 
 Run: `cd backend && pytest tests/unit/test_plan_generator_snapshot.py -v`
-Expected: the first test FAILS (snapshot ignored: no prompt block, volume 120.0). The second already passes after Task 2.
+Expected: the first test FAILS (snapshot ignored: no prompt block, volume 120.0). The second already passes after Task 2 (load-only 120 km -> 3.5).
 
 - [ ] **Step 3: Implement.** In `generate_plan_workouts`:
 
@@ -1217,14 +1640,17 @@ Replace the `athlete_tier = resolve_tier(...)` call with:
             # RAW stored thresholds -- see the comment this replaces about derived values.
             aet_hr=user_profile.get("aet_hr"),
             ant_hr=user_profile.get("ant_hr"),
+            previous_tier=race_info.get("previous_tier"),
         )
         if snapshot:
-            athlete_tier = snapshot.resolve_tier(**_tier_args)
+            athlete_tier = snapshot.resolve_tier(**_tier_args, max_hr=max_hr)
         else:
             athlete_tier = resolve_tier(
                 **_tier_args,
                 current_weekly_km=current_weekly_km,
                 threshold_source=user_profile.get("threshold_source"),
+                max_hr=max_hr,
+                gender=gender,
             )
 ```
 
@@ -1326,6 +1752,30 @@ Import `fitness_snapshot` and `coros_sync` from `services`, and `set_plan_fitnes
   - Add `weekly_km_from_watch: bool = False` to the generate-plan request model (the model that declares `current_weekly_km: float  # current training volume, entered fresh for every plan`).
 
 `race_info` is also passed to `generate_week_narrative` in next-block; the snapshot object there is harmless (it only reads known keys). If a JSON dump of `race_info` happens anywhere (search `json.dumps(race_info`), pop the key first.
+
+- [ ] **Step 4b: Unfreeze re-plan tiers.** In the next-block `race_info` (the dict with `# Explicit per-plan tier override; None means the generator derives it.`) and the same dict in `week_rebuild.py`, replace
+
+```python
+        # Explicit per-plan tier override; None means the generator derives it.
+        "athlete_tier": plan.get("athlete_tier"),
+```
+with
+```python
+        # plans.athlete_tier is the LAST RESOLVED tier, not an override. Passing it as
+        # the override froze every plan at its first tier; it is now only the
+        # hysteresis input, so re-plans follow the athlete's current fitness.
+        "athlete_tier": None,
+        "previous_tier": plan.get("athlete_tier"),
+```
+
+Add a unit test in `tests/unit/test_athlete_tier.py`:
+
+```python
+def test_a_stored_tier_no_longer_overrides_a_replan():
+    """REGRESSION: next block passed plans.athlete_tier as the explicit override, so a
+    plan first resolved as recreational stayed recreational forever."""
+    assert resolve_tier(explicit_tier=None, current_weekly_km=134.0, previous_tier=RECREATIONAL) == SUB_ELITE
+```
 
 - [ ] **Step 5: Adapt week.** In `week_rebuild.py`, add `fitness_snapshot: dict[str, Any] | None = None` to `WeekDraft`. In `generate_week_draft`:
 
@@ -1555,8 +2005,8 @@ The three cases (numbers invented, shaped on the two reference athletes):
 
 | Fixture | Shaped on | Signal conflict | Expected tier | Week-2 km |
 |---|---|---|---|---|
-| `elite_unmeasured_thresholds` | The elite who reported the bug | ~136 km measured vs 115 typed; 18% AeT/AnT gap of unknown source | `sub_elite` | 110–145 |
-| `recreational_field_thresholds` | The product owner's own account | ~71 km measured; narrow 8.7% gap from a field test (must not promote) | `recreational` | 55–78 |
+| `elite_unmeasured_thresholds` | The elite who reported the bug | ~136 km + 5,200 m measured (load 4.2) vs 115 typed; predictor 2:53 (performance 3.6); 18% AeT/AnT gap of unknown source (physiology unused); score ≈ 3.93 | `sub_elite` | 110–145 |
+| `recreational_field_thresholds` | The product owner's own account | ~71 km + 650 m (load 2.94), predictor 3:20 (2.85), field-tested gap 8.7% and AnT 88% of max (physiology 3.38); score ≈ 2.96, just under the boundary | `recreational` | 55–78 |
 | `elite_no_coros` | The elite, if never connected | No snapshot; typed 140 km; same unknown-source gap | `sub_elite` | 115–150 |
 
 - [ ] **Step 1: Write the fixtures.**

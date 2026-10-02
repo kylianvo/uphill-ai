@@ -36,8 +36,10 @@ The fitness overview only refreshes when the athlete presses "sync fitness".
 - **Changes over time (B):** new plans and the existing re-plan points (next block,
   adapt week, weekly goal re-assessment) read the fresh snapshot. No automatic plan
   rewrites or proposals.
-- **Tier conflicts (A):** measured volume sets the base tier; performance may promote
-  one step; the AeT/AnT gap may demote only when the thresholds were measured.
+- **Tier (revised):** a composite of four dimensions (load, performance, experience,
+  physiology), clamped to within one tier of the load tier. Supersedes the earlier
+  "volume first, promote one step, demote on gap" rule. Physiology counts only when
+  the thresholds were measured.
 - **Threshold provenance (A):** ask the athlete how the AeT/AnT values were obtained.
   Existing users default to `unknown`, which disables the gap demotion for them.
 - **Storage (approach 1):** assemble the snapshot on read from existing tables, plus an
@@ -94,36 +96,72 @@ Each signal carries `value`, `source` (`coros | race_history | self_reported`),
 |---|---|---|---|
 | Weekly volume (km, vert) | Mean of the last 4 complete Mon–Sun weeks of running activities | Typed km/week | A week counts only if it ended before `last_sync_at`; at least 3 counted weeks required. Running = the activity types `get_user_activity_ceiling` treats as running, excluding duplicates |
 | Threshold pace | Latest assessment | Typed `users.threshold_pace` | Assessment ≤ 60 days old |
-| Performance (tiering) | Marathon prediction (latest assessment); UTMB index | None | Assessment ≤ 60 days. VO2max and the other predictions are prompt context only; race results stay in the existing RACE HISTORY block and long-run ceiling |
+| Chronic load cap | 12-week mean of complete covered weeks (needs ≥ 8) | None (cap not applied) | Effective volume = min(4-week mean, 1.15 × 12-week mean); km and vert scaled together. A spike cannot lift the tier past what the long-term load supports; a dip still uses the lower 4-week value |
+| Performance (tiering) | Faster of COROS marathon prediction and best road result as a Riegel marathon equivalent; UTMB index; VO2max, then threshold pace, as fallbacks | None | Assessment ≤ 60 days. VO2max and the other predictions are prompt context only; race results stay in the existing RACE HISTORY block and long-run ceiling |
 | AeT/AnT | Typed values | None | Usable for tiering only when `threshold_source` is `lab` or `field` |
 | Load and recovery | `daily_metrics`, last 14 days: load ratio, HRV trend, resting HR | None | Prompt context only, never tiering |
 
 When the athlete overrides the pre-filled km/week in the plan form, the typed value
 wins over measured volume and the snapshot says so (`reason: "athlete override"`).
 
-## Tier rule
+## Tier rule: composite level score
 
-Replaces the current `derive_tier` ordering. Order:
+The tier comes from four dimensions combined, not from volume alone. Each maps to a
+continuous **level** on one scale (0 beginner, 1 novice, 2 recreational, 3 sub-elite,
+4 elite, capped at 4.99), interpolated linearly between anchors. All anchors and weights
+are conventional defaults, unsourced like the old volume bands, kept in one table in
+`services/athlete_tier.py`.
 
-1. Explicit per-plan `athlete_tier` override wins (unchanged).
-2. Beginner rules (goal type, max continuous jog under 10 min) unchanged.
-3. Base tier = volume band of the snapshot's weekly volume (measured or typed).
-4. Long-run promotion out of `beginner` unchanged.
-5. **Promote at most one step** when the best performance signal maps to a higher tier.
-   New `perf_bands` in `TIER_PROFILES`, conventional defaults marked unsourced like the
-   volume bands:
-   - Marathon prediction (men): elite ≤ 2:40, sub-elite ≤ 3:10, recreational ≤ 4:15.
-     Women: thresholds 12% slower. Unknown gender: men's thresholds (conservative).
-   - UTMB index: elite ≥ 700, sub-elite ≥ 550, recreational ≥ 400.
-   - Best (highest) mapped tier across available signals is used.
-6. **Demote** on the AeT/AnT gap only when `threshold_source in ("lab", "field")`. The
-   existing limits and the stop-at-`recreational` behaviour stay.
+| Dimension | Weight | Input | Level anchors (value → level) |
+|---|---|---|---|
+| Load | 0.45 | Effort-km = weekly km + vert/100 (vert only when measured), chronic-capped | 0→0, 15→1, 40→2, 80→3, 160→4, 320→5 |
+| Performance | 0.30 | Fallback chain, first available: best of {marathon time, UTMB index}; else VO2max; else threshold pace | Marathon 7:00→0, 5:30→1, 4:15→2, 3:10→3, 2:40→4, 2:10→5 (women ×1.12). UTMB 250→1, 400→2, 550→3, 700→4, 850→5. VO2max (men) 38→1, 45→2, 55→3, 65→4, 75→5 (women ×0.9). Threshold pace (men) 6:00→1, 5:00→2, 4:15→3, 3:40→4, 3:10→5 per km (women ×1.12) |
+| Experience | 0.15 | Longest proven run or imported race (km) | 0→0, 10→1, 21→2, 42→3, 80→4, 160→5 |
+| Physiology | 0.10 | Only when `threshold_source` is `lab`/`field`: mean of AeT/AnT-gap level and AnT-as-%-of-max-HR level | Gap 0.50→0, 0.35→1, 0.30→2, 0.10→3, 0.07→4, 0.04→5. AnT/max 0.80→2, 0.87→3, 0.91→4, 0.94→5 |
 
-The function returns the tier plus a short list of reasons, stored in
-`plans.fitness_snapshot`.
+"Marathon time" is the faster of the COROS marathon prediction (≤ 60 days old) and the
+best recent road result converted with Riegel (T × (42.195 / D)^1.06; imported VBM road
+results, 5–42.2 km, last 12 months, not DNF or hidden). Field percentiles are not used:
+field depth differs too much between races and countries. Trail results count through
+the UTMB index, which UTMB already normalises by race.
 
-Regression case (that athlete): measured ~140 km → `sub_elite`; `threshold_source = unknown` →
-no gap demotion; possible one-step promotion from the predictor. Never `recreational`.
+VO2max and threshold pace are fallbacks inside Performance, never a separate dimension:
+COROS derives its race predictor from them, so counting both would weight one measurement
+twice. Running level, resting HR, HRV, load ratio and sleep are not tier inputs (proprietary
+composite, not comparable between athletes, or readiness rather than level).
+
+Procedure:
+
+1. Explicit per-plan override wins. **Bug fixed alongside:** `plans.athlete_tier`
+   stores the last resolved tier, and next block / adapt week passed it back as the
+   explicit override, freezing every plan at its first tier. Re-plans now pass it as
+   `previous_tier` and no explicit override; nothing in the product sets a real
+   override today.
+2. Beginner rules (goal "start running", max continuous jog under 10 min) force `beginner`.
+3. Compute each available dimension's level. **Experience is lift-only**: it joins the
+   mean only when its level is above the mean of the others, because a missing or short
+   long run in our data (30-day COROS backfill, no imports) is not evidence of
+   inexperience.
+4. Score = weighted mean over the dimensions present (weights rescaled). No dimension
+   at all → default tier.
+5. Tier = floor(score), then **clamped to within one tier of the load tier** (the tier the
+   Load level alone gives; the default tier when volume is unknown). Fast runners on low
+   volume cannot get elite caps; a measured wide gap cannot drop a high-volume runner two
+   tiers.
+6. **Hysteresis** on re-plans: if the result is one step from `previous_tier` and the
+   score is within 0.1 of the boundary between them, keep `previous_tier`.
+
+The function returns the tier and per-dimension levels with reasons (e.g. "load 4.2 ·
+performance 3.6 · physiology not used (source unknown) → 3.9 sub_elite"), stored in
+`plans.fitness_snapshot` and shown to the model in the snapshot block.
+
+Worked examples (numbers from the reference accounts, rounded):
+
+| Athlete | Load | Performance | Experience | Physiology | Score | Tier |
+|---|---|---|---|---|---|---|
+| Elite reporter (~187 effort-km, predictor ~2:53, longest 50 km) | 4.2 | 3.6 | 3.2 (not above mean, unused) | unknown source, unused | 3.9 | sub_elite |
+| Same, no COROS (typed 140 km) | 3.75 | — | — | — | 3.75 | sub_elite |
+| Recreational owner (~73 effort-km, VO2max 57, longest 26 km) | 2.8 | 3.2 (VO2max fallback) | 2.2 unused | — | 3.0- | recreational, close to the edge |
 
 ## Consumers
 
