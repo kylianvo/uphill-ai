@@ -33,6 +33,26 @@ struct GoalSheet: View {
                                 ForEach(assessment.reasoning, id: \.self) { Label($0, systemImage: "circle.fill").labelStyle(.titleAndIcon) }
                             }.font(UH.TextStyle.body)
                         }
+                        if !(assessment.context?.groups.isEmpty ?? true) || !assessment.anchors.isEmpty {
+                            DisclosureGroup("What this is based on") {
+                                VStack(alignment: .leading, spacing: UH.Space.section) {
+                                    ForEach(assessment.context?.groups ?? []) { group in
+                                        VStack(alignment: .leading, spacing: UH.Space.compact) {
+                                            Text(group.title).font(UH.TextStyle.sectionTitle)
+                                            ForEach(group.rows) { row in
+                                                LabeledContent(row.label, value: row.value)
+                                            }
+                                        }
+                                    }
+                                    ForEach(assessment.anchors) { anchor in
+                                        LabeledContent(anchor.methodLabel, value: PlanViewModel.formatMinutes(anchor.minutes))
+                                    }
+                                }
+                                .font(UH.TextStyle.body)
+                                .padding(.top, UH.Space.regular)
+                            }
+                            .tint(UH.Palette.accentInk)
+                        }
                         if !assessment.missing.isEmpty {
                             Text("We'd know more with: " + assessment.missing.map { $0.replacingOccurrences(of: "_", with: " ") }.joined(separator: ", "))
                                 .font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary)

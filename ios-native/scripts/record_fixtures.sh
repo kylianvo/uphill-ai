@@ -39,6 +39,15 @@ if [[ "${2:-}" == "race" ]]; then
   exit 0
 fi
 
+if [[ "${2:-}" == "goal" ]]; then
+  LOGIN=$(curl -sf -X POST "$BASE/api/auth/mock-login" -H 'Content-Type: application/json' -d '{"email":"ios-preview@uphill.ai"}')
+  TOKEN=$(printf '%s' "$LOGIN" | python3 -c 'import json,sys; print(json.load(sys.stdin)["session_token"])')
+  PLAN_ID=$(curl -sf "$BASE/api/coach/active-plan" -H "Authorization: Bearer $TOKEN" | python3 -c 'import json,sys; print(json.load(sys.stdin)["plan"]["id"])')
+  # Reassess includes fresh context even when reusing a pre-context assessment.
+  curl -sf -X POST "$BASE/api/plans/$PLAN_ID/goal/reassess" -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"exclude":[],"lang":"en"}' | scrub > "$OUT/plan_goal.json"
+  exit 0
+fi
+
 if [[ "${2:-}" == "profile" ]]; then
   LOGIN=$(curl -sf -X POST "$BASE/api/auth/mock-login" -H 'Content-Type: application/json' -d '{"email":"ios-fixtures@uphill.ai"}')
   TOKEN=$(printf '%s' "$LOGIN" | python3 -c 'import json,sys; print(json.load(sys.stdin)["session_token"])')
