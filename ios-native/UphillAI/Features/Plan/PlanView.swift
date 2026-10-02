@@ -7,6 +7,7 @@ struct PlanView: View {
     let onViewProgress: () -> Void
     var user: User? = nil
     var onSharpen: (TrainingDestination) -> Void = { _ in }
+    @State private var viewMode: PlanViewMode = .list
     @State private var selectedWorkout: Workout?
     @State private var showManage = false
     @State private var startNewAfterManage = false
@@ -104,20 +105,30 @@ struct PlanView: View {
                         CoachReviewCard(model: model, onOpenReview: { showReview = true })
                             .padding(.horizontal, UH.Space.regular)
 
-                        // 4. Week switcher
-                        WeekSwitcher(weeks: model.weeks, selected: $model.selectedWeek, currentWeek: model.currentWeek)
+                        // 4. Week switcher with List / Calendar toggle
+                        WeekSwitcher(weeks: model.weeks, selected: $model.selectedWeek, currentWeek: model.currentWeek, viewMode: $viewMode)
                             .padding(.horizontal, UH.Space.regular)
 
-                        // 5. Day list
-                        LazyVStack(spacing: UH.Space.compact) {
-                            ForEach(model.days) { day in
-                                DayRow(day: day, onToggleDone: { workout in
-                                    Task { await model.setDone(workout, !workout.isDone) }
-                                }, onSelect: { selectedWorkout = $0 })
-                                    .id(day.id)
+                        // 5. Day list or Month Calendar grid
+                        if viewMode == .calendar {
+                            PlanCalendarGridView(model: model) { date, week in
+                                withAnimation(reduceMotion ? nil : UH.Motion.standard) {
+                                    model.selectedWeek = week
+                                    viewMode = .list
+                                }
                             }
+                            .padding(.horizontal, UH.Space.regular)
+                        } else {
+                            LazyVStack(spacing: UH.Space.compact) {
+                                ForEach(model.days) { day in
+                                    DayRow(day: day, onToggleDone: { workout in
+                                        Task { await model.setDone(workout, !workout.isDone) }
+                                    }, onSelect: { selectedWorkout = $0 })
+                                        .id(day.id)
+                                }
+                            }
+                            .padding(.horizontal, UH.Space.regular)
                         }
-                        .padding(.horizontal, UH.Space.regular)
 
                         // 6. Next week card
                         nextWeekCard
