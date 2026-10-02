@@ -20,6 +20,17 @@ def _is_valid_web_url(url: str | None) -> bool:
         return False
 
 
+def _snapshot_or_none(user_id: int) -> dict[str, Any] | None:
+    """The athlete's current fitness snapshot; None when it cannot be built, so chat
+    never fails on fitness data."""
+    try:
+        from services.fitness_snapshot import build
+
+        return build(user_id).to_dict()
+    except Exception:
+        return None
+
+
 def build_chat_context(
     user_id: int,
     question: str,
@@ -53,6 +64,8 @@ def build_chat_context(
         "threshold_pace": athlete_row.get("threshold_pace"),
         "athlete_tier": athlete_row.get("athlete_tier"),
         "goal_type": athlete_row.get("goal_type"),
+        "threshold_source": athlete_row.get("threshold_source"),
+        "fitness_snapshot": _snapshot_or_none(user_id),
     }
 
     # 2. Plan and planned workouts

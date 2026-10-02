@@ -227,6 +227,8 @@ class RebuildInputs:
 class WeekDraft:
     workouts: list[dict[str, Any]]
     resolved_tier: str | None
+    # FitnessSnapshot.to_dict() the draft was built on; stored on the plan when written.
+    fitness_snapshot: dict[str, Any] | None = None
 
 
 def load_plan_rows(plan_id: int) -> list[dict[str, Any]]:
@@ -377,9 +379,9 @@ def build_rebuild_inputs(
         planned_km = sum(w.get("distance_km") or 0 for w in prev_wos)
         planned_min = sum(w.get("duration_minutes") or 0 for w in prev_wos)
         context_lines.append(
-            f"  Prior Week ({prev_wk}) Volume: Actual {actual_km:.1f}km / {actual_min/60:.1f}h"
+            f"  Prior Week ({prev_wk}) Volume: Actual {actual_km:.1f}km / {actual_min / 60:.1f}h"
             + (f" (+{actual_vert:.0f}m D+)" if actual_vert > 0 else "")
-            + f" vs Planned {planned_km:.1f}km / {planned_min/60:.1f}h"
+            + f" vs Planned {planned_km:.1f}km / {planned_min / 60:.1f}h"
         )
         # Check if athlete missed an ME session in previous week (Scott Johnston Rule 7)
         missed_me = [
@@ -577,8 +579,11 @@ def build_rebuild_inputs(
         "plan_start_date": plan.get("start_date"),
         "athlete_notes": request.athlete_notes or plan.get("athlete_notes") or fresh_user.get("athlete_notes"),
         "historical_ceiling": historical_ceiling,
-        # Explicit per-plan tier override; None means the generator derives it.
-        "athlete_tier": plan.get("athlete_tier"),
+        # plans.athlete_tier is the LAST RESOLVED tier, not an override. Passing it as
+        # the override froze every plan at its first tier; it is now only the
+        # hysteresis input, so re-plans follow the athlete's current fitness.
+        "athlete_tier": None,
+        "previous_tier": plan.get("athlete_tier"),
         "readiness_summary": readiness_summary,
         "lang": (
             "vi"
@@ -611,10 +616,21 @@ def build_rebuild_inputs(
 
 
 async def generate_week_draft(inputs: RebuildInputs, rng: RebuildRange) -> WeekDraft:
+    from services import coros_sync, fitness_snapshot
+
+    # Best effort: a re-plan falls back to the profile path rather than failing on
+    # fitness data.
+    snapshot = None
+    try:
+        await coros_sync.ensure_fresh_assessment(inputs.user["id"])
+        snapshot = fitness_snapshot.build(inputs.user["id"])
+    except Exception as ex:  # noqa: BLE001
+        print(f"[AdaptWeek] fitness snapshot unavailable: {type(ex).__name__}")
+    race_info = {**inputs.race_info, "fitness_snapshot": snapshot}
     workouts, resolved_tier = await PlanGenerator.generate_plan_workouts(
         inputs.plan_id,
         inputs.user,
-        inputs.race_info,
+        race_info,
         inputs.total_weeks,
         api_key=inputs.api_key,
         block_number=inputs.block_number,
@@ -622,7 +638,11 @@ async def generate_week_draft(inputs: RebuildInputs, rng: RebuildRange) -> WeekD
         block_context=inputs.block_context,
         target_week=inputs.week,
     )
-    return WeekDraft(workouts=filter_draft(workouts, rng), resolved_tier=resolved_tier)
+    return WeekDraft(
+        workouts=filter_draft(workouts, rng),
+        resolved_tier=resolved_tier,
+        fitness_snapshot=json_safe(snapshot.to_dict()) if snapshot else None,
+    )
 
 
 def write_draft(plan: dict[str, Any], week: int, today: dt.date, draft: WeekDraft) -> None:
@@ -637,6 +657,8 @@ def write_draft(plan: dict[str, Any], week: int, today: dt.date, draft: WeekDraf
             raise ValueError("Generated week was empty; nothing was changed.")
         db.replace_week_workouts(conn, plan["id"], rng.replaceable_ids, filtered)
     db.set_plan_athlete_tier(plan["id"], draft.resolved_tier)
+    if draft.fitness_snapshot:
+        db.set_plan_fitness_snapshot(plan["id"], draft.fitness_snapshot)
 
 
 REBUILD_TIMEOUT_SECONDS = 180
@@ -677,7 +699,11 @@ async def _run_rebuild(proposal_id: int, inputs: RebuildInputs, rng: RebuildRang
             return
         db.finish_rebuild_proposal(
             proposal_id,
-            draft={"workouts": json_safe(draft.workouts), "resolved_tier": draft.resolved_tier},
+            draft={
+                "workouts": json_safe(draft.workouts),
+                "resolved_tier": draft.resolved_tier,
+                "fitness_snapshot": draft.fitness_snapshot,
+            },
             diff=build_diff(rows, rng, draft.workouts),
             warnings=rebuild_warnings(rows, rng, draft.workouts),
         )

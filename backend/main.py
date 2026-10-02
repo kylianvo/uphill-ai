@@ -74,6 +74,7 @@ from db import (
     set_max_continuous_jog_min,
     set_plan_active,
     set_plan_athlete_tier,
+    set_plan_fitness_snapshot,
     set_user_is_coach,
     set_user_password,
     update_onboarding_profile,
@@ -93,7 +94,15 @@ from routers.analytics import router as analytics_router
 from routers.coach_chat import ChatMessage
 from routers.coach_chat import router as coach_chat_router
 from routers.integrations import router as integrations_router
-from services import apple_auth, calendar_ops, observability, race_history, week_rebuild
+from services import (
+    apple_auth,
+    calendar_ops,
+    coros_sync,
+    fitness_snapshot,
+    observability,
+    race_history,
+    week_rebuild,
+)
 from services.auth_service import hash_password, verify_password
 from services.calendar_rules import GuardViolation, resolve_today
 from services.calendar_service import CalendarService
@@ -203,6 +212,9 @@ class PlanGenerateRequest(BaseModel):
     race_date: str | None = None  # YYYY-MM-DD
     goal_type: str  # 'finish', 'time', 'optimal', 'start_running', 'return', 'recovery'
     current_weekly_km: float  # current training volume, entered fresh for every plan
+    # True when current_weekly_km is the COROS prefill the athlete left untouched;
+    # False (the default, and what older clients send) makes the typed value an override.
+    weekly_km_from_watch: bool = False
     target_time_hours: float | None = None
     cutoff_time_hours: float | None = None
     terrain: str | None = "trail"
@@ -1093,6 +1105,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
     async def _run_plan_gen():
         _t0 = time.monotonic()
         try:
+            race_info["fitness_snapshot"] = await _plan_snapshot(user["id"], request.current_weekly_km)
             workouts, resolved_tier = await PlanGenerator.generate_plan_workouts(
                 plan_id,
                 fresh_user,
@@ -1104,6 +1117,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
             )
             save_workouts(plan_id, workouts)
             set_plan_athlete_tier(plan_id, resolved_tier)
+            _store_plan_snapshot(plan_id, race_info["fitness_snapshot"])
             plan_jobs[job_id]["workouts"] = workouts
             plan_jobs[job_id]["status"] = "done"
             plan_job_duration_seconds.labels(kind="onboarding", status="done").observe(time.monotonic() - _t0)
@@ -1529,7 +1543,7 @@ def _build_athlete_context_block(athlete: dict[str, Any]) -> str:
             lines.append("\nRecent Watch Activities & Execution Quality (Last 14 Days):")
             for act in recent_matches[-6:]:
                 dist = f"{act['distance_km']:.1f}km" if act.get("distance_km") else f"{act.get('sets') or 'N/A'} sets"
-                dur = f"{round((act.get('duration_seconds') or 0)/60)}m"
+                dur = f"{round((act.get('duration_seconds') or 0) / 60)}m"
                 hr = f"avg HR {act['avg_hr']} bpm" if act.get("avg_hr") else ""
                 q_grade = (
                     f"Quality: {act.get('quality_grade')} ({act.get('quality_score')}%)"
@@ -1921,6 +1935,9 @@ async def _generate_plan_for_athlete(
     async def _run_gen():
         _t0 = time.monotonic()
         try:
+            race_info["fitness_snapshot"] = await _plan_snapshot(
+                athlete_id, request.current_weekly_km, typed_is_override=not request.weekly_km_from_watch
+            )
             workouts, resolved_tier = await PlanGenerator.generate_plan_workouts(
                 plan_id,
                 fresh_user,
@@ -1933,6 +1950,7 @@ async def _generate_plan_for_athlete(
             )
             save_workouts(plan_id, workouts, auto_approve=(plan_status != "draft"))
             set_plan_athlete_tier(plan_id, resolved_tier)
+            _store_plan_snapshot(plan_id, race_info["fitness_snapshot"])
             plan_jobs[job_id]["workouts"] = workouts
             plan_jobs[job_id]["status"] = "done"
             plan_job_duration_seconds.labels(kind="generate", status="done").observe(time.monotonic() - _t0)
@@ -2261,7 +2279,7 @@ async def _generate_next_block_for_athlete(
 
         # Collect session-level notes (exclude empty/None)
         session_notes = [
-            f'{w.get("day_of_week","?")} W{w.get("week_number","?")}: "{w["notes"]}"'
+            f'{w.get("day_of_week", "?")} W{w.get("week_number", "?")}: "{w["notes"]}"'
             for w in completed_wos
             if w.get("notes")
         ]
@@ -2269,12 +2287,12 @@ async def _generate_next_block_for_athlete(
         # block_wos is already filtered to non-Rest workouts (see its
         # definition above, earlier in this loop) -- classify by review status.
         missed = [
-            f'{w.get("day_of_week","?")} {w.get("title") or w.get("type","?")}'
+            f"{w.get('day_of_week', '?')} {w.get('title') or w.get('type', '?')}"
             for w in block_wos
             if _session_review_status(w) == "MISSED"
         ]
         not_logged = [
-            f'{w.get("day_of_week","?")} {w.get("title") or w.get("type","?")}'
+            f"{w.get('day_of_week', '?')} {w.get('title') or w.get('type', '?')}"
             for w in block_wos
             if _session_review_status(w) == "not logged"
         ]
@@ -2283,9 +2301,9 @@ async def _generate_next_block_for_athlete(
         line = (
             f"Block {blk} (Wk {wk_start}-{wk_end}): "
             f"{sessions_done}/{sessions_total} sessions ({completion_pct}%) | "
-            f"Actual {actual_km:.1f}km/{actual_min/60:.1f}h"
+            f"Actual {actual_km:.1f}km/{actual_min / 60:.1f}h"
             + (f" (+{actual_vert:.0f}m D+)" if actual_vert > 0 else "")
-            + f" vs Planned {planned_km:.1f}km/{planned_min/60:.1f}h"
+            + f" vs Planned {planned_km:.1f}km/{planned_min / 60:.1f}h"
         )
         if unplanned_count > 0:
             line += f" [Includes {unplanned_count} unplanned watch activity: {unplanned_km:.1f}km]"
@@ -2308,8 +2326,7 @@ async def _generate_next_block_for_athlete(
 
         if blk == prev_block and override_used:
             context_lines.append(
-                f"  ⚠ Block {blk} generated via override at {completion['completion_pct']}% "
-                f"(below the 70% threshold)."
+                f"  ⚠ Block {blk} generated via override at {completion['completion_pct']}% (below the 70% threshold)."
             )
 
         if blk == request.block_number - 1:
@@ -2409,8 +2426,11 @@ async def _generate_next_block_for_athlete(
         "plan_start_date": plan.get("start_date"),
         "athlete_notes": request.athlete_notes or plan.get("athlete_notes") or fresh_user.get("athlete_notes"),
         "historical_ceiling": historical_ceiling,
-        # Explicit per-plan tier override; None means the generator derives it.
-        "athlete_tier": plan.get("athlete_tier"),
+        # plans.athlete_tier is the LAST RESOLVED tier, not an override. Passing it as
+        # the override froze every plan at its first tier; it is now only the
+        # hysteresis input, so re-plans follow the athlete's current fitness.
+        "athlete_tier": None,
+        "previous_tier": plan.get("athlete_tier"),
         "readiness_summary": readiness_summary,
         "lang": request.lang or fresh_user.get("lang", "en"),
         "coach_notes": "\n".join(active_coach_notes) if active_coach_notes else None,
@@ -2438,6 +2458,7 @@ async def _generate_next_block_for_athlete(
     async def _run_next_block():
         _t0 = time.monotonic()
         try:
+            race_info["fitness_snapshot"] = await _plan_snapshot(athlete_id)
             workouts, resolved_tier = await PlanGenerator.generate_plan_workouts(
                 request.plan_id,
                 fresh_user,
@@ -2450,6 +2471,7 @@ async def _generate_next_block_for_athlete(
             )
             save_workouts(request.plan_id, workouts)
             set_plan_athlete_tier(request.plan_id, resolved_tier)
+            _store_plan_snapshot(request.plan_id, race_info["fitness_snapshot"])
             plan_jobs[job_id]["workouts"] = workouts
             plan_jobs[job_id]["status"] = "done"
             plan_job_duration_seconds.labels(kind="next_block", status="done").observe(time.monotonic() - _t0)
@@ -3729,6 +3751,25 @@ class GoalReassessRequest(BaseModel):
 
 class GoalApplyRequest(BaseModel):
     target_mins: float
+
+
+_snapshot_logger = get_logger("fitness_snapshot")
+
+
+async def _plan_snapshot(user_id: int, typed_weekly_km: float | None = None, typed_is_override: bool = False):
+    """Refresh COROS fitness if stale, then assemble the snapshot. Never raises: a plan
+    falls back to the profile path rather than failing on fitness data."""
+    try:
+        await coros_sync.ensure_fresh_assessment(user_id)
+        return fitness_snapshot.build(user_id, typed_weekly_km=typed_weekly_km, typed_is_override=typed_is_override)
+    except Exception:
+        _snapshot_logger.exception("fitness snapshot unavailable; using profile values")
+        return None
+
+
+def _store_plan_snapshot(plan_id: int, snapshot) -> None:
+    if snapshot is not None:
+        set_plan_fitness_snapshot(plan_id, snapshot.to_dict())
 
 
 _goal_logger = get_logger("goal_assessment")

@@ -52,7 +52,10 @@ def apply_proposal(user_id: int, proposal_id: int, client_today: str | None) -> 
         savepoint.commit()
         db.resolve_chat_proposal(conn, proposal_id, status="applied", result=result)
     if row["kind"] == "rebuild":
-        db.set_plan_athlete_tier(row["plan_id"], (row.get("draft") or {}).get("resolved_tier"))
+        draft = row.get("draft") or {}
+        db.set_plan_athlete_tier(row["plan_id"], draft.get("resolved_tier"))
+        if draft.get("fitness_snapshot"):
+            db.set_plan_fitness_snapshot(row["plan_id"], draft["fitness_snapshot"])
     return 200, {"status": "applied", "result": result, "plan_id": row["plan_id"]}
 
 

@@ -68,6 +68,7 @@ def test_build_chat_context_filters_expired_and_error_messages():
         patch("db.get_activities_for_user", return_value=mock_activities),
         patch("db.get_chat_thread_messages", return_value=mock_messages),
         patch("services.race_history.prompt_summary", return_value="RACE HISTORY\n2025-09-20 VMM 70.0km 13:05 [UTMB]"),
+        patch("services.coach_context._snapshot_or_none", return_value=None),
     ):
         ctx = build_chat_context(
             user_id=1,
@@ -171,3 +172,26 @@ def test_resolve_citations():
     # Second resolved had invalid URL scheme, so url is sanitized to None
     assert resolved[1]["ref"] == "789xyz123456"
     assert resolved[1]["url"] is None
+
+
+def test_build_chat_context_carries_threshold_source_and_fitness_snapshot():
+    now = datetime(2026, 9, 20, 12, 0, tzinfo=UTC)
+    snapshot = {"weekly_km": 71.0, "weekly_km_source": "coros"}
+    with (
+        patch("db.get_user_by_id", return_value={"id": 1, "threshold_source": "field"}),
+        patch("db.get_active_plan", return_value=None),
+        patch("db.get_activities_for_user", return_value=[]),
+        patch("db.get_chat_thread_messages", return_value=[]),
+        patch("services.race_history.prompt_summary", return_value=""),
+        patch("services.coach_context._snapshot_or_none", return_value=snapshot),
+    ):
+        ctx = build_chat_context(user_id=1, question="How fit am I?", now=now)
+    assert ctx["athlete"]["threshold_source"] == "field"
+    assert ctx["athlete"]["fitness_snapshot"] == snapshot
+
+
+def test_snapshot_or_none_swallows_failures():
+    from services import coach_context
+
+    with patch("services.fitness_snapshot.build", side_effect=RuntimeError("db down")):
+        assert coach_context._snapshot_or_none(1) is None
