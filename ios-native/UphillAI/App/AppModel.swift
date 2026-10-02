@@ -13,6 +13,7 @@ final class AppModel {
     let plan: PlanViewModel
     let cache: OfflineCache
     var onboardingDeferred = false
+    var trainingDestination: TrainingDestination?
     var needsOnboarding: Bool {
         session.user?.onboardingComplete == false && generation.running == nil && !onboardingDeferred
     }

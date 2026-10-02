@@ -24,6 +24,7 @@ struct Plan: Codable, Sendable, Equatable, Identifiable {
     let startDate: String?
     let planStatus: String?
     let createdAt: String?
+    var longRunDay: String? = nil
 }
 
 /// Mirrors a `workouts` row.

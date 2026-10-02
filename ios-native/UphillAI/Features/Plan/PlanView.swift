@@ -5,6 +5,8 @@ struct PlanView: View {
     let generation: GenerationCenter
     let onBuildPlan: () -> Void
     let onViewProgress: () -> Void
+    var user: User? = nil
+    var onSharpen: (TrainingDestination) -> Void = { _ in }
     @State private var selectedWorkout: Workout?
     @State private var showManage = false
     @State private var startNewAfterManage = false
@@ -80,6 +82,10 @@ struct PlanView: View {
                                         adapting: generation.running?.kind == .adaptWeek ? model.selectedWeek : nil,
                                         onReview: { showReview = true }, onAdapt: { showAdapt = true },
                                         onGoal: { showGoal = true })
+                        if let user, let plan = model.snapshot?.plan {
+                            SharpenChecklistCard(user: user, plan: plan, onOpen: onSharpen)
+                                .padding(.horizontal, UH.Space.regular)
+                        }
                         WeekSwitcher(weeks: model.weeks, selected: $model.selectedWeek, currentWeek: model.currentWeek)
                             .padding(.horizontal, UH.Space.regular)
                         LazyVStack(spacing: UH.Space.compact) {

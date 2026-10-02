@@ -80,7 +80,11 @@ private struct MainTabs: View {
             SwiftUI.Tab("Plan", systemImage: "figure.run", value: Tab.plan) {
                 PlanView(model: app.plan, generation: app.generation,
                          onBuildPlan: { overlay = .setup(app.makeSetup(mode: app.session.user?.onboardingComplete == false ? .onboarding : .newPlan)) },
-                         onViewProgress: { overlay = .progress })
+                         onViewProgress: { overlay = .progress }, user: app.session.user,
+                         onSharpen: { destination in
+                             app.trainingDestination = destination
+                             selection = .me
+                         })
             }
             SwiftUI.Tab("Me", systemImage: "person.crop.circle", value: Tab.me) {
                 ProfileView(app: app)
