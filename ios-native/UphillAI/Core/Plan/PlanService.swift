@@ -10,7 +10,7 @@ struct WorkoutLogUpdate: Equatable, Sendable {
 protocol PlanServicing: Sendable {
     func activePlan() async throws -> PlanSnapshot?
     func log(workoutID: Int, _ update: WorkoutLogUpdate) async throws -> [Workout]
-    func move(planID: Int, workoutID: Int, toWeek: Int, toDay: Weekday, clientToday: String) async throws -> [Workout]
+    func move(planID: Int, workoutID: Int, toWeek: Int, toDay: Weekday, clientToday: String) async throws -> CalendarMoveResult
     func recentPlans() async throws -> [Plan]
     func selectPlan(id: Int) async throws -> PlanSnapshot?
     func blockCompletion(planID: Int) async throws -> BlockCompletionResponse
@@ -55,12 +55,12 @@ struct PlanService: PlanServicing {
         return response.workouts
     }
 
-    func move(planID: Int, workoutID: Int, toWeek: Int, toDay: Weekday, clientToday: String) async throws -> [Workout] {
+    func move(planID: Int, workoutID: Int, toWeek: Int, toDay: Weekday, clientToday: String) async throws -> CalendarMoveResult {
         let body = MoveBody(planId: planID,
                             operations: [.init(workoutId: workoutID, targetWeek: toWeek, targetDay: toDay.rawValue)],
                             clientToday: clientToday)
-        let response: WorkoutsResponse = try await client.send(.send(.post, "/api/coach/calendar/move", body: body))
-        return response.workouts
+        let response: CalendarMoveResult = try await client.send(.send(.post, "/api/coach/calendar/move", body: body))
+        return response
     }
 
     func recentPlans() async throws -> [Plan] {

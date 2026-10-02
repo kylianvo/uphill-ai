@@ -5,9 +5,13 @@ struct PlanView: View {
     let generation: GenerationCenter
     let onBuildPlan: () -> Void
     let onViewProgress: () -> Void
+    var user: User? = nil
+    var onSharpen: (TrainingDestination) -> Void = { _ in }
     @State private var selectedWorkout: Workout?
     @State private var showManage = false
     @State private var startNewAfterManage = false
+    @State private var scheduleAfterManage = false
+    @State private var showSchedule = false
     @State private var showNextWeek = false
     @State private var showAdapt = false
     @State private var showReview = false
@@ -30,6 +34,7 @@ struct PlanView: View {
                 .sheet(item: $selectedWorkout) { workout in
                     WorkoutDetailSheet(model: model, workoutID: workout.id)
                 }
+                .sheet(isPresented: $showSchedule) { ScheduleChangeSheet(model: model) }
                 .sheet(isPresented: $showAdapt) { AdaptWeekSheet(model: model, week: model.selectedWeek) }
                 .sheet(isPresented: $showGoal) { GoalSheet(model: model) }
                 .sheet(isPresented: $showReview) { WeekReviewSheet(model: model, week: model.selectedWeek) }
@@ -38,7 +43,11 @@ struct PlanView: View {
                 }
                 .sheet(isPresented: $showManage, onDismiss: {
                     if startNewAfterManage { startNewAfterManage = false; onBuildPlan() }
-                }) { ManagePlanSheet(model: model) { startNewAfterManage = true } }
+                    if scheduleAfterManage { scheduleAfterManage = false; showSchedule = true }
+                }) {
+                    ManagePlanSheet(model: model, onStartNew: { startNewAfterManage = true },
+                                    onSchedule: { scheduleAfterManage = true })
+                }
         }
         .task { if model.state == .loading { await model.load() } }
     }
@@ -54,9 +63,10 @@ struct PlanView: View {
                 VStack(spacing: UH.Space.compact) {
                     Image(systemName: "mountain.2").font(.system(size: 48)).foregroundStyle(UH.Palette.accentInk)
                         .accessibilityHidden(true)
-                    Text("No plan yet").font(UH.TextStyle.sectionTitle).foregroundStyle(UH.Palette.ink)
+                    Text("No plan yet").font(UH.TextStyle.screenTitle).foregroundStyle(UH.Palette.ink)
                     Text("Your weekly workouts show up here once Coach Uphill builds your plan.")
                         .font(UH.TextStyle.body).foregroundStyle(UH.Palette.secondary).multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 Button("Build my plan", action: onBuildPlan)
                     .buttonStyle(.uhPrimary).frame(maxWidth: 280).accessibilityIdentifier("plan.build")
@@ -75,11 +85,19 @@ struct PlanView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: UH.Space.regular) {
                         if generation.running?.kind == .newPlan { buildingBanner }
+                        if let notice = model.calendarNotice {
+                            ScheduleNoticeBanner(notice: notice, onDismiss: model.dismissCalendarNotice)
+                                .padding(.horizontal, UH.Space.regular)
+                        }
                         if let cachedAt = model.cachedAt { offlineBanner(cachedAt) }
                         SummaryCarousel(model: model,
                                         adapting: generation.running?.kind == .adaptWeek ? model.selectedWeek : nil,
                                         onReview: { showReview = true }, onAdapt: { showAdapt = true },
                                         onGoal: { showGoal = true })
+                        if let user, let plan = model.snapshot?.plan {
+                            SharpenChecklistCard(user: user, plan: plan, onOpen: onSharpen)
+                                .padding(.horizontal, UH.Space.regular)
+                        }
                         WeekSwitcher(weeks: model.weeks, selected: $model.selectedWeek, currentWeek: model.currentWeek)
                             .padding(.horizontal, UH.Space.regular)
                         LazyVStack(spacing: UH.Space.compact) {
@@ -191,6 +209,7 @@ struct PlanView: View {
         VStack(spacing: UH.Space.compact) {
             Text(title).font(UH.TextStyle.sectionTitle).foregroundStyle(UH.Palette.ink)
             Text(body).font(UH.TextStyle.body).foregroundStyle(UH.Palette.secondary).multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
         }
         .padding(UH.Space.section)
         .frame(maxWidth: .infinity, maxHeight: .infinity)

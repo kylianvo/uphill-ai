@@ -50,7 +50,7 @@ struct WeekReviewSheet: View {
                     .gaugeStyle(.accessoryCircularCapacity).tint(UH.Palette.accent).scaleEffect(1.3).frame(width: 72, height: 72)
                 Text("sessions done").font(UH.TextStyle.label)
             }
-            if let summary = review.narrative?.summary { Text(summary).font(UH.TextStyle.body) }
+            if let summary = review.narrative?.summary { Text(summary).font(UH.TextStyle.body).fixedSize(horizontal: false, vertical: true) }
             if let items = review.narrative?.highlights, !items.isEmpty {
                 list("Went well", items, symbol: "checkmark", tint: UH.Palette.accentInk)
             }
@@ -60,7 +60,7 @@ struct WeekReviewSheet: View {
             VStack(alignment: .leading, spacing: UH.Space.small) {
                 ForEach(review.perWorkout) { entry in
                     HStack(alignment: .firstTextBaseline) {
-                        VStack(alignment: .leading, spacing: 2) {
+                        VStack(alignment: .leading, spacing: UH.Space.compact) {
                             Text(entry.title ?? entry.type ?? "Workout").font(UH.TextStyle.label)
                             if let day = entry.dayOfWeek { Text(day).font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary) }
                         }
@@ -70,7 +70,7 @@ struct WeekReviewSheet: View {
                     .frame(minHeight: 44)
                 }
             }
-            .padding(UH.Space.regular).uhCard()
+            .uhCard()
         }
     }
 
