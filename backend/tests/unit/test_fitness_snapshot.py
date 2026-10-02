@@ -102,3 +102,33 @@ class TestBuild:
         assert "Marathon prediction 2:52:00" in block
         assert "UTMB" not in block
         assert "not used" in block
+
+
+class TestCompositeInputs:
+    def test_pace_sec_parses_and_rejects(self):
+        assert fs._pace_sec("3:53") == 233.0
+        assert fs._pace_sec("4:15 /km") == 255.0
+        assert fs._pace_sec(None) is None
+        assert fs._pace_sec("fast") is None
+
+    def test_resolve_tier_records_score_and_levels(self, stub_db):
+        snap = fs.build(30, today=TODAY)
+        snap.resolve_tier(None, "race", None, None, 134, 163, max_hr=183)
+        assert snap.tier_score is not None
+        assert snap.tier_levels["load"] is not None
+        assert snap.tier_levels["performance"] is not None  # predictor 2:52 from the fresh assessment
+        assert snap.tier_levels["physiology"] is None  # threshold source unknown
+        assert snap.to_dict()["tier_levels"] == snap.tier_levels
+
+    def test_threshold_pace_is_the_performance_fallback(self, stub_db):
+        stub_db["assessment"] = None
+        snap = fs.build(30, today=TODAY)
+        snap.resolve_tier(None, "race", None, None, None, None)
+        assert any("threshold_pace" in r for r in snap.tier_reasons)
+
+    def test_previous_tier_reaches_the_hysteresis(self, stub_db):
+        stub_db["connection"] = None
+        stub_db["assessment"] = None
+        stub_db["user"] = {**stub_db["user"], "current_weekly_km": 84.0, "threshold_pace": None}
+        snap = fs.build(30, today=TODAY)
+        assert snap.resolve_tier(None, "race", None, None, None, None, previous_tier="recreational") == "recreational"

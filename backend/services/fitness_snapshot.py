@@ -61,6 +61,15 @@ def measured_weekly_volume(
     return round(km, 1), round(vert), last_end
 
 
+def _pace_sec(pace: str | None) -> float | None:
+    """'3:53' -> 233.0; None or unparsable -> None."""
+    try:
+        m, sec = str(pace).split("/")[0].strip().split(":")
+        return int(m) * 60 + float(sec)
+    except (AttributeError, ValueError):
+        return None
+
+
 def _hms(seconds: float) -> str:
     s = int(round(seconds))
     return f"{s // 3600}:{s % 3600 // 60:02d}:{s % 60:02d}"
@@ -82,6 +91,8 @@ class FitnessSnapshot:
     notes: list[str] = field(default_factory=list)
     tier: str | None = None
     tier_reasons: list[str] = field(default_factory=list)
+    tier_score: float | None = None
+    tier_levels: dict[str, float | None] = field(default_factory=dict)
 
     def resolve_tier(
         self,
@@ -91,21 +102,33 @@ class FitnessSnapshot:
         historical_max_distance_km: float | None,
         aet_hr: float | None,
         ant_hr: float | None,
+        max_hr: float | None = None,
+        previous_tier: str | None = None,
     ) -> str:
+        a = self.assessment or {}
+        marathons = [m for m in (a.get("pred_marathon_sec"), getattr(self, "road_marathon_sec", None)) if m]
         decision = resolve_tier_explained(
             explicit_tier=explicit_tier,
             goal_type=goal_type,
             current_weekly_km=self.weekly_km,
+            # Vert only when measured: typed volume has none, and inventing it would
+            # move the level on a guess.
+            weekly_vert_m=self.weekly_vert_m if self.weekly_km_source == "coros" else None,
             max_continuous_jog_min=max_continuous_jog_min,
             historical_max_distance_km=historical_max_distance_km,
             aet_hr=aet_hr,
             ant_hr=ant_hr,
+            max_hr=max_hr,
             threshold_source=self.threshold_source,
-            marathon_prediction_sec=(self.assessment or {}).get("pred_marathon_sec"),
-            gender=self.gender,
+            marathon_prediction_sec=min(marathons) if marathons else None,
             utmb_index=self.utmb_index,
+            vo2max=a.get("vo2max"),
+            threshold_pace_sec=_pace_sec(self.threshold_pace),
+            gender=self.gender,
+            previous_tier=previous_tier,
         )
         self.tier, self.tier_reasons = decision.tier, decision.reasons
+        self.tier_score, self.tier_levels = decision.score, decision.levels
         return self.tier
 
     def prompt_block(self, lang: str = "en") -> str:
