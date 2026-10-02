@@ -2075,7 +2075,8 @@ def update_user_profile(user_id: int, profile_data: dict[str, Any]) -> bool:
                 coros_running_level = COALESCE(:running_level, coros_running_level),
                 pace_zone_model = COALESCE(:model, pace_zone_model),
                 custom_pace_zones = COALESCE(CAST(:custom_zones AS jsonb), custom_pace_zones),
-                athlete_notes = COALESCE(:athlete_notes, athlete_notes)
+                athlete_notes = COALESCE(:athlete_notes, athlete_notes),
+                threshold_source = COALESCE(:threshold_source, threshold_source)
             WHERE id = :id
         """),
             {
@@ -2094,6 +2095,7 @@ def update_user_profile(user_id: int, profile_data: dict[str, Any]) -> bool:
                 "height_cm": profile_data.get("height_cm"),
                 "weight_kg": profile_data.get("weight_kg"),
                 "threshold_pace": profile_data.get("threshold_pace"),
+                "threshold_source": profile_data.get("threshold_source"),
                 "vo2max": profile_data.get("coros_vo2max"),
                 "running_level": profile_data.get("coros_running_level"),
                 "model": profile_data.get("pace_zone_model"),
@@ -2174,7 +2176,8 @@ def update_onboarding_profile(user_id: int, data: dict[str, Any]) -> bool:
                 aet_hr = :aet_hr,
                 ant_hr = :ant_hr,
                 zone2_pace_min = COALESCE(:zone2_pace_min, zone2_pace_min),
-                zone2_pace_max = COALESCE(:zone2_pace_max, zone2_pace_max)
+                zone2_pace_max = COALESCE(:zone2_pace_max, zone2_pace_max),
+                threshold_source = COALESCE(:threshold_source, threshold_source)
             WHERE id = :id
         """),
             {
@@ -2195,6 +2198,7 @@ def update_onboarding_profile(user_id: int, data: dict[str, Any]) -> bool:
                 "ant_hr": int(data.get("ant_hr", 165)),
                 "zone2_pace_min": data.get("zone2_pace_min"),
                 "zone2_pace_max": data.get("zone2_pace_max"),
+                "threshold_source": data.get("threshold_source"),
                 "double_session_days": json.dumps(data.get("double_session_days", [])),
                 "id": user_id,
             },

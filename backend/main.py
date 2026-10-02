@@ -2,7 +2,7 @@ import os
 import threading
 import time
 import uuid as _uuid
-from typing import Any
+from typing import Any, Literal
 
 import httpx
 from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, Header, HTTPException, Request, Response, UploadFile
@@ -399,6 +399,9 @@ class OnboardingRequest(BaseModel):
     goal_type: str  # race|distance|start_running|return|recovery
     # Fitness
     aet_hr: int | None = None
+    # How the stored AeT/AnT pair was obtained. Only "lab"/"field" let the gap count
+    # toward the tier; None keeps whatever the athlete already had.
+    threshold_source: Literal["lab", "field", "estimated", "unknown"] | None = None
     ant_hr: int | None = None
     max_hr: int | None = None
     resting_hr: int | None = None
@@ -456,6 +459,9 @@ class UpdateProfileRequest(BaseModel):
     pace_zone_model: str | None = None
     custom_pace_zones: dict[str, Any] | None = None
     athlete_notes: str | None = None
+    # How the stored AeT/AnT pair was obtained. Only "lab"/"field" let the gap count
+    # toward the tier; None keeps whatever the athlete already had.
+    threshold_source: Literal["lab", "field", "estimated", "unknown"] | None = None
 
 
 class SetCoachStatusRequest(BaseModel):
@@ -582,6 +588,7 @@ def format_user_response(user: dict[str, Any]) -> dict[str, Any]:
         "coros_running_level": user.get("coros_running_level"),
         "pace_zone_model": user.get("pace_zone_model") or "5_zone",
         "custom_pace_zones": user.get("custom_pace_zones"),
+        "threshold_source": user.get("threshold_source") or "unknown",
         "is_coach": bool(user.get("is_coach", False)),
     }
 
@@ -1008,6 +1015,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         "ant_hr": ant_hr,
         "zone2_pace_min": zone2_min,
         "zone2_pace_max": zone2_max,
+        "threshold_source": request.threshold_source,
     }
     update_onboarding_profile(user["id"], onboarding_data)
 
@@ -1188,6 +1196,14 @@ def update_profile(request: UpdateProfileRequest, user: dict[str, Any] = Depends
         raise HTTPException(status_code=500, detail="Failed to update user profile.")
     updated_user = get_user_by_id(user["id"])
     return format_user_response(updated_user)
+
+
+@app.get("/api/auth/fitness-snapshot")
+def get_fitness_snapshot(user: dict[str, Any] = Depends(get_current_user)):
+    """What the planner would use right now: measured volume (or the profile value),
+    threshold pace and the latest COROS assessment, each with its source. No tier: that
+    depends on the plan's goal and is resolved at generation time."""
+    return fitness_snapshot.build(user["id"]).to_dict()
 
 
 @app.get("/api/auth/pace-zones")
