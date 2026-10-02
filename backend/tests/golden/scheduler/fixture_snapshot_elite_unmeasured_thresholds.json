@@ -1,0 +1,55 @@
+{
+  "synthetic": true,
+  "provenance": "scheduler",
+  "_comment": "Synthetic look-alike of the 2026-09 demotion bug: high measured volume, AeT/AnT stored without provenance and 18% apart. Before the fix this produced a recreational 40-60 km plan. Must stay sub_elite and plan near the measured volume.",
+  "user_profile": {
+    "age": 36,
+    "gender": "male",
+    "max_hr": 184,
+    "resting_hr": 52,
+    "aet_hr": 133,
+    "ant_hr": 162,
+    "threshold_source": "unknown",
+    "current_weekly_km": 115.0,
+    "days_per_week": 6,
+    "has_gym_access": false
+  },
+  "fitness_snapshot": {
+    "weekly_km": 136.0,
+    "weekly_km_source": "coros",
+    "weekly_vert_m": 5200.0,
+    "volume_as_of": "2026-09-20",
+    "threshold_pace": "3:55",
+    "threshold_pace_source": "coros",
+    "assessment": {
+      "vo2max": 60.0,
+      "running_level": 90.0,
+      "threshold_pace": "3:55",
+      "pred_hm_sec": 4920.0,
+      "pred_marathon_sec": 10380.0,
+      "measured_at": "2026-09-24T00:00:00+00:00"
+    },
+    "utmb_index": null,
+    "threshold_source": "unknown",
+    "gender": "male",
+    "readiness": null,
+    "notes": []
+  },
+  "race_info": {
+    "lang": "en",
+    "terrain": "trail",
+    "goal_type": "finish",
+    "name": "Trail 80K",
+    "date": "2026-11-29",
+    "course_distance_km": 80,
+    "course_elevation_gain_m": 4200
+  },
+  "total_weeks": 8,
+  "expect": {
+    "tier": "sub_elite",
+    "week2_km": [
+      110,
+      145
+    ]
+  }
+}
