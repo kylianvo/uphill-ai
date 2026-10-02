@@ -39,6 +39,15 @@ if [[ "${2:-}" == "race" ]]; then
   exit 0
 fi
 
+if [[ "${2:-}" == "profile" ]]; then
+  LOGIN=$(curl -sf -X POST "$BASE/api/auth/mock-login" -H 'Content-Type: application/json' -d '{"email":"ios-fixtures@uphill.ai"}')
+  TOKEN=$(printf '%s' "$LOGIN" | python3 -c 'import json,sys; print(json.load(sys.stdin)["session_token"])')
+  BODY=$(printf '%s' "$LOGIN" | python3 -c 'import json,sys; u=json.load(sys.stdin)["user"]; fields=["age","max_hr","resting_hr","aet_hr","ant_hr","gender","height_cm","weight_kg","zone2_pace_min","zone2_pace_max","threshold_pace","pace_zone_model","athlete_notes"]; print(json.dumps({k:u[k] for k in fields if k in u}))')
+  curl -sf -X POST "$BASE/api/auth/update-profile" -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d "$BODY" | scrub > "$OUT/update_profile.json"
+  curl -sf "$BASE/api/auth/pace-zones?model=5_zone" -H "Authorization: Bearer $TOKEN" | scrub > "$OUT/pace_zones.json"
+  exit 0
+fi
+
 LOGIN=$(curl -sf -X POST "$BASE/api/auth/mock-login" \
   -H 'Content-Type: application/json' -d '{"email":"ios-fixtures@uphill.ai"}')
 TOKEN=$(printf '%s' "$LOGIN" | python3 -c 'import json,sys; print(json.load(sys.stdin)["session_token"])')
