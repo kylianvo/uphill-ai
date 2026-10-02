@@ -1568,7 +1568,7 @@ def _build_athlete_context_block(athlete: dict[str, Any]) -> str:
             lines.append("\nRecent Watch Activities & Execution Quality (Last 14 Days):")
             for act in recent_matches[-6:]:
                 dist = f"{act['distance_km']:.1f}km" if act.get("distance_km") else f"{act.get('sets') or 'N/A'} sets"
-                dur = f"{round((act.get('duration_seconds') or 0) / 60)}m"
+                dur = f"{round((act.get('duration_seconds') or 0)/60)}m"
                 hr = f"avg HR {act['avg_hr']} bpm" if act.get("avg_hr") else ""
                 q_grade = (
                     f"Quality: {act.get('quality_grade')} ({act.get('quality_score')}%)"
@@ -2304,7 +2304,7 @@ async def _generate_next_block_for_athlete(
 
         # Collect session-level notes (exclude empty/None)
         session_notes = [
-            f'{w.get("day_of_week", "?")} W{w.get("week_number", "?")}: "{w["notes"]}"'
+            f'{w.get("day_of_week","?")} W{w.get("week_number","?")}: "{w["notes"]}"'
             for w in completed_wos
             if w.get("notes")
         ]
@@ -2312,12 +2312,12 @@ async def _generate_next_block_for_athlete(
         # block_wos is already filtered to non-Rest workouts (see its
         # definition above, earlier in this loop) -- classify by review status.
         missed = [
-            f"{w.get('day_of_week', '?')} {w.get('title') or w.get('type', '?')}"
+            f'{w.get("day_of_week","?")} {w.get("title") or w.get("type","?")}'
             for w in block_wos
             if _session_review_status(w) == "MISSED"
         ]
         not_logged = [
-            f"{w.get('day_of_week', '?')} {w.get('title') or w.get('type', '?')}"
+            f'{w.get("day_of_week","?")} {w.get("title") or w.get("type","?")}'
             for w in block_wos
             if _session_review_status(w) == "not logged"
         ]
@@ -2326,9 +2326,9 @@ async def _generate_next_block_for_athlete(
         line = (
             f"Block {blk} (Wk {wk_start}-{wk_end}): "
             f"{sessions_done}/{sessions_total} sessions ({completion_pct}%) | "
-            f"Actual {actual_km:.1f}km/{actual_min / 60:.1f}h"
+            f"Actual {actual_km:.1f}km/{actual_min/60:.1f}h"
             + (f" (+{actual_vert:.0f}m D+)" if actual_vert > 0 else "")
-            + f" vs Planned {planned_km:.1f}km/{planned_min / 60:.1f}h"
+            + f" vs Planned {planned_km:.1f}km/{planned_min/60:.1f}h"
         )
         if unplanned_count > 0:
             line += f" [Includes {unplanned_count} unplanned watch activity: {unplanned_km:.1f}km]"
@@ -2351,7 +2351,8 @@ async def _generate_next_block_for_athlete(
 
         if blk == prev_block and override_used:
             context_lines.append(
-                f"  ⚠ Block {blk} generated via override at {completion['completion_pct']}% (below the 70% threshold)."
+                f"  ⚠ Block {blk} generated via override at {completion['completion_pct']}% "
+                f"(below the 70% threshold)."
             )
 
         if blk == request.block_number - 1:

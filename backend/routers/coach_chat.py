@@ -409,7 +409,8 @@ async def coach_chat_legacy(
         for idx, doc in enumerate(grounding_docs, 1):
             truncated_content = doc["content"][:15000]
             context_parts.append(
-                f"[Document #{idx}] Title: {doc['title']} | Type: {doc['type'].upper()}\nContent: {truncated_content}"
+                f"[Document #{idx}] Title: {doc['title']} | Type: {doc['type'].upper()}\n"
+                f"Content: {truncated_content}"
             )
         grounding_context = (
             "\n\n=== GROUNDING REFERENCE DATABASE (Use this to ground answers and cite names when relevant) ===\n"
@@ -442,7 +443,7 @@ async def coach_chat_legacy(
             act_lines = ["\n=== RECENT WATCH ACTIVITIES & EXECUTION QUALITY ==="]
             for act in recent_matches[-8:]:
                 dist = f"{act['distance_km']:.1f}km" if act.get("distance_km") else f"{act.get('sets') or 'N/A'} sets"
-                dur = f"{round((act.get('duration_seconds') or 0) / 60)}m"
+                dur = f"{round((act.get('duration_seconds') or 0)/60)}m"
                 hr = f"avg HR {act['avg_hr']} bpm" if act.get("avg_hr") else ""
                 q_grade = (
                     f"Quality: {act.get('quality_grade')} ({act.get('quality_score')}%)"

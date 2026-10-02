@@ -379,9 +379,9 @@ def build_rebuild_inputs(
         planned_km = sum(w.get("distance_km") or 0 for w in prev_wos)
         planned_min = sum(w.get("duration_minutes") or 0 for w in prev_wos)
         context_lines.append(
-            f"  Prior Week ({prev_wk}) Volume: Actual {actual_km:.1f}km / {actual_min / 60:.1f}h"
+            f"  Prior Week ({prev_wk}) Volume: Actual {actual_km:.1f}km / {actual_min/60:.1f}h"
             + (f" (+{actual_vert:.0f}m D+)" if actual_vert > 0 else "")
-            + f" vs Planned {planned_km:.1f}km / {planned_min / 60:.1f}h"
+            + f" vs Planned {planned_km:.1f}km / {planned_min/60:.1f}h"
         )
         # Check if athlete missed an ME session in previous week (Scott Johnston Rule 7)
         missed_me = [
