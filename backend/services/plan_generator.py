@@ -945,9 +945,11 @@ class PlanGenerator:
             # is only evidence when it was actually measured.
             aet_hr=user_profile.get("aet_hr"),
             ant_hr=user_profile.get("ant_hr"),
+            # The plan's last resolved tier, for hysteresis on re-plans. Never an override.
+            previous_tier=race_info.get("previous_tier"),
         )
         if snapshot:
-            athlete_tier = snapshot.resolve_tier(**_tier_args)
+            athlete_tier = snapshot.resolve_tier(**_tier_args, max_hr=max_hr)
         else:
             athlete_tier = resolve_tier(
                 **_tier_args,

@@ -1,3 +1,4 @@
+import dataclasses
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -31,7 +32,7 @@ def _snapshot():
     )
 
 
-async def _generate(race_info):
+async def _generate(race_info, profile=None):
     mock_resp = MagicMock()
     mock_resp.text = "invalid json to trigger fallback"
     client = MagicMock()
@@ -43,7 +44,11 @@ async def _generate(race_info):
         patch("services.race_history.tier_distance", return_value=None),
     ):
         _, tier = await PlanGenerator.generate_plan_workouts(
-            plan_id=1, user_profile=dict(PROFILE), race_info=race_info, total_weeks=8, api_key="fake-gemini-key"
+            plan_id=1,
+            user_profile={**PROFILE, **(profile or {})},
+            race_info=race_info,
+            total_weeks=8,
+            api_key="fake-gemini-key",
         )
     return tier, client.models.generate_content.call_args.kwargs.get("contents", "")
 
@@ -52,6 +57,7 @@ async def _generate(race_info):
 async def test_snapshot_sets_tier_volume_and_prompt_block():
     snap = _snapshot()
     tier, prompt = await _generate({**RACE, "fitness_snapshot": snap})
+    # load 184 effort-km -> 4.15; performance from threshold pace 3:53 -> 3.63; score 3.94
     assert tier == "sub_elite"
     assert snap.tier == "sub_elite" and snap.tier_reasons
     assert "ATHLETE FITNESS SNAPSHOT" in prompt
@@ -63,3 +69,21 @@ async def test_without_snapshot_unknown_threshold_source_no_longer_demotes():
     tier, prompt = await _generate(dict(RACE))
     assert tier == "sub_elite"
     assert "ATHLETE FITNESS SNAPSHOT" not in prompt
+
+
+@pytest.mark.asyncio
+async def test_snapshot_path_passes_max_hr_to_the_physiology_level():
+    snap = dataclasses.replace(_snapshot(), threshold_source="lab")
+    await _generate({**RACE, "fitness_snapshot": snap})
+    # gap 17.8% -> 2.61 and AnT 163/183 = 0.891 of max -> 3.52; mean 3.07. Without
+    # max_hr only the gap level (2.61) would be present.
+    assert snap.tier_levels["physiology"] == pytest.approx(3.07, abs=0.01)
+
+
+@pytest.mark.asyncio
+async def test_previous_tier_reaches_the_hysteresis():
+    # 84 km typed, no snapshot: load 3.05 alone, within 0.1 of the recreational boundary.
+    tier, _ = await _generate({**RACE, "previous_tier": "recreational"}, profile={"current_weekly_km": 84.0})
+    assert tier == "recreational"
+    tier, _ = await _generate(dict(RACE), profile={"current_weekly_km": 84.0})
+    assert tier == "sub_elite"
