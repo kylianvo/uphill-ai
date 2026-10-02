@@ -19,6 +19,8 @@
 - Assessment freshness for tiering: ≤ 60 days. On-demand refresh threshold: 7 days.
 - Performance bands (men; women ×1.12; unknown gender uses men's): marathon prediction elite ≤ 2:40:00, sub-elite ≤ 3:10:00, recreational ≤ 4:15:00. UTMB index elite ≥ 700, sub-elite ≥ 550, recreational ≥ 400.
 - Promotion is at most ONE step above the volume tier.
+- Chronic cap: effective weekly volume = min(4-week mean, 1.15 × 12-week mean) when ≥ 8 complete covered weeks exist; km and vert scaled by the same factor.
+- Race-percentile bands (imported UTMB/VBM finishes, last 12 months, field ≥ 50, no DNF/hidden, gender rank preferred): elite ≤ 10%, sub-elite ≤ 25%, recreational ≤ 50%.
 - Volume bands are applied to effort-km = weekly km + weekly vert / 100 (vert only when measured), for every plan.
 - Hysteresis on re-plans: keep the previous tier when effort-km is within 5% of the boundary between it and the new base tier (adjacent tiers only).
 - `plans.athlete_tier` is the last resolved tier, never an override: re-plan paths pass it as `previous_tier` and `explicit_tier=None`.
@@ -36,7 +38,7 @@
 | `backend/db.py` (modify) | Schema in `init_db`; helpers `record_fitness_assessment`, `get_latest_fitness_assessment`, `get_weekly_run_volumes`, `get_first_activity_at`, `set_plan_fitness_snapshot`; `threshold_source` in profile writes; disconnect cleanup |
 | `backend/alembic/versions/<rev>_fitness_snapshot.py` (create) | Migration for the three schema changes |
 | `backend/services/athlete_tier.py` (modify) | `PERF_BANDS`, `performance_tier`, `explain_tier`; `derive_tier`/`resolve_tier` gain `threshold_source`, `marathon_prediction_sec`, `gender`, `utmb_index` |
-| `backend/services/fitness_snapshot.py` (create) | `measured_weekly_volume` (pure), `FitnessSnapshot`, `build()` |
+| `backend/services/fitness_snapshot.py` (create) | `measured_weekly_volume`, `chronic_weekly_volume`, `best_race_percentile` (pure), `FitnessSnapshot`, `build()` |
 | `backend/services/coros_sync.py` (modify) | Record assessments on sync; `ensure_fresh_assessment` |
 | `backend/services/plan_generator.py` (modify) | Use the snapshot for volume, tier and prompt block when present |
 | `backend/main.py` (modify) | Build/store the snapshot in onboarding, generate-plan and next-block jobs; `threshold_source` on profile; `GET /api/auth/fitness-snapshot`; `weekly_km_from_watch` |
@@ -1046,6 +1048,258 @@ Expected: all pass. If `test_measured_volume_beats_profile_value` reports 133.7 
 ```bash
 git add backend/services/fitness_snapshot.py backend/tests/unit/test_fitness_snapshot.py
 git commit -m "feat: fitness snapshot assembles measured COROS signals with typed fallbacks"
+```
+
+---
+
+### Task 3b: Chronic-load cap on measured volume
+
+**Files:**
+- Modify: `backend/services/fitness_snapshot.py`
+- Test: `backend/tests/unit/test_fitness_snapshot.py`
+
+**Interfaces:**
+- Consumes: Task 3's `measured_weekly_volume`, `build`.
+- Produces: `chronic_weekly_volume(weeks, first_activity_at, last_sync_at, today) -> float | None` (12-week mean km over complete covered weeks; None under 8 weeks); `CHRONIC_WEEKS = 12`, `MIN_CHRONIC_WEEKS = 8`, `CHRONIC_SPIKE_ALLOWANCE = 1.15`. `build` applies the cap to measured volume and appends a note when it bites.
+
+- [ ] **Step 1: Failing tests** (append):
+
+```python
+def _steady(km, n=12, start=date(2026, 7, 6)):
+    return [{"week_start": start + timedelta(weeks=i), "km": km, "vert_m": km * 10} for i in range(n)]
+
+
+class TestChronicCap:
+    SYNC = datetime(2026, 10, 1, tzinfo=UTC)
+    FIRST12 = datetime(2026, 7, 1, tzinfo=UTC)
+
+    def test_chronic_mean_needs_eight_weeks(self):
+        assert fs.chronic_weekly_volume(_steady(70.0), self.FIRST12, self.SYNC, TODAY) == 70.0
+        assert fs.chronic_weekly_volume(_steady(70.0), datetime(2026, 8, 20, tzinfo=UTC), self.SYNC, TODAY) is None
+
+    def test_a_recent_spike_is_capped(self, stub_db, monkeypatch):
+        weeks = _steady(60.0, n=8) + [
+            {"week_start": date(2026, 8, 31) + timedelta(weeks=i), "km": 120.0, "vert_m": 1200.0} for i in range(4)
+        ]
+        monkeypatch.setattr(fs.db, "get_weekly_run_volumes", lambda uid, since: weeks)
+        monkeypatch.setattr(fs.db, "get_first_activity_at", lambda uid, p: self.FIRST12)
+        stub_db["connection"]["last_sync_at"] = self.SYNC
+        snap = fs.build(30, today=TODAY)
+        chronic = (60.0 * 8 + 120.0 * 4) / 12  # 80.0
+        assert snap.weekly_km == pytest.approx(chronic * 1.15, abs=0.1)
+        assert snap.weekly_vert_m == pytest.approx(1200.0 * (chronic * 1.15) / 120.0, abs=1)
+        assert any("chronic" in n for n in snap.notes)
+
+    def test_a_recent_dip_is_not_raised(self, stub_db, monkeypatch):
+        weeks = _steady(100.0, n=8) + [
+            {"week_start": date(2026, 8, 31) + timedelta(weeks=i), "km": 50.0, "vert_m": 500.0} for i in range(4)
+        ]
+        monkeypatch.setattr(fs.db, "get_weekly_run_volumes", lambda uid, since: weeks)
+        monkeypatch.setattr(fs.db, "get_first_activity_at", lambda uid, p: self.FIRST12)
+        stub_db["connection"]["last_sync_at"] = self.SYNC
+        assert fs.build(30, today=TODAY).weekly_km == 50.0
+
+    def test_short_history_skips_the_cap(self, stub_db):
+        # the default stub has data from 2026-08-23 only: < 8 weeks, cap not applied
+        assert fs.build(30, today=TODAY).weekly_km == pytest.approx(133.7, abs=0.1)
+```
+
+- [ ] **Step 2: Run to verify failure** — `cd backend && pytest tests/unit/test_fitness_snapshot.py -v -k Chronic` → FAIL (`chronic_weekly_volume` missing).
+
+- [ ] **Step 3: Implement.** Factor the week-counting loop out of `measured_weekly_volume` so both use it:
+
+```python
+CHRONIC_WEEKS = 12
+MIN_CHRONIC_WEEKS = 8
+# A 4-week block may run this far above the 12-week mean before the cap bites:
+# roughly the 10%/week progression ceiling compounded over a short build.
+CHRONIC_SPIKE_ALLOWANCE = 1.15
+
+
+def _counted_weeks(weeks, first_activity_at, last_sync_at, today, n):
+    if not last_sync_at or not first_activity_at:
+        return []
+    first_day = _aware(first_activity_at).date()
+    sync = _aware(last_sync_at)
+    by_start = {w["week_start"]: w for w in weeks}
+    counted = []
+    for i in range(1, n + 1):
+        start = _monday(today) - timedelta(weeks=i)
+        end = datetime.combine(start + timedelta(days=7), datetime.min.time(), tzinfo=UTC)
+        if start >= first_day and end <= sync:
+            counted.append((start, by_start.get(start, {"km": 0.0, "vert_m": 0.0})))
+    return counted
+
+
+def chronic_weekly_volume(weeks, first_activity_at, last_sync_at, today) -> float | None:
+    counted = _counted_weeks(weeks, first_activity_at, last_sync_at, today, CHRONIC_WEEKS)
+    if len(counted) < MIN_CHRONIC_WEEKS:
+        return None
+    return round(sum(w["km"] for _, w in counted) / len(counted), 1)
+```
+
+Rewrite `measured_weekly_volume` to call `_counted_weeks(..., VOLUME_WEEKS)` and keep its return value unchanged. In `build`, fetch `since=_monday(today) - timedelta(weeks=CHRONIC_WEEKS)` (one query serves both), and after `measured` is computed:
+
+```python
+        if measured:
+            chronic = chronic_weekly_volume(weeks, first_at, connection.get("last_sync_at"), today)
+            ceiling = chronic * CHRONIC_SPIKE_ALLOWANCE if chronic else None
+            if ceiling and measured[0] > ceiling:
+                factor = ceiling / measured[0]
+                notes.append(
+                    f"4-week {measured[0]:.0f} km capped to {ceiling:.0f} km (12-week chronic {chronic:.0f} km x 1.15)"
+                )
+                measured = (round(ceiling, 1), round(measured[1] * factor), measured[2])
+```
+
+(store `first_at = db.get_first_activity_at(user_id, PROVIDER)` in a variable so it is not queried twice).
+
+- [ ] **Step 4: Run tests** — `cd backend && pytest tests/unit/test_fitness_snapshot.py -v` → all pass.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add backend/services/fitness_snapshot.py backend/tests/unit/test_fitness_snapshot.py
+git commit -m "feat(snapshot): cap measured volume at 1.15x the 12-week chronic load"
+```
+
+---
+
+### Task 3c: Race-result percentile as a performance signal
+
+**Files:**
+- Modify: `backend/services/athlete_tier.py` (`PERF_BANDS`, `performance_tier`, `explain_tier`/`derive_tier`/`resolve_tier_explained` kwargs)
+- Modify: `backend/services/fitness_snapshot.py` (new field, `build`, `resolve_tier`, `prompt_block`)
+- Test: `backend/tests/unit/test_athlete_tier.py`, `backend/tests/unit/test_fitness_snapshot.py`
+
+**Interfaces:**
+- Consumes: `services.race_history.list_results(user_id, include_unselected=False) -> list[dict]` (rows of `race_results`: `source`, `race_name`, `race_date` (date or ISO str), `is_dnf`, `hidden`, `rank_overall`, `total_overall`, `rank_gender`, `total_gender`).
+- Produces: `best_race_percentile(results: list[dict], today: date) -> tuple[float, str] | None` in `fitness_snapshot` (percentile 0–100, short label like `"VMM 2026-03-14"`); `FitnessSnapshot.race_percentile: float | None = None`, `race_percentile_label: str | None = None`; `performance_tier(..., race_percentile: float | None = None)`; tier kwarg `race_percentile`.
+
+- [ ] **Step 1: Failing tests.** In `test_athlete_tier.py` (`TestPerformancePromotion`):
+
+```python
+    def test_race_percentile_bands(self):
+        assert performance_tier(None, None, None, race_percentile=8.0) == ELITE
+        assert performance_tier(None, None, None, race_percentile=20.0) == SUB_ELITE
+        assert performance_tier(None, None, None, race_percentile=45.0) == RECREATIONAL
+        assert performance_tier(None, None, None, race_percentile=70.0) is None
+
+    def test_percentile_promotes_a_watchless_athlete_one_step(self):
+        assert derive_tier(current_weekly_km=60.0, race_percentile=8.0) == SUB_ELITE
+```
+
+In `test_fitness_snapshot.py`:
+
+```python
+def _result(**kw):
+    base = {"source": "utmb", "race_name": "Trail 70K", "race_date": "2026-03-14", "is_dnf": False, "hidden": False,
+            "rank_overall": 40, "total_overall": 400, "rank_gender": None, "total_gender": None}
+    return {**base, **kw}
+
+
+class TestRacePercentile:
+    def test_gender_rank_preferred(self):
+        pct, label = fs.best_race_percentile([_result(rank_gender=10, total_gender=200)], TODAY)
+        assert pct == 5.0 and "Trail 70K" in label
+
+    def test_best_of_eligible_results(self):
+        results = [_result(), _result(race_name="Road HM", source="vbm", rank_overall=30, total_overall=1000)]
+        assert fs.best_race_percentile(results, TODAY)[0] == 3.0
+
+    @pytest.mark.parametrize("bad", [
+        {"source": "manual"}, {"is_dnf": True}, {"hidden": True}, {"total_overall": 30},
+        {"race_date": "2025-06-01"}, {"rank_overall": None},
+    ])
+    def test_ineligible_results_are_ignored(self, bad):
+        assert fs.best_race_percentile([_result(**bad)], TODAY) is None
+
+    def test_build_carries_the_percentile(self, stub_db, monkeypatch):
+        monkeypatch.setattr(fs, "_race_results", lambda uid: [_result(rank_overall=20, total_overall=400)])
+        snap = fs.build(30, today=TODAY)
+        assert snap.race_percentile == 5.0
+        snap.resolve_tier(None, "race", None, None, None, None)
+        assert "Best race: top 5%" in snap.prompt_block("en")
+```
+
+Add `_race_results = lambda uid: []` to the `stub_db` fixture: `monkeypatch.setattr(fs, "_race_results", lambda uid: [])`.
+
+- [ ] **Step 2: Run to verify failure** — `cd backend && pytest tests/unit/test_athlete_tier.py tests/unit/test_fitness_snapshot.py -v -k "percentile or Percentile"` → FAIL.
+
+- [ ] **Step 3: Implement in `athlete_tier.py`.** Add `"race_percentile": 10.0 / 25.0 / 50.0` to the ELITE / SUB_ELITE / RECREATIONAL entries of `PERF_BANDS` (comment: "field percentile, lower is better; unsourced like the rest"). Extend `performance_tier`:
+
+```python
+def performance_tier(
+    marathon_prediction_sec: float | None,
+    gender: str | None,
+    utmb_index: int | None,
+    race_percentile: float | None = None,
+) -> str | None:
+    factor = FEMALE_PACE_FACTOR if (gender or "").lower() == "female" else 1.0
+    for key in (ELITE, SUB_ELITE, RECREATIONAL):
+        band = PERF_BANDS[key]
+        if marathon_prediction_sec and marathon_prediction_sec <= band["marathon_sec"] * factor:
+            return key
+        if utmb_index and utmb_index >= band["utmb_index"]:
+            return key
+        if race_percentile is not None and race_percentile <= band["race_percentile"]:
+            return key
+    return None
+```
+
+Add `race_percentile: float | None = None` to `explain_tier`, `derive_tier` (forward it) and pass it into `performance_tier(marathon_prediction_sec, gender, utmb_index, race_percentile)`.
+
+- [ ] **Step 4: Implement in `fitness_snapshot.py`.**
+
+```python
+RESULT_MAX_AGE = timedelta(days=365)
+MIN_FIELD = 50
+IMPORTED_SOURCES = ("utmb", "vbm")
+
+
+def _race_results(user_id: int) -> list[dict[str, Any]]:
+    from services.race_history import list_results
+
+    return list_results(user_id, include_unselected=False)
+
+
+def best_race_percentile(results: list[dict[str, Any]], today: date) -> tuple[float, str] | None:
+    """Best (lowest) field percentile among recent imported finishes. Gender rank when
+    the source has it, overall otherwise; small fields are too noisy to count."""
+    best = None
+    for r in results:
+        if r.get("source") not in IMPORTED_SOURCES or r.get("is_dnf") or r.get("hidden"):
+            continue
+        raced = r["race_date"] if isinstance(r["race_date"], date) else date.fromisoformat(str(r["race_date"]))
+        if today - raced > RESULT_MAX_AGE:
+            continue
+        rank, total = r.get("rank_gender"), r.get("total_gender")
+        if not (rank and total):
+            rank, total = r.get("rank_overall"), r.get("total_overall")
+        if not (rank and total) or total < MIN_FIELD:
+            continue
+        pct = round(100.0 * rank / total, 1)
+        if best is None or pct < best[0]:
+            best = (pct, f"{r['race_name']} {raced.isoformat()}")
+    return best
+```
+
+Add fields `race_percentile: float | None = None` and `race_percentile_label: str | None = None` to `FitnessSnapshot` (after `readiness`, before `notes` — fields with defaults must follow those without). In `build`, compute `rp = best_race_percentile(_race_results(user_id), today)` inside `try/except Exception: rp = None` (race history must never block a plan) and pass `race_percentile=rp[0] if rp else None, race_percentile_label=rp[1] if rp else None`. In `resolve_tier`, pass `race_percentile=self.race_percentile`. In `prompt_block`, after the UTMB line:
+
+```python
+        if self.race_percentile is not None:
+            lines.append(f"- Best race: top {self.race_percentile:.0f}% of field ({self.race_percentile_label})")
+```
+
+Update the Task 9 golden-fixture JSON `fitness_snapshot` objects only if `FitnessSnapshot(**data)` now fails (it will not: the new fields have defaults).
+
+- [ ] **Step 5: Run tests** — `cd backend && pytest tests/unit/test_athlete_tier.py tests/unit/test_fitness_snapshot.py -v` → all pass.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add backend/services/athlete_tier.py backend/services/fitness_snapshot.py backend/tests/unit
+git commit -m "feat(tier): best recent race-result percentile can promote one step"
 ```
 
 ---

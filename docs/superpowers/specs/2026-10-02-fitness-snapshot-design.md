@@ -94,7 +94,8 @@ Each signal carries `value`, `source` (`coros | race_history | self_reported`),
 |---|---|---|---|
 | Weekly volume (km, vert) | Mean of the last 4 complete Mon–Sun weeks of running activities | Typed km/week | A week counts only if it ended before `last_sync_at`; at least 3 counted weeks required. Running = the activity types `get_user_activity_ceiling` treats as running, excluding duplicates |
 | Threshold pace | Latest assessment | Typed `users.threshold_pace` | Assessment ≤ 60 days old |
-| Performance (tiering) | Marathon prediction (latest assessment); UTMB index | None | Assessment ≤ 60 days. VO2max and the other predictions are prompt context only; race results stay in the existing RACE HISTORY block and long-run ceiling |
+| Chronic load cap | 12-week mean of complete covered weeks (needs ≥ 8) | None (cap not applied) | Effective volume = min(4-week mean, 1.15 × 12-week mean); km and vert scaled together. A spike cannot lift the tier past what the long-term load supports; a dip still uses the lower 4-week value |
+| Performance (tiering) | Marathon prediction (latest assessment); UTMB index; best imported race-result percentile | None | Assessment ≤ 60 days. VO2max and the other predictions are prompt context only; race results stay in the existing RACE HISTORY block and long-run ceiling |
 | AeT/AnT | Typed values | None | Usable for tiering only when `threshold_source` is `lab` or `field` |
 | Load and recovery | `daily_metrics`, last 14 days: load ratio, HRV trend, resting HR | None | Prompt context only, never tiering |
 
@@ -125,6 +126,10 @@ Replaces the current `derive_tier` ordering. Order:
    - Marathon prediction (men): elite ≤ 2:40, sub-elite ≤ 3:10, recreational ≤ 4:15.
      Women: thresholds 12% slower. Unknown gender: men's thresholds (conservative).
    - UTMB index: elite ≥ 700, sub-elite ≥ 550, recreational ≥ 400.
+   - Race-result percentile (imported UTMB/VBM finishes in the last 12 months, field of
+     at least 50, not DNF or hidden; gender rank when present, else overall; best result
+     counts): elite ≤ 10%, sub-elite ≤ 25%, recreational ≤ 50%. Manual results are
+     excluded, matching the existing rule that only imported finishes feed the tier.
    - Best (highest) mapped tier across available signals is used.
 6. **Demote** on the AeT/AnT gap only when `threshold_source in ("lab", "field")`. The
    existing limits and the stop-at-`recreational` behaviour stay.
