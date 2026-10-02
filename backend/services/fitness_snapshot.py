@@ -25,6 +25,10 @@ MIN_CHRONIC_WEEKS = 8
 # A 4-week block may run this far above the 12-week mean before the cap bites:
 # roughly the 10%/week progression ceiling compounded over a short build.
 CHRONIC_SPIKE_ALLOWANCE = 1.15
+RIEGEL_EXPONENT = 1.06
+MARATHON_KM = 42.195
+ROAD_MIN_KM, ROAD_MAX_KM = 5.0, 42.5
+RESULT_MAX_AGE = timedelta(days=365)
 
 
 def _monday(d: date) -> date:
@@ -91,6 +95,37 @@ def chronic_weekly_volume(
     return round(sum(w["km"] for _, w in counted) / len(counted), 1)
 
 
+def _race_results(user_id: int) -> list[dict[str, Any]]:
+    from services.race_history import list_results
+
+    return list_results(user_id, include_unselected=False)
+
+
+def riegel_marathon_sec(finish_sec: float, distance_km: float) -> float:
+    """Riegel's rule of thumb; most reliable from 10 km to the marathon."""
+    return finish_sec * (MARATHON_KM / distance_km) ** RIEGEL_EXPONENT
+
+
+def best_road_marathon_equivalent(results: list[dict[str, Any]], today: date) -> tuple[float, str] | None:
+    """Fastest marathon equivalent among recent imported road finishes. Road times are
+    absolute, unlike field percentiles, which depend on how deep each race's field is.
+    Trail results count through the UTMB index instead."""
+    best = None
+    for r in results:
+        if r.get("source") != "vbm" or r.get("discipline") != "road" or r.get("is_dnf") or r.get("hidden"):
+            continue
+        km, sec = r.get("distance_km"), r.get("finish_time_sec")
+        if not km or not sec or not (ROAD_MIN_KM <= float(km) <= ROAD_MAX_KM):
+            continue
+        raced = r["race_date"] if isinstance(r["race_date"], date) else date.fromisoformat(str(r["race_date"]))
+        if today - raced > RESULT_MAX_AGE:
+            continue
+        equiv = round(riegel_marathon_sec(float(sec), float(km)))
+        if best is None or equiv < best[0]:
+            best = (equiv, f"{r['race_name']} {raced.isoformat()}")
+    return best
+
+
 def _pace_sec(pace: str | None) -> float | None:
     """'3:53' -> 233.0; None or unparsable -> None."""
     try:
@@ -118,6 +153,8 @@ class FitnessSnapshot:
     threshold_source: str
     gender: str | None
     readiness: dict[str, Any] | None
+    road_marathon_sec: float | None = None
+    road_marathon_label: str | None = None
     notes: list[str] = field(default_factory=list)
     tier: str | None = None
     tier_reasons: list[str] = field(default_factory=list)
@@ -136,7 +173,7 @@ class FitnessSnapshot:
         previous_tier: str | None = None,
     ) -> str:
         a = self.assessment or {}
-        marathons = [m for m in (a.get("pred_marathon_sec"), getattr(self, "road_marathon_sec", None)) if m]
+        marathons = [m for m in (a.get("pred_marathon_sec"), self.road_marathon_sec) if m]
         decision = resolve_tier_explained(
             explicit_tier=explicit_tier,
             goal_type=goal_type,
@@ -183,6 +220,10 @@ class FitnessSnapshot:
                 lines.append(f"- {', '.join(preds)} (COROS, {day})")
             if a.get("vo2max"):
                 lines.append(f"- VO2max {a['vo2max']:.0f} (COROS, {day})")
+        if self.road_marathon_sec:
+            lines.append(
+                f"- Road result: marathon equivalent {_hms(self.road_marathon_sec)} ({self.road_marathon_label})"
+            )
         if self.threshold_pace:
             lines.append(
                 f"- Threshold pace {self.threshold_pace}/km ({src[self.threshold_pace_source or 'self_reported']})"
@@ -255,6 +296,11 @@ def build(
         notes.append("COROS assessment older than 60 days, unused")
         assessment = None
 
+    try:
+        road = best_road_marathon_equivalent(_race_results(user_id), today)
+    except Exception:
+        road = None  # race history must never block a plan
+
     if assessment and assessment.get("threshold_pace"):
         tp, tp_src = assessment["threshold_pace"], "coros"
     elif user.get("threshold_pace"):
@@ -274,5 +320,7 @@ def build(
         threshold_source=user.get("threshold_source") or "unknown",
         gender=user.get("gender"),
         readiness=db.get_recent_readiness_summary(user_id, days=READINESS_DAYS) if connected else None,
+        road_marathon_sec=road[0] if road else None,
+        road_marathon_label=road[1] if road else None,
         notes=notes,
     )

@@ -73,6 +73,7 @@ def stub_db(monkeypatch):
     monkeypatch.setattr(fs.db, "get_first_activity_at", lambda uid, p: FIRST)
     monkeypatch.setattr(fs.db, "get_utmb_index", lambda uid: state["utmb"])
     monkeypatch.setattr(fs.db, "get_recent_readiness_summary", lambda uid, days=7: {"days_recorded": 0})
+    monkeypatch.setattr(fs, "_race_results", lambda uid: [])
     return state
 
 
@@ -189,3 +190,65 @@ class TestChronicCap:
     def test_short_history_skips_the_cap(self, stub_db):
         # the default stub has data from 2026-08-23 only: < 8 weeks, cap not applied
         assert fs.build(30, today=TODAY).weekly_km == pytest.approx(133.7, abs=0.1)
+
+
+def _road(**kw):
+    base = {
+        "source": "vbm",
+        "discipline": "road",
+        "race_name": "City HM",
+        "race_date": "2026-03-14",
+        "distance_km": 21.0975,
+        "finish_time_sec": 4800,
+        "is_dnf": False,
+        "hidden": False,
+    }
+    return {**base, **kw}
+
+
+class TestRoadEquivalent:
+    def test_riegel(self):
+        # 1:20:00 half -> about 2:46:46 marathon with exponent 1.06
+        assert fs.riegel_marathon_sec(4800, 21.0975) == pytest.approx(10006, abs=5)
+        assert fs.riegel_marathon_sec(10800, 42.195) == pytest.approx(10800, abs=1)
+
+    def test_fastest_eligible_result_wins(self):
+        sec, label = fs.best_road_marathon_equivalent(
+            [_road(), _road(race_name="10K", distance_km=10.0, finish_time_sec=2100)], TODAY
+        )
+        assert sec == pytest.approx(fs.riegel_marathon_sec(2100, 10.0), abs=1)
+        assert "10K" in label
+
+    @pytest.mark.parametrize(
+        "bad",
+        [
+            {"source": "manual"},
+            {"source": "utmb"},
+            {"discipline": "trail"},
+            {"is_dnf": True},
+            {"hidden": True},
+            {"race_date": "2025-06-01"},
+            {"distance_km": 3.0},
+            {"distance_km": 50.0},
+            {"finish_time_sec": None},
+        ],
+    )
+    def test_ineligible_results_are_ignored(self, bad):
+        assert fs.best_road_marathon_equivalent([_road(**bad)], TODAY) is None
+
+    def test_road_result_feeds_the_tier_when_faster_than_the_predictor(self, stub_db, monkeypatch):
+        stub_db["assessment"]["pred_marathon_sec"] = 12000.0  # 3:20
+        monkeypatch.setattr(fs, "_race_results", lambda uid: [_road()])  # ~2:46:46 equivalent
+        snap = fs.build(30, today=TODAY)
+        assert snap.road_marathon_sec == pytest.approx(10006, abs=5)
+        snap.resolve_tier(None, "race", None, None, None, None)
+        assert any("performance" in r and "marathon" in r for r in snap.tier_reasons)
+        assert snap.tier_levels["performance"] > 3.7
+        assert "Road result" in snap.prompt_block("en")
+
+    def test_race_history_failure_never_blocks(self, stub_db, monkeypatch):
+        def boom(uid):
+            raise RuntimeError("db down")
+
+        monkeypatch.setattr(fs, "_race_results", boom)
+        assert fs.build(30, today=TODAY).road_marathon_sec is None
