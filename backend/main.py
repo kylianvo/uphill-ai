@@ -1518,6 +1518,15 @@ def _build_athlete_context_block(athlete: dict[str, Any]) -> str:
     history_text = race_history.prompt_summary(athlete["id"])
     if history_text:
         lines.append(history_text)
+    snap = plan.get("fitness_snapshot") or {}
+    if plan.get("athlete_tier"):
+        score = f" (score {snap['tier_score']:.1f})" if snap.get("tier_score") is not None else ""
+        volume = (
+            f" · plan volume base {snap['weekly_km']:.0f} km ({snap.get('weekly_km_source', 'self_reported')})"
+            if snap.get("weekly_km") is not None
+            else ""
+        )
+        lines.append(f"Level: {plan['athlete_tier']}{score}{volume}")
     if athlete.get("threshold_pace"):
         lines.append(f"Threshold Pace: {athlete['threshold_pace']}/km | VO2max: {athlete.get('coros_vo2max') or 'N/A'}")
 

@@ -324,3 +324,19 @@ def build(
         road_marathon_label=road[1] if road else None,
         notes=notes,
     )
+
+
+def chat_summary(user_id: int, plan: dict[str, Any] | None) -> dict[str, Any]:
+    """The few fitness facts chat surfaces show: measured-first weekly km with its
+    source, and the tier the active plan was written for. Never raises."""
+    try:
+        snap = build(user_id)
+        out: dict[str, Any] = {"weekly_km": snap.weekly_km, "weekly_km_source": snap.weekly_km_source}
+    except Exception:
+        out = {}
+    if plan:
+        stored = plan.get("fitness_snapshot") or {}
+        out["athlete_tier"] = plan.get("athlete_tier")
+        if stored.get("tier_score") is not None:
+            out["tier_score"] = stored["tier_score"]
+    return out

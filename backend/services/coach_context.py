@@ -8,6 +8,7 @@ from typing import Any
 
 import db
 from db import CoachChatError
+from services import fitness_snapshot
 
 
 def _is_valid_web_url(url: str | None) -> bool:
@@ -18,17 +19,6 @@ def _is_valid_web_url(url: str | None) -> bool:
         return parsed.scheme in ("http", "https") and bool(parsed.netloc)
     except Exception:
         return False
-
-
-def _snapshot_or_none(user_id: int) -> dict[str, Any] | None:
-    """The athlete's current fitness snapshot; None when it cannot be built, so chat
-    never fails on fitness data."""
-    try:
-        from services.fitness_snapshot import build
-
-        return build(user_id).to_dict()
-    except Exception:
-        return None
 
 
 def build_chat_context(
@@ -49,6 +39,10 @@ def build_chat_context(
 
     # 1. Athlete profile & physiology
     athlete_row = db.get_user_by_id(user_id) or {}
+    plan = db.get_active_plan(user_id)
+    # Measured-first weekly km and the tier the active plan was written for, so chat
+    # quotes the same numbers the plan used (users has no tier column).
+    summary = fitness_snapshot.chat_summary(user_id, plan)
     athlete_context = {
         "age": athlete_row.get("age"),
         "gender": athlete_row.get("gender"),
@@ -58,18 +52,17 @@ def build_chat_context(
         "resting_hr": athlete_row.get("resting_hr"),
         "aet_hr": athlete_row.get("aet_hr"),
         "ant_hr": athlete_row.get("ant_hr"),
-        "current_weekly_km": athlete_row.get("current_weekly_km"),
+        "current_weekly_km": summary.get("weekly_km", athlete_row.get("current_weekly_km")),
+        "weekly_km_source": summary.get("weekly_km_source", "self_reported"),
         "zone2_pace_min": athlete_row.get("zone2_pace_min"),
         "zone2_pace_max": athlete_row.get("zone2_pace_max"),
         "threshold_pace": athlete_row.get("threshold_pace"),
-        "athlete_tier": athlete_row.get("athlete_tier"),
+        "athlete_tier": summary.get("athlete_tier"),
         "goal_type": athlete_row.get("goal_type"),
         "threshold_source": athlete_row.get("threshold_source"),
-        "fitness_snapshot": _snapshot_or_none(user_id),
     }
 
-    # 2. Plan and planned workouts
-    plan = db.get_active_plan(user_id)
+    # 2. Plan and planned workouts (plan loaded above)
     plan_workouts: list[dict[str, Any]] = []
     if plan and plan.get("id"):
         all_workouts = db.get_plan_workouts(plan["id"]) or []

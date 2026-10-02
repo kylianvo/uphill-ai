@@ -252,3 +252,16 @@ class TestRoadEquivalent:
 
         monkeypatch.setattr(fs, "_race_results", boom)
         assert fs.build(30, today=TODAY).road_marathon_sec is None
+
+
+def test_chat_summary_uses_snapshot_volume_and_plan_tier(stub_db):
+    plan = {"athlete_tier": "sub_elite", "fitness_snapshot": {"tier_score": 3.4}}
+    out = fs.chat_summary(30, plan)
+    assert out["weekly_km_source"] == "coros"
+    assert out["weekly_km"] == pytest.approx(133.7, abs=0.1)
+    assert out["athlete_tier"] == "sub_elite" and out["tier_score"] == 3.4
+
+
+def test_chat_summary_survives_a_snapshot_failure(monkeypatch):
+    monkeypatch.setattr(fs, "build", lambda uid: (_ for _ in ()).throw(RuntimeError("down")))
+    assert fs.chat_summary(30, None) == {}
