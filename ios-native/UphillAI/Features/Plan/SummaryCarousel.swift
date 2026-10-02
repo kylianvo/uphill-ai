@@ -152,7 +152,7 @@ struct SummaryCarousel: View {
                 }
             }
         )
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
     }
 
     private var weekCard: some View {

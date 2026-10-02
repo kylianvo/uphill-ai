@@ -5,47 +5,190 @@ struct SetupSteps: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: UH.Space.section) {
-            Label(coachLine, systemImage: "mountain.2.fill")
-                .font(.callout).foregroundStyle(UH.Palette.secondary)
+            // Coach Uphill Banner
+            HStack(alignment: .top, spacing: UH.Space.small) {
+                Image(systemName: "figure.run.circle.fill")
+                    .font(.title3)
+                    .foregroundStyle(UH.Palette.accentInk)
+                Text(coachLine)
+                    .font(UH.TextStyle.caption)
+                    .foregroundStyle(UH.Palette.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.horizontal, UH.Space.regular)
+            .padding(.vertical, UH.Space.small)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(UH.Palette.card)
+            .clipShape(RoundedRectangle(cornerRadius: UH.Radius.landing))
+            .overlay(RoundedRectangle(cornerRadius: UH.Radius.landing).stroke(UH.Palette.line, lineWidth: 1))
+
             switch model.step {
             case .goal:
                 Text("What are you training for?").font(UH.TextStyle.screenTitle)
-                goal("A trail race", .race, terrain: .trail, symbol: "mountain.2")
-                goal("A road race", .race, terrain: .road, symbol: "flag.checkered")
-                goal("Getting started", .startRunning, symbol: "figure.walk")
-                goal("Coming back after a break", .returning, symbol: "arrow.uturn.forward")
-                goal("Recovering from a race", .recovery, symbol: "bed.double")
+                VStack(spacing: UH.Space.small) {
+                    goal("A trail race", .race, terrain: .trail, symbol: "mountain.2")
+                    goal("A road race", .race, terrain: .road, symbol: "flag.checkered")
+                    goal("Getting started", .startRunning, symbol: "figure.walk")
+                    goal("Coming back after a break", .returning, symbol: "arrow.uturn.forward")
+                    goal("Recovering from a race", .recovery, symbol: "bed.double")
+                }
             case .details:
                 details
             case .raceDate:
                 Text("When is it?").font(UH.TextStyle.screenTitle)
-                DatePicker("Race date", selection: Binding(get: { model.draft.raceDate ?? model.earliestRaceDate }, set: { model.draft.raceDate = $0 }), in: model.earliestRaceDate..., displayedComponents: .date)
-                Text("That's \(model.weeksToRace) weeks away").foregroundStyle(UH.Palette.secondary)
-                SetupError(model: model, field: .raceDate)
+
+                VStack(alignment: .leading, spacing: UH.Space.regular) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("EVENT DATE").font(UH.TextStyle.eyebrow).foregroundStyle(UH.Palette.secondary)
+                        Text("Coach Uphill will count back your training phases from race day.")
+                            .font(UH.TextStyle.caption)
+                            .foregroundStyle(UH.Palette.secondary)
+                    }
+
+                    DatePicker(
+                        "Race date",
+                        selection: Binding(get: { model.draft.raceDate ?? model.earliestRaceDate }, set: { model.draft.raceDate = $0 }),
+                        in: model.earliestRaceDate...,
+                        displayedComponents: .date
+                    )
+                    .datePickerStyle(.graphical)
+                    .tint(UH.Palette.accentInk)
+                    .id(SetupField.raceDate)
+
+                    HStack(spacing: 8) {
+                        Image(systemName: "calendar.badge.clock")
+                            .font(.headline)
+                            .foregroundStyle(UH.Palette.accentInk)
+                        Text("That's \(model.weeksToRace) weeks away")
+                            .font(UH.TextStyle.label)
+                            .foregroundStyle(UH.Palette.ink)
+                    }
+                    .padding(UH.Space.small)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(UH.Palette.activeFill, in: RoundedRectangle(cornerRadius: UH.Radius.control))
+
+                    SetupError(model: model, field: .raceDate)
+                }
+                .trainingCard()
+
             case .fitnessFeel:
                 Text("How do you feel right now?").font(UH.TextStyle.screenTitle)
                 options(PlanSetupDraft.fitnessFeelOptions, selection: $model.draft.fitnessFeel)
             case .daysSinceRace:
                 Text("When did you finish?").font(UH.TextStyle.screenTitle)
-                Picker("Days since the race", selection: $model.draft.daysSinceRace) {
-                    ForEach(0...60, id: \.self) { Text("\($0) days ago").tag($0) }
+
+                VStack(alignment: .leading, spacing: UH.Space.regular) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("TIME SINCE RACE").font(UH.TextStyle.eyebrow).foregroundStyle(UH.Palette.secondary)
+                        Text("Used to calculate your remaining acute fatigue and recovery phase.")
+                            .font(UH.TextStyle.caption)
+                            .foregroundStyle(UH.Palette.secondary)
+                    }
+
+                    HStack(alignment: .firstTextBaseline) {
+                        Text("\(model.draft.daysSinceRace)")
+                            .font(.system(size: 40, weight: .bold, design: .rounded))
+                            .foregroundStyle(UH.Palette.ink)
+                        Text(model.draft.daysSinceRace == 1 ? "day ago" : "days ago")
+                            .font(UH.TextStyle.label)
+                            .foregroundStyle(UH.Palette.secondary)
+                        Spacer()
+                        Stepper("Days since the race", value: $model.draft.daysSinceRace, in: 0...60)
+                            .labelsHidden()
+                    }
+
+                    Picker("Days since the race", selection: $model.draft.daysSinceRace) {
+                        ForEach(0...60, id: \.self) { Text("\($0) days ago").tag($0) }
+                    }
+                    .pickerStyle(.wheel)
+                    .frame(height: 110)
                 }
+                .trainingCard()
+
             case .recoveryFeel:
                 Text("How does your body feel?").font(UH.TextStyle.screenTitle)
                 options(PlanSetupDraft.recoveryFeelOptions, selection: $model.draft.recoveryFeel)
             case .schedule:
                 Text("How much do you run now?").font(UH.TextStyle.screenTitle)
-                Stepper("Runs per week: \(model.draft.daysPerWeek)", value: Binding(get: { model.draft.daysPerWeek }, set: model.setDaysPerWeek), in: 3...7)
-                Stepper("\(Int(model.draft.currentWeeklyKm)) km a week", value: $model.draft.currentWeeklyKm, in: 0...250, step: 5)
-                SetupError(model: model, field: .weeklyKm)
+
+                VStack(alignment: .leading, spacing: UH.Space.regular) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("RUNS PER WEEK").font(UH.TextStyle.eyebrow).foregroundStyle(UH.Palette.secondary)
+                        HStack(alignment: .firstTextBaseline) {
+                            Text("\(model.draft.daysPerWeek)")
+                                .font(.system(size: 36, weight: .bold, design: .rounded))
+                                .foregroundStyle(UH.Palette.ink)
+                            Text("runs / week")
+                                .font(UH.TextStyle.label)
+                                .foregroundStyle(UH.Palette.secondary)
+                            Spacer()
+                            Stepper("Runs per week: \(model.draft.daysPerWeek)", value: Binding(get: { model.draft.daysPerWeek }, set: model.setDaysPerWeek), in: 3...7)
+                                .labelsHidden()
+                        }
+                    }
+
+                    // Visual day dots
+                    HStack(spacing: 8) {
+                        ForEach(0..<7, id: \.self) { index in
+                            Circle()
+                                .fill(index < model.draft.daysPerWeek ? UH.Palette.accent : UH.Palette.line)
+                                .frame(height: 10)
+                        }
+                    }
+                }
+                .trainingCard()
+
+                VStack(alignment: .leading, spacing: UH.Space.regular) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("WEEKLY VOLUME").font(UH.TextStyle.eyebrow).foregroundStyle(UH.Palette.secondary)
+                        HStack(alignment: .firstTextBaseline) {
+                            Text("\(Int(model.draft.currentWeeklyKm))")
+                                .font(.system(size: 36, weight: .bold, design: .rounded))
+                                .foregroundStyle(UH.Palette.ink)
+                            Text("km / week")
+                                .font(UH.TextStyle.label)
+                                .foregroundStyle(UH.Palette.secondary)
+                            Spacer()
+                            Stepper("\(Int(model.draft.currentWeeklyKm)) km a week", value: $model.draft.currentWeeklyKm, in: 0...250, step: 5)
+                                .labelsHidden()
+                        }
+                    }
+                    SetupError(model: model, field: .weeklyKm)
+                }
+                .trainingCard()
+
             case .startDate:
                 Text("When do you want to start?").font(UH.TextStyle.screenTitle)
-                DatePicker("Start date", selection: $model.draft.startDate, in: model.today...model.latestStartDate, displayedComponents: .date)
-                SetupError(model: model, field: .startDate)
-            case .aboutYou: EmptyView()
-            case .review: SetupReviewStep(model: model)
+
+                VStack(alignment: .leading, spacing: UH.Space.regular) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("START DATE").font(UH.TextStyle.eyebrow).foregroundStyle(UH.Palette.secondary)
+                        Text("Pick today or any day in the next two weeks.")
+                            .font(UH.TextStyle.caption)
+                            .foregroundStyle(UH.Palette.secondary)
+                    }
+
+                    DatePicker(
+                        "Start date",
+                        selection: $model.draft.startDate,
+                        in: model.today...model.latestStartDate,
+                        displayedComponents: .date
+                    )
+                    .datePickerStyle(.graphical)
+                    .tint(UH.Palette.accentInk)
+                    .id(SetupField.startDate)
+
+                    SetupError(model: model, field: .startDate)
+                }
+                .trainingCard()
+
+            case .aboutYou:
+                EmptyView()
+            case .review:
+                SetupReviewStep(model: model)
             }
-        }.frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .task(id: model.draft.raceName) { await model.searchRace() }
     }
 
@@ -71,23 +214,78 @@ struct SetupSteps: View {
     @ViewBuilder private var details: some View {
         if model.draft.goal?.isEvent == true {
             Text("Which race?").font(UH.TextStyle.screenTitle)
-            SetupFieldBox("Race name") {
-                TextField("Race name", text: $model.draft.raceName).textFieldStyle(.roundedBorder)
-            }.id(SetupField.raceName)
-            SetupError(model: model, field: .raceName)
-            ForEach(Array(model.raceCandidates.enumerated()), id: \.offset) { _, race in
-                SetupOption(title: race.raceName, subtitle: race.distanceLabel ?? "", selected: false) { model.selectRace(race) }
-            }
-            if let race = model.selectedRace {
-                Label("\(race.raceName) · \(race.distanceLabel ?? "")", systemImage: "checkmark.circle")
-            } else {
-                SetupFieldBox("Distance (km)") {
-                    TextField("Distance (km)", value: $model.draft.distanceKm, format: .number).keyboardType(.decimalPad).textFieldStyle(.roundedBorder)
-                }.id(SetupField.distance)
-                SetupError(model: model, field: .distance)
-                SetupFieldBox("Elevation gain (m)") {
-                    TextField("Optional", value: $model.draft.elevationGainM, format: .number).keyboardType(.numberPad).textFieldStyle(.roundedBorder)
+
+            VStack(alignment: .leading, spacing: UH.Space.regular) {
+                VStack(alignment: .leading, spacing: UH.Space.compact) {
+                    Text("Race name").font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
+                    HStack(spacing: 8) {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundStyle(UH.Palette.muted)
+                        TextField("Search race name or enter manually", text: $model.draft.raceName)
+                    }
+                    .padding(UH.Space.small)
+                    .background(UH.Palette.surface, in: RoundedRectangle(cornerRadius: UH.Radius.control))
+                    .overlay(RoundedRectangle(cornerRadius: UH.Radius.control).stroke(UH.Palette.line, lineWidth: 1))
                 }
+                .id(SetupField.raceName)
+
+                SetupError(model: model, field: .raceName)
+            }
+            .trainingCard()
+
+            ForEach(Array(model.raceCandidates.enumerated()), id: \.offset) { _, race in
+                SetupOption(title: race.raceName, subtitle: race.distanceLabel ?? "", symbol: "flag.checkered", selected: false) {
+                    model.selectRace(race)
+                }
+            }
+
+            if let race = model.selectedRace {
+                HStack(spacing: 12) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.title2)
+                        .foregroundStyle(UH.Palette.accentInk)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(race.raceName).font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
+                        if let dist = race.distanceLabel {
+                            Text(dist).font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary)
+                        }
+                    }
+                    Spacer()
+                    Button("Change") {
+                        model.selectedRace = nil
+                    }
+                    .font(UH.TextStyle.caption.weight(.semibold))
+                    .foregroundStyle(UH.Palette.accentInk)
+                }
+                .padding(UH.Space.regular)
+                .background(UH.Palette.activeFill, in: RoundedRectangle(cornerRadius: UH.Radius.landing))
+                .overlay(RoundedRectangle(cornerRadius: UH.Radius.landing).stroke(UH.Palette.accent, lineWidth: 1))
+            } else {
+                VStack(alignment: .leading, spacing: UH.Space.regular) {
+                    Text("Manual Course Profile").font(UH.TextStyle.sectionTitle).foregroundStyle(UH.Palette.ink)
+
+                    VStack(alignment: .leading, spacing: UH.Space.compact) {
+                        Text("Distance (km)").font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
+                        TextField("Distance (km)", value: $model.draft.distanceKm, format: .number)
+                            .keyboardType(.decimalPad)
+                            .padding(UH.Space.small)
+                            .background(UH.Palette.surface, in: RoundedRectangle(cornerRadius: UH.Radius.control))
+                            .overlay(RoundedRectangle(cornerRadius: UH.Radius.control).stroke(UH.Palette.line, lineWidth: 1))
+                    }
+                    .id(SetupField.distance)
+
+                    SetupError(model: model, field: .distance)
+
+                    VStack(alignment: .leading, spacing: UH.Space.compact) {
+                        Text("Elevation gain (m)").font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
+                        TextField("Optional (meters)", value: $model.draft.elevationGainM, format: .number)
+                            .keyboardType(.numberPad)
+                            .padding(UH.Space.small)
+                            .background(UH.Palette.surface, in: RoundedRectangle(cornerRadius: UH.Radius.control))
+                            .overlay(RoundedRectangle(cornerRadius: UH.Radius.control).stroke(UH.Palette.line, lineWidth: 1))
+                    }
+                }
+                .trainingCard()
             }
         } else if model.draft.goal == .returning {
             Text("How long have you been away?").font(UH.TextStyle.screenTitle)
@@ -99,44 +297,116 @@ struct SetupSteps: View {
     }
 
     private func options(_ values: [String], selection: Binding<String?>) -> some View {
-        ForEach(values, id: \.self) { value in
-            SetupOption(title: value, selected: selection.wrappedValue == value) { selection.wrappedValue = value }
+        VStack(spacing: UH.Space.small) {
+            ForEach(values, id: \.self) { value in
+                SetupOption(
+                    title: value,
+                    symbol: optionSymbol(for: value),
+                    selected: selection.wrappedValue == value
+                ) {
+                    selection.wrappedValue = value
+                }
+            }
+        }
+    }
+
+    private func optionSymbol(for value: String) -> String {
+        switch value {
+        case "< 2 weeks": return "clock.arrow.circlepath"
+        case "2–6 weeks": return "calendar.badge.clock"
+        case "1–3 months": return "calendar"
+        case "3–6 months": return "moon.stars.fill"
+        case "6+ months": return "hourglass"
+        case "Feeling good, just need structure": return "flame.fill"
+        case "A bit rusty, slightly deconditioned": return "figure.walk"
+        case "Significant deconditioning — starting nearly fresh": return "heart.text.square.fill"
+        case "5k": return "figure.run"
+        case "10k": return "figure.run.circle"
+        case "Half Marathon": return "medal"
+        case "Marathon": return "medal.fill"
+        case "Ultra (< 60k)": return "mountain.2"
+        case "Ultra (60k+)": return "mountain.2.fill"
+        case "Feeling great, minimal soreness": return "sparkles"
+        case "Moderate fatigue, some soreness": return "battery.50percent"
+        case "Very fatigued — need real rest": return "bed.double.fill"
+        default: return "circle.fill"
         }
     }
 }
 
 private struct SetupReviewStep: View {
     @Bindable var model: PlanSetupViewModel
+
     var body: some View {
-        Text("Here's what I'll build from").font(UH.TextStyle.screenTitle)
-        VStack(alignment: .leading, spacing: UH.Space.regular) {
-            ForEach(Array(model.draft.summaryLines.enumerated()), id: \.offset) { index, line in
-                Button { model.jump(to: model.draft.goal?.isEvent == true && index < 2 ? .details : .schedule) } label: {
-                    HStack { Text(line).multilineTextAlignment(.leading); Spacer(); Image(systemName: "chevron.right") }.frame(minHeight: 44)
+        VStack(alignment: .leading, spacing: UH.Space.section) {
+            Text("Here's what I'll build from").font(UH.TextStyle.screenTitle)
+
+            VStack(alignment: .leading, spacing: UH.Space.regular) {
+                HStack(spacing: 8) {
+                    Image(systemName: "list.bullet.clipboard.fill")
+                        .foregroundStyle(UH.Palette.accentInk)
+                    Text("PLAN BLUEPRINT")
+                        .font(UH.TextStyle.eyebrow)
+                        .foregroundStyle(UH.Palette.secondary)
+                }
+
+                ForEach(Array(model.draft.summaryLines.enumerated()), id: \.offset) { index, line in
+                    if index > 0 { Divider() }
+                    Button {
+                        model.jump(to: model.draft.goal?.isEvent == true && index < 2 ? .details : .schedule)
+                    } label: {
+                        HStack(spacing: UH.Space.small) {
+                            Image(systemName: reviewIcon(index: index, line: line))
+                                .font(.subheadline)
+                                .foregroundStyle(UH.Palette.accentInk)
+                                .frame(width: 24)
+                            Text(line)
+                                .font(UH.TextStyle.label)
+                                .foregroundStyle(UH.Palette.ink)
+                                .multilineTextAlignment(.leading)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.footnote.weight(.semibold))
+                                .foregroundStyle(UH.Palette.muted)
+                        }
+                        .frame(minHeight: 44)
+                    }
+                    .buttonStyle(.plain)
                 }
             }
-        }.padding(UH.Space.regular).uhCard()
-        Text("Coach Uphill builds your first weeks now and adds each new week as you train.").foregroundStyle(UH.Palette.secondary)
-    }
-}
+            .trainingCard()
 
-private struct SetupFieldBox<Content: View>: View {
-    let title: String
-    @ViewBuilder let content: () -> Content
-    init(_ title: String, @ViewBuilder content: @escaping () -> Content) { self.title = title; self.content = content }
-    var body: some View {
-        VStack(alignment: .leading, spacing: UH.Space.compact) {
-            Text(title).font(UH.TextStyle.label)
-            content()
-        }.frame(maxWidth: .infinity, alignment: .leading)
+            HStack(alignment: .top, spacing: UH.Space.small) {
+                Image(systemName: "sparkles")
+                    .foregroundStyle(UH.Palette.accentInk)
+                Text("Coach Uphill builds your first weeks now and adds each new week as you train.")
+                    .font(UH.TextStyle.caption)
+                    .foregroundStyle(UH.Palette.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.horizontal, 4)
+        }
+    }
+
+    private func reviewIcon(index: Int, line: String) -> String {
+        if line.contains("race") || line.contains("Race") { return "flag.checkered" }
+        if line.contains("km") || line.contains("volume") { return "chart.bar.fill" }
+        if line.contains("run") || line.contains("days") { return "figure.run" }
+        if line.contains("Start") || line.contains("date") { return "calendar" }
+        return "checkmark.seal.fill"
     }
 }
 
 private struct SetupError: View {
     let model: PlanSetupViewModel
     let field: SetupField
+
     var body: some View {
-        if let error = model.issue(for: field) { Text(error).font(UH.TextStyle.caption).foregroundStyle(UH.Palette.danger) }
+        if let error = model.issue(for: field) {
+            Text(error)
+                .font(UH.TextStyle.caption)
+                .foregroundStyle(UH.Palette.danger)
+        }
     }
 }
 
@@ -146,27 +416,47 @@ private struct SetupOption: View {
     var symbol: String? = nil
     let selected: Bool
     let action: () -> Void
+
     var body: some View {
         Button(action: action) {
-            HStack(spacing: UH.Space.small) {
+            HStack(spacing: UH.Space.regular) {
                 if let symbol {
-                    Image(systemName: symbol).font(.title2.weight(.semibold)).frame(width: 36)
-                        .foregroundStyle(selected ? UH.Palette.buttonInk : UH.Palette.accentInk)
+                    ZStack {
+                        RoundedRectangle(cornerRadius: UH.Radius.control)
+                            .fill(selected ? UH.Palette.accentInk : UH.Palette.accent.opacity(0.12))
+                            .frame(width: 44, height: 44)
+                        Image(systemName: symbol)
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(selected ? Color.white : UH.Palette.accentInk)
+                    }
                 }
-                VStack(alignment: .leading, spacing: UH.Space.compact) {
-                    Text(title).font(.title3.weight(.bold))
-                    if let subtitle {
-                        Text(subtitle).font(UH.TextStyle.caption)
-                            .foregroundStyle(selected ? UH.Palette.buttonInk : UH.Palette.secondary)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(UH.TextStyle.label)
+                        .foregroundStyle(UH.Palette.ink)
+                    if let subtitle, !subtitle.isEmpty {
+                        Text(subtitle)
+                            .font(UH.TextStyle.caption)
+                            .foregroundStyle(UH.Palette.secondary)
                     }
                 }
                 Spacer(minLength: 0)
-                if selected { Image(systemName: "checkmark.circle.fill").font(.title2).foregroundStyle(UH.Palette.buttonInk) }
+                if selected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.title2)
+                        .foregroundStyle(UH.Palette.accentInk)
+                }
             }
-            .foregroundStyle(selected ? UH.Palette.buttonInk : UH.Palette.ink)
-            .multilineTextAlignment(.leading).padding(UH.Space.regular).frame(maxWidth: .infinity, minHeight: 72)
-            .background(selected ? UH.Palette.accent : UH.Palette.card, in: RoundedRectangle(cornerRadius: UH.Radius.panel))
-            .overlay(RoundedRectangle(cornerRadius: UH.Radius.panel).stroke(selected ? Color.clear : UH.Palette.line, lineWidth: 1))
-        }.buttonStyle(.plain).sensoryFeedback(.selection, trigger: selected)
+            .padding(UH.Space.regular)
+            .frame(maxWidth: .infinity, minHeight: 64)
+            .background(selected ? UH.Palette.activeFill : UH.Palette.card, in: RoundedRectangle(cornerRadius: UH.Radius.landing))
+            .overlay(
+                RoundedRectangle(cornerRadius: UH.Radius.landing)
+                    .stroke(selected ? UH.Palette.accent : UH.Palette.line, lineWidth: selected ? 1.5 : 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+        .sensoryFeedback(.selection, trigger: selected)
     }
 }

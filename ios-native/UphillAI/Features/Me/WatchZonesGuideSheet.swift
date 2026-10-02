@@ -34,9 +34,10 @@ struct WatchZonesGuideSheet: View {
                     Text("Polar: Polar Flow App > Sport Profiles > Heart Rate Zones.")
                     Text("Strava: You > Settings > Heart Rate > Max & Custom Zones.")
                 }
-            }.navigationTitle("How to Find Your Heart Rate Zones & Thresholds")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar { Button("Got it") { dismiss() } }
+            }
+            .navigationTitle("Heart Rate Zones Guide")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { Button("Got it") { dismiss() } }
         }
     }
 }
