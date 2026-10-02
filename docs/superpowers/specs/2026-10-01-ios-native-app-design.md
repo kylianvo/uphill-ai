@@ -107,13 +107,13 @@ Every athlete- and coach-facing view and component in `frontend/src` has a phase
 | `AuthModal`, `useAppAuth` | Email, Google, Apple sign-in | 0 (done) |
 | `PlannerView`, `PlanCalendarView`, `WorkoutCard`, `WorkoutDescription`, `FeelingSelector` | Plan week list, workout detail, done/missed, RPE, notes | 1 (done) |
 | `MoveWorkoutModal`, `ConfirmActionModal` | Move a workout, confirm destructive actions | 1 (done) |
-| `CalendarNoticeBanner` | Scheduling guard warnings and errors after a move or edit (e.g. two hard days in a row) | **2b** |
+| `CalendarNoticeBanner` | Scheduling guard warnings and errors after a move or edit (e.g. two hard days in a row) | 2b (done) |
 | `OnboardingWizard`, `RaceNameField`, `RaceMatchChip` | Onboarding, race search and match | 2 |
-| `ScheduleFieldsEditor` | Plan settings: days, long-run day, doubles, gym, treadmill, terrain | **2b** |
+| `ScheduleFieldsEditor` | Plan settings: days, long-run day, doubles, gym, treadmill, terrain | 2b (done) |
 | `WorkoutTypeSelect`, `WorkoutCard` edit fields | Add a workout, edit a workout (type, distance, duration, description) | 6 (coach-only on the web) |
 | `AdaptWeekModal`, `WeeklyReview` | Adapt week, weekly review | 2 |
-| `GoalPill`, `GoalResult`, `GoalContextView` | Goal pill, goal sheet, what the goal is based on | 2 (`GoalContextView`: **2b**) |
-| `ProfileSettingsModal`, `usePaceZones`, `WatchZonesGuideModal` | HR and pace zones, custom zones, threshold pace, athlete notes (no Gemini key: no BYOK), watch zone guide | **2b** |
+| `GoalPill`, `GoalResult`, `GoalContextView` | Goal pill, goal sheet, what the goal is based on | 2 (`GoalContextView`: 2b done) |
+| `ProfileSettingsModal`, `usePaceZones`, `WatchZonesGuideModal` | HR and pace zones, custom zones, threshold pace, athlete notes (no Gemini key: no BYOK), watch zone guide | 2b (done) |
 | `ChatTab`, `ChatView`, `ChatSources`, `ClarificationChipsBar`, `RichCardRenderer`, `ScheduleProposalCard`, `ScheduleRebuildCard`, `ToolExecutionPill`, `useCoachChat` | Coach Uphill chat | 3 |
 | `MatchReview`, `MatchedActivityCard`, `UnplannedActivityCard`, `useMatching` | Match finished runs to workouts | 4 |
 | `CorosPushButton`, `CorosAttribution`, `ConnectedAccounts`, `useDeviceConnection` | COROS push and accounts (WorkoutKit/HealthKit are the native path) | 4 (push, matching) and 5 (accounts) |

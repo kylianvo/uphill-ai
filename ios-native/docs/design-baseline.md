@@ -1,6 +1,6 @@
 # Phase 2b design baseline and audit
 
-The web components define behavior and copy; #81 SwiftUI sources define existing names. Screenshot capture and visual review were bypassed at the owner's request on 2026-10-02. This is a source audit, not a visual sign-off.
+The web components define behavior and copy; #81 SwiftUI sources define existing names. The initial audit used sources while screenshots were deferred. The owner reinstated after-shots for Tasks 2–8 in Task 9, before E2E. Simulator evidence and visual findings are recorded below.
 
 | Screen | Web | iOS #81 | Kotcha rule | Decision |
 |---|---|---|---|---|
@@ -35,3 +35,17 @@ Use the spec's light-only SF Pro system styles and existing UH tokens. Accent #1
 ## Found in the audit
 
 #81 has a manual race-name field, not the race search the Phase 2b snippet assumes. Adaptation must use an existing backend race-search endpoint without backend changes. The removed target-time and terrain options must remain reachable through settings rather than being silently discarded.
+
+
+## Task 9 visual evidence
+
+After-shots for Tasks 2–8 are in [screenshots/phase2b](screenshots/phase2b/). Each accepted capture was inspected once. Captures use the real SwiftUI screens with recorded API responses and local preview state; warnings, empty states and checklist completion use controlled presentation state. The capture-only harness was removed before final testing.
+
+The onboard/clarify review confirmed separate race/date, return/feeling and recovery questions, readable coach prompts, and a reachable primary action. The schedule screen was also checked at extra-extra-extra-large Dynamic Type. The polish/harden review confirmed system type hierarchy, consistent card spacing, 44-point Goal action, separate profile editors, and nonempty goal context groups. The watch guide's long native navigation title truncates; its instructional body remains readable. The adapt sheet capture shows its expanded disclosure; a separate schedule warning capture shows all editor rows and the inline warning. Workout card and week header content remain unchanged.
+
+Manual timing: **23.8 seconds**, Welcome → Getting started → default four runs / 30 km → today's start date → visible “Build my plan”. This measures navigation and answering with defaults, excluding registration and generation. The timer used manual Simulator clicks, not XCTest.
+
+Task 7 used a temporary second backend on localhost:8002, from this worktree, to record the current reassessment response. The app's local URL was restored to localhost:8000 and the second server stopped immediately afterward. Information-schema snapshots before and after startup were identical: init_db added no columns. No backend, prompt or schema changes; no Alembic or backend integration tests.
+
+
+Final verification: `test.sh` passed 163 tests across 24 suites. `e2e.sh` passed both live-local tests: account creation/onboarding/generation and sign-in/workout completion/undo. The first E2E run failed to tap Welcome while the Simulator retained the enlarged screenshot text setting; rerunning at default Large text passed. No product-code change was needed.
