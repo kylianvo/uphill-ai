@@ -98,14 +98,46 @@ Each phase ends with an internal TestFlight build. A phase is done when its plan
 
 Order rationale: Plan core first because it is what athletes open daily. Chat before Watch because chat only needs an existing endpoint, while Watch/Health need new backend endpoints and Apple entitlements review.
 
+### Capacitor parity matrix
+
+Every athlete- and coach-facing view and component in `frontend/src` has a phase. Each phase plan must cover its rows, and the Phase 7 audit ticks this table against the shipped app. Parity means the feature works the same; the look follows the revamp shell and the Kotcha review (fewer fields, sensible defaults), not the old screens.
+
+| Web view / component | Feature | Phase |
+|---|---|---|
+| `AuthModal`, `useAppAuth` | Email, Google, Apple sign-in | 0 (done) |
+| `PlannerView`, `PlanCalendarView`, `WorkoutCard`, `WorkoutDescription`, `FeelingSelector` | Plan week list, workout detail, done/missed, RPE, notes | 1 (done) |
+| `MoveWorkoutModal`, `ConfirmActionModal` | Move a workout, confirm destructive actions | 1 (done) |
+| `CalendarNoticeBanner` | Scheduling guard warnings and errors after a move or edit (e.g. two hard days in a row) | **2b** |
+| `OnboardingWizard`, `RaceNameField`, `RaceMatchChip` | Onboarding, race search and match | 2 |
+| `ScheduleFieldsEditor` | Plan settings: days, long-run day, doubles, gym, treadmill, terrain | **2b** |
+| `WorkoutTypeSelect`, `WorkoutCard` edit fields | Add a workout, edit a workout (type, distance, duration, description) | 6 (coach-only on the web) |
+| `AdaptWeekModal`, `WeeklyReview` | Adapt week, weekly review | 2 |
+| `GoalPill`, `GoalResult`, `GoalContextView` | Goal pill, goal sheet, what the goal is based on | 2 (`GoalContextView`: **2b**) |
+| `ProfileSettingsModal`, `usePaceZones`, `WatchZonesGuideModal` | HR and pace zones, custom zones, threshold pace, athlete notes (no Gemini key: no BYOK), watch zone guide | **2b** |
+| `ChatTab`, `ChatView`, `ChatSources`, `ClarificationChipsBar`, `RichCardRenderer`, `ScheduleProposalCard`, `ScheduleRebuildCard`, `ToolExecutionPill`, `useCoachChat` | Coach Uphill chat | 3 |
+| `MatchReview`, `MatchedActivityCard`, `UnplannedActivityCard`, `useMatching` | Match finished runs to workouts | 4 |
+| `CorosPushButton`, `CorosAttribution`, `ConnectedAccounts`, `useDeviceConnection` | COROS push and accounts (WorkoutKit/HealthKit are the native path) | 4 (push, matching) and 5 (accounts) |
+| `ToolsView`, `PaceStrategy`, `PacingSplitsView`, `RaceBreakdownCard`, `GearVault`, `NutritionLab`, `GoalDeterminer` | Tools | 5 |
+| `KnowledgeView`, `KnowledgeCard` | Knowledge Hub | 5 |
+| `RaceHistoryPanel` | Race history (UTMB, VBM, manual) | 5 |
+| `PendingInviteBanner`, `CoachNoteThread`, `useCoachNotes` | Athlete side of coaching: accept an invite, read and reply to notes | **6 (gap: athlete side)** |
+| `CoachDashboardView`, `useCoachDashboard`, `useCoachOverview`, `AdherenceTrendChart`, `MissedByDayChart`, `WorkoutTypeMixChart` | Coach roster, athlete overview, adherence charts | 6 |
+| `HomeTab`, `AboutTab`, `LegalShell`, `TermTooltip`/`ProfileExplainer` | Home summary, About, Terms and Privacy, term explanations | **7 (gap)**; Home is replaced by the Plan tab |
+| `AnalyticsProvider`, `useAnalytics` | Product analytics events | **7 (gap)** |
+| `landing/*`, `BetaDownloadModal`, `ApiUrlOverrideInit` | Marketing site, beta download, API override | Not in the app (environment switch covers the override) |
+
+Rows marked **gap** were missing from the phase plans on 2026-10-02. Phase 2 gaps are in the Phase 2b plan, so #81 can merge as it is.
+
 ## Plans
 
 Run each in a fresh session with `superpowers:subagent-driven-development`, in order:
 
 1. `docs/superpowers/plans/2026-10-01-ios-native-phase0-foundations.md`
 2. `docs/superpowers/plans/2026-10-01-ios-native-phase1-plan-core.md` (after Phase 0 and the web Phase 1 branch are merged)
+3. `docs/superpowers/plans/2026-10-01-ios-native-phase2-onboarding-generation.md` (after Phase 1 is merged)
+4. `docs/superpowers/plans/2026-10-02-ios-native-phase2b-parity-and-simplify.md` (stacked on Phase 2; Kotcha onboarding and parity gaps)
 
-Phases 2-7: write the plan with `superpowers:writing-plans` at the start of each phase, from this spec and the code as it then exists.
+Phases 3-7: write the plan with `superpowers:writing-plans` at the start of each phase, from this spec and the code as it then exists.
 
 ## Testing
 
