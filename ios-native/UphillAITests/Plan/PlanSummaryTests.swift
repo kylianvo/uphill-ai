@@ -39,6 +39,14 @@ struct PlanSummaryTests {
                                          TestData.workout(["id": 2, "duration_minutes": 20])]))
     }
 
+    @Test func volumeComparisonCalculatesHoursAndAdherence() {
+        let comp = PlanSummary.volumeComparison(week: 2, workouts: week2)
+        #expect(comp.currentHours == 3.8)
+        #expect(comp.plannedKm == 33.0)
+        #expect(comp.actualKm == 8.0)
+        #expect(comp.adherencePct == 33) // 1 of 3 active done
+    }
+
     @Test func phaseUsesFirstNonRestWorkoutOfWeek() {
         #expect(PlanSummary.phase(week: 2, workouts: week2) == "Base")
         #expect(PlanSummary.phase(week: 5, workouts: week2) == nil)

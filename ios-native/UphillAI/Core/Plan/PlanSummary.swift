@@ -10,6 +10,15 @@ struct WeekVolume: Equatable, Sendable {
     var hours: Double { (minutes / 60 * 10).rounded() / 10 }
 }
 
+struct WeekVolumeComparison: Equatable, Sendable {
+    let currentHours: Double
+    let previousHours: Double?
+    let diffHours: Double?
+    let plannedKm: Double
+    let actualKm: Double
+    let adherencePct: Int
+}
+
 enum DayState: Equatable, Sendable {
     case done, missed, planned, rest
 }
@@ -29,6 +38,37 @@ enum PlanSummary {
             minutes: items.reduce(0) { $0 + $1.durationMinutes },
             gainM: items.reduce(0) { $0 + ($1.elevationGainM ?? 0) },
             generated: !items.isEmpty
+        )
+    }
+
+    static func volumeComparison(week: Int, workouts: [Workout]) -> WeekVolumeComparison {
+        let currentItems = workouts.filter { $0.weekNumber == week }
+        let currentMins = currentItems.reduce(0.0) { $0 + $1.durationMinutes }
+        let currentHours = (currentMins / 60.0 * 10).rounded() / 10
+
+        let previousItems = workouts.filter { $0.weekNumber == week - 1 }
+        let previousHours: Double? = {
+            guard week > 1, !previousItems.isEmpty else { return nil }
+            let mins = previousItems.reduce(0.0) { $0 + $1.durationMinutes }
+            return (mins / 60.0 * 10).rounded() / 10
+        }()
+
+        let diffHours = previousHours.map { (currentHours - $0 * 10).rounded() / 10 }
+
+        let plannedKm = currentItems.reduce(0.0) { $0 + ($1.distanceKm ?? 0) }
+        let actualKm = currentItems.filter { $0.isDone }.reduce(0.0) { $0 + ($1.distanceKm ?? 0) }
+
+        let active = currentItems.filter { !$0.isRest }
+        let done = active.filter { $0.isDone }
+        let adherence = active.isEmpty ? 100 : Int((Double(done.count) / Double(active.count) * 100.0).rounded())
+
+        return WeekVolumeComparison(
+            currentHours: currentHours,
+            previousHours: previousHours,
+            diffHours: diffHours,
+            plannedKm: plannedKm,
+            actualKm: actualKm,
+            adherencePct: adherence
         )
     }
 

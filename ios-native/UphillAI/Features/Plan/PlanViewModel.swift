@@ -191,6 +191,10 @@ final class PlanViewModel {
 
     var selectedVolume: WeekVolume { PlanSummary.volume(week: selectedWeek, workouts: snapshot?.workouts ?? []) }
 
+    var weekComparison: WeekVolumeComparison {
+        PlanSummary.volumeComparison(week: selectedWeek, workouts: snapshot?.workouts ?? [])
+    }
+
     var weeklyVolumes: [WeekVolume] {
         guard let snapshot else { return [] }
         return PlanSummary.weeklyVolumes(snapshot.workouts, totalWeeks: snapshot.plan.totalWeeks)
