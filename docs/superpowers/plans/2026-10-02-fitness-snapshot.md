@@ -22,6 +22,9 @@
 - A COROS failure never blocks or fails a plan.
 - Any rendered UI change needs a local screenshot (`ui-screenshot-evidence` skill); Vietnamese copy follows the `uphill-ai-vietnamese-copy` skill.
 - Commit messages end with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
+- Golden fixtures and Langfuse datasets hold **synthetic look-alikes only** (`"synthetic": true`, `"provenance": "scheduler"`), never values copied from a real athlete — the `llm-change-process` skill's ground rule, and `golden_eval.py --push-langfuse` refuses non-synthetic items. The two reference athletes (the elite who reported the bug, and the product owner's own account) shape the look-alikes: same tier band, same kind of signal conflict, different numbers, no names, ids or real dates. Never write either athlete's name or email into the repo or Langfuse.
+- Prompt changes follow `.claude/skills/llm-change-process/SKILL.md`: draft in Langfuse → eval with `--prompt-label` → `staging` → `production` label → sync the in-code fallback in a follow-up PR.
+- Deploys are by hand from the worktree (never `deploy_server.sh`, which rsyncs a worktree `.env` over prod secrets), staging first, with backups, `alembic stamp head` after `init_db`, and `LANGFUSE_RELEASE` set.
 
 ## File Structure
 
@@ -36,6 +39,10 @@
 | `backend/main.py` (modify) | Build/store the snapshot in onboarding, generate-plan and next-block jobs; `threshold_source` on profile; `GET /api/auth/fitness-snapshot`; `weekly_km_from_watch` |
 | `backend/services/week_rebuild.py` (modify) | Snapshot for adapt-week |
 | `backend/services/goal_context.py`, `backend/services/coach_context.py` (modify) | Read predictor / snapshot |
+| `backend/scripts/golden_eval.py` (modify) | Scheduler fixtures may carry a `fitness_snapshot` and an `expect` block; tier and week-2 volume scored and gated |
+| `backend/tests/golden/scheduler/fixture_snapshot_*.json` (create) | Three synthetic look-alike fixtures |
+| `backend/services/plan_signals.py`, `backend/services/observability.py` (modify) | Live `plan_volume_fit` and `plan_tier` scores |
+| `docs/runbooks/2026-10-fitness-snapshot-release.md` (create) | Experiment record + deploy log template |
 | `frontend/src/views/ProfileSettingsModal.tsx`, `frontend/src/views/OnboardingWizard.tsx`, `frontend/src/views/PlannerView.tsx`, `frontend/src/hooks/usePlanner.ts`, `frontend/src/types/index.ts`, `frontend/src/app/translations.ts` (modify) | Threshold-source select, km prefill + hint |
 
 ---
@@ -45,7 +52,8 @@
 The branch was cut from `2942d0a`; `origin/main` is several commits ahead (LLMOps, auth, iOS native). Line numbers below refer to the pre-sync tree; search by the quoted code, not by line.
 
 - [ ] **Step 1:** Call the ccd_host `sync_with_base_branch` tool. Resolve any conflicts it reports.
-- [ ] **Step 2:** Find the current Alembic head for Task 1:
+- [ ] **Step 2:** On main, `PlanGenerator.generate_plan_workouts` is a thin traced wrapper and the body moved to `_generate_plan_workouts`. Every generator edit in Tasks 2 and 5 goes into `_generate_plan_workouts`; the wrapper only gets the Task 10 signal change.
+- [ ] **Step 3:** Find the current Alembic head for Task 1:
 
 Run: `cd backend && alembic heads`
 Expected: one revision id (prod was at `43dfcba89eff` on 2026-09-30). Note it as `<HEAD>`.
@@ -309,7 +317,7 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 revision: str = "b4f1c2d3e5a6"
-down_revision: str | Sequence[str] | None = "<HEAD>"  # from Task 0 Step 2
+down_revision: str | Sequence[str] | None = "<HEAD>"  # from Task 0 Step 3
 branch_labels = None
 depends_on = None
 
@@ -343,7 +351,7 @@ def downgrade() -> None:
     op.drop_table("fitness_assessments")
 ```
 
-Replace both `<HEAD>` with the id from Task 0.
+Replace both `<HEAD>` with the id from Task 0 Step 3.
 
 - [ ] **Step 7: Add `"fitness_assessments"` to `ALL_TABLES`** in `backend/tests/integration/conftest.py`, directly before `"plans"`.
 
@@ -1530,10 +1538,416 @@ git commit -m "feat(ui): AeT/AnT source select; prefill weekly km from COROS"
 
 ---
 
-### Task 9: Verification before PR
+### Task 9: Synthetic look-alike golden fixtures and snapshot-aware eval
+
+**Files:**
+- Create: `backend/tests/golden/scheduler/fixture_snapshot_elite_unmeasured_thresholds.json`
+- Create: `backend/tests/golden/scheduler/fixture_snapshot_recreational_field_thresholds.json`
+- Create: `backend/tests/golden/scheduler/fixture_snapshot_elite_no_coros.json`
+- Modify: `backend/scripts/golden_eval.py` (`_run_scheduler`, the scheduler branch of `compare`, `gate_failures`)
+- Test: `backend/tests/unit/test_golden_snapshot_fixtures.py`
+
+**Interfaces:**
+- Consumes: `FitnessSnapshot` (Task 3); `generate_plan_workouts` returning `(workouts, tier)`.
+- Produces: fixture keys `fitness_snapshot` (FitnessSnapshot fields; `assessment.measured_at` as ISO string) and `expect` (`{"tier": str, "week2_km": [lo, hi]}`); scheduler item scores `tier`, `tier_match`, `week2_km`, `week2_in_range`; gate failures on `tier_match is False` or `week2_in_range is False`.
+
+The three cases (numbers invented, shaped on the two reference athletes):
+
+| Fixture | Shaped on | Signal conflict | Expected tier | Week-2 km |
+|---|---|---|---|---|
+| `elite_unmeasured_thresholds` | The elite who reported the bug | ~136 km measured vs 115 typed; 18% AeT/AnT gap of unknown source | `sub_elite` | 110–145 |
+| `recreational_field_thresholds` | The product owner's own account | ~71 km measured; narrow 8.7% gap from a field test (must not promote) | `recreational` | 55–78 |
+| `elite_no_coros` | The elite, if never connected | No snapshot; typed 140 km; same unknown-source gap | `sub_elite` | 115–150 |
+
+- [ ] **Step 1: Write the fixtures.**
+
+`fixture_snapshot_elite_unmeasured_thresholds.json`:
+
+```json
+{
+  "synthetic": true,
+  "provenance": "scheduler",
+  "_comment": "Synthetic look-alike of the 2026-09 demotion bug: high measured volume, AeT/AnT stored without provenance and 18% apart. Before the fix this produced a recreational 40-60 km plan. Must stay sub_elite and plan near the measured volume.",
+  "user_profile": {
+    "age": 36, "gender": "male", "max_hr": 184, "resting_hr": 52,
+    "aet_hr": 133, "ant_hr": 162, "threshold_source": "unknown",
+    "current_weekly_km": 115.0, "days_per_week": 6, "has_gym_access": false
+  },
+  "fitness_snapshot": {
+    "weekly_km": 136.0, "weekly_km_source": "coros", "weekly_vert_m": 5200.0, "volume_as_of": "2026-09-20",
+    "threshold_pace": "3:55", "threshold_pace_source": "coros",
+    "assessment": {"vo2max": 60.0, "running_level": 90.0, "threshold_pace": "3:55",
+                   "pred_hm_sec": 4920.0, "pred_marathon_sec": 10380.0, "measured_at": "2026-09-24T00:00:00+00:00"},
+    "utmb_index": null, "threshold_source": "unknown", "gender": "male", "readiness": null, "notes": []
+  },
+  "race_info": {
+    "lang": "en", "terrain": "trail", "goal_type": "finish", "name": "Trail 80K",
+    "date": "2026-11-29", "course_distance_km": 80, "course_elevation_gain_m": 4200
+  },
+  "total_weeks": 8,
+  "expect": {"tier": "sub_elite", "week2_km": [110, 145]}
+}
+```
+
+`fixture_snapshot_recreational_field_thresholds.json`:
+
+```json
+{
+  "synthetic": true,
+  "provenance": "scheduler",
+  "_comment": "Synthetic look-alike of a steady recreational runner with COROS. Measured volume agrees with the profile; field-tested thresholds 8.7% apart must not promote. Guards against the snapshot over-promoting ordinary runners.",
+  "user_profile": {
+    "age": 26, "gender": "male", "max_hr": 196, "resting_hr": 51,
+    "aet_hr": 158, "ant_hr": 173, "threshold_source": "field",
+    "current_weekly_km": 70.0, "days_per_week": 6, "has_gym_access": true
+  },
+  "fitness_snapshot": {
+    "weekly_km": 71.0, "weekly_km_source": "coros", "weekly_vert_m": 650.0, "volume_as_of": "2026-09-27",
+    "threshold_pace": "4:35", "threshold_pace_source": "coros",
+    "assessment": {"vo2max": 56.0, "running_level": 84.0, "threshold_pace": "4:35",
+                   "pred_hm_sec": 5700.0, "pred_marathon_sec": 12000.0, "measured_at": "2026-09-29T00:00:00+00:00"},
+    "utmb_index": null, "threshold_source": "field", "gender": "male", "readiness": null, "notes": []
+  },
+  "race_info": {
+    "lang": "vi", "terrain": "trail", "goal_type": "finish", "name": "Trail 50K",
+    "date": "2026-12-06", "course_distance_km": 50, "course_elevation_gain_m": 2700
+  },
+  "total_weeks": 9,
+  "expect": {"tier": "recreational", "week2_km": [55, 78]}
+}
+```
+
+`fixture_snapshot_elite_no_coros.json`: same `user_profile` as the elite fixture but `"current_weekly_km": 140.0`, no `fitness_snapshot` key, same `race_info`, `"expect": {"tier": "sub_elite", "week2_km": [115, 150]}`, and `_comment`: `"Same athlete without a watch connection: the typed-volume path must not be demoted by thresholds of unknown provenance."`
+
+- [ ] **Step 2: Write the failing test** (no Gemini: invalid JSON forces the rule tier, which is enough to check the tier wiring):
+
+```python
+"""The snapshot fixtures resolve the expected tier through golden_eval's runner."""
+
+import asyncio
+import json
+import os
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+import scripts.golden_eval as golden_eval
+
+NAMES = [
+    "fixture_snapshot_elite_unmeasured_thresholds.json",
+    "fixture_snapshot_recreational_field_thresholds.json",
+    "fixture_snapshot_elite_no_coros.json",
+]
+
+
+@pytest.mark.parametrize("name", NAMES)
+def test_fixture_is_synthetic_and_resolves_expected_tier(name, monkeypatch):
+    fixture = json.load(open(os.path.join(golden_eval.GOLDEN_DIR, "scheduler", name), encoding="utf-8"))
+    assert fixture["synthetic"] is True and fixture["provenance"] == "scheduler"
+
+    resp = MagicMock()
+    resp.text = "invalid json to trigger fallback"
+    client = MagicMock()
+    client.models.generate_content.return_value = resp
+    monkeypatch.setattr(golden_eval.settings, "GEMINI_API_KEY", "fake-gemini-key")
+    with (
+        patch("google.genai.Client", return_value=client),
+        patch("services.kb_retrieval.search_scheduler_chunks", return_value=[]),
+    ):
+        workouts, _engine = asyncio.run(golden_eval._run_scheduler(fixture))
+
+    assert workouts
+    assert fixture.pop("_resolved_tier") == fixture["expect"]["tier"]
+
+
+def test_gate_fails_on_tier_mismatch_and_volume_out_of_range():
+    items = [{"id": "a", "input": {}}, {"id": "b", "input": {}}]
+    scores = [
+        {"engine": "gemini", "tier_match": False, "week2_in_range": True},
+        {"engine": "gemini", "tier_match": True, "week2_in_range": False},
+    ]
+    failures = golden_eval.gate_failures("scheduler", items, scores)
+    assert any("a" in f and "tier" in f for f in failures)
+    assert any("b" in f and "week-2" in f for f in failures)
+```
+
+- [ ] **Step 3: Run to verify failure** — Run: `cd backend && pytest tests/unit/test_golden_snapshot_fixtures.py -v`. Expected: FAIL (`KeyError: '_resolved_tier'`; gate returns no failures).
+
+- [ ] **Step 4: Implement in `golden_eval.py`.**
+
+```python
+def _snapshot_from_fixture(data: dict):
+    from datetime import datetime
+
+    from services.fitness_snapshot import FitnessSnapshot
+
+    data = dict(data)
+    a = data.get("assessment")
+    if a and isinstance(a.get("measured_at"), str):
+        data["assessment"] = {**a, "measured_at": datetime.fromisoformat(a["measured_at"])}
+    return FitnessSnapshot(**data)
+
+
+def _week_km(workouts: list[dict], week: int) -> float:
+    return round(sum(float(w.get("distance_km") or 0) for w in workouts if w.get("week_number") == week), 1)
+```
+
+In `_run_scheduler`, build `race_info = dict(fixture["race_info"])`; if `fixture.get("fitness_snapshot")`, set `race_info["fitness_snapshot"] = _snapshot_from_fixture(fixture["fitness_snapshot"])`; pass `race_info` instead of `fixture["race_info"]`; keep the returned tier: `workouts, tier = await ...` then `fixture["_resolved_tier"] = tier` before returning. Pass `user_profile=dict(fixture["user_profile"])` so the run cannot mutate the fixture.
+
+In `compare`'s scheduler branch, before `item_score` is built:
+
+```python
+            tier = fixture.pop("_resolved_tier", None)
+            expect = fixture.get("expect") or {}
+            week2 = _week_km(result, 2)
+            lo, hi = (expect.get("week2_km") or [None, None])
+            lines.append(f"- Tier: **{tier}**" + (f" (expected {expect['tier']})" if expect.get("tier") else ""))
+            lines.append(f"- Week-2 volume: **{week2} km**" + (f" (expected {lo}-{hi})" if lo is not None else ""))
+```
+
+and add to `item_score`:
+
+```python
+                "tier": tier,
+                "tier_match": (tier == expect["tier"]) if expect.get("tier") else None,
+                "week2_km": week2,
+                "week2_in_range": (lo <= week2 <= hi) if lo is not None else None,
+```
+
+Do the same `fixture.pop("_resolved_tier", None)` at the top of `capture`'s loop body after `_run` so baselines are not written with it. In `gate_failures`, inside the per-item loop:
+
+```python
+        if service == "scheduler" and s.get("tier_match") is False:
+            failures.append(f"{item['id']}: tier {s.get('tier')} differs from the expected tier")
+        if service == "scheduler" and s.get("week2_in_range") is False:
+            failures.append(f"{item['id']}: week-2 volume {s.get('week2_km')} km outside the expected range")
+```
+
+`push_experiment` sends every non-None score; `tier` goes as a CATEGORICAL score and the rest as BOOLEAN/NUMERIC, so no observability change is needed for the experiment path.
+
+- [ ] **Step 5: Run tests** — Run: `cd backend && pytest tests/unit/test_golden_snapshot_fixtures.py tests/unit/test_golden_chat_eval.py -v`. Expected: pass.
+
+- [ ] **Step 6: Capture baselines with the CURRENT production prompt** (costs ~3 Gemini calls; needs `GEMINI_API_KEY`; no Langfuse push):
+
+Run: `cd backend && COACH_CHAT_PROMPT_LABEL=production python scripts/golden_eval.py capture --service scheduler`
+Expected: three new `fixture_snapshot_*.ref.json` with `engine_used: gemini`; existing baselines skipped. Re-run a fixture whose baseline warns `engine_mismatch`.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add backend/scripts/golden_eval.py backend/tests/golden/scheduler/fixture_snapshot_* backend/tests/unit/test_golden_snapshot_fixtures.py
+git commit -m "test(golden): synthetic snapshot fixtures; gate on tier and week-2 volume"
+```
+
+---
+
+### Task 10: Live signals — volume fit and tier on every plan trace
+
+**Files:**
+- Modify: `backend/services/observability.py` (`_SCORE_SPECS`)
+- Modify: `backend/services/plan_signals.py` (`record_generation`)
+- Modify: `backend/services/plan_generator.py` (the wrapper `generate_plan_workouts`, where it calls `plan_signals.record_generation`)
+- Test: `backend/tests/unit/test_plan_signals_volume_fit.py`, `backend/tests/unit/test_observability_policy.py` (or wherever `_SCORE_SPECS` is tested)
+
+**Interfaces:**
+- Produces: scores `plan_tier` (categorical: the five tier keys) and `plan_volume_fit` (unit interval: `min(r, 1/r)` with `r = week-2 planned km / measured weekly km`, only when the volume came from COROS) on the `plan_generation` trace; `record_generation(..., tier: str | None = None, measured_weekly_km: float | None = None)`.
+
+- [ ] **Step 1: Failing test**
+
+```python
+from services import plan_signals
+
+
+def test_volume_fit_and_tier_scored(monkeypatch):
+    sent = []
+    monkeypatch.setattr(plan_signals.observability, "score", lambda **kw: sent.append(kw))
+    monkeypatch.setattr(plan_signals.db, "get_plan_generation_trace", lambda pid: None)
+    monkeypatch.setattr(plan_signals.db, "set_plan_generation_trace", lambda *a: None)
+    monkeypatch.setattr(plan_signals.plan_checks, "run_checks", lambda w: [])
+    monkeypatch.setattr(plan_signals.plan_checks, "pass_share", lambda r: None)
+    workouts = [{"week_number": 2, "distance_km": 60.0, "type": "Easy"}, {"week_number": 2, "distance_km": 60.0, "type": "Long Run"}]
+    plan_signals.record_generation(
+        plan_id=1, user_id=2, block_number=1, workouts=workouts, trace_id="a" * 32,
+        tier="sub_elite", measured_weekly_km=150.0,
+    )
+    by_name = {s["name"]: s["value"] for s in sent}
+    assert by_name["plan_tier"] == "sub_elite"
+    assert by_name["plan_volume_fit"] == 0.8
+
+
+def test_no_volume_fit_without_measured_volume(monkeypatch):
+    sent = []
+    monkeypatch.setattr(plan_signals.observability, "score", lambda **kw: sent.append(kw))
+    monkeypatch.setattr(plan_signals.db, "get_plan_generation_trace", lambda pid: None)
+    monkeypatch.setattr(plan_signals.db, "set_plan_generation_trace", lambda *a: None)
+    plan_signals.record_generation(plan_id=1, user_id=2, block_number=1, workouts=[], trace_id="a" * 32, tier="novice")
+    assert "plan_volume_fit" not in {s["name"] for s in sent}
+```
+
+Also add to the observability score-spec test: `plan_tier` accepts `"elite"` and rejects `"pro"`; `plan_volume_fit` accepts `0.8` and rejects `1.2`.
+
+- [ ] **Step 2: Run to verify failure** — `cd backend && pytest tests/unit/test_plan_signals_volume_fit.py -v` → FAIL (unexpected keyword `tier`).
+
+- [ ] **Step 3: Implement.** In `_SCORE_SPECS` add:
+
+```python
+    # Plans: the tier the plan was written for, and how closely week 2 matches the
+    # athlete's measured weekly volume (min(r, 1/r); only when COROS measured it).
+    "plan_tier": frozenset({"beginner", "novice", "recreational", "sub_elite", "elite"}),
+    "plan_volume_fit": _UNIT_INTERVAL,
+```
+
+In `record_generation` add the two keyword parameters (default None) and, as the FIRST statements inside its `try:` (before `plan_checks`, so a plan-checks failure cannot swallow them):
+
+```python
+        if tier:
+            observability.score(trace_id=trace_id, name="plan_tier", value=tier)
+        if measured_weekly_km:
+            week2 = sum(float(w.get("distance_km") or 0) for w in workouts if w.get("week_number") == 2)
+            if week2 > 0:
+                ratio = week2 / measured_weekly_km
+                observability.score(trace_id=trace_id, name="plan_volume_fit", value=round(min(ratio, 1 / ratio), 3))
+```
+
+In the wrapper `generate_plan_workouts`, pass:
+
+```python
+            snap = race_info.get("fitness_snapshot")
+            plan_signals.record_generation(
+                plan_id=plan_id, user_id=user_id, block_number=block_number, workouts=workouts, trace_id=trace_id,
+                tier=tier,
+                measured_weekly_km=snap.weekly_km if snap and snap.weekly_km_source == "coros" else None,
+            )
+```
+
+- [ ] **Step 4:** Create matching score configs in Langfuse (Settings → Scores): `plan_tier` categorical with the five values, `plan_volume_fit` numeric 0–1. Add a "Plan volume fit" widget (avg by release) to the "Uphill AI – Quality" dashboard.
+
+- [ ] **Step 5: Run tests** — `cd backend && pytest tests/unit -q -m "not kafka"` → pass.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add backend/services/observability.py backend/services/plan_signals.py backend/services/plan_generator.py backend/tests/unit
+git commit -m "feat(signals): plan_tier and plan_volume_fit scores on plan traces"
+```
+
+---
+
+### Task 11: Langfuse prompt experiment — teach plan_generation to use the snapshot
+
+The code (Tasks 1–10) puts the snapshot inside `{{user_summary}}`, so the current template already receives it. This experiment asks whether an explicit instruction makes Gemini follow it better. It is a Langfuse-only change (skill section A); the code ships first, the template follows.
+
+**Files:**
+- Create: `docs/runbooks/2026-10-fitness-snapshot-release.md` (record of runs, decision and deploy log; copy the tables below into it)
+
+- [ ] **Step 1: Baseline run** (after Task 9; current `production` template + new code; ~150 Gemini calls for the whole scheduler set):
+
+```bash
+cd backend
+LANGFUSE_ENVIRONMENT=development COACH_CHAT_PROMPT_LABEL=production \
+  python scripts/golden_eval.py compare --service scheduler --push-langfuse --synthetic-only
+```
+
+Record the run name (`eval_scheduler_<ts>`) and `tests/golden/report_scheduler.md` results for the three snapshot fixtures.
+
+- [ ] **Step 2: Draft the candidate** in Langfuse → Prompts → `plan_generation` → New version. Copy the current `production` text exactly, and insert this paragraph on its own line directly after `{{user_summary}}`:
+
+```
+FITNESS SNAPSHOT RULES (apply only when the athlete summary contains "ATHLETE FITNESS SNAPSHOT"):
+- The snapshot is measured watch data. Its weekly volume is the athlete's real current load.
+- The first full week (week 2) should total 90-100% of the snapshot's weekly volume, never below 80%,
+  unless the readiness line shows fatigue or overreaching, or the athlete notes an injury.
+- Weekly vert should start near the snapshot's vert and progress from there.
+- Derive threshold and interval targets from the snapshot's threshold pace and race predictions.
+- If the snapshot says the AeT/AnT thresholds were "not used", do not apply the Aerobic Deficiency
+  Syndrome restrictions on intensity because of them.
+- Never mention the snapshot, its sources or the level label to the athlete.
+```
+
+Keep every existing `{{variable}}`. Save, then add the custom label `snapshot-exp` to this version (it must NOT carry `staging` or `production` yet). Note its version number.
+
+The ADS line matters: `_generate_plan_workouts` still prints "AEROBIC DEFICIENCY SYNDROME (ADS) DETECTED" from raw AeT/AnT, which would contradict the tier for the elite case. If the experiment shows Gemini cutting intensity because of it, the follow-up is a code change (gate `is_ads` on `threshold_source` like the tier) — record it in the runbook rather than widening this plan.
+
+- [ ] **Step 3: Candidate run**
+
+```bash
+cd backend
+LANGFUSE_ENVIRONMENT=development \
+  python scripts/golden_eval.py compare --service scheduler --push-langfuse --synthetic-only --prompt-label snapshot-exp
+```
+
+- [ ] **Step 4: Compare** in Langfuse → Datasets → `uphill_scheduler_golden` → Runs (baseline vs `eval_scheduler_snapshot-exp_*`). Promote only if ALL hold:
+
+| Check | Pass condition |
+|---|---|
+| Gate | `[gate] PASS scheduler` (no rule-tier fall-through, tier and week-2 checks pass) |
+| Snapshot fixtures | `week2_in_range` true on all three, and week-2 km closer to the snapshot than the baseline run on the elite fixture |
+| Other fixtures | `plan_checks` not lower than baseline on any fixture; no new `gemini_retry` warnings |
+| Cost / latency | mean latency within +20% of baseline |
+
+Write both run names, the table result and the decision into the runbook.
+
+- [ ] **Step 5: If it fails**, edit the candidate (new version, move `snapshot-exp` to it) and repeat Steps 3–4, at most twice. If it still fails, ship the code without the template change (the `production` label stays put) and record why.
+
+- [ ] **Step 6: Commit the runbook**
+
+```bash
+git add docs/runbooks/2026-10-fitness-snapshot-release.md
+git commit -m "docs: fitness snapshot prompt experiment record"
+```
+
+Promotion to `staging`/`production` happens in Task 13, after the code is deployed — a template that references the snapshot is pointless before the code sends one.
+
+---
+
+### Task 12: Verification before PR
 
 - [ ] **Step 1:** Run: `cd backend && ruff check . && ruff format --check . && pytest tests/unit -q -m "not kafka"` — Expected: clean, all pass.
 - [ ] **Step 2:** Run against the scratch DB only: `cd backend && pytest tests/integration -q -m "not kafka"` — Expected: all pass.
-- [ ] **Step 3:** Plan drift for other users: `cd backend && python scripts/golden_eval.py compare --service scheduler` — Expected: tier changes only where `threshold_source` was the reason (cases previously demoted by an unmeasured gap) or measured volume differs from the profile value. Record the diff summary in the PR description.
-- [ ] **Step 4:** Rehearse the migration on staging (memory: staging schema comes from `init_db`, so stop backend, rsync, start, then `alembic stamp head`).
-- [ ] **Step 5:** Open the PR. Post-merge operator steps (not code): deploy by hand per the prod-server notes, `alembic stamp head` after `init_db` creates the objects, then for the affected athlete trigger a COROS sync (backfills an assessment row) and regenerate their plan.
+- [ ] **Step 3:** Confirm no real athlete data entered the repo: ask the product owner for the two reference athletes' names and emails (they are deliberately not written here), then `git diff origin/main | grep -niE "<name1>|<email1>|<name2>|<email2>"` — Expected: no output. Also confirm no fixture contains a real user id or a real activity date copied from prod.
+- [ ] **Step 4:** `requirements.txt` unchanged versus main (`git diff origin/main -- backend/requirements.txt` empty) — no prod image dependency gap.
+- [ ] **Step 5:** Open the PR with the checklist from the `llm-change-process` skill: prompt name/version and labels ("`plan_generation` vN at `snapshot-exp`, not promoted"), both eval run names and the gate result, the new score names, the screenshots from Task 8, and the migration id.
+
+---
+
+### Task 13: Deploy (staging → production) and promote the prompt
+
+Operational steps; record each with timestamps in `docs/runbooks/2026-10-fitness-snapshot-release.md`. Run from the merged-main worktree. Never use `deploy_server.sh` for the backend.
+
+**Staging** (`/opt/uphill-ai-backend-staging`, port 8001, Postgres 5434):
+
+- [ ] **Step 1:** Checksum dry-run to see what changes:
+
+```bash
+rsync -rnc --itemize-changes --exclude '.env*' --exclude 'venv*' --exclude '__pycache__' --exclude 'qdrant_storage' backend/ root@45.119.215.120:/opt/uphill-ai-backend-staging/backend/
+```
+
+- [ ] **Step 2:** On the server: `cd /opt/uphill-ai-backend-staging && docker compose stop backend`, rsync for real (same excludes, without `-n`), `docker compose start backend`, wait for `curl -fsS localhost:8001/api/health` (≈100 s), then `docker compose exec backend alembic stamp head` (`init_db` already created the objects; `upgrade` would fail).
+- [ ] **Step 3:** Smoke test on staging with a test account: set the AeT/AnT source in Profile, create a plan, then `SELECT fitness_snapshot->>'tier', fitness_snapshot->>'weekly_km_source' FROM plans ORDER BY id DESC LIMIT 1` on the staging DB. Check the Langfuse trace (environment `staging`) carries `plan_tier`.
+- [ ] **Step 4:** If Task 11 passed, move the `staging` label to the candidate version; generate one more staging plan and confirm the trace's prompt version is the candidate.
+
+**Production** (`/opt/uphill-ai-backend`, port 8000):
+
+- [ ] **Step 5: Backups** on the server:
+
+```bash
+TS=$(date +%Y%m%d-%H%M)
+docker exec uphill-ai-backend-db-1 pg_dump -U uphill uphill_ai | gzip > /root/prod-uphill_ai-before-fitness-snapshot-$TS.sql.gz
+tar czf /root/prod-backend-code-before-fitness-snapshot-$TS.tgz --exclude qdrant_storage -C /opt/uphill-ai-backend backend
+cp /opt/uphill-ai-backend/backend/.env /opt/uphill-ai-backend/backups/backend.env.pre-fitness-snapshot-$TS
+```
+
+- [ ] **Step 6:** Set the release tag: in prod `backend/.env`, set `LANGFUSE_RELEASE=<git rev-parse --short HEAD of merged main>` (replace the existing line).
+- [ ] **Step 7:** Same stop → rsync (excludes as Step 1) → start → health (`curl -fsS localhost:8000/api/health`, not `docker ps`) → `alembic stamp head` sequence as staging. Then confirm `docker exec uphill-ai-backend-backend-1 printenv ENVIRONMENT` is `production` and `curl -s -o /dev/null -w '%{http_code}' -X POST localhost:8000/api/auth/mock-login` is `404`.
+- [ ] **Step 8: Frontend:** merging to main deploys GitHub Pages automatically; confirm the Actions run is green and the Profile select is live. The iOS native app decodes the user payload; an unknown `threshold_source` key is ignored by `Codable`, and the native plan form (if any) does not send `weekly_km_from_watch`, so its typed volume is treated as an override — the pre-fix behaviour, not a regression. Note it as a native follow-up.
+- [ ] **Step 9: Verify on the two reference accounts** (read-only queries, no data copied anywhere):
+  - Product owner's account: trigger a COROS sync from the app, then `SELECT measured_at, vo2max, pred_marathon_sec FROM fitness_assessments WHERE user_id = <id> ORDER BY measured_at DESC LIMIT 1` shows a row; `GET /api/auth/fitness-snapshot` (in the app's network tab) shows `weekly_km_source: coros` and ~70 km; regenerate a plan and check `plans.fitness_snapshot->>'tier'` is `recreational`.
+  - The elite athlete: do NOT regenerate their plans without telling them. Message them (the drafted Vietnamese reply, section 3 now true) and ask them to reconnect/sync COROS (their sync stalled on 2026-09-25, a separate issue) and set their AeT/AnT source. After they do, confirm their snapshot reads `coros` and the next plan's tier is `sub_elite` or `elite`.
+- [ ] **Step 10: Promote the prompt** (only if Task 11 passed and Steps 3–4 looked right): move the `production` label to the candidate version. Live within 300 s.
+- [ ] **Step 11: Watch for 7 days** — "Uphill AI – LLM Ops" (plan_generation cost, p95 latency, errors) and "Uphill AI – Quality" (`plan_volume_fit` average by release, `plan_tier` distribution, `plan_reworked` rate). Expect the share of `recreational` plans with measured volume ≥ 80 km to drop to zero.
+- [ ] **Step 12: Follow-up PR** copying the promoted template text into the `PLAN_GENERATION_PROMPT` constant in `services/plan_generator.py` (fallback sync).
+
+**Rollback:**
+- Prompt: move `production` back to the previous `plan_generation` version (no deploy).
+- Code: stop backend, restore the code tgz from Step 5, start, health check. The new tables/columns are additive and unused by the old code; leave them, and `alembic stamp <previous head>`.
+- Data: restore the DB dump only if data was damaged — this change writes only new rows/columns.

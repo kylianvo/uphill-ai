@@ -185,6 +185,20 @@ The block is English, like the rest of the scheduler prompt; the plan `lang` alr
 - `python scripts/golden_eval.py compare --service scheduler` to check plan drift for
   other users before deploy.
 
+## Evaluation and release
+
+- Golden set: three synthetic look-alike scheduler fixtures (an elite with high measured
+  volume and unknown-source thresholds, the same athlete without COROS, a recreational
+  runner with field-tested thresholds). They are shaped on two real accounts but copy no
+  real values. The eval gate fails on a tier mismatch or a week-2 volume outside the
+  fixture's range.
+- Live signals on `plan_generation` traces: `plan_tier` and `plan_volume_fit`.
+- Prompt experiment: a candidate `plan_generation` version in Langfuse (label
+  `snapshot-exp`) that tells Gemini how to use the snapshot, evaluated against the
+  `production` version on the golden set before any promotion.
+- Release: hand deploy to staging, then production (backups, `alembic stamp head`,
+  `LANGFUSE_RELEASE`), then promote the prompt label if the experiment passed.
+
 ## Out of scope
 
 - Automatically proposing plan changes when the snapshot changes.
