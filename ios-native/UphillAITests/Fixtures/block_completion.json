@@ -15,8 +15,8 @@
       "ai_last_week_review": null,
       "ai_this_week_description": null,
       "block_number": 2,
-      "completed_minutes": 105.0,
-      "completion_pct": 36,
+      "completed_minutes": 145.0,
+      "completion_pct": 49,
       "total_minutes": 295.0,
       "unlocked": false,
       "week_end": 2,
@@ -35,5 +35,5 @@
     }
   ],
   "max_generated_week": 3,
-  "plan_id": 61
+  "plan_id": 93
 }

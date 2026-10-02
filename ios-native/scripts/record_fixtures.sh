@@ -93,3 +93,14 @@ get "/api/coach/week-review/$PLAN_ID/1" week_review.json
 curl -sf -X POST "$BASE/api/plans/$PLAN_ID/goal/reassess" -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' -d '{"exclude":[],"lang":"en"}' >/dev/null || true
 get "/api/plans/$PLAN_ID/goal" plan_goal.json
+
+# Record modify-calendar swap
+curl -sf -X POST "$BASE/api/coach/modify-calendar" -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d "{\"plan_id\":$PLAN_ID,\"week_number\":3,\"day_1\":\"Tuesday\",\"day_2\":\"Wednesday\",\"client_today\":\"2026-10-03\"}" | scrub > "$OUT/modify_calendar.json"
+
+# Record delete-plan (delete the older plan so active plan stays untouched)
+OLDER_PLAN_ID=$(python3 -c 'import json,sys; plans=json.load(open(sys.argv[1]))["plans"]; print(plans[1]["id"] if len(plans) > 1 else "")' "$OUT/recent_plans.json")
+if [ -n "$OLDER_PLAN_ID" ]; then
+  curl -sf -X DELETE "$BASE/api/coach/plans/$OLDER_PLAN_ID" -H "Authorization: Bearer $TOKEN" | scrub > "$OUT/delete_plan.json"
+fi

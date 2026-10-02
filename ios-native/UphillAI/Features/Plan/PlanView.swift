@@ -102,7 +102,9 @@ struct PlanView: View {
                             .padding(.horizontal, UH.Space.regular)
                         LazyVStack(spacing: UH.Space.compact) {
                             ForEach(model.days) { day in
-                                DayRow(day: day) { selectedWorkout = $0 }
+                                DayRow(day: day, onToggleDone: { workout in
+                                    Task { await model.setDone(workout, !workout.isDone) }
+                                }, onSelect: { selectedWorkout = $0 })
                                     .id(day.id)
                             }
                         }

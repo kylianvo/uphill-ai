@@ -23,7 +23,7 @@
   },
   "missed": [
     {
-      "approved_at": "2026-10-01T11:23:05.353335+00:00",
+      "approved_at": "2026-10-02T23:31:47.736578+00:00",
       "day_of_week": "Friday",
       "description": "Easy Run + Strides: keep it controlled.",
       "distance_km": 6.5,
@@ -31,7 +31,7 @@
       "elevation_gain_m": 40.0,
       "fueling_tip": null,
       "grade_percent": 0.0,
-      "id": 831,
+      "id": 1245,
       "interval_rep_unit": null,
       "interval_rep_value": null,
       "interval_reps": null,
@@ -41,7 +41,7 @@
       "last_edited_by_user_id": null,
       "notes": null,
       "phase": "Base",
-      "plan_id": 61,
+      "plan_id": 93,
       "rpe": null,
       "session_slot": "main",
       "source": "ai_generated",
@@ -83,7 +83,7 @@
       },
       "title": "Easy Run",
       "type": "Easy Run",
-      "workout_id": 829
+      "workout_id": 1243
     },
     {
       "actual": {
@@ -101,7 +101,7 @@
       },
       "title": "Recovery Jog",
       "type": "Recovery Run",
-      "workout_id": 833
+      "workout_id": 1247
     },
     {
       "actual": {
@@ -119,7 +119,7 @@
       },
       "title": "Hill Repeats",
       "type": "Hill Repeats",
-      "workout_id": 828
+      "workout_id": 1242
     },
     {
       "actual": {
@@ -137,7 +137,7 @@
       },
       "title": "Long Run",
       "type": "Long Run",
-      "workout_id": 832
+      "workout_id": 1246
     },
     {
       "actual": {
@@ -155,7 +155,7 @@
       },
       "title": "Easy Run + Strides",
       "type": "Easy Run",
-      "workout_id": 831
+      "workout_id": 1245
     }
   ],
   "planned": {
