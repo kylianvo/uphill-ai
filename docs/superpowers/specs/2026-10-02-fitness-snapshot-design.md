@@ -105,9 +105,19 @@ wins over measured volume and the snapshot says so (`reason: "athlete override"`
 
 Replaces the current `derive_tier` ordering. Order:
 
-1. Explicit per-plan `athlete_tier` override wins (unchanged).
+1. Explicit per-plan override wins. **Bug fixed alongside:** `plans.athlete_tier`
+   stores the last resolved tier, and next block / adapt week passed it back as the
+   explicit override, freezing every plan at its first tier. Re-plans now pass it as
+   `previous_tier` (hysteresis input) and no explicit override; nothing in the product
+   sets a real override today.
 2. Beginner rules (goal type, max continuous jog under 10 min) unchanged.
-3. Base tier = volume band of the snapshot's weekly volume (measured or typed).
+3. Base tier = band of the snapshot's **effort-km**: weekly km + weekly vert / 100
+   (vert counts only when measured; typed volume has none). Applies to every plan,
+   road or trail. The band thresholds are unchanged, so vert-heavy runners move up:
+   ~127 km + 5,800 m reads as ~185 effort-km (elite band), ~67 km + 600 m as ~73.
+3b. **Hysteresis**: when re-planning, if the base tier is one step from the plan's
+   previous tier and effort-km is within 5% of the boundary between them, keep the
+   previous tier. New plans use the plain band.
 4. Long-run promotion out of `beginner` unchanged.
 5. **Promote at most one step** when the best performance signal maps to a higher tier.
    New `perf_bands` in `TIER_PROFILES`, conventional defaults marked unsourced like the
@@ -122,8 +132,9 @@ Replaces the current `derive_tier` ordering. Order:
 The function returns the tier plus a short list of reasons, stored in
 `plans.fitness_snapshot`.
 
-Regression case (that athlete): measured ~140 km → `sub_elite`; `threshold_source = unknown` →
-no gap demotion; possible one-step promotion from the predictor. Never `recreational`.
+Regression case (that athlete): measured ~134 km + ~5,300 m vert ≈ 187 effort-km → `elite`;
+`threshold_source = unknown` → no gap demotion. Never `recreational`. Without COROS (typed
+km only, no vert) → `sub_elite`.
 
 ## Consumers
 
