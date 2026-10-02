@@ -2,7 +2,7 @@ import Charts
 import SwiftUI
 
 struct SummaryCarousel: View {
-    static let cardHeight: CGFloat = 188
+    @ScaledMetric(relativeTo: .body) private var cardHeight: CGFloat = 212
     @State private var page: Int? = 0
     private let pageNames = ["Volume", "Race", "This week", "Phase"]
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -26,7 +26,7 @@ struct SummaryCarousel: View {
             .scrollTargetBehavior(.paging)
             .scrollPosition(id: $page)
             .scrollIndicators(.hidden)
-            .frame(height: Self.cardHeight)
+            .frame(height: cardHeight)
             .clipShape(RoundedRectangle(cornerRadius: UH.Radius.panel))
             .overlay(RoundedRectangle(cornerRadius: UH.Radius.panel).stroke(UH.Palette.line))
             .overlay(alignment: .trailing) { pageDots }
@@ -62,7 +62,7 @@ struct SummaryCarousel: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .padding(UH.Space.regular)
             .padding(.trailing, UH.Space.small)
-            .frame(height: Self.cardHeight)
+            .frame(height: cardHeight)
             .background(UH.Palette.card)
     }
 
@@ -142,7 +142,8 @@ struct SummaryCarousel: View {
                     Button(action: onGoal) {
                         Text(pill).font(UH.TextStyle.label)
                             .foregroundStyle(model.goal?.status.kind == .behind ? UH.Palette.danger : UH.Palette.accentInk)
-                            .padding(.horizontal, UH.Space.small).frame(minHeight: 32)
+                            .padding(.horizontal, UH.Space.small).frame(minHeight: 44)
+                            .contentShape(Capsule())
                             .background(UH.Palette.hover, in: Capsule())
                     }
                     .accessibilityIdentifier("plan.goalpill")

@@ -63,9 +63,10 @@ struct PlanView: View {
                 VStack(spacing: UH.Space.compact) {
                     Image(systemName: "mountain.2").font(.system(size: 48)).foregroundStyle(UH.Palette.accentInk)
                         .accessibilityHidden(true)
-                    Text("No plan yet").font(UH.TextStyle.sectionTitle).foregroundStyle(UH.Palette.ink)
+                    Text("No plan yet").font(UH.TextStyle.screenTitle).foregroundStyle(UH.Palette.ink)
                     Text("Your weekly workouts show up here once Coach Uphill builds your plan.")
                         .font(UH.TextStyle.body).foregroundStyle(UH.Palette.secondary).multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 Button("Build my plan", action: onBuildPlan)
                     .buttonStyle(.uhPrimary).frame(maxWidth: 280).accessibilityIdentifier("plan.build")
@@ -208,6 +209,7 @@ struct PlanView: View {
         VStack(spacing: UH.Space.compact) {
             Text(title).font(UH.TextStyle.sectionTitle).foregroundStyle(UH.Palette.ink)
             Text(body).font(UH.TextStyle.body).foregroundStyle(UH.Palette.secondary).multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
         }
         .padding(UH.Space.section)
         .frame(maxWidth: .infinity, maxHeight: .infinity)

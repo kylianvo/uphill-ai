@@ -28,7 +28,7 @@ struct ManagePlanSheet: View {
                                 }
                             } label: {
                                 HStack {
-                                    VStack(alignment: .leading, spacing: 2) {
+                                    VStack(alignment: .leading, spacing: UH.Space.compact) {
                                         Text(plan.raceName).font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
                                         Text(raceDate(plan)).font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary)
                                     }
@@ -64,6 +64,8 @@ struct ManagePlanSheet: View {
                 }
             }
             .listRowBackground(UH.Palette.card)
+            .listSectionSpacing(UH.Space.section)
+            .tint(UH.Palette.accentInk)
             .scrollContentBackground(.hidden)
             .background(UH.Palette.surface)
             .confirmationDialog("Start a new plan?", isPresented: $confirmNew, titleVisibility: .visible) {

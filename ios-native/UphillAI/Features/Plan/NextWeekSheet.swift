@@ -35,6 +35,7 @@ struct NextWeekSheet: View {
                     .listRowBackground(Color.clear).listRowInsets(EdgeInsets())
                 }
             }
+            .listSectionSpacing(UH.Space.section)
             .scrollContentBackground(.hidden)
             .background(UH.Palette.surface)
             .navigationTitle("How did this week go?")

@@ -10,6 +10,7 @@ struct GenerationProgressView: View {
     let onEditAnswers: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var checkShown = false
+    @ScaledMetric(relativeTo: .largeTitle) private var successSize = 88
 
     private enum Phase: Equatable {
         case running(GenerationCenter.Running)
@@ -37,7 +38,7 @@ struct GenerationProgressView: View {
                 }
             }
             .padding(UH.Space.section)
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .foregroundStyle(UH.Palette.ink)
         .background(UH.Palette.surface.ignoresSafeArea())
@@ -48,10 +49,10 @@ struct GenerationProgressView: View {
     private func running(_ job: GenerationCenter.Running) -> some View {
         VStack(alignment: .leading, spacing: UH.Space.section) {
             VStack(alignment: .leading, spacing: UH.Space.small) {
-                Text("Building your plan").font(.system(size: 38, weight: .heavy)).tracking(-0.7)
+                Text("Building your plan").font(UH.TextStyle.screenTitle)
                     .accessibilityAddTraits(.isHeader).accessibilityIdentifier("generation.running")
                 Text("This usually takes under a minute. You can leave this screen; we'll keep working.")
-                    .foregroundStyle(UH.Palette.secondary)
+                    .font(UH.TextStyle.body).foregroundStyle(UH.Palette.secondary)
             }
             TimelineView(.periodic(from: .now, by: 1)) { context in
                 let elapsed = max(0, Int(context.date.timeIntervalSince(job.startedAt)))
@@ -59,7 +60,7 @@ struct GenerationProgressView: View {
                     HStack(spacing: UH.Space.small) {
                         ProgressView()
                         Text(String(format: "%d:%02d", elapsed / 60, elapsed % 60))
-                            .font(.system(size: 64, weight: .heavy).monospacedDigit())
+                            .font(.largeTitle.weight(.bold).monospacedDigit())
                             .accessibilityLabel("Elapsed \(elapsed / 60) minutes \(elapsed % 60) seconds")
                     }
                     if elapsed >= 90 {
@@ -85,11 +86,11 @@ struct GenerationProgressView: View {
     private var done: some View {
         VStack(spacing: UH.Space.section) {
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 120)).foregroundStyle(UH.Palette.accent)
+                .font(.system(size: successSize)).foregroundStyle(UH.Palette.accent)
                 .scaleEffect(checkShown || reduceMotion ? 1 : 0.6)
                 .opacity(checkShown ? 1 : 0)
                 .accessibilityHidden(true)
-            Text("Your plan is ready").font(.system(size: 38, weight: .heavy)).tracking(-0.7)
+            Text("Your plan is ready").font(UH.TextStyle.screenTitle)
                 .accessibilityAddTraits(.isHeader).accessibilityIdentifier("generation.done").multilineTextAlignment(.center)
             Button("See my plan", action: onShowPlan).buttonStyle(.uhPrimary).accessibilityIdentifier("generation.seePlan")
         }
@@ -104,7 +105,7 @@ struct GenerationProgressView: View {
         VStack(spacing: UH.Space.section) {
             Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 48)).foregroundStyle(UH.Palette.danger)
                 .accessibilityHidden(true)
-            Text("We couldn't build your plan").font(.system(size: 34, weight: .heavy)).tracking(-0.6).multilineTextAlignment(.center)
+            Text("We couldn't build your plan").font(UH.TextStyle.screenTitle).multilineTextAlignment(.center)
             Text(message).foregroundStyle(UH.Palette.secondary).multilineTextAlignment(.center)
             Button("Try again", action: onRetry).buttonStyle(.uhPrimary).accessibilityIdentifier("generation.retry")
             Button("Edit answers", action: onEditAnswers).buttonStyle(.uhSecondary)
