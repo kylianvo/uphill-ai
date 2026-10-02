@@ -10,6 +10,8 @@ struct PlanView: View {
     @State private var selectedWorkout: Workout?
     @State private var showManage = false
     @State private var startNewAfterManage = false
+    @State private var scheduleAfterManage = false
+    @State private var showSchedule = false
     @State private var showNextWeek = false
     @State private var showAdapt = false
     @State private var showReview = false
@@ -32,6 +34,7 @@ struct PlanView: View {
                 .sheet(item: $selectedWorkout) { workout in
                     WorkoutDetailSheet(model: model, workoutID: workout.id)
                 }
+                .sheet(isPresented: $showSchedule) { ScheduleChangeSheet(model: model) }
                 .sheet(isPresented: $showAdapt) { AdaptWeekSheet(model: model, week: model.selectedWeek) }
                 .sheet(isPresented: $showGoal) { GoalSheet(model: model) }
                 .sheet(isPresented: $showReview) { WeekReviewSheet(model: model, week: model.selectedWeek) }
@@ -40,7 +43,11 @@ struct PlanView: View {
                 }
                 .sheet(isPresented: $showManage, onDismiss: {
                     if startNewAfterManage { startNewAfterManage = false; onBuildPlan() }
-                }) { ManagePlanSheet(model: model) { startNewAfterManage = true } }
+                    if scheduleAfterManage { scheduleAfterManage = false; showSchedule = true }
+                }) {
+                    ManagePlanSheet(model: model, onStartNew: { startNewAfterManage = true },
+                                    onSchedule: { scheduleAfterManage = true })
+                }
         }
         .task { if model.state == .loading { await model.load() } }
     }

@@ -9,6 +9,13 @@ struct AdaptWeekSheet: View {
     @State private var notes = ""
     @State private var isSubmitting = false
     @State private var error: String?
+    @State private var schedule: ScheduleDraft
+
+    init(model: PlanViewModel, week: Int) {
+        self.model = model
+        self.week = week
+        _schedule = State(initialValue: ScheduleDraft(plan: model.snapshot?.plan))
+    }
 
     var body: some View {
         NavigationStack {
@@ -47,6 +54,11 @@ struct AdaptWeekSheet: View {
                 }
                 .listRowBackground(UH.Palette.card)
                 Section {
+                    DisclosureGroup("Change my schedule") {
+                        ScheduleEditor(draft: $schedule, workouts: model.snapshot?.workouts.filter { $0.weekNumber == week } ?? [])
+                    }
+                }.listRowBackground(UH.Palette.card)
+                Section {
                     if let error { Text(error).font(UH.TextStyle.caption).foregroundStyle(UH.Palette.danger) }
                     Button { Task { await submit() } } label: {
                         if isSubmitting { ProgressView() } else { Text("Adapt week \(week)") }
@@ -69,6 +81,6 @@ struct AdaptWeekSheet: View {
         isSubmitting = true
         error = nil
         defer { isSubmitting = false }
-        if let message = await model.adaptWeek(week, fatigue: fatigue, rpe: rpe, notes: notes) { error = message } else { dismiss() }
+        if let message = await model.adaptWeek(week, fatigue: fatigue, rpe: rpe, notes: notes, schedule: schedule) { error = message } else { dismiss() }
     }
 }

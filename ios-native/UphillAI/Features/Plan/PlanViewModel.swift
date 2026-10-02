@@ -349,17 +349,19 @@ final class PlanViewModel {
     }
 
     /// Returns an error message, or nil once the job has started.
-    func adaptWeek(_ week: Int, fatigue: FatigueLevel, rpe: Int?, notes: String) async -> String? {
+    func adaptWeek(_ week: Int, fatigue: FatigueLevel, rpe: Int?, notes: String, schedule: ScheduleDraft? = nil) async -> String? {
         guard let planID = snapshot?.plan.id, let generation, let generationService else {
             return "Couldn't start adapting this week. Try again."
         }
         guard cachedAt == nil else { return Self.offlineMessage }
         let trimmed = notes.trimmingCharacters(in: .whitespacesAndNewlines)
         do {
-            let job = try await generationService.adaptWeek(AdaptWeekBody(
+            var body = AdaptWeekBody(
                 planId: planID, weekNumber: week, overallRpe: rpe, fatigueLevel: fatigue.rawValue,
                 fatigueNotes: trimmed.isEmpty ? nil : trimmed, lang: "en",
-                clientToday: PlanCalendar.ymd(now(), calendar: calendar)))
+                clientToday: PlanCalendar.ymd(now(), calendar: calendar))
+            schedule?.applyChanges(to: &body)
+            let job = try await generationService.adaptWeek(body)
             generation.track(kind: .adaptWeek, jobID: job.jobId, summary: [])
             return nil
         } catch let error as APIError {

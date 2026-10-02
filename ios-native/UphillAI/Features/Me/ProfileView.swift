@@ -58,7 +58,7 @@ struct ProfileView: View {
                 if destination == .schedule { showSchedule = true }
                 else { path.append(destination) }
             }
-            .sheet(isPresented: $showSchedule) { AdaptWeekSheet(model: app.plan, week: app.plan.currentWeek) }
+            .sheet(isPresented: $showSchedule) { ScheduleChangeSheet(model: app.plan) }
             .sheet(isPresented: $showDeveloperMenu) { DeveloperMenu() }
         }
     }
