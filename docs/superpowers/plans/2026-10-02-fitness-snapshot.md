@@ -37,6 +37,7 @@
 |---|---|
 | `backend/db.py` (modify) | Schema in `init_db`; helpers `record_fitness_assessment`, `get_latest_fitness_assessment`, `get_weekly_run_volumes`, `get_first_activity_at`, `set_plan_fitness_snapshot`; `threshold_source` in profile writes; disconnect cleanup |
 | `backend/alembic/versions/<rev>_fitness_snapshot.py` (create) | Migration for the three schema changes |
+| `backend/db.py` `get_utmb_index` (modify) | Read the general UTMB index from the claim's `meta`, mirror as fallback |
 | `backend/services/athlete_tier.py` (modify) | Composite tier: anchors, weights, `level_from`, `performance_level`, `TierDecision`, `explain_tier`; `derive_tier`/`resolve_tier` become wrappers |
 | `backend/services/fitness_snapshot.py` (create) | `measured_weekly_volume`, `chronic_weekly_volume`, `best_road_marathon_equivalent` (pure), `FitnessSnapshot`, `build()` |
 | `backend/services/coros_sync.py` (modify) | Record assessments on sync; `ensure_fresh_assessment` |
@@ -371,6 +372,114 @@ Expected: 4 passed; the offline SQL render succeeds.
 git add backend/db.py backend/alembic/versions/b4f1c2d3e5a6_fitness_snapshot.py backend/tests/integration/conftest.py backend/tests/integration/test_fitness_assessments_db.py
 git commit -m "feat(db): fitness_assessments history, threshold_source, plans.fitness_snapshot"
 ```
+
+---
+
+### Task 1b: UTMB index from the athlete's own claim
+
+`db.get_utmb_index` only reads the `utmb_runners` mirror. On production that mirror is empty (0 rows on 2026-10-02), so every claimed athlete's UTMB index is None — for the Goal Determiner today and for the composite tier's Performance dimension. The claim row already stores UTMB's indexes in `race_profile_claims.meta.indexes` (e.g. `[{"index": 573, "piCategory": "general"}, {"index": 575, "piCategory": "50k"}, ...]`). Read that first; keep the mirror as the fallback.
+
+**Files:**
+- Modify: `backend/db.py` (`get_utmb_index`)
+- Test: `backend/tests/integration/test_utmb_index.py`
+
+**Interfaces:**
+- Produces: `db.get_utmb_index(user_id: int) -> int | None` — same signature; general index from the newest UTMB claim's `meta`, else the mirror's `utmb_index`, else None.
+
+- [ ] **Step 1: Failing integration test** (scratch DB only; copy the user/claim insert style from `tests/integration/test_race_history*.py`; values are synthetic):
+
+```python
+from sqlalchemy import text
+
+import db
+from db import engine
+
+
+def _claim(uid, meta, external_id="https://utmb.world/runner/0000001.synthetic"):
+    with engine.connect() as conn:
+        conn.execute(
+            text("""INSERT INTO race_profile_claims (user_id, source, external_id, display_name, meta)
+                    VALUES (:u, 'utmb', :e, 'Synthetic Runner', CAST(:m AS jsonb))"""),
+            {"u": uid, "e": external_id, "m": meta},
+        )
+        conn.commit()
+
+
+def _user(email):
+    with engine.connect() as conn:
+        uid = conn.execute(text("INSERT INTO users (email, name) VALUES (:e, 'S') RETURNING id"), {"e": email}).scalar_one()
+        conn.commit()
+    return uid
+
+
+def test_general_index_comes_from_the_claim_meta():
+    uid = _user("utmb1@test.io")
+    _claim(uid, '{"indexes": [{"index": 610, "piCategory": "general"}, {"index": 620, "piCategory": "50k"}]}')
+    assert db.get_utmb_index(uid) == 610
+
+
+def test_falls_back_to_the_mirror_when_meta_has_no_general_index():
+    uid = _user("utmb2@test.io")
+    uri = "https://utmb.world/runner/0000002.synthetic"
+    with engine.connect() as conn:
+        conn.execute(
+            text("""INSERT INTO utmb_runners (uri, full_name, name_norm, utmb_index)
+                    VALUES (:u, 'Synthetic', 'synthetic', 480)"""),
+            {"u": uri},
+        )
+        conn.commit()
+    _claim(uid, '{"indexes": [{"index": null, "piCategory": "general"}]}', external_id=uri)
+    assert db.get_utmb_index(uid) == 480
+
+
+def test_none_without_a_claim():
+    assert db.get_utmb_index(_user("utmb3@test.io")) is None
+```
+
+Check the `utmb_runners` NOT NULL columns in `init_db()` and add any the insert misses.
+
+- [ ] **Step 2: Run to verify failure** — `cd backend && pytest tests/integration/test_utmb_index.py -v` → first test FAILS (None; the mirror is empty).
+
+- [ ] **Step 3: Implement** — replace the query in `get_utmb_index`:
+
+```python
+def get_utmb_index(user_id: int) -> int | None:
+    """UTMB general index for the athlete's newest UTMB claim: from the claim's own
+    meta (stored at claim time), else from the runner mirror. The mirror can be empty
+    (it was on production in 2026-10), which made this None for every athlete."""
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("""
+            SELECT (
+                     SELECT (i->>'index')::int
+                     FROM jsonb_array_elements(COALESCE(c.meta->'indexes', '[]'::jsonb)) i
+                     WHERE i->>'piCategory' = 'general' AND i->>'index' IS NOT NULL
+                     LIMIT 1
+                   ) AS meta_index,
+                   u.utmb_index AS mirror_index
+            FROM race_profile_claims c
+            LEFT JOIN utmb_runners u ON u.uri = c.external_id
+            WHERE c.user_id = :uid AND c.source = 'utmb'
+            ORDER BY c.created_at DESC LIMIT 1
+        """),
+            {"uid": user_id},
+        ).fetchone()
+    if not row:
+        return None
+    value = row.meta_index if row.meta_index is not None else row.mirror_index
+    return int(value) if value is not None else None
+```
+
+- [ ] **Step 4: Run tests** — `cd backend && pytest tests/integration/test_utmb_index.py -v` and the goal-context tests (`pytest tests/unit -q -k goal_context`) → pass.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add backend/db.py backend/tests/integration/test_utmb_index.py
+git commit -m "fix(db): read UTMB index from the claim meta; mirror is only a fallback"
+```
+
+- [ ] **Step 6 (operator, Task 13):** after deploy, also run the mirror refresh once on prod (`POST /api/race-history/admin/mirrors/refresh?source=utmb`) so name search uses the local copy again; record it in the runbook.
 
 ---
 

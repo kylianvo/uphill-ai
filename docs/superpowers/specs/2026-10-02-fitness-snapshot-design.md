@@ -125,6 +125,10 @@ results, 5–42.2 km, last 12 months, not DNF or hidden). Field percentiles are 
 field depth differs too much between races and countries. Trail results count through
 the UTMB index, which UTMB already normalises by race.
 
+The UTMB index is read from the athlete's own claim (`race_profile_claims.meta.indexes`,
+"general" entry), with the `utmb_runners` mirror as fallback. The mirror was empty on
+production (2026-10), so the old mirror-only lookup returned None for every athlete.
+
 VO2max and threshold pace are fallbacks inside Performance, never a separate dimension:
 COROS derives its race predictor from them, so counting both would weight one measurement
 twice. Running level, resting HR, HRV, load ratio and sleep are not tier inputs (proprietary
