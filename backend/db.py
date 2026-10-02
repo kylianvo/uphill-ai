@@ -5586,18 +5586,34 @@ _ON_FOOT_TYPES = ("run", "outdoor_run", "indoor_run", "trail_run", "track_run", 
 
 
 def get_utmb_index(user_id: int) -> int | None:
-    """UTMB index from the athlete's claimed UTMB profile, via the runner mirror."""
+    """UTMB general index for the athlete's newest UTMB claim: from the claim's own
+    meta (stored at claim time), else from the runner mirror. The mirror can be empty
+    (it was on production in 2026-10), which made this None for every athlete."""
     with engine.connect() as conn:
         row = conn.execute(
             text("""
-            SELECT u.utmb_index FROM race_profile_claims c
-            JOIN utmb_runners u ON u.uri = c.external_id
-            WHERE c.user_id = :uid AND c.source = 'utmb' AND u.utmb_index IS NOT NULL
+            SELECT (
+                     SELECT round((i->>'index')::numeric)::int
+                     FROM jsonb_array_elements(
+                         CASE WHEN jsonb_typeof(c.meta->'indexes') = 'array'
+                              THEN c.meta->'indexes' ELSE '[]'::jsonb END
+                     ) i
+                     -- A non-numeric index is ignored rather than failing the cast.
+                     WHERE i->>'piCategory' = 'general' AND jsonb_typeof(i->'index') = 'number'
+                     LIMIT 1
+                   ) AS meta_index,
+                   u.utmb_index AS mirror_index
+            FROM race_profile_claims c
+            LEFT JOIN utmb_runners u ON u.uri = c.external_id
+            WHERE c.user_id = :uid AND c.source = 'utmb'
             ORDER BY c.created_at DESC LIMIT 1
         """),
             {"uid": user_id},
         ).fetchone()
-    return int(row[0]) if row else None
+    if not row:
+        return None
+    value = row.meta_index if row.meta_index is not None else row.mirror_index
+    return int(value) if value is not None else None
 
 
 def get_weekly_training_trend(user_id: int, weeks: int = 8) -> dict[str, Any] | None:
