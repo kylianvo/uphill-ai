@@ -44,7 +44,7 @@
 | `backend/services/plan_generator.py` (modify) | Use the snapshot for volume, tier and prompt block when present |
 | `backend/main.py` (modify) | Build/store the snapshot in onboarding, generate-plan and next-block jobs; `threshold_source` on profile; `GET /api/auth/fitness-snapshot`; `weekly_km_from_watch` |
 | `backend/services/week_rebuild.py` (modify) | Snapshot for adapt-week |
-| `backend/services/goal_context.py`, `backend/services/coach_context.py` (modify) | Read predictor / snapshot |
+| `backend/services/goal_context.py`, `backend/services/coach_context.py`, `backend/services/coach_prompts.py`, `backend/routers/coach_chat.py` (modify) | Read predictor / snapshot volume / plan tier (Tasks 6, 6b) |
 | `backend/scripts/golden_eval.py` (modify) | Scheduler fixtures may carry a `fitness_snapshot` and an `expect` block; tier and week-2 volume scored and gated |
 | `backend/tests/golden/scheduler/fixture_snapshot_*.json` (create) | Three synthetic look-alike fixtures |
 | `backend/services/plan_signals.py`, `backend/services/observability.py` (modify) | Live `plan_volume_fit` and `plan_tier` scores |
@@ -1938,6 +1938,94 @@ Expected: all pass.
 ```bash
 git add backend/main.py backend/services/week_rebuild.py backend/services/schedule_proposals.py backend/services/goal_context.py backend/services/coach_context.py backend/tests
 git commit -m "feat(plan): build and store the fitness snapshot on every plan path"
+```
+
+---
+
+### Task 6b: Coach chat and the human-coach co-pilot see the same fitness picture as the plan
+
+Without this, Coach Uphill can say "you run 70 km" while the plan was built on 134, and it never sees the tier: `coach_context` reads `athlete_row.get("athlete_tier")` from `users`, which has no such column, so `coach_prompts`' "Tier:" line never prints.
+
+**Files:**
+- Modify: `backend/services/coach_context.py` (tier from the active plan; weekly km from the snapshot)
+- Modify: `backend/routers/coach_chat.py` (the `profile = {...}` dict near `"current_weekly_km": user.get("current_weekly_km")`)
+- Modify: `backend/main.py` (`_build_athlete_context_block`)
+- Test: the existing coach-context unit test file (search `tests/unit` for `build_coach_context` or `coach_context`), `backend/tests/unit/test_coach_chat_profile.py`, and the existing co-pilot test (search `tests` for `_build_athlete_context_block`)
+
+**Interfaces:**
+- Consumes: `fitness_snapshot.build(user_id) -> FitnessSnapshot` (Task 3); `plans.athlete_tier` (last resolved tier) and `plans.fitness_snapshot` (Task 1).
+- Produces: a shared helper in `services/fitness_snapshot.py`:
+
+```python
+def chat_summary(user_id: int, plan: dict[str, Any] | None) -> dict[str, Any]:
+    """The few fitness facts chat surfaces show: measured-first weekly km with its
+    source, and the tier the active plan was written for. Never raises."""
+    try:
+        snap = build(user_id)
+        out = {"weekly_km": snap.weekly_km, "weekly_km_source": snap.weekly_km_source}
+    except Exception:
+        out = {}
+    if plan:
+        stored = plan.get("fitness_snapshot") or {}
+        out["athlete_tier"] = plan.get("athlete_tier")
+        if stored.get("tier_score") is not None:
+            out["tier_score"] = stored["tier_score"]
+    return out
+```
+
+- [ ] **Step 1: Failing tests.**
+
+Unit test for the helper (append to `test_fitness_snapshot.py`):
+
+```python
+def test_chat_summary_uses_snapshot_volume_and_plan_tier(stub_db):
+    plan = {"athlete_tier": "sub_elite", "fitness_snapshot": {"tier_score": 3.4}}
+    out = fs.chat_summary(30, plan)
+    assert out["weekly_km_source"] == "coros"
+    assert out["weekly_km"] == pytest.approx(133.7, abs=0.1)
+    assert out["athlete_tier"] == "sub_elite" and out["tier_score"] == 3.4
+
+
+def test_chat_summary_survives_a_snapshot_failure(monkeypatch):
+    monkeypatch.setattr(fs, "build", lambda uid: (_ for _ in ()).throw(RuntimeError("down")))
+    assert fs.chat_summary(30, None) == {}
+```
+
+In the coach-context test, stub `db.get_active_plan` to return `{"id": 1, "athlete_tier": "sub_elite", "fitness_snapshot": None}` and `fitness_snapshot.chat_summary` to return `{"weekly_km": 134.0, "weekly_km_source": "coros", "athlete_tier": "sub_elite"}`, then assert the built context's athlete block has `athlete_tier == "sub_elite"`, `current_weekly_km == 134.0` and `weekly_km_source == "coros"`, and that the rendered prompt (via `coach_prompts`) contains `"Tier: sub_elite"`.
+
+In `test_coach_chat_profile.py`, call the route's profile-building code path the way the existing coach-chat route tests do (copy their client/auth fixture), with `fitness_snapshot.chat_summary` monkeypatched as above, and assert the system prompt contains `'current_weekly_km': 134.0` and `'weekly_km_source': 'coros'`. If the profile dict is built inline in the route, first extract it into a module-level `_profile_for(user, plan)` (pure refactor, same keys) so it can be unit-tested directly; then test `_profile_for`.
+
+In the co-pilot test, give the athlete's active plan `athlete_tier="sub_elite"` and `fitness_snapshot={"tier_score": 3.4, "weekly_km": 134.0, "weekly_km_source": "coros"}` and assert the block contains `"Level: sub_elite (score 3.4) · plan volume base 134 km (coros)"`.
+
+- [ ] **Step 2: Run to verify failure** — run the three test files; expect failures on the new assertions.
+
+- [ ] **Step 3: Implement.**
+  - `coach_context.py`: move the `plan = db.get_active_plan(user_id)` lookup above `athlete_context`, then build with `summary = fitness_snapshot.chat_summary(user_id, plan)` and set `"current_weekly_km": summary.get("weekly_km", athlete_row.get("current_weekly_km"))`, `"weekly_km_source": summary.get("weekly_km_source", "self_reported")`, `"athlete_tier": summary.get("athlete_tier")`. (This replaces the Task 6 Step 6 `"fitness_snapshot"` key idea for this module: keep only these fields so the chat prompt stays short.)
+  - `coach_prompts.py`: next to the existing `Weekly km` line, append the source: `f"- Weekly km: {ath['current_weekly_km']} ({ath.get('weekly_km_source', 'self_reported')})"`.
+  - `routers/coach_chat.py`: `summary = fitness_snapshot.chat_summary(user_id, plan)` after `plan = get_active_plan(user_id)`; in the profile dict use `"current_weekly_km": summary.get("weekly_km", user.get("current_weekly_km"))`, add `"weekly_km_source": summary.get("weekly_km_source", "self_reported")` and `"athlete_tier": summary.get("athlete_tier")`.
+  - `main.py` `_build_athlete_context_block`: after the race-history lines, add
+
+```python
+    snap = plan.get("fitness_snapshot") or {}
+    if plan.get("athlete_tier"):
+        score = f" (score {snap['tier_score']:.1f})" if snap.get("tier_score") is not None else ""
+        volume = (
+            f" · plan volume base {snap['weekly_km']:.0f} km ({snap.get('weekly_km_source', 'self_reported')})"
+            if snap.get("weekly_km") is not None
+            else ""
+        )
+        lines.append(f"Level: {plan['athlete_tier']}{score}{volume}")
+```
+
+  Check `get_active_plan` returns `fitness_snapshot` (it selects `*` or a column list; add the column to the list if needed).
+
+- [ ] **Step 4: Run tests** — `cd backend && pytest tests/unit -q -m "not kafka"` plus the co-pilot integration test → pass.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add backend/services/fitness_snapshot.py backend/services/coach_context.py backend/services/coach_prompts.py backend/routers/coach_chat.py backend/main.py backend/tests
+git commit -m "feat(chat): coach chat and co-pilot use the snapshot volume and the plan's tier"
 ```
 
 ---

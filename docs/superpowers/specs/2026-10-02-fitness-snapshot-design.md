@@ -177,7 +177,14 @@ tier inputs in:
 - Next block / adapt week (`main.py` ~2348, `services/week_rebuild.py`).
 - Goal context (`services/goal_context.py`, which already reads VO2max; it gains the
   race predictor).
-- Coach chat context (`services/coach_context.py`).
+- Coach chat context (`services/coach_context.py`) and the chat route's own profile
+  (`routers/coach_chat.py`): weekly km from the snapshot with its source, and the tier
+  from the active plan (previously read from `users`, which has no tier column, so chat
+  never saw it).
+- The human-coach co-pilot block (`main.py` `_build_athlete_context_block`): one
+  "Level" line from `plans.fitness_snapshot`.
+- Not changed: Gear Finder / Nutrition Lab (weekly km barely affects their output) and
+  analytics (`users.current_weekly_km` stays the self-reported history).
 
 `PlanGenerator` receives the snapshot's weekly volume as `current_weekly_km`, so the
 existing baseline math (`base_weekly_minutes`, the prompt's "Weekly volume base") uses
