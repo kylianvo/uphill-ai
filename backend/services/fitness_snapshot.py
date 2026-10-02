@@ -92,7 +92,7 @@ class FitnessSnapshot:
         aet_hr: float | None,
         ant_hr: float | None,
     ) -> str:
-        self.tier, self.tier_reasons = resolve_tier_explained(
+        decision = resolve_tier_explained(
             explicit_tier=explicit_tier,
             goal_type=goal_type,
             current_weekly_km=self.weekly_km,
@@ -105,6 +105,7 @@ class FitnessSnapshot:
             gender=self.gender,
             utmb_index=self.utmb_index,
         )
+        self.tier, self.tier_reasons = decision.tier, decision.reasons
         return self.tier
 
     def prompt_block(self, lang: str = "en") -> str:

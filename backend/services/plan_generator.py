@@ -953,6 +953,8 @@ class PlanGenerator:
                 **_tier_args,
                 current_weekly_km=current_weekly_km,
                 threshold_source=user_profile.get("threshold_source"),
+                max_hr=max_hr,
+                gender=gender,
             )
         tier_profile = get_profile(athlete_tier)
 

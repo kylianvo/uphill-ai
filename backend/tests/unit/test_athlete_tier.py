@@ -12,17 +12,21 @@ from services.athlete_tier import (
     BEGINNER,
     DEFAULT_TIER,
     ELITE,
+    HYSTERESIS_LEVEL,
     MEASURED_THRESHOLD_SOURCES,
     NOVICE,
     RECREATIONAL,
     SUB_ELITE,
     TIER_ORDER,
     TIER_PROFILES,
+    TierDecision,
     aet_ant_gap,
     derive_tier,
+    effort_km,
     explain_tier,
     get_profile,
-    performance_tier,
+    level_from,
+    performance_level,
     resolve_tier,
     resolve_tier_explained,
 )
@@ -70,115 +74,6 @@ class TestTierProfiles:
         """A 30% long run is a different session at 10 km/week than at 120."""
         caps = [TIER_PROFILES[k].long_run_share_cap for k in TIER_ORDER]
         assert caps == sorted(caps, reverse=True)
-
-
-class TestDeriveTier:
-    def test_the_start_running_goal_beats_a_stale_volume_number(self):
-        """current_weekly_km defaults to 30.0, which would otherwise read as
-        recreational for someone who has never run."""
-        assert derive_tier(goal_type="start_running", current_weekly_km=30.0) == BEGINNER
-
-    def test_someone_who_cannot_jog_ten_minutes_is_a_beginner_whatever_else_says(self):
-        assert derive_tier(goal_type="finish", current_weekly_km=40.0, max_continuous_jog_min=4) == BEGINNER
-
-    @pytest.mark.parametrize(
-        "weekly_km,expected",
-        [
-            # KB-grounded bands: beginner 3 runs of 20-30 min; recreational 30-50 mi/wk
-            # with "40 km/wk baseline for 50K training" as its floor; sub-elite 50-80+
-            # mi/wk; elite 100-150+ mi/wk.
-            (5.0, BEGINNER),
-            (14.9, BEGINNER),
-            (15.0, NOVICE),
-            (39.9, NOVICE),
-            (40.0, RECREATIONAL),
-            (79.9, RECREATIONAL),
-            (80.0, SUB_ELITE),
-            (159.9, SUB_ELITE),
-            (160.0, ELITE),
-            (220.0, ELITE),
-        ],
-    )
-    def test_weekly_volume_selects_the_band(self, weekly_km, expected):
-        assert derive_tier(current_weekly_km=weekly_km) == expected
-
-    def test_unknown_volume_falls_back_to_the_default_rather_than_the_easiest_tier(self):
-        """Defaulting everyone to beginner would hand a walk-run plan to a trained
-        runner who simply hasn't filled in their profile."""
-        assert derive_tier(current_weekly_km=None) == DEFAULT_TIER
-        assert derive_tier(current_weekly_km=0) == DEFAULT_TIER
-        assert DEFAULT_TIER != BEGINNER
-
-    def test_a_proven_long_run_promotes_but_never_demotes(self):
-        assert derive_tier(current_weekly_km=8.0, historical_max_distance_km=30.0) == NOVICE
-        # It must not pull a genuine elite down toward the long run's own band.
-        assert derive_tier(current_weekly_km=200.0, historical_max_distance_km=30.0) == ELITE
-
-    def test_an_explicit_start_running_goal_outranks_a_long_run_history(self):
-        assert derive_tier(goal_type="start_running", historical_max_distance_km=42.0) == BEGINNER
-
-
-class TestAetAntGapSignal:
-    """The threshold spread is the doctrine's sharpest marker of training level, but it
-    is only evidence when it was actually MEASURED."""
-
-    def test_a_wide_measured_gap_demotes_a_high_volume_claim(self):
-        """Weekly volume is self-reported and often aspirational; the spread is measured.
-        90 km/week with a 35% spread is an aerobic deficiency, not a sub-elite engine."""
-        assert derive_tier(current_weekly_km=90.0) == SUB_ELITE
-        assert derive_tier(current_weekly_km=90.0, aet_hr=110, ant_hr=170, threshold_source="field") == RECREATIONAL
-
-    def test_a_narrow_measured_gap_leaves_the_volume_tier_alone(self):
-        assert derive_tier(current_weekly_km=90.0, aet_hr=155, ant_hr=169, threshold_source="field") == SUB_ELITE
-
-    def test_the_gap_can_only_demote_never_promote(self):
-        """A 6% spread on 20 km/week is a detrained former athlete, not an elite."""
-        assert derive_tier(current_weekly_km=20.0, aet_hr=160, ant_hr=170, threshold_source="field") == NOVICE
-
-    def test_demotion_stops_at_recreational(self):
-        """They demonstrably run the volume; they are just not competitive. Dropping them
-        to beginner would prescribe walk/run intervals to someone running 90 km a week."""
-        assert derive_tier(current_weekly_km=90.0, aet_hr=100, ant_hr=180, threshold_source="field") == RECREATIONAL
-
-    def test_derived_thresholds_must_not_cap_the_entire_user_base(self):
-        """REGRESSION. aet_hr/ant_hr are derived from fixed 65%/85%-of-reserve ratios
-        when absent, which yields the SAME ~17% spread for every athlete -- above both
-        the sub-elite and elite limits. Passing those in capped every athlete at
-        recreational, so nobody could ever be classified sub-elite or elite. Callers must
-        pass the raw stored fields, and None must mean unknown rather than deficient."""
-        assert derive_tier(current_weekly_km=200.0, aet_hr=None, ant_hr=None) == ELITE
-
-        resting, mx = 44, 192
-        derived_aet = resting + int((mx - resting) * 0.65)
-        derived_ant = resting + int((mx - resting) * 0.85)
-        gap = aet_ant_gap(derived_aet, derived_ant)
-        assert gap is not None and gap > TIER_PROFILES[SUB_ELITE].aet_ant_gap_max, (
-            "the derived ratios still produce a spread that would demote everyone -- "
-            "this is exactly why only measured thresholds may be passed"
-        )
-
-    @pytest.mark.parametrize(
-        "aet,ant",
-        [(None, 170), (140, None), (0, 170), (140, 0), (180, 170)],
-    )
-    def test_unusable_threshold_inputs_are_ignored_rather_than_guessed(self, aet, ant):
-        assert aet_ant_gap(aet, ant) is None
-        assert derive_tier(current_weekly_km=200.0, aet_hr=aet, ant_hr=ant) == ELITE
-
-
-class TestResolveTier:
-    def test_an_explicit_override_wins(self):
-        assert resolve_tier(explicit_tier="elite", current_weekly_km=10.0) == ELITE
-
-    def test_an_unrecognised_override_is_ignored_rather_than_honoured(self):
-        """A typo must degrade to derivation, not silently select the default."""
-        assert resolve_tier(explicit_tier="ultra-elite", current_weekly_km=8.0) == BEGINNER
-
-    def test_no_override_derives(self):
-        assert resolve_tier(explicit_tier=None, goal_type="start_running") == BEGINNER
-
-    def test_override_is_case_and_whitespace_insensitive(self):
-        assert resolve_tier(explicit_tier="  Sub_Elite  ", current_weekly_km=5.0) == SUB_ELITE
 
 
 class TestGetProfile:
@@ -325,63 +220,176 @@ class TestRulesBlock:
         assert "45-75 minutes" in recreational
 
 
-class TestThresholdProvenance:
-    """The gap is evidence only when the athlete says the thresholds were measured."""
+class TestLevels:
+    def test_level_interpolates_between_anchors(self):
+        assert level_from(60.0, [(40.0, 2.0), (80.0, 3.0)]) == 2.5
 
-    @pytest.mark.parametrize("source", [None, "unknown", "estimated"])
-    def test_an_unmeasured_gap_never_demotes(self, source):
-        assert derive_tier(current_weekly_km=90.0, aet_hr=110, ant_hr=170, threshold_source=source) == SUB_ELITE
+    def test_level_clamps_at_the_ends(self):
+        assert level_from(10_000.0, [(40.0, 2.0), (80.0, 3.0)]) == 3.0
+        assert level_from(0.0, [(40.0, 2.0), (80.0, 3.0)]) == 2.0
+        assert level_from(None, [(40.0, 2.0)]) is None
 
-    @pytest.mark.parametrize("source", MEASURED_THRESHOLD_SOURCES)
-    def test_a_measured_gap_demotes(self, source):
-        assert derive_tier(current_weekly_km=90.0, aet_hr=110, ant_hr=170, threshold_source=source) == RECREATIONAL
+    def test_decreasing_anchors_work_for_times(self):
+        # marathon: lower time is a higher level
+        assert level_from(10_500.0, [(11_400.0, 3.0), (9_600.0, 4.0)]) == 3.5
 
-    def test_regression_high_volume_athlete_with_default_like_thresholds(self):
-        """REGRESSION (prod, 2026-09). 120 km/week, AeT 134 / AnT 163 (17.8% gap, values
-        next to the 135/165 defaults, provenance unknown) was demoted to recreational and
-        handed 40-60 km weeks while running 125-160 km."""
-        assert derive_tier(current_weekly_km=134.0, aet_hr=134, ant_hr=163, threshold_source="unknown") == SUB_ELITE
+    def test_effort_km(self):
+        assert effort_km(127.0, 5800.0) == 185.0
+        assert effort_km(70.0, None) == 70.0
+        assert effort_km(None, 500.0) is None
 
 
-class TestPerformancePromotion:
-    def test_performance_tier_from_marathon_prediction(self):
-        assert performance_tier(2 * 3600 + 35 * 60, "male", None) == ELITE
-        assert performance_tier(3 * 3600, "male", None) == SUB_ELITE
-        assert performance_tier(4 * 3600, None, None) == RECREATIONAL
-        assert performance_tier(5 * 3600, "male", None) is None
+class TestPerformanceChain:
+    def test_best_of_marathon_and_utmb(self):
+        level, source = performance_level(4 * 3600, 720, None, None, "male")
+        assert source == "utmb_index" and level > 4.0
 
-    def test_women_get_slower_thresholds(self):
-        assert performance_tier(2 * 3600 + 55 * 60, "female", None) == ELITE
-        assert performance_tier(2 * 3600 + 55 * 60, "male", None) == SUB_ELITE
+    def test_vo2max_only_when_no_race_signal(self):
+        assert performance_level(None, None, 55.0, None, "male") == (3.0, "vo2max")
+        assert performance_level(3 * 3600, None, 70.0, None, "male")[1] == "marathon"
 
-    def test_best_signal_wins(self):
-        assert performance_tier(4 * 3600, "male", 720) == ELITE
+    def test_threshold_pace_is_the_last_fallback(self):
+        assert performance_level(None, None, None, 255.0, "male") == (3.0, "threshold_pace")
 
-    def test_promotes_at_most_one_step(self):
-        assert derive_tier(current_weekly_km=50.0, marathon_prediction_sec=2 * 3600 + 30 * 60) == SUB_ELITE
+    def test_women_are_judged_on_scaled_anchors(self):
+        men = performance_level(2 * 3600 + 55 * 60, None, None, None, "male")[0]
+        women = performance_level(2 * 3600 + 55 * 60, None, None, None, "female")[0]
+        assert women > men
 
-    def test_performance_never_demotes(self):
-        assert derive_tier(current_weekly_km=200.0, marathon_prediction_sec=5 * 3600) == ELITE
+    def test_nothing_gives_none(self):
+        assert performance_level(None, None, None, None, None) is None
 
-    def test_performance_does_not_lift_a_beginner_goal(self):
-        assert derive_tier(goal_type="start_running", current_weekly_km=50.0, utmb_index=700) == BEGINNER
 
-    def test_measured_gap_still_demotes_after_promotion(self):
-        tier = derive_tier(
-            current_weekly_km=100.0,
-            marathon_prediction_sec=2 * 3600 + 30 * 60,
-            aet_hr=110,
-            ant_hr=170,
+class TestComposite:
+    @pytest.mark.parametrize(
+        "weekly_km,expected",
+        [(5.0, BEGINNER), (20.0, NOVICE), (60.0, RECREATIONAL), (120.0, SUB_ELITE), (200.0, ELITE)],
+    )
+    def test_load_alone_reproduces_the_bands(self, weekly_km, expected):
+        assert derive_tier(current_weekly_km=weekly_km) == expected
+
+    def test_unknown_volume_and_nothing_else_is_the_default(self):
+        assert derive_tier() == DEFAULT_TIER
+
+    def test_beginner_rules_still_win(self):
+        assert derive_tier(goal_type="start_running", current_weekly_km=100.0, utmb_index=800) == BEGINNER
+        assert derive_tier(max_continuous_jog_min=5, current_weekly_km=100.0) == BEGINNER
+
+    def test_regression_elite_reporter_is_sub_elite_not_recreational(self):
+        """REGRESSION (prod, 2026-09): high measured load, 18% AeT/AnT gap of unknown
+        source. The old rule demoted this athlete to recreational."""
+        d = explain_tier(
+            current_weekly_km=134.0,
+            weekly_vert_m=5300.0,
+            marathon_prediction_sec=10380.0,
+            historical_max_distance_km=50.0,
+            aet_hr=134,
+            ant_hr=163,
+            max_hr=183,
+            threshold_source="unknown",
+            gender="male",
+        )
+        assert d.tier == SUB_ELITE
+        assert d.levels["physiology"] is None
+        assert any("not used" in r for r in d.reasons)
+
+    def test_load_only_vert_heavy_athlete_reaches_elite(self):
+        assert derive_tier(current_weekly_km=134.0, weekly_vert_m=5300.0) == ELITE
+
+    def test_fast_runner_on_low_volume_moves_up_one(self):
+        assert derive_tier(current_weekly_km=50.0, marathon_prediction_sec=2 * 3600 + 35 * 60) == SUB_ELITE
+
+    def test_guardrail_caps_at_one_tier_above_load(self):
+        d = explain_tier(
+            current_weekly_km=30.0,
+            marathon_prediction_sec=2 * 3600 + 12 * 60,
+            aet_hr=165,
+            ant_hr=172,
+            max_hr=182,
             threshold_source="lab",
         )
-        assert tier == RECREATIONAL
+        assert d.score >= 3.0
+        assert d.tier == RECREATIONAL  # load tier is novice
 
-    def test_explain_tier_reports_each_step(self):
-        tier, reasons = explain_tier(current_weekly_km=134.0, utmb_index=720, aet_hr=134, ant_hr=163)
-        assert tier == ELITE
-        assert any("volume" in r for r in reasons)
-        assert any("promoted" in r for r in reasons)
-        assert any("not used" in r for r in reasons)
+    @pytest.mark.parametrize("source", MEASURED_THRESHOLD_SOURCES)
+    def test_measured_wide_gap_pulls_down(self, source):
+        assert derive_tier(current_weekly_km=90.0, aet_hr=110, ant_hr=170, threshold_source=source) == RECREATIONAL
 
-    def test_resolve_tier_explained_honours_the_override(self):
-        assert resolve_tier_explained(explicit_tier="elite", current_weekly_km=20.0) == (ELITE, ["explicit plan override"])
+    @pytest.mark.parametrize("source", [None, "unknown", "estimated"])
+    def test_unmeasured_gap_is_ignored(self, source):
+        assert derive_tier(current_weekly_km=90.0, aet_hr=110, ant_hr=170, threshold_source=source) == SUB_ELITE
+
+    def test_measured_narrow_gap_keeps_a_high_volume_runner(self):
+        assert derive_tier(current_weekly_km=90.0, aet_hr=155, ant_hr=169, threshold_source="field") == SUB_ELITE
+
+    def test_measured_gap_never_drops_two_tiers(self):
+        assert derive_tier(current_weekly_km=200.0, aet_hr=100, ant_hr=180, threshold_source="lab") == SUB_ELITE
+
+    def test_experience_lifts_but_never_drags(self):
+        assert derive_tier(current_weekly_km=50.0, historical_max_distance_km=5.0) == RECREATIONAL
+        assert derive_tier(current_weekly_km=10.0, historical_max_distance_km=30.0) == NOVICE
+
+    def test_unusable_threshold_inputs_are_ignored(self):
+        assert derive_tier(current_weekly_km=200.0, aet_hr=180, ant_hr=170, threshold_source="lab") == ELITE
+
+    def test_reasons_name_every_dimension(self):
+        d = explain_tier(current_weekly_km=70.0, vo2max=57.0, gender="male")
+        assert d.levels["load"] is not None and d.levels["performance"] is not None
+        text = " ".join(d.reasons)
+        assert "load" in text and "performance" in text and "score" in text
+
+    def test_derived_thresholds_must_not_cap_the_entire_user_base(self):
+        """REGRESSION. aet_hr/ant_hr are derived from fixed 65%/85%-of-reserve ratios
+        when absent, which yields the SAME ~17% spread for every athlete -- above both
+        the sub-elite and elite limits. Passing those in capped every athlete at
+        recreational, so nobody could ever be classified sub-elite or elite. Callers must
+        pass the raw stored fields, and None must mean unknown rather than deficient."""
+        assert derive_tier(current_weekly_km=200.0, aet_hr=None, ant_hr=None) == ELITE
+
+        resting, mx = 44, 192
+        derived_aet = resting + int((mx - resting) * 0.65)
+        derived_ant = resting + int((mx - resting) * 0.85)
+        gap = aet_ant_gap(derived_aet, derived_ant)
+        assert gap is not None and gap > TIER_PROFILES[SUB_ELITE].aet_ant_gap_max, (
+            "the derived ratios still produce a spread that would demote everyone -- "
+            "this is exactly why only measured thresholds may be passed"
+        )
+
+
+class TestHysteresis:
+    def test_keeps_previous_tier_just_over_the_boundary(self):
+        assert derive_tier(current_weekly_km=84.0, previous_tier=RECREATIONAL) == RECREATIONAL  # score 3.05
+
+    def test_keeps_previous_tier_just_under_the_boundary(self):
+        assert derive_tier(current_weekly_km=78.0, previous_tier=SUB_ELITE) == SUB_ELITE  # score 2.95
+
+    def test_moves_once_clearly_past(self):
+        assert derive_tier(current_weekly_km=96.0, previous_tier=RECREATIONAL) == SUB_ELITE  # score 3.2
+
+    def test_new_plans_use_the_plain_score(self):
+        assert derive_tier(current_weekly_km=84.0) == SUB_ELITE
+
+    def test_never_holds_across_two_tiers(self):
+        assert derive_tier(current_weekly_km=134.0, weekly_vert_m=5300.0, previous_tier=RECREATIONAL) == ELITE
+
+    def test_hysteresis_band_is_a_tenth_of_a_level(self):
+        assert HYSTERESIS_LEVEL == 0.1
+
+
+class TestResolveTier:
+    def test_an_explicit_override_wins(self):
+        assert resolve_tier(explicit_tier="elite", current_weekly_km=20.0) == ELITE
+        decision = resolve_tier_explained(explicit_tier="elite")
+        assert isinstance(decision, TierDecision)
+        assert decision.reasons == ["explicit plan override"]
+
+    def test_an_unrecognised_override_is_ignored(self):
+        assert resolve_tier(explicit_tier="pro", current_weekly_km=20.0) == NOVICE
+
+    def test_override_is_case_and_whitespace_insensitive(self):
+        assert resolve_tier(explicit_tier="  Sub_Elite ", current_weekly_km=20.0) == SUB_ELITE
+
+    def test_a_stored_tier_no_longer_freezes_a_replan(self):
+        """REGRESSION: next block passed plans.athlete_tier as the override, so a plan first
+        resolved as recreational stayed recreational forever."""
+        assert resolve_tier(explicit_tier=None, current_weekly_km=134.0, previous_tier=RECREATIONAL) == SUB_ELITE
