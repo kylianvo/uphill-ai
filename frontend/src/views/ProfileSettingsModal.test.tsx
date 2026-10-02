@@ -8,6 +8,7 @@ const mockSetUser = vi.fn();
 const mockSetProfileSettingsOpen = vi.fn();
 const mockFetchPaceZones = vi.fn();
 const mockTriggerHaptic = vi.fn();
+const mockSetProfileForm = vi.fn();
 
 const mockUser = { id: 1, name: "Test Athlete", email: "athlete@uphill.ai", pace_zone_model: "5_zone" as const };
 
@@ -30,8 +31,9 @@ vi.mock("../contexts/AppContext", () => ({
       zone2_pace_min: "5:30",
       zone2_pace_max: "5:00",
       gemini_api_key: "",
+      threshold_source: "lab",
     },
-    setProfileForm: vi.fn(),
+    setProfileForm: mockSetProfileForm,
     activePlan: null,
     setActivePlan: vi.fn(),
     workouts: [],
@@ -82,5 +84,24 @@ describe("ProfileSettingsModal", () => {
       expect(screen.getAllByText(/Physiology profile updated successfully!/i)[0]).toBeInTheDocument();
     });
     expect(mockTriggerHaptic).toHaveBeenCalled();
+  });
+
+  it("shows how the AeT/AnT values were obtained and updates the form on change", () => {
+    render(<ProfileSettingsModal />);
+    const select = screen.getByLabelText("How did you get your AeT/AnT?") as HTMLSelectElement;
+    expect(select.value).toBe("lab");
+    expect(Array.from(select.options).map(o => o.value)).toEqual(["lab", "field", "estimated", "unknown"]);
+    fireEvent.change(select, { target: { value: "field" } });
+    expect(mockSetProfileForm).toHaveBeenCalledWith(expect.objectContaining({ threshold_source: "field" }));
+  });
+
+  it("sends threshold_source with the profile update", async () => {
+    render(<ProfileSettingsModal />);
+    fireEvent.click(screen.getByRole("button", { name: /Save Settings/i }));
+    await waitFor(() => {
+      const call = (global.fetch as any).mock.calls.find((c: any[]) => String(c[0]).includes("/api/auth/update-profile"));
+      expect(call).toBeTruthy();
+      expect(JSON.parse(call[1].body).threshold_source).toBe("lab");
+    });
   });
 });
