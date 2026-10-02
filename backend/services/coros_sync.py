@@ -5,6 +5,7 @@ scale-onboarding programme, so there is nothing to subscribe to yet; the
 webhook stub in routers/integrations.py is the landing point for when there is.
 """
 
+import asyncio
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
@@ -16,6 +17,8 @@ from services.mcp_client import McpClient
 from services.providers.coros import PROVIDER, CorosAdapter
 
 logger = get_logger(__name__)
+
+FITNESS_REFRESH_TIMEOUT_SECONDS = 15
 
 
 class CorosReconnectRequired(RuntimeError):
@@ -43,6 +46,47 @@ class CorosSyncPersistError(RuntimeError):
     sync -- the same silent-empty-result failure mode already hardened against
     in the COROS parsers and the adapter's daily-metrics merge.
     """
+
+
+def store_overview(user_id: int, overview: dict[str, Any]) -> None:
+    """Keep the profile columns current and append the assessment to the history."""
+    db.update_user_fitness(
+        user_id=user_id,
+        threshold_pace=overview.get("threshold_pace"),
+        coros_vo2max=overview.get("vo2max"),
+        coros_running_level=overview.get("running_level"),
+    )
+    db.record_fitness_assessment(
+        user_id,
+        PROVIDER,
+        {
+            "vo2max": overview.get("vo2max"),
+            "running_level": overview.get("running_level"),
+            "threshold_pace": overview.get("threshold_pace"),
+            "pred_5k_sec": overview.get("prediction_5k_sec"),
+            "pred_10k_sec": overview.get("prediction_10k_sec"),
+            "pred_hm_sec": overview.get("prediction_half_marathon_sec"),
+            "pred_marathon_sec": overview.get("prediction_marathon_sec"),
+        },
+    )
+
+
+async def ensure_fresh_assessment(user_id: int, max_age: timedelta = timedelta(days=7)) -> None:
+    """Pull a fitness overview when the latest is missing or older than max_age.
+    Best effort: a plan must never wait on, or fail because of, COROS."""
+    connection = db.get_connection(user_id, PROVIDER)
+    if not connection or connection.get("status") != "active":
+        return
+    latest = db.get_latest_fitness_assessment(user_id)
+    if latest and datetime.now(UTC) - latest["measured_at"] < max_age:
+        return
+    try:
+        await asyncio.wait_for(sync_fitness(user_id), timeout=FITNESS_REFRESH_TIMEOUT_SECONDS)
+    except Exception:
+        logger.exception(
+            "on-demand COROS fitness refresh failed",
+            extra={"fields": {"service": "coros_sync", "event": "fitness_refresh_failed"}},
+        )
 
 
 async def persist(user_id: int, adapter, days: int) -> dict[str, int]:
@@ -160,7 +204,17 @@ async def sync_user(user_id: int, days: int = 30) -> dict[str, int]:
     client = McpClient(settings.COROS_MCP_ENDPOINT, token)
     try:
         await client.initialize()
-        return await persist(user_id, CorosAdapter(client), days)
+        result = await persist(user_id, CorosAdapter(client), days)
+        try:
+            overview = await CorosAdapter(client).fetch_fitness_overview()
+            if overview:
+                store_overview(user_id, overview)
+        except Exception:
+            logger.exception(
+                "fitness overview during sync failed",
+                extra={"fields": {"service": "coros_sync", "event": "fitness_overview_failed"}},
+            )
+        return result
     finally:
         await client.aclose()
 
@@ -184,12 +238,7 @@ async def sync_fitness(user_id: int) -> dict[str, Any]:
         vo2max = overview.get("vo2max")
         running_level = overview.get("running_level")
 
-        db.update_user_fitness(
-            user_id=user_id,
-            threshold_pace=threshold_pace,
-            coros_vo2max=vo2max,
-            coros_running_level=running_level,
-        )
+        store_overview(user_id, overview)
 
         return {
             "status": "ok",
