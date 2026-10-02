@@ -794,8 +794,15 @@ class PlanGenerator:
             )
             from services import plan_signals
 
+            snap = race_info.get("fitness_snapshot")
             plan_signals.record_generation(
-                plan_id=plan_id, user_id=user_id, block_number=block_number, workouts=workouts, trace_id=trace_id
+                plan_id=plan_id,
+                user_id=user_id,
+                block_number=block_number,
+                workouts=workouts,
+                trace_id=trace_id,
+                tier=tier,
+                measured_weekly_km=snap.weekly_km if snap and snap.weekly_km_source == "coros" else None,
             )
             return workouts, tier
 
