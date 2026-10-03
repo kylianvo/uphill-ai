@@ -13,6 +13,10 @@ NAMES = [
     "fixture_snapshot_elite_unmeasured_thresholds.json",
     "fixture_snapshot_recreational_field_thresholds.json",
     "fixture_snapshot_elite_no_coros.json",
+    "fixture_vietnam_urban_recreational_no_gym.json",
+    "fixture_vietnam_urban_recreational_treadmill.json",
+    "fixture_vietnam_urban_sub_elite_no_gym.json",
+    "fixture_vietnam_urban_sub_elite_treadmill.json",
 ]
 
 
@@ -67,3 +71,22 @@ def test_week2_gate_requests_a_block_that_contains_week2(expect, block_weeks, mo
     fixture = {"user_profile": {}, "race_info": {}, "expect": expect}
     asyncio.run(golden_eval._run_scheduler(fixture))
     assert generate.call_args.kwargs["weeks_per_block"] == block_weeks
+
+
+def test_vietnam_urban_cases_cover_both_tiers_and_access_conditions():
+    cases = []
+    for name in NAMES:
+        if not name.startswith("fixture_vietnam_urban_"):
+            continue
+        with open(os.path.join(golden_eval.GOLDEN_DIR, "scheduler", name), encoding="utf-8") as f:
+            fixture = json.load(f)
+        race = fixture["race_info"]
+        gym = fixture["user_profile"]["has_gym_access"]
+        assert race["lang"] == "vi"
+        assert race["training_environment"] == "mixed"
+        assert race["has_gym_access"] is gym and race["use_treadmill"] is gym
+        assert race["long_run_day"] == "Sunday"
+        assert "Weekday outdoor runs must be flat" in race["athlete_notes"]
+        assert "Mountains are available only on Saturday and Sunday" in race["athlete_notes"]
+        cases.append((fixture["expect"]["tier"], gym))
+    assert set(cases) == {("recreational", False), ("recreational", True), ("sub_elite", False), ("sub_elite", True)}

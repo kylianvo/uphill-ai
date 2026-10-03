@@ -1,0 +1,68 @@
+{
+  "synthetic": true,
+  "provenance": "scheduler",
+  "_comment": "Invented Vietnamese urban recreational runner: flat outdoor weekdays, no weekday gym/treadmill, mountain access at weekends. Review terrain timing and equipment as well as tier and volume; notes encode day-specific access because the app has only a global mixed-terrain setting.",
+  "user_profile": {
+    "age": 33,
+    "gender": "male",
+    "max_hr": 188,
+    "resting_hr": 51,
+    "aet_hr": 146,
+    "ant_hr": 166,
+    "threshold_source": "field",
+    "current_weekly_km": 66,
+    "days_per_week": 5,
+    "has_gym_access": false,
+    "threshold_pace": "4:48"
+  },
+  "fitness_snapshot": {
+    "weekly_km": 66.0,
+    "weekly_km_source": "coros",
+    "weekly_vert_m": 900.0,
+    "volume_as_of": "2026-09-27",
+    "threshold_pace": "4:48",
+    "threshold_pace_source": "coros",
+    "assessment": {
+      "vo2max": 51.0,
+      "running_level": 82.0,
+      "threshold_pace": "4:48",
+      "pred_marathon_sec": 13860.0,
+      "measured_at": "2026-10-01T08:16:00+00:00"
+    },
+    "utmb_index": null,
+    "threshold_source": "field",
+    "gender": "male",
+    "readiness": null,
+    "notes": []
+  },
+  "race_info": {
+    "lang": "vi",
+    "terrain": "trail",
+    "goal_type": "finish",
+    "name": "Synthetic Vietnam Urban-to-Trail 48K",
+    "date": "2026-11-22",
+    "course_distance_km": 48,
+    "course_elevation_gain_m": 2100,
+    "preferred_days": [
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Saturday",
+      "Sunday"
+    ],
+    "long_run_day": "Sunday",
+    "days_per_week": 5,
+    "has_gym_access": false,
+    "use_treadmill": false,
+    "training_environment": "mixed",
+    "athlete_notes": "Living in urban Hanoi, Vietnam. Weekday outdoor runs must be flat; there are no weekday outdoor hills. Mountains are available only on Saturday and Sunday. No gym, treadmill, weights or exercise machines are available. Any hill session or positive running elevation must be on Saturday or Sunday. Weekday strength and muscular endurance must use bodyweight on flat ground. Keep the long run on Sunday. No injury, fatigue or overreaching is reported."
+  },
+  "total_weeks": 8,
+  "expect": {
+    "tier": "recreational",
+    "week2_km": [
+      55,
+      73
+    ]
+  }
+}

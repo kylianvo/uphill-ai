@@ -323,3 +323,22 @@ stamp was repeated and verified after health. No `alembic upgrade` ran.
 The synthetic accounts and all five associated test plans were removed after
 saving the samples. Cleanup used exact test emails and owned plan rows, without
 truncating any table. Final staging health is HTTP 200.
+
+## Vietnam urban coverage — 2026-10-03
+
+Added four synthetic Vietnamese-output cases: recreational/sub-elite × weekday
+Tuesday/Thursday incline treadmill/no gym, with flat urban outdoor weekdays and
+weekend mountains. Production v1 references are captured for all four. Targeted
+v4 run `eval_scheduler_snapshot-exp_1791031783` passes four tier and four volume
+gates; all four score sets verified through Scores API v3. Week-2 km are
+60.7 / 58.3 / 106.0 / 102.9 against bands 55–73 / 55–73 / 92–119 / 92–119.
+The manual access review passes, with remaining distance/ascent and treadmill
+field/text inconsistencies, concentrated long runs and snapshot disclosure
+recorded in the report. Existing `plan_checks` is
+2/3 for all baseline/candidate cases because progression compares a Saturday
+partial week to a full week. No check or assertion was relaxed.
+
+[Fixture matrix, comparison, limitations and generated samples](../superpowers/evidence/fitness-snapshot/vietnam-urban-eval.md).
+Backend units: 1,138 passed, 23 warnings. No integration suite or new prompt
+version; no label changes. Production remains HOLD for the separate staging
+sequential-path failure.
