@@ -60,11 +60,8 @@ You MUST return ONLY a JSON array of workout objects. NEVER wrap it in markdown 
    - `walk_interval_value` (number, ONLY for `type` 'Walk/Run': the WALK recovery per rep, in the same unit as `interval_rep_unit`. Together with the three interval fields below this makes the session renderable as '5 x 2 min jog / 1 min walk' rather than a sentence the athlete has to parse.)
    - `interval_reps`, `interval_rep_value`, `interval_rep_unit` (for `type` 'Interval' or 'Walk/Run', AND ONLY when the session is a single clean rep block — e.g. 8 reps of 12-second hill sprints, or 5 reps of 400m repeats. `interval_reps` is the integer rep count, `interval_rep_value` is the number per rep, `interval_rep_unit` is one of 's'/'m'/'min'/'km' matching how that rep is measured. OMIT all three (do not guess) when the session has a warm-up/main/cool-down structure that doesn't reduce to one rep block, a pyramid, or mixed rep durations — the `description` Process section still carries the full detail for those.)
    - `elevation_gain_m` and `grade_percent` (numbers, ONLY for `type` Easy/Tempo/Interval/Long Run AND only when the athlete's terrain is trail/mountain — omit or use 0 otherwise): give this specific run a plausible amount of climbing, using the race's overall course_elevation_gain_m/course_distance_km (given below in the athlete/race profile) as context for what's typical, and this run's own distance/phase/role to vary it — a Base-phase Easy run climbs less than a Peak-phase Long Run. `grade_percent` should be consistent with `elevation_gain_m` and this run's own `distance_km` (grade ≈ elevation_gain_m / (distance_km × 10)), not just the race's average. NEVER invent a figure wildly inconsistent with the race's overall elevation profile.
-   - `description` (string: highly detailed description containing specific sections, each introduced by its keyword — Process, Overall, Reason, Benefit, Warning — appearing in that order and each appearing EXACTLY ONCE: Process (step-by-step execution using → to separate segments — EVERY exercise or effort chunk MUST be its own → segment; NEVER chain multiple exercises together with semicolons or commas inside a single segment, and NEVER wrap them in a label like 'Main Circuit: ...'. The warm-up, main, and cool-down minutes stated MUST sum exactly to duration_minutes.
-     * Easy/Tempo/Interval/Long Run, e.g. 'Warm up 10 min easy → 4 x 6min @ Zone 4, 2min jog recovery → cool down 10 min'.
-     * Strength (general/max-strength): straight sets — one → segment per exercise, each naming the exercise plus sets x reps and a 60-180s rest interval BETWEEN SETS OF THAT SAME EXERCISE (appropriate for near-maximal loads), e.g. 'Warm up 5 min mobility → Bodyweight Squats: 3x10, 90s rest → Walking Lunges: 3x10 each leg, 90s rest → Cool down 5 min stretching'.
-{{me_format_spec}}     * Interval: state exact rep count, distance or duration per rep, and recovery between reps.
-NEVER substitute a placeholder segment like 'Perform the bodyweight strength circuit for 20 minutes' for the actual named-exercise segments, and NEVER place the exercise breakdown anywhere outside this Process → chain (in particular, never append it after Warning or any other section) — every exercise MUST live inside Process and nowhere else), Overall (2-3 sentence summary of the session), Reason (why it is scheduled now), Benefit (expected physiological adaptation), and Warning (ONLY injury risks or execution precautions — NEVER exercise prescriptions, sets, or reps; those belong exclusively in Process). Provide extensive context.)
+   - `rationale` (optional string: one concise coaching sentence, no digits or numerical prescriptions. Preserve prerequisites and stop conditions in structured fields.)
+{{me_format_spec}}
 {{fueling_spec}}   - `treadmill_incline` (number, optional: recommended incline percentage if using treadmill. Inform this from the route's actual grade instead of a flat generic default: for trail-terrain Easy/Tempo/Interval/Long Run workouts, set it consistent with this same workout's own `grade_percent` above (a flat 1% belt incline under-trains the specific climbing demand of a genuinely hilly race). {{hill_incline_exception}}Omit or use 0 when treadmill access isn't relevant.)
    - `treadmill_speed` (number, optional: recommended speed in kph if using treadmill, reduced appropriately for the incline set above — a steeper incline needs a slower speed to hold the same target effort)
    - `session_slot` (string, optional: ONLY set this on double-session days. Use 'morning' for the first/shorter session and 'afternoon' for the main/longer session. Omit entirely for single-session days.)
@@ -74,20 +71,50 @@ NEVER substitute a placeholder segment like 'Perform the bodyweight strength cir
 Athlete Profile:
 {{user_summary}}
 
+FITNESS SNAPSHOT RULES (apply only when the athlete summary contains a fitness snapshot block):
+- Read the declared source: watch-derived volume is measured; profile-typed volume is self-reported. Neither unknown logs nor an override alone proves lost fitness or readiness.
+- For healthy initial AND subsequent blocks, retain the snapshot weekly budget in each first full training week. Honor explicit fatigue, illness, confirmed missed training, injury, Taper, Race Week and Recovery context instead of forcing a healthy volume floor.
+- The first full week (week 2) should total 90-100% of the snapshot's weekly volume, never below 80%,
+  unless the readiness line shows fatigue or overreaching, or the athlete notes illness/injury, confirmed missed training, or this is Taper, Race Week or Recovery.
+- Weekly vert should start near the snapshot's vert and progress from there.
+- Derive threshold and interval targets from the snapshot's threshold pace and race predictions.
+- If the snapshot says the AeT/AnT thresholds were "not used", do not apply the Aerobic Deficiency
+  Syndrome restrictions on intensity because of them.
+- Never mention the snapshot, its sources or the level label to the athlete.
+- Before returning JSON, sum week-2 distance_km and check it against 90-100% of the
+  snapshot weekly volume. Allocate enough aerobic running minutes across the allowed
+  training days to meet that range, while respecting the tier caps and schedule.
+- Use the snapshot km/week as the starting weekly budget, not a number to reduce by
+  the generic build-volume modifier. A partial week 1 is prorated to its remaining
+  days; week 2 is a full week and must retain the full weekly budget. Recheck the
+  summed week-2 distances after converting minutes to kilometres using target pace.
+
 {{program_details}}Plan Start Date: {{current_date_str}} ({{current_weekday}})
 {{target_date_details}}Full Plan Length: {{total_weeks}} weeks.
 - Week 1 starts on: {{current_date_str}} ({{current_weekday}}).
-{{feedback_instruction}}"""
+{{feedback_instruction}}
+
+STRUCTURED PRESCRIPTION — authoritative over the earlier numerical description schema:
+Every workout must include `segments`, an ordered nonempty array, and `rationale`, a concise coaching explanation with no digits, quantities, sets or additional prescriptions. Old description Process numbers are replaced locally from segments. Do not repeat execution instructions in rationale. Preserve useful cautions without numeric claims.
+Each segment: kind run|hike|strength|recovery|rest; duration_minutes (finite nonnegative); zone Zone 1–Zone 5 for moving run/hike, otherwise null; setting flat_outdoor|mountain|treadmill|indoor|unknown; role warmup|main|cooldown (optional). Moving segments require pace_min_per_km, an actual movement pace number or two positive endpoints. For Treadmill use actual belt pace, not an equivalent flat-effort pace; incline_pct is the actual grade. Mountain movement may include elevation_gain_m as an estimate. Flat outdoor ascent is zero. Never assign ascent from the race merely because a weekday run is Trail.
+Strength segments require one named exercise object: name, positive integer sets/reps, nonnegative rest_seconds between sets, and equipment (array: bodyweight, weights, machine, box, stairs; include every required item). Duration includes the exercise's rests. Each exercise is a separate segment; do not hide a circuit or its repetitions in prose. For repeated intervals emit each work and moving recovery segment in order; recovery kind is passive only. Include moving Warm-up and Cool-down once. Rest has duration zero.
+Use only known day access and equipment. Positive Treadmill incline requires a confirmed machine maximum; without that capacity use flat accessible movement. No gym does not establish stair/box access. Do not convert Hill Sprint/power to sustained incline work; unknown movement/strength readiness does not authorize advanced power/ME. Near race dates cannot bypass preparation. Use conservative accessible work where prerequisites are unknown.
+The local resolver derives totals and athlete-facing numeric instructions. Strength minutes never become running kilometers. Choose durations to meet the existing healthy-week volume rules; keep justified recovery/taper adaptations. Do not add load merely to satisfy a software score. Keep internal snapshot/tier/scoring terminology out of athlete-facing text.
+
+When language is VI, apply this meaning/style contract:
+
+VI meaning parity: English is the source of truth. Preserve every quantity, unit, prerequisite, caveat and stop condition; add no product or medical claims. Use short active sentences addressed to bạn. Keep the technical terms listed above, plus Warm-up, Cool-down, Strides, Cadence, RPE, Electrolytes and Aerobic decoupling in English. Use khối lượng tuần, buổi tập, plan/lịch tập. Gloss only first-use form labels, never repeatedly in workout text. No exclamation marks or rhetorical headings. Avoid đắm chìm, hành trình as metaphor, giải pháp, thấu hiểu, kiểm toán, and không chỉ X — mà là Y, plus every banned term listed above. Preserve term markup/interpolations. VI text must fit within the EN length; chips/labels at most three words. If unsure of a technical translation, retain English.
+"""
+
 
 STRUCTURED_PRESCRIPTION_CONTRACT = """
 STRUCTURED PRESCRIPTION — authoritative over the earlier numerical description schema:
 Every workout must include `segments`, an ordered nonempty array, and `rationale`, a concise coaching explanation with no digits, quantities, sets or additional prescriptions. Old description Process numbers are replaced locally from segments. Do not repeat execution instructions in rationale. Preserve useful cautions without numeric claims.
 Each segment: kind run|hike|strength|recovery|rest; duration_minutes (finite nonnegative); zone Zone 1–Zone 5 for moving run/hike, otherwise null; setting flat_outdoor|mountain|treadmill|indoor|unknown; role warmup|main|cooldown (optional). Moving segments require pace_min_per_km, an actual movement pace number or two positive endpoints. For Treadmill use actual belt pace, not an equivalent flat-effort pace; incline_pct is the actual grade. Mountain movement may include elevation_gain_m as an estimate. Flat outdoor ascent is zero. Never assign ascent from the race merely because a weekday run is Trail.
 Strength segments require one named exercise object: name, positive integer sets/reps, nonnegative rest_seconds between sets, and equipment (array: bodyweight, weights, machine, box, stairs; include every required item). Duration includes the exercise's rests. Each exercise is a separate segment; do not hide a circuit or its repetitions in prose. For repeated intervals emit each work and moving recovery segment in order; recovery kind is passive only. Include moving Warm-up and Cool-down once. Rest has duration zero.
-Use only known day access and equipment. No gym does not establish stair/box access. Do not convert Hill Sprint/power to sustained incline work; unknown movement/strength readiness does not authorize advanced power/ME. Near race dates cannot bypass preparation. Use conservative accessible work where prerequisites are unknown.
+Use only known day access and equipment. Positive Treadmill incline requires a confirmed machine maximum; without that capacity use flat accessible movement. No gym does not establish stair/box access. Do not convert Hill Sprint/power to sustained incline work; unknown movement/strength readiness does not authorize advanced power/ME. Near race dates cannot bypass preparation. Use conservative accessible work where prerequisites are unknown.
 The local resolver derives totals and athlete-facing numeric instructions. Strength minutes never become running kilometers. Choose durations to meet the existing healthy-week volume rules; keep justified recovery/taper adaptations. Do not add load merely to satisfy a software score. Keep internal snapshot/tier/scoring terminology out of athlete-facing text.
 """
-PLAN_GENERATION_PROMPT += STRUCTURED_PRESCRIPTION_CONTRACT
 PLAN_SINGLE_WORKOUT_PROMPT += STRUCTURED_PRESCRIPTION_CONTRACT
 
 BLOCK_NARRATIVE_PROMPT = """You are Coach Uphill, an expert trail-running coach. An athlete's training plan
