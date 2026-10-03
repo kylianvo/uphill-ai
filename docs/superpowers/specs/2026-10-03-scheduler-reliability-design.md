@@ -61,6 +61,12 @@ Additional research: [Scott Johnston articles and podcast source review](../../r
 The review confirms the ME set-order conflict in Scott's own Evoke article,
 clarifies threshold terminology and separates verified text from podcast leads.
 
+Book-club follow-up: [timestamped caption-based principles](../../research/2026-10-04-uphill-athlete-bookclub-principles.md)
+cover all nine playlist videos through targeted passage review. The supplied
+Chapter 3 link does not establish a long-run percentage in the retrieved captions;
+that numeric attribution remains unresolved. Session purpose, individual recovery
+and known equipment access remain explicit design inputs.
+
 ## Coaching-rule audit comes first
 
 Create a reviewed rule-to-source register before changing coaching behavior.
