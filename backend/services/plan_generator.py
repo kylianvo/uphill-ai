@@ -5,7 +5,7 @@ from typing import Any
 from config import settings
 from db import block_number_for_week, week_range_for_block
 from log_utils import get_logger
-from services import observability
+from services import observability, plan_checks
 from services.athlete_tier import get_profile, resolve_tier
 from services.plan_rules import build_rules_block
 from services.training_rules import TrainingRules, default_zone2_pace, resolve_zone2_pace
@@ -83,7 +83,7 @@ STRUCTURED_PRESCRIPTION_CONTRACT = """
 STRUCTURED PRESCRIPTION — authoritative over the earlier numerical description schema:
 Every workout must include `segments`, an ordered nonempty array, and `rationale`, a concise coaching explanation with no digits, quantities, sets or additional prescriptions. Old description Process numbers are replaced locally from segments. Do not repeat execution instructions in rationale. Preserve useful cautions without numeric claims.
 Each segment: kind run|hike|strength|recovery|rest; duration_minutes (finite nonnegative); zone Zone 1–Zone 5 for moving run/hike, otherwise null; setting flat_outdoor|mountain|treadmill|indoor|unknown; role warmup|main|cooldown (optional). Moving segments require pace_min_per_km, an actual movement pace number or two positive endpoints. For Treadmill use actual belt pace, not an equivalent flat-effort pace; incline_pct is the actual grade. Mountain movement may include elevation_gain_m as an estimate. Flat outdoor ascent is zero. Never assign ascent from the race merely because a weekday run is Trail.
-Strength segments require one named exercise object: name, positive integer sets/reps, nonnegative rest_seconds between sets. Duration includes the exercise's rests. Each exercise is a separate segment; do not hide a circuit or its repetitions in prose. For repeated intervals emit each work and moving recovery segment in order; recovery kind is passive only. Include moving Warm-up and Cool-down once. Rest has duration zero.
+Strength segments require one named exercise object: name, positive integer sets/reps, nonnegative rest_seconds between sets, and equipment (array: bodyweight, weights, machine, box, stairs; include every required item). Duration includes the exercise's rests. Each exercise is a separate segment; do not hide a circuit or its repetitions in prose. For repeated intervals emit each work and moving recovery segment in order; recovery kind is passive only. Include moving Warm-up and Cool-down once. Rest has duration zero.
 Use only known day access and equipment. No gym does not establish stair/box access. Do not convert Hill Sprint/power to sustained incline work; unknown movement/strength readiness does not authorize advanced power/ME. Near race dates cannot bypass preparation. Use conservative accessible work where prerequisites are unknown.
 The local resolver derives totals and athlete-facing numeric instructions. Strength minutes never become running kilometers. Choose durations to meet the existing healthy-week volume rules; keep justified recovery/taper adaptations. Do not add load merely to satisfy a software score. Keep internal snapshot/tier/scoring terminology out of athlete-facing text.
 """
@@ -791,6 +791,7 @@ class PlanGenerator:
                 segment.get("zone") != target_zone for segment in main_segments if segment["kind"] in {"run", "hike"}
             ):
                 raise ValueError("Structured workout must preserve coach zone")
+        plan_checks.validate_generated_workouts([workout], context={})
         return workout
 
     @staticmethod
@@ -1134,6 +1135,7 @@ class PlanGenerator:
                 wo["interval_reps"], wo["interval_rep_value"], wo["interval_rep_unit"] = (
                     PlanGenerator.resolve_interval_summary(wo, w_type)
                 )
+            plan_checks.validate_generated_workouts(wos, context=plan_checks.generation_context(race_info, wos))
             return wos
 
         # 2. AI Plan Generation (Gemini → reduced-prompt retry → Rule-Based)
