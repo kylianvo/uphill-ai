@@ -7,7 +7,23 @@ struct PlanView: View {
     let onViewProgress: () -> Void
     var user: User? = nil
     var onSharpen: (TrainingDestination) -> Void = { _ in }
+    var initialCoachExpanded: Bool = false
+    @State private var viewMode: PlanViewMode = .list
+
+    init(model: PlanViewModel, generation: GenerationCenter, onBuildPlan: @escaping () -> Void,
+         onViewProgress: @escaping () -> Void, user: User? = nil, onSharpen: @escaping (TrainingDestination) -> Void = { _ in },
+         initialViewMode: PlanViewMode = .list, initialCoachExpanded: Bool = false) {
+        self.model = model
+        self.generation = generation
+        self.onBuildPlan = onBuildPlan
+        self.onViewProgress = onViewProgress
+        self.user = user
+        self.onSharpen = onSharpen
+        self.initialCoachExpanded = initialCoachExpanded
+        _viewMode = State(initialValue: initialViewMode)
+    }
     @State private var selectedWorkout: Workout?
+    @State private var moveSwapDay: PlanDay?
     @State private var showManage = false
     @State private var startNewAfterManage = false
     @State private var scheduleAfterManage = false
@@ -33,6 +49,9 @@ struct PlanView: View {
                 }
                 .sheet(item: $selectedWorkout) { workout in
                     WorkoutDetailSheet(model: model, workoutID: workout.id)
+                }
+                .sheet(item: $moveSwapDay) { day in
+                    MoveSwapDaySheet(model: model, sourceDay: day)
                 }
                 .sheet(isPresented: $showSchedule) { ScheduleChangeSheet(model: model) }
                 .sheet(isPresented: $showAdapt) { AdaptWeekSheet(model: model, week: model.selectedWeek) }
@@ -83,30 +102,55 @@ struct PlanView: View {
         case .loaded:
             ScrollViewReader { proxy in
                 ScrollView {
-                    VStack(alignment: .leading, spacing: UH.Space.regular) {
+                    VStack(alignment: .leading, spacing: UH.Space.small) {
                         if generation.running?.kind == .newPlan { buildingBanner }
                         if let notice = model.calendarNotice {
                             ScheduleNoticeBanner(notice: notice, onDismiss: model.dismissCalendarNotice)
                                 .padding(.horizontal, UH.Space.regular)
                         }
                         if let cachedAt = model.cachedAt { offlineBanner(cachedAt) }
+
+                        // 1. Race and goal header
+                        raceGoalHeader
+
+                        // 2. Summary carousel
                         SummaryCarousel(model: model,
                                         adapting: generation.running?.kind == .adaptWeek ? model.selectedWeek : nil,
                                         onReview: { showReview = true }, onAdapt: { showAdapt = true },
                                         onGoal: { showGoal = true })
-                        if let user, let plan = model.snapshot?.plan {
-                            SharpenChecklistCard(user: user, plan: plan, onOpen: onSharpen)
-                                .padding(.horizontal, UH.Space.regular)
-                        }
-                        WeekSwitcher(weeks: model.weeks, selected: $model.selectedWeek, currentWeek: model.currentWeek)
+
+                        // 3. Coach review card
+                        CoachReviewCard(model: model, onOpenReview: { showReview = true }, initialExpanded: initialCoachExpanded)
                             .padding(.horizontal, UH.Space.regular)
-                        LazyVStack(spacing: UH.Space.compact) {
-                            ForEach(model.days) { day in
-                                DayRow(day: day) { selectedWorkout = $0 }
-                                    .id(day.id)
+
+                        // 4. Week switcher with List / Calendar toggle
+                        WeekSwitcher(weeks: model.weeks, selected: $model.selectedWeek, currentWeek: model.currentWeek, viewMode: $viewMode)
+                            .padding(.horizontal, UH.Space.regular)
+
+                        // 5. Day list or Month Calendar grid
+                        if viewMode == .calendar {
+                            PlanCalendarGridView(model: model) { date, week in
+                                withAnimation(reduceMotion ? nil : UH.Motion.standard) {
+                                    model.selectedWeek = week
+                                    viewMode = .list
+                                }
                             }
+                            .padding(.horizontal, UH.Space.regular)
+                        } else {
+                            LazyVStack(spacing: UH.Space.compact) {
+                                ForEach(model.days) { day in
+                                    DayRow(day: day, onToggleDone: { workout in
+                                        Task { await model.setDone(workout, !workout.isDone) }
+                                    }, onMoveOrSwap: { day in
+                                        moveSwapDay = day
+                                    }, onSelect: { selectedWorkout = $0 })
+                                        .id(day.id)
+                                }
+                            }
+                            .padding(.horizontal, UH.Space.regular)
                         }
-                        .padding(.horizontal, UH.Space.regular)
+
+                        // 6. Next week card
                         nextWeekCard
                     }
                     .padding(.vertical, UH.Space.regular)
@@ -159,19 +203,55 @@ struct PlanView: View {
         if generation.running?.kind == .nextWeek {
             HStack(spacing: UH.Space.small) {
                 ProgressView()
-                Text("Building the next week…").font(UH.TextStyle.label)
+                Text("Building the next block…").font(UH.TextStyle.label)
             }
             .frame(maxWidth: .infinity, alignment: .leading).uhCard().padding(.horizontal, UH.Space.regular)
         } else if let offer = model.nextWeekOffer {
-            VStack(alignment: .leading, spacing: UH.Space.small) {
-                Text(offer.title).font(UH.TextStyle.sectionTitle)
-                Text("Coach Uphill uses how this week went to shape the next one.").foregroundStyle(UH.Palette.secondary)
-                if let pct = offer.previousCompletionPct {
-                    Text("This week: \(Int(pct)) % done").font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary)
+            if offer.unlocked {
+                VStack(alignment: .leading, spacing: UH.Space.small) {
+                    HStack(spacing: UH.Space.compact) {
+                        Image(systemName: "sparkles")
+                            .foregroundStyle(UH.Palette.accentInk)
+                        Text(offer.title).font(UH.TextStyle.sectionTitle)
+                    }
+                    Text("Coach Uphill uses how this block went to shape the next one.").foregroundStyle(UH.Palette.secondary)
+                    if let pct = offer.previousCompletionPct {
+                        Text("Block completion: \(Int(pct))% done").font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary)
+                    }
+                    Button(offer.title) { showNextWeek = true }
+                        .buttonStyle(.uhPrimary)
+                        .accessibilityIdentifier("plan.nextweek")
                 }
-                Button(offer.title) { showNextWeek = true }.buttonStyle(.uhPrimary).accessibilityIdentifier("plan.nextweek")
+                .frame(maxWidth: .infinity, alignment: .leading).uhCard().padding(.horizontal, UH.Space.regular)
+            } else {
+                VStack(alignment: .leading, spacing: UH.Space.small) {
+                    HStack(spacing: UH.Space.compact) {
+                        Image(systemName: "lock.fill")
+                            .foregroundStyle(UH.Palette.secondary)
+                        Text("Complete the current block to unlock")
+                            .font(UH.TextStyle.sectionTitle)
+                    }
+                    if let pct = offer.previousCompletionPct {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text("Block progress")
+                                    .font(UH.TextStyle.caption)
+                                    .foregroundStyle(UH.Palette.muted)
+                                Spacer()
+                                Text("\(Int(pct))% / 70% required")
+                                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                    .foregroundStyle(pct >= 70 ? UH.Palette.accentInk : UH.Palette.secondary)
+                            }
+                            ProgressView(value: min(100, max(0, pct)), total: 100)
+                                .tint(pct >= 70 ? UH.Palette.accentInk : UH.Palette.secondary)
+                        }
+                    }
+                    Button("Generate anyway") { showNextWeek = true }
+                        .buttonStyle(.uhSecondary)
+                        .accessibilityIdentifier("plan.nextweek")
+                }
+                .frame(maxWidth: .infinity, alignment: .leading).uhCard().padding(.horizontal, UH.Space.regular)
             }
-            .frame(maxWidth: .infinity, alignment: .leading).uhCard().padding(.horizontal, UH.Space.regular)
         }
     }
 
@@ -214,4 +294,79 @@ struct PlanView: View {
         .padding(UH.Space.section)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
+
+    // MARK: - Race and Goal Header
+
+    private var raceGoalHeader: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if let plan = model.snapshot?.plan {
+                HStack(alignment: .firstTextBaseline) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(plan.raceName)
+                            .font(.system(size: 19, weight: .bold))
+                            .foregroundStyle(UH.Palette.ink)
+                            .lineLimit(1)
+
+                        HStack(spacing: 6) {
+                            if let date = PlanCalendar.day(from: plan.raceDate) {
+                                Text(date, format: .dateTime.month(.abbreviated).day().year())
+                                    .font(UH.TextStyle.caption)
+                                    .foregroundStyle(UH.Palette.secondary)
+                            }
+                            if let days = model.daysToRace {
+                                Text("· \(days / 7) weeks to go")
+                                    .font(UH.TextStyle.caption)
+                                    .foregroundStyle(UH.Palette.accentInk)
+                            }
+                        }
+                    }
+
+                    Spacer()
+
+                    if let pill = model.goalPillText {
+                        Button { showGoal = true } label: {
+                            Text(pill)
+                                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                .foregroundStyle(model.goal?.status.kind == .behind ? UH.Palette.danger : UH.Palette.accentInk)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(UH.Palette.hover, in: Capsule())
+                                .overlay(Capsule().stroke(UH.Palette.line, lineWidth: 1))
+                        }
+                        .accessibilityIdentifier("plan.goalpill")
+                    }
+                }
+
+                // Disabled Coming Soon rows until Phase 5
+                HStack(spacing: 8) {
+                    comingSoonBadge("Plan your pace →")
+                    comingSoonBadge("Refine in Goal Determiner →")
+                }
+                .padding(.top, 2)
+            }
+        }
+        .padding(.horizontal, UH.Space.regular)
+    }
+
+    private func comingSoonBadge(_ text: String) -> some View {
+        HStack(spacing: 4) {
+            Text(text)
+                .font(.system(size: 10.5, weight: .medium))
+                .foregroundStyle(UH.Palette.muted)
+            Text("Soon")
+                .font(.system(size: 8.5, weight: .bold, design: .monospaced))
+                .foregroundStyle(UH.Palette.muted)
+                .padding(.horizontal, 4)
+                .padding(.vertical, 1)
+                .background(UH.Palette.line.opacity(0.6), in: Capsule())
+        }
+        .padding(.horizontal, 7)
+        .padding(.vertical, 3.5)
+        .background(UH.Palette.surface, in: Capsule())
+        .overlay(Capsule().stroke(UH.Palette.line, lineWidth: 0.8))
+        .opacity(0.85)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(text) Coming soon")
+    }
+
 }
