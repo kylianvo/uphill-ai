@@ -307,7 +307,7 @@ def test_compare_with_push_langfuse_calls_push_experiment_with_precomputed_resul
     service_dir = tmp_path / "gear"
     service_dir.mkdir()
     fixture = service_dir / "fixture_1.json"
-    fixture.write_text(json.dumps({"params": {"surface": "trail"}}))
+    fixture.write_text(json.dumps({"synthetic": True, "provenance": "gear", "params": {"surface": "trail"}}))
     monkeypatch.setattr(golden_eval, "GOLDEN_DIR", str(tmp_path))
 
     with (
@@ -315,7 +315,7 @@ def test_compare_with_push_langfuse_calls_push_experiment_with_precomputed_resul
         patch("db.get_kb_chunks", return_value=[{"title": "Speedcross"}]),
         patch.object(obs, "push_experiment", return_value=True) as mock_push,
     ):
-        golden_eval.compare("gear", push_langfuse=True)
+        golden_eval.compare("gear", push_langfuse=True, synthetic_only=True)
         assert mock_push.call_count == 1
         _, kwargs = mock_push.call_args
         assert kwargs["synthetic"] is True
@@ -400,3 +400,140 @@ def test_goal_scores_check_ordering_and_anchor_range():
         "ordered": False,
         "b_in_anchor_range": False,
     }
+
+
+def test_fixture_selection_rejects_unknown_ids_before_running():
+    import pytest
+
+    items = [("/tmp/fixture_a.json", {"id": "case-a"})]
+    with pytest.raises(ValueError, match="Unknown"):
+        golden_eval._select_fixture_items("scheduler", items, ["absent"])
+    assert golden_eval._select_fixture_items("scheduler", items, ["case-a"]) == items
+
+
+def test_output_directory_never_overwrites_an_existing_run(tmp_path):
+    import pytest
+
+    target = tmp_path / "run"
+    golden_eval._prepare_output_directory(str(target))
+    (target / "results.json").write_text("original")
+    with pytest.raises(FileExistsError):
+        golden_eval._prepare_output_directory(str(target))
+    assert (target / "results.json").read_text() == "original"
+
+
+def test_scheduler_fixed_date_preserves_explicit_partial_start(monkeypatch):
+    import asyncio
+
+    from services.plan_generator import PlanGenerator
+
+    captured = []
+
+    async def generate(**kwargs):
+        captured.append(kwargs["race_info"])
+        return [], "recreational"
+
+    monkeypatch.setattr(PlanGenerator, "generate_plan_workouts", generate)
+    fixture = {"user_profile": {}, "race_info": {}, "_as_of": "2026-10-05"}
+    asyncio.run(golden_eval._run_scheduler(fixture))
+    asyncio.run(golden_eval._run_scheduler(fixture))
+    assert captured[0]["plan_start_date"] == captured[1]["plan_start_date"] == "2026-10-05"
+    fixture["race_info"]["plan_start_date"] = "2026-10-10"
+    asyncio.run(golden_eval._run_scheduler(fixture))
+    assert captured[2]["plan_start_date"] == "2026-10-10"
+
+
+def test_push_requires_synthetic_only_before_any_fixture_is_run(tmp_path, monkeypatch):
+    import pytest
+
+    path = tmp_path / "fixture_synthetic.json"
+    path.write_text(json.dumps({"synthetic": True, "user_profile": {}, "race_info": {}}))
+    monkeypatch.setattr(golden_eval, "_fixtures", lambda service: [str(path)])
+
+    async def fake_run(*args):
+        return [], "gemini"
+
+    monkeypatch.setattr(golden_eval, "_run", fake_run)
+    monkeypatch.setattr(golden_eval, "GOLDEN_DIR", str(tmp_path))
+    with pytest.raises(ValueError, match="synthetic-only"):
+        golden_eval.compare("scheduler", push_langfuse=True)
+
+
+def test_sequence_uses_real_next_block_context_without_database_writes(monkeypatch):
+    import asyncio
+
+    from services.plan_generator import PlanGenerator
+
+    seen = []
+
+    async def fake_generate(*args, **kwargs):
+        seen.append(kwargs.get("block_context"))
+        block = kwargs.get("block_number", 1)
+        return [
+            {
+                "week_number": block,
+                "day_of_week": "Tuesday",
+                "type": "Easy",
+                "title": "Easy Run",
+                "duration_minutes": 48,
+                "distance_km": 8,
+            }
+        ], "recreational"
+
+    monkeypatch.setattr(PlanGenerator, "generate_plan_workouts", fake_generate)
+    monkeypatch.setattr(golden_eval, "_scheduler_engine_used", lambda *a: "gemini")
+    fixture = {
+        "user_profile": {},
+        "race_info": {"lang": "en"},
+        "_as_of": "2026-10-05",
+        "sequence": [{"block_number": 1}, {"block_number": 2, "previous_status": "unknown", "override_gate": True}],
+    }
+    result, engine = asyncio.run(golden_eval._run_scheduler(fixture))
+    assert [w["week_number"] for w in result] == [1, 2]
+    assert engine == "gemini"
+    assert "Unknown sessions: 1" in seen[1]
+    assert "not evidence of zero training" in seen[1]
+    assert "override grants access" in seen[1]
+
+
+def test_sequence_reports_worst_engine_not_first_success(monkeypatch):
+    import asyncio
+
+    from services.plan_generator import PlanGenerator
+
+    async def fake_generate(*args, **kwargs):
+        return [], "recreational"
+
+    monkeypatch.setattr(PlanGenerator, "generate_plan_workouts", fake_generate)
+    engines = iter(["gemini", "rule-based-or-unknown"])
+    monkeypatch.setattr(golden_eval, "_scheduler_engine_used", lambda *a: next(engines))
+    fixture = {
+        "user_profile": {},
+        "race_info": {},
+        "_as_of": "2026-10-05",
+        "sequence": [{"block_number": 1}, {"block_number": 2, "previous_status": "completed"}],
+    }
+    _, engine = asyncio.run(golden_eval._run_scheduler(fixture))
+    assert engine == "rule-based-or-unknown"
+
+
+def test_scheduler_error_is_recorded_and_other_cases_continue(tmp_path, monkeypatch):
+    folder = tmp_path / "scheduler"
+    folder.mkdir()
+    for name in ("a", "b"):
+        (folder / f"fixture_{name}.json").write_text(
+            json.dumps({"synthetic": True, "provenance": "scheduler", "id": name, "user_profile": {}, "race_info": {}})
+        )
+    monkeypatch.setattr(golden_eval, "GOLDEN_DIR", str(tmp_path))
+
+    async def fake_run(service, fixture):
+        if fixture["id"] == "a":
+            raise ValueError("Invalid synthetic prescription")
+        return [], "gemini"
+
+    monkeypatch.setattr(golden_eval, "_run", fake_run)
+    failures = golden_eval.compare("scheduler", synthetic_only=True, output_dir=str(tmp_path / "run"))
+    saved = json.loads((tmp_path / "run/results.json").read_text())
+    assert [item["id"] for item in saved["items"]] == ["a", "b"]
+    assert saved["scores"][0]["error_type"] == "ValueError"
+    assert any("a" in failure for failure in failures)

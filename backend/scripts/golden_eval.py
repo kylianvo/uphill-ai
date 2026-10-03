@@ -27,6 +27,8 @@ import os
 import re
 import sys
 import time
+from datetime import date
+from pathlib import Path
 from uuid import uuid4
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -49,6 +51,33 @@ def _fixtures(service: str) -> list[str]:
     if not paths:
         sys.exit(f"No fixtures in tests/golden/{service}/ — add fixture_*.json files first.")
     return paths
+
+
+def _select_fixture_items(
+    service: str, items: list[tuple[str, dict]], requested: list[str] | None
+) -> list[tuple[str, dict]]:
+    if not requested:
+        return items
+    selected = []
+    matched = set()
+    for path, fixture in items:
+        aliases = {fixture.get("id"), Path(path).stem, f"{service}_{Path(path).stem}"}
+        hits = aliases.intersection(requested)
+        if hits:
+            matched.update(hits)
+            selected.append((path, fixture))
+    unknown = set(requested) - matched
+    if unknown:
+        raise ValueError("Unknown fixture IDs: " + ", ".join(sorted(unknown)))
+    return selected
+
+
+def _prepare_output_directory(path: str | None) -> Path | None:
+    if path is None:
+        return None
+    target = Path(path)
+    target.mkdir(parents=True, exist_ok=False)
+    return target
 
 
 async def _run_gear_nutrition(service: str, fixture: dict) -> dict:
@@ -118,7 +147,15 @@ async def _run_scheduler(fixture: dict) -> tuple[list[dict], str]:
     (callers pop it before anything is written back)."""
     from services.plan_generator import PlanGenerator
 
+    if fixture.get("sequence"):
+        return await _run_scheduler_sequence(fixture)
     race_info = dict(fixture["race_info"])
+    if fixture.get("_as_of"):
+        race_info.setdefault("plan_start_date", fixture["_as_of"])
+        race_info["as_of"] = fixture["_as_of"]
+    if fixture.get("validation_context"):
+        race_info["validation_context"] = fixture["validation_context"]
+    fixture["_effective_race_info"] = race_info
     if fixture.get("fitness_snapshot"):
         race_info["fitness_snapshot"] = _snapshot_from_fixture(fixture["fitness_snapshot"])
     before = _scheduler_counters()
@@ -139,6 +176,188 @@ async def _run_scheduler(fixture: dict) -> tuple[list[dict], str]:
     )
     fixture["_resolved_tier"] = tier
     return workouts, _scheduler_engine_used(before, _scheduler_counters())
+
+
+def _scheduler_diagnostics(workouts: list[dict], fixture: dict) -> dict:
+    from services import plan_checks
+
+    race_info = fixture.get("_effective_race_info") or fixture.get("race_info", {})
+    checks = plan_checks.run_context_checks(workouts, context=plan_checks.generation_context(race_info, workouts))
+    weeks = {}
+    for week in sorted({w.get("week_number") for w in workouts if isinstance(w.get("week_number"), int)}):
+        rows = [w for w in workouts if w.get("week_number") == week]
+        if not all(w.get("prescription") for w in rows):
+            weeks[week] = {"component_accounting": None}
+            continue
+        totals = {
+            key: round(sum(w["prescription"][key] for w in rows), 1)
+            for key in ("run_km", "hike_km", "aerobic_minutes", "strength_minutes", "passive_minutes")
+        }
+        moving = totals["aerobic_minutes"]
+        long_minutes = [w["prescription"]["aerobic_minutes"] for w in rows if w.get("type") == "Long Run"]
+        long_distance = [w["distance_km"] for w in rows if w.get("type") == "Long Run"]
+        distance = sum(w["distance_km"] for w in rows)
+        weekend = sum(
+            w["prescription"]["aerobic_minutes"] for w in rows if w.get("day_of_week") in {"Saturday", "Sunday"}
+        )
+        weeks[week] = {
+            **totals,
+            "long_run_locomotion_time_share": round(max(long_minutes, default=0) / moving, 3) if moving else None,
+            "long_run_distance_share": round(max(long_distance, default=0) / distance, 3) if distance else None,
+            "weekend_locomotion_time_share": round(weekend / moving, 3) if moving else None,
+        }
+    text = " ".join(str(w.get(key) or "") for w in workouts for key in ("title", "description", "fueling_tip"))
+    return {
+        "prompt_identity": race_info.get("_prompt_identity"),
+        "checks": checks,
+        "unavailable_checks": [key for key, value in checks.items() if value is None],
+        "weeks": weeks,
+        "block_engines": fixture.get("_block_engines"),
+        "internal_disclosure": bool(re.search(r"\b(snapshot|tier|plan_volume_fit|scoring)\b", text, re.I)),
+    }
+
+
+async def _run_scheduler_sequence(fixture: dict) -> tuple[list[dict], str]:
+    """Invoke the real next-block core with synthetic persistence, never a DB write."""
+    from contextlib import ExitStack
+    from copy import deepcopy
+    from unittest.mock import AsyncMock, patch
+
+    import main
+    from services.plan_generator import PlanGenerator
+
+    race_info = dict(fixture["race_info"])
+    race_info.setdefault("plan_start_date", fixture.get("_as_of", "2026-10-05"))
+    race_info["as_of"] = fixture.get("_as_of", race_info["plan_start_date"])
+    race_info["validation_context"] = fixture.get("validation_context", {})
+    if fixture.get("fitness_snapshot"):
+        race_info["fitness_snapshot"] = _snapshot_from_fixture(fixture["fitness_snapshot"])
+    profile = {**fixture["user_profile"], "id": 0}
+    plan = {
+        "id": 0,
+        "start_date": race_info["plan_start_date"],
+        "total_weeks": fixture.get("total_weeks", 8),
+        "race_name": race_info.get("name"),
+        "race_date": race_info.get("date"),
+        **{
+            key: race_info.get(key)
+            for key in (
+                "goal_type",
+                "course_distance_km",
+                "course_elevation_gain_m",
+                "training_environment",
+                "has_gym_access",
+                "use_treadmill",
+                "athlete_notes",
+                "long_run_day",
+                "days_per_week",
+            )
+        },
+        "preferred_run_days": race_info.get("preferred_days"),
+    }
+    generated = []
+    captured_contexts = []
+    block_engines = []
+    current = {}
+    original_generate = PlanGenerator.generate_plan_workouts
+
+    async def generate(*args, **kwargs):
+        info = args[2] if len(args) > 2 else kwargs["race_info"]
+        info.update({"validation_context": race_info["validation_context"], "as_of": race_info["as_of"]})
+        captured_contexts.append(kwargs.get("block_context"))
+        block_before = _scheduler_counters()
+        workouts, tier = await original_generate(*args, **kwargs)
+        block_engines.append(_scheduler_engine_used(block_before, _scheduler_counters()))
+        fixture["_resolved_tier"] = tier
+        return workouts, tier
+
+    def planned(_plan, week):
+        rows = [w for w in generated if w.get("week_number") == week]
+        return {
+            "distance_km": sum(w.get("distance_km", 0) for w in rows),
+            "duration_minutes": sum(w.get("duration_minutes", 0) for w in rows),
+        }
+
+    with ExitStack() as stack:
+        replacements = {
+            "plan_jobs": {},
+            "get_recent_plans": lambda *a, **k: [plan],
+            "get_user_by_id": lambda *a: profile,
+            "get_block_reviews": lambda *a: (
+                [
+                    {
+                        "block_number": current["block_number"] - 1,
+                        "notes": current.get("notes"),
+                        "overall_rpe": current.get("overall_rpe"),
+                    }
+                ]
+                if current.get("notes") or current.get("overall_rpe")
+                else []
+            ),
+            "get_plan_workouts": lambda *a: generated,
+            "get_week_planned_volume": planned,
+            "get_block_actual_volume": lambda **k: {"total_activities_count": 0},
+            "get_block_completion": lambda *a: {
+                "unlocked": current.get("previous_status") == "completed",
+                "completion_pct": 100 if current.get("previous_status") == "completed" else 0,
+            },
+            "evaluate_block_performance": lambda *a: {},
+            "_resolve_course_match": lambda *a: (None, None, None),
+            "get_recent_readiness_summary": lambda *a, **k: None,
+            "get_user_activity_ceiling": lambda *a: None,
+            "_plan_snapshot": AsyncMock(
+                side_effect=lambda *a: _snapshot_from_fixture(fixture["fitness_snapshot"])
+                if fixture.get("fitness_snapshot")
+                else None
+            ),
+            "_store_plan_snapshot": lambda *a: None,
+            "save_workouts": lambda _plan, rows: generated.extend(deepcopy(rows)),
+            "set_plan_athlete_tier": lambda _plan, tier: plan.update(athlete_tier=tier),
+            "upsert_block_review_ai_fields": lambda *a, **k: None,
+        }
+        for name, replacement in replacements.items():
+            stack.enter_context(patch.object(main, name, replacement))
+        stack.enter_context(patch.object(PlanGenerator, "generate_plan_workouts", generate))
+        stack.enter_context(
+            patch.object(PlanGenerator, "generate_week_narrative", AsyncMock(return_value=(None, None)))
+        )
+        first = fixture["sequence"][0]
+        initial, tier = await generate(
+            plan_id=0,
+            user_profile=profile,
+            race_info=race_info,
+            total_weeks=plan["total_weeks"],
+            api_key=settings.GEMINI_API_KEY,
+            block_number=first["block_number"],
+            weeks_per_block=settings.WEEKS_PER_BLOCK,
+        )
+        generated.extend(deepcopy(initial))
+        plan["athlete_tier"] = tier
+        for step in fixture["sequence"][1:]:
+            current.clear()
+            current.update(step)
+            for workout in generated:
+                workout["is_completed"] = int(step.get("previous_status") == "completed")
+                workout["is_missed"] = int(step.get("previous_status") == "missed")
+            request = main.GenerateNextBlockRequest(
+                plan_id=0,
+                block_number=step["block_number"],
+                override_gate=step.get("override_gate", False),
+                lang=race_info.get("lang", "en"),
+            )
+            job = await main._generate_next_block_for_athlete(request, 0, 0)
+            deadline = time.monotonic() + 240
+            while main.plan_jobs[job["job_id"]]["status"] == "generating":
+                if time.monotonic() > deadline:
+                    raise TimeoutError("Synthetic sequential generation timed out")
+                await asyncio.sleep(0.05)
+            if main.plan_jobs[job["job_id"]]["status"] != "done":
+                raise ValueError(main.plan_jobs[job["job_id"]]["error"])
+    fixture["_sequence_contexts"] = captured_contexts
+    fixture["_effective_race_info"] = race_info
+    fixture["_block_engines"] = block_engines
+    worst = next((engine for engine in block_engines if engine not in {"gemini", "gemini_retry"}), None)
+    return generated, worst or ("gemini_retry" if "gemini_retry" in block_engines else "gemini")
 
 
 async def _run_chat(fixture: dict) -> tuple[dict, str]:
@@ -349,8 +568,16 @@ def compare(
     synthetic_only: bool = False,
     judge_chat: bool = True,
     variant: str = "",
+    as_of: str | None = None,
+    fixture_ids: list[str] | None = None,
+    output_dir: str | None = None,
+    context_gates: bool = False,
 ) -> list[str]:
     """Run the golden set; returns the release-gate failures (empty = pass)."""
+    if push_langfuse and not synthetic_only:
+        raise ValueError("--push-langfuse requires --synthetic-only")
+    if as_of is not None:
+        date.fromisoformat(as_of)
     from db import get_kb_chunks
     from services.kb_context import find_uncatalogued
 
@@ -374,6 +601,9 @@ def compare(
         else:
             fixture_items.append((path, fixture_data))
 
+    fixture_items = _select_fixture_items(service, fixture_items, fixture_ids)
+    run_dir = _prepare_output_directory(output_dir)
+    diagnostics = []
     en_total = 0
     en_acceptable = 0
     vi_total = 0
@@ -390,8 +620,20 @@ def compare(
         ref = json.load(open(ref_path, encoding="utf-8")) if os.path.exists(ref_path) else None
         item_id = fixture.get("id") or f"{service}_{os.path.splitext(os.path.basename(path))[0]}"
         print(f"[compare] {item_id} → Gemini+KB...")
+        if service == "scheduler":
+            fixture["require_context_gates"] = context_gates
+        if as_of is not None:
+            fixture["_as_of"] = as_of
         start = time.time()
-        result, engine_used = asyncio.run(_run(service, fixture))
+        error_type = None
+        try:
+            result, engine_used = asyncio.run(_run(service, fixture))
+        except Exception as error:
+            if service != "scheduler":
+                raise
+            result, engine_used = [], "generation_error"
+            error_type = type(error).__name__
+            lines.append(f"- Generation failed: {error_type}: {error}")
         latency = round(time.time() - start, 1)
         engine_is_gemini = engine_used == "gemini"
 
@@ -422,11 +664,33 @@ def compare(
             lo, hi = expect.get("week2_km") or [None, None]
             lines.append(f"- Tier: **{tier}**" + (f" (expected {expect['tier']})" if expect.get("tier") else ""))
             lines.append(f"- Week-2 volume: **{week2} km**" + (f" (expected {lo}-{hi})" if lo is not None else ""))
+            diagnostic = _scheduler_diagnostics(result, fixture)
+            diagnostics.append({"id": item_id, **diagnostic})
+            lines.append(f"- Context metrics v2: `{json.dumps(diagnostic, ensure_ascii=False)}`")
+            next_rows = [w for w in result if w.get("week_number") == 2 and w.get("type") != "Rest"]
+            phase_match = (
+                (all(w.get("phase") == expect["next_phase"] for w in next_rows) and bool(next_rows))
+                if expect.get("next_phase")
+                else None
+            )
+            max_zone = expect.get("next_max_zone")
+            next_zones = [
+                int(segment["zone"][-1])
+                for w in next_rows
+                for segment in w.get("segments", [])
+                if segment["kind"] in {"run", "hike"}
+            ]
+            intensity_fit = (max(next_zones, default=0) <= max_zone) if max_zone and next_zones else None
             item_score = {
                 "latency_s": latency,
                 "engine_is_gemini": engine_is_gemini,
                 "engine": engine_used,
                 "workout_count": summary["workout_count"],
+                "next_phase_match": phase_match,
+                "next_intensity_fit": intensity_fit,
+                "error_type": error_type,
+                "context_checks": diagnostic["checks"],
+                "internal_disclosure": diagnostic["internal_disclosure"],
                 "plan_checks": plan_checks.pass_share(plan_checks.run_checks(result)),
                 "tier": tier,
                 "tier_match": (tier == expect["tier"]) if expect.get("tier") else None,
@@ -491,9 +755,9 @@ def compare(
         items.append(
             {
                 "id": item_id,
-                "synthetic": True,
-                "provenance": service,
-                "input": fixture,
+                "synthetic": fixture.get("synthetic") is True,
+                "provenance": fixture.get("provenance", service),
+                "input": {key: value for key, value in fixture.items() if not key.startswith("_")},
                 "expected_output": ref.get("output") if ref else None,
             }
         )
@@ -512,10 +776,11 @@ def compare(
             f"- Vietnamese Quality: {vi_acceptable}/{vi_total} acceptable ({'✅ PASS (>= 18/20)' if vi_acceptable >= 18 else '❌ FAIL'})"
         )
 
-    report_path = os.path.join(GOLDEN_DIR, f"report_{service}.md")
+    report_path = str(run_dir / f"report_{service}.md") if run_dir else os.path.join(GOLDEN_DIR, f"report_{service}.md")
     open(report_path, "w", encoding="utf-8").write("\n".join(lines))
     print(f"[compare] report written: {report_path}")
 
+    run_name = f"eval_{service}{'_' + variant if variant else ''}_{time.time_ns()}"
     if push_langfuse:
         # Strict privacy invariant: Never publish non-synthetic data to Langfuse
         if not all(item.get("synthetic") is True for item in items):
@@ -523,7 +788,6 @@ def compare(
 
         from services.observability import push_experiment
 
-        run_name = f"eval_{service}{'_' + variant if variant else ''}_{int(time.time())}"
         dataset_name = f"uphill_{service}_golden"
         pushed = push_experiment(
             dataset_name=dataset_name,
@@ -546,6 +810,20 @@ def compare(
             )
 
     failures = gate_failures(service, items, scores)
+    if run_dir:
+        payload = {
+            "metrics_version": 2,
+            "run_name": run_name,
+            "as_of": as_of,
+            "prompt_label": settings.COACH_CHAT_PROMPT_LABEL,
+            "model": settings.GEMINI_MODEL,
+            "items": items,
+            "results": results,
+            "scores": scores,
+            "diagnostics": diagnostics,
+            "failures": failures,
+        }
+        (run_dir / "results.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     for failure in failures:
         print(f"[gate] FAIL {failure}")
     if not failures:
@@ -567,6 +845,17 @@ def gate_failures(service: str, items: list[dict], scores: list[dict]) -> list[s
             failures.append(f"{item['id']}: fell through to the {s.get('engine')} tier")
         elif service in ("scheduler", "goal_judge") and s.get("engine") == "gemini_retry":
             print(f"[gate] warn {item['id']}: needed the reduced-prompt retry")
+        if service == "scheduler" and item.get("input", {}).get("require_context_gates"):
+            expected = item.get("input", {}).get("expect", {})
+            if expected.get("next_phase") and s.get("next_phase_match") is not True:
+                failures.append(f"{item['id']}: next phase differs from planned adaptation")
+            if expected.get("next_max_zone") and s.get("next_intensity_fit") is not True:
+                failures.append(f"{item['id']}: recovery intensity failed or unavailable")
+            for name in ("arithmetic", "access"):
+                if s.get("context_checks", {}).get(name) is not True:
+                    failures.append(f"{item['id']}: {name} failed or unavailable")
+            if s.get("internal_disclosure"):
+                failures.append(f"{item['id']}: internal implementation wording disclosed")
         if service == "scheduler" and s.get("tier_match") is False:
             failures.append(f"{item['id']}: tier {s.get('tier')} differs from the expected tier")
         if service == "scheduler" and s.get("week2_in_range") is False:
@@ -622,6 +911,12 @@ def main():
         default=False,
         help="Publish precomputed experiment results to Langfuse (requires synthetic fixtures)",
     )
+    parser.add_argument(
+        "--context-gates", action="store_true", help="Require new-output arithmetic and access precision"
+    )
+    parser.add_argument("--as-of", default=None, help="Fixed scheduler reference date YYYY-MM-DD")
+    parser.add_argument("--fixture", action="append", default=None, help="Fixture ID or filename stem; repeatable")
+    parser.add_argument("--output-dir", default=None, help="New exclusive run artifact directory")
     args = parser.parse_args()
     variant_parts = []
     if args.prompt_label:
@@ -653,6 +948,10 @@ def main():
             synthetic_only=args.synthetic_only,
             judge_chat=not args.no_judge,
             variant="_".join(variant_parts),
+            as_of=args.as_of,
+            fixture_ids=args.fixture,
+            output_dir=args.output_dir,
+            context_gates=args.context_gates,
         )
         if failures and args.fail_on_regression:
             sys.exit(1)

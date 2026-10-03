@@ -64,5 +64,84 @@
       55,
       73
     ]
+  },
+  "validation_context": {
+    "day_access": {
+      "Monday": {
+        "settings": [
+          "flat_outdoor",
+          "indoor"
+        ],
+        "equipment": [
+          "bodyweight"
+        ]
+      },
+      "Tuesday": {
+        "settings": [
+          "flat_outdoor",
+          "indoor",
+          "treadmill"
+        ],
+        "equipment": [
+          "bodyweight",
+          "weights",
+          "machine",
+          "box"
+        ],
+        "max_incline_pct": 15
+      },
+      "Wednesday": {
+        "settings": [
+          "flat_outdoor",
+          "indoor"
+        ],
+        "equipment": [
+          "bodyweight"
+        ]
+      },
+      "Thursday": {
+        "settings": [
+          "flat_outdoor",
+          "indoor",
+          "treadmill"
+        ],
+        "equipment": [
+          "bodyweight",
+          "weights",
+          "machine",
+          "box"
+        ],
+        "max_incline_pct": 15
+      },
+      "Friday": {
+        "settings": [
+          "flat_outdoor",
+          "indoor"
+        ],
+        "equipment": [
+          "bodyweight"
+        ]
+      },
+      "Saturday": {
+        "settings": [
+          "flat_outdoor",
+          "indoor",
+          "mountain"
+        ],
+        "equipment": [
+          "bodyweight"
+        ]
+      },
+      "Sunday": {
+        "settings": [
+          "flat_outdoor",
+          "indoor",
+          "mountain"
+        ],
+        "equipment": [
+          "bodyweight"
+        ]
+      }
+    }
   }
 }

@@ -1,0 +1,113 @@
+{
+  "synthetic": true,
+  "provenance": "scheduler",
+  "_comment": "Invented sequential scenario. Real next-block context; synthetic persistence only. No real athlete data.",
+  "user_profile": {
+    "age": 36,
+    "gender": "male",
+    "max_hr": 184,
+    "resting_hr": 52,
+    "aet_hr": 133,
+    "ant_hr": 162,
+    "threshold_source": "unknown",
+    "current_weekly_km": 140.0,
+    "days_per_week": 6,
+    "has_gym_access": false
+  },
+  "race_info": {
+    "lang": "en",
+    "terrain": "trail",
+    "goal_type": "finish",
+    "name": "Trail 80K",
+    "date": "2026-10-10",
+    "course_distance_km": 80,
+    "course_elevation_gain_m": 4200,
+    "training_environment": "flat",
+    "plan_start_date": "2026-10-05"
+  },
+  "total_weeks": 2,
+  "id": "scheduler_sequence_recovery",
+  "sequence": [
+    {
+      "block_number": 1
+    },
+    {
+      "block_number": 2,
+      "previous_status": "completed",
+      "override_gate": false,
+      "notes": "This is the planned post-race recovery week.",
+      "overall_rpe": null
+    }
+  ],
+  "validation_context": {
+    "day_access": {
+      "Monday": {
+        "settings": [
+          "flat_outdoor",
+          "indoor"
+        ],
+        "equipment": [
+          "bodyweight"
+        ]
+      },
+      "Tuesday": {
+        "settings": [
+          "flat_outdoor",
+          "indoor"
+        ],
+        "equipment": [
+          "bodyweight"
+        ]
+      },
+      "Wednesday": {
+        "settings": [
+          "flat_outdoor",
+          "indoor"
+        ],
+        "equipment": [
+          "bodyweight"
+        ]
+      },
+      "Thursday": {
+        "settings": [
+          "flat_outdoor",
+          "indoor"
+        ],
+        "equipment": [
+          "bodyweight"
+        ]
+      },
+      "Friday": {
+        "settings": [
+          "flat_outdoor",
+          "indoor"
+        ],
+        "equipment": [
+          "bodyweight"
+        ]
+      },
+      "Saturday": {
+        "settings": [
+          "flat_outdoor",
+          "indoor"
+        ],
+        "equipment": [
+          "bodyweight"
+        ]
+      },
+      "Sunday": {
+        "settings": [
+          "flat_outdoor",
+          "indoor"
+        ],
+        "equipment": [
+          "bodyweight"
+        ]
+      }
+    }
+  },
+  "expect": {
+    "next_phase": "Recovery",
+    "next_max_zone": 2
+  }
+}

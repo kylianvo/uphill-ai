@@ -870,6 +870,12 @@ class PlanGenerator:
             block_start_week, block_end_week = week_range_for_block(block_number, weeks_per_block)
             block_end_week = min(block_end_week, total_weeks)
 
+        # Optional fixed clock for synthetic evaluation; normal app calls use today.
+        reference_date = (
+            datetime.strptime(race_info["as_of"], "%Y-%m-%d").date()
+            if race_info.get("as_of")
+            else datetime.now().date()
+        )
         # 1. Base Variables Extract
         lang = (race_info.get("lang") or user_profile.get("lang") or "en").lower()
         vi_chars = set(
@@ -1281,13 +1287,13 @@ class PlanGenerator:
             try:
                 race_date_parsed = datetime.strptime(race_info.get("date"), "%Y-%m-%d").date()
             except (ValueError, TypeError):
-                race_date_parsed = datetime.now().date() + timedelta(days=90)
+                race_date_parsed = reference_date + timedelta(days=90)
 
-            start_date_str = race_info.get("plan_start_date") or datetime.now().strftime("%Y-%m-%d")
+            start_date_str = race_info.get("plan_start_date") or reference_date.isoformat()
             try:
                 today = datetime.strptime(start_date_str, "%Y-%m-%d").date()
             except ValueError:
-                today = datetime.now().date()
+                today = reference_date
             race_week_num = total_weeks - 1
             race_weekday_name = race_date_parsed.strftime("%A")
 
@@ -1498,6 +1504,16 @@ class PlanGenerator:
                 )
             )
 
+            if race_info.get("validation_context"):
+                import json
+
+                equipment_terrain_rule += (
+                    "\nExplicit day access (authoritative constraints): "
+                    + json.dumps(race_info["validation_context"].get("day_access", {}))
+                    + "\n"
+                )
+            elif training_environment == "flat":
+                equipment_terrain_rule += "\nOnly flat outdoor movement and bodyweight indoor Strength are confirmed. Do not assume boxes, stairs, weights or machine capability.\n"
             lang_rule = (
                 "\n6. CRITICAL LOCALIZATION (VIETNAMESE):"
                 "\n   - All workout text fields ('title', 'description', 'fueling_tip') MUST be written in natural Vietnamese as spoken by Vietnamese trail and ultra runners."
@@ -1563,6 +1579,14 @@ class PlanGenerator:
             )
 
             _plan_prompt_tpl = observability.load_prompt("plan_generation", PLAN_GENERATION_PROMPT)
+            import hashlib
+
+            race_info["_prompt_identity"] = {
+                "name": _plan_prompt_tpl.name,
+                "version": _plan_prompt_tpl.version,
+                "source": _plan_prompt_tpl.source,
+                "sha256": hashlib.sha256(_plan_prompt_tpl.template.encode()).hexdigest(),
+            }
             _ai_prompt = observability.compile_prompt(
                 _plan_prompt_tpl,
                 {
