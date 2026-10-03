@@ -57,6 +57,10 @@ Local evidence:
 - `docs/runbooks/2026-10-fitness-snapshot-release.md`: repeated runs and the staging
   no-COROS next-block result of 110.2 km against the unchanged 115–150 km band.
 
+Additional research: [Scott Johnston articles and podcast source review](../../research/2026-10-03-scott-johnston-scheduler-sources.md).
+The review confirms the ME set-order conflict in Scott's own Evoke article,
+clarifies threshold terminology and separates verified text from podcast leads.
+
 ## Coaching-rule audit comes first
 
 Create a reviewed rule-to-source register before changing coaching behavior.
