@@ -8,6 +8,9 @@ final class FakePlanService: PlanServicing {
     let logResult = Mutex<Result<[Workout], APIError>>(.success([]))
     let moveWarnings = Mutex<[ScheduleWarning]>([])
     let moveResult = Mutex<Result<[Workout], APIError>>(.success([]))
+    let swapWarnings = Mutex<[ScheduleWarning]>([])
+    let swapResult = Mutex<Result<[Workout], APIError>>(.success([]))
+    let deleteResult = Mutex<Result<Void, APIError>>(.success(()))
     let recentResult = Mutex<Result<[Plan], APIError>>(.success([]))
     let selectResult = Mutex<Result<PlanSnapshot?, APIError>>(.success(nil))
     let completionResult = Mutex<Result<BlockCompletionResponse, APIError>>(.failure(.http(status: 404, message: nil, code: nil)))
@@ -30,6 +33,16 @@ final class FakePlanService: PlanServicing {
     func move(planID: Int, workoutID: Int, toWeek: Int, toDay: Weekday, clientToday: String) async throws -> CalendarMoveResult {
         record("move \(workoutID) -> w\(toWeek) \(toDay.rawValue) today=\(clientToday)")
         return CalendarMoveResult(workouts: try moveResult.withLock { $0 }.get(), warnings: moveWarnings.withLock { $0 })
+    }
+
+    func swapDays(planID: Int, weekNumber: Int, day1: Weekday, day2: Weekday, clientToday: String?) async throws -> CalendarMoveResult {
+        record("swap w\(weekNumber) \(day1.rawValue) <-> \(day2.rawValue) today=\(clientToday ?? "-")")
+        return CalendarMoveResult(workouts: try swapResult.withLock { $0 }.get(), warnings: swapWarnings.withLock { $0 })
+    }
+
+    func deletePlan(id: Int) async throws {
+        record("delete \(id)")
+        _ = try deleteResult.withLock { $0 }.get()
     }
 
     func recentPlans() async throws -> [Plan] {

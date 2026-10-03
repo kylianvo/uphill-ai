@@ -11,6 +11,8 @@ protocol PlanServicing: Sendable {
     func activePlan() async throws -> PlanSnapshot?
     func log(workoutID: Int, _ update: WorkoutLogUpdate) async throws -> [Workout]
     func move(planID: Int, workoutID: Int, toWeek: Int, toDay: Weekday, clientToday: String) async throws -> CalendarMoveResult
+    func swapDays(planID: Int, weekNumber: Int, day1: Weekday, day2: Weekday, clientToday: String?) async throws -> CalendarMoveResult
+    func deletePlan(id: Int) async throws
     func recentPlans() async throws -> [Plan]
     func selectPlan(id: Int) async throws -> PlanSnapshot?
     func blockCompletion(planID: Int) async throws -> BlockCompletionResponse
@@ -25,6 +27,11 @@ struct PlanService: PlanServicing {
 
     private struct WorkoutsResponse: Decodable, Sendable { let workouts: [Workout] }
     private struct RecentResponse: Decodable, Sendable { let plans: [Plan] }
+    private struct DeleteResponse: Decodable, Sendable {
+        let success: Bool
+        let message: String
+        let planId: Int
+    }
 
     private struct LogBody: Encodable {
         let workoutId: Int
@@ -39,6 +46,22 @@ struct PlanService: PlanServicing {
         let planId: Int
         let operations: [Operation]
         let clientToday: String
+    }
+
+    private struct SwapBody: Encodable {
+        let planId: Int
+        let weekNumber: Int
+        let day1: String
+        let day2: String
+        let clientToday: String?
+
+        enum CodingKeys: String, CodingKey {
+            case planId = "plan_id"
+            case weekNumber = "week_number"
+            case day1 = "day_1"
+            case day2 = "day_2"
+            case clientToday = "client_today"
+        }
     }
 
     private struct SelectBody: Encodable { let planId: Int }
@@ -61,6 +84,16 @@ struct PlanService: PlanServicing {
                             clientToday: clientToday)
         let response: CalendarMoveResult = try await client.send(.send(.post, "/api/coach/calendar/move", body: body))
         return response
+    }
+
+    func swapDays(planID: Int, weekNumber: Int, day1: Weekday, day2: Weekday, clientToday: String?) async throws -> CalendarMoveResult {
+        let body = SwapBody(planId: planID, weekNumber: weekNumber, day1: day1.rawValue, day2: day2.rawValue, clientToday: clientToday)
+        let response: CalendarMoveResult = try await client.send(.send(.post, "/api/coach/modify-calendar", body: body))
+        return response
+    }
+
+    func deletePlan(id: Int) async throws {
+        let _: DeleteResponse = try await client.send(.delete("/api/coach/plans/\(id)"))
     }
 
     func recentPlans() async throws -> [Plan] {

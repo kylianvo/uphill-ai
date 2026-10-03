@@ -3,6 +3,7 @@ import SwiftUI
 struct DayRow: View {
     let day: PlanDay
     var onToggleDone: ((Workout) -> Void)? = nil
+    var onMoveOrSwap: ((PlanDay) -> Void)? = nil
     let onSelect: (Workout) -> Void
 
     var body: some View {
@@ -53,6 +54,15 @@ struct DayRow: View {
         )
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier(dayIdentifier)
+        .contextMenu {
+            if let onMoveOrSwap {
+                Button {
+                    onMoveOrSwap(day)
+                } label: {
+                    Label("Move or swap this day", systemImage: "arrow.left.arrow.right")
+                }
+            }
+        }
     }
 
     // MARK: - Day Card (Active Workouts)
@@ -80,6 +90,15 @@ struct DayRow: View {
         )
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(dayIdentifier)
+        .contextMenu {
+            if let onMoveOrSwap {
+                Button {
+                    onMoveOrSwap(day)
+                } label: {
+                    Label("Move or swap this day", systemImage: "arrow.left.arrow.right")
+                }
+            }
+        }
     }
 
     private var hasPriority: Bool {
@@ -114,6 +133,25 @@ struct DayRow: View {
                 .padding(.horizontal, 6)
                 .padding(.vertical, 2)
                 .background(UH.Palette.hover, in: Capsule())
+
+            if let onMoveOrSwap {
+                Button {
+                    onMoveOrSwap(day)
+                } label: {
+                    HStack(spacing: 3) {
+                        Image(systemName: "arrow.left.arrow.right")
+                            .font(.system(size: 10, weight: .bold))
+                        Text("SWAP")
+                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    }
+                    .foregroundStyle(UH.Palette.secondary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(UH.Palette.hover, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("day.\(day.weekday.rawValue).moveswap")
+            }
         }
     }
 

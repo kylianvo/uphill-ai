@@ -9,6 +9,7 @@ struct PlanView: View {
     var onSharpen: (TrainingDestination) -> Void = { _ in }
     @State private var viewMode: PlanViewMode = .list
     @State private var selectedWorkout: Workout?
+    @State private var moveSwapDay: PlanDay?
     @State private var showManage = false
     @State private var startNewAfterManage = false
     @State private var scheduleAfterManage = false
@@ -34,6 +35,9 @@ struct PlanView: View {
                 }
                 .sheet(item: $selectedWorkout) { workout in
                     WorkoutDetailSheet(model: model, workoutID: workout.id)
+                }
+                .sheet(item: $moveSwapDay) { day in
+                    MoveSwapDaySheet(model: model, sourceDay: day)
                 }
                 .sheet(isPresented: $showSchedule) { ScheduleChangeSheet(model: model) }
                 .sheet(isPresented: $showAdapt) { AdaptWeekSheet(model: model, week: model.selectedWeek) }
@@ -123,6 +127,8 @@ struct PlanView: View {
                                 ForEach(model.days) { day in
                                     DayRow(day: day, onToggleDone: { workout in
                                         Task { await model.setDone(workout, !workout.isDone) }
+                                    }, onMoveOrSwap: { day in
+                                        moveSwapDay = day
                                     }, onSelect: { selectedWorkout = $0 })
                                         .id(day.id)
                                 }

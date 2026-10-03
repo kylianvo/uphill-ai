@@ -173,21 +173,23 @@ final class PlanViewModel {
         return last > 0 ? Array(1...last) : []
     }
 
-    var days: [PlanDay] {
+    func days(for week: Int) -> [PlanDay] {
         guard let snapshot else { return [] }
         let today = now()
         return Weekday.allCases.map { weekday in
-            let date = PlanCalendar.date(week: selectedWeek, weekday: weekday, plan: snapshot.plan,
+            let date = PlanCalendar.date(week: week, weekday: weekday, plan: snapshot.plan,
                                          workouts: snapshot.workouts, calendar: calendar)
             return PlanDay(
-                week: selectedWeek,
+                week: week,
                 weekday: weekday,
                 date: date,
-                workouts: snapshot.workouts.filter { $0.weekNumber == selectedWeek && $0.weekday == weekday },
+                workouts: snapshot.workouts.filter { $0.weekNumber == week && $0.weekday == weekday },
                 eyebrow: PlanCalendar.eyebrow(for: date, now: today, calendar: calendar)
             )
         }
     }
+
+    var days: [PlanDay] { days(for: selectedWeek) }
 
     var selectedVolume: WeekVolume { PlanSummary.volume(week: selectedWeek, workouts: snapshot?.workouts ?? []) }
 
@@ -273,6 +275,40 @@ final class PlanViewModel {
                 self.calendarNotice = ScheduleNotice(text: "Heads-up: " + result.warnings.map(ScheduleMessages.warningText).joined(separator: "\n"), style: .warning)
             }
             return result.workouts
+        }
+    }
+
+    func swapDays(week: Int, day1: Weekday, day2: Weekday) async -> Bool {
+        calendarNotice = nil
+        guard let planID = snapshot?.plan.id else { return false }
+        let today = PlanCalendar.ymd(now(), calendar: calendar)
+        return await write {
+            let result = try await self.service.swapDays(planID: planID, weekNumber: week, day1: day1, day2: day2, clientToday: today)
+            if !result.warnings.isEmpty {
+                self.calendarNotice = ScheduleNotice(text: "Heads-up: " + result.warnings.map(ScheduleMessages.warningText).joined(separator: "\n"), style: .warning)
+            }
+            return result.workouts
+        }
+    }
+
+    func deletePlan(id: Int) async -> Bool {
+        guard cachedAt == nil else {
+            actionError = Self.offlineMessage
+            return false
+        }
+        actionError = nil
+        do {
+            try await service.deletePlan(id: id)
+            if snapshot?.plan.id == id {
+                await load()
+            }
+            return true
+        } catch let error as APIError {
+            actionError = error.userMessage
+            return false
+        } catch {
+            actionError = error.localizedDescription
+            return false
         }
     }
 

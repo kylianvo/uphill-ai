@@ -79,4 +79,32 @@ struct PlanServiceTests {
         #expect(try await service.recentPlans().count == 2)
         #expect(try await service.selectPlan(id: 5) != nil)
     }
+
+    @Test func swapDaysSendsPayloadAndDecodesResponse() async throws {
+        let fixture = try Fixture.data("modify_calendar.json")
+        let service = PlanService(client: makeStubClient { request in
+            #expect(request.httpMethod == "POST")
+            #expect(request.url?.path() == "/api/coach/modify-calendar")
+            let b = try body(request)
+            #expect(b["plan_id"] as? Int == 93)
+            #expect(b["week_number"] as? Int == 3)
+            #expect(b["day_1"] as? String == "Tuesday")
+            #expect(b["day_2"] as? String == "Wednesday")
+            #expect(b["client_today"] as? String == "2026-10-03")
+            return (200, fixture)
+        })
+        let result = try await service.swapDays(planID: 93, weekNumber: 3, day1: .tuesday, day2: .wednesday, clientToday: "2026-10-03")
+        #expect(result.workouts.count > 0)
+        #expect(result.warnings.isEmpty)
+    }
+
+    @Test func deletePlanSendsDeleteRequest() async throws {
+        let fixture = try Fixture.data("delete_plan.json")
+        let service = PlanService(client: makeStubClient { request in
+            #expect(request.httpMethod == "DELETE")
+            #expect(request.url?.path() == "/api/coach/plans/92")
+            return (200, fixture)
+        })
+        try await service.deletePlan(id: 92)
+    }
 }
