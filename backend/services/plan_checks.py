@@ -121,10 +121,8 @@ def run_context_checks(workouts: list[dict[str, Any]], *, context: dict) -> dict
         except (ValueError, TypeError):
             results["arithmetic"] = False
             return results
-    if missing_precision:
-        return results
-    results["arithmetic"] = True
-    access_unknown = False
+    results["arithmetic"] = None if missing_precision else True
+    access_unknown = missing_precision
     access_failed = False
     run_total = easy_total = 0.0
     weekly = defaultdict(float)
@@ -132,7 +130,11 @@ def run_context_checks(workouts: list[dict[str, Any]], *, context: dict) -> dict
     for workout, prescription in resolved:
         week = workout.get("week_number")
         phases[week] = workout.get("phase")
-        permission = context.get("day_access", {}).get(workout.get("day_of_week"))
+        permission = (
+            context.get("race_access")
+            if workout.get("type") == "Race"
+            else context.get("day_access", {}).get(workout.get("day_of_week"))
+        )
         for segment in prescription["segments"]:
             kind = segment["kind"]
             if kind == "rest":
@@ -162,6 +164,8 @@ def run_context_checks(workouts: list[dict[str, Any]], *, context: dict) -> dict
                 if segment["zone"] in EASY_ZONES:
                     easy_total += minutes
     results["access"] = False if access_failed else (None if access_unknown else True)
+    if missing_precision:
+        return results
     results["intensity_accounting"] = easy_total / run_total >= MIN_EASY_SHARE if run_total else None
     coverage = context.get("week_coverage", {})
     compared = False
@@ -177,7 +181,7 @@ def run_context_checks(workouts: list[dict[str, Any]], *, context: dict) -> dict
                 (w for w in reversed(weeks) if w < prev and coverage.get(w) == 7 and phases.get(w) not in _DOWN_PHASES),
                 None,
             )
-            if baseline is None or any(coverage.get(w) != 7 for w in range(baseline, current + 1)):
+            if baseline is None or any(coverage.get(w) != 7 or w not in weekly for w in range(baseline, current + 1)):
                 continue
         if weekly[baseline] <= 0:
             continue
@@ -214,6 +218,10 @@ def generation_context(race_info: dict, workouts: list[dict]) -> dict:
             day: {"settings": ["flat_outdoor", "indoor"], "equipment": ["bodyweight"]}
             for day in {w.get("day_of_week") for w in workouts}
         }
+    if race_info.get("course_distance_km") and "race_access" not in context:
+        context["race_access"] = {
+            "settings": ["mountain" if race_info.get("course_elevation_gain_m") else "flat_outdoor"]
+        }
     return context
 
 
@@ -221,6 +229,12 @@ def validate_generated_workouts(workouts: list[dict], *, context: dict) -> dict[
     """Bounded generator attempts call this before any workout can be stored."""
     results = run_context_checks(workouts, context=context)
     failed = [name for name in ("arithmetic", "access") if results[name] is False]
+    for workout in workouts:
+        for segment in workout.get("segments", []):
+            if segment.get("setting") == "treadmill" and float(segment.get("incline_pct", 0)) > 0:
+                permission = context.get("day_access", {}).get(workout.get("day_of_week")) or {}
+                if permission.get("max_incline_pct") is None:
+                    raise ValueError("Invalid generated prescription: unconfirmed treadmill capability")
     if failed:
         raise ValueError("Invalid generated prescription: " + ", ".join(failed))
     return results

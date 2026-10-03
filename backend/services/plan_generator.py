@@ -644,6 +644,7 @@ class PlanGenerator:
         description = details
         fueling_tip = None
         prescription_segments = None
+        model_response = False
 
         resolved_lang = (lang or user_profile.get("lang") or "en").lower()
         vi_chars = set(
@@ -666,6 +667,8 @@ class PlanGenerator:
                     if zone_locked
                     else "Choose the single most appropriate zone: Zone 1|Zone 2|Zone 3|Zone 4|Zone 5."
                 )
+                if target_pace:
+                    zone_instruction += f" Preserve the coach-selected main pace exactly: {target_pace}."
                 interval_instruction = (
                     f"This is an interval session: {interval_reps}x{interval_rep_value}{interval_rep_unit} "
                     "(already fixed by the coach -- describe the session around this structure, don't invent a different one)."
@@ -732,6 +735,7 @@ class PlanGenerator:
                 _start, _end = _text.find("{"), _text.rfind("}")
                 if _start != -1 and _end != -1:
                     parsed = _json.loads(_text[_start : _end + 1])
+                    model_response = True
                     title = parsed.get("title") or title
                     if not zone_locked:
                         resolved_zone = parsed.get("target_zone") or resolved_zone
@@ -781,16 +785,97 @@ class PlanGenerator:
             "interval_rep_value": interval_rep_value if is_interval else None,
             "interval_rep_unit": interval_rep_unit if is_interval else None,
         }
+        if prescription_segments is None and not model_response and not details:
+            if workout_type == "Rest":
+                prescription_segments = [{"kind": "rest", "duration_minutes": 0, "zone": None, "setting": "unknown"}]
+            elif is_rest_or_strength:
+                workout["type"] = "Strength"
+                prescription_segments = [
+                    {
+                        "kind": "strength",
+                        "duration_minutes": duration_minutes,
+                        "zone": None,
+                        "setting": "indoor",
+                        "exercise": {
+                            "name": "Bodyweight Squats",
+                            "sets": 3,
+                            "reps": 12,
+                            "rest_seconds": 90,
+                            "equipment": ["bodyweight"],
+                        },
+                    }
+                ]
+            else:
+
+                def movement(minutes, zone, pace, role):
+                    return {
+                        "kind": "run",
+                        "duration_minutes": minutes,
+                        "zone": zone,
+                        "setting": "flat_outdoor",
+                        "pace_min_per_km": list(PlanGenerator.parse_pace_range(pace)),
+                        "role": role,
+                    }
+
+                prescription_segments = [movement(wu_cd, "Zone 1", est_zones["zone1_pace"], "warmup")]
+                if is_interval and interval_reps:
+                    pace_values = PlanGenerator.parse_pace_range(resolved_pace)
+                    rep_minutes = (
+                        float(interval_rep_value)
+                        * {
+                            "min": 1,
+                            "s": 1 / 60,
+                            "km": sum(pace_values) / 2,
+                            "m": sum(pace_values) / 2000,
+                        }[interval_rep_unit]
+                    )
+                    remainder = duration_minutes - interval_reps * rep_minutes
+                    if remainder < 0 or (interval_reps == 1 and remainder > 0):
+                        raise ValueError(
+                            "Coach interval structure exceeds main duration or leaves unspecified recovery"
+                        )
+                    for rep in range(interval_reps):
+                        prescription_segments.append(movement(rep_minutes, resolved_zone, resolved_pace, "main"))
+                        if rep < interval_reps - 1:
+                            prescription_segments.append(
+                                movement(remainder / (interval_reps - 1), "Zone 1", est_zones["zone1_pace"], "main")
+                            )
+                else:
+                    prescription_segments.append(movement(duration_minutes, resolved_zone, resolved_pace, "main"))
+                prescription_segments.append(movement(wu_cd, "Zone 1", est_zones["zone1_pace"], "cooldown"))
         if prescription_segments is not None:
             workout["segments"] = prescription_segments
             apply_prescription(workout, lang=resolved_lang)
             main_segments = [segment for segment in workout["segments"] if segment.get("role", "main") == "main"]
-            if abs(sum(segment["duration_minutes"] for segment in main_segments) - duration_minutes) > 0.1:
+            if (
+                workout_type != "Rest"
+                and abs(sum(segment["duration_minutes"] for segment in main_segments) - duration_minutes) > 0.1
+            ):
                 raise ValueError("Structured workout must preserve coach main duration")
-            if zone_locked and any(
-                segment.get("zone") != target_zone for segment in main_segments if segment["kind"] in {"run", "hike"}
+            if (
+                model_response
+                and zone_locked
+                and any(
+                    segment.get("zone") != target_zone
+                    for segment in main_segments
+                    if segment["kind"] in {"run", "hike"}
+                )
             ):
                 raise ValueError("Structured workout must preserve coach zone")
+            if model_response and target_pace:
+                expected_pace = sorted(PlanGenerator.parse_pace_range(target_pace) or [])
+                for segment in main_segments:
+                    if segment["kind"] in {"run", "hike"}:
+                        pace = segment["pace_min_per_km"]
+                        actual = sorted(pace if isinstance(pace, list) else [pace])
+                        if len(actual) == 1:
+                            actual *= 2
+                        if not expected_pace or any(abs(a - b) > 1 / 120 for a, b in zip(actual, expected_pace)):
+                            raise ValueError("Structured workout must preserve coach pace")
+            if target_pace and not model_response:
+                workout["target_pace"] = target_pace
+            if is_rest_or_strength:
+                workout["target_pace"] = None
         plan_checks.validate_generated_workouts([workout], context={})
         return workout
 
@@ -1076,6 +1161,17 @@ class PlanGenerator:
                                 "zone": None,
                                 "setting": "indoor",
                                 "exercise": {"name": "Bodyweight Squats", "sets": 3, "reps": 12, "rest_seconds": 90},
+                            }
+                        ]
+                    elif w_type == "Race" and course_distance_km:
+                        wo["segments"] = [
+                            {
+                                "kind": "run",
+                                "duration_minutes": dur,
+                                "zone": zone,
+                                "setting": "mountain" if course_elevation_gain_m else "flat_outdoor",
+                                "pace_min_per_km": dur / course_distance_km,
+                                "elevation_gain_m": course_elevation_gain_m or 0,
                             }
                         ]
                     else:
@@ -2049,6 +2145,15 @@ class PlanGenerator:
                         "day_of_week": "Saturday",
                         "phase": phase,
                         "title": "Post-Race Gentle Hike",
+                        "segments": [
+                            {
+                                "kind": "hike",
+                                "duration_minutes": 30,
+                                "zone": "Zone 1",
+                                "setting": "flat_outdoor",
+                                "pace_min_per_km": 15,
+                            }
+                        ],
                         "type": "Recovery",
                         "duration_minutes": 30.0,
                         "target_zone": "Zone 1",

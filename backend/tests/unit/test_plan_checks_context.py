@@ -140,3 +140,28 @@ def test_validation_rejects_invalid_fallback_before_storage():
 
     with pytest.raises(ValueError, match="arithmetic"):
         plan_checks.validate_generated_workouts([{"type": "Easy", "duration_minutes": -3}], context={})
+
+
+def test_legacy_rest_does_not_hide_structured_access_failure():
+    import pytest
+
+    rows = [{"type": "Rest", "duration_minutes": 0}, workout(setting="mountain")]
+    context = {"day_access": {"Tuesday": {"settings": ["flat_outdoor"]}}}
+    assert check(rows, **context)["access"] is False
+    with pytest.raises(ValueError, match="access"):
+        plan_checks.validate_generated_workouts(rows, context=context)
+
+
+def test_down_week_rebound_cannot_bridge_absent_observations():
+    rows = [workout(100), workout(30, week=3, phase="Recovery"), workout(140, week=4)]
+    assert check(rows, week_coverage={1: 7, 2: 7, 3: 7, 4: 7})["progression"] is None
+
+
+def test_generation_rejects_unconfirmed_positive_treadmill_incline():
+    import pytest
+
+    wo = workout(setting="treadmill", incline_pct=15)
+    context = {"day_access": {"Tuesday": {"settings": ["treadmill"]}}}
+    assert check([wo], **context)["access"] is None
+    with pytest.raises(ValueError, match="capability"):
+        plan_checks.validate_generated_workouts([wo], context=context)

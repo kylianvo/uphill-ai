@@ -214,3 +214,77 @@ async def test_single_workout_segments_cannot_override_coach_main_duration():
     with patch("google.genai.Client", return_value=client):
         with pytest.raises(ValueError, match="coach"):
             await PlanGenerator.generate_single_workout({}, "Easy", 30, "Tuesday", 1, api_key="fake-key")
+
+
+@pytest.mark.asyncio
+async def test_single_workout_segments_cannot_override_coach_pace():
+    response = MagicMock(
+        text=json.dumps(
+            {
+                "title": "Easy Run",
+                "segments": [
+                    {**SEGMENTS[0], "role": "main", "duration_minutes": 30, "zone": "Zone 2", "pace_min_per_km": 7}
+                ],
+            }
+        )
+    )
+    client = MagicMock()
+    client.models.generate_content.return_value = response
+    with patch("google.genai.Client", return_value=client):
+        with pytest.raises(ValueError, match="coach pace"):
+            await PlanGenerator.generate_single_workout(
+                {}, "Easy", 30, "Tuesday", 1, target_pace="5:00 /km", api_key="fake-key"
+            )
+    assert "5:00 /km" in client.models.generate_content.call_args.kwargs["contents"]
+
+
+async def final_fallback(total_weeks, distance=80, ascent=4000):
+    with (
+        patch("services.race_history.prompt_summary", return_value=""),
+        patch("services.race_history.tier_distance", return_value=None),
+    ):
+        rows, _ = await PlanGenerator.generate_plan_workouts(
+            plan_id=0,
+            user_profile={"current_weekly_km": 62},
+            race_info={
+                "lang": "en",
+                "goal_type": "finish",
+                "date": "2026-10-24",
+                "plan_start_date": "2026-10-05",
+                "training_environment": "flat",
+                "course_distance_km": distance,
+                "course_elevation_gain_m": ascent,
+            },
+            total_weeks=total_weeks,
+            api_key=None,
+            weeks_per_block=total_weeks,
+        )
+    return rows
+
+
+@pytest.mark.asyncio
+async def test_fallback_recovery_walk_remains_hiking():
+    rows = await final_fallback(2)
+    wo = next(w for w in rows if w["title"] == "Post-Race Gentle Hike")
+    assert wo["prescription"]["run_km"] == 0
+    assert wo["prescription"]["hike_km"] == 2
+    assert "Hike: 30 minutes" in wo["description"]
+
+
+@pytest.mark.asyncio
+async def test_fallback_race_preserves_known_course():
+    rows = await final_fallback(4)
+    wo = next(w for w in rows if w["type"] == "Race")
+    assert wo["distance_km"] == 80
+    assert wo["elevation_gain_m"] == 4000
+    assert wo["duration_minutes"] == 520
+
+
+@pytest.mark.asyncio
+async def test_single_deterministic_run_accounts_for_both_warmup_and_cooldown():
+    wo = await PlanGenerator.generate_single_workout({}, "Easy", 30, "Tuesday", 1, target_pace="5:00 /km")
+    assert "prescription" in wo
+    assert wo["duration_minutes"] == 38
+    assert wo["distance_km"] == wo["prescription"]["run_km"]
+    assert sum(s["duration_minutes"] for s in wo["segments"]) == 38
+    assert [s["role"] for s in wo["segments"]] == ["warmup", "main", "cooldown"]
