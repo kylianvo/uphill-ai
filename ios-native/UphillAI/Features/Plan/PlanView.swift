@@ -189,19 +189,55 @@ struct PlanView: View {
         if generation.running?.kind == .nextWeek {
             HStack(spacing: UH.Space.small) {
                 ProgressView()
-                Text("Building the next week…").font(UH.TextStyle.label)
+                Text("Building the next block…").font(UH.TextStyle.label)
             }
             .frame(maxWidth: .infinity, alignment: .leading).uhCard().padding(.horizontal, UH.Space.regular)
         } else if let offer = model.nextWeekOffer {
-            VStack(alignment: .leading, spacing: UH.Space.small) {
-                Text(offer.title).font(UH.TextStyle.sectionTitle)
-                Text("Coach Uphill uses how this week went to shape the next one.").foregroundStyle(UH.Palette.secondary)
-                if let pct = offer.previousCompletionPct {
-                    Text("This week: \(Int(pct)) % done").font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary)
+            if offer.unlocked {
+                VStack(alignment: .leading, spacing: UH.Space.small) {
+                    HStack(spacing: UH.Space.compact) {
+                        Image(systemName: "sparkles")
+                            .foregroundStyle(UH.Palette.accentInk)
+                        Text(offer.title).font(UH.TextStyle.sectionTitle)
+                    }
+                    Text("Coach Uphill uses how this block went to shape the next one.").foregroundStyle(UH.Palette.secondary)
+                    if let pct = offer.previousCompletionPct {
+                        Text("Block completion: \(Int(pct))% done").font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary)
+                    }
+                    Button(offer.title) { showNextWeek = true }
+                        .buttonStyle(.uhPrimary)
+                        .accessibilityIdentifier("plan.nextweek")
                 }
-                Button(offer.title) { showNextWeek = true }.buttonStyle(.uhPrimary).accessibilityIdentifier("plan.nextweek")
+                .frame(maxWidth: .infinity, alignment: .leading).uhCard().padding(.horizontal, UH.Space.regular)
+            } else {
+                VStack(alignment: .leading, spacing: UH.Space.small) {
+                    HStack(spacing: UH.Space.compact) {
+                        Image(systemName: "lock.fill")
+                            .foregroundStyle(UH.Palette.secondary)
+                        Text("Complete the current block to unlock")
+                            .font(UH.TextStyle.sectionTitle)
+                    }
+                    if let pct = offer.previousCompletionPct {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text("Block progress")
+                                    .font(UH.TextStyle.caption)
+                                    .foregroundStyle(UH.Palette.muted)
+                                Spacer()
+                                Text("\(Int(pct))% / 70% required")
+                                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                    .foregroundStyle(pct >= 70 ? UH.Palette.accentInk : UH.Palette.secondary)
+                            }
+                            ProgressView(value: min(100, max(0, pct)), total: 100)
+                                .tint(pct >= 70 ? UH.Palette.accentInk : UH.Palette.secondary)
+                        }
+                    }
+                    Button("Generate anyway") { showNextWeek = true }
+                        .buttonStyle(.uhSecondary)
+                        .accessibilityIdentifier("plan.nextweek")
+                }
+                .frame(maxWidth: .infinity, alignment: .leading).uhCard().padding(.horizontal, UH.Space.regular)
             }
-            .frame(maxWidth: .infinity, alignment: .leading).uhCard().padding(.horizontal, UH.Space.regular)
         }
     }
 
