@@ -7,7 +7,21 @@ struct PlanView: View {
     let onViewProgress: () -> Void
     var user: User? = nil
     var onSharpen: (TrainingDestination) -> Void = { _ in }
+    var initialCoachExpanded: Bool = false
     @State private var viewMode: PlanViewMode = .list
+
+    init(model: PlanViewModel, generation: GenerationCenter, onBuildPlan: @escaping () -> Void,
+         onViewProgress: @escaping () -> Void, user: User? = nil, onSharpen: @escaping (TrainingDestination) -> Void = { _ in },
+         initialViewMode: PlanViewMode = .list, initialCoachExpanded: Bool = false) {
+        self.model = model
+        self.generation = generation
+        self.onBuildPlan = onBuildPlan
+        self.onViewProgress = onViewProgress
+        self.user = user
+        self.onSharpen = onSharpen
+        self.initialCoachExpanded = initialCoachExpanded
+        _viewMode = State(initialValue: initialViewMode)
+    }
     @State private var selectedWorkout: Workout?
     @State private var moveSwapDay: PlanDay?
     @State private var showManage = false
@@ -106,7 +120,7 @@ struct PlanView: View {
                                         onGoal: { showGoal = true })
 
                         // 3. Coach review card
-                        CoachReviewCard(model: model, onOpenReview: { showReview = true })
+                        CoachReviewCard(model: model, onOpenReview: { showReview = true }, initialExpanded: initialCoachExpanded)
                             .padding(.horizontal, UH.Space.regular)
 
                         // 4. Week switcher with List / Calendar toggle

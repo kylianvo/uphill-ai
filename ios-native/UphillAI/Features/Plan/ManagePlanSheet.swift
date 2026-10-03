@@ -11,6 +11,14 @@ struct ManagePlanSheet: View {
     @State private var confirmDelete = false
     @State private var isDeleting = false
 
+    init(model: PlanViewModel, onStartNew: @escaping () -> Void, onSchedule: @escaping () -> Void = {}, initialPlans: [Plan]? = nil, initialConfirmDelete: Bool = false) {
+        self.model = model
+        self.onStartNew = onStartNew
+        self.onSchedule = onSchedule
+        _plans = State(initialValue: initialPlans)
+        _confirmDelete = State(initialValue: initialConfirmDelete)
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {

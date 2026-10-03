@@ -12,6 +12,20 @@ struct WorkoutDetailSheet: View {
     @State private var isTreadmill = false
     @State private var confirmMissed = false
 
+    init(model: PlanViewModel, workoutID: Int, initialTreadmill: Bool = false, initialRpe: Int? = nil, initialNotes: String? = nil) {
+        self.model = model
+        self.workoutID = workoutID
+        _isTreadmill = State(initialValue: initialTreadmill)
+        if let initialRpe {
+            _rpe = State(initialValue: initialRpe)
+            _didLoadLog = State(initialValue: true)
+        }
+        if let initialNotes {
+            _notes = State(initialValue: initialNotes)
+            _didLoadLog = State(initialValue: true)
+        }
+    }
+
     private var workout: Workout? {
         model.snapshot?.workouts.first { $0.id == workoutID }
     }
@@ -296,9 +310,13 @@ struct WorkoutDetailSheet: View {
                         .foregroundStyle(UH.Palette.secondary)
                 }
 
-                if step.steps.count > 1 || (step.steps.first != nil && step.steps.first != step.target) {
+                let extraCues = step.steps.filter { line in
+                    let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+                    return !trimmed.isEmpty && trimmed != step.target && trimmed != step.recovery
+                }
+                if !extraCues.isEmpty {
                     VStack(alignment: .leading, spacing: 2) {
-                        ForEach(step.steps, id: \.self) { line in
+                        ForEach(extraCues, id: \.self) { line in
                             Text(line)
                                 .font(.system(size: 12))
                                 .foregroundStyle(UH.Palette.secondary)

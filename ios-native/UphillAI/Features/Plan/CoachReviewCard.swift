@@ -4,6 +4,12 @@ struct CoachReviewCard: View {
     let model: PlanViewModel
     let onOpenReview: () -> Void
     @State private var isExpanded: Bool = false
+
+    init(model: PlanViewModel, onOpenReview: @escaping () -> Void, initialExpanded: Bool = false) {
+        self.model = model
+        self.onOpenReview = onOpenReview
+        _isExpanded = State(initialValue: initialExpanded)
+    }
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var priorityWorkout: Workout? {
