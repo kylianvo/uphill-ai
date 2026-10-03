@@ -176,7 +176,9 @@ def compile_coach_prompt(
         if ath.get("ant_hr"):
             ath_lines.append(f"- Anaerobic Threshold (AnT): {ath['ant_hr']} bpm")
         if ath.get("current_weekly_km") is not None:
-            ath_lines.append(f"- Weekly km: {ath['current_weekly_km']}")
+            ath_lines.append(
+                f"- Weekly km: {ath['current_weekly_km']} ({ath.get('weekly_km_source', 'self_reported')})"
+            )
         if ath.get("zone2_pace_min") or ath.get("zone2_pace_max"):
             ath_lines.append(f"- Zone 2 Pace: {ath.get('zone2_pace_min')} - {ath.get('zone2_pace_max')}")
         if ath.get("threshold_pace"):

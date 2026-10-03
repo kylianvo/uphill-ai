@@ -142,7 +142,7 @@ def gather(
 ) -> GoalContext:
     """`target` is a course from goal_anchors.resolve_course. Exclusion keys
     match the `key` of each returned source: "result:<id>", "utmb_index",
-    "watch", "vo2max", "block"."""
+    "watch", "vo2max", "predictor", "block"."""
     exclude = exclude or set()
     missing: list[str] = []
     sources: list[dict[str, Any]] = []
@@ -189,6 +189,13 @@ def gather(
             athlete["vo2max"] = vo2
         elif not vo2:
             missing.append("vo2max")
+
+        assessment = _safe("predictor", db.get_latest_fitness_assessment, missing, uid)
+        if assessment and assessment.get("pred_marathon_sec"):
+            if use("predictor", f"COROS marathon prediction {_hms(int(assessment['pred_marathon_sec']))}"):
+                athlete["marathon_prediction_sec"] = assessment["pred_marathon_sec"]
+        elif not assessment:
+            missing.append("predictor")
 
         utmb = _safe("utmb_index", db.get_utmb_index, missing, uid)
         if utmb and use("utmb_index", f"UTMB index {utmb}"):

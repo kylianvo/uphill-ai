@@ -1,0 +1,69 @@
+{
+  "synthetic": true,
+  "provenance": "scheduler",
+  "_comment": "Invented Vietnamese urban sub_elite runner: flat outdoor weekdays, Tuesday/Thursday incline treadmill, mountain access at weekends. Review terrain timing and equipment as well as tier and volume; notes encode day-specific access because the app has only a global mixed-terrain setting.",
+  "user_profile": {
+    "age": 35,
+    "gender": "male",
+    "max_hr": 193,
+    "resting_hr": 47,
+    "aet_hr": 154,
+    "ant_hr": 171,
+    "threshold_source": "field",
+    "current_weekly_km": 108,
+    "days_per_week": 6,
+    "has_gym_access": true,
+    "threshold_pace": "4:08"
+  },
+  "fitness_snapshot": {
+    "weekly_km": 108.0,
+    "weekly_km_source": "coros",
+    "weekly_vert_m": 1800.0,
+    "volume_as_of": "2026-09-27",
+    "threshold_pace": "4:08",
+    "threshold_pace_source": "coros",
+    "assessment": {
+      "vo2max": 57.0,
+      "running_level": 88.0,
+      "threshold_pace": "4:08",
+      "pred_marathon_sec": 11640.0,
+      "measured_at": "2026-10-01T08:16:00+00:00"
+    },
+    "utmb_index": null,
+    "threshold_source": "field",
+    "gender": "male",
+    "readiness": null,
+    "notes": []
+  },
+  "race_info": {
+    "lang": "vi",
+    "terrain": "trail",
+    "goal_type": "finish",
+    "name": "Synthetic Vietnam Urban-to-Trail 76K",
+    "date": "2026-11-22",
+    "course_distance_km": 76,
+    "course_elevation_gain_m": 3900,
+    "preferred_days": [
+      "Monday",
+      "Tuesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+      "Sunday"
+    ],
+    "long_run_day": "Sunday",
+    "days_per_week": 6,
+    "has_gym_access": true,
+    "use_treadmill": true,
+    "training_environment": "mixed",
+    "athlete_notes": "Living in urban HCM, Vietnam. Weekday outdoor runs must be flat; there are no weekday outdoor hills. Mountains are available only on Saturday and Sunday. Gym and incline treadmill are available on Tuesday and Thursday only. Weekday hill/incline sessions must explicitly use the indoor treadmill on those days. Other weekday sessions must stay flat. Keep the long run on Sunday. No injury, fatigue or overreaching is reported."
+  },
+  "total_weeks": 8,
+  "expect": {
+    "tier": "sub_elite",
+    "week2_km": [
+      92,
+      119
+    ]
+  }
+}

@@ -302,3 +302,53 @@ def test_get_block_evaluation_endpoint(client, auth_headers):
     assert data["sessions_completed"] == 1
     assert data["completion_pct"] == 50
     assert "coach_summary" in data
+
+
+def test_next_block_passes_the_stored_tier_as_previous_tier_and_stores_the_snapshot(client, auth_headers):
+    """REGRESSION: next block passed plans.athlete_tier as the explicit override, so a
+    plan first resolved as recreational stayed recreational forever."""
+    captured = {}
+
+    async def _gen(*args, **kwargs):
+        if kwargs.get("block_number", 1) == 1:
+            return [], "recreational"
+        captured["race_info"] = args[2] if len(args) > 2 else kwargs.get("race_info")
+        return [], "sub_elite"
+
+    def _wait(job_id):
+        status = None
+        for _ in range(40):
+            status = client.get(f"/api/coach/plan-status/{job_id}", headers=auth_headers["headers"]).json()["status"]
+            if status == "done":
+                break
+            time.sleep(0.05)
+        assert status == "done"
+
+    # One patch for the whole test: both jobs run in background tasks.
+    with patch("services.plan_generator.PlanGenerator.generate_plan_workouts", new=AsyncMock(side_effect=_gen)):
+        plan_id, workout_id = _create_plan_with_one_week_of_workouts(client, auth_headers["headers"])
+        for _ in range(40):
+            if get_plan_by_id(plan_id)["athlete_tier"]:
+                break
+            time.sleep(0.05)
+        assert get_plan_by_id(plan_id)["athlete_tier"] == "recreational"
+        client.patch(
+            "/api/coach/workouts/log",
+            headers=auth_headers["headers"],
+            json={"workout_id": workout_id, "is_completed": 1},
+        )
+        resp = client.post(
+            "/api/coach/generate-next-block",
+            headers=auth_headers["headers"],
+            json={"plan_id": plan_id, "block_number": 2, "override_gate": True},
+        )
+        assert resp.status_code == 200, resp.text
+        _wait(resp.json()["job_id"])
+
+    race_info = captured["race_info"]
+    assert race_info["athlete_tier"] is None
+    assert race_info["previous_tier"] == "recreational"
+    assert race_info["fitness_snapshot"] is not None
+    plan = get_plan_by_id(plan_id)
+    assert plan["athlete_tier"] == "sub_elite"
+    assert plan["fitness_snapshot"]["weekly_km_source"] == "self_reported"

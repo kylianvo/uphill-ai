@@ -195,3 +195,65 @@ async def test_access_token_requires_reconnect_when_access_token_cannot_be_decry
 
     with pytest.raises(coros_sync.CorosReconnectRequired):
         await coros_sync._access_token(connection)
+
+
+OVERVIEW = {
+    "vo2max": 63.0,
+    "running_level": 92.0,
+    "threshold_pace": "3:57",
+    "prediction_5k_sec": 1000.0,
+    "prediction_10k_sec": 2100.0,
+    "prediction_half_marathon_sec": 4860.0,
+    "prediction_marathon_sec": 10560.0,
+}
+
+
+def test_store_overview_records_history_and_profile(monkeypatch):
+    recorded, profile = [], []
+    monkeypatch.setattr(
+        coros_sync.db, "record_fitness_assessment", lambda uid, src, d: recorded.append((uid, src, d)) or True
+    )
+    monkeypatch.setattr(coros_sync.db, "update_user_fitness", lambda **kw: profile.append(kw) or True)
+    coros_sync.store_overview(30, OVERVIEW)
+    assert recorded[0][2]["pred_marathon_sec"] == 10560.0
+    assert recorded[0][2]["pred_hm_sec"] == 4860.0
+    assert profile[0]["coros_vo2max"] == 63.0
+
+
+@pytest.mark.asyncio
+async def test_ensure_fresh_skips_when_recent(monkeypatch):
+    monkeypatch.setattr(coros_sync.db, "get_connection", lambda uid, p: {"status": "active"})
+    monkeypatch.setattr(
+        coros_sync.db,
+        "get_latest_fitness_assessment",
+        lambda uid: {"measured_at": datetime.now(UTC) - timedelta(days=2)},
+    )
+
+    async def boom(uid):
+        raise AssertionError("must not pull")
+
+    monkeypatch.setattr(coros_sync, "sync_fitness", boom)
+    await coros_sync.ensure_fresh_assessment(30)
+
+
+@pytest.mark.asyncio
+async def test_ensure_fresh_swallows_coros_failures(monkeypatch):
+    monkeypatch.setattr(coros_sync.db, "get_connection", lambda uid, p: {"status": "active"})
+    monkeypatch.setattr(coros_sync.db, "get_latest_fitness_assessment", lambda uid: None)
+
+    async def fail(uid):
+        raise RuntimeError("COROS down")
+
+    monkeypatch.setattr(coros_sync, "sync_fitness", fail)
+    await coros_sync.ensure_fresh_assessment(30)  # no exception
+
+
+@pytest.mark.asyncio
+async def test_ensure_fresh_does_nothing_without_connection(monkeypatch):
+    monkeypatch.setattr(coros_sync.db, "get_connection", lambda uid, p: None)
+
+    async def boom(uid):
+        raise AssertionError("must not pull")
+
+    monkeypatch.setattr(coros_sync, "sync_fitness", boom)
+    await coros_sync.ensure_fresh_assessment(30)

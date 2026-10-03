@@ -95,18 +95,49 @@ def _scheduler_engine_used(before: dict, after: dict) -> str:
     return "rule-based-or-unknown"
 
 
+def _snapshot_from_fixture(data: dict):
+    """Rebuild a FitnessSnapshot from a fixture's JSON (measured_at as an ISO string)."""
+    from datetime import datetime
+
+    from services.fitness_snapshot import FitnessSnapshot
+
+    data = dict(data)
+    a = data.get("assessment")
+    if a and isinstance(a.get("measured_at"), str):
+        data["assessment"] = {**a, "measured_at": datetime.fromisoformat(a["measured_at"])}
+    return FitnessSnapshot(**data)
+
+
+def _week_km(workouts: list[dict], week: int) -> float:
+    return round(sum(float(w.get("distance_km") or 0) for w in workouts if w.get("week_number") == week), 1)
+
+
 async def _run_scheduler(fixture: dict) -> tuple[list[dict], str]:
+    """Runs the generator on a fixture. A fixture may carry a `fitness_snapshot`; the
+    resolved tier is left on the fixture as `_resolved_tier` for compare's scoring
+    (callers pop it before anything is written back)."""
     from services.plan_generator import PlanGenerator
 
+    race_info = dict(fixture["race_info"])
+    if fixture.get("fitness_snapshot"):
+        race_info["fitness_snapshot"] = _snapshot_from_fixture(fixture["fitness_snapshot"])
     before = _scheduler_counters()
-    workouts, _tier = await PlanGenerator.generate_plan_workouts(
+    workouts, tier = await PlanGenerator.generate_plan_workouts(
         plan_id=0,
-        user_profile=fixture["user_profile"],
-        race_info=fixture["race_info"],
+        user_profile=dict(fixture["user_profile"]),
+        race_info=race_info,
         total_weeks=fixture.get("total_weeks", 8),
         api_key=settings.GEMINI_API_KEY,
         block_number=1,
+        # Snapshot gates score the first full week. Production currently generates
+        # one-week blocks, so these offline cases must explicitly include week 2.
+        weeks_per_block=(
+            max(2, settings.WEEKS_PER_BLOCK)
+            if (fixture.get("expect") or {}).get("week2_km")
+            else settings.WEEKS_PER_BLOCK
+        ),
     )
+    fixture["_resolved_tier"] = tier
     return workouts, _scheduler_engine_used(before, _scheduler_counters())
 
 
@@ -300,6 +331,7 @@ def capture(service: str, overwrite: bool = False):
         print(f"[capture] {os.path.basename(path)} → Gemini+KB baseline...")
         start = time.time()
         result, engine_used = asyncio.run(_run(service, fixture))
+        fixture.pop("_resolved_tier", None)
         ref = {"latency_s": round(time.time() - start, 1), "engine_used": engine_used, "output": result}
         if engine_used != "gemini":
             ref["engine_mismatch"] = True
@@ -384,12 +416,22 @@ def compare(
             lines.append(f"- New: `{json.dumps(summary)}`")
             if ref:
                 lines.append(f"- Ref: `{json.dumps(_scheduler_summary(ref['output']))}`")
+            tier = fixture.pop("_resolved_tier", None)
+            expect = fixture.get("expect") or {}
+            week2 = _week_km(result, 2)
+            lo, hi = expect.get("week2_km") or [None, None]
+            lines.append(f"- Tier: **{tier}**" + (f" (expected {expect['tier']})" if expect.get("tier") else ""))
+            lines.append(f"- Week-2 volume: **{week2} km**" + (f" (expected {lo}-{hi})" if lo is not None else ""))
             item_score = {
                 "latency_s": latency,
                 "engine_is_gemini": engine_is_gemini,
                 "engine": engine_used,
                 "workout_count": summary["workout_count"],
                 "plan_checks": plan_checks.pass_share(plan_checks.run_checks(result)),
+                "tier": tier,
+                "tier_match": (tier == expect["tier"]) if expect.get("tier") else None,
+                "week2_km": week2,
+                "week2_in_range": (lo <= week2 <= hi) if lo is not None else None,
             }
         elif service == "chat":
             eval_metrics = evaluate_chat_case(result, fixture)
@@ -525,6 +567,10 @@ def gate_failures(service: str, items: list[dict], scores: list[dict]) -> list[s
             failures.append(f"{item['id']}: fell through to the {s.get('engine')} tier")
         elif service in ("scheduler", "goal_judge") and s.get("engine") == "gemini_retry":
             print(f"[gate] warn {item['id']}: needed the reduced-prompt retry")
+        if service == "scheduler" and s.get("tier_match") is False:
+            failures.append(f"{item['id']}: tier {s.get('tier')} differs from the expected tier")
+        if service == "scheduler" and s.get("week2_in_range") is False:
+            failures.append(f"{item['id']}: week-2 volume {s.get('week2_km')} km outside the expected range")
         if service in ("gear", "nutrition") and s.get("catalog_membership_valid") is False:
             failures.append(f"{item['id']}: recommended something outside the catalog")
         if service == "chat" and s.get("safe_outcome") is False:

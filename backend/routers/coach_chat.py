@@ -25,7 +25,7 @@ from db import (
     verify_session,
 )
 from log_utils import get_logger
-from services import coach_chat, observability, schedule_proposals
+from services import coach_chat, fitness_snapshot, observability, schedule_proposals
 from services.coach_graph import AppEvent
 from services.coach_prompts import (
     COACH_SYSTEM_INSTRUCTION,
@@ -358,6 +358,25 @@ async def clear_chat_thread(
         )
 
 
+def _profile_for(user: dict[str, Any], plan: dict[str, Any] | None) -> dict[str, Any]:
+    """Legacy chat's profile line: measured-first weekly km with its source, and the tier
+    the active plan was written for, so chat quotes the numbers the plan used."""
+    summary = fitness_snapshot.chat_summary(user["id"], plan)
+    return {
+        "age": user.get("age"),
+        "current_weekly_km": summary.get("weekly_km", user.get("current_weekly_km")),
+        "weekly_km_source": summary.get("weekly_km_source", "self_reported"),
+        "athlete_tier": summary.get("athlete_tier"),
+        "max_hr": user.get("max_hr"),
+        "resting_hr": user.get("resting_hr"),
+        "aet_hr": user.get("aet_hr"),
+        "ant_hr": user.get("ant_hr"),
+        "use_treadmill": bool(plan and plan.get("use_treadmill")),
+        "zone2_pace_min": _z2_min_for(user),
+        "zone2_pace_max": _z2_max_for(user),
+    }
+
+
 # ---------------------------------------------------------------------------
 # Legacy Endpoint (Backward Compatibility)
 # ---------------------------------------------------------------------------
@@ -401,17 +420,7 @@ async def coach_chat_legacy(
 
     # 2. Setup system instructions from authenticated user only
     plan = get_active_plan(user_id)
-    profile = {
-        "age": user.get("age"),
-        "current_weekly_km": user.get("current_weekly_km"),
-        "max_hr": user.get("max_hr"),
-        "resting_hr": user.get("resting_hr"),
-        "aet_hr": user.get("aet_hr"),
-        "ant_hr": user.get("ant_hr"),
-        "use_treadmill": bool(plan and plan.get("use_treadmill")),
-        "zone2_pace_min": _z2_min_for(user),
-        "zone2_pace_max": _z2_max_for(user),
-    }
+    profile = _profile_for(user, plan)
     profile_summary = f"\nUser Running Profile: {profile}"
     context_summary = ""
     if plan:

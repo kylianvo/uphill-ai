@@ -327,6 +327,8 @@ export default function ProfileSettingsModal() {
 
           ant_hr: parseInt(profileForm.ant_hr),
 
+          threshold_source: profileForm.threshold_source ?? "unknown",
+
 
 
 
@@ -1076,6 +1078,21 @@ export default function ProfileSettingsModal() {
 
 
 
+                </div>
+
+                <div>
+                  <label style={labelStyle} htmlFor="threshold-source">{t("threshold_source_label")}</label>
+                  <select
+                    id="threshold-source"
+                    style={inputStyle}
+                    value={profileForm.threshold_source ?? "unknown"}
+                    onChange={e => setProfileForm({ ...profileForm, threshold_source: e.target.value })}
+                  >
+                    {(["lab", "field", "estimated", "unknown"] as const).map(v => (
+                      <option key={v} value={v}>{t(`threshold_source_${v}` as const)}</option>
+                    ))}
+                  </select>
+                  <p style={{ fontSize: "11px", color: "var(--text-muted)", margin: "4px 0 0 0" }}>{t("threshold_source_hint")}</p>
                 </div>
 
                 {/* Threshold Pace & COROS Sync Card */}

@@ -1,0 +1,34 @@
+{
+  "synthetic": true,
+  "provenance": "scheduler",
+  "_comment": "Same athlete without a watch connection: the typed-volume path must not be demoted by thresholds of unknown provenance.",
+  "user_profile": {
+    "age": 36,
+    "gender": "male",
+    "max_hr": 184,
+    "resting_hr": 52,
+    "aet_hr": 133,
+    "ant_hr": 162,
+    "threshold_source": "unknown",
+    "current_weekly_km": 140.0,
+    "days_per_week": 6,
+    "has_gym_access": false
+  },
+  "race_info": {
+    "lang": "en",
+    "terrain": "trail",
+    "goal_type": "finish",
+    "name": "Trail 80K",
+    "date": "2026-11-29",
+    "course_distance_km": 80,
+    "course_elevation_gain_m": 4200
+  },
+  "total_weeks": 8,
+  "expect": {
+    "tier": "sub_elite",
+    "week2_km": [
+      115,
+      150
+    ]
+  }
+}
