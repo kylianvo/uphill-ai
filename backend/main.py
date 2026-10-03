@@ -2326,7 +2326,7 @@ async def _generate_next_block_for_athlete(
         line = (
             f"Block {blk} (Wk {wk_start}-{wk_end}): "
             f"{sessions_done}/{sessions_total} sessions ({completion_pct}%) | "
-            f"Actual {actual_km:.1f}km/{actual_min/60:.1f}h"
+            f"Known logged volume {actual_km:.1f}km/{actual_min/60:.1f}h"
             + (f" (+{actual_vert:.0f}m D+)" if actual_vert > 0 else "")
             + f" vs Planned {planned_km:.1f}km/{planned_min/60:.1f}h"
         )
@@ -2345,6 +2345,24 @@ async def _generate_next_block_for_athlete(
                 feeling_label = "Max Effort"
             line += f" | Effort: {feeling_label} (RPE {block_rpe}/10)"
         context_lines.append(line)
+        context_lines.append(
+            f"  Confirmed missed sessions: {len(missed)} | Unknown sessions: {len(not_logged)}. "
+            "Unlogged sessions are not evidence of zero training; do not infer detraining from missing logs."
+        )
+        # Calendar coverage is independent of how many sessions were logged.
+        from datetime import date
+
+        try:
+            plan_start = date.fromisoformat(str(plan.get("start_date"))[:10])
+        except ValueError:
+            plan_start = None
+        for wk in range(wk_start, wk_end + 1):
+            coverage = (7 - plan_start.weekday() if wk == 1 else 7) if plan_start else None
+            context_lines.append(
+                f"  Calendar coverage W{wk}: {coverage}/7 days"
+                if coverage is not None
+                else f"  Calendar coverage W{wk}: unknown"
+            )
 
         if block_note:
             context_lines.append(f'  Athlete note: "{block_note}"')
@@ -2352,7 +2370,7 @@ async def _generate_next_block_for_athlete(
         if blk == prev_block and override_used:
             context_lines.append(
                 f"  ⚠ Block {blk} generated via override at {completion['completion_pct']}% "
-                f"(below the 70% threshold)."
+                f"(below the 70% threshold); override grants access, not completed training or readiness."
             )
 
         if blk == request.block_number - 1:

@@ -26,3 +26,5 @@ Owner authorized execution after requiring the Vietnamese-copy skill. Apply R1â€
 ## Results and decisions
 
 No candidate has run yet. Historical fitness-snapshot results are in the separate fitness release runbook and do not establish this release's gate.
+
+2026-10-04 Task 2 diagnosis: synthetic next-block core reproduced `Actual 0.0km/0.0h` for missing logs and no watch data. Changed to `Known logged volume`, explicit unknown/missed counts, calendar coverage and override/readiness distinction. Four failing regressions became green; original gate behavior stayed green. This establishes misleading context, not proof that it alone caused the historical stochastic 110.2 km result. The paired sequential evaluation remains required.
