@@ -1,5 +1,10 @@
 # Fitness snapshot release record
 
+**Current recommendation, 2026-10-03: HOLD production promotion.** Repeated
+offline v4 evaluations pass, but the trace-verified staging no-COROS next block
+misses its unchanged volume band. Staging code is deployed and its prompt label
+is v4; production remains v1. See the follow-up section below.
+
 ## Decision at the owner checkpoint
 
 2026-10-02: Task 11 **PASS**. `plan_generation` v4 at `snapshot-exp` is eligible
@@ -132,10 +137,11 @@ in the baseline and no candidate worsens it. The other 12 cases score 1.0.
   provenance and score-config state were operator-verified, not independently
   verified by the reviewer.
 
-## Staging execution log — pending owner go-ahead
+## Staging procedure recorded at the original checkpoint (2026-10-02)
 
 Target: `/opt/uphill-ai-backend-staging`, backend port 8001, Postgres port 5434.
-No step below has run. Record UTC start/end times and command/output evidence
+At the original checkpoint no step below had run. Actual UTC execution
+timestamps and outcomes are in the follow-up section below. Record command/output evidence
 in each row after authorization. User instructions authorize the PR checkout
 for staging after the checkpoint; do not wait for or merge main.
 
@@ -171,3 +177,149 @@ experiment passed, then move only `staging` to v4, generate a second test plan
 and verify the candidate prompt version on its trace. Keep `production` on v1.
 Production deployment, release tagging, dashboards and production prompt
 promotion belong to the owner and are outside this continuation.
+
+## Follow-up: repeated evaluations and staging — 2026-10-03
+
+The owner authorized three additional paired baseline/v4 evaluations and the
+staging initial-plan/next-block validation. No new prompt version, fixture,
+assertion or gate was introduced. `production` stays v1; `snapshot-exp` stays v4.
+
+### Repeated evaluation results
+
+All six runs used the full 15-case set with `--push-langfuse --synthetic-only`.
+All 90 score sets were re-read through the current Scores API and matched the
+local evaluation results. Native legacy Runs grouping remains unavailable.
+These runs occurred on Saturday UTC; the original experiment ran Friday.
+The paired runs share the same calendar context, but their partial first-week
+size differs from the original experiment. These are three repetitions of
+three fixed cases, not nine independent athlete populations.
+
+Each distance cell is baseline → v4, in km. Bands are unchanged:
+no-COROS 115–150, elite snapshot 110–145, recreational 55–78.
+
+| Pair | Baseline v1 run | Candidate v4 run | No COROS | Elite snapshot | Recreational | Mean latency |
+|---|---|---|---|---|---|---|
+| 1 | `eval_scheduler_production_1791029636` | `eval_scheduler_snapshot-exp_1791029781` | 107.3 → 120.9 | 113.0 → 130.5 | 59.2 → 62.1 | 8.080 → 8.593s (+6.35%) |
+| 2 | `eval_scheduler_production_1791029926` | `eval_scheduler_snapshot-exp_1791030069` | 116.1 → 132.5 | 84.1 → 125.0 | 51.9 → 65.9 | 8.500 → 8.400s (-1.18%) |
+| 3 | `eval_scheduler_production_1791030211` | `eval_scheduler_snapshot-exp_1791030352` | 130.6 → 128.4 | 93.9 → 127.0 | 64.8 → 65.7 | 8.093 → 8.300s (+2.55%) |
+
+- Production passes 5/9 snapshot volume checks; v4 passes **9/9**, with **3/3
+  scheduler gates PASS**. All snapshot tiers match in every run.
+- All 90 outputs use Gemini; no retries or rule fall-through. No fixture's
+  `plan_checks` is lower than its paired baseline.
+- Mean across all baseline cases: 8.224 s; candidate: 8.431 s (**+2.51%**).
+  Every paired mean is below its baseline +20% ceiling. This is a latency
+  comparison, not a measurement of token cost.
+- Elite snapshot volume: baseline mean 97.0 km (range 84.1–113.0), candidate
+  mean 127.5 km (125.0–130.5), versus a measured 136 km. Candidate absolute
+  error averages 8.5 km, compared with 39.0 km for the baseline.
+- Final repeated offline outputs contain tempo work, with 81.9–84.9% of run
+  minutes easy. The measured elite/recreational tempo paces are 4:30–4:07 and
+  5:16–4:49 per km, consistent with their threshold-derived Zone 3 bands.
+  These checks do not independently establish the athlete's physiology.
+- All final offline cases assign 0 m ascent because fixture terrain access
+  defaults to flat. That is a coverage limitation for snapshot vert: the
+  staging smoke explicitly uses mixed terrain instead.
+- The prompt's 90–100% guidance is still not perfectly obeyed: the no-COROS
+  case retains 86.4%, 94.6%, 91.7% across repeats. Its gate allows this range.
+
+### Staging sequential-path results
+
+The staging service was deployed from PR head `7492069`, using the reviewed
+checksum dry-run → stop → rsync excluding `.env*` → start sequence. Startup
+health took several minutes. `init_db` created the additive objects and the
+confirmed Alembic head is `b4f1c2d3e5a6`. No integration suite, truncation,
+requirements change, deploy-script change or environment-file edit occurred.
+
+Three newly created synthetic accounts used the fixture profiles. COROS cases
+received four complete weeks of synthetic runs and a fresh synthetic assessment;
+no live COROS credentials or activity fetch was used. Profile source was saved
+through the API and re-read. Initial generation and block 2 were invoked through
+the authenticated application endpoints. The documented `override_gate=true`
+was used because these synthetic accounts had no completed first-week workouts;
+this exercises the next-block path with zero completion, not a completed-week
+athlete. Consequently, the offline and staging contexts are not identical.
+
+| Case / attempt | Initial km (partial week) | Full week-2 km / band | Week-2 ascent | Prompt versions initial → next | Result |
+|---|---|---|---|---|---|
+| Elite COROS baseline | 47.8 | 82.0 / 110–145 | 1,900 m | v1 → v1 | Volume FAIL |
+| No-COROS first candidate attempt | 37.5 | 124.2 / 115–150 | 5,070 m | v1 → v4 | Mixed-version attempt; retained, not the final v4 pair |
+| No-COROS trace-verified recheck | 45.6 | **110.2 / 115–150** | 3,770 m | v4 → v4 | **Volume FAIL** |
+| Elite COROS candidate | 48.9 | 123.2 / 110–145 | 5,200 m | v4 → v4 | PASS |
+| Recreational COROS candidate | 24.5 | 71.7 / 55–78 | 805 m | v4 → v4 | PASS |
+
+The no-COROS recheck was required to establish prompt provenance after the first
+initial generation still used cached v1 despite waiting 305 seconds after label
+promotion. The actual configured cache TTL is 300 seconds; exact cause of the
+extra delay was not established. Both attempts remain in this record; the second
+was not a retry to turn a gate failure into a pass. All six final candidate
+initial/next-block traces explicitly carry `plan_generation` v4 and environment
+`staging`, with Gemini engine and the expected tier.
+
+Measured elite `plan_volume_fit` improves from 0.603 on staging v1 to 0.906 on v4;
+recreational v4 scores 0.990. No-COROS has no `plan_volume_fit` score because the
+metric deliberately requires measured COROS volume. The tier score still appears.
+All single-week staging `plan_checks` are 1.0; they do not enforce the snapshot
+volume band, which is why this independent distance check matters.
+
+Mixed-terrain elite v4 retains the full 5,200 m measured ascent; recreational v4
+assigns 805 m versus its 650 m snapshot (+23.8%). There is no existing hard vert
+band. Elite week 2 is 81.6% easy running with Zone 3 tempo at 4:30–4:07/km;
+recreational is 100% easy in this early-base week. The no-COROS recheck includes
+hill sprints and tempo, so unknown-provenance thresholds did not eliminate all
+intensity. Its pace bands are estimated from stored profile defaults, not a
+measured threshold. No snapshot/source/tier disclosure was found in the inspected
+athlete-facing workout text. These observations are checks of generated output,
+not validation of physiological measurements.
+
+[Trace-verified synthetic plan samples](../superpowers/evidence/fitness-snapshot/staging-plan-samples.json)
+retain both generated weeks for the three final v4 cases, with sources, pace,
+vert, intensity and initial/next-block trace IDs. Database user/plan/workout IDs
+and credentials are omitted. The earlier cache-mixed attempt remains summarized
+above. Remote tracing was verified through bounded Observations API v2 queries
+and Scores API v3; no prompt/reply content was exported. See the
+[Langfuse public API documentation](https://langfuse.com/docs/api-and-data-platform/features/public-api).
+
+### Follow-up decision
+
+**HOLD production promotion.** Repeated offline gates pass, and the measured
+COROS staging cases improve substantially, but the no-COROS sequential path
+produces 110.2 km: below its 115 km band and below 80% of the 140 km typed load.
+Its stored snapshot still says 140 km, `self_reported`, `sub_elite`, with no
+readiness exception. The zero-completion override context may influence the
+response; the cause is not established and should not be silently treated as
+an injury/fatigue exception.
+
+A follow-up should distinguish incomplete-week adaptation from ordinary
+completed-week progression and verify that the planned weekly budget survives
+minute-to-distance conversion on the sequential path. Keep the gate unchanged.
+The original two prompt refinements remain exhausted; no v5 was created.
+Staging stays on v4 for investigation; production stays on v1. Production code,
+label promotion and fallback synchronization remain owner-owned.
+
+### UTC execution log
+
+Timestamps below mark completed actions unless noted. The early stamp attempt
+was submitted before health confirmation, contrary to the required order; the
+stamp was repeated and verified after health. No `alembic upgrade` ran.
+
+| UTC | Step | Evidence / result |
+|---|---|---|
+| 2026-10-03T12:12:56.319124+00:00 | checksum dry-run | 194 changed/new paths inspected; env and requirements excluded/unchanged; staging older than PR |
+| 2026-10-03T12:13:24.044658+00:00 | backup and stop | staging-only code backup; backend stopped |
+| 2026-10-03T12:13:45.676796+00:00 | rsync and start | code synced excluding .env*; existing staging container started |
+| 2026-10-03T12:18:37.104749+00:00 | health check | HTTP200 healthy on localhost:8001; initial resets during startup |
+| 2026-10-03T12:18:37.105085+00:00 | early stamp deviation | stamp submitted before health confirmed; corrected by repeating after health, no upgrade run |
+| 2026-10-03T12:19:14.298502+00:00 | post-health stamp and seed | stamp head re-run; synthetic accounts seeded; inspect seed log for success |
+| 2026-10-03T12:23:54.937119+00:00 | staging prompt promotion | staging v1 -> v4 after code/profile/snapshot/trace smoke; production remains v1 |
+| 2026-10-03T12:36:08.592889+00:00 | candidate smoke and trace verification | all six final generation traces staging v4/Gemini/tier match; measured cases pass; no-COROS next block110.2km fails115km minimum; first cached-v1 attempt retained separately |
+| 2026-10-03T12:39:42.416772+00:00 | cleanup and final health | five synthetic plans and three test accounts removed; initial user-only cleanup rolled back on created-by FK; staging HTTP200 healthy |
+| 2026-10-03T12:21:35.268779+00:00 | baseline: Profile + initial/next-block APIs, elite_unmeasured_thresholds | Completed; distances and prompt provenance recorded above |
+| 2026-10-03T12:29:38.329577+00:00 | candidate: Profile + initial/next-block APIs, elite_no_coros | Completed; distances and prompt provenance recorded above |
+| 2026-10-03T12:30:23.704651+00:00 | candidate: Profile + initial/next-block APIs, elite_unmeasured_thresholds | Completed; distances and prompt provenance recorded above |
+| 2026-10-03T12:30:57.328105+00:00 | candidate: Profile + initial/next-block APIs, recreational_field_thresholds | Completed; distances and prompt provenance recorded above |
+| 2026-10-03T12:33:32.849342+00:00 | candidate-recheck: Profile + initial/next-block APIs, elite_no_coros | Completed; distances and prompt provenance recorded above |
+
+The synthetic accounts and all five associated test plans were removed after
+saving the samples. Cleanup used exact test emails and owned plan rows, without
+truncating any table. Final staging health is HTTP 200.
