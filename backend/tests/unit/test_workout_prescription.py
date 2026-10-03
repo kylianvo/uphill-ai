@@ -122,3 +122,50 @@ def test_render_ranges_and_stop_condition_have_meaning_parity():
     assert "Stop if power drops." in en["description"]
     assert "Dừng nếu power giảm." in vi["description"]
     assert en["run_km"] == vi["run_km"] == 1.8
+
+
+def test_strength_exercise_prescription_and_recovery_survive_rendering():
+    result = wp.resolve_prescription(
+        [
+            {
+                "kind": "strength",
+                "duration_minutes": 18,
+                "zone": None,
+                "setting": "indoor",
+                "exercise": {"name": "Bodyweight Squats", "sets": 3, "reps": 8, "rest_seconds": 75},
+            }
+        ],
+        lang="vi",
+    )
+    assert "Bodyweight Squats: 3 x 8" in result["description"]
+    assert "75 s" in result["description"]
+    assert result["run_km"] == 0
+
+
+def test_exercise_quantities_are_not_hidden_unvalidated_prose():
+    with pytest.raises(ValueError):
+        wp.resolve_prescription(
+            [
+                {
+                    "kind": "strength",
+                    "duration_minutes": 18,
+                    "zone": None,
+                    "setting": "indoor",
+                    "exercise": {"name": "Squats", "sets": -1, "reps": 8, "rest_seconds": 75},
+                }
+            ],
+            lang="en",
+        )
+
+
+def test_mountain_ascent_is_explicit_not_inferred_from_race():
+    segment = run(setting="mountain", elevation_gain_m=240)
+    workout = {"type": "Easy", "segments": [segment]}
+    wp.apply_prescription(workout, lang="en")
+    assert workout["elevation_gain_m"] == 240
+    assert workout["grade_percent"] == 12
+
+
+def test_flat_segments_cannot_claim_mountain_ascent():
+    with pytest.raises(ValueError):
+        wp.resolve_prescription([run(elevation_gain_m=120)], lang="en")

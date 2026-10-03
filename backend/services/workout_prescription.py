@@ -43,6 +43,7 @@ def resolve_prescription(segments: list[dict], *, lang: str) -> dict:
             "passive_minutes",
             "duration_minutes",
             "estimated_indoor_ascent_m",
+            "estimated_outdoor_ascent_m",
         ),
         0.0,
     )
@@ -62,10 +63,29 @@ def resolve_prescription(segments: list[dict], *, lang: str) -> dict:
             if not isinstance(identifier, str) or not identifier or identifier in ids:
                 raise ValueError("Segment IDs must be unique nonempty strings")
             ids.add(identifier)
+        if segment.get("exercise") is not None:
+            exercise = segment["exercise"]
+            if (
+                kind != "strength"
+                or not isinstance(exercise, dict)
+                or not isinstance(exercise.get("name"), str)
+                or not exercise["name"].strip()
+            ):
+                raise ValueError("Exercise requires a named strength segment")
+            for field in ("sets", "reps"):
+                value = _number(exercise.get(field), positive=True)
+                if not value.is_integer():
+                    raise ValueError("Exercise sets and reps must be integers")
+                exercise[field] = int(value)
+            exercise["rest_seconds"] = _number(exercise.get("rest_seconds", 0))
         minutes = _number(segment.get("duration_minutes"))
         segment["duration_minutes"] = minutes
         if kind == "rest" and minutes != 0:
             raise ValueError("Rest has no prescribed session duration")
+        ascent = _number(segment.get("elevation_gain_m", 0))
+        if ascent and (setting != "mountain" or kind not in {"run", "hike"}):
+            raise ValueError("Outdoor ascent requires explicit mountain movement")
+        result["estimated_outdoor_ascent_m"] += ascent
         grade = _number(segment.get("incline_pct", 0))
         if grade and (setting != "treadmill" or kind not in {"run", "hike"}):
             raise ValueError("Incline applies only to treadmill movement")
@@ -86,7 +106,7 @@ def resolve_prescription(segments: list[dict], *, lang: str) -> dict:
         result["duration_minutes"] += minutes
         validated.append(segment)
     for key in result:
-        result[key] = round(result[key], 0 if key == "estimated_indoor_ascent_m" else 1)
+        result[key] = round(result[key], 0 if key in {"estimated_indoor_ascent_m", "estimated_outdoor_ascent_m"} else 1)
     result["segments"] = validated
     result["description"] = render_prescription(result, lang=lang)
     return result
@@ -120,9 +140,18 @@ def render_prescription(resolved: dict, *, lang: str) -> str:
         if kind in {"run", "hike"}:
             line += (" in " if lang == "en" else " ở ") + segment["zone"]
             line += f", pace {_pace_text(segment['pace_min_per_km'])}/km"
+        if segment.get("elevation_gain_m"):
+            ascent = _number(segment["elevation_gain_m"])
+            line += f", D+ {ascent:g} m " + ("(estimated)" if lang == "en" else "(ước tính)")
         if segment["setting"] == "treadmill":
             grade = _number(segment.get("incline_pct", 0))
             line += f", Treadmill {grade:g}%"
+        if segment.get("exercise"):
+            exercise = segment["exercise"]
+            rest = "rest between sets" if lang == "en" else "nghỉ giữa các set"
+            line += (
+                f", {exercise['name']}: {exercise['sets']} x {exercise['reps']}, {exercise['rest_seconds']:g} s {rest}"
+            )
         line += "."
         if segment.get("stop_if_power_drops"):
             line += " Stop if power drops." if lang == "en" else " Dừng nếu power giảm."
@@ -131,3 +160,48 @@ def render_prescription(resolved: dict, *, lang: str) -> str:
         ascent = f"{resolved['estimated_indoor_ascent_m']:g}"
         lines.append(f"Indoor D+ (estimated): {ascent} m." if lang == "en" else f"D+ trong nhà (ước tính): {ascent} m.")
     return " → ".join(lines)
+
+
+def apply_prescription(workout: dict, *, lang: str) -> None:
+    """Resolve newly structured output; callers validate context before storage.
+
+    Public distance is total locomotion distance. Component accounting remains
+    ephemeral because the existing schema stores totals and complete instructions.
+    Legacy output without segments never enters this helper.
+    """
+    import re
+
+    resolved = resolve_prescription(workout["segments"], lang=lang)
+    if workout.get("type") in {"Strength", "Muscular Endurance"}:
+        for segment in resolved["segments"]:
+            if segment["kind"] == "strength" and not segment.get("exercise"):
+                raise ValueError("Strength requires a named exercise prescription")
+    rationale = workout.get("rationale") or ""
+    if not isinstance(rationale, str) or re.search(r"\d", rationale):
+        raise ValueError("Rationale must not supply a second numerical prescription")
+    workout["segments"] = resolved["segments"]
+    workout["prescription"] = resolved
+    workout["duration_minutes"] = resolved["duration_minutes"]
+    workout["distance_km"] = round(resolved["run_km"] + resolved["hike_km"], 1)
+    workout["description"] = resolved["description"] + (" " + rationale if rationale else "")
+    moving = [s for s in resolved["segments"] if s["kind"] in {"run", "hike"}]
+    main = next((s for s in moving if s.get("role", "main") == "main"), moving[0] if moving else None)
+    workout["target_pace"] = f"{_pace_text(main['pace_min_per_km'])} /km" if main else ""
+    workout["target_zone"] = main["zone"] if main else "Zone 1"
+    indoor = [s for s in moving if s["setting"] == "treadmill"]
+    if indoor:
+        grades = [_number(s.get("incline_pct", 0)) for s in indoor]
+        speeds = [60 / p for s in indoor for p in _pace_values(s["pace_min_per_km"])]
+
+        def band(values):
+            low, high = round(min(values), 1), round(max(values), 1)
+            return f"{low:g}" if low == high else f"{low:g}-{high:g}"
+
+        workout["treadmill_incline"] = band(grades)
+        workout["treadmill_speed"] = band(speeds)
+    else:
+        workout["treadmill_incline"] = workout["treadmill_speed"] = "0"
+    # No generic course-based climb is invented for a flat weekday or Strength.
+    workout["elevation_gain_m"] = resolved["estimated_indoor_ascent_m"] + resolved["estimated_outdoor_ascent_m"]
+    distance = workout["distance_km"]
+    workout["grade_percent"] = round(workout["elevation_gain_m"] / (distance * 10), 1) if distance else 0

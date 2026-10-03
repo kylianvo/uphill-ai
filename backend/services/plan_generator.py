@@ -9,8 +9,13 @@ from services import observability
 from services.athlete_tier import get_profile, resolve_tier
 from services.plan_rules import build_rules_block
 from services.training_rules import TrainingRules, default_zone2_pace, resolve_zone2_pace
+from services.workout_prescription import apply_prescription
 
 _logger = get_logger(__name__)
+
+VI_COPY_CONTRACT = """
+VI meaning parity: English is the source of truth. Preserve every quantity, unit, prerequisite, caveat and stop condition; add no product or medical claims. Use short active sentences addressed to bạn. Keep the technical terms listed above, plus Warm-up, Cool-down, Strides, Cadence, RPE, Electrolytes and Aerobic decoupling in English. Use khối lượng tuần, buổi tập, plan/lịch tập. Gloss only first-use form labels, never repeatedly in workout text. No exclamation marks or rhetorical headings. Avoid đắm chìm, hành trình as metaphor, giải pháp, thấu hiểu, kiểm toán, and không chỉ X — mà là Y, plus every banned term listed above. Preserve term markup/interpolations. VI text must fit within the EN length; chips/labels at most three words. If unsure of a technical translation, retain English.
+"""
 
 
 # Prompt templates. Langfuse serves the live version (observability.load_prompt); these are
@@ -73,6 +78,17 @@ Athlete Profile:
 {{target_date_details}}Full Plan Length: {{total_weeks}} weeks.
 - Week 1 starts on: {{current_date_str}} ({{current_weekday}}).
 {{feedback_instruction}}"""
+
+STRUCTURED_PRESCRIPTION_CONTRACT = """
+STRUCTURED PRESCRIPTION — authoritative over the earlier numerical description schema:
+Every workout must include `segments`, an ordered nonempty array, and `rationale`, a concise coaching explanation with no digits, quantities, sets or additional prescriptions. Old description Process numbers are replaced locally from segments. Do not repeat execution instructions in rationale. Preserve useful cautions without numeric claims.
+Each segment: kind run|hike|strength|recovery|rest; duration_minutes (finite nonnegative); zone Zone 1–Zone 5 for moving run/hike, otherwise null; setting flat_outdoor|mountain|treadmill|indoor|unknown; role warmup|main|cooldown (optional). Moving segments require pace_min_per_km, an actual movement pace number or two positive endpoints. For Treadmill use actual belt pace, not an equivalent flat-effort pace; incline_pct is the actual grade. Mountain movement may include elevation_gain_m as an estimate. Flat outdoor ascent is zero. Never assign ascent from the race merely because a weekday run is Trail.
+Strength segments require one named exercise object: name, positive integer sets/reps, nonnegative rest_seconds between sets. Duration includes the exercise's rests. Each exercise is a separate segment; do not hide a circuit or its repetitions in prose. For repeated intervals emit each work and moving recovery segment in order; recovery kind is passive only. Include moving Warm-up and Cool-down once. Rest has duration zero.
+Use only known day access and equipment. No gym does not establish stair/box access. Do not convert Hill Sprint/power to sustained incline work; unknown movement/strength readiness does not authorize advanced power/ME. Near race dates cannot bypass preparation. Use conservative accessible work where prerequisites are unknown.
+The local resolver derives totals and athlete-facing numeric instructions. Strength minutes never become running kilometers. Choose durations to meet the existing healthy-week volume rules; keep justified recovery/taper adaptations. Do not add load merely to satisfy a software score. Keep internal snapshot/tier/scoring terminology out of athlete-facing text.
+"""
+PLAN_GENERATION_PROMPT += STRUCTURED_PRESCRIPTION_CONTRACT
+PLAN_SINGLE_WORKOUT_PROMPT += STRUCTURED_PRESCRIPTION_CONTRACT
 
 BLOCK_NARRATIVE_PROMPT = """You are Coach Uphill, an expert trail-running coach. An athlete's training plan
 just advanced to a new block. Using the training history below and the newly generated
@@ -627,6 +643,7 @@ class PlanGenerator:
         title = workout_type
         description = details
         fueling_tip = None
+        prescription_segments = None
 
         resolved_lang = (lang or user_profile.get("lang") or "en").lower()
         vi_chars = set(
@@ -665,6 +682,8 @@ class PlanGenerator:
                     if resolved_lang == "vi"
                     else ""
                 )
+                if resolved_lang == "vi":
+                    vi_instruction += VI_COPY_CONTRACT
                 _prompt_tpl = observability.load_prompt("plan_single_workout", PLAN_SINGLE_WORKOUT_PROMPT)
                 prompt = observability.compile_prompt(
                     _prompt_tpl,
@@ -718,6 +737,7 @@ class PlanGenerator:
                         resolved_zone = parsed.get("target_zone") or resolved_zone
                     description = parsed.get("description")
                     fueling_tip = parsed.get("fueling_tip")
+                    prescription_segments = parsed.get("segments")
             except Exception as ex:
                 print(f"[PlanGen][SingleWorkout] Gemini FAILED: {ex}. Using deterministic fallback.")
 
@@ -743,7 +763,7 @@ class PlanGenerator:
             wu_cd = PlanGenerator._wu_cd_minutes(duration_minutes)
             total_duration = duration_minutes + wu_cd * 2
 
-        return {
+        workout = {
             "week_number": week_number,
             "day_of_week": day_of_week,
             "phase": "Training",
@@ -761,6 +781,17 @@ class PlanGenerator:
             "interval_rep_value": interval_rep_value if is_interval else None,
             "interval_rep_unit": interval_rep_unit if is_interval else None,
         }
+        if prescription_segments is not None:
+            workout["segments"] = prescription_segments
+            apply_prescription(workout, lang=resolved_lang)
+            main_segments = [segment for segment in workout["segments"] if segment.get("role", "main") == "main"]
+            if abs(sum(segment["duration_minutes"] for segment in main_segments) - duration_minutes) > 0.1:
+                raise ValueError("Structured workout must preserve coach main duration")
+            if zone_locked and any(
+                segment.get("zone") != target_zone for segment in main_segments if segment["kind"] in {"run", "hike"}
+            ):
+                raise ValueError("Structured workout must preserve coach zone")
+        return workout
 
     @staticmethod
     async def generate_plan_workouts(
@@ -983,7 +1014,7 @@ class PlanGenerator:
         p_z5 = est_zones["zone5_pace"]
 
         # Helper function to post-process and estimate target pace and distance for all workouts
-        def post_process_workouts(wos: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        def post_process_workouts(wos: list[dict[str, Any]], *, fallback: bool = False) -> list[dict[str, Any]]:
             # Safety net: strip any week-1 workouts that land before the plan start day
             if block_number == 1 and _excluded_days_w1:
                 wos = [
@@ -1023,6 +1054,44 @@ class PlanGenerator:
                 else:
                     wo["week_number"] = block_start_week
 
+                if fallback and "segments" not in wo:
+                    if w_type == "Rest":
+                        wo["segments"] = [{"kind": "rest", "duration_minutes": 0, "zone": None, "setting": "unknown"}]
+                    elif w_type in {"Strength", "Muscular Endurance"}:
+                        # Without documented advanced readiness, use the existing general
+                        # bodyweight option rather than inventing ME/power prerequisites.
+                        wo["type"] = "Strength"
+                        wo["title"] = "Strength"
+                        wo["segments"] = [
+                            {
+                                "kind": "strength",
+                                "duration_minutes": dur,
+                                "zone": None,
+                                "setting": "indoor",
+                                "exercise": {"name": "Bodyweight Squats", "sets": 3, "reps": 12, "rest_seconds": 90},
+                            }
+                        ]
+                    else:
+                        pace, _ = PlanGenerator.pace_and_distance_for_zone(zone, dur, est_zones)
+                        pace_range = PlanGenerator.parse_pace_range(pace)
+                        wo["segments"] = [
+                            {
+                                "kind": "run",
+                                "duration_minutes": dur,
+                                "zone": zone,
+                                "setting": "flat_outdoor" if training_environment == "flat" else "unknown",
+                                "pace_min_per_km": list(pace_range),
+                            }
+                        ]
+                if "segments" in wo:
+                    apply_prescription(wo, lang=lang)
+                    wo["interval_reps"], wo["interval_rep_value"], wo["interval_rep_unit"] = (
+                        PlanGenerator.resolve_interval_summary(wo, wo["type"])
+                    )
+                    continue
+
+                # Legacy prompt versions lack segments: preserve compatibility without
+                # claiming exact mixed-session accounting or parsing prose.
                 # Reset Rest/Strength/ME — always zero distance, never inherit AI value
                 title_lower = wo.get("title", "").lower()
 
@@ -1446,6 +1515,8 @@ class PlanGenerator:
                 else ""
             )
 
+            if lang == "vi":
+                lang_rule += VI_COPY_CONTRACT
             rules_block = build_rules_block(tier_profile, _max_jog_min)
 
             # The SCHEMA has to be tier-aware too, not just the rules. Fixing only the
@@ -1455,7 +1526,7 @@ class PlanGenerator:
             # that contradicts itself is worse than one that is uniformly wrong: the
             # model resolves the conflict however it likes, differently each run.
             me_format_spec = (
-                "     * Muscular Endurance (ME): this develops peripheral muscular fatigue resistance without cardiac strain. Format by terrain: (a) Flat/Rolling or Gym: high-cadence, high-rep CIRCUIT training — NEVER straight sets. One → segment per exercise names ONE pass (e.g. '10 reps Split Jump Squats, 15s transition → 10 reps Squat Jumps, 15s transition → 10 reps/leg Box Step-Ups at 75% kneecap height, 15s transition → 10 reps/leg Front Lunges'), followed by total rounds (6-8 rounds) and rest between rounds (~60s tapering to 15s). (b) Outdoor Mountain Hikes: steep 30%+ off-trail grade with 5-15% bodyweight pack, 5-20 min climbing intervals with 1-3 min recovery, and mandatory Summit Water Dump protocol: 'Dump water weight at summit; descend unweighted to preserve orthopedic integrity'. (c) Incline Treadmill: 12-15% incline, 90% and 95% uphill climbing pace intervals (standard commercial gym treadmills max out at 15%). (d) Hill Bounding / Ski Striding: 6-8 reps of 8-12s max-effort bounds on 15-20% hill, 3-4 min full standing/walking rest, strictly terminate at first power drop.\n"
+                "     * Muscular Endurance (ME): this develops peripheral muscular fatigue resistance without cardiac strain. Format by terrain: (a) Flat/Rolling or Gym: use a verified protocol appropriate to the athlete. Straight sets or circuits depend on that protocol; never impose a universal ban on straight sets. One → segment per exercise names ONE pass (e.g. '10 reps Split Jump Squats, 15s transition → 10 reps Squat Jumps, 15s transition → 10 reps/leg Box Step-Ups at 75% kneecap height, 15s transition → 10 reps/leg Front Lunges'), followed by total rounds (6-8 rounds) and rest between rounds (~60s tapering to 15s). (b) Outdoor Mountain Hikes: steep 30%+ off-trail grade with 5-15% bodyweight pack, 5-20 min climbing intervals with 1-3 min recovery, and mandatory Summit Water Dump protocol: 'Dump water weight at summit; descend unweighted to preserve orthopedic integrity'. (c) Incline Treadmill: 12-15% incline, 90% and 95% uphill climbing pace intervals (standard commercial gym treadmills max out at 15%). (d) Hill Bounding / Ski Striding: 6-8 reps of 8-12s max-effort bounds on 15-20% hill, 3-4 min full standing/walking rest, strictly terminate at first power drop.\n"
                 if tier_profile.allows_me_blocks
                 else ""
             )
@@ -1859,7 +1930,29 @@ class PlanGenerator:
                 "description": desc,
                 "fueling_tip": fuel_tip,
             }
-            if is_interval:
+            if phase != "Recovery":
+
+                def movement(minutes, intensity, role="main"):
+                    pace_range = PlanGenerator.parse_pace_range(est_zones[f"zone{intensity[-1]}_pace"])
+                    return {
+                        "kind": "run",
+                        "duration_minutes": minutes,
+                        "zone": intensity,
+                        "setting": "flat_outdoor" if training_environment == "flat" else "unknown",
+                        "pace_min_per_km": list(pace_range),
+                        "role": role,
+                    }
+
+                wo["segments"] = [movement(warmup, "Zone 1", "warmup")]
+                if is_interval:
+                    for rep in range(reps):
+                        wo["segments"].append(movement(work_per_rep, "Zone 4"))
+                        if rep < reps - 1:
+                            wo["segments"].append(movement(recovery_per_gap, "Zone 1"))
+                else:
+                    wo["segments"].append(movement(main_minutes, "Zone 3"))
+                wo["segments"].append(movement(cooldown, "Zone 1", "cooldown"))
+            if is_interval and phase != "Recovery":
                 wo["interval_reps"] = reps
                 wo["interval_rep_value"] = float(work_per_rep)
                 wo["interval_rep_unit"] = "min"
@@ -1980,6 +2073,7 @@ class PlanGenerator:
                 )
 
             # Day 7: Sunday
+            sunday_walk_segment = None
             sun_dur = 45.0
             treadmill_incl = 0.0
             treadmill_sp = 0.0
@@ -2053,6 +2147,14 @@ class PlanGenerator:
                         title = "Active Recovery Walk"
                         w_type = "Recovery"
                         desc = f"Restorative {round(sun_dur)}-minute light walk or hike on soft trail."
+                        # Conservative walking pace is explicit app fallback policy, not a book rule.
+                        sunday_walk_segment = {
+                            "kind": "hike",
+                            "duration_minutes": round(sun_dur),
+                            "zone": "Zone 1",
+                            "setting": "flat_outdoor",
+                            "pace_min_per_km": 15,
+                        }
                         fuel_tip = "Recovery focus. Drink water."
                 else:
                     title = "Core & Hip Stability"
@@ -2076,6 +2178,9 @@ class PlanGenerator:
                             "fueling_tip": fuel_tip,
                         }
                     )
+
+                    if sunday_walk_segment is not None:
+                        workouts[-1]["segments"] = [sunday_walk_segment]
 
         # Localization dictionary for rule-based fallback
         if lang == "vi":
@@ -2237,7 +2342,7 @@ class PlanGenerator:
                 wo["description"] = t_str(wo.get("description", ""))
                 wo["fueling_tip"] = t_str(wo.get("fueling_tip", ""))
 
-        result = post_process_workouts(workouts), athlete_tier
+        result = post_process_workouts(workouts, fallback=True), athlete_tier
         with observability.span("rule_based", metadata={"engine": "rule_based", "tier": "fallback"}) as _rule_span:
             _rule_span.set(status="used", latency_ms=round((time.monotonic() - _rule_started) * 1000))
         return result
@@ -2294,6 +2399,7 @@ class PlanGenerator:
                     "- Fixed mappings: 'khối lượng' (never 'thể tích'), 'thể chất' (never 'sinh lý'), 'plan' / 'lịch tập' (never 'giáo án'), 'buổi tập' / 'bài chạy' (never 'bài tập thể dục'), 'điều chỉnh tuần' (never 'tối ưu hóa').\n"
                     "- Banned words: 'kiến tạo', 'bảo chứng', 'bứt phá', 'nâng tầm', 'vượt trội', 'tối ưu hóa', 'chuyên sâu', 'đột phá', 'giáo án', 'sinh lý', 'thể tích'."
                 )
+                lang_instruction += VI_COPY_CONTRACT
             else:
                 lang_instruction = "Respond in English."
 

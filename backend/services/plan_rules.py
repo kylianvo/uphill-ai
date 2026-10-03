@@ -156,7 +156,7 @@ def _performance_rules(profile: TierProfile) -> str:
 
     me_periodization = (
         """4. Periodization Phases (Training for the Uphill Athlete):
-   - Short Runway Override (<= 10 weeks total plan): Bypass general strength phases. Start a specific Muscular Endurance (ME) block in Week 1 or Week 2, concluding 10-14 days before race day.
+   - Short Runway (<= 10 weeks total plan): A nearby race does not establish strength or movement readiness. Preserve general strength preparation when history is unknown; introduce specific ME only with documented prerequisites and an appropriate protocol. Do not compress missed preparation into the available weeks.
    - Base Phase: Aerobic volume accumulation (Zone 1-2) + Maximum Strength (heavy compound bodyweight/gym lifts: squats, deadlifts, step-ups; 3-5 sets of 4-6 reps, 2-3 min rest between sets). For standard/long plans (>= 12 weeks), introduce high-repetition ME circuits in the Build phase.
    - Build Phase: Aerobic base expansion + Muscular Endurance (8-12 week ME block: gym circuits or uphill carries) + Zone 3/4 hill tempo repeats.
    - Peak Phase: Race-specific terrain simulation, high-vert weekend back-to-backs, weighted pack step-ups, and eccentric downhill repeats (quad conditioning).
