@@ -26,6 +26,26 @@
 - Scan the complete diff and external text against the existing private denylist without reproducing it in files.
 - Source claims must distinguish verified book excerpts, author supplements, and app policy. Captions are approximate; do not invent book pages or numerical prescriptions.
 
+## Vietnamese copy contract
+
+Required skill: [uphill-ai-vietnamese-copy](/Users/vietvo/Documents/antigravity/uphill-ai/.agents/skills/uphill-ai-vietnamese-copy/SKILL.md). Apply R1–R6 to deterministic instructions, generated rationale, fallback output and any changed UI copy. English is the source of truth; add VI in the same commit.
+
+- Keep the skill's technical vocabulary in English, including `Easy Run`, `Long Run`, `ME`, `Strength`, `Treadmill`, `Warm-up`, `Cool-down`, `Zone 1`–`Zone 5`, `AeT`, `AnT`, `RPE` and `pace`.
+- Use `khối lượng tuần`, `buổi tập` and `plan`/`lịch tập` with the exact mappings in R2. Write short, direct sentences addressed to `bạn`; apply the entire R3 ban list.
+- Preserve quantities, units, conditions, caveats and stop instructions exactly. VI must not add a claim or lose a prerequisite. If a technical translation is uncertain, retain English and flag the wording for review.
+- For existing ternaries, edit only the VI side for translation corrections; preserve EN text, keys, term-markup pairs and interpolations. New feature copy is authored EN first, then VI.
+- VI strings must be no longer than EN; chips/labels have at most three words. Verify fit in the running UI, including mobile workout cards and details.
+- Put this contract into the relevant LLM language instructions and candidate template; “respond in Vietnamese” alone is insufficient. Deterministic text uses the same terminology.
+
+Paired acceptance example for Task 3 (same resolved 12-minute running segment):
+
+| EN | VI |
+|---|---|
+| `Warm-up: 12 minutes in Zone 1, pace 6:00/km.` | `Warm-up: 12 phút ở Zone 1, pace 6:00/km.` |
+| `Stop if power drops.` | `Dừng nếu power giảm.` |
+
+These are test examples, not new physiological prescriptions. The second applies only where the approved session protocol requires that stop condition.
+
 ## Review Focus
 
 1. A complete calendar week with unlogged sessions must not become a partial week or confirmed inactivity (Task 2).
@@ -63,7 +83,7 @@ The following are proposed policy choices, not claims from the book:
 | `docs/runbooks/2026-10-scheduler-reliability-release.md` (new) | Frozen gates, run identities, decisions, staged deployment log |
 | `docs/superpowers/evidence/scheduler-reliability/` (new) | Synthetic results and EN/VI screenshots |
 
-Read before execution: the spec; both October 3/4 research notes; `CLAUDE.md`; `.claude/skills/llm-change-process/SKILL.md`; `.claude/skills/ui-screenshot-evidence/SKILL.md`; existing fitness release runbook. Verify branch/worktree and preserve unrelated changes. Recheck function locations, not line numbers, against the execution commit.
+Read before execution: the spec; both October 3/4 research notes; `CLAUDE.md`; `.claude/skills/llm-change-process/SKILL.md`; `.claude/skills/ui-screenshot-evidence/SKILL.md`; existing fitness release runbook; the Vietnamese-copy skill linked above. Verify branch/worktree and preserve unrelated changes. Recheck function locations, not line numbers, against the execution commit.
 
 ### Task 1: Freeze the rule register and experiment contract
 
@@ -141,7 +161,7 @@ def test_me_counts_moving_warmup_and_cooldown_once():
 - [ ] Add pure-strength zero-km, hiking separate from running, passive-rest exclusion, empty/rest, negative/NaN/infinite input and duplicate accounting tests. Specify total rounding only at output: distance 0.1 km, time 0.1 min, ascent 1 m. Test tolerance at those boundaries.
 - [ ] Run `pytest tests/unit/test_workout_prescription.py -q` from `backend/`, confirm the failing assertions.
 - [ ] Implement sums without parsing descriptions. Reuse verified existing pace/grade conventions; explicitly document whether treadmill distance is belt-path or horizontal distance before computing ascent. Test a known geometry case and mark indoor ascent estimated.
-- [ ] Generate EN/VI numeric lines from resolved values, with exercise rationale separate. Test identical quantities and range endpoints in both languages. Read the Vietnamese-copy skill before writing VI output.
+- [ ] Generate EN/VI numeric lines from resolved values, with exercise rationale separate. Test identical quantities and range endpoints in both languages. Apply the Vietnamese copy contract above. Add paired exact-string tests for the example, then test preservation of prerequisites, range endpoints, units and stop conditions. Keep technical terms in English and scan new VI strings against R2/R3; a terminology check does not replace meaning review.
 - [ ] Rerun the test file, then commit `feat: resolve mixed workout accounting from segments` plus trailer.
 
 ### Task 4: Integrate one prescription across generation paths
@@ -154,6 +174,7 @@ def test_me_counts_moving_warmup_and_cooldown_once():
 - [ ] Add path tests for normal generation, reduced retry, rule-based fallback and single-workout generation. Assert no more model attempts than the existing original-plus-one-retry budget. An invalid fallback must fail generation before persistence.
 - [ ] Run targeted generator tests to expose the conflicts before implementing.
 - [ ] Extend the local response contract with segments and nonnumerical coaching rationale; integrate Task 3 at the common normalization boundary and equivalent single-workout/fallback boundaries. Retain a clearly tested compatibility path for existing prompt versions; record unavailable segment precision rather than inventing it from prose.
+- [ ] Add the R1–R6 VI contract to `lang_rule`/`lang_instruction`, the candidate template and every retry/fallback path that generates text. Mock VI output to test that normal, single-workout and fallback paths retain the same resolved quantities and caveats. Review samples for added claims and unnatural translations.
 - [ ] Apply only Task 1-approved rule/seed corrections. Never replace the whole KB. Keep candidate template and in-code fallback compatible; preserve every required template variable. Record any old-production incompatibility as a gate failure, not a silent switch of tested prompt.
 - [ ] Run the generator/helper/snapshot and prescription tests. Commit `fix: unify generated workout totals and instructions` plus trailer.
 
@@ -200,8 +221,8 @@ COACH_CHAT_PROMPT_LABEL=scheduler-reliability-exp python scripts/golden_eval.py 
 - [ ] Repeat each of the four Vietnam fixtures and the healthy sequential blocker three times per arm, using `--fixture` and unique output directories. Report all failures, even if later repeats pass. Do not selectively recapture failing references.
 - [ ] Gate: unchanged healthy tier/volume bands; compare identical fixture sets and report both full-suite and repeated-subset paired mean latency; no rule-based fallback in golden results; retries reported; zero structural/access failures in new output; no regression in existing applicable checks; paired mean latency increase at most 20%. Preserve explicit missing-data counts. Report policy diagnostics separately from gates.
 - [ ] If the candidate fails, explain the defect before the single permitted refinement. Re-run the full gate for the refinement. If it still fails, stop with HOLD and retain all evidence.
-- [ ] Use the screenshot-evidence skill to run the local UI and capture EN/VI mixed ME and treadmill workout details using synthetic accounts. Verify displayed totals, instructions, ranges and locale. Remove temporary accounts/plans by their exact synthetic IDs.
-- [ ] Record run names, results, costs, source-rule coverage and decision. Run privacy scan before publishing evidence. Commit `docs: record scheduler reliability experiment and UI evidence` plus trailer.
+- [ ] Use the screenshot-evidence skill to run the local UI and capture EN/VI mixed ME and treadmill workout details using synthetic accounts. Verify displayed totals, instructions, ranges, locale and R1–R6 compliance. Read VI cards/details at desktop and mobile widths, checking wrapping, truncation and button/chip overflow. For any frontend copy edits, run `cd frontend && npm run lint && npm run test && npm run build`; use `rg` over the changed VI strings for the skill ban list and record pre-existing violations separately. Screenshot success does not substitute for meaning parity review. Remove temporary accounts/plans by their exact synthetic IDs.
+- [ ] Record run names, results, costs, source-rule coverage, EN/VI parity review and decision. VI acceptance requires no banned wording in changed/generated samples, no lost caveats, no added claims, and no visible overflow. Run privacy scan before publishing evidence. Commit `docs: record scheduler reliability experiment and UI evidence` plus trailer.
 - [ ] **CHECKPOINT:** push, update the draft PR with completed tasks and run names; link evidence in an authorized PR comment. Stop and report offline gates, deviations and recommendation. Wait for explicit staging go-ahead.
 
 ### Task 8: Staging validation only after go-ahead
