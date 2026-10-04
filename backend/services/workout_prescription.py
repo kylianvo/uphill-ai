@@ -179,11 +179,26 @@ def apply_prescription(workout: dict, *, lang: str) -> None:
     rationale = workout.get("rationale") or ""
     if not isinstance(rationale, str) or re.search(r"\d", rationale):
         raise ValueError("Rationale must not supply a second numerical prescription")
+    if lang == "vi":
+        titles = {
+            "Easy": "Easy Run",
+            "Recovery": "Recovery Run",
+            "Long Run": "Long Run",
+            "Tempo": "Tempo",
+            "Interval": "Interval",
+            "Strength": "Strength",
+            "Muscular Endurance": "ME",
+            "Walk/Run": "Walk/Run",
+            "Race": "Race",
+            "Rest": "Rest",
+        }
+        if workout.get("type") in titles:
+            workout["title"] = titles[workout["type"]]
     workout["segments"] = resolved["segments"]
     workout["prescription"] = resolved
     workout["duration_minutes"] = resolved["duration_minutes"]
     workout["distance_km"] = round(resolved["run_km"] + resolved["hike_km"], 1)
-    workout["description"] = resolved["description"] + (" " + rationale if rationale else "")
+    workout["description"] = resolved["description"] + (" Reason: " + rationale if rationale else "")
     moving = [s for s in resolved["segments"] if s["kind"] in {"run", "hike"}]
     main = next((s for s in moving if s.get("role", "main") == "main"), moving[0] if moving else None)
     workout["target_pace"] = f"{_pace_text(main['pace_min_per_km'])} /km" if main else ""

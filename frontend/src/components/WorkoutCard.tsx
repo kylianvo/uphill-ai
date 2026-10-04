@@ -31,6 +31,7 @@ import {
   parseExecutionSteps,
   extractDescriptionSections,
   selectMainSetText,
+  extractLeadingMinutes,
   buildCoachNotesContent,
   mainDurationMinutes,
 } from "../utils/workoutDescription";
@@ -215,7 +216,7 @@ export default function WorkoutCard({
     setEditing(false);
   };
 
-  const zoneInfo = libraryInfo ? ZONE_LABELS[libraryInfo.zone] : wo.target_zone || "";
+  const zoneInfo = resolvedDescription ? wo.target_zone || "" : libraryInfo ? ZONE_LABELS[libraryInfo.zone] : wo.target_zone || "";
   const hasLog = rpe !== null || notes.trim().length > 0;
   const isDirty = rpe !== (wo.rpe ?? null) || notes !== (wo.notes ?? "");
 
@@ -871,7 +872,7 @@ export default function WorkoutCard({
             )}
 
             {/* Workout info: tabbed (library) or raw fallback */}
-            {libraryInfo && !resolvedDescription ? (
+            {libraryInfo ? (
               <WorkoutLibrarySection
                 info={libraryInfo}
                 title={wo.title}
@@ -1106,7 +1107,9 @@ function ExecutionTimeline({
   zoneColor,
   lang,
   targets,
+  resolved = false,
 }: {
+  resolved?: boolean;
   execution: string;
   zoneColor: string;
   lang: string;
@@ -1126,7 +1129,7 @@ function ExecutionTimeline({
   }> = [
     {
       key: "warmup",
-      label: lang === "en" ? "Warm-Up" : "Khởi động",
+      label: lang === "en" ? "Warm-Up" : "Warm-up",
       hint: lang === "en" ? "standard" : "tiêu chuẩn",
       steps: parsed.warmup
         ? [parsed.warmup]
@@ -1150,7 +1153,7 @@ function ExecutionTimeline({
     },
     {
       key: "cooldown",
-      label: lang === "en" ? "Cool-Down" : "Thả lỏng",
+      label: lang === "en" ? "Cool-Down" : "Cool-down",
       hint: lang === "en" ? "standard" : "tiêu chuẩn",
       steps: parsed.cooldown
         ? [parsed.cooldown]
@@ -1167,7 +1170,7 @@ function ExecutionTimeline({
 
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
-      {phases.map((phase, i) => (
+      {phases.filter((phase) => !resolved || phase.found).map((phase, i) => (
         <div key={phase.key} style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
           {/* Timeline track */}
           <div
@@ -1367,18 +1370,23 @@ function WorkoutLibrarySection({
   );
 
   // Main Set shows only the main portion's duration, not warm-up+main+cool-down.
-  const mainMinutes = mainDurationMinutes(wo.duration_minutes, parseExecutionSteps(executionText));
+  const resolved = isResolvedDescription(rawDescription);
+  const steps = parseExecutionSteps(executionText);
+  const strengthMain = resolved && ["Strength", "Muscular Endurance"].includes(wo.type);
+  const mainMinutes = resolved
+    ? Math.max(0, wo.duration_minutes - (extractLeadingMinutes(steps.warmup) || 0) - (extractLeadingMinutes(steps.cooldown) || 0))
+    : mainDurationMinutes(wo.duration_minutes, steps);
 
   // Build the "today's target" chips from actual planner values
   const targets: Array<{ label: string; value: string; color: string; icon: React.ReactNode }> = [];
-  if (wo.target_zone) targets.push({ label: lang === "en" ? "Zone" : "Vùng", value: wo.target_zone, color: zoneColor, icon: <Lightning size={10} /> });
-  if (wo.target_pace?.trim()) targets.push({ label: lang === "en" ? "Pace" : "Pace", value: wo.target_pace, color: zoneColor, icon: <Footprints size={10} /> });
-  if (wo.target_hr_range) targets.push({ label: "HR", value: wo.target_hr_range, color: "#ef4444", icon: <Heart size={10} /> });
+  if (!strengthMain && wo.target_zone) targets.push({ label: lang === "en" ? "Zone" : "Zone", value: wo.target_zone, color: zoneColor, icon: <Lightning size={10} /> });
+  if (!strengthMain && wo.target_pace?.trim()) targets.push({ label: lang === "en" ? "Pace" : "Pace", value: wo.target_pace, color: zoneColor, icon: <Footprints size={10} /> });
+  if (!strengthMain && wo.target_hr_range) targets.push({ label: "HR", value: wo.target_hr_range, color: "#ef4444", icon: <Heart size={10} /> });
   if (mainMinutes > 0) targets.push({ label: lang === "en" ? "Duration" : "Thời gian", value: `${mainMinutes} min`, color: "var(--text-secondary)", icon: <Timer size={10} /> });
   const intervalSummary = formatIntervalSummary(wo);
   if (intervalSummary) {
     targets.push({ label: lang === "en" ? "Reps" : "Số lượt", value: intervalSummary, color: "var(--text-secondary)", icon: <MapPin size={10} /> });
-  } else if (wo.distance_km > 0) {
+  } else if (!strengthMain && wo.distance_km > 0) {
     targets.push({ label: lang === "en" ? "Est. distance" : "Cự ly ước tính", value: `~${wo.distance_km} km`, color: "var(--text-secondary)", icon: <MapPin size={10} /> });
   }
 
@@ -1424,13 +1432,14 @@ function WorkoutLibrarySection({
           >
             {overviewText}
           </p>
-          <ExecutionTimeline execution={executionText} zoneColor={zoneColor} lang={lang} targets={targets} />
+          <ExecutionTimeline execution={executionText} zoneColor={zoneColor} lang={lang} targets={targets} resolved={resolved} />
         </div>
       )}
 
       {/* About tab: benefit + warning + optional AI description */}
       {tab === "about" && (
         <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+          {!resolved && <>
           <div
             style={{
               padding: "10px 14px",
@@ -1503,6 +1512,8 @@ function WorkoutLibrarySection({
             </p>
           </div>
 
+          </>}
+
           {/* Race strategy tips */}
           {isRaceDay && (
             <div
@@ -1557,7 +1568,9 @@ function WorkoutLibrarySection({
               >
                 {lang === "en" ? "Coach notes" : "Ghi chú từ Coach"}
               </div>
-              <CoachNotesSections description={rawDescription} />
+              <CoachNotesSections description={resolved && !rawDescription.includes("Reason:")
+                ? (lang === "en" ? "Use the execution guide for this session." : "Bạn tập theo hướng dẫn ở tab Thực hiện.")
+                : rawDescription} />
             </div>
           )}
 

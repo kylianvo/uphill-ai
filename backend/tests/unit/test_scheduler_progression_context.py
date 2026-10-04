@@ -28,7 +28,15 @@ def next_block(monkeypatch):
     monkeypatch.setattr(main, "set_plan_athlete_tier", lambda *a: None)
     monkeypatch.setattr(main.PlanGenerator, "generate_week_narrative", AsyncMock(return_value=(None, None)))
 
-    async def run(status="unknown", override=True, unlocked=False, note=None, start_date="2026-10-05"):
+    async def run(
+        status="unknown",
+        override=True,
+        unlocked=False,
+        note=None,
+        start_date="2026-10-05",
+        overall_rpe=None,
+        arguments=False,
+    ):
         plan["start_date"] = start_date
         wo = {
             "week_number": 1,
@@ -42,12 +50,15 @@ def next_block(monkeypatch):
         }
         monkeypatch.setattr(main, "get_plan_workouts", lambda *a: [wo])
         monkeypatch.setattr(main, "get_block_completion", lambda *a: {"unlocked": unlocked, "completion_pct": 0})
-        if note:
-            monkeypatch.setattr(main, "get_block_reviews", lambda *a: [{"block_number": 1, "notes": note}])
+        if note or overall_rpe is not None:
+            monkeypatch.setattr(
+                main, "get_block_reviews", lambda *a: [{"block_number": 1, "notes": note, "overall_rpe": overall_rpe}]
+            )
         captured = {}
 
         async def generate(*args, **kwargs):
             captured.update(kwargs)
+            captured["race_info"] = args[2]
             return [], "recreational"
 
         monkeypatch.setattr(main.PlanGenerator, "generate_plan_workouts", generate)
@@ -59,7 +70,7 @@ def next_block(monkeypatch):
             if main.plan_jobs[result["job_id"]]["status"] != "generating":
                 break
         assert main.plan_jobs[result["job_id"]]["status"] == "done"
-        return captured["block_context"]
+        return captured if arguments else captured["block_context"]
 
     return run
 
@@ -124,3 +135,12 @@ async def test_watch_volume_remains_known_evidence(next_block, monkeypatch):
     assert "Known logged volume 17.0km/1.7h (+170m D+)" in context
     assert "1 unplanned watch activity: 4.0km" in context
     assert "Unknown sessions: 1" in context
+
+
+@pytest.mark.asyncio
+async def test_override_passes_reported_fatigue_to_local_prescription_checks(next_block):
+    from services.plan_checks import generation_context
+
+    args = await next_block(overall_rpe=8, arguments=True)
+    assert args["race_info"]["training_feedback"] == {"overall_rpe": 8, "confirmed_missed_sessions": 0}
+    assert generation_context(args["race_info"], [])["max_zone"] == 2

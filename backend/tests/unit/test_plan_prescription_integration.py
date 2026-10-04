@@ -34,10 +34,13 @@ SEGMENTS = [
 ]
 
 
-async def generate(payload, lang="en"):
+async def generate(payload, lang="en", *, prepared_methods=None, retry_payload=None):
     response = MagicMock(text=json.dumps(payload))
     client = MagicMock()
-    client.models.generate_content.return_value = response
+    if retry_payload is None:
+        client.models.generate_content.return_value = response
+    else:
+        client.models.generate_content.side_effect = [response, MagicMock(text=json.dumps(retry_payload))]
     with (
         patch("google.genai.Client", return_value=client),
         patch("services.kb_retrieval.search_scheduler_chunks", return_value=[]),
@@ -53,6 +56,7 @@ async def generate(payload, lang="en"):
                 "date": "2026-12-06",
                 "plan_start_date": "2026-10-05",
                 "training_environment": "flat",
+                "validation_context": {"prepared_methods": prepared_methods or []},
             },
             total_weeks=8,
             api_key="fake-key",
@@ -77,6 +81,7 @@ async def test_structured_me_overrides_contradictory_totals_and_prose(lang):
             }
         ],
         lang,
+        prepared_methods=["muscular_endurance"],
     )
     wo = workouts[0]
     assert attempts == 1
@@ -288,3 +293,25 @@ async def test_single_deterministic_run_accounts_for_both_warmup_and_cooldown():
     assert wo["distance_km"] == wo["prescription"]["run_km"]
     assert sum(s["duration_minutes"] for s in wo["segments"]) == 38
     assert [s["role"] for s in wo["segments"]] == ["warmup", "main", "cooldown"]
+
+
+@pytest.mark.asyncio
+async def test_recovery_retry_returns_corrected_segments_not_original_hard_strides():
+    def row(zone):
+        return {
+            "week_number": 1,
+            "day_of_week": "Tuesday",
+            "type": "Recovery",
+            "title": "Recovery Run",
+            "phase": "Recovery",
+            "segments": [
+                {"kind": "run", "duration_minutes": 32, "pace_min_per_km": 6, "zone": zone, "setting": "flat_outdoor"}
+            ],
+        }
+
+    workouts, attempts = await generate([row("Zone 5")], retry_payload=[row("Zone 2")])
+    assert attempts == 2
+    assert len(workouts) == 1
+    assert workouts[0]["target_zone"] == "Zone 2"
+    assert workouts[0]["duration_minutes"] == 32
+    assert workouts[0]["distance_km"] == 5.3

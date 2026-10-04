@@ -165,3 +165,104 @@ def test_generation_rejects_unconfirmed_positive_treadmill_incline():
     assert check([wo], **context)["access"] is None
     with pytest.raises(ValueError, match="capability"):
         plan_checks.validate_generated_workouts([wo], context=context)
+
+
+def test_recovery_rejects_brief_hard_strides_even_when_easy_share_passes():
+    import pytest
+
+    wo = workout(48, phase="Recovery")
+    wo["segments"].append(
+        {"kind": "run", "duration_minutes": 0.2, "pace_min_per_km": 4, "zone": "Zone 5", "setting": "flat_outdoor"}
+    )
+    wp.apply_prescription(wo, lang="en")
+    assert check([wo])["intensity_accounting"] is True
+    with pytest.raises(ValueError, match="recovery_intensity"):
+        plan_checks.validate_generated_workouts([wo], context={})
+
+
+def test_explicit_recovery_limit_applies_to_every_moving_segment():
+    import pytest
+
+    with pytest.raises(ValueError, match="recovery_intensity"):
+        plan_checks.validate_generated_workouts([workout(zone="Zone 3")], context={"max_zone": 2})
+    plan_checks.validate_generated_workouts([workout()], context={"max_zone": 2})
+
+
+def test_resolved_volume_rejects_outside_budget_without_scaling():
+    import pytest
+
+    wo = workout(480)  # 480 / 6 = 80 km, independently calculated.
+    context = {"weekly_km_bounds": {1: [56, 78]}, "week_coverage": {1: 7}}
+    with pytest.raises(ValueError, match="volume_fit"):
+        plan_checks.validate_generated_workouts([wo], context=context)
+    assert wo["distance_km"] == 80
+    plan_checks.validate_generated_workouts([workout(420)], context=context)
+
+
+def test_healthy_volume_floor_does_not_apply_to_recovery_or_partial_week():
+    context = {"weekly_km_bounds": {1: [56, 78]}, "week_coverage": {1: 7}}
+    plan_checks.validate_generated_workouts([workout(60, phase="Recovery")], context=context)
+    plan_checks.validate_generated_workouts([workout(60)], context={**context, "week_coverage": {1: 2}})
+
+
+def test_power_requires_documented_preparation_not_tier_or_equipment():
+    import pytest
+
+    wo = workout(20)
+    wo["training_method"] = "power"
+    with pytest.raises(ValueError, match="strength_readiness"):
+        plan_checks.validate_generated_workouts([wo], context={"athlete_tier": "elite", "has_gym_access": True})
+    plan_checks.validate_generated_workouts([wo], context={"prepared_methods": ["power"]})
+
+
+def test_advanced_exercise_cannot_hide_behind_generic_strength_label():
+    import pytest
+
+    wo = {
+        "type": "Strength",
+        "day_of_week": "Tuesday",
+        "week_number": 1,
+        "segments": [
+            {
+                "kind": "strength",
+                "duration_minutes": 18,
+                "setting": "indoor",
+                "exercise": {"name": "Split Jump Squats", "sets": 4, "reps": 6, "rest_seconds": 90},
+            }
+        ],
+    }
+    wp.apply_prescription(wo, lang="en")
+    with pytest.raises(ValueError, match="strength_readiness"):
+        plan_checks.validate_generated_workouts([wo], context={})
+
+
+def test_snapshot_budget_uses_first_full_week_and_existing_growth_cap():
+    from types import SimpleNamespace
+
+    rows = [workout(24), workout(420, week=2)]
+    context = plan_checks.generation_context(
+        {
+            "plan_start_date": "2026-10-10",
+            "fitness_snapshot": SimpleNamespace(weekly_km=70, readiness=None),
+            "max_weekly_progression": 0.10,
+        },
+        rows,
+    )
+    assert context["weekly_km_bounds"] == {2: [56, 77]}
+
+
+def test_recovery_feedback_suspends_healthy_budget_without_changing_snapshot():
+    from types import SimpleNamespace
+
+    snap = SimpleNamespace(weekly_km=70, readiness=None)
+    context = plan_checks.generation_context(
+        {
+            "plan_start_date": "2026-10-05",
+            "fitness_snapshot": snap,
+            "training_feedback": {"overall_rpe": 9, "confirmed_missed_sessions": 0},
+        },
+        [workout()],
+    )
+    assert context["max_zone"] == 2
+    assert "weekly_km_bounds" not in context
+    assert snap.weekly_km == 70

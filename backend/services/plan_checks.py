@@ -81,7 +81,17 @@ def run_context_checks(workouts: list[dict[str, Any]], *, context: dict) -> dict
 
     from services.workout_prescription import apply_prescription, resolve_prescription
 
-    results = dict.fromkeys(("arithmetic", "access", "intensity_accounting", "progression"))
+    results = dict.fromkeys(
+        (
+            "arithmetic",
+            "access",
+            "intensity_accounting",
+            "progression",
+            "recovery_intensity",
+            "volume_fit",
+            "strength_readiness",
+        )
+    )
     if not workouts:
         results["arithmetic"] = False
         return results
@@ -126,15 +136,30 @@ def run_context_checks(workouts: list[dict[str, Any]], *, context: dict) -> dict
     access_failed = False
     run_total = easy_total = 0.0
     weekly = defaultdict(float)
+    weekly_km = defaultdict(float)
+    recovery_checked = recovery_failed = False
+    readiness_checked = readiness_failed = False
     phases = {}
     for workout, prescription in resolved:
         week = workout.get("week_number")
         phases[week] = workout.get("phase")
+        if workout.get("type") != "Race":
+            weekly_km[week] += prescription["run_km"] + prescription["hike_km"]
         permission = (
             context.get("race_access")
             if workout.get("type") == "Race"
             else context.get("day_access", {}).get(workout.get("day_of_week"))
         )
+        method = workout.get("training_method")
+        if workout.get("type") == "Muscular Endurance":
+            method = "muscular_endurance"
+        if method in {"power", "max_strength", "muscular_endurance"}:
+            readiness_checked = True
+            if method not in context.get("prepared_methods", []):
+                readiness_failed = True
+        maximum_zone = context.get("max_zone")
+        if workout.get("phase") == "Recovery":
+            maximum_zone = min(maximum_zone or 2, 2)
         for segment in prescription["segments"]:
             kind = segment["kind"]
             if kind == "rest":
@@ -151,6 +176,12 @@ def run_context_checks(workouts: list[dict[str, Any]], *, context: dict) -> dict
                     access_failed = True
             exercise = segment.get("exercise")
             if exercise:
+                import re
+
+                if re.search(r"jump|bound|plyometric", exercise["name"], re.IGNORECASE):
+                    readiness_checked = True
+                    if "power" not in context.get("prepared_methods", []):
+                        readiness_failed = True
                 needed = exercise.get("equipment")
                 available = permission.get("equipment") if permission else None
                 if needed is None or available is None:
@@ -161,13 +192,28 @@ def run_context_checks(workouts: list[dict[str, Any]], *, context: dict) -> dict
                 minutes = segment["duration_minutes"]
                 run_total += minutes
                 weekly[week] += minutes
+                if maximum_zone is not None:
+                    recovery_checked = True
+                    if int(segment["zone"].split()[-1]) > maximum_zone:
+                        recovery_failed = True
                 if segment["zone"] in EASY_ZONES:
                     easy_total += minutes
     results["access"] = False if access_failed else (None if access_unknown else True)
+    results["strength_readiness"] = not readiness_failed if readiness_checked else None
+    results["recovery_intensity"] = not recovery_failed if recovery_checked else None
     if missing_precision:
         return results
     results["intensity_accounting"] = easy_total / run_total >= MIN_EASY_SHARE if run_total else None
     coverage = context.get("week_coverage", {})
+    budget_checked = budget_failed = False
+    for week, bounds in context.get("weekly_km_bounds", {}).items():
+        week = int(week)
+        if coverage.get(week) != 7 or phases.get(week) in _DOWN_PHASES:
+            continue
+        budget_checked = True
+        if not bounds[0] <= round(weekly_km[week], 1) <= bounds[1]:
+            budget_failed = True
+    results["volume_fit"] = not budget_failed if budget_checked else None
     compared = False
     growth_failed = False
     weeks = sorted(w for w in weekly if isinstance(w, int))
@@ -216,19 +262,44 @@ def generation_context(race_info: dict, workouts: list[dict]) -> dict:
     if "day_access" not in context and race_info.get("training_environment", "flat") == "flat":
         context["day_access"] = {
             day: {"settings": ["flat_outdoor", "indoor"], "equipment": ["bodyweight"]}
-            for day in {w.get("day_of_week") for w in workouts}
+            for day in ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
         }
     if race_info.get("course_distance_km") and "race_access" not in context:
         context["race_access"] = {
             "settings": ["mountain" if race_info.get("course_elevation_gain_m") else "flat_outdoor"]
         }
+    feedback = race_info.get("training_feedback") or {}
+    snapshot = race_info.get("fitness_snapshot")
+    readiness = race_info.get("readiness_summary") or (snapshot.readiness if snapshot else None) or {}
+    recovery = feedback.get("overall_rpe", 0) >= 7 or readiness.get("readiness_flag") in {"fatigued", "overreaching"}
+    if recovery:
+        context["max_zone"] = min(context.get("max_zone", 2), 2)
+    adjusted = (
+        recovery
+        or feedback.get("confirmed_missed_sessions", 0) > 0
+        or feedback.get("volume_adjustment_required", False)
+    )
+    if snapshot and not adjusted and "weekly_km_bounds" not in context:
+        full_weeks = sorted(week for week, days in context.get("week_coverage", {}).items() if days == 7)
+        if full_weeks:
+            # Existing prompt floor and tier growth cap are app policy, not book percentages.
+            km = float(snapshot.weekly_km)
+            cap = float(race_info.get("max_weekly_progression", 0.10))
+            budget_weeks = full_weeks[:2] if full_weeks[0] == 1 else full_weeks[:1]
+            context["weekly_km_bounds"] = {
+                week: [round(km * 0.8, 1), round(km * (1 + cap), 1)] for week in budget_weeks
+            }
     return context
 
 
 def validate_generated_workouts(workouts: list[dict], *, context: dict) -> dict[str, bool | None]:
     """Bounded generator attempts call this before any workout can be stored."""
     results = run_context_checks(workouts, context=context)
-    failed = [name for name in ("arithmetic", "access") if results[name] is False]
+    failed = [
+        name
+        for name in ("arithmetic", "access", "recovery_intensity", "volume_fit", "strength_readiness")
+        if results[name] is False
+    ]
     for workout in workouts:
         for segment in workout.get("segments", []):
             if segment.get("setting") == "treadmill" and float(segment.get("incline_pct", 0)) > 0:

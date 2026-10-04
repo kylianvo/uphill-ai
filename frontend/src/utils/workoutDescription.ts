@@ -186,8 +186,8 @@ function expandRunOnSteps(steps: string[]): string[] {
 // 15 from "15-minute easy Zone 1/2 warm-up." Returns null if none found.
 export function extractLeadingMinutes(text: string | null): number | null {
   if (!text) return null;
-  const match = text.match(/(\d+)/);
-  return match ? parseInt(match[1], 10) : null;
+  const match = text.match(/(\d+(?:\.\d+)?)/);
+  return match ? parseFloat(match[1]) : null;
 }
 
 // A workout's total duration_minutes is warm-up + main + cool-down; Main Set
@@ -220,8 +220,8 @@ export function selectMainSetText(
 ): MainSetText {
   const sections = description ? extractDescriptionSections(description) : null;
   return {
-    executionText: sections?.process ? sections.process : library.execution,
-    overviewText: sections?.overall ? sections.overall : library.overview,
+    executionText: sections?.process || (isResolvedDescription(description) ? description!.split(/\s+Reason:/)[0] : library.execution),
+    overviewText: sections?.overall || (isResolvedDescription(description) ? "" : library.overview),
   };
 }
 

@@ -169,3 +169,20 @@ def test_mountain_ascent_is_explicit_not_inferred_from_race():
 def test_flat_segments_cannot_claim_mountain_ascent():
     with pytest.raises(ValueError):
         wp.resolve_prescription([run(elevation_gain_m=120)], lang="en")
+
+
+def test_vi_resolved_title_is_short_and_notes_do_not_enter_execution():
+    workout = {
+        "type": "Easy",
+        "title": "Tái Nạp ATP",
+        "rationale": "Bạn giữ sức cho buổi tiếp theo.",
+        "segments": [
+            {"kind": "run", "duration_minutes": 36, "pace_min_per_km": 6, "zone": "Zone 2", "setting": "flat_outdoor"}
+        ],
+    }
+    from services.workout_prescription import apply_prescription
+
+    apply_prescription(workout, lang="vi")
+    assert workout["title"] == "Easy Run"
+    assert workout["distance_km"] == 6
+    assert workout["description"] == "Run: 36 phút ở Zone 2, pace 6:00/km. Reason: Bạn giữ sức cho buổi tiếp theo."

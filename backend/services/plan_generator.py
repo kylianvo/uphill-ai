@@ -1187,7 +1187,13 @@ class PlanGenerator:
                                 "duration_minutes": dur,
                                 "zone": None,
                                 "setting": "indoor",
-                                "exercise": {"name": "Bodyweight Squats", "sets": 3, "reps": 12, "rest_seconds": 90},
+                                "exercise": {
+                                    "name": "Bodyweight Squats",
+                                    "sets": 3,
+                                    "reps": 12,
+                                    "rest_seconds": 90,
+                                    "equipment": ["bodyweight"],
+                                },
                             }
                         ]
                     elif w_type == "Race" and course_distance_km:
@@ -1264,7 +1270,12 @@ class PlanGenerator:
                 wo["interval_reps"], wo["interval_rep_value"], wo["interval_rep_unit"] = (
                     PlanGenerator.resolve_interval_summary(wo, w_type)
                 )
-            plan_checks.validate_generated_workouts(wos, context=plan_checks.generation_context(race_info, wos))
+            plan_checks.validate_generated_workouts(
+                wos,
+                context=plan_checks.generation_context(
+                    {**race_info, "max_weekly_progression": tier_profile.max_weekly_progression}, wos
+                ),
+            )
             return wos
 
         # 2. AI Plan Generation (Gemini → reduced-prompt retry → Rule-Based)
@@ -1732,9 +1743,22 @@ class PlanGenerator:
                     "feedback_instruction": feedback_instruction,
                 },
             )
+            local_context = plan_checks.generation_context(
+                {**race_info, "max_weekly_progression": tier_profile.max_weekly_progression},
+                [{"week_number": week} for week in range(block_start_week, block_end_week + 1)],
+            )
+            _ai_prompt += "\nLOCAL PRESCRIPTION CONSTRAINTS: " + json.dumps(local_context)
+            _ai_prompt += (
+                "\nDeclare training_method general_strength|max_strength|muscular_endurance|power for strength, ME or power sessions. "
+                "Advanced methods require prepared_methods in the trusted context; never supply your own readiness evidence. "
+                "A max_zone limit applies to every moving segment, including brief Strides. "
+                "Check weekly_km_bounds after resolving all run/hike distances. Retain justified Recovery/Taper/Race Week adaptations."
+            )
 
         except Exception as _prompt_ex:
             print(f"[PlanGen] Prompt building failed: {_prompt_ex}. Using rule-based fallback.")
+
+        _validation_error = None
 
         async def _try_gemini(reduced: bool = False) -> list[dict[str, Any]] | None:
             """One Gemini attempt. `reduced=True` is the retry tier: it drops the KB
@@ -1742,6 +1766,7 @@ class PlanGenerator:
             exists to recover from — a truncated or unparseable response — is driven by
             output length. Telemetry labels it as a separate engine so the retry's own
             hit rate is visible rather than folded into the first attempt's."""
+            nonlocal _validation_error
             if not (_ai_prompt and api_key):
                 return None
             import asyncio
@@ -1778,6 +1803,8 @@ class PlanGenerator:
                     "array — no prose, no markdown fences — and keep each `description` under 600 "
                     "characters so the response completes. Every other rule below still applies.\n\n"
                 ) + _gemini_prompt
+            if reduced and _validation_error:
+                _gemini_prompt += "\nCorrect the rejected prescription: " + _validation_error
             try:
                 import time
 
@@ -1883,7 +1910,11 @@ class PlanGenerator:
                             }
                         },
                     )
-                    _processed = post_process_workouts(cleaned_wos)
+                    try:
+                        _processed = post_process_workouts(cleaned_wos)
+                    except ValueError as error:
+                        _validation_error = str(error)
+                        raise
                     rag_attempts_total.labels(service="plan_generator", engine=_engine, status="used").inc()
                     _tier_observation.set(status="used")
                     _tier_context.__exit__(None, None, None)

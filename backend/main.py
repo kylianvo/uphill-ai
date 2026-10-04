@@ -2252,6 +2252,7 @@ async def _generate_next_block_for_athlete(
 
     block_context = None
     context_lines: list[str] = []
+    training_feedback = {}
 
     # Newest block first: it carries per-session detail, and this blob is the
     # unbounded tail of the prompt — older summaries are the right thing to lose
@@ -2301,6 +2302,11 @@ async def _generate_next_block_for_athlete(
         rev = review_map.get(blk)
         block_rpe = rev["overall_rpe"] if rev and rev.get("overall_rpe") else avg_session_rpe
         block_note = rev["notes"] if rev and rev.get("notes") else None
+        if blk == request.block_number - 1:
+            training_feedback = {
+                "overall_rpe": block_rpe or 0,
+                "confirmed_missed_sessions": sum(w.get("is_missed") == 1 for w in block_wos),
+            }
 
         # Collect session-level notes (exclude empty/None)
         session_notes = [
@@ -2476,6 +2482,7 @@ async def _generate_next_block_for_athlete(
         "athlete_tier": None,
         "previous_tier": plan.get("athlete_tier"),
         "readiness_summary": readiness_summary,
+        "training_feedback": training_feedback,
         "lang": request.lang or fresh_user.get("lang", "en"),
         "coach_notes": "\n".join(active_coach_notes) if active_coach_notes else None,
     }

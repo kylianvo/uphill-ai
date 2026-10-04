@@ -151,3 +151,28 @@ describe("WorkoutCard readOnly mode", () => {
     expect(screen.getByText("Hide guide")).toBeInTheDocument();
   });
 });
+
+
+describe("resolved workout presentation", () => {
+  const wo = {
+    id: 91, day_of_week: "Tuesday", title: "Strength", type: "Strength",
+    target_zone: "Zone 1", duration_minutes: 42, distance_km: 3,
+    description: "Warm-up: 12 minutes in Zone 1, pace 6:00/km. → Strength: 24 minutes, Bodyweight Squats: 3 x 8, 75 s rest between sets. → Cool-down: 6 minutes in Zone 1, pace 6:00/km.",
+  };
+  it("keeps Execution/About tabs and the actual mixed-session quantities", () => {
+    render(<WorkoutCard wo={wo} isMobile={false} lang="en" getWorkoutDate={() => ""} readOnly defaultExpanded />);
+    expect(screen.getByRole("button", {name: "Execution"})).toBeInTheDocument();
+    expect(screen.getByText("24 min")).toBeInTheDocument();
+    expect(screen.queryByText("Est. distance")).not.toBeInTheDocument();
+    expect(screen.getByText(/Bodyweight Squats: 3 x 8/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", {name: "About"}));
+    expect(screen.getByText("Coach notes")).toBeInTheDocument();
+  });
+  it("does not add unprescribed warm-up or cool-down to a resolved run", () => {
+    render(<WorkoutCard wo={{...wo, title: "Easy Run", type: "Easy", duration_minutes: 30,
+      description: "Run: 30 minutes in Zone 2, pace 6:00/km."}} isMobile lang="en" getWorkoutDate={() => ""} readOnly defaultExpanded />);
+    expect(screen.getByRole("button", {name: "Execution"})).toBeInTheDocument();
+    expect(screen.queryByText(/10–15 min easy/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/HR back below 120/)).not.toBeInTheDocument();
+  });
+});
