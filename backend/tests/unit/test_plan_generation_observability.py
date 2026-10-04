@@ -5,7 +5,7 @@ import hashlib
 import hmac
 import json
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from config import settings
 from services import observability as obs
@@ -58,6 +58,8 @@ def _response(text: str, *, prompt: int, output: int):
 def _client(*responses):
     client = MagicMock()
     client.models.generate_content.side_effect = list(responses)
+    client.aio.__aenter__.return_value = client.aio
+    client.aio.models.generate_content = AsyncMock(side_effect=client.models.generate_content)
     client.models.embed_content.return_value = SimpleNamespace(
         embeddings=[SimpleNamespace(values=[0.1, 0.2])],
     )
@@ -173,7 +175,7 @@ def test_parse_failure_keeps_primary_usage_and_successful_retry_bills_again(lang
 
 
 def test_two_provider_errors_then_rule_fallback_records_two_unknown_failures_only(langfuse_spans):
-    fake = MagicMock()
+    fake = _client()
     fake.models.generate_content.side_effect = RuntimeError("provider unavailable")
     with (
         patch("services.kb_retrieval.search_scheduler_chunks", return_value=[]),

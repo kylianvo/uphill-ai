@@ -1,5 +1,5 @@
 import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -233,6 +233,8 @@ async def test_plan_generator_prompt_includes_all_enriched_context():
     mock_resp.text = "invalid json to trigger fallback"
     mock_client = MagicMock()
     mock_client.models.generate_content.return_value = mock_resp
+    mock_client.aio.__aenter__.return_value = mock_client.aio
+    mock_client.aio.models.generate_content = AsyncMock(side_effect=mock_client.models.generate_content)
 
     user_profile = {
         "gender": "male",
@@ -356,6 +358,8 @@ async def test_plan_generator_female_biomarkers_and_healthy_aerobic_base():
     mock_resp.text = "invalid json to trigger fallback"
     mock_client = MagicMock()
     mock_client.models.generate_content.return_value = mock_resp
+    mock_client.aio.__aenter__.return_value = mock_client.aio
+    mock_client.aio.models.generate_content = AsyncMock(side_effect=mock_client.models.generate_content)
 
     user_profile = {
         "gender": "female",
@@ -417,6 +421,8 @@ async def test_plan_generator_readiness_clean_formatting_when_none():
     mock_resp.text = "invalid json to trigger fallback"
     mock_client = MagicMock()
     mock_client.models.generate_content.return_value = mock_resp
+    mock_client.aio.__aenter__.return_value = mock_client.aio
+    mock_client.aio.models.generate_content = AsyncMock(side_effect=mock_client.models.generate_content)
 
     user_profile = {
         "age": 35,
@@ -468,6 +474,8 @@ async def test_plan_prompt_places_race_history_beside_ceiling():
     mock_resp.text = "invalid json to trigger fallback"
     mock_client = MagicMock()
     mock_client.models.generate_content.return_value = mock_resp
+    mock_client.aio.__aenter__.return_value = mock_client.aio
+    mock_client.aio.models.generate_content = AsyncMock(side_effect=mock_client.models.generate_content)
     history = "RACE HISTORY\n2025-09-20 VMM 70km 13:05 [UTMB]"
 
     with (

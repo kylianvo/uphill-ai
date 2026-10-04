@@ -1,7 +1,7 @@
 """Synthetic model-boundary tests for the shared prescription."""
 
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -37,6 +37,8 @@ SEGMENTS = [
 async def generate(payload, lang="en", *, prepared_methods=None, retry_payload=None):
     response = MagicMock(text=json.dumps(payload))
     client = MagicMock()
+    client.aio.__aenter__.return_value = client.aio
+    client.aio.models.generate_content = AsyncMock(side_effect=client.models.generate_content)
     if retry_payload is None:
         client.models.generate_content.return_value = response
     else:

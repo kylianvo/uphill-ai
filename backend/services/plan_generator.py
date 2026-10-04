@@ -1,3 +1,4 @@
+import asyncio
 import time
 from datetime import datetime, timedelta
 from typing import Any
@@ -132,6 +133,16 @@ NEWLY GENERATED BLOCK'S SESSIONS:
 Return ONLY a single JSON object (no markdown fences, no prose) with exactly these keys:
 {"last_week_review": "2-3 sentences reviewing how the most recently completed block went, encouraging and specific to the numbers above -- or null if the history above has nothing to review",
 "this_week_description": "2-3 sentences describing this new block's focus and why, addressed directly to the athlete"}"""
+
+
+PLAN_REQUEST_TIMEOUT_SECONDS = 120
+
+
+async def _generate_plan_response(client, *, model, contents, config):
+    """Cancel the native async request at the attempt deadline and release sockets."""
+    async with asyncio.timeout(PLAN_REQUEST_TIMEOUT_SECONDS):
+        async with client.aio as async_client:
+            return await async_client.models.generate_content(model=model, contents=contents, config=config)
 
 
 class PlanGenerator:
@@ -1811,8 +1822,8 @@ class PlanGenerator:
 
                 from telemetry import rag_attempts_total, rag_latency_seconds
 
-                # One bounded transport request per application attempt. The
-                # SDK otherwise retries internally, outside our single retry.
+                # One transport request per application attempt, with a native
+                # async deadline as well as the HTTP read timeout.
                 _client = _genai.Client(
                     api_key=api_key,
                     http_options=_genai_types.HttpOptions(
@@ -1841,8 +1852,8 @@ class PlanGenerator:
                         metadata={"engine": _engine, "tier": _tier},
                         prompt=_plan_prompt_tpl,
                     ) as generation:
-                        _response = await asyncio.to_thread(
-                            _client.models.generate_content,
+                        _response = await _generate_plan_response(
+                            _client,
                             model=settings.GEMINI_MODEL,
                             contents=_gemini_prompt,
                             config=_genai_types.GenerateContentConfig(

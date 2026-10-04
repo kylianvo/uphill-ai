@@ -1,5 +1,5 @@
 import dataclasses
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -37,6 +37,8 @@ async def _generate(race_info, profile=None):
     mock_resp.text = "invalid json to trigger fallback"
     client = MagicMock()
     client.models.generate_content.return_value = mock_resp
+    client.aio.__aenter__.return_value = client.aio
+    client.aio.models.generate_content = AsyncMock(side_effect=client.models.generate_content)
     with (
         patch("google.genai.Client", return_value=client),
         patch("services.kb_retrieval.search_scheduler_chunks", return_value=[]),

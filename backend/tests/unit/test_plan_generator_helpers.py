@@ -8,7 +8,7 @@ as the plan_start_date regression this suite exists to catch.
 
 import asyncio
 import re
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -817,6 +817,8 @@ class TestPromptCarriesPerAthleteContext:
         fake_response.text = "[]"  # empty list -> falls through to rule-based, no real network call
         fake_client = MagicMock()
         fake_client.models.generate_content.return_value = fake_response
+        fake_client.aio.__aenter__.return_value = fake_client.aio
+        fake_client.aio.models.generate_content = AsyncMock(side_effect=fake_client.models.generate_content)
 
         with (
             patch("google.genai.Client", return_value=fake_client),
