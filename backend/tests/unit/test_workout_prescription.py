@@ -217,3 +217,55 @@ def test_race_fueling_is_preserved_for_the_existing_event_specific_policy():
     wo = {"type": "Race", "segments": [run(50)], "fueling_tip": "Existing event-specific instructions"}
     wp.apply_prescription(wo, lang="en")
     assert wo["fueling_tip"] == "Existing event-specific instructions"
+
+
+def hold_segment(**changes):
+    return {
+        "kind": "strength",
+        "duration_minutes": 3,
+        "zone": None,
+        "setting": "indoor",
+        "exercise": {"name": "Front Plank", "sets": 2, "hold_seconds": 38.5, "rest_seconds": 47, **changes},
+    }
+
+
+@pytest.mark.parametrize(
+    "lang, target",
+    [("en", "2 x 38.5 s hold, 47 s rest between sets"), ("vi", "2 x 38.5 s giữ, 47 s nghỉ giữa các set")],
+)
+def test_hold_target_retains_explicit_seconds_and_rest_in_both_languages(lang, target):
+    resolved = wp.resolve_prescription([hold_segment()], lang=lang)
+    assert target in resolved["description"]
+    assert resolved["duration_minutes"] == 3
+    assert resolved["strength_minutes"] == 3
+    assert resolved["run_km"] == 0
+
+
+@pytest.mark.parametrize("name", ["Plank", "Side Plank", "Forearm Plank", "Wall Sit", "Hollow Body Hold"])
+def test_recognised_static_holds_reject_rep_only_targets(name):
+    segment = hold_segment(name=name, reps=1)
+    del segment["exercise"]["hold_seconds"]
+    with pytest.raises(ValueError, match="hold_seconds"):
+        wp.resolve_prescription([segment], lang="en")
+
+
+@pytest.mark.parametrize(
+    "changes", [{"reps": 8}, {"hold_seconds": 0}, {"hold_seconds": -5}, {"hold_seconds": float("nan")}]
+)
+def test_hold_targets_reject_ambiguous_or_invalid_quantities(changes):
+    with pytest.raises(ValueError):
+        wp.resolve_prescription([hold_segment(**changes)], lang="en")
+
+
+def test_holds_and_between_set_rests_must_fit_the_segment_time():
+    segment = hold_segment(sets=3, hold_seconds=25, rest_seconds=20)
+    segment["duration_minutes"] = 1
+    with pytest.raises(ValueError, match="duration"):
+        wp.resolve_prescription([segment], lang="en")
+
+
+def test_dynamic_plank_shoulder_taps_keep_rep_targets():
+    segment = hold_segment(name="Plank Shoulder Taps", reps=14)
+    del segment["exercise"]["hold_seconds"]
+    resolved = wp.resolve_prescription([segment], lang="en")
+    assert "Plank Shoulder Taps: 2 x 14, 47 s rest" in resolved["description"]

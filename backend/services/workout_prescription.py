@@ -4,6 +4,7 @@ Indoor ascent uses path * sin(arctan(grade)); it is an estimate, not GPS elevati
 Totals are rounded after summation; source segments retain their precision.
 """
 
+import re
 from copy import deepcopy
 from math import isfinite, sqrt
 
@@ -72,12 +73,32 @@ def resolve_prescription(segments: list[dict], *, lang: str) -> dict:
                 or not exercise["name"].strip()
             ):
                 raise ValueError("Exercise requires a named strength segment")
-            for field in ("sets", "reps"):
-                value = _number(exercise.get(field), positive=True)
-                if not value.is_integer():
-                    raise ValueError("Exercise sets and reps must be integers")
-                exercise[field] = int(value)
+            sets = _number(exercise.get("sets"), positive=True)
+            if not sets.is_integer():
+                raise ValueError("Exercise sets must be integers")
+            exercise["sets"] = int(sets)
+            has_hold = exercise.get("hold_seconds") is not None
+            has_reps = exercise.get("reps") is not None
+            if has_hold == has_reps:
+                raise ValueError("Exercise requires exactly one of reps or hold_seconds")
+            if not has_hold and re.search(
+                r"\bplank(?: hold)?$|\bwall[ -]?sit(?: hold)?$|\bhollow(?: body)? hold$",
+                exercise["name"].strip(),
+                re.IGNORECASE,
+            ):
+                raise ValueError("Static hold requires explicit hold_seconds")
+            if has_hold:
+                exercise["hold_seconds"] = _number(exercise["hold_seconds"], positive=True)
+            else:
+                reps = _number(exercise["reps"], positive=True)
+                if not reps.is_integer():
+                    raise ValueError("Exercise reps must be integers")
+                exercise["reps"] = int(reps)
             exercise["rest_seconds"] = _number(exercise.get("rest_seconds", 0))
+            if has_hold:
+                minimum_seconds = sets * exercise["hold_seconds"] + (sets - 1) * exercise["rest_seconds"]
+                if minimum_seconds > _number(segment.get("duration_minutes")) * 60:
+                    raise ValueError("Hold targets and rests exceed segment duration")
         minutes = _number(segment.get("duration_minutes"))
         segment["duration_minutes"] = minutes
         if kind == "rest" and minutes != 0:
@@ -149,9 +170,12 @@ def render_prescription(resolved: dict, *, lang: str) -> str:
         if segment.get("exercise"):
             exercise = segment["exercise"]
             rest = "rest between sets" if lang == "en" else "nghỉ giữa các set"
-            line += (
-                f", {exercise['name']}: {exercise['sets']} x {exercise['reps']}, {exercise['rest_seconds']:g} s {rest}"
+            target = (
+                f"{exercise['hold_seconds']:g} s " + ("hold" if lang == "en" else "giữ")
+                if exercise.get("hold_seconds") is not None
+                else str(exercise["reps"])
             )
+            line += f", {exercise['name']}: {exercise['sets']} x {target}, {exercise['rest_seconds']:g} s {rest}"
         line += "."
         if segment.get("stop_if_power_drops"):
             line += " Stop if power drops." if lang == "en" else " Dừng nếu power giảm."
