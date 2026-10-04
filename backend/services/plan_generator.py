@@ -1639,11 +1639,9 @@ class PlanGenerator:
             )
 
             if race_info.get("validation_context"):
-                import json
-
                 equipment_terrain_rule += (
                     "\nExplicit day access (authoritative constraints): "
-                    + json.dumps(race_info["validation_context"].get("day_access", {}))
+                    + _json.dumps(race_info["validation_context"].get("day_access", {}))
                     + "\n"
                 )
             elif training_environment == "flat":
@@ -1747,7 +1745,7 @@ class PlanGenerator:
                 {**race_info, "max_weekly_progression": tier_profile.max_weekly_progression},
                 [{"week_number": week} for week in range(block_start_week, block_end_week + 1)],
             )
-            _ai_prompt += "\nLOCAL PRESCRIPTION CONSTRAINTS: " + json.dumps(local_context)
+            _ai_prompt += "\nLOCAL PRESCRIPTION CONSTRAINTS: " + _json.dumps(local_context)
             _ai_prompt += (
                 "\nDeclare training_method general_strength|max_strength|muscular_endurance|power for strength, ME or power sessions. "
                 "Advanced methods require prepared_methods in the trusted context; never supply your own readiness evidence. "

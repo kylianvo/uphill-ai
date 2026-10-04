@@ -72,6 +72,17 @@ async def test_without_snapshot_unknown_threshold_source_no_longer_demotes():
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("context", [None, {"day_access": {}}])
+async def test_local_constraints_reach_prompt_with_or_without_explicit_access(context):
+    race = dict(RACE)
+    if context is not None:
+        race["validation_context"] = context
+    _, prompt = await _generate(race)
+    assert "LOCAL PRESCRIPTION CONSTRAINTS: " in prompt
+    assert "Advanced methods require prepared_methods" in prompt
+
+
+@pytest.mark.asyncio
 async def test_snapshot_path_passes_max_hr_to_the_physiology_level():
     snap = dataclasses.replace(_snapshot(), threshold_source="lab")
     await _generate({**RACE, "fitness_snapshot": snap})
