@@ -162,6 +162,27 @@ def render_prescription(resolved: dict, *, lang: str) -> str:
     return " → ".join(lines)
 
 
+def render_fueling_tip(minutes: float, *, lang: str) -> str:
+    """Existing app duration bands, not a new physiological threshold or dose.
+
+    Event-specific race advice stays with the existing generator policy.
+    """
+    if minutes == 0:
+        return ""
+    if minutes < 75:
+        return (
+            f"For this {minutes:g}-minute session: water; optional 200-400 mg Sodium. No Carbs are needed during the session."
+            if lang == "en"
+            else f"Buổi tập {minutes:g} phút: nước lọc; có thể thêm 200-400 mg Sodium. Không cần Carbs trong buổi tập."
+        )
+    carbs, sodium, water = ("30-60", "300-500", "400-600") if minutes <= 150 else ("60-90", "500-800", "500-750")
+    return (
+        f"For this {minutes:g}-minute session: {carbs} g Carbs/h; {sodium} mg Sodium/h; {water} ml water/h."
+        if lang == "en"
+        else f"Buổi tập {minutes:g} phút: {carbs} g Carbs/giờ; {sodium} mg Sodium/giờ; {water} ml nước/giờ."
+    )
+
+
 def apply_prescription(workout: dict, *, lang: str) -> None:
     """Resolve newly structured output; callers validate context before storage.
 
@@ -199,6 +220,8 @@ def apply_prescription(workout: dict, *, lang: str) -> None:
     workout["duration_minutes"] = resolved["duration_minutes"]
     workout["distance_km"] = round(resolved["run_km"] + resolved["hike_km"], 1)
     workout["description"] = resolved["description"] + (" Reason: " + rationale if rationale else "")
+    if workout.get("type") != "Race":
+        workout["fueling_tip"] = render_fueling_tip(resolved["duration_minutes"], lang=lang)
     moving = [s for s in resolved["segments"] if s["kind"] in {"run", "hike"}]
     main = next((s for s in moving if s.get("role", "main") == "main"), moving[0] if moving else None)
     workout["target_pace"] = f"{_pace_text(main['pace_min_per_km'])} /km" if main else ""

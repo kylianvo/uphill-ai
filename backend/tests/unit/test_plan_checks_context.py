@@ -275,3 +275,21 @@ def test_short_maximal_uphill_efforts_require_power_preparation_without_a_method
     assert check([wo], prepared_methods=["power"])["strength_readiness"] is True
     # Sustained aerobic climbing is a different stimulus.
     assert check([workout(minutes=30, setting="mountain")])["strength_readiness"] is None
+
+
+def test_progression_counts_running_inside_strength_without_loosening_growth_limit():
+    mixed = workout(minutes=40)
+    mixed["type"] = "Strength"
+    mixed["segments"].append(
+        {
+            "kind": "strength",
+            "duration_minutes": 30,
+            "zone": None,
+            "setting": "indoor",
+            "exercise": {"name": "Bodyweight Squats", "sets": 3, "reps": 10, "rest_seconds": 60},
+        }
+    )
+    wp.apply_prescription(mixed, lang="en")
+    week1 = workout(minutes=60)
+    assert plan_checks.check_progression([mixed, week1, workout(minutes=115, week=2)]) is True
+    assert plan_checks.check_progression([mixed, week1, workout(minutes=116, week=2)]) is False

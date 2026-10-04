@@ -186,3 +186,34 @@ def test_vi_resolved_title_is_short_and_notes_do_not_enter_execution():
     assert workout["title"] == "Easy Run"
     assert workout["distance_km"] == 6
     assert workout["description"] == "Run: 36 phút ở Zone 2, pace 6:00/km. Reason: Bạn giữ sức cho buổi tiếp theo."
+
+
+@pytest.mark.parametrize("lang", ["en", "vi"])
+@pytest.mark.parametrize(
+    "minutes, expected_carbs", [(74.9, "No Carbs"), (75, "30-60"), (150, "30-60"), (150.1, "60-90")]
+)
+def test_fueling_uses_resolved_duration_and_preserves_existing_band_boundaries(lang, minutes, expected_carbs):
+    wo = {"type": "Easy", "segments": [run(minutes)], "fueling_tip": "Invented metabolic threshold claim"}
+    wp.apply_prescription(wo, lang=lang)
+    assert "metabolic" not in wo["fueling_tip"]
+    if expected_carbs == "No Carbs":
+        assert ("No Carbs" if lang == "en" else "Không cần Carbs") in wo["fueling_tip"]
+    else:
+        assert expected_carbs + " g Carbs" in wo["fueling_tip"]
+    assert "Sodium" in wo["fueling_tip"]
+
+
+def test_mixed_fueling_counts_strength_minutes_not_just_running():
+    wo = {
+        "type": "Easy",
+        "segments": [run(55), {"kind": "strength", "duration_minutes": 25, "zone": None, "setting": "indoor"}],
+    }
+    wp.apply_prescription(wo, lang="vi")
+    assert "80 phút" in wo["fueling_tip"]
+    assert "30-60 g Carbs" in wo["fueling_tip"]
+
+
+def test_race_fueling_is_preserved_for_the_existing_event_specific_policy():
+    wo = {"type": "Race", "segments": [run(50)], "fueling_tip": "Existing event-specific instructions"}
+    wp.apply_prescription(wo, lang="en")
+    assert wo["fueling_tip"] == "Existing event-specific instructions"

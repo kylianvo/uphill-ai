@@ -35,8 +35,13 @@ def check_progression(workouts: list[dict[str, Any]]) -> bool | None:
     phases: dict[int, str] = {}
     for w in workouts:
         week = w.get("week_number")
-        if isinstance(week, int) and w.get("type") in RUN_TYPES:
-            weekly[week] += _minutes(w)
+        moving = (
+            w["prescription"]["aerobic_minutes"]
+            if w.get("prescription")
+            else (_minutes(w) if w.get("type") in RUN_TYPES else 0)
+        )
+        if isinstance(week, int) and moving:
+            weekly[week] += moving
             phases.setdefault(week, w.get("phase") or "")
     weeks = sorted(weekly)
     if len(weeks) < 2:
@@ -45,7 +50,7 @@ def check_progression(workouts: list[dict[str, Any]]) -> bool | None:
         # Coming back from a planned down week is not a spike.
         if phases.get(prev) in _DOWN_PHASES or not weekly[prev]:
             continue
-        if weekly[cur] > weekly[prev] * MAX_WEEKLY_GROWTH:
+        if weekly[cur] / weekly[prev] > MAX_WEEKLY_GROWTH:
             return False
     return True
 
