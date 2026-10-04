@@ -20,6 +20,8 @@ protocol PlanServicing: Sendable {
     func goal(planID: Int) async throws -> PlanGoal
     func reassessGoal(planID: Int) async throws -> PlanGoal
     func applyGoal(planID: Int, targetMinutes: Double) async throws -> PlanGoal
+    func syncWatch(planID: Int) async throws -> String
+    func knowledgeCard(topic: String, lang: String) async -> KnowledgeCardModel?
 }
 
 struct PlanService: PlanServicing {
@@ -126,5 +128,30 @@ struct PlanService: PlanServicing {
     func applyGoal(planID: Int, targetMinutes: Double) async throws -> PlanGoal {
         struct Body: Encodable { let targetMins: Double }
         return try await client.send(.send(.post, "/api/plans/\(planID)/goal/apply", body: Body(targetMins: targetMinutes)))
+    }
+
+    func syncWatch(planID: Int) async throws -> String {
+        struct SyncResponse: Decodable {
+            let activities: Int?
+            let dailyMetrics: Int?
+        }
+        do {
+            let resp: SyncResponse = try await client.send(.post("/api/integrations/coros/sync", query: [URLQueryItem(name: "plan_id", value: "\(planID)")]))
+            let count = resp.activities ?? 0
+            return count > 0 ? "Synced \(count) activities from watch" : "Watch synced · Up to date"
+        } catch {
+            return "No watch connected · Connect in Profile"
+        }
+    }
+    func knowledgeCard(topic: String, lang: String = "en") async -> KnowledgeCardModel? {
+        do {
+            let resp: KnowledgeCardsResponse = try await client.send(.get("/api/knowledge/cards", query: [
+                URLQueryItem(name: "topic", value: topic),
+                URLQueryItem(name: "lang", value: lang)
+            ]))
+            return resp.cards.first
+        } catch {
+            return nil
+        }
     }
 }

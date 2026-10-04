@@ -41,6 +41,10 @@ struct WorkoutDetailSheet: View {
                             statTiles(workout)
                             quietLine(workout)
 
+                            if workout.isMatched {
+                                matchedWatchCard(workout)
+                            }
+
                             // b & f. Step timeline with Treadmill toggle
                             stepTimelineSection(workout)
 
@@ -472,22 +476,50 @@ struct WorkoutDetailSheet: View {
 
     private func howDidItFeelSection(_ w: Workout) -> some View {
         VStack(alignment: .leading, spacing: UH.Space.small) {
-            Text("HOW DID IT FEEL?")
-                .font(.system(size: 11, weight: .bold, design: .monospaced))
-                .foregroundStyle(UH.Palette.muted)
-
-            Stepper(value: Binding(get: { rpe ?? 5 }, set: { rpe = $0 }), in: 1...10) {
-                HStack {
-                    Text("Effort (RPE)")
-                        .font(UH.TextStyle.label)
-                    Spacer()
-                    Text(rpe.map { "RPE \($0)" } ?? "Not set")
-                        .font(.system(size: 13, weight: .bold, design: .monospaced))
+            HStack {
+                Text("HOW DID IT FEEL?")
+                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .foregroundStyle(UH.Palette.muted)
+                Spacer()
+                if let val = rpe {
+                    Text("RPE \(val)/10")
+                        .font(.system(size: 12, weight: .bold, design: .monospaced))
                         .foregroundStyle(UH.Palette.accentInk)
                 }
             }
 
-            TextField("Add session notes…", text: $notes, axis: .vertical)
+            // 1-10 Pill selector
+            HStack(spacing: 5) {
+                ForEach(1...10, id: \.self) { num in
+                    Button {
+                        rpe = num
+                    } label: {
+                        Text("\(num)")
+                            .font(.system(size: 12.5, weight: .bold, design: .monospaced))
+                            .foregroundStyle(rpe == num ? Color.white : UH.Palette.ink)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 34)
+                            .background(
+                                rpe == num ? UH.Palette.accentInk : UH.Palette.surface,
+                                in: RoundedRectangle(cornerRadius: 8)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(rpe == num ? UH.Palette.accentInk : UH.Palette.line, lineWidth: 1)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("detail.rpe.\(num)")
+                }
+            }
+
+            if let val = rpe {
+                Text(effortLabel(for: val))
+                    .font(UH.TextStyle.caption)
+                    .foregroundStyle(UH.Palette.secondary)
+            }
+
+            TextField("Add session notes (legs, terrain, weather)…", text: $notes, axis: .vertical)
                 .lineLimit(3...5)
                 .padding(UH.Space.small)
                 .background(UH.Palette.surface, in: RoundedRectangle(cornerRadius: UH.Radius.control))
@@ -510,6 +542,17 @@ struct WorkoutDetailSheet: View {
         .overlay(RoundedRectangle(cornerRadius: UH.Radius.landing).stroke(UH.Palette.line))
     }
 
+    private func effortLabel(for val: Int) -> String {
+        switch val {
+        case 1...2: "Very easy · Active recovery / barely noticeable effort"
+        case 3...4: "Easy · Conversation pace, Zone 2 aerobic base"
+        case 5...6: "Moderate · Steady aerobic effort, can speak in short sentences"
+        case 7...8: "Hard · Threshold effort, heavy breathing, sustained focus"
+        case 9...10: "Maximum effort · All out interval / race sprint finish"
+        default: ""
+        }
+    }
+
     private func loadLog(_ w: Workout) {
         guard !didLoadLog else { return }
         rpe = w.rpe
@@ -524,4 +567,110 @@ struct WorkoutDetailSheet: View {
             isBusy = false
         }
     }
+
+    // MARK: - Matched Watch Workout Card
+
+    @ViewBuilder
+    private func matchedWatchCard(_ w: Workout) -> some View {
+        VStack(alignment: .leading, spacing: UH.Space.small) {
+            HStack {
+                HStack(spacing: 6) {
+                    Image(systemName: "applewatch")
+                        .foregroundStyle(UH.Palette.accentInk)
+                    Text(w.matchedDeviceModel ?? "COROS APEX 2 Pro")
+                        .font(UH.TextStyle.sectionTitle)
+                        .foregroundStyle(UH.Palette.ink)
+                }
+
+                Spacer()
+
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(UH.Palette.accentInk)
+                        .frame(width: 5, height: 5)
+                    Text("Matched")
+                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                        .foregroundStyle(UH.Palette.accentInk)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(UH.Palette.activeFill, in: Capsule())
+            }
+
+            // Target vs Actual 2x2 comparison grid
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: UH.Space.small) {
+                if let km = w.matchedDistanceKm {
+                    comparisonTile(
+                        label: "DISTANCE",
+                        actual: String(format: "%.2f km", km),
+                        target: w.distanceKm.map { String(format: "%.1f km", $0) }
+                    )
+                }
+
+                if let secs = w.matchedDurationSeconds {
+                    let mins = Int(secs / 60)
+                    let remSecs = Int(secs) % 60
+                    comparisonTile(
+                        label: "DURATION",
+                        actual: "\(mins):\(String(format: "%02d", remSecs))",
+                        target: "\(Int(w.durationMinutes))m"
+                    )
+                }
+
+                if let km = w.matchedDistanceKm, let secs = w.matchedDurationSeconds, km > 0 {
+                    let paceSecs = secs / km
+                    let pMin = Int(paceSecs / 60)
+                    let pSec = Int(paceSecs) % 60
+                    comparisonTile(
+                        label: "PACE",
+                        actual: "\(pMin):\(String(format: "%02d", pSec)) /km",
+                        target: w.targetPace
+                    )
+                }
+
+                if let hr = w.matchedAvgHr {
+                    comparisonTile(
+                        label: "AVG HR",
+                        actual: "\(hr) bpm",
+                        target: w.targetHrRange ?? (w.targetZone.isEmpty ? nil : "Z\(w.targetZone)")
+                    )
+                }
+            }
+
+            HStack {
+                Text("Synced automatically via watch integration")
+                    .font(UH.TextStyle.caption)
+                    .foregroundStyle(UH.Palette.muted)
+                Spacer()
+                if let id = w.matchedActivityId {
+                    Text("#\(id)")
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .foregroundStyle(UH.Palette.muted)
+                }
+            }
+        }
+        .trainingCard()
+        .accessibilityIdentifier("detail.matchedCard")
+    }
+
+    private func comparisonTile(label: String, actual: String, target: String?) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(label)
+                .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                .foregroundStyle(UH.Palette.muted)
+            Text(actual)
+                .font(.system(size: 14, weight: .bold, design: .monospaced))
+                .foregroundStyle(UH.Palette.ink)
+            if let target, !target.isEmpty {
+                Text("Target: \(target)")
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(UH.Palette.secondary)
+            }
+        }
+        .padding(8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(UH.Palette.surface, in: RoundedRectangle(cornerRadius: 8))
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(UH.Palette.line, lineWidth: 1))
+    }
+
 }

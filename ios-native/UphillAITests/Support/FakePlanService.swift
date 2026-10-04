@@ -79,4 +79,23 @@ final class FakePlanService: PlanServicing {
         record("apply \(planID) \(Int(targetMinutes))")
         return try goalResult.withLock { $0 }.get()
     }
+
+    func syncWatch(planID: Int) async throws -> String {
+        record("syncWatch \(planID)")
+        return "Watch synced · Up to date"
+    }
+    func knowledgeCard(topic: String, lang: String) async -> KnowledgeCardModel? {
+        return KnowledgeCardModel(
+            id: 1,
+            chapterTitle: "Find your Zone 2 heart rate",
+            summary: "Accurately identifying your Zone 2 limits is crucial for effective aerobic development.",
+            keyPoints: [
+                "Utilize the simple Talk Test or Nose Breathing to gauge effort.",
+                "Conduct a Heart Rate Drift Test to pinpoint your Aerobic Threshold."
+            ],
+            tags: ["heart-rate", "talk-test", "aerobic-threshold"],
+            topic: topic,
+            sourceLabel: "Uphill Athlete"
+        )
+    }
 }

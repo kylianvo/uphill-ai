@@ -19,6 +19,10 @@ struct Endpoint<Response: Decodable & Sendable>: Sendable {
         Endpoint(method: .get, path: path, query: query, requiresAuth: requiresAuth)
     }
 
+    static func post(_ path: String, query: [URLQueryItem] = [], requiresAuth: Bool = true) -> Endpoint {
+        Endpoint(method: .post, path: path, query: query, requiresAuth: requiresAuth)
+    }
+
     static func send(_ method: HTTPMethod, _ path: String, body: some Encodable, requiresAuth: Bool = true) throws -> Endpoint {
         Endpoint(method: method, path: path, body: try JSONCoding.encoder.encode(body), requiresAuth: requiresAuth)
     }

@@ -13,12 +13,47 @@ struct BlockCompletionResponse: Decodable, Sendable {
     let maxGeneratedWeek: Int
 }
 
+struct WeekPlannedVolume: Decodable, Sendable {
+    let durationMinutes: Double?
+    let distanceKm: Double?
+    let elevationGainM: Double?
+    let workoutCount: Int?
+}
+
+struct WeekActualVolume: Decodable, Sendable {
+    let totalActualKm: Double?
+    let totalActualMinutes: Double?
+    let totalActualVertM: Double?
+    let matchedKm: Double?
+    let matchedCount: Int?
+    let unplannedKm: Double?
+    let unplannedHours: Double?
+    let unplannedCount: Int?
+}
+
 struct WeekReview: Decodable, Sendable {
     let weekNumber: Int
     let completionPct: Double
     let checkboxCompletionPct: Double?
     let perWorkout: [WeekReviewEntry]
     let narrative: WeekNarrative?
+    let planned: WeekPlannedVolume?
+    let actual: WeekActualVolume?
+
+    private enum CodingKeys: String, CodingKey {
+        case weekNumber, completionPct, checkboxCompletionPct, perWorkout, narrative, planned, actual
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        weekNumber = try c.decode(Int.self, forKey: .weekNumber)
+        completionPct = try c.decode(Double.self, forKey: .completionPct)
+        checkboxCompletionPct = try c.decodeIfPresent(Double.self, forKey: .checkboxCompletionPct)
+        perWorkout = try c.decodeIfPresent([WeekReviewEntry].self, forKey: .perWorkout) ?? []
+        narrative = try c.decodeIfPresent(WeekNarrative.self, forKey: .narrative)
+        planned = try c.decodeIfPresent(WeekPlannedVolume.self, forKey: .planned)
+        actual = try c.decodeIfPresent(WeekActualVolume.self, forKey: .actual)
+    }
 }
 
 struct WeekReviewEntry: Decodable, Sendable, Identifiable {

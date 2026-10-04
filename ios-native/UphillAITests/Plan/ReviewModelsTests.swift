@@ -70,4 +70,21 @@ struct ReviewModelsTests {
         #expect(n.highlights.isEmpty)
         #expect(n.watch.isEmpty)
     }
+
+    @Test func decodesWeekReviewPlannedAndActualVolume() throws {
+        let jsonStr = "{\"week_number\": 2, \"completion_pct\": 85.0, \"planned\": {\"duration_minutes\": 270.0, \"distance_km\": 45.0, \"elevation_gain_m\": 800.0, \"workout_count\": 5}, \"actual\": {\"total_actual_km\": 46.2, \"total_actual_minutes\": 275.0, \"total_actual_vert_m\": 820.0, \"matched_km\": 46.2, \"matched_count\": 5, \"unplanned_km\": 0.0, \"unplanned_hours\": 0.0, \"unplanned_count\": 0}, \"per_workout\": []}"
+        let review = try JSONCoding.decoder.decode(WeekReview.self, from: jsonStr.data(using: .utf8)!)
+        #expect(review.planned?.distanceKm == 45.0)
+        #expect(review.actual?.totalActualKm == 46.2)
+        #expect(review.actual?.totalActualVertM == 820.0)
+    }
+
+    @Test func decodesKnowledgeCardModel() throws {
+        let jsonStr = "{\"id\": 42, \"chapter_title\": \"Aerobic Nutrition\", \"summary\": \"Fuel early.\", \"key_points\": [\"Carbs\"], \"tags\": [\"nutrition\"], \"topic\": \"Nutrition\"}"
+        let card = try JSONCoding.decoder.decode(KnowledgeCardModel.self, from: jsonStr.data(using: .utf8)!)
+        #expect(card.id == 42)
+        #expect(card.chapterTitle == "Aerobic Nutrition")
+        #expect(card.topic == "Nutrition")
+        #expect(card.keyPoints.count == 1)
+    }
 }

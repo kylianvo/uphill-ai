@@ -7,10 +7,18 @@ struct NextWeekSheet: View {
 
     @State private var rpe: Int?
     @State private var notes = ""
+    @State private var schedule: ScheduleDraft
+    @State private var scheduleExpanded = false
     @State private var isSubmitting = false
     @State private var confirmMessage: String?
     @State private var confirming = false
     @State private var error: String?
+
+    init(model: PlanViewModel, offer: NextWeekOffer) {
+        self.model = model
+        self.offer = offer
+        _schedule = State(initialValue: ScheduleDraft(plan: model.snapshot?.plan))
+    }
 
     var body: some View {
         NavigationStack {
@@ -38,13 +46,16 @@ struct NextWeekSheet: View {
                     // Coach notes card
                     notesCard
 
+                    // Schedule Preferences Card (Optional)
+                    scheduleCard
+
                     // Submit action
                     submitButton
                 }
                 .padding(UH.Space.regular)
             }
             .background(UH.Palette.surface)
-            .navigationTitle("How did this block feel?")
+            .navigationTitle(offer.title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -200,6 +211,36 @@ struct NextWeekSheet: View {
         .overlay(RoundedRectangle(cornerRadius: UH.Radius.landing).stroke(UH.Palette.line))
     }
 
+    // MARK: - Schedule Preferences Card
+
+    private var scheduleCard: some View {
+        DisclosureGroup(isExpanded: $scheduleExpanded) {
+            VStack(spacing: UH.Space.regular) {
+                Divider()
+                ScheduleEditor(draft: $schedule, workouts: model.snapshot?.workouts.filter { $0.weekNumber == model.currentWeek } ?? [])
+            }
+            .padding(.top, UH.Space.compact)
+        } label: {
+            HStack(spacing: UH.Space.compact) {
+                Image(systemName: "calendar.badge.clock")
+                    .font(.headline)
+                    .foregroundStyle(UH.Palette.accentInk)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Update Schedule Preferences (Optional)")
+                        .font(UH.TextStyle.sectionTitle)
+                        .foregroundStyle(UH.Palette.ink)
+                    Text("These changes apply starting with Block \(offer.blockNumber)")
+                        .font(UH.TextStyle.caption)
+                        .foregroundStyle(UH.Palette.secondary)
+                }
+                Spacer()
+            }
+            .frame(minHeight: 44)
+        }
+        .trainingCard()
+        .accessibilityIdentifier("nextweek.schedule")
+    }
+
     // MARK: - Submit Button
 
     private var submitButton: some View {
@@ -223,7 +264,7 @@ struct NextWeekSheet: View {
         isSubmitting = true
         error = nil
         defer { isSubmitting = false }
-        switch await model.buildNextWeek(rpe: rpe, notes: notes, override: override) {
+        switch await model.buildNextWeek(rpe: rpe, notes: notes, override: override, schedule: schedule.hasChanges ? schedule : nil) {
         case .started:
             dismiss()
         case .needsConfirmation(let message):

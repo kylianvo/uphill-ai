@@ -41,6 +41,17 @@ struct ScheduleDraft {
         if isGettingStarted && maxContinuousJogMin != before.maxContinuousJogMin { body.maxContinuousJogMin = maxContinuousJogMin }
     }
 
+    func applyChanges(to body: inout NextBlockBody) {
+        let before = ScheduleDraft(plan: initialPlan)
+        if preferredDays != before.preferredDays { body.preferredDays = Weekday.allCases.filter(preferredDays.contains).map(\.rawValue) }
+        if longRunDay != before.longRunDay { body.longRunDay = longRunDay?.rawValue }
+        if daysPerWeek != before.daysPerWeek { body.daysPerWeek = daysPerWeek }
+        if doubleSessionDays != before.doubleSessionDays { body.doubleSessionDays = Weekday.allCases.filter(doubleSessionDays.contains).map(\.rawValue) }
+        if hasGymAccess != before.hasGymAccess { body.hasGymAccess = hasGymAccess }
+        if useTreadmill != before.useTreadmill { body.useTreadmill = useTreadmill }
+        if environment != before.environment { body.trainingEnvironment = environment.rawValue }
+    }
+
     var hasChanges: Bool {
         let before = ScheduleDraft(plan: initialPlan)
         return preferredDays != before.preferredDays || longRunDay != before.longRunDay || daysPerWeek != before.daysPerWeek

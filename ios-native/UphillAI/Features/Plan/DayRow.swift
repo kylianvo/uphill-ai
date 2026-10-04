@@ -99,6 +99,9 @@ struct DayRow: View {
                     Divider().overlay(UH.Palette.line.opacity(0.6))
                 }
                 workoutRow(workout, isDouble: day.workouts.count > 1)
+                if workout.isMatched {
+                    matchedActivityBadge(workout)
+                }
             }
         }
         .padding(.vertical, UH.Space.regular)
@@ -341,5 +344,64 @@ struct DayRow: View {
         if w.isPriority { parts.append("priority") }
         if w.isDone { parts.append("done") } else if w.isMissedFlag { parts.append("missed") }
         return parts.joined(separator: ", ")
+    }
+
+    // MARK: - Compact Synced Watch Badge
+
+    private func matchedActivityBadge(_ workout: Workout) -> some View {
+        let modelName = workout.matchedDeviceModel ?? "COROS"
+        return Button {
+            onSelect(workout)
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: "applewatch")
+                    .font(.system(size: 10.5, weight: .semibold))
+                    .foregroundStyle(UH.Palette.accentInk)
+                Text(modelName)
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(UH.Palette.ink)
+
+                if let km = workout.matchedDistanceKm {
+                    Text("· \(String(format: "%.1f", km)) km")
+                        .font(.system(size: 10.5, weight: .medium, design: .monospaced))
+                        .foregroundStyle(UH.Palette.secondary)
+                }
+                if let secs = workout.matchedDurationSeconds {
+                    let mins = Int(secs / 60)
+                    Text("· \(mins)m")
+                        .font(.system(size: 10.5, weight: .medium, design: .monospaced))
+                        .foregroundStyle(UH.Palette.secondary)
+                }
+                if let hr = workout.matchedAvgHr {
+                    Text("· \(hr) bpm")
+                        .font(.system(size: 10.5, weight: .medium, design: .monospaced))
+                        .foregroundStyle(UH.Palette.secondary)
+                }
+
+                Spacer()
+
+                HStack(spacing: 3) {
+                    Circle()
+                        .fill(UH.Palette.accentInk)
+                        .frame(width: 4, height: 4)
+                    Text("Matched")
+                        .font(.system(size: 9.5, weight: .bold))
+                        .foregroundStyle(UH.Palette.accentInk)
+                }
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(UH.Palette.activeFill, in: Capsule())
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 8.5, weight: .bold))
+                    .foregroundStyle(UH.Palette.muted)
+            }
+            .padding(.horizontal, 9)
+            .padding(.vertical, 5)
+            .background(UH.Palette.surface.opacity(0.85), in: RoundedRectangle(cornerRadius: 6))
+            .overlay(RoundedRectangle(cornerRadius: 6).stroke(UH.Palette.line.opacity(0.6), lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("workout.\(workout.id).matched")
     }
 }

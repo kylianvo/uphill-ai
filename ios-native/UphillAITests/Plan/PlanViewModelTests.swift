@@ -450,4 +450,17 @@ struct PlanViewModelTests {
         #expect(calls.contains("delete \(snap.plan.id)"))
         #expect(calls.last == "active")
     }
+
+    @Test func syncWatchUpdatesNoticeAndReloads() async throws {
+        let snap = snapshot()
+        let service = FakePlanService()
+        service.activeResult.withLock { $0 = .success(snap) }
+        let model = make(service)
+        await model.load()
+        let notice = await model.syncWatch()
+        #expect(notice == "Watch synced · Up to date")
+        #expect(model.watchSyncNotice == "Watch synced · Up to date")
+        model.clearWatchSyncNotice()
+        #expect(model.watchSyncNotice == nil)
+    }
 }

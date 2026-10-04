@@ -77,6 +77,9 @@ final class PlanViewModel {
 
     private(set) var nextWeekOffer: NextWeekOffer?
     private(set) var goal: PlanGoal?
+    private(set) var isSyncingWatch = false
+    private(set) var watchSyncNotice: String?
+    private(set) var contextKnowledgeCard: KnowledgeCardModel?
 
     private let service: any PlanServicing
     private let generation: GenerationCenter?
@@ -108,6 +111,7 @@ final class PlanViewModel {
             apply(cached.value, resetWeek: true)
             cachedAt = cached.savedAt
         }
+
         do {
             if let fresh = try await service.activePlan() {
                 let resetWeek = !hadSnapshot && cachedAt == nil
@@ -116,6 +120,7 @@ final class PlanViewModel {
                 if isSignedIn() { cache.save(fresh, as: .plan) }
                 await refreshNextWeekOffer()
                 await loadGoal()
+                await loadKnowledgeCard()
             } else {
                 snapshot = nil
                 cachedAt = nil
@@ -133,6 +138,28 @@ final class PlanViewModel {
         }
     }
 
+    func syncWatch() async -> String? {
+        guard !isSyncingWatch else { return nil }
+        guard let plan = snapshot?.plan else { return "No active plan to sync." }
+        isSyncingWatch = true
+        defer { isSyncingWatch = false }
+        do {
+            let msg = try await service.syncWatch(planID: plan.id)
+            await load()
+            watchSyncNotice = msg
+            return msg
+        } catch {
+            let msg = error.localizedDescription
+            watchSyncNotice = msg
+            return msg
+        }
+    }
+
+    func clearWatchSyncNotice() {
+        watchSyncNotice = nil
+    }
+
+
     private func apply(_ snapshot: PlanSnapshot, resetWeek: Bool) {
         self.snapshot = snapshot
         state = .loaded
@@ -145,7 +172,7 @@ final class PlanViewModel {
         cachedAt = nil
         actionError = nil
         if isSignedIn() { cache.save(snapshot, as: .plan) }
-        Task { await refreshNextWeekOffer(); await loadGoal() }
+        Task { await refreshNextWeekOffer(); await loadGoal(); await loadKnowledgeCard() }
     }
 
     func reset() {
@@ -376,15 +403,17 @@ final class PlanViewModel {
             previousCompletionPct: last.completionPct, unlocked: last.unlocked)
     }
 
-    func buildNextWeek(rpe: Int?, notes: String, override: Bool) async -> NextWeekResult {
+    func buildNextWeek(rpe: Int?, notes: String, override: Bool, schedule: ScheduleDraft? = nil) async -> NextWeekResult {
         guard let offer = nextWeekOffer, let planID = snapshot?.plan.id,
               let generation, let generationService else { return .failed("Couldn't start the next week. Try again.") }
         guard cachedAt == nil else { return .failed(Self.offlineMessage) }
         let trimmed = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        var body = NextBlockBody(
+            planId: planID, blockNumber: offer.blockNumber, overallRpe: rpe,
+            notes: trimmed.isEmpty ? nil : trimmed, overrideGate: override, lang: "en")
+        schedule?.applyChanges(to: &body)
         do {
-            let job = try await generationService.generateNextBlock(NextBlockBody(
-                planId: planID, blockNumber: offer.blockNumber, overallRpe: rpe,
-                notes: trimmed.isEmpty ? nil : trimmed, overrideGate: override, lang: "en"))
+            let job = try await generationService.generateNextBlock(body)
             generation.track(kind: .nextWeek, jobID: job.jobId, summary: [])
             return .started
         } catch APIError.http(403, let message?, _) where !override {
@@ -465,6 +494,28 @@ final class PlanViewModel {
         case .noTarget: return goal.status.suggestedMins.map { "Suggested \(Self.formatMinutes($0))" } ?? "Not assessed yet"
         case .notAssessed: return "Not assessed yet"
         }
+    }
+
+
+    func loadKnowledgeCard() async {
+        guard snapshot?.plan != nil, cachedAt == nil else { return }
+        let phase = (self.phase ?? "").lowercased()
+        let days = daysToRace
+
+        let topic: String
+        if let days, days <= 21 {
+            topic = "Pacing"
+        } else if phase.contains("taper") || phase.contains("peak") {
+            topic = "Pacing"
+        } else if phase.contains("recovery") {
+            topic = "Recovery"
+        } else if phase.contains("strength") || phase.contains("me") {
+            topic = "Training"
+        } else {
+            topic = "Training"
+        }
+
+        contextKnowledgeCard = await service.knowledgeCard(topic: topic, lang: "en")
     }
 
     func loadGoal() async {
