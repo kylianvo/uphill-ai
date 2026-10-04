@@ -125,7 +125,24 @@ Rushing through reps without full range of motion.
         // Missed workout
         let wMissed = TestData.workout(["id": 10, "week_number": 2, "day_of_week": "Tuesday", "type": "Easy Run", "duration_minutes": 45.0, "distance_km": 7.5, "target_zone": "Z2", "title": "Aerobic Maintenance Run", "description": descEasy, "is_missed": 1])
 
-        let allWorkouts = [wMonRest, wTueEasy, wWedIntervals, wThuMorn, wThuAft, wFriRest, wSatLong, wSunRec, wDoneRpe, wMissed]
+        // Additional weeks for multi-week trend progression
+        let wW1 = [
+            TestData.workout(["id": 101, "week_number": 1, "day_of_week": "Tuesday", "type": "Easy Run", "duration_minutes": 50.0, "distance_km": 8.0, "is_completed": 1]),
+            TestData.workout(["id": 102, "week_number": 1, "day_of_week": "Thursday", "type": "Tempo", "duration_minutes": 55.0, "distance_km": 9.5, "is_completed": 1]),
+            TestData.workout(["id": 103, "week_number": 1, "day_of_week": "Saturday", "type": "Long Run", "duration_minutes": 110.0, "distance_km": 18.0, "is_completed": 1])
+        ]
+        let wW3 = [
+            TestData.workout(["id": 104, "week_number": 3, "day_of_week": "Tuesday", "type": "Easy Run", "duration_minutes": 55.0, "distance_km": 9.0]),
+            TestData.workout(["id": 105, "week_number": 3, "day_of_week": "Wednesday", "type": "Intervals", "duration_minutes": 65.0, "distance_km": 10.5]),
+            TestData.workout(["id": 106, "week_number": 3, "day_of_week": "Saturday", "type": "Long Run", "duration_minutes": 130.0, "distance_km": 22.0])
+        ]
+        let wW4 = [
+            TestData.workout(["id": 107, "week_number": 4, "day_of_week": "Tuesday", "type": "Recovery", "duration_minutes": 40.0, "distance_km": 6.0]),
+            TestData.workout(["id": 108, "week_number": 4, "day_of_week": "Thursday", "type": "Easy Run", "duration_minutes": 45.0, "distance_km": 7.0]),
+            TestData.workout(["id": 109, "week_number": 4, "day_of_week": "Saturday", "type": "Long Run", "duration_minutes": 90.0, "distance_km": 14.0])
+        ]
+
+        let allWorkouts = [wMonRest, wTueEasy, wWedIntervals, wThuMorn, wThuAft, wFriRest, wSatLong, wSunRec, wDoneRpe, wMissed] + wW1 + wW3 + wW4
 
         let service = FakePlanService()
         let snapshot = PlanSnapshot(plan: plan, workouts: allWorkouts)
@@ -150,15 +167,19 @@ Rushing through reps without full range of motion.
         let planTopCollapsed = PlanView(model: model, generation: gen, onBuildPlan: {}, onViewProgress: {}, user: nil, initialViewMode: .list, initialCoachExpanded: false)
         save(planTopCollapsed, name: "plan-tab-top-collapsed")
 
-        // 2. plan-tab-top-expanded.png
-        let planTopExpanded = PlanView(model: model, generation: gen, onBuildPlan: {}, onViewProgress: {}, user: nil, initialViewMode: .list, initialCoachExpanded: true)
+        // 2. plan-tab-top-expanded.png (with Week Days Volume Chart)
+        let planTopExpanded = PlanView(model: model, generation: gen, onBuildPlan: {}, onViewProgress: {}, user: nil, initialViewMode: .list, initialCoachExpanded: true, initialVolumeMode: .weekDays)
         save(planTopExpanded, name: "plan-tab-top-expanded")
+
+        // 2b. plan-tab-volume-trend.png (with Every Week Trend Volume Chart)
+        let planTopTrend = PlanView(model: model, generation: gen, onBuildPlan: {}, onViewProgress: {}, user: nil, initialViewMode: .list, initialCoachExpanded: true, initialVolumeMode: .weekTrend)
+        save(planTopTrend, name: "plan-tab-volume-trend")
 
         // 3. calendar-month.png
         let planCalendar = PlanView(model: model, generation: gen, onBuildPlan: {}, onViewProgress: {}, user: nil, initialViewMode: .calendar, initialCoachExpanded: false)
         save(planCalendar, name: "calendar-month")
 
-        // 4. double-session-day.png
+        // 4. double-session-day.png & workout-cards-colored.png
         if let thuDay = model.days.first(where: { $0.weekday == .thursday }) {
             let doubleDayView = VStack(alignment: .leading, spacing: UH.Space.section) {
                 Text("Double Session Day").font(UH.TextStyle.screenTitle).padding(.horizontal, UH.Space.regular)
@@ -169,6 +190,22 @@ Rushing through reps without full range of motion.
             .padding(.top, 40)
             .background(UH.Palette.surface.ignoresSafeArea())
             save(doubleDayView, name: "double-session-day")
+
+            // Multi-workout colored showcase
+            let coloredShowcase = ScrollView {
+                VStack(alignment: .leading, spacing: UH.Space.compact) {
+                    Text("Workout Cards Color Highlights")
+                        .font(UH.TextStyle.screenTitle)
+                        .padding(.horizontal, UH.Space.regular)
+                    ForEach(model.days) { day in
+                        DayRow(day: day, onToggleDone: { _ in }, onMoveOrSwap: { _ in }, onSelect: { _ in })
+                            .padding(.horizontal, UH.Space.regular)
+                    }
+                }
+                .padding(.vertical, UH.Space.regular)
+            }
+            .background(UH.Palette.surface.ignoresSafeArea())
+            save(coloredShowcase, name: "workout-cards-colored")
         }
 
         // 5. locked-next-week.png

@@ -23,6 +23,27 @@ struct DayRow: View {
         day.eyebrow == "TODAY" ? "day.today" : "day.\(day.weekday.rawValue)"
     }
 
+    private var primaryWorkout: Workout? {
+        day.workouts.first(where: { !$0.isRest }) ?? day.workouts.first
+    }
+
+    private var primaryColor: Color {
+        guard let w = primaryWorkout, !day.isRest else {
+            return UH.Palette.muted
+        }
+        return WorkoutTypePresentation.zoneColor(for: w)
+    }
+
+    private var hasPriority: Bool {
+        day.workouts.contains(where: \.isPriority)
+    }
+
+    private var dayBorderColor: Color {
+        if day.isToday { return UH.Palette.accentInk }
+        if hasPriority { return primaryColor.opacity(0.85) }
+        return primaryColor.opacity(0.25)
+    }
+
     // MARK: - Rest Row (Collapsed)
 
     private var restRow: some View {
@@ -65,7 +86,7 @@ struct DayRow: View {
         }
     }
 
-    // MARK: - Day Card (Active Workouts)
+    // MARK: - Day Card (Active Workouts with Workout Type Color Highlights)
 
     private var dayCard: some View {
         VStack(alignment: .leading, spacing: UH.Space.small) {
@@ -80,14 +101,36 @@ struct DayRow: View {
                 workoutRow(workout, isDouble: day.workouts.count > 1)
             }
         }
-        .padding(UH.Space.regular)
+        .padding(.vertical, UH.Space.regular)
+        .padding(.trailing, UH.Space.regular)
+        .padding(.leading, UH.Space.regular + 4)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(day.isToday ? UH.Palette.activeFill.opacity(0.5) : UH.Palette.card,
-                    in: RoundedRectangle(cornerRadius: UH.Radius.landing))
+        .background(
+            // Subtle Gradient Background Wash in workout type color
+            LinearGradient(
+                colors: [
+                    primaryColor.opacity(day.isToday ? 0.16 : 0.09),
+                    primaryColor.opacity(0.02),
+                    day.isToday ? UH.Palette.activeFill.opacity(0.45) : UH.Palette.card
+                ],
+                startPoint: .leading,
+                endPoint: .trailing
+            ),
+            in: RoundedRectangle(cornerRadius: UH.Radius.landing)
+        )
         .overlay(
+            // Border tinted with type color
             RoundedRectangle(cornerRadius: UH.Radius.landing)
                 .stroke(dayBorderColor, lineWidth: day.isToday || hasPriority ? 1.5 : 1)
         )
+        .overlay(alignment: .leading) {
+            // Prominent Left Accent Stripe matching workout type
+            RoundedRectangle(cornerRadius: 2.5)
+                .fill(primaryColor)
+                .frame(width: 4.5)
+                .padding(.vertical, 7)
+                .padding(.leading, 7)
+        }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(dayIdentifier)
         .contextMenu {
@@ -99,16 +142,6 @@ struct DayRow: View {
                 }
             }
         }
-    }
-
-    private var hasPriority: Bool {
-        day.workouts.contains(where: \.isPriority)
-    }
-
-    private var dayBorderColor: Color {
-        if day.isToday { return UH.Palette.accentInk }
-        if hasPriority { return UH.Palette.accentInk.opacity(0.8) }
-        return UH.Palette.line
     }
 
     // Header when 2+ workouts exist in a single day
@@ -129,10 +162,10 @@ struct DayRow: View {
             Spacer()
             Text("2 SESSIONS")
                 .font(.system(size: 10, weight: .bold, design: .monospaced))
-                .foregroundStyle(UH.Palette.secondary)
+                .foregroundStyle(primaryColor)
                 .padding(.horizontal, 6)
                 .padding(.vertical, 2)
-                .background(UH.Palette.hover, in: Capsule())
+                .background(primaryColor.opacity(0.12), in: Capsule())
 
             if let onMoveOrSwap {
                 Button {
@@ -158,7 +191,14 @@ struct DayRow: View {
     // MARK: - 3-Line Workout Row
 
     private func workoutRow(_ workout: Workout, isDouble: Bool) -> some View {
-        HStack(alignment: .center, spacing: UH.Space.small) {
+        let zoneColor = WorkoutTypePresentation.zoneColor(for: workout)
+        return HStack(alignment: .center, spacing: UH.Space.small) {
+            if isDouble {
+                Capsule()
+                    .fill(zoneColor)
+                    .frame(width: 3.5, height: 32)
+            }
+
             // Tappable main body (Lines 1 to 3)
             Button {
                 onSelect(workout)
@@ -213,7 +253,7 @@ struct DayRow: View {
                 let slot = workout.sessionSlot?.capitalized ?? "Session"
                 Text(slot)
                     .font(.system(size: 10, weight: .bold, design: .monospaced))
-                    .foregroundStyle(UH.Palette.secondary)
+                    .foregroundStyle(zoneColor)
             }
 
             if workout.isPriority {
@@ -226,14 +266,19 @@ struct DayRow: View {
                     .background(UH.Palette.activeFill, in: Capsule())
             }
 
-            // Type Chip in Zone Colour
-            Text(chipLabel)
-                .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(zoneColor)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 1.5)
-                .background(zoneColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 5))
-                .overlay(RoundedRectangle(cornerRadius: 5).stroke(zoneColor.opacity(0.28), lineWidth: 0.8))
+            // Type Chip in Zone Colour with inner colored indicator dot
+            HStack(spacing: 4) {
+                Circle()
+                    .fill(zoneColor)
+                    .frame(width: 5, height: 5)
+                Text(chipLabel)
+                    .font(.system(size: 11, weight: .bold))
+            }
+            .foregroundStyle(zoneColor)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 2)
+            .background(zoneColor.opacity(0.14), in: RoundedRectangle(cornerRadius: 6))
+            .overlay(RoundedRectangle(cornerRadius: 6).stroke(zoneColor.opacity(0.35), lineWidth: 0.9))
         }
     }
 
@@ -245,7 +290,7 @@ struct DayRow: View {
         return HStack(spacing: 6) {
             Circle()
                 .fill(zoneColor)
-                .frame(width: 6, height: 6)
+                .frame(width: 7, height: 7)
 
             Text(metrics)
                 .font(.system(size: 12.5, weight: .medium, design: .monospaced))

@@ -206,6 +206,16 @@ final class PlanViewModel {
         PlanSummary.dayStates(week: selectedWeek, workouts: snapshot?.workouts ?? [])
     }
 
+    var dayVolumes: [DayVolume] {
+        guard let snapshot else { return [] }
+        return PlanSummary.dayVolumes(week: selectedWeek, workouts: snapshot.workouts, now: now(), plan: snapshot.plan, calendar: calendar)
+    }
+
+    func dayVolumes(for week: Int) -> [DayVolume] {
+        guard let snapshot else { return [] }
+        return PlanSummary.dayVolumes(week: week, workouts: snapshot.workouts, now: now(), plan: snapshot.plan, calendar: calendar)
+    }
+
     var phase: String? { PlanSummary.phase(week: selectedWeek, workouts: snapshot?.workouts ?? []) }
 
     var daysToRace: Int? { PlanCalendar.daysToRace(snapshot?.plan.raceDate, now: now(), calendar: calendar) }

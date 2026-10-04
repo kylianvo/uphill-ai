@@ -8,11 +8,13 @@ struct PlanView: View {
     var user: User? = nil
     var onSharpen: (TrainingDestination) -> Void = { _ in }
     var initialCoachExpanded: Bool = false
+    var initialVolumeMode: VolumeChartMode = .weekDays
     @State private var viewMode: PlanViewMode = .list
 
     init(model: PlanViewModel, generation: GenerationCenter, onBuildPlan: @escaping () -> Void,
          onViewProgress: @escaping () -> Void, user: User? = nil, onSharpen: @escaping (TrainingDestination) -> Void = { _ in },
-         initialViewMode: PlanViewMode = .list, initialCoachExpanded: Bool = false) {
+         initialViewMode: PlanViewMode = .list, initialCoachExpanded: Bool = false,
+         initialVolumeMode: VolumeChartMode = .weekDays) {
         self.model = model
         self.generation = generation
         self.onBuildPlan = onBuildPlan
@@ -20,6 +22,7 @@ struct PlanView: View {
         self.user = user
         self.onSharpen = onSharpen
         self.initialCoachExpanded = initialCoachExpanded
+        self.initialVolumeMode = initialVolumeMode
         _viewMode = State(initialValue: initialViewMode)
     }
     @State private var selectedWorkout: Workout?
@@ -117,7 +120,8 @@ struct PlanView: View {
                         SummaryCarousel(model: model,
                                         adapting: generation.running?.kind == .adaptWeek ? model.selectedWeek : nil,
                                         onReview: { showReview = true }, onAdapt: { showAdapt = true },
-                                        onGoal: { showGoal = true })
+                                        onGoal: { showGoal = true },
+                                        initialVolumeMode: initialVolumeMode)
 
                         // 3. Coach review card
                         CoachReviewCard(model: model, onOpenReview: { showReview = true }, initialExpanded: initialCoachExpanded)

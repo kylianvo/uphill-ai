@@ -1,128 +1,116 @@
 import SwiftUI
 import Charts
 
+enum VolumeChartMode: String, CaseIterable, Identifiable {
+    case weekDays = "Days"
+    case weekTrend = "Trend"
+
+    var id: String { rawValue }
+
+    var accessibilityTitle: String {
+        switch self {
+        case .weekDays: "Week days volume"
+        case .weekTrend: "Every week volume trend"
+        }
+    }
+}
+
 struct SummaryCarousel: View {
     let model: PlanViewModel
-    let adapting: Int?
+    var adapting: Int? = nil
     let onReview: () -> Void
     let onAdapt: () -> Void
     let onGoal: () -> Void
-    @State private var page: Int? = 0
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private let cardHeight: CGFloat = 190
-    private let pageNames = ["Volume", "Sessions", "Race", "Phase"]
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var volumeChartMode: VolumeChartMode = .weekDays
+
+    init(
+        model: PlanViewModel,
+        adapting: Int? = nil,
+        onReview: @escaping () -> Void,
+        onAdapt: @escaping () -> Void,
+        onGoal: @escaping () -> Void,
+        initialVolumeMode: VolumeChartMode = .weekDays
+    ) {
+        self.model = model
+        self.adapting = adapting
+        self.onReview = onReview
+        self.onAdapt = onAdapt
+        self.onGoal = onGoal
+        _volumeChartMode = State(initialValue: initialVolumeMode)
+    }
 
     var body: some View {
-        VStack(spacing: UH.Space.compact) {
-            ZStack(alignment: .trailing) {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(spacing: 0) {
-                        volumeCard.id(0)
-                        weekCard.id(1)
-                        raceCard.id(2)
-                        phaseCard.id(3)
-                    }
-                    .scrollTargetLayout()
-                }
-                .scrollTargetBehavior(.paging)
-                .scrollPosition(id: $page)
-
-                pageDots
-                    .padding(.trailing, UH.Space.small)
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: UH.Space.compact) {
+                volumeCard
+                weekCard
+                raceCard
+                phaseCard
             }
-            .frame(height: cardHeight)
-
-            HStack {
-                Text(pageNames[page ?? 0].uppercased())
-                    .font(UH.TextStyle.eyebrow)
-                    .tracking(0.6)
-                    .foregroundStyle(UH.Palette.muted)
-                Spacer()
-                if let adapting, adapting == model.selectedWeek {
-                    Label("Adapting week…", systemImage: "sparkles")
-                        .font(UH.TextStyle.caption)
-                        .foregroundStyle(UH.Palette.accentInk)
-                } else {
-                    Button(action: onReview) {
-                        Text("Weekly review").font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
-                            .padding(.horizontal, UH.Space.small).frame(minHeight: 44)
-                            .overlay(Capsule().stroke(UH.Palette.line, lineWidth: 1.5))
-                    }
-                    .accessibilityIdentifier("plan.review")
-
-                    if model.canAdapt(week: model.selectedWeek) {
-                        Button(action: onAdapt) {
-                            Text("Adapt week").font(UH.TextStyle.label).foregroundStyle(UH.Palette.buttonInk)
-                                .padding(.horizontal, UH.Space.small).frame(minHeight: 44)
-                                .background(UH.Palette.accent, in: Capsule())
-                        }
-                        .accessibilityIdentifier("plan.adapt")
-                    }
-                }
-            }
-            .buttonStyle(.plain)
             .padding(.horizontal, UH.Space.regular)
         }
     }
 
-    private func card(_ content: some View) -> some View {
+    private func card<Content: View>(_ content: Content) -> some View {
         content
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .padding(UH.Space.regular)
-            .padding(.trailing, UH.Space.section)
-            .frame(height: cardHeight)
-            .background(UH.Palette.card)
-            .containerRelativeFrame(.horizontal)
-    }
-
-    private var pageDots: some View {
-        VStack(spacing: 0) {
-            ForEach(0..<4, id: \.self) { index in
-                Button {
-                    withAnimation(reduceMotion ? nil : UH.Motion.standard) { page = index }
-                } label: {
-                    Circle()
-                        .fill(index == (page ?? 0) ? UH.Palette.accentInk : UH.Palette.line)
-                        .frame(width: 6, height: 6)
-                        .frame(width: 24, height: 32)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("\(pageNames[index]) summary")
-                .accessibilityAddTraits(index == (page ?? 0) ? .isSelected : [])
-            }
-        }
+            .padding(14)
+            .frame(width: 315, height: 184, alignment: .topLeading)
+            .background(UH.Palette.card, in: RoundedRectangle(cornerRadius: UH.Radius.landing))
+            .overlay(
+                RoundedRectangle(cornerRadius: UH.Radius.landing)
+                    .stroke(UH.Palette.line, lineWidth: 1)
+            )
     }
 
     private func eyebrow(_ text: String) -> some View {
         Text(text.uppercased())
-            .font(.system(size: 10, weight: .bold, design: .monospaced))
-            .tracking(0.6)
-            .foregroundStyle(UH.Palette.muted)
+            .font(UH.TextStyle.eyebrow)
+            .tracking(0.5)
+            .foregroundStyle(UH.Palette.secondary)
     }
 
-    // MARK: - Volume Card (Hours comparison, Planned vs Actual)
+    // MARK: - Volume Card (Week Days & Every Week Trend)
 
     private var volumeCard: some View {
         let volume = model.selectedVolume
         let comp = model.weekComparison
+        let dayVols = model.dayVolumes
 
         return card(
-            VStack(alignment: .leading, spacing: 5) {
-                HStack {
-                    eyebrow("Week \(model.selectedWeek) volume")
+            VStack(alignment: .leading, spacing: 3) {
+                // Header: Eyebrow + Mode Switcher [Days | Trend]
+                HStack(alignment: .center) {
+                    eyebrow("Week \(model.selectedWeek) Volume")
+
                     Spacer()
-                    // Hours vs last week comparison
-                    if let prev = comp.previousHours {
-                        let diff = comp.currentHours - prev
-                        let sign = diff >= 0 ? "+" : ""
-                        Text("\(sign)\(String(format: "%.1f", diff)) h vs last wk")
-                            .font(.system(size: 11, weight: .medium, design: .monospaced))
-                            .foregroundStyle(UH.Palette.secondary)
+
+                    // Segmented pill switcher
+                    HStack(spacing: 2) {
+                        ForEach(VolumeChartMode.allCases) { mode in
+                            Button {
+                                withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.18)) {
+                                    volumeChartMode = mode
+                                }
+                            } label: {
+                                Text(mode.rawValue)
+                                    .font(.system(size: 10, weight: volumeChartMode == mode ? .bold : .medium, design: .monospaced))
+                                    .foregroundStyle(volumeChartMode == mode ? UH.Palette.accentInk : UH.Palette.secondary)
+                                    .padding(.horizontal, 7)
+                                    .padding(.vertical, 2.5)
+                                    .background(volumeChartMode == mode ? UH.Palette.hover : Color.clear, in: Capsule())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier("volume.mode.\(mode == .weekDays ? "days" : "trend")")
+                            .accessibilityLabel(mode.accessibilityTitle)
+                        }
                     }
+                    .padding(2)
+                    .background(UH.Palette.line.opacity(0.35), in: Capsule())
                 }
 
+                // Middle: Big Numbers
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(String(format: "%.1f", volume.km))
                         .font(.system(size: 26, weight: .bold, design: .monospaced))
@@ -134,31 +122,130 @@ struct SummaryCarousel: View {
                     Spacer()
 
                     Text("\(String(format: "%.1f", volume.hours)) h · \(Int(volume.gainM)) m D+")
-                        .font(.system(size: 13, weight: .medium, design: .monospaced))
+                        .font(.system(size: 12.5, weight: .medium, design: .monospaced))
                         .foregroundStyle(UH.Palette.secondary)
                 }
 
-                // Planned vs Actual
+                // Subline: Planned vs Actual or Trend progression
                 HStack(spacing: 4) {
-                    Text("Planned \(String(format: "%.1f", comp.plannedKm)) km · Actual \(String(format: "%.1f", comp.actualKm)) km")
-                        .font(.system(size: 11.5, weight: .medium, design: .monospaced))
-                        .foregroundStyle(UH.Palette.secondary)
+                    if volumeChartMode == .weekDays {
+                        Text("Planned \(String(format: "%.1f", comp.plannedKm)) km · Actual \(String(format: "%.1f", comp.actualKm)) km")
+                            .font(.system(size: 11, weight: .medium, design: .monospaced))
+                            .foregroundStyle(UH.Palette.secondary)
+                    } else {
+                        if let diff = comp.diffHours, let prev = comp.previousHours, prev > 0 {
+                            let pct = Int((diff / prev * 100).rounded())
+                            let sign = pct >= 0 ? "+" : ""
+                            Text("\(sign)\(pct)% vs last wk · Total \(model.snapshot?.plan.totalWeeks ?? 0) weeks")
+                                .font(.system(size: 11, weight: .medium, design: .monospaced))
+                                .foregroundStyle(pct >= 0 ? UH.Palette.accentInk : UH.Palette.secondary)
+                        } else {
+                            Text("Total \(model.snapshot?.plan.totalWeeks ?? 0) weeks progression")
+                                .font(.system(size: 11, weight: .medium, design: .monospaced))
+                                .foregroundStyle(UH.Palette.secondary)
+                        }
+                    }
                 }
 
-                Spacer(minLength: 2)
+                Spacer(minLength: 4)
 
-                Chart(model.weeklyVolumes.filter(\.generated), id: \.week) { week in
-                    BarMark(x: .value("Week", week.week), y: .value("km", week.km))
-                        .foregroundStyle(week.week == model.selectedWeek ? UH.Palette.accent : UH.Palette.line)
-                        .cornerRadius(UH.Radius.topic)
+                // Chart: Week Days Breakdown or Every Week Trend
+                if volumeChartMode == .weekDays {
+                    weekDaysChart(dayVols)
+                } else {
+                    weekTrendChart
                 }
-                .frame(height: 38)
-                .chartXAxis(.hidden)
-                .chartYAxis(.hidden)
-                .accessibilityHidden(true)
             }
         )
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
+    }
+
+    @ViewBuilder
+    private func weekDaysChart(_ days: [DayVolume]) -> some View {
+        Chart(days) { day in
+            let val = max(day.km, day.isRest ? 0.8 : 1.2)
+            BarMark(
+                x: .value("Day", day.weekday.rawValue),
+                y: .value("km", val)
+            )
+            .foregroundStyle(day.isRest ? UH.Palette.line.opacity(0.6) : day.color)
+            .cornerRadius(3.5)
+            .annotation(position: .top, spacing: 2) {
+                if day.km > 0 {
+                    Text(String(format: "%.0f", day.km))
+                        .font(.system(size: 8.5, weight: .bold, design: .monospaced))
+                        .foregroundStyle(day.color)
+                } else if day.isRest {
+                    Text("–")
+                        .font(.system(size: 8.5, design: .monospaced))
+                        .foregroundStyle(UH.Palette.muted)
+                }
+            }
+        }
+        .frame(height: 54)
+        .chartXAxis {
+            AxisMarks(values: .automatic) { value in
+                AxisValueLabel {
+                    if let raw = value.as(String.self), let wd = Weekday(rawValue: raw) {
+                        Text(String(wd.rawValue.prefix(1)))
+                            .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                            .foregroundStyle(wd.rawValue == "Saturday" || wd.rawValue == "Sunday" ? UH.Palette.ink : UH.Palette.secondary)
+                    }
+                }
+            }
+        }
+        .chartYAxis(.hidden)
+        .accessibilityLabel("Volume by day of week")
+    }
+
+    @ViewBuilder
+    private var weekTrendChart: some View {
+        let vols = model.weeklyVolumes
+        Chart {
+            ForEach(vols, id: \.week) { week in
+                let val = max(week.km, 1.0)
+                BarMark(
+                    x: .value("Week", "W\(week.week)"),
+                    y: .value("km", val)
+                )
+                .foregroundStyle(
+                    week.week == model.selectedWeek
+                        ? UH.Palette.accentInk
+                        : (week.generated ? UH.Palette.accent.opacity(0.45) : UH.Palette.line.opacity(0.45))
+                )
+                .cornerRadius(3)
+
+                if week.generated {
+                    LineMark(
+                        x: .value("Week", "W\(week.week)"),
+                        y: .value("km", week.km)
+                    )
+                    .foregroundStyle(UH.Palette.accentInk.opacity(0.85))
+                    .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+
+                    PointMark(
+                        x: .value("Week", "W\(week.week)"),
+                        y: .value("km", week.km)
+                    )
+                    .foregroundStyle(week.week == model.selectedWeek ? UH.Palette.accentInk : UH.Palette.accent.opacity(0.7))
+                    .symbolSize(week.week == model.selectedWeek ? 32 : 14)
+                }
+            }
+        }
+        .frame(height: 54)
+        .chartXAxis {
+            AxisMarks(values: .automatic) { value in
+                AxisValueLabel {
+                    if let str = value.as(String.self) {
+                        Text(str)
+                            .font(.system(size: 8, weight: .bold, design: .monospaced))
+                            .foregroundStyle(UH.Palette.secondary)
+                    }
+                }
+            }
+        }
+        .chartYAxis(.hidden)
+        .accessibilityLabel("Weekly volume trend")
     }
 
     // MARK: - Sessions Card (Adherence %)
