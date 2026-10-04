@@ -1811,7 +1811,14 @@ class PlanGenerator:
 
                 from telemetry import rag_attempts_total, rag_latency_seconds
 
-                _client = _genai.Client(api_key=api_key)
+                # One bounded transport request per application attempt. The
+                # SDK otherwise retries internally, outside our single retry.
+                _client = _genai.Client(
+                    api_key=api_key,
+                    http_options=_genai_types.HttpOptions(
+                        timeout=120_000, retry_options=_genai_types.HttpRetryOptions(attempts=1)
+                    ),
+                )
                 _logger.info(
                     "gemini prompt sent",
                     extra={

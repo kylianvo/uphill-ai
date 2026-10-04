@@ -763,6 +763,24 @@ def compare(
         )
         results.append(result)
         scores.append(item_score)
+        if run_dir:
+            (run_dir / "partial_results.json").write_text(
+                json.dumps(
+                    {
+                        "status": "incomplete",
+                        "as_of": as_of,
+                        "prompt_label": settings.COACH_CHAT_PROMPT_LABEL,
+                        "model": settings.GEMINI_MODEL,
+                        "items": items,
+                        "results": results,
+                        "scores": scores,
+                        "diagnostics": diagnostics,
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
 
     if service == "chat":
         lines.append("\n# Deterministic Release Gates Summary\n")

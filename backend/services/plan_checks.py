@@ -190,6 +190,16 @@ def run_context_checks(workouts: list[dict[str, Any]], *, context: dict) -> dict
                     access_failed = True
             if kind in {"run", "hike"} and workout.get("type") != "Race":
                 minutes = segment["duration_minutes"]
+                # Conservative recognition of short maximal uphill power, even
+                # when the model omits its method tag. This is a validation
+                # boundary, not a universal physiological duration prescription.
+                uphill = segment["setting"] == "mountain" or (
+                    segment["setting"] == "treadmill" and float(segment.get("incline_pct", 0)) > 0
+                )
+                if kind == "run" and uphill and segment["zone"] == "Zone 5" and 0 < minutes <= 0.25:
+                    readiness_checked = True
+                    if "power" not in context.get("prepared_methods", []):
+                        readiness_failed = True
                 run_total += minutes
                 weekly[week] += minutes
                 if maximum_zone is not None:

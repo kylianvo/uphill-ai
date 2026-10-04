@@ -537,3 +537,28 @@ def test_scheduler_error_is_recorded_and_other_cases_continue(tmp_path, monkeypa
     assert [item["id"] for item in saved["items"]] == ["a", "b"]
     assert saved["scores"][0]["error_type"] == "ValueError"
     assert any("a" in failure for failure in failures)
+
+
+def test_completed_cases_are_retained_when_a_later_case_is_interrupted(tmp_path, monkeypatch):
+    import pytest
+
+    folder = tmp_path / "scheduler"
+    folder.mkdir()
+    for name in ("a", "b"):
+        (folder / f"fixture_{name}.json").write_text(
+            json.dumps({"synthetic": True, "provenance": "scheduler", "id": name, "user_profile": {}, "race_info": {}})
+        )
+    monkeypatch.setattr(golden_eval, "GOLDEN_DIR", str(tmp_path))
+
+    async def fake_run(service, fixture):
+        if fixture["id"] == "b":
+            raise KeyboardInterrupt()
+        return [], "gemini"
+
+    monkeypatch.setattr(golden_eval, "_run", fake_run)
+    with pytest.raises(KeyboardInterrupt):
+        golden_eval.compare("scheduler", synthetic_only=True, output_dir=str(tmp_path / "run"))
+    saved = json.loads((tmp_path / "run/partial_results.json").read_text())
+    assert saved["status"] == "incomplete"
+    assert [item["id"] for item in saved["items"]] == ["a"]
+    assert saved["scores"][0]["engine"] == "gemini"

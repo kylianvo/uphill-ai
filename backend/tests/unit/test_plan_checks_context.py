@@ -266,3 +266,12 @@ def test_recovery_feedback_suspends_healthy_budget_without_changing_snapshot():
     assert context["max_zone"] == 2
     assert "weekly_km_bounds" not in context
     assert snap.weekly_km == 70
+
+
+def test_short_maximal_uphill_efforts_require_power_preparation_without_a_method_tag():
+    wo = workout(minutes=0.2, zone="Zone 5", setting="mountain")
+    wo["type"] = "Interval"
+    assert check([wo])["strength_readiness"] is False
+    assert check([wo], prepared_methods=["power"])["strength_readiness"] is True
+    # Sustained aerobic climbing is a different stimulus.
+    assert check([workout(minutes=30, setting="mountain")])["strength_readiness"] is None
