@@ -27,6 +27,7 @@ import { getZoneColor } from "../data/workoutLibrary";
 import { FeelingSelector, rpeToFeelingId } from "./FeelingSelector";
 import { useWorkoutTypes, resolveWorkoutInfo } from "../hooks/useWorkoutTypes";
 import {
+  isResolvedDescription,
   parseExecutionSteps,
   extractDescriptionSections,
   selectMainSetText,
@@ -152,7 +153,9 @@ export default function WorkoutCard({
   const zoneColor = libraryInfo?.color || getZoneColor(wo.target_zone || "", wo.title || "", wo.type || "");
 
   const defaultSurface = leadingNumber(wo.treadmill_incline) > 0 ? "treadmill" : "outdoor";
-  const [surface, setSurface] = useState<"outdoor" | "treadmill">(defaultSurface);
+  const resolvedDescription = isResolvedDescription(wo.description);
+  const [selectedSurface, setSurface] = useState<"outdoor" | "treadmill">(defaultSurface);
+  const surface = resolvedDescription ? defaultSurface : selectedSurface;
   const treadmillGuide = getTreadmillGuide(wo.target_pace, wo.treadmill_speed, wo.treadmill_incline, wo.grade_percent);
   const [expanded, setExpanded] = useState(defaultExpanded ?? false);
   const [rpe, setRpe] = useState<number | null>(wo.rpe ?? null);
@@ -731,7 +734,7 @@ export default function WorkoutCard({
         {expanded && !isRest && (
           <div style={{ marginTop: "16px", paddingTop: "14px", borderTop: "1px solid rgba(0,0,0,0.06)" }}>
             {/* Outdoor / Treadmill toggle */}
-            <div style={{ display: "flex", gap: "6px", marginBottom: "14px" }}>
+            {!resolvedDescription && <div style={{ display: "flex", gap: "6px", marginBottom: "14px" }}>
               {(["outdoor", "treadmill"] as const).map((s) => (
                 <button
                   key={s}
@@ -765,7 +768,7 @@ export default function WorkoutCard({
                     : "Máy chạy"}
                 </button>
               ))}
-            </div>
+            </div>}
 
             {/* Surface-specific metrics */}
             <div
@@ -868,7 +871,7 @@ export default function WorkoutCard({
             )}
 
             {/* Workout info: tabbed (library) or raw fallback */}
-            {libraryInfo ? (
+            {libraryInfo && !resolvedDescription ? (
               <WorkoutLibrarySection
                 info={libraryInfo}
                 title={wo.title}

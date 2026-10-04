@@ -608,7 +608,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
       if (selectedWeek === 1) {
         const text = lang === "en"
           ? `Welcome to your ${activePlan.total_weeks}-week plan for ${raceName}. These first weeks build the aerobic foundation everything else sits on. Run easy, run often, and resist the urge to push.`
-          : `Chào mừng bạn đến với giáo án ${activePlan.total_weeks} tuần cho giải ${raceName}. Những tuần đầu tiên này sẽ xây dựng nền tảng hiếu khí (aerobic base) vững chắc. Hãy chạy nhẹ nhàng, duy trì đều đặn và không cần vội vàng ép nhịp tim.`;
+          : `Chào mừng bạn đến với plan ${activePlan.total_weeks} tuần cho giải ${raceName}. Những tuần đầu xây dựng nền tảng Aerobic cho các giai đoạn sau. Chạy nhẹ, chạy đều và tránh cố tăng cường độ.`;
         return { Icon: Leaf, color: "#10b981", text };
       }
       const msgs = lang === "en" ? [
@@ -1802,7 +1802,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                     <div style={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
                       <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                         <span style={{ fontSize: "10px", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: "700" }}>
-                          {lang === "en" ? `Weekly Volume (Week ${selectedWeek})` : `Thể tích tuần (Tuần ${selectedWeek})`}
+                          {lang === "en" ? `Weekly Volume (Week ${selectedWeek})` : `Khối lượng tuần (${selectedWeek})`}
                         </span>
                         <div style={{ display: "flex", alignItems: "baseline", gap: "6px", flexWrap: "wrap" }}>
                           <span style={{ fontSize: "18px", fontWeight: "800", color: "var(--accent-primary)" }}>{weeklyHours} {lang === "en" ? "hrs" : "giờ"}</span>

@@ -208,3 +208,13 @@ describe("mainDurationMinutes", () => {
     expect(mainDurationMinutes(60, steps)).toBe(0);
   });
 });
+
+describe("resolved prescription display", () => {
+  it("recognizes locally rendered EN and VI quantities without treating legacy prose as resolved", async () => {
+    const { isResolvedDescription } = await import("./workoutDescription");
+    expect(isResolvedDescription("Warm-up: 12 minutes in Zone 1, pace 6:00/km. → Strength: 24 minutes.")).toBe(true);
+    expect(isResolvedDescription("Run: 30 phút ở Zone 2, pace 6:00/km, Treadmill 10%.")).toBe(true);
+    expect(isResolvedDescription("Run easy for 30 minutes.")).toBe(false);
+    expect(isResolvedDescription(null)).toBe(false);
+  });
+});

@@ -246,3 +246,9 @@ export function buildCoachNotesContent(description: string): CoachNotesContent {
     fallbackText: description,
   };
 }
+
+// The backend renders this stable format from validated segments. Display it
+// directly; the generic library must not add a second numerical prescription.
+export function isResolvedDescription(description?: string | null): boolean {
+  return /^(Warm-up|Cool-down|Run|Hike|Strength|Recovery):\s*\d+(?:\.\d+)?\s+(minutes|phút)\b/.test(description || "");
+}
