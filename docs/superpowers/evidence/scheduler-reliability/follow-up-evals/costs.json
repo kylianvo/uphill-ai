@@ -1,0 +1,229 @@
+{
+  "currency": "USD",
+  "excludes": "Embedding calls and unknown costs of failed/interrupted generations.",
+  "known_generation_cost": 4.878681,
+  "unknown_generation_cost_count": 3,
+  "attribution": "All selected generation counts match logged model attempts. Two overlapping unrelated observations were excluded by matching start times to this task's prompt_sent events.",
+  "runs": [
+    {
+      "directory": "interrupted-production-1",
+      "from_start_time": "2026-10-04T12:56:27Z",
+      "to_start_time": "2026-10-04T12:58:00+00:00",
+      "logged_attempts": 2,
+      "generations": 2,
+      "known_costs": 1,
+      "cost_usd": 0.014998,
+      "input_tokens": 6952,
+      "output_tokens": 2609
+    },
+    {
+      "directory": "interrupted-production-repeat-1",
+      "from_start_time": "2026-10-04T13:13:12Z",
+      "to_start_time": "2026-10-04T13:13:31+00:00",
+      "logged_attempts": 2,
+      "generations": 2,
+      "known_costs": 1,
+      "cost_usd": 0.016762,
+      "input_tokens": 8465,
+      "output_tokens": 2777
+    },
+    {
+      "directory": "reliability-followup-production-2",
+      "from_start_time": "2026-10-04T12:58:58Z",
+      "to_start_time": "2026-10-04T13:06:50+00:00",
+      "logged_attempts": 31,
+      "generations": 31,
+      "known_costs": 31,
+      "cost_usd": 0.565591,
+      "input_tokens": 260982,
+      "output_tokens": 100097
+    },
+    {
+      "directory": "reliability-followup-v6-2",
+      "from_start_time": "2026-10-04T13:07:18Z",
+      "to_start_time": "2026-10-04T13:12:37+00:00",
+      "logged_attempts": 33,
+      "generations": 33,
+      "known_costs": 33,
+      "cost_usd": 0.561222,
+      "input_tokens": 283966,
+      "output_tokens": 95070
+    },
+    {
+      "directory": "reliability-followup2-production-1",
+      "from_start_time": "2026-10-04T13:26:20Z",
+      "to_start_time": "2026-10-04T13:34:24+00:00",
+      "logged_attempts": 31,
+      "generations": 31,
+      "known_costs": 31,
+      "cost_usd": 0.565566,
+      "input_tokens": 260954,
+      "output_tokens": 100830
+    },
+    {
+      "directory": "reliability-followup2-production-repeat-1",
+      "from_start_time": "2026-10-04T13:40:13Z",
+      "to_start_time": "2026-10-04T13:42:37+00:00",
+      "logged_attempts": 6,
+      "generations": 6,
+      "known_costs": 6,
+      "cost_usd": 0.151153,
+      "input_tokens": 55228,
+      "output_tokens": 29262
+    },
+    {
+      "directory": "reliability-followup2-v7-1",
+      "from_start_time": "2026-10-04T13:34:51Z",
+      "to_start_time": "2026-10-04T13:39:47+00:00",
+      "logged_attempts": 34,
+      "generations": 34,
+      "known_costs": 34,
+      "cost_usd": 0.531385,
+      "input_tokens": 302258,
+      "output_tokens": 82720
+    },
+    {
+      "directory": "reliability-followup2-v7-repeat-1",
+      "from_start_time": "2026-10-04T13:42:44Z",
+      "to_start_time": "2026-10-04T13:44:03+00:00",
+      "logged_attempts": 6,
+      "generations": 6,
+      "known_costs": 6,
+      "cost_usd": 0.113194,
+      "input_tokens": 59525,
+      "output_tokens": 23424
+    },
+    {
+      "directory": "reliability-followup2-v7-repeat-2",
+      "from_start_time": "2026-10-04T13:46:40Z",
+      "to_start_time": "2026-10-04T13:48:09+00:00",
+      "logged_attempts": 7,
+      "generations": 7,
+      "known_costs": 7,
+      "cost_usd": 0.132895,
+      "input_tokens": 66454,
+      "output_tokens": 27292
+    },
+    {
+      "directory": "reliability-followup2-v7-repeat-3",
+      "from_start_time": "2026-10-04T13:50:47Z",
+      "to_start_time": "2026-10-04T13:52:07+00:00",
+      "logged_attempts": 6,
+      "generations": 6,
+      "known_costs": 6,
+      "cost_usd": 0.102976,
+      "input_tokens": 59527,
+      "output_tokens": 20699
+    },
+    {
+      "directory": "reliability-followup3-production-1",
+      "from_start_time": "2026-10-04T21:02:31Z",
+      "to_start_time": "2026-10-04T21:09:39+00:00",
+      "logged_attempts": 31,
+      "generations": 31,
+      "known_costs": 31,
+      "cost_usd": 0.562342,
+      "input_tokens": 261034,
+      "output_tokens": 99954
+    },
+    {
+      "directory": "reliability-followup3-production-repeat-1",
+      "from_start_time": "2026-10-04T21:48:04Z",
+      "to_start_time": "2026-10-04T21:50:32+00:00",
+      "logged_attempts": 6,
+      "generations": 6,
+      "known_costs": 6,
+      "cost_usd": 0.167036,
+      "input_tokens": 55225,
+      "output_tokens": 33498
+    },
+    {
+      "directory": "reliability-followup3-production-repeat-2",
+      "from_start_time": "2026-10-04T21:52:17Z",
+      "to_start_time": "2026-10-04T21:54:20+00:00",
+      "logged_attempts": 6,
+      "generations": 6,
+      "known_costs": 6,
+      "cost_usd": 0.13471,
+      "input_tokens": 55229,
+      "output_tokens": 28550
+    },
+    {
+      "directory": "reliability-followup3-production-repeat-3",
+      "from_start_time": "2026-10-04T21:55:36Z",
+      "to_start_time": "2026-10-04T21:57:45+00:00",
+      "logged_attempts": 6,
+      "generations": 6,
+      "known_costs": 6,
+      "cost_usd": 0.139406,
+      "input_tokens": 55208,
+      "output_tokens": 29806
+    },
+    {
+      "directory": "reliability-followup3-v8-1",
+      "from_start_time": "2026-10-04T21:10:18Z",
+      "to_start_time": "2026-10-04T21:47:36+00:00",
+      "logged_attempts": 35,
+      "generations": 35,
+      "known_costs": 34,
+      "cost_usd": 0.473804,
+      "input_tokens": 298466,
+      "output_tokens": 69593
+    },
+    {
+      "directory": "reliability-followup3-v8-repeat-1",
+      "from_start_time": "2026-10-04T21:50:39Z",
+      "to_start_time": "2026-10-04T21:52:11+00:00",
+      "logged_attempts": 8,
+      "generations": 8,
+      "known_costs": 8,
+      "cost_usd": 0.136987,
+      "input_tokens": 74561,
+      "output_tokens": 26762
+    },
+    {
+      "directory": "reliability-followup3-v8-repeat-2",
+      "from_start_time": "2026-10-04T21:54:26Z",
+      "to_start_time": "2026-10-04T21:55:29+00:00",
+      "logged_attempts": 6,
+      "generations": 6,
+      "known_costs": 6,
+      "cost_usd": 0.103774,
+      "input_tokens": 59940,
+      "output_tokens": 19359
+    },
+    {
+      "directory": "reliability-followup3-v8-repeat-3",
+      "from_start_time": "2026-10-04T21:57:51Z",
+      "to_start_time": "2026-10-04T21:59:09+00:00",
+      "logged_attempts": 8,
+      "generations": 8,
+      "known_costs": 8,
+      "cost_usd": 0.128325,
+      "input_tokens": 74486,
+      "output_tokens": 24467
+    },
+    {
+      "directory": "reliability-followup2-production-repeat-2",
+      "from_start_time": "2026-10-04T13:44:10Z",
+      "to_start_time": "2026-10-04T13:46:33+00:00",
+      "logged_attempts": 6,
+      "generations": 6,
+      "known_costs": 6,
+      "cost_usd": 0.137126,
+      "input_tokens": 55235,
+      "output_tokens": 29193
+    },
+    {
+      "directory": "reliability-followup2-production-repeat-3",
+      "from_start_time": "2026-10-04T13:48:17Z",
+      "to_start_time": "2026-10-04T13:50:41+00:00",
+      "logged_attempts": 6,
+      "generations": 6,
+      "known_costs": 6,
+      "cost_usd": 0.139429,
+      "input_tokens": 55240,
+      "output_tokens": 29806
+    }
+  ]
+}

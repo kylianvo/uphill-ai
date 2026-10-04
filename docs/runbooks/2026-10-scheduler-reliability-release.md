@@ -1,6 +1,6 @@
 # Scheduler reliability release record
 
-Status: offline Tasks 1–7 complete; release HOLD. Both permitted candidates failed. Staging and production unchanged.
+Status: fresh v8 evaluation complete; release HOLD. Retained volume-band, latency and manual hold-target failures block staging. Production and staging unchanged.
 
 ## Frozen release contract
 
@@ -8,7 +8,7 @@ Plan: `docs/superpowers/plans/2026-10-04-scheduler-reliability.md`.
 Source register: `docs/research/2026-10-04-scheduler-rule-register.md`.
 Owner authorized execution after requiring the Vietnamese-copy skill. Apply R1–R6 to every changed/generated VI sample.
 
-- One candidate plus at most one refinement. Stop after a failed refinement.
+- Original experiment allowed one candidate plus one refinement; later explicit owner authorization permits further bounded fixes and fresh evaluation. Historical failures remain retained.
 - All 19 existing scheduler fixtures plus invented sequential cases, same code/model/date/KB for each paired arm.
 - Fixed evaluation date: 2026-10-05; keep named partial-start cases.
 - Repeat four Vietnam cases and healthy sequential blocker three times per arm.
@@ -100,3 +100,25 @@ The owner's continuing instruction with no spend limit permits a further experim
 Corrected progression accounting uses resolved locomotion minutes for structured sessions and the existing totals/type path for legacy output. The 15% limit stays unchanged; exact +15% passes and +16% fails. Compare the ratio directly to avoid floating multiplication rejecting an exact boundary. Ten red regressions reproduced. Corrected backend suite: 1232 passed, 23 existing warnings; final targeted accounting/check suite: 64 passed.
 
 Non-Race structured fueling copy is now derived from complete resolved session duration, including Strength/passive time, using the existing app bands (<75, 75–150, >150 minutes) and existing quantities. EN/VI text shares quantities and retains Carbs/Sodium vocabulary. No invented metabolic threshold, new dose or universal book attribution. Race-specific advice remains under its existing policy. Public fields/tabs/format stay unchanged. V8 tells the model to omit non-Race fueling text; all template variables and prior coaching constraints remain. Fresh paired model evaluation and real EN/VI desktop/mobile screenshots are required before a release decision.
+
+2026-10-04 21:02 UTC: froze the fresh v8 pair at code `0b9adcb153bf7a1cae1a40241492a99dabed0656`, backend tree `67e39f5f669eae2a34a852cf5f5fe16a3a4db79e`. Candidate v8 SHA256 `c7af326f7c498b9bbda6254cf4fa963e3caa65770edd06cc5840b6fb663ac5e4`; only experiment/latest labels. Same model/date and unchanged KB as recorded above. Production v1 and staging v4 unchanged. All eight paid batches include synthetic-only export. Frontend-only display fixes during this batch do not change the tested backend.
+
+2026-10-05 local / 2026-10-04 UTC: resolved Treadmill ranges including zero incline retain their complete machine ranges. Resolved outdoor ascent keeps its exact estimate; the Main Set does not duplicate whole-session distance. Suppressed obsolete pace/route estimation copy on resolved prescriptions. Red regression reproduced; frontend 462 tests pass, static build passes, lint 0 errors/131 existing warnings. Six real EN/VI desktop/mobile screenshots retained in `follow-up-evals/ui/`. Scratch users 11/12 and plans 4/5 plus sessions deleted from `uphill_ai_test`, owned servers stopped, tab closed, viewport reset.
+
+2026-10-04 21:48 UTC: v8 full run `eval_scheduler_1791150453798549000` passes all 25 harness gates, with 21 primary/4 retry cases and no paired legacy-quality regression. All arithmetic/access/intensity accounting is known; unavailable advanced readiness is not a passing score. VI ban scan: 77 workouts, zero hits. Full latency mean 89.372 s vs production 16.992 s: FAIL. Beginner primary request recorded a 2013.3-second case including retry; retain it unmodified, do not exclude it or infer its cause. P95 13.7 s does not erase the mean failure. The configured HTTP read timeout is not evidence of a hard wall-clock deadline.
+
+Manual review also holds release: recreational Treadmill Thursday prescribes Plank/Side Plank as `3 x 1` without a hold duration. Several EN sequential Strength sessions share this incomplete target. The current exercise schema has sets/reps/rest but no explicit hold target; per-session minutes do not define each hold. Do not silently invent a hold dose or claim full coaching acceptance. Other reviewed Vietnam sessions preserve flat outdoor weekdays, machine access limits, weekend mountains and distinct aerobic climbing. Fresh v8 repeats remain required.
+
+Next bounded correction, before any staging approval: make isometric hold units explicit in the internal exercise contract and render the supplied target in the existing timeline. Reject missing/ambiguous targets and cover EN/VI parity; do not choose a new universal hold duration. Separately investigate and reproduce the extreme request duration, verify an end-to-end deadline rather than a per-read timeout, and repeat the paired latency gate on frozen code. Existing raw timing remains failed evidence.
+
+2026-10-04 21:56 UTC: v8 repeat 2 fails the unchanged healthy-sequence week-2 golden band: 156.5 km versus the existing maximum 150. Contextual progression passes and volume-fit is unavailable on this typed-volume sequence, which has no watch snapshot; neither result overrides the independent golden band. No assertion or fixture/reference was loosened. Explicitly review starting-load enforcement for typed-volume cases as part of the next correction.
+
+## Fresh evaluation checkpoint — 2026-10-05
+
+All 18 completed follow-up batches plus two interrupted attempts are retained in [fresh comparison](../superpowers/evidence/scheduler-reliability/follow-up-evals/README.md). Latest v8 full suite and two repeats pass automated gates; repeat 2 fails the unchanged healthy week-2 band (156.5 km, maximum 150). No paired legacy-check regression. Full mean 89.372 s versus production 16.992 s fails +20%; all three repeated subsets average 14.873 s versus 26.080 s (-42.97%). The 2013.3-second timeout/retry outlier remains included. Manual coaching acceptance fails ambiguous isometric hold targets. Decision: **HOLD**, no staging deploy or label move.
+
+Verified prompt labels remain production v1, staging v4, snapshot-exp v4, experiment v8. Known generation cost for this continuation is $4.878681, including interrupted attempts; three generation costs unknown, embeddings excluded. Attribution matches every logged attempt after excluding two overlapping unrelated observations by request start time. Cost API returned HTTP 429 once; backed off and resumed missing reads. All 18 run names verified in retained dataset metadata; deprecated/replacement detailed-read limitation persists.
+
+Final verification: backend 1232 passed/23 existing warnings; frontend 462 passed; build passed; lint 0 errors/131 existing warnings. Six new screenshots show EN/VI desktop/mobile, with the existing format. Five incidental substring matches in generated baseline prose are explicitly filtered from committed artifacts; scores unchanged and raw hashes retained. Generated outputs are not exported to Langfuse. Full final diff/new textual evidence/private scan: zero hits. No integration tests/TRUNCATE, env/dependency/deploy-script/dashboard edits, merge or ready-for-review action. All owned synthetic UI data and preview resources cleaned up.
+
+Stop at the owner review checkpoint after push and PR update. Next proposed corrections: explicit hold units, investigate hard wall-clock deadlines, typed-volume starting-load enforcement; rerun the same paired gate without relaxing fixtures. Do not deploy or promote from automated pass alone.
