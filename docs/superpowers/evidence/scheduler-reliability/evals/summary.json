@@ -1,0 +1,370 @@
+[
+  {
+    "directory": "reliability-candidate-1",
+    "run_name": "eval_scheduler_1791105181774260000",
+    "cases": 25,
+    "latency_mean_s": 20.948,
+    "engines": {
+      "gemini": 16,
+      "rule-based-or-unknown": 2,
+      "gemini_retry": 7
+    },
+    "failures": [
+      "scheduler_fixture_elite_utmb: fell through to the rule-based-or-unknown tier",
+      "scheduler_fixture_elite_utmb: access failed or unavailable",
+      "scheduler_fixture_snapshot_elite_unmeasured_thresholds: fell through to the rule-based-or-unknown tier",
+      "scheduler_fixture_snapshot_elite_unmeasured_thresholds: access failed or unavailable",
+      "scheduler_fixture_snapshot_elite_unmeasured_thresholds: week-2 volume 174.5 km outside the expected range"
+    ],
+    "volume_failures": [
+      {
+        "id": "scheduler_fixture_snapshot_elite_unmeasured_thresholds",
+        "km": 174.5
+      }
+    ],
+    "context_false_or_unavailable": {
+      "arithmetic": {
+        "True": 25
+      },
+      "access": {
+        "True": 23,
+        "None": 2
+      },
+      "intensity_accounting": {
+        "True": 25
+      },
+      "progression": {
+        "None": 13,
+        "True": 12
+      }
+    }
+  },
+  {
+    "directory": "reliability-candidate-repeat-1",
+    "run_name": "eval_scheduler_1791105944540430000",
+    "cases": 5,
+    "latency_mean_s": 25.18,
+    "engines": {
+      "gemini_retry": 1,
+      "gemini": 4
+    },
+    "failures": [],
+    "volume_failures": [],
+    "context_false_or_unavailable": {
+      "arithmetic": {
+        "True": 5
+      },
+      "access": {
+        "True": 5
+      },
+      "intensity_accounting": {
+        "True": 5
+      },
+      "progression": {
+        "True": 5
+      }
+    }
+  },
+  {
+    "directory": "reliability-candidate-repeat-2",
+    "run_name": "eval_scheduler_1791106080890444000",
+    "cases": 5,
+    "latency_mean_s": 25.6,
+    "engines": {
+      "gemini": 4,
+      "gemini_retry": 1
+    },
+    "failures": [],
+    "volume_failures": [],
+    "context_false_or_unavailable": {
+      "arithmetic": {
+        "True": 5
+      },
+      "access": {
+        "True": 5
+      },
+      "intensity_accounting": {
+        "True": 5
+      },
+      "progression": {
+        "True": 5
+      }
+    }
+  },
+  {
+    "directory": "reliability-candidate-repeat-3",
+    "run_name": "eval_scheduler_1791106237639172000",
+    "cases": 5,
+    "latency_mean_s": 29.66,
+    "engines": {
+      "gemini": 3,
+      "gemini_retry": 2
+    },
+    "failures": [],
+    "volume_failures": [],
+    "context_false_or_unavailable": {
+      "arithmetic": {
+        "True": 5
+      },
+      "access": {
+        "True": 5
+      },
+      "intensity_accounting": {
+        "True": 5
+      },
+      "progression": {
+        "True": 5
+      }
+    }
+  },
+  {
+    "directory": "reliability-production-1",
+    "run_name": "eval_scheduler_1791055948650762000",
+    "cases": 25,
+    "latency_mean_s": 17.152,
+    "engines": {
+      "gemini": 25
+    },
+    "failures": [
+      "scheduler_sequence_unknown_override: week-2 volume 96.4 km outside the expected range",
+      "scheduler_fixture_snapshot_elite_unmeasured_thresholds: week-2 volume 108.6 km outside the expected range"
+    ],
+    "volume_failures": [
+      {
+        "id": "scheduler_sequence_unknown_override",
+        "km": 96.4
+      },
+      {
+        "id": "scheduler_fixture_snapshot_elite_unmeasured_thresholds",
+        "km": 108.6
+      }
+    ],
+    "context_false_or_unavailable": {
+      "arithmetic": {
+        "None": 25
+      },
+      "access": {
+        "None": 25
+      },
+      "intensity_accounting": {
+        "None": 25
+      },
+      "progression": {
+        "None": 25
+      }
+    }
+  },
+  {
+    "directory": "reliability-production-repeat-1",
+    "run_name": "eval_scheduler_1791105428512507000",
+    "cases": 5,
+    "latency_mean_s": 30.74,
+    "engines": {
+      "gemini": 5
+    },
+    "failures": [
+      "scheduler_fixture_vietnam_urban_recreational_no_gym: week-2 volume 74.7 km outside the expected range",
+      "scheduler_fixture_vietnam_urban_sub_elite_treadmill: week-2 volume 89.4 km outside the expected range"
+    ],
+    "volume_failures": [
+      {
+        "id": "scheduler_fixture_vietnam_urban_recreational_no_gym",
+        "km": 74.7
+      },
+      {
+        "id": "scheduler_fixture_vietnam_urban_sub_elite_treadmill",
+        "km": 89.4
+      }
+    ],
+    "context_false_or_unavailable": {
+      "arithmetic": {
+        "None": 5
+      },
+      "access": {
+        "None": 5
+      },
+      "intensity_accounting": {
+        "None": 5
+      },
+      "progression": {
+        "None": 5
+      }
+    }
+  },
+  {
+    "directory": "reliability-production-repeat-2",
+    "run_name": "eval_scheduler_1791105590895352000",
+    "cases": 5,
+    "latency_mean_s": 30.94,
+    "engines": {
+      "gemini": 5
+    },
+    "failures": [
+      "scheduler_fixture_vietnam_urban_sub_elite_treadmill: week-2 volume 88.6 km outside the expected range"
+    ],
+    "volume_failures": [
+      {
+        "id": "scheduler_fixture_vietnam_urban_sub_elite_treadmill",
+        "km": 88.6
+      }
+    ],
+    "context_false_or_unavailable": {
+      "arithmetic": {
+        "None": 5
+      },
+      "access": {
+        "None": 5
+      },
+      "intensity_accounting": {
+        "None": 5
+      },
+      "progression": {
+        "None": 5
+      }
+    }
+  },
+  {
+    "directory": "reliability-production-repeat-3",
+    "run_name": "eval_scheduler_1791105730909093000",
+    "cases": 5,
+    "latency_mean_s": 26.12,
+    "engines": {
+      "gemini": 5
+    },
+    "failures": [
+      "scheduler_fixture_vietnam_urban_sub_elite_no_gym: week-2 volume 119.5 km outside the expected range"
+    ],
+    "volume_failures": [
+      {
+        "id": "scheduler_fixture_vietnam_urban_sub_elite_no_gym",
+        "km": 119.5
+      }
+    ],
+    "context_false_or_unavailable": {
+      "arithmetic": {
+        "None": 5
+      },
+      "access": {
+        "None": 5
+      },
+      "intensity_accounting": {
+        "None": 5
+      },
+      "progression": {
+        "None": 5
+      }
+    }
+  },
+  {
+    "directory": "reliability-refinement-1",
+    "run_name": "eval_scheduler_1791106644091611000",
+    "cases": 25,
+    "latency_mean_s": 12.912,
+    "engines": {
+      "gemini": 24,
+      "rule-based-or-unknown": 1
+    },
+    "failures": [
+      "scheduler_sequence_fatigue: recovery intensity failed or unavailable",
+      "scheduler_sequence_recovery: fell through to the rule-based-or-unknown tier",
+      "scheduler_fixture_snapshot_recreational_field_thresholds: week-2 volume 79.8 km outside the expected range"
+    ],
+    "volume_failures": [
+      {
+        "id": "scheduler_fixture_snapshot_recreational_field_thresholds",
+        "km": 79.8
+      }
+    ],
+    "context_false_or_unavailable": {
+      "arithmetic": {
+        "True": 25
+      },
+      "access": {
+        "True": 25
+      },
+      "intensity_accounting": {
+        "True": 25
+      },
+      "progression": {
+        "None": 13,
+        "True": 12
+      }
+    }
+  },
+  {
+    "directory": "reliability-refinement-repeat-1",
+    "run_name": "eval_scheduler_1791106819554970000",
+    "cases": 5,
+    "latency_mean_s": 19.26,
+    "engines": {
+      "gemini": 4,
+      "gemini_retry": 1
+    },
+    "failures": [],
+    "volume_failures": [],
+    "context_false_or_unavailable": {
+      "arithmetic": {
+        "True": 5
+      },
+      "access": {
+        "True": 5
+      },
+      "intensity_accounting": {
+        "True": 5
+      },
+      "progression": {
+        "True": 5
+      }
+    }
+  },
+  {
+    "directory": "reliability-refinement-repeat-2",
+    "run_name": "eval_scheduler_1791106914360079000",
+    "cases": 5,
+    "latency_mean_s": 17.32,
+    "engines": {
+      "gemini": 5
+    },
+    "failures": [],
+    "volume_failures": [],
+    "context_false_or_unavailable": {
+      "arithmetic": {
+        "True": 5
+      },
+      "access": {
+        "True": 5
+      },
+      "intensity_accounting": {
+        "True": 5
+      },
+      "progression": {
+        "True": 5
+      }
+    }
+  },
+  {
+    "directory": "reliability-refinement-repeat-3",
+    "run_name": "eval_scheduler_1791107018485201000",
+    "cases": 5,
+    "latency_mean_s": 18.56,
+    "engines": {
+      "gemini": 5
+    },
+    "failures": [],
+    "volume_failures": [],
+    "context_false_or_unavailable": {
+      "arithmetic": {
+        "True": 5
+      },
+      "access": {
+        "True": 5
+      },
+      "intensity_accounting": {
+        "True": 5
+      },
+      "progression": {
+        "True": 5
+      }
+    }
+  }
+]
