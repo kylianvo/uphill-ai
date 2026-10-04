@@ -153,8 +153,9 @@ export default function WorkoutCard({
   const libraryInfo = resolveWorkoutInfo(wo.title || "", wo.type || "", dbTypes);
   const zoneColor = libraryInfo?.color || getZoneColor(wo.target_zone || "", wo.title || "", wo.type || "");
 
-  const defaultSurface = leadingNumber(wo.treadmill_incline) > 0 ? "treadmill" : "outdoor";
   const resolvedDescription = isResolvedDescription(wo.description);
+  const defaultSurface = leadingNumber(wo.treadmill_incline) > 0 || (resolvedDescription && leadingNumber(wo.treadmill_speed) > 0)
+    ? "treadmill" : "outdoor";
   const [selectedSurface, setSurface] = useState<"outdoor" | "treadmill">(defaultSurface);
   const surface = resolvedDescription ? defaultSurface : selectedSurface;
   const treadmillGuide = getTreadmillGuide(wo.target_pace, wo.treadmill_speed, wo.treadmill_incline, wo.grade_percent);
@@ -791,7 +792,7 @@ export default function WorkoutCard({
               {surface === "outdoor" && wo.elevation_gain_m > 0 && (
                 <MetricPill
                   label={lang === "en" ? "Elevation" : "Độ cao"}
-                  value={`+${Math.ceil(wo.elevation_gain_m / 100) * 100}m`}
+                  value={`+${resolvedDescription ? wo.elevation_gain_m : Math.ceil(wo.elevation_gain_m / 100) * 100}m`}
                   color={zoneColor}
                   icon={<Mountains size={12} />}
                 />
@@ -800,7 +801,7 @@ export default function WorkoutCard({
                 <MetricPill
                   label={lang === "en" ? "Speed" : "Tốc độ"}
                   value={
-                    treadmillGuide.estimated
+                    resolvedDescription ? `${wo.treadmill_speed} kph` : treadmillGuide.estimated
                       ? `~${treadmillGuide.speedKph} kph`
                       : `${treadmillGuide.speedKph} kph`
                   }
@@ -812,7 +813,7 @@ export default function WorkoutCard({
                 <MetricPill
                   label={lang === "en" ? "Grade" : "Độ dốc"}
                   value={
-                    treadmillGuide.estimated
+                    resolvedDescription ? `${wo.treadmill_incline}%` : treadmillGuide.estimated
                       ? `~${treadmillGuide.inclinePercent}%`
                       : `${treadmillGuide.inclinePercent}%`
                   }
@@ -833,7 +834,7 @@ export default function WorkoutCard({
               )}
             </div>
 
-            {surface === "treadmill" && treadmillGuide?.estimated && (
+            {!resolvedDescription && surface === "treadmill" && treadmillGuide?.estimated && (
               <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "-10px", marginBottom: "16px" }}>
                 {treadmillGuide.gradeSource === "outdoor-grade"
                   ? lang === "en"
@@ -1386,7 +1387,7 @@ function WorkoutLibrarySection({
   const intervalSummary = formatIntervalSummary(wo);
   if (intervalSummary) {
     targets.push({ label: lang === "en" ? "Reps" : "Số lượt", value: intervalSummary, color: "var(--text-secondary)", icon: <MapPin size={10} /> });
-  } else if (!strengthMain && wo.distance_km > 0) {
+  } else if (!resolved && wo.distance_km > 0) {
     targets.push({ label: lang === "en" ? "Est. distance" : "Cự ly ước tính", value: `~${wo.distance_km} km`, color: "var(--text-secondary)", icon: <MapPin size={10} /> });
   }
 
