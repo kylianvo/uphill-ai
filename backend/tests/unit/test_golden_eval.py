@@ -562,3 +562,28 @@ def test_completed_cases_are_retained_when_a_later_case_is_interrupted(tmp_path,
     assert saved["status"] == "incomplete"
     assert [item["id"] for item in saved["items"]] == ["a"]
     assert saved["scores"][0]["engine"] == "gemini"
+
+
+def test_scheduler_diagnostics_check_typed_starting_load():
+    from services.workout_prescription import apply_prescription
+
+    fixture = {"user_profile": {"current_weekly_km": 72}, "race_info": {"plan_start_date": "2026-10-05"}}
+    for minutes, expected in [(459, True), (486, False)]:
+        workout = {
+            "week_number": 1,
+            "day_of_week": "Tuesday",
+            "phase": "Base",
+            "type": "Easy",
+            "segments": [
+                {
+                    "kind": "run",
+                    "duration_minutes": minutes,
+                    "pace_min_per_km": 6,
+                    "zone": "Zone 2",
+                    "setting": "flat_outdoor",
+                }
+            ],
+        }
+        apply_prescription(workout, lang="en")
+        result = golden_eval._scheduler_diagnostics([workout], fixture)
+        assert result["checks"]["volume_fit"] is expected

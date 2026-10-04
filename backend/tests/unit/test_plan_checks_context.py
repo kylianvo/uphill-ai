@@ -2,6 +2,8 @@
 
 from copy import deepcopy
 
+import pytest
+
 from services import plan_checks
 from services import workout_prescription as wp
 
@@ -293,3 +295,59 @@ def test_progression_counts_running_inside_strength_without_loosening_growth_lim
     week1 = workout(minutes=60)
     assert plan_checks.check_progression([mixed, week1, workout(minutes=115, week=2)]) is True
     assert plan_checks.check_progression([mixed, week1, workout(minutes=116, week=2)]) is False
+
+
+def test_typed_starting_volume_uses_existing_floor_and_growth_cap():
+    context = plan_checks.generation_context(
+        {"plan_start_date": "2026-10-05", "current_weekly_km": 72, "max_weekly_progression": 0.10},
+        [workout(), workout(week=2)],
+    )
+    assert context["weekly_km_bounds"] == {1: [57.6, 79.2], 2: [57.6, 79.2]}
+    with pytest.raises(ValueError, match="volume_fit"):
+        plan_checks.validate_generated_workouts([workout(minutes=486), workout(minutes=459, week=2)], context=context)
+    assert (
+        plan_checks.validate_generated_workouts([workout(minutes=459), workout(minutes=459, week=2)], context=context)[
+            "volume_fit"
+        ]
+        is True
+    )
+
+
+def test_measured_snapshot_precedes_typed_volume_in_validation():
+    from types import SimpleNamespace
+
+    context = plan_checks.generation_context(
+        {
+            "plan_start_date": "2026-10-05",
+            "current_weekly_km": 108,
+            "fitness_snapshot": SimpleNamespace(weekly_km=72, readiness=None),
+        },
+        [workout()],
+    )
+    assert context["weekly_km_bounds"] == {1: [57.6, 79.2]}
+
+
+@pytest.mark.parametrize("km", [None, 0])
+def test_missing_or_zero_typed_volume_does_not_invent_a_healthy_budget(km):
+    context = plan_checks.generation_context(
+        {"plan_start_date": "2026-10-05", "current_weekly_km": km},
+        [workout()],
+    )
+    assert "weekly_km_bounds" not in context
+
+
+def test_recovery_feedback_suspends_typed_volume_floor():
+    context = plan_checks.generation_context(
+        {"plan_start_date": "2026-10-05", "current_weekly_km": 72, "training_feedback": {"overall_rpe": 8}},
+        [workout()],
+    )
+    assert "weekly_km_bounds" not in context
+    assert context["max_zone"] == 2
+
+
+def test_typed_budget_skips_partial_first_week():
+    context = plan_checks.generation_context(
+        {"plan_start_date": "2026-10-10", "current_weekly_km": 72},
+        [workout(), workout(week=2)],
+    )
+    assert context["weekly_km_bounds"] == {2: [57.6, 79.2]}

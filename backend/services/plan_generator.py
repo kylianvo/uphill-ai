@@ -1284,7 +1284,12 @@ class PlanGenerator:
             plan_checks.validate_generated_workouts(
                 wos,
                 context=plan_checks.generation_context(
-                    {**race_info, "max_weekly_progression": tier_profile.max_weekly_progression}, wos
+                    {
+                        **race_info,
+                        "current_weekly_km": user_profile.get("current_weekly_km"),
+                        "max_weekly_progression": tier_profile.max_weekly_progression,
+                    },
+                    wos,
                 ),
             )
             return wos
@@ -1753,7 +1758,11 @@ class PlanGenerator:
                 },
             )
             local_context = plan_checks.generation_context(
-                {**race_info, "max_weekly_progression": tier_profile.max_weekly_progression},
+                {
+                    **race_info,
+                    "current_weekly_km": user_profile.get("current_weekly_km"),
+                    "max_weekly_progression": tier_profile.max_weekly_progression,
+                },
                 [{"week_number": week} for week in range(block_start_week, block_end_week + 1)],
             )
             _ai_prompt += "\nLOCAL PRESCRIPTION CONSTRAINTS: " + _json.dumps(local_context)
@@ -2210,7 +2219,7 @@ class PlanGenerator:
             if course_distance_km and course_distance_km > 0:
                 scale_factor = min(1.5, max(1.0, course_distance_km / 42.2))
                 sat_dur = sat_dur * scale_factor
-            sat_dur = min(300.0, sat_dur)
+            sat_dur = min(300.0, sat_dur, week_minutes - tue_dur - wed_dur - thu_dur)
 
             if phase == "Recovery":
                 workouts.append(

@@ -294,11 +294,12 @@ def generation_context(race_info: dict, workouts: list[dict]) -> dict:
         or feedback.get("confirmed_missed_sessions", 0) > 0
         or feedback.get("volume_adjustment_required", False)
     )
-    if snapshot and not adjusted and "weekly_km_bounds" not in context:
+    baseline_km = snapshot.weekly_km if snapshot else race_info.get("current_weekly_km")
+    if baseline_km is not None and float(baseline_km) > 0 and not adjusted and "weekly_km_bounds" not in context:
         full_weeks = sorted(week for week, days in context.get("week_coverage", {}).items() if days == 7)
         if full_weeks:
             # Existing prompt floor and tier growth cap are app policy, not book percentages.
-            km = float(snapshot.weekly_km)
+            km = float(baseline_km)
             cap = float(race_info.get("max_weekly_progression", 0.10))
             budget_weeks = full_weeks[:2] if full_weeks[0] == 1 else full_weeks[:1]
             context["weekly_km_bounds"] = {

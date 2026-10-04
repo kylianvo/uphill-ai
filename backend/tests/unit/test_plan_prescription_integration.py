@@ -34,7 +34,7 @@ SEGMENTS = [
 ]
 
 
-async def generate(payload, lang="en", *, prepared_methods=None, retry_payload=None):
+async def generate(payload, lang="en", *, prepared_methods=None, retry_payload=None, check_starting_volume=False):
     response = MagicMock(text=json.dumps(payload))
     client = MagicMock()
     client.aio.__aenter__.return_value = client.aio
@@ -58,7 +58,11 @@ async def generate(payload, lang="en", *, prepared_methods=None, retry_payload=N
                 "date": "2026-12-06",
                 "plan_start_date": "2026-10-05",
                 "training_environment": "flat",
-                "validation_context": {"prepared_methods": prepared_methods or []},
+                "validation_context": {
+                    "prepared_methods": prepared_methods or [],
+                    # Short accounting boundary cases do not represent a full training week.
+                    **({} if check_starting_volume else {"weekly_km_bounds": {}}),
+                },
             },
             total_weeks=8,
             api_key="fake-key",
@@ -317,3 +321,40 @@ async def test_recovery_retry_returns_corrected_segments_not_original_hard_strid
     assert workouts[0]["target_zone"] == "Zone 2"
     assert workouts[0]["duration_minutes"] == 32
     assert workouts[0]["distance_km"] == 5.3
+
+
+@pytest.mark.asyncio
+async def test_typed_weekly_load_rejects_overshoot_and_retries_without_scaling():
+    def payload(minutes):
+        return [
+            {
+                "week_number": 1,
+                "day_of_week": "Tuesday",
+                "type": "Easy",
+                "phase": "Base",
+                "title": "Easy Run",
+                "segments": [
+                    {
+                        "kind": "run",
+                        "duration_minutes": minutes,
+                        "zone": "Zone 2",
+                        "setting": "flat_outdoor",
+                        "pace_min_per_km": 6,
+                    }
+                ],
+            }
+        ]
+
+    workouts, attempts = await generate(payload(450), retry_payload=payload(360), check_starting_volume=True)
+    assert attempts == 2
+    assert workouts[0]["distance_km"] == 60
+    assert workouts[0]["duration_minutes"] == 360
+
+
+@pytest.mark.asyncio
+async def test_fallback_race_distance_cannot_expand_the_weekly_time_budget():
+    rows = await final_fallback(4)
+    first_week = [w for w in rows if w["week_number"] == 1]
+    # Typed 62 km uses the existing six-minutes-per-km time prior: 372 minutes.
+    assert sum(w["prescription"]["aerobic_minutes"] for w in first_week) <= 372
+    assert 49.6 <= sum(w["distance_km"] for w in first_week) <= 68.2

@@ -181,7 +181,10 @@ async def _run_scheduler(fixture: dict) -> tuple[list[dict], str]:
 def _scheduler_diagnostics(workouts: list[dict], fixture: dict) -> dict:
     from services import plan_checks
 
-    race_info = fixture.get("_effective_race_info") or fixture.get("race_info", {})
+    race_info = {
+        **(fixture.get("_effective_race_info") or fixture.get("race_info", {})),
+        "current_weekly_km": fixture.get("user_profile", {}).get("current_weekly_km"),
+    }
     checks = plan_checks.run_context_checks(workouts, context=plan_checks.generation_context(race_info, workouts))
     weeks = {}
     for week in sorted({w.get("week_number") for w in workouts if isinstance(w.get("week_number"), int)}):
