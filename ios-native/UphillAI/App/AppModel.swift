@@ -11,6 +11,7 @@ final class AppModel {
     let generationService: any GenerationServicing
     let generation: GenerationCenter
     let plan: PlanViewModel
+    let chat: ChatService
     let cache: OfflineCache
     var onboardingDeferred = false
     var trainingDestination: TrainingDestination?
@@ -56,6 +57,7 @@ final class AppModel {
         generation = GenerationCenter(service: generationService)
         plan = PlanViewModel(service: planService, cache: cache, isSignedIn: { [session] in session.user != nil },
                              generation: generation, generationService: generationService)
+        chat = ChatService(client: client)
         onSignedOut = { [weak self] in
             self?.generation.reset()
             self?.plan.reset()

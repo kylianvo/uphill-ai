@@ -73,7 +73,7 @@ private struct MainTabs: View {
     @State private var overlay: Overlay?
     @State private var selection = Tab.plan
 
-    private enum Tab { case plan, me }
+    private enum Tab { case plan, coach, me }
 
     var body: some View {
         TabView(selection: $selection) {
@@ -85,6 +85,9 @@ private struct MainTabs: View {
                              app.trainingDestination = destination
                              selection = .me
                          })
+            }
+            SwiftUI.Tab("Coach", systemImage: "bubble.left.and.bubble.right.fill", value: Tab.coach) {
+                ChatView(service: app.chat, plan: app.plan.snapshot?.plan)
             }
             SwiftUI.Tab("Me", systemImage: "person.crop.circle", value: Tab.me) {
                 ProfileView(app: app)

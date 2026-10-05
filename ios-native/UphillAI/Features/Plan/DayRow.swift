@@ -391,6 +391,7 @@ struct DayRow: View {
                 .padding(.horizontal, 6)
                 .padding(.vertical, 2)
                 .background(UH.Palette.activeFill, in: Capsule())
+                .fixedSize()
 
                 Image(systemName: "chevron.right")
                     .font(.system(size: 8.5, weight: .bold))

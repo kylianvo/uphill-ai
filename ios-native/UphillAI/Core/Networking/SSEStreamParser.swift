@@ -82,13 +82,6 @@ struct SSEStreamParser: Sendable {
         }
     }
 
-    /// Convenience for URLSession.AsyncBytes
-    func parse(
-        bytes: URLSession.AsyncBytes
-    ) -> AsyncThrowingStream<ChatStreamEvent, Error> {
-        parse(bytes: bytes)
-    }
-
     /// Convenience for parsing in-memory bytes
     func parse(bytes: [UInt8]) -> AsyncThrowingStream<ChatStreamEvent, Error> {
         let stream = AsyncStream<UInt8> { continuation in

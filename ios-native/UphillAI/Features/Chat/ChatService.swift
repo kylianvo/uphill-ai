@@ -386,4 +386,13 @@ final class ChatService {
             return false
         }
     }
+
+    #if DEBUG
+    func loadMessagesDirectlyForScreenshot(_ msgs: [ChatMessage], proposals: [Int: String] = [:], clarify: [String]? = nil) {
+        self.messages = msgs
+        self.proposalStates = proposals
+        self.clarifyOptions = clarify
+    }
+    #endif
+
 }
