@@ -109,9 +109,49 @@ STRUCTURED_PRESCRIPTION_HEADER = (
 )
 
 
-def workout_response_schema(*, structured: bool) -> dict:
+def workout_response_schema(*, structured: bool, minimum_workouts: int = 1) -> dict:
     """Legacy templates retain scalar output; explicit segment contracts require it."""
     schema = deepcopy(WORKOUT_RESPONSE_SCHEMA)
+    schema["minItems"] = minimum_workouts
     if structured:
         schema["items"]["required"].append("segments")
+    else:
+        del schema["items"]["properties"]["segments"]
     return schema
+
+
+DAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+
+
+def expected_calendar_days(
+    start_week: int, end_week: int, *, start_weekday: int, partial_first_week: bool
+) -> set[tuple[int, str]]:
+    """Mirror the prompt's existing first-block start-date exclusion."""
+    return {
+        (week, day)
+        for week in range(start_week, end_week + 1)
+        for index, day in enumerate(DAYS)
+        if not (partial_first_week and week == 1 and index < start_weekday)
+    }
+
+
+def validate_calendar_coverage(workouts: list[dict], expected: set[tuple[int, str]]) -> None:
+    """Reject missing/extra calendar days; multiple sessions remain valid."""
+    from services.plan_checks import PrescriptionValidationError
+
+    actual = set()
+    unexpected = []
+    for workout in workouts:
+        week, day = workout.get("week_number"), workout.get("day_of_week")
+        if type(week) is not int or not isinstance(day, str) or (week, day) not in expected:
+            unexpected.append(f"week={week!r}, day={day!r}")
+        else:
+            actual.add((week, day))
+    missing = sorted(expected - actual)
+    if missing or unexpected:
+        raise PrescriptionValidationError(
+            "Incomplete or unexpected calendar",
+            f"Return every requested calendar day, including Rest on off days. Missing days: {missing!r}; "
+            f"unexpected days: {unexpected!r}. Double sessions cannot replace missing days. "
+            "Remove out-of-block days; do not change trusted dose or access constraints.",
+        )

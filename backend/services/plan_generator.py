@@ -1746,11 +1746,21 @@ class PlanGenerator:
             )
 
             _plan_prompt_tpl = observability.load_prompt("plan_generation", PLAN_GENERATION_PROMPT)
-            from services.plan_output_schema import STRUCTURED_PRESCRIPTION_HEADER, workout_response_schema
+            from services.plan_output_schema import (
+                STRUCTURED_PRESCRIPTION_HEADER,
+                expected_calendar_days,
+                validate_calendar_coverage,
+                workout_response_schema,
+            )
 
             # Select from trusted raw template lines, never compiled athlete input.
             _structured_prescription = STRUCTURED_PRESCRIPTION_HEADER in _plan_prompt_tpl.template.splitlines()
-            _response_schema = workout_response_schema(structured=_structured_prescription)
+            _expected_days = expected_calendar_days(
+                block_start_week, block_end_week, start_weekday=_start_idx, partial_first_week=block_number == 1
+            )
+            _response_schema = workout_response_schema(
+                structured=_structured_prescription, minimum_workouts=len(_expected_days)
+            )
             import hashlib
 
             race_info["_prompt_identity"] = {
@@ -1983,6 +1993,7 @@ class PlanGenerator:
                             not isinstance(wo.get("segments"), list) or not wo["segments"] for wo in cleaned_wos
                         ):
                             raise ValueError("Structured prescription requires nonempty segments for every workout")
+                        validate_calendar_coverage(cleaned_wos, _expected_days)
                         _processed = post_process_workouts(cleaned_wos)
                     except ValueError as error:
                         _validation_error = getattr(error, "retry_instruction", str(error))

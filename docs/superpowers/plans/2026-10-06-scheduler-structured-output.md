@@ -21,3 +21,9 @@ The marker is part of prompt versioning: structured templates must retain the ex
 Production/staging labels and deployment remain owner-controlled. No requirements, deploy-script, environment-file or dashboard changes.
 
 Provider reference: [Google structured-output documentation](https://ai.google.dev/gemini-api/docs/generate-content/structured-output?hl=en). The installed SDK supports JSON MIME type and response_json_schema. Schema support does not replace semantic validation.
+
+## Calendar correction after live compatibility probes
+
+The interrupted followup13 and fourteen diagnostic probes remain negative evidence. Fast minItems1 schemas returned one workout, so provider shape alone did not enforce a complete block. Set minItems to the requested calendar-day count (without a fixed maximum, preserving double sessions). Keep the legacy provider schema scalar by omitting unused nested segments. Validate exact requested week/day coverage locally before any normalization or week clamping. Mirror the existing partial first-week exclusion only for the first block; target weeks and subsequent blocks retain their full requested days. Missing or unexpected days enter the existing private validation retry, with a generic loggable error. Never pad days, alter prescriptions or relax coaching thresholds. Underlying provider deadline cause remains unknown.
+
+Unit boundary examples that deliberately contain one or two workouts isolate calendar validation explicitly. Separate unmocked tests cover omitted/extra days, doubles, full7/14days, partial first week and later block/target-week extents; an unmocked generator case verifies the missing-day retry. Telemetry uses a complete fixed synthetic calendar, retaining its original usage/privacy assertions. Run full backend units, obtain independent review, then freeze a fresh eight-arm followup14. Do not resume incomplete13 or accept diagnostic probes as a release gate.

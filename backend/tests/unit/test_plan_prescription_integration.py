@@ -54,6 +54,7 @@ async def generate(
     primary_text=None,
     total_weeks=8,
     target_week=None,
+    check_calendar=False,
 ):
     response = MagicMock(text=primary_text if primary_text is not None else json.dumps(payload))
     client = MagicMock()
@@ -73,6 +74,8 @@ async def generate(
         client.models.generate_content.side_effect = [response, MagicMock(text=json.dumps(retry_payload))]
     with (
         patch("services.observability.load_prompt", return_value=prompt_template) if prompt_template else nullcontext(),
+        # These dose/accounting boundary examples are deliberately partial calendars.
+        patch("services.plan_output_schema.validate_calendar_coverage") if not check_calendar else nullcontext(),
         patch("google.genai.Client", return_value=client),
         patch("services.kb_retrieval.search_scheduler_chunks", return_value=[]),
         patch("services.race_history.prompt_summary", return_value=""),
@@ -668,6 +671,10 @@ async def test_provider_schema_matches_trusted_contract_on_both_attempts(contrac
     schema = configs[0].response_json_schema
     assert schema["type"] == "array"
     assert ("segments" in schema["items"]["required"]) is (contract != "legacy")
+    assert schema["minItems"] == 7
+    if contract == "legacy":
+        assert "segments" not in schema["items"]["properties"]
+        return
     segment = schema["items"]["properties"]["segments"]["items"]
     assert set(segment["properties"]["kind"]["enum"]) == {"run", "hike", "strength", "recovery", "rest"}
     assert set(segment["properties"]["setting"]["enum"]) == {
@@ -732,3 +739,25 @@ async def test_compiled_athlete_content_cannot_select_structured_contract():
     assert attempts == 1 and rows[0]["duration_minutes"] == 19
     assert configs[0].response_mime_type == "application/json"
     assert "segments" not in configs[0].response_json_schema["items"]["required"]
+
+
+@pytest.mark.asyncio
+async def test_missing_calendar_day_retries_without_padding_or_changing_prescription():
+    days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    complete = [
+        {
+            "week_number": 1,
+            "day_of_week": day,
+            "phase": "Base",
+            "type": "Rest",
+            "title": "Rest",
+            "segments": [{"kind": "rest", "duration_minutes": 0, "setting": "unknown"}],
+        }
+        for day in days
+    ]
+    prompts = []
+    rows, attempts = await generate(complete[:-1], retry_payload=complete, sent_prompts=prompts, check_calendar=True)
+    assert attempts == 2
+    assert "Missing days: [(1, 'Sunday')]" in prompts[1]
+    assert len(rows) == 7 and all(row["duration_minutes"] == 0 for row in rows)
+    assert {row["day_of_week"] for row in rows} == set(days)

@@ -40,6 +40,17 @@ WORKOUT_JSON = json.dumps(
             "fueling_tip": "Water only.",
         }
     ]
+    + [
+        {
+            "week_number": 1,
+            "day_of_week": day,
+            "phase": "Base",
+            "title": "Rest",
+            "type": "Rest",
+            "segments": [{"kind": "rest", "duration_minutes": 0, "zone": None, "setting": "unknown"}],
+        }
+        for day in ("Monday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+    ]
 )
 USER_PROFILE = {
     "id": 42,
@@ -48,7 +59,13 @@ USER_PROFILE = {
     "resting_hr": 52,
     "injury_history": "CANARY-ACHILLES-INJURY",
 }
-RACE_INFO = {"lang": "en", "terrain": "trail", "athlete_notes": "CANARY-PRIVATE-NOTE"}
+RACE_INFO = {
+    "lang": "en",
+    "terrain": "trail",
+    "athlete_notes": "CANARY-PRIVATE-NOTE",
+    "as_of": "2026-10-05",
+    "plan_start_date": "2026-10-05",
+}
 
 
 def _usage(prompt: int, output: int, thinking: int = 0, cached: int = 0):
