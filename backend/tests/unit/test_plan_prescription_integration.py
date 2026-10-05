@@ -504,3 +504,32 @@ async def test_finish_goal_beginner_fallback_uses_resolved_walk_run_tier():
         assert all([s["kind"] for s in w["segments"]] == ["hike", "run"] * 10 for w in sessions)
         assert all(s["zone"] == "Zone 1" for w in sessions for s in w["segments"])
     assert not any(w["type"] == "Race" for w in rows)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("goal", ["return", "recovery"])
+async def test_beginner_fallback_preserves_named_goal_budget(goal):
+    with (
+        patch("services.race_history.prompt_summary", return_value=""),
+        patch("services.race_history.tier_distance", return_value=None),
+    ):
+        rows, tier = await PlanGenerator.generate_plan_workouts(
+            plan_id=0,
+            user_profile={"current_weekly_km": 2},
+            race_info={
+                "goal_type": goal,
+                "lang": "en",
+                "plan_start_date": "2026-10-05",
+                "training_environment": "flat",
+            },
+            total_weeks=4,
+            weeks_per_block=4,
+            api_key=None,
+        )
+    assert tier == "beginner"
+    if goal == "return":
+        assert sum(w["distance_km"] for w in rows if w["week_number"] == 1) == pytest.approx(1, abs=0.2)
+    else:
+        assert all(w["type"] == "Rest" for w in rows if w["week_number"] <= 2)
+        assert [w["duration_minutes"] for w in rows if w["week_number"] == 3 and w["type"] != "Rest"] == [30] * 3
+    assert all({s["kind"] for s in w["segments"]} == {"run", "hike"} for w in rows if w["type"] != "Rest")

@@ -2036,21 +2036,28 @@ class PlanGenerator:
                     active = day in {"Tuesday", "Thursday", "Saturday"} and not (goal == "recovery" and week <= 2)
                     segments = [{"kind": "rest", "duration_minutes": 0, "zone": None, "setting": "unknown"}]
                     if active:
-                        if goal == "start_running" or tier_profile.uses_walk_run:
+                        walk_run = goal == "start_running" or tier_profile.uses_walk_run
+                        minutes = 30 if goal == "recovery" else 20
+                        if goal == "return":
+                            # Conserve the existing half-load budget using the
+                            # actual 1:1 walking/running pace mixture when needed.
+                            km_per_minute = (0.5 / 15 + 0.5 / pace) if walk_run else 1 / pace
+                            minutes = min(tier_profile.weekday_minutes[1], current_weekly_km * 0.5 / km_per_minute / 3)
+                        if walk_run:
                             segments = []
                             for _ in range(10):
                                 segments.extend(
                                     [
                                         {
                                             "kind": "hike",
-                                            "duration_minutes": 1,
+                                            "duration_minutes": minutes / 20,
                                             "zone": "Zone 1",
                                             "setting": "flat_outdoor",
                                             "pace_min_per_km": 15,
                                         },
                                         {
                                             "kind": "run",
-                                            "duration_minutes": 1,
+                                            "duration_minutes": minutes / 20,
                                             "zone": "Zone 1",
                                             "setting": "flat_outdoor",
                                             "pace_min_per_km": pace,
@@ -2058,11 +2065,6 @@ class PlanGenerator:
                                     ]
                                 )
                         else:
-                            minutes = (
-                                min(tier_profile.weekday_minutes[1], current_weekly_km * 0.5 * pace / 3)
-                                if goal == "return"
-                                else 30
-                            )
                             segments = [
                                 {
                                     "kind": "run",
