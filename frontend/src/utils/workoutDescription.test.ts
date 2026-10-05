@@ -208,3 +208,25 @@ describe("mainDurationMinutes", () => {
     expect(mainDurationMinutes(60, steps)).toBe(0);
   });
 });
+
+describe("resolved prescription display", () => {
+  it("recognizes locally rendered EN and VI quantities without treating legacy prose as resolved", async () => {
+    const { isResolvedDescription } = await import("./workoutDescription");
+    expect(isResolvedDescription("Warm-up: 12 minutes in Zone 1, pace 6:00/km. → Strength: 24 minutes.")).toBe(true);
+    expect(isResolvedDescription("Run: 30 phút ở Zone 2, pace 6:00/km, Treadmill 10%.")).toBe(true);
+    expect(isResolvedDescription("Run easy for 30 minutes.")).toBe(false);
+    expect(isResolvedDescription(null)).toBe(false);
+  });
+});
+
+it("preserves fractional minutes in resolved warm-up and cool-down quantities", () => {
+  expect(extractLeadingMinutes("Warm-up: 7.5 minutes in Zone 1.")).toBe(7.5);
+  expect(extractLeadingMinutes("Cool-down: 2.5 phút ở Zone 1.")).toBe(2.5);
+});
+
+it("keeps resolved execution separate from rationale and generic library instructions", () => {
+  const result = selectMainSetText({execution: "Run for 90 minutes.", overview: "Generic training advice."},
+    "Run: 36 minutes in Zone 2, pace 6:00/km. Reason: Keep the effort easy.");
+  expect(result.executionText).toBe("Run: 36 minutes in Zone 2, pace 6:00/km.");
+  expect(result.overviewText).toBe("");
+});

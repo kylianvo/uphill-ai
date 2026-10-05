@@ -1,0 +1,48 @@
+{
+  "status": "interrupted; not a completed evaluation",
+  "code_sha": "e9162bd300342803c9e718393fce90da6e220ed9",
+  "prompt_label": "production",
+  "cause": "conditional JSON import prevented local constraints on ordinary fixtures",
+  "logged_model_attempts": 2,
+  "completed_model_responses": 1,
+  "events": [
+    "[compare] scheduler_fixture_beginner_start_running \u2192 Gemini+KB...",
+    "[PlanGen] Prompt building failed: cannot access local variable 'json' where it is not associated with a value. Using rule-based fallback.",
+    {
+      "ts": "2026-10-04T12:56:30Z",
+      "level": "INFO",
+      "logger": "services.plan_generator",
+      "msg": "gemini prompt sent",
+      "service": "plan_generator",
+      "engine": "gemini",
+      "event": "prompt_sent",
+      "chars_sent": 29525
+    },
+    {
+      "ts": "2026-10-04T12:56:42Z",
+      "level": "INFO",
+      "logger": "services.plan_generator",
+      "msg": "gemini response received",
+      "service": "plan_generator",
+      "engine": "gemini",
+      "event": "response_received",
+      "chars_received": 9572,
+      "latency_ms": 11845
+    },
+    "[compare] scheduler_fixture_elite_utmb \u2192 Gemini+KB...",
+    "[PlanGen] Prompt building failed: cannot access local variable 'json' where it is not associated with a value. Using rule-based fallback.",
+    {
+      "ts": "2026-10-04T12:56:43Z",
+      "level": "INFO",
+      "logger": "services.plan_generator",
+      "msg": "gemini prompt sent",
+      "service": "plan_generator",
+      "engine": "gemini",
+      "event": "prompt_sent",
+      "chars_sent": 33867
+    },
+    "KeyboardInterrupt"
+  ],
+  "regression_red": "1 failed, 5 passed",
+  "corrected_unit_suite": "1219 passed; 23 existing warnings"
+}

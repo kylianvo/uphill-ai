@@ -1,0 +1,17 @@
+[
+  {
+    "file": "partial_results.json",
+    "raw_sha256": "c7d2a7f5bed62911422d0441d050208781181ef3ff4b127759a9509beff4e37d",
+    "privacy_filtered_occurrences": 0
+  },
+  {
+    "file": "baseline.log",
+    "raw_sha256": "d7a3321e52049bd76b3ca77f84884a524abab4b05b202b1351b3eabecadc153b",
+    "privacy_filtered_occurrences": 0
+  },
+  {
+    "file": "identity.json",
+    "raw_sha256": "cac5e674e8cb0332e3cd0e0bfb7abb3481faa2e7ec6ca73912d1c1b01c93dcc5",
+    "privacy_filtered_occurrences": 0
+  }
+]

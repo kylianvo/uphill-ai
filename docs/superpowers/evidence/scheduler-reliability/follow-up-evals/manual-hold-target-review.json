@@ -1,0 +1,441 @@
+[
+  {
+    "directory": "reliability-followup3-v8-1",
+    "manual_hold_targets": [
+      {
+        "fixture": "scheduler_fixture_novice_10k",
+        "week": 1,
+        "day": "Wednesday",
+        "exercise": {
+          "name": "Front Plank",
+          "sets": 3,
+          "reps": 30,
+          "rest_seconds": 45.0,
+          "equipment": [
+            "bodyweight"
+          ]
+        },
+        "finding": "Rep-only prescription does not specify a per-hold duration or distinguish seconds from repetitions."
+      },
+      {
+        "fixture": "scheduler_fixture_recreational_50k",
+        "week": 1,
+        "day": "Tuesday",
+        "exercise": {
+          "name": "Front Plank",
+          "sets": 3,
+          "reps": 1,
+          "rest_seconds": 45.0,
+          "equipment": [
+            "bodyweight"
+          ]
+        },
+        "finding": "Rep-only prescription does not specify a per-hold duration or distinguish seconds from repetitions."
+      },
+      {
+        "fixture": "scheduler_fixture_recreational_50k",
+        "week": 1,
+        "day": "Sunday",
+        "exercise": {
+          "name": "Side Plank",
+          "sets": 3,
+          "reps": 1,
+          "rest_seconds": 45.0,
+          "equipment": [
+            "bodyweight"
+          ]
+        },
+        "finding": "Rep-only prescription does not specify a per-hold duration or distinguish seconds from repetitions."
+      },
+      {
+        "fixture": "scheduler_sequence_confirmed_missed",
+        "week": 1,
+        "day": "Tuesday",
+        "exercise": {
+          "name": "Front Plank",
+          "sets": 3,
+          "reps": 1,
+          "rest_seconds": 40.0,
+          "equipment": [
+            "bodyweight"
+          ]
+        },
+        "finding": "Rep-only prescription does not specify a per-hold duration or distinguish seconds from repetitions."
+      },
+      {
+        "fixture": "scheduler_sequence_confirmed_missed",
+        "week": 2,
+        "day": "Tuesday",
+        "exercise": {
+          "name": "Forearm Plank",
+          "sets": 3,
+          "reps": 1,
+          "rest_seconds": 45.0,
+          "equipment": [
+            "bodyweight"
+          ]
+        },
+        "finding": "Rep-only prescription does not specify a per-hold duration or distinguish seconds from repetitions."
+      },
+      {
+        "fixture": "scheduler_sequence_taper",
+        "week": 2,
+        "day": "Wednesday",
+        "exercise": {
+          "name": "Front Plank",
+          "sets": 2,
+          "reps": 1,
+          "rest_seconds": 45.0,
+          "equipment": [
+            "bodyweight"
+          ]
+        },
+        "finding": "Rep-only prescription does not specify a per-hold duration or distinguish seconds from repetitions."
+      },
+      {
+        "fixture": "scheduler_fixture_snapshot_elite_no_coros",
+        "week": 1,
+        "day": "Tuesday",
+        "exercise": {
+          "name": "Forearm Plank",
+          "sets": 3,
+          "reps": 1,
+          "rest_seconds": 45.0,
+          "equipment": [
+            "bodyweight"
+          ]
+        },
+        "finding": "Rep-only prescription does not specify a per-hold duration or distinguish seconds from repetitions."
+      },
+      {
+        "fixture": "scheduler_fixture_snapshot_elite_no_coros",
+        "week": 2,
+        "day": "Tuesday",
+        "exercise": {
+          "name": "Side Plank",
+          "sets": 3,
+          "reps": 1,
+          "rest_seconds": 45.0,
+          "equipment": [
+            "bodyweight"
+          ]
+        },
+        "finding": "Rep-only prescription does not specify a per-hold duration or distinguish seconds from repetitions."
+      },
+      {
+        "fixture": "scheduler_fixture_snapshot_recreational_field_thresholds",
+        "week": 1,
+        "day": "Monday",
+        "exercise": {
+          "name": "Plank",
+          "sets": 3,
+          "reps": 1,
+          "rest_seconds": 45.0,
+          "equipment": [
+            "bodyweight"
+          ]
+        },
+        "finding": "Rep-only prescription does not specify a per-hold duration or distinguish seconds from repetitions."
+      },
+      {
+        "fixture": "scheduler_fixture_snapshot_recreational_field_thresholds",
+        "week": 2,
+        "day": "Monday",
+        "exercise": {
+          "name": "Plank",
+          "sets": 3,
+          "reps": 1,
+          "rest_seconds": 45.0,
+          "equipment": [
+            "bodyweight"
+          ]
+        },
+        "finding": "Rep-only prescription does not specify a per-hold duration or distinguish seconds from repetitions."
+      },
+      {
+        "fixture": "scheduler_fixture_subelite_100k",
+        "week": 1,
+        "day": "Wednesday",
+        "exercise": {
+          "name": "Plank",
+          "sets": 3,
+          "reps": 1,
+          "rest_seconds": 45.0,
+          "equipment": [
+            "bodyweight"
+          ]
+        },
+        "finding": "Rep-only prescription does not specify a per-hold duration or distinguish seconds from repetitions."
+      },
+      {
+        "fixture": "scheduler_fixture_time_goal_marathon",
+        "week": 1,
+        "day": "Tuesday",
+        "exercise": {
+          "name": "Forearm Plank",
+          "sets": 3,
+          "reps": 1,
+          "rest_seconds": 60.0,
+          "equipment": [
+            "bodyweight"
+          ]
+        },
+        "finding": "Rep-only prescription does not specify a per-hold duration or distinguish seconds from repetitions."
+      },
+      {
+        "fixture": "scheduler_fixture_trail_8wk",
+        "week": 1,
+        "day": "Monday",
+        "exercise": {
+          "name": "Plank",
+          "sets": 3,
+          "reps": 1,
+          "rest_seconds": 45.0,
+          "equipment": [
+            "bodyweight"
+          ]
+        },
+        "finding": "Rep-only prescription does not specify a per-hold duration or distinguish seconds from repetitions."
+      },
+      {
+        "fixture": "scheduler_fixture_vertical_km_no_gym",
+        "week": 1,
+        "day": "Tuesday",
+        "exercise": {
+          "name": "Plank",
+          "sets": 3,
+          "reps": 1,
+          "rest_seconds": 45.0,
+          "equipment": [
+            "bodyweight"
+          ]
+        },
+        "finding": "Rep-only prescription does not specify a per-hold duration or distinguish seconds from repetitions."
+      },
+      {
+        "fixture": "scheduler_fixture_vertical_km_no_gym",
+        "week": 1,
+        "day": "Sunday",
+        "exercise": {
+          "name": "Side Plank",
+          "sets": 3,
+          "reps": 1,
+          "rest_seconds": 45.0,
+          "equipment": [
+            "bodyweight"
+          ]
+        },
+        "finding": "Rep-only prescription does not specify a per-hold duration or distinguish seconds from repetitions."
+      },
+      {
+        "fixture": "scheduler_fixture_vi_trail_42k",
+        "week": 1,
+        "day": "Sunday",
+        "exercise": {
+          "name": "Plank Hold",
+          "sets": 3,
+          "reps": 1,
+          "rest_seconds": 45.0,
+          "equipment": [
+            "bodyweight"
+          ]
+        },
+        "finding": "Rep-only prescription does not specify a per-hold duration or distinguish seconds from repetitions."
+      },
+      {
+        "fixture": "scheduler_fixture_vietnam_urban_recreational_treadmill",
+        "week": 1,
+        "day": "Thursday",
+        "exercise": {
+          "name": "Plank",
+          "sets": 3,
+          "reps": 1,
+          "rest_seconds": 45.0,
+          "equipment": [
+            "bodyweight"
+          ]
+        },
+        "finding": "Rep-only prescription does not specify a per-hold duration or distinguish seconds from repetitions."
+      },
+      {
+        "fixture": "scheduler_fixture_vietnam_urban_recreational_treadmill",
+        "week": 2,
+        "day": "Thursday",
+        "exercise": {
+          "name": "Side Plank",
+          "sets": 3,
+          "reps": 1,
+          "rest_seconds": 45.0,
+          "equipment": [
+            "bodyweight"
+          ]
+        },
+        "finding": "Rep-only prescription does not specify a per-hold duration or distinguish seconds from repetitions."
+      }
+    ]
+  },
+  {
+    "directory": "reliability-followup3-v8-repeat-1",
+    "manual_hold_targets": [
+      {
+        "fixture": "scheduler_sequence_healthy_completed",
+        "week": 1,
+        "day": "Thursday",
+        "exercise": {
+          "name": "Standard Plank Hold",
+          "sets": 3,
+          "reps": 1,
+          "rest_seconds": 45.0,
+          "equipment": [
+            "bodyweight"
+          ]
+        },
+        "finding": "Rep-only prescription does not specify a per-hold duration or distinguish seconds from repetitions."
+      },
+      {
+        "fixture": "scheduler_sequence_healthy_completed",
+        "week": 2,
+        "day": "Thursday",
+        "exercise": {
+          "name": "Standard Forearm Plank",
+          "sets": 3,
+          "reps": 1,
+          "rest_seconds": 45.0,
+          "equipment": [
+            "bodyweight"
+          ]
+        },
+        "finding": "Rep-only prescription does not specify a per-hold duration or distinguish seconds from repetitions."
+      },
+      {
+        "fixture": "scheduler_fixture_vietnam_urban_recreational_treadmill",
+        "week": 1,
+        "day": "Thursday",
+        "exercise": {
+          "name": "Plank",
+          "sets": 3,
+          "reps": 1,
+          "rest_seconds": 45.0,
+          "equipment": [
+            "bodyweight"
+          ]
+        },
+        "finding": "Rep-only prescription does not specify a per-hold duration or distinguish seconds from repetitions."
+      },
+      {
+        "fixture": "scheduler_fixture_vietnam_urban_recreational_treadmill",
+        "week": 2,
+        "day": "Thursday",
+        "exercise": {
+          "name": "Plank",
+          "sets": 3,
+          "reps": 1,
+          "rest_seconds": 45.0,
+          "equipment": [
+            "bodyweight"
+          ]
+        },
+        "finding": "Rep-only prescription does not specify a per-hold duration or distinguish seconds from repetitions."
+      },
+      {
+        "fixture": "scheduler_fixture_vietnam_urban_recreational_treadmill",
+        "week": 2,
+        "day": "Thursday",
+        "exercise": {
+          "name": "Side Plank",
+          "sets": 2,
+          "reps": 1,
+          "rest_seconds": 45.0,
+          "equipment": [
+            "bodyweight"
+          ]
+        },
+        "finding": "Rep-only prescription does not specify a per-hold duration or distinguish seconds from repetitions."
+      }
+    ]
+  },
+  {
+    "directory": "reliability-followup3-v8-repeat-2",
+    "manual_hold_targets": []
+  },
+  {
+    "directory": "reliability-followup3-v8-repeat-3",
+    "manual_hold_targets": [
+      {
+        "fixture": "scheduler_sequence_healthy_completed",
+        "week": 2,
+        "day": "Tuesday",
+        "exercise": {
+          "name": "Standard Plank Hold",
+          "sets": 3,
+          "reps": 45,
+          "rest_seconds": 30.0,
+          "equipment": [
+            "bodyweight"
+          ]
+        },
+        "finding": "Rep-only prescription does not specify a per-hold duration or distinguish seconds from repetitions."
+      },
+      {
+        "fixture": "scheduler_fixture_vietnam_urban_recreational_treadmill",
+        "week": 1,
+        "day": "Tuesday",
+        "exercise": {
+          "name": "Plank",
+          "sets": 3,
+          "reps": 1,
+          "rest_seconds": 45.0,
+          "equipment": [
+            "bodyweight"
+          ]
+        },
+        "finding": "Rep-only prescription does not specify a per-hold duration or distinguish seconds from repetitions."
+      },
+      {
+        "fixture": "scheduler_fixture_vietnam_urban_recreational_treadmill",
+        "week": 2,
+        "day": "Tuesday",
+        "exercise": {
+          "name": "Plank",
+          "sets": 3,
+          "reps": 1,
+          "rest_seconds": 45.0,
+          "equipment": [
+            "bodyweight"
+          ]
+        },
+        "finding": "Rep-only prescription does not specify a per-hold duration or distinguish seconds from repetitions."
+      },
+      {
+        "fixture": "scheduler_fixture_vietnam_urban_sub_elite_treadmill",
+        "week": 1,
+        "day": "Thursday",
+        "exercise": {
+          "name": "Plank Core Hold",
+          "sets": 3,
+          "reps": 60,
+          "rest_seconds": 45.0,
+          "equipment": [
+            "bodyweight"
+          ]
+        },
+        "finding": "Rep-only prescription does not specify a per-hold duration or distinguish seconds from repetitions."
+      },
+      {
+        "fixture": "scheduler_fixture_vietnam_urban_sub_elite_treadmill",
+        "week": 2,
+        "day": "Thursday",
+        "exercise": {
+          "name": "Side Plank Hold",
+          "sets": 3,
+          "reps": 45,
+          "rest_seconds": 45.0,
+          "equipment": [
+            "bodyweight"
+          ]
+        },
+        "finding": "Rep-only prescription does not specify a per-hold duration or distinguish seconds from repetitions."
+      }
+    ]
+  }
+]

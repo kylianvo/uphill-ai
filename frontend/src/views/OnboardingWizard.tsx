@@ -161,6 +161,8 @@ export default function OnboardingWizard() {
 
       if (onboardingAnswers.ant_hr) payload.ant_hr = parseInt(onboardingAnswers.ant_hr);
 
+      if (onboardingAnswers.threshold_source) payload.threshold_source = onboardingAnswers.threshold_source;
+
       if (onboardingAnswers.max_hr) payload.max_hr = parseInt(onboardingAnswers.max_hr);
 
       if (onboardingAnswers.resting_hr) payload.resting_hr = parseInt(onboardingAnswers.resting_hr);
@@ -230,6 +232,7 @@ export default function OnboardingWizard() {
           gemini_api_key: data.user.gemini_api_key ?? "",
           zone2_pace_min: data.user.zone2_pace_min ?? "6:30",
           zone2_pace_max: data.user.zone2_pace_max ?? "5:45",
+          threshold_source: data.user.threshold_source ?? "unknown",
         });
       }
 
@@ -717,6 +720,16 @@ export default function OnboardingWizard() {
                     </div>
                     <input type="number" className="chat-input" style={inputS} placeholder="165" value={onboardingAnswers.ant_hr} onChange={e => setAns("ant_hr", e.target.value)} />
                     <p style={{ fontSize: "11px", color: "var(--text-muted)", margin: "4px 0 0 0" }}>{t("profile_ant_hint")}</p>
+                  </div>
+
+                  <div>
+                    <label style={labelS} htmlFor="onboarding-threshold-source-1">{t("threshold_source_label")}</label>
+                    <select id="onboarding-threshold-source-1" className="chat-input" style={inputS} value={onboardingAnswers.threshold_source || "unknown"} onChange={e => setAns("threshold_source", e.target.value)}>
+                      {(["lab", "field", "estimated", "unknown"] as const).map(v => (
+                        <option key={v} value={v}>{t(`threshold_source_${v}` as const)}</option>
+                      ))}
+                    </select>
+                    <p style={{ fontSize: "11px", color: "var(--text-muted)", margin: "4px 0 0 0" }}>{t("threshold_source_hint")}</p>
                   </div>
 
                   <div><label style={labelS}>Max HR (bpm)</label><input type="number" className="chat-input" style={inputS} placeholder="185" value={onboardingAnswers.max_hr} onChange={e => setAns("max_hr", e.target.value)} /></div>
@@ -1369,6 +1382,16 @@ export default function OnboardingWizard() {
                     </div>
                     <input type="number" className="chat-input" style={inputS} placeholder="165" value={onboardingAnswers.ant_hr || ""} onChange={e => setAns("ant_hr", e.target.value)} />
                     <p style={{ fontSize: "11px", color: "var(--text-muted)", margin: "4px 0 0 0" }}>{t("profile_ant_hint")}</p>
+                  </div>
+
+                  <div>
+                    <label style={labelS} htmlFor="onboarding-threshold-source-2">{t("threshold_source_label")}</label>
+                    <select id="onboarding-threshold-source-2" className="chat-input" style={inputS} value={onboardingAnswers.threshold_source || "unknown"} onChange={e => setAns("threshold_source", e.target.value)}>
+                      {(["lab", "field", "estimated", "unknown"] as const).map(v => (
+                        <option key={v} value={v}>{t(`threshold_source_${v}` as const)}</option>
+                      ))}
+                    </select>
+                    <p style={{ fontSize: "11px", color: "var(--text-muted)", margin: "4px 0 0 0" }}>{t("threshold_source_hint")}</p>
                   </div>
 
                   <div><label style={labelS}>Max HR (bpm)</label><input type="number" className="chat-input" style={inputS} placeholder="185" value={onboardingAnswers.max_hr || ""} onChange={e => setAns("max_hr", e.target.value)} /></div>

@@ -1,0 +1,43 @@
+{
+  "as_of": "2026-10-05",
+  "model": "gemini-3.8-flash",
+  "code": "c0163daca2b588a0d7bc371371955ccdc857e6f5",
+  "backend_tree": "159b808de76c09bea308486391849aa78ffc9d58",
+  "production": {
+    "version": 1,
+    "sha256": "a0eab967a172a094ee5b524486b643497df24fae81406a7c1d0d2cfbf309ee4e"
+  },
+  "candidate": {
+    "version": 11,
+    "label": "scheduler-reliability-exp",
+    "sha256": "c64cea13c20a4f3e1a171bbceff8f3abeda5eb9f11eca0ed38da47cad3df4c1e"
+  },
+  "staging_version": 4,
+  "scheduler_seed_sha256": "401fb69936edddefdff442d338baa01f1371fc47f5ca1a688d8a191dda55c7e0",
+  "principles_sha256": "15aaa37cb372f44fb5aecaf57ba2f7f6510a0f33585b4f42b654c0ddfc546563",
+  "qdrant_sha256": "60001d3f78fa26e2f8b6a9a8860fae96504cc213f38e41abea5f3088117f77b0",
+  "export_content": false,
+  "synthetic_only": true,
+  "labels_before_run": [
+    {
+      "label": "production",
+      "version": 1,
+      "sha256": "a0eab967a172a094ee5b524486b643497df24fae81406a7c1d0d2cfbf309ee4e"
+    },
+    {
+      "label": "staging",
+      "version": 4,
+      "sha256": "e100c9d4269819bba19cb03e7167ab6174aca637a0f72d977d4426d4f4192fdb"
+    },
+    {
+      "label": "snapshot-exp",
+      "version": 4,
+      "sha256": "e100c9d4269819bba19cb03e7167ab6174aca637a0f72d977d4426d4f4192fdb"
+    },
+    {
+      "label": "scheduler-reliability-exp",
+      "version": 11,
+      "sha256": "c64cea13c20a4f3e1a171bbceff8f3abeda5eb9f11eca0ed38da47cad3df4c1e"
+    }
+  ]
+}

@@ -75,6 +75,10 @@ _SCORE_SPECS: dict[str, Any] = {
     "block_compliance": _UNIT_INTERVAL,
     "plan_reworked": frozenset({0, 1}),
     "plan_checks": _UNIT_INTERVAL,
+    # Plans: the tier the plan was written for, and how closely week 2 matches the
+    # athlete's measured weekly volume (min(r, 1/r); only when COROS measured it).
+    "plan_tier": frozenset({"beginner", "novice", "recreational", "sub_elite", "elite"}),
+    "plan_volume_fit": _UNIT_INTERVAL,
     # Goals: race outcome against the A..C range and B, and which option was applied.
     "goal_hit": frozenset({0, 1}),
     "goal_error": _UNIT_INTERVAL,

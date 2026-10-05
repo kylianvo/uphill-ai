@@ -1,0 +1,26 @@
+[
+  {
+    "directory": "reliability-followup7-v11-1",
+    "legacy_quality_regressions": [],
+    "vi_workouts_scanned": 77,
+    "ban_hits": []
+  },
+  {
+    "directory": "reliability-followup7-v11-repeat-1",
+    "legacy_quality_regressions": [],
+    "vi_workouts_scanned": 56,
+    "ban_hits": []
+  },
+  {
+    "directory": "reliability-followup7-v11-repeat-2",
+    "legacy_quality_regressions": [],
+    "vi_workouts_scanned": 56,
+    "ban_hits": []
+  },
+  {
+    "directory": "reliability-followup7-v11-repeat-3",
+    "legacy_quality_regressions": [],
+    "vi_workouts_scanned": 56,
+    "ban_hits": []
+  }
+]

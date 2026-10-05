@@ -1,0 +1,216 @@
+{
+  "review_date": "2026-10-04",
+  "timezone": "Australia/Sydney",
+  "playlist_url": "https://www.youtube.com/playlist?list=PLuO4QS-PS1DfAqVMxkzR4GCumOB790Vuz",
+  "requested_video_id": "1emEMbVnYBo",
+  "retrieval": "youtube-transcript-api 1.2.4",
+  "coverage": "All nine listed public videos retrieved; full captions searched for long-run percentage terminology; selected context windows reviewed. Not a complete audiovisual review.",
+  "raw_transcripts_committed": false,
+  "videos": [
+    {
+      "id": "PP7GqpvIVWY",
+      "title": "The Physiology Of Endurance",
+      "url": "https://www.youtube.com/watch?v=PP7GqpvIVWY",
+      "caption_language": "English (auto-generated)",
+      "auto_generated": true,
+      "caption_segments": 1582,
+      "caption_end_seconds": 3932,
+      "caption_word_count": 11044,
+      "raw_json_sha256": "44cff5f061f7f303dba30735e82e36e575d25dcde55358c7d9b272ec3aabc4bd",
+      "reviewed_windows_seconds": [
+        [
+          880,
+          1050
+        ],
+        [
+          1920,
+          2088
+        ]
+      ]
+    },
+    {
+      "id": "twzUV-tdMs0",
+      "title": "The Physiology Of Endurance -- Part 2",
+      "url": "https://www.youtube.com/watch?v=twzUV-tdMs0",
+      "caption_language": "English (auto-generated)",
+      "auto_generated": true,
+      "caption_segments": 1684,
+      "caption_end_seconds": 3919,
+      "caption_word_count": 11326,
+      "raw_json_sha256": "49e33d5250cde7227a84eaccd593517a54f0ff189e4270477131b4b8931bd808",
+      "reviewed_windows_seconds": [
+        [
+          134,
+          302
+        ],
+        [
+          807,
+          973
+        ]
+      ]
+    },
+    {
+      "id": "1emEMbVnYBo",
+      "title": "Evoke Endurance Book Club: Training For The Uphill Athlete; Chapter 3",
+      "url": "https://www.youtube.com/watch?v=1emEMbVnYBo",
+      "caption_language": "English (auto-generated)",
+      "auto_generated": true,
+      "caption_segments": 1769,
+      "caption_end_seconds": 4066,
+      "caption_word_count": 12184,
+      "raw_json_sha256": "22bc0f5749c006817431ec97ffe16ffe140d91018af51c2ce8ad30bf13466e29",
+      "reviewed_windows_seconds": [
+        [
+          540,
+          940
+        ],
+        [
+          1720,
+          2230
+        ],
+        [
+          2180,
+          2570
+        ],
+        [
+          2890,
+          3100
+        ],
+        [
+          3610,
+          3910
+        ]
+      ]
+    },
+    {
+      "id": "iIyUMpFAx_A",
+      "title": "Evoke Endurance Book Club #4: Monitoring Your Training",
+      "url": "https://www.youtube.com/watch?v=iIyUMpFAx_A",
+      "caption_language": "English (auto-generated)",
+      "auto_generated": true,
+      "caption_segments": 1672,
+      "caption_end_seconds": 4022,
+      "caption_word_count": 11206,
+      "raw_json_sha256": "7ce6b425b206ce0ecdbb962ca5c5e1dd406dd6ea5599201b58b1b40717bb1290",
+      "reviewed_windows_seconds": [
+        [
+          1885,
+          2140
+        ]
+      ]
+    },
+    {
+      "id": "PrWqNDsKnHg",
+      "title": "Evoke Endurance Book Club #5: Application - Where Theory Meets Reality (Part 1)",
+      "url": "https://www.youtube.com/watch?v=PrWqNDsKnHg",
+      "caption_language": "English (auto-generated)",
+      "auto_generated": true,
+      "caption_segments": 1705,
+      "caption_end_seconds": 3882,
+      "caption_word_count": 11784,
+      "raw_json_sha256": "7854a4b6ec924b2c1332dcb5deda03911d9991c912e55ae63d922c89ff6aa02c",
+      "reviewed_windows_seconds": [
+        [
+          2333,
+          2502
+        ],
+        [
+          2475,
+          2650
+        ]
+      ]
+    },
+    {
+      "id": "CmTg2Wcj1dM",
+      "title": "Evoke Endurance Book Club #5 Part 2: Application - Where Strength, Power, And Endurance Merge.",
+      "url": "https://www.youtube.com/watch?v=CmTg2Wcj1dM",
+      "caption_language": "English (auto-generated)",
+      "auto_generated": true,
+      "caption_segments": 1946,
+      "caption_end_seconds": 4620,
+      "caption_word_count": 13360,
+      "raw_json_sha256": "bb38b954fa6b4fb79f4e0ed77a2b7fcf0f504ef6a5348ad7544307d53c061cfd",
+      "reviewed_windows_seconds": [
+        [
+          488,
+          656
+        ],
+        [
+          740,
+          960
+        ],
+        [
+          1270,
+          1570
+        ]
+      ]
+    },
+    {
+      "id": "UOG5cPN_vkQ",
+      "title": "Evoke Endurance Book Club #5 Part 3: High Intensity Training And VO2 Max",
+      "url": "https://www.youtube.com/watch?v=UOG5cPN_vkQ",
+      "caption_language": "English (auto-generated)",
+      "auto_generated": true,
+      "caption_segments": 2154,
+      "caption_end_seconds": 5202,
+      "caption_word_count": 14678,
+      "raw_json_sha256": "0c708e756e3b5d99b75d9009a778645e3b069f2bf3547c183e83a2a103848ecf",
+      "reviewed_windows_seconds": [
+        [
+          60,
+          240
+        ],
+        [
+          263,
+          431
+        ],
+        [
+          1103,
+          1269
+        ]
+      ]
+    },
+    {
+      "id": "jardqEerNKQ",
+      "title": "Evoke Endurance Book Club Chapter 6: Training Strength And Power",
+      "url": "https://www.youtube.com/watch?v=jardqEerNKQ",
+      "caption_language": "English (auto-generated)",
+      "auto_generated": true,
+      "caption_segments": 2063,
+      "caption_end_seconds": 4639,
+      "caption_word_count": 13397,
+      "raw_json_sha256": "9d184ddaefba7601ae2047da881b259cbfac0e577afadda48041dab24a12d959",
+      "reviewed_windows_seconds": [
+        [
+          137,
+          304
+        ],
+        [
+          1870,
+          2035
+        ]
+      ]
+    },
+    {
+      "id": "htn5zPYg4HA",
+      "title": "Evoke Endurance Book Club Chapters 7 & 8: General And Specific Strength; Assessment And Programming",
+      "url": "https://www.youtube.com/watch?v=htn5zPYg4HA",
+      "caption_language": "English (auto-generated)",
+      "auto_generated": true,
+      "caption_segments": 1156,
+      "caption_end_seconds": 3072,
+      "caption_word_count": 8459,
+      "raw_json_sha256": "ac748601923d23906e9d35124142a8f0fc7d60bc10d7f7b9f0a5a1671dff805b",
+      "reviewed_windows_seconds": [
+        [
+          883,
+          1050
+        ],
+        [
+          1998,
+          2165
+        ]
+      ]
+    }
+  ]
+}

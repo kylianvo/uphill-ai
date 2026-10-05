@@ -1,3 +1,4 @@
+import asyncio
 import time
 from datetime import datetime, timedelta
 from typing import Any
@@ -5,12 +6,17 @@ from typing import Any
 from config import settings
 from db import block_number_for_week, week_range_for_block
 from log_utils import get_logger
-from services import observability
+from services import observability, plan_checks
 from services.athlete_tier import get_profile, resolve_tier
 from services.plan_rules import build_rules_block
 from services.training_rules import TrainingRules, default_zone2_pace, resolve_zone2_pace
+from services.workout_prescription import apply_prescription
 
 _logger = get_logger(__name__)
+
+VI_COPY_CONTRACT = """
+VI meaning parity: English is the source of truth. Preserve every quantity, unit, prerequisite, caveat and stop condition; add no product or medical claims. Use short active sentences addressed to bạn. Keep the technical terms listed above, plus Warm-up, Cool-down, Strides, Cadence, RPE, Electrolytes and Aerobic decoupling in English. Use khối lượng tuần, buổi tập, plan/lịch tập. Gloss only first-use form labels, never repeatedly in workout text. No exclamation marks or rhetorical headings. Avoid đắm chìm, hành trình as metaphor, giải pháp, thấu hiểu, kiểm toán, and không chỉ X — mà là Y, plus every banned term listed above. Preserve term markup/interpolations. VI text must fit within the EN length; chips/labels at most three words. If unsure of a technical translation, retain English.
+"""
 
 
 # Prompt templates. Langfuse serves the live version (observability.load_prompt); these are
@@ -55,11 +61,8 @@ You MUST return ONLY a JSON array of workout objects. NEVER wrap it in markdown 
    - `walk_interval_value` (number, ONLY for `type` 'Walk/Run': the WALK recovery per rep, in the same unit as `interval_rep_unit`. Together with the three interval fields below this makes the session renderable as '5 x 2 min jog / 1 min walk' rather than a sentence the athlete has to parse.)
    - `interval_reps`, `interval_rep_value`, `interval_rep_unit` (for `type` 'Interval' or 'Walk/Run', AND ONLY when the session is a single clean rep block — e.g. 8 reps of 12-second hill sprints, or 5 reps of 400m repeats. `interval_reps` is the integer rep count, `interval_rep_value` is the number per rep, `interval_rep_unit` is one of 's'/'m'/'min'/'km' matching how that rep is measured. OMIT all three (do not guess) when the session has a warm-up/main/cool-down structure that doesn't reduce to one rep block, a pyramid, or mixed rep durations — the `description` Process section still carries the full detail for those.)
    - `elevation_gain_m` and `grade_percent` (numbers, ONLY for `type` Easy/Tempo/Interval/Long Run AND only when the athlete's terrain is trail/mountain — omit or use 0 otherwise): give this specific run a plausible amount of climbing, using the race's overall course_elevation_gain_m/course_distance_km (given below in the athlete/race profile) as context for what's typical, and this run's own distance/phase/role to vary it — a Base-phase Easy run climbs less than a Peak-phase Long Run. `grade_percent` should be consistent with `elevation_gain_m` and this run's own `distance_km` (grade ≈ elevation_gain_m / (distance_km × 10)), not just the race's average. NEVER invent a figure wildly inconsistent with the race's overall elevation profile.
-   - `description` (string: highly detailed description containing specific sections, each introduced by its keyword — Process, Overall, Reason, Benefit, Warning — appearing in that order and each appearing EXACTLY ONCE: Process (step-by-step execution using → to separate segments — EVERY exercise or effort chunk MUST be its own → segment; NEVER chain multiple exercises together with semicolons or commas inside a single segment, and NEVER wrap them in a label like 'Main Circuit: ...'. The warm-up, main, and cool-down minutes stated MUST sum exactly to duration_minutes.
-     * Easy/Tempo/Interval/Long Run, e.g. 'Warm up 10 min easy → 4 x 6min @ Zone 4, 2min jog recovery → cool down 10 min'.
-     * Strength (general/max-strength): straight sets — one → segment per exercise, each naming the exercise plus sets x reps and a 60-180s rest interval BETWEEN SETS OF THAT SAME EXERCISE (appropriate for near-maximal loads), e.g. 'Warm up 5 min mobility → Bodyweight Squats: 3x10, 90s rest → Walking Lunges: 3x10 each leg, 90s rest → Cool down 5 min stretching'.
-{{me_format_spec}}     * Interval: state exact rep count, distance or duration per rep, and recovery between reps.
-NEVER substitute a placeholder segment like 'Perform the bodyweight strength circuit for 20 minutes' for the actual named-exercise segments, and NEVER place the exercise breakdown anywhere outside this Process → chain (in particular, never append it after Warning or any other section) — every exercise MUST live inside Process and nowhere else), Overall (2-3 sentence summary of the session), Reason (why it is scheduled now), Benefit (expected physiological adaptation), and Warning (ONLY injury risks or execution precautions — NEVER exercise prescriptions, sets, or reps; those belong exclusively in Process). Provide extensive context.)
+   - `rationale` (optional string: one concise coaching sentence, no digits or numerical prescriptions. Preserve prerequisites and stop conditions in structured fields.)
+{{me_format_spec}}
 {{fueling_spec}}   - `treadmill_incline` (number, optional: recommended incline percentage if using treadmill. Inform this from the route's actual grade instead of a flat generic default: for trail-terrain Easy/Tempo/Interval/Long Run workouts, set it consistent with this same workout's own `grade_percent` above (a flat 1% belt incline under-trains the specific climbing demand of a genuinely hilly race). {{hill_incline_exception}}Omit or use 0 when treadmill access isn't relevant.)
    - `treadmill_speed` (number, optional: recommended speed in kph if using treadmill, reduced appropriately for the incline set above — a steeper incline needs a slower speed to hold the same target effort)
    - `session_slot` (string, optional: ONLY set this on double-session days. Use 'morning' for the first/shorter session and 'afternoon' for the main/longer session. Omit entirely for single-session days.)
@@ -69,10 +72,51 @@ NEVER substitute a placeholder segment like 'Perform the bodyweight strength cir
 Athlete Profile:
 {{user_summary}}
 
+FITNESS SNAPSHOT RULES (apply only when the athlete summary contains a fitness snapshot block):
+- Read the declared source: watch-derived volume is measured; profile-typed volume is self-reported. Neither unknown logs nor an override alone proves lost fitness or readiness.
+- For healthy initial AND subsequent blocks, retain the snapshot weekly budget in each first full training week. Honor explicit fatigue, illness, confirmed missed training, injury, Taper, Race Week and Recovery context instead of forcing a healthy volume floor.
+- The first full week (week 2) should total 90-100% of the snapshot's weekly volume, never below 80%,
+  unless the readiness line shows fatigue or overreaching, or the athlete notes illness/injury, confirmed missed training, or this is Taper, Race Week or Recovery.
+- Weekly vert should start near the snapshot's vert and progress from there.
+- Derive threshold and interval targets from the snapshot's threshold pace and race predictions.
+- If the snapshot says the AeT/AnT thresholds were "not used", do not apply the Aerobic Deficiency
+  Syndrome restrictions on intensity because of them.
+- Never mention the snapshot, its sources or the level label to the athlete.
+- Before returning JSON, sum week-2 distance_km and check it against 90-100% of the
+  snapshot weekly volume. Allocate enough aerobic running minutes across the allowed
+  training days to meet that range, while respecting the tier caps and schedule.
+- Use the snapshot km/week as the starting weekly budget, not a number to reduce by
+  the generic build-volume modifier. A partial week 1 is prorated to its remaining
+  days; week 2 is a full week and must retain the full weekly budget. Recheck the
+  summed week-2 distances after converting minutes to kilometres using target pace.
+
 {{program_details}}Plan Start Date: {{current_date_str}} ({{current_weekday}})
 {{target_date_details}}Full Plan Length: {{total_weeks}} weeks.
 - Week 1 starts on: {{current_date_str}} ({{current_weekday}}).
-{{feedback_instruction}}"""
+{{feedback_instruction}}
+
+STRUCTURED PRESCRIPTION — authoritative over the earlier numerical description schema:
+Every workout must include `segments`, an ordered nonempty array, and `rationale`, a concise coaching explanation with no digits, quantities, sets or additional prescriptions. Old description Process numbers are replaced locally from segments. Do not repeat execution instructions in rationale. Preserve useful cautions without numeric claims.
+Each segment: kind run|hike|strength|recovery|rest; duration_minutes (finite nonnegative); zone Zone 1–Zone 5 for moving run/hike, otherwise null; setting flat_outdoor|mountain|treadmill|indoor|unknown; role warmup|main|cooldown (optional). Moving segments require pace_min_per_km, an actual movement pace number or two positive endpoints. For Treadmill use actual belt pace, not an equivalent flat-effort pace; incline_pct is the actual grade. Mountain movement may include elevation_gain_m as an estimate. Flat outdoor ascent is zero. Never assign ascent from the race merely because a weekday run is Trail.
+Strength segments require one concrete executable movement per exercise object; a body-region label, mobility category or circuit name is not a movement. Split multiple movements into separate segments. Each exercise object requires: name, positive integer sets, exactly one target (positive integer reps OR positive hold_seconds), nonnegative rest_seconds between sets, and equipment (array: bodyweight, weights, machine, box, stairs; include every required item). Static Plank, Wall Sit and other isometric holds require explicit hold_seconds, including side qualifiers. Bilateral holds require separate explicitly targeted left and right segments; do not use each-side targets inside one segment. Holds plus between-set rests must fit the segment duration. Never infer seconds from rep numbers; choose an accessible rep exercise if no supported hold target is available. Duration includes the exercise's rests. Each exercise is a separate segment; do not hide a circuit or its repetitions in prose. For repeated intervals emit each work and moving recovery segment in order; recovery kind is passive only. Include moving Warm-up and Cool-down once. Rest has duration zero.
+Use only known day access and equipment. Positive Treadmill incline requires a confirmed machine maximum; without that capacity use flat accessible movement. No gym does not establish stair/box access. Step-ups must declare box or stairs equipment and require confirmed access to that surface. Do not convert Hill Sprint/power to sustained incline work; unknown movement/strength readiness does not authorize advanced power/ME. Near race dates cannot bypass preparation. Use conservative accessible work where prerequisites are unknown.
+The local resolver derives totals and athlete-facing numeric instructions. Strength minutes never become running kilometers. Choose durations to meet the existing healthy-week volume rules; keep justified recovery/taper adaptations. Do not add load merely to satisfy a software score. Keep internal snapshot/tier/scoring terminology out of athlete-facing text.
+
+When language is VI, apply this meaning/style contract:
+
+VI meaning parity: English is the source of truth. Preserve every quantity, unit, prerequisite, caveat and stop condition; add no product or medical claims. Use short active sentences addressed to bạn. Keep the technical terms listed above, plus Warm-up, Cool-down, Strides, Cadence, RPE, Electrolytes and Aerobic decoupling in English. Use khối lượng tuần, buổi tập, plan/lịch tập. Gloss only first-use form labels, never repeatedly in workout text. No exclamation marks or rhetorical headings. Avoid đắm chìm, hành trình as metaphor, giải pháp, thấu hiểu, kiểm toán, and không chỉ X — mà là Y, plus every banned term listed above. Preserve term markup/interpolations. VI text must fit within the EN length; chips/labels at most three words. If unsure of a technical translation, retain English.
+"""
+
+
+STRUCTURED_PRESCRIPTION_CONTRACT = """
+STRUCTURED PRESCRIPTION — authoritative over the earlier numerical description schema:
+Every workout must include `segments`, an ordered nonempty array, and `rationale`, a concise coaching explanation with no digits, quantities, sets or additional prescriptions. Old description Process numbers are replaced locally from segments. Do not repeat execution instructions in rationale. Preserve useful cautions without numeric claims.
+Each segment: kind run|hike|strength|recovery|rest; duration_minutes (finite nonnegative); zone Zone 1–Zone 5 for moving run/hike, otherwise null; setting flat_outdoor|mountain|treadmill|indoor|unknown; role warmup|main|cooldown (optional). Moving segments require pace_min_per_km, an actual movement pace number or two positive endpoints. For Treadmill use actual belt pace, not an equivalent flat-effort pace; incline_pct is the actual grade. Mountain movement may include elevation_gain_m as an estimate. Flat outdoor ascent is zero. Never assign ascent from the race merely because a weekday run is Trail.
+Strength segments require one concrete executable movement per exercise object; a body-region label, mobility category or circuit name is not a movement. Split multiple movements into separate segments. Each exercise object requires: name, positive integer sets, exactly one target (positive integer reps OR positive hold_seconds), nonnegative rest_seconds between sets, and equipment (array: bodyweight, weights, machine, box, stairs; include every required item). Static Plank, Wall Sit and other isometric holds require explicit hold_seconds, including side qualifiers. Bilateral holds require separate explicitly targeted left and right segments; do not use each-side targets inside one segment. Holds plus between-set rests must fit the segment duration. Never infer seconds from rep numbers; choose an accessible rep exercise if no supported hold target is available. Duration includes the exercise's rests. Each exercise is a separate segment; do not hide a circuit or its repetitions in prose. For repeated intervals emit each work and moving recovery segment in order; recovery kind is passive only. Include moving Warm-up and Cool-down once. Rest has duration zero.
+Use only known day access and equipment. Positive Treadmill incline requires a confirmed machine maximum; without that capacity use flat accessible movement. No gym does not establish stair/box access. Step-ups must declare box or stairs equipment and require confirmed access to that surface. Do not convert Hill Sprint/power to sustained incline work; unknown movement/strength readiness does not authorize advanced power/ME. Near race dates cannot bypass preparation. Use conservative accessible work where prerequisites are unknown.
+The local resolver derives totals and athlete-facing numeric instructions. Strength minutes never become running kilometers. Choose durations to meet the existing healthy-week volume rules; keep justified recovery/taper adaptations. Do not add load merely to satisfy a software score. Keep internal snapshot/tier/scoring terminology out of athlete-facing text.
+"""
+PLAN_SINGLE_WORKOUT_PROMPT += STRUCTURED_PRESCRIPTION_CONTRACT
 
 BLOCK_NARRATIVE_PROMPT = """You are Coach Uphill, an expert trail-running coach. An athlete's training plan
 just advanced to a new block. Using the training history below and the newly generated
@@ -89,6 +133,16 @@ NEWLY GENERATED BLOCK'S SESSIONS:
 Return ONLY a single JSON object (no markdown fences, no prose) with exactly these keys:
 {"last_week_review": "2-3 sentences reviewing how the most recently completed block went, encouraging and specific to the numbers above -- or null if the history above has nothing to review",
 "this_week_description": "2-3 sentences describing this new block's focus and why, addressed directly to the athlete"}"""
+
+
+PLAN_REQUEST_TIMEOUT_SECONDS = 120
+
+
+async def _generate_plan_response(client, *, model, contents, config):
+    """Cancel the native async request at the attempt deadline and release sockets."""
+    async with asyncio.timeout(PLAN_REQUEST_TIMEOUT_SECONDS):
+        async with client.aio as async_client:
+            return await async_client.models.generate_content(model=model, contents=contents, config=config)
 
 
 class PlanGenerator:
@@ -627,6 +681,8 @@ class PlanGenerator:
         title = workout_type
         description = details
         fueling_tip = None
+        prescription_segments = None
+        model_response = False
 
         resolved_lang = (lang or user_profile.get("lang") or "en").lower()
         vi_chars = set(
@@ -649,6 +705,8 @@ class PlanGenerator:
                     if zone_locked
                     else "Choose the single most appropriate zone: Zone 1|Zone 2|Zone 3|Zone 4|Zone 5."
                 )
+                if target_pace:
+                    zone_instruction += f" Preserve the coach-selected main pace exactly: {target_pace}."
                 interval_instruction = (
                     f"This is an interval session: {interval_reps}x{interval_rep_value}{interval_rep_unit} "
                     "(already fixed by the coach -- describe the session around this structure, don't invent a different one)."
@@ -665,6 +723,8 @@ class PlanGenerator:
                     if resolved_lang == "vi"
                     else ""
                 )
+                if resolved_lang == "vi":
+                    vi_instruction += VI_COPY_CONTRACT
                 _prompt_tpl = observability.load_prompt("plan_single_workout", PLAN_SINGLE_WORKOUT_PROMPT)
                 prompt = observability.compile_prompt(
                     _prompt_tpl,
@@ -713,11 +773,13 @@ class PlanGenerator:
                 _start, _end = _text.find("{"), _text.rfind("}")
                 if _start != -1 and _end != -1:
                     parsed = _json.loads(_text[_start : _end + 1])
+                    model_response = True
                     title = parsed.get("title") or title
                     if not zone_locked:
                         resolved_zone = parsed.get("target_zone") or resolved_zone
                     description = parsed.get("description")
                     fueling_tip = parsed.get("fueling_tip")
+                    prescription_segments = parsed.get("segments")
             except Exception as ex:
                 print(f"[PlanGen][SingleWorkout] Gemini FAILED: {ex}. Using deterministic fallback.")
 
@@ -743,7 +805,7 @@ class PlanGenerator:
             wu_cd = PlanGenerator._wu_cd_minutes(duration_minutes)
             total_duration = duration_minutes + wu_cd * 2
 
-        return {
+        workout = {
             "week_number": week_number,
             "day_of_week": day_of_week,
             "phase": "Training",
@@ -761,6 +823,104 @@ class PlanGenerator:
             "interval_rep_value": interval_rep_value if is_interval else None,
             "interval_rep_unit": interval_rep_unit if is_interval else None,
         }
+        if prescription_segments is None and not model_response and not details:
+            if workout_type == "Rest":
+                prescription_segments = [{"kind": "rest", "duration_minutes": 0, "zone": None, "setting": "unknown"}]
+            elif is_rest_or_strength:
+                workout["type"] = "Strength"
+                prescription_segments = [
+                    {
+                        "kind": "strength",
+                        "duration_minutes": duration_minutes,
+                        "zone": None,
+                        "setting": "indoor",
+                        "exercise": {
+                            "name": "Bodyweight Squats",
+                            "sets": 3,
+                            "reps": 12,
+                            "rest_seconds": 90,
+                            "equipment": ["bodyweight"],
+                        },
+                    }
+                ]
+            else:
+
+                def movement(minutes, zone, pace, role):
+                    return {
+                        "kind": "run",
+                        "duration_minutes": minutes,
+                        "zone": zone,
+                        "setting": "flat_outdoor",
+                        "pace_min_per_km": list(PlanGenerator.parse_pace_range(pace)),
+                        "role": role,
+                    }
+
+                prescription_segments = [movement(wu_cd, "Zone 1", est_zones["zone1_pace"], "warmup")]
+                if is_interval and interval_reps:
+                    pace_values = PlanGenerator.parse_pace_range(resolved_pace)
+                    rep_minutes = (
+                        float(interval_rep_value)
+                        * {
+                            "min": 1,
+                            "s": 1 / 60,
+                            "km": sum(pace_values) / 2,
+                            "m": sum(pace_values) / 2000,
+                        }[interval_rep_unit]
+                    )
+                    remainder = duration_minutes - interval_reps * rep_minutes
+                    if remainder < 0 or (interval_reps == 1 and remainder > 0):
+                        raise ValueError(
+                            "Coach interval structure exceeds main duration or leaves unspecified recovery"
+                        )
+                    for rep in range(interval_reps):
+                        prescription_segments.append(movement(rep_minutes, resolved_zone, resolved_pace, "main"))
+                        if rep < interval_reps - 1:
+                            prescription_segments.append(
+                                movement(remainder / (interval_reps - 1), "Zone 1", est_zones["zone1_pace"], "main")
+                            )
+                else:
+                    prescription_segments.append(movement(duration_minutes, resolved_zone, resolved_pace, "main"))
+                prescription_segments.append(movement(wu_cd, "Zone 1", est_zones["zone1_pace"], "cooldown"))
+        if prescription_segments is not None:
+            workout["segments"] = prescription_segments
+            apply_prescription(workout, lang=resolved_lang)
+            main_segments = [segment for segment in workout["segments"] if segment.get("role", "main") == "main"]
+            if (
+                workout_type != "Rest"
+                and abs(sum(segment["duration_minutes"] for segment in main_segments) - duration_minutes) > 0.1
+            ):
+                raise ValueError("Structured workout must preserve coach main duration")
+            if (
+                model_response
+                and zone_locked
+                and any(
+                    segment.get("zone") != target_zone
+                    for segment in main_segments
+                    if segment["kind"] in {"run", "hike"}
+                )
+            ):
+                raise ValueError("Structured workout must preserve coach zone")
+            if model_response and target_pace:
+                expected_pace = sorted(PlanGenerator.parse_pace_range(target_pace) or [])
+                for segment in main_segments:
+                    if segment["kind"] in {"run", "hike"}:
+                        pace = segment["pace_min_per_km"]
+                        actual = sorted(pace if isinstance(pace, list) else [pace])
+                        if len(actual) == 1:
+                            actual *= 2
+                        if not expected_pace or any(abs(a - b) > 1 / 120 for a, b in zip(actual, expected_pace)):
+                            raise ValueError("Structured workout must preserve coach pace")
+            if target_pace and not model_response:
+                workout["target_pace"] = target_pace
+            if is_rest_or_strength:
+                workout["target_pace"] = None
+        plan_checks.validate_generated_workouts(
+            [workout],
+            context=plan_checks.generation_context(
+                {"validation_context": user_profile.get("validation_context") or {}}, [workout]
+            ),
+        )
+        return workout
 
     @staticmethod
     async def generate_plan_workouts(
@@ -794,8 +954,25 @@ class PlanGenerator:
             )
             from services import plan_signals
 
+            snap = race_info.get("fitness_snapshot")
             plan_signals.record_generation(
-                plan_id=plan_id, user_id=user_id, block_number=block_number, workouts=workouts, trace_id=trace_id
+                plan_id=plan_id,
+                user_id=user_id,
+                block_number=block_number,
+                workouts=workouts,
+                trace_id=trace_id,
+                tier=tier,
+                measured_weekly_km=snap.weekly_km if snap and snap.weekly_km_source == "coros" else None,
+                context=plan_checks.generation_context(
+                    {
+                        **race_info,
+                        "current_weekly_km": user_profile.get("current_weekly_km"),
+                        "max_weekly_progression": get_profile(tier).max_weekly_progression,
+                        "uses_walk_run": get_profile(tier).uses_walk_run,
+                        "total_weeks": total_weeks,
+                    },
+                    workouts,
+                ),
             )
             return workouts, tier
 
@@ -831,6 +1008,12 @@ class PlanGenerator:
             block_start_week, block_end_week = week_range_for_block(block_number, weeks_per_block)
             block_end_week = min(block_end_week, total_weeks)
 
+        # Optional fixed clock for synthetic evaluation; normal app calls use today.
+        reference_date = (
+            datetime.strptime(race_info["as_of"], "%Y-%m-%d").date()
+            if race_info.get("as_of")
+            else datetime.now().date()
+        )
         # 1. Base Variables Extract
         lang = (race_info.get("lang") or user_profile.get("lang") or "en").lower()
         vi_chars = set(
@@ -900,7 +1083,12 @@ class PlanGenerator:
         course_distance_km = race_info.get("course_distance_km")
         course_elevation_gain_m = race_info.get("course_elevation_gain_m")
         target_time_hours = race_info.get("target_time_hours")
-        current_weekly_km = float(user_profile.get("current_weekly_km", 30.0))
+        snapshot = race_info.get("fitness_snapshot")
+        current_weekly_km = (
+            float(snapshot.weekly_km) if snapshot else float(user_profile.get("current_weekly_km", 30.0))
+        )
+        if snapshot and snapshot.threshold_pace:
+            user_profile = {**user_profile, "threshold_pace": snapshot.threshold_pace}
 
         # Pre-compute goal race pace if we have both a target time and distance
         if target_time_hours and course_distance_km:
@@ -928,10 +1116,9 @@ class PlanGenerator:
             except Exception as exc:
                 print(f"[PlanGen] Race history unavailable: {exc}")
         _max_jog_min = user_profile.get("max_continuous_jog_min")
-        athlete_tier = resolve_tier(
+        _tier_args = dict(
             explicit_tier=race_info.get("athlete_tier"),
             goal_type=race_info.get("goal_type") or user_profile.get("goal_type"),
-            current_weekly_km=current_weekly_km,
             max_continuous_jog_min=_max_jog_min,
             historical_max_distance_km=(_historical_ceiling or {}).get("max_distance_km"),
             # RAW stored thresholds, deliberately not the derived aet_hr/ant_hr above.
@@ -941,7 +1128,19 @@ class PlanGenerator:
             # is only evidence when it was actually measured.
             aet_hr=user_profile.get("aet_hr"),
             ant_hr=user_profile.get("ant_hr"),
+            # The plan's last resolved tier, for hysteresis on re-plans. Never an override.
+            previous_tier=race_info.get("previous_tier"),
         )
+        if snapshot:
+            athlete_tier = snapshot.resolve_tier(**_tier_args, max_hr=max_hr)
+        else:
+            athlete_tier = resolve_tier(
+                **_tier_args,
+                current_weekly_km=current_weekly_km,
+                threshold_source=user_profile.get("threshold_source"),
+                max_hr=max_hr,
+                gender=gender,
+            )
         tier_profile = get_profile(athlete_tier)
 
         # Extract Zone 2 bounds and calculate personalized pacing zone ranges.
@@ -960,7 +1159,7 @@ class PlanGenerator:
         p_z5 = est_zones["zone5_pace"]
 
         # Helper function to post-process and estimate target pace and distance for all workouts
-        def post_process_workouts(wos: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        def post_process_workouts(wos: list[dict[str, Any]], *, fallback: bool = False) -> list[dict[str, Any]]:
             # Safety net: strip any week-1 workouts that land before the plan start day
             if block_number == 1 and _excluded_days_w1:
                 wos = [
@@ -1000,6 +1199,61 @@ class PlanGenerator:
                 else:
                     wo["week_number"] = block_start_week
 
+                if fallback and "segments" not in wo:
+                    if w_type == "Rest":
+                        wo["segments"] = [{"kind": "rest", "duration_minutes": 0, "zone": None, "setting": "unknown"}]
+                    elif w_type in {"Strength", "Muscular Endurance"}:
+                        # Without documented advanced readiness, use the existing general
+                        # bodyweight option rather than inventing ME/power prerequisites.
+                        wo["type"] = "Strength"
+                        wo["title"] = "Strength"
+                        wo["segments"] = [
+                            {
+                                "kind": "strength",
+                                "duration_minutes": dur,
+                                "zone": None,
+                                "setting": "indoor",
+                                "exercise": {
+                                    "name": "Bodyweight Squats",
+                                    "sets": 3,
+                                    "reps": 12,
+                                    "rest_seconds": 90,
+                                    "equipment": ["bodyweight"],
+                                },
+                            }
+                        ]
+                    elif w_type == "Race" and course_distance_km:
+                        wo["segments"] = [
+                            {
+                                "kind": "run",
+                                "duration_minutes": dur,
+                                "zone": zone,
+                                "setting": "mountain" if course_elevation_gain_m else "flat_outdoor",
+                                "pace_min_per_km": dur / course_distance_km,
+                                "elevation_gain_m": course_elevation_gain_m or 0,
+                            }
+                        ]
+                    else:
+                        pace, _ = PlanGenerator.pace_and_distance_for_zone(zone, dur, est_zones)
+                        pace_range = PlanGenerator.parse_pace_range(pace)
+                        wo["segments"] = [
+                            {
+                                "kind": "run",
+                                "duration_minutes": dur,
+                                "zone": zone,
+                                "setting": "flat_outdoor" if training_environment == "flat" else "unknown",
+                                "pace_min_per_km": list(pace_range),
+                            }
+                        ]
+                if "segments" in wo:
+                    apply_prescription(wo, lang=lang)
+                    wo["interval_reps"], wo["interval_rep_value"], wo["interval_rep_unit"] = (
+                        PlanGenerator.resolve_interval_summary(wo, wo["type"])
+                    )
+                    continue
+
+                # Legacy prompt versions lack segments: preserve compatibility without
+                # claiming exact mixed-session accounting or parsing prose.
                 # Reset Rest/Strength/ME — always zero distance, never inherit AI value
                 title_lower = wo.get("title", "").lower()
 
@@ -1042,6 +1296,19 @@ class PlanGenerator:
                 wo["interval_reps"], wo["interval_rep_value"], wo["interval_rep_unit"] = (
                     PlanGenerator.resolve_interval_summary(wo, w_type)
                 )
+            plan_checks.validate_generated_workouts(
+                wos,
+                context=plan_checks.generation_context(
+                    {
+                        **race_info,
+                        "current_weekly_km": user_profile.get("current_weekly_km"),
+                        "max_weekly_progression": tier_profile.max_weekly_progression,
+                        "uses_walk_run": tier_profile.uses_walk_run,
+                        "total_weeks": total_weeks,
+                    },
+                    wos,
+                ),
+            )
             return wos
 
         # 2. AI Plan Generation (Gemini → reduced-prompt retry → Rule-Based)
@@ -1069,6 +1336,8 @@ class PlanGenerator:
         # rule-based schedule below are the fallbacks).
         _ai_prompt = None
         _plan_prompt_tpl = None
+        _structured_prescription = False
+        _response_schema = None
         try:
             scheduling_notes = ""
             all_days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
@@ -1116,6 +1385,7 @@ class PlanGenerator:
             # Race record from claimed UTMB/VBM profiles and self-reported results;
             # sits beside the ceiling because both describe proven capacity.
             race_history_notes = f"\n{race_history_text}\n" if race_history_text else ""
+            snapshot_notes = f"\n{snapshot.prompt_block(lang)}\n" if snapshot else ""
 
             athlete_notes = race_info.get("athlete_notes") or user_profile.get("athlete_notes")
             constraints_notes = ""
@@ -1178,6 +1448,7 @@ class PlanGenerator:
                 f"{scheduling_notes}"
                 f"{ceiling_notes}"
                 f"{race_history_notes}"
+                f"{snapshot_notes}"
                 f"{constraints_notes}"
             )
 
@@ -1185,13 +1456,13 @@ class PlanGenerator:
             try:
                 race_date_parsed = datetime.strptime(race_info.get("date"), "%Y-%m-%d").date()
             except (ValueError, TypeError):
-                race_date_parsed = datetime.now().date() + timedelta(days=90)
+                race_date_parsed = reference_date + timedelta(days=90)
 
-            start_date_str = race_info.get("plan_start_date") or datetime.now().strftime("%Y-%m-%d")
+            start_date_str = race_info.get("plan_start_date") or reference_date.isoformat()
             try:
                 today = datetime.strptime(start_date_str, "%Y-%m-%d").date()
             except ValueError:
-                today = datetime.now().date()
+                today = reference_date
             race_week_num = total_weeks - 1
             race_weekday_name = race_date_parsed.strftime("%A")
 
@@ -1402,6 +1673,14 @@ class PlanGenerator:
                 )
             )
 
+            if race_info.get("validation_context"):
+                equipment_terrain_rule += (
+                    "\nExplicit day access (authoritative constraints): "
+                    + _json.dumps(race_info["validation_context"].get("day_access", {}))
+                    + "\n"
+                )
+            elif training_environment == "flat":
+                equipment_terrain_rule += "\nOnly flat outdoor movement and bodyweight indoor Strength are confirmed. Do not assume boxes, stairs, weights or machine capability.\n"
             lang_rule = (
                 "\n6. CRITICAL LOCALIZATION (VIETNAMESE):"
                 "\n   - All workout text fields ('title', 'description', 'fueling_tip') MUST be written in natural Vietnamese as spoken by Vietnamese trail and ultra runners."
@@ -1421,6 +1700,8 @@ class PlanGenerator:
                 else ""
             )
 
+            if lang == "vi":
+                lang_rule += VI_COPY_CONTRACT
             rules_block = build_rules_block(tier_profile, _max_jog_min)
 
             # The SCHEMA has to be tier-aware too, not just the rules. Fixing only the
@@ -1430,7 +1711,7 @@ class PlanGenerator:
             # that contradicts itself is worse than one that is uniformly wrong: the
             # model resolves the conflict however it likes, differently each run.
             me_format_spec = (
-                "     * Muscular Endurance (ME): this develops peripheral muscular fatigue resistance without cardiac strain. Format by terrain: (a) Flat/Rolling or Gym: high-cadence, high-rep CIRCUIT training — NEVER straight sets. One → segment per exercise names ONE pass (e.g. '10 reps Split Jump Squats, 15s transition → 10 reps Squat Jumps, 15s transition → 10 reps/leg Box Step-Ups at 75% kneecap height, 15s transition → 10 reps/leg Front Lunges'), followed by total rounds (6-8 rounds) and rest between rounds (~60s tapering to 15s). (b) Outdoor Mountain Hikes: steep 30%+ off-trail grade with 5-15% bodyweight pack, 5-20 min climbing intervals with 1-3 min recovery, and mandatory Summit Water Dump protocol: 'Dump water weight at summit; descend unweighted to preserve orthopedic integrity'. (c) Incline Treadmill: 12-15% incline, 90% and 95% uphill climbing pace intervals (standard commercial gym treadmills max out at 15%). (d) Hill Bounding / Ski Striding: 6-8 reps of 8-12s max-effort bounds on 15-20% hill, 3-4 min full standing/walking rest, strictly terminate at first power drop.\n"
+                "     * Muscular Endurance (ME): this develops peripheral muscular fatigue resistance without cardiac strain. Format by terrain: (a) Flat/Rolling or Gym: use a verified protocol appropriate to the athlete. Straight sets or circuits depend on that protocol; never impose a universal ban on straight sets. One → segment per exercise names ONE pass (e.g. '10 reps Split Jump Squats, 15s transition → 10 reps Squat Jumps, 15s transition → 10 reps/leg Box Step-Ups at 75% kneecap height, 15s transition → 10 reps/leg Front Lunges'), followed by total rounds (6-8 rounds) and rest between rounds (~60s tapering to 15s). (b) Outdoor Mountain Hikes: steep 30%+ off-trail grade with 5-15% bodyweight pack, 5-20 min climbing intervals with 1-3 min recovery, and mandatory Summit Water Dump protocol: 'Dump water weight at summit; descend unweighted to preserve orthopedic integrity'. (c) Incline Treadmill: 12-15% incline, 90% and 95% uphill climbing pace intervals (standard commercial gym treadmills max out at 15%). (d) Hill Bounding / Ski Striding: 6-8 reps of 8-12s max-effort bounds on 15-20% hill, 3-4 min full standing/walking rest, strictly terminate at first power drop.\n"
                 if tier_profile.allows_me_blocks
                 else ""
             )
@@ -1465,6 +1746,29 @@ class PlanGenerator:
             )
 
             _plan_prompt_tpl = observability.load_prompt("plan_generation", PLAN_GENERATION_PROMPT)
+            from services.plan_output_schema import (
+                STRUCTURED_PRESCRIPTION_HEADER,
+                expected_calendar_days,
+                validate_calendar_coverage,
+                workout_response_schema,
+            )
+
+            # Select from trusted raw template lines, never compiled athlete input.
+            _structured_prescription = STRUCTURED_PRESCRIPTION_HEADER in _plan_prompt_tpl.template.splitlines()
+            _expected_days = expected_calendar_days(
+                block_start_week, block_end_week, start_weekday=_start_idx, partial_first_week=block_number == 1
+            )
+            _response_schema = workout_response_schema(
+                structured=_structured_prescription, minimum_workouts=len(_expected_days)
+            )
+            import hashlib
+
+            race_info["_prompt_identity"] = {
+                "name": _plan_prompt_tpl.name,
+                "version": _plan_prompt_tpl.version,
+                "source": _plan_prompt_tpl.source,
+                "sha256": hashlib.sha256(_plan_prompt_tpl.template.encode()).hexdigest(),
+            }
             _ai_prompt = observability.compile_prompt(
                 _plan_prompt_tpl,
                 {
@@ -1487,9 +1791,29 @@ class PlanGenerator:
                     "feedback_instruction": feedback_instruction,
                 },
             )
+            local_context = plan_checks.generation_context(
+                {
+                    **race_info,
+                    "current_weekly_km": user_profile.get("current_weekly_km"),
+                    "max_weekly_progression": tier_profile.max_weekly_progression,
+                    "uses_walk_run": tier_profile.uses_walk_run,
+                    "total_weeks": total_weeks,
+                },
+                [{"week_number": week} for week in range(block_start_week, block_end_week + 1)],
+            )
+            _ai_prompt += "\nLOCAL PRESCRIPTION CONSTRAINTS: " + _json.dumps(local_context)
+            _ai_prompt += (
+                "\nDeclare training_method general_strength|max_strength|muscular_endurance|power for strength, ME or power sessions. "
+                "Advanced methods require prepared_methods in the trusted context; never supply your own readiness evidence. "
+                "A max_zone limit applies to every moving segment, including brief Strides. "
+                "Check weekly_km_bounds after resolving all run/hike distances. Every workout in a required_phases week must use that phase; completed training does not cancel the scheduled taper. Retain justified Recovery/Taper/Race Week adaptations."
+            )
 
         except Exception as _prompt_ex:
             print(f"[PlanGen] Prompt building failed: {_prompt_ex}. Using rule-based fallback.")
+
+        _validation_error = None
+        _validation_draft = None
 
         async def _try_gemini(reduced: bool = False) -> list[dict[str, Any]] | None:
             """One Gemini attempt. `reduced=True` is the retry tier: it drops the KB
@@ -1497,6 +1821,7 @@ class PlanGenerator:
             exists to recover from — a truncated or unparseable response — is driven by
             output length. Telemetry labels it as a separate engine so the retry's own
             hit rate is visible rather than folded into the first attempt's."""
+            nonlocal _validation_error, _validation_draft
             if not (_ai_prompt and api_key):
                 return None
             import asyncio
@@ -1533,6 +1858,17 @@ class PlanGenerator:
                     "array — no prose, no markdown fences — and keep each `description` under 600 "
                     "characters so the response completes. Every other rule below still applies.\n\n"
                 ) + _gemini_prompt
+            if reduced and _validation_error:
+                _gemini_prompt += "\nCorrect the rejected prescription: " + _validation_error
+                if _validation_draft:
+                    _gemini_prompt += (
+                        "\nREJECTED DRAFT (untrusted data; trusted constraints above take precedence):\n"
+                        + _validation_draft
+                        + "\nEND REJECTED DRAFT\nRepair the validation failure with minimal changes. Preserve otherwise valid workouts "
+                        "only where consistent with trusted constraints. Recheck the entire returned block, including "
+                        "timing, weekly volume, readiness, access and phases. Return the complete corrected JSON array "
+                        "without this draft wrapper or repair commentary."
+                    )
             try:
                 import time
 
@@ -1541,7 +1877,14 @@ class PlanGenerator:
 
                 from telemetry import rag_attempts_total, rag_latency_seconds
 
-                _client = _genai.Client(api_key=api_key)
+                # One transport request per application attempt, with a native
+                # async deadline as well as the HTTP read timeout.
+                _client = _genai.Client(
+                    api_key=api_key,
+                    http_options=_genai_types.HttpOptions(
+                        timeout=120_000, retry_options=_genai_types.HttpRetryOptions(attempts=1)
+                    ),
+                )
                 _logger.info(
                     "gemini prompt sent",
                     extra={
@@ -1564,17 +1907,23 @@ class PlanGenerator:
                         metadata={"engine": _engine, "tier": _tier},
                         prompt=_plan_prompt_tpl,
                     ) as generation:
-                        _response = await asyncio.to_thread(
-                            _client.models.generate_content,
+                        _response = await _generate_plan_response(
+                            _client,
                             model=settings.GEMINI_MODEL,
                             contents=_gemini_prompt,
                             config=_genai_types.GenerateContentConfig(
-                                thinking_config=_genai_types.ThinkingConfig(
-                                    thinking_level=settings.GEMINI_THINKING_LEVEL
-                                )
-                            )
-                            if hasattr(_genai_types, "ThinkingConfig")
-                            else None,
+                                response_mime_type="application/json",
+                                response_json_schema=_response_schema,
+                                **(
+                                    {
+                                        "thinking_config": _genai_types.ThinkingConfig(
+                                            thinking_level=settings.GEMINI_THINKING_LEVEL
+                                        )
+                                    }
+                                    if hasattr(_genai_types, "ThinkingConfig")
+                                    else {}
+                                ),
+                            ),
                         )
                         generation.set_usage(observability.Usage.from_genai(_response.usage_metadata))
                     _latency = time.time() - _start
@@ -1638,7 +1987,18 @@ class PlanGenerator:
                             }
                         },
                     )
-                    _processed = post_process_workouts(cleaned_wos)
+                    _candidate_draft = _json.dumps(cleaned_wos, ensure_ascii=False)
+                    try:
+                        if _structured_prescription and any(
+                            not isinstance(wo.get("segments"), list) or not wo["segments"] for wo in cleaned_wos
+                        ):
+                            raise ValueError("Structured prescription requires nonempty segments for every workout")
+                        validate_calendar_coverage(cleaned_wos, _expected_days)
+                        _processed = post_process_workouts(cleaned_wos)
+                    except ValueError as error:
+                        _validation_error = getattr(error, "retry_instruction", str(error))
+                        _validation_draft = _candidate_draft
+                        raise
                     rag_attempts_total.labels(service="plan_generator", engine=_engine, status="used").inc()
                     _tier_observation.set(status="used")
                     _tier_context.__exit__(None, None, None)
@@ -1694,11 +2054,77 @@ class PlanGenerator:
 
         _rule_started = time.monotonic()
 
-        base_weekly_minutes = current_weekly_km * 6.0
-        if base_weekly_minutes < 120.0:
-            base_weekly_minutes = 180.0
+        # Author the weekly time budget from this athlete's actual pace mixture.
+        # Zone 4 is the fastest quality option; moving preparation/recovery only
+        # lowers its distance contribution. Fractions preserve the existing split.
+        distance_per_minute = sum(
+            share / (sum(PlanGenerator.parse_pace_range(est_zones[f"zone{zone}_pace"])) / 2)
+            for share, zone in [(0.2, 1), (0.6, 2), (0.2, 4)]
+        )
+        base_weekly_minutes = current_weekly_km / distance_per_minute if current_weekly_km > 0 else 180.0
 
         workouts: list[dict[str, Any]] = []
+        goal = race_info.get("goal_type")
+        non_event_goal = goal in {"start_running", "return", "recovery"} or tier_profile.uses_walk_run
+        if non_event_goal:
+            # Existing goal/tier contracts: three non-consecutive walk/run starts,
+            # half-load return, and rest before gentle post-race movement. These
+            # conservative fallback defaults are app policy, not universal doses.
+            pace = sum(PlanGenerator.parse_pace_range(p_z1)) / 2
+            for week in range(block_start_week, block_end_week + 1):
+                for day in ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"):
+                    active = day in {"Tuesday", "Thursday", "Saturday"} and not (goal == "recovery" and week <= 2)
+                    segments = [{"kind": "rest", "duration_minutes": 0, "zone": None, "setting": "unknown"}]
+                    if active:
+                        walk_run = goal == "start_running" or tier_profile.uses_walk_run
+                        minutes = 30 if goal == "recovery" else 20
+                        if goal == "return":
+                            # Conserve the existing half-load budget using the
+                            # actual 1:1 walking/running pace mixture when needed.
+                            km_per_minute = (0.5 / 15 + 0.5 / pace) if walk_run else 1 / pace
+                            minutes = min(tier_profile.weekday_minutes[1], current_weekly_km * 0.5 / km_per_minute / 3)
+                        if walk_run:
+                            segments = []
+                            for _ in range(10):
+                                segments.extend(
+                                    [
+                                        {
+                                            "kind": "hike",
+                                            "duration_minutes": minutes / 20,
+                                            "zone": "Zone 1",
+                                            "setting": "flat_outdoor",
+                                            "pace_min_per_km": 15,
+                                        },
+                                        {
+                                            "kind": "run",
+                                            "duration_minutes": minutes / 20,
+                                            "zone": "Zone 1",
+                                            "setting": "flat_outdoor",
+                                            "pace_min_per_km": pace,
+                                        },
+                                    ]
+                                )
+                        else:
+                            segments = [
+                                {
+                                    "kind": "run",
+                                    "duration_minutes": minutes,
+                                    "zone": "Zone 1",
+                                    "setting": "flat_outdoor",
+                                    "pace_min_per_km": pace,
+                                }
+                            ]
+                    workouts.append(
+                        {
+                            "week_number": week,
+                            "day_of_week": day,
+                            "phase": "Recovery" if goal == "recovery" else "Base",
+                            "title": "Recovery Run" if active else "Rest",
+                            "type": "Recovery" if active else "Rest",
+                            "target_zone": "Zone 1",
+                            "segments": segments,
+                        }
+                    )
         W = total_weeks - 1
         num_peak_weeks = 2 if W >= 6 else (1 if W >= 2 else 0)
         remaining_weeks = W - 1 - num_peak_weeks
@@ -1719,7 +2145,7 @@ class PlanGenerator:
             else:
                 return "Base"
 
-        for week in range(block_start_week, block_end_week + 1):
+        for week in [] if non_event_goal else range(block_start_week, block_end_week + 1):
             phase = get_phase_for_week(week)
             if phase == "Base":
                 volume_multiplier = 1.0 + (0.05 * (week - 1))
@@ -1834,7 +2260,29 @@ class PlanGenerator:
                 "description": desc,
                 "fueling_tip": fuel_tip,
             }
-            if is_interval:
+            if phase != "Recovery":
+
+                def movement(minutes, intensity, role="main"):
+                    pace_range = PlanGenerator.parse_pace_range(est_zones[f"zone{intensity[-1]}_pace"])
+                    return {
+                        "kind": "run",
+                        "duration_minutes": minutes,
+                        "zone": intensity,
+                        "setting": "flat_outdoor" if training_environment == "flat" else "unknown",
+                        "pace_min_per_km": list(pace_range),
+                        "role": role,
+                    }
+
+                wo["segments"] = [movement(warmup, "Zone 1", "warmup")]
+                if is_interval:
+                    for rep in range(reps):
+                        wo["segments"].append(movement(work_per_rep, "Zone 4"))
+                        if rep < reps - 1:
+                            wo["segments"].append(movement(recovery_per_gap, "Zone 1"))
+                else:
+                    wo["segments"].append(movement(main_minutes, "Zone 3"))
+                wo["segments"].append(movement(cooldown, "Zone 1", "cooldown"))
+            if is_interval and phase != "Recovery":
                 wo["interval_reps"] = reps
                 wo["interval_rep_value"] = float(work_per_rep)
                 wo["interval_rep_unit"] = "min"
@@ -1896,7 +2344,7 @@ class PlanGenerator:
             if course_distance_km and course_distance_km > 0:
                 scale_factor = min(1.5, max(1.0, course_distance_km / 42.2))
                 sat_dur = sat_dur * scale_factor
-            sat_dur = min(300.0, sat_dur)
+            sat_dur = min(300.0, sat_dur, week_minutes - tue_dur - wed_dur - thu_dur)
 
             if phase == "Recovery":
                 workouts.append(
@@ -1905,6 +2353,15 @@ class PlanGenerator:
                         "day_of_week": "Saturday",
                         "phase": phase,
                         "title": "Post-Race Gentle Hike",
+                        "segments": [
+                            {
+                                "kind": "hike",
+                                "duration_minutes": 30,
+                                "zone": "Zone 1",
+                                "setting": "flat_outdoor",
+                                "pace_min_per_km": 15,
+                            }
+                        ],
                         "type": "Recovery",
                         "duration_minutes": 30.0,
                         "target_zone": "Zone 1",
@@ -1955,6 +2412,7 @@ class PlanGenerator:
                 )
 
             # Day 7: Sunday
+            sunday_walk_segment = None
             sun_dur = 45.0
             treadmill_incl = 0.0
             treadmill_sp = 0.0
@@ -2028,6 +2486,14 @@ class PlanGenerator:
                         title = "Active Recovery Walk"
                         w_type = "Recovery"
                         desc = f"Restorative {round(sun_dur)}-minute light walk or hike on soft trail."
+                        # Conservative walking pace is explicit app fallback policy, not a book rule.
+                        sunday_walk_segment = {
+                            "kind": "hike",
+                            "duration_minutes": round(sun_dur),
+                            "zone": "Zone 1",
+                            "setting": "flat_outdoor",
+                            "pace_min_per_km": 15,
+                        }
                         fuel_tip = "Recovery focus. Drink water."
                 else:
                     title = "Core & Hip Stability"
@@ -2051,6 +2517,9 @@ class PlanGenerator:
                             "fueling_tip": fuel_tip,
                         }
                     )
+
+                    if sunday_walk_segment is not None:
+                        workouts[-1]["segments"] = [sunday_walk_segment]
 
         # Localization dictionary for rule-based fallback
         if lang == "vi":
@@ -2212,7 +2681,7 @@ class PlanGenerator:
                 wo["description"] = t_str(wo.get("description", ""))
                 wo["fueling_tip"] = t_str(wo.get("fueling_tip", ""))
 
-        result = post_process_workouts(workouts), athlete_tier
+        result = post_process_workouts(workouts, fallback=True), athlete_tier
         with observability.span("rule_based", metadata={"engine": "rule_based", "tier": "fallback"}) as _rule_span:
             _rule_span.set(status="used", latency_ms=round((time.monotonic() - _rule_started) * 1000))
         return result
@@ -2269,6 +2738,7 @@ class PlanGenerator:
                     "- Fixed mappings: 'khối lượng' (never 'thể tích'), 'thể chất' (never 'sinh lý'), 'plan' / 'lịch tập' (never 'giáo án'), 'buổi tập' / 'bài chạy' (never 'bài tập thể dục'), 'điều chỉnh tuần' (never 'tối ưu hóa').\n"
                     "- Banned words: 'kiến tạo', 'bảo chứng', 'bứt phá', 'nâng tầm', 'vượt trội', 'tối ưu hóa', 'chuyên sâu', 'đột phá', 'giáo án', 'sinh lý', 'thể tích'."
                 )
+                lang_instruction += VI_COPY_CONTRACT
             else:
                 lang_instruction = "Respond in English."
 

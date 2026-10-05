@@ -1,0 +1,14 @@
+[
+  {
+    "directory": "reliability-followup2-production-1",
+    "filtered_occurrences": 3,
+    "raw_sha256": "95f89f7af9a963a2e4c741a031a5ff9365b25df9ab0d33325736cdc40a26ea97",
+    "scores_unchanged": true
+  },
+  {
+    "directory": "reliability-followup2-production-repeat-2",
+    "filtered_occurrences": 2,
+    "raw_sha256": "7fa1bc2cfac72a0125b99b6836e3912db0b5e696555794af93bec6c256f9c664",
+    "scores_unchanged": true
+  }
+]

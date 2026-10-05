@@ -5,7 +5,7 @@ import hashlib
 import hmac
 import json
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from config import settings
 from services import observability as obs
@@ -16,11 +16,20 @@ WORKOUT_JSON = json.dumps(
     [
         {
             "week_number": 1,
-            "day_of_week": "Tue",
+            "day_of_week": "Tuesday",
             "phase": "Base",
             "title": "Easy Aerobic Run",
             "type": "Easy",
             "duration_minutes": 45,
+            "segments": [
+                {
+                    "kind": "run",
+                    "duration_minutes": 45,
+                    "zone": "Zone 2",
+                    "setting": "flat_outdoor",
+                    "pace_min_per_km": 6.5,
+                }
+            ],
             "target_zone": "Zone 2",
             "target_hr_range": "125-140 bpm",
             "target_pace": "6:30 /km",
@@ -31,6 +40,17 @@ WORKOUT_JSON = json.dumps(
             "fueling_tip": "Water only.",
         }
     ]
+    + [
+        {
+            "week_number": 1,
+            "day_of_week": day,
+            "phase": "Base",
+            "title": "Rest",
+            "type": "Rest",
+            "segments": [{"kind": "rest", "duration_minutes": 0, "zone": None, "setting": "unknown"}],
+        }
+        for day in ("Monday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+    ]
 )
 USER_PROFILE = {
     "id": 42,
@@ -39,7 +59,13 @@ USER_PROFILE = {
     "resting_hr": 52,
     "injury_history": "CANARY-ACHILLES-INJURY",
 }
-RACE_INFO = {"lang": "en", "terrain": "trail", "athlete_notes": "CANARY-PRIVATE-NOTE"}
+RACE_INFO = {
+    "lang": "en",
+    "terrain": "trail",
+    "athlete_notes": "CANARY-PRIVATE-NOTE",
+    "as_of": "2026-10-05",
+    "plan_start_date": "2026-10-05",
+}
 
 
 def _usage(prompt: int, output: int, thinking: int = 0, cached: int = 0):
@@ -58,6 +84,8 @@ def _response(text: str, *, prompt: int, output: int):
 def _client(*responses):
     client = MagicMock()
     client.models.generate_content.side_effect = list(responses)
+    client.aio.__aenter__.return_value = client.aio
+    client.aio.models.generate_content = AsyncMock(side_effect=client.models.generate_content)
     client.models.embed_content.return_value = SimpleNamespace(
         embeddings=[SimpleNamespace(values=[0.1, 0.2])],
     )
@@ -173,7 +201,7 @@ def test_parse_failure_keeps_primary_usage_and_successful_retry_bills_again(lang
 
 
 def test_two_provider_errors_then_rule_fallback_records_two_unknown_failures_only(langfuse_spans):
-    fake = MagicMock()
+    fake = _client()
     fake.models.generate_content.side_effect = RuntimeError("provider unavailable")
     with (
         patch("services.kb_retrieval.search_scheduler_chunks", return_value=[]),

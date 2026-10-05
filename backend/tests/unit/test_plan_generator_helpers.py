@@ -8,7 +8,7 @@ as the plan_start_date regression this suite exists to catch.
 
 import asyncio
 import re
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -288,32 +288,20 @@ class TestRuleBasedFallbackDescriptionConsistency:
 
         checked = {"tempo": 0, "interval": 0, "taper_walk": 0}
         for wo in workouts:
-            desc = wo.get("description") or ""
-            duration = wo["duration_minutes"]
-
-            m = self.TEMPO_RE.match(desc)
-            if m:
-                warmup, main, cooldown = (int(g) for g in m.groups())
-                assert warmup + main + cooldown == duration, f"Tempo desc {desc!r} != duration {duration}"
-                checked["tempo"] += 1
+            if wo["type"] == "Tempo":
+                key = "tempo"
+            elif wo["type"] == "Interval":
+                key = "interval"
+            elif wo["phase"] == "Taper" and any(s["kind"] == "hike" for s in wo["segments"]):
+                key = "taper_walk"
+            else:
                 continue
-
-            m = self.INTERVAL_RE.match(desc)
-            if m:
-                warmup, reps, work_per_rep, recovery, cooldown = (int(g) for g in m.groups())
-                total = warmup + reps * work_per_rep + (reps - 1) * recovery + cooldown
-                assert total == duration, f"Interval desc {desc!r} != duration {duration}"
-                checked["interval"] += 1
-                continue
-
-            m = self.TAPER_WALK_RE.match(desc)
-            if m:
-                assert int(m.group(1)) == duration, f"Taper walk desc {desc!r} != duration {duration}"
-                checked["taper_walk"] += 1
-
-        assert checked["tempo"] > 0, "no Tempo-session description matched the expected format"
-        assert checked["interval"] > 0, "no Interval-session description matched the expected format"
-        assert checked["taper_walk"] > 0, "no Taper Active-Recovery-Walk description matched the expected format"
+            # Read actual athlete-facing minutes; catches dropped/duplicated segments.
+            minutes = [float(n) for n in re.findall(r": ([0-9.]+) minutes", wo["description"])]
+            assert sum(minutes) == wo["duration_minutes"]
+            assert minutes
+            checked[key] += 1
+        assert all(checked.values()), checked
 
     VI_TEMPO_RE = re.compile(
         r"Khởi động (\d+) phút\. Chạy ở tốc độ tempo vừa phải \(Zone 3\) trong (\d+) phút\. Thả lỏng (\d+) phút\."
@@ -351,34 +339,19 @@ class TestRuleBasedFallbackDescriptionConsistency:
 
         checked = {"tempo": 0, "interval": 0, "taper_walk": 0}
         for wo in workouts:
-            desc = wo.get("description") or ""
-            duration = wo["duration_minutes"]
-
-            m = self.VI_TEMPO_RE.match(desc)
-            if m:
-                warmup, main, cooldown = (int(g) for g in m.groups())
-                assert warmup + main + cooldown == duration, f"vi Tempo desc {desc!r} != duration {duration}"
-                checked["tempo"] += 1
+            if wo["type"] == "Tempo":
+                key = "tempo"
+            elif wo["type"] == "Interval":
+                key = "interval"
+            elif wo["phase"] == "Taper" and any(s["kind"] == "hike" for s in wo["segments"]):
+                key = "taper_walk"
+            else:
                 continue
-
-            m = self.VI_INTERVAL_RE.match(desc)
-            if m:
-                warmup, reps, work_per_rep, recovery, cooldown = (int(g) for g in m.groups())
-                total = warmup + reps * work_per_rep + (reps - 1) * recovery + cooldown
-                assert total == duration, f"vi Interval desc {desc!r} != duration {duration}"
-                checked["interval"] += 1
-                continue
-
-            m = self.VI_TAPER_WALK_RE.match(desc)
-            if m:
-                assert int(m.group(1)) == duration, f"vi Taper walk desc {desc!r} != duration {duration}"
-                checked["taper_walk"] += 1
-
-        assert checked["tempo"] > 0, "no Vietnamese Tempo-session description matched the expected format"
-        assert checked["interval"] > 0, "no Vietnamese Interval-session description matched the expected format"
-        assert (
-            checked["taper_walk"] > 0
-        ), "no Vietnamese Taper Active-Recovery-Walk description matched the expected format"
+            minutes = [float(n) for n in re.findall(r": ([0-9.]+) phút", wo["description"])]
+            assert sum(minutes) == wo["duration_minutes"]
+            assert minutes
+            checked[key] += 1
+        assert all(checked.values()), checked
 
 
 class TestResolveElevationAndGrade:
@@ -631,14 +604,14 @@ class TestPostProcessWorkoutsElevation:
         )
         return workouts
 
-    def test_trail_long_run_gets_nonzero_elevation_and_grade(self, monkeypatch):
+    def test_trail_race_does_not_invent_climbing_for_unknown_flat_training_access(self, monkeypatch):
         workouts = self._run_rule_based(
             monkeypatch, terrain="trail", course_distance_km=50.0, course_elevation_gain_m=2000.0
         )
         long_runs = [w for w in workouts if w["type"] == "Long Run"]
         assert long_runs, "expected at least one Long Run workout"
-        assert all(w["elevation_gain_m"] > 0 for w in long_runs)
-        assert all(w["grade_percent"] > 0 for w in long_runs)
+        assert all(w["elevation_gain_m"] == 0 for w in long_runs)
+        assert all(w["grade_percent"] == 0 for w in long_runs)
 
     def test_road_terrain_gets_zero_elevation(self, monkeypatch):
         workouts = self._run_rule_based(
@@ -844,6 +817,8 @@ class TestPromptCarriesPerAthleteContext:
         fake_response.text = "[]"  # empty list -> falls through to rule-based, no real network call
         fake_client = MagicMock()
         fake_client.models.generate_content.return_value = fake_response
+        fake_client.aio.__aenter__.return_value = fake_client.aio
+        fake_client.aio.models.generate_content = AsyncMock(side_effect=fake_client.models.generate_content)
 
         with (
             patch("google.genai.Client", return_value=fake_client),

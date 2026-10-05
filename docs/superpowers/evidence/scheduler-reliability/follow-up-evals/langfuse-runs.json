@@ -1,0 +1,25 @@
+{
+  "dataset_url": "https://cloud.langfuse.com/project/cmu6scbt0004gad0c9z4e9kmx/datasets/cmunujh7n00omad0c2w0kxohy",
+  "verified_in_dataset_metadata": true,
+  "run_names": [
+    "eval_scheduler_1791119207250470000",
+    "eval_scheduler_1791119554772748000",
+    "eval_scheduler_1791120861701881000",
+    "eval_scheduler_1791121354349158000",
+    "eval_scheduler_1791121590569825000",
+    "eval_scheduler_1791121838574868000",
+    "eval_scheduler_1791121184629768000",
+    "eval_scheduler_1791121440816621000",
+    "eval_scheduler_1791121686950732000",
+    "eval_scheduler_1791121924742210000",
+    "eval_scheduler_1791148177110016000",
+    "eval_scheduler_1791150629955807000",
+    "eval_scheduler_1791150857721683000",
+    "eval_scheduler_1791151062823996000",
+    "eval_scheduler_1791150453798549000",
+    "eval_scheduler_1791150728209459000",
+    "eval_scheduler_1791150926277835000",
+    "eval_scheduler_1791151146518025000"
+  ],
+  "detailed_read_limitation": "Legacy dataset metadata retains these run names. Deprecated detailed read returns HTTP 410; replacement listing does not expose legacy-SDK runs. Complete local results retained."
+}

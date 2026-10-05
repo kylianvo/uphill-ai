@@ -1,0 +1,38 @@
+[
+  {
+    "directory": "reliability-followup5-production-1",
+    "run_name": "eval_scheduler_1791189990588070000",
+    "cases": 25,
+    "mean_latency_s": 20.2,
+    "p95_latency_s": 32.8,
+    "engines": {
+      "gemini": 25
+    },
+    "failures": [
+      "scheduler_sequence_unknown_override: week-2 volume 99.6 km outside the expected range"
+    ],
+    "context": {
+      "arithmetic": {
+        "None": 25
+      },
+      "access": {
+        "None": 25
+      },
+      "intensity_accounting": {
+        "None": 25
+      },
+      "progression": {
+        "None": 25
+      },
+      "recovery_intensity": {
+        "None": 25
+      },
+      "volume_fit": {
+        "None": 25
+      },
+      "strength_readiness": {
+        "None": 25
+      }
+    }
+  }
+]

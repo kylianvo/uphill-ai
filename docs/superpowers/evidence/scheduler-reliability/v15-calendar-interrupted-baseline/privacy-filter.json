@@ -1,0 +1,27 @@
+[
+  {
+    "file": "partial_results.json",
+    "original_sha256": "2fd1e35b121f8308ba4e3e6b017f12bc356030938fa7824299d6eca3f430aa57",
+    "replacements": 0
+  },
+  {
+    "file": "baseline.log",
+    "original_sha256": "df50c81280cd38063d99cc2bf62c72be8f59df0ce23696257bc94d42260b5bb8",
+    "replacements": 0
+  },
+  {
+    "file": "identity.json",
+    "original_sha256": "8338a2860ea17db201c9b8336967a40fb57cc7d90de7463f564ece260ec3625f",
+    "replacements": 0
+  },
+  {
+    "file": "costs.json",
+    "original_sha256": "3f41a81d532367d3fd4aaf145a42999956aba30d9dc946f6bb566efdee0bd037",
+    "replacements": 0
+  },
+  {
+    "file": "stop.json",
+    "original_sha256": "451d3e40e442f1bd8c8fcbc6626902407e4723b5322f8fb66b60979bb63e0a74",
+    "replacements": 0
+  }
+]

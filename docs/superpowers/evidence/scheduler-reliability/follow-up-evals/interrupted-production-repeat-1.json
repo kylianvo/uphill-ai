@@ -1,0 +1,44 @@
+{
+  "status": "terminated; not a completed evaluation",
+  "code_sha": "d65f1459a34760ce019e9ca34a8ae413e548520e",
+  "prompt_label": "production",
+  "cause": "next-block model call stalled beyond six minutes; SIGINT did not stop process; terminated with SIGTERM",
+  "logged_model_attempts": 2,
+  "completed_model_responses": 1,
+  "completed_cases": 0,
+  "events": [
+    "[compare] scheduler_sequence_healthy_completed \u2192 Gemini+KB...",
+    {
+      "ts": "2026-10-04T13:13:15Z",
+      "level": "INFO",
+      "logger": "services.plan_generator",
+      "msg": "gemini prompt sent",
+      "service": "plan_generator",
+      "engine": "gemini",
+      "event": "prompt_sent",
+      "chars_sent": 35452
+    },
+    {
+      "ts": "2026-10-04T13:13:27Z",
+      "level": "INFO",
+      "logger": "services.plan_generator",
+      "msg": "gemini response received",
+      "service": "plan_generator",
+      "engine": "gemini",
+      "event": "response_received",
+      "chars_received": 9390,
+      "latency_ms": 11940
+    },
+    {
+      "ts": "2026-10-04T13:13:28Z",
+      "level": "INFO",
+      "logger": "services.plan_generator",
+      "msg": "gemini prompt sent",
+      "service": "plan_generator",
+      "engine": "gemini",
+      "event": "prompt_sent",
+      "chars_sent": 37526
+    }
+  ],
+  "unavailable": "initial-block output was not saved; four Vietnam cases had not started; no dataset run name or completed latency score"
+}

@@ -1,0 +1,55 @@
+[
+  {
+    "directory": "reliability-candidate-1",
+    "paired_legacy_quality_regressions": [
+      {
+        "id": "scheduler_sequence_recovery",
+        "production": 1.0,
+        "candidate": 0.6666666666666666
+      },
+      {
+        "id": "scheduler_fixture_vietnam_urban_recreational_no_gym",
+        "production": 1.0,
+        "candidate": 0.6666666666666666
+      },
+      {
+        "id": "scheduler_fixture_vietnam_urban_recreational_treadmill",
+        "production": 1.0,
+        "candidate": 0.6666666666666666
+      },
+      {
+        "id": "scheduler_fixture_vietnam_urban_sub_elite_no_gym",
+        "production": 1.0,
+        "candidate": 0.6666666666666666
+      }
+    ]
+  },
+  {
+    "directory": "reliability-candidate-repeat-1",
+    "paired_legacy_quality_regressions": []
+  },
+  {
+    "directory": "reliability-candidate-repeat-2",
+    "paired_legacy_quality_regressions": []
+  },
+  {
+    "directory": "reliability-candidate-repeat-3",
+    "paired_legacy_quality_regressions": []
+  },
+  {
+    "directory": "reliability-refinement-1",
+    "paired_legacy_quality_regressions": []
+  },
+  {
+    "directory": "reliability-refinement-repeat-1",
+    "paired_legacy_quality_regressions": []
+  },
+  {
+    "directory": "reliability-refinement-repeat-2",
+    "paired_legacy_quality_regressions": []
+  },
+  {
+    "directory": "reliability-refinement-repeat-3",
+    "paired_legacy_quality_regressions": []
+  }
+]

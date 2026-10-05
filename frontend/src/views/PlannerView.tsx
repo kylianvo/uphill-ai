@@ -284,6 +284,27 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actingAsAthleteId]);
   const t = (key: keyof typeof translations.en) => translations[lang]?.[key] || translations.en[key] || key;
+
+  // Measured weekly km from COROS (4 complete weeks), prefilled into an empty form.
+  // Skipped while a coach acts as an athlete: the endpoint returns the caller's own data.
+  const [watchKm, setWatchKm] = useState<number | null>(null);
+  useEffect(() => {
+    if (isCoachActingAsAthlete) return;
+    const token = typeof window !== "undefined" ? localStorage.getItem("uphill_session_token") : null;
+    if (!token) return;
+    fetch(`${API_BASE_URL}/api/auth/fitness-snapshot`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => (r.ok ? r.json() : null))
+      .then(s => {
+        if (s?.weekly_km_source !== "coros" || typeof s.weekly_km !== "number") return;
+        const km = Math.round(s.weekly_km);
+        setWatchKm(km);
+        setPlanForm((f: typeof planForm) =>
+          f.current_weekly_km ? f : { ...f, current_weekly_km: String(km), weekly_km_from_watch: true }
+        );
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCoachActingAsAthlete, API_BASE_URL]);
   const totalWeeks = activePlan ? (activePlan.total_weeks || activePlan.plan_duration_weeks || 1) : 0;
 
   // Automatically select the calendar-derived current week when an active plan loads or changes
@@ -587,7 +608,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
       if (selectedWeek === 1) {
         const text = lang === "en"
           ? `Welcome to your ${activePlan.total_weeks}-week plan for ${raceName}. These first weeks build the aerobic foundation everything else sits on. Run easy, run often, and resist the urge to push.`
-          : `Chào mừng bạn đến với giáo án ${activePlan.total_weeks} tuần cho giải ${raceName}. Những tuần đầu tiên này sẽ xây dựng nền tảng hiếu khí (aerobic base) vững chắc. Hãy chạy nhẹ nhàng, duy trì đều đặn và không cần vội vàng ép nhịp tim.`;
+          : `Chào mừng bạn đến với plan ${activePlan.total_weeks} tuần cho giải ${raceName}. Những tuần đầu xây dựng nền tảng Aerobic cho các giai đoạn sau. Chạy nhẹ, chạy đều và tránh cố tăng cường độ.`;
         return { Icon: Leaf, color: "#10b981", text };
       }
       const msgs = lang === "en" ? [
@@ -1378,8 +1399,13 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
               <input type="number" step="0.1" min="0" className="chat-input" style={{ borderRadius: "8px", width: "100%", padding: "10px" }}
                 placeholder={lang === "en" ? "e.g. 30" : "vd. 30"}
                 value={planForm.current_weekly_km}
-                onChange={e => setPlanForm({ ...planForm, current_weekly_km: e.target.value })}
+                onChange={e => setPlanForm({ ...planForm, current_weekly_km: e.target.value, weekly_km_from_watch: false })}
                 required />
+              {watchKm !== null && (
+                <p style={{ fontSize: "11.5px", color: "var(--text-muted)", margin: "5px 0 0 0" }}>
+                  {t("weekly_km_from_watch_hint").replace("{km}", String(watchKm))}
+                </p>
+              )}
               <p style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "5px", margin: "5px 0 0 0" }}>
                 {lang === "en"
                   ? "How many km are you currently running per week? Used to set your starting training load."
@@ -1776,7 +1802,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                     <div style={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
                       <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                         <span style={{ fontSize: "10px", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: "700" }}>
-                          {lang === "en" ? `Weekly Volume (Week ${selectedWeek})` : `Thể tích tuần (Tuần ${selectedWeek})`}
+                          {lang === "en" ? `Weekly Volume (Week ${selectedWeek})` : `Khối lượng tuần (${selectedWeek})`}
                         </span>
                         <div style={{ display: "flex", alignItems: "baseline", gap: "6px", flexWrap: "wrap" }}>
                           <span style={{ fontSize: "18px", fontWeight: "800", color: "var(--accent-primary)" }}>{weeklyHours} {lang === "en" ? "hrs" : "giờ"}</span>

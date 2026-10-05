@@ -68,6 +68,7 @@ def test_build_chat_context_filters_expired_and_error_messages():
         patch("db.get_activities_for_user", return_value=mock_activities),
         patch("db.get_chat_thread_messages", return_value=mock_messages),
         patch("services.race_history.prompt_summary", return_value="RACE HISTORY\n2025-09-20 VMM 70.0km 13:05 [UTMB]"),
+        patch("services.fitness_snapshot.chat_summary", return_value={}),
     ):
         ctx = build_chat_context(
             user_id=1,
@@ -171,3 +172,31 @@ def test_resolve_citations():
     # Second resolved had invalid URL scheme, so url is sanitized to None
     assert resolved[1]["ref"] == "789xyz123456"
     assert resolved[1]["url"] is None
+
+
+def test_build_chat_context_uses_snapshot_volume_and_the_plan_tier():
+    """users has no tier column, so chat never saw the tier; and the weekly km it quoted
+    was the typed profile value, not the measured volume the plan was built on."""
+    from services.coach_prompts import compile_coach_prompt
+
+    now = datetime(2026, 9, 20, 12, 0, tzinfo=UTC)
+    summary = {"weekly_km": 138.0, "weekly_km_source": "coros", "athlete_tier": "sub_elite"}
+    with (
+        patch("db.get_user_by_id", return_value={"id": 1, "current_weekly_km": 70.0, "threshold_source": "field"}),
+        patch("db.get_active_plan", return_value={"id": 1, "athlete_tier": "sub_elite", "fitness_snapshot": None}),
+        patch("db.get_plan_workouts", return_value=[]),
+        patch("db.get_activities_for_user", return_value=[]),
+        patch("db.get_chat_thread_messages", return_value=[]),
+        patch("services.race_history.prompt_summary", return_value=""),
+        patch("services.fitness_snapshot.chat_summary", return_value=summary),
+    ):
+        ctx = build_chat_context(user_id=1, question="How fit am I?", now=now)
+    ath = ctx["athlete"]
+    assert ath["athlete_tier"] == "sub_elite"
+    assert ath["current_weekly_km"] == 138.0
+    assert ath["weekly_km_source"] == "coros"
+    assert ath["threshold_source"] == "field"
+    assert "fitness_snapshot" not in ath
+    prompt = compile_coach_prompt(context=ctx)
+    assert "Tier: sub_elite" in prompt
+    assert "Weekly km: 138.0 (coros)" in prompt

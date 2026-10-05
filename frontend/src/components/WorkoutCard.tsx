@@ -27,9 +27,11 @@ import { getZoneColor } from "../data/workoutLibrary";
 import { FeelingSelector, rpeToFeelingId } from "./FeelingSelector";
 import { useWorkoutTypes, resolveWorkoutInfo } from "../hooks/useWorkoutTypes";
 import {
+  isResolvedDescription,
   parseExecutionSteps,
   extractDescriptionSections,
   selectMainSetText,
+  extractLeadingMinutes,
   buildCoachNotesContent,
   mainDurationMinutes,
 } from "../utils/workoutDescription";
@@ -151,8 +153,11 @@ export default function WorkoutCard({
   const libraryInfo = resolveWorkoutInfo(wo.title || "", wo.type || "", dbTypes);
   const zoneColor = libraryInfo?.color || getZoneColor(wo.target_zone || "", wo.title || "", wo.type || "");
 
-  const defaultSurface = leadingNumber(wo.treadmill_incline) > 0 ? "treadmill" : "outdoor";
-  const [surface, setSurface] = useState<"outdoor" | "treadmill">(defaultSurface);
+  const resolvedDescription = isResolvedDescription(wo.description);
+  const defaultSurface = leadingNumber(wo.treadmill_incline) > 0 || (resolvedDescription && leadingNumber(wo.treadmill_speed) > 0)
+    ? "treadmill" : "outdoor";
+  const [selectedSurface, setSurface] = useState<"outdoor" | "treadmill">(defaultSurface);
+  const surface = resolvedDescription ? defaultSurface : selectedSurface;
   const treadmillGuide = getTreadmillGuide(wo.target_pace, wo.treadmill_speed, wo.treadmill_incline, wo.grade_percent);
   const [expanded, setExpanded] = useState(defaultExpanded ?? false);
   const [rpe, setRpe] = useState<number | null>(wo.rpe ?? null);
@@ -212,7 +217,7 @@ export default function WorkoutCard({
     setEditing(false);
   };
 
-  const zoneInfo = libraryInfo ? ZONE_LABELS[libraryInfo.zone] : wo.target_zone || "";
+  const zoneInfo = resolvedDescription ? wo.target_zone || "" : libraryInfo ? ZONE_LABELS[libraryInfo.zone] : wo.target_zone || "";
   const hasLog = rpe !== null || notes.trim().length > 0;
   const isDirty = rpe !== (wo.rpe ?? null) || notes !== (wo.notes ?? "");
 
@@ -731,7 +736,7 @@ export default function WorkoutCard({
         {expanded && !isRest && (
           <div style={{ marginTop: "16px", paddingTop: "14px", borderTop: "1px solid rgba(0,0,0,0.06)" }}>
             {/* Outdoor / Treadmill toggle */}
-            <div style={{ display: "flex", gap: "6px", marginBottom: "14px" }}>
+            {!resolvedDescription && <div style={{ display: "flex", gap: "6px", marginBottom: "14px" }}>
               {(["outdoor", "treadmill"] as const).map((s) => (
                 <button
                   key={s}
@@ -765,7 +770,7 @@ export default function WorkoutCard({
                     : "Máy chạy"}
                 </button>
               ))}
-            </div>
+            </div>}
 
             {/* Surface-specific metrics */}
             <div
@@ -787,7 +792,7 @@ export default function WorkoutCard({
               {surface === "outdoor" && wo.elevation_gain_m > 0 && (
                 <MetricPill
                   label={lang === "en" ? "Elevation" : "Độ cao"}
-                  value={`+${Math.ceil(wo.elevation_gain_m / 100) * 100}m`}
+                  value={`+${resolvedDescription ? wo.elevation_gain_m : Math.ceil(wo.elevation_gain_m / 100) * 100}m`}
                   color={zoneColor}
                   icon={<Mountains size={12} />}
                 />
@@ -796,7 +801,7 @@ export default function WorkoutCard({
                 <MetricPill
                   label={lang === "en" ? "Speed" : "Tốc độ"}
                   value={
-                    treadmillGuide.estimated
+                    resolvedDescription ? `${wo.treadmill_speed} kph` : treadmillGuide.estimated
                       ? `~${treadmillGuide.speedKph} kph`
                       : `${treadmillGuide.speedKph} kph`
                   }
@@ -808,7 +813,7 @@ export default function WorkoutCard({
                 <MetricPill
                   label={lang === "en" ? "Grade" : "Độ dốc"}
                   value={
-                    treadmillGuide.estimated
+                    resolvedDescription ? `${wo.treadmill_incline}%` : treadmillGuide.estimated
                       ? `~${treadmillGuide.inclinePercent}%`
                       : `${treadmillGuide.inclinePercent}%`
                   }
@@ -829,7 +834,7 @@ export default function WorkoutCard({
               )}
             </div>
 
-            {surface === "treadmill" && treadmillGuide?.estimated && (
+            {!resolvedDescription && surface === "treadmill" && treadmillGuide?.estimated && (
               <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "-10px", marginBottom: "16px" }}>
                 {treadmillGuide.gradeSource === "outdoor-grade"
                   ? lang === "en"
@@ -1103,7 +1108,9 @@ function ExecutionTimeline({
   zoneColor,
   lang,
   targets,
+  resolved = false,
 }: {
+  resolved?: boolean;
   execution: string;
   zoneColor: string;
   lang: string;
@@ -1123,7 +1130,7 @@ function ExecutionTimeline({
   }> = [
     {
       key: "warmup",
-      label: lang === "en" ? "Warm-Up" : "Khởi động",
+      label: lang === "en" ? "Warm-Up" : "Warm-up",
       hint: lang === "en" ? "standard" : "tiêu chuẩn",
       steps: parsed.warmup
         ? [parsed.warmup]
@@ -1147,7 +1154,7 @@ function ExecutionTimeline({
     },
     {
       key: "cooldown",
-      label: lang === "en" ? "Cool-Down" : "Thả lỏng",
+      label: lang === "en" ? "Cool-Down" : "Cool-down",
       hint: lang === "en" ? "standard" : "tiêu chuẩn",
       steps: parsed.cooldown
         ? [parsed.cooldown]
@@ -1164,7 +1171,7 @@ function ExecutionTimeline({
 
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
-      {phases.map((phase, i) => (
+      {phases.filter((phase) => !resolved || phase.found).map((phase, i) => (
         <div key={phase.key} style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
           {/* Timeline track */}
           <div
@@ -1364,18 +1371,23 @@ function WorkoutLibrarySection({
   );
 
   // Main Set shows only the main portion's duration, not warm-up+main+cool-down.
-  const mainMinutes = mainDurationMinutes(wo.duration_minutes, parseExecutionSteps(executionText));
+  const resolved = isResolvedDescription(rawDescription);
+  const steps = parseExecutionSteps(executionText);
+  const strengthMain = resolved && ["Strength", "Muscular Endurance"].includes(wo.type);
+  const mainMinutes = resolved
+    ? Math.max(0, wo.duration_minutes - (extractLeadingMinutes(steps.warmup) || 0) - (extractLeadingMinutes(steps.cooldown) || 0))
+    : mainDurationMinutes(wo.duration_minutes, steps);
 
   // Build the "today's target" chips from actual planner values
   const targets: Array<{ label: string; value: string; color: string; icon: React.ReactNode }> = [];
-  if (wo.target_zone) targets.push({ label: lang === "en" ? "Zone" : "Vùng", value: wo.target_zone, color: zoneColor, icon: <Lightning size={10} /> });
-  if (wo.target_pace?.trim()) targets.push({ label: lang === "en" ? "Pace" : "Pace", value: wo.target_pace, color: zoneColor, icon: <Footprints size={10} /> });
-  if (wo.target_hr_range) targets.push({ label: "HR", value: wo.target_hr_range, color: "#ef4444", icon: <Heart size={10} /> });
+  if (!strengthMain && wo.target_zone) targets.push({ label: lang === "en" ? "Zone" : "Zone", value: wo.target_zone, color: zoneColor, icon: <Lightning size={10} /> });
+  if (!strengthMain && wo.target_pace?.trim()) targets.push({ label: lang === "en" ? "Pace" : "Pace", value: wo.target_pace, color: zoneColor, icon: <Footprints size={10} /> });
+  if (!strengthMain && wo.target_hr_range) targets.push({ label: "HR", value: wo.target_hr_range, color: "#ef4444", icon: <Heart size={10} /> });
   if (mainMinutes > 0) targets.push({ label: lang === "en" ? "Duration" : "Thời gian", value: `${mainMinutes} min`, color: "var(--text-secondary)", icon: <Timer size={10} /> });
   const intervalSummary = formatIntervalSummary(wo);
   if (intervalSummary) {
     targets.push({ label: lang === "en" ? "Reps" : "Số lượt", value: intervalSummary, color: "var(--text-secondary)", icon: <MapPin size={10} /> });
-  } else if (wo.distance_km > 0) {
+  } else if (!resolved && wo.distance_km > 0) {
     targets.push({ label: lang === "en" ? "Est. distance" : "Cự ly ước tính", value: `~${wo.distance_km} km`, color: "var(--text-secondary)", icon: <MapPin size={10} /> });
   }
 
@@ -1421,13 +1433,14 @@ function WorkoutLibrarySection({
           >
             {overviewText}
           </p>
-          <ExecutionTimeline execution={executionText} zoneColor={zoneColor} lang={lang} targets={targets} />
+          <ExecutionTimeline execution={executionText} zoneColor={zoneColor} lang={lang} targets={targets} resolved={resolved} />
         </div>
       )}
 
       {/* About tab: benefit + warning + optional AI description */}
       {tab === "about" && (
         <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+          {!resolved && <>
           <div
             style={{
               padding: "10px 14px",
@@ -1500,6 +1513,8 @@ function WorkoutLibrarySection({
             </p>
           </div>
 
+          </>}
+
           {/* Race strategy tips */}
           {isRaceDay && (
             <div
@@ -1554,7 +1569,9 @@ function WorkoutLibrarySection({
               >
                 {lang === "en" ? "Coach notes" : "Ghi chú từ Coach"}
               </div>
-              <CoachNotesSections description={rawDescription} />
+              <CoachNotesSections description={resolved && !rawDescription.includes("Reason:")
+                ? (lang === "en" ? "Use the execution guide for this session." : "Bạn tập theo hướng dẫn ở tab Thực hiện.")
+                : rawDescription} />
             </div>
           )}
 

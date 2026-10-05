@@ -1,0 +1,23 @@
+{
+  "as_of": "2026-10-05",
+  "model": "gemini-3.8-flash",
+  "code": "7de735cf8d03c7ae6cb0e67f1fc67e8be9fcdbcb",
+  "backend_tree": "91c37f3bb18876c4ae912cff91271ddaf66deff3",
+  "production": {
+    "version": 1,
+    "sha256": "a0eab967a172a094ee5b524486b643497df24fae81406a7c1d0d2cfbf309ee4e"
+  },
+  "candidate": {
+    "version": 15,
+    "label": "scheduler-reliability-exp",
+    "sha256": "b4ca322e6a8d31a9193d31de497ca8a4bcb5c447923505ff758e5cd26e867fad"
+  },
+  "staging_version": 4,
+  "scheduler_seed_sha256": "401fb69936edddefdff442d338baa01f1371fc47f5ca1a688d8a191dda55c7e0",
+  "principles_sha256": "15aaa37cb372f44fb5aecaf57ba2f7f6510a0f33585b4f42b654c0ddfc546563",
+  "qdrant_sha256": "60001d3f78fa26e2f8b6a9a8860fae96504cc213f38e41abea5f3088117f77b0",
+  "export_content": false,
+  "synthetic_only": true,
+  "output_contract": "v15 prompt plus provider JSON schema and local segment guard",
+  "schema_sha256": "e0ef81614a3cd2a5147d9b80f650a3e83d53b49701a0cfccb76d45509190ff95"
+}

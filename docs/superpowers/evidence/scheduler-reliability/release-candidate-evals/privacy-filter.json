@@ -1,0 +1,62 @@
+[
+  {
+    "directory": "reliability-followup4-production-1",
+    "filtered_occurrences": 0,
+    "raw_sha256": "02798148298f3215344a1a9696f361476ae218566561bbb1af59d70a4544f747",
+    "scores_unchanged": true
+  },
+  {
+    "directory": "reliability-followup4-production-repeat-1",
+    "filtered_occurrences": 0,
+    "raw_sha256": "62e5bc6702dda71b53b5f1642cb3d31fea1ebaa515e59a34da5d6805cc30f523",
+    "scores_unchanged": true
+  },
+  {
+    "directory": "reliability-followup4-production-repeat-2",
+    "filtered_occurrences": 0,
+    "raw_sha256": "925b10836f0f65aa72bf0456201029d196ac3c7c2f5c1a8cb988a86aff86be84",
+    "scores_unchanged": true
+  },
+  {
+    "directory": "reliability-followup4-production-repeat-3",
+    "filtered_occurrences": 0,
+    "raw_sha256": "a1637afbac48ea7e8f90e8433655bef0e97c49b099ddb880470aa8a872caad83",
+    "scores_unchanged": true
+  },
+  {
+    "directory": "reliability-followup4-v9-1",
+    "filtered_occurrences": 0,
+    "raw_sha256": "686ec0acad6c11a889d9aba9e0ad83fb013d6d7194322d350871f5d1f657aadc",
+    "scores_unchanged": true
+  },
+  {
+    "directory": "reliability-followup4-v9-repeat-1",
+    "filtered_occurrences": 0,
+    "raw_sha256": "536967a0cdc8eb24610f5b97d551f6306143a5db5737bd67f2db4e828a0d96c1",
+    "scores_unchanged": true
+  },
+  {
+    "directory": "reliability-followup4-v9-repeat-2",
+    "filtered_occurrences": 0,
+    "raw_sha256": "c3d247a1347af71beefe7e504380b5a028726e2c2a2b4b385c0794cddaac4635",
+    "scores_unchanged": true
+  },
+  {
+    "directory": "reliability-followup4-v9-repeat-3",
+    "filtered_occurrences": 0,
+    "raw_sha256": "a4e53efe6b72de89ec0f4f4265f7ddc6b8d71d6787a13c9d84e5d9dc0d58c7ec",
+    "scores_unchanged": true
+  },
+  {
+    "directory": "reliability-followup5-production-1",
+    "filtered_occurrences": 0,
+    "raw_sha256": "ce616f6586319d913b457a4c69668e5dc904e85188a1a359fe501f92b6cc7606",
+    "scores_unchanged": true
+  },
+  {
+    "directory": "reliability-followup6-production-1",
+    "filtered_occurrences": 0,
+    "raw_sha256": "0221006c4865b19178e573311d9e4aa2903749b47d90a2ce97ee89ccc104908b",
+    "scores_unchanged": true
+  }
+]

@@ -151,3 +151,50 @@ describe("WorkoutCard readOnly mode", () => {
     expect(screen.getByText("Hide guide")).toBeInTheDocument();
   });
 });
+
+
+describe("resolved workout presentation", () => {
+  const wo = {
+    id: 91, day_of_week: "Tuesday", title: "Strength", type: "Strength",
+    target_zone: "Zone 1", duration_minutes: 42, distance_km: 3,
+    description: "Warm-up: 12 minutes in Zone 1, pace 6:00/km. → Strength: 24 minutes, Bodyweight Squats: 3 x 8, 75 s rest between sets. → Cool-down: 6 minutes in Zone 1, pace 6:00/km.",
+  };
+  it("keeps Execution/About tabs and the actual mixed-session quantities", () => {
+    render(<WorkoutCard wo={wo} isMobile={false} lang="en" getWorkoutDate={() => ""} readOnly defaultExpanded />);
+    expect(screen.getByRole("button", {name: "Execution"})).toBeInTheDocument();
+    expect(screen.getByText("24 min")).toBeInTheDocument();
+    expect(screen.queryByText("Est. distance")).not.toBeInTheDocument();
+    expect(screen.getByText(/Bodyweight Squats: 3 x 8/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", {name: "About"}));
+    expect(screen.getByText("Coach notes")).toBeInTheDocument();
+  });
+  it("does not add unprescribed warm-up or cool-down to a resolved run", () => {
+    render(<WorkoutCard wo={{...wo, title: "Easy Run", type: "Easy", duration_minutes: 30,
+      description: "Run: 30 minutes in Zone 2, pace 6:00/km."}} isMobile lang="en" getWorkoutDate={() => ""} readOnly defaultExpanded />);
+    expect(screen.getByRole("button", {name: "Execution"})).toBeInTheDocument();
+    expect(screen.queryByText(/10–15 min easy/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/HR back below 120/)).not.toBeInTheDocument();
+  });
+});
+
+describe("resolved mixed treadmill ranges", () => {
+  it("keeps a zero-based grade range on Treadmill and shows complete ranges", () => {
+    render(<WorkoutCard wo={{id: 92, day_of_week: "Tuesday", title: "Easy Run", type: "Easy",
+      target_zone: "Zone 2", target_pace: "9:48 /km", duration_minutes: 75, distance_km: 6.9,
+      treadmill_incline: "0-13", treadmill_speed: "6.1-9.4", elevation_gain_m: 608,
+      description: "Warm-up: 10 minutes in Zone 1, pace 6:24/km, Treadmill 1%. → Hike: 45 minutes in Zone 2, pace 9:48/km, Treadmill 13%. → Strength: 15 minutes, Bodyweight Squats: 3 x 10, 60 s rest between sets. → Cool-down: 5 minutes in Zone 1, pace 6:30/km, Treadmill 0%."}}
+      isMobile={false} lang="en" getWorkoutDate={() => ""} readOnly defaultExpanded />);
+    expect(screen.getByText("6.1-9.4 kph")).toBeInTheDocument();
+    expect(screen.getByText("0-13%")).toBeInTheDocument();
+    expect(screen.queryByText("Est. distance")).not.toBeInTheDocument();
+    expect(screen.queryByText("+700m")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Estimated from your target pace/)).not.toBeInTheDocument();
+  });
+  it("does not round a resolved outdoor climb up to another prescription", () => {
+    render(<WorkoutCard wo={{id: 93, day_of_week: "Sunday", title: "Long Run", type: "Long Run",
+      target_zone: "Zone 2", duration_minutes: 60, distance_km: 10, elevation_gain_m: 487,
+      description: "Run: 60 minutes in Zone 2, pace 6:00/km, D+ 487 m (estimated)."}}
+      isMobile lang="en" getWorkoutDate={() => ""} readOnly defaultExpanded />);
+    expect(screen.getByText("+487m")).toBeInTheDocument();
+  });
+});

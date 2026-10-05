@@ -1,0 +1,273 @@
+# Scheduler reliability release record
+
+Status: release HOLD. V14 has two candidate fallbacks after structure/volume rejections. V15 will use focused repair with the local rejected draft, retaining all validation and attempt limits. Production v1/staging v4 unchanged; all historical failures retained.
+
+## Frozen release contract
+
+Plan: `docs/superpowers/plans/2026-10-04-scheduler-reliability.md`.
+Source register: `docs/research/2026-10-04-scheduler-rule-register.md`.
+Owner authorized execution after requiring the Vietnamese-copy skill. Apply R1–R6 to every changed/generated VI sample.
+
+- Original experiment allowed one candidate plus one refinement; later explicit owner authorization permits further bounded fixes and fresh evaluation. Historical failures remain retained.
+- All 19 existing scheduler fixtures plus invented sequential cases, same code/model/date/KB for each paired arm.
+- Fixed evaluation date: 2026-10-05; keep named partial-start cases.
+- Repeat four Vietnam cases and healthy sequential blocker three times per arm.
+- Preserve healthy volume/tier bands and existing references. Report unavailable metrics explicitly.
+- Zero new-output structure/access failures; no rule-based golden fallback; retries reported; no regression in applicable existing checks.
+- Paired mean latency increase ≤20%, full suite and repeated subset reported separately.
+- Long-run shares are diagnostics with explicit units; new caps are not verified or introduced.
+- No lost EN/VI caveats, added claims, banned new VI wording or visible overflow.
+- Every external eval push includes `--synthetic-only`; metadata-only Langfuse export.
+
+## Execution evidence
+
+2026-10-04: source register and plan contract created. Environment labels and live KB unchanged. Run identity (code SHA, model, prompt versions, seed hash, retrieval snapshot) will be recorded from verified values before paid execution; no guessed versions are accepted.
+
+## Results and decisions
+
+Current decision: HOLD pending V15 paired gates and manual acceptance. The owner authorized further iterations; historical v5-v9 results below are retained and do not establish current release eligibility.
+
+2026-10-04 Task 2 diagnosis: synthetic next-block core reproduced `Actual 0.0km/0.0h` for missing logs and no watch data. Changed to `Known logged volume`, explicit unknown/missed counts, calendar coverage and override/readiness distinction. Four failing regressions became green; original gate behavior stayed green. This establishes misleading context, not proof that it alone caused the historical stochastic 110.2 km result. The paired sequential evaluation remains required.
+
+2026-10-04 Task 3: 21 accounting tests passed; full suite 1165 passed. Indoor ascent explicitly uses belt-path geometry and stays estimated. Repeated intervals count as distinct segments; only repeated explicit IDs are invalid.
+
+2026-10-04 Task 4: structured output derives public totals and instructions together. Added structured exercise set/rest data to retain execution detail. Legacy prompt output keeps compatibility with precision unavailable; candidate missing precision will fail its gate. Source-supported corrections remove the universal straight-set ban and short-runway readiness bypass. Fallback lacks documented advanced readiness, so it uses conservative general bodyweight Strength (existing 3x12 app choice, 90s rest) instead of advanced ME/power. The fallback's 15 min/km hiking estimate is app policy. Updated description-format tests retain exact minute sums; default-flat access now asserts zero course-inferred climbing. No seed correction was needed for already consistent ME set-order text; disputed intensity seed rules remain unchanged pending primary evidence.
+
+2026-10-04 Task 5: contextual checks cover comparable full weeks, interval portions, prior healthy baseline after down weeks, day access, treadmill capacity, equipment and public treadmill fields. Structural/access failures are rejected before storage; policy checks are reported without silently repairing load. Limitation: free-form notes are coaching input, not independently verified structured day permissions. The four golden cases provide explicit day access; runtime mixed access without such facts remains unavailable, never a passing score. A future availability UI is outside this release.
+
+2026-10-04 Task 6: added fixed-date, fixture filter and exclusive output-directory options; synthetic pushes now enforce the explicit privacy flag. Sequential cases call the real next-block core with stubbed persistence and omit the optional narrative call. Attribution records the worst block engine so later fallback cannot hide behind an earlier Gemini success. Candidate `--context-gates` requires known arithmetic/access, preserves internal-disclosure checks, and adds explicit planned recovery/taper and recovery-intensity expectations. Historical production precision is reported unavailable rather than called passing. No healthy mileage floor applies to illness/recovery/taper scenarios.
+
+Verified remote prompt identities before experiment: production v1; staging v4; snapshot-exp v4. Model: `gemini-3.8-flash`. Seed file hashes: `{"backend/kb_seed/scheduler.json": "401fb69936edddefdff442d338baa01f1371fc47f5ca1a688d8a191dda55c7e0"}`. No environment label changed.
+
+2026-10-03 19:25 UTC: experiment frozen at code `f07a82bfb8697f7d1eed9da33648b968753f143f`, model `gemini-3.8-flash`, as-of `2026-10-05`. Production v1 SHA256 `a0eab967a172a094ee5b524486b643497df24fae81406a7c1d0d2cfbf309ee4e`; candidate v5 SHA256 `44f819b730b96020caf189bc8bcd995b783db0acce2ca1c0df601d984b4eaa95`, labeled `scheduler-reliability-exp` and service-managed `latest` only. Staging remains v4; production remains v1.
+
+Frozen read-only local scheduler KB: 37 principles, canonical SHA256 `15aaa37cb372f44fb5aecaf57ba2f7f6510a0f33585b4f42b654c0ddfc546563`; Qdrant 29 points including payload/vectors, SHA256 `60001d3f78fa26e2f8b6a9a8860fae96504cc213f38e41abea5f3088117f77b0`. Seed unchanged. Runtime free-form notes cannot prove access, so structured cases provide independent day permissions. No KB import/sweep.
+
+Review: six Important defects reproduced and fixed (mixed legacy access bypass, recovery hike, race-course totals, coach pace, missing-week rebound, unknown positive machine incline). Deterministic single fallback also resolved; coach-authored opaque details and old remote responses remain explicitly precision unavailable. Unit suite 1206 passed, 23 existing warnings. Hook backend runtime `.venv/bin/pytest` is absent; equivalent conda pytest ran before skipping that hook alone.
+
+UI preparation: initial local port-5432 role could not create a scratch DB. Reused existing Docker port-5433 `uphill_ai_test`; no integration tests or truncations. Worktree dependency symlink broke Turbopack; use Next's webpack dev option without changing dependencies/configuration.
+
+2026-10-04 offline observations: production full suite has two volume failures; v5 has two rule fallbacks, two unavailable access checks, one volume failure, four paired legacy easy-share regressions and +22.13% full-suite mean latency. VI wording review also finds banned generated wording, retained as a release failure rather than rewritten evidence. Full generation costs read from Langfuse v2 observations: production 31 known-cost model generations, $0.561512; v5 40, $0.857275. These exclude embedding calls; repeated-arm costs remain pending. Deprecated traces read returned HTTP 410, so used cursor-paginated v2 generation observations, never athlete content fields.
+
+2026-10-04 09:32 UTC: created the sole refinement, plan_generation v6 SHA256 `7a19da8c7e374c0247484ad22bc29703f5b88a3ed345899bec520b580ae36de7`, retaining all 17 variables. Only experiment/latest labels changed. Schema roles, named exercises, passive fields, redundant totals and VI wording addressed; unchanged tier/volume bands and parser. Read-only KB hashes reverified unchanged. Backend tree remains `268b52e84e71769d7dedfe272ac2ca6d55a64ad9`; later frontend commit does not change tested backend.
+
+2026-10-04 09:38 UTC: v6 complete suite finished, run `eval_scheduler_1791106644091611000`. Mean 12.912 s vs production 17.152 s (-24.72%); no full-suite legacy score regression; all returned rows have known arithmetic/access. HOLD: recovery sequence initial block rejects inaccessible output on both attempts and falls back; fatigue next block contains Zone 5 Strides despite explicit maximum Zone 2; recreational field-threshold snapshot totals 79.8 km outside its unchanged band. Ban scan finds zero terms in 79 VI workouts, but manual review finds unnatural titles and unsupported advanced power readiness. Thus VI/coaching acceptance still fails. Required repeated subset runs continue, no further version or policy loosening.
+
+## Final offline checkpoint
+
+All 12 planned run batches are retained in [paired results](../superpowers/evidence/scheduler-reliability/evals/README.md), including every failed case, missing-data count, run name and model cost. All three v5 and all three v6 repeated subsets passed automated gates, but neither full candidate passes the complete acceptance contract. Decision: HOLD; recommend no staging deploy or label promotion. Next separately approved improvement: enforce recovery intensity and strength/power prerequisites, constrain VI titles to the vocabulary contract, then obtain a new evaluation budget. Do not patch failures by relaxing tier/volume bands or recapturing references.
+
+Seven [EN/VI screenshots](../superpowers/evidence/scheduler-reliability/README.md) show exact mixed and Treadmill accounting in the running UI. Temporary synthetic user 8 and plan 1 deleted; sessions removed, preview servers stopped, viewport reset. Frontend 456 tests passed, build passed, lint 0 errors/131 existing warnings. Backend final verification is recorded below. No integration tests/TRUNCATE, KB import, requirements/deploy/env edits, dashboards, merge, ready-for-review action or staging/production label move.
+
+Local fallback stays at the tested v5 candidate contract. Experimental v6 is not promoted; its required future fallback sync is explicitly deferred. Production v1 and staging v4 remain unchanged. The earlier fitness-snapshot staging validation does not establish readiness for these new changes.
+
+Final verification: `pytest tests/unit -q -m "not kafka"` → 1206 passed, 23 existing warnings. Every recorded model-cost observation count matches the paid attempt log; total $3.479029 excludes embeddings. Complete diff against origin/main and all new textual evidence: zero private denylist hits. All failed/unknown results preserved; no baselines loosened.
+
+Langfuse deviation: all 12 run names verified in retained dataset metadata after successful synthetic pushes. Detailed old run-read API returns HTTP 410; new experiment listing is empty for legacy-SDK runs. Linked dataset and committed complete local results; did not misrepresent replacement-API visibility or change dependencies.
+
+## Approved local follow-up — 2026-10-04
+
+The owner approved local fixes while preserving the existing athlete-facing format. This phase adds no paid run, remote prompt version, environment-label move or deployment.
+
+Implemented: recovery limits inspect every run/hike segment, including brief Strides; latest block RPE and confirmed missed sessions are structured inputs, with overrides preserving those facts. Declared advanced ME/max-strength/power methods require trusted preparation, and recognised jump/bound exercises cannot bypass the power check with a generic Strength label. The conservative fallback names bodyweight equipment. Independent day permissions still apply to every segment, with race-course permission separate.
+
+Resolved weekly distance is checked against explicit bounds. Automatic healthy snapshot bounds reuse the existing 80% prompt floor and tier's 10% growth cap; initial full weeks 1/2 and the first full subsequent-block week are checked. These are application policy, not claimed book percentages. Recovery/Taper/Race Week and partial weeks are exempt; reported hard fatigue/readiness flags and confirmed missed training suspend automatic healthy bounds. A rejected output receives its check failure in the existing single retry. No silent mileage scaling or weakened golden assertions.
+
+Presentation: familiar Execution/About tabs and timeline restored; generic library quantities do not replace resolved instructions. Missing phases are not invented. Strength's Main Set contains only its duration/exercise targets, while the card retains total session locomotion distance. Fractional warm-up/cool-down minutes are preserved. Rationale is stored as the existing Reason section. VI uses short canonical workout titles and English technical terms. Seven [new screenshots](../superpowers/evidence/scheduler-reliability/local-follow-up/README.md) document the running synthetic UI.
+
+Verification: backend `pytest tests/unit -q -m "not kafka"` — 1217 passed, 23 existing warnings. Frontend final verification is recorded in the follow-up PR update. UI used only `uphill_ai_test`; no integration tests or TRUNCATE. Temporary users/plans/sessions deleted, servers stopped and viewport reset. Backend hook runtime remains absent; skip only that hook after the equivalent conda suite passes.
+
+Decision: **HOLD**. This follow-up changes local request constraints and deterministic checks, so old model quality/latency measurements cannot establish its release readiness. Remote production v1/staging v4 and experiment v6 are untouched. A fresh paired synthetic model evaluation, coaching/VI review and latency gate require a separately approved budget. Do not deploy or promote from unit-test success. Free-form access/preparation and complete semantic readiness validation remain unavailable; no new availability/readiness UI is introduced here.
+
+2026-10-04 12:43 UTC final local verification: backend 1217 passed/23 existing warnings; frontend 460 passed; static build passed; lint 0 errors/131 existing warnings. All seven final screenshots retained. Synthetic users 9/10 and plans 2/3 plus sessions were verified deleted from `uphill_ai_test`; no truncation. Full origin/main diff, new textual evidence and PR description: zero private denylist hits. Current model gate remains HOLD; no new model results or latency claims.
+
+## Fresh evaluation authorized — 2026-10-04
+
+The owner authorized continued evaluation without the earlier spend limit. This supersedes the exhausted experiment budget only; staging/deployment and production remain separate checkpoints. Reuse experiment v6 first, compare production v1 on identical updated code/date/KB, then run the three paired five-case repeats. Preserve every failure and existing assertion.
+
+2026-10-04 12:56 UTC: stopped the first baseline attempt after it exposed an import-scope error before local constraints were appended on fixtures without explicit day access. This interrupted attempt is not a completed experiment or comparison baseline. Regression reproduced (1 failed, 5 passed); reuse the function's existing JSON import on both paths. Full backend unit suite after correction: 1219 passed, 23 existing warnings. Restart with a new exclusive artifact directory; retain interrupted-attempt diagnostics and account for its model cost separately.
+
+2026-10-04 13:13 UTC: completed fresh paired full suites on code `d65f1459a34760ce019e9ca34a8ae413e548520e`. Production run `eval_scheduler_1791119207250470000`: 25 primary Gemini cases, mean 18.744 s, p95 32.1 s; one unchanged volume-band failure (114.8 km, minimum 115). V6 run `eval_scheduler_1791119554772748000`: 23 primary/2 retry cases, mean 12.640 s, p95 22.9 s, no automated failures or paired legacy-quality regression. All 25 have known arithmetic/access/intensity accounting; advanced readiness remains unavailable where no recognised advanced method is present, never interpreted as proof of preparation. VI ban scan: 77 workouts, zero hits.
+
+Manual review keeps v6 on HOLD: the two no-gym Vietnam cases include 12-second Zone 5 mountain runs without declared power/preparation; the sub-elite case labels a 63-minute aerobic segment Cool-down. One mixed 77-minute session receives an under-75-minute fueling statement, and some fueling text translates required technical terms. These are retained failures, not rewritten samples. The first production repeat then stalled on its next-block model call for over six minutes. Interrupted and terminated that process; it has no completed results/run name, and its completed initial block was not checkpointed by the old harness; the four Vietnam cases had not started. Do not present it as a completed repeat or a passing latency sample.
+
+Follow-up correction: recognise undeclared short maximal uphill runs in readiness validation, preserve completed evaluation cases before subsequent calls/publishing, and bound each scheduler transport request at 120 seconds with SDK retries disabled (the existing primary plus one application retry remains). The 15-second recognition boundary is a conservative software guard, not a book-prescribed dose. Sustained easy climbing is not classified as power. Two red regressions reproduced; full corrected unit suite: 1221 passed, 23 existing warnings. No frontend/public-format change.
+
+The owner's continuing instruction with no spend limit permits a further experiment refinement. Draft v7 preserves all variables, volume/tier bands, existing nutrition policy and labels; it clarifies declared training methods, prerequisites, phase roles, resolved session time for fueling and VI technical vocabulary. Test it against a fresh same-code production baseline, retaining both the successful automated v6 suite and its failed manual review. No staging/production move or deploy is authorized by this refinement.
+
+2026-10-05 local / 2026-10-04 UTC: v7 full suite and all three repeated candidate batches completed with no harness failures. Full mean 11.684 s vs production 19.236 s; repeated mean 15.973 s vs 28.033 s. Manual VI review still rejects an invented metabolic-threshold claim at the app's 75-minute fueling cutoff. Two paired legacy progression scores also regressed because the old checker excluded moving portions of a Strength-labelled session, then counted similar movement when labelled Easy next week; resolved contextual progression passed both. Preserve these original scores and outputs as failed evidence.
+
+Corrected progression accounting uses resolved locomotion minutes for structured sessions and the existing totals/type path for legacy output. The 15% limit stays unchanged; exact +15% passes and +16% fails. Compare the ratio directly to avoid floating multiplication rejecting an exact boundary. Ten red regressions reproduced. Corrected backend suite: 1232 passed, 23 existing warnings; final targeted accounting/check suite: 64 passed.
+
+Non-Race structured fueling copy is now derived from complete resolved session duration, including Strength/passive time, using the existing app bands (<75, 75–150, >150 minutes) and existing quantities. EN/VI text shares quantities and retains Carbs/Sodium vocabulary. No invented metabolic threshold, new dose or universal book attribution. Race-specific advice remains under its existing policy. Public fields/tabs/format stay unchanged. V8 tells the model to omit non-Race fueling text; all template variables and prior coaching constraints remain. Fresh paired model evaluation and real EN/VI desktop/mobile screenshots are required before a release decision.
+
+2026-10-04 21:02 UTC: froze the fresh v8 pair at code `0b9adcb153bf7a1cae1a40241492a99dabed0656`, backend tree `67e39f5f669eae2a34a852cf5f5fe16a3a4db79e`. Candidate v8 SHA256 `c7af326f7c498b9bbda6254cf4fa963e3caa65770edd06cc5840b6fb663ac5e4`; only experiment/latest labels. Same model/date and unchanged KB as recorded above. Production v1 and staging v4 unchanged. All eight paid batches include synthetic-only export. Frontend-only display fixes during this batch do not change the tested backend.
+
+2026-10-05 local / 2026-10-04 UTC: resolved Treadmill ranges including zero incline retain their complete machine ranges. Resolved outdoor ascent keeps its exact estimate; the Main Set does not duplicate whole-session distance. Suppressed obsolete pace/route estimation copy on resolved prescriptions. Red regression reproduced; frontend 462 tests pass, static build passes, lint 0 errors/131 existing warnings. Six real EN/VI desktop/mobile screenshots retained in `follow-up-evals/ui/`. Scratch users 11/12 and plans 4/5 plus sessions deleted from `uphill_ai_test`, owned servers stopped, tab closed, viewport reset.
+
+2026-10-04 21:48 UTC: v8 full run `eval_scheduler_1791150453798549000` passes all 25 harness gates, with 21 primary/4 retry cases and no paired legacy-quality regression. All arithmetic/access/intensity accounting is known; unavailable advanced readiness is not a passing score. VI ban scan: 77 workouts, zero hits. Full latency mean 89.372 s vs production 16.992 s: FAIL. Beginner primary request recorded a 2013.3-second case including retry; retain it unmodified, do not exclude it or infer its cause. P95 13.7 s does not erase the mean failure. The configured HTTP read timeout is not evidence of a hard wall-clock deadline.
+
+Manual review also holds release: recreational Treadmill Thursday prescribes Plank/Side Plank as `3 x 1` without a hold duration. Several EN sequential Strength sessions share this incomplete target. The current exercise schema has sets/reps/rest but no explicit hold target; per-session minutes do not define each hold. Do not silently invent a hold dose or claim full coaching acceptance. Other reviewed Vietnam sessions preserve flat outdoor weekdays, machine access limits, weekend mountains and distinct aerobic climbing. Fresh v8 repeats remain required.
+
+Next bounded correction, before any staging approval: make isometric hold units explicit in the internal exercise contract and render the supplied target in the existing timeline. Reject missing/ambiguous targets and cover EN/VI parity; do not choose a new universal hold duration. Separately investigate and reproduce the extreme request duration, verify an end-to-end deadline rather than a per-read timeout, and repeat the paired latency gate on frozen code. Existing raw timing remains failed evidence.
+
+2026-10-04 21:56 UTC: v8 repeat 2 fails the unchanged healthy-sequence week-2 golden band: 156.5 km versus the existing maximum 150. Contextual progression passes and volume-fit is unavailable on this typed-volume sequence, which has no watch snapshot; neither result overrides the independent golden band. No assertion or fixture/reference was loosened. Explicitly review starting-load enforcement for typed-volume cases as part of the next correction.
+
+## Fresh evaluation checkpoint — 2026-10-05
+
+All 18 completed follow-up batches plus two interrupted attempts are retained in [fresh comparison](../superpowers/evidence/scheduler-reliability/follow-up-evals/README.md). Latest v8 full suite and two repeats pass automated gates; repeat 2 fails the unchanged healthy week-2 band (156.5 km, maximum 150). No paired legacy-check regression. Full mean 89.372 s versus production 16.992 s fails +20%; all three repeated subsets average 14.873 s versus 26.080 s (-42.97%). The 2013.3-second timeout/retry outlier remains included. Manual coaching acceptance fails ambiguous isometric hold targets. Decision: **HOLD**, no staging deploy or label move.
+
+Verified prompt labels remain production v1, staging v4, snapshot-exp v4, experiment v8. Known generation cost for this continuation is $4.878681, including interrupted attempts; three generation costs unknown, embeddings excluded. Attribution matches every logged attempt after excluding two overlapping unrelated observations by request start time. Cost API returned HTTP 429 once; backed off and resumed missing reads. All 18 run names verified in retained dataset metadata; deprecated/replacement detailed-read limitation persists.
+
+Final verification: backend 1232 passed/23 existing warnings; frontend 462 passed; build passed; lint 0 errors/131 existing warnings. Six new screenshots show EN/VI desktop/mobile, with the existing format. Five incidental substring matches in generated baseline prose are explicitly filtered from committed artifacts; scores unchanged and raw hashes retained. Generated outputs are not exported to Langfuse. Full final diff/new textual evidence/private scan: zero hits. No integration tests/TRUNCATE, env/dependency/deploy-script/dashboard edits, merge or ready-for-review action. All owned synthetic UI data and preview resources cleaned up.
+
+Stop at the owner review checkpoint after push and PR update. Next proposed corrections: explicit hold units, investigate hard wall-clock deadlines, typed-volume starting-load enforcement; rerun the same paired gate without relaxing fixtures. Do not deploy or promote from automated pass alone.
+
+
+## Reviewed fixes and provider checkpoint — 2026-10-05
+
+**Code review approved; release HOLD.** Reviewed code `0b012b5`, backend tree `159b808de76c09bea308486391849aa78ffc9d58`: 1,289 unit tests pass with 23 existing warnings. The reviewer independently passes 15 fallback tests and reports no remaining Critical/Important/Minor findings from this review. Fixes cover holds/bilateral accounting, native async cancellation, typed load, pace-based fallback conservation, goal/tier fallback priorities, equipment/default single-filler access, week phase consistency and contextual live scores. Execution/About format is preserved.
+
+[Ten retained arms](../superpowers/evidence/scheduler-reliability/release-candidate-evals/README.md) include the completed eight-arm v9 pair and two later production-only baselines. V9 full run `eval_scheduler_1791157639065328000` fails beginner generation and planned Taper; all 15 repeat cases pass. Full mean 10.680 versus 17.808 seconds; repeats 13.280 versus 30.080 seconds. Faster output does not override full-suite failure. Exact run names, retries, unavailable metrics, hashes and costs are linked.
+
+V10 never started: baseline `eval_scheduler_1791189990588070000` completed, then review required fixes. V11 likewise never started: baseline `eval_scheduler_1791191427959840000` completed with nine rule-based-or-unknown cases. Provider error explicitly reports `429 RESOURCE_EXHAUSTED`, configured project monthly spending cap exceeded; first matching log `2026-10-05T09:10:13Z`. This unpaired, provider-affected baseline cannot approve candidate quality/latency. Parent batches stopped before candidate dispatch; no in-flight model call abandoned. Stop further paid calls pending restored provider access.
+
+V11 prompt SHA256 `c64cea13c20a4f3e1a171bbceff8f3abeda5eb9f11eca0ed38da47cad3df4c1e`: experiment label plus service-managed `latest` only. V10 goal/load/phase corrections retained; v11 requires separate left/right hold targets. Final label check confirms production v1, staging v4, snapshot-exp v4 unchanged. Same 37 principles and 29 vectors/hashes as frozen above. No seed or environment label changed.
+
+Known generation cost for these ten arms: $2.817476. Costs unavailable for 19 observations, including provider failures; embeddings excluded. Attribution excludes nonmatching observations without calling them all unrelated sessions. Every push synthetic-only, no content export. Privacy scan of all ten compact outputs: zero matches; scores preserved.
+
+Four hold and four walk/run screenshots show running EN/VI desktop/mobile output. Scratch `uphill_ai_test` only; disposable user/plan/session rows deleted by exact identity, signed out, own tabs/servers closed and viewport reset. No integration/TRUNCATE tests, requirements/.env/deploy-script/dashboard changes, merge or ready-for-review action.
+
+Owner must restore the configured Gemini spending cap or identify an approved alternative project before live evaluation resumes. Then freeze final code/model/date/KB and run both full 25-case arms plus three paired five-case repeats, preserving all bands/assertions, and complete manual coaching/VI acceptance. Only after all gates pass, synchronize the fallback deliberately, push/update this record, and stop for the separate owner staging go-ahead. No deployment or production label move occurred in this continuation.
+
+
+## V11 completed after provider access restoration
+
+2026-10-05 UTC: owner restored provider access. Frozen code c0163da/backend tree 159b808de76c09bea308486391849aa78ffc9d58, candidate v11, production v1, model gemini-3.8-flash and as-of 2026-10-05. Same KB hashes as before. All eight arms completed: candidate 40/40 harness passes, 34 primary/6 retries, no fallback; full mean 10.620 s vs production 19.220 s; repeated mean 13.413 s vs 29.847 s. No paired legacy-quality regression; 245 VI workouts have zero banned wording hits. All primary arithmetic/access/intensity checks True; unavailable advanced readiness is not a pass. Model cost $1.826797, all matched generation costs known; embeddings excluded. Complete [runs and metadata](../superpowers/evidence/scheduler-reliability/v11-evals/README.md) retained.
+
+Manual HOLD: recovery week Tuesday names a body-region mobility category rather than an executable movement. Final no-gym sub-elite repeat prescribes Step-ups with only bodyweight equipment, without confirmed box/stairs. Correct via existing bounded retry: reject mobility/circuit category names and Step-ups without explicit step-surface equipment. Do not silently choose movements, add equipment or invent dose. These guards cover recognized names, not universal semantic validation. V12 clarifies concrete movement and explicit surface access; no calendar, physiological dose, mileage band or public workout-format change. Fresh whole unit suite and full paired gate required.
+
+## V12 completed paired gate — 2026-10-06
+
+
+Decision: HOLD. The full candidate run falls back to rules for the Vietnamese 42 km fixture after primary and retry both fail volume_fit. All repeats pass, but they do not erase that failure. The original error did not record the rejected distance, so whether it was under or over the band is unknown.
+
+| Arm | Run | Cases | Mean seconds | Engines | Failures |
+|---|---|---:|---:|---|---:|
+| reliability-followup8-production-1 | eval_scheduler_1791195561288411000 | 25 | 18.792 | {'gemini': 25} | 2 |
+| reliability-followup8-production-repeat-1 | eval_scheduler_1791196062705584000 | 5 | 31.160 | {'gemini': 5} | 0 |
+| reliability-followup8-production-repeat-2 | eval_scheduler_1791196281614000000 | 5 | 27.560 | {'gemini': 5} | 0 |
+| reliability-followup8-production-repeat-3 | eval_scheduler_1791196518271796000 | 5 | 29.080 | {'gemini': 5} | 0 |
+| reliability-followup8-v12-1 | eval_scheduler_1791195873038209000 | 25 | 11.092 | {'gemini': 21, 'gemini_retry': 3, 'rule-based-or-unknown': 1} | 1 |
+| reliability-followup8-v12-repeat-1 | eval_scheduler_1791196132428105000 | 5 | 12.060 | {'gemini': 5} | 0 |
+| reliability-followup8-v12-repeat-2 | eval_scheduler_1791196362028619000 | 5 | 14.100 | {'gemini': 5} | 0 |
+| reliability-followup8-v12-repeat-3 | eval_scheduler_1791196597653736000 | 5 | 13.500 | {'gemini': 5} | 0 |
+
+Candidate: 36 primary / 3 retry / 1 rules across 40 cases. Full mean 11.092 s vs production 18.792 s; repeated mean 13.220 s vs 29.267 s. All 40 arithmetic/access/intensity-accounting checks are available and True; advanced readiness remains unavailable. No paired legacy regression. VI ban scan: 245 workouts, zero hits. Manual review found no additional concrete-movement/access blocker; fallback remains a release blocker.
+
+Matched metadata-only model cost: $1.790376, 102 logged attempts matched to 102 observations, all costs known; embeddings excluded. Frozen code 40c169b54395f0199e8831f32ebe50eefeb5dddd, backend tree 3e041e5b432bd0ab55eee7feb7f4594c530b874a. Prompt v12; production v1 and staging v4 unchanged. Same model, fixed as-of date and KB as identity.json.
+
+The next correction supplies the existing bounded retry with actual resolved distance and the unchanged allowed band. Loggable errors stay generic; quantities stay in local model feedback. No scaling, fixture relaxation, new training dose, public workout-format change or deployment. V13 requires a fresh full paired gate. Raw output hashes and zero privacy replacements are recorded in privacy-filter.json.
+
+[All eight run artifacts](../superpowers/evidence/scheduler-reliability/v12-evals/README.md). Incremental independent review approved numeric retry diagnostics; backend units: 1,302 passed, 23 existing warnings. Integration suite not run.
+
+## V13 completed paired gate — 2026-10-06
+
+
+Decision: HOLD. The full Vietnamese sub-elite treadmill case fails volume_fit on the primary attempt, then strength_readiness on the retry and falls back to rules. Its fallback access is unavailable. The rejected draft is not retained, so the exact advanced method is unknown. The Vietnamese 42 km volume rejection recovered through retry. All outputs, scores and failed history remain retained.
+
+| Arm | Run | Cases | Mean seconds | Engines | Failures |
+|---|---|---:|---:|---|---:|
+| reliability-followup9-production-1 | eval_scheduler_1791207810056860000 | 25 | 19.772 | {'gemini': 25} | 1 |
+| reliability-followup9-production-repeat-1 | eval_scheduler_1791208376368851000 | 5 | 32.620 | {'gemini': 5} | 1 |
+| reliability-followup9-production-repeat-2 | eval_scheduler_1791208632031978000 | 5 | 30.260 | {'gemini': 5} | 2 |
+| reliability-followup9-production-repeat-3 | eval_scheduler_1791208890729893000 | 5 | 30.880 | {'gemini': 5} | 0 |
+| reliability-followup9-v13-1 | eval_scheduler_1791208179562741000 | 25 | 13.172 | {'gemini': 21, 'gemini_retry': 3, 'rule-based-or-unknown': 1} | 2 |
+| reliability-followup9-v13-repeat-1 | eval_scheduler_1791208470217078000 | 5 | 17.080 | {'gemini': 4, 'gemini_retry': 1} | 0 |
+| reliability-followup9-v13-repeat-2 | eval_scheduler_1791208726203151000 | 5 | 16.480 | {'gemini': 4, 'gemini_retry': 1} | 0 |
+| reliability-followup9-v13-repeat-3 | eval_scheduler_1791208993958856000 | 5 | 18.460 | {'gemini': 5} | 0 |
+
+Matched metadata-only model cost: $1.844510, 104 logged attempts; matching details and unavailable costs, if any, remain explicit in costs.json. Embeddings excluded. Frozen identity is in identity.json; same model, fixed as-of date and KB across all arms. Production v1/staging v4 unchanged.
+
+V14 makes the existing trusted readiness restriction explicit during volume retries. Independent review approved the focused wording and found no code blocker, but declined to infer the unknown rejected exercise or paid effectiveness. No dose, threshold, fixture band, public workout-format change or deployment. V14 requires a fresh full paired gate. Raw hashes and privacy replacements are recorded in privacy-filter.json; legacy-score and VI scans in review.json. V13 is not claimed manually/UI accepted.
+
+[All eight run artifacts](../superpowers/evidence/scheduler-reliability/v13-evals/README.md). Backend units after formatter: 1,302 passed, 23 warnings. No backend code changed for the V14 prompt correction.
+
+## V14 preflight / interrupted baseline — 2026-10-06
+
+A version assertion stopped the first publish attempt before POST; corrected the expected old version, then published v14 under experiment/latest only. No extra version or environment-label move. First baseline aborted on local disk-full error before results.json; candidate did not run. Partial logs and $0.154222 known model cost retained separately. Cleared this task generated Next.js cache; frontend stopped. Restart all eight arms with unchanged v14/code/KB in new directories. [Interruption evidence](../superpowers/evidence/scheduler-reliability/v14-interrupted-baseline/README.md).
+
+## V14 completed paired gate — 2026-10-06
+
+
+Decision: HOLD. Full vertical-kilometer no-gym case: primary hold timing rejection, retry volume_fit rejection, then rules. First repeat recreational no-gym case: primary unsupported kind/setting, retry volume_fit rejection, then rules with unavailable access. The rejected drafts were not retained; specific malformed fields/quantities are unknown. All original results and scores remain retained.
+
+| Arm | Run | Cases | Mean seconds | Engines | Failures |
+|---|---|---:|---:|---|---:|
+| reliability-followup11-production-1 | eval_scheduler_1791210182527713000 | 25 | 29.860 | {'gemini': 23, 'gemini_retry': 2} | 2 |
+| reliability-followup11-production-repeat-1 | eval_scheduler_1791210768814478000 | 5 | 32.000 | {'gemini': 5} | 2 |
+| reliability-followup11-production-repeat-2 | eval_scheduler_1791211006178852000 | 5 | 30.840 | {'gemini': 5} | 0 |
+| reliability-followup11-production-repeat-3 | eval_scheduler_1791211268556069000 | 5 | 33.940 | {'gemini': 5} | 0 |
+| reliability-followup11-v14-1 | eval_scheduler_1791210575599595000 | 25 | 14.256 | {'gemini': 20, 'gemini_retry': 4, 'rule-based-or-unknown': 1} | 1 |
+| reliability-followup11-v14-repeat-1 | eval_scheduler_1791210841037384000 | 5 | 12.380 | {'gemini': 4, 'rule-based-or-unknown': 1} | 2 |
+| reliability-followup11-v14-repeat-2 | eval_scheduler_1791211089282914000 | 5 | 14.720 | {'gemini': 5} | 0 |
+| reliability-followup11-v14-repeat-3 | eval_scheduler_1791211346740322000 | 5 | 13.560 | {'gemini': 5} | 0 |
+
+Known metadata-only model cost: $1.787677, 106 logged attempts, 2 observation costs unavailable; embeddings excluded. The earlier disk-interrupted baseline's $0.154222 is separate and excluded from this paired gate. Same frozen code/backend/model/date/KB across all eight arms; identities and raw hashes retained. Production v1/staging v4 unchanged. No manual/UI acceptance is claimed for V14.
+
+Next correction: give the existing validation retry the rejected draft as explicitly delimited untrusted data, captured before normalization. Request minimal repair and validate the entire returned block. Keep data local, never exception/log/span metadata; parse/transport retries remain unchanged. No extra attempts, scaling, fixture/check relaxation, new dose or format change. Review approved the design; code/tests require review and a fresh full gate for V15. See review.json for paired legacy and VI scans.
+
+[All eight run artifacts](../superpowers/evidence/scheduler-reliability/v14-evals/README.md).
+
+## V15 completed paired gate — 2026-10-06
+
+
+Decision: HOLD. The full elite/no-COROS fixture rejected an unsupported segment kind or setting on both primary and retry, then used rules. Exact offending fields and values were not persisted; no inference is made about them. The completed healthy sequence repaired its primary schema rejection successfully. All four Vietnam fixtures passed in the full arm and each repeat (16 observations total).
+
+| Arm | Run | Cases | Mean seconds | Engines | Failures |
+|---|---|---:|---:|---|---:|
+| reliability-followup12-production-1 | eval_scheduler_1791212187759589000 | 25 | 20.348 | {'gemini': 25} | 1 |
+| reliability-followup12-production-repeat-1 | eval_scheduler_1791212689432667000 | 5 | 30.840 | {'gemini': 5} | 0 |
+| reliability-followup12-production-repeat-2 | eval_scheduler_1791212937590537000 | 5 | 32.000 | {'gemini': 5} | 1 |
+| reliability-followup12-production-repeat-3 | eval_scheduler_1791213184150458000 | 5 | 30.960 | {'gemini': 5} | 1 |
+| reliability-followup12-v15-1 | eval_scheduler_1791212498265736000 | 25 | 10.836 | {'gemini': 23, 'gemini_retry': 1, 'rule-based-or-unknown': 1} | 1 |
+| reliability-followup12-v15-repeat-1 | eval_scheduler_1791212765239263000 | 5 | 13.140 | {'gemini': 5} | 0 |
+| reliability-followup12-v15-repeat-2 | eval_scheduler_1791213018282531000 | 5 | 13.500 | {'gemini': 5} | 0 |
+| reliability-followup12-v15-repeat-3 | eval_scheduler_1791213265761583000 | 5 | 14.060 | {'gemini': 5} | 0 |
+
+Known metadata-only model cost: $1.711382; 100 logged attempts matched, 0 observation costs unavailable. Embeddings excluded. All eight arms retain original scores/failures, frozen code/backend/model/as-of date/KB identities and original raw hashes. Privacy filtering happens before evidence copies are written; see privacy-filter.json. No legacy-score regressions; 245 VI workouts scanned with zero banned-word hits. Production v1/staging v4/snapshot-exp v4 unchanged. The full and repeat latency comparisons pass, but cannot override the fallback gate. No full manual/UI acceptance is claimed.
+
+Next correction approved by the owner: provider structured output with the existing workout array and segment enums. Select the structured contract from the trusted raw prompt template's exact marker; require segments locally too. Preserve production-v1 legacy generation, the existing two attempts, coaching validators, numeric bands, persistence and Execution/About. Independent architectural review supports this scope; exact failed field/value and paid effectiveness remain unknown. A fresh paired gate is required.
+
+Backend units for frozen v15: 1,304 passed, 23 warnings. The Docker scratch database was unavailable for screenshots; created isolated native localhost:5432 uphill_ai_test instead. No v15 test-user accounts/plans were seeded and no UI acceptance screenshot was claimed.
+
+[All eight run artifacts](../superpowers/evidence/scheduler-reliability/v15-evals/README.md).
+
+## Structured-output correction — 2026-10-06
+
+Owner approved the architectural correction after v15's completed HOLD gate. The scheduler now uses JSON MIME type and a compact provider schema for the existing workout array. The trusted raw template's exact structured-prescription header selects required segments; athlete input cannot select the contract. Production-v1 scalar compatibility stays available. Missing/null/empty/non-list segments under the structured contract fail locally and use the same bounded retry. No coercion/default insertion, new attempts, dose/threshold/fixture changes, or athlete-facing format changes.
+
+Five boundary tests failed before implementation. Final focused suite: 118 passed; final full backend unit suite: 1,312 passed, 23 existing warnings. Initial scan found three old mock/contract mismatches; the explicit legacy fixture and valid telemetry segmented fixture preserved all original assertions. Final independent review approved with no findings and 161 targeted passes. The installed SDK serialized both schemas without a network request; live acceptance remains unverified until the fresh paired gate.
+
+Keep remote prompt v15 unchanged. The new code is evaluated as **v15 plus structured output**, identified by a separate frozen code/backend tree and all eight new followup13 runs. Production v1/staging v4 labels remain untouched. KB preflight matches the prior 37-principle/29-vector hashes. No screenshots/manual acceptance/deployment claim yet. [Approved correction plan](../superpowers/plans/2026-10-06-scheduler-structured-output.md).
+
+## Structured-output compatibility diagnosis — 2026-10-06
+
+Followup13 was stopped as an incomplete baseline compatibility run after repeated request deadlines; candidate never dispatched. Three scored cases and fourth cancelled attempt retained, known$0.011472/four unknown costs. This deviation is explicit; no paired/quality acceptance. [Interrupted run](../superpowers/evidence/scheduler-reliability/v15-schema-interrupted-baseline/README.md).
+
+Fourteen controlled synthetic schema/mime probes retain all errors and outputs. Unconstrained/JSON MIME-only output covers seven days; fast schemas at minItems1 return one workout. Raw flat minItems7 yielded a seven-day response and a504deadline failure. Existing120-second generation deadline unchanged; diagnostic deadline30seconds is not a gate. [Probe evidence and cost accounting](../superpowers/evidence/scheduler-reliability/v15-schema-probes/README.md).
+
+Owner additionally requested stop/handoff to Claude at2%remaining weekly Codex allowance. Current verified allowance6%remaining (94%used). Prepare a handoff with managed worktree, branch/remote, commits, evidence, runtime ownership, limitations and next steps. Further coverage correction remains proposed; its reviewer failed due usage limits, not a technical verdict. Production/staging still owner-controlled.
+
+## Requested calendar coverage — 2026-10-06
+
+Live probe diagnosis motivated a calendar completeness correction, preserving existing first-block start exclusions and multiple sessions. Provider minItems now reflects requested days; legacy scalar schema omits unused nested segments. Local exact week/day coverage runs before normalization or week clamping. Missing or unexpected days use generic loggable errors with private repair instructions and the same two attempts. No padding, dose/threshold/fixture change or deadline change. The provider's underlying timeout cause is unknown.
+
+New coverage tests initially failed because the functions were absent. Focused tests exposed a mistaken sorted-day test omission, corrected to explicitly omit Sunday. Final full backend units: **1,323 passed,23 existing warnings,80.71s**. Partial dose/accounting examples explicitly isolate calendar checks; separate unmocked coverage/retry cases enforce completeness. Telemetry fixture now includes a complete fixed synthetic week while retaining all original assertions. Independent review requested; no live acceptance claim until fresh followup14 paired gate.
+
+Calendar correction independent final review: Approved, no Critical/Important/Minor findings;59 targeted tests independently passed. Frozen code929ca391379e48a440702f60f20bcb13370998ee, backendtreeaceff2947c906243139961f3b23e1b6940ebe21c. Fresh followup14 started with unchanged v15 experiment and productionv1, as-of2026-10-05, same37principle/29vector hashes. All paid pushes synthetic-only/metadata-only. Live results pending; not release approval.
+
+
+## Claude handoff at2% remaining — 2026-10-06
+
+Stopped normal work when API reported98% weekly used. Followup14 interrupted with16/25 production cases scored, no candidate/repeats dispatched. Engines{'gemini': 7, 'gemini_retry': 3, 'rule-based-or-unknown': 6}; all deadlines/failures retained.34 logged attempts,33 matched observations,17 known costs$0.206558,16 matched costs unavailable,1 attempt unmatched; embeddings excluded. No fresh candidate result or release acceptance. Owned batch/client/preview servers stopped; tab7 closed and viewport reset. Old unreachable tab6 remains, API refused closing it. Scratch has0 plans and0 owned synthetic-prefix accounts;2 other accounts retained. No staging/production action or label move. [Interrupted evidence](../superpowers/evidence/scheduler-reliability/v15-calendar-interrupted-baseline/README.md). [Claude handoff](../handoffs/2026-10-06-scheduler-release-claude.md).

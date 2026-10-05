@@ -1,0 +1,6 @@
+{
+  "status": "baseline_completed_candidate_not_started",
+  "reason": "Final independent review found material fallback/access/accounting gaps. Batch paused before candidate arm; completed baseline retained. Restart full paired gate after fixes.",
+  "completed_directory": "reliability-followup5-production-1",
+  "candidate_runs": 0
+}
