@@ -1,0 +1,21 @@
+{
+  "decision": "HOLD",
+  "findings": [
+    {
+      "arm": "reliability-followup11-v14-1",
+      "case": "scheduler_fixture_vertical_km_no_gym",
+      "primary_rejection": "Hold targets and rests exceed segment duration",
+      "retry_rejection": "volume_fit",
+      "engine": "rule-based-or-unknown"
+    },
+    {
+      "arm": "reliability-followup11-v14-repeat-1",
+      "case": "scheduler_fixture_vietnam_urban_recreational_no_gym",
+      "primary_rejection": "Unsupported segment kind or setting",
+      "retry_rejection": "volume_fit",
+      "engine": "rule-based-or-unknown",
+      "access": null
+    }
+  ],
+  "limitation": "Rejected drafts were not retained; exact malformed fields and quantities cannot be inferred. Full manual/UI acceptance not claimed."
+}

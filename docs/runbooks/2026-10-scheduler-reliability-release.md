@@ -1,6 +1,6 @@
 # Scheduler reliability release record
 
-Status: release HOLD. V13 has one full-suite fallback after volume/readiness rejections. V14 clarifies the existing trusted readiness restriction during retries and requires a fresh paired gate. Production v1/staging v4 unchanged; all historical failures retained.
+Status: release HOLD. V14 has two candidate fallbacks after structure/volume rejections. V15 will use focused repair with the local rejected draft, retaining all validation and attempt limits. Production v1/staging v4 unchanged; all historical failures retained.
 
 ## Frozen release contract
 
@@ -25,7 +25,7 @@ Owner authorized execution after requiring the Vietnamese-copy skill. Apply R1�
 
 ## Results and decisions
 
-Current decision: HOLD pending V14 paired gates and manual acceptance. The owner authorized further iterations; historical v5-v9 results below are retained and do not establish current release eligibility.
+Current decision: HOLD pending V15 paired gates and manual acceptance. The owner authorized further iterations; historical v5-v9 results below are retained and do not establish current release eligibility.
 
 2026-10-04 Task 2 diagnosis: synthetic next-block core reproduced `Actual 0.0km/0.0h` for missing logs and no watch data. Changed to `Known logged volume`, explicit unknown/missed counts, calendar coverage and override/readiness distinction. Four failing regressions became green; original gate behavior stayed green. This establishes misleading context, not proof that it alone caused the historical stochastic 110.2 km result. The paired sequential evaluation remains required.
 
@@ -196,3 +196,25 @@ V14 makes the existing trusted readiness restriction explicit during volume retr
 ## V14 preflight / interrupted baseline — 2026-10-06
 
 A version assertion stopped the first publish attempt before POST; corrected the expected old version, then published v14 under experiment/latest only. No extra version or environment-label move. First baseline aborted on local disk-full error before results.json; candidate did not run. Partial logs and $0.154222 known model cost retained separately. Cleared this task generated Next.js cache; frontend stopped. Restart all eight arms with unchanged v14/code/KB in new directories. [Interruption evidence](../superpowers/evidence/scheduler-reliability/v14-interrupted-baseline/README.md).
+
+## V14 completed paired gate — 2026-10-06
+
+
+Decision: HOLD. Full vertical-kilometer no-gym case: primary hold timing rejection, retry volume_fit rejection, then rules. First repeat recreational no-gym case: primary unsupported kind/setting, retry volume_fit rejection, then rules with unavailable access. The rejected drafts were not retained; specific malformed fields/quantities are unknown. All original results and scores remain retained.
+
+| Arm | Run | Cases | Mean seconds | Engines | Failures |
+|---|---|---:|---:|---|---:|
+| reliability-followup11-production-1 | eval_scheduler_1791210182527713000 | 25 | 29.860 | {'gemini': 23, 'gemini_retry': 2} | 2 |
+| reliability-followup11-production-repeat-1 | eval_scheduler_1791210768814478000 | 5 | 32.000 | {'gemini': 5} | 2 |
+| reliability-followup11-production-repeat-2 | eval_scheduler_1791211006178852000 | 5 | 30.840 | {'gemini': 5} | 0 |
+| reliability-followup11-production-repeat-3 | eval_scheduler_1791211268556069000 | 5 | 33.940 | {'gemini': 5} | 0 |
+| reliability-followup11-v14-1 | eval_scheduler_1791210575599595000 | 25 | 14.256 | {'gemini': 20, 'gemini_retry': 4, 'rule-based-or-unknown': 1} | 1 |
+| reliability-followup11-v14-repeat-1 | eval_scheduler_1791210841037384000 | 5 | 12.380 | {'gemini': 4, 'rule-based-or-unknown': 1} | 2 |
+| reliability-followup11-v14-repeat-2 | eval_scheduler_1791211089282914000 | 5 | 14.720 | {'gemini': 5} | 0 |
+| reliability-followup11-v14-repeat-3 | eval_scheduler_1791211346740322000 | 5 | 13.560 | {'gemini': 5} | 0 |
+
+Known metadata-only model cost: $1.787677, 106 logged attempts, 2 observation costs unavailable; embeddings excluded. The earlier disk-interrupted baseline's $0.154222 is separate and excluded from this paired gate. Same frozen code/backend/model/date/KB across all eight arms; identities and raw hashes retained. Production v1/staging v4 unchanged. No manual/UI acceptance is claimed for V14.
+
+Next correction: give the existing validation retry the rejected draft as explicitly delimited untrusted data, captured before normalization. Request minimal repair and validate the entire returned block. Keep data local, never exception/log/span metadata; parse/transport retries remain unchanged. No extra attempts, scaling, fixture/check relaxation, new dose or format change. Review approved the design; code/tests require review and a fresh full gate for V15. See review.json for paired legacy and VI scans.
+
+[All eight run artifacts](../superpowers/evidence/scheduler-reliability/v14-evals/README.md).
