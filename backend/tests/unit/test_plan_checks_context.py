@@ -351,3 +351,22 @@ def test_typed_budget_skips_partial_first_week():
         [workout(), workout(week=2)],
     )
     assert context["weekly_km_bounds"] == {2: [57.6, 79.2]}
+
+
+@pytest.mark.parametrize("goal", ["start_running", "return", "recovery"])
+def test_goal_specific_progress_is_not_forced_to_healthy_distance_floor(goal):
+    rows = [workout(60)]
+    context = plan_checks.generation_context(
+        {"current_weekly_km": 20, "goal_type": goal, "plan_start_date": "2026-10-05"}, rows
+    )
+    assert "weekly_km_bounds" not in context
+    if goal in {"return", "recovery"}:
+        assert context["max_zone"] == 2
+
+
+def test_resolved_walk_run_tier_keeps_duration_progress_even_for_event_goal():
+    rows = [workout(60)]
+    context = plan_checks.generation_context(
+        {"current_weekly_km": 2, "goal_type": "finish", "uses_walk_run": True, "plan_start_date": "2026-10-05"}, rows
+    )
+    assert "weekly_km_bounds" not in context

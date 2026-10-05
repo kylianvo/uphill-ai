@@ -175,6 +175,9 @@ async def _run_scheduler(fixture: dict) -> tuple[list[dict], str]:
         ),
     )
     fixture["_resolved_tier"] = tier
+    from services.athlete_tier import get_profile
+
+    fixture["_uses_walk_run"] = get_profile(tier).uses_walk_run
     return workouts, _scheduler_engine_used(before, _scheduler_counters())
 
 
@@ -184,6 +187,7 @@ def _scheduler_diagnostics(workouts: list[dict], fixture: dict) -> dict:
     race_info = {
         **(fixture.get("_effective_race_info") or fixture.get("race_info", {})),
         "current_weekly_km": fixture.get("user_profile", {}).get("current_weekly_km"),
+        "uses_walk_run": fixture.get("_uses_walk_run", False),
     }
     checks = plan_checks.run_context_checks(workouts, context=plan_checks.generation_context(race_info, workouts))
     weeks = {}
@@ -272,6 +276,9 @@ async def _run_scheduler_sequence(fixture: dict) -> tuple[list[dict], str]:
         workouts, tier = await original_generate(*args, **kwargs)
         block_engines.append(_scheduler_engine_used(block_before, _scheduler_counters()))
         fixture["_resolved_tier"] = tier
+        from services.athlete_tier import get_profile
+
+        fixture["_uses_walk_run"] = get_profile(tier).uses_walk_run
         return workouts, tier
 
     def planned(_plan, week):

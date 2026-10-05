@@ -249,14 +249,14 @@ async def test_single_workout_segments_cannot_override_coach_pace():
     assert "5:00 /km" in client.models.generate_content.call_args.kwargs["contents"]
 
 
-async def final_fallback(total_weeks, distance=80, ascent=4000):
+async def final_fallback(total_weeks, distance=80, ascent=4000, weekly_km=62):
     with (
         patch("services.race_history.prompt_summary", return_value=""),
         patch("services.race_history.tier_distance", return_value=None),
     ):
         rows, _ = await PlanGenerator.generate_plan_workouts(
             plan_id=0,
-            user_profile={"current_weekly_km": 62},
+            user_profile={"current_weekly_km": weekly_km},
             race_info={
                 "lang": "en",
                 "goal_type": "finish",
@@ -358,3 +358,12 @@ async def test_fallback_race_distance_cannot_expand_the_weekly_time_budget():
     # Typed 62 km uses the existing six-minutes-per-km time prior: 372 minutes.
     assert sum(w["prescription"]["aerobic_minutes"] for w in first_week) <= 372
     assert 49.6 <= sum(w["distance_km"] for w in first_week) <= 68.2
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("weekly_km", [15, 19, 100, 150, 200])
+async def test_fallback_authors_load_using_resolved_paces(weekly_km):
+    rows = await final_fallback(8, weekly_km=weekly_km)
+    for week in [1, 2]:
+        total = sum(w["distance_km"] for w in rows if w["week_number"] == week)
+        assert weekly_km * 0.8 <= total <= weekly_km * 1.1

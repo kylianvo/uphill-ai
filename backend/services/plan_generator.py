@@ -1288,6 +1288,7 @@ class PlanGenerator:
                         **race_info,
                         "current_weekly_km": user_profile.get("current_weekly_km"),
                         "max_weekly_progression": tier_profile.max_weekly_progression,
+                        "uses_walk_run": tier_profile.uses_walk_run,
                     },
                     wos,
                 ),
@@ -1762,6 +1763,7 @@ class PlanGenerator:
                     **race_info,
                     "current_weekly_km": user_profile.get("current_weekly_km"),
                     "max_weekly_progression": tier_profile.max_weekly_progression,
+                    "uses_walk_run": tier_profile.uses_walk_run,
                 },
                 [{"week_number": week} for week in range(block_start_week, block_end_week + 1)],
             )
@@ -1995,9 +1997,14 @@ class PlanGenerator:
 
         _rule_started = time.monotonic()
 
-        base_weekly_minutes = current_weekly_km * 6.0
-        if base_weekly_minutes < 120.0:
-            base_weekly_minutes = 180.0
+        # Author the weekly time budget from this athlete's actual pace mixture.
+        # Zone 4 is the fastest quality option; moving preparation/recovery only
+        # lowers its distance contribution. Fractions preserve the existing split.
+        distance_per_minute = sum(
+            share / (sum(PlanGenerator.parse_pace_range(est_zones[f"zone{zone}_pace"])) / 2)
+            for share, zone in [(0.2, 1), (0.6, 2), (0.2, 4)]
+        )
+        base_weekly_minutes = current_weekly_km / distance_per_minute if current_weekly_km > 0 else 180.0
 
         workouts: list[dict[str, Any]] = []
         W = total_weeks - 1

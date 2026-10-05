@@ -287,10 +287,12 @@ def generation_context(race_info: dict, workouts: list[dict]) -> dict:
     snapshot = race_info.get("fitness_snapshot")
     readiness = race_info.get("readiness_summary") or (snapshot.readiness if snapshot else None) or {}
     recovery = feedback.get("overall_rpe", 0) >= 7 or readiness.get("readiness_flag") in {"fatigued", "overreaching"}
-    if recovery:
+    if recovery or race_info.get("goal_type") in {"return", "recovery"}:
         context["max_zone"] = min(context.get("max_zone", 2), 2)
     adjusted = (
         recovery
+        or race_info.get("uses_walk_run", False)
+        or race_info.get("goal_type") in {"start_running", "return", "recovery"}
         or feedback.get("confirmed_missed_sessions", 0) > 0
         or feedback.get("volume_adjustment_required", False)
     )
