@@ -1336,6 +1336,8 @@ class PlanGenerator:
         # rule-based schedule below are the fallbacks).
         _ai_prompt = None
         _plan_prompt_tpl = None
+        _structured_prescription = False
+        _response_schema = None
         try:
             scheduling_notes = ""
             all_days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
@@ -1744,6 +1746,11 @@ class PlanGenerator:
             )
 
             _plan_prompt_tpl = observability.load_prompt("plan_generation", PLAN_GENERATION_PROMPT)
+            from services.plan_output_schema import STRUCTURED_PRESCRIPTION_HEADER, workout_response_schema
+
+            # Select from trusted raw template lines, never compiled athlete input.
+            _structured_prescription = STRUCTURED_PRESCRIPTION_HEADER in _plan_prompt_tpl.template.splitlines()
+            _response_schema = workout_response_schema(structured=_structured_prescription)
             import hashlib
 
             race_info["_prompt_identity"] = {
@@ -1895,12 +1902,18 @@ class PlanGenerator:
                             model=settings.GEMINI_MODEL,
                             contents=_gemini_prompt,
                             config=_genai_types.GenerateContentConfig(
-                                thinking_config=_genai_types.ThinkingConfig(
-                                    thinking_level=settings.GEMINI_THINKING_LEVEL
-                                )
-                            )
-                            if hasattr(_genai_types, "ThinkingConfig")
-                            else None,
+                                response_mime_type="application/json",
+                                response_json_schema=_response_schema,
+                                **(
+                                    {
+                                        "thinking_config": _genai_types.ThinkingConfig(
+                                            thinking_level=settings.GEMINI_THINKING_LEVEL
+                                        )
+                                    }
+                                    if hasattr(_genai_types, "ThinkingConfig")
+                                    else {}
+                                ),
+                            ),
                         )
                         generation.set_usage(observability.Usage.from_genai(_response.usage_metadata))
                     _latency = time.time() - _start
@@ -1966,6 +1979,10 @@ class PlanGenerator:
                     )
                     _candidate_draft = _json.dumps(cleaned_wos, ensure_ascii=False)
                     try:
+                        if _structured_prescription and any(
+                            not isinstance(wo.get("segments"), list) or not wo["segments"] for wo in cleaned_wos
+                        ):
+                            raise ValueError("Structured prescription requires nonempty segments for every workout")
                         _processed = post_process_workouts(cleaned_wos)
                     except ValueError as error:
                         _validation_error = getattr(error, "retry_instruction", str(error))

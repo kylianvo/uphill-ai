@@ -16,11 +16,20 @@ WORKOUT_JSON = json.dumps(
     [
         {
             "week_number": 1,
-            "day_of_week": "Tue",
+            "day_of_week": "Tuesday",
             "phase": "Base",
             "title": "Easy Aerobic Run",
             "type": "Easy",
             "duration_minutes": 45,
+            "segments": [
+                {
+                    "kind": "run",
+                    "duration_minutes": 45,
+                    "zone": "Zone 2",
+                    "setting": "flat_outdoor",
+                    "pace_min_per_km": 6.5,
+                }
+            ],
             "target_zone": "Zone 2",
             "target_hr_range": "125-140 bpm",
             "target_pace": "6:30 /km",

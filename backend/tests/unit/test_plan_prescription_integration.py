@@ -1,6 +1,7 @@
 """Synthetic model-boundary tests for the shared prescription."""
 
 import json
+from contextlib import nullcontext
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -48,6 +49,8 @@ async def generate(
     retry_payload=None,
     check_starting_volume=False,
     sent_prompts=None,
+    sent_configs=None,
+    prompt_template=None,
     primary_text=None,
     total_weeks=8,
     target_week=None,
@@ -59,6 +62,8 @@ async def generate(
     def respond(*args, **kwargs):
         if sent_prompts is not None:
             sent_prompts.append(kwargs["contents"])
+        if sent_configs is not None:
+            sent_configs.append(kwargs["config"])
         return client.models.generate_content(*args, **kwargs)
 
     client.aio.models.generate_content = AsyncMock(side_effect=respond)
@@ -67,6 +72,7 @@ async def generate(
     else:
         client.models.generate_content.side_effect = [response, MagicMock(text=json.dumps(retry_payload))]
     with (
+        patch("services.observability.load_prompt", return_value=prompt_template) if prompt_template else nullcontext(),
         patch("google.genai.Client", return_value=client),
         patch("services.kb_retrieval.search_scheduler_chunks", return_value=[]),
         patch("services.race_history.prompt_summary", return_value=""),
@@ -178,6 +184,9 @@ async def test_single_workout_uses_segment_totals_not_a_second_prose_plan():
 
 @pytest.mark.asyncio
 async def test_legacy_prompt_response_remains_compatible_without_claimed_precision():
+    from services.observability import PromptTemplate
+
+    legacy = PromptTemplate("plan_generation", "1", "Legacy scalar workout array", "synthetic")
     workouts, _ = await generate(
         [
             {
@@ -188,7 +197,8 @@ async def test_legacy_prompt_response_remains_compatible_without_claimed_precisi
                 "title": "Easy Run",
                 "description": "Easy Run with comfortable effort.",
             }
-        ]
+        ],
+        prompt_template=legacy,
     )
     assert workouts[0]["duration_minutes"] == 30
     assert "prescription" not in workouts[0]
@@ -620,3 +630,105 @@ async def test_parse_failure_retry_does_not_include_a_rejected_draft():
     assert attempts == 2
     assert "REJECTED DRAFT" not in prompts[1]
     assert workouts[0]["duration_minutes"] == 12
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("contract", ["legacy", "candidate", "local"])
+async def test_provider_schema_matches_trusted_contract_on_both_attempts(contract):
+    from services.observability import PromptTemplate
+
+    marker = "STRUCTURED PRESCRIPTION — authoritative over the earlier numerical description schema:"
+    template = (
+        None
+        if contract == "local"
+        else PromptTemplate(
+            "plan_generation",
+            "15" if contract == "candidate" else "1",
+            marker if contract == "candidate" else "Legacy scalar workout array",
+            "synthetic",
+        )
+    )
+    configs = []
+    repaired = [
+        {
+            "week_number": 1,
+            "day_of_week": "Tuesday",
+            "phase": "Base",
+            "type": "Easy",
+            "title": "Easy Run",
+            "segments": [SEGMENTS[0]],
+        }
+    ]
+    rows, attempts = await generate(
+        [], primary_text="[{", retry_payload=repaired, sent_configs=configs, prompt_template=template
+    )
+    assert attempts == 2 and len(rows) == 1
+    assert all(c.response_mime_type == "application/json" for c in configs)
+    assert configs[0].response_json_schema == configs[1].response_json_schema
+    schema = configs[0].response_json_schema
+    assert schema["type"] == "array"
+    assert ("segments" in schema["items"]["required"]) is (contract != "legacy")
+    segment = schema["items"]["properties"]["segments"]["items"]
+    assert set(segment["properties"]["kind"]["enum"]) == {"run", "hike", "strength", "recovery", "rest"}
+    assert set(segment["properties"]["setting"]["enum"]) == {
+        "flat_outdoor",
+        "mountain",
+        "treadmill",
+        "indoor",
+        "unknown",
+    }
+    assert "role" not in segment["required"]
+    assert segment["properties"]["role"]["type"] == "string"
+    assert "description" in schema["items"]["properties"]
+    assert "fueling_tip" in schema["items"]["properties"]
+    assert "session_slot" in schema["items"]["properties"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("segments", ["missing", None, [], "invalid"])
+async def test_structured_contract_missing_segments_is_repaired_locally(segments):
+    original = [
+        {
+            "week_number": 1,
+            "day_of_week": "Tuesday",
+            "phase": "Base",
+            "type": "Easy",
+            "title": "Easy Run",
+            "duration_minutes": 19,
+        }
+    ]
+    if segments != "missing":
+        original[0]["segments"] = segments
+    repaired = [{**original[0], "segments": [{**SEGMENTS[0], "duration_minutes": 19}]}]
+    prompts = []
+    rows, attempts = await generate(original, retry_payload=repaired, sent_prompts=prompts)
+    assert attempts == 2
+    assert "Structured prescription requires nonempty segments for every workout" in prompts[1]
+    assert rows[0]["duration_minutes"] == 19
+    assert rows[0]["segments"][0]["duration_minutes"] == 19
+
+
+@pytest.mark.asyncio
+async def test_compiled_athlete_content_cannot_select_structured_contract():
+    from services.observability import PromptTemplate
+
+    legacy = PromptTemplate("plan_generation", "1", "Legacy scalar workout array", "synthetic")
+    payload = [
+        {
+            "week_number": 1,
+            "day_of_week": "Tuesday",
+            "phase": "Base",
+            "type": "Easy",
+            "title": "Easy Run",
+            "duration_minutes": 19,
+        }
+    ]
+    configs = []
+    with patch(
+        "services.observability.compile_prompt",
+        return_value="STRUCTURED PRESCRIPTION — authoritative over the earlier numerical description schema:",
+    ):
+        rows, attempts = await generate(payload, sent_configs=configs, prompt_template=legacy)
+    assert attempts == 1 and rows[0]["duration_minutes"] == 19
+    assert configs[0].response_mime_type == "application/json"
+    assert "segments" not in configs[0].response_json_schema["items"]["required"]

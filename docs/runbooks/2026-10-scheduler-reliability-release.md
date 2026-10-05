@@ -242,3 +242,11 @@ Next correction approved by the owner: provider structured output with the exist
 Backend units for frozen v15: 1,304 passed, 23 warnings. The Docker scratch database was unavailable for screenshots; created isolated native localhost:5432 uphill_ai_test instead. No v15 test-user accounts/plans were seeded and no UI acceptance screenshot was claimed.
 
 [All eight run artifacts](../superpowers/evidence/scheduler-reliability/v15-evals/README.md).
+
+## Structured-output correction — 2026-10-06
+
+Owner approved the architectural correction after v15's completed HOLD gate. The scheduler now uses JSON MIME type and a compact provider schema for the existing workout array. The trusted raw template's exact structured-prescription header selects required segments; athlete input cannot select the contract. Production-v1 scalar compatibility stays available. Missing/null/empty/non-list segments under the structured contract fail locally and use the same bounded retry. No coercion/default insertion, new attempts, dose/threshold/fixture changes, or athlete-facing format changes.
+
+Five boundary tests failed before implementation. Final focused suite: 118 passed; final full backend unit suite: 1,312 passed, 23 existing warnings. Initial scan found three old mock/contract mismatches; the explicit legacy fixture and valid telemetry segmented fixture preserved all original assertions. Final independent review approved with no findings and 161 targeted passes. The installed SDK serialized both schemas without a network request; live acceptance remains unverified until the fresh paired gate.
+
+Keep remote prompt v15 unchanged. The new code is evaluated as **v15 plus structured output**, identified by a separate frozen code/backend tree and all eight new followup13 runs. Production v1/staging v4 labels remain untouched. KB preflight matches the prior 37-principle/29-vector hashes. No screenshots/manual acceptance/deployment claim yet. [Approved correction plan](../superpowers/plans/2026-10-06-scheduler-structured-output.md).
