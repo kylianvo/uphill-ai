@@ -82,7 +82,7 @@ def resolve_prescription(segments: list[dict], *, lang: str) -> dict:
             if has_hold == has_reps:
                 raise ValueError("Exercise requires exactly one of reps or hold_seconds")
             if not has_hold and re.search(
-                r"\bplank(?: hold)?$|\bwall[ -]?sit(?: hold)?$|\bhollow(?: body)? hold$",
+                r"\b(?:plank(?: hold)?|wall[ -]?sit(?: hold)?|hollow(?: body)? hold)(?:\s*\([^)]*\))?$",
                 exercise["name"].strip(),
                 re.IGNORECASE,
             ):

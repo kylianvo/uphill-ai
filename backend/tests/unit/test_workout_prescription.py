@@ -241,7 +241,19 @@ def test_hold_target_retains_explicit_seconds_and_rest_in_both_languages(lang, t
     assert resolved["run_km"] == 0
 
 
-@pytest.mark.parametrize("name", ["Plank", "Side Plank", "Forearm Plank", "Wall Sit", "Hollow Body Hold"])
+@pytest.mark.parametrize(
+    "name",
+    [
+        "Plank",
+        "Side Plank",
+        "Forearm Plank",
+        "Wall Sit",
+        "Hollow Body Hold",
+        "Side Plank (left)",
+        "Side Plank (each side)",
+        "Wall Sit Hold (isometric)",
+    ],
+)
 def test_recognised_static_holds_reject_rep_only_targets(name):
     segment = hold_segment(name=name, reps=1)
     del segment["exercise"]["hold_seconds"]
