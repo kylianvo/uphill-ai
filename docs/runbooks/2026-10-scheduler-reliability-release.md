@@ -1,6 +1,6 @@
 # Scheduler reliability release record
 
-Status: release HOLD. V12 falls back to rules for one Vietnamese fixture after two volume-fit rejections. V13 adds exact local retry diagnostics and requires fresh paired evaluation. Production v1/staging v4 unchanged; all historical failures retained.
+Status: release HOLD. V13 has one full-suite fallback after volume/readiness rejections. V14 clarifies the existing trusted readiness restriction during retries and requires a fresh paired gate. Production v1/staging v4 unchanged; all historical failures retained.
 
 ## Frozen release contract
 
@@ -25,7 +25,7 @@ Owner authorized execution after requiring the Vietnamese-copy skill. Apply R1â€
 
 ## Results and decisions
 
-Current decision: HOLD pending V13 paired gates and manual acceptance. The owner authorized further iterations; historical v5-v9 results below are retained and do not establish current release eligibility.
+Current decision: HOLD pending V14 paired gates and manual acceptance. The owner authorized further iterations; historical v5-v9 results below are retained and do not establish current release eligibility.
 
 2026-10-04 Task 2 diagnosis: synthetic next-block core reproduced `Actual 0.0km/0.0h` for missing logs and no watch data. Changed to `Known logged volume`, explicit unknown/missed counts, calendar coverage and override/readiness distinction. Four failing regressions became green; original gate behavior stayed green. This establishes misleading context, not proof that it alone caused the historical stochastic 110.2 km result. The paired sequential evaluation remains required.
 
@@ -170,3 +170,25 @@ Matched metadata-only model cost: $1.790376, 102 logged attempts matched to 102 
 The next correction supplies the existing bounded retry with actual resolved distance and the unchanged allowed band. Loggable errors stay generic; quantities stay in local model feedback. No scaling, fixture relaxation, new training dose, public workout-format change or deployment. V13 requires a fresh full paired gate. Raw output hashes and zero privacy replacements are recorded in privacy-filter.json.
 
 [All eight run artifacts](../superpowers/evidence/scheduler-reliability/v12-evals/README.md). Incremental independent review approved numeric retry diagnostics; backend units: 1,302 passed, 23 existing warnings. Integration suite not run.
+
+## V13 completed paired gate â€” 2026-10-06
+
+
+Decision: HOLD. The full Vietnamese sub-elite treadmill case fails volume_fit on the primary attempt, then strength_readiness on the retry and falls back to rules. Its fallback access is unavailable. The rejected draft is not retained, so the exact advanced method is unknown. The Vietnamese 42 km volume rejection recovered through retry. All outputs, scores and failed history remain retained.
+
+| Arm | Run | Cases | Mean seconds | Engines | Failures |
+|---|---|---:|---:|---|---:|
+| reliability-followup9-production-1 | eval_scheduler_1791207810056860000 | 25 | 19.772 | {'gemini': 25} | 1 |
+| reliability-followup9-production-repeat-1 | eval_scheduler_1791208376368851000 | 5 | 32.620 | {'gemini': 5} | 1 |
+| reliability-followup9-production-repeat-2 | eval_scheduler_1791208632031978000 | 5 | 30.260 | {'gemini': 5} | 2 |
+| reliability-followup9-production-repeat-3 | eval_scheduler_1791208890729893000 | 5 | 30.880 | {'gemini': 5} | 0 |
+| reliability-followup9-v13-1 | eval_scheduler_1791208179562741000 | 25 | 13.172 | {'gemini': 21, 'gemini_retry': 3, 'rule-based-or-unknown': 1} | 2 |
+| reliability-followup9-v13-repeat-1 | eval_scheduler_1791208470217078000 | 5 | 17.080 | {'gemini': 4, 'gemini_retry': 1} | 0 |
+| reliability-followup9-v13-repeat-2 | eval_scheduler_1791208726203151000 | 5 | 16.480 | {'gemini': 4, 'gemini_retry': 1} | 0 |
+| reliability-followup9-v13-repeat-3 | eval_scheduler_1791208993958856000 | 5 | 18.460 | {'gemini': 5} | 0 |
+
+Matched metadata-only model cost: $1.844510, 104 logged attempts; matching details and unavailable costs, if any, remain explicit in costs.json. Embeddings excluded. Frozen identity is in identity.json; same model, fixed as-of date and KB across all arms. Production v1/staging v4 unchanged.
+
+V14 makes the existing trusted readiness restriction explicit during volume retries. Independent review approved the focused wording and found no code blocker, but declined to infer the unknown rejected exercise or paid effectiveness. No dose, threshold, fixture band, public workout-format change or deployment. V14 requires a fresh full paired gate. Raw hashes and privacy replacements are recorded in privacy-filter.json; legacy-score and VI scans in review.json. V13 is not claimed manually/UI accepted.
+
+[All eight run artifacts](../superpowers/evidence/scheduler-reliability/v13-evals/README.md). Backend units after formatter: 1,302 passed, 23 warnings. No backend code changed for the V14 prompt correction.

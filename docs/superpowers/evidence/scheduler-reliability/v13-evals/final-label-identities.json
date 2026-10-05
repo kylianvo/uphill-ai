@@ -1,0 +1,22 @@
+[
+  {
+    "label": "production",
+    "version": 1,
+    "sha256": "a0eab967a172a094ee5b524486b643497df24fae81406a7c1d0d2cfbf309ee4e"
+  },
+  {
+    "label": "staging",
+    "version": 4,
+    "sha256": "e100c9d4269819bba19cb03e7167ab6174aca637a0f72d977d4426d4f4192fdb"
+  },
+  {
+    "label": "snapshot-exp",
+    "version": 4,
+    "sha256": "e100c9d4269819bba19cb03e7167ab6174aca637a0f72d977d4426d4f4192fdb"
+  },
+  {
+    "label": "scheduler-reliability-exp",
+    "version": 13,
+    "sha256": "ddcee40893910a40dd4ffca548c8df67279f8cd1a63fda4eaab45f430c670fbc"
+  }
+]

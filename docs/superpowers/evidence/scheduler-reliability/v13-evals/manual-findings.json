@@ -1,0 +1,16 @@
+{
+  "decision": "HOLD",
+  "findings": [
+    {
+      "arm": "reliability-followup9-v13-1",
+      "case": "scheduler_fixture_vietnam_urban_sub_elite_treadmill",
+      "primary_rejection": "volume_fit",
+      "retry_rejection": "strength_readiness",
+      "engine": "rule-based-or-unknown",
+      "fallback_access": null,
+      "rejected_advanced_method": "unknown: rejected draft was not retained"
+    }
+  ],
+  "scope": "Automated/log blocker review. Full manual/UI acceptance is not claimed for V13.",
+  "next_correction": "Re-emphasize trusted prepared_methods restriction during volume retries; independent review approved focused wording, effectiveness requires new whole gate."
+}
