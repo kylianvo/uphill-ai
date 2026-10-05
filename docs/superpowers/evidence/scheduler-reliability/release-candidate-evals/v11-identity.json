@@ -1,0 +1,21 @@
+{
+  "as_of": "2026-10-05",
+  "model": "gemini-3.8-flash",
+  "code": "c1f48348a32ba8dfeb2cabca972cde3d1666952f",
+  "backend_tree": "5fb8ecdb21e90855e1ed20a57babbd14e91bf37d",
+  "production": {
+    "version": 1,
+    "sha256": "a0eab967a172a094ee5b524486b643497df24fae81406a7c1d0d2cfbf309ee4e"
+  },
+  "candidate": {
+    "version": 11,
+    "label": "scheduler-reliability-exp",
+    "sha256": "c64cea13c20a4f3e1a171bbceff8f3abeda5eb9f11eca0ed38da47cad3df4c1e"
+  },
+  "staging_version": 4,
+  "scheduler_seed_sha256": "401fb69936edddefdff442d338baa01f1371fc47f5ca1a688d8a191dda55c7e0",
+  "principles_sha256": "15aaa37cb372f44fb5aecaf57ba2f7f6510a0f33585b4f42b654c0ddfc546563",
+  "qdrant_sha256": "60001d3f78fa26e2f8b6a9a8860fae96504cc213f38e41abea5f3088117f77b0",
+  "export_content": false,
+  "synthetic_only": true
+}

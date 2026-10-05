@@ -1,6 +1,6 @@
 # Scheduler reliability release record
 
-Status: fresh v8 evaluation complete; release HOLD. Retained volume-band, latency and manual hold-target failures block staging. Production and staging unchanged.
+Status: release HOLD. Reviewed code fixes pass 1,289 unit tests; experiment v11 live acceptance is blocked by the configured Gemini project monthly spending cap. Production v1/staging v4 unchanged. Historical failures below remain retained.
 
 ## Frozen release contract
 
@@ -25,7 +25,7 @@ Owner authorized execution after requiring the Vietnamese-copy skill. Apply R1â€
 
 ## Results and decisions
 
-Experiment in progress. Production v1 and candidate v5 complete-suite results are HOLD. The one permitted refinement follows all scheduled v5 repeats; no environment label is promoted. Historical fitness results do not establish this release's gate.
+Current decision: HOLD pending a new complete v11 paired gate and manual acceptance after provider access is restored. The owner authorized further iterations; historical v5-v9 results below are retained and do not establish current release eligibility.
 
 2026-10-04 Task 2 diagnosis: synthetic next-block core reproduced `Actual 0.0km/0.0h` for missing logs and no watch data. Changed to `Known logged volume`, explicit unknown/missed counts, calendar coverage and override/readiness distinction. Four failing regressions became green; original gate behavior stayed green. This establishes misleading context, not proof that it alone caused the historical stochastic 110.2 km result. The paired sequential evaluation remains required.
 
@@ -122,3 +122,20 @@ Verified prompt labels remain production v1, staging v4, snapshot-exp v4, experi
 Final verification: backend 1232 passed/23 existing warnings; frontend 462 passed; build passed; lint 0 errors/131 existing warnings. Six new screenshots show EN/VI desktop/mobile, with the existing format. Five incidental substring matches in generated baseline prose are explicitly filtered from committed artifacts; scores unchanged and raw hashes retained. Generated outputs are not exported to Langfuse. Full final diff/new textual evidence/private scan: zero hits. No integration tests/TRUNCATE, env/dependency/deploy-script/dashboard edits, merge or ready-for-review action. All owned synthetic UI data and preview resources cleaned up.
 
 Stop at the owner review checkpoint after push and PR update. Next proposed corrections: explicit hold units, investigate hard wall-clock deadlines, typed-volume starting-load enforcement; rerun the same paired gate without relaxing fixtures. Do not deploy or promote from automated pass alone.
+
+
+## Reviewed fixes and provider checkpoint â€” 2026-10-05
+
+**Code review approved; release HOLD.** Reviewed code `0b012b5`, backend tree `159b808de76c09bea308486391849aa78ffc9d58`: 1,289 unit tests pass with 23 existing warnings. The reviewer independently passes 15 fallback tests and reports no remaining Critical/Important/Minor findings from this review. Fixes cover holds/bilateral accounting, native async cancellation, typed load, pace-based fallback conservation, goal/tier fallback priorities, equipment/default single-filler access, week phase consistency and contextual live scores. Execution/About format is preserved.
+
+[Ten retained arms](../superpowers/evidence/scheduler-reliability/release-candidate-evals/README.md) include the completed eight-arm v9 pair and two later production-only baselines. V9 full run `eval_scheduler_1791157639065328000` fails beginner generation and planned Taper; all 15 repeat cases pass. Full mean 10.680 versus 17.808 seconds; repeats 13.280 versus 30.080 seconds. Faster output does not override full-suite failure. Exact run names, retries, unavailable metrics, hashes and costs are linked.
+
+V10 never started: baseline `eval_scheduler_1791189990588070000` completed, then review required fixes. V11 likewise never started: baseline `eval_scheduler_1791191427959840000` completed with nine rule-based-or-unknown cases. Provider error explicitly reports `429 RESOURCE_EXHAUSTED`, configured project monthly spending cap exceeded; first matching log `2026-10-05T09:10:13Z`. This unpaired, provider-affected baseline cannot approve candidate quality/latency. Parent batches stopped before candidate dispatch; no in-flight model call abandoned. Stop further paid calls pending restored provider access.
+
+V11 prompt SHA256 `c64cea13c20a4f3e1a171bbceff8f3abeda5eb9f11eca0ed38da47cad3df4c1e`: experiment label plus service-managed `latest` only. V10 goal/load/phase corrections retained; v11 requires separate left/right hold targets. Final label check confirms production v1, staging v4, snapshot-exp v4 unchanged. Same 37 principles and 29 vectors/hashes as frozen above. No seed or environment label changed.
+
+Known generation cost for these ten arms: $2.817476. Costs unavailable for 19 observations, including provider failures; embeddings excluded. Attribution excludes nonmatching observations without calling them all unrelated sessions. Every push synthetic-only, no content export. Privacy scan of all ten compact outputs: zero matches; scores preserved.
+
+Four hold and four walk/run screenshots show running EN/VI desktop/mobile output. Scratch `uphill_ai_test` only; disposable user/plan/session rows deleted by exact identity, signed out, own tabs/servers closed and viewport reset. No integration/TRUNCATE tests, requirements/.env/deploy-script/dashboard changes, merge or ready-for-review action.
+
+Owner must restore the configured Gemini spending cap or identify an approved alternative project before live evaluation resumes. Then freeze final code/model/date/KB and run both full 25-case arms plus three paired five-case repeats, preserving all bands/assertions, and complete manual coaching/VI acceptance. Only after all gates pass, synchronize the fallback deliberately, push/update this record, and stop for the separate owner staging go-ahead. No deployment or production label move occurred in this continuation.

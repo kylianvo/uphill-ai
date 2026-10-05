@@ -1,0 +1,56 @@
+[
+  {
+    "directory": "reliability-followup6-production-1",
+    "run_name": "eval_scheduler_1791191427959840000",
+    "cases": 25,
+    "mean_latency_s": 18.712,
+    "p95_latency_s": 35.3,
+    "engines": {
+      "gemini": 15,
+      "gemini_retry": 1,
+      "rule-based-or-unknown": 9
+    },
+    "failures": [
+      "scheduler_fixture_subelite_100k: fell through to the rule-based-or-unknown tier",
+      "scheduler_fixture_time_goal_marathon: fell through to the rule-based-or-unknown tier",
+      "scheduler_fixture_trail_8wk: fell through to the rule-based-or-unknown tier",
+      "scheduler_fixture_vertical_km_no_gym: fell through to the rule-based-or-unknown tier",
+      "scheduler_fixture_vi_trail_42k: fell through to the rule-based-or-unknown tier",
+      "scheduler_fixture_vietnam_urban_recreational_no_gym: fell through to the rule-based-or-unknown tier",
+      "scheduler_fixture_vietnam_urban_recreational_treadmill: fell through to the rule-based-or-unknown tier",
+      "scheduler_fixture_vietnam_urban_sub_elite_no_gym: fell through to the rule-based-or-unknown tier",
+      "scheduler_fixture_vietnam_urban_sub_elite_treadmill: fell through to the rule-based-or-unknown tier"
+    ],
+    "context": {
+      "arithmetic": {
+        "None": 16,
+        "True": 9
+      },
+      "access": {
+        "None": 20,
+        "True": 5
+      },
+      "intensity_accounting": {
+        "None": 16,
+        "True": 9
+      },
+      "progression": {
+        "None": 21,
+        "True": 4
+      },
+      "recovery_intensity": {
+        "None": 25
+      },
+      "volume_fit": {
+        "None": 17,
+        "True": 8
+      },
+      "strength_readiness": {
+        "None": 25
+      },
+      "phase_alignment": {
+        "None": 25
+      }
+    }
+  }
+]

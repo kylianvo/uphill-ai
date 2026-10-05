@@ -1,0 +1,223 @@
+{
+  "first_seen": "2026-10-05T09:10:13Z",
+  "records": [
+    {
+      "timestamp": "2026-10-05T09:10:13Z",
+      "engine": "gemini",
+      "status": "429 RESOURCE_EXHAUSTED",
+      "reason": "configured Gemini project monthly spending cap exceeded"
+    },
+    {
+      "timestamp": "2026-10-05T09:10:13Z",
+      "engine": "gemini",
+      "status": "429 RESOURCE_EXHAUSTED",
+      "reason": "configured Gemini project monthly spending cap exceeded"
+    },
+    {
+      "timestamp": "2026-10-05T09:10:14Z",
+      "engine": "gemini_retry",
+      "status": "429 RESOURCE_EXHAUSTED",
+      "reason": "configured Gemini project monthly spending cap exceeded"
+    },
+    {
+      "timestamp": "2026-10-05T09:10:14Z",
+      "engine": "gemini_retry",
+      "status": "429 RESOURCE_EXHAUSTED",
+      "reason": "configured Gemini project monthly spending cap exceeded"
+    },
+    {
+      "timestamp": "2026-10-05T09:10:15Z",
+      "engine": "gemini",
+      "status": "429 RESOURCE_EXHAUSTED",
+      "reason": "configured Gemini project monthly spending cap exceeded"
+    },
+    {
+      "timestamp": "2026-10-05T09:10:15Z",
+      "engine": "gemini",
+      "status": "429 RESOURCE_EXHAUSTED",
+      "reason": "configured Gemini project monthly spending cap exceeded"
+    },
+    {
+      "timestamp": "2026-10-05T09:10:16Z",
+      "engine": "gemini_retry",
+      "status": "429 RESOURCE_EXHAUSTED",
+      "reason": "configured Gemini project monthly spending cap exceeded"
+    },
+    {
+      "timestamp": "2026-10-05T09:10:16Z",
+      "engine": "gemini_retry",
+      "status": "429 RESOURCE_EXHAUSTED",
+      "reason": "configured Gemini project monthly spending cap exceeded"
+    },
+    {
+      "timestamp": "2026-10-05T09:10:17Z",
+      "engine": "gemini",
+      "status": "429 RESOURCE_EXHAUSTED",
+      "reason": "configured Gemini project monthly spending cap exceeded"
+    },
+    {
+      "timestamp": "2026-10-05T09:10:17Z",
+      "engine": "gemini",
+      "status": "429 RESOURCE_EXHAUSTED",
+      "reason": "configured Gemini project monthly spending cap exceeded"
+    },
+    {
+      "timestamp": "2026-10-05T09:10:17Z",
+      "engine": "gemini_retry",
+      "status": "429 RESOURCE_EXHAUSTED",
+      "reason": "configured Gemini project monthly spending cap exceeded"
+    },
+    {
+      "timestamp": "2026-10-05T09:10:17Z",
+      "engine": "gemini_retry",
+      "status": "429 RESOURCE_EXHAUSTED",
+      "reason": "configured Gemini project monthly spending cap exceeded"
+    },
+    {
+      "timestamp": "2026-10-05T09:10:18Z",
+      "engine": "gemini",
+      "status": "429 RESOURCE_EXHAUSTED",
+      "reason": "configured Gemini project monthly spending cap exceeded"
+    },
+    {
+      "timestamp": "2026-10-05T09:10:18Z",
+      "engine": "gemini",
+      "status": "429 RESOURCE_EXHAUSTED",
+      "reason": "configured Gemini project monthly spending cap exceeded"
+    },
+    {
+      "timestamp": "2026-10-05T09:10:19Z",
+      "engine": "gemini_retry",
+      "status": "429 RESOURCE_EXHAUSTED",
+      "reason": "configured Gemini project monthly spending cap exceeded"
+    },
+    {
+      "timestamp": "2026-10-05T09:10:19Z",
+      "engine": "gemini_retry",
+      "status": "429 RESOURCE_EXHAUSTED",
+      "reason": "configured Gemini project monthly spending cap exceeded"
+    },
+    {
+      "timestamp": "2026-10-05T09:10:20Z",
+      "engine": "gemini",
+      "status": "429 RESOURCE_EXHAUSTED",
+      "reason": "configured Gemini project monthly spending cap exceeded"
+    },
+    {
+      "timestamp": "2026-10-05T09:10:20Z",
+      "engine": "gemini",
+      "status": "429 RESOURCE_EXHAUSTED",
+      "reason": "configured Gemini project monthly spending cap exceeded"
+    },
+    {
+      "timestamp": "2026-10-05T09:10:20Z",
+      "engine": "gemini_retry",
+      "status": "429 RESOURCE_EXHAUSTED",
+      "reason": "configured Gemini project monthly spending cap exceeded"
+    },
+    {
+      "timestamp": "2026-10-05T09:10:20Z",
+      "engine": "gemini_retry",
+      "status": "429 RESOURCE_EXHAUSTED",
+      "reason": "configured Gemini project monthly spending cap exceeded"
+    },
+    {
+      "timestamp": "2026-10-05T09:10:22Z",
+      "engine": "gemini",
+      "status": "429 RESOURCE_EXHAUSTED",
+      "reason": "configured Gemini project monthly spending cap exceeded"
+    },
+    {
+      "timestamp": "2026-10-05T09:10:22Z",
+      "engine": "gemini",
+      "status": "429 RESOURCE_EXHAUSTED",
+      "reason": "configured Gemini project monthly spending cap exceeded"
+    },
+    {
+      "timestamp": "2026-10-05T09:10:22Z",
+      "engine": "gemini_retry",
+      "status": "429 RESOURCE_EXHAUSTED",
+      "reason": "configured Gemini project monthly spending cap exceeded"
+    },
+    {
+      "timestamp": "2026-10-05T09:10:22Z",
+      "engine": "gemini_retry",
+      "status": "429 RESOURCE_EXHAUSTED",
+      "reason": "configured Gemini project monthly spending cap exceeded"
+    },
+    {
+      "timestamp": "2026-10-05T09:10:23Z",
+      "engine": "gemini",
+      "status": "429 RESOURCE_EXHAUSTED",
+      "reason": "configured Gemini project monthly spending cap exceeded"
+    },
+    {
+      "timestamp": "2026-10-05T09:10:23Z",
+      "engine": "gemini",
+      "status": "429 RESOURCE_EXHAUSTED",
+      "reason": "configured Gemini project monthly spending cap exceeded"
+    },
+    {
+      "timestamp": "2026-10-05T09:10:24Z",
+      "engine": "gemini_retry",
+      "status": "429 RESOURCE_EXHAUSTED",
+      "reason": "configured Gemini project monthly spending cap exceeded"
+    },
+    {
+      "timestamp": "2026-10-05T09:10:24Z",
+      "engine": "gemini_retry",
+      "status": "429 RESOURCE_EXHAUSTED",
+      "reason": "configured Gemini project monthly spending cap exceeded"
+    },
+    {
+      "timestamp": "2026-10-05T09:10:25Z",
+      "engine": "gemini",
+      "status": "429 RESOURCE_EXHAUSTED",
+      "reason": "configured Gemini project monthly spending cap exceeded"
+    },
+    {
+      "timestamp": "2026-10-05T09:10:25Z",
+      "engine": "gemini",
+      "status": "429 RESOURCE_EXHAUSTED",
+      "reason": "configured Gemini project monthly spending cap exceeded"
+    },
+    {
+      "timestamp": "2026-10-05T09:10:26Z",
+      "engine": "gemini_retry",
+      "status": "429 RESOURCE_EXHAUSTED",
+      "reason": "configured Gemini project monthly spending cap exceeded"
+    },
+    {
+      "timestamp": "2026-10-05T09:10:26Z",
+      "engine": "gemini_retry",
+      "status": "429 RESOURCE_EXHAUSTED",
+      "reason": "configured Gemini project monthly spending cap exceeded"
+    },
+    {
+      "timestamp": "2026-10-05T09:10:27Z",
+      "engine": "gemini",
+      "status": "429 RESOURCE_EXHAUSTED",
+      "reason": "configured Gemini project monthly spending cap exceeded"
+    },
+    {
+      "timestamp": "2026-10-05T09:10:27Z",
+      "engine": "gemini",
+      "status": "429 RESOURCE_EXHAUSTED",
+      "reason": "configured Gemini project monthly spending cap exceeded"
+    },
+    {
+      "timestamp": "2026-10-05T09:10:27Z",
+      "engine": "gemini_retry",
+      "status": "429 RESOURCE_EXHAUSTED",
+      "reason": "configured Gemini project monthly spending cap exceeded"
+    },
+    {
+      "timestamp": "2026-10-05T09:10:27Z",
+      "engine": "gemini_retry",
+      "status": "429 RESOURCE_EXHAUSTED",
+      "reason": "configured Gemini project monthly spending cap exceeded"
+    }
+  ],
+  "candidate_started": false,
+  "error_log_records": 36
+}

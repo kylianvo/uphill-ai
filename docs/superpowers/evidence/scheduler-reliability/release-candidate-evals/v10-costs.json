@@ -1,0 +1,15 @@
+[
+  {
+    "directory": "reliability-followup5-production-1",
+    "from_start_time": "2026-10-05T08:38:05Z",
+    "to_start_time": "2026-10-05T08:46:35+00:00",
+    "logged_attempts": 31,
+    "generations": 31,
+    "known_costs": 31,
+    "cost_usd": 0.571278,
+    "input_tokens": 262871,
+    "output_tokens": 101970,
+    "matching": "generation start within2s of logged synthetic prompt attempt",
+    "excluded_nonmatching_generations": 62
+  }
+]
