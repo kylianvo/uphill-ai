@@ -1,12 +1,12 @@
 import Foundation
 
-public enum SSEStreamError: Error, LocalizedError, Sendable, Equatable {
+enum SSEStreamError: Error, LocalizedError, Sendable, Equatable {
     case prematureClose
     case httpError(status: Int, code: String?, message: String)
     case streamAborted
     case invalidResponse
 
-    public var errorDescription: String? {
+    var errorDescription: String? {
         switch self {
         case .prematureClose:
             return "Stream closed prematurely without a done or error event."
@@ -20,11 +20,11 @@ public enum SSEStreamError: Error, LocalizedError, Sendable, Equatable {
     }
 }
 
-public struct SSEStreamParser: Sendable {
-    public init() {}
+struct SSEStreamParser: Sendable {
+    init() {}
 
     /// Consumes an arbitrary byte AsyncSequence, extracting SSE event blocks and yielding ChatStreamEvent.
-    public func parse<S: AsyncSequence>(
+    func parse<S: AsyncSequence>(
         bytes: S
     ) -> AsyncThrowingStream<ChatStreamEvent, Error> where S.Element == UInt8, S: Sendable {
         AsyncThrowingStream { continuation in
@@ -83,14 +83,14 @@ public struct SSEStreamParser: Sendable {
     }
 
     /// Convenience for URLSession.AsyncBytes
-    public func parse(
+    func parse(
         bytes: URLSession.AsyncBytes
     ) -> AsyncThrowingStream<ChatStreamEvent, Error> {
         parse(bytes: bytes)
     }
 
     /// Convenience for parsing in-memory bytes
-    public func parse(bytes: [UInt8]) -> AsyncThrowingStream<ChatStreamEvent, Error> {
+    func parse(bytes: [UInt8]) -> AsyncThrowingStream<ChatStreamEvent, Error> {
         let stream = AsyncStream<UInt8> { continuation in
             for byte in bytes {
                 continuation.yield(byte)
@@ -101,12 +101,12 @@ public struct SSEStreamParser: Sendable {
     }
 
     /// Convenience for parsing in-memory Data
-    public func parse(data: Data) -> AsyncThrowingStream<ChatStreamEvent, Error> {
+    func parse(data: Data) -> AsyncThrowingStream<ChatStreamEvent, Error> {
         parse(bytes: [UInt8](data))
     }
 
     /// Convenience for parsing a stream of Data chunks
-    public func parse<S: AsyncSequence>(
+    func parse<S: AsyncSequence>(
         chunks: S
     ) -> AsyncThrowingStream<ChatStreamEvent, Error> where S.Element == Data, S: Sendable {
         let byteStream = AsyncThrowingStream<UInt8, Error> { continuation in

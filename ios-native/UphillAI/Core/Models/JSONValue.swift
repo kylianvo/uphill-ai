@@ -1,7 +1,7 @@
 import Foundation
 
 /// A type-safe, Codable, Sendable representation of arbitrary JSON values.
-public enum JSONValue: Codable, Sendable, Equatable {
+enum JSONValue: Codable, Sendable, Equatable {
     case string(String)
     case int(Int)
     case double(Double)
@@ -10,7 +10,7 @@ public enum JSONValue: Codable, Sendable, Equatable {
     case array([JSONValue])
     case null
 
-    public init(from decoder: Decoder) throws {
+    init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         if container.decodeNil() {
             self = .null
@@ -34,7 +34,7 @@ public enum JSONValue: Codable, Sendable, Equatable {
         }
     }
 
-    public func encode(to encoder: Encoder) throws {
+    func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         switch self {
         case .string(let s): try container.encode(s)
@@ -47,12 +47,12 @@ public enum JSONValue: Codable, Sendable, Equatable {
         }
     }
 
-    public var stringValue: String? {
+    var stringValue: String? {
         if case .string(let s) = self { return s }
         return nil
     }
 
-    public var intValue: Int? {
+    var intValue: Int? {
         switch self {
         case .int(let i): return i
         case .double(let d) where d.rounded() == d: return Int(d)
@@ -60,7 +60,7 @@ public enum JSONValue: Codable, Sendable, Equatable {
         }
     }
 
-    public var doubleValue: Double? {
+    var doubleValue: Double? {
         switch self {
         case .double(let d): return d
         case .int(let i): return Double(i)
@@ -68,27 +68,27 @@ public enum JSONValue: Codable, Sendable, Equatable {
         }
     }
 
-    public var boolValue: Bool? {
+    var boolValue: Bool? {
         if case .bool(let b) = self { return b }
         return nil
     }
 
-    public var objectValue: [String: JSONValue]? {
+    var objectValue: [String: JSONValue]? {
         if case .object(let o) = self { return o }
         return nil
     }
 
-    public var arrayValue: [JSONValue]? {
+    var arrayValue: [JSONValue]? {
         if case .array(let a) = self { return a }
         return nil
     }
 
-    public subscript(key: String) -> JSONValue? {
+    subscript(key: String) -> JSONValue? {
         if case .object(let o) = self { return o[key] }
         return nil
     }
 
-    public subscript(index: Int) -> JSONValue? {
+    subscript(index: Int) -> JSONValue? {
         if case .array(let a) = self, a.indices.contains(index) { return a[index] }
         return nil
     }

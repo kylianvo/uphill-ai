@@ -1,25 +1,25 @@
 import Foundation
 
 /// Models an individual source citation returned in a citations event or message details.
-public struct CitationItem: Codable, Sendable, Equatable, Identifiable {
-    public var id: String { sourceId ?? ref ?? "\(book ?? "")-\(chapter ?? "")-\(title ?? "")" }
+struct CitationItem: Codable, Sendable, Equatable, Identifiable {
+    var id: String { sourceId ?? ref ?? "\(book ?? "")-\(chapter ?? "")-\(title ?? "")" }
 
-    public let ref: String?
-    public let sourceId: String?
-    public let title: String?
-    public let book: String?
-    public let chapter: String?
-    public let chapterNum: Int?
-    public let chapterTitle: String?
-    public let section: String?
-    public let topic: String?
-    public let citationLabel: String?
-    public let sourceLabel: String?
-    public let url: String?
-    public let domain: String?
-    public let quote: String?
+    let ref: String?
+    let sourceId: String?
+    let title: String?
+    let book: String?
+    let chapter: String?
+    let chapterNum: Int?
+    let chapterTitle: String?
+    let section: String?
+    let topic: String?
+    let citationLabel: String?
+    let sourceLabel: String?
+    let url: String?
+    let domain: String?
+    let quote: String?
 
-    public init(
+    init(
         ref: String? = nil,
         sourceId: String? = nil,
         title: String? = nil,
@@ -53,7 +53,7 @@ public struct CitationItem: Codable, Sendable, Equatable, Identifiable {
 }
 
 /// Typed Server-Sent Events emitted by `/api/coach/chat/stream`.
-public enum ChatStreamEvent: Sendable, Equatable {
+enum ChatStreamEvent: Sendable, Equatable {
     case status(step: String, requestId: String)
     case token(text: String)
     case citations(citations: [CitationItem], evidenceStatus: String)
