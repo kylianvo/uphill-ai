@@ -412,3 +412,26 @@ def test_mixed_week_phases_cannot_hide_volume_budget():
         plan_checks.validate_generated_workouts(
             rows, context={"week_coverage": {1: 7}, "weekly_km_bounds": {1: [40, 55]}}
         )
+
+
+@pytest.mark.parametrize("minutes, actual", [(180, "30"), (480, "80")])
+def test_volume_retry_reports_resolved_distance_and_unchanged_bounds_privately(minutes, actual):
+    wo = workout(minutes)
+    context = {"weekly_km_bounds": {1: [56, 78]}, "week_coverage": {1: 7}}
+    with pytest.raises(ValueError) as rejected:
+        plan_checks.validate_generated_workouts([wo], context=context)
+    assert str(rejected.value) == "Invalid generated prescription: volume_fit"
+    assert (
+        rejected.value.retry_instruction
+        == f"Invalid generated prescription: volume_fit. Week 1: resolved training distance {actual} km; allowed 56-78 km. Recompute run/hike duration divided by actual pace; exclude Strength, passive rest and Race."
+    )
+    assert wo["duration_minutes"] == minutes
+
+
+def test_volume_retry_reports_only_the_failed_full_training_week():
+    rows = [workout(480), workout(180, week=2)]
+    context = {"weekly_km_bounds": {1: [56, 78], 2: [56, 78]}, "week_coverage": {1: 2, 2: 7}}
+    with pytest.raises(ValueError) as rejected:
+        plan_checks.validate_generated_workouts(rows, context=context)
+    assert "Week 1:" not in rejected.value.retry_instruction
+    assert "Week 2: resolved training distance 30 km; allowed 56-78 km" in rejected.value.retry_instruction

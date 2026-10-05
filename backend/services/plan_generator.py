@@ -1957,7 +1957,7 @@ class PlanGenerator:
                     try:
                         _processed = post_process_workouts(cleaned_wos)
                     except ValueError as error:
-                        _validation_error = str(error)
+                        _validation_error = getattr(error, "retry_instruction", str(error))
                         raise
                     rag_attempts_total.labels(service="plan_generator", engine=_engine, status="used").inc()
                     _tier_observation.set(status="used")

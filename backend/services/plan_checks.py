@@ -336,6 +336,14 @@ def generation_context(race_info: dict, workouts: list[dict]) -> dict:
     return context
 
 
+class PrescriptionValidationError(ValueError):
+    """Keep athlete quantities in local retry feedback, outside loggable error text."""
+
+    def __init__(self, message: str, retry_instruction: str):
+        super().__init__(message)
+        self.retry_instruction = retry_instruction
+
+
 def validate_generated_workouts(workouts: list[dict], *, context: dict) -> dict[str, bool | None]:
     """Bounded generator attempts call this before any workout can be stored."""
     results = run_context_checks(workouts, context=context)
@@ -358,5 +366,35 @@ def validate_generated_workouts(workouts: list[dict], *, context: dict) -> dict[
                 if permission.get("max_incline_pct") is None:
                     raise ValueError("Invalid generated prescription: unconfirmed treadmill capability")
     if failed:
-        raise ValueError("Invalid generated prescription: " + ", ".join(failed))
+        message = "Invalid generated prescription: " + ", ".join(failed)
+        hints = []
+        if results["volume_fit"] is False:
+            from services.workout_prescription import resolve_prescription
+
+            weekly_km = defaultdict(float)
+            phases = {}
+            for row in workouts:
+                week = row.get("week_number")
+                phases[week] = row.get("phase")
+                if row.get("type") != "Race":
+                    prescription = resolve_prescription(row["segments"], lang="en")
+                    weekly_km[week] += prescription["run_km"] + prescription["hike_km"]
+            for key, bounds in context.get("weekly_km_bounds", {}).items():
+                week = int(key)
+                actual = round(weekly_km[week], 1)
+                if context.get("week_coverage", {}).get(week) != 7 or phases.get(week) in _DOWN_PHASES:
+                    continue
+                if not bounds[0] <= actual <= bounds[1]:
+                    hints.append(
+                        f"Week {week}: resolved training distance {actual:g} km; allowed {bounds[0]:g}-{bounds[1]:g} km."
+                    )
+        if hints:
+            instruction = (
+                message
+                + ". "
+                + " ".join(hints)
+                + " Recompute run/hike duration divided by actual pace; exclude Strength, passive rest and Race."
+            )
+            raise PrescriptionValidationError(message, instruction)
+        raise ValueError(message)
     return results

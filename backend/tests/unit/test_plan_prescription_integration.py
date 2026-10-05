@@ -47,13 +47,20 @@ async def generate(
     prepared_methods=None,
     retry_payload=None,
     check_starting_volume=False,
+    sent_prompts=None,
     total_weeks=8,
     target_week=None,
 ):
     response = MagicMock(text=json.dumps(payload))
     client = MagicMock()
     client.aio.__aenter__.return_value = client.aio
-    client.aio.models.generate_content = AsyncMock(side_effect=client.models.generate_content)
+
+    def respond(*args, **kwargs):
+        if sent_prompts is not None:
+            sent_prompts.append(kwargs["contents"])
+        return client.models.generate_content(*args, **kwargs)
+
+    client.aio.models.generate_content = AsyncMock(side_effect=respond)
     if retry_payload is None:
         client.models.generate_content.return_value = response
     else:
@@ -361,7 +368,11 @@ async def test_typed_weekly_load_rejects_overshoot_and_retries_without_scaling()
             }
         ]
 
-    workouts, attempts = await generate(payload(450), retry_payload=payload(360), check_starting_volume=True)
+    prompts = []
+    workouts, attempts = await generate(
+        payload(450), retry_payload=payload(360), check_starting_volume=True, sent_prompts=prompts
+    )
+    assert "Week 1: resolved training distance 75 km; allowed 49.6-68.2 km" in prompts[1]
     assert attempts == 2
     assert workouts[0]["distance_km"] == 60
     assert workouts[0]["duration_minutes"] == 360
