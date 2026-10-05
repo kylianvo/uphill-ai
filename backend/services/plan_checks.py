@@ -140,8 +140,14 @@ def run_context_checks(workouts: list[dict[str, Any]], *, context: dict) -> dict
     results["arithmetic"] = None if missing_precision else True
     required_phases = context.get("required_phases", {})
     phase_rows = [w for w, _ in resolved if w.get("week_number") in required_phases]
+    week_phases = defaultdict(set)
+    for workout, _ in resolved:
+        week_phases[workout.get("week_number")].add(workout.get("phase"))
+    consistent_phases = all(len(phases) == 1 for phases in week_phases.values())
     results["phase_alignment"] = (
-        all(w.get("phase") == required_phases[w["week_number"]] for w in phase_rows) if phase_rows else None
+        consistent_phases and all(w.get("phase") == required_phases[w["week_number"]] for w in phase_rows)
+        if phase_rows or not consistent_phases
+        else None
     )
     access_unknown = missing_precision
     access_failed = False
@@ -303,7 +309,11 @@ def generation_context(race_info: dict, workouts: list[dict]) -> dict:
     snapshot = race_info.get("fitness_snapshot")
     readiness = race_info.get("readiness_summary") or (snapshot.readiness if snapshot else None) or {}
     recovery = feedback.get("overall_rpe", 0) >= 7 or readiness.get("readiness_flag") in {"fatigued", "overreaching"}
-    if recovery or race_info.get("goal_type") in {"return", "recovery"}:
+    if (
+        recovery
+        or race_info.get("uses_walk_run", False)
+        or race_info.get("goal_type") in {"start_running", "return", "recovery"}
+    ):
         context["max_zone"] = min(context.get("max_zone", 2), 2)
     adjusted = (
         recovery

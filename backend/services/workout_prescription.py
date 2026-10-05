@@ -95,6 +95,18 @@ def resolve_prescription(segments: list[dict], *, lang: str) -> dict:
                     raise ValueError("Exercise reps must be integers")
                 exercise["reps"] = int(reps)
             exercise["rest_seconds"] = _number(exercise.get("rest_seconds", 0))
+            equipment = exercise.get("equipment")
+            if (
+                not isinstance(equipment, list)
+                or not equipment
+                or any(
+                    not isinstance(item, str) or item not in {"bodyweight", "weights", "machine", "box", "stairs"}
+                    for item in equipment
+                )
+            ):
+                raise ValueError("Exercise requires explicit supported equipment")
+            if has_hold and re.search(r"\b(each side|both sides|per side)\b", exercise["name"], re.I):
+                raise ValueError("Use separate explicitly targeted left and right hold segments")
             if has_hold:
                 minimum_seconds = sets * exercise["hold_seconds"] + (sets - 1) * exercise["rest_seconds"]
                 if minimum_seconds > _number(segment.get("duration_minutes")) * 60:

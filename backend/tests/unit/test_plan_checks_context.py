@@ -229,7 +229,13 @@ def test_advanced_exercise_cannot_hide_behind_generic_strength_label():
                 "kind": "strength",
                 "duration_minutes": 18,
                 "setting": "indoor",
-                "exercise": {"name": "Split Jump Squats", "sets": 4, "reps": 6, "rest_seconds": 90},
+                "exercise": {
+                    "name": "Split Jump Squats",
+                    "sets": 4,
+                    "reps": 6,
+                    "rest_seconds": 90,
+                    "equipment": ["bodyweight"],
+                },
             }
         ],
     }
@@ -288,7 +294,13 @@ def test_progression_counts_running_inside_strength_without_loosening_growth_lim
             "duration_minutes": 30,
             "zone": None,
             "setting": "indoor",
-            "exercise": {"name": "Bodyweight Squats", "sets": 3, "reps": 10, "rest_seconds": 60},
+            "exercise": {
+                "name": "Bodyweight Squats",
+                "sets": 3,
+                "reps": 10,
+                "rest_seconds": 60,
+                "equipment": ["bodyweight"],
+            },
         }
     )
     wp.apply_prescription(mixed, lang="en")
@@ -389,3 +401,14 @@ def test_late_event_phases_follow_the_existing_race_week_contract():
 def test_non_event_goals_do_not_acquire_event_periodization(goal):
     context = plan_checks.generation_context({"goal_type": goal, "date": "2026-10-24", "total_weeks": 4}, [workout(30)])
     assert "required_phases" not in context
+
+
+def test_mixed_week_phases_cannot_hide_volume_budget():
+    rows = [workout(600, phase="Base"), workout(0, day="Sunday", phase="Recovery")]
+    rows[-1]["type"] = "Rest"
+    results = check(rows, week_coverage={1: 7}, weekly_km_bounds={1: [40, 55]})
+    assert results["phase_alignment"] is False
+    with pytest.raises(ValueError, match="phase_alignment"):
+        plan_checks.validate_generated_workouts(
+            rows, context={"week_coverage": {1: 7}, "weekly_km_bounds": {1: [40, 55]}}
+        )

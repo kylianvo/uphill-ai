@@ -38,6 +38,7 @@ def record_generation(
     trace_id: str | None,
     tier: str | None = None,
     measured_weekly_km: float | None = None,
+    context: dict | None = None,
 ) -> None:
     if not plan_id or not trace_id:
         return
@@ -50,7 +51,12 @@ def record_generation(
             if week2 > 0:
                 ratio = week2 / measured_weekly_km
                 observability.score(trace_id=trace_id, name="plan_volume_fit", value=round(min(ratio, 1 / ratio), 3))
-        share = plan_checks.pass_share(plan_checks.run_checks(workouts))
+        checks = (
+            plan_checks.run_context_checks(workouts, context=context)
+            if context is not None
+            else plan_checks.run_checks(workouts)
+        )
+        share = plan_checks.pass_share({name: value for name, value in checks.items() if value is not None})
         if share is not None:
             observability.score(trace_id=trace_id, name="plan_checks", value=share)
 

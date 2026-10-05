@@ -98,7 +98,7 @@ FITNESS SNAPSHOT RULES (apply only when the athlete summary contains a fitness s
 STRUCTURED PRESCRIPTION — authoritative over the earlier numerical description schema:
 Every workout must include `segments`, an ordered nonempty array, and `rationale`, a concise coaching explanation with no digits, quantities, sets or additional prescriptions. Old description Process numbers are replaced locally from segments. Do not repeat execution instructions in rationale. Preserve useful cautions without numeric claims.
 Each segment: kind run|hike|strength|recovery|rest; duration_minutes (finite nonnegative); zone Zone 1–Zone 5 for moving run/hike, otherwise null; setting flat_outdoor|mountain|treadmill|indoor|unknown; role warmup|main|cooldown (optional). Moving segments require pace_min_per_km, an actual movement pace number or two positive endpoints. For Treadmill use actual belt pace, not an equivalent flat-effort pace; incline_pct is the actual grade. Mountain movement may include elevation_gain_m as an estimate. Flat outdoor ascent is zero. Never assign ascent from the race merely because a weekday run is Trail.
-Strength segments require one named exercise object: name, positive integer sets, exactly one target (positive integer reps OR positive hold_seconds), nonnegative rest_seconds between sets, and equipment (array: bodyweight, weights, machine, box, stairs; include every required item). Static Plank, Wall Sit and other isometric holds require explicit hold_seconds, including side qualifiers. Holds plus between-set rests must fit the segment duration. Never infer seconds from rep numbers; choose an accessible rep exercise if no supported hold target is available. Duration includes the exercise's rests. Each exercise is a separate segment; do not hide a circuit or its repetitions in prose. For repeated intervals emit each work and moving recovery segment in order; recovery kind is passive only. Include moving Warm-up and Cool-down once. Rest has duration zero.
+Strength segments require one named exercise object: name, positive integer sets, exactly one target (positive integer reps OR positive hold_seconds), nonnegative rest_seconds between sets, and equipment (array: bodyweight, weights, machine, box, stairs; include every required item). Static Plank, Wall Sit and other isometric holds require explicit hold_seconds, including side qualifiers. Bilateral holds require separate explicitly targeted left and right segments; do not use each-side targets inside one segment. Holds plus between-set rests must fit the segment duration. Never infer seconds from rep numbers; choose an accessible rep exercise if no supported hold target is available. Duration includes the exercise's rests. Each exercise is a separate segment; do not hide a circuit or its repetitions in prose. For repeated intervals emit each work and moving recovery segment in order; recovery kind is passive only. Include moving Warm-up and Cool-down once. Rest has duration zero.
 Use only known day access and equipment. Positive Treadmill incline requires a confirmed machine maximum; without that capacity use flat accessible movement. No gym does not establish stair/box access. Do not convert Hill Sprint/power to sustained incline work; unknown movement/strength readiness does not authorize advanced power/ME. Near race dates cannot bypass preparation. Use conservative accessible work where prerequisites are unknown.
 The local resolver derives totals and athlete-facing numeric instructions. Strength minutes never become running kilometers. Choose durations to meet the existing healthy-week volume rules; keep justified recovery/taper adaptations. Do not add load merely to satisfy a software score. Keep internal snapshot/tier/scoring terminology out of athlete-facing text.
 
@@ -112,7 +112,7 @@ STRUCTURED_PRESCRIPTION_CONTRACT = """
 STRUCTURED PRESCRIPTION — authoritative over the earlier numerical description schema:
 Every workout must include `segments`, an ordered nonempty array, and `rationale`, a concise coaching explanation with no digits, quantities, sets or additional prescriptions. Old description Process numbers are replaced locally from segments. Do not repeat execution instructions in rationale. Preserve useful cautions without numeric claims.
 Each segment: kind run|hike|strength|recovery|rest; duration_minutes (finite nonnegative); zone Zone 1–Zone 5 for moving run/hike, otherwise null; setting flat_outdoor|mountain|treadmill|indoor|unknown; role warmup|main|cooldown (optional). Moving segments require pace_min_per_km, an actual movement pace number or two positive endpoints. For Treadmill use actual belt pace, not an equivalent flat-effort pace; incline_pct is the actual grade. Mountain movement may include elevation_gain_m as an estimate. Flat outdoor ascent is zero. Never assign ascent from the race merely because a weekday run is Trail.
-Strength segments require one named exercise object: name, positive integer sets, exactly one target (positive integer reps OR positive hold_seconds), nonnegative rest_seconds between sets, and equipment (array: bodyweight, weights, machine, box, stairs; include every required item). Static Plank, Wall Sit and other isometric holds require explicit hold_seconds, including side qualifiers. Holds plus between-set rests must fit the segment duration. Never infer seconds from rep numbers; choose an accessible rep exercise if no supported hold target is available. Duration includes the exercise's rests. Each exercise is a separate segment; do not hide a circuit or its repetitions in prose. For repeated intervals emit each work and moving recovery segment in order; recovery kind is passive only. Include moving Warm-up and Cool-down once. Rest has duration zero.
+Strength segments require one named exercise object: name, positive integer sets, exactly one target (positive integer reps OR positive hold_seconds), nonnegative rest_seconds between sets, and equipment (array: bodyweight, weights, machine, box, stairs; include every required item). Static Plank, Wall Sit and other isometric holds require explicit hold_seconds, including side qualifiers. Bilateral holds require separate explicitly targeted left and right segments; do not use each-side targets inside one segment. Holds plus between-set rests must fit the segment duration. Never infer seconds from rep numbers; choose an accessible rep exercise if no supported hold target is available. Duration includes the exercise's rests. Each exercise is a separate segment; do not hide a circuit or its repetitions in prose. For repeated intervals emit each work and moving recovery segment in order; recovery kind is passive only. Include moving Warm-up and Cool-down once. Rest has duration zero.
 Use only known day access and equipment. Positive Treadmill incline requires a confirmed machine maximum; without that capacity use flat accessible movement. No gym does not establish stair/box access. Do not convert Hill Sprint/power to sustained incline work; unknown movement/strength readiness does not authorize advanced power/ME. Near race dates cannot bypass preparation. Use conservative accessible work where prerequisites are unknown.
 The local resolver derives totals and athlete-facing numeric instructions. Strength minutes never become running kilometers. Choose durations to meet the existing healthy-week volume rules; keep justified recovery/taper adaptations. Do not add load merely to satisfy a software score. Keep internal snapshot/tier/scoring terminology out of athlete-facing text.
 """
@@ -914,7 +914,12 @@ class PlanGenerator:
                 workout["target_pace"] = target_pace
             if is_rest_or_strength:
                 workout["target_pace"] = None
-        plan_checks.validate_generated_workouts([workout], context={})
+        plan_checks.validate_generated_workouts(
+            [workout],
+            context=plan_checks.generation_context(
+                {"validation_context": user_profile.get("validation_context") or {}}, [workout]
+            ),
+        )
         return workout
 
     @staticmethod
@@ -958,6 +963,16 @@ class PlanGenerator:
                 trace_id=trace_id,
                 tier=tier,
                 measured_weekly_km=snap.weekly_km if snap and snap.weekly_km_source == "coros" else None,
+                context=plan_checks.generation_context(
+                    {
+                        **race_info,
+                        "current_weekly_km": user_profile.get("current_weekly_km"),
+                        "max_weekly_progression": get_profile(tier).max_weekly_progression,
+                        "uses_walk_run": get_profile(tier).uses_walk_run,
+                        "total_weeks": total_weeks,
+                    },
+                    workouts,
+                ),
             )
             return workouts, tier
 
@@ -2009,6 +2024,65 @@ class PlanGenerator:
         base_weekly_minutes = current_weekly_km / distance_per_minute if current_weekly_km > 0 else 180.0
 
         workouts: list[dict[str, Any]] = []
+        goal = race_info.get("goal_type")
+        non_event_goal = goal in {"start_running", "return", "recovery"}
+        if non_event_goal:
+            # Existing goal/tier contracts: three non-consecutive walk/run starts,
+            # half-load return, and rest before gentle post-race movement. These
+            # conservative fallback defaults are app policy, not universal doses.
+            pace = sum(PlanGenerator.parse_pace_range(p_z1)) / 2
+            for week in range(block_start_week, block_end_week + 1):
+                for day in ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"):
+                    active = day in {"Tuesday", "Thursday", "Saturday"} and not (goal == "recovery" and week <= 2)
+                    segments = [{"kind": "rest", "duration_minutes": 0, "zone": None, "setting": "unknown"}]
+                    if active:
+                        if goal == "start_running":
+                            segments = []
+                            for _ in range(10):
+                                segments.extend(
+                                    [
+                                        {
+                                            "kind": "hike",
+                                            "duration_minutes": 1,
+                                            "zone": "Zone 1",
+                                            "setting": "flat_outdoor",
+                                            "pace_min_per_km": 15,
+                                        },
+                                        {
+                                            "kind": "run",
+                                            "duration_minutes": 1,
+                                            "zone": "Zone 1",
+                                            "setting": "flat_outdoor",
+                                            "pace_min_per_km": pace,
+                                        },
+                                    ]
+                                )
+                        else:
+                            minutes = (
+                                min(tier_profile.weekday_minutes[1], current_weekly_km * 0.5 * pace / 3)
+                                if goal == "return"
+                                else 30
+                            )
+                            segments = [
+                                {
+                                    "kind": "run",
+                                    "duration_minutes": minutes,
+                                    "zone": "Zone 1",
+                                    "setting": "flat_outdoor",
+                                    "pace_min_per_km": pace,
+                                }
+                            ]
+                    workouts.append(
+                        {
+                            "week_number": week,
+                            "day_of_week": day,
+                            "phase": "Recovery" if goal == "recovery" else "Base",
+                            "title": "Recovery Run" if active else "Rest",
+                            "type": "Recovery" if active else "Rest",
+                            "target_zone": "Zone 1",
+                            "segments": segments,
+                        }
+                    )
         W = total_weeks - 1
         num_peak_weeks = 2 if W >= 6 else (1 if W >= 2 else 0)
         remaining_weeks = W - 1 - num_peak_weeks
@@ -2029,7 +2103,7 @@ class PlanGenerator:
             else:
                 return "Base"
 
-        for week in range(block_start_week, block_end_week + 1):
+        for week in [] if non_event_goal else range(block_start_week, block_end_week + 1):
             phase = get_phase_for_week(week)
             if phase == "Base":
                 volume_multiplier = 1.0 + (0.05 * (week - 1))

@@ -132,7 +132,13 @@ def test_strength_exercise_prescription_and_recovery_survive_rendering():
                 "duration_minutes": 18,
                 "zone": None,
                 "setting": "indoor",
-                "exercise": {"name": "Bodyweight Squats", "sets": 3, "reps": 8, "rest_seconds": 75},
+                "exercise": {
+                    "name": "Bodyweight Squats",
+                    "sets": 3,
+                    "reps": 8,
+                    "rest_seconds": 75,
+                    "equipment": ["bodyweight"],
+                },
             }
         ],
         lang="vi",
@@ -151,7 +157,13 @@ def test_exercise_quantities_are_not_hidden_unvalidated_prose():
                     "duration_minutes": 18,
                     "zone": None,
                     "setting": "indoor",
-                    "exercise": {"name": "Squats", "sets": -1, "reps": 8, "rest_seconds": 75},
+                    "exercise": {
+                        "name": "Squats",
+                        "sets": -1,
+                        "reps": 8,
+                        "rest_seconds": 75,
+                        "equipment": ["bodyweight"],
+                    },
                 }
             ],
             lang="en",
@@ -225,7 +237,14 @@ def hold_segment(**changes):
         "duration_minutes": 3,
         "zone": None,
         "setting": "indoor",
-        "exercise": {"name": "Front Plank", "sets": 2, "hold_seconds": 38.5, "rest_seconds": 47, **changes},
+        "exercise": {
+            "name": "Front Plank",
+            "sets": 2,
+            "hold_seconds": 38.5,
+            "rest_seconds": 47,
+            "equipment": ["bodyweight"],
+            **changes,
+        },
     }
 
 
@@ -281,3 +300,17 @@ def test_dynamic_plank_shoulder_taps_keep_rep_targets():
     del segment["exercise"]["hold_seconds"]
     resolved = wp.resolve_prescription([segment], lang="en")
     assert "Plank Shoulder Taps: 2 x 14, 47 s rest" in resolved["description"]
+
+
+def test_bilateral_holds_require_separately_targeted_side_segments():
+    segment = hold_segment(name="Side Plank (each side)", sets=1, hold_seconds=40, rest_seconds=0)
+    segment["duration_minutes"] = 1
+    with pytest.raises(ValueError, match="separate"):
+        wp.resolve_prescription([segment], lang="en")
+
+
+@pytest.mark.parametrize("equipment", [None, [], "bodyweight", ["unknown_machine"]])
+def test_structured_strength_requires_explicit_supported_equipment(equipment):
+    segment = hold_segment(equipment=equipment)
+    with pytest.raises(ValueError, match="equipment"):
+        wp.resolve_prescription([segment], lang="en")

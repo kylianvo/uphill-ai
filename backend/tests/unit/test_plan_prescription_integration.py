@@ -21,7 +21,13 @@ SEGMENTS = [
         "duration_minutes": 24,
         "zone": None,
         "setting": "indoor",
-        "exercise": {"name": "Bodyweight Squats", "sets": 3, "reps": 8, "rest_seconds": 75},
+        "exercise": {
+            "name": "Bodyweight Squats",
+            "sets": 3,
+            "reps": 8,
+            "rest_seconds": 75,
+            "equipment": ["bodyweight"],
+        },
     },
     {
         "kind": "run",
@@ -403,3 +409,67 @@ async def test_event_taper_violation_retries_without_relabelling_the_workout():
     assert attempts == 2
     assert rows[0]["phase"] == "Taper"
     assert rows[0]["duration_minutes"] == 32
+
+
+@pytest.mark.asyncio
+async def test_single_filler_cannot_infer_stair_access_from_exercise_name():
+    payload = {
+        "title": "Strength",
+        "segments": [
+            {
+                "kind": "strength",
+                "duration_minutes": 10,
+                "zone": None,
+                "setting": "indoor",
+                "exercise": {"name": "Step-Ups", "sets": 2, "reps": 6, "rest_seconds": 45, "equipment": ["stairs"]},
+            }
+        ],
+    }
+    client = MagicMock()
+    client.models.generate_content.return_value = MagicMock(text=json.dumps(payload))
+    with patch("google.genai.Client", return_value=client):
+        with pytest.raises(ValueError, match="access"):
+            await PlanGenerator.generate_single_workout({}, "Easy", 10, "Tuesday", 1, api_key="fake-key")
+        trusted = {"validation_context": {"day_access": {"Tuesday": {"settings": ["indoor"], "equipment": ["stairs"]}}}}
+        row = await PlanGenerator.generate_single_workout(trusted, "Easy", 10, "Tuesday", 1, api_key="fake-key")
+        assert row["segments"][0]["exercise"]["name"] == "Step-Ups"
+        assert row["duration_minutes"] == 10
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("goal", ["start_running", "return", "recovery"])
+async def test_non_event_fallback_respects_goal_and_never_invents_race(goal):
+    with (
+        patch("services.race_history.prompt_summary", return_value=""),
+        patch("services.race_history.tier_distance", return_value=None),
+    ):
+        rows, _ = await PlanGenerator.generate_plan_workouts(
+            plan_id=0,
+            user_profile={"current_weekly_km": 20},
+            race_info={
+                "goal_type": goal,
+                "lang": "en",
+                "plan_start_date": "2026-10-05",
+                "training_environment": "flat",
+            },
+            total_weeks=8,
+            weeks_per_block=8,
+            api_key=None,
+        )
+    assert len(rows) == 56
+    assert all(w["type"] != "Race" and w["phase"] not in {"Taper", "Race Week", "Peak"} for w in rows)
+    assert all(s.get("zone") in {None, "Zone 1", "Zone 2"} for w in rows for s in w["segments"])
+    if goal == "start_running":
+        for week in range(1, 9):
+            sessions = [w for w in rows if w["week_number"] == week and w["type"] != "Rest"]
+            assert [w["day_of_week"] for w in sessions] == ["Tuesday", "Thursday", "Saturday"]
+            assert all(
+                w["duration_minutes"] == 20
+                and any(s["kind"] == "hike" for s in w["segments"])
+                and any(s["kind"] == "run" for s in w["segments"])
+                for w in sessions
+            )
+    elif goal == "return":
+        assert sum(w["distance_km"] for w in rows if w["week_number"] == 1) == pytest.approx(10, abs=0.2)
+    else:
+        assert all(w["type"] == "Rest" for w in rows if w["week_number"] <= 2)

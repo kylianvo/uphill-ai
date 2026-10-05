@@ -1,3 +1,5 @@
+import pytest
+
 from services import observability, plan_signals
 
 
@@ -84,3 +86,60 @@ def test_score_specs_accept_only_valid_tier_and_fit_values(monkeypatch):
     observability.score(trace_id="a" * 32, name="plan_volume_fit", value=0.8)
     observability.score(trace_id="a" * 32, name="plan_volume_fit", value=1.2)
     assert [(c["name"], c["value"]) for c in client.calls] == [("plan_tier", "elite"), ("plan_volume_fit", 0.8)]
+
+
+def test_live_scores_use_contextual_checks_and_exclude_unavailable(monkeypatch):
+    sent = []
+    _quiet_db(monkeypatch, sent)
+    monkeypatch.setattr(
+        plan_signals.plan_checks,
+        "run_context_checks",
+        lambda w, *, context: {"arithmetic": True, "progression": False, "access": None},
+    )
+    monkeypatch.setattr(plan_signals.plan_checks, "run_checks", lambda w: {"progression": True})
+    plan_signals.record_generation(
+        plan_id=1, user_id=2, block_number=1, workouts=[], trace_id="a" * 32, context={"week_coverage": {1: 7}}
+    )
+    assert {s["name"]: s["value"] for s in sent}["plan_checks"] == 0.5
+
+
+@pytest.mark.parametrize(
+    "minutes,phases,weeks,expected",
+    [
+        ([100, 40, 160], ["Base", "Recovery", "Base"], [1, 2, 3], 0.75),
+        ([60, 90], ["Base", "Base"], [1, 3], 1.0),
+    ],
+)
+def test_live_score_calendar_and_recovery_rebound(monkeypatch, minutes, phases, weeks, expected):
+    from services.workout_prescription import apply_prescription
+
+    sent = []
+    _quiet_db(monkeypatch, sent)
+    rows = []
+    for duration, phase, week in zip(minutes, phases, weeks):
+        row = {
+            "week_number": week,
+            "day_of_week": "Tuesday",
+            "type": "Easy",
+            "phase": phase,
+            "segments": [
+                {
+                    "kind": "run",
+                    "duration_minutes": duration,
+                    "zone": "Zone 1",
+                    "setting": "flat_outdoor",
+                    "pace_min_per_km": 6,
+                }
+            ],
+        }
+        apply_prescription(row, lang="en")
+        rows.append(row)
+    plan_signals.record_generation(
+        plan_id=1,
+        user_id=2,
+        block_number=1,
+        workouts=rows,
+        trace_id="a" * 32,
+        context={"week_coverage": dict.fromkeys(weeks, 7)},
+    )
+    assert {s["name"]: s["value"] for s in sent}["plan_checks"] == expected
