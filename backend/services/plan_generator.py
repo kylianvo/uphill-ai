@@ -2025,7 +2025,7 @@ class PlanGenerator:
 
         workouts: list[dict[str, Any]] = []
         goal = race_info.get("goal_type")
-        non_event_goal = goal in {"start_running", "return", "recovery"}
+        non_event_goal = goal in {"start_running", "return", "recovery"} or tier_profile.uses_walk_run
         if non_event_goal:
             # Existing goal/tier contracts: three non-consecutive walk/run starts,
             # half-load return, and rest before gentle post-race movement. These
@@ -2036,7 +2036,7 @@ class PlanGenerator:
                     active = day in {"Tuesday", "Thursday", "Saturday"} and not (goal == "recovery" and week <= 2)
                     segments = [{"kind": "rest", "duration_minutes": 0, "zone": None, "setting": "unknown"}]
                     if active:
-                        if goal == "start_running":
+                        if goal == "start_running" or tier_profile.uses_walk_run:
                             segments = []
                             for _ in range(10):
                                 segments.extend(
