@@ -1,0 +1,23 @@
+[
+  {
+    "case": "scheduler_sequence_recovery",
+    "week": 2,
+    "day": "Tuesday",
+    "severity": "release blocker",
+    "finding": "Strength exercise names a combined body-region mobility category rather than one executable movement",
+    "observed_name": "Bodyweight Calves and Hip Mobility",
+    "target": "2 x 10 reps, 60 seconds between sets, 20 minute segment",
+    "rule": "existing structured contract requires one named executable exercise per segment; no circuit or multiple movements hidden in one name",
+    "decision": "retain original output; complete frozen paired gate, then clarify named-movement contract and reproduce before any refinement"
+  },
+  {
+    "directory": "reliability-followup7-v11-repeat-3",
+    "case": "scheduler_fixture_vietnam_urban_sub_elite_no_gym",
+    "week": 2,
+    "day": "Monday",
+    "severity": "release blocker",
+    "finding": "Step-ups declare only bodyweight; no confirmed box or stairs in weekday access",
+    "rule": "existing explicit equipment and day-access contract; do not infer surface access",
+    "decision": "retain output; reject incomplete equipment declarations via existing retry, without adding equipment or changing doses"
+  }
+]

@@ -1,6 +1,6 @@
 # Scheduler reliability release record
 
-Status: release HOLD. Reviewed code fixes pass 1,289 unit tests; experiment v11 live acceptance is blocked by the configured Gemini project monthly spending cap. Production v1/staging v4 unchanged. Historical failures below remain retained.
+Status: release HOLD. Provider access restored; V11 passes all 40 automated cases but fails two manual exercise/access checks. V12 refines only those contracts and requires a fresh paired gate. Production v1/staging v4 unchanged; all historical failures remain retained.
 
 ## Frozen release contract
 
@@ -25,7 +25,7 @@ Owner authorized execution after requiring the Vietnamese-copy skill. Apply R1â€
 
 ## Results and decisions
 
-Current decision: HOLD pending a new complete v11 paired gate and manual acceptance after provider access is restored. The owner authorized further iterations; historical v5-v9 results below are retained and do not establish current release eligibility.
+Current decision: HOLD pending V12 paired gates and manual acceptance. The owner authorized further iterations; historical v5-v9 results below are retained and do not establish current release eligibility.
 
 2026-10-04 Task 2 diagnosis: synthetic next-block core reproduced `Actual 0.0km/0.0h` for missing logs and no watch data. Changed to `Known logged volume`, explicit unknown/missed counts, calendar coverage and override/readiness distinction. Four failing regressions became green; original gate behavior stayed green. This establishes misleading context, not proof that it alone caused the historical stochastic 110.2 km result. The paired sequential evaluation remains required.
 
@@ -139,3 +139,10 @@ Known generation cost for these ten arms: $2.817476. Costs unavailable for 19 ob
 Four hold and four walk/run screenshots show running EN/VI desktop/mobile output. Scratch `uphill_ai_test` only; disposable user/plan/session rows deleted by exact identity, signed out, own tabs/servers closed and viewport reset. No integration/TRUNCATE tests, requirements/.env/deploy-script/dashboard changes, merge or ready-for-review action.
 
 Owner must restore the configured Gemini spending cap or identify an approved alternative project before live evaluation resumes. Then freeze final code/model/date/KB and run both full 25-case arms plus three paired five-case repeats, preserving all bands/assertions, and complete manual coaching/VI acceptance. Only after all gates pass, synchronize the fallback deliberately, push/update this record, and stop for the separate owner staging go-ahead. No deployment or production label move occurred in this continuation.
+
+
+## V11 completed after provider access restoration
+
+2026-10-05 UTC: owner restored provider access. Frozen code c0163da/backend tree 159b808de76c09bea308486391849aa78ffc9d58, candidate v11, production v1, model gemini-3.8-flash and as-of 2026-10-05. Same KB hashes as before. All eight arms completed: candidate 40/40 harness passes, 34 primary/6 retries, no fallback; full mean 10.620 s vs production 19.220 s; repeated mean 13.413 s vs 29.847 s. No paired legacy-quality regression; 245 VI workouts have zero banned wording hits. All primary arithmetic/access/intensity checks True; unavailable advanced readiness is not a pass. Model cost $1.826797, all matched generation costs known; embeddings excluded. Complete [runs and metadata](../superpowers/evidence/scheduler-reliability/v11-evals/README.md) retained.
+
+Manual HOLD: recovery week Tuesday names a body-region mobility category rather than an executable movement. Final no-gym sub-elite repeat prescribes Step-ups with only bodyweight equipment, without confirmed box/stairs. Correct via existing bounded retry: reject mobility/circuit category names and Step-ups without explicit step-surface equipment. Do not silently choose movements, add equipment or invent dose. These guards cover recognized names, not universal semantic validation. V12 clarifies concrete movement and explicit surface access; no calendar, physiological dose, mileage band or public workout-format change. Fresh whole unit suite and full paired gate required.

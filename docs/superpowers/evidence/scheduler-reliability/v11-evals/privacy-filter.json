@@ -1,0 +1,50 @@
+[
+  {
+    "directory": "reliability-followup7-production-1",
+    "raw_sha256": "375c2db7cccc23ecf95457bfa4189eb19560883fa2e6631d252644732c0ee52a",
+    "filtered_occurrences": 0,
+    "scores_unchanged": true
+  },
+  {
+    "directory": "reliability-followup7-production-repeat-1",
+    "raw_sha256": "7759897372e95a130f7709554db679b2cd0811064f1561ff4d104f73231a680b",
+    "filtered_occurrences": 0,
+    "scores_unchanged": true
+  },
+  {
+    "directory": "reliability-followup7-production-repeat-2",
+    "raw_sha256": "d53c9d788e757b93cf6eee882699b2db984bd0ae594f3c07bf25afddd553bdd8",
+    "filtered_occurrences": 0,
+    "scores_unchanged": true
+  },
+  {
+    "directory": "reliability-followup7-production-repeat-3",
+    "raw_sha256": "e6ac7817c1b09dc07c1ae81d33cfb5d6f35ca5afb09b7e2f4adbac0c881e3470",
+    "filtered_occurrences": 0,
+    "scores_unchanged": true
+  },
+  {
+    "directory": "reliability-followup7-v11-1",
+    "raw_sha256": "4cda4e739522b3cce1e17317e22744ed668beb383661db12b13732d5816bb07f",
+    "filtered_occurrences": 0,
+    "scores_unchanged": true
+  },
+  {
+    "directory": "reliability-followup7-v11-repeat-1",
+    "raw_sha256": "3e345a514c62c5a4d038e4b9541e50b9c83f105e84fb7e27cad0b1194dddee55",
+    "filtered_occurrences": 0,
+    "scores_unchanged": true
+  },
+  {
+    "directory": "reliability-followup7-v11-repeat-2",
+    "raw_sha256": "a15fc2957c9cf35089e3fddc19d4dd8415c7e84daea36f2cadf2de496cc6002b",
+    "filtered_occurrences": 0,
+    "scores_unchanged": true
+  },
+  {
+    "directory": "reliability-followup7-v11-repeat-3",
+    "raw_sha256": "bf44d1f3713ec690b54c0ef52cff459893218f1e218144490fdf91f8c6b6916c",
+    "filtered_occurrences": 0,
+    "scores_unchanged": true
+  }
+]
