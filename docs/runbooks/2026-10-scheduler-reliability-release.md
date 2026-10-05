@@ -1,6 +1,6 @@
 # Scheduler reliability release record
 
-Status: release HOLD. Provider access restored; V11 passes all 40 automated cases but fails two manual exercise/access checks. V12 refines only those contracts and requires a fresh paired gate. Production v1/staging v4 unchanged; all historical failures remain retained.
+Status: release HOLD. V12 falls back to rules for one Vietnamese fixture after two volume-fit rejections. V13 adds exact local retry diagnostics and requires fresh paired evaluation. Production v1/staging v4 unchanged; all historical failures retained.
 
 ## Frozen release contract
 
@@ -25,7 +25,7 @@ Owner authorized execution after requiring the Vietnamese-copy skill. Apply R1â€
 
 ## Results and decisions
 
-Current decision: HOLD pending V12 paired gates and manual acceptance. The owner authorized further iterations; historical v5-v9 results below are retained and do not establish current release eligibility.
+Current decision: HOLD pending V13 paired gates and manual acceptance. The owner authorized further iterations; historical v5-v9 results below are retained and do not establish current release eligibility.
 
 2026-10-04 Task 2 diagnosis: synthetic next-block core reproduced `Actual 0.0km/0.0h` for missing logs and no watch data. Changed to `Known logged volume`, explicit unknown/missed counts, calendar coverage and override/readiness distinction. Four failing regressions became green; original gate behavior stayed green. This establishes misleading context, not proof that it alone caused the historical stochastic 110.2 km result. The paired sequential evaluation remains required.
 
@@ -146,3 +146,27 @@ Owner must restore the configured Gemini spending cap or identify an approved al
 2026-10-05 UTC: owner restored provider access. Frozen code c0163da/backend tree 159b808de76c09bea308486391849aa78ffc9d58, candidate v11, production v1, model gemini-3.8-flash and as-of 2026-10-05. Same KB hashes as before. All eight arms completed: candidate 40/40 harness passes, 34 primary/6 retries, no fallback; full mean 10.620 s vs production 19.220 s; repeated mean 13.413 s vs 29.847 s. No paired legacy-quality regression; 245 VI workouts have zero banned wording hits. All primary arithmetic/access/intensity checks True; unavailable advanced readiness is not a pass. Model cost $1.826797, all matched generation costs known; embeddings excluded. Complete [runs and metadata](../superpowers/evidence/scheduler-reliability/v11-evals/README.md) retained.
 
 Manual HOLD: recovery week Tuesday names a body-region mobility category rather than an executable movement. Final no-gym sub-elite repeat prescribes Step-ups with only bodyweight equipment, without confirmed box/stairs. Correct via existing bounded retry: reject mobility/circuit category names and Step-ups without explicit step-surface equipment. Do not silently choose movements, add equipment or invent dose. These guards cover recognized names, not universal semantic validation. V12 clarifies concrete movement and explicit surface access; no calendar, physiological dose, mileage band or public workout-format change. Fresh whole unit suite and full paired gate required.
+
+## V12 completed paired gate â€” 2026-10-06
+
+
+Decision: HOLD. The full candidate run falls back to rules for the Vietnamese 42 km fixture after primary and retry both fail volume_fit. All repeats pass, but they do not erase that failure. The original error did not record the rejected distance, so whether it was under or over the band is unknown.
+
+| Arm | Run | Cases | Mean seconds | Engines | Failures |
+|---|---|---:|---:|---|---:|
+| reliability-followup8-production-1 | eval_scheduler_1791195561288411000 | 25 | 18.792 | {'gemini': 25} | 2 |
+| reliability-followup8-production-repeat-1 | eval_scheduler_1791196062705584000 | 5 | 31.160 | {'gemini': 5} | 0 |
+| reliability-followup8-production-repeat-2 | eval_scheduler_1791196281614000000 | 5 | 27.560 | {'gemini': 5} | 0 |
+| reliability-followup8-production-repeat-3 | eval_scheduler_1791196518271796000 | 5 | 29.080 | {'gemini': 5} | 0 |
+| reliability-followup8-v12-1 | eval_scheduler_1791195873038209000 | 25 | 11.092 | {'gemini': 21, 'gemini_retry': 3, 'rule-based-or-unknown': 1} | 1 |
+| reliability-followup8-v12-repeat-1 | eval_scheduler_1791196132428105000 | 5 | 12.060 | {'gemini': 5} | 0 |
+| reliability-followup8-v12-repeat-2 | eval_scheduler_1791196362028619000 | 5 | 14.100 | {'gemini': 5} | 0 |
+| reliability-followup8-v12-repeat-3 | eval_scheduler_1791196597653736000 | 5 | 13.500 | {'gemini': 5} | 0 |
+
+Candidate: 36 primary / 3 retry / 1 rules across 40 cases. Full mean 11.092 s vs production 18.792 s; repeated mean 13.220 s vs 29.267 s. All 40 arithmetic/access/intensity-accounting checks are available and True; advanced readiness remains unavailable. No paired legacy regression. VI ban scan: 245 workouts, zero hits. Manual review found no additional concrete-movement/access blocker; fallback remains a release blocker.
+
+Matched metadata-only model cost: $1.790376, 102 logged attempts matched to 102 observations, all costs known; embeddings excluded. Frozen code 40c169b54395f0199e8831f32ebe50eefeb5dddd, backend tree 3e041e5b432bd0ab55eee7feb7f4594c530b874a. Prompt v12; production v1 and staging v4 unchanged. Same model, fixed as-of date and KB as identity.json.
+
+The next correction supplies the existing bounded retry with actual resolved distance and the unchanged allowed band. Loggable errors stay generic; quantities stay in local model feedback. No scaling, fixture relaxation, new training dose, public workout-format change or deployment. V13 requires a fresh full paired gate. Raw output hashes and zero privacy replacements are recorded in privacy-filter.json.
+
+[All eight run artifacts](../superpowers/evidence/scheduler-reliability/v12-evals/README.md). Incremental independent review approved numeric retry diagnostics; backend units: 1,302 passed, 23 existing warnings. Integration suite not run.

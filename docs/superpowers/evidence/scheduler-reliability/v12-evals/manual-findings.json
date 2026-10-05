@@ -1,0 +1,9 @@
+[
+  {
+    "case": "scheduler_fixture_vi_trail_42k",
+    "severity": "release blocker",
+    "finding": "Both primary and reduced-prompt retry rejected for volume_fit, then rule-based fallback",
+    "decision": "HOLD; improve local retry feedback with resolved distance and existing bounds, preserve all original outputs and scores",
+    "limitation": "Previous generic errors do not retain the rejected kilometres, so under/over direction is unavailable in this historical run"
+  }
+]
