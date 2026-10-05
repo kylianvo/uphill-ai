@@ -250,3 +250,11 @@ Owner approved the architectural correction after v15's completed HOLD gate. The
 Five boundary tests failed before implementation. Final focused suite: 118 passed; final full backend unit suite: 1,312 passed, 23 existing warnings. Initial scan found three old mock/contract mismatches; the explicit legacy fixture and valid telemetry segmented fixture preserved all original assertions. Final independent review approved with no findings and 161 targeted passes. The installed SDK serialized both schemas without a network request; live acceptance remains unverified until the fresh paired gate.
 
 Keep remote prompt v15 unchanged. The new code is evaluated as **v15 plus structured output**, identified by a separate frozen code/backend tree and all eight new followup13 runs. Production v1/staging v4 labels remain untouched. KB preflight matches the prior 37-principle/29-vector hashes. No screenshots/manual acceptance/deployment claim yet. [Approved correction plan](../superpowers/plans/2026-10-06-scheduler-structured-output.md).
+
+## Structured-output compatibility diagnosis — 2026-10-06
+
+Followup13 was stopped as an incomplete baseline compatibility run after repeated request deadlines; candidate never dispatched. Three scored cases and fourth cancelled attempt retained, known$0.011472/four unknown costs. This deviation is explicit; no paired/quality acceptance. [Interrupted run](../superpowers/evidence/scheduler-reliability/v15-schema-interrupted-baseline/README.md).
+
+Fourteen controlled synthetic schema/mime probes retain all errors and outputs. Unconstrained/JSON MIME-only output covers seven days; fast schemas at minItems1 return one workout. Raw flat minItems7 yielded a seven-day response and a504deadline failure. Existing120-second generation deadline unchanged; diagnostic deadline30seconds is not a gate. [Probe evidence and cost accounting](../superpowers/evidence/scheduler-reliability/v15-schema-probes/README.md).
+
+Owner additionally requested stop/handoff to Claude at2%remaining weekly Codex allowance. Current verified allowance6%remaining (94%used). Prepare a handoff with managed worktree, branch/remote, commits, evidence, runtime ownership, limitations and next steps. Further coverage correction remains proposed; its reviewer failed due usage limits, not a technical verdict. Production/staging still owner-controlled.

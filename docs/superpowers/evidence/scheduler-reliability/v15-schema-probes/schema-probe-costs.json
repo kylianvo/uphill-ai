@@ -1,0 +1,12 @@
+{
+  "diagnostic_attempts": 14,
+  "matching_generations": 14,
+  "known_costs": 10,
+  "unknown_observation_costs": 4,
+  "unmatched_attempts": 0,
+  "known_cost_usd": 0.091231,
+  "input_tokens": 72430,
+  "output_tokens": 12575,
+  "matching": "canonical model/development generation start within2s of owned synthetic probe start; traceName unavailable; no concurrent paid requests",
+  "embeddings_excluded": true
+}

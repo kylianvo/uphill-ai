@@ -1,0 +1,1812 @@
+{
+  "status": "incomplete",
+  "as_of": "2026-10-05",
+  "prompt_label": "production",
+  "model": "gemini-3.8-flash",
+  "items": [
+    {
+      "id": "scheduler_fixture_beginner_start_running",
+      "synthetic": true,
+      "provenance": "scheduler",
+      "input": {
+        "synthetic": true,
+        "provenance": "scheduler",
+        "user_profile": {
+          "age": 29,
+          "gender": "female",
+          "max_hr": 191,
+          "resting_hr": 60,
+          "current_weekly_km": 2.0,
+          "days_per_week": 3
+        },
+        "race_info": {
+          "lang": "en",
+          "terrain": "road",
+          "goal_type": "start_running",
+          "name": "My Running Journey"
+        },
+        "total_weeks": 12,
+        "require_context_gates": false
+      },
+      "expected_output": [
+        {
+          "week_number": 1,
+          "day_of_week": "Wednesday",
+          "phase": "Base",
+          "title": "Initial Walk/Run Aerobic Introduction",
+          "type": "Walk/Run",
+          "duration_minutes": 20.0,
+          "target_zone": "Zone 1",
+          "target_hr_range": "115-135 bpm",
+          "target_pace": "10:45 - 9:19 /km",
+          "distance_km": 2.0,
+          "walk_interval_value": 1,
+          "interval_reps": 5,
+          "interval_rep_value": 1.0,
+          "interval_rep_unit": "min",
+          "elevation_gain_m": 0.0,
+          "grade_percent": 0.0,
+          "description": "Process: Brisk walk warm-up 5 min → 5 x (1 min jog @ Zone 2 easy feel / 1 min brisk walk recovery) → Walk cool-down 5 min. Overall: Welcome to day one of your running journey, starting with structured run/walk intervals designed to safely introduce impact to your connective tissues. Your longest unbroken jog target for this week is 1 minute, keeping the effort exceptionally controlled. Reason: Tendons, ligaments, and bone adapt at roughly one-seventh the rate of muscle, making gentle, interspersed run bouts essential to prevent micro-trauma. Benefit: Stimulates gentle bone remodeling, promotes initial collagen synthesis, and establishes baseline neuromuscular coordination for running. Warning: Stop immediately if you experience sharp localized pain around the shins, knees, or Achilles tendons, or if you feel dead legs lacking spring.",
+          "fueling_tip": "Plain water only before or after the session as needed; no carbohydrates or electrolyte supplements are necessary for this 20-minute introductory effort.",
+          "treadmill_incline": "0",
+          "treadmill_speed": "0"
+        },
+        {
+          "week_number": 1,
+          "day_of_week": "Thursday",
+          "phase": "Base",
+          "title": "Complete Rest & Tendon Recovery",
+          "type": "Rest",
+          "duration_minutes": 0.0,
+          "target_zone": "Zone 1",
+          "target_hr_range": "60-80 bpm",
+          "target_pace": "",
+          "distance_km": 0.0,
+          "elevation_gain_m": 0.0,
+          "grade_percent": 0.0,
+          "description": "Process: Rest and recover 0 min. Overall: A complete rest day to give your musculoskeletal system time to absorb yesterday's impact stimulus. Never run on consecutive days as a new runner. Reason: Connective tissues require a full 48-hour window between loading cycles to synthesize new collagen fibers safely. Benefit: Facilitates cellular repair, restores muscle glycogen stores, and prevents early onset overuse fatigue. Warning: If you wake up with joint stiffness or an elevated resting heart rate of 10-15 bpm above baseline, ensure you prioritize sleep and gentle hydration.",
+          "fueling_tip": "Maintain regular balanced daily nutrition and adequate hydration; no sports nutrition products required.",
+          "treadmill_incline": "0",
+          "treadmill_speed": "0",
+          "interval_reps": null,
+          "interval_rep_value": null,
+          "interval_rep_unit": null
+        },
+        {
+          "week_number": 1,
+          "day_of_week": "Friday",
+          "phase": "Base",
+          "title": "Aerobic Foundation Walk/Run",
+          "type": "Walk/Run",
+          "duration_minutes": 22.0,
+          "target_zone": "Zone 1",
+          "target_hr_range": "115-138 bpm",
+          "target_pace": "10:45 - 9:19 /km",
+          "distance_km": 2.2,
+          "walk_interval_value": 1,
+          "interval_reps": 6,
+          "interval_rep_value": 1.0,
+          "interval_rep_unit": "min",
+          "elevation_gain_m": 0.0,
+          "grade_percent": 0.0,
+          "description": "Process: Brisk walk warm-up 5 min → 6 x (1 min jog @ Zone 2 easy feel / 1 min brisk walk recovery) → Walk cool-down 5 min. Overall: Your second running session repeats the 1-minute unbroken jog baseline with one additional interval rep. The walk intervals are a strictly prescribed part of your training to keep systemic fatigue low and form sharp. Reason: Repeating the proven 1-minute jog interval reinforces safe motor patterns while gradually expanding total on-feet time. Benefit: Increases mitochondrial density in slow-twitch muscle fibers and builds structural resilience across foot and ankle structures. Warning: Monitor for heavy dead legs or gait alterations; if your heart rate does not settle during the 1-minute walk breaks, walk the remaining duration without jogging.",
+          "fueling_tip": "Sip plain water before heading out; exogenous carbohydrates are neither required nor recommended for this short session.",
+          "treadmill_incline": "0",
+          "treadmill_speed": "0"
+        },
+        {
+          "week_number": 1,
+          "day_of_week": "Saturday",
+          "phase": "Base",
+          "title": "Foundational Durability Strength",
+          "type": "Strength",
+          "duration_minutes": 20.0,
+          "target_zone": "Zone 1",
+          "target_hr_range": "90-120 bpm",
+          "target_pace": "",
+          "distance_km": 0.0,
+          "elevation_gain_m": 0.0,
+          "grade_percent": 0.0,
+          "description": "Process: Warm up 5 min mobility → Bodyweight Squats: 2x8, 90s rest → Glute Bridges: 2x10, 60s rest → Standing Calf Raises: 2x12, 60s rest → Bird Dogs: 2x8 each side, 60s rest → Cool down 5 min stretching. Overall: A foundational bodyweight strength routine focused entirely on hip stability, calf durability, and core control without any jumping or heavy weights. Every movement is performed deliberately with strict rest between sets. Reason: Building baseline stability in the glutes, hips, and calves protects your lower-leg tendons from the repetitive micro-impact of running. Benefit: Enhances pelvic control during single-leg stance and improves tendon stiffness to shield against shin splints. Warning: Avoid rushing through repetitions or bouncing at the bottom of squats; back off if you notice sharp joint twinges or knee discomfort.",
+          "fueling_tip": "Drink plain water to stay hydrated; sports drinks or gels are unnecessary.",
+          "treadmill_incline": "0",
+          "treadmill_speed": "0",
+          "interval_reps": null,
+          "interval_rep_value": null,
+          "interval_rep_unit": null
+        },
+        {
+          "week_number": 1,
+          "day_of_week": "Sunday",
+          "phase": "Base",
+          "title": "Weekend Aerobic Aerobic Progression",
+          "type": "Walk/Run",
+          "duration_minutes": 24.0,
+          "target_zone": "Zone 1",
+          "target_hr_range": "115-140 bpm",
+          "target_pace": "10:45 - 9:19 /km",
+          "distance_km": 2.4,
+          "walk_interval_value": 1,
+          "interval_reps": 7,
+          "interval_rep_value": 1.0,
+          "interval_rep_unit": "min",
+          "elevation_gain_m": 0.0,
+          "grade_percent": 0.0,
+          "description": "Process: Brisk walk warm-up 5 min → 7 x (1 min jog @ Zone 2 easy feel / 1 min brisk walk recovery) → Walk cool-down 5 min. Overall: The longest session of your first week, holding the unbroken jog metric steady at 1 minute while accumulating 7 gentle running minutes. You should be able to speak full, comfortable sentences throughout every jog segment. Reason: Caps your first week of running safely within your connective-tissue absorption limits while establishing routine. Benefit: Elevates baseline aerobic enzyme activity and capillary bed development around active muscle fibers. Warning: Watch for morning stiffness or lingering soreness from Friday; if you feel sluggish or receive a subjective C grade feel, walk the full duration.",
+          "fueling_tip": "Plain water before and after the session is all that is required for this 24-minute session.",
+          "treadmill_incline": "0",
+          "treadmill_speed": "0"
+        }
+      ]
+    },
+    {
+      "id": "scheduler_fixture_elite_utmb",
+      "synthetic": true,
+      "provenance": "scheduler",
+      "input": {
+        "synthetic": true,
+        "provenance": "scheduler",
+        "user_profile": {
+          "age": 29,
+          "gender": "male",
+          "max_hr": 192,
+          "resting_hr": 44,
+          "aet_hr": 159,
+          "ant_hr": 170,
+          "current_weekly_km": 180.0,
+          "days_per_week": 6,
+          "has_gym_access": true
+        },
+        "race_info": {
+          "lang": "en",
+          "terrain": "trail",
+          "goal_type": "finish",
+          "name": "UTMB",
+          "date": "2026-12-15",
+          "course_distance_km": 170,
+          "course_elevation_gain_m": 10000
+        },
+        "total_weeks": 20,
+        "require_context_gates": false
+      },
+      "expected_output": [
+        {
+          "week_number": 1,
+          "day_of_week": "Wednesday",
+          "phase": "Base",
+          "title": "Aerobic Base Continuous Run",
+          "type": "Easy",
+          "duration_minutes": 80.0,
+          "target_zone": "Zone 2",
+          "target_hr_range": "145-155 bpm",
+          "target_pace": "3:06 - 2:48 /km",
+          "distance_km": 27.1,
+          "elevation_gain_m": 0.0,
+          "grade_percent": 0.0,
+          "description": "Process: Warm up 10 min easy jog @ 3:15/km → 60 min steady aerobic base run @ 3:00/km in Zone 2 → Cool down 10 min easy jog @ 3:20/km. Overall: Smooth and continuous aerobic volume run on flat terrain to open the 20-week build. Keeps cardiac output stable and stimulates capillary density without orthopedic stress. Focus on relaxed breathing mechanics and light ground contact. Reason: Initial aerobic stimulus of the macrocycle establishing weekly volume rhythm following the Wednesday start date. Benefit: Expands mitochondrial density in slow-twitch fibers while sparing musculoskeletal structures on flat roads. Warning: Do not surge above AeT (159 bpm); monitor heart rate carefully and dial back pace if cardiac drift occurs.",
+          "fueling_tip": "Sessions 75-150 mins: 30-60g carbohydrates per hour + 300-500mg sodium/hr with 400-600ml water/hr.",
+          "treadmill_incline": "0",
+          "treadmill_speed": "0",
+          "interval_reps": null,
+          "interval_rep_value": null,
+          "interval_rep_unit": null
+        },
+        {
+          "week_number": 1,
+          "day_of_week": "Thursday",
+          "phase": "Base",
+          "title": "Max Strength Foundation",
+          "type": "Strength",
+          "duration_minutes": 45.0,
+          "target_zone": "Zone 1",
+          "target_hr_range": "110-130 bpm",
+          "target_pace": "",
+          "distance_km": 0.0,
+          "session_slot": "morning",
+          "description": "Process: Warm up 10 min joint mobility and dynamic activation → Bodyweight Deep Squats: 4x6, 180s rest → Single-Leg Box Step-Ups: 4x6 each leg, 180s rest → Walking Lunges: 4x6 each leg, 180s rest → Single-Leg Romanian Deadlifts: 3x6 each leg, 180s rest → Cool down 5 min passive stretching and tissue relaxation. Overall: Bodyweight maximum strength session targeting movement integrity and high motor unit recruitment with full ATP replenishment. Conducted without weights due to equipment constraints, focusing on controlled eccentric descent. Maintains complete neuromuscular restoration between sets. Reason: Scheduled in the morning of a double day during Base phase to develop connective tissue resilience before mountain loading. Benefit: Strengthens pelvic stabilizers, patellar tendons, and gluteal complexes for high-mileage tolerance. Warning: Ensure pristine alignment; do not rush the 180s rest intervals as complete neural and ATP recovery is mandatory.",
+          "fueling_tip": "Sessions < 75 mins: Plain water and optional electrolytes (200-400mg sodium); no exogenous carbs needed.",
+          "elevation_gain_m": 0.0,
+          "grade_percent": 0.0,
+          "treadmill_incline": "0",
+          "treadmill_speed": "0",
+          "interval_reps": null,
+          "interval_rep_value": null,
+          "interval_rep_unit": null
+        },
+        {
+          "week_number": 1,
+          "day_of_week": "Thursday",
+          "phase": "Base",
+          "title": "Zone 1 Aerobic Flush Double",
+          "type": "Recovery",
+          "duration_minutes": 50.0,
+          "target_zone": "Zone 1",
+          "target_hr_range": "125-140 bpm",
+          "target_pace": "3:32 - 3:06 /km",
+          "distance_km": 15.1,
+          "elevation_gain_m": 0.0,
+          "grade_percent": 0.0,
+          "session_slot": "afternoon",
+          "description": "Process: Warm up 5 min brisk walking into easy jog → 40 min continuous relaxed recovery run @ 3:20/km in Zone 1 → Cool down 5 min walking mobility. Overall: Low-intensity secondary aerobic session spaced 8 hours after the morning strength session. Focuses entirely on active recovery and glycogen-sparing fat oxidation. Keeps mechanical impact minimal while facilitating lactate clearance. Reason: Afternoon flush on a scheduled double day to accumulate volume without systemic neuroendocrine stress. Benefit: Increases microvascular circulation and accelerates cellular repair without imposing autonomic strain. Warning: Strictly enforce Zone 1 effort; if legs feel stiff from morning strength, reduce pace to maintain HR below 140 bpm.",
+          "fueling_tip": "Sessions < 75 mins: Plain water and optional electrolytes (200-400mg sodium); no exogenous carbs needed.",
+          "treadmill_incline": "0",
+          "treadmill_speed": "0",
+          "interval_reps": null,
+          "interval_rep_value": null,
+          "interval_rep_unit": null
+        },
+        {
+          "week_number": 1,
+          "day_of_week": "Friday",
+          "phase": "Base",
+          "title": "Aerobic Base Run with Flat Strides",
+          "type": "Easy",
+          "duration_minutes": 75.0,
+          "target_zone": "Zone 2",
+          "target_hr_range": "145-155 bpm",
+          "target_pace": "3:06 - 2:48 /km",
+          "distance_km": 25.4,
+          "elevation_gain_m": 0.0,
+          "grade_percent": 0.0,
+          "description": "Process: Warm up 15 min easy jog @ 3:15/km → 50 min steady aerobic base run @ 2:55/km in Zone 2 → 5 x 20s relaxed flat speed strides with 60s walking recovery → Cool down 5 min easy jogging @ 3:20/km. Overall: Steady aerobic endurance run incorporating flat neuromuscular strides to maintain leg turnover in the absence of hills. Cultivates efficient mechanics and tendon stiffness without cardiovascular overreaching. Stays well below AnT throughout the primary segment. Reason: Maintains neuromuscular sharpness and aerobic base ahead of the weekend volume block. Benefit: Stimulates FTa muscle fibers dynamically without building metabolic acidity. Warning: Avoid sprinting all-out on the flat strides; maintain smooth acceleration and clean posture to protect hamstrings.",
+          "fueling_tip": "Sessions 75-150 mins: 30-60g carbohydrates per hour + 300-500mg sodium/hr with 400-600ml water/hr.",
+          "treadmill_incline": "0",
+          "treadmill_speed": "0",
+          "interval_reps": null,
+          "interval_rep_value": null,
+          "interval_rep_unit": null
+        },
+        {
+          "week_number": 1,
+          "day_of_week": "Saturday",
+          "phase": "Base",
+          "title": "Long Run Endurance Aerobic Volume",
+          "type": "Long Run",
+          "duration_minutes": 130.0,
+          "target_zone": "Zone 2",
+          "target_hr_range": "140-152 bpm",
+          "target_pace": "3:06 - 2:48 /km",
+          "distance_km": 44.1,
+          "elevation_gain_m": 0.0,
+          "grade_percent": 0.0,
+          "description": "Process: Warm up 10 min easy jog @ 3:20/km → 110 min continuous steady aerobic running @ 3:00/km strictly below AeT → Cool down 10 min walk and mobility. Overall: Cornerstone aerobic volume session of Week 1 performed over flat terrain. Focuses on fat oxidation, metabolic efficiency, and mental conditioning for continuous locomotion. Capped strictly within the 28% weekly volume guideline to ensure sustainable recovery. Reason: Key aerobic stimulus to adapt energy substrate pathways and condition musculoskeletal structures. Benefit: Enhances lipid metabolism efficiency and increases muscular endurance in oxidative motor units. Warning: Never cross AeT threshold (159 bpm); hydrate continuously and consume sodium to prevent cramping and thermal drift.",
+          "fueling_tip": "Sessions 75-150 mins: 30-60g carbohydrates per hour + 300-500mg sodium/hr with 400-600ml water/hr.",
+          "treadmill_incline": "0",
+          "treadmill_speed": "0",
+          "interval_reps": null,
+          "interval_rep_value": null,
+          "interval_rep_unit": null
+        },
+        {
+          "week_number": 1,
+          "day_of_week": "Sunday",
+          "phase": "Base",
+          "title": "Bodyweight Muscular Endurance Circuit",
+          "type": "Muscular Endurance",
+          "duration_minutes": 60.0,
+          "target_zone": "Zone 2",
+          "target_hr_range": "135-150 bpm",
+          "target_pace": "",
+          "distance_km": 0.0,
+          "description": "Process: Warm up 10 min dynamic mobility and ankle activation → 10 reps Split Jump Squats, 15s transition → 10 reps Squat Jumps, 15s transition → 10 reps/leg Box Step-Ups at 75% kneecap height, 15s transition → 10 reps/leg Front Lunges → Perform 6 total rounds with 60s rest between rounds → Cool down 10 min light walking and foam rolling. Overall: High-cadence, high-repetition bodyweight muscular endurance circuit executed without external loads. Designed to provoke intense localized muscular fatigue in propelling fibers while maintaining conversational cardiac output. Adheres to the Scott Johnston chassis conditioning framework. Reason: Instills peripheral muscular endurance and fatigue resistance on Sunday while keeping heart rate strictly sub-threshold. Benefit: Converts frontier intermediate fibers into fatigue-resistant oxidative units, safeguarding against quad failure. Warning: Strictly terminate or slow reps if knee valgus occurs; keep cardiovascular exertion capped in Zone 1-2.",
+          "fueling_tip": "Sessions < 75 mins: Plain water and optional electrolytes (200-400mg sodium); no exogenous carbs needed.",
+          "elevation_gain_m": 0.0,
+          "grade_percent": 0.0,
+          "treadmill_incline": "0",
+          "treadmill_speed": "0",
+          "interval_reps": null,
+          "interval_rep_value": null,
+          "interval_rep_unit": null
+        }
+      ]
+    },
+    {
+      "id": "scheduler_fixture_masters_trail_50k",
+      "synthetic": true,
+      "provenance": "scheduler",
+      "input": {
+        "synthetic": true,
+        "provenance": "scheduler",
+        "user_profile": {
+          "age": 58,
+          "gender": "female",
+          "max_hr": 165,
+          "resting_hr": 52,
+          "aet_hr": 128,
+          "ant_hr": 150,
+          "current_weekly_km": 45.0,
+          "days_per_week": 4,
+          "has_gym_access": true
+        },
+        "race_info": {
+          "lang": "en",
+          "terrain": "trail",
+          "goal_type": "finish",
+          "name": "Masters 50K",
+          "date": "2026-12-15",
+          "course_distance_km": 50,
+          "course_elevation_gain_m": 2000
+        },
+        "total_weeks": 14,
+        "require_context_gates": false
+      },
+      "expected_output": [
+        {
+          "week_number": 1,
+          "day_of_week": "Wednesday",
+          "phase": "Base",
+          "title": "Aerobic Base Introduction Run",
+          "type": "Easy",
+          "duration_minutes": 50.0,
+          "target_zone": "Zone 2",
+          "target_hr_range": "115-128 bpm",
+          "target_pace": "6:13 - 4:58 /km",
+          "distance_km": 8.9,
+          "elevation_gain_m": 0.0,
+          "grade_percent": 0.0,
+          "description": "Process: Warm up 10 min easy walking and light jogging at Zone 1 (7:00 /km) → Steady continuous aerobic running 35 min in Zone 2 below AeT (5:30 /km) → Cool down 5 min walking and light mobility. Overall: First session of the foundational base period, establishing baseline aerobic capillary stimulus on flat terrain. The effort is kept conversational and strictly below aerobic threshold. Reason: Opens the training block following a clean aerobic structure, introducing consistent volume without inducing neuromuscular fatigue. Benefit: Enhances slow-twitch muscle fiber recruitment, mitochondrial density, and fat oxidation efficiency. Warning: Strictly respect the 128 bpm ceiling; slow to a walk if cardiac drift occurs.",
+          "fueling_tip": "Plain water and optional electrolytes (200-400mg sodium); no exogenous carbs needed.",
+          "treadmill_incline": "0",
+          "treadmill_speed": "0",
+          "interval_reps": null,
+          "interval_rep_value": null,
+          "interval_rep_unit": null
+        },
+        {
+          "week_number": 1,
+          "day_of_week": "Thursday",
+          "phase": "Base",
+          "title": "General Bodyweight Strength & Chassis Integrity",
+          "type": "Strength",
+          "duration_minutes": 40.0,
+          "target_zone": "Zone 1",
+          "target_hr_range": "90-115 bpm",
+          "target_pace": "",
+          "distance_km": 0.0,
+          "description": "Process: Warm up 5 min dynamic mobility, hip openers, and leg swings → Bodyweight Squats: 3x10, 90s rest → Reverse Lunges: 3x10 each leg, 90s rest → Single-Leg Glute Bridges: 3x10 each leg, 60s rest → Step-Ups to 30cm bench: 3x10 each leg, 90s rest → Calf Raises: 3x15, 60s rest → Cool down 5 min stretching and mobility. Overall: Foundational bodyweight strength routine focused on pelvic control, knee alignment, and tendon durability without gym apparatus. Every set is executed with controlled tempo and pristine biomechanics. Reason: Establishes movement competency and joint resilience for upcoming mountain trail loads and downhill forces. Benefit: Increases tendon stiffness, glute activation, and joint stability to safeguard bone mineral density and prevent patellofemoral strain. Warning: Maintain pristine spinal and knee tracking; cease immediately if tendon discomfort arises.",
+          "fueling_tip": "Plain water and optional electrolytes (200-400mg sodium); no exogenous carbs needed.",
+          "elevation_gain_m": 0.0,
+          "grade_percent": 0.0,
+          "treadmill_incline": "0",
+          "treadmill_speed": "0",
+          "interval_reps": null,
+          "interval_rep_value": null,
+          "interval_rep_unit": null
+        },
+        {
+          "week_number": 1,
+          "day_of_week": "Friday",
+          "phase": "Base",
+          "title": "Scheduled Rest & Regeneration",
+          "type": "Rest",
+          "duration_minutes": 0.0,
+          "target_zone": "Zone 1",
+          "target_hr_range": "50-70 bpm",
+          "target_pace": "",
+          "distance_km": 0.0,
+          "description": "Process: Rest day with zero training load. Overall: Full passive rest to allow musculoskeletal recovery and hormonal adaptation. Reason: Prepares the peripheral nervous system and lower-leg connective tissues for the weekend aerobic stimulus. Benefit: Enables cellular protein synthesis, glycogen restoration, and physiological recovery. Warning: Avoid strenuous yard work or extended periods on your feet.",
+          "fueling_tip": "Plain water and optional electrolytes (200-400mg sodium); no exogenous carbs needed.",
+          "elevation_gain_m": 0.0,
+          "grade_percent": 0.0,
+          "treadmill_incline": "0",
+          "treadmill_speed": "0",
+          "interval_reps": null,
+          "interval_rep_value": null,
+          "interval_rep_unit": null
+        },
+        {
+          "week_number": 1,
+          "day_of_week": "Saturday",
+          "phase": "Base",
+          "title": "Aerobic Foundation Run + Flat Strides",
+          "type": "Easy",
+          "duration_minutes": 55.0,
+          "target_zone": "Zone 2",
+          "target_hr_range": "115-128 bpm",
+          "target_pace": "6:13 - 4:58 /km",
+          "distance_km": 9.8,
+          "elevation_gain_m": 0.0,
+          "grade_percent": 0.0,
+          "description": "Process: Warm up 10 min easy jog in Zone 1 (6:30 /km) → 35 min steady aerobic running in Zone 2 below AeT (5:25 /km) → 5 min flat neuromuscular strides consisting of 5 x 20-second accelerations at Zone 4 pace (4:15 /km) with 40-second walk recoveries → Cool down 5 min walking. Overall: Gentle continuous aerobic running complemented by light, non-fatiguing flat strides to recruit fast-twitch fibers without accumulating lactate. Keeps stride dynamics supple and lively on flat pavement. Reason: Imparts gentle neuromuscular coordination and turnover while honoring the constraint of flat terrain and no hills. Benefit: Enhances motor unit recruitment and running economy while reinforcing mitochondrial base development. Warning: Strides must be relaxed and submaximal; do not sprint aggressively or strain hamstrings.",
+          "fueling_tip": "Plain water and optional electrolytes (200-400mg sodium); no exogenous carbs needed.",
+          "treadmill_incline": "0",
+          "treadmill_speed": "0",
+          "interval_reps": null,
+          "interval_rep_value": null,
+          "interval_rep_unit": null
+        },
+        {
+          "week_number": 1,
+          "day_of_week": "Sunday",
+          "phase": "Base",
+          "title": "Aerobic Endurance Long Run",
+          "type": "Long Run",
+          "duration_minutes": 75.0,
+          "target_zone": "Zone 2",
+          "target_hr_range": "118-128 bpm",
+          "target_pace": "6:13 - 4:58 /km",
+          "distance_km": 13.4,
+          "elevation_gain_m": 0.0,
+          "grade_percent": 0.0,
+          "description": "Process: Warm up 10 min easy progression in Zone 1 (6:40 /km) → 60 min continuous steady aerobic run held strictly below AeT in Zone 2 (5:35 /km) → Cool down 5 min walking and lower-body stretching. Overall: The primary endurance stimulus of the week, capped strictly under 33% of total weekly volume. Builds sustained aerobic output and mental resilience on flat terrain. Reason: Develops slow-twitch oxidative efficiency and peripheral vascularization while maintaining low systemic stress. Benefit: Promotes lipid metabolism, increases cardiac stroke volume, and builds structural tolerance for long trail races. Warning: Do not chase pace if fatigued; keep heart rate below 128 bpm regardless of external conditions.",
+          "fueling_tip": "30-60g carbohydrates per hour + 300-500mg sodium/hr with 400-600ml water/hr.",
+          "treadmill_incline": "0",
+          "treadmill_speed": "0",
+          "interval_reps": null,
+          "interval_rep_value": null,
+          "interval_rep_unit": null
+        }
+      ]
+    }
+  ],
+  "results": [
+    [
+      {
+        "week_number": 1,
+        "day_of_week": "Monday",
+        "phase": "Base",
+        "title": "Rest",
+        "type": "Rest",
+        "target_zone": "Zone 1",
+        "segments": [
+          {
+            "kind": "rest",
+            "duration_minutes": 0.0,
+            "zone": null,
+            "setting": "unknown"
+          }
+        ],
+        "duration_minutes": 0.0,
+        "prescription": {
+          "run_km": 0.0,
+          "hike_km": 0.0,
+          "aerobic_minutes": 0.0,
+          "strength_minutes": 0.0,
+          "passive_minutes": 0.0,
+          "duration_minutes": 0.0,
+          "estimated_indoor_ascent_m": 0.0,
+          "estimated_outdoor_ascent_m": 0.0,
+          "segments": [
+            {
+              "kind": "rest",
+              "duration_minutes": 0.0,
+              "zone": null,
+              "setting": "unknown"
+            }
+          ],
+          "description": "Rest."
+        },
+        "distance_km": 0.0,
+        "description": "Rest.",
+        "fueling_tip": "",
+        "target_pace": "",
+        "treadmill_incline": "0",
+        "treadmill_speed": "0",
+        "elevation_gain_m": 0.0,
+        "grade_percent": 0,
+        "interval_reps": null,
+        "interval_rep_value": null,
+        "interval_rep_unit": null
+      },
+      {
+        "week_number": 1,
+        "day_of_week": "Tuesday",
+        "phase": "Base",
+        "title": "Recovery Run",
+        "type": "Recovery",
+        "target_zone": "Zone 1",
+        "segments": [
+          {
+            "kind": "hike",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 15
+          },
+          {
+            "kind": "run",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 10.033333333333333
+          },
+          {
+            "kind": "hike",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 15
+          },
+          {
+            "kind": "run",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 10.033333333333333
+          },
+          {
+            "kind": "hike",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 15
+          },
+          {
+            "kind": "run",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 10.033333333333333
+          },
+          {
+            "kind": "hike",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 15
+          },
+          {
+            "kind": "run",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 10.033333333333333
+          },
+          {
+            "kind": "hike",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 15
+          },
+          {
+            "kind": "run",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 10.033333333333333
+          },
+          {
+            "kind": "hike",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 15
+          },
+          {
+            "kind": "run",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 10.033333333333333
+          },
+          {
+            "kind": "hike",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 15
+          },
+          {
+            "kind": "run",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 10.033333333333333
+          },
+          {
+            "kind": "hike",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 15
+          },
+          {
+            "kind": "run",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 10.033333333333333
+          },
+          {
+            "kind": "hike",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 15
+          },
+          {
+            "kind": "run",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 10.033333333333333
+          },
+          {
+            "kind": "hike",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 15
+          },
+          {
+            "kind": "run",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 10.033333333333333
+          }
+        ],
+        "duration_minutes": 20.0,
+        "prescription": {
+          "run_km": 1.0,
+          "hike_km": 0.7,
+          "aerobic_minutes": 20.0,
+          "strength_minutes": 0.0,
+          "passive_minutes": 0.0,
+          "duration_minutes": 20.0,
+          "estimated_indoor_ascent_m": 0.0,
+          "estimated_outdoor_ascent_m": 0.0,
+          "segments": [
+            {
+              "kind": "hike",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 15
+            },
+            {
+              "kind": "run",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 10.033333333333333
+            },
+            {
+              "kind": "hike",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 15
+            },
+            {
+              "kind": "run",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 10.033333333333333
+            },
+            {
+              "kind": "hike",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 15
+            },
+            {
+              "kind": "run",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 10.033333333333333
+            },
+            {
+              "kind": "hike",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 15
+            },
+            {
+              "kind": "run",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 10.033333333333333
+            },
+            {
+              "kind": "hike",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 15
+            },
+            {
+              "kind": "run",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 10.033333333333333
+            },
+            {
+              "kind": "hike",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 15
+            },
+            {
+              "kind": "run",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 10.033333333333333
+            },
+            {
+              "kind": "hike",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 15
+            },
+            {
+              "kind": "run",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 10.033333333333333
+            },
+            {
+              "kind": "hike",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 15
+            },
+            {
+              "kind": "run",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 10.033333333333333
+            },
+            {
+              "kind": "hike",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 15
+            },
+            {
+              "kind": "run",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 10.033333333333333
+            },
+            {
+              "kind": "hike",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 15
+            },
+            {
+              "kind": "run",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 10.033333333333333
+            }
+          ],
+          "description": "Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km."
+        },
+        "distance_km": 1.7,
+        "description": "Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km.",
+        "fueling_tip": "For this 20-minute session: water; optional 200-400 mg Sodium. No Carbs are needed during the session.",
+        "target_pace": "15:00 /km",
+        "treadmill_incline": "0",
+        "treadmill_speed": "0",
+        "elevation_gain_m": 0.0,
+        "grade_percent": 0.0,
+        "interval_reps": null,
+        "interval_rep_value": null,
+        "interval_rep_unit": null
+      },
+      {
+        "week_number": 1,
+        "day_of_week": "Wednesday",
+        "phase": "Base",
+        "title": "Rest",
+        "type": "Rest",
+        "target_zone": "Zone 1",
+        "segments": [
+          {
+            "kind": "rest",
+            "duration_minutes": 0.0,
+            "zone": null,
+            "setting": "unknown"
+          }
+        ],
+        "duration_minutes": 0.0,
+        "prescription": {
+          "run_km": 0.0,
+          "hike_km": 0.0,
+          "aerobic_minutes": 0.0,
+          "strength_minutes": 0.0,
+          "passive_minutes": 0.0,
+          "duration_minutes": 0.0,
+          "estimated_indoor_ascent_m": 0.0,
+          "estimated_outdoor_ascent_m": 0.0,
+          "segments": [
+            {
+              "kind": "rest",
+              "duration_minutes": 0.0,
+              "zone": null,
+              "setting": "unknown"
+            }
+          ],
+          "description": "Rest."
+        },
+        "distance_km": 0.0,
+        "description": "Rest.",
+        "fueling_tip": "",
+        "target_pace": "",
+        "treadmill_incline": "0",
+        "treadmill_speed": "0",
+        "elevation_gain_m": 0.0,
+        "grade_percent": 0,
+        "interval_reps": null,
+        "interval_rep_value": null,
+        "interval_rep_unit": null
+      },
+      {
+        "week_number": 1,
+        "day_of_week": "Thursday",
+        "phase": "Base",
+        "title": "Recovery Run",
+        "type": "Recovery",
+        "target_zone": "Zone 1",
+        "segments": [
+          {
+            "kind": "hike",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 15
+          },
+          {
+            "kind": "run",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 10.033333333333333
+          },
+          {
+            "kind": "hike",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 15
+          },
+          {
+            "kind": "run",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 10.033333333333333
+          },
+          {
+            "kind": "hike",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 15
+          },
+          {
+            "kind": "run",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 10.033333333333333
+          },
+          {
+            "kind": "hike",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 15
+          },
+          {
+            "kind": "run",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 10.033333333333333
+          },
+          {
+            "kind": "hike",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 15
+          },
+          {
+            "kind": "run",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 10.033333333333333
+          },
+          {
+            "kind": "hike",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 15
+          },
+          {
+            "kind": "run",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 10.033333333333333
+          },
+          {
+            "kind": "hike",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 15
+          },
+          {
+            "kind": "run",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 10.033333333333333
+          },
+          {
+            "kind": "hike",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 15
+          },
+          {
+            "kind": "run",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 10.033333333333333
+          },
+          {
+            "kind": "hike",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 15
+          },
+          {
+            "kind": "run",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 10.033333333333333
+          },
+          {
+            "kind": "hike",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 15
+          },
+          {
+            "kind": "run",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 10.033333333333333
+          }
+        ],
+        "duration_minutes": 20.0,
+        "prescription": {
+          "run_km": 1.0,
+          "hike_km": 0.7,
+          "aerobic_minutes": 20.0,
+          "strength_minutes": 0.0,
+          "passive_minutes": 0.0,
+          "duration_minutes": 20.0,
+          "estimated_indoor_ascent_m": 0.0,
+          "estimated_outdoor_ascent_m": 0.0,
+          "segments": [
+            {
+              "kind": "hike",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 15
+            },
+            {
+              "kind": "run",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 10.033333333333333
+            },
+            {
+              "kind": "hike",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 15
+            },
+            {
+              "kind": "run",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 10.033333333333333
+            },
+            {
+              "kind": "hike",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 15
+            },
+            {
+              "kind": "run",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 10.033333333333333
+            },
+            {
+              "kind": "hike",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 15
+            },
+            {
+              "kind": "run",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 10.033333333333333
+            },
+            {
+              "kind": "hike",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 15
+            },
+            {
+              "kind": "run",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 10.033333333333333
+            },
+            {
+              "kind": "hike",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 15
+            },
+            {
+              "kind": "run",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 10.033333333333333
+            },
+            {
+              "kind": "hike",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 15
+            },
+            {
+              "kind": "run",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 10.033333333333333
+            },
+            {
+              "kind": "hike",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 15
+            },
+            {
+              "kind": "run",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 10.033333333333333
+            },
+            {
+              "kind": "hike",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 15
+            },
+            {
+              "kind": "run",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 10.033333333333333
+            },
+            {
+              "kind": "hike",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 15
+            },
+            {
+              "kind": "run",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 10.033333333333333
+            }
+          ],
+          "description": "Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km."
+        },
+        "distance_km": 1.7,
+        "description": "Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km.",
+        "fueling_tip": "For this 20-minute session: water; optional 200-400 mg Sodium. No Carbs are needed during the session.",
+        "target_pace": "15:00 /km",
+        "treadmill_incline": "0",
+        "treadmill_speed": "0",
+        "elevation_gain_m": 0.0,
+        "grade_percent": 0.0,
+        "interval_reps": null,
+        "interval_rep_value": null,
+        "interval_rep_unit": null
+      },
+      {
+        "week_number": 1,
+        "day_of_week": "Friday",
+        "phase": "Base",
+        "title": "Rest",
+        "type": "Rest",
+        "target_zone": "Zone 1",
+        "segments": [
+          {
+            "kind": "rest",
+            "duration_minutes": 0.0,
+            "zone": null,
+            "setting": "unknown"
+          }
+        ],
+        "duration_minutes": 0.0,
+        "prescription": {
+          "run_km": 0.0,
+          "hike_km": 0.0,
+          "aerobic_minutes": 0.0,
+          "strength_minutes": 0.0,
+          "passive_minutes": 0.0,
+          "duration_minutes": 0.0,
+          "estimated_indoor_ascent_m": 0.0,
+          "estimated_outdoor_ascent_m": 0.0,
+          "segments": [
+            {
+              "kind": "rest",
+              "duration_minutes": 0.0,
+              "zone": null,
+              "setting": "unknown"
+            }
+          ],
+          "description": "Rest."
+        },
+        "distance_km": 0.0,
+        "description": "Rest.",
+        "fueling_tip": "",
+        "target_pace": "",
+        "treadmill_incline": "0",
+        "treadmill_speed": "0",
+        "elevation_gain_m": 0.0,
+        "grade_percent": 0,
+        "interval_reps": null,
+        "interval_rep_value": null,
+        "interval_rep_unit": null
+      },
+      {
+        "week_number": 1,
+        "day_of_week": "Saturday",
+        "phase": "Base",
+        "title": "Recovery Run",
+        "type": "Recovery",
+        "target_zone": "Zone 1",
+        "segments": [
+          {
+            "kind": "hike",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 15
+          },
+          {
+            "kind": "run",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 10.033333333333333
+          },
+          {
+            "kind": "hike",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 15
+          },
+          {
+            "kind": "run",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 10.033333333333333
+          },
+          {
+            "kind": "hike",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 15
+          },
+          {
+            "kind": "run",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 10.033333333333333
+          },
+          {
+            "kind": "hike",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 15
+          },
+          {
+            "kind": "run",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 10.033333333333333
+          },
+          {
+            "kind": "hike",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 15
+          },
+          {
+            "kind": "run",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 10.033333333333333
+          },
+          {
+            "kind": "hike",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 15
+          },
+          {
+            "kind": "run",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 10.033333333333333
+          },
+          {
+            "kind": "hike",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 15
+          },
+          {
+            "kind": "run",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 10.033333333333333
+          },
+          {
+            "kind": "hike",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 15
+          },
+          {
+            "kind": "run",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 10.033333333333333
+          },
+          {
+            "kind": "hike",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 15
+          },
+          {
+            "kind": "run",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 10.033333333333333
+          },
+          {
+            "kind": "hike",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 15
+          },
+          {
+            "kind": "run",
+            "duration_minutes": 1.0,
+            "zone": "Zone 1",
+            "setting": "flat_outdoor",
+            "pace_min_per_km": 10.033333333333333
+          }
+        ],
+        "duration_minutes": 20.0,
+        "prescription": {
+          "run_km": 1.0,
+          "hike_km": 0.7,
+          "aerobic_minutes": 20.0,
+          "strength_minutes": 0.0,
+          "passive_minutes": 0.0,
+          "duration_minutes": 20.0,
+          "estimated_indoor_ascent_m": 0.0,
+          "estimated_outdoor_ascent_m": 0.0,
+          "segments": [
+            {
+              "kind": "hike",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 15
+            },
+            {
+              "kind": "run",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 10.033333333333333
+            },
+            {
+              "kind": "hike",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 15
+            },
+            {
+              "kind": "run",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 10.033333333333333
+            },
+            {
+              "kind": "hike",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 15
+            },
+            {
+              "kind": "run",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 10.033333333333333
+            },
+            {
+              "kind": "hike",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 15
+            },
+            {
+              "kind": "run",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 10.033333333333333
+            },
+            {
+              "kind": "hike",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 15
+            },
+            {
+              "kind": "run",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 10.033333333333333
+            },
+            {
+              "kind": "hike",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 15
+            },
+            {
+              "kind": "run",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 10.033333333333333
+            },
+            {
+              "kind": "hike",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 15
+            },
+            {
+              "kind": "run",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 10.033333333333333
+            },
+            {
+              "kind": "hike",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 15
+            },
+            {
+              "kind": "run",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 10.033333333333333
+            },
+            {
+              "kind": "hike",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 15
+            },
+            {
+              "kind": "run",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 10.033333333333333
+            },
+            {
+              "kind": "hike",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 15
+            },
+            {
+              "kind": "run",
+              "duration_minutes": 1.0,
+              "zone": "Zone 1",
+              "setting": "flat_outdoor",
+              "pace_min_per_km": 10.033333333333333
+            }
+          ],
+          "description": "Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km."
+        },
+        "distance_km": 1.7,
+        "description": "Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km. → Hike: 1 minutes in Zone 1, pace 15:00/km. → Run: 1 minutes in Zone 1, pace 10:02/km.",
+        "fueling_tip": "For this 20-minute session: water; optional 200-400 mg Sodium. No Carbs are needed during the session.",
+        "target_pace": "15:00 /km",
+        "treadmill_incline": "0",
+        "treadmill_speed": "0",
+        "elevation_gain_m": 0.0,
+        "grade_percent": 0.0,
+        "interval_reps": null,
+        "interval_rep_value": null,
+        "interval_rep_unit": null
+      },
+      {
+        "week_number": 1,
+        "day_of_week": "Sunday",
+        "phase": "Base",
+        "title": "Rest",
+        "type": "Rest",
+        "target_zone": "Zone 1",
+        "segments": [
+          {
+            "kind": "rest",
+            "duration_minutes": 0.0,
+            "zone": null,
+            "setting": "unknown"
+          }
+        ],
+        "duration_minutes": 0.0,
+        "prescription": {
+          "run_km": 0.0,
+          "hike_km": 0.0,
+          "aerobic_minutes": 0.0,
+          "strength_minutes": 0.0,
+          "passive_minutes": 0.0,
+          "duration_minutes": 0.0,
+          "estimated_indoor_ascent_m": 0.0,
+          "estimated_outdoor_ascent_m": 0.0,
+          "segments": [
+            {
+              "kind": "rest",
+              "duration_minutes": 0.0,
+              "zone": null,
+              "setting": "unknown"
+            }
+          ],
+          "description": "Rest."
+        },
+        "distance_km": 0.0,
+        "description": "Rest.",
+        "fueling_tip": "",
+        "target_pace": "",
+        "treadmill_incline": "0",
+        "treadmill_speed": "0",
+        "elevation_gain_m": 0.0,
+        "grade_percent": 0,
+        "interval_reps": null,
+        "interval_rep_value": null,
+        "interval_rep_unit": null
+      }
+    ],
+    [
+      {
+        "week_number": 1,
+        "day_of_week": "Monday",
+        "phase": "Base",
+        "title": "Base Aerobic Foundation & Neuromuscular Strides",
+        "type": "Easy",
+        "session_slot": "morning",
+        "duration_minutes": 75.0,
+        "distance_km": 25.4,
+        "target_zone": "Zone 2",
+        "target_hr_range": "145-155 bpm",
+        "target_pace": "3:06 - 2:48 /km",
+        "elevation_gain_m": 0.0,
+        "grade_percent": 0.0,
+        "treadmill_incline": "0",
+        "treadmill_speed": "0",
+        "interval_reps": null,
+        "interval_rep_value": null,
+        "interval_rep_unit": null
+      }
+    ],
+    [
+      {
+        "week_number": 1,
+        "day_of_week": "Monday",
+        "phase": "Base",
+        "title": "Rest & Mobility",
+        "type": "Rest",
+        "duration_minutes": 0.0,
+        "target_zone": "Zone 1",
+        "target_hr_range": "< 115 bpm",
+        "target_pace": "",
+        "elevation_gain_m": 0.0,
+        "grade_percent": 0.0,
+        "treadmill_incline": "0",
+        "treadmill_speed": "0",
+        "distance_km": 0.0,
+        "interval_reps": null,
+        "interval_rep_value": null,
+        "interval_rep_unit": null
+      }
+    ]
+  ],
+  "scores": [
+    {
+      "latency_s": 242.8,
+      "engine_is_gemini": false,
+      "engine": "rule-based-or-unknown",
+      "workout_count": 7,
+      "next_phase_match": null,
+      "next_intensity_fit": null,
+      "error_type": null,
+      "context_checks": {
+        "arithmetic": true,
+        "access": true,
+        "intensity_accounting": true,
+        "progression": null,
+        "recovery_intensity": true,
+        "volume_fit": null,
+        "strength_readiness": null,
+        "phase_alignment": null
+      },
+      "internal_disclosure": false,
+      "plan_checks": 1.0,
+      "tier": "beginner",
+      "tier_match": null,
+      "week2_km": 0,
+      "week2_in_range": null
+    },
+    {
+      "latency_s": 7.3,
+      "engine_is_gemini": true,
+      "engine": "gemini",
+      "workout_count": 1,
+      "next_phase_match": null,
+      "next_intensity_fit": null,
+      "error_type": null,
+      "context_checks": {
+        "arithmetic": null,
+        "access": null,
+        "intensity_accounting": null,
+        "progression": null,
+        "recovery_intensity": null,
+        "volume_fit": null,
+        "strength_readiness": null,
+        "phase_alignment": null
+      },
+      "internal_disclosure": false,
+      "plan_checks": 1.0,
+      "tier": "elite",
+      "tier_match": null,
+      "week2_km": 0,
+      "week2_in_range": null
+    },
+    {
+      "latency_s": 123.6,
+      "engine_is_gemini": false,
+      "engine": "gemini_retry",
+      "workout_count": 1,
+      "next_phase_match": null,
+      "next_intensity_fit": null,
+      "error_type": null,
+      "context_checks": {
+        "arithmetic": null,
+        "access": null,
+        "intensity_accounting": null,
+        "progression": null,
+        "recovery_intensity": null,
+        "volume_fit": null,
+        "strength_readiness": null,
+        "phase_alignment": null
+      },
+      "internal_disclosure": false,
+      "plan_checks": 1.0,
+      "tier": "recreational",
+      "tier_match": null,
+      "week2_km": 0,
+      "week2_in_range": null
+    }
+  ],
+  "diagnostics": [
+    {
+      "id": "scheduler_fixture_beginner_start_running",
+      "prompt_identity": {
+        "name": "plan_generation",
+        "version": "1",
+        "source": "langfuse",
+        "sha256": "a0eab967a172a094ee5b524486b643497df24fae81406a7c1d0d2cfbf309ee4e"
+      },
+      "checks": {
+        "arithmetic": true,
+        "access": true,
+        "intensity_accounting": true,
+        "progression": null,
+        "recovery_intensity": true,
+        "volume_fit": null,
+        "strength_readiness": null,
+        "phase_alignment": null
+      },
+      "unavailable_checks": [
+        "progression",
+        "volume_fit",
+        "strength_readiness",
+        "phase_alignment"
+      ],
+      "weeks": {
+        "1": {
+          "run_km": 3.0,
+          "hike_km": 2.1,
+          "aerobic_minutes": 60.0,
+          "strength_minutes": 0.0,
+          "passive_minutes": 0.0,
+          "long_run_locomotion_time_share": 0.0,
+          "long_run_distance_share": 0.0,
+          "weekend_locomotion_time_share": 0.333
+        }
+      },
+      "block_engines": null,
+      "internal_disclosure": false
+    },
+    {
+      "id": "scheduler_fixture_elite_utmb",
+      "prompt_identity": {
+        "name": "plan_generation",
+        "version": "1",
+        "source": "langfuse",
+        "sha256": "a0eab967a172a094ee5b524486b643497df24fae81406a7c1d0d2cfbf309ee4e"
+      },
+      "checks": {
+        "arithmetic": null,
+        "access": null,
+        "intensity_accounting": null,
+        "progression": null,
+        "recovery_intensity": null,
+        "volume_fit": null,
+        "strength_readiness": null,
+        "phase_alignment": null
+      },
+      "unavailable_checks": [
+        "arithmetic",
+        "access",
+        "intensity_accounting",
+        "progression",
+        "recovery_intensity",
+        "volume_fit",
+        "strength_readiness",
+        "phase_alignment"
+      ],
+      "weeks": {
+        "1": {
+          "component_accounting": null
+        }
+      },
+      "block_engines": null,
+      "internal_disclosure": false
+    },
+    {
+      "id": "scheduler_fixture_masters_trail_50k",
+      "prompt_identity": {
+        "name": "plan_generation",
+        "version": "1",
+        "source": "langfuse",
+        "sha256": "a0eab967a172a094ee5b524486b643497df24fae81406a7c1d0d2cfbf309ee4e"
+      },
+      "checks": {
+        "arithmetic": null,
+        "access": null,
+        "intensity_accounting": null,
+        "progression": null,
+        "recovery_intensity": null,
+        "volume_fit": null,
+        "strength_readiness": null,
+        "phase_alignment": null
+      },
+      "unavailable_checks": [
+        "arithmetic",
+        "access",
+        "intensity_accounting",
+        "progression",
+        "recovery_intensity",
+        "volume_fit",
+        "strength_readiness",
+        "phase_alignment"
+      ],
+      "weeks": {
+        "1": {
+          "component_accounting": null
+        }
+      },
+      "block_engines": null,
+      "internal_disclosure": false
+    }
+  ]
+}
