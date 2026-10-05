@@ -1,0 +1,58 @@
+/Users/vietvo/miniconda3/lib/python3.12/site-packages/pytest_asyncio/plugin.py:299: PytestDeprecationWarning: The configuration option "asyncio_default_fixture_loop_scope" is unset.
+The event loop scope for asynchronous fixtures will default to the "fixture" caching scope. Future versions of pytest-asyncio will default the loop scope for asynchronous fixtures to "function" scope. Set the default fixture loop scope explicitly in order to avoid unexpected behavior in the future. Valid fixture loop scopes are: "function", "class", "module", "package", "session"
+
+  warnings.warn(PytestDeprecationWarning(_DEFAULT_FIXTURE_LOOP_SCOPE_UNSET))
+........................................................................ [  5%]
+........................................................................ [ 10%]
+........................................................................ [ 16%]
+........................................................................ [ 21%]
+........................................................................ [ 27%]
+........................................................................ [ 32%]
+........................................................................ [ 38%]
+........................................................................ [ 43%]
+........................................................................ [ 48%]
+........................................................................ [ 54%]
+........................................................................ [ 59%]
+........................................................................ [ 65%]
+........................................................................ [ 70%]
+........................................................................ [ 76%]
+........................................................................ [ 81%]
+........................................................................ [ 87%]
+........................................................................ [ 92%]
+........................................................................ [ 97%]
+...........................                                              [100%]
+=============================== warnings summary ===============================
+main.py:157
+  /Users/vietvo/.codex/worktrees/fitness-snapshot-deferred/uphill-ai/backend/main.py:157: DeprecationWarning:
+          on_event is deprecated, use lifespan event handlers instead.
+
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+
+    @app.on_event("startup")
+
+../../../../../miniconda3/lib/python3.12/site-packages/fastapi/applications.py:4495
+../../../../../miniconda3/lib/python3.12/site-packages/fastapi/applications.py:4495
+  /Users/vietvo/miniconda3/lib/python3.12/site-packages/fastapi/applications.py:4495: DeprecationWarning:
+          on_event is deprecated, use lifespan event handlers instead.
+
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+
+    return self.router.on_event(event_type)
+
+main.py:171
+  /Users/vietvo/.codex/worktrees/fitness-snapshot-deferred/uphill-ai/backend/main.py:171: DeprecationWarning:
+          on_event is deprecated, use lifespan event handlers instead.
+
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+
+    @app.on_event("shutdown")
+
+tests/unit/test_fit_parser.py: 19 warnings
+  /Users/vietvo/miniconda3/lib/python3.12/site-packages/fitparse/processors.py:73: DeprecationWarning: datetime.datetime.utcfromtimestamp() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.fromtimestamp(timestamp, datetime.UTC).
+    field_data.value = datetime.datetime.utcfromtimestamp(UTC_REFERENCE + value)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+1323 passed, 23 warnings in 80.71s (0:01:20)
