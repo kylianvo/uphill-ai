@@ -192,3 +192,7 @@ Matched metadata-only model cost: $1.844510, 104 logged attempts; matching detai
 V14 makes the existing trusted readiness restriction explicit during volume retries. Independent review approved the focused wording and found no code blocker, but declined to infer the unknown rejected exercise or paid effectiveness. No dose, threshold, fixture band, public workout-format change or deployment. V14 requires a fresh full paired gate. Raw hashes and privacy replacements are recorded in privacy-filter.json; legacy-score and VI scans in review.json. V13 is not claimed manually/UI accepted.
 
 [All eight run artifacts](../superpowers/evidence/scheduler-reliability/v13-evals/README.md). Backend units after formatter: 1,302 passed, 23 warnings. No backend code changed for the V14 prompt correction.
+
+## V14 preflight / interrupted baseline — 2026-10-06
+
+A version assertion stopped the first publish attempt before POST; corrected the expected old version, then published v14 under experiment/latest only. No extra version or environment-label move. First baseline aborted on local disk-full error before results.json; candidate did not run. Partial logs and $0.154222 known model cost retained separately. Cleared this task generated Next.js cache; frontend stopped. Restart all eight arms with unchanged v14/code/KB in new directories. [Interruption evidence](../superpowers/evidence/scheduler-reliability/v14-interrupted-baseline/README.md).

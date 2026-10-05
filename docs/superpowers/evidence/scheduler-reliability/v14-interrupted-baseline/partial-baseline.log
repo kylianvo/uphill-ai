@@ -1,0 +1,57 @@
+{"ts": "2026-10-05T14:04:44Z", "level": "INFO", "logger": "services.observability", "msg": "observability enabled", "service": "observability", "event": "enabled"}
+[compare] scheduler_fixture_beginner_start_running → Gemini+KB...
+[PlanGen][KB] Retrieved 6 philosophy chunks
+{"ts": "2026-10-05T14:04:47Z", "level": "INFO", "logger": "services.plan_generator", "msg": "gemini prompt sent", "service": "plan_generator", "engine": "gemini", "event": "prompt_sent", "chars_sent": 30724}
+Direct use of automatic function calling (AFC) in AsyncModels.generate_content is not recommended. Instead, we recommend to use AFC in AsyncChat.send_message. Similarly, direct use of AFC in AsyncModels.generate_content_stream is not recommended. Instead, we recommend to use AFC in AsyncChat.send_message_stream.
+{"ts": "2026-10-05T14:05:05Z", "level": "INFO", "logger": "services.plan_generator", "msg": "gemini response received", "service": "plan_generator", "engine": "gemini", "event": "response_received", "chars_received": 8551, "latency_ms": 18036}
+{"ts": "2026-10-05T14:05:05Z", "level": "INFO", "logger": "services.plan_generator", "msg": "gemini workouts parsed", "service": "plan_generator", "engine": "gemini", "event": "parsed", "workout_count": 7}
+[compare] scheduler_fixture_elite_utmb → Gemini+KB...
+[PlanGen][KB] Retrieved 6 philosophy chunks
+{"ts": "2026-10-05T14:05:08Z", "level": "INFO", "logger": "services.plan_generator", "msg": "gemini prompt sent", "service": "plan_generator", "engine": "gemini", "event": "prompt_sent", "chars_sent": 35210}
+{"ts": "2026-10-05T14:05:27Z", "level": "INFO", "logger": "services.plan_generator", "msg": "gemini response received", "service": "plan_generator", "engine": "gemini", "event": "response_received", "chars_received": 11222, "latency_ms": 18722}
+{"ts": "2026-10-05T14:05:27Z", "level": "INFO", "logger": "services.plan_generator", "msg": "gemini workouts parsed", "service": "plan_generator", "engine": "gemini", "event": "parsed", "workout_count": 8}
+[compare] scheduler_fixture_masters_trail_50k → Gemini+KB...
+[PlanGen][KB] Retrieved 6 philosophy chunks
+{"ts": "2026-10-05T14:05:28Z", "level": "INFO", "logger": "services.plan_generator", "msg": "gemini prompt sent", "service": "plan_generator", "engine": "gemini", "event": "prompt_sent", "chars_sent": 33347}
+{"ts": "2026-10-05T14:05:41Z", "level": "INFO", "logger": "services.plan_generator", "msg": "gemini response received", "service": "plan_generator", "engine": "gemini", "event": "response_received", "chars_received": 7851, "latency_ms": 13206}
+{"ts": "2026-10-05T14:05:42Z", "level": "INFO", "logger": "services.plan_generator", "msg": "gemini workouts parsed", "service": "plan_generator", "engine": "gemini", "event": "parsed", "workout_count": 7}
+[compare] scheduler_fixture_novice_10k → Gemini+KB...
+[PlanGen][KB] Retrieved 6 philosophy chunks
+{"ts": "2026-10-05T14:05:43Z", "level": "INFO", "logger": "services.plan_generator", "msg": "gemini prompt sent", "service": "plan_generator", "engine": "gemini", "event": "prompt_sent", "chars_sent": 29074}
+{"ts": "2026-10-05T14:05:53Z", "level": "INFO", "logger": "services.plan_generator", "msg": "gemini response received", "service": "plan_generator", "engine": "gemini", "event": "response_received", "chars_received": 8294, "latency_ms": 10346}
+{"ts": "2026-10-05T14:05:53Z", "level": "INFO", "logger": "services.plan_generator", "msg": "gemini workouts parsed", "service": "plan_generator", "engine": "gemini", "event": "parsed", "workout_count": 7}
+[compare] scheduler_fixture_recreational_50k → Gemini+KB...
+[PlanGen][KB] Retrieved 6 philosophy chunks
+{"ts": "2026-10-05T14:05:56Z", "level": "INFO", "logger": "services.plan_generator", "msg": "gemini prompt sent", "service": "plan_generator", "engine": "gemini", "event": "prompt_sent", "chars_sent": 32972}
+{"ts": "2026-10-05T14:06:11Z", "level": "INFO", "logger": "services.plan_generator", "msg": "gemini response received", "service": "plan_generator", "engine": "gemini", "event": "response_received", "chars_received": 8850, "latency_ms": 14295}
+{"ts": "2026-10-05T14:06:11Z", "level": "INFO", "logger": "services.plan_generator", "msg": "gemini workouts parsed", "service": "plan_generator", "engine": "gemini", "event": "parsed", "workout_count": 7}
+[compare] scheduler_fixture_return_from_injury → Gemini+KB...
+[PlanGen][KB] Retrieved 6 philosophy chunks
+{"ts": "2026-10-05T14:06:16Z", "level": "INFO", "logger": "services.plan_generator", "msg": "gemini prompt sent", "service": "plan_generator", "engine": "gemini", "event": "prompt_sent", "chars_sent": 30366}
+{"ts": "2026-10-05T14:06:28Z", "level": "INFO", "logger": "services.plan_generator", "msg": "gemini response received", "service": "plan_generator", "engine": "gemini", "event": "response_received", "chars_received": 9187, "latency_ms": 11490}
+{"ts": "2026-10-05T14:06:28Z", "level": "INFO", "logger": "services.plan_generator", "msg": "gemini workouts parsed", "service": "plan_generator", "engine": "gemini", "event": "parsed", "workout_count": 7}
+[compare] scheduler_sequence_confirmed_missed → Gemini+KB...
+Gemini API key configured.
+[PlanGen][KB] Retrieved 6 philosophy chunks
+{"ts": "2026-10-05T14:06:36Z", "level": "INFO", "logger": "services.plan_generator", "msg": "gemini prompt sent", "service": "plan_generator", "engine": "gemini", "event": "prompt_sent", "chars_sent": 35682}
+{"ts": "2026-10-05T14:06:50Z", "level": "INFO", "logger": "services.plan_generator", "msg": "gemini response received", "service": "plan_generator", "engine": "gemini", "event": "response_received", "chars_received": 9588, "latency_ms": 13536}
+{"ts": "2026-10-05T14:06:50Z", "level": "INFO", "logger": "services.plan_generator", "msg": "gemini workouts parsed", "service": "plan_generator", "engine": "gemini", "event": "parsed", "workout_count": 7}
+[NextBlock] plan_id=0 block=2 gemini_key=yes plan_start_date=2026-10-05 block_context_lines=12
+[PlanGen][KB] Retrieved 6 philosophy chunks
+{"ts": "2026-10-05T14:06:51Z", "level": "INFO", "logger": "services.plan_generator", "msg": "gemini prompt sent", "service": "plan_generator", "engine": "gemini", "event": "prompt_sent", "chars_sent": 37891}
+{"ts": "2026-10-05T14:07:03Z", "level": "INFO", "logger": "services.plan_generator", "msg": "gemini response received", "service": "plan_generator", "engine": "gemini", "event": "response_received", "chars_received": 8844, "latency_ms": 12460}
+{"ts": "2026-10-05T14:07:03Z", "level": "INFO", "logger": "services.plan_generator", "msg": "gemini workouts parsed", "service": "plan_generator", "engine": "gemini", "event": "parsed", "workout_count": 7}
+[NextBlock][04671480-260a-4e77-a56e-71ffa18c7b88] Block 2 complete — 7 workouts saved.
+[compare] scheduler_sequence_fatigue → Gemini+KB...
+[PlanGen][KB] Retrieved 6 philosophy chunks
+{"ts": "2026-10-05T14:07:05Z", "level": "INFO", "logger": "services.plan_generator", "msg": "gemini prompt sent", "service": "plan_generator", "engine": "gemini", "event": "prompt_sent", "chars_sent": 35682}
+{"ts": "2026-10-05T14:07:16Z", "level": "INFO", "logger": "services.plan_generator", "msg": "gemini response received", "service": "plan_generator", "engine": "gemini", "event": "response_received", "chars_received": 8673, "latency_ms": 11051}
+{"ts": "2026-10-05T14:07:16Z", "level": "INFO", "logger": "services.plan_generator", "msg": "gemini workouts parsed", "service": "plan_generator", "engine": "gemini", "event": "parsed", "workout_count": 7}
+[NextBlock] plan_id=0 block=2 gemini_key=yes plan_start_date=2026-10-05 block_context_lines=11
+[PlanGen][KB] Retrieved 6 philosophy chunks
+{"ts": "2026-10-05T14:07:17Z", "level": "INFO", "logger": "services.plan_generator", "msg": "gemini prompt sent", "service": "plan_generator", "engine": "gemini", "event": "prompt_sent", "chars_sent": 37814}
+{"ts": "2026-10-05T14:07:29Z", "level": "INFO", "logger": "services.plan_generator", "msg": "gemini response received", "service": "plan_generator", "engine": "gemini", "event": "response_received", "chars_received": 9521, "latency_ms": 12006}
+--- Logging error ---
+Traceback (most recent call last):
+object address  : 0x128b5c5c0
+object refcount : 3

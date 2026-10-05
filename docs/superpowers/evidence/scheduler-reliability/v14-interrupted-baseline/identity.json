@@ -1,0 +1,25 @@
+{
+  "as_of": "2026-10-05",
+  "model": "gemini-3.8-flash",
+  "code": "b0aa2f04160ff0c76cffaa35d9cce13865e038c5",
+  "backend_tree": "d6fa813c3771c4f6dc26fa938d19c0059ea56528",
+  "production": {
+    "version": 1,
+    "sha256": "a0eab967a172a094ee5b524486b643497df24fae81406a7c1d0d2cfbf309ee4e"
+  },
+  "candidate": {
+    "version": 14,
+    "label": "scheduler-reliability-exp",
+    "sha256": "0b7ba929d1295ed516e549032f6e82c68483826adfe7c0850ae14f2d3fcd57f4"
+  },
+  "staging_version": 4,
+  "scheduler_seed_sha256": "401fb69936edddefdff442d338baa01f1371fc47f5ca1a688d8a191dda55c7e0",
+  "principles_sha256": "15aaa37cb372f44fb5aecaf57ba2f7f6510a0f33585b4f42b654c0ddfc546563",
+  "qdrant_sha256": "60001d3f78fa26e2f8b6a9a8860fae96504cc213f38e41abea5f3088117f77b0",
+  "export_content": false,
+  "synthetic_only": true,
+  "decision": "INVALID UNPAIRED BASELINE: local disk full; no results.json; candidate not dispatched",
+  "partial_log_sha256": "ca8727b1e76b2bc9381b05c67dada54459f734f3635c6da1b804f6f11ca44bc0",
+  "logged_prompt_attempts": 10,
+  "logged_responses": 10
+}
