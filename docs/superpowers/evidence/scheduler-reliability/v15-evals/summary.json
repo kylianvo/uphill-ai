@@ -1,0 +1,312 @@
+[
+  {
+    "directory": "reliability-followup12-production-1",
+    "run_name": "eval_scheduler_1791212187759589000",
+    "cases": 25,
+    "mean_latency_s": 20.348,
+    "p95_latency_s": 30.4,
+    "engines": {
+      "gemini": 25
+    },
+    "failures": [
+      "scheduler_sequence_unknown_override: week-2 volume 99.1 km outside the expected range"
+    ],
+    "context": {
+      "arithmetic": {
+        "None": 25
+      },
+      "access": {
+        "None": 25
+      },
+      "intensity_accounting": {
+        "None": 25
+      },
+      "progression": {
+        "None": 25
+      },
+      "recovery_intensity": {
+        "None": 25
+      },
+      "volume_fit": {
+        "None": 25
+      },
+      "strength_readiness": {
+        "None": 25
+      },
+      "phase_alignment": {
+        "None": 25
+      }
+    }
+  },
+  {
+    "directory": "reliability-followup12-production-repeat-1",
+    "run_name": "eval_scheduler_1791212689432667000",
+    "cases": 5,
+    "mean_latency_s": 30.84,
+    "p95_latency_s": 34.3,
+    "engines": {
+      "gemini": 5
+    },
+    "failures": [],
+    "context": {
+      "arithmetic": {
+        "None": 5
+      },
+      "access": {
+        "None": 5
+      },
+      "intensity_accounting": {
+        "None": 5
+      },
+      "progression": {
+        "None": 5
+      },
+      "recovery_intensity": {
+        "None": 5
+      },
+      "volume_fit": {
+        "None": 5
+      },
+      "strength_readiness": {
+        "None": 5
+      },
+      "phase_alignment": {
+        "None": 5
+      }
+    }
+  },
+  {
+    "directory": "reliability-followup12-production-repeat-2",
+    "run_name": "eval_scheduler_1791212937590537000",
+    "cases": 5,
+    "mean_latency_s": 32.0,
+    "p95_latency_s": 39.1,
+    "engines": {
+      "gemini": 5
+    },
+    "failures": [
+      "scheduler_fixture_vietnam_urban_recreational_treadmill: week-2 volume 73.7 km outside the expected range"
+    ],
+    "context": {
+      "arithmetic": {
+        "None": 5
+      },
+      "access": {
+        "None": 5
+      },
+      "intensity_accounting": {
+        "None": 5
+      },
+      "progression": {
+        "None": 5
+      },
+      "recovery_intensity": {
+        "None": 5
+      },
+      "volume_fit": {
+        "None": 5
+      },
+      "strength_readiness": {
+        "None": 5
+      },
+      "phase_alignment": {
+        "None": 5
+      }
+    }
+  },
+  {
+    "directory": "reliability-followup12-production-repeat-3",
+    "run_name": "eval_scheduler_1791213184150458000",
+    "cases": 5,
+    "mean_latency_s": 30.96,
+    "p95_latency_s": 34.2,
+    "engines": {
+      "gemini": 5
+    },
+    "failures": [
+      "scheduler_fixture_vietnam_urban_sub_elite_no_gym: week-2 volume 91.6 km outside the expected range"
+    ],
+    "context": {
+      "arithmetic": {
+        "None": 5
+      },
+      "access": {
+        "None": 5
+      },
+      "intensity_accounting": {
+        "None": 5
+      },
+      "progression": {
+        "None": 5
+      },
+      "recovery_intensity": {
+        "None": 5
+      },
+      "volume_fit": {
+        "None": 5
+      },
+      "strength_readiness": {
+        "None": 5
+      },
+      "phase_alignment": {
+        "None": 5
+      }
+    }
+  },
+  {
+    "directory": "reliability-followup12-v15-1",
+    "run_name": "eval_scheduler_1791212498265736000",
+    "cases": 25,
+    "mean_latency_s": 10.836,
+    "p95_latency_s": 18.3,
+    "engines": {
+      "gemini": 23,
+      "gemini_retry": 1,
+      "rule-based-or-unknown": 1
+    },
+    "failures": [
+      "scheduler_fixture_snapshot_elite_no_coros: fell through to the rule-based-or-unknown tier"
+    ],
+    "context": {
+      "arithmetic": {
+        "True": 25
+      },
+      "access": {
+        "True": 25
+      },
+      "intensity_accounting": {
+        "True": 25
+      },
+      "progression": {
+        "None": 13,
+        "True": 12
+      },
+      "recovery_intensity": {
+        "True": 3,
+        "None": 22
+      },
+      "volume_fit": {
+        "None": 4,
+        "True": 21
+      },
+      "strength_readiness": {
+        "None": 25
+      },
+      "phase_alignment": {
+        "None": 24,
+        "True": 1
+      }
+    }
+  },
+  {
+    "directory": "reliability-followup12-v15-repeat-1",
+    "run_name": "eval_scheduler_1791212765239263000",
+    "cases": 5,
+    "mean_latency_s": 13.14,
+    "p95_latency_s": 20.1,
+    "engines": {
+      "gemini": 5
+    },
+    "failures": [],
+    "context": {
+      "arithmetic": {
+        "True": 5
+      },
+      "access": {
+        "True": 5
+      },
+      "intensity_accounting": {
+        "True": 5
+      },
+      "progression": {
+        "True": 5
+      },
+      "recovery_intensity": {
+        "None": 5
+      },
+      "volume_fit": {
+        "True": 5
+      },
+      "strength_readiness": {
+        "None": 5
+      },
+      "phase_alignment": {
+        "None": 5
+      }
+    }
+  },
+  {
+    "directory": "reliability-followup12-v15-repeat-2",
+    "run_name": "eval_scheduler_1791213018282531000",
+    "cases": 5,
+    "mean_latency_s": 13.5,
+    "p95_latency_s": 17.7,
+    "engines": {
+      "gemini": 5
+    },
+    "failures": [],
+    "context": {
+      "arithmetic": {
+        "True": 5
+      },
+      "access": {
+        "True": 5
+      },
+      "intensity_accounting": {
+        "True": 5
+      },
+      "progression": {
+        "True": 5
+      },
+      "recovery_intensity": {
+        "None": 5
+      },
+      "volume_fit": {
+        "True": 5
+      },
+      "strength_readiness": {
+        "None": 5
+      },
+      "phase_alignment": {
+        "None": 5
+      }
+    }
+  },
+  {
+    "directory": "reliability-followup12-v15-repeat-3",
+    "run_name": "eval_scheduler_1791213265761583000",
+    "cases": 5,
+    "mean_latency_s": 14.06,
+    "p95_latency_s": 17.2,
+    "engines": {
+      "gemini": 5
+    },
+    "failures": [],
+    "context": {
+      "arithmetic": {
+        "True": 5
+      },
+      "access": {
+        "True": 5
+      },
+      "intensity_accounting": {
+        "True": 5
+      },
+      "progression": {
+        "True": 5
+      },
+      "recovery_intensity": {
+        "None": 5
+      },
+      "volume_fit": {
+        "True": 5
+      },
+      "strength_readiness": {
+        "None": 5
+      },
+      "phase_alignment": {
+        "None": 5
+      }
+    }
+  }
+]
