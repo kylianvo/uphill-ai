@@ -73,6 +73,8 @@ def resolve_prescription(segments: list[dict], *, lang: str) -> dict:
                 or not exercise["name"].strip()
             ):
                 raise ValueError("Exercise requires a named strength segment")
+            if re.search(r"\b(?:mobility|circuit)\s*$", exercise["name"], re.I):
+                raise ValueError("Exercise requires a concrete movement, not a mobility category or circuit")
             sets = _number(exercise.get("sets"), positive=True)
             if not sets.is_integer():
                 raise ValueError("Exercise sets must be integers")
@@ -105,6 +107,10 @@ def resolve_prescription(segments: list[dict], *, lang: str) -> dict:
                 )
             ):
                 raise ValueError("Exercise requires explicit supported equipment")
+            if re.search(r"\bstep[ -]?ups?\b", exercise["name"], re.I) and not {"box", "stairs"}.intersection(
+                equipment
+            ):
+                raise ValueError("Step-ups require explicitly declared box or stairs equipment")
             if has_hold and re.search(r"\b(each side|both sides|per side)\b", exercise["name"], re.I):
                 raise ValueError("Use separate explicitly targeted left and right hold segments")
             if has_hold:

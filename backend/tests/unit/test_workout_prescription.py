@@ -314,3 +314,37 @@ def test_structured_strength_requires_explicit_supported_equipment(equipment):
     segment = hold_segment(equipment=equipment)
     with pytest.raises(ValueError, match="equipment"):
         wp.resolve_prescription([segment], lang="en")
+
+
+@pytest.mark.parametrize("name", ["Bodyweight Calves and Hip Mobility", "Hip Mobility", "Mobility Circuit"])
+def test_strength_categories_cannot_replace_an_executable_movement(name):
+    segment = hold_segment(name=name, reps=10)
+    del segment["exercise"]["hold_seconds"]
+    with pytest.raises(ValueError, match="concrete movement"):
+        wp.resolve_prescription([segment], lang="en")
+
+
+@pytest.mark.parametrize("name", ["90/90 Hip Rotations", "Clean and Jerk"])
+def test_specific_movements_keep_their_original_rep_targets(name):
+    segment = hold_segment(name=name, reps=10, equipment=["weights"] if name == "Clean and Jerk" else ["bodyweight"])
+    del segment["exercise"]["hold_seconds"]
+    resolved = wp.resolve_prescription([segment], lang="vi")
+    assert f"{name}: 2 x 10, 47 s" in resolved["description"]
+    assert resolved["strength_minutes"] == 3
+
+
+@pytest.mark.parametrize("name", ["Step-ups", "Box Step-Ups", "Bodyweight Step Up"])
+def test_step_ups_require_a_declared_step_surface(name):
+    segment = hold_segment(name=name, reps=10)
+    del segment["exercise"]["hold_seconds"]
+    with pytest.raises(ValueError, match="box or stairs"):
+        wp.resolve_prescription([segment], lang="vi")
+
+
+@pytest.mark.parametrize("surface", ["box", "stairs"])
+def test_step_ups_retain_explicit_surface_and_rep_target(surface):
+    segment = hold_segment(name="Step-ups", reps=10, equipment=["bodyweight", surface])
+    del segment["exercise"]["hold_seconds"]
+    resolved = wp.resolve_prescription([segment], lang="en")
+    assert resolved["segments"][0]["exercise"]["equipment"] == ["bodyweight", surface]
+    assert "Step-ups: 2 x 10, 47 s" in resolved["description"]
