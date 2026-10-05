@@ -122,7 +122,7 @@ struct Workout: Codable, Sendable, Equatable, Identifiable {
     /// The web defaults unknown days to Monday; so do we.
     var weekday: Weekday { Weekday(rawValue: dayOfWeek) ?? .monday }
     var isRest: Bool { type == "Rest" || durationMinutes == 0 }
-    var isDone: Bool { isCompleted == 1 }
+    var isDone: Bool { isCompleted == 1 || (isCompleted != 0 && isMatched) }
     var isMissedFlag: Bool { isMissed == 1 }
     var isMatched: Bool { matchedActivityId != nil || (matchedDistanceKm != nil && matchedDistanceKm! > 0) }
 }

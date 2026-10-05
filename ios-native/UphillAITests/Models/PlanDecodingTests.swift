@@ -44,4 +44,29 @@ struct PlanDecodingTests {
     @Test func unknownDayFallsBackToMonday() {
         #expect(TestData.workout(["day_of_week": "Funday"]).weekday == .monday)
     }
+
+    @Test func matchedWorkoutIsAutomaticallyDone() throws {
+        let object: [String: Any] = [
+            "id": 99, "plan_id": 1, "week_number": 1, "day_of_week": "Tuesday", "phase": "Base",
+            "title": "Aerobic Base Run", "type": "Easy Run", "duration_minutes": 50, "target_zone": "Z2",
+            "matched_activity_id": 1234, "matched_device_model": "COROS APEX 2 Pro",
+            "matched_distance_km": 10.2, "matched_duration_seconds": 3120, "matched_avg_hr": 142
+        ]
+        let workout = try JSONCoding.decoder.decode(Workout.self, from: json(object))
+        #expect(workout.isMatched == true)
+        #expect(workout.isDone == true)
+    }
+
+    @Test func explicitlyUncompletedWorkoutOverridesMatched() throws {
+        let object: [String: Any] = [
+            "id": 99, "plan_id": 1, "week_number": 1, "day_of_week": "Tuesday", "phase": "Base",
+            "title": "Aerobic Base Run", "type": "Easy Run", "duration_minutes": 50, "target_zone": "Z2",
+            "is_completed": 0,
+            "matched_activity_id": 1234, "matched_device_model": "COROS APEX 2 Pro",
+            "matched_distance_km": 10.2
+        ]
+        let workout = try JSONCoding.decoder.decode(Workout.self, from: json(object))
+        #expect(workout.isMatched == true)
+        #expect(workout.isDone == false)
+    }
 }
