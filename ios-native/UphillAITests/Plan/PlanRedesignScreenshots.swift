@@ -18,7 +18,7 @@ struct PlanRedesignScreenshots {
         cal.date(from: DateComponents(year: 2026, month: 10, day: 7, hour: 9, minute: 0))!
     }
 
-    private func save<V: View>(_ view: V, name: String, size: CGSize = CGSize(width: 402, height: 874), scale: CGFloat = 3.0) {
+    private func save<V: View>(_ view: V, name: String, size: CGSize = CGSize(width: 402, height: 874), scale: CGFloat = 2.0) {
         let controller = UIHostingController(rootView: view.frame(width: size.width, height: size.height))
         controller.view.bounds = CGRect(origin: .zero, size: size)
         controller.view.backgroundColor = .systemBackground
@@ -125,6 +125,27 @@ Rushing through reps without full range of motion.
         // Missed workout
         let wMissed = TestData.workout(["id": 10, "week_number": 2, "day_of_week": "Tuesday", "type": "Easy Run", "duration_minutes": 45.0, "distance_km": 7.5, "target_zone": "Z2", "title": "Aerobic Maintenance Run", "description": descEasy, "is_missed": 1])
 
+        // COROS synced workout
+        let wCorosMatched = TestData.workout([
+            "id": 11,
+            "week_number": 2,
+            "day_of_week": "Tuesday",
+            "type": "Easy Run",
+            "duration_minutes": 50.0,
+            "distance_km": 10.0,
+            "target_zone": "Z2",
+            "target_pace": "5:15 /km",
+            "target_hr_range": "135-148 bpm",
+            "title": "Aerobic Base Run",
+            "description": descEasy,
+            "is_completed": 1,
+            "matched_activity_id": 9842,
+            "matched_device_model": "COROS APEX 2 Pro",
+            "matched_distance_km": 10.24,
+            "matched_duration_seconds": 3134.0,
+            "matched_avg_hr": 142
+        ])
+
         // Additional weeks for multi-week trend progression
         let wW1 = [
             TestData.workout(["id": 101, "week_number": 1, "day_of_week": "Tuesday", "type": "Easy Run", "duration_minutes": 50.0, "distance_km": 8.0, "is_completed": 1]),
@@ -142,7 +163,7 @@ Rushing through reps without full range of motion.
             TestData.workout(["id": 109, "week_number": 4, "day_of_week": "Saturday", "type": "Long Run", "duration_minutes": 90.0, "distance_km": 14.0])
         ]
 
-        let allWorkouts = [wMonRest, wTueEasy, wWedIntervals, wThuMorn, wThuAft, wFriRest, wSatLong, wSunRec, wDoneRpe, wMissed] + wW1 + wW3 + wW4
+        let allWorkouts = [wMonRest, wTueEasy, wWedIntervals, wThuMorn, wThuAft, wFriRest, wSatLong, wSunRec, wDoneRpe, wMissed, wCorosMatched] + wW1 + wW3 + wW4
 
         let service = FakePlanService()
         let snapshot = PlanSnapshot(plan: plan, workouts: allWorkouts)
@@ -157,7 +178,7 @@ Rushing through reps without full range of motion.
     }
 
     @Test func generateAllPlanRedesignScreenshots() async {
-        let (model, _) = makeFixturePlan()
+        let (model, allWorkouts) = makeFixturePlan()
         await model.load()
 
         let genService = FakeGenerationService()
@@ -295,6 +316,23 @@ Rushing through reps without full range of motion.
             .dynamicTypeSize(.accessibility3)
         save(intervalXxxl, name: "workout-detail-xxxl")
 
+        // 18. coros-synced-badge.png (Day row with compact COROS badge)
+        let corosWorkout = allWorkouts.first { $0.id == 11 } ?? allWorkouts[0]
+        let corosDay = PlanDay(week: 2, weekday: .tuesday, date: PlanCalendar.day(from: "2026-10-06"), workouts: [corosWorkout], eyebrow: nil)
+        let corosBadgeView = VStack(alignment: .leading, spacing: UH.Space.section) {
+            Text("COROS Synced Session").font(UH.TextStyle.screenTitle).padding(.horizontal, UH.Space.regular)
+            DayRow(day: corosDay, onToggleDone: { _ in }, onMoveOrSwap: { _ in }, onSelect: { _ in })
+                .padding(.horizontal, UH.Space.regular)
+            Spacer()
+        }
+        .padding(.top, 40)
+        .background(UH.Palette.surface.ignoresSafeArea())
+        save(corosBadgeView, name: "coros-synced-badge")
+
+        // 19. coros-workout-detail.png (Workout detail with matched telemetry comparison)
+        let corosDetail = WorkoutDetailSheet(model: model, workoutID: 11)
+        save(corosDetail, name: "coros-workout-detail")
+
         #expect(FileManager.default.fileExists(atPath: "\(outDir)/plan-tab-top-collapsed.png"))
         #expect(FileManager.default.fileExists(atPath: "\(outDir)/plan-tab-top-expanded.png"))
         #expect(FileManager.default.fileExists(atPath: "\(outDir)/calendar-month.png"))
@@ -312,5 +350,7 @@ Rushing through reps without full range of motion.
         #expect(FileManager.default.fileExists(atPath: "\(outDir)/workout-detail-missed.png"))
         #expect(FileManager.default.fileExists(atPath: "\(outDir)/plan-tab-xxxl.png"))
         #expect(FileManager.default.fileExists(atPath: "\(outDir)/workout-detail-xxxl.png"))
+        #expect(FileManager.default.fileExists(atPath: "\(outDir)/coros-synced-badge.png"))
+        #expect(FileManager.default.fileExists(atPath: "\(outDir)/coros-workout-detail.png"))
     }
 }
