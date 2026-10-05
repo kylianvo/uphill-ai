@@ -95,6 +95,7 @@ def run_context_checks(workouts: list[dict[str, Any]], *, context: dict) -> dict
             "recovery_intensity",
             "volume_fit",
             "strength_readiness",
+            "phase_alignment",
         )
     )
     if not workouts:
@@ -137,6 +138,11 @@ def run_context_checks(workouts: list[dict[str, Any]], *, context: dict) -> dict
             results["arithmetic"] = False
             return results
     results["arithmetic"] = None if missing_precision else True
+    required_phases = context.get("required_phases", {})
+    phase_rows = [w for w, _ in resolved if w.get("week_number") in required_phases]
+    results["phase_alignment"] = (
+        all(w.get("phase") == required_phases[w["week_number"]] for w in phase_rows) if phase_rows else None
+    )
     access_unknown = missing_precision
     access_failed = False
     run_total = easy_total = 0.0
@@ -283,6 +289,16 @@ def generation_context(race_info: dict, workouts: list[dict]) -> dict:
         context["race_access"] = {
             "settings": ["mountain" if race_info.get("course_elevation_gain_m") else "flat_outdoor"]
         }
+    if (
+        race_info.get("date")
+        and race_info.get("goal_type") not in {"start_running", "return", "recovery"}
+        and not race_info.get("uses_walk_run", False)
+        and isinstance(race_info.get("total_weeks"), int)
+        and race_info["total_weeks"] >= 3
+    ):
+        race_week = race_info["total_weeks"] - 1
+        # Existing plan contract: taper before the race week, recovery after it.
+        context["required_phases"] = {race_week - 1: "Taper", race_week: "Race Week", race_week + 1: "Recovery"}
     feedback = race_info.get("training_feedback") or {}
     snapshot = race_info.get("fitness_snapshot")
     readiness = race_info.get("readiness_summary") or (snapshot.readiness if snapshot else None) or {}
@@ -315,7 +331,14 @@ def validate_generated_workouts(workouts: list[dict], *, context: dict) -> dict[
     results = run_context_checks(workouts, context=context)
     failed = [
         name
-        for name in ("arithmetic", "access", "recovery_intensity", "volume_fit", "strength_readiness")
+        for name in (
+            "arithmetic",
+            "access",
+            "recovery_intensity",
+            "volume_fit",
+            "strength_readiness",
+            "phase_alignment",
+        )
         if results[name] is False
     ]
     for workout in workouts:

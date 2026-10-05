@@ -34,7 +34,16 @@ SEGMENTS = [
 ]
 
 
-async def generate(payload, lang="en", *, prepared_methods=None, retry_payload=None, check_starting_volume=False):
+async def generate(
+    payload,
+    lang="en",
+    *,
+    prepared_methods=None,
+    retry_payload=None,
+    check_starting_volume=False,
+    total_weeks=8,
+    target_week=None,
+):
     response = MagicMock(text=json.dumps(payload))
     client = MagicMock()
     client.aio.__aenter__.return_value = client.aio
@@ -64,7 +73,8 @@ async def generate(payload, lang="en", *, prepared_methods=None, retry_payload=N
                     **({} if check_starting_volume else {"weekly_km_bounds": {}}),
                 },
             },
-            total_weeks=8,
+            total_weeks=total_weeks,
+            target_week=target_week,
             api_key="fake-key",
         )
     return workouts, client.models.generate_content.call_count
@@ -367,3 +377,29 @@ async def test_fallback_authors_load_using_resolved_paces(weekly_km):
     for week in [1, 2]:
         total = sum(w["distance_km"] for w in rows if w["week_number"] == week)
         assert weekly_km * 0.8 <= total <= weekly_km * 1.1
+
+
+@pytest.mark.asyncio
+async def test_event_taper_violation_retries_without_relabelling_the_workout():
+    def row(phase):
+        return {
+            "week_number": 2,
+            "day_of_week": "Tuesday",
+            "phase": phase,
+            "type": "Easy",
+            "title": "Easy Run",
+            "segments": [
+                {
+                    "kind": "run",
+                    "duration_minutes": 32,
+                    "zone": "Zone 2",
+                    "setting": "flat_outdoor",
+                    "pace_min_per_km": 6,
+                }
+            ],
+        }
+
+    rows, attempts = await generate([row("Build")], retry_payload=[row("Taper")], total_weeks=4, target_week=2)
+    assert attempts == 2
+    assert rows[0]["phase"] == "Taper"
+    assert rows[0]["duration_minutes"] == 32

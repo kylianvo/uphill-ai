@@ -188,6 +188,7 @@ def _scheduler_diagnostics(workouts: list[dict], fixture: dict) -> dict:
         **(fixture.get("_effective_race_info") or fixture.get("race_info", {})),
         "current_weekly_km": fixture.get("user_profile", {}).get("current_weekly_km"),
         "uses_walk_run": fixture.get("_uses_walk_run", False),
+        "total_weeks": fixture.get("total_weeks", 8),
     }
     checks = plan_checks.run_context_checks(workouts, context=plan_checks.generation_context(race_info, workouts))
     weeks = {}

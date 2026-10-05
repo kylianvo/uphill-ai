@@ -370,3 +370,22 @@ def test_resolved_walk_run_tier_keeps_duration_progress_even_for_event_goal():
         {"current_weekly_km": 2, "goal_type": "finish", "uses_walk_run": True, "plan_start_date": "2026-10-05"}, rows
     )
     assert "weekly_km_bounds" not in context
+
+
+def test_late_event_phases_follow_the_existing_race_week_contract():
+    rows = [workout(30, week=2, phase="Build")]
+    context = plan_checks.generation_context(
+        {"goal_type": "finish", "date": "2026-10-24", "total_weeks": 4, "plan_start_date": "2026-10-05"}, rows
+    )
+    assert context["required_phases"] == {2: "Taper", 3: "Race Week", 4: "Recovery"}
+    assert check(rows, **context)["phase_alignment"] is False
+    with pytest.raises(ValueError, match="phase_alignment"):
+        plan_checks.validate_generated_workouts(rows, context=context)
+    rows[0]["phase"] = "Taper"
+    assert check(rows, **context)["phase_alignment"] is True
+
+
+@pytest.mark.parametrize("goal", ["start_running", "return", "recovery"])
+def test_non_event_goals_do_not_acquire_event_periodization(goal):
+    context = plan_checks.generation_context({"goal_type": goal, "date": "2026-10-24", "total_weeks": 4}, [workout(30)])
+    assert "required_phases" not in context

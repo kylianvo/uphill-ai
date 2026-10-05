@@ -1289,6 +1289,7 @@ class PlanGenerator:
                         "current_weekly_km": user_profile.get("current_weekly_km"),
                         "max_weekly_progression": tier_profile.max_weekly_progression,
                         "uses_walk_run": tier_profile.uses_walk_run,
+                        "total_weeks": total_weeks,
                     },
                     wos,
                 ),
@@ -1764,6 +1765,7 @@ class PlanGenerator:
                     "current_weekly_km": user_profile.get("current_weekly_km"),
                     "max_weekly_progression": tier_profile.max_weekly_progression,
                     "uses_walk_run": tier_profile.uses_walk_run,
+                    "total_weeks": total_weeks,
                 },
                 [{"week_number": week} for week in range(block_start_week, block_end_week + 1)],
             )
@@ -1772,7 +1774,7 @@ class PlanGenerator:
                 "\nDeclare training_method general_strength|max_strength|muscular_endurance|power for strength, ME or power sessions. "
                 "Advanced methods require prepared_methods in the trusted context; never supply your own readiness evidence. "
                 "A max_zone limit applies to every moving segment, including brief Strides. "
-                "Check weekly_km_bounds after resolving all run/hike distances. Retain justified Recovery/Taper/Race Week adaptations."
+                "Check weekly_km_bounds after resolving all run/hike distances. Every workout in a required_phases week must use that phase; completed training does not cancel the scheduled taper. Retain justified Recovery/Taper/Race Week adaptations."
             )
 
         except Exception as _prompt_ex:
