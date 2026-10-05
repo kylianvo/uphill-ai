@@ -3,6 +3,7 @@ import SwiftUI
 struct ChatMessageBubble: View {
     let message: ChatMessage
     let proposalStates: [Int: String]
+    var onSelectWorkout: ((Int) -> Void)? = nil
     let onApplyProposal: (Int) async -> Void
     let onDiscardProposal: (Int) async -> Void
     let onViewSources: (Int) -> Void
@@ -72,6 +73,7 @@ struct ChatMessageBubble: View {
                         ChatRichCardView(
                             payload: toolCall,
                             proposalStates: proposalStates,
+                            onSelectWorkout: onSelectWorkout,
                             onApplyProposal: onApplyProposal,
                             onDiscardProposal: onDiscardProposal
                         )

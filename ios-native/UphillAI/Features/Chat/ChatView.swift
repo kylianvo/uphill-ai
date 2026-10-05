@@ -3,10 +3,12 @@ import SwiftUI
 struct ChatView: View {
     let service: ChatService
     let plan: Plan?
+    var planModel: PlanViewModel? = nil
 
     @State private var inputText = ""
     @State private var showClearAlert = false
     @State private var sourcesSheetTarget: MessageSourcesResponse?
+    @State private var selectedWorkoutID: Int?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var starterChips: [String] {
@@ -51,6 +53,9 @@ struct ChatView: View {
                                     ChatMessageBubble(
                                         message: message,
                                         proposalStates: service.proposalStates,
+                                        onSelectWorkout: { id in
+                                            selectedWorkoutID = id
+                                        },
                                         onApplyProposal: { id in
                                             _ = await service.applyProposal(proposalId: id)
                                         },
@@ -161,6 +166,14 @@ struct ChatView: View {
             }
             .sheet(item: $sourcesSheetTarget) { sources in
                 ChatSourcesSheet(sources: sources)
+            }
+            .sheet(isPresented: Binding(
+                get: { selectedWorkoutID != nil && planModel != nil },
+                set: { if !$0 { selectedWorkoutID = nil } }
+            )) {
+                if let id = selectedWorkoutID, let planModel {
+                    WorkoutDetailSheet(model: planModel, workoutID: id)
+                }
             }
             .task {
                 await service.loadInitial(planId: plan?.id)

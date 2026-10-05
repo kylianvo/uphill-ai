@@ -87,7 +87,7 @@ private struct MainTabs: View {
                          })
             }
             SwiftUI.Tab("Coach", systemImage: "bubble.left.and.bubble.right.fill", value: Tab.coach) {
-                ChatView(service: app.chat, plan: app.plan.snapshot?.plan)
+                ChatView(service: app.chat, plan: app.plan.snapshot?.plan, planModel: app.plan)
             }
             SwiftUI.Tab("Me", systemImage: "person.crop.circle", value: Tab.me) {
                 ProfileView(app: app)
