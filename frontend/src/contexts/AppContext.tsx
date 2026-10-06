@@ -315,6 +315,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     has_gym_access: false,
     use_treadmill: false,
     training_environment: "flat" as "flat" | "hilly" | "mixed",
+    mountain_days: [] as string[],
+    stair_access: false,
+    treadmill_max_incline: 15,
     double_session_days: [] as string[],
     plan_goal_category: "race" as string,  // race | distance | start_running | return | recovery
     plan_start_date: new Date().toISOString().split("T")[0],
@@ -401,6 +404,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     current_weekly_km: "30",
     has_gym_access: false,
     training_environment: "flat" as "flat" | "hilly" | "mixed",
+    mountain_days: [] as string[],
+    stair_access: false,
     time_away: "", reason_for_break: "", fitness_feel: "",
     race_distance_completed: "", days_since_race: "", recovery_feel: "", next_goal: "",
     plan_start_date: new Date().toISOString().split("T")[0],

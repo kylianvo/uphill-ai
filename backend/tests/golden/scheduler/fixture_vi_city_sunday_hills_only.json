@@ -1,0 +1,40 @@
+{
+  "synthetic": true,
+  "provenance": "scheduler",
+  "_comment": "Vietnamese city runner, no treadmill and no stairs, reaches hills only on Sunday. Hill Sprints may only land on Sunday (strides on other days); long run with vertical on Sunday. Gate: no venue violations.",
+  "user_profile": {
+    "age": 29,
+    "gender": "female",
+    "max_hr": 192,
+    "resting_hr": 56,
+    "current_weekly_km": 42.0,
+    "days_per_week": 4,
+    "has_gym_access": false
+  },
+  "race_info": {
+    "lang": "vi",
+    "terrain": "trail",
+    "goal_type": "finish",
+    "name": "Đà Lạt Ultra Trail 42K",
+    "date": "2026-12-20",
+    "course_distance_km": 42,
+    "course_elevation_gain_m": 1900,
+    "preferred_days": [
+      "Tuesday",
+      "Thursday",
+      "Saturday",
+      "Sunday"
+    ],
+    "long_run_day": "Sunday",
+    "days_per_week": 4,
+    "has_gym_access": false,
+    "use_treadmill": false,
+    "training_environment": "flat",
+    "mountain_days": [
+      "Sunday"
+    ],
+    "stair_access": false,
+    "treadmill_max_incline": 15
+  },
+  "total_weeks": 14
+}

@@ -1,4 +1,5 @@
 import { translations } from "../app/translations";
+import { TrainingVenueFields } from "./TrainingVenueFields";
 
 export interface ScheduleFieldsValue {
   days_per_week: number;
@@ -7,6 +8,9 @@ export interface ScheduleFieldsValue {
   has_gym_access: boolean;
   use_treadmill: boolean;
   training_environment: "flat" | "hilly" | "mixed";
+  mountain_days: string[];
+  stair_access: boolean;
+  treadmill_max_incline: number;
   double_session_days: string[];
   athlete_notes?: string;
 }
@@ -122,6 +126,14 @@ export function ScheduleFieldsEditor({ lang, t, isMobile, value, onChange }: Sch
           {t("plan_training_environment_help")}
         </p>
       </div>
+
+      <TrainingVenueFields
+        lang={lang}
+        t={t}
+        value={value}
+        useTreadmill={value.use_treadmill}
+        onChange={onChange}
+      />
 
       <div style={{ marginTop: "12px" }}>
         <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px", color: "var(--text-secondary)" }}>

@@ -137,6 +137,11 @@ def init_db():
             has_gym_access          BOOLEAN DEFAULT FALSE,
             use_treadmill           BOOLEAN DEFAULT FALSE,
             training_environment    TEXT DEFAULT 'flat',
+            -- where the athlete can train (services/training_venues.py): weekdays with
+            -- hill/trail access (JSON list), stairs, and the treadmill's top incline
+            mountain_days           TEXT,
+            stair_access            BOOLEAN DEFAULT FALSE,
+            treadmill_max_incline   INTEGER DEFAULT 15,
             -- explicit tier override for THIS plan; NULL means derive it from the
             -- athlete's data. Lives on the plan, not the user: the same athlete can
             -- hold a start-running plan and a race plan at once.
@@ -867,6 +872,9 @@ def init_db():
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS has_gym_access BOOLEAN DEFAULT FALSE",
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS use_treadmill BOOLEAN DEFAULT FALSE",
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS training_environment TEXT DEFAULT 'flat'",
+            "ALTER TABLE plans ADD COLUMN IF NOT EXISTS mountain_days TEXT",
+            "ALTER TABLE plans ADD COLUMN IF NOT EXISTS stair_access BOOLEAN DEFAULT FALSE",
+            "ALTER TABLE plans ADD COLUMN IF NOT EXISTS treadmill_max_incline INTEGER DEFAULT 15",
             "ALTER TABLE users DROP COLUMN IF EXISTS has_gym_access",
             "ALTER TABLE users DROP COLUMN IF EXISTS use_treadmill",
             "ALTER TABLE users DROP COLUMN IF EXISTS double_session_days",
@@ -1105,6 +1113,9 @@ def create_plan(
     has_gym_access: bool = False,
     use_treadmill: bool | None = None,
     training_environment: str = "flat",
+    mountain_days: list | None = None,
+    stair_access: bool = False,
+    treadmill_max_incline: int | None = None,
     created_by_user_id: int | None = None,
     plan_status: str = "active",
     athlete_notes: str | None = None,
@@ -1117,11 +1128,13 @@ def create_plan(
                                course_elevation_gain_m, preferred_run_days, long_run_day,
                                days_per_week, double_session_days, start_date,
                                has_gym_access, use_treadmill, training_environment,
+                               mountain_days, stair_access, treadmill_max_incline,
                                created_by_user_id, plan_status, athlete_notes)
             VALUES (:user_id, :race_name, :race_date, :goal_type,
                     :tth, :total_weeks, :dist_km, :elev_m, :preferred_run_days,
                     :long_run_day, :days_per_week, :double_session_days, :start_date,
                     :has_gym_access, :use_treadmill, :training_environment,
+                    :mountain_days, :stair_access, :treadmill_max_incline,
                     :created_by_user_id, :plan_status, :athlete_notes)
             RETURNING id
         """),
@@ -1142,6 +1155,9 @@ def create_plan(
                 "has_gym_access": has_gym_access,
                 "use_treadmill": use_treadmill if use_treadmill is not None else has_gym_access,
                 "training_environment": training_environment or "flat",
+                "mountain_days": json.dumps(mountain_days or []),
+                "stair_access": bool(stair_access),
+                "treadmill_max_incline": treadmill_max_incline or 15,
                 "created_by_user_id": created_by_user_id if created_by_user_id is not None else user_id,
                 "plan_status": plan_status,
                 "athlete_notes": athlete_notes,
@@ -1357,6 +1373,9 @@ def update_plan_schedule(
     use_treadmill: bool | None = None,
     training_environment: str | None = None,
     athlete_notes: str | None = None,
+    mountain_days: list | None = None,
+    stair_access: bool | None = None,
+    treadmill_max_incline: int | None = None,
 ) -> dict[str, Any] | None:
     """Partial update of a plan's mid-plan-editable schedule columns. Any
     argument left as None keeps that column's current value (COALESCE) --
@@ -1372,7 +1391,10 @@ def update_plan_schedule(
                     has_gym_access = COALESCE(:has_gym_access, has_gym_access),
                     use_treadmill = COALESCE(:use_treadmill, use_treadmill),
                     training_environment = COALESCE(:training_environment, training_environment),
-                    athlete_notes = COALESCE(:athlete_notes, athlete_notes)
+                    athlete_notes = COALESCE(:athlete_notes, athlete_notes),
+                    mountain_days = COALESCE(:mountain_days, mountain_days),
+                    stair_access = COALESCE(:stair_access, stair_access),
+                    treadmill_max_incline = COALESCE(:treadmill_max_incline, treadmill_max_incline)
                 WHERE id = :plan_id
                 RETURNING *
             """),
@@ -1386,6 +1408,9 @@ def update_plan_schedule(
                 "use_treadmill": use_treadmill,
                 "training_environment": training_environment,
                 "athlete_notes": athlete_notes,
+                "mountain_days": json.dumps(mountain_days) if mountain_days is not None else None,
+                "stair_access": stair_access,
+                "treadmill_max_incline": treadmill_max_incline,
             },
         )
         conn.commit()

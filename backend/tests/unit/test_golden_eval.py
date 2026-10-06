@@ -400,3 +400,37 @@ def test_goal_scores_check_ordering_and_anchor_range():
         "ordered": False,
         "b_in_anchor_range": False,
     }
+
+
+def test_venue_violations_flag_impossible_hill_sessions_and_treadmill_inclines():
+    race_info = {"training_environment": "flat", "mountain_days": ["Saturday"], "use_treadmill": False}
+    workouts = [
+        {"week_number": 1, "day_of_week": "Saturday", "title": "Hill Sprints", "treadmill_incline": "0"},
+        {"week_number": 1, "day_of_week": "Tuesday", "title": "Hill Sprints", "treadmill_incline": "0"},
+    ]
+    assert golden_eval._venue_violations(workouts, race_info) == [
+        "W1 Tuesday: 'Hill Sprints' has no hill, stairs or treadmill"
+    ]
+    on_treadmill = {"use_treadmill": True, "treadmill_max_incline": 15}
+    steep = [{"week_number": 2, "day_of_week": "Monday", "title": "Uphill Tempo", "treadmill_incline": "14-16"}]
+    assert golden_eval._venue_violations(steep, on_treadmill) == [
+        "W2 Monday: treadmill incline 16% above the athlete's machine"
+    ]
+
+
+def test_long_runs_on_mountain_days_only_applies_to_part_time_hill_access():
+    weekend = {"training_environment": "flat", "mountain_days": ["Saturday", "Sunday"]}
+    runs = [
+        {"type": "Long Run", "day_of_week": "Saturday"},
+        {"type": "Long Run", "day_of_week": "Wednesday"},
+    ]
+    assert golden_eval._long_runs_on_mountain_days(runs, weekend) == 0.5
+    assert golden_eval._long_runs_on_mountain_days(runs, {"training_environment": "hilly"}) is None
+
+
+def test_gate_fails_on_venue_violations():
+    items = [{"id": "city"}]
+    assert golden_eval.gate_failures("scheduler", items, [{"engine": "gemini", "venue_violations": 2}]) == [
+        "city: 2 session(s) the athlete has no venue for"
+    ]
+    assert golden_eval.gate_failures("scheduler", items, [{"engine": "gemini", "venue_violations": 0}]) == []

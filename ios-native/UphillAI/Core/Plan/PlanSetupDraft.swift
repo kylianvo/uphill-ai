@@ -116,6 +116,8 @@ struct PlanSetupDraft: Equatable, Sendable {
     var longRunDay: Weekday = .saturday
     var currentWeeklyKm: Double = 30
     var environment: TrainingEnvironment = .flat
+    var mountainDays: Set<Weekday> = []
+    var stairAccess = false
     var hasGymAccess = false
     var startDate: Date
     // About you (optional)
@@ -249,6 +251,8 @@ struct PlanSetupDraft: Equatable, Sendable {
             currentWeeklyKm: currentWeeklyKm,
             hasGymAccess: hasGymAccess,
             trainingEnvironment: environment.rawValue,
+            mountainDays: Weekday.allCases.filter(mountainDays.contains).map(\.rawValue),
+            stairAccess: stairAccess,
             timeAway: goal == .returning ? timeAway : nil,
             fitnessFeel: goal == .returning ? fitnessFeel : nil,
             raceDistanceCompleted: goal == .recovery ? raceDistanceCompleted : nil,
@@ -277,6 +281,8 @@ struct PlanSetupDraft: Equatable, Sendable {
             daysPerWeek: daysPerWeek,
             hasGymAccess: hasGymAccess,
             trainingEnvironment: environment.rawValue,
+            mountainDays: Weekday.allCases.filter(mountainDays.contains).map(\.rawValue),
+            stairAccess: stairAccess,
             planStartDate: PlanCalendar.ymd(startDate, calendar: calendar),
             timeAway: goal == .returning ? timeAway : nil,
             fitnessFeel: goal == .returning ? fitnessFeel : nil,
@@ -333,6 +339,8 @@ struct OnboardingBody: Encodable, Sendable {
     var currentWeeklyKm: Double
     var hasGymAccess: Bool
     var trainingEnvironment: String
+    var mountainDays: [String]
+    var stairAccess: Bool
     var timeAway: String?
     var fitnessFeel: String?
     var raceDistanceCompleted: String?
@@ -359,6 +367,8 @@ struct PlanBody: Encodable, Sendable {
     var daysPerWeek: Int
     var hasGymAccess: Bool
     var trainingEnvironment: String
+    var mountainDays: [String]
+    var stairAccess: Bool
     var planStartDate: String
     var timeAway: String?
     var fitnessFeel: String?

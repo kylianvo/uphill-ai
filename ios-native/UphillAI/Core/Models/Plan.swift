@@ -31,6 +31,10 @@ struct Plan: Codable, Sendable, Equatable, Identifiable {
     var hasGymAccess: Bool? = nil
     var useTreadmill: Bool? = nil
     var trainingEnvironment: String? = nil
+    /// JSON-encoded weekdays with hill/trail access, e.g. '["Saturday","Sunday"]'.
+    var mountainDays: String? = nil
+    var stairAccess: Bool? = nil
+    var treadmillMaxIncline: Int? = nil
     var maxContinuousJogMin: Int? = nil
 }
 

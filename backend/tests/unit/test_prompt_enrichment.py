@@ -243,7 +243,8 @@ async def test_plan_generator_prompt_includes_all_enriched_context():
         "max_hr": 185,
         "resting_hr": 52,
         "aet_hr": 130,
-        "ant_hr": 168,  # Gap = 38 bpm (>30) -> Triggers ADS!
+        "ant_hr": 168,  # Gap = 38 bpm (23% of AnT, >10%) -> Triggers ADS!
+        "threshold_source": "lab",
         "has_gym_access": True,
         "use_treadmill": False,
         "training_environment": "mixed",
@@ -301,8 +302,8 @@ async def test_plan_generator_prompt_includes_all_enriched_context():
 
     # 2. Aerobic Deficiency Syndrome (ADS) Guardrail
     assert "AEROBIC DEFICIENCY SYNDROME (ADS) DETECTED" in prompt
-    assert "spread exceeds 30 bpm / 80% threshold" in prompt
-    assert "DO NOT prescribe Zone 4/5 speedwork" in prompt
+    assert "(23%) below AnT (168 bpm) — the gap exceeds 10%" in prompt
+    assert "DO NOT prescribe Zone 3, 4 or 5 work" in prompt
 
     # 3. Course Steepness Ratio & Terrain Categorization (3800m / 70km = 54.3 m/km > 50)
     assert "Course Steepness Ratio: 54.3 m D+/km" in prompt
@@ -337,16 +338,25 @@ async def test_plan_generator_prompt_includes_all_enriched_context():
     assert "85% of total" in prompt
     assert "Long Run Proportionality Cap" in prompt
     assert "Periodization Phases (Training for the Uphill Athlete)" in prompt
-    assert "Base Phase: Aerobic volume accumulation (Zone 1-2) + Maximum Strength" in prompt
-    assert "Build Phase: Aerobic base expansion + Muscular Endurance" in prompt
+    assert "the ME block starts in the EARLY Base phase" in prompt
+    assert "final ~8 weeks before the taper shift to traditional UPHILL and ROLLING intervals" in prompt
+    # ME per Scott Johnston, "Muscular Endurance: All You Need to Know" (Evoke Endurance)
+    assert "twice a week when it is otherwise low" in prompt
+    assert "Disregard heart rate in ME sessions" in prompt
+    assert "stronger athletes may carry the weight back down" in prompt
+    assert "30 minutes the first time, building to no more than 60 minutes" in prompt
+    # Quality sessions per Evoke Endurance (mountain running, FT/ST, speed-work articles)
+    assert "Speed and Quality Session Design" in prompt
+    assert "30-45 min of total work in 10-15 min reps" in prompt  # recreational Zone 3 dose
+    assert "at least 6-8 weeks before the taper" in prompt
     assert "Deload Adaptation Cycles" in prompt
     assert "Aerobic Deficiency Syndrome (ADS) Rule" in prompt
     assert "Uphill Athlete & Trail Specificity" in prompt
     assert "eccentric quad conditioning" in prompt
-    assert "back-to-back weekend long runs" in prompt
+    assert "Back-to-back weekend long runs (Saturday + Sunday) are NOT a weekly routine" in prompt
 
     # 9. Fueling Guidelines
-    assert "8-10g carbohydrates per kg bodyweight" in prompt
+    assert "8-12g carbohydrates per kg bodyweight" in prompt
     assert "60-90g carbohydrates per hour" in prompt
 
 
@@ -365,8 +375,9 @@ async def test_plan_generator_female_biomarkers_and_healthy_aerobic_base():
         "current_weekly_km": 50.0,
         "max_hr": 190,
         "resting_hr": 50,
-        "aet_hr": 148,
-        "ant_hr": 168,  # Gap = 20 bpm (<=30, 88% of AnT) -> Healthy aerobic base
+        "aet_hr": 155,
+        "ant_hr": 168,  # Gap = 13 bpm (8% of AnT, <=10%) -> Healthy aerobic base
+        "threshold_source": "field",
         "has_gym_access": True,
         "use_treadmill": True,
         "training_environment": "hilly",
@@ -500,3 +511,61 @@ async def test_plan_prompt_places_race_history_beside_ceiling():
     assert history in prompt
     assert "- RACE HISTORY" not in prompt  # no longer a scheduling bullet
     assert prompt.index("Athlete Historical Ceiling") < prompt.index("RACE HISTORY")
+
+
+@pytest.mark.asyncio
+async def test_estimated_thresholds_never_trigger_ads():
+    """Default AeT/AnT come from fixed reserve ratios with a ~20% spread; treating them
+    as evidence would flag every athlete who never measured their thresholds."""
+    mock_client = MagicMock()
+    mock_client.models.generate_content.return_value = MagicMock(text="[]")
+    profile = {"age": 30, "max_hr": 200, "resting_hr": 40, "current_weekly_km": 50.0}
+    with (
+        patch("google.genai.Client", return_value=mock_client),
+        patch("services.kb_retrieval.search_scheduler_chunks", return_value=[]),
+    ):
+        await PlanGenerator.generate_plan_workouts(
+            plan_id=3,
+            user_profile=profile,
+            race_info={"lang": "en", "terrain": "trail", "goal_type": "finish", "name": "X"},
+            total_weeks=8,
+            api_key="fake-gemini-key",
+            block_number=1,
+            weeks_per_block=2,
+        )
+    prompt = mock_client.models.generate_content.call_args_list[0].kwargs.get("contents", "")
+    assert "AEROBIC DEFICIENCY SYNDROME (ADS) DETECTED" not in prompt
+    assert "ADS cannot be assessed" in prompt
+
+
+@pytest.mark.asyncio
+async def test_stored_thresholds_with_unknown_source_never_trigger_ads():
+    """Most users carry stored AeT/AnT estimates with threshold_source 'unknown' (33 of 34
+    in production on 2026-10-07); a stored value is not a measurement."""
+    mock_client = MagicMock()
+    mock_client.models.generate_content.return_value = MagicMock(text="[]")
+    profile = {
+        "age": 30,
+        "max_hr": 190,
+        "resting_hr": 50,
+        "current_weekly_km": 50.0,
+        "aet_hr": 140,
+        "ant_hr": 170,
+        "threshold_source": "unknown",
+    }
+    with (
+        patch("google.genai.Client", return_value=mock_client),
+        patch("services.kb_retrieval.search_scheduler_chunks", return_value=[]),
+    ):
+        await PlanGenerator.generate_plan_workouts(
+            plan_id=3,
+            user_profile=profile,
+            race_info={"lang": "en", "terrain": "trail", "goal_type": "finish", "name": "X"},
+            total_weeks=8,
+            api_key="fake-gemini-key",
+            block_number=1,
+            weeks_per_block=2,
+        )
+    prompt = mock_client.models.generate_content.call_args_list[0].kwargs.get("contents", "")
+    assert "AEROBIC DEFICIENCY SYNDROME (ADS) DETECTED" not in prompt
+    assert "ADS cannot be assessed" in prompt

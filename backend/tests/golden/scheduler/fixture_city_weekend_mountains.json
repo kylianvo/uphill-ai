@@ -1,0 +1,42 @@
+{
+  "synthetic": true,
+  "provenance": "scheduler",
+  "_comment": "Flat-city recreational trail runner: hills only on Saturday/Sunday trips, fire stairs at the office, a standard 15% gym treadmill. Long runs with vertical and weighted carries belong on the weekend; weekday hill sprints go on the stairs; no treadmill incline above 15%. Gate: no venue violations.",
+  "user_profile": {
+    "age": 34,
+    "gender": "male",
+    "max_hr": 188,
+    "resting_hr": 52,
+    "current_weekly_km": 55.0,
+    "days_per_week": 5,
+    "has_gym_access": true
+  },
+  "race_info": {
+    "lang": "en",
+    "terrain": "trail",
+    "goal_type": "finish",
+    "name": "Sapa Mountain 50K",
+    "date": "2026-12-13",
+    "course_distance_km": 50,
+    "course_elevation_gain_m": 2800,
+    "preferred_days": [
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Saturday",
+      "Sunday"
+    ],
+    "long_run_day": "Saturday",
+    "days_per_week": 5,
+    "has_gym_access": true,
+    "use_treadmill": true,
+    "training_environment": "flat",
+    "mountain_days": [
+      "Saturday",
+      "Sunday"
+    ],
+    "stair_access": true,
+    "treadmill_max_incline": 15
+  },
+  "total_weeks": 16
+}

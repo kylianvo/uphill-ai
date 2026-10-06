@@ -60,3 +60,25 @@ def test_search_missing_collection_returns_empty():
     fake_client.collection_exists.return_value = False
     with patch.object(kb_retrieval, "_client", return_value=fake_client):
         assert kb_retrieval.search_scheduler_chunks("anything", api_key="test-key") == []
+
+
+def test_search_with_keep_overfetches_filters_and_caps_at_k():
+    hits = []
+    for title in ("Gym ME", "Walk-to-Run", "Doubles", "Taper"):
+        hit = MagicMock()
+        hit.payload = {"title": title, "content": "x"}
+        hit.score = 0.5
+        hits.append(hit)
+    fake_client = MagicMock()
+    fake_client.collection_exists.return_value = True
+    fake_client.query_points.return_value.points = hits
+    with (
+        patch.object(kb_retrieval, "_client", return_value=fake_client),
+        patch("google.genai.Client", side_effect=_fake_genai_client),
+    ):
+        results = kb_retrieval.search_scheduler_chunks(
+            "q", api_key="test-key", k=1, fetch_k=4, keep=lambda hit: hit["title"] not in ("Gym ME", "Doubles")
+        )
+
+    assert fake_client.query_points.call_args.kwargs["limit"] == 4
+    assert [r["title"] for r in results] == ["Walk-to-Run"]

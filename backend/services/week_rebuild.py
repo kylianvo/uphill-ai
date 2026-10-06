@@ -210,6 +210,9 @@ class RebuildRequest:
     has_gym_access: bool | None = None
     use_treadmill: bool | None = None
     training_environment: str | None = None
+    mountain_days: list[str] | None = None
+    stair_access: bool | None = None
+    treadmill_max_incline: int | None = None
     lang: str | None = None
 
 
@@ -598,6 +601,13 @@ def build_rebuild_inputs(
         "has_gym_access": has_gym_access,
         "use_treadmill": use_treadmill,
         "training_environment": training_environment,
+        "mountain_days": request.mountain_days if request.mountain_days is not None else plan.get("mountain_days"),
+        "stair_access": request.stair_access if request.stair_access is not None else plan.get("stair_access"),
+        "treadmill_max_incline": (
+            request.treadmill_max_incline
+            if request.treadmill_max_incline is not None
+            else plan.get("treadmill_max_incline")
+        ),
         "plan_start_date": plan.get("start_date"),
         "athlete_notes": request.athlete_notes or plan.get("athlete_notes") or fresh_user.get("athlete_notes"),
         "historical_ceiling": historical_ceiling,

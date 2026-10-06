@@ -315,10 +315,56 @@ def _scheduler_summary(workouts: list[dict]) -> dict:
         "workout_count": len(workouts),
         "types": types,
         "me_sessions": len(me),
-        "me_looks_like_circuit": all("repeat circuit" in (w.get("description") or "").lower() for w in me)
+        # Gym ME is straight sets ("Split Jump Squats: 6x10/leg, 60s rest between sets"),
+        # per Evoke Endurance's ME article -- the old metric checked for a circuit.
+        "me_straight_sets": all(
+            "between sets" in (w.get("description") or "").lower() or "sets" in (w.get("description") or "").lower()
+            for w in me
+        )
         if me
         else None,
     }
+
+
+def _venue_violations(workouts: list[dict], race_info: dict) -> list[str]:
+    """Sessions the athlete could not physically do (services/training_venues.py): a hill
+    session on a day with no hill, stairs or treadmill, or a treadmill incline above the
+    athlete's machine. Post-processing enforces both, so any hit is a regression."""
+    from services.plan_generator import PlanGenerator
+    from services.training_venues import Venues
+
+    venues = Venues.from_race_info(race_info)
+    found = []
+    for w in workouts:
+        title = (w.get("title") or "").lower()
+        day = w.get("day_of_week") or ""
+        if (
+            any(kw in title for kw in PlanGenerator.HILL_SPRINT_TITLE_KEYWORDS)
+            and venues.hill_sprint_venue(day) is None
+        ):
+            found.append(f"W{w.get('week_number')} {day}: '{w.get('title')}' has no hill, stairs or treadmill")
+        incline = str(w.get("treadmill_incline") or "0").split("-")[-1]
+        try:
+            top = float(incline)
+        except ValueError:
+            top = 0.0
+        if top > venues.treadmill_incline_cap:
+            found.append(f"W{w.get('week_number')} {day}: treadmill incline {incline}% above the athlete's machine")
+    return found
+
+
+def _long_runs_on_mountain_days(workouts: list[dict], race_info: dict) -> float | None:
+    """Share of Long Runs placed on a day with hill access, for athletes who only reach
+    the hills on some days. None when that question does not apply."""
+    from services.training_venues import Venues
+
+    venues = Venues.from_race_info(race_info)
+    if not venues.hills_only_some_days:
+        return None
+    long_runs = [w for w in workouts if w.get("type") == "Long Run"]
+    if not long_runs:
+        return None
+    return round(sum(venues.hills_on(w.get("day_of_week") or "") for w in long_runs) / len(long_runs), 2)
 
 
 def capture(service: str, overwrite: bool = False):
@@ -422,6 +468,12 @@ def compare(
             lo, hi = expect.get("week2_km") or [None, None]
             lines.append(f"- Tier: **{tier}**" + (f" (expected {expect['tier']})" if expect.get("tier") else ""))
             lines.append(f"- Week-2 volume: **{week2} km**" + (f" (expected {lo}-{hi})" if lo is not None else ""))
+            venue_violations = _venue_violations(result, fixture.get("race_info") or {})
+            long_runs_on_hills = _long_runs_on_mountain_days(result, fixture.get("race_info") or {})
+            for violation in venue_violations:
+                lines.append(f"- ❌ venue: {violation}")
+            if long_runs_on_hills is not None:
+                lines.append(f"- Long runs on hill days: **{long_runs_on_hills:.0%}**")
             item_score = {
                 "latency_s": latency,
                 "engine_is_gemini": engine_is_gemini,
@@ -432,6 +484,8 @@ def compare(
                 "tier_match": (tier == expect["tier"]) if expect.get("tier") else None,
                 "week2_km": week2,
                 "week2_in_range": (lo <= week2 <= hi) if lo is not None else None,
+                "venue_violations": len(venue_violations),
+                "long_runs_on_hill_days": long_runs_on_hills,
             }
         elif service == "chat":
             eval_metrics = evaluate_chat_case(result, fixture)
@@ -571,6 +625,8 @@ def gate_failures(service: str, items: list[dict], scores: list[dict]) -> list[s
             failures.append(f"{item['id']}: tier {s.get('tier')} differs from the expected tier")
         if service == "scheduler" and s.get("week2_in_range") is False:
             failures.append(f"{item['id']}: week-2 volume {s.get('week2_km')} km outside the expected range")
+        if service == "scheduler" and s.get("venue_violations"):
+            failures.append(f"{item['id']}: {s['venue_violations']} session(s) the athlete has no venue for")
         if service in ("gear", "nutrition") and s.get("catalog_membership_valid") is False:
             failures.append(f"{item['id']}: recommended something outside the catalog")
         if service == "chat" and s.get("safe_outcome") is False:

@@ -41,13 +41,13 @@ ELITE_RACE = {
 ME_AND_ULTRA_PRESCRIPTIONS = (
     "Summit Water Dump",
     "Split Jump Squats",
-    "6-8 rounds",
+    "Split Jump Squats: 6x10",
     "Box Step-Ups at 75% kneecap height",
     "5-15% bodyweight pack",
 )
 ENDURANCE_FUELING_PRESCRIPTIONS = (
     "60-90g carbohydrates per hour",
-    "8-10g carbohydrates per kg",
+    "8-12g carbohydrates per kg",
     "30-60g carbohydrates per hour",
 )
 
@@ -103,7 +103,7 @@ class TestBeginnerPromptIsInternallyConsistent:
         """The equipment rule legitimately says NEVER prescribe one. What must not appear
         is the steep-incline prescription for executing them."""
         assert "NEVER prescribe a Hill Sprint" in beginner_prompt
-        assert "MUST be in the 10-15% range" not in beginner_prompt
+        assert "`treadmill_incline` MUST be 15%" not in beginner_prompt
         # Guards the f-string itself: an unformatted literal would ALSO satisfy the
         # assertion above while shipping "{hill_incline_exception}" to the model.
         assert "{hill_incline_exception}" not in beginner_prompt
