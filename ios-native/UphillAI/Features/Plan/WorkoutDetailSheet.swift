@@ -283,7 +283,7 @@ struct WorkoutDetailSheet: View {
 
             statTile(
                 label: "PACE (/KM)",
-                value: w.targetPace ?? "—"
+                value: WorkoutTypePresentation.paceTileValue(w.targetPace)
             )
         }
     }
@@ -295,10 +295,12 @@ struct WorkoutDetailSheet: View {
                 .foregroundStyle(UH.Palette.muted)
 
             Text(value)
-                .font(.system(size: 15, weight: .semibold, design: .monospaced))
+                .font(.system(size: 14, weight: .semibold, design: .monospaced))
                 .foregroundStyle(UH.Palette.ink)
+                // Wraps to a second line instead of truncating at large Dynamic Type.
+                .lineLimit(2)
                 .minimumScaleFactor(0.8)
-                .lineLimit(1)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(UH.Space.small)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -312,8 +314,8 @@ struct WorkoutDetailSheet: View {
         if let hr = w.targetHrRange, !hr.isEmpty {
             items.append("HR \(hr)")
         }
-        if !w.targetZone.isEmpty && w.targetZone != "Rest" {
-            items.append("Zone \(w.targetZone)")
+        if let zone = WorkoutTypePresentation.zoneLabel(w.targetZone) {
+            items.append(zone)
         }
         if let gain = w.elevationGainM, gain > 0 {
             items.append("+\(Int(gain)) m elevation gain")
@@ -764,7 +766,7 @@ struct WorkoutDetailSheet: View {
                     comparisonTile(
                         label: "AVG HR",
                         actual: "\(hr) bpm",
-                        target: w.targetHrRange ?? (w.targetZone.isEmpty ? nil : "Z\(w.targetZone)")
+                        target: w.targetHrRange ?? WorkoutTypePresentation.zoneShort(w.targetZone)
                     )
                 }
             }

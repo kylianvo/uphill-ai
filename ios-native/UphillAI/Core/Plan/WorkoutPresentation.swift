@@ -59,4 +59,36 @@ enum WorkoutTypePresentation {
         }
         return parts.joined(separator: " · ")
     }
+
+    // MARK: - Zone & pace text
+
+    /// "Zone 2" from any of the shapes the backend sends ("Z2", "Zone 2", "2", "1-2").
+    /// Non-numeric zones ("Recovery") pass through; "Rest"/empty give nil. Never doubles the word.
+    static func zoneLabel(_ raw: String) -> String? {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let n = zoneNumber(trimmed) { return "Zone \(n)" }
+        return trimmed.isEmpty || trimmed.lowercased() == "rest" ? nil : trimmed
+    }
+
+    /// "Z2" for compact comparisons; nil when the zone has no number.
+    static func zoneShort(_ raw: String) -> String? {
+        zoneNumber(raw.trimmingCharacters(in: .whitespacesAndNewlines)).map { "Z\($0)" }
+    }
+
+    private static func zoneNumber(_ trimmed: String) -> String? {
+        var rest = Substring(trimmed.lowercased())
+        if rest.hasPrefix("zone") { rest = rest.dropFirst(4) } else if rest.hasPrefix("z") { rest = rest.dropFirst(1) }
+        let value = rest.trimmingCharacters(in: .whitespaces)
+        guard let first = value.first, first.isNumber else { return nil }
+        return value
+    }
+
+    /// Compact pace for the stat tile, whose label already says "(/KM)":
+    /// "6:24 - 5:42 /km" -> "6:24–5:42", "5:30 /km" -> "5:30".
+    static func paceTileValue(_ pace: String?) -> String {
+        guard var value = pace?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty else { return "—" }
+        value = value.replacingOccurrences(of: #"\s*/\s*km\s*$"#, with: "", options: [.regularExpression, .caseInsensitive])
+        value = value.replacingOccurrences(of: #"\s*[-–—]\s*"#, with: "–", options: .regularExpression)
+        return value.isEmpty ? "—" : value
+    }
 }
