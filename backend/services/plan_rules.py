@@ -156,10 +156,10 @@ def _performance_rules(profile: TierProfile) -> str:
 
     me_periodization = (
         """4. Periodization Phases (Training for the Uphill Athlete):
-   - Short Runway Override (<= 10 weeks total plan): Bypass general strength phases. Start a specific Muscular Endurance (ME) block in Week 1 or Week 2, concluding 10-14 days before race day.
-   - Base Phase: Aerobic volume accumulation (Zone 1-2) + Maximum Strength (heavy compound bodyweight/gym lifts: squats, deadlifts, step-ups; 3-5 sets of 4-6 reps, 2-3 min rest between sets). For standard/long plans (>= 12 weeks), introduce high-repetition ME circuits in the Build phase.
-   - Build Phase: Aerobic base expansion + Muscular Endurance (8-12 week ME block: gym circuits or uphill carries) + Zone 3/4 hill tempo repeats.
-   - Peak Phase: Race-specific terrain simulation, high-vert weekend back-to-backs, weighted pack step-ups, and eccentric downhill repeats (quad conditioning).
+   - Short Runway Override (<= 10 weeks total plan): Skip extended base building and go straight to event-specific work. Start the Muscular Endurance (ME) block in Week 1 or Week 2, concluding 10-14 days before race day.
+   - Base Phase: Aerobic volume accumulation (Zone 1-2) + general strength (single-leg stability, hips, core) + weekly Hill Sprints for neuromuscular power + the Muscular Endurance (ME) block. For a MOUNTAIN RUNNER the ME block starts in the EARLY Base phase, as volume begins to build — once a week, for 8-14 weeks (at least 8 sessions to secure the benefit). Heavy maximal-strength lifting first is the mountaineer/alpinist sequence, not the runner's: do NOT prescribe heavy low-rep max-strength blocks (e.g. 3-5 x 4-6) to this athlete.
+   - Build (Specific) Phase: Aerobic base expansion + ME shifted from the gym to sport-specific forms (weighted uphill carries/hikes, steep incline treadmill) + Zone 3 sub-threshold work, with Zone 4 intervals layered in later in the phase. Heavy slow barbell lifting is removed.
+   - Peak Phase: Race-specific terrain simulation, weighted pack step-ups, and eccentric downhill repeats (quad conditioning). Back-to-back long days are an overreaching tool, not a weekly routine: at most 2-3 two-day blocks in the whole Specific period, each followed by several easy recovery days.
    - Taper Phase: Reduce weekly volume by 40-60% while maintaining neuromuscular sharpness (stop heavy ME 10-14 days out).
    - Race Week: Minimal volume, rest days before race day, race execution, post-race recovery.
 """
@@ -178,9 +178,9 @@ def _performance_rules(profile: TierProfile) -> str:
         """12. Muscular Endurance (ME) Directives (Scott Johnston Framework):
    - Chassis vs. Engine Principle: Local muscular fatigue resistance of propelling fibers, not cardiac capacity, is the primary governor of sustainable race pace.
    - Terrain Routing:
-     * Flat/Rolling Races (<25m vert/km or road): Prescribe Gym Leg Endurance Circuits, Short Steep Hill Strides (10-15% grade, 8-12s bounds), or Flat Tire Drags/Sled Pushes to adapt FTa frontier fibers and prevent late-race stride shortening, hip drop, and eccentric quad collapse.
-     * Steep Mountain Races (>=25-35m vert/km or sustained single climbs >500m D+): Prescribe Outdoor Weighted Uphill Hikes (20-30%+ slope, 5-15% BW pack, Summit Water Dump protocol: dump water at top, descend unweighted) or Treadmill Incline Series (12-15% grade).
-   - Treadmill Incline Hardware Realism: Standard commercial gym treadmills MAX OUT at 12-15% incline. For treadmill ME or hill repeats, ALWAYS prescribe 10-15% incline. NEVER prescribe >15% treadmill incline unless the athlete explicitly notes access to a specialized 25-40% Incline Trainer.
+     * Flat/Rolling Races (<25m vert/km or road): Prescribe the Gym ME progression (straight sets, see the ME format above) or Flat Tire Drags/Sled Pushes to adapt FTa frontier fibers and prevent late-race stride shortening, hip drop, and eccentric quad collapse. Hill Sprints/strides are neuromuscular POWER work, not ME — never count them as the week's ME session.
+     * Steep Mountain Races (>=25-35m vert/km or sustained single climbs >500m D+): Prescribe Outdoor Weighted Uphill Hikes (20%+ slope, ideally 30-50%; 5-15% BW pack, Summit Water Dump protocol: dump water at top, descend unweighted) or a Treadmill Incline Series.
+   - Treadmill Incline Hardware Realism: ME on a treadmill is done at 25% grade, which needs an incline trainer. Standard commercial gym treadmills MAX OUT at about 15%: when that is all the athlete has, set 15% and add a weighted vest/pack (5-15% BW) so local leg burn, not breathing, is the limiter, or substitute weighted box step-ups or stair climbing. NEVER prescribe >15% treadmill incline unless the athlete explicitly notes access to an incline trainer.
    - The 48-Hour Buffer: NEVER schedule an ME session within 48 hours of a weekend Long Run, Zone 3/4 interval run, or heavy gym workout.
    - Double Session Sequencing: On double-session days with ME, the high-power ME session is ALWAYS in the morning (fresh CNS); the easy Zone 1/2 aerobic run is in the afternoon.
    - Cardiac vs. Muscular Rule: Heart rate must remain in Zone 1-2 (conversational), while peripheral propelling muscles experience deep, continuous muscular burn.
@@ -201,7 +201,7 @@ def _performance_rules(profile: TierProfile) -> str:
     )
     intensity_rule = (
         f"2. Intensity Distribution (measured by TIME IN ZONE, not by session count): at least {low_share}% of total "
-        f"weekly volume MUST be in Zone 1-2 below AnT, and high-intensity work no more than {high_share}%.{z4_cap} "
+        f"weekly volume MUST be in Zone 1-2 (at or below AeT), and high-intensity work no more than {high_share}%.{z4_cap} "
         f"PROGRESSION CEILING: weekly volume (distance, vertical or duration) MUST NOT increase by more than {cap}% "
         f"week-over-week, and this athlete's annual volume should not rise more than {annual}% per year. Never "
         f"produce abrupt spikes.\n"
@@ -234,13 +234,13 @@ def _performance_rules(profile: TierProfile) -> str:
     return f"""
 Rules:
 1. Block Scope & Schedule: Generate workouts for the specified block weeks only. Each week must have structured workouts (typically 4-6 workouts per week). ALWAYS honor the athlete's preferred training days and double-session days from their profile — place Rest workouts on non-preferred days, and produce two workout objects on each double-session day as described above.
-{intensity_rule}3. Long Run Proportionality Cap: A single long run must NOT exceed {long_share}% of total weekly volume. For ultra distances where back-to-back weekend long runs (Saturday + Sunday) are scheduled, their combined total must NOT exceed 50% of the week's total volume to prevent excessive structural breakdown. WEEKDAY RUN DURATIONS: Weekday runs (Mon-Fri) are typically {lo}-{hi} minutes for this athlete — respect their daily work schedule, and never schedule an excessive 90-120+ minute run on a weekday unless explicitly requested.
+{intensity_rule}3. Long Run Proportionality Cap: A single long run must NOT exceed {long_share}% of total weekly volume. Back-to-back weekend long runs (Saturday + Sunday) are NOT a weekly routine — they impose CNS and musculoskeletal overload that costs days of recovery and breaks weekly continuity. Use them only as short two-day overreaching blocks, at most 2-3 times in the Specific period before an ultra (50K+), each followed by several easy days, and their combined total must NOT exceed 50% of that week's volume. WEEKDAY RUN DURATIONS: Weekday runs (Mon-Fri) are typically {lo}-{hi} minutes for this athlete — respect their daily work schedule, and never schedule an excessive 90-120+ minute run on a weekday unless explicitly requested.
 {me_periodization}5. Deload Adaptation Cycles: Follow a 3:1 (or 2:1 for masters/fatigued runners) loading-to-recovery pattern. On recovery/deload weeks, reduce weekly volume by 20-30% to consolidate physiological adaptation and prevent overtraining.
-6. Aerobic Deficiency Syndrome (ADS) Rule: If ADS is detected in the athlete profile, strictly enforce aerobic base building: NO Zone 4 or 5 intervals in Base/Build phases. Keep all aerobic runs strictly below AeT heart rate.
+6. Aerobic Deficiency Syndrome (ADS) Rule: If ADS is detected in the athlete profile, strictly enforce aerobic base building: ALL running at or below AeT (Zone 1-2). NO Zone 3, 4 or 5 work of any kind — no tempo, threshold or intervals — until the AeT-AnT gap closes to 10% or less. Training above AeT signals the body to prioritise glycolytic capacity and delays the aerobic development ADS needs.
 7. Make the plan highly customized. For example, scale long runs, map Sunday Muscular Endurance box steps/weighted step-ups based on the race elevation gain, or specify treadmill incline/speed settings for gym workouts.
 8. NEVER invent a physiological claim, exercise, or number beyond what the Uphill Athlete training philosophy implies. If unsure of an exact figure, give a sensible range instead of fabricating false precision.
 9. Give the athlete profile and prior feedback below real weight — this plan MUST reflect their specific numbers, schedule, and history, not a generic template.
-10. Uphill Athlete & Trail Specificity: For mountain/trail races, incorporate progressive eccentric quad conditioning (eccentric box step-downs, downhill repeats, hill bounding) and back-to-back weekend long runs where appropriate for ultra distances (50K+). If the course profile notes high heat or altitude, integrate acclimation guidance.
+10. Uphill Athlete & Trail Specificity: For mountain/trail races, incorporate progressive eccentric quad conditioning (eccentric box step-downs, downhill repeats, hill bounding). For ultra distances (50K+), back-to-back long days follow the overreaching limits in rule 3. If the course profile notes high heat or altitude, integrate acclimation guidance.
 11. Environmental & Routine Scheduling: If the athlete's notes indicate flat/urban living on weekdays with weekend trail travel, prescribe flat road/treadmill aerobic work or gym ME on weekdays, reserving high-vert trail long runs for Saturday/Sunday. Keep weekday runs accessible ({lo}-{hi} min).
 {me_directives}{high_volume_rules}"""
 

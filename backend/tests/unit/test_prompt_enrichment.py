@@ -337,13 +337,13 @@ async def test_plan_generator_prompt_includes_all_enriched_context():
     assert "85% of total" in prompt
     assert "Long Run Proportionality Cap" in prompt
     assert "Periodization Phases (Training for the Uphill Athlete)" in prompt
-    assert "Base Phase: Aerobic volume accumulation (Zone 1-2) + Maximum Strength" in prompt
-    assert "Build Phase: Aerobic base expansion + Muscular Endurance" in prompt
+    assert "the ME block starts in the EARLY Base phase" in prompt
+    assert "Build (Specific) Phase: Aerobic base expansion" in prompt
     assert "Deload Adaptation Cycles" in prompt
     assert "Aerobic Deficiency Syndrome (ADS) Rule" in prompt
     assert "Uphill Athlete & Trail Specificity" in prompt
     assert "eccentric quad conditioning" in prompt
-    assert "back-to-back weekend long runs" in prompt
+    assert "Back-to-back weekend long runs (Saturday + Sunday) are NOT a weekly routine" in prompt
 
     # 9. Fueling Guidelines
     assert "8-10g carbohydrates per kg bodyweight" in prompt

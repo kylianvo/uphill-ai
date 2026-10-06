@@ -552,19 +552,19 @@ class TestResolveTreadmillSettings:
         incline, _ = PlanGenerator.resolve_treadmill_settings(wo, "6:00 /km")
         assert incline == "1-2"
 
-    def test_hill_sprint_gets_10_15_band(self):
+    def test_hill_sprint_gets_the_15_percent_ceiling(self):
         wo = {"title": "Hill Sprint Repeats", "treadmill_incline": 1.0}
         incline, speed = PlanGenerator.resolve_treadmill_settings(wo, "6:00 /km")
-        assert incline == "10-15"
-        assert speed == "6.4"  # 10 kph flat, effort-adjusted at the 12.5% midpoint
+        assert incline == "15"
+        assert speed == "6"  # 10 kph flat, effort-adjusted at 15%
 
     def test_hill_bound_keyword_matches(self):
         # Rule-based fallback's ME session is titled "Muscular Endurance: Hill Bounds" —
         # same steep-hill-effort category as Hill Sprint/Hill Repeat, so it must get the
-        # same 10-15% backstop rather than silently falling through unmatched.
+        # same 15% backstop rather than silently falling through unmatched.
         wo = {"title": "Muscular Endurance: Hill Bounds", "treadmill_incline": 999.0}
         incline, _ = PlanGenerator.resolve_treadmill_settings(wo, "6:00 /km")
-        assert incline == "10-15"
+        assert incline == "15"
 
     def test_no_pace_keeps_ai_speed_but_never_invents_one(self):
         wo = {"title": "Gym Session", "treadmill_incline": 5.0, "treadmill_speed": 7.5}

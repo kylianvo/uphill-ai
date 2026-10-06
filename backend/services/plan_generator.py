@@ -475,7 +475,9 @@ class PlanGenerator:
     # session — short, near-maximal efforts that require a steep grade by design,
     # regardless of the race's average grade or this workout's own grade_percent.
     HILL_SPRINT_TITLE_KEYWORDS = ("hill sprint", "hill repeat", "hill bound")
-    HILL_SPRINT_INCLINE_MIN = 10.0
+    # Doctrine wants 15-20%+ for hill sprints/repeats; 15% is the most a standard
+    # gym treadmill reaches, so the band collapses to that ceiling.
+    HILL_SPRINT_INCLINE_MIN = 15.0
     HILL_SPRINT_INCLINE_MAX = 15.0
 
     @staticmethod
@@ -517,8 +519,8 @@ class PlanGenerator:
         - `use_treadmill=False`: always ("0", "0") — the athlete has no
           treadmill, regardless of what the AI emitted, so a workout can never
           carry treadmill settings into the final plan.
-        - Hill Sprint/Hill Repeat titles: incline "10-15"; speed derived from the
-          workout's own target_pace range at the band midpoint (12.5%).
+        - Hill Sprint/Hill Repeat titles: incline "15" (the treadmill ceiling);
+          speed derived from the workout's own target_pace range at that incline.
         - Other workouts the AI marked treadmill-relevant (incline or speed > 0):
           incline is a ±1% band around the resolved grade (AI incline when > 0,
           else this run's own grade_percent, floored at 1%); speed is derived
@@ -1097,7 +1099,7 @@ class PlanGenerator:
 
                 # Treadmill settings are never the AI's raw numbers: derive range
                 # strings from this workout's own pace range and resolved grade
-                # (Hill Sprints get the non-negotiable 10-15% band).
+                # (Hill Sprints get the non-negotiable 15% treadmill ceiling).
                 wo["treadmill_incline"], wo["treadmill_speed"] = PlanGenerator.resolve_treadmill_settings(
                     wo, wo["target_pace"], use_treadmill
                 )
@@ -1495,7 +1497,7 @@ class PlanGenerator:
             # that contradicts itself is worse than one that is uniformly wrong: the
             # model resolves the conflict however it likes, differently each run.
             me_format_spec = (
-                "     * Muscular Endurance (ME): this develops peripheral muscular fatigue resistance without cardiac strain. Format by terrain: (a) Flat/Rolling or Gym: high-cadence, high-rep CIRCUIT training — NEVER straight sets. One → segment per exercise names ONE pass (e.g. '10 reps Split Jump Squats, 15s transition → 10 reps Squat Jumps, 15s transition → 10 reps/leg Box Step-Ups at 75% kneecap height, 15s transition → 10 reps/leg Front Lunges'), followed by total rounds (6-8 rounds) and rest between rounds (~60s tapering to 15s). (b) Outdoor Mountain Hikes: steep 30%+ off-trail grade with 5-15% bodyweight pack, 5-20 min climbing intervals with 1-3 min recovery, and mandatory Summit Water Dump protocol: 'Dump water weight at summit; descend unweighted to preserve orthopedic integrity'. (c) Incline Treadmill: 12-15% incline, 90% and 95% uphill climbing pace intervals (standard commercial gym treadmills max out at 15%). (d) Hill Bounding / Ski Striding: 6-8 reps of 8-12s max-effort bounds on 15-20% hill, 3-4 min full standing/walking rest, strictly terminate at first power drop.\n"
+                "     * Muscular Endurance (ME): this develops peripheral muscular fatigue resistance without cardiac strain. Heart rate and breathing are ignored; the target is a low-grade local burn in the quads and glutes. Format by terrain: (a) Flat/Rolling or Gym: STRAIGHT SETS — complete every set of one exercise, with its rest between sets, before moving to the next exercise. One → segment per exercise naming sets x reps, tempo and rest (e.g. 'Split Jump Squats: 6x10 at ~1 jump/s, 45s rest between sets → Squat Jumps: 6x10, 45s rest between sets → Box Step-Ups at 75% kneecap height: 6x10/leg, 30s rest between sets → Front Lunges: 6x10/leg, 30s rest between sets'), with ~60s between exercises. First 2-3 sessions, or a soreness-prone athlete: 4x10. Progress week to week by shortening the rest, then adding a weight vest (up to 10%, later 15% BW) — never raise load and volume in the same week. (b) Outdoor Mountain Hikes: steep 30%+ off-trail grade with 5-15% bodyweight pack, 5-20 min climbing intervals with 1-3 min recovery, and mandatory Summit Water Dump protocol: 'Dump water weight at summit; descend unweighted to preserve orthopedic integrity'. (c) Incline Treadmill: 25% grade on an incline trainer; on a standard gym treadmill (max ~15%) set 15% and add a 5-15% BW vest or pack, e.g. 6 x 5 min climbing with 60s rest, so leg burn rather than breathing limits the pace. Hill Sprints and hill bounding are NOT ME: they are neuromuscular power sessions (type 'Interval') — 8-12s max-effort reps on a 20%+ grade or steep stairs, 2-3 min full standing/walking rest, terminated at the first drop in power.\n"
                 if tier_profile.allows_me_blocks
                 else ""
             )
@@ -1524,7 +1526,7 @@ class PlanGenerator:
             # The steep hill-sprint incline is a prescription for a session type this
             # athlete may not be given at all.
             hill_incline_exception = (
-                "EXCEPTION — for a Hill Sprint or Hill Repeat workout specifically (identifiable by 'Hill Sprint'/'Hill Repeat' in the `title`), `treadmill_incline` MUST be in the 10-15% range regardless of the race's average grade or this workout's own `grade_percent` — these are short, near-maximal efforts that require a steep grade by design, not a race-average one. "
+                "EXCEPTION — for a Hill Sprint or Hill Repeat workout specifically (identifiable by 'Hill Sprint'/'Hill Repeat' in the `title`), `treadmill_incline` MUST be 15%, the maximum of a standard treadmill, regardless of the race's average grade or this workout's own `grade_percent` — these efforts need a 15-20%+ grade by design, not a race-average one. Short 8-12s Hill Sprints do not work on a treadmill because the belt cannot change speed fast enough: prefer steep stairs, and if a treadmill is the only option, lengthen each rep to ~30s (bring the belt up to speed first, sprint the final 10-15s, then step onto the side rails). "
                 if tier_profile.allows_intensity
                 else ""
             )

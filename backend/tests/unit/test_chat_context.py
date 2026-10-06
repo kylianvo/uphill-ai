@@ -165,9 +165,8 @@ def test_resolve_citations():
     assert resolved[0]["url"] == "https://uphillathlete.com/principles"
     assert resolved[0]["book"] == "Training for the Uphill Athlete"
     assert resolved[0]["chapter_num"] == 7
-    assert resolved[0]["chapter_title"] == "Muscular Endurance"
-    assert resolved[0]["section"] == "Section Three: Strength Training for the Uphill Athlete"
-    assert "Chapter 7: Muscular Endurance" in resolved[0]["citation_label"]
+    assert resolved[0]["chapter_title"] == "Specific Strength-Training Methods"
+    assert "Chapter 7: Specific Strength-Training Methods" in resolved[0]["citation_label"]
 
     # Second resolved had invalid URL scheme, so url is sanitized to None
     assert resolved[1]["ref"] == "789xyz123456"

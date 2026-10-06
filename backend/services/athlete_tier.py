@@ -75,7 +75,7 @@ class TierProfile:
     # Annual volume progression cap. This is the axis that actually separates a beginner
     # from a highly trained athlete: up to 25%/year for a beginner, 10%/year once trained.
     max_annual_progression: float
-    # Share of weekly TIME that must sit in Zone 1-2 below AnT. 80% is the floor; highly
+    # Share of weekly TIME that must sit in Zone 1-2 (at or below AeT). 80% is the floor; highly
     # trained athletes run closer to 90/10.
     low_intensity_share: float
     # Ceiling on total weekly Zone 4 interval time, in minutes. None where intensity is
