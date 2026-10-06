@@ -1,0 +1,31 @@
+{
+  "notes": [
+    {
+      "athlete_id": 7,
+      "coach_id": 39,
+      "created_at": "2026-10-06T04:02:50.688555+00:00",
+      "id": 6,
+      "note": "Added an extra hill session for week 3. Approve once the legs feel fresh.",
+      "target_id": 1799,
+      "target_type": "workout"
+    },
+    {
+      "athlete_id": 7,
+      "coach_id": 39,
+      "created_at": "2026-10-06T04:02:50.685703+00:00",
+      "id": 5,
+      "note": "Hold the weekly volume until the Friday run is back on.",
+      "target_id": 168,
+      "target_type": "plan"
+    },
+    {
+      "athlete_id": 7,
+      "coach_id": 39,
+      "created_at": "2026-10-06T04:02:50.682201+00:00",
+      "id": 4,
+      "note": "Knees felt fine after the long run. Keep the Saturday climbs steady.",
+      "target_id": null,
+      "target_type": "general"
+    }
+  ]
+}

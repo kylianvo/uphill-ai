@@ -16,7 +16,11 @@ final class AppModel {
     let pacingService: any PacingServicing
     let knowledgeService: any KnowledgeServicing
     let deviceConnectionService: any DeviceConnectionServicing
+    let coachingService: any CoachingServicing
     var shoeRotation: ShoeRotation = .previewDefault
+    var actingAsAthlete: CoachedAthleteRow? = nil
+    var coachedAthleteProfile: User? = nil
+    var pendingInvites: [CoachingInvite] = []
     let generation: GenerationCenter
     let plan: PlanViewModel
     let chat: ChatService
@@ -69,6 +73,7 @@ final class AppModel {
         pacingService = PacingService(client: client)
         knowledgeService = KnowledgeService(client: client)
         deviceConnectionService = DeviceConnectionService(client: client)
+        coachingService = CoachingService(client: client)
         generation = GenerationCenter(service: generationService)
         plan = PlanViewModel(service: planService, cache: cache, isSignedIn: { [session] in session.user != nil },
                              generation: generation, generationService: generationService)
@@ -119,7 +124,78 @@ final class AppModel {
         }
     }
 
+    func enterAthleteView(athlete: CoachedAthleteRow) {
+        actingAsAthlete = athlete
+        Task {
+            do {
+                async let p = coachingService.fetchAthleteProfile(athleteId: athlete.athleteId)
+                async let snap = coachingService.fetchAthleteActivePlan(athleteId: athlete.athleteId)
+                let (fetchedP, fetchedSnap) = try await (p, snap)
+                self.coachedAthleteProfile = fetchedP
+                if let fetchedSnap {
+                    self.plan.adopt(fetchedSnap)
+                }
+            } catch {
+                print("Failed to enter athlete view: \(error)")
+            }
+        }
+    }
+
+    func exitAthleteView() {
+        actingAsAthlete = nil
+        coachedAthleteProfile = nil
+        Task {
+            await plan.load()
+        }
+    }
+
+    func refreshPendingInvites() async {
+        do {
+            pendingInvites = try await coachingService.fetchMyInvites()
+        } catch {
+            print("Failed to fetch pending invites: \(error)")
+        }
+    }
+
+    func acceptInvite(inviteId: Int) async {
+        do {
+            try await coachingService.acceptInvite(inviteId: inviteId)
+            pendingInvites.removeAll { $0.id == inviteId }
+        } catch {
+            print("Failed to accept invite: \(error)")
+        }
+    }
+
+    func declineInvite(inviteId: Int) async {
+        do {
+            try await coachingService.declineInvite(inviteId: inviteId)
+            pendingInvites.removeAll { $0.id == inviteId }
+        } catch {
+            print("Failed to decline invite: \(error)")
+        }
+    }
+
+    @discardableResult
+    func handleOpenURL(_ url: URL) async -> Bool {
+        guard let params = CorosOAuthCoordinator.parseCallbackURL(url) else {
+            return false
+        }
+        guard !params.isError, let state = params.state, let token = params.token else {
+            return false
+        }
+        do {
+            let success = try await deviceConnectionService.completeCoros(state: state, token: token)
+            return success
+        } catch {
+            print("Failed to complete COROS connection via deep link: \(error)")
+            return false
+        }
+    }
+
     func signOut() async {
+        actingAsAthlete = nil
+        coachedAthleteProfile = nil
+        pendingInvites = []
         await auth.logout()
         session.signOut()
     }

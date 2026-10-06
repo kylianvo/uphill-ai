@@ -88,4 +88,45 @@ struct DeviceConnectionTests {
         let withoutModel = CorosAttribution()
         #expect(withoutModel.deviceModel == nil)
     }
+
+    @Test func corosConnectResponseDecoding() throws {
+        let json = """
+        {
+            "authorize_url": "https://open.coros.com/oauth/authorize?client_id=123&state=st1&code_challenge=cc1"
+        }
+        """.data(using: .utf8)!
+
+        let resp = try JSONCoding.decoder.decode(DeviceConnectionService.ConnectResponse.self, from: json)
+        #expect(resp.authorizeUrl == "https://open.coros.com/oauth/authorize?client_id=123&state=st1&code_challenge=cc1")
+    }
+
+    @Test func corosPushApiResponseDecoding() throws {
+        let json = """
+        {
+            "status": "sent",
+            "last_pushed_at": "2026-10-06T09:15:00Z"
+        }
+        """.data(using: .utf8)!
+
+        let resp = try JSONCoding.decoder.decode(DeviceConnectionService.PushApiResponse.self, from: json)
+        #expect(resp.status == "sent")
+        #expect(resp.lastPushedAt == "2026-10-06T09:15:00Z")
+    }
+
+    @Test func corosCallbackURLParsing() throws {
+        let validURL = URL(string: "uphillai://coros/callback?state=st1&token=tk1")!
+        let params = CorosOAuthCoordinator.parseCallbackURL(validURL)
+        #expect(params != nil)
+        #expect(params?.state == "st1")
+        #expect(params?.token == "tk1")
+        #expect(params?.isError == false)
+
+        let errorURL = URL(string: "uphillai://coros/callback?result=error")!
+        let errorParams = CorosOAuthCoordinator.parseCallbackURL(errorURL)
+        #expect(errorParams != nil)
+        #expect(errorParams?.isError == true)
+
+        let invalidScheme = URL(string: "https://example.com/callback?state=st1")!
+        #expect(CorosOAuthCoordinator.parseCallbackURL(invalidScheme) == nil)
+    }
 }

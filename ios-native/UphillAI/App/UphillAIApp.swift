@@ -9,7 +9,14 @@ struct UphillAIApp: App {
         WindowGroup {
             RootView(app: app)
                 .tint(UH.Palette.accentInk)
-                .onOpenURL { GIDSignIn.sharedInstance.handle($0) }
+                .onOpenURL { url in
+                    if GIDSignIn.sharedInstance.handle(url) {
+                        return
+                    }
+                    Task {
+                        await app.handleOpenURL(url)
+                    }
+                }
         }
     }
 }
