@@ -79,6 +79,8 @@ Athlete Profile:
 {{feedback_instruction}}"""
 
 MAX_PRIORITY_PER_WEEK = 2
+# Types that are never the week's key session, whatever the model says.
+_NEVER_PRIORITY_TYPES = {"Rest", "Recovery", "Easy"}
 _PRIORITY_DAY_ORDER = {
     d: i for i, d in enumerate(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])
 }
@@ -89,13 +91,13 @@ def apply_priority_guard(workouts: list[dict[str, Any]]) -> list[dict[str, Any]]
 
     The field comes from the LLM, so it is never trusted: anything that is not a
     real bool becomes False (a managed prompt without the field also yields
-    False), Rest workouts are never priority, and each week_number keeps at most
+    False), Rest, Recovery and Easy workouts are never priority, and each week_number keeps at most
     MAX_PRIORITY_PER_WEEK priorities -- the earliest by day order (Mon->Sun),
     then list order. Shared by every generation path so the rule lives once."""
     by_week: dict[Any, list[tuple[int, int, dict[str, Any]]]] = {}
     for idx, wo in enumerate(workouts):
         flag = wo.get("is_priority") is True
-        if flag and wo.get("type") == "Rest":
+        if flag and wo.get("type") in _NEVER_PRIORITY_TYPES:
             flag = False
         wo["is_priority"] = flag
         if flag:

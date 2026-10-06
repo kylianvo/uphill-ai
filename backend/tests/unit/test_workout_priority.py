@@ -3,7 +3,7 @@
 from services.plan_generator import MAX_PRIORITY_PER_WEEK, apply_priority_guard
 
 
-def _wo(day="Monday", week=1, type_="Easy", **kw):
+def _wo(day="Monday", week=1, type_="Tempo", **kw):
     return {"week_number": week, "day_of_week": day, "type": type_, **kw}
 
 
@@ -27,6 +27,17 @@ def test_true_is_kept():
 
 def test_rest_is_never_priority():
     assert apply_priority_guard([_wo(type_="Rest", is_priority=True)])[0]["is_priority"] is False
+
+
+def test_easy_and_recovery_are_never_priority():
+    # The prompt says so, but the model still flagged an Easy run in the golden eval.
+    for t in ("Easy", "Recovery"):
+        assert apply_priority_guard([_wo(type_=t, is_priority=True)])[0]["is_priority"] is False
+
+
+def test_walk_run_can_be_priority():
+    # Beginner and return-to-run plans are all Walk/Run, so their key session is one.
+    assert apply_priority_guard([_wo(type_="Walk/Run", is_priority=True)])[0]["is_priority"] is True
 
 
 def test_cap_keeps_first_two_by_day_order_not_list_order():
