@@ -16,12 +16,19 @@ concurrency:
 
 jobs:
   test:
-    runs-on: macos-15
+    # The `xcode-27` image (macOS with Xcode 27) is the toolchain the app is built with;
+    # macos-15 ships Xcode 16 and fails to compile the current sources.
+    runs-on: xcode-27
     timeout-minutes: 30
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.0.app/Contents/Developer
+      # Simulator that exists on the Xcode 27.0 image; test.sh would otherwise pick the newest runtime.
+      DESTINATION: platform=iOS Simulator,name=iPhone 18 Pro,OS=27.0
     steps:
       - uses: actions/checkout@v4
+      - name: Xcode version
+        run: xcodebuild -version
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Test
-        # test.sh picks the newest iPhone simulator on the newest iOS runtime itself.
         run: ios-native/scripts/test.sh
