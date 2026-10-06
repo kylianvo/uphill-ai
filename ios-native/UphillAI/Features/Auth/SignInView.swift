@@ -5,9 +5,8 @@ import SwiftUI
 struct SignInView: View {
     @Bindable var model: SignInViewModel
     @FocusState private var focused: Field?
+    typealias Field = SignInViewModel.Field
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    private enum Field { case name, email, password }
 
     var body: some View {
         ScrollView {
@@ -51,7 +50,18 @@ struct SignInView: View {
             .disabled(model.isBusy)
         }
         .background(UH.Palette.surface.ignoresSafeArea())
-        .scrollDismissesKeyboard(.interactively)
+        // Short content doesn't scroll, so swiping alone can't dismiss: also allow bounce,
+        // tap-outside and a Done button above the keyboard.
+        .scrollDismissesKeyboard(.immediately)
+        .scrollBounceBehavior(.always)
+        .simultaneousGesture(TapGesture().onEnded { focused = nil })
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") { focused = nil }
+                    .accessibilityIdentifier("signin.keyboardDone")
+            }
+        }
         .sensoryFeedback(.error, trigger: model.errorMessage) { _, new in new != nil }
     }
 
@@ -81,7 +91,7 @@ struct SignInView: View {
                 .textContentType(Self.autofillDisabled ? nil : (model.mode == .register ? .newPassword : .password))
                 .focused($focused, equals: .password)
                 .submitLabel(.go)
-                .onSubmit { if model.canSubmit { Task { await model.submitEmail() } } }
+                .onSubmit { handleReturn(in: .password) }
                 .inputBox()
                 .accessibilityIdentifier("signin.password")
 
@@ -122,7 +132,19 @@ struct SignInView: View {
     private func textField(_ title: String, text: Binding<String>, field: Field) -> some View {
         TextField(title, text: text)
             .focused($focused, equals: field)
+            .submitLabel(.next)
+            .onSubmit { handleReturn(in: field) }
             .inputBox()
+    }
+
+    private func handleReturn(in field: Field) {
+        switch model.returnAction(in: field) {
+        case .focus(let next): focused = next
+        case .submit:
+            focused = nil
+            Task { await model.submitEmail() }
+        case .none: break
+        }
     }
 
     private func handleApple(_ result: Result<ASAuthorization, Error>) async {
