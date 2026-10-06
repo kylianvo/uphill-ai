@@ -101,6 +101,9 @@ struct ManagePlanSheet: View {
             } message: {
                 Text("This will permanently delete your training plan and all scheduled workouts. This action cannot be undone.")
             }
+            .sheet(isPresented: $showExportCalendar) {
+                ExportCalendarSheet(model: model)
+            }
             .disabled(isDeleting)
             .overlay {
                 if isDeleting {
@@ -121,7 +124,10 @@ struct ManagePlanSheet: View {
         }
         .presentationDetents([.medium, .large])
         .presentationBackground(UH.Palette.surface)
-        .onDisappear { model.clearActionError() }
+        .onDisappear {
+            model.clearActionError()
+            model.clearWatchSyncNotice()
+        }
         .accessibilityIdentifier("manage.sheet")
     }
 

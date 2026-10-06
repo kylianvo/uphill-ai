@@ -6,7 +6,7 @@ import UIKit
 enum GoogleSignInProvider {
     enum Failure: Error { case noPresenter, noIDToken }
 
-    private static let log = Logger(subsystem: "ai.uphill.UphillAI", category: "google-signin")
+    private static let log = Logger(subsystem: "ai.uphill.app", category: "google-signin")
 
     /// User-facing text for a failed Google sign-in, or nil when the user simply cancelled.
     /// Stays friendly but carries the GIDSignInError code so a report is diagnosable

@@ -38,7 +38,6 @@ struct PlanView: View {
     @State private var showAdapt = false
     @State private var showReview = false
     @State private var showGoal = false
-    @State private var showExportCalendar = false
     @State private var showAddWorkout = false
     @State private var readyBanner: String?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -97,9 +96,6 @@ struct PlanView: View {
                 .sheet(isPresented: $showReview) { WeekReviewSheet(model: model, week: model.selectedWeek) }
                 .sheet(isPresented: $showNextWeek) {
                     if let offer = model.nextWeekOffer { NextWeekSheet(model: model, offer: offer) }
-                }
-                .sheet(isPresented: $showExportCalendar) {
-                    ExportCalendarSheet(model: model)
                 }
                 .sheet(isPresented: $showManage, onDismiss: {
                     if startNewAfterManage { startNewAfterManage = false; onBuildPlan() }
@@ -409,66 +405,6 @@ struct PlanView: View {
                         }
                         .accessibilityIdentifier("plan.goalpill")
                     }
-                }
-
-                HStack(spacing: 8) {
-                    Button {
-                        Task {
-                            _ = await model.syncWatch()
-                            try? await Task.sleep(for: .seconds(4))
-                            model.clearWatchSyncNotice()
-                        }
-                    } label: {
-                        HStack(spacing: 5) {
-                            Image(systemName: "arrow.triangle.2.circlepath")
-                                .font(.system(size: 11, weight: .bold))
-                                .rotationEffect(.degrees(model.isSyncingWatch ? 360 : 0))
-                                .animation(model.isSyncingWatch ? .linear(duration: 1).repeatForever(autoreverses: false) : .default, value: model.isSyncingWatch)
-                            Text(model.isSyncingWatch ? "Syncing..." : "Sync Watch")
-                                .font(.system(size: 11.5, weight: .semibold))
-                        }
-                        .foregroundStyle(UH.Palette.ink)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(UH.Palette.card, in: Capsule())
-                        .overlay(Capsule().stroke(UH.Palette.line, lineWidth: 1))
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(model.isSyncingWatch)
-                    .accessibilityIdentifier("plan.syncWatch")
-
-                    Button {
-                        showExportCalendar = true
-                    } label: {
-                        HStack(spacing: 5) {
-                            Image(systemName: "calendar.badge.clock")
-                                .font(.system(size: 11, weight: .bold))
-                            Text("Export Calendar")
-                                .font(.system(size: 11.5, weight: .semibold))
-                        }
-                        .foregroundStyle(UH.Palette.ink)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(UH.Palette.card, in: Capsule())
-                        .overlay(Capsule().stroke(UH.Palette.line, lineWidth: 1))
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("plan.exportCalendar")
-
-                    Spacer()
-                }
-                .padding(.top, 2)
-
-                if let notice = model.watchSyncNotice {
-                    HStack(spacing: 6) {
-                        Image(systemName: notice.contains("Synced") || notice.contains("date") ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
-                            .foregroundStyle(notice.contains("Synced") || notice.contains("date") ? UH.Palette.accentInk : UH.Palette.secondary)
-                            .font(.system(size: 11))
-                        Text(notice)
-                            .font(UH.TextStyle.caption)
-                            .foregroundStyle(UH.Palette.secondary)
-                    }
-                    .padding(.top, 2)
                 }
             }
         }
