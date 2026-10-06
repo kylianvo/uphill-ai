@@ -23,12 +23,14 @@ if xcodebuild test \
   -project UphillAI.xcodeproj \
   -scheme UphillAI \
   -destination "$DESTINATION" \
+  -collect-test-diagnostics never \
   "$@" >"$LOG" 2>&1; then
   echo "Tests passed (full log: $LOG)"
 else
   status=$?
   echo "--- errors ---"
-  grep -E "error:" "$LOG" | sort -u || true
+  # `error:` covers compiler errors; the rest covers Swift Testing and XCTest failures, crashes and timeouts.
+  grep -E "error:|✘|recorded an issue|Test Case .* failed|crashed|timed out|Timed out" "$LOG" | sort -u | head -n 80 || true
   echo "--- tail ---"
   tail -n 25 "$LOG"
   echo "Full log: $LOG"
