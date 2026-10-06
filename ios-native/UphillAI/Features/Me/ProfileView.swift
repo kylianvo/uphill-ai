@@ -67,8 +67,9 @@ struct ProfileView: View {
                         row("Zone 2 pace", zone2(user))
                     }
 
-                    // Connected Accounts (COROS & Watch Integration)
-                    Section("Connected Accounts") {
+                    // Connected Accounts (COROS & Watch Integration). No section header: the
+                    // card carries its own "CONNECTED ACCOUNTS" title.
+                    Section {
                         ConnectedAccountsView(service: app.deviceConnectionService)
                             .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                             .listRowBackground(Color.clear)
