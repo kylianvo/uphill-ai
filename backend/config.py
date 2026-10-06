@@ -85,7 +85,7 @@ class Config:
         if c.strip()
     ]
     APPLE_AUDIENCES: list[str] = [
-        c.strip() for c in os.getenv("APPLE_AUDIENCES", "ai.uphill.app").split(",") if c.strip()
+        c.strip() for c in os.getenv("APPLE_AUDIENCES", "uphill.ai.app,ai.uphill.app").split(",") if c.strip()
     ]
 
     # PostgreSQL connection URL

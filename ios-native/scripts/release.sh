@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # Builds a signed App Store .ipa of the native app. Does not upload and does not touch git.
 # Usage: ios-native/scripts/release.sh <build-number>
-# The build number must be higher than every build already on TestFlight for ai.uphill.app,
+# The build number must be higher than every build already on TestFlight for uphill.ai.app (the App Store Connect record shared with the old Capacitor app),
 # including the Capacitor builds.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 BUILD="${1:-}"
 if [[ -z "$BUILD" ]]; then
-  read -r -p "Last build number on TestFlight for ai.uphill.app: " LAST
+  read -r -p "Last build number on TestFlight for uphill.ai.app (the App Store Connect record shared with the old Capacitor app): " LAST
   BUILD=$((LAST + 1))
 fi
 
