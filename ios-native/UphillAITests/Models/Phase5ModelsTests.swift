@@ -369,6 +369,19 @@ struct Phase5ModelsTests {
 
         let formatted = GoalEstimate.formatMinutes(1230.0)
         #expect(formatted == "20:30")
+
+        // Pace parsing helpers (m:ss -> decimal minutes/km)
+        let pace630 = GoalEstimate.parsePaceToMinutes("6:30")
+        #expect(pace630 == 6.5)
+
+        let pace628 = GoalEstimate.parsePaceToMinutes("6:28.5")
+        #expect(abs((pace628 ?? 0) - 6.475) < 0.001)
+
+        let pace500 = GoalEstimate.parsePaceToMinutes("5:00")
+        #expect(pace500 == 5.0)
+
+        let paceDecimal = GoalEstimate.parsePaceToMinutes("5.5")
+        #expect(paceDecimal == 5.5)
     }
 
     @Test func goalEstimateService() async throws {
