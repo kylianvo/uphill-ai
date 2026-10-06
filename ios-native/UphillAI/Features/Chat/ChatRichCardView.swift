@@ -34,6 +34,21 @@ struct ChatRichCardView: View {
                 ChatPacingSplitsCard(data: data)
             }
 
+        case "nutrition_plan", "fueling_plan":
+            if let plan = payload.decodeNutritionPlan() {
+                ChatNutritionCard(plan: plan)
+            }
+
+        case "gear_recommendation", "shoe_recommendations", "gear_plan":
+            if let plan = payload.decodeGearPlan() {
+                ChatGearCard(plan: plan)
+            }
+
+        case "goal_estimate":
+            if let estimate = payload.decodeGoalEstimate() {
+                ChatGoalCard(estimate: estimate)
+            }
+
         default:
             EmptyView()
         }

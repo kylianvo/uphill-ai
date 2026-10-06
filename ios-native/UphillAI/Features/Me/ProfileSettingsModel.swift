@@ -3,6 +3,13 @@ import Observation
 
 @Observable @MainActor
 final class ProfileSettingsModel {
+    enum ZoneTab: String, CaseIterable, Identifiable {
+        case heartRate = "Heart Rate"
+        case paces = "Paces"
+        var id: String { rawValue }
+    }
+
+    var selectedZoneTab: ZoneTab = .heartRate
     var draft: ProfileDraft
     private(set) var error: String?
     private(set) var saved = false
@@ -22,6 +29,11 @@ final class ProfileSettingsModel {
         self.service = service
         self.session = session
         self.isOffline = isOffline
+        if section == .paces {
+            selectedZoneTab = .paces
+        } else {
+            selectedZoneTab = .heartRate
+        }
     }
 
     func save() async {
@@ -40,7 +52,7 @@ final class ProfileSettingsModel {
             session.setUser(updated)
             draft = ProfileDraft(user: updated)
             saved = true
-            if section == .paces { await loadZones() }
+            if section == .paces || section == .trainingZones { await loadZones() }
         } catch let e as APIError {
             if case .transport = e { transportFailed = true; error = PlanViewModel.offlineMessage }
             else { error = e.userMessage }
@@ -52,4 +64,9 @@ final class ProfileSettingsModel {
         catch let e as APIError { error = e.userMessage }
         catch { self.error = error.localizedDescription }
     }
+    #if DEBUG
+    func loadZonesDirectlyForScreenshot(_ z: PaceZones) {
+        self.zones = z
+    }
+    #endif
 }

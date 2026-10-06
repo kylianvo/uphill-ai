@@ -33,6 +33,8 @@ targets:
         ITSAppUsesNonExemptEncryption: false
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
+        NSCalendarsFullAccessUsageDescription: "Uphill AI syncs your scheduled training plan workouts and long runs to your calendar."
+        NSCalendarsWriteOnlyAccessUsageDescription: "Uphill AI adds your scheduled workouts directly to your calendar."
         GIDClientID: 451637841654-ncj3jhv24t9rq665noctori05faajiej.apps.googleusercontent.com
         CFBundleURLTypes:
           - CFBundleURLSchemes:

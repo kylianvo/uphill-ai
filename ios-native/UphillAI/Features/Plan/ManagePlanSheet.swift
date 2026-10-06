@@ -2,19 +2,24 @@ import SwiftUI
 
 struct ManagePlanSheet: View {
     let model: PlanViewModel
+    var deviceService: (any DeviceConnectionServicing)? = nil
     let onStartNew: () -> Void
     var onSchedule: () -> Void = {}
+    var onTool: ((TrainingDestination) -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
     @State private var plans: [Plan]?
     @State private var loadError: String?
     @State private var confirmNew = false
     @State private var confirmDelete = false
     @State private var isDeleting = false
+    @State private var showExportCalendar = false
 
-    init(model: PlanViewModel, onStartNew: @escaping () -> Void, onSchedule: @escaping () -> Void = {}, initialPlans: [Plan]? = nil, initialConfirmDelete: Bool = false) {
+    init(model: PlanViewModel, deviceService: (any DeviceConnectionServicing)? = nil, onStartNew: @escaping () -> Void, onSchedule: @escaping () -> Void = {}, onTool: ((TrainingDestination) -> Void)? = nil, initialPlans: [Plan]? = nil, initialConfirmDelete: Bool = false) {
         self.model = model
+        self.deviceService = deviceService
         self.onStartNew = onStartNew
         self.onSchedule = onSchedule
+        self.onTool = onTool
         _plans = State(initialValue: initialPlans)
         _confirmDelete = State(initialValue: initialConfirmDelete)
     }
@@ -54,6 +59,9 @@ struct ManagePlanSheet: View {
 
                     // 2. Plan Actions (New Plan, Plan Settings)
                     planActionsSection
+
+                    // Tools & Labs
+                    toolsSection
 
                     // 3. Delete Plan Section
                     if model.snapshot != nil {
@@ -285,19 +293,86 @@ struct ManagePlanSheet: View {
         }
     }
 
-    // MARK: - Integrations (Coming Soon)
+    // MARK: - Integrations (Watch & COROS Sync)
 
     private var integrationsSection: some View {
         VStack(alignment: .leading, spacing: UH.Space.compact) {
-            Text("INTEGRATIONS")
+            Text("INTEGRATIONS & WATCH SYNC")
                 .font(.system(size: 10.5, weight: .bold, design: .monospaced))
                 .tracking(0.5)
                 .foregroundStyle(UH.Palette.muted)
 
             VStack(spacing: 0) {
-                comingSoonRow(title: "Sync Watch", icon: "applewatch")
+                // Live Sync Watch row
+                Button {
+                    Task {
+                        _ = await model.syncWatch()
+                    }
+                } label: {
+                    HStack {
+                        Label("Sync Watch Activities", systemImage: "applewatch")
+                            .font(UH.TextStyle.label)
+                            .foregroundStyle(UH.Palette.ink)
+                        Spacer()
+                        if model.isSyncingWatch {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Text("Sync now")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundStyle(UH.Palette.accentInk)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(UH.Palette.activeFill, in: Capsule())
+                        }
+                    }
+                    .padding(UH.Space.regular)
+                }
+                .buttonStyle(.plain)
+                .disabled(model.isSyncingWatch)
+
+                if let notice = model.watchSyncNotice {
+                    HStack(spacing: 4) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(UH.Palette.accentInk)
+                            .font(.system(size: 11))
+                        Text(notice)
+                            .font(UH.TextStyle.caption)
+                            .foregroundStyle(UH.Palette.secondary)
+                    }
+                    .padding(.horizontal, UH.Space.regular)
+                    .padding(.bottom, 8)
+                }
+
                 Divider().overlay(UH.Palette.line.opacity(0.6))
-                comingSoonRow(title: "Add to Calendar (.ics)", icon: "calendar.badge.plus")
+
+                // COROS Push Row (if service provided)
+                if let deviceService {
+                    VStack(alignment: .leading, spacing: 6) {
+                        CorosPushButton(service: deviceService)
+                        CorosAttribution(deviceModel: "COROS APEX 2 Pro")
+                    }
+                    .padding(UH.Space.regular)
+
+                    Divider().overlay(UH.Palette.line.opacity(0.6))
+                }
+
+                // Add to Calendar (.ics) row
+                Button {
+                    showExportCalendar = true
+                } label: {
+                    HStack {
+                        Label("Add to Calendar (.ics)", systemImage: "calendar.badge.plus")
+                            .font(UH.TextStyle.label)
+                            .foregroundStyle(UH.Palette.ink)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(UH.Palette.muted)
+                    }
+                    .padding(UH.Space.regular)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("manage.exportCalendar")
             }
             .background(UH.Palette.card, in: RoundedRectangle(cornerRadius: UH.Radius.landing))
             .overlay(RoundedRectangle(cornerRadius: UH.Radius.landing).stroke(UH.Palette.line))
@@ -327,4 +402,71 @@ struct ManagePlanSheet: View {
         guard let day = PlanCalendar.day(from: plan.raceDate) else { return plan.raceDate }
         return "Race " + day.formatted(.dateTime.day().month(.abbreviated).year())
     }
+
+    // MARK: - Tools & Labs
+
+    private var toolsSection: some View {
+        VStack(alignment: .leading, spacing: UH.Space.compact) {
+            Text("TOOLS & LABS")
+                .font(.system(size: 10.5, weight: .bold, design: .monospaced))
+                .tracking(0.5)
+                .foregroundStyle(UH.Palette.muted)
+
+            VStack(spacing: 0) {
+                Button {
+                    onTool?(.nutritionLab)
+                    dismiss()
+                } label: {
+                    toolRow(title: "Nutrition Lab", icon: "drop.fill", desc: "Precision fueling timeline")
+                }
+                .buttonStyle(.plain)
+
+                Divider().overlay(UH.Palette.line.opacity(0.6))
+
+                Button {
+                    onTool?(.gearVault)
+                    dismiss()
+                } label: {
+                    toolRow(title: "Gear Vault", icon: "shoe.fill", desc: "Shoe rotation & recommendations")
+                }
+                .buttonStyle(.plain)
+
+                Divider().overlay(UH.Palette.line.opacity(0.6))
+
+                Button {
+                    onTool?(.goalDeterminer)
+                    dismiss()
+                } label: {
+                    toolRow(title: "Goal Determiner", icon: "speedometer", desc: "Percentile finish estimation")
+                }
+                .buttonStyle(.plain)
+            }
+            .background(UH.Palette.card, in: RoundedRectangle(cornerRadius: UH.Radius.landing))
+            .overlay(RoundedRectangle(cornerRadius: UH.Radius.landing).stroke(UH.Palette.line))
+        }
+    }
+
+    private func toolRow(title: String, icon: String, desc: String) -> some View {
+        HStack {
+            Image(systemName: icon)
+                .font(.system(size: 16))
+                .foregroundStyle(UH.Palette.accentInk)
+                .frame(width: 28)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(UH.TextStyle.label)
+                    .foregroundStyle(UH.Palette.ink)
+                Text(desc)
+                    .font(UH.TextStyle.caption)
+                    .foregroundStyle(UH.Palette.secondary)
+            }
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(UH.Palette.muted)
+        }
+        .padding(UH.Space.regular)
+        .contentShape(Rectangle())
+    }
+
 }

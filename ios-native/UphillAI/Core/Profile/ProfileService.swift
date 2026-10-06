@@ -43,7 +43,11 @@ struct ProfileDraft: Encodable, Sendable {
         case .paces:
             body.zone2PaceMin = zone2PaceMin; body.zone2PaceMax = zone2PaceMax
             body.thresholdPace = thresholdPace; body.paceZoneModel = paceZoneModel
-        case .schedule: break
+        case .trainingZones:
+            body.maxHr = maxHr; body.restingHr = restingHr; body.aetHr = aetHr; body.antHr = antHr
+            body.zone2PaceMin = zone2PaceMin; body.zone2PaceMax = zone2PaceMax
+            body.thresholdPace = thresholdPace; body.paceZoneModel = paceZoneModel
+        case .schedule, .raceHistory, .nutritionLab, .gearVault, .goalDeterminer, .paceStrategy, .knowledgeHub: break
         }
         return body
     }

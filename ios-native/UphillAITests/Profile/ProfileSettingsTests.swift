@@ -54,4 +54,14 @@ struct ProfileSettingsTests {
         #expect(user.aetHr != nil)
         #expect(zones.rows.count == 5)
     }
+    @Test func changingTrainingZonesPreservesAndUpdatesBothHeartRateAndPaceFields() throws {
+        let user = try Fixture.decode(User.self, "auth_me.json")
+        var draft = ProfileDraft(user: user)
+        draft.aetHr = 138
+        draft.thresholdPace = "4:45"
+        let body = draft.body(merging: user, section: .trainingZones)
+        #expect(body.age == user.age)
+        #expect(body.aetHr == 138)
+        #expect(body.thresholdPace == "4:45")
+    }
 }
