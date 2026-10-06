@@ -54,6 +54,7 @@ from db import (
     get_recent_readiness_summary,
     get_roster_for_coach,
     get_roster_overview_data,
+    get_shoe_rotation,
     get_user_activity_ceiling,
     get_user_by_email,
     get_user_by_id,
@@ -69,6 +70,7 @@ from db import (
     mark_onboarding_complete,
     query_nutrition_catalog,
     remove_coach_athlete_link,
+    replace_shoe_rotation,
     save_block_review,
     save_workouts,
     set_max_continuous_jog_min,
@@ -3053,6 +3055,35 @@ async def coach_recommend_shoes(
     athlete_id: int, request: GearParams, coach: dict[str, Any] = Depends(require_athlete_access)
 ):
     return await _recommend_shoes_core(request)
+
+
+class ShoeRotationItem(BaseModel):
+    slot: Literal["daily", "tempo", "race", "trail"]
+    brand: str = Field(min_length=1, max_length=60)
+    model: str = Field(min_length=1, max_length=80)
+    distance_km: float = Field(default=0, ge=0, le=10000)
+    max_distance_km: float = Field(default=700, gt=0, le=10000)
+    is_retired: bool = False
+    notes: str | None = Field(default=None, max_length=500)
+
+
+class ShoeRotationBody(BaseModel):
+    shoes: list[ShoeRotationItem] = Field(max_length=4)
+
+
+@app.get("/api/shoe-rotation")
+async def read_shoe_rotation(user: dict[str, Any] = Depends(get_current_user)):
+    return {"shoes": get_shoe_rotation(user["id"])}
+
+
+@app.put("/api/shoe-rotation")
+async def save_shoe_rotation(body: ShoeRotationBody, user: dict[str, Any] = Depends(get_current_user)):
+    """Replace the caller's whole rotation: one shoe per slot."""
+    slots = [s.slot for s in body.shoes]
+    if len(slots) != len(set(slots)):
+        raise HTTPException(status_code=400, detail="Only one shoe per slot.")
+    replace_shoe_rotation(user["id"], [s.model_dump() for s in body.shoes])
+    return {"shoes": get_shoe_rotation(user["id"])}
 
 
 @app.get("/api/coach/nutrition-catalog")

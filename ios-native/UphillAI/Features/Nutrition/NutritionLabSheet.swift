@@ -177,33 +177,44 @@ struct NutritionLabSheet: View {
                                     .foregroundStyle(UH.Palette.secondary)
                             }
                             Spacer()
-                            HStack(spacing: 12) {
+                            HStack(spacing: 8) {
                                 Button {
                                     if durationHours > 1.0 {
-                                        durationHours -= 0.5
+                                        durationHours = max(1.0, (durationHours * 2 - 1) / 2)
                                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                     }
                                 } label: {
                                     Image(systemName: "minus.circle.fill")
-                                        .font(.system(size: 24))
+                                        .font(.system(size: 22))
                                         .foregroundStyle(durationHours > 1.0 ? UH.Palette.ink : UH.Palette.muted.opacity(0.4))
                                 }
                                 .disabled(durationHours <= 1.0)
 
-                                Text(String(format: "%.1f h", durationHours))
-                                    .font(UH.TextStyle.metric)
-                                    .foregroundStyle(UH.Palette.ink)
-                                    .frame(minWidth: 64, alignment: .center)
+                                HStack(spacing: 2) {
+                                    TextField("4.0", value: $durationHours, format: .number.precision(.fractionLength(1)))
+                                        .keyboardType(.decimalPad)
+                                        .multilineTextAlignment(.center)
+                                        .font(UH.TextStyle.metric)
+                                        .foregroundStyle(UH.Palette.ink)
+                                        .frame(width: 44)
+                                    Text("h")
+                                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                                        .foregroundStyle(UH.Palette.secondary)
+                                }
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 4)
+                                .background(UH.Palette.surface, in: RoundedRectangle(cornerRadius: UH.Radius.control))
+                                .overlay(RoundedRectangle(cornerRadius: UH.Radius.control).stroke(UH.Palette.line))
 
                                 Button {
                                     if durationHours < 36.0 {
-                                        durationHours += 0.5
+                                        durationHours = min(36.0, (durationHours * 2 + 1) / 2)
                                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                     }
                                 } label: {
                                     Image(systemName: "plus.circle.fill")
-                                        .font(.system(size: 24))
-                                        .foregroundStyle(durationHours < 36.0 ? UH.Palette.ink : UH.Palette.muted.opacity(0.4))
+                                        .font(.system(size: 22))
+                                        .foregroundStyle(durationHours < 36.0 ? UH.Palette.accentInk : UH.Palette.muted.opacity(0.4))
                                 }
                                 .disabled(durationHours >= 36.0)
                             }
@@ -324,10 +335,23 @@ struct NutritionLabSheet: View {
                                         .font(.system(size: 20))
                                         .foregroundStyle(UH.Palette.ink)
                                 }
-                                Text("\(Int(targetCarbsH)) g/h")
-                                    .font(UH.TextStyle.metric)
-                                    .foregroundStyle(UH.Palette.ink)
-                                    .frame(minWidth: 70, alignment: .center)
+
+                                HStack(spacing: 2) {
+                                    TextField("60", value: $targetCarbsH, format: .number)
+                                        .keyboardType(.numberPad)
+                                        .multilineTextAlignment(.center)
+                                        .font(UH.TextStyle.metric)
+                                        .foregroundStyle(UH.Palette.ink)
+                                        .frame(width: 44)
+                                    Text("g/h")
+                                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                                        .foregroundStyle(UH.Palette.secondary)
+                                }
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 4)
+                                .background(UH.Palette.surface, in: RoundedRectangle(cornerRadius: UH.Radius.control))
+                                .overlay(RoundedRectangle(cornerRadius: UH.Radius.control).stroke(UH.Palette.line))
+
                                 Button {
                                     if targetCarbsH < 120 {
                                         targetCarbsH += 10
@@ -365,10 +389,23 @@ struct NutritionLabSheet: View {
                                         .font(.system(size: 20))
                                         .foregroundStyle(UH.Palette.ink)
                                 }
-                                Text("\(Int(targetSodiumH)) mg/h")
-                                    .font(UH.TextStyle.metric)
-                                    .foregroundStyle(UH.Palette.ink)
-                                    .frame(minWidth: 80, alignment: .center)
+
+                                HStack(spacing: 2) {
+                                    TextField("500", value: $targetSodiumH, format: .number)
+                                        .keyboardType(.numberPad)
+                                        .multilineTextAlignment(.center)
+                                        .font(UH.TextStyle.metric)
+                                        .foregroundStyle(UH.Palette.ink)
+                                        .frame(width: 48)
+                                    Text("mg/h")
+                                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                                        .foregroundStyle(UH.Palette.secondary)
+                                }
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 4)
+                                .background(UH.Palette.surface, in: RoundedRectangle(cornerRadius: UH.Radius.control))
+                                .overlay(RoundedRectangle(cornerRadius: UH.Radius.control).stroke(UH.Palette.line))
+
                                 Button {
                                     if targetSodiumH < 1200 {
                                         targetSodiumH += 50

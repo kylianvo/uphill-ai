@@ -97,8 +97,17 @@ enum WorkoutStepParser {
     ]
 
     /// Descriptions arrive with sections separated by newlines or by " / ".
+    static func stripSectionMetadata(_ text: String) -> String {
+        let pattern = #"(?i)\s*(?:\b(?:overall|overview|reason|why|benefit|builds|what it builds|warning|common mistake|mistake|coach note|coach uphill note)\s*[:\-]).*$"#
+        return text.replacingOccurrences(of: pattern, with: "", options: .regularExpression).trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     private static func segments(of text: String) -> [String] {
-        text.replacingOccurrences(of: #"\s+/\s+"#, with: "\n", options: .regularExpression)
+        let keywordPattern = #"(?i)(?<=[.!?;]|\s)\s*(?=(?:overall|overview|reason|why|benefit|builds|what it builds|warning|common mistake|mistake|coach note|coach uphill note|process|execution|steps)\s*[:\-])"#
+        let normalized = text
+            .replacingOccurrences(of: keywordPattern, with: "\n", options: .regularExpression)
+            .replacingOccurrences(of: #"\s+/\s+"#, with: "\n", options: .regularExpression)
+        return normalized
             .components(separatedBy: .newlines)
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
@@ -211,10 +220,11 @@ enum WorkoutStepParser {
         if !workout.isRest {
             let cooldownText = parts.cooldown ?? "5–10 min easy jog and light mobility"
             let cleanCooldown = cleanStepText(cooldownText, prefix: "cool-down:")
+            let dur = extractMinutes(cleanCooldown) ?? extractMinutes(cooldownText) ?? "5–10 min"
             items.append(ExecutionStepItem(
                 id: "cooldown",
                 phase: .cooldown,
-                duration: extractMinutes(cooldownText) ?? "5–10 min",
+                duration: dur,
                 target: isTreadmill ? "0% grade easy walk to lower HR" : cleanCooldown,
                 recovery: nil,
                 steps: [cleanCooldown]
@@ -225,7 +235,7 @@ enum WorkoutStepParser {
     }
 
     private static func cleanStepText(_ text: String, prefix: String) -> String {
-        var res = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        var res = stripSectionMetadata(text).trimmingCharacters(in: .whitespacesAndNewlines)
         if res.lowercased().hasPrefix(prefix) {
             res = String(res.dropFirst(prefix.count)).trimmingCharacters(in: .whitespacesAndNewlines)
         }

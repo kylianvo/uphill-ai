@@ -43,6 +43,43 @@ enum ShoeRotationSlot: String, Codable, Sendable, CaseIterable, Identifiable {
         case .trail: return "mountain.2.fill"
         }
     }
+
+    var popularPresets: [(brand: String, model: String)] {
+        switch self {
+        case .daily:
+            return [
+                ("Nike", "Pegasus 41"),
+                ("Hoka", "Clifton 10"),
+                ("Asics", "Novablast 5"),
+                ("Brooks", "Glycerin 23"),
+                ("Saucony", "Triumph 23")
+            ]
+        case .tempo:
+            return [
+                ("Saucony", "Endorphin Speed 4"),
+                ("Hoka", "Mach 7"),
+                ("Adidas", "Adizero Boston 13"),
+                ("New Balance", "FuelCell Rebel v5"),
+                ("Asics", "Superblast 3")
+            ]
+        case .race:
+            return [
+                ("Nike", "Vaporfly 3"),
+                ("Nike", "Alphafly 3"),
+                ("Hoka", "Rocket X 3"),
+                ("Saucony", "Endorphin Pro 5"),
+                ("Asics", "Metaspeed Sky Tokyo")
+            ]
+        case .trail:
+            return [
+                ("Salomon", "S/Lab Genesis"),
+                ("Hoka", "Speedgoat 6"),
+                ("Saucony", "Peregrine 16"),
+                ("Brooks", "Cascadia 19"),
+                ("Altra", "Mont Blanc Carbon")
+            ]
+        }
+    }
 }
 
 struct ShoeItem: Codable, Sendable, Identifiable, Equatable {
@@ -93,6 +130,28 @@ struct ShoeRotation: Codable, Sendable, Equatable {
     func shoe(for slot: ShoeRotationSlot) -> ShoeItem? {
         shoes.first { $0.slot == slot && !$0.isRetired }
     }
+
+    mutating func setShoe(_ shoe: ShoeItem) {
+        shoes.removeAll { $0.slot == shoe.slot }
+        shoes.append(shoe)
+    }
+
+    mutating func removeShoe(for slot: ShoeRotationSlot) {
+        shoes.removeAll { $0.slot == slot }
+    }
+
+    mutating func addDistance(_ km: Double, for slot: ShoeRotationSlot) {
+        if let idx = shoes.firstIndex(where: { $0.slot == slot && !$0.isRetired }) {
+            shoes[idx].distanceKm += km
+        }
+    }
+
+    static var defaultRotation: ShoeRotation { previewDefault }
+
+    var daily: ShoeItem? { shoe(for: .daily) }
+    var tempo: ShoeItem? { shoe(for: .tempo) }
+    var race: ShoeItem? { shoe(for: .race) }
+    var trail: ShoeItem? { shoe(for: .trail) }
 
     static var previewDefault: ShoeRotation {
         ShoeRotation(shoes: [

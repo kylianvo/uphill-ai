@@ -799,6 +799,24 @@ def init_db():
             )
         )
 
+        # One shoe per rotation slot (daily/tempo/race/trail): the native app's Shoe Rotation.
+        conn.execute(
+            text("""
+        CREATE TABLE IF NOT EXISTS user_shoes (
+            user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            slot            TEXT NOT NULL,
+            brand           TEXT NOT NULL,
+            model           TEXT NOT NULL,
+            distance_km     REAL NOT NULL DEFAULT 0,
+            max_distance_km REAL NOT NULL DEFAULT 700,
+            is_retired      BOOLEAN NOT NULL DEFAULT FALSE,
+            notes           TEXT,
+            updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            PRIMARY KEY (user_id, slot)
+        )
+        """)
+        )
+
         conn.execute(
             text("""
         CREATE TABLE IF NOT EXISTS goal_assessments (
@@ -5733,6 +5751,32 @@ def record_fitness_assessment(user_id: int, source: str, data: dict[str, Any]) -
         )
         conn.commit()
     return True
+
+
+_SHOE_FIELDS = ("slot", "brand", "model", "distance_km", "max_distance_km", "is_retired", "notes")
+
+
+def get_shoe_rotation(user_id: int) -> list[dict[str, Any]]:
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text(f"SELECT {', '.join(_SHOE_FIELDS)} FROM user_shoes WHERE user_id = :uid ORDER BY slot"),
+            {"uid": user_id},
+        ).fetchall()
+    return [{**_row_to_dict(r), "is_retired": bool(r.is_retired)} for r in rows]
+
+
+def replace_shoe_rotation(user_id: int, shoes: list[dict[str, Any]]) -> None:
+    """Replace the user's whole rotation in one transaction; the app saves it as a unit."""
+    with engine.begin() as conn:
+        conn.execute(text("DELETE FROM user_shoes WHERE user_id = :uid"), {"uid": user_id})
+        for shoe in shoes:
+            conn.execute(
+                text(f"""
+                INSERT INTO user_shoes (user_id, {", ".join(_SHOE_FIELDS)})
+                VALUES (:uid, {", ".join(":" + f for f in _SHOE_FIELDS)})
+            """),
+                {"uid": user_id, **{f: shoe.get(f) for f in _SHOE_FIELDS}},
+            )
 
 
 def get_weekly_run_volumes(user_id: int, since: datetime.date) -> list[dict[str, Any]]:

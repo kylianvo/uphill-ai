@@ -5,6 +5,7 @@ struct ProfileView: View {
     @State private var showDeveloperMenu = false
     @State private var path: [TrainingDestination] = []
     @State private var showSchedule = false
+    @State private var selectedShoeSlot: ShoeRotationSlot? = nil
     @State private var badges: [DistanceBadge] = DistanceBadge.deriveBadges(from: [])
 
     init(app: AppModel, initialBadges: [DistanceBadge]? = nil) {
@@ -38,7 +39,7 @@ struct ProfileView: View {
                     // Shoe Rotation (the view draws its own title)
                     Section {
                         ShoeRotationView(rotation: $app.shoeRotation) { slot in
-                            path.append(.gearVault)
+                            selectedShoeSlot = slot
                         }
                         .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                         .listRowBackground(Color.clear)
@@ -150,7 +151,18 @@ struct ProfileView: View {
             }
             .sheet(isPresented: $showSchedule) { ScheduleChangeSheet(model: app.plan) }
             .sheet(isPresented: $showDeveloperMenu) { DeveloperMenu() }
+            .sheet(item: $selectedShoeSlot) { slot in
+                ShoeSlotDetailSheet(
+                    slot: slot,
+                    rotation: $app.shoeRotation,
+                    onOpenGearVault: {
+                        selectedShoeSlot = nil
+                        path.append(.gearVault)
+                    }
+                )
+            }
             .task {
+                await app.loadShoeRotation()
                 if let history = try? await app.raceHistoryService.history() {
                     badges = DistanceBadge.deriveBadges(from: history.results)
                 }
