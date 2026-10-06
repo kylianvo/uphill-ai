@@ -156,6 +156,11 @@ struct WorkoutDetailSheet: View {
                         .padding(UH.Space.regular)
                     }
                     .background(UH.Palette.surface.ignoresSafeArea())
+                    .navigationTitle("Workout")
+                    .navigationBarTitleDisplayMode(.inline)
+                    // A real bar behind Done and the menu so scrolling text never shows through them.
+                    .toolbarBackground(.visible, for: .navigationBar)
+                    .toolbarBackground(.bar, for: .navigationBar)
                     .toolbar {
                         ToolbarItem(placement: .topBarLeading) {
                             Button("Done") { dismiss() }
