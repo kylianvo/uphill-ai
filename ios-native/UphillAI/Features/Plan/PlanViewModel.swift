@@ -77,6 +77,9 @@ final class PlanViewModel {
 
     private(set) var nextWeekOffer: NextWeekOffer?
     private(set) var goal: PlanGoal?
+    private(set) var isSyncingWatch = false
+    private(set) var watchSyncNotice: String?
+    private(set) var contextKnowledgeCard: KnowledgeCardModel?
 
     private let service: any PlanServicing
     private let generation: GenerationCenter?
@@ -108,6 +111,7 @@ final class PlanViewModel {
             apply(cached.value, resetWeek: true)
             cachedAt = cached.savedAt
         }
+
         do {
             if let fresh = try await service.activePlan() {
                 let resetWeek = !hadSnapshot && cachedAt == nil
@@ -116,6 +120,7 @@ final class PlanViewModel {
                 if isSignedIn() { cache.save(fresh, as: .plan) }
                 await refreshNextWeekOffer()
                 await loadGoal()
+                await loadKnowledgeCard()
             } else {
                 snapshot = nil
                 cachedAt = nil
@@ -133,6 +138,28 @@ final class PlanViewModel {
         }
     }
 
+    func syncWatch() async -> String? {
+        guard !isSyncingWatch else { return nil }
+        guard let plan = snapshot?.plan else { return "No active plan to sync." }
+        isSyncingWatch = true
+        defer { isSyncingWatch = false }
+        do {
+            let msg = try await service.syncWatch(planID: plan.id)
+            await load()
+            watchSyncNotice = msg
+            return msg
+        } catch {
+            let msg = error.localizedDescription
+            watchSyncNotice = msg
+            return msg
+        }
+    }
+
+    func clearWatchSyncNotice() {
+        watchSyncNotice = nil
+    }
+
+
     private func apply(_ snapshot: PlanSnapshot, resetWeek: Bool) {
         self.snapshot = snapshot
         state = .loaded
@@ -145,7 +172,7 @@ final class PlanViewModel {
         cachedAt = nil
         actionError = nil
         if isSignedIn() { cache.save(snapshot, as: .plan) }
-        Task { await refreshNextWeekOffer(); await loadGoal() }
+        Task { await refreshNextWeekOffer(); await loadGoal(); await loadKnowledgeCard() }
     }
 
     func reset() {
@@ -173,23 +200,29 @@ final class PlanViewModel {
         return last > 0 ? Array(1...last) : []
     }
 
-    var days: [PlanDay] {
+    func days(for week: Int) -> [PlanDay] {
         guard let snapshot else { return [] }
         let today = now()
         return Weekday.allCases.map { weekday in
-            let date = PlanCalendar.date(week: selectedWeek, weekday: weekday, plan: snapshot.plan,
+            let date = PlanCalendar.date(week: week, weekday: weekday, plan: snapshot.plan,
                                          workouts: snapshot.workouts, calendar: calendar)
             return PlanDay(
-                week: selectedWeek,
+                week: week,
                 weekday: weekday,
                 date: date,
-                workouts: snapshot.workouts.filter { $0.weekNumber == selectedWeek && $0.weekday == weekday },
+                workouts: snapshot.workouts.filter { $0.weekNumber == week && $0.weekday == weekday },
                 eyebrow: PlanCalendar.eyebrow(for: date, now: today, calendar: calendar)
             )
         }
     }
 
+    var days: [PlanDay] { days(for: selectedWeek) }
+
     var selectedVolume: WeekVolume { PlanSummary.volume(week: selectedWeek, workouts: snapshot?.workouts ?? []) }
+
+    var weekComparison: WeekVolumeComparison {
+        PlanSummary.volumeComparison(week: selectedWeek, workouts: snapshot?.workouts ?? [])
+    }
 
     var weeklyVolumes: [WeekVolume] {
         guard let snapshot else { return [] }
@@ -198,6 +231,16 @@ final class PlanViewModel {
 
     var dayStates: [DayStatus] {
         PlanSummary.dayStates(week: selectedWeek, workouts: snapshot?.workouts ?? [])
+    }
+
+    var dayVolumes: [DayVolume] {
+        guard let snapshot else { return [] }
+        return PlanSummary.dayVolumes(week: selectedWeek, workouts: snapshot.workouts, now: now(), plan: snapshot.plan, calendar: calendar)
+    }
+
+    func dayVolumes(for week: Int) -> [DayVolume] {
+        guard let snapshot else { return [] }
+        return PlanSummary.dayVolumes(week: week, workouts: snapshot.workouts, now: now(), plan: snapshot.plan, calendar: calendar)
     }
 
     var phase: String? { PlanSummary.phase(week: selectedWeek, workouts: snapshot?.workouts ?? []) }
@@ -272,6 +315,40 @@ final class PlanViewModel {
         }
     }
 
+    func swapDays(week: Int, day1: Weekday, day2: Weekday) async -> Bool {
+        calendarNotice = nil
+        guard let planID = snapshot?.plan.id else { return false }
+        let today = PlanCalendar.ymd(now(), calendar: calendar)
+        return await write {
+            let result = try await self.service.swapDays(planID: planID, weekNumber: week, day1: day1, day2: day2, clientToday: today)
+            if !result.warnings.isEmpty {
+                self.calendarNotice = ScheduleNotice(text: "Heads-up: " + result.warnings.map(ScheduleMessages.warningText).joined(separator: "\n"), style: .warning)
+            }
+            return result.workouts
+        }
+    }
+
+    func deletePlan(id: Int) async -> Bool {
+        guard cachedAt == nil else {
+            actionError = Self.offlineMessage
+            return false
+        }
+        actionError = nil
+        do {
+            try await service.deletePlan(id: id)
+            if snapshot?.plan.id == id {
+                await load()
+            }
+            return true
+        } catch let error as APIError {
+            actionError = error.userMessage
+            return false
+        } catch {
+            actionError = error.localizedDescription
+            return false
+        }
+    }
+
     static func moveMessage(code: String?) -> String {
         ScheduleMessages.guardText(code: code ?? "unknown")
     }
@@ -326,15 +403,17 @@ final class PlanViewModel {
             previousCompletionPct: last.completionPct, unlocked: last.unlocked)
     }
 
-    func buildNextWeek(rpe: Int?, notes: String, override: Bool) async -> NextWeekResult {
+    func buildNextWeek(rpe: Int?, notes: String, override: Bool, schedule: ScheduleDraft? = nil) async -> NextWeekResult {
         guard let offer = nextWeekOffer, let planID = snapshot?.plan.id,
               let generation, let generationService else { return .failed("Couldn't start the next week. Try again.") }
         guard cachedAt == nil else { return .failed(Self.offlineMessage) }
         let trimmed = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        var body = NextBlockBody(
+            planId: planID, blockNumber: offer.blockNumber, overallRpe: rpe,
+            notes: trimmed.isEmpty ? nil : trimmed, overrideGate: override, lang: "en")
+        schedule?.applyChanges(to: &body)
         do {
-            let job = try await generationService.generateNextBlock(NextBlockBody(
-                planId: planID, blockNumber: offer.blockNumber, overallRpe: rpe,
-                notes: trimmed.isEmpty ? nil : trimmed, overrideGate: override, lang: "en"))
+            let job = try await generationService.generateNextBlock(body)
             generation.track(kind: .nextWeek, jobID: job.jobId, summary: [])
             return .started
         } catch APIError.http(403, let message?, _) where !override {
@@ -415,6 +494,28 @@ final class PlanViewModel {
         case .noTarget: return goal.status.suggestedMins.map { "Suggested \(Self.formatMinutes($0))" } ?? "Not assessed yet"
         case .notAssessed: return "Not assessed yet"
         }
+    }
+
+
+    func loadKnowledgeCard() async {
+        guard snapshot?.plan != nil, cachedAt == nil else { return }
+        let phase = (self.phase ?? "").lowercased()
+        let days = daysToRace
+
+        let topic: String
+        if let days, days <= 21 {
+            topic = "Pacing"
+        } else if phase.contains("taper") || phase.contains("peak") {
+            topic = "Pacing"
+        } else if phase.contains("recovery") {
+            topic = "Recovery"
+        } else if phase.contains("strength") || phase.contains("me") {
+            topic = "Training"
+        } else {
+            topic = "Training"
+        }
+
+        contextKnowledgeCard = await service.knowledgeCard(topic: topic, lang: "en")
     }
 
     func loadGoal() async {

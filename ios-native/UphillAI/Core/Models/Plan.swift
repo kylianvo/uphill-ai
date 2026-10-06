@@ -66,12 +66,17 @@ struct Workout: Codable, Sendable, Equatable, Identifiable {
     let notes: String?
     let sessionSlot: String?
     let isPriority: Bool
+    let matchedActivityId: Int?
+    let matchedDeviceModel: String?
+    let matchedDistanceKm: Double?
+    let matchedDurationSeconds: Double?
+    let matchedAvgHr: Int?
 
     enum CodingKeys: String, CodingKey {
         case id, planId, weekNumber, dayOfWeek, phase, title, type, durationMinutes, distanceKm, targetZone
         case targetHrRange, targetPace, treadmillIncline, treadmillSpeed, elevationGainM, gradePercent
         case intervalReps, intervalRepValue, intervalRepUnit, walkIntervalValue, description, fuelingTip
-        case source, isCompleted, isMissed, approvedAt, rpe, notes, sessionSlot, isPriority
+        case source, isCompleted, isMissed, approvedAt, rpe, notes, sessionSlot, isPriority, matchedActivityId, matchedDeviceModel, matchedDistanceKm, matchedDurationSeconds, matchedAvgHr
     }
 
     init(from decoder: any Decoder) throws {
@@ -107,13 +112,19 @@ struct Workout: Codable, Sendable, Equatable, Identifiable {
         sessionSlot = try c.decodeIfPresent(String.self, forKey: .sessionSlot)
         // Older backends (before the web Phase 1 merge) don't send it.
         isPriority = try c.decodeIfPresent(Bool.self, forKey: .isPriority) ?? false
+        matchedActivityId = try c.decodeIfPresent(Int.self, forKey: .matchedActivityId)
+        matchedDeviceModel = try c.decodeIfPresent(String.self, forKey: .matchedDeviceModel)
+        matchedDistanceKm = try c.decodeIfPresent(Double.self, forKey: .matchedDistanceKm)
+        matchedDurationSeconds = try c.decodeIfPresent(Double.self, forKey: .matchedDurationSeconds)
+        matchedAvgHr = try c.decodeIfPresent(Int.self, forKey: .matchedAvgHr)
     }
 
     /// The web defaults unknown days to Monday; so do we.
     var weekday: Weekday { Weekday(rawValue: dayOfWeek) ?? .monday }
     var isRest: Bool { type == "Rest" || durationMinutes == 0 }
-    var isDone: Bool { isCompleted == 1 }
+    var isDone: Bool { isCompleted == 1 || (isCompleted != 0 && isMatched) }
     var isMissedFlag: Bool { isMissed == 1 }
+    var isMatched: Bool { matchedActivityId != nil || (matchedDistanceKm != nil && matchedDistanceKm! > 0) }
 }
 
 struct PlanSnapshot: Codable, Sendable, Equatable {

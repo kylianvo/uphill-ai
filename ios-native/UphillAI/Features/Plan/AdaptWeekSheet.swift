@@ -95,18 +95,43 @@ struct AdaptWeekSheet: View {
                                 .foregroundStyle(UH.Palette.secondary)
                         }
 
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Effort (RPE)").font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
-                                Text(rpe.map { "\($0) / 10" } ?? "Not set")
-                                    .font(.system(.subheadline, design: .monospaced).weight(.bold))
-                                    .foregroundStyle(rpe != nil ? UH.Palette.accentInk : UH.Palette.secondary)
+                        VStack(alignment: .leading, spacing: UH.Space.small) {
+                            HStack {
+                                Text("EFFORT (RPE)")
+                                    .font(.system(size: 10.5, weight: .bold, design: .monospaced))
+                                    .tracking(0.5)
+                                    .foregroundStyle(UH.Palette.muted)
+                                Spacer()
+                                if let rpe {
+                                    Text("RPE \(rpe)")
+                                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                        .foregroundStyle(UH.Palette.accentInk)
+                                }
                             }
-                            Spacer()
-                            Stepper("Effort (RPE)", value: Binding(get: { rpe ?? 5 }, set: { rpe = $0 }), in: 1...10)
-                                .labelsHidden()
+
+                            HStack(spacing: 4) {
+                                ForEach(1...10, id: \.self) { val in
+                                    Button {
+                                        rpe = val
+                                    } label: {
+                                        Text("\(val)")
+                                            .font(.system(size: 13, weight: .bold, design: .monospaced))
+                                            .frame(maxWidth: .infinity)
+                                            .frame(height: 38)
+                                            .background(rpe == val ? UH.Palette.accentInk : UH.Palette.surface,
+                                                        in: RoundedRectangle(cornerRadius: UH.Radius.control))
+                                            .foregroundStyle(rpe == val ? Color.white : UH.Palette.ink)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .accessibilityIdentifier("adapt.rpe.\(val)")
+                                }
+                            }
+
+                            Text(rpeDescriptor(rpe))
+                                .font(UH.TextStyle.caption)
+                                .foregroundStyle(UH.Palette.secondary)
+                                .padding(.top, 2)
                         }
-                        .frame(minHeight: 44)
 
                         Divider()
 
@@ -190,6 +215,17 @@ struct AdaptWeekSheet: View {
         case .medium: "figure.run"
         case .hard: "figure.walk"
         case .exhausted: "bed.double.fill"
+        }
+    }
+
+    private func rpeDescriptor(_ val: Int?) -> String {
+        guard let val else { return "Select your perceived effort (1 to 10)" }
+        switch val {
+        case 1...3: return "Very light / recovery. Fresh legs, low fatigue."
+        case 4...6: return "Moderate / sustainable. Good training rhythm without excessive strain."
+        case 7...8: return "Hard / demanding. Heavy legs, needed deep recovery."
+        case 9...10: return "Maximum effort / near exhaustion. High accumulated fatigue."
+        default: return ""
         }
     }
 

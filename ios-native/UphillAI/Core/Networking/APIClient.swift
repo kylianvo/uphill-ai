@@ -18,6 +18,35 @@ final class APIClient: Sendable {
         self.onUnauthorized = onUnauthorized
     }
 
+
+    func stream<R>(_ endpoint: Endpoint<R>) async throws -> (URLSession.AsyncBytes, HTTPURLResponse) {
+        let request = makeRequest(endpoint)
+        let bytes: URLSession.AsyncBytes
+        let response: URLResponse
+        do {
+            (bytes, response) = try await session.bytes(for: request)
+        } catch {
+            throw APIError.transport(error.localizedDescription)
+        }
+        guard let http = response as? HTTPURLResponse else {
+            throw APIError.transport("Expected HTTPURLResponse")
+        }
+        let status = http.statusCode
+        guard (200..<300).contains(status) else {
+            if status == 401, endpoint.requiresAuth {
+                await onUnauthorized()
+                throw APIError.unauthorized
+            }
+            var errData = Data()
+            for try await byte in bytes {
+                errData.append(byte)
+                if errData.count > 4096 { break }
+            }
+            throw APIError.from(status: status, data: errData, treating401AsSessionExpiry: endpoint.requiresAuth)
+        }
+        return (bytes, http)
+    }
+
     func send<R>(_ endpoint: Endpoint<R>) async throws -> R {
         let request = makeRequest(endpoint)
         let data: Data
