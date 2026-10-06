@@ -67,11 +67,11 @@ struct SignInView: View {
             .disabled(model.isBusy)
         }
         .background(UH.Palette.surface.ignoresSafeArea())
-        // Short content doesn't scroll, so swiping alone can't dismiss: also allow bounce,
-        // tap-outside and a Done button above the keyboard.
+        // Short content doesn't scroll, so swiping alone can't dismiss: also allow bounce
+        // and a Done button above the keyboard. No screen-wide tap gesture: it also fires
+        // on taps inside the fields and takes their focus away.
         .scrollDismissesKeyboard(.immediately)
         .scrollBounceBehavior(.always)
-        .simultaneousGesture(TapGesture().onEnded { focused = nil })
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
