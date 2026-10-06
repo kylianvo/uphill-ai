@@ -26,8 +26,8 @@ struct ProfileView: View {
                         .padding(.vertical, 4)
                     }
 
-                    // Distance Badges
-                    Section("Distance Badges & PBs") {
+                    // Distance Badges (the grid draws its own title and unlocked counter)
+                    Section {
                         DistanceBadgeGrid(badges: badges) { badge in
                             path.append(.raceHistory)
                         }
@@ -35,8 +35,8 @@ struct ProfileView: View {
                         .listRowBackground(Color.clear)
                     }
 
-                    // Shoe Rotation
-                    Section("Shoe Rotation") {
+                    // Shoe Rotation (the view draws its own title)
+                    Section {
                         ShoeRotationView(rotation: $app.shoeRotation) { slot in
                             path.append(.gearVault)
                         }
