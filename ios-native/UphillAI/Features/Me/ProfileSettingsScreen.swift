@@ -6,18 +6,27 @@ struct ProfileSettingsScreen: View {
     @State private var model: ProfileSettingsModel
     @State private var showGuide = false
 
-    init(app: AppModel, section: TrainingDestination) {
-        _model = State(initialValue: ProfileSettingsModel(user: app.session.user!, section: section,
-            service: ProfileService(client: app.client), session: app.session,
-            isOffline: { app.isOffline || app.plan.cachedAt != nil }))
+    init(app: AppModel, section: TrainingDestination, preloadedModel: ProfileSettingsModel? = nil) {
+        if let preloadedModel {
+            _model = State(initialValue: preloadedModel)
+        } else {
+            _model = State(initialValue: ProfileSettingsModel(user: app.session.user!, section: section,
+                service: ProfileService(client: app.client), session: app.session,
+                isOffline: { app.isOffline || app.plan.cachedAt != nil }))
+        }
     }
 
     private var title: String {
         switch model.section {
         case .aboutYou: "About you"
-        case .heartRate: "Heart rate"
-        case .paces: "Paces"
+        case .trainingZones, .heartRate, .paces: "Training zones"
         case .schedule: "Schedule"
+        case .raceHistory: "Race History"
+        case .nutritionLab: "Nutrition Lab"
+        case .gearVault: "Gear Vault"
+        case .goalDeterminer: "Goal Determiner"
+        case .paceStrategy: "Pace Strategy"
+        case .knowledgeHub: "Knowledge Hub"
         }
     }
 
@@ -27,11 +36,9 @@ struct ProfileSettingsScreen: View {
                 switch model.section {
                 case .aboutYou:
                     aboutYouContent
-                case .heartRate:
-                    heartRateContent
-                case .paces:
-                    pacesContent
-                case .schedule:
+                case .trainingZones, .heartRate, .paces:
+                    trainingZonesSegmentedContent
+                case .schedule, .raceHistory, .nutritionLab, .gearVault, .goalDeterminer, .paceStrategy, .knowledgeHub:
                     EmptyView()
                 }
 
@@ -46,7 +53,32 @@ struct ProfileSettingsScreen: View {
         .tint(UH.Palette.accentInk)
         .sheet(isPresented: $showGuide) { WatchZonesGuideSheet() }
         .task(id: model.draft.paceZoneModel) {
-            if model.section == .paces { await model.loadZones() }
+            if model.section == .paces || model.section == .trainingZones { await model.loadZones() }
+        }
+        .task(id: model.selectedZoneTab) {
+            if (model.section == .paces || model.section == .trainingZones) && model.selectedZoneTab == .paces && model.zones == nil {
+                await model.loadZones()
+            }
+        }
+    }
+
+    // MARK: - Training Zones (Segmented)
+
+    private var trainingZonesSegmentedContent: some View {
+        VStack(alignment: .leading, spacing: UH.Space.regular) {
+            Picker("Zone Category", selection: $model.selectedZoneTab) {
+                ForEach(ProfileSettingsModel.ZoneTab.allCases) { tab in
+                    Text(tab.rawValue).tag(tab)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            switch model.selectedZoneTab {
+            case .heartRate:
+                heartRateContent
+            case .paces:
+                pacesContent
+            }
         }
     }
 

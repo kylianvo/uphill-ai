@@ -9,6 +9,14 @@ final class AppModel {
     let auth: any AuthServicing
     let planService: any PlanServicing
     let generationService: any GenerationServicing
+    let nutritionService: any NutritionServicing
+    let gearService: any GearServicing
+    let raceHistoryService: any RaceHistoryServicing
+    let goalEstimateService: any GoalEstimateServicing
+    let pacingService: any PacingServicing
+    let knowledgeService: any KnowledgeServicing
+    let deviceConnectionService: any DeviceConnectionServicing
+    var shoeRotation: ShoeRotation = .previewDefault
     let generation: GenerationCenter
     let plan: PlanViewModel
     let chat: ChatService
@@ -54,6 +62,13 @@ final class AppModel {
         auth = makeAuth(client)
         planService = PlanService(client: client)
         generationService = GenerationService(client: client)
+        nutritionService = NutritionService(client: client)
+        gearService = GearService(client: client)
+        raceHistoryService = RaceHistoryService(client: client)
+        goalEstimateService = GoalEstimateService(client: client)
+        pacingService = PacingService(client: client)
+        knowledgeService = KnowledgeService(client: client)
+        deviceConnectionService = DeviceConnectionService(client: client)
         generation = GenerationCenter(service: generationService)
         plan = PlanViewModel(service: planService, cache: cache, isSignedIn: { [session] in session.user != nil },
                              generation: generation, generationService: generationService)

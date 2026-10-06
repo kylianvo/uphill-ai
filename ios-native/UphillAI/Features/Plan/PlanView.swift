@@ -64,12 +64,16 @@ struct PlanView: View {
                 .sheet(isPresented: $showNextWeek) {
                     if let offer = model.nextWeekOffer { NextWeekSheet(model: model, offer: offer) }
                 }
+                .sheet(isPresented: $showExportCalendar) {
+                    ExportCalendarSheet(model: model)
+                }
                 .sheet(isPresented: $showManage, onDismiss: {
                     if startNewAfterManage { startNewAfterManage = false; onBuildPlan() }
                     if scheduleAfterManage { scheduleAfterManage = false; showSchedule = true }
                 }) {
                     ManagePlanSheet(model: model, onStartNew: { startNewAfterManage = true },
-                                    onSchedule: { scheduleAfterManage = true })
+                                    onSchedule: { scheduleAfterManage = true },
+                                    onTool: { dest in onSharpen(dest) })
                 }
         }
         .task { if model.state == .loading { await model.load() } }

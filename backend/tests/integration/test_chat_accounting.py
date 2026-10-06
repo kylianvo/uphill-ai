@@ -65,7 +65,9 @@ def test_retry_call_accounting_isolation(auth_headers):
     root_id = uuid.uuid4()
     retry_id = uuid.uuid4()
 
-    db.create_chat_turn(request_id=root_id, user_id=user_id, thread_id=thread["id"], fingerprint="fp-root", status="error")
+    db.create_chat_turn(
+        request_id=root_id, user_id=user_id, thread_id=thread["id"], fingerprint="fp-root", status="error"
+    )
     db.create_chat_turn(
         request_id=retry_id,
         user_id=user_id,
@@ -78,11 +80,15 @@ def test_retry_call_accounting_isolation(auth_headers):
 
     c1 = uuid.uuid4()
     reserve_chat_call(call_id=c1, request_id=root_id, feature="coach_chat", model="gemini-3.8-flash")
-    finish_chat_call(call_id=c1, status="error", usage_known=True, input_tokens=80, output_tokens=10, cost_usd=Decimal("0.000090"))
+    finish_chat_call(
+        call_id=c1, status="error", usage_known=True, input_tokens=80, output_tokens=10, cost_usd=Decimal("0.000090")
+    )
 
     c2 = uuid.uuid4()
     reserve_chat_call(call_id=c2, request_id=retry_id, feature="coach_chat", model="gemini-3.8-flash")
-    finish_chat_call(call_id=c2, status="ok", usage_known=True, input_tokens=90, output_tokens=60, cost_usd=Decimal("0.000200"))
+    finish_chat_call(
+        call_id=c2, status="ok", usage_known=True, input_tokens=90, output_tokens=60, cost_usd=Decimal("0.000200")
+    )
 
     # Root totals
     root_totals = chat_turn_totals(root_id)
@@ -106,7 +112,9 @@ def test_turn_totals_multi_call_aggregation(auth_headers):
     # 1. Retrieval embedding
     c_retrieval = uuid.uuid4()
     reserve_chat_call(c_retrieval, req_id, feature="chat_retrieval", model="gemini-embedding-2")
-    finish_chat_call(c_retrieval, status="ok", usage_known=True, input_tokens=50, output_tokens=0, cost_usd=Decimal("0.000030"))
+    finish_chat_call(
+        c_retrieval, status="ok", usage_known=True, input_tokens=50, output_tokens=0, cost_usd=Decimal("0.000030")
+    )
 
     # 2. Main answer
     c_answer = uuid.uuid4()
@@ -125,7 +133,9 @@ def test_turn_totals_multi_call_aggregation(auth_headers):
     # 3. Summary
     c_summary = uuid.uuid4()
     reserve_chat_call(c_summary, req_id, feature="chat_summary", model="gemini-3.8-flash")
-    finish_chat_call(c_summary, status="ok", usage_known=True, input_tokens=150, output_tokens=40, cost_usd=Decimal("0.000200"))
+    finish_chat_call(
+        c_summary, status="ok", usage_known=True, input_tokens=150, output_tokens=40, cost_usd=Decimal("0.000200")
+    )
 
     totals = chat_turn_totals(req_id)
     assert totals["total_calls"] == 3

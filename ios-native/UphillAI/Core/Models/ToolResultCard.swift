@@ -130,3 +130,23 @@ extension ToolResultPayload {
         return try? JSONCoding.decoder.decode(ScheduleProposalCardData.self, from: data)
     }
 }
+
+extension ToolResultPayload {
+    func decodeNutritionPlan() -> NutritionPlan? {
+        guard let cardData else { return nil }
+        guard let data = try? JSONEncoder().encode(cardData) else { return nil }
+        return try? JSONCoding.decoder.decode(NutritionPlan.self, from: data)
+    }
+
+    func decodeGearPlan() -> GearPlan? {
+        guard let cardData else { return nil }
+        guard let data = try? JSONEncoder().encode(cardData) else { return nil }
+        return try? JSONCoding.decoder.decode(GearPlan.self, from: data)
+    }
+
+    func decodeGoalEstimate() -> GoalEstimate? {
+        guard let cardData else { return nil }
+        guard let data = try? JSONEncoder().encode(cardData) else { return nil }
+        return try? JSONCoding.decoder.decode(GoalEstimate.self, from: data)
+    }
+}
