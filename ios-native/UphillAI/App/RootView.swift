@@ -103,6 +103,10 @@ private struct MainTabs: View {
                 ProfileView(app: app)
             }
         }
+        // An always-visible bar material: content scrolls cleanly behind the tab bar instead of
+        // showing through it (e.g. the Plan tab's "Coach's pick this week" label).
+        .toolbarBackground(.visible, for: .tabBar)
+        .toolbarBackground(.bar, for: .tabBar)
         .safeAreaInset(edge: .top) {
             if let athlete = app.actingAsAthlete {
                 CoachedAthleteBanner(athlete: athlete) {
