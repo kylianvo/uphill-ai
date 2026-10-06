@@ -25,71 +25,164 @@ struct CoachReviewNarrativeTests {
         #expect(block.weekEnd == 2)
     }
 
-    @Test @MainActor func planViewModelExposesNarrativeForActiveWeek() throws {
+    @Test @MainActor func planWith6GeneratedWeeksReviewShowsWeek3BlockText() async throws {
         let fake = FakePlanService()
         let vm = PlanViewModel(service: fake, cache: .inMemory())
 
-        let block = BlockCompletion(
-            blockNumber: 1,
-            weekStart: 1,
-            weekEnd: 2,
-            completionPct: 90,
-            unlocked: true,
-            aiLastWeekReview: "Strong endurance gains last week.",
-            aiThisWeekDescription: "Focus on uphill pacing and fueling."
+        let block1 = BlockCompletion(
+            blockNumber: 1, weekStart: 1, weekEnd: 2, completionPct: 90, unlocked: true,
+            aiLastWeekReview: "Pre-season foundation complete.",
+            aiThisWeekDescription: "Week 1-2 base volume focus."
+        )
+        let block2 = BlockCompletion(
+            blockNumber: 2, weekStart: 3, weekEnd: 4, completionPct: 80, unlocked: true,
+            aiLastWeekReview: "Solid consistency through the initial base block.",
+            aiThisWeekDescription: "Week 3 block focus: tempo progression and hill work."
+        )
+        let block3 = BlockCompletion(
+            blockNumber: 3, weekStart: 5, weekEnd: 6, completionPct: 0, unlocked: false,
+            aiLastWeekReview: "Great tempo execution in block 2.",
+            aiThisWeekDescription: "Peak mountain volume and long run simulation."
         )
         let blockResp = BlockCompletionResponse(
-            blocks: [block],
-            maxGeneratedWeek: 4
+            blocks: [block1, block2, block3],
+            maxGeneratedWeek: 6
         )
 
-        let snapshot = PlanSnapshot(plan: TestData.plan(), workouts: [
-            TestData.workout(["id": 1, "week_number": 1, "title": "Base Run"])
-        ])
-        vm.adopt(snapshot)
-        vm.adoptBlockCompletion(blockResp)
-        vm.selectedWeek = 1
+        var workouts: [Workout] = []
+        for w in 1...6 {
+            workouts.append(TestData.workout(["id": w, "week_number": w, "title": "Run W\(w)"]))
+        }
+        let snapshot = PlanSnapshot(plan: TestData.plan(["current_week": 1, "total_weeks": 8]), workouts: workouts)
+        fake.activeResult.withLock { $0 = .success(snapshot) }
+        fake.completionResult.withLock { $0 = .success(blockResp) }
+
+        // load() fetches blockCompletion independently of selectedWeek
+        await vm.load()
+        vm.selectedWeek = 3
 
         let narrative = vm.selectedWeekNarrative
-        #expect(narrative?.aiThisWeekDescription == "Focus on uphill pacing and fueling.")
-        #expect(narrative?.aiLastWeekReview == "Strong endurance gains last week.")
+        #expect(narrative?.aiThisWeekDescription == "Week 3 block focus: tempo progression and hill work.")
+        #expect(narrative?.aiLastWeekReview == "Solid consistency through the initial base block.")
     }
 
-    @Test @MainActor func isWeekUngeneratedIdentifiesUngeneratedWeeks() throws {
+    @Test @MainActor func narrativeSelectsBlockContainingWeekWith3WeekBlocks() async throws {
+        let fake = FakePlanService()
+        let vm = PlanViewModel(service: fake, cache: .inMemory())
+
+        let block1 = BlockCompletion(
+            blockNumber: 1, weekStart: 1, weekEnd: 3, completionPct: 95, unlocked: true,
+            aiThisWeekDescription: "Block 1 endurance foundation"
+        )
+        let block2 = BlockCompletion(
+            blockNumber: 2, weekStart: 4, weekEnd: 6, completionPct: 85, unlocked: true,
+            aiThisWeekDescription: "Block 2 threshold development"
+        )
+        let block3 = BlockCompletion(
+            blockNumber: 3, weekStart: 7, weekEnd: 9, completionPct: 0, unlocked: false,
+            aiThisWeekDescription: "Block 3 peak ultra prep"
+        )
+        let blockResp = BlockCompletionResponse(
+            blocks: [block1, block2, block3],
+            maxGeneratedWeek: 9
+        )
+
+        var workouts: [Workout] = []
+        for w in 1...9 {
+            workouts.append(TestData.workout(["id": w, "week_number": w, "title": "Run W\(w)"]))
+        }
+        let snapshot = PlanSnapshot(plan: TestData.plan(["current_week": 1, "total_weeks": 12]), workouts: workouts)
+        fake.activeResult.withLock { $0 = .success(snapshot) }
+        fake.completionResult.withLock { $0 = .success(blockResp) }
+
+        await vm.load()
+
+        // Block 1 (weeks 1...3)
+        vm.selectedWeek = 1
+        #expect(vm.selectedWeekNarrative?.aiThisWeekDescription == "Block 1 endurance foundation")
+        vm.selectedWeek = 2
+        #expect(vm.selectedWeekNarrative?.aiThisWeekDescription == "Block 1 endurance foundation")
+        vm.selectedWeek = 3
+        #expect(vm.selectedWeekNarrative?.aiThisWeekDescription == "Block 1 endurance foundation")
+
+        // Block 2 (weeks 4...6)
+        vm.selectedWeek = 4
+        #expect(vm.selectedWeekNarrative?.aiThisWeekDescription == "Block 2 threshold development")
+        vm.selectedWeek = 5
+        #expect(vm.selectedWeekNarrative?.aiThisWeekDescription == "Block 2 threshold development")
+        vm.selectedWeek = 6
+        #expect(vm.selectedWeekNarrative?.aiThisWeekDescription == "Block 2 threshold development")
+
+        // Block 3 (weeks 7...9)
+        vm.selectedWeek = 7
+        #expect(vm.selectedWeekNarrative?.aiThisWeekDescription == "Block 3 peak ultra prep")
+        vm.selectedWeek = 8
+        #expect(vm.selectedWeekNarrative?.aiThisWeekDescription == "Block 3 peak ultra prep")
+        vm.selectedWeek = 9
+        #expect(vm.selectedWeekNarrative?.aiThisWeekDescription == "Block 3 peak ultra prep")
+
+        // Beyond generated blocks
+        vm.selectedWeek = 10
+        #expect(vm.selectedWeekNarrative == nil)
+    }
+
+    @Test @MainActor func isWeekUngeneratedUsesMaxGeneratedWeekAndPreservesAllRestWeeks() async throws {
         let fake = FakePlanService()
         let vm = PlanViewModel(service: fake, cache: .inMemory())
 
         let blockResp = BlockCompletionResponse(
             blocks: [],
-            maxGeneratedWeek: 4
+            maxGeneratedWeek: 6
         )
+        // Week 4 is a real recovery all-rest week within generated range (week 4 <= 6)
         let snapshot = PlanSnapshot(
             plan: TestData.plan(["total_weeks": 8]),
             workouts: [
-                TestData.workout(["id": 1, "week_number": 1, "title": "Easy Run"]),
-                TestData.workout(["id": 2, "week_number": 2, "title": "Tempo Run"]),
-                TestData.workout(["id": 3, "week_number": 3, "title": "Long Run"]),
-                TestData.workout(["id": 4, "week_number": 4, "title": "Recovery"]),
-                // Week 5 has only rest days
-                TestData.workout(["id": 5, "week_number": 5, "title": "Rest", "type": "Rest", "duration_minutes": 0.0, "distance_km": 0.0]),
-                TestData.workout(["id": 6, "week_number": 5, "title": "Rest", "type": "Rest", "duration_minutes": 0.0, "distance_km": 0.0]),
-                TestData.workout(["id": 7, "week_number": 5, "title": "Rest", "type": "Rest", "duration_minutes": 0.0, "distance_km": 0.0]),
-                TestData.workout(["id": 8, "week_number": 5, "title": "Rest", "type": "Rest", "duration_minutes": 0.0, "distance_km": 0.0]),
-                TestData.workout(["id": 9, "week_number": 5, "title": "Rest", "type": "Rest", "duration_minutes": 0.0, "distance_km": 0.0]),
-                TestData.workout(["id": 10, "week_number": 5, "title": "Rest", "type": "Rest", "duration_minutes": 0.0, "distance_km": 0.0]),
-                TestData.workout(["id": 11, "week_number": 5, "title": "Rest", "type": "Rest", "duration_minutes": 0.0, "distance_km": 0.0])
+                TestData.workout(["id": 1, "week_number": 1, "title": "Run 1"]),
+                TestData.workout(["id": 2, "week_number": 2, "title": "Run 2"]),
+                TestData.workout(["id": 3, "week_number": 3, "title": "Run 3"]),
+                // Week 4: all-rest real recovery week
+                TestData.workout(["id": 41, "week_number": 4, "title": "Rest", "type": "Rest", "duration_minutes": 0.0, "distance_km": 0.0]),
+                TestData.workout(["id": 42, "week_number": 4, "title": "Rest", "type": "Rest", "duration_minutes": 0.0, "distance_km": 0.0]),
+                TestData.workout(["id": 5, "week_number": 5, "title": "Run 5"]),
+                TestData.workout(["id": 6, "week_number": 6, "title": "Run 6"])
             ]
         )
-        vm.adopt(snapshot)
-        vm.adoptBlockCompletion(blockResp)
+        fake.activeResult.withLock { $0 = .success(snapshot) }
+        fake.completionResult.withLock { $0 = .success(blockResp) }
 
+        await vm.load()
+
+        // Weeks 1...6 are generated; real all-rest week 4 must NOT be treated as ungenerated
         #expect(!vm.isWeekUngenerated(1))
         #expect(!vm.isWeekUngenerated(4))
-        #expect(vm.isWeekUngenerated(5))
-        #expect(vm.isWeekUngenerated(6))
+        #expect(!vm.isWeekUngenerated(6))
+
+        // Week 7 and 8 are beyond maxGeneratedWeek (6) -> ungenerated
+        #expect(vm.isWeekUngenerated(7))
+        #expect(vm.isWeekUngenerated(8))
     }
 
-    @Test @MainActor func canAdaptWeekRules() throws {
+    @Test @MainActor func isWeekUngeneratedFallbackWhenBlockCompletionNil() throws {
+        let fake = FakePlanService()
+        let vm = PlanViewModel(service: fake, cache: .inMemory())
+
+        let snapshot = PlanSnapshot(
+            plan: TestData.plan(["total_weeks": 6]),
+            workouts: [
+                TestData.workout(["id": 1, "week_number": 1, "title": "Run 1"]),
+                TestData.workout(["id": 2, "week_number": 2, "title": "Rest", "type": "Rest", "duration_minutes": 0.0, "distance_km": 0.0])
+            ]
+        )
+        // blockCompletion is nil
+        vm.adopt(snapshot)
+
+        #expect(!vm.isWeekUngenerated(1)) // active workouts -> false
+        #expect(vm.isWeekUngenerated(2))  // all rest fallback -> true
+        #expect(vm.isWeekUngenerated(3))  // no workouts -> true
+    }
+
+    @Test @MainActor func canAdaptWeekRules() async throws {
         let fake = FakePlanService()
         let vm = PlanViewModel(service: fake, cache: .inMemory())
 
@@ -106,8 +199,10 @@ struct CoachReviewNarrativeTests {
                 TestData.workout(["id": 4, "week_number": 4, "title": "Run 4"])
             ]
         )
-        vm.adopt(snapshot)
-        vm.adoptBlockCompletion(blockResp)
+        fake.activeResult.withLock { $0 = .success(snapshot) }
+        fake.completionResult.withLock { $0 = .success(blockResp) }
+
+        await vm.load()
 
         // Generated weeks can be adapted (matching web: week <= maxGeneratedWeek)
         #expect(vm.canAdaptWeek(1))

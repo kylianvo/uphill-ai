@@ -16,6 +16,7 @@ final class FakePlanService: PlanServicing {
     let completionResult = Mutex<Result<BlockCompletionResponse, APIError>>(.failure(.http(status: 404, message: nil, code: nil)))
     let reviewResult = Mutex<Result<WeekReview, APIError>>(.failure(.http(status: 404, message: nil, code: nil)))
     let goalResult = Mutex<Result<PlanGoal, APIError>>(.failure(.http(status: 404, message: nil, code: nil)))
+    let syncWatchResult = Mutex<Result<String, APIError>>(.success("Watch synced · Up to date"))
     let calls = Mutex<[String]>([])
 
     private func record(_ call: String) { calls.withLock { $0.append(call) } }
@@ -82,7 +83,7 @@ final class FakePlanService: PlanServicing {
 
     func syncWatch(planID: Int) async throws -> String {
         record("syncWatch \(planID)")
-        return "Watch synced · Up to date"
+        return try syncWatchResult.withLock { $0 }.get()
     }
     func knowledgeCard(topic: String, lang: String) async -> KnowledgeCardModel? {
         return KnowledgeCardModel(

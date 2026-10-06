@@ -108,11 +108,24 @@ Cool-down: 5 mins light stretching.
             "is_completed": 0
         ])
 
-        let fake = FakePlanService()
-        let vm = PlanViewModel(service: fake, cache: .inMemory())
-        vm.adopt(PlanSnapshot(plan: plan, workouts: [trailRun, strengthSession]))
+        let week3Run = TestData.workout([
+            "id": 1003,
+            "plan_id": 101,
+            "week_number": 3,
+            "day_of_week": "Tuesday",
+            "phase": "Build",
+            "title": "Tempo Progression Run",
+            "type": "Tempo",
+            "duration_minutes": 60.0,
+            "distance_km": 11.5,
+            "target_zone": "Z3",
+            "target_pace": "5:00-5:15",
+            "is_completed": 0,
+            "is_priority": true
+        ])
 
-        let block = BlockCompletion(
+        let fake = FakePlanService()
+        let block1 = BlockCompletion(
             blockNumber: 1,
             weekStart: 1,
             weekEnd: 2,
@@ -121,9 +134,22 @@ Cool-down: 5 mins light stretching.
             aiLastWeekReview: "Strong aerobic consistency across your long run. Zone 2 discipline was well controlled.",
             aiThisWeekDescription: "Prioritize controlled climbing pace and focus on timely fueling during Wednesday's endurance build."
         )
-        let blockResp = BlockCompletionResponse(blocks: [block], maxGeneratedWeek: 4)
-        vm.adoptBlockCompletion(blockResp)
+        let block2 = BlockCompletion(
+            blockNumber: 2,
+            weekStart: 3,
+            weekEnd: 4,
+            completionPct: 75,
+            unlocked: true,
+            aiLastWeekReview: "Consistent foundation in block 1. Aerobic base is solidifying.",
+            aiThisWeekDescription: "Week 3 focus: sustain tempo intervals and dial in your nutrition strategy."
+        )
+        let blockResp = BlockCompletionResponse(blocks: [block1, block2], maxGeneratedWeek: 6)
 
+        let snapshot = PlanSnapshot(plan: plan, workouts: [trailRun, strengthSession, week3Run])
+        fake.activeResult.withLock { $0 = .success(snapshot) }
+        fake.completionResult.withLock { $0 = .success(blockResp) }
+
+        let vm = PlanViewModel(service: fake, cache: .inMemory())
         return (vm, trailRun, strengthSession)
     }
 
@@ -184,7 +210,12 @@ Cool-down: 5 mins light stretching.
         let planCoachReview = PlanView(model: model, generation: gen, onBuildPlan: {}, onViewProgress: {}, user: nil, initialViewMode: .list, initialCoachExpanded: true)
         save(planCoachReview, name: "task4-plan-coach-review-takeaways")
 
-        // 4b. Task 4: Week 7 ungenerated week CTA (replacing fake rest days)
+        // 4b. Task 4: Coach's Review on a non-final week (Week 3 of 6 generated weeks)
+        model.selectedWeek = 3
+        let planWeek3Review = PlanView(model: model, generation: gen, onBuildPlan: {}, onViewProgress: {}, user: nil, initialViewMode: .list, initialCoachExpanded: true)
+        save(planWeek3Review, name: "task4-coach-review-non-final-week3")
+
+        // 4c. Task 4: Week 7 ungenerated week CTA (replacing fake rest days)
         model.selectedWeek = 7
         let planWeek7CTA = PlanView(model: model, generation: gen, onBuildPlan: {}, onViewProgress: {}, user: nil, initialViewMode: .list, initialCoachExpanded: false)
         save(planWeek7CTA, name: "task4-plan-week7-ungenerated-cta")

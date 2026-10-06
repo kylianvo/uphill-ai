@@ -187,7 +187,7 @@ struct PlanViewModelTests {
         await model.load()
         model.selectedWeek = 5
         await model.select(TestData.plan(["id": 3]))
-        #expect(service.calls.withLock { $0 }.last == "select 3")
+        #expect(service.calls.withLock { $0 }.contains("select 3"))
         #expect(model.selectedWeek == 2)
     }
 
@@ -207,7 +207,7 @@ struct PlanViewModelTests {
         let target = try #require(model.moveTargets(for: workout).first)
         #expect(await model.move(workout, to: target) == false)
         await model.select(snap.plan)
-        #expect(service.calls.withLock { $0 } == ["active", "active"])
+        #expect(service.calls.withLock { $0 } == ["active", "completion \(snap.plan.id)", "active"])
         #expect(model.actionError == PlanViewModel.offlineMessage)
     }
 
@@ -448,7 +448,7 @@ struct PlanViewModelTests {
         #expect(ok)
         let calls = service.calls.withLock { $0 }
         #expect(calls.contains("delete \(snap.plan.id)"))
-        #expect(calls.last == "active")
+        #expect(calls.contains("active"))
     }
 
     @Test func syncWatchUpdatesNoticeAndReloads() async throws {
@@ -462,5 +462,25 @@ struct PlanViewModelTests {
         #expect(model.watchSyncNotice == "Watch synced · Up to date")
         model.clearWatchSyncNotice()
         #expect(model.watchSyncNotice == nil)
+    }
+
+    @Test func syncWatchMapsErrorsToUserReadableNotices() async throws {
+        let snap = snapshot()
+        let service = FakePlanService()
+        service.activeResult.withLock { $0 = .success(snap) }
+        let model = make(service)
+        await model.load()
+
+        // Unauthorized / 401 / 403
+        service.syncWatchResult.withLock { $0 = .failure(.unauthorized) }
+        let authNotice = await model.syncWatch()
+        #expect(authNotice == "COROS connection expired. Please reconnect in Profile.")
+        #expect(model.watchSyncNotice == "COROS connection expired. Please reconnect in Profile.")
+
+        // Transport / API Error userMessage
+        service.syncWatchResult.withLock { $0 = .failure(.transport("Connection reset")) }
+        let netNotice = await model.syncWatch()
+        #expect(netNotice == "Can't reach Uphill. Check your connection and try again.")
+        #expect(model.watchSyncNotice == "Can't reach Uphill. Check your connection and try again.")
     }
 }

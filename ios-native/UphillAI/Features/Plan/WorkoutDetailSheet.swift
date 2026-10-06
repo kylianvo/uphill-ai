@@ -142,7 +142,7 @@ struct WorkoutDetailSheet: View {
                                 }
                             } else {
                                 bottomActionBar(workout)
-                                if !workout.isRest && !workout.isDone {
+                                if actingAsAthlete == nil && !workout.isRest && !workout.isDone && isTodayOrFuture(workout) {
                                     sendToCorosSection(workout)
                                 }
                                 if !workout.isRest {
@@ -654,6 +654,18 @@ struct WorkoutDetailSheet: View {
 
     // MARK: - Send to Watch (COROS)
 
+    private func isTodayOrFuture(_ w: Workout) -> Bool {
+        guard let plan = model.snapshot?.plan,
+              let date = PlanCalendar.date(week: w.weekNumber, weekday: w.weekday, plan: plan,
+                                           workouts: model.snapshot?.workouts ?? []) else {
+            return true
+        }
+        let cal = Calendar.current
+        let startOfToday = cal.startOfDay(for: Date())
+        let startOfWorkoutDate = cal.startOfDay(for: date)
+        return startOfWorkoutDate >= startOfToday
+    }
+
     private func sendToCorosSection(_ w: Workout) -> some View {
         VStack(spacing: 6) {
             Button {
@@ -684,7 +696,7 @@ struct WorkoutDetailSheet: View {
                         Text("Connect COROS in Profile")
                             .font(.system(size: 13, weight: .semibold))
                     case .idle, .error:
-                        Text("Send to COROS")
+                        Text("Send next 4 weeks to COROS")
                             .font(.system(size: 13, weight: .semibold))
                     }
                 }
