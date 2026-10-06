@@ -770,6 +770,30 @@ def init_db():
 
         conn.execute(
             text("""
+        CREATE TABLE IF NOT EXISTS fitness_assessments (
+            id                SERIAL PRIMARY KEY,
+            user_id           INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            source            TEXT NOT NULL,
+            vo2max            REAL,
+            running_level     REAL,
+            threshold_pace    TEXT,
+            pred_5k_sec       REAL,
+            pred_10k_sec      REAL,
+            pred_hm_sec       REAL,
+            pred_marathon_sec REAL,
+            measured_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        """)
+        )
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS idx_fitness_assessments_user "
+                "ON fitness_assessments (user_id, measured_at DESC)"
+            )
+        )
+
+        conn.execute(
+            text("""
         CREATE TABLE IF NOT EXISTS goal_assessments (
             id                SERIAL PRIMARY KEY,
             user_id           INTEGER REFERENCES users(id) ON DELETE CASCADE,  -- NULL = signed-out estimate
@@ -820,6 +844,8 @@ def init_db():
             # blocks above; these ALTERs self-migrate existing dev databases).
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS max_continuous_jog_min INTEGER",
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS athlete_tier TEXT",
+            "ALTER TABLE plans ADD COLUMN IF NOT EXISTS fitness_snapshot JSONB",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS threshold_source TEXT NOT NULL DEFAULT 'unknown'",
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS prediction JSONB",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS rpe INTEGER",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS notes TEXT",
@@ -2049,7 +2075,8 @@ def update_user_profile(user_id: int, profile_data: dict[str, Any]) -> bool:
                 coros_running_level = COALESCE(:running_level, coros_running_level),
                 pace_zone_model = COALESCE(:model, pace_zone_model),
                 custom_pace_zones = COALESCE(CAST(:custom_zones AS jsonb), custom_pace_zones),
-                athlete_notes = COALESCE(:athlete_notes, athlete_notes)
+                athlete_notes = COALESCE(:athlete_notes, athlete_notes),
+                threshold_source = COALESCE(:threshold_source, threshold_source)
             WHERE id = :id
         """),
             {
@@ -2068,6 +2095,7 @@ def update_user_profile(user_id: int, profile_data: dict[str, Any]) -> bool:
                 "height_cm": profile_data.get("height_cm"),
                 "weight_kg": profile_data.get("weight_kg"),
                 "threshold_pace": profile_data.get("threshold_pace"),
+                "threshold_source": profile_data.get("threshold_source"),
                 "vo2max": profile_data.get("coros_vo2max"),
                 "running_level": profile_data.get("coros_running_level"),
                 "model": profile_data.get("pace_zone_model"),
@@ -2148,7 +2176,8 @@ def update_onboarding_profile(user_id: int, data: dict[str, Any]) -> bool:
                 aet_hr = :aet_hr,
                 ant_hr = :ant_hr,
                 zone2_pace_min = COALESCE(:zone2_pace_min, zone2_pace_min),
-                zone2_pace_max = COALESCE(:zone2_pace_max, zone2_pace_max)
+                zone2_pace_max = COALESCE(:zone2_pace_max, zone2_pace_max),
+                threshold_source = COALESCE(:threshold_source, threshold_source)
             WHERE id = :id
         """),
             {
@@ -2169,6 +2198,7 @@ def update_onboarding_profile(user_id: int, data: dict[str, Any]) -> bool:
                 "ant_hr": int(data.get("ant_hr", 165)),
                 "zone2_pace_min": data.get("zone2_pace_min"),
                 "zone2_pace_max": data.get("zone2_pace_max"),
+                "threshold_source": data.get("threshold_source"),
                 "double_session_days": json.dumps(data.get("double_session_days", [])),
                 "id": user_id,
             },
@@ -3389,6 +3419,9 @@ def delete_provider_data(user_id: int, provider: str) -> None:
         if provider == "coros":
             conn.execute(text("DELETE FROM coros_plan_links WHERE user_id = :u"), {"u": user_id})
             conn.execute(text("DELETE FROM coros_push_usage WHERE user_id = :u"), {"u": user_id})
+            conn.execute(
+                text("DELETE FROM fitness_assessments WHERE user_id = :u AND source = 'coros'"), {"u": user_id}
+            )
         conn.commit()
 
 
@@ -5557,18 +5590,34 @@ _ON_FOOT_TYPES = ("run", "outdoor_run", "indoor_run", "trail_run", "track_run", 
 
 
 def get_utmb_index(user_id: int) -> int | None:
-    """UTMB index from the athlete's claimed UTMB profile, via the runner mirror."""
+    """UTMB general index for the athlete's newest UTMB claim: from the claim's own
+    meta (stored at claim time), else from the runner mirror. The mirror can be empty
+    (it was on production in 2026-10), which made this None for every athlete."""
     with engine.connect() as conn:
         row = conn.execute(
             text("""
-            SELECT u.utmb_index FROM race_profile_claims c
-            JOIN utmb_runners u ON u.uri = c.external_id
-            WHERE c.user_id = :uid AND c.source = 'utmb' AND u.utmb_index IS NOT NULL
+            SELECT (
+                     SELECT round((i->>'index')::numeric)::int
+                     FROM jsonb_array_elements(
+                         CASE WHEN jsonb_typeof(c.meta->'indexes') = 'array'
+                              THEN c.meta->'indexes' ELSE '[]'::jsonb END
+                     ) i
+                     -- A non-numeric index is ignored rather than failing the cast.
+                     WHERE i->>'piCategory' = 'general' AND jsonb_typeof(i->'index') = 'number'
+                     LIMIT 1
+                   ) AS meta_index,
+                   u.utmb_index AS mirror_index
+            FROM race_profile_claims c
+            LEFT JOIN utmb_runners u ON u.uri = c.external_id
+            WHERE c.user_id = :uid AND c.source = 'utmb'
             ORDER BY c.created_at DESC LIMIT 1
         """),
             {"uid": user_id},
         ).fetchone()
-    return int(row[0]) if row else None
+    if not row:
+        return None
+    value = row.meta_index if row.meta_index is not None else row.mirror_index
+    return int(value) if value is not None else None
 
 
 def get_weekly_training_trend(user_id: int, weeks: int = 8) -> dict[str, Any] | None:
@@ -5594,6 +5643,100 @@ def get_weekly_training_trend(user_id: int, weeks: int = 8) -> dict[str, Any] | 
         "avg_weekly_vert_m": round(float(row.vert) / weeks),
         "last_activity": row.last_activity.date().isoformat() if row.last_activity else None,
     }
+
+
+_ASSESSMENT_FIELDS = (
+    "vo2max",
+    "running_level",
+    "threshold_pace",
+    "pred_5k_sec",
+    "pred_10k_sec",
+    "pred_hm_sec",
+    "pred_marathon_sec",
+)
+
+
+def _same(stored: Any, new: Any) -> bool:
+    """REAL columns are float32, so 61.3 comes back as 61.2999...; compare with tolerance."""
+    if stored is None or new is None:
+        return stored is None and new is None
+    if isinstance(new, str):
+        return stored == new
+    return abs(float(stored) - float(new)) < 1e-3
+
+
+def get_latest_fitness_assessment(user_id: int) -> dict[str, Any] | None:
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("""
+            SELECT * FROM fitness_assessments WHERE user_id = :uid
+            ORDER BY measured_at DESC, id DESC LIMIT 1
+        """),
+            {"uid": user_id},
+        ).fetchone()
+    return _row_to_dict(row) if row else None
+
+
+def record_fitness_assessment(user_id: int, source: str, data: dict[str, Any]) -> bool:
+    """Append an assessment only when it differs from the latest one for this source,
+    so repeated syncs do not fill the history with identical rows."""
+    values = {f: data.get(f) for f in _ASSESSMENT_FIELDS}
+    if all(v is None for v in values.values()):
+        return False
+    with engine.connect() as conn:
+        latest = conn.execute(
+            text(f"""
+            SELECT {", ".join(_ASSESSMENT_FIELDS)} FROM fitness_assessments
+            WHERE user_id = :uid AND source = :src ORDER BY measured_at DESC, id DESC LIMIT 1
+        """),
+            {"uid": user_id, "src": source},
+        ).fetchone()
+        if latest and all(_same(getattr(latest, f), values[f]) for f in _ASSESSMENT_FIELDS):
+            return False
+        conn.execute(
+            text(f"""
+            INSERT INTO fitness_assessments (user_id, source, {", ".join(_ASSESSMENT_FIELDS)})
+            VALUES (:uid, :src, {", ".join(":" + f for f in _ASSESSMENT_FIELDS)})
+        """),
+            {"uid": user_id, "src": source, **values},
+        )
+        conn.commit()
+    return True
+
+
+def get_weekly_run_volumes(user_id: int, since: datetime.date) -> list[dict[str, Any]]:
+    """On-foot km and vert per Monday-start week (UTC), from `since`. Weeks with no
+    activity are absent; the caller decides whether such a week was covered by a sync."""
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("""
+            SELECT date_trunc('week', start_time AT TIME ZONE 'UTC')::date AS week_start,
+                   COALESCE(SUM(distance_km), 0) AS km, COALESCE(SUM(elevation_gain_m), 0) AS vert
+            FROM activities
+            WHERE user_id = :uid AND duplicate_of IS NULL AND activity_type = ANY(:types)
+              AND start_time >= :since
+            GROUP BY 1 ORDER BY 1
+        """),
+            {"uid": user_id, "types": list(_ON_FOOT_TYPES), "since": since},
+        ).fetchall()
+    return [{"week_start": r.week_start, "km": round(float(r.km), 1), "vert_m": round(float(r.vert), 1)} for r in rows]
+
+
+def get_first_activity_at(user_id: int, provider: str) -> datetime.datetime | None:
+    with engine.connect() as conn:
+        return conn.execute(
+            text("SELECT MIN(start_time) FROM activities WHERE user_id = :uid AND source_provider = :p"),
+            {"uid": user_id, "p": provider},
+        ).scalar()
+
+
+def set_plan_fitness_snapshot(plan_id: int, snapshot: dict[str, Any]) -> None:
+    with engine.connect() as conn:
+        conn.execute(
+            text("UPDATE plans SET fitness_snapshot = CAST(:s AS jsonb) WHERE id = :id"),
+            {"s": json.dumps(snapshot, default=str), "id": plan_id},
+        )
+        conn.commit()
 
 
 def get_latest_daily_metrics(user_id: int) -> dict[str, Any] | None:

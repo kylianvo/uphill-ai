@@ -30,11 +30,26 @@ def _as_utc(value: Any) -> datetime | None:
 
 
 def record_generation(
-    *, plan_id: int, user_id: int | None, block_number: int, workouts: list[dict[str, Any]], trace_id: str | None
+    *,
+    plan_id: int,
+    user_id: int | None,
+    block_number: int,
+    workouts: list[dict[str, Any]],
+    trace_id: str | None,
+    tier: str | None = None,
+    measured_weekly_km: float | None = None,
 ) -> None:
     if not plan_id or not trace_id:
         return
     try:
+        # First, so a plan-checks failure below cannot swallow them.
+        if tier:
+            observability.score(trace_id=trace_id, name="plan_tier", value=tier)
+        if measured_weekly_km:
+            week2 = sum(float(w.get("distance_km") or 0) for w in workouts if w.get("week_number") == 2)
+            if week2 > 0:
+                ratio = week2 / measured_weekly_km
+                observability.score(trace_id=trace_id, name="plan_volume_fit", value=round(min(ratio, 1 / ratio), 3))
         share = plan_checks.pass_share(plan_checks.run_checks(workouts))
         if share is not None:
             observability.score(trace_id=trace_id, name="plan_checks", value=share)

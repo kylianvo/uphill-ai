@@ -33,6 +33,7 @@ ALL_TABLES = [
     "coros_plan_links",
     "coros_push_usage",
     "workouts",
+    "fitness_assessments",
     "plans",
     "sessions",
     "sources",
