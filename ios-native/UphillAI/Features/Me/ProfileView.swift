@@ -162,6 +162,7 @@ struct ProfileView: View {
                 )
             }
             .task {
+                await app.loadShoeRotation()
                 if let history = try? await app.raceHistoryService.history() {
                     badges = DistanceBadge.deriveBadges(from: history.results)
                 }

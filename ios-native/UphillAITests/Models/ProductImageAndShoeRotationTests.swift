@@ -95,4 +95,17 @@ struct ProductImageAndShoeRotationTests {
         rotation.removeShoe(for: .tempo)
         #expect(rotation.tempo == nil)
     }
+
+    @Test func shoeRotationMatchesBackendJSON() throws {
+        // Same shape as GET/PUT /api/shoe-rotation (backend/main.py ShoeRotationItem).
+        let json = #"{"shoes":[{"slot":"trail","brand":"Hoka","model":"Speedgoat 6","distance_km":42.5,"max_distance_km":700,"is_retired":false,"notes":null}]}"#
+        let rotation = try JSONCoding.decoder.decode(ShoeRotation.self, from: Data(json.utf8))
+        #expect(rotation.trail?.distanceKm == 42.5)
+
+        let encoded = try JSONSerialization.jsonObject(with: JSONCoding.encoder.encode(rotation)) as? [String: Any]
+        let shoe = (encoded?["shoes"] as? [[String: Any]])?.first
+        #expect(shoe?["distance_km"] as? Double == 42.5)
+        #expect(shoe?["max_distance_km"] as? Double == 700)
+        #expect(shoe?["is_retired"] as? Bool == false)
+    }
 }

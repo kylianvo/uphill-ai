@@ -17,24 +17,32 @@ final class AppModel {
     let knowledgeService: any KnowledgeServicing
     let deviceConnectionService: any DeviceConnectionServicing
     let coachingService: any CoachingServicing
-    var shoeRotation: ShoeRotation = AppModel.loadShoeRotation() {
+    /// The server (`/api/shoe-rotation`) owns the rotation; every local change is saved back.
+    var shoeRotation = ShoeRotation() {
         didSet {
-            saveShoeRotation()
+            guard !applyingRemoteRotation, oldValue != shoeRotation else { return }
+            scheduleShoeRotationSave()
         }
     }
+    private var applyingRemoteRotation = false
+    private var shoeRotationSave: Task<Void, Never>?
 
-    private func saveShoeRotation() {
-        if let data = try? JSONCoding.encoder.encode(shoeRotation) {
-            UserDefaults.standard.set(data, forKey: "uphill_shoe_rotation")
-        }
+    func loadShoeRotation() async {
+        guard let remote = try? await gearService.fetchShoeRotation() else { return }
+        applyingRemoteRotation = true
+        shoeRotation = remote
+        applyingRemoteRotation = false
     }
 
-    private static func loadShoeRotation() -> ShoeRotation {
-        if let data = UserDefaults.standard.data(forKey: "uphill_shoe_rotation"),
-           let loaded = try? JSONCoding.decoder.decode(ShoeRotation.self, from: data) {
-            return loaded
+    /// Quick taps (+5 km, +5 km) collapse into one save of the latest rotation.
+    private func scheduleShoeRotationSave() {
+        shoeRotationSave?.cancel()
+        let rotation = shoeRotation
+        shoeRotationSave = Task { [gearService] in
+            try? await Task.sleep(for: .milliseconds(600))
+            guard !Task.isCancelled else { return }
+            _ = try? await gearService.saveShoeRotation(rotation)
         }
-        return .previewDefault
     }
     var actingAsAthlete: CoachedAthleteRow? = nil
     var coachedAthleteProfile: User? = nil
@@ -101,6 +109,10 @@ final class AppModel {
             self?.plan.reset()
             self?.onboardingDeferred = false
             self?.lastSetup = nil
+            self?.shoeRotationSave?.cancel()
+            self?.applyingRemoteRotation = true
+            self?.shoeRotation = ShoeRotation()
+            self?.applyingRemoteRotation = false
         }
         generation.onFinished = { [weak self] kind, outcome in
             guard let self, self.session.user != nil else { return }
