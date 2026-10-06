@@ -104,7 +104,7 @@ from services import (
     week_rebuild,
 )
 from services.auth_service import hash_password, verify_password
-from services.calendar_rules import GuardViolation, resolve_today
+from services.calendar_rules import GuardViolation, is_upcoming, resolve_today, start_monday, upcoming_note
 from services.calendar_service import CalendarService
 from services.course_match import resolve_course_match as _resolve_course_match
 from services.gear_planner import GearParams, gear_planner
@@ -296,6 +296,7 @@ class GenerateNextBlockRequest(BaseModel):
     use_treadmill: bool | None = None
     training_environment: str | None = None
     athlete_notes: str | None = None
+    client_today: str | None = None  # the athlete's local date; ±1 day of server UTC (calendar_rules.resolve_today)
 
 
 class AdaptWeekRequest(BaseModel):
@@ -1568,7 +1569,7 @@ def _build_athlete_context_block(athlete: dict[str, Any]) -> str:
             lines.append("\nRecent Watch Activities & Execution Quality (Last 14 Days):")
             for act in recent_matches[-6:]:
                 dist = f"{act['distance_km']:.1f}km" if act.get("distance_km") else f"{act.get('sets') or 'N/A'} sets"
-                dur = f"{round((act.get('duration_seconds') or 0)/60)}m"
+                dur = f"{round((act.get('duration_seconds') or 0) / 60)}m"
                 hr = f"avg HR {act['avg_hr']} bpm" if act.get("avg_hr") else ""
                 q_grade = (
                     f"Quality: {act.get('quality_grade')} ({act.get('quality_score')}%)"
@@ -2252,6 +2253,12 @@ async def _generate_next_block_for_athlete(
 
     block_context = None
     context_lines: list[str] = []
+    # Generating before the block's last week ends (e.g. Saturday, long run still
+    # on Sunday) leaves sessions that can still happen. They are neither missed nor
+    # "not logged", and they are left out of planned totals and completion %, or the
+    # model reads an unfinished week as under-completion and holds the volume.
+    today = resolve_today(request.client_today, calendar_ops.server_today())
+    plan_monday = start_monday(plan.get("start_date"))
 
     # Newest block first: it carries per-session detail, and this blob is the
     # unbounded tail of the prompt — older summaries are the right thing to lose
@@ -2262,12 +2269,18 @@ async def _generate_next_block_for_athlete(
         block_wos = [
             w for w in all_workouts if wk_start <= (w.get("week_number") or 0) <= wk_end and w.get("type") != "Rest"
         ]
+        upcoming_wos = [w for w in block_wos if is_upcoming(w, plan_monday, today)]
+        upcoming_ids = {w["id"] for w in upcoming_wos}
+        due_wos = [w for w in block_wos if w["id"] not in upcoming_ids]
         completed_wos = [w for w in block_wos if w.get("is_completed") == 1]
 
-        # Planned totals (from generated workouts), summed week-by-week
+        # Planned totals (from generated workouts), summed week-by-week; sessions
+        # still upcoming are not due yet.
         planned_weeks = [get_week_planned_volume(request.plan_id, wk) for wk in range(wk_start, wk_end + 1)]
-        planned_km = sum(w["distance_km"] for w in planned_weeks)
-        planned_min = sum(w["duration_minutes"] for w in planned_weeks)
+        planned_km = sum(w["distance_km"] for w in planned_weeks) - sum(w.get("distance_km") or 0 for w in upcoming_wos)
+        planned_min = sum(w["duration_minutes"] for w in planned_weeks) - sum(
+            w.get("duration_minutes") or 0 for w in upcoming_wos
+        )
 
         # Actual totals (from true GPS watch activities, both matched & unplanned)
         actual_vol = get_block_actual_volume(
@@ -2290,7 +2303,7 @@ async def _generate_next_block_for_athlete(
         unplanned_km = actual_vol.get("unplanned_km", 0.0)
 
         sessions_done = len(completed_wos)
-        sessions_total = len(block_wos)
+        sessions_total = len(due_wos)
         completion_pct = round(sessions_done / sessions_total * 100) if sessions_total else 0
 
         # Avg per-session RPE from individual workouts that have it logged
@@ -2304,7 +2317,7 @@ async def _generate_next_block_for_athlete(
 
         # Collect session-level notes (exclude empty/None)
         session_notes = [
-            f'{w.get("day_of_week","?")} W{w.get("week_number","?")}: "{w["notes"]}"'
+            f'{w.get("day_of_week", "?")} W{w.get("week_number", "?")}: "{w["notes"]}"'
             for w in completed_wos
             if w.get("notes")
         ]
@@ -2312,13 +2325,13 @@ async def _generate_next_block_for_athlete(
         # block_wos is already filtered to non-Rest workouts (see its
         # definition above, earlier in this loop) -- classify by review status.
         missed = [
-            f'{w.get("day_of_week","?")} {w.get("title") or w.get("type","?")}'
-            for w in block_wos
+            f"{w.get('day_of_week', '?')} {w.get('title') or w.get('type', '?')}"
+            for w in due_wos
             if _session_review_status(w) == "MISSED"
         ]
         not_logged = [
-            f'{w.get("day_of_week","?")} {w.get("title") or w.get("type","?")}'
-            for w in block_wos
+            f"{w.get('day_of_week', '?')} {w.get('title') or w.get('type', '?')}"
+            for w in due_wos
             if _session_review_status(w) == "not logged"
         ]
 
@@ -2326,9 +2339,9 @@ async def _generate_next_block_for_athlete(
         line = (
             f"Block {blk} (Wk {wk_start}-{wk_end}): "
             f"{sessions_done}/{sessions_total} sessions ({completion_pct}%) | "
-            f"Actual {actual_km:.1f}km/{actual_min/60:.1f}h"
+            f"Actual {actual_km:.1f}km/{actual_min / 60:.1f}h"
             + (f" (+{actual_vert:.0f}m D+)" if actual_vert > 0 else "")
-            + f" vs Planned {planned_km:.1f}km/{planned_min/60:.1f}h"
+            + f" vs Planned {planned_km:.1f}km/{planned_min / 60:.1f}h"
         )
         if unplanned_count > 0:
             line += f" [Includes {unplanned_count} unplanned watch activity: {unplanned_km:.1f}km]"
@@ -2345,14 +2358,15 @@ async def _generate_next_block_for_athlete(
                 feeling_label = "Max Effort"
             line += f" | Effort: {feeling_label} (RPE {block_rpe}/10)"
         context_lines.append(line)
+        if upcoming_wos:
+            context_lines.append(f"  {upcoming_note(upcoming_wos)}")
 
         if block_note:
             context_lines.append(f'  Athlete note: "{block_note}"')
 
         if blk == prev_block and override_used:
             context_lines.append(
-                f"  ⚠ Block {blk} generated via override at {completion['completion_pct']}% "
-                f"(below the 70% threshold)."
+                f"  ⚠ Block {blk} generated via override at {completion['completion_pct']}% (below the 70% threshold)."
             )
 
         if blk == request.block_number - 1:
@@ -2376,7 +2390,7 @@ async def _generate_next_block_for_athlete(
                 dur = w.get("duration_minutes") or 0
                 km = w.get("distance_km") or 0
                 planned = f"{w.get('title') or w.get('type', '?')} ({dur:.0f}min" + (f"/{km:.1f}km)" if km else ")")
-                status = _session_review_status(w)
+                status = "upcoming" if w["id"] in upcoming_ids else _session_review_status(w)
                 if status == "completed":
                     detail = "completed"
                     if w.get("rpe"):
@@ -2617,6 +2631,7 @@ async def _adapt_week_for_athlete(request: AdaptWeekRequest, athlete_id: int, jo
         week_rebuild.RebuildRequest(
             **request.model_dump(exclude={"plan_id", "max_continuous_jog_min", "client_today"})
         ),
+        today=today,
     )
 
     job_id = str(_uuid.uuid4())

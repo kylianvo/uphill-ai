@@ -1,5 +1,6 @@
 """Integration tests for POST /api/coach/adapt-week and preserve_completed behavior."""
 
+import datetime as dt
 import time
 from unittest.mock import AsyncMock, patch
 
@@ -503,7 +504,13 @@ def _seed_two_weeks(client, headers, plan_id, week1_minutes, week2_minutes, week
         assert resp.status_code == 200, resp.text
 
 
-def _adapt_and_capture(client, headers, plan_id, **payload):
+# The test plan starts Thursday 2027-04-01, so week 1 is Mon 2027-03-29..Sun 04-04.
+# Adapting week 2 "on its Monday" puts all of week 1 in the past; without pinning
+# today, every week 1 session would still be upcoming and none would count as missed.
+WEEK2_MONDAY = dt.date(2027, 4, 5)
+
+
+def _adapt_and_capture(client, headers, plan_id, today=WEEK2_MONDAY, **payload):
     captured = {}
 
     async def _fake_generate(plan_id, user_profile, race_info, total_weeks=12, **kwargs):
@@ -526,9 +533,12 @@ def _adapt_and_capture(client, headers, plan_id, **payload):
             for d in DAYS
         ], "recreational"
 
-    with patch(
-        "services.plan_generator.PlanGenerator.generate_plan_workouts",
-        new=AsyncMock(side_effect=_fake_generate),
+    with (
+        patch(
+            "services.plan_generator.PlanGenerator.generate_plan_workouts",
+            new=AsyncMock(side_effect=_fake_generate),
+        ),
+        patch("services.calendar_ops.server_today", return_value=today),
     ):
         resp = client.post(
             "/api/coach/adapt-week",
@@ -623,6 +633,22 @@ class TestAdaptWeekVolumeBounds:
         assert "Target Full Week Total: 114-122 min" in ctx
         assert "Prior-Week Adherence" in ctx
 
+    def test_sessions_still_upcoming_in_the_prior_week_are_not_counted_as_missed(self, client, auth_headers):
+        """#89: adapting next week on Friday, with Saturday's session still ahead. Week 1
+        (Mon/Wed/Fri/Sat, 40 min each) has Mon-Fri done; Saturday must not drag adherence
+        to 75% and trigger a hold -- it simply hasn't happened yet."""
+        plan_id = _create_test_plan(client, auth_headers["headers"])
+        _seed_two_weeks(client, auth_headers["headers"], plan_id, [40, 40, 40, 40], [60, 60, 60], week1_completed=3)
+
+        ctx = _adapt_and_capture(
+            client, auth_headers["headers"], plan_id, today=dt.date(2027, 4, 2), fatigue_level="moderate"
+        )
+
+        assert "Week not finished: W1 Saturday W1 Session 4 still upcoming" in ctx
+        assert "Prior-Week Adherence" not in ctx
+        assert "vs Planned 0.0km / 2.0h" in ctx
+        assert "Reference: Week 2 as planned 180 min" in ctx
+
     def test_the_athlete_request_is_given_explicit_precedence_over_the_cap(self, client, auth_headers):
         """The 5-tier RPE table used to sit as prose above a MUST/DO-NOT-EXCEED
         ceiling with nothing saying which wins, so the number always won."""
@@ -648,7 +674,14 @@ class TestAdaptWeekVolumeBounds:
         plan_id = _create_test_plan(client, auth_headers["headers"])
         _seed_two_weeks(client, auth_headers["headers"], plan_id, [40, 40, 40], [], week1_completed=0)
 
-        ctx = _adapt_and_capture(client, auth_headers["headers"], plan_id, week_number=1, fatigue_level="moderate")
+        ctx = _adapt_and_capture(
+            client,
+            auth_headers["headers"],
+            plan_id,
+            today=dt.date(2027, 3, 29),
+            week_number=1,
+            fatigue_level="moderate",
+        )
 
         assert "Prior Week" not in ctx
         assert "Prior-Week Adherence" not in ctx
