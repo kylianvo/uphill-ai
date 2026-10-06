@@ -5,7 +5,10 @@ import UIKit
 
 @MainActor
 struct PlanRedesignScreenshots {
-    private let outDir = "/Users/vietvo/.codex/worktrees/ios-native-phase2b/uphill-ai/ios-native/docs/screenshots/plan-redesign"
+    /// Screenshots are only written (and checked) when SCREENSHOT_DIR is set; the old fixed path
+    /// pointed into one developer's Mac, so the test failed everywhere else. Re-render with:
+    ///   TEST_RUNNER_SCREENSHOT_DIR=$PWD/docs/screenshots/plan-redesign ios-native/scripts/test.sh -only-testing:UphillAITests/PlanRedesignScreenshots
+    private let outDir = ProcessInfo.processInfo.environment["SCREENSHOT_DIR"]
 
     private let cal: Calendar = {
         var c = Calendar(identifier: .gregorian)
@@ -34,6 +37,7 @@ struct PlanRedesignScreenshots {
         let img = renderer.image { _ in
             controller.view.drawHierarchy(in: CGRect(origin: .zero, size: size), afterScreenUpdates: true)
         }
+        guard let outDir else { return }
         let url = URL(fileURLWithPath: "\(outDir)/\(name).png")
         try? img.pngData()?.write(to: url)
     }
@@ -333,24 +337,24 @@ Rushing through reps without full range of motion.
         let corosDetail = WorkoutDetailSheet(model: model, workoutID: 11)
         save(corosDetail, name: "coros-workout-detail")
 
-        #expect(FileManager.default.fileExists(atPath: "\(outDir)/plan-tab-top-collapsed.png"))
-        #expect(FileManager.default.fileExists(atPath: "\(outDir)/plan-tab-top-expanded.png"))
-        #expect(FileManager.default.fileExists(atPath: "\(outDir)/calendar-month.png"))
-        #expect(FileManager.default.fileExists(atPath: "\(outDir)/double-session-day.png"))
-        #expect(FileManager.default.fileExists(atPath: "\(outDir)/locked-next-week.png"))
-        #expect(FileManager.default.fileExists(atPath: "\(outDir)/block-review.png"))
-        #expect(FileManager.default.fileExists(atPath: "\(outDir)/manage-sheet.png"))
-        #expect(FileManager.default.fileExists(atPath: "\(outDir)/delete-confirm.png"))
-        #expect(FileManager.default.fileExists(atPath: "\(outDir)/workout-detail-easy.png"))
-        #expect(FileManager.default.fileExists(atPath: "\(outDir)/workout-detail-intervals.png"))
-        #expect(FileManager.default.fileExists(atPath: "\(outDir)/workout-detail-long.png"))
-        #expect(FileManager.default.fileExists(atPath: "\(outDir)/workout-detail-strength.png"))
-        #expect(FileManager.default.fileExists(atPath: "\(outDir)/workout-detail-treadmill.png"))
-        #expect(FileManager.default.fileExists(atPath: "\(outDir)/workout-detail-done-rpe.png"))
-        #expect(FileManager.default.fileExists(atPath: "\(outDir)/workout-detail-missed.png"))
-        #expect(FileManager.default.fileExists(atPath: "\(outDir)/plan-tab-xxxl.png"))
-        #expect(FileManager.default.fileExists(atPath: "\(outDir)/workout-detail-xxxl.png"))
-        #expect(FileManager.default.fileExists(atPath: "\(outDir)/coros-synced-badge.png"))
-        #expect(FileManager.default.fileExists(atPath: "\(outDir)/coros-workout-detail.png"))
+        if let outDir { #expect(FileManager.default.fileExists(atPath: "\(outDir)/plan-tab-top-collapsed.png")) }
+        if let outDir { #expect(FileManager.default.fileExists(atPath: "\(outDir)/plan-tab-top-expanded.png")) }
+        if let outDir { #expect(FileManager.default.fileExists(atPath: "\(outDir)/calendar-month.png")) }
+        if let outDir { #expect(FileManager.default.fileExists(atPath: "\(outDir)/double-session-day.png")) }
+        if let outDir { #expect(FileManager.default.fileExists(atPath: "\(outDir)/locked-next-week.png")) }
+        if let outDir { #expect(FileManager.default.fileExists(atPath: "\(outDir)/block-review.png")) }
+        if let outDir { #expect(FileManager.default.fileExists(atPath: "\(outDir)/manage-sheet.png")) }
+        if let outDir { #expect(FileManager.default.fileExists(atPath: "\(outDir)/delete-confirm.png")) }
+        if let outDir { #expect(FileManager.default.fileExists(atPath: "\(outDir)/workout-detail-easy.png")) }
+        if let outDir { #expect(FileManager.default.fileExists(atPath: "\(outDir)/workout-detail-intervals.png")) }
+        if let outDir { #expect(FileManager.default.fileExists(atPath: "\(outDir)/workout-detail-long.png")) }
+        if let outDir { #expect(FileManager.default.fileExists(atPath: "\(outDir)/workout-detail-strength.png")) }
+        if let outDir { #expect(FileManager.default.fileExists(atPath: "\(outDir)/workout-detail-treadmill.png")) }
+        if let outDir { #expect(FileManager.default.fileExists(atPath: "\(outDir)/workout-detail-done-rpe.png")) }
+        if let outDir { #expect(FileManager.default.fileExists(atPath: "\(outDir)/workout-detail-missed.png")) }
+        if let outDir { #expect(FileManager.default.fileExists(atPath: "\(outDir)/plan-tab-xxxl.png")) }
+        if let outDir { #expect(FileManager.default.fileExists(atPath: "\(outDir)/workout-detail-xxxl.png")) }
+        if let outDir { #expect(FileManager.default.fileExists(atPath: "\(outDir)/coros-synced-badge.png")) }
+        if let outDir { #expect(FileManager.default.fileExists(atPath: "\(outDir)/coros-workout-detail.png")) }
     }
 }
