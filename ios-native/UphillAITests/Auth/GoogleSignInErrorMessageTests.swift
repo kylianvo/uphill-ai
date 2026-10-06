@@ -3,6 +3,7 @@ import GoogleSignIn
 import Testing
 @testable import UphillAI
 
+@MainActor
 struct GoogleSignInErrorMessageTests {
     private func gid(_ code: GIDSignInError.Code) -> NSError {
         NSError(domain: GIDSignInError.errorDomain, code: code.rawValue)
