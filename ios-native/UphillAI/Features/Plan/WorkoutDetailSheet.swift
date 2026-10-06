@@ -148,7 +148,8 @@ struct WorkoutDetailSheet: View {
                                     targetType: "workout",
                                     targetId: workout.id,
                                     service: service,
-                                    canAdd: true
+                                    canAdd: true,
+                                    audience: actingAsAthlete == nil ? .athlete : .coach
                                 )
                                 .accessibilityIdentifier("detail.coachNotesThread")
                             }

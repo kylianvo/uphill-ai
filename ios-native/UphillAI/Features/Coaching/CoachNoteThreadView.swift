@@ -6,6 +6,7 @@ struct CoachNoteThreadView: View {
     let targetId: Int?
     let service: any CoachingServicing
     var canAdd: Bool = true
+    var audience: CoachNoteThreadPresentation.Audience = .coach
 
     @State private var notes: [CoachNote] = []
     @State private var draft = ""
@@ -14,7 +15,21 @@ struct CoachNoteThreadView: View {
     @State private var isExpanded = true
     @State private var errorMessage: String? = nil
 
+    private var presentation: CoachNoteThreadPresentation {
+        CoachNoteThreadPresentation(audience: audience, athleteId: athleteId, targetType: targetType, notes: notes)
+    }
+
     var body: some View {
+        // The task lives outside the conditional so an athlete's hidden thread still loads.
+        Group {
+            if presentation.isVisible { thread }
+        }
+        .task {
+            await loadNotes()
+        }
+    }
+
+    private var thread: some View {
         VStack(alignment: .leading, spacing: UH.Space.small) {
             Button {
                 withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
@@ -25,7 +40,7 @@ struct CoachNoteThreadView: View {
                     Image(systemName: "bubble.left.and.bubble.right.fill")
                         .font(.system(size: 13))
                         .foregroundStyle(UH.Palette.accent)
-                    Text("Coach Notes (\(notes.count))")
+                    Text(presentation.title)
                         .font(UH.TextStyle.label)
                         .foregroundStyle(UH.Palette.ink)
                     Spacer()
@@ -43,7 +58,7 @@ struct CoachNoteThreadView: View {
                         ProgressView()
                             .padding(.vertical, 8)
                     } else if notes.isEmpty {
-                        Text("No coach notes yet. Leave training feedback or execution advice here.")
+                        Text(presentation.emptyText)
                             .font(UH.TextStyle.caption)
                             .foregroundStyle(UH.Palette.muted)
                             .padding(.vertical, 4)
@@ -51,6 +66,11 @@ struct CoachNoteThreadView: View {
                         VStack(spacing: 6) {
                             ForEach(notes) { note in
                                 VStack(alignment: .leading, spacing: 2) {
+                                    if let author = presentation.authorLabel(for: note) {
+                                        Text(author.uppercased())
+                                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                            .foregroundStyle(UH.Palette.muted)
+                                    }
                                     Text(note.note)
                                         .font(UH.TextStyle.body)
                                         .foregroundStyle(UH.Palette.ink)
@@ -76,7 +96,7 @@ struct CoachNoteThreadView: View {
 
                     if canAdd {
                         HStack(spacing: 8) {
-                            TextField("Add a note for this \(targetType)...", text: $draft)
+                            TextField(presentation.placeholder, text: $draft)
                                 .font(UH.TextStyle.body)
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 8)
@@ -94,7 +114,7 @@ struct CoachNoteThreadView: View {
                                     ProgressView()
                                         .frame(width: 44, height: 32)
                                 } else {
-                                    Text("Post")
+                                    Text(presentation.postLabel)
                                         .font(UH.TextStyle.label)
                                         .padding(.horizontal, 14)
                                         .padding(.vertical, 8)
@@ -109,9 +129,6 @@ struct CoachNoteThreadView: View {
             }
         }
         .trainingCard()
-        .task {
-            await loadNotes()
-        }
     }
 
     private func loadNotes() async {
