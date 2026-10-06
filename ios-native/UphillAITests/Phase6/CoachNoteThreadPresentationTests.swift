@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import UphillAI
 
@@ -40,5 +41,16 @@ struct CoachNoteThreadPresentationTests {
         #expect(p.emptyText.contains("Leave training feedback"))
         #expect(p.postLabel == "Post")
         #expect(p.authorLabel(for: note(by: 99)) == nil)
+    }
+
+    @Test func backendTimestampWithMicrosecondsIsShownAsShortDateAndTime() {
+        let utc = TimeZone(identifier: "UTC")!
+        let enUS = Locale(identifier: "en_US")
+        let label = CoachNoteThreadPresentation.timestampLabel("2026-10-06T08:50:49.566735+00:00", timeZone: utc, locale: enUS)
+        #expect(label == "Oct 6, 2026 at 8:50\u{202F}AM" || label == "Oct 6, 2026, 8:50\u{202F}AM")
+    }
+
+    @Test func unparseableTimestampIsHiddenNotShownRaw() {
+        #expect(CoachNoteThreadPresentation.timestampLabel("yesterday") == nil)
     }
 }

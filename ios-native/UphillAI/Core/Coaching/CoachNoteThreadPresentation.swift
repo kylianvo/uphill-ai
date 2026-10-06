@@ -26,6 +26,18 @@ struct CoachNoteThreadPresentation: Equatable {
     var placeholder: String { isAthlete ? "Reply to your coach…" : "Add a note for this \(targetType)..." }
     var postLabel: String { isAthlete ? "Reply" : "Post" }
 
+    /// The backend sends `created_at` as ISO 8601 with microseconds ("2026-10-06T08:50:49.566735+00:00").
+    /// Shown as a short local date and time; anything unparseable is hidden rather than shown raw.
+    static func timestampLabel(_ raw: String, timeZone: TimeZone = .current, locale: Locale = .current) -> String? {
+        let trimmed = raw.replacingOccurrences(of: #"(\.\d{3})\d+"#, with: "$1", options: .regularExpression)
+        let parser = ISO8601DateFormatter()
+        parser.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        guard let date = parser.date(from: trimmed) ?? ISO8601DateFormatter().date(from: trimmed) else { return nil }
+        var style = Date.FormatStyle(date: .abbreviated, time: .shortened, locale: locale)
+        style.timeZone = timeZone
+        return date.formatted(style)
+    }
+
     func authorLabel(for note: CoachNote) -> String? {
         guard isAthlete else { return nil }
         return note.coachId == athleteId ? "You" : "Coach"

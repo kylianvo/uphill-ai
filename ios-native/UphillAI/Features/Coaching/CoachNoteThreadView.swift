@@ -21,7 +21,9 @@ struct CoachNoteThreadView: View {
 
     var body: some View {
         // The task lives outside the conditional so an athlete's hidden thread still loads.
-        Group {
+        // A VStack, not a Group: a Group with no child renders nothing, so its .task never
+        // runs and the notes that would make the thread visible are never fetched.
+        VStack(spacing: 0) {
             if presentation.isVisible { thread }
         }
         .task {
@@ -74,7 +76,8 @@ struct CoachNoteThreadView: View {
                                     Text(note.note)
                                         .font(UH.TextStyle.body)
                                         .foregroundStyle(UH.Palette.ink)
-                                    if let date = note.createdAt {
+                                    if let raw = note.createdAt,
+                                       let date = CoachNoteThreadPresentation.timestampLabel(raw) {
                                         Text(date)
                                             .font(.system(size: 10, design: .monospaced))
                                             .foregroundStyle(UH.Palette.muted)
