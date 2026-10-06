@@ -1,7 +1,8 @@
 """Source and chapter provenance for the scheduler philosophy chunks.
 
 The chunks were swept from a NotebookLM notebook that holds the book AND the Evoke
-Endurance Uphill Athlete Book Club lectures and podcasts. An earlier revision labelled
+Endurance Uphill Athlete Book Club lectures and podcasts; the gym ME chunks follow
+Scott Johnston's Evoke Endurance article "Muscular Endurance: All You Need to Know". An earlier revision labelled
 every chunk as a book chapter, using a made-up 15-chapter, five-section outline. The
 real book has 12 chapters (CHAPTERS below) and no fueling, tapering or race-day
 chapter, and many chunks carry podcast material the 2019 book cannot contain (Tom
@@ -21,7 +22,7 @@ from typing import Any
 
 BOOK_TITLE = "Training for the Uphill Athlete"
 BOOK_AUTHORS = "Steve House, Scott Johnston, Kilian Jornet"
-BOOK_CLUB_TITLE = "Evoke Endurance — Uphill Athlete Book Club & podcast"
+BOOK_CLUB_TITLE = "Evoke Endurance — Uphill Athlete Book Club, podcast & articles"
 
 BOOK = "book"
 BOOK_CLUB_PODCAST = "book_club_podcast"
@@ -58,9 +59,11 @@ SCHEDULER_CHUNK_PROVENANCE: dict[str, dict[str, Any]] = {
     "Difference Between Muscular Endurance and Conventional Strength Training": _entry(
         7, BOOK, "Difference Between Muscular Endurance and Conventional Strength Training"
     ),
-    "Gym-Based ME Workout Design": _entry(7, BOOK, "Gym-Based ME Workout Design"),
-    "Progressive 14-Week Gym ME Protocol": _entry(7, BOOK, "Progressive 14-Week Gym ME Protocol"),
-    "Execution Guidelines and Phase Integration": _entry(7, BOOK, "Execution Guidelines and Phase Integration"),
+    "Gym-Based ME Workout Design": _entry(7, BOOK_CLUB_PODCAST, "Gym-Based ME Workout Design"),
+    "Progressive 14-Week Gym ME Protocol": _entry(7, BOOK_CLUB_PODCAST, "Progressive 14-Week Gym ME Protocol"),
+    "Execution Guidelines and Phase Integration": _entry(
+        7, BOOK_CLUB_PODCAST, "Execution Guidelines and Phase Integration"
+    ),
     "Transition Period: Foundational Preconditioning": _entry(9, BOOK, "Foundational Preconditioning"),
     "Base Period: Elevating Fundamental Qualities": _entry(10, BOOK, "Elevating Fundamental Qualities"),
     "Build and Peak Periods: Specificity and Competition Readiness": _entry(

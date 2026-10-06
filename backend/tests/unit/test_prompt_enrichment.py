@@ -338,7 +338,12 @@ async def test_plan_generator_prompt_includes_all_enriched_context():
     assert "Long Run Proportionality Cap" in prompt
     assert "Periodization Phases (Training for the Uphill Athlete)" in prompt
     assert "the ME block starts in the EARLY Base phase" in prompt
-    assert "Build (Specific) Phase: Aerobic base expansion" in prompt
+    assert "final ~8 weeks before the taper shift to traditional UPHILL and ROLLING intervals" in prompt
+    # ME per Scott Johnston, "Muscular Endurance: All You Need to Know" (Evoke Endurance)
+    assert "twice a week when it is otherwise low" in prompt
+    assert "Disregard heart rate in ME sessions" in prompt
+    assert "stronger athletes may carry the weight back down" in prompt
+    assert "30 minutes the first time, building to no more than 60 minutes" in prompt
     assert "Deload Adaptation Cycles" in prompt
     assert "Aerobic Deficiency Syndrome (ADS) Rule" in prompt
     assert "Uphill Athlete & Trail Specificity" in prompt
