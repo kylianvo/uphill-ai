@@ -131,6 +131,7 @@ export interface User {
   resting_hr?: number;
   aet_hr?: number;
   ant_hr?: number;
+  threshold_source?: "lab" | "field" | "estimated" | "unknown";
   gemini_api_key?: string;
   zone2_pace_min?: string;
   zone2_pace_max?: string;

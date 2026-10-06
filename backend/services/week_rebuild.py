@@ -24,7 +24,9 @@ from services.calendar_rules import (
     _is_hard,
     _is_long_run,
     current_week,
+    is_upcoming,
     start_monday,
+    upcoming_note,
 )
 from services.coach_tools.base import json_safe
 from services.course_match import resolve_course_match
@@ -227,6 +229,8 @@ class RebuildInputs:
 class WeekDraft:
     workouts: list[dict[str, Any]]
     resolved_tier: str | None
+    # FitnessSnapshot.to_dict() the draft was built on; stored on the plan when written.
+    fitness_snapshot: dict[str, Any] | None = None
 
 
 def load_plan_rows(plan_id: int) -> list[dict[str, Any]]:
@@ -240,9 +244,12 @@ def build_rebuild_inputs(
     all_workouts: list[dict[str, Any]],
     rng: RebuildRange,
     request: RebuildRequest,
+    today: dt.date | None = None,
 ) -> RebuildInputs:
     """The adapt-week prompt builder, moved from main._adapt_week_for_athlete
-    unchanged except for the partial-week additions marked `4b:`."""
+    unchanged except for the partial-week additions marked `4b:`. `today` marks
+    the prior week's sessions that are still upcoming (adapting next week before
+    this one ends); without it nothing is treated as upcoming."""
     fresh_user = db.get_user_by_id(athlete_id) or {}
 
     # Map fatigue_level (5 feelings: very_light/light/moderate/hard/max_effort) and overall_rpe coherently
@@ -358,6 +365,13 @@ def build_rebuild_inputs(
     prev_wos = []
     if prev_wk >= 1:
         prev_wos = [w for w in all_workouts if w.get("week_number") == prev_wk and w.get("type") != "Rest"]
+        # Adapting next week before this one ends: sessions still ahead are not due,
+        # so they count neither as planned volume nor against adherence.
+        monday = start_monday(plan.get("start_date"))
+        upcoming_prev = [w for w in prev_wos if today is not None and is_upcoming(w, monday, today)]
+        if upcoming_prev:
+            prev_wos = [w for w in prev_wos if w not in upcoming_prev]
+            context_lines.append(f"  {upcoming_note(upcoming_prev)}")
         completed_prev = [w for w in prev_wos if w.get("is_completed") == 1]
         actual_vol = db.get_block_actual_volume(
             user_id=athlete_id,
@@ -377,9 +391,9 @@ def build_rebuild_inputs(
         planned_km = sum(w.get("distance_km") or 0 for w in prev_wos)
         planned_min = sum(w.get("duration_minutes") or 0 for w in prev_wos)
         context_lines.append(
-            f"  Prior Week ({prev_wk}) Volume: Actual {actual_km:.1f}km / {actual_min/60:.1f}h"
+            f"  Prior Week ({prev_wk}) Volume: Actual {actual_km:.1f}km / {actual_min / 60:.1f}h"
             + (f" (+{actual_vert:.0f}m D+)" if actual_vert > 0 else "")
-            + f" vs Planned {planned_km:.1f}km / {planned_min/60:.1f}h"
+            + f" vs Planned {planned_km:.1f}km / {planned_min / 60:.1f}h"
         )
         # Check if athlete missed an ME session in previous week (Scott Johnston Rule 7)
         missed_me = [
@@ -440,6 +454,12 @@ def build_rebuild_inputs(
     #    completion is now reported as its own adherence signal with its own
     #    instruction, so the model can coach the missed week instead of silently
     #    rebaselining onto it.
+    #
+    # 3. THE ANCHOR IS THE ADAPTED WEEK'S OWN PLAN, not the week before. The plan
+    #    already placed this week in the periodisation (build, peak, taper, recovery);
+    #    sizing it off the previous week flattened a peak after a lighter week and
+    #    pulled a taper back up. The previous week only takes over when it was not
+    #    completed and is smaller, so a missed week still holds rather than progresses.
     target_wos = [w for w in all_workouts if w.get("week_number") == request.week_number and w.get("type") != "Rest"]
     if target_wos:
         completed_target = [w for w in target_wos if w.get("is_completed") == 1]
@@ -452,23 +472,27 @@ def build_rebuild_inputs(
         user_weekly_min = float(fresh_user.get("current_weekly_km") or 0.0) * 6.0
 
         prior_planned_min = planned_min if prev_wos else 0.0
-        prior_ref_min = (
-            prior_planned_min
-            or (target_planned_min if target_planned_min > 0 else 0.0)
-            or (user_weekly_min if user_weekly_min > 0 else 180.0)
-        )
+        if target_planned_min > 0:
+            ref_min, ref_label = target_planned_min, f"Week {request.week_number} as planned"
+        elif prior_planned_min > 0:
+            ref_min, ref_label = prior_planned_min, f"Week {prev_wk} planned"
+        else:
+            ref_min = user_weekly_min if user_weekly_min > 0 else 180.0
+            ref_label = "Current weekly volume"
 
         # Adherence is a coaching input, never a smaller baseline.
         adherence_note = ""
         if prev_wos and prior_planned_min > 0:
             adherence = (actual_min or 0.0) / prior_planned_min
             if adherence < 0.8:
+                if prior_planned_min <= ref_min:
+                    ref_min, ref_label = prior_planned_min, f"Week {prev_wk} planned"
                 adherence_note = (
                     f"  Prior-Week Adherence: the athlete completed {adherence * 100:.0f}% of Week {prev_wk}'s "
                     f"planned time ({actual_min:.0f} of {prior_planned_min:.0f} min).\n"
                     f"  IMPORTANT: do NOT progress volume on top of a week that was not completed, and do NOT "
-                    f"shrink the plan as a punishment either. HOLD this week at roughly the same planned volume "
-                    f"as Week {prev_wk} so the athlete gets a second chance at the same stimulus. Say so plainly "
+                    f"shrink the plan as a punishment either. HOLD this week at the reference volume below "
+                    f"so the athlete gets a second chance at the same stimulus. Say so plainly "
                     f"in the workout descriptions -- name it as a repeat, not a setback.\n"
                 )
                 # Repeat the week rather than progress off an incomplete one.
@@ -489,8 +513,8 @@ def build_rebuild_inputs(
             else:  # max_effort, exhausted
                 floor_mult, ceil_mult = 0.70, 0.80
 
-        target_floor_min = prior_ref_min * floor_mult
-        target_ceil_min = prior_ref_min * ceil_mult
+        target_floor_min = ref_min * floor_mult
+        target_ceil_min = ref_min * ceil_mult
 
         rem_floor_min = max(0.0, target_floor_min - completed_min)
         rem_ceil_min = max(rem_floor_min + 15.0, target_ceil_min - completed_min)
@@ -520,7 +544,7 @@ def build_rebuild_inputs(
         volume_guidance = (
             f"  Week {request.week_number} Volume Bounds (in MINUTES of training time -- "
             f"distance is derived from duration, so time is the quantity to set):\n"
-            f"    - Reference: Week {prev_wk} planned {prior_ref_min:.0f} min\n"
+            f"    - Reference: {ref_label} {ref_min:.0f} min\n"
             f"    - Target Full Week Total: {target_floor_min:.0f}-{target_ceil_min:.0f} min\n"
             f"    - Completed So Far: {completed_min:.0f} min ({len(completed_target)} sessions)\n"
             f"    - Remaining {uncompleted_count} Sessions: total between {rem_floor_min:.0f} and "
@@ -577,8 +601,11 @@ def build_rebuild_inputs(
         "plan_start_date": plan.get("start_date"),
         "athlete_notes": request.athlete_notes or plan.get("athlete_notes") or fresh_user.get("athlete_notes"),
         "historical_ceiling": historical_ceiling,
-        # Explicit per-plan tier override; None means the generator derives it.
-        "athlete_tier": plan.get("athlete_tier"),
+        # plans.athlete_tier is the LAST RESOLVED tier, not an override. Passing it as
+        # the override froze every plan at its first tier; it is now only the
+        # hysteresis input, so re-plans follow the athlete's current fitness.
+        "athlete_tier": None,
+        "previous_tier": plan.get("athlete_tier"),
         "readiness_summary": readiness_summary,
         "lang": (
             "vi"
@@ -611,10 +638,21 @@ def build_rebuild_inputs(
 
 
 async def generate_week_draft(inputs: RebuildInputs, rng: RebuildRange) -> WeekDraft:
+    from services import coros_sync, fitness_snapshot
+
+    # Best effort: a re-plan falls back to the profile path rather than failing on
+    # fitness data.
+    snapshot = None
+    try:
+        await coros_sync.ensure_fresh_assessment(inputs.user["id"])
+        snapshot = fitness_snapshot.build(inputs.user["id"])
+    except Exception as ex:  # noqa: BLE001
+        print(f"[AdaptWeek] fitness snapshot unavailable: {type(ex).__name__}")
+    race_info = {**inputs.race_info, "fitness_snapshot": snapshot}
     workouts, resolved_tier = await PlanGenerator.generate_plan_workouts(
         inputs.plan_id,
         inputs.user,
-        inputs.race_info,
+        race_info,
         inputs.total_weeks,
         api_key=inputs.api_key,
         block_number=inputs.block_number,
@@ -622,7 +660,11 @@ async def generate_week_draft(inputs: RebuildInputs, rng: RebuildRange) -> WeekD
         block_context=inputs.block_context,
         target_week=inputs.week,
     )
-    return WeekDraft(workouts=filter_draft(workouts, rng), resolved_tier=resolved_tier)
+    return WeekDraft(
+        workouts=filter_draft(workouts, rng),
+        resolved_tier=resolved_tier,
+        fitness_snapshot=json_safe(snapshot.to_dict()) if snapshot else None,
+    )
 
 
 def write_draft(plan: dict[str, Any], week: int, today: dt.date, draft: WeekDraft) -> None:
@@ -637,6 +679,8 @@ def write_draft(plan: dict[str, Any], week: int, today: dt.date, draft: WeekDraf
             raise ValueError("Generated week was empty; nothing was changed.")
         db.replace_week_workouts(conn, plan["id"], rng.replaceable_ids, filtered)
     db.set_plan_athlete_tier(plan["id"], draft.resolved_tier)
+    if draft.fitness_snapshot:
+        db.set_plan_fitness_snapshot(plan["id"], draft.fitness_snapshot)
 
 
 REBUILD_TIMEOUT_SECONDS = 180
@@ -677,7 +721,11 @@ async def _run_rebuild(proposal_id: int, inputs: RebuildInputs, rng: RebuildRang
             return
         db.finish_rebuild_proposal(
             proposal_id,
-            draft={"workouts": json_safe(draft.workouts), "resolved_tier": draft.resolved_tier},
+            draft={
+                "workouts": json_safe(draft.workouts),
+                "resolved_tier": draft.resolved_tier,
+                "fitness_snapshot": draft.fitness_snapshot,
+            },
             diff=build_diff(rows, rng, draft.workouts),
             warnings=rebuild_warnings(rows, rng, draft.workouts),
         )
@@ -708,7 +756,7 @@ def request_rebuild(
         raise GuardViolation("G4_window", {"week": week, "current_week": cur})
     rows = load_plan_rows(plan_id)
     rng = rebuild_range(plan, rows, week, today)
-    inputs = build_rebuild_inputs(user_id, plan, rows, rng, request)
+    inputs = build_rebuild_inputs(user_id, plan, rows, rng, request, today=today)
     outcome, proposal_id = db.create_rebuild_proposal(
         user_id=user_id,
         thread_id=thread_id,

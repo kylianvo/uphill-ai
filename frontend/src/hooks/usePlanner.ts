@@ -336,6 +336,7 @@ export function usePlanner() {
         long_run_day: planForm.long_run_day,
         preferred_days: planForm.preferred_days,
         current_weekly_km: parseFloat(planForm.current_weekly_km),
+        weekly_km_from_watch: Boolean(planForm.weekly_km_from_watch),
         has_gym_access: planForm.has_gym_access,
         use_treadmill: planForm.use_treadmill,
         training_environment: planForm.training_environment,

@@ -1,0 +1,39 @@
+{
+  "blocks": [
+    {
+      "ai_last_week_review": null,
+      "ai_this_week_description": null,
+      "block_number": 1,
+      "completed_minutes": 255.0,
+      "completion_pct": 86,
+      "total_minutes": 295.0,
+      "unlocked": true,
+      "week_end": 1,
+      "week_start": 1
+    },
+    {
+      "ai_last_week_review": null,
+      "ai_this_week_description": null,
+      "block_number": 2,
+      "completed_minutes": 145.0,
+      "completion_pct": 49,
+      "total_minutes": 295.0,
+      "unlocked": false,
+      "week_end": 2,
+      "week_start": 2
+    },
+    {
+      "ai_last_week_review": null,
+      "ai_this_week_description": null,
+      "block_number": 3,
+      "completed_minutes": 0,
+      "completion_pct": 0,
+      "total_minutes": 295.0,
+      "unlocked": false,
+      "week_end": 3,
+      "week_start": 3
+    }
+  ],
+  "max_generated_week": 3,
+  "plan_id": 93
+}

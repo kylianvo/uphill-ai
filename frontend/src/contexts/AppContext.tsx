@@ -310,6 +310,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     long_run_day: "Saturday",
     preferred_days: ["Monday", "Wednesday", "Saturday"] as string[],
     current_weekly_km: "",
+    // True while current_weekly_km is the untouched COROS prefill; editing it makes it an override.
+    weekly_km_from_watch: false,
     has_gym_access: false,
     use_treadmill: false,
     training_environment: "flat" as "flat" | "hilly" | "mixed",
@@ -416,7 +418,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     ant_hr: "165",
     gemini_api_key: "",
     zone2_pace_min: "6:30",
-    zone2_pace_max: "5:45"
+    zone2_pace_max: "5:45",
+    threshold_source: "unknown",
   });
   const [onboardingMode, setOnboardingMode] = useState<"estimate" | "manual">("estimate");
   const [raceDistance, setRaceDistance] = useState("10k");

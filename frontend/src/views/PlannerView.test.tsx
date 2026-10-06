@@ -261,6 +261,55 @@ describe("PlannerView Early Adopter Improvements", () => {
     });
   });
 
+  it("prefills weekly km from COROS and shows where it came from", async () => {
+    mockAppContext.activePlan = null;
+    mockAppContext.planForm = { ...mockAppContext.planForm, current_weekly_km: "" };
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ weekly_km: 133.7, weekly_km_source: "coros" }),
+    }) as any;
+    render(<PlannerView isMobile={false} />);
+
+    expect(await screen.findByText("From your COROS: 134 km/week (last 4 complete weeks)")).toBeInTheDocument();
+    expect((global.fetch as any).mock.calls.some((c: any[]) => String(c[0]).includes("/api/auth/fitness-snapshot"))).toBe(true);
+    // Other effects also pass updater functions; pick the one that sets the watch flag.
+    const updater = mockAppContext.setPlanForm.mock.calls
+      .map((c: any[]) => c[0])
+      .find((u: any) => typeof u === "function" && u({ current_weekly_km: "" }).weekly_km_from_watch);
+    expect(updater({ current_weekly_km: "" })).toEqual({ current_weekly_km: "134", weekly_km_from_watch: true });
+    // A value the athlete already typed is never replaced, and stays an override.
+    const typed = { current_weekly_km: "90", weekly_km_from_watch: false };
+    expect(updater(typed)).toBe(typed);
+  });
+
+  it("does not prefill a self-reported snapshot", async () => {
+    mockAppContext.activePlan = null;
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ weekly_km: 30, weekly_km_source: "self_reported" }),
+    }) as any;
+    render(<PlannerView isMobile={false} />);
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+    expect(screen.queryByText(/From your COROS/)).not.toBeInTheDocument();
+  });
+
+  it("does not prefill the coach's own COROS volume into an athlete's plan", async () => {
+    mockAppContext.activePlan = null;
+    mockAppContext.actingAsAthleteId = 42;
+    render(<PlannerView isMobile={false} />);
+    await new Promise(r => setTimeout(r, 0));
+    expect((global.fetch as any).mock.calls.some((c: any[]) => String(c[0]).includes("/api/auth/fitness-snapshot"))).toBe(false);
+  });
+
+  it("editing the weekly km marks it as the athlete's own value", () => {
+    mockAppContext.activePlan = null;
+    render(<PlannerView isMobile={false} />);
+    fireEvent.change(screen.getByPlaceholderText("e.g. 30"), { target: { value: "120" } });
+    expect(mockAppContext.setPlanForm).toHaveBeenCalledWith(
+      expect.objectContaining({ current_weekly_km: "120", weekly_km_from_watch: false })
+    );
+  });
+
   it("prompts confirmation modal before generating a new plan", async () => {
     // When there is no active plan
     mockAppContext.activePlan = null;

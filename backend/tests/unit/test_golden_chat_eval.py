@@ -148,3 +148,8 @@ def test_must_not_contain_matches_whole_words_only():
 
     assert golden_eval.evaluate_chat_case(refusal, fixture)["no_forbidden_strings"] is True
     assert golden_eval.evaluate_chat_case(leak, fixture)["no_forbidden_strings"] is False
+
+
+def test_empty_reply_is_never_acceptable():
+    fixture = {"safety_invariants": {"must_not_claim_tools": True}}
+    assert golden_eval.evaluate_chat_case({"reply_text": "  ", "status": "success"}, fixture)["acceptable"] is False

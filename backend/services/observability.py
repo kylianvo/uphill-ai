@@ -11,6 +11,7 @@ through a metadata-only exporter boundary before the configured transport.
 import contextlib
 import hashlib
 import hmac
+import math
 import os
 import re
 import secrets
@@ -57,8 +58,50 @@ METRIC_STATUSES = frozenset({"ok", "error", "attempt", "success", "used", "fallb
 
 _warned: set[str] = set()
 _TRACE_ID_RE = re.compile(r"^[0-9a-f]{32}$")
-_SCORE_NAMES = frozenset({"thumbs"})
 _SCORE_CATEGORIES = frozenset({"helpful", "incorrect", "unsafe", "irrelevant", "other"})
+_UNIT_INTERVAL = "unit_interval"
+# Allowed values per score name: a set of numbers, a set of category strings, or
+# _UNIT_INTERVAL for judge scores in [0, 1]. Anything else is dropped before export.
+_SCORE_SPECS: dict[str, Any] = {
+    "thumbs": frozenset({-1, 1}),
+    "proposal_applied": frozenset({0, 1}),
+    "plan_engine": frozenset({"gemini", "gemini_retry", "rules"}),
+    "judge_grounded": _UNIT_INTERVAL,
+    "judge_safe": _UNIT_INTERVAL,
+    "judge_actionable": _UNIT_INTERVAL,
+    "judge_language": _UNIT_INTERVAL,
+    # Plans: share of the previous block's sessions completed; a rework soon after
+    # generation; deterministic plan checks (share passed).
+    "block_compliance": _UNIT_INTERVAL,
+    "plan_reworked": frozenset({0, 1}),
+    "plan_checks": _UNIT_INTERVAL,
+    # Plans: the tier the plan was written for, and how closely week 2 matches the
+    # athlete's measured weekly volume (min(r, 1/r); only when COROS measured it).
+    "plan_tier": frozenset({"beginner", "novice", "recreational", "sub_elite", "elite"}),
+    "plan_volume_fit": _UNIT_INTERVAL,
+    # Goals: race outcome against the A..C range and B, and which option was applied.
+    "goal_hit": frozenset({0, 1}),
+    "goal_error": _UNIT_INTERVAL,
+    "goal_applied": frozenset({"ambitious", "realistic", "safe", "custom"}),
+    # Gear / Nutrition: recommendations exist in the catalog; preferred brands respected.
+    "catalog_valid": frozenset({0, 1}),
+    "brand_respected": frozenset({0, 1}),
+}
+_SCORE_NAMES = frozenset(_SCORE_SPECS)
+_SCORE_ID_RE = re.compile(r"^[A-Za-z0-9_.:-]{1,128}$")
+
+
+def _valid_score_value(name: str, value: Any) -> bool:
+    spec = _SCORE_SPECS[name]
+    if isinstance(value, str):
+        return spec is not _UNIT_INTERVAL and value in spec
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        return False
+    if isinstance(value, float) and not math.isfinite(value):
+        return False
+    if spec is _UNIT_INTERVAL:
+        return 0 <= value <= 1
+    return value in spec
 
 
 def _warn_once(event: str, exc: BaseException) -> None:
@@ -542,6 +585,7 @@ def init(*, span_exporter: Any = None) -> None:
                 secret_key=settings.LANGFUSE_SECRET_KEY,
                 base_url=settings.LANGFUSE_BASE_URL,
                 environment=settings.LANGFUSE_ENVIRONMENT,
+                release=settings.LANGFUSE_RELEASE or None,
                 sample_rate=settings.LANGFUSE_SAMPLE_RATE,
                 timeout=settings.LANGFUSE_TIMEOUT,
                 tracer_provider=provider,
@@ -922,7 +966,16 @@ def record_generation(
     return cost
 
 
-def score(*, trace_id: str, name: str, value: float, category: str | None = None) -> None:
+def score(
+    *,
+    trace_id: str,
+    name: str,
+    value: float | str,
+    category: str | None = None,
+    score_id: str | None = None,
+) -> None:
+    """Attach an allowlisted score to a trace. `score_id` makes the write idempotent, so a
+    changed vote updates the existing score instead of adding a second one."""
     if _client is None:
         return
     if (
@@ -930,20 +983,22 @@ def score(*, trace_id: str, name: str, value: float, category: str | None = None
         or not _TRACE_ID_RE.fullmatch(trace_id)
         or not isinstance(name, str)
         or name not in _SCORE_NAMES
-        or isinstance(value, bool)
-        or not isinstance(value, int | float)
-        or value not in (-1, 1)
+        or not _valid_score_value(name, value)
         or (category is not None and (not isinstance(category, str) or category not in _SCORE_CATEGORIES))
+        or (score_id is not None and (not isinstance(score_id, str) or not _SCORE_ID_RE.fullmatch(score_id)))
     ):
         return
+    kwargs: dict[str, Any] = {
+        "trace_id": trace_id,
+        "name": name,
+        "value": value,
+        "data_type": "CATEGORICAL" if isinstance(value, str) else "NUMERIC",
+        "metadata": {"category": category} if category and len(category) <= 64 else None,
+    }
+    if score_id is not None:
+        kwargs["score_id"] = score_id
     try:
-        _client.create_score(
-            trace_id=trace_id,
-            name=name,
-            value=value,
-            data_type="NUMERIC",
-            metadata={"category": category} if category and len(category) <= 64 else None,
-        )
+        _client.create_score(**kwargs)
     except Exception as exc:
         _warn_once("score", exc)
 
@@ -967,7 +1022,7 @@ def flush() -> None:
         _warn_once("flush", exc)
 
 
-_SYNTHETIC_PROVENANCES = {"gear", "nutrition", "scheduler", "chat"}
+_SYNTHETIC_PROVENANCES = {"gear", "nutrition", "scheduler", "chat", "goal_judge"}
 
 
 def push_experiment(
@@ -1160,3 +1215,8 @@ def compile_prompt(template: PromptTemplate, variables: dict[str, Any]) -> str:
         lambda m: str(variables[m.group(1)]) if m.group(1) in variables else m.group(0),
         template.template,
     )
+
+
+def langfuse_api() -> Any:
+    """The Langfuse REST client for operator scripts (triage, reviews), or None when disabled."""
+    return _client.api if _client is not None else None

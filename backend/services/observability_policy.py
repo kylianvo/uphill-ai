@@ -84,11 +84,13 @@ _SPAN_NAMES = frozenset(
         "generate",
         "generation",
         "get_week",
+        "goal_assessment",
         "goal_estimate",
         "kb_distill",
         "kb_retrieval",
         "kb_search",
         "knowledge_cards",
+        "llm_judge",
         "nutrition_lab",
         "pace_strategy",
         "persist",
@@ -194,9 +196,11 @@ _PROMPT_NAMES = frozenset(
         "plan_generation",
         "plan_single_workout",
         "block_narrative",
+        "llm_judge",
     }
 )
 _PROMPT_SOURCES = frozenset({"langfuse", "local_fallback"})
+_RELEASE_RE = re.compile(r"^[0-9a-f]{7,40}$")  # a git SHA; anything else is dropped
 _PROMPT_VERSION_RE = re.compile(r"^[A-Za-z0-9_.-]{1,32}$")
 _TOOL_NAMES = frozenset({"get_week", "pace_strategy", "week_review", "kb_search"})
 _TOOL_ARG_KEY_RE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
@@ -342,6 +346,8 @@ def _sanitize_attribute(key: str, value: Any) -> Any | None:
         return value if _nonnegative_number(value) else None
     if key == "langfuse.trace.name":
         return value if value in _SPAN_NAMES else None
+    if key == "langfuse.release":
+        return value if isinstance(value, str) and _RELEASE_RE.fullmatch(value) else None
     if key == "langfuse.environment":
         return value if value in _ENVIRONMENTS else None
     if key == "langfuse.observation.type":

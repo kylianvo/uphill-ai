@@ -420,7 +420,15 @@ def create_manual(user_id: int, data: dict[str, Any]) -> dict[str, Any]:
             .mappings()
             .one()
         )
+    _reconcile_goal_outcomes(user_id)
     return _row_dict(row)
+
+
+def _reconcile_goal_outcomes(user_id: int) -> None:
+    """A new finished result may be the race a goal was estimated for (services/goal_outcomes.py)."""
+    from services import goal_outcomes
+
+    goal_outcomes.reconcile(user_id)
 
 
 _EDITABLE_IMPORTED = {"selected", "hidden", "user_note"}
@@ -585,6 +593,7 @@ def sync_claim(claim_id: int) -> int:
                 {"name": name, "meta": json.dumps(meta), "id": claim_id},
             )
         verify_results(claim["user_id"])
+        _reconcile_goal_outcomes(claim["user_id"])
         return len(items)
     except Exception as exc:
         with engine.begin() as conn:

@@ -2,7 +2,7 @@ import os
 import threading
 import time
 import uuid as _uuid
-from typing import Any
+from typing import Any, Literal
 
 import httpx
 from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, Header, HTTPException, Request, Response, UploadFile
@@ -57,6 +57,7 @@ from db import (
     get_user_activity_ceiling,
     get_user_by_email,
     get_user_by_id,
+    get_user_by_provider,
     get_week_planned_volume,
     get_week_review,
     get_workout_by_id,
@@ -73,6 +74,7 @@ from db import (
     set_max_continuous_jog_min,
     set_plan_active,
     set_plan_athlete_tier,
+    set_plan_fitness_snapshot,
     set_user_is_coach,
     set_user_password,
     update_onboarding_profile,
@@ -92,9 +94,17 @@ from routers.analytics import router as analytics_router
 from routers.coach_chat import ChatMessage
 from routers.coach_chat import router as coach_chat_router
 from routers.integrations import router as integrations_router
-from services import calendar_ops, observability, race_history, week_rebuild
+from services import (
+    apple_auth,
+    calendar_ops,
+    coros_sync,
+    fitness_snapshot,
+    observability,
+    race_history,
+    week_rebuild,
+)
 from services.auth_service import hash_password, verify_password
-from services.calendar_rules import GuardViolation, resolve_today
+from services.calendar_rules import GuardViolation, is_upcoming, resolve_today, start_monday, upcoming_note
 from services.calendar_service import CalendarService
 from services.course_match import resolve_course_match as _resolve_course_match
 from services.gear_planner import GearParams, gear_planner
@@ -202,6 +212,9 @@ class PlanGenerateRequest(BaseModel):
     race_date: str | None = None  # YYYY-MM-DD
     goal_type: str  # 'finish', 'time', 'optimal', 'start_running', 'return', 'recovery'
     current_weekly_km: float  # current training volume, entered fresh for every plan
+    # True when current_weekly_km is the COROS prefill the athlete left untouched;
+    # False (the default, and what older clients send) makes the typed value an override.
+    weekly_km_from_watch: bool = False
     target_time_hours: float | None = None
     cutoff_time_hours: float | None = None
     terrain: str | None = "trail"
@@ -283,6 +296,7 @@ class GenerateNextBlockRequest(BaseModel):
     use_treadmill: bool | None = None
     training_environment: str | None = None
     athlete_notes: str | None = None
+    client_today: str | None = None  # the athlete's local date; ±1 day of server UTC (calendar_rules.resolve_today)
 
 
 class AdaptWeekRequest(BaseModel):
@@ -338,6 +352,12 @@ class GoogleAuthRequest(BaseModel):
     credential: str
 
 
+class AppleAuthRequest(BaseModel):
+    identity_token: str
+    # Apple shares the name only on the first authorization, with the app.
+    full_name: str | None = None
+
+
 class FacebookAuthRequest(BaseModel):
     access_token: str
 
@@ -380,6 +400,9 @@ class OnboardingRequest(BaseModel):
     goal_type: str  # race|distance|start_running|return|recovery
     # Fitness
     aet_hr: int | None = None
+    # How the stored AeT/AnT pair was obtained. Only "lab"/"field" let the gap count
+    # toward the tier; None keeps whatever the athlete already had.
+    threshold_source: Literal["lab", "field", "estimated", "unknown"] | None = None
     ant_hr: int | None = None
     max_hr: int | None = None
     resting_hr: int | None = None
@@ -437,6 +460,9 @@ class UpdateProfileRequest(BaseModel):
     pace_zone_model: str | None = None
     custom_pace_zones: dict[str, Any] | None = None
     athlete_notes: str | None = None
+    # How the stored AeT/AnT pair was obtained. Only "lab"/"field" let the gap count
+    # toward the tier; None keeps whatever the athlete already had.
+    threshold_source: Literal["lab", "field", "estimated", "unknown"] | None = None
 
 
 class SetCoachStatusRequest(BaseModel):
@@ -567,6 +593,7 @@ def format_user_response(user: dict[str, Any]) -> dict[str, Any]:
         "coros_running_level": user.get("coros_running_level"),
         "pace_zone_model": user.get("pace_zone_model") or "5_zone",
         "custom_pace_zones": user.get("custom_pace_zones"),
+        "threshold_source": user.get("threshold_source") or "unknown",
         "is_coach": bool(user.get("is_coach", False)),
     }
 
@@ -709,6 +736,11 @@ async def auth_google(request: GoogleAuthRequest):
             raise HTTPException(status_code=400, detail="Invalid Google credential token.")
 
         token_info = response.json()
+        allowed_audiences = set(settings.GOOGLE_CLIENT_IDS)
+        if settings.GOOGLE_CLIENT_ID:
+            allowed_audiences.add(settings.GOOGLE_CLIENT_ID)
+        if token_info.get("aud") not in allowed_audiences:
+            raise HTTPException(status_code=401, detail="Google credential was not issued for Uphill AI.")
         email = token_info.get("email")
         name = token_info.get("name", email.split("@")[0])
         sub = token_info.get("sub")
@@ -729,6 +761,37 @@ async def auth_google(request: GoogleAuthRequest):
         if isinstance(e, HTTPException):
             raise e
         raise HTTPException(status_code=500, detail=f"Google authentication error: {str(e)}")
+
+
+@app.post("/api/auth/apple")
+async def auth_apple(request: AppleAuthRequest):
+    """Sign in with Apple from the native iOS app."""
+    import asyncio
+
+    try:
+        claims = await asyncio.to_thread(
+            apple_auth.verify_identity_token, request.identity_token, settings.APPLE_AUDIENCES
+        )
+    except apple_auth.AppleTokenError:
+        raise HTTPException(status_code=401, detail="Invalid Apple identity token.")
+
+    sub = claims["sub"]
+    user = get_user_by_provider("apple", sub)
+    if not user:
+        email = (claims.get("email") or "").lower().strip()
+        email_verified = str(claims.get("email_verified", "")).lower() == "true"
+        if not email or not email_verified:
+            raise HTTPException(status_code=400, detail="Apple did not share a verified email address.")
+        name = (request.full_name or "").strip() or email.split("@")[0]
+        role = "admin" if email == "admin@uphill.ai" else "user"
+        user = create_or_get_user(email=email, name=name, provider="apple", provider_user_id=sub, role=role)
+
+    session = create_session(user["id"])
+    return {
+        "session_token": session["session_token"],
+        "expires_at": session["expires_at"],
+        "user": format_user_response(user),
+    }
 
 
 @app.post("/api/auth/facebook")
@@ -957,6 +1020,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         "ant_hr": ant_hr,
         "zone2_pace_min": zone2_min,
         "zone2_pace_max": zone2_max,
+        "threshold_source": request.threshold_source,
     }
     update_onboarding_profile(user["id"], onboarding_data)
 
@@ -1054,6 +1118,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
     async def _run_plan_gen():
         _t0 = time.monotonic()
         try:
+            race_info["fitness_snapshot"] = await _plan_snapshot(user["id"], request.current_weekly_km)
             workouts, resolved_tier = await PlanGenerator.generate_plan_workouts(
                 plan_id,
                 fresh_user,
@@ -1065,6 +1130,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
             )
             save_workouts(plan_id, workouts)
             set_plan_athlete_tier(plan_id, resolved_tier)
+            _store_plan_snapshot(plan_id, race_info["fitness_snapshot"])
             plan_jobs[job_id]["workouts"] = workouts
             plan_jobs[job_id]["status"] = "done"
             plan_job_duration_seconds.labels(kind="onboarding", status="done").observe(time.monotonic() - _t0)
@@ -1135,6 +1201,14 @@ def update_profile(request: UpdateProfileRequest, user: dict[str, Any] = Depends
         raise HTTPException(status_code=500, detail="Failed to update user profile.")
     updated_user = get_user_by_id(user["id"])
     return format_user_response(updated_user)
+
+
+@app.get("/api/auth/fitness-snapshot")
+def get_fitness_snapshot(user: dict[str, Any] = Depends(get_current_user)):
+    """What the planner would use right now: measured volume (or the profile value),
+    threshold pace and the latest COROS assessment, each with its source. No tier: that
+    depends on the plan's goal and is resolved at generation time."""
+    return fitness_snapshot.build(user["id"]).to_dict()
 
 
 @app.get("/api/auth/pace-zones")
@@ -1465,6 +1539,15 @@ def _build_athlete_context_block(athlete: dict[str, Any]) -> str:
     history_text = race_history.prompt_summary(athlete["id"])
     if history_text:
         lines.append(history_text)
+    snap = plan.get("fitness_snapshot") or {}
+    if plan.get("athlete_tier"):
+        score = f" (score {snap['tier_score']:.1f})" if snap.get("tier_score") is not None else ""
+        volume = (
+            f" · plan volume base {snap['weekly_km']:.0f} km ({snap.get('weekly_km_source', 'self_reported')})"
+            if snap.get("weekly_km") is not None
+            else ""
+        )
+        lines.append(f"Level: {plan['athlete_tier']}{score}{volume}")
     if athlete.get("threshold_pace"):
         lines.append(f"Threshold Pace: {athlete['threshold_pace']}/km | VO2max: {athlete.get('coros_vo2max') or 'N/A'}")
 
@@ -1490,7 +1573,7 @@ def _build_athlete_context_block(athlete: dict[str, Any]) -> str:
             lines.append("\nRecent Watch Activities & Execution Quality (Last 14 Days):")
             for act in recent_matches[-6:]:
                 dist = f"{act['distance_km']:.1f}km" if act.get("distance_km") else f"{act.get('sets') or 'N/A'} sets"
-                dur = f"{round((act.get('duration_seconds') or 0)/60)}m"
+                dur = f"{round((act.get('duration_seconds') or 0) / 60)}m"
                 hr = f"avg HR {act['avg_hr']} bpm" if act.get("avg_hr") else ""
                 q_grade = (
                     f"Quality: {act.get('quality_grade')} ({act.get('quality_score')}%)"
@@ -1882,6 +1965,9 @@ async def _generate_plan_for_athlete(
     async def _run_gen():
         _t0 = time.monotonic()
         try:
+            race_info["fitness_snapshot"] = await _plan_snapshot(
+                athlete_id, request.current_weekly_km, typed_is_override=not request.weekly_km_from_watch
+            )
             workouts, resolved_tier = await PlanGenerator.generate_plan_workouts(
                 plan_id,
                 fresh_user,
@@ -1894,6 +1980,7 @@ async def _generate_plan_for_athlete(
             )
             save_workouts(plan_id, workouts, auto_approve=(plan_status != "draft"))
             set_plan_athlete_tier(plan_id, resolved_tier)
+            _store_plan_snapshot(plan_id, race_info["fitness_snapshot"])
             plan_jobs[job_id]["workouts"] = workouts
             plan_jobs[job_id]["status"] = "done"
             plan_job_duration_seconds.labels(kind="generate", status="done").observe(time.monotonic() - _t0)
@@ -2170,6 +2257,12 @@ async def _generate_next_block_for_athlete(
 
     block_context = None
     context_lines: list[str] = []
+    # Generating before the block's last week ends (e.g. Saturday, long run still
+    # on Sunday) leaves sessions that can still happen. They are neither missed nor
+    # "not logged", and they are left out of planned totals and completion %, or the
+    # model reads an unfinished week as under-completion and holds the volume.
+    today = resolve_today(request.client_today, calendar_ops.server_today())
+    plan_monday = start_monday(plan.get("start_date"))
 
     # Newest block first: it carries per-session detail, and this blob is the
     # unbounded tail of the prompt — older summaries are the right thing to lose
@@ -2180,12 +2273,18 @@ async def _generate_next_block_for_athlete(
         block_wos = [
             w for w in all_workouts if wk_start <= (w.get("week_number") or 0) <= wk_end and w.get("type") != "Rest"
         ]
+        upcoming_wos = [w for w in block_wos if is_upcoming(w, plan_monday, today)]
+        upcoming_ids = {w["id"] for w in upcoming_wos}
+        due_wos = [w for w in block_wos if w["id"] not in upcoming_ids]
         completed_wos = [w for w in block_wos if w.get("is_completed") == 1]
 
-        # Planned totals (from generated workouts), summed week-by-week
+        # Planned totals (from generated workouts), summed week-by-week; sessions
+        # still upcoming are not due yet.
         planned_weeks = [get_week_planned_volume(request.plan_id, wk) for wk in range(wk_start, wk_end + 1)]
-        planned_km = sum(w["distance_km"] for w in planned_weeks)
-        planned_min = sum(w["duration_minutes"] for w in planned_weeks)
+        planned_km = sum(w["distance_km"] for w in planned_weeks) - sum(w.get("distance_km") or 0 for w in upcoming_wos)
+        planned_min = sum(w["duration_minutes"] for w in planned_weeks) - sum(
+            w.get("duration_minutes") or 0 for w in upcoming_wos
+        )
 
         # Actual totals (from true GPS watch activities, both matched & unplanned)
         actual_vol = get_block_actual_volume(
@@ -2208,7 +2307,7 @@ async def _generate_next_block_for_athlete(
         unplanned_km = actual_vol.get("unplanned_km", 0.0)
 
         sessions_done = len(completed_wos)
-        sessions_total = len(block_wos)
+        sessions_total = len(due_wos)
         completion_pct = round(sessions_done / sessions_total * 100) if sessions_total else 0
 
         # Avg per-session RPE from individual workouts that have it logged
@@ -2222,7 +2321,7 @@ async def _generate_next_block_for_athlete(
 
         # Collect session-level notes (exclude empty/None)
         session_notes = [
-            f'{w.get("day_of_week","?")} W{w.get("week_number","?")}: "{w["notes"]}"'
+            f'{w.get("day_of_week", "?")} W{w.get("week_number", "?")}: "{w["notes"]}"'
             for w in completed_wos
             if w.get("notes")
         ]
@@ -2230,13 +2329,13 @@ async def _generate_next_block_for_athlete(
         # block_wos is already filtered to non-Rest workouts (see its
         # definition above, earlier in this loop) -- classify by review status.
         missed = [
-            f'{w.get("day_of_week","?")} {w.get("title") or w.get("type","?")}'
-            for w in block_wos
+            f"{w.get('day_of_week', '?')} {w.get('title') or w.get('type', '?')}"
+            for w in due_wos
             if _session_review_status(w) == "MISSED"
         ]
         not_logged = [
-            f'{w.get("day_of_week","?")} {w.get("title") or w.get("type","?")}'
-            for w in block_wos
+            f"{w.get('day_of_week', '?')} {w.get('title') or w.get('type', '?')}"
+            for w in due_wos
             if _session_review_status(w) == "not logged"
         ]
 
@@ -2244,9 +2343,9 @@ async def _generate_next_block_for_athlete(
         line = (
             f"Block {blk} (Wk {wk_start}-{wk_end}): "
             f"{sessions_done}/{sessions_total} sessions ({completion_pct}%) | "
-            f"Actual {actual_km:.1f}km/{actual_min/60:.1f}h"
+            f"Actual {actual_km:.1f}km/{actual_min / 60:.1f}h"
             + (f" (+{actual_vert:.0f}m D+)" if actual_vert > 0 else "")
-            + f" vs Planned {planned_km:.1f}km/{planned_min/60:.1f}h"
+            + f" vs Planned {planned_km:.1f}km/{planned_min / 60:.1f}h"
         )
         if unplanned_count > 0:
             line += f" [Includes {unplanned_count} unplanned watch activity: {unplanned_km:.1f}km]"
@@ -2263,14 +2362,15 @@ async def _generate_next_block_for_athlete(
                 feeling_label = "Max Effort"
             line += f" | Effort: {feeling_label} (RPE {block_rpe}/10)"
         context_lines.append(line)
+        if upcoming_wos:
+            context_lines.append(f"  {upcoming_note(upcoming_wos)}")
 
         if block_note:
             context_lines.append(f'  Athlete note: "{block_note}"')
 
         if blk == prev_block and override_used:
             context_lines.append(
-                f"  ⚠ Block {blk} generated via override at {completion['completion_pct']}% "
-                f"(below the 70% threshold)."
+                f"  ⚠ Block {blk} generated via override at {completion['completion_pct']}% (below the 70% threshold)."
             )
 
         if blk == request.block_number - 1:
@@ -2294,7 +2394,7 @@ async def _generate_next_block_for_athlete(
                 dur = w.get("duration_minutes") or 0
                 km = w.get("distance_km") or 0
                 planned = f"{w.get('title') or w.get('type', '?')} ({dur:.0f}min" + (f"/{km:.1f}km)" if km else ")")
-                status = _session_review_status(w)
+                status = "upcoming" if w["id"] in upcoming_ids else _session_review_status(w)
                 if status == "completed":
                     detail = "completed"
                     if w.get("rpe"):
@@ -2370,8 +2470,11 @@ async def _generate_next_block_for_athlete(
         "plan_start_date": plan.get("start_date"),
         "athlete_notes": request.athlete_notes or plan.get("athlete_notes") or fresh_user.get("athlete_notes"),
         "historical_ceiling": historical_ceiling,
-        # Explicit per-plan tier override; None means the generator derives it.
-        "athlete_tier": plan.get("athlete_tier"),
+        # plans.athlete_tier is the LAST RESOLVED tier, not an override. Passing it as
+        # the override froze every plan at its first tier; it is now only the
+        # hysteresis input, so re-plans follow the athlete's current fitness.
+        "athlete_tier": None,
+        "previous_tier": plan.get("athlete_tier"),
         "readiness_summary": readiness_summary,
         "lang": request.lang or fresh_user.get("lang", "en"),
         "coach_notes": "\n".join(active_coach_notes) if active_coach_notes else None,
@@ -2399,6 +2502,7 @@ async def _generate_next_block_for_athlete(
     async def _run_next_block():
         _t0 = time.monotonic()
         try:
+            race_info["fitness_snapshot"] = await _plan_snapshot(athlete_id)
             workouts, resolved_tier = await PlanGenerator.generate_plan_workouts(
                 request.plan_id,
                 fresh_user,
@@ -2411,6 +2515,7 @@ async def _generate_next_block_for_athlete(
             )
             save_workouts(request.plan_id, workouts)
             set_plan_athlete_tier(request.plan_id, resolved_tier)
+            _store_plan_snapshot(request.plan_id, race_info["fitness_snapshot"])
             plan_jobs[job_id]["workouts"] = workouts
             plan_jobs[job_id]["status"] = "done"
             plan_job_duration_seconds.labels(kind="next_block", status="done").observe(time.monotonic() - _t0)
@@ -2530,6 +2635,7 @@ async def _adapt_week_for_athlete(request: AdaptWeekRequest, athlete_id: int, jo
         week_rebuild.RebuildRequest(
             **request.model_dump(exclude={"plan_id", "max_continuous_jog_min", "client_today"})
         ),
+        today=today,
     )
 
     job_id = str(_uuid.uuid4())
@@ -2861,6 +2967,27 @@ async def coach_calculate_fueling(
     athlete_id: int, request: NutritionParams, coach: dict[str, Any] = Depends(require_athlete_access)
 ):
     return await _calculate_fueling_core(request)
+
+
+class ResultFeedbackRequest(BaseModel):
+    token: str
+    value: int
+
+
+@app.post("/api/feedback/result")
+def post_result_feedback(request: ResultFeedbackRequest):
+    """Thumbs on a Gear Finder / Nutrition Lab result, keyed by the signed feedback_token
+    returned with it (these tools work signed-out, so there is no row to attach to)."""
+    from services import quality_signals
+
+    if request.value not in (-1, 1):
+        raise HTTPException(status_code=422, detail="value must be 1 or -1.")
+    verified = quality_signals.verify_feedback_token(request.token)
+    if verified is None:
+        raise HTTPException(status_code=400, detail="Invalid feedback token.")
+    trace_id, feature = verified
+    observability.score(trace_id=trace_id, name="thumbs", value=request.value, score_id=f"thumbs-{trace_id}")
+    return {"feature": feature, "feedback": request.value}
 
 
 async def _recommend_shoes_core(request: GearParams) -> dict[str, Any]:
@@ -3671,6 +3798,25 @@ class GoalApplyRequest(BaseModel):
     target_mins: float
 
 
+_snapshot_logger = get_logger("fitness_snapshot")
+
+
+async def _plan_snapshot(user_id: int, typed_weekly_km: float | None = None, typed_is_override: bool = False):
+    """Refresh COROS fitness if stale, then assemble the snapshot. Never raises: a plan
+    falls back to the profile path rather than failing on fitness data."""
+    try:
+        await coros_sync.ensure_fresh_assessment(user_id)
+        return fitness_snapshot.build(user_id, typed_weekly_km=typed_weekly_km, typed_is_override=typed_is_override)
+    except Exception:
+        _snapshot_logger.exception("fitness snapshot unavailable; using profile values")
+        return None
+
+
+def _store_plan_snapshot(plan_id: int, snapshot) -> None:
+    if snapshot is not None:
+        set_plan_fitness_snapshot(plan_id, snapshot.to_dict())
+
+
 _goal_logger = get_logger("goal_assessment")
 
 
@@ -3803,6 +3949,9 @@ def _apply_plan_goal(plan_id: int, owner_id: int, request: GoalApplyRequest) -> 
         raise HTTPException(status_code=422, detail="Target time out of range")
     _goal_plan(plan_id, owner_id)
     update_plan_target_time(plan_id, round(request.target_mins / 60, 4))
+    from services import goal_outcomes
+
+    goal_outcomes.score_applied(plan_id, request.target_mins)
     return goal_service.plan_goal(get_plan_by_id(plan_id))
 
 

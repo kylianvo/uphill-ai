@@ -33,6 +33,7 @@ describe("ChatTab", () => {
     selectedMessageSources: null,
     fetchMessageSources: mockFetchMessageSources,
     clearMessageSources: mockClearMessageSources,
+    sendFeedback: vi.fn(),
     clarifyOptions: null,
     dismissClarify: vi.fn(),
     proposalStates: {},
@@ -85,6 +86,23 @@ describe("ChatTab", () => {
     // Invariant: No write tools, Apply buttons, or fabricated tool cards
     expect(screen.queryByText(/Apply/i)).toBeNull();
     expect(screen.queryByText(/Modify plan/i)).toBeNull();
+  });
+
+  it("sends thumbs feedback for a finished coach reply and marks the current vote", () => {
+    const sendFeedback = vi.fn();
+    vi.mocked(useCoachChatModule.useCoachChat).mockReturnValue({
+      ...defaultHookReturn,
+      sendFeedback,
+      messages: [
+        { role: "user", content: "Explain Zone 2" },
+        { id: 12, role: "assistant", content: "Easy aerobic running.", feedback: 1 },
+      ],
+    });
+
+    renderWithContext(<ChatTab isMobile={false} />);
+    expect(screen.getByRole("button", { name: "Helpful" }).getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Not helpful" }));
+    expect(sendFeedback).toHaveBeenCalledWith(12, -1);
   });
 
   it("displays retrieving and generating status labels", () => {

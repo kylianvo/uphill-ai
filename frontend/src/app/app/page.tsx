@@ -949,6 +949,7 @@ export default function AppPage() {
     resting_hr?: number;
     aet_hr?: number;
     ant_hr?: number;
+    threshold_source?: "lab" | "field" | "estimated" | "unknown";
     gemini_api_key?: string;
     zone2_pace_min?: string;
     zone2_pace_max?: string;
@@ -995,6 +996,7 @@ export default function AppPage() {
       gemini_api_key: userData.gemini_api_key ?? "",
       zone2_pace_min: userData.zone2_pace_min ?? "6:30",
       zone2_pace_max: userData.zone2_pace_max ?? "5:45",
+      threshold_source: userData.threshold_source ?? "unknown",
     });
   };
   // Load backend health, active session, and training plans on mount
@@ -1218,6 +1220,7 @@ export default function AppPage() {
         gemini_api_key: data.user.gemini_api_key ?? "",
         zone2_pace_min: data.user.zone2_pace_min ?? "6:30",
         zone2_pace_max: data.user.zone2_pace_max ?? "5:45",
+        threshold_source: data.user.threshold_source ?? "unknown",
       });
       // Show onboarding wizard for new users
       if (!data.user.onboarding_complete) {
@@ -1271,6 +1274,7 @@ export default function AppPage() {
         gemini_api_key: data.user.gemini_api_key ?? "",
         zone2_pace_min: data.user.zone2_pace_min ?? "6:30",
         zone2_pace_max: data.user.zone2_pace_max ?? "5:45",
+        threshold_source: data.user.threshold_source ?? "unknown",
       });
       if (!data.user.onboarding_complete) {
         setOnboardingOpen(true);

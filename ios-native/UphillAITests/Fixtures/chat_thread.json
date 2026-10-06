@@ -1,0 +1,56 @@
+{
+  "messages": [
+    {
+      "id": 101,
+      "role": "user",
+      "content": "Can we move tomorrow's tempo run to Thursday? I have a late meeting.",
+      "created_at": "2026-10-05T08:30:00Z",
+      "request_id": "req-thread-1",
+      "citations": null,
+      "evidence_status": null,
+      "interrupted": false,
+      "feedback": null,
+      "tool_calls": null
+    },
+    {
+      "id": 102,
+      "role": "assistant",
+      "content": "I can move your 45-minute Tempo run from Tuesday to Thursday. Here is the proposed adjustment keeping adequate recovery before your weekend long run.",
+      "created_at": "2026-10-05T08:30:04Z",
+      "request_id": "req-thread-1",
+      "citations": [
+        {
+          "source_id": "cite-1",
+          "title": "Training for the Uphill Athlete",
+          "book": "Training for the Uphill Athlete",
+          "chapter": "Periodization & Recovery",
+          "chapter_num": 5,
+          "quote": "Maintain at least 48 hours between high-intensity quality sessions."
+        }
+      ],
+      "evidence_status": "available",
+      "interrupted": false,
+      "feedback": 1,
+      "tool_calls": [
+        {
+          "tool_call_id": "call_prop_1",
+          "name": "propose_schedule_change",
+          "status": "success",
+          "card_type": "schedule_proposal",
+          "card_data": {
+            "proposal_id": 7,
+            "status": "proposed",
+            "rationale": "Move Tuesday Tempo to Thursday per athlete request.",
+            "warnings": []
+          }
+        }
+      ]
+    }
+  ],
+  "summary": "Athlete requested moving Tuesday tempo session to Thursday due to work schedule.",
+  "has_more": false,
+  "oldest_id": 101,
+  "proposals": {
+    "7": "proposed"
+  }
+}

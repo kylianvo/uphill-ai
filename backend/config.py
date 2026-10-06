@@ -74,6 +74,19 @@ class Config:
     API_PORT: int = int(os.getenv("PORT", "8000"))
     API_HOST: str = os.getenv("HOST", "0.0.0.0")
     GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID", "")
+    # Public OAuth IDs for the web/Android and native iOS clients.
+    GOOGLE_CLIENT_IDS: list[str] = [
+        c.strip()
+        for c in os.getenv(
+            "GOOGLE_CLIENT_IDS",
+            "451637841654-0eoo8qsa5fgnpm4cq0br8phgkhh92c5a.apps.googleusercontent.com,"
+            "451637841654-ncj3jhv24t9rq665noctori05faajiej.apps.googleusercontent.com",
+        ).split(",")
+        if c.strip()
+    ]
+    APPLE_AUDIENCES: list[str] = [
+        c.strip() for c in os.getenv("APPLE_AUDIENCES", "uphill.ai.app,ai.uphill.app").split(",") if c.strip()
+    ]
 
     # PostgreSQL connection URL
     DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://uphill:uphill_secret@localhost:5432/uphill_ai")
@@ -189,6 +202,11 @@ class Config:
     LANGFUSE_SAMPLE_RATE: float = float(os.getenv("LANGFUSE_SAMPLE_RATE", "1.0"))
     # Seconds; bounds background export and shutdown flush only, never a request.
     LANGFUSE_TIMEOUT: int = int(os.getenv("LANGFUSE_TIMEOUT", "5"))
+    # Git SHA of the deployed build, tagged on every trace so monitoring can compare releases.
+    LANGFUSE_RELEASE: str = os.getenv("LANGFUSE_RELEASE", "")
+    # Share of finished coach turns graded in-process by services/llm_judge.py (one extra
+    # Gemini call each). Only the scores reach Langfuse. 0 disables.
+    LLM_JUDGE_SAMPLE_RATE: float = float(os.getenv("LLM_JUDGE_SAMPLE_RATE", "0.1"))
     # Must stay false: only metadata and scores may leave our infrastructure
     # (coach-chat roadmap decision 5). Flipping it needs a new product decision.
     LANGFUSE_EXPORT_CONTENT: bool = os.getenv("LANGFUSE_EXPORT_CONTENT", "false").lower() == "true"

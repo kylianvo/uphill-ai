@@ -29,6 +29,7 @@ import { AdaptWeekModal } from "../components/AdaptWeekModal";
 import ConfirmActionModal from "../components/ConfirmActionModal";
 import ManagePlanSheet from "../components/ManagePlanSheet";
 import CorosPushButton from "../components/CorosPushButton";
+import { localToday } from "../lib/scheduleProposals";
 import { FeelingSelector, rpeToFeelingId } from "../components/FeelingSelector";
 import { GoalPill } from "../components/GoalPill";
 import PlanSummaryCarousel from "../components/PlanSummaryCarousel";
@@ -289,6 +290,27 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actingAsAthleteId]);
   const t = (key: keyof typeof translations.en) => translations[lang]?.[key] || translations.en[key] || key;
+
+  // Measured weekly km from COROS (4 complete weeks), prefilled into an empty form.
+  // Skipped while a coach acts as an athlete: the endpoint returns the caller's own data.
+  const [watchKm, setWatchKm] = useState<number | null>(null);
+  useEffect(() => {
+    if (isCoachActingAsAthlete) return;
+    const token = typeof window !== "undefined" ? localStorage.getItem("uphill_session_token") : null;
+    if (!token) return;
+    fetch(`${API_BASE_URL}/api/auth/fitness-snapshot`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => (r.ok ? r.json() : null))
+      .then(s => {
+        if (s?.weekly_km_source !== "coros" || typeof s.weekly_km !== "number") return;
+        const km = Math.round(s.weekly_km);
+        setWatchKm(km);
+        setPlanForm((f: typeof planForm) =>
+          f.current_weekly_km ? f : { ...f, current_weekly_km: String(km), weekly_km_from_watch: true }
+        );
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCoachActingAsAthlete, API_BASE_URL]);
   const totalWeeks = activePlan ? (activePlan.total_weeks || activePlan.plan_duration_weeks || 1) : 0;
 
   // Automatically select the calendar-derived current week when an active plan loads or changes
@@ -916,6 +938,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
           use_treadmill: nextBlockSchedule.use_treadmill,
           training_environment: nextBlockSchedule.training_environment,
           athlete_notes: nextBlockSchedule.athlete_notes || null,
+          client_today: localToday(),
         }),
       });
       const data = await resp.json();
@@ -1383,8 +1406,13 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
               <input type="number" step="0.1" min="0" className="chat-input" style={{ borderRadius: "8px", width: "100%", padding: "10px" }}
                 placeholder={lang === "en" ? "e.g. 30" : "vd. 30"}
                 value={planForm.current_weekly_km}
-                onChange={e => setPlanForm({ ...planForm, current_weekly_km: e.target.value })}
+                onChange={e => setPlanForm({ ...planForm, current_weekly_km: e.target.value, weekly_km_from_watch: false })}
                 required />
+              {watchKm !== null && (
+                <p style={{ fontSize: "11.5px", color: "var(--text-muted)", margin: "5px 0 0 0" }}>
+                  {t("weekly_km_from_watch_hint").replace("{km}", String(watchKm))}
+                </p>
+              )}
               <p style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "5px", margin: "5px 0 0 0" }}>
                 {lang === "en"
                   ? "How many km are you currently running per week? Used to set your starting training load."

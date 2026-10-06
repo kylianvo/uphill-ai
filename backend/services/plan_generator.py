@@ -817,7 +817,8 @@ class PlanGenerator:
         if isinstance(user_id, bool) or not isinstance(user_id, int):
             user_id = None
         with observability.trace("plan_generation", feature="plan_generation", user_id=user_id):
-            return await PlanGenerator._generate_plan_workouts(
+            trace_id = observability.current_trace_id()
+            workouts, tier = await PlanGenerator._generate_plan_workouts(
                 plan_id=plan_id,
                 user_profile=user_profile,
                 race_info=race_info,
@@ -829,6 +830,19 @@ class PlanGenerator:
                 block_context=block_context,
                 target_week=target_week,
             )
+            from services import plan_signals
+
+            snap = race_info.get("fitness_snapshot")
+            plan_signals.record_generation(
+                plan_id=plan_id,
+                user_id=user_id,
+                block_number=block_number,
+                workouts=workouts,
+                trace_id=trace_id,
+                tier=tier,
+                measured_weekly_km=snap.weekly_km if snap and snap.weekly_km_source == "coros" else None,
+            )
+            return workouts, tier
 
     @staticmethod
     async def _generate_plan_workouts(
@@ -931,7 +945,12 @@ class PlanGenerator:
         course_distance_km = race_info.get("course_distance_km")
         course_elevation_gain_m = race_info.get("course_elevation_gain_m")
         target_time_hours = race_info.get("target_time_hours")
-        current_weekly_km = float(user_profile.get("current_weekly_km", 30.0))
+        snapshot = race_info.get("fitness_snapshot")
+        current_weekly_km = (
+            float(snapshot.weekly_km) if snapshot else float(user_profile.get("current_weekly_km", 30.0))
+        )
+        if snapshot and snapshot.threshold_pace:
+            user_profile = {**user_profile, "threshold_pace": snapshot.threshold_pace}
 
         # Pre-compute goal race pace if we have both a target time and distance
         if target_time_hours and course_distance_km:
@@ -959,10 +978,9 @@ class PlanGenerator:
             except Exception as exc:
                 print(f"[PlanGen] Race history unavailable: {exc}")
         _max_jog_min = user_profile.get("max_continuous_jog_min")
-        athlete_tier = resolve_tier(
+        _tier_args = dict(
             explicit_tier=race_info.get("athlete_tier"),
             goal_type=race_info.get("goal_type") or user_profile.get("goal_type"),
-            current_weekly_km=current_weekly_km,
             max_continuous_jog_min=_max_jog_min,
             historical_max_distance_km=(_historical_ceiling or {}).get("max_distance_km"),
             # RAW stored thresholds, deliberately not the derived aet_hr/ant_hr above.
@@ -972,7 +990,19 @@ class PlanGenerator:
             # is only evidence when it was actually measured.
             aet_hr=user_profile.get("aet_hr"),
             ant_hr=user_profile.get("ant_hr"),
+            # The plan's last resolved tier, for hysteresis on re-plans. Never an override.
+            previous_tier=race_info.get("previous_tier"),
         )
+        if snapshot:
+            athlete_tier = snapshot.resolve_tier(**_tier_args, max_hr=max_hr)
+        else:
+            athlete_tier = resolve_tier(
+                **_tier_args,
+                current_weekly_km=current_weekly_km,
+                threshold_source=user_profile.get("threshold_source"),
+                max_hr=max_hr,
+                gender=gender,
+            )
         tier_profile = get_profile(athlete_tier)
 
         # Extract Zone 2 bounds and calculate personalized pacing zone ranges.
@@ -1147,6 +1177,7 @@ class PlanGenerator:
             # Race record from claimed UTMB/VBM profiles and self-reported results;
             # sits beside the ceiling because both describe proven capacity.
             race_history_notes = f"\n{race_history_text}\n" if race_history_text else ""
+            snapshot_notes = f"\n{snapshot.prompt_block(lang)}\n" if snapshot else ""
 
             athlete_notes = race_info.get("athlete_notes") or user_profile.get("athlete_notes")
             constraints_notes = ""
@@ -1209,6 +1240,7 @@ class PlanGenerator:
                 f"{scheduling_notes}"
                 f"{ceiling_notes}"
                 f"{race_history_notes}"
+                f"{snapshot_notes}"
                 f"{constraints_notes}"
             )
 
@@ -1710,12 +1742,18 @@ class PlanGenerator:
         # Gemini is the only engine. One reduced-prompt retry covers the common transient
         # failure (a truncated or unparseable response) before falling through to the
         # deterministic rule-based schedule below.
+        _trace_id = observability.current_trace_id()
         for _reduced in (False, True):
             _result = await _try_gemini(reduced=_reduced)
             if _result:
+                if _trace_id:
+                    _engine_used = "gemini_retry" if _reduced else "gemini"
+                    observability.score(trace_id=_trace_id, name="plan_engine", value=_engine_used)
                 return _result
 
         # --- Rule-Based Fallback Schedule ---
+        if _trace_id:
+            observability.score(trace_id=_trace_id, name="plan_engine", value="rules")
 
         _rule_started = time.monotonic()
 

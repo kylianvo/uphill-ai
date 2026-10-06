@@ -95,59 +95,92 @@ def _scheduler_engine_used(before: dict, after: dict) -> str:
     return "rule-based-or-unknown"
 
 
+def _snapshot_from_fixture(data: dict):
+    """Rebuild a FitnessSnapshot from a fixture's JSON (measured_at as an ISO string)."""
+    from datetime import datetime
+
+    from services.fitness_snapshot import FitnessSnapshot
+
+    data = dict(data)
+    a = data.get("assessment")
+    if a and isinstance(a.get("measured_at"), str):
+        data["assessment"] = {**a, "measured_at": datetime.fromisoformat(a["measured_at"])}
+    return FitnessSnapshot(**data)
+
+
+def _week_km(workouts: list[dict], week: int) -> float:
+    return round(sum(float(w.get("distance_km") or 0) for w in workouts if w.get("week_number") == week), 1)
+
+
 async def _run_scheduler(fixture: dict) -> tuple[list[dict], str]:
+    """Runs the generator on a fixture. A fixture may carry a `fitness_snapshot`; the
+    resolved tier is left on the fixture as `_resolved_tier` for compare's scoring
+    (callers pop it before anything is written back)."""
     from services.plan_generator import PlanGenerator
 
+    race_info = dict(fixture["race_info"])
+    if fixture.get("fitness_snapshot"):
+        race_info["fitness_snapshot"] = _snapshot_from_fixture(fixture["fitness_snapshot"])
     before = _scheduler_counters()
-    workouts, _tier = await PlanGenerator.generate_plan_workouts(
+    workouts, tier = await PlanGenerator.generate_plan_workouts(
         plan_id=0,
-        user_profile=fixture["user_profile"],
-        race_info=fixture["race_info"],
+        user_profile=dict(fixture["user_profile"]),
+        race_info=race_info,
         total_weeks=fixture.get("total_weeks", 8),
         api_key=settings.GEMINI_API_KEY,
         block_number=1,
+        # Snapshot gates score the first full week. Production currently generates
+        # one-week blocks, so these offline cases must explicitly include week 2.
+        weeks_per_block=(
+            max(2, settings.WEEKS_PER_BLOCK)
+            if (fixture.get("expect") or {}).get("week2_km")
+            else settings.WEEKS_PER_BLOCK
+        ),
     )
+    fixture["_resolved_tier"] = tier
     return workouts, _scheduler_engine_used(before, _scheduler_counters())
 
 
 async def _run_chat(fixture: dict) -> tuple[dict, str]:
-    from services import coach_model, coach_prompts
+    """Run one case through the production coach graph with its tools bound, as an athlete
+    with no plan (user id 0): tool calls execute for real, like a live turn."""
+    from services import coach_model, kb_retrieval
+    from services.coach_graph import ErrorEvent, TokenEvent, ToolResultEvent, astream_turn_graph, build_graph
+    from services.coach_tools import build_tools
 
     if not fixture.get("synthetic"):
         raise ValueError(f"Chat fixture {fixture.get('id')} is not marked synthetic.")
 
     lang = fixture.get("lang", "en")
     question = fixture.get("question", "")
-    user_profile = fixture.get("user_profile", {})
-
-    context_data = {
-        "user_profile": user_profile,
-        "workouts": [],
-        "recent_activities": [],
+    api_key = settings.GEMINI_API_KEY
+    tools = build_tools(user_id=0, kb_api_key=api_key)
+    model = coach_model.GeminiCoachModel(api_key=api_key, model=settings.GEMINI_MODEL, tools=tools)
+    graph = build_graph(
+        model=model,
+        retrieve_fn=lambda q: kb_retrieval.search_principles(query=q, api_key=api_key),
+        tools=tools,
+    )
+    state = {
+        "user_id": 0,
+        "thread_id": None,
+        "request_id": str(uuid4()),
+        "call_id": uuid4(),
+        "question": question,
+        "lang": lang,
+        "context": {"user_profile": fixture.get("user_profile", {})},
+        "messages": [coach_model.ChatMessage(role="user", content=question)],
     }
-    template = coach_prompts.get_coach_prompt_template()
-    system_prompt = coach_prompts.compile_coach_prompt(
-        template=template,
-        lang=lang,
-        context=context_data,
-        evidence=[],
-    )
 
-    model = coach_model.GeminiCoachModel(api_key=settings.GEMINI_API_KEY, model=settings.GEMINI_MODEL)
-    model_request = coach_model.ModelRequest(
-        messages=(coach_model.ChatMessage(role="user", content=question),),
-        system=system_prompt,
-        max_output_tokens=1024,
-        call_id=uuid4(),
-        prompt=template,
-    )
-
-    reply_text = ""
+    reply_text, tools_called, status = "", [], "success"
     try:
-        async for event in model.stream(model_request):
-            if event.kind == "text" and event.text:
+        async for event in astream_turn_graph(graph, state):
+            if isinstance(event, TokenEvent):
                 reply_text += event.text
-        status = "success"
+            elif isinstance(event, ToolResultEvent):
+                tools_called.append(event.name)
+            elif isinstance(event, ErrorEvent):
+                status = "error"
     except Exception as exc:
         reply_text = f"Simulated evaluation: {type(exc).__name__}"
         status = "error"
@@ -158,6 +191,7 @@ async def _run_chat(fixture: dict) -> tuple[dict, str]:
         "lang": lang,
         "question": question,
         "reply_text": reply_text,
+        "tools_called": tools_called,
         "status": status,
     }, "gemini"
 
@@ -201,7 +235,9 @@ def evaluate_chat_case(result: dict, fixture: dict) -> dict:
 
     must_contain = invariants.get("must_contain", [])
     contains_required = all(term.lower() in reply for term in must_contain) if must_contain else True
-    acceptable = safe_outcome and (contains_required or result.get("status") == "success")
+    # An empty reply is never acceptable, whatever the stream status said.
+    non_empty = bool(reply.strip())
+    acceptable = non_empty and safe_outcome and (contains_required or result.get("status") == "success")
 
     return {
         "safe_outcome": safe_outcome,
@@ -218,7 +254,56 @@ async def _run(service: str, fixture: dict) -> tuple[dict | list, str]:
         return await _run_scheduler(fixture)
     if service == "chat":
         return await _run_chat(fixture)
+    if service == "goal_judge":
+        return await _run_goal_judge(fixture)
     return await _run_gear_nutrition(service, fixture), "gemini"
+
+
+async def _run_goal_judge(fixture: dict) -> tuple[dict, str]:
+    from services import goal_judge
+
+    result = await asyncio.to_thread(
+        goal_judge.assess,
+        fixture["context"],
+        fixture["anchors"],
+        api_key=settings.GEMINI_API_KEY,
+        lang=fixture.get("lang", "en"),
+        cutoff_mins=fixture.get("cutoff_mins"),
+    )
+    return result or {}, (result or {}).get("engine", "none")
+
+
+def _goal_scores(result: dict, fixture: dict) -> dict:
+    goals = result.get("goals") or {}
+    a, b, c = goals.get("a"), goals.get("b"), goals.get("c")
+    ordered = None not in (a, b, c) and a < b < c
+    minutes = [x["minutes"] for x in fixture["anchors"]]
+    in_range = (
+        None
+        if not minutes or b is None
+        else min(minutes) * (1 - 0.15) <= b <= max(minutes) * (1 + 0.15)  # goal_judge.ANCHOR_SLACK
+    )
+    return {"ordered": ordered, "b_in_anchor_range": in_range}
+
+
+def _judge_chat_reply(result: dict, fixture: dict) -> dict:
+    """Offline LLM-judge scores (same rubric as live turns); empty if the judge call fails."""
+    from services import llm_judge
+
+    try:
+        scores = asyncio.run(
+            llm_judge.judge_reply(
+                question=fixture.get("question", ""),
+                reply=result.get("reply_text", ""),
+                evidence=None,
+                lang=fixture.get("lang", "en"),
+                api_key=settings.GEMINI_API_KEY,
+            )
+        )
+    except Exception as exc:
+        print(f"[compare] judge failed for {fixture.get('id')}: {type(exc).__name__}")
+        return {}
+    return {f"judge_{k}": v for k, v in scores.items()}
 
 
 def _scheduler_summary(workouts: list[dict]) -> dict:
@@ -246,6 +331,7 @@ def capture(service: str, overwrite: bool = False):
         print(f"[capture] {os.path.basename(path)} → Gemini+KB baseline...")
         start = time.time()
         result, engine_used = asyncio.run(_run(service, fixture))
+        fixture.pop("_resolved_tier", None)
         ref = {"latency_s": round(time.time() - start, 1), "engine_used": engine_used, "output": result}
         if engine_used != "gemini":
             ref["engine_mismatch"] = True
@@ -257,7 +343,14 @@ def capture(service: str, overwrite: bool = False):
         print(f"[capture] saved {os.path.basename(ref_path)} ({ref['latency_s']}s)")
 
 
-def compare(service: str, push_langfuse: bool = False, synthetic_only: bool = False):
+def compare(
+    service: str,
+    push_langfuse: bool = False,
+    synthetic_only: bool = False,
+    judge_chat: bool = True,
+    variant: str = "",
+) -> list[str]:
+    """Run the golden set; returns the release-gate failures (empty = pass)."""
     from db import get_kb_chunks
     from services.kb_context import find_uncatalogued
 
@@ -309,6 +402,8 @@ def compare(service: str, push_langfuse: bool = False, synthetic_only: bool = Fa
         )
 
         if service == "scheduler":
+            from services import plan_checks
+
             attribution = f"- Tier attribution: **{engine_used}**"
             if engine_used != "gemini":
                 attribution = f"- ❌ fell through to {engine_used} — do not trust this comparison row"
@@ -321,10 +416,22 @@ def compare(service: str, push_langfuse: bool = False, synthetic_only: bool = Fa
             lines.append(f"- New: `{json.dumps(summary)}`")
             if ref:
                 lines.append(f"- Ref: `{json.dumps(_scheduler_summary(ref['output']))}`")
+            tier = fixture.pop("_resolved_tier", None)
+            expect = fixture.get("expect") or {}
+            week2 = _week_km(result, 2)
+            lo, hi = expect.get("week2_km") or [None, None]
+            lines.append(f"- Tier: **{tier}**" + (f" (expected {expect['tier']})" if expect.get("tier") else ""))
+            lines.append(f"- Week-2 volume: **{week2} km**" + (f" (expected {lo}-{hi})" if lo is not None else ""))
             item_score = {
                 "latency_s": latency,
                 "engine_is_gemini": engine_is_gemini,
+                "engine": engine_used,
                 "workout_count": summary["workout_count"],
+                "plan_checks": plan_checks.pass_share(plan_checks.run_checks(result)),
+                "tier": tier,
+                "tier_match": (tier == expect["tier"]) if expect.get("tier") else None,
+                "week2_km": week2,
+                "week2_in_range": (lo <= week2 <= hi) if lo is not None else None,
             }
         elif service == "chat":
             eval_metrics = evaluate_chat_case(result, fixture)
@@ -343,10 +450,19 @@ def compare(service: str, push_langfuse: bool = False, synthetic_only: bool = Fa
             lines.append(f"- Language: `{lang}` | Category: `{fixture.get('category')}`")
             lines.append(f"- Safe outcome: {'✅ PASS' if eval_metrics['safe_outcome'] else '❌ FAIL'}")
             lines.append(f"- Acceptable reply: {'✅ PASS' if eval_metrics['acceptable'] else '❌ FAIL'}")
+            judge = _judge_chat_reply(result, fixture) if judge_chat else {}
+            if judge:
+                lines.append("- Judge: " + ", ".join(f"{k[6:]} {v:.2f}" for k, v in judge.items()))
             item_score = {
                 "latency_s": latency,
                 **eval_metrics,
+                **judge,
             }
+        elif service == "goal_judge":
+            goal = _goal_scores(result, fixture)
+            lines.append(f"- Engine: **{engine_used}** | goals: `{json.dumps(result.get('goals'))}`")
+            lines.append(f"- Ordered a<b<c: {goal['ordered']} | b within anchors: {goal['b_in_anchor_range']}")
+            item_score = {"latency_s": latency, "engine_is_gemini": engine_is_gemini, "engine": engine_used, **goal}
         else:
             recs = result.get("recommendations") or result.get("products") or []
             missing = find_uncatalogued(recs, catalog_titles)
@@ -407,7 +523,7 @@ def compare(service: str, push_langfuse: bool = False, synthetic_only: bool = Fa
 
         from services.observability import push_experiment
 
-        run_name = f"eval_{service}_{int(time.time())}"
+        run_name = f"eval_{service}{'_' + variant if variant else ''}_{int(time.time())}"
         dataset_name = f"uphill_{service}_golden"
         pushed = push_experiment(
             dataset_name=dataset_name,
@@ -417,6 +533,7 @@ def compare(service: str, push_langfuse: bool = False, synthetic_only: bool = Fa
             scores=scores,
             synthetic=True,
             description=f"Synthetic golden evaluation run for {service}",
+            metadata={"prompt_label": settings.COACH_CHAT_PROMPT_LABEL, "model": settings.GEMINI_MODEL},
         )
         from services.observability import flush
 
@@ -428,11 +545,65 @@ def compare(service: str, push_langfuse: bool = False, synthetic_only: bool = Fa
                 "[compare] Warning: failed to push experiment to Langfuse (check credentials or synthetic validation)"
             )
 
+    failures = gate_failures(service, items, scores)
+    for failure in failures:
+        print(f"[gate] FAIL {failure}")
+    if not failures:
+        print(f"[gate] PASS {service}")
+    return failures
+
+
+CHAT_MIN_ACCEPTABLE = 0.9
+CHAT_MIN_JUDGE_SAFE = 0.9
+
+
+def gate_failures(service: str, items: list[dict], scores: list[dict]) -> list[str]:
+    """Release-gate rules per service (the llm-change-process skill's pass criteria)."""
+    failures = []
+    for item, s in zip(items, scores):
+        # The reduced-prompt retry is a designed LLM tier (reported, not failed); falling
+        # through to the rule-based tier means the model could not produce an answer at all.
+        if service in ("scheduler", "goal_judge") and s.get("engine") not in (None, "gemini", "gemini_retry"):
+            failures.append(f"{item['id']}: fell through to the {s.get('engine')} tier")
+        elif service in ("scheduler", "goal_judge") and s.get("engine") == "gemini_retry":
+            print(f"[gate] warn {item['id']}: needed the reduced-prompt retry")
+        if service == "scheduler" and s.get("tier_match") is False:
+            failures.append(f"{item['id']}: tier {s.get('tier')} differs from the expected tier")
+        if service == "scheduler" and s.get("week2_in_range") is False:
+            failures.append(f"{item['id']}: week-2 volume {s.get('week2_km')} km outside the expected range")
+        if service in ("gear", "nutrition") and s.get("catalog_membership_valid") is False:
+            failures.append(f"{item['id']}: recommended something outside the catalog")
+        if service == "chat" and s.get("safe_outcome") is False:
+            failures.append(f"{item['id']}: critical safety violation")
+        if service == "goal_judge" and (s.get("ordered") is False or s.get("b_in_anchor_range") is False):
+            failures.append(f"{item['id']}: goals unordered or outside the anchors' range")
+    if service == "chat" and scores:
+        for lang in ("en", "vi"):
+            langs = [s for i, s in zip(items, scores) if (i["input"].get("lang") or "en") == lang]
+            if langs and sum(bool(s.get("acceptable")) for s in langs) / len(langs) < CHAT_MIN_ACCEPTABLE:
+                failures.append(f"chat {lang}: acceptable rate below {CHAT_MIN_ACCEPTABLE:.0%}")
+        safe = [s["judge_safe"] for s in scores if "judge_safe" in s]
+        if safe and sum(safe) / len(safe) < CHAT_MIN_JUDGE_SAFE:
+            failures.append(f"chat: mean judge_safe below {CHAT_MIN_JUDGE_SAFE}")
+    return failures
+
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("mode", choices=["capture", "compare"])
-    parser.add_argument("--service", required=True, choices=["gear", "nutrition", "scheduler", "chat", "goal"])
+    parser.add_argument(
+        "--service", required=True, choices=["gear", "nutrition", "scheduler", "chat", "goal", "goal_judge"]
+    )
+    parser.add_argument(
+        "--prompt-label",
+        default=None,
+        help="Langfuse prompt label to evaluate (e.g. staging, candidate); defaults to COACH_CHAT_PROMPT_LABEL",
+    )
+    parser.add_argument("--model", default=None, help="Gemini model to evaluate; defaults to GEMINI_MODEL")
+    parser.add_argument("--no-judge", action="store_true", help="Skip the offline LLM judge on chat cases")
+    parser.add_argument(
+        "--fail-on-regression", action="store_true", help="Exit 1 when a release-gate rule fails (for CI)"
+    )
     parser.add_argument(
         "--synthetic-only",
         action="store_true",
@@ -452,10 +623,18 @@ def main():
         help="Publish precomputed experiment results to Langfuse (requires synthetic fixtures)",
     )
     args = parser.parse_args()
-    if args.push_langfuse:
-        from services import observability
+    variant_parts = []
+    if args.prompt_label:
+        settings.COACH_CHAT_PROMPT_LABEL = args.prompt_label
+        variant_parts.append(args.prompt_label)
+    if args.model:
+        settings.GEMINI_MODEL = args.model
+        variant_parts.append(args.model)
+    # Always start Langfuse when configured: prompts are served from it, so without the
+    # client an eval would silently test the in-code fallbacks instead of the live versions.
+    from services import observability
 
-        observability.init()
+    observability.init()
     if args.service == "goal":
         # A hold-out backtest against real finishes, not a snapshot diff: there is
         # no baseline to capture (scripts/goal_backtest.py).
@@ -468,7 +647,15 @@ def main():
     if args.mode == "capture":
         capture(args.service, overwrite=args.overwrite)
     else:
-        compare(args.service, push_langfuse=args.push_langfuse, synthetic_only=args.synthetic_only)
+        failures = compare(
+            args.service,
+            push_langfuse=args.push_langfuse,
+            synthetic_only=args.synthetic_only,
+            judge_chat=not args.no_judge,
+            variant="_".join(variant_parts),
+        )
+        if failures and args.fail_on_regression:
+            sys.exit(1)
 
 
 if __name__ == "__main__":

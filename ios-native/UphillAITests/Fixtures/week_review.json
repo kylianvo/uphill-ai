@@ -1,0 +1,170 @@
+{
+  "actual": {
+    "matched_count": 0,
+    "matched_hours": 0.0,
+    "matched_km": 0,
+    "matched_vert_m": 0,
+    "total_activities_count": 0,
+    "total_actual_hours": 0.0,
+    "total_actual_km": 0,
+    "total_actual_minutes": 0,
+    "total_actual_vert_m": 0,
+    "unplanned_count": 0,
+    "unplanned_hours": 0.0,
+    "unplanned_km": 0,
+    "unplanned_vert_m": 0
+  },
+  "checkbox_completion_pct": 86,
+  "completion_pct": 0,
+  "coverage": {
+    "checkbox_only_count": 4,
+    "completed_count": 4,
+    "matched_count": 0
+  },
+  "missed": [
+    {
+      "approved_at": "2026-10-02T23:31:47.736578+00:00",
+      "day_of_week": "Friday",
+      "description": "Easy Run + Strides: keep it controlled.",
+      "distance_km": 6.5,
+      "duration_minutes": 40.0,
+      "elevation_gain_m": 40.0,
+      "fueling_tip": null,
+      "grade_percent": 0.0,
+      "id": 1245,
+      "interval_rep_unit": null,
+      "interval_rep_value": null,
+      "interval_reps": null,
+      "is_completed": 0,
+      "is_missed": 1,
+      "is_priority": false,
+      "last_edited_by_user_id": null,
+      "notes": null,
+      "phase": "Base",
+      "plan_id": 93,
+      "rpe": null,
+      "session_slot": "main",
+      "source": "ai_generated",
+      "target_hr_range": "130-145 bpm",
+      "target_pace": "6:10-6:50 /km",
+      "target_zone": "Z2",
+      "title": "Easy Run + Strides",
+      "treadmill_incline": "0",
+      "treadmill_speed": "0",
+      "type": "Easy Run",
+      "walk_interval_value": null,
+      "week_number": 1
+    }
+  ],
+  "narrative": {
+    "highlights": [
+      "0.0km recorded across 0 activities this week."
+    ],
+    "summary": "Week 1: 0% of planned training minutes recorded (0.0km actual vs 44.0km planned).",
+    "watch": [
+      "Only 0% of planned training minutes were recorded this week.",
+      "Vert gain was 0m vs a planned 1090m (0%), more than 25% under target."
+    ]
+  },
+  "per_workout": [
+    {
+      "actual": {
+        "activity_id": null,
+        "distance_km": 7.0,
+        "duration_minutes": 45.0,
+        "elevation_gain_m": 80.0,
+        "state": "checkbox_only"
+      },
+      "day_of_week": "Wednesday",
+      "planned": {
+        "distance_km": 7.0,
+        "duration_minutes": 45.0,
+        "elevation_gain_m": 80.0
+      },
+      "title": "Easy Run",
+      "type": "Easy Run",
+      "workout_id": 1243
+    },
+    {
+      "actual": {
+        "activity_id": null,
+        "distance_km": 4.5,
+        "duration_minutes": 30.0,
+        "elevation_gain_m": 20.0,
+        "state": "checkbox_only"
+      },
+      "day_of_week": "Sunday",
+      "planned": {
+        "distance_km": 4.5,
+        "duration_minutes": 30.0,
+        "elevation_gain_m": 20.0
+      },
+      "title": "Recovery Jog",
+      "type": "Recovery Run",
+      "workout_id": 1247
+    },
+    {
+      "actual": {
+        "activity_id": null,
+        "distance_km": 8.0,
+        "duration_minutes": 60.0,
+        "elevation_gain_m": 350.0,
+        "state": "checkbox_only"
+      },
+      "day_of_week": "Tuesday",
+      "planned": {
+        "distance_km": 8.0,
+        "duration_minutes": 60.0,
+        "elevation_gain_m": 350.0
+      },
+      "title": "Hill Repeats",
+      "type": "Hill Repeats",
+      "workout_id": 1242
+    },
+    {
+      "actual": {
+        "activity_id": null,
+        "distance_km": 18.0,
+        "duration_minutes": 120.0,
+        "elevation_gain_m": 600.0,
+        "state": "checkbox_only"
+      },
+      "day_of_week": "Saturday",
+      "planned": {
+        "distance_km": 18.0,
+        "duration_minutes": 120.0,
+        "elevation_gain_m": 600.0
+      },
+      "title": "Long Run",
+      "type": "Long Run",
+      "workout_id": 1246
+    },
+    {
+      "actual": {
+        "activity_id": null,
+        "distance_km": null,
+        "duration_minutes": null,
+        "elevation_gain_m": null,
+        "state": "missed"
+      },
+      "day_of_week": "Friday",
+      "planned": {
+        "distance_km": 6.5,
+        "duration_minutes": 40.0,
+        "elevation_gain_m": 40.0
+      },
+      "title": "Easy Run + Strides",
+      "type": "Easy Run",
+      "workout_id": 1245
+    }
+  ],
+  "planned": {
+    "distance_km": 44.0,
+    "duration_minutes": 295.0,
+    "elevation_gain_m": 1090,
+    "week_number": 1,
+    "workout_count": 5
+  },
+  "unplanned": [],
+  "week_number": 1
+}

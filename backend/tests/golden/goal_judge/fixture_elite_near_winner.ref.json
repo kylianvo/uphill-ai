@@ -1,0 +1,38 @@
+{
+  "latency_s": 3.2,
+  "engine_used": "gemini",
+  "output": {
+    "goals": {
+      "a": 585.0,
+      "b": 612.0,
+      "c": 645.0
+    },
+    "confidence": "high",
+    "reasoning": [
+      "Your 10:30 finish at Ultra 100K shows excellent endurance across comparable distance and 5,000m of climbing.",
+      "A strong 7:10 finish at Trail 70K highlights top-tier climbing fitness and durability on steep mountain terrain.",
+      "With 14 weeks of dedicated uphill training, modest aerobic adaptation supports targeting a sub-10:00 effort on an ideal day.",
+      "Planning for 10:45 provides a secure safety margin for pacing errors, nutrition issues, or late-race technical fatigue."
+    ],
+    "anchors_weighted": [
+      {
+        "id": "phys_r4",
+        "weight": 0.45
+      },
+      {
+        "id": "rank_r4",
+        "weight": 0.35
+      },
+      {
+        "id": "pct_r5",
+        "weight": 0.2
+      }
+    ],
+    "missing": [
+      "training_log_vert_volume",
+      "heat_acclimation_status",
+      "course_recon_data"
+    ],
+    "engine": "gemini"
+  }
+}

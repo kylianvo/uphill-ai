@@ -1,0 +1,77 @@
+{
+  "assessment": {
+    "anchors": [],
+    "benchmarks": null,
+    "confidence": "low",
+    "context": {
+      "athlete": {
+        "aet_hr": 135,
+        "age": 30,
+        "ant_hr": 165,
+        "max_hr": 185,
+        "profile_weekly_km": 30.0
+      },
+      "block": {
+        "coach_notes": [],
+        "completed_km": 37.5,
+        "completed_vert_m": 1050,
+        "completion_pct": 80,
+        "latest_block_quality_grade": null,
+        "latest_block_rpe": null,
+        "planned_km": 44.0,
+        "planned_vert_m": 1090,
+        "sessions_completed": 4,
+        "sessions_planned": 5,
+        "total_weeks": 12,
+        "weeks_done": 1
+      },
+      "current_target_mins": 390,
+      "history": [],
+      "race": {
+        "climate": {},
+        "date": "2026-12-12",
+        "distance_km": 42.0,
+        "field": null,
+        "gain_m": 2400.0,
+        "key_climbs": [],
+        "name": "Vietnam Mountain Marathon 42K",
+        "profile_source": "synthetic",
+        "terrain": []
+      },
+      "weeks_to_race": 10
+    },
+    "created_at": "2026-10-01T23:30:30.377348+00:00",
+    "distance_km": 42.0,
+    "elevation_gain_m": 2400.0,
+    "engine": "none",
+    "goals": null,
+    "id": 5,
+    "lang": "en",
+    "missing": [
+      "race_history",
+      "recent_trail_result",
+      "utmb_index",
+      "vo2max",
+      "watch"
+    ],
+    "plan_id": 73,
+    "plan_week": 1,
+    "race_date": "2026-12-12",
+    "race_name": "Vietnam Mountain Marathon 42K",
+    "reasoning": [],
+    "reused": true,
+    "sources": [
+      {
+        "included": true,
+        "key": "block",
+        "label": "Training: 80% of weeks 1\u20131"
+      }
+    ],
+    "trigger": "weekly"
+  },
+  "status": {
+    "state": "not_assessed",
+    "suggested_mins": null
+  },
+  "target_time_hours": 6.5
+}

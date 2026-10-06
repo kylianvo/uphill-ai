@@ -48,6 +48,42 @@ describe("usePlanner.handleGeneratePlan", () => {
     expect(body.plan_start_date).toBe("2027-03-15");
   });
 
+  it("tells the backend whether the weekly km is the untouched COROS prefill", async () => {
+    const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>;
+    fetchMock.mockResolvedValue(jsonResponse({ job_id: "job-1", plan: { id: 1, race_name: "Test Race" } }));
+
+    const { result } = renderHookWithApp(() => {
+      const ctx = useAppContext();
+      const planner = usePlanner();
+      return { ctx, planner };
+    });
+    const base = {
+      plan_goal_category: "race",
+      race_name: "Test 50K",
+      race_date: "2027-05-01",
+      goal_type: "finish",
+      plan_start_date: "2027-03-15",
+      current_weekly_km: "134",
+    };
+
+    act(() => {
+      result.current.ctx.setPlanForm({ ...result.current.ctx.planForm, ...base, weekly_km_from_watch: true });
+    });
+    await act(async () => {
+      await result.current.planner.handleGeneratePlan({ preventDefault: () => {} } as React.FormEvent);
+    });
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).weekly_km_from_watch).toBe(true);
+
+    act(() => {
+      result.current.ctx.setPlanForm({ ...result.current.ctx.planForm, ...base, weekly_km_from_watch: false });
+    });
+    await act(async () => {
+      await result.current.planner.handleGeneratePlan({ preventDefault: () => {} } as React.FormEvent);
+    });
+    const last = fetchMock.mock.calls.filter((c: unknown[]) => String(c[0]).includes("/generate-plan")).at(-1)!;
+    expect(JSON.parse(last[1].body).weekly_km_from_watch).toBe(false);
+  });
+
   it("rejects submission for a non-race goal when plan_start_date is missing, without calling fetch", async () => {
     const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>;
 

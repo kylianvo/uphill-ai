@@ -1,0 +1,102 @@
+name: LLM Evals
+
+# Release gate for prompt / LLM-service changes (see .claude/skills/llm-change-process).
+# Runs the synthetic golden sets against real Gemini, pushes each run to Langfuse as an
+# experiment, and fails when a gate rule fails. Manual trigger only (it costs money).
+on:
+  # Manual only: every run makes ~150 paid Gemini calls. Start it from the Actions tab
+  # (optionally with a prompt label) when a prompt or LLM service change needs the gate.
+  workflow_dispatch:
+    inputs:
+      prompt_label:
+        description: "Langfuse prompt label to evaluate (e.g. candidate); empty = production"
+        required: false
+        default: ""
+
+concurrency:
+  group: llm-evals-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DATABASE_URL: postgresql://uphill:uphill_secret@localhost:5432/uphill_ai_eval
+  QDRANT_URL: http://localhost:6333
+  ENVIRONMENT: development
+  JWT_SECRET: ci-eval-secret
+  GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+  LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
+  LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
+  OBSERVABILITY_ID_SALT: ${{ secrets.OBSERVABILITY_ID_SALT }}
+  LANGFUSE_ENVIRONMENT: test
+  LANGFUSE_RELEASE: ${{ github.sha }}
+  LLM_JUDGE_SAMPLE_RATE: "0"
+
+jobs:
+  golden:
+    # Fork PRs have no secrets; skip rather than fail.
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [gear, nutrition, scheduler, chat, goal_judge]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: uphill
+          POSTGRES_PASSWORD: uphill_secret
+          POSTGRES_DB: uphill_ai_eval
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U uphill -d uphill_ai_eval"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      qdrant:
+        image: qdrant/qdrant:latest
+        ports:
+          - 6333:6333
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+      - name: Install dependencies
+        run: cd backend && pip install -r requirements-dev.txt
+      - name: Create schema and load the committed KB seeds
+        run: |
+          cd backend
+          python -c "import db; db.init_db()"
+          python scripts/load_kb.py --domain all
+      - name: Golden eval (${{ matrix.service }})
+        env:
+          SERVICE: ${{ matrix.service }}
+          PROMPT_LABEL: ${{ github.event.inputs.prompt_label }}
+        run: |
+          cd backend
+          python scripts/golden_eval.py compare --service "$SERVICE" \
+            --push-langfuse --synthetic-only --fail-on-regression \
+            ${PROMPT_LABEL:+--prompt-label "$PROMPT_LABEL"}
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-report-${{ matrix.service }}
+          path: backend/tests/golden/report_${{ matrix.service }}.md
+          if-no-files-found: ignore
+
+  judge-calibration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+      - name: Install dependencies
+        run: cd backend && pip install -r requirements-dev.txt
+      - name: Judge agreement with hand labels
+        run: cd backend && python scripts/judge_calibration.py --min-agreement 0.85

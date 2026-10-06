@@ -78,6 +78,29 @@ def current_week(monday: dt.date, today: dt.date) -> int:
     return (today - monday).days // 7 + 1
 
 
+def is_upcoming(row: dict[str, Any], monday: dt.date | None, today: dt.date) -> bool:
+    """A session dated today or later that has no outcome yet: it can still
+    happen, so it is neither missed nor "not logged". Reviewing a week before
+    it ends (Saturday, long run still on Sunday) must not count it against the
+    athlete. No calendar (no start_date) or an unknown day name -> not upcoming."""
+    if monday is None or row.get("day_of_week") not in DAYS:
+        return False
+    if int(row.get("is_completed") or 0) == 1 or int(row.get("is_missed") or 0) == 1:
+        return False
+    if row.get("matched_activity_id") is not None:
+        return False
+    return workout_date(monday, int(row.get("week_number") or 0), row["day_of_week"]) >= today
+
+
+def upcoming_note(rows: list[dict[str, Any]]) -> str:
+    """Prompt line naming the sessions still ahead, e.g.
+    'Week not finished: W4 Sunday Long Run still upcoming; do not treat them as missed.'"""
+    names = ", ".join(
+        f"W{w.get('week_number', '?')} {w.get('day_of_week', '?')} {w.get('title') or w.get('type', '?')}" for w in rows
+    )
+    return f"Week not finished: {names} still upcoming; do not treat them as missed."
+
+
 def fingerprint(row: dict[str, Any]) -> dict[str, Any]:
     return {f: json_safe(row.get(f)) for f in FINGERPRINT_FIELDS}
 

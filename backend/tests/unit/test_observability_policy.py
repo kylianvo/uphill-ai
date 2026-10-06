@@ -390,3 +390,11 @@ def test_prompt_link_attributes_export_only_known_names_and_integer_versions():
         }
     )
     assert CANARY not in json.dumps(unsafe)
+
+
+def test_release_attribute_exports_only_a_git_sha():
+    safe = policy.sanitize_span_envelope({"name": "generation", "attributes": {"langfuse.release": "52d941a"}})
+    assert safe["attributes"]["langfuse.release"] == "52d941a"
+
+    unsafe = policy.sanitize_span_envelope({"name": "generation", "attributes": {"langfuse.release": CANARY}})
+    assert CANARY not in json.dumps(unsafe)

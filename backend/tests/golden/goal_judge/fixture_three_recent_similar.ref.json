@@ -1,0 +1,38 @@
+{
+  "latency_s": 3.1,
+  "engine_used": "gemini",
+  "output": {
+    "goals": {
+      "a": 385.0,
+      "b": 402.0,
+      "c": 425.0
+    },
+    "confidence": "high",
+    "reasoning": [
+      "Your 5:30 finish at Hill 42K with 2,000m vert shows strong climbing fitness directly transferable to this route.",
+      "A 6:40 finish at Forest 50K provides a proven, solid baseline over comparable ultra distance and vertical gain.",
+      "With 12 weeks of dedicated uphill training, expect up to a 4-5% fitness boost targeting a 6:25 finish.",
+      "Allowing a conservative 7:05 safe goal ensures solid pacing protection against late-race fatigue on the 2,500m climb."
+    ],
+    "anchors_weighted": [
+      {
+        "id": "rank_r1",
+        "weight": 0.45
+      },
+      {
+        "id": "phys_r1",
+        "weight": 0.35
+      },
+      {
+        "id": "pct_r2",
+        "weight": 0.2
+      }
+    ],
+    "missing": [
+      "training_block_volume",
+      "recent_vertical_gain_metrics",
+      "utmb_index"
+    ],
+    "engine": "gemini"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "latency_s": 2.8,
+  "engine_used": "gemini",
+  "output": {
+    "goals": {
+      "a": 720.0,
+      "b": 810.0,
+      "c": 930.0
+    },
+    "confidence": "low",
+    "reasoning": [
+      "No past race results are provided, so estimates rely entirely on typical mid-pack field spreads behind the 8:40 course record.",
+      "Targeting roughly 13:30 accounts for the demanding mountain profile with 4,000 meters of vertical climbing over 80 kilometers.",
+      "A conservative 15:30 safe goal leaves ample buffer for pacing errors, fueling challenges, or late-race fatigue on technical terrain.",
+      "Ten weeks of structured uphill aerobic conditioning can build resilience, supporting an ambitious sub-12:00 finish."
+    ],
+    "anchors_weighted": [],
+    "missing": [
+      "recent_trail_result",
+      "weekly_mileage_and_vert",
+      "aerobic_threshold_pace",
+      "utmb_index"
+    ],
+    "engine": "gemini"
+  }
+}

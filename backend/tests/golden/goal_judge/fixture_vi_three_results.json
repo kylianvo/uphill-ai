@@ -1,0 +1,73 @@
+{
+  "synthetic": true,
+  "provenance": "goal_judge",
+  "lang": "vi",
+  "cutoff_mins": null,
+  "context": {
+    "race": {
+      "name": "Dalat Ultra Trail 42K",
+      "distance_km": 42,
+      "elevation_gain_m": 2200,
+      "terrain": "trail",
+      "field": {
+        "fastest_winner_mins": 250
+      }
+    },
+    "history": [
+      {
+        "race": "VMM 42K",
+        "date": "2026-03-10",
+        "distance_km": 42,
+        "elevation_gain_m": 2600,
+        "finish_mins": 420,
+        "rank_pct": 50
+      },
+      {
+        "race": "Ba Den 30K",
+        "date": "2026-01-05",
+        "distance_km": 30,
+        "elevation_gain_m": 1800,
+        "finish_mins": 260,
+        "rank_pct": 45
+      },
+      {
+        "race": "Trail 21K",
+        "date": "2025-11-20",
+        "distance_km": 21,
+        "elevation_gain_m": 900,
+        "finish_mins": 150,
+        "rank_pct": 40
+      }
+    ],
+    "weeks_to_race": 12
+  },
+  "anchors": [
+    {
+      "id": "phys_r8",
+      "method": "physics",
+      "minutes": 360,
+      "source_result_id": 8,
+      "notes": [
+        "synthetic"
+      ]
+    },
+    {
+      "id": "pct_r9",
+      "method": "percentile_transfer",
+      "minutes": 370,
+      "source_result_id": 9,
+      "notes": [
+        "synthetic"
+      ]
+    },
+    {
+      "id": "rank_r10",
+      "method": "field_rank",
+      "minutes": 355,
+      "source_result_id": 10,
+      "notes": [
+        "synthetic"
+      ]
+    }
+  ]
+}

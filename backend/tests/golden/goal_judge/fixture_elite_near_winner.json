@@ -1,0 +1,65 @@
+{
+  "synthetic": true,
+  "provenance": "goal_judge",
+  "lang": "en",
+  "cutoff_mins": null,
+  "context": {
+    "race": {
+      "name": "National 100K",
+      "distance_km": 100,
+      "elevation_gain_m": 5500,
+      "terrain": "trail",
+      "field": {
+        "fastest_winner_mins": 600
+      }
+    },
+    "history": [
+      {
+        "race": "Ultra 100K",
+        "date": "2026-04-20",
+        "distance_km": 100,
+        "elevation_gain_m": 5000,
+        "finish_mins": 630,
+        "rank_pct": 3
+      },
+      {
+        "race": "Trail 70K",
+        "date": "2026-02-10",
+        "distance_km": 70,
+        "elevation_gain_m": 3800,
+        "finish_mins": 430,
+        "rank_pct": 2
+      }
+    ],
+    "weeks_to_race": 14
+  },
+  "anchors": [
+    {
+      "id": "phys_r4",
+      "method": "physics",
+      "minutes": 615,
+      "source_result_id": 4,
+      "notes": [
+        "synthetic"
+      ]
+    },
+    {
+      "id": "rank_r4",
+      "method": "field_rank",
+      "minutes": 605,
+      "source_result_id": 4,
+      "notes": [
+        "synthetic"
+      ]
+    },
+    {
+      "id": "pct_r5",
+      "method": "percentile_transfer",
+      "minutes": 620,
+      "source_result_id": 5,
+      "notes": [
+        "synthetic"
+      ]
+    }
+  ]
+}
