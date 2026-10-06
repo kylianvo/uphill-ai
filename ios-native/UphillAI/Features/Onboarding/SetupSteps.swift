@@ -141,16 +141,40 @@ struct SetupSteps: View {
                 VStack(alignment: .leading, spacing: UH.Space.regular) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("WEEKLY VOLUME").font(UH.TextStyle.eyebrow).foregroundStyle(UH.Palette.secondary)
-                        HStack(alignment: .firstTextBaseline) {
-                            Text("\(Int(model.draft.currentWeeklyKm))")
-                                .font(.system(size: 36, weight: .bold, design: .rounded))
-                                .foregroundStyle(UH.Palette.ink)
-                            Text("km / week")
-                                .font(UH.TextStyle.label)
-                                .foregroundStyle(UH.Palette.secondary)
+                        HStack(alignment: .center, spacing: 8) {
+                            HStack(spacing: 4) {
+                                TextField("40", value: $model.draft.currentWeeklyKm, format: .number)
+                                    .keyboardType(.numberPad)
+                                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                                    .foregroundStyle(UH.Palette.ink)
+                                    .frame(width: 72)
+                                Text("km / week")
+                                    .font(UH.TextStyle.label)
+                                    .foregroundStyle(UH.Palette.secondary)
+                            }
                             Spacer()
-                            Stepper("\(Int(model.draft.currentWeeklyKm)) km a week", value: $model.draft.currentWeeklyKm, in: 0...250, step: 5)
-                                .labelsHidden()
+                            HStack(spacing: 8) {
+                                Button {
+                                    if model.draft.currentWeeklyKm >= 5 {
+                                        model.draft.currentWeeklyKm -= 5
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    }
+                                } label: {
+                                    Image(systemName: "minus.circle")
+                                        .font(.system(size: 24))
+                                        .foregroundStyle(UH.Palette.ink)
+                                }
+                                Button {
+                                    if model.draft.currentWeeklyKm <= 245 {
+                                        model.draft.currentWeeklyKm += 5
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    }
+                                } label: {
+                                    Image(systemName: "plus.circle")
+                                        .font(.system(size: 24))
+                                        .foregroundStyle(UH.Palette.ink)
+                                }
+                            }
                         }
                     }
                     SetupError(model: model, field: .weeklyKm)

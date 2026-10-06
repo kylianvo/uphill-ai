@@ -277,7 +277,7 @@ struct GoalDeterminerSheet: View {
                             HStack(spacing: 8) {
                                 Button {
                                     if flatPaceMinKm > 3.0 {
-                                        flatPaceMinKm -= 0.1
+                                        flatPaceMinKm = max(3.0, (flatPaceMinKm * 10 - 1).rounded() / 10)
                                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                     }
                                 } label: {
@@ -285,13 +285,26 @@ struct GoalDeterminerSheet: View {
                                         .font(.system(size: 20))
                                         .foregroundStyle(UH.Palette.ink)
                                 }
-                                Text(String(format: "%.1f min/km", flatPaceMinKm))
-                                    .font(UH.TextStyle.metric)
-                                    .foregroundStyle(UH.Palette.ink)
-                                    .frame(minWidth: 100, alignment: .center)
+
+                                HStack(spacing: 2) {
+                                    TextField("6.5", value: $flatPaceMinKm, format: .number.precision(.fractionLength(1)))
+                                        .keyboardType(.decimalPad)
+                                        .multilineTextAlignment(.center)
+                                        .font(UH.TextStyle.metric)
+                                        .foregroundStyle(UH.Palette.ink)
+                                        .frame(width: 50)
+                                    Text("min/km")
+                                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                                        .foregroundStyle(UH.Palette.secondary)
+                                }
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 5)
+                                .background(UH.Palette.surface, in: RoundedRectangle(cornerRadius: UH.Radius.control))
+                                .overlay(RoundedRectangle(cornerRadius: UH.Radius.control).stroke(UH.Palette.line))
+
                                 Button {
                                     if flatPaceMinKm < 12.0 {
-                                        flatPaceMinKm += 0.1
+                                        flatPaceMinKm = min(12.0, (flatPaceMinKm * 10 + 1).rounded() / 10)
                                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                     }
                                 } label: {
@@ -325,10 +338,23 @@ struct GoalDeterminerSheet: View {
                                         .font(.system(size: 20))
                                         .foregroundStyle(UH.Palette.ink)
                                 }
-                                Text("\(Int(weeksToRace)) wks")
-                                    .font(UH.TextStyle.metric)
-                                    .foregroundStyle(UH.Palette.ink)
-                                    .frame(minWidth: 70, alignment: .center)
+
+                                HStack(spacing: 2) {
+                                    TextField("8", value: $weeksToRace, format: .number)
+                                        .keyboardType(.numberPad)
+                                        .multilineTextAlignment(.center)
+                                        .font(UH.TextStyle.metric)
+                                        .foregroundStyle(UH.Palette.ink)
+                                        .frame(width: 40)
+                                    Text("wks")
+                                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                                        .foregroundStyle(UH.Palette.secondary)
+                                }
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 5)
+                                .background(UH.Palette.surface, in: RoundedRectangle(cornerRadius: UH.Radius.control))
+                                .overlay(RoundedRectangle(cornerRadius: UH.Radius.control).stroke(UH.Palette.line))
+
                                 Button {
                                     if weeksToRace < 36 {
                                         weeksToRace += 1

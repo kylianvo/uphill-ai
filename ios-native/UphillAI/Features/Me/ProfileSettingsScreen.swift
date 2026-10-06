@@ -509,13 +509,50 @@ struct ProfileSettingsScreen: View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
-                Text("\(value.wrappedValue) \(unit)").font(.system(.subheadline, design: .monospaced).weight(.bold)).foregroundStyle(UH.Palette.secondary)
+                Text("\(inRange.lowerBound)–\(inRange.upperBound) \(unit)").font(UH.TextStyle.caption).foregroundStyle(UH.Palette.muted)
             }
             Spacer()
-            Stepper("\(title)", value: value, in: inRange)
-                .labelsHidden()
+            HStack(spacing: 8) {
+                Button {
+                    if value.wrappedValue > inRange.lowerBound {
+                        value.wrappedValue -= 1
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    }
+                } label: {
+                    Image(systemName: "minus.circle")
+                        .font(.system(size: 20))
+                        .foregroundStyle(UH.Palette.ink)
+                }
+
+                HStack(spacing: 2) {
+                    TextField("\(value.wrappedValue)", value: value, format: .number)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.center)
+                        .font(.system(.subheadline, design: .monospaced).weight(.bold))
+                        .foregroundStyle(UH.Palette.ink)
+                        .frame(width: 48)
+                    Text(unit)
+                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(UH.Palette.secondary)
+                }
+                .padding(.horizontal, 6)
+                .padding(.vertical, 5)
+                .background(UH.Palette.surface, in: RoundedRectangle(cornerRadius: UH.Radius.control))
+                .overlay(RoundedRectangle(cornerRadius: UH.Radius.control).stroke(UH.Palette.line, lineWidth: 1))
+
+                Button {
+                    if value.wrappedValue < inRange.upperBound {
+                        value.wrappedValue += 1
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    }
+                } label: {
+                    Image(systemName: "plus.circle")
+                        .font(.system(size: 20))
+                        .foregroundStyle(UH.Palette.ink)
+                }
+            }
         }
-        .frame(minHeight: 44)
+        .frame(minHeight: 48)
     }
 
     private func optionalStepperRow(_ title: String, value: Binding<Double?>, inRange: ClosedRange<Double>, unit: String) -> some View {
@@ -526,15 +563,50 @@ struct ProfileSettingsScreen: View {
         return HStack {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
-                Text(value.wrappedValue.map { "\(Int($0)) \(unit)" } ?? "Not set")
-                    .font(.system(.subheadline, design: .monospaced).weight(.bold))
-                    .foregroundStyle(UH.Palette.secondary)
+                Text("\(Int(inRange.lowerBound))–\(Int(inRange.upperBound)) \(unit)").font(UH.TextStyle.caption).foregroundStyle(UH.Palette.muted)
             }
             Spacer()
-            Stepper("\(title)", value: binding, in: inRange, step: 1)
-                .labelsHidden()
+            HStack(spacing: 8) {
+                Button {
+                    if binding.wrappedValue > inRange.lowerBound {
+                        binding.wrappedValue -= 1
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    }
+                } label: {
+                    Image(systemName: "minus.circle")
+                        .font(.system(size: 20))
+                        .foregroundStyle(UH.Palette.ink)
+                }
+
+                HStack(spacing: 2) {
+                    TextField("0", value: binding, format: .number)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.center)
+                        .font(.system(.subheadline, design: .monospaced).weight(.bold))
+                        .foregroundStyle(UH.Palette.ink)
+                        .frame(width: 48)
+                    Text(unit)
+                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(UH.Palette.secondary)
+                }
+                .padding(.horizontal, 6)
+                .padding(.vertical, 5)
+                .background(UH.Palette.surface, in: RoundedRectangle(cornerRadius: UH.Radius.control))
+                .overlay(RoundedRectangle(cornerRadius: UH.Radius.control).stroke(UH.Palette.line, lineWidth: 1))
+
+                Button {
+                    if binding.wrappedValue < inRange.upperBound {
+                        binding.wrappedValue += 1
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    }
+                } label: {
+                    Image(systemName: "plus.circle")
+                        .font(.system(size: 20))
+                        .foregroundStyle(UH.Palette.ink)
+                }
+            }
         }
-        .frame(minHeight: 44)
+        .frame(minHeight: 48)
     }
 }
 

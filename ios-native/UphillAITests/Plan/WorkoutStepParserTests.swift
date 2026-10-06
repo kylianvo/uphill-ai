@@ -123,4 +123,30 @@ struct WorkoutStepParserTests {
         #expect(parsed.process == "Easy aerobic run on rolling trail.")
         #expect(parsed.intent == nil && parsed.benefit == nil && parsed.warning == nil)
     }
+
+    @Test func inlineCoachMetadataDoesNotLeakIntoCooldownStep() {
+        let text = """
+        10 reps Split Jump Squats, 15s transition
+        10 reps Squat Jumps, 15s transition
+        Cool down 5 min static stretching and breathing. Overall: High-cadence bodyweight muscular endurance circuit designed to build local fatigue resistance in propelling leg musculature without systemic cardiovascular overload. Maintains chassis integrity without gym equipment. Reason: Scheduled in the morning slot on Wednesday to utilize a fresh central nervous system before the afternoon aerobic session. Benefit: Recruits and conditions fast-twitch fatigue-resistant fibers to prevent late-race stride collapse and quad fatigue on coastal stair segments. Warning: Stop immediately if form degrades or knee valgus occurs during plyometrics; maintain soft, athletic landings throughout.
+        """
+        let w = TestData.workout(["duration_minutes": 45.0, "type": "Strength", "description": text])
+        let parsed = WorkoutStepParser.parseDescription(text)
+        let steps = WorkoutStepParser.parseSteps(workout: w, description: parsed, isTreadmill: false)
+
+        guard let cooldown = steps.first(where: { $0.phase == .cooldown }) else {
+            Issue.record("Missing cool-down step")
+            return
+        }
+
+        #expect(cooldown.steps == ["Cool down 5 min static stretching and breathing."])
+        #expect(!cooldown.target.contains("Overall"))
+        #expect(!cooldown.target.contains("High-cadence"))
+        #expect(!cooldown.target.contains("Reason"))
+        #expect(!cooldown.target.contains("Benefit"))
+        #expect(!cooldown.target.contains("Warning"))
+
+        #expect(parsed.intent?.contains("High-cadence") == true)
+        #expect(parsed.warning?.contains("Stop immediately") == true)
+    }
 }

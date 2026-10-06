@@ -103,13 +103,50 @@ struct ScheduleEditor: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Continuous jog").font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
-                        Text("\(draft.maxContinuousJogMin) minutes").font(.system(.subheadline, design: .monospaced).weight(.bold)).foregroundStyle(UH.Palette.secondary)
+                        Text("0–120 min").font(UH.TextStyle.caption).foregroundStyle(UH.Palette.muted)
                     }
                     Spacer()
-                    Stepper("Continuous jog", value: $draft.maxContinuousJogMin, in: 0...120, step: 5)
-                        .labelsHidden()
+                    HStack(spacing: 8) {
+                        Button {
+                            if draft.maxContinuousJogMin >= 5 {
+                                draft.maxContinuousJogMin -= 5
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            }
+                        } label: {
+                            Image(systemName: "minus.circle")
+                                .font(.system(size: 20))
+                                .foregroundStyle(UH.Palette.ink)
+                        }
+
+                        HStack(spacing: 2) {
+                            TextField("30", value: $draft.maxContinuousJogMin, format: .number)
+                                .keyboardType(.numberPad)
+                                .multilineTextAlignment(.center)
+                                .font(.system(.subheadline, design: .monospaced).weight(.bold))
+                                .foregroundStyle(UH.Palette.ink)
+                                .frame(width: 44)
+                            Text("min")
+                                .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                                .foregroundStyle(UH.Palette.secondary)
+                        }
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 5)
+                        .background(UH.Palette.surface, in: RoundedRectangle(cornerRadius: UH.Radius.control))
+                        .overlay(RoundedRectangle(cornerRadius: UH.Radius.control).stroke(UH.Palette.line))
+
+                        Button {
+                            if draft.maxContinuousJogMin <= 115 {
+                                draft.maxContinuousJogMin += 5
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            }
+                        } label: {
+                            Image(systemName: "plus.circle")
+                                .font(.system(size: 20))
+                                .foregroundStyle(UH.Palette.ink)
+                        }
+                    }
                 }
-                .frame(minHeight: 44)
+                .frame(minHeight: 48)
             }
 
             // Hard day warning
