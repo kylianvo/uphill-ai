@@ -168,6 +168,18 @@ class TestUpdatePlanSchedule:
         assert json.loads(updated["preferred_run_days"]) == ["Tuesday", "Thursday", "Sunday"]
         assert json.loads(updated["double_session_days"]) == ["Sunday"]
 
+    def test_training_venue_fields_round_trip(self, client, auth_headers, mock_plan_generation):
+        plan_id, _ = _create_plan_with_one_week_of_workouts(client, auth_headers["headers"])
+        before = get_plan_by_id(plan_id)
+        assert before["stair_access"] is False
+        assert before["treadmill_max_incline"] == 15
+
+        updated = update_plan_schedule(plan_id, mountain_days=["Saturday"], stair_access=True, treadmill_max_incline=25)
+
+        assert json.loads(updated["mountain_days"]) == ["Saturday"]
+        assert updated["stair_access"] is True
+        assert updated["treadmill_max_incline"] == 25
+
 
 class TestGenerateNextBlockScheduleEdit:
     def test_schedule_fields_update_plan_row_and_flow_into_generation(self, client, auth_headers):
@@ -202,6 +214,9 @@ class TestGenerateNextBlockScheduleEdit:
                     "has_gym_access": True,
                     "use_treadmill": True,
                     "training_environment": "hilly",
+                    "mountain_days": ["Saturday", "Sunday"],
+                    "stair_access": True,
+                    "treadmill_max_incline": 20,
                 },
             )
             assert resp.status_code == 200, resp.text
@@ -223,6 +238,9 @@ class TestGenerateNextBlockScheduleEdit:
         assert race_info["training_environment"] == "hilly"
         assert race_info["has_gym_access"] is True
         assert race_info["use_treadmill"] is True
+        assert json.loads(race_info["mountain_days"]) == ["Saturday", "Sunday"]
+        assert race_info["stair_access"] is True
+        assert race_info["treadmill_max_incline"] == 20
 
         updated_plan = get_plan_by_id(plan_id)
         assert updated_plan["days_per_week"] == 5

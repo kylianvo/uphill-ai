@@ -228,6 +228,11 @@ class PlanGenerateRequest(BaseModel):
     has_gym_access: bool | None = False
     use_treadmill: bool | None = None
     training_environment: str | None = "flat"  # 'flat' | 'hilly' | 'mixed'
+    # Training venues (services/training_venues.py): weekdays with hill/trail access,
+    # stairs, and the treadmill's top incline in %.
+    mountain_days: list[str] | None = None
+    stair_access: bool | None = None
+    treadmill_max_incline: int | None = None
     # Non-race / start date fields
     plan_start_date: str | None = None  # YYYY-MM-DD
     plan_duration_weeks: int | None = None
@@ -295,6 +300,11 @@ class GenerateNextBlockRequest(BaseModel):
     has_gym_access: bool | None = None
     use_treadmill: bool | None = None
     training_environment: str | None = None
+    # Training venues (services/training_venues.py): weekdays with hill/trail access,
+    # stairs, and the treadmill's top incline in %.
+    mountain_days: list[str] | None = None
+    stair_access: bool | None = None
+    treadmill_max_incline: int | None = None
     athlete_notes: str | None = None
     client_today: str | None = None  # the athlete's local date; ±1 day of server UTC (calendar_rules.resolve_today)
 
@@ -314,6 +324,11 @@ class AdaptWeekRequest(BaseModel):
     has_gym_access: bool | None = None
     use_treadmill: bool | None = None
     training_environment: str | None = None
+    # Training venues (services/training_venues.py): weekdays with hill/trail access,
+    # stairs, and the treadmill's top incline in %.
+    mountain_days: list[str] | None = None
+    stair_access: bool | None = None
+    treadmill_max_incline: int | None = None
     # Longest unbroken jog in minutes. The beginner progression metric: asked of the
     # athlete rather than parsed out of the model's own prose, because deriving state by
     # reading generated text means the model's formatting drift silently changes the
@@ -425,6 +440,11 @@ class OnboardingRequest(BaseModel):
     current_weekly_km: float | None = 30.0
     has_gym_access: bool | None = False
     training_environment: str | None = "flat"  # 'flat' | 'hilly' | 'mixed'
+    # Training venues (services/training_venues.py): weekdays with hill/trail access,
+    # stairs, and the treadmill's top incline in %.
+    mountain_days: list[str] | None = None
+    stair_access: bool | None = None
+    treadmill_max_incline: int | None = None
     # Goal-specific extras
     time_away: str | None = None
     reason_for_break: str | None = None
@@ -1070,6 +1090,9 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         has_gym_access=request.has_gym_access or False,
         use_treadmill=request.has_gym_access or False,
         training_environment=request.training_environment or "flat",
+        mountain_days=request.mountain_days or [],
+        stair_access=bool(request.stair_access),
+        treadmill_max_incline=request.treadmill_max_incline,
         athlete_notes=request.athlete_notes,
     )
     _assess_new_plan(user["id"], plan_id)
@@ -1097,6 +1120,9 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         "has_gym_access": request.has_gym_access or False,
         "use_treadmill": request.has_gym_access or False,
         "training_environment": request.training_environment or "flat",
+        "mountain_days": request.mountain_days or [],
+        "stair_access": bool(request.stair_access),
+        "treadmill_max_incline": request.treadmill_max_incline,
         "plan_start_date": onboarding_start_date,
         "athlete_notes": request.athlete_notes or fresh_user.get("athlete_notes"),
         "historical_ceiling": historical_ceiling,
@@ -1893,6 +1919,9 @@ async def _generate_plan_for_athlete(
         has_gym_access=request.has_gym_access or False,
         use_treadmill=request.use_treadmill,
         training_environment=request.training_environment or "flat",
+        mountain_days=request.mountain_days or [],
+        stair_access=bool(request.stair_access),
+        treadmill_max_incline=request.treadmill_max_incline,
         created_by_user_id=created_by_user_id,
         plan_status=plan_status,
         athlete_notes=request.athlete_notes,
@@ -1922,6 +1951,9 @@ async def _generate_plan_for_athlete(
         if request.use_treadmill is not None
         else (request.has_gym_access or False),
         "training_environment": request.training_environment or "flat",
+        "mountain_days": request.mountain_days or [],
+        "stair_access": bool(request.stair_access),
+        "treadmill_max_incline": request.treadmill_max_incline,
         # Start date
         "plan_start_date": start_date_str,
         "athlete_notes": request.athlete_notes or fresh_user.get("athlete_notes"),
@@ -2229,6 +2261,9 @@ async def _generate_next_block_for_athlete(
         request.use_treadmill,
         request.training_environment,
         request.athlete_notes,
+        request.mountain_days,
+        request.stair_access,
+        request.treadmill_max_incline,
     )
     if any(f is not None for f in _schedule_fields):
         updated_plan = update_plan_schedule(
@@ -2241,6 +2276,9 @@ async def _generate_next_block_for_athlete(
             use_treadmill=request.use_treadmill,
             training_environment=request.training_environment,
             athlete_notes=request.athlete_notes,
+            mountain_days=request.mountain_days,
+            stair_access=request.stair_access,
+            treadmill_max_incline=request.treadmill_max_incline,
         )
         if updated_plan:
             plan = updated_plan
@@ -2467,6 +2505,9 @@ async def _generate_next_block_for_athlete(
         "has_gym_access": plan.get("has_gym_access", False),
         "use_treadmill": plan.get("use_treadmill", False),
         "training_environment": plan.get("training_environment") or "flat",
+        "mountain_days": plan.get("mountain_days"),
+        "stair_access": plan.get("stair_access"),
+        "treadmill_max_incline": plan.get("treadmill_max_incline"),
         "plan_start_date": plan.get("start_date"),
         "athlete_notes": request.athlete_notes or plan.get("athlete_notes") or fresh_user.get("athlete_notes"),
         "historical_ceiling": historical_ceiling,

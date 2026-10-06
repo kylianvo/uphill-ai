@@ -140,7 +140,7 @@ their tissues can yet absorb. Every rule below follows from that.
 """
 
 
-def _performance_rules(profile: TierProfile) -> str:
+def _performance_rules(profile: TierProfile, treadmill_max_incline: int = 15) -> str:
     """Rules for athletes who run continuously. Previously the only rules block.
 
     Kept verbatim except that the progression cap, long-run share and weekday session
@@ -175,13 +175,13 @@ def _performance_rules(profile: TierProfile) -> str:
     )
 
     me_directives = (
-        """12. Muscular Endurance (ME) Directives (Scott Johnston Framework):
+        f"""12. Muscular Endurance (ME) Directives (Scott Johnston Framework):
    - Chassis vs. Engine Principle: Local muscular fatigue resistance of propelling fibers, not cardiac capacity, is the primary governor of sustainable race pace.
    - Terrain Routing:
      * Flat/Rolling Races (<25m vert/km or road): Prescribe the Gym ME progression (straight sets, see the ME format above) or Flat Tire Drags/Sled Pushes to adapt FTa frontier fibers and prevent late-race stride shortening, hip drop, and eccentric quad collapse. Hill Sprints/strides are neuromuscular POWER work, not ME — never count them as the week's ME session.
      * Steep Mountain Races (>=25-35m vert/km or sustained single climbs >500m D+): Prescribe Outdoor Weighted Uphill Carries — water jugs in a backpack (5-15% BW) on a 30%+ grade (ordinary trails rarely exceed 10-12%). Summit Water Dump protocol: dump the water at the top and descend unweighted by default; stronger athletes may carry the weight back down for extra benefit. No suitable hill: fire stairs in a tall building (even six stories works), a Stairmaster, or a Treadmill Incline Series. Last resort: standing on a bike in a very high gear.
    - Dose: total weighted climbing time 30 minutes the first time, building to no more than 60 minutes. On short hills or stairs run it as laps of at least 5 minutes each.
-   - Treadmill Incline Hardware Realism: ME on a treadmill is done at 25% grade, which needs an incline trainer. Standard commercial gym treadmills MAX OUT at about 15%: when that is all the athlete has, set 15% and add a weighted vest/pack (5-15% BW) so local leg burn, not breathing, is the limiter, or substitute weighted box step-ups or stair climbing. NEVER prescribe >15% treadmill incline unless the athlete explicitly notes access to an incline trainer.
+   - Treadmill Incline Hardware Realism: ME on a treadmill is done at 25% grade, which needs an incline trainer. This athlete's treadmill tops out at {treadmill_max_incline}%: below 25%, set its maximum and add a weighted vest/pack (5-15% BW) so local leg burn, not breathing, is the limiter, or use stair laps or weighted box step-ups instead. NEVER prescribe a treadmill incline above {treadmill_max_incline}%.
    - The 48-Hour Buffer: NEVER schedule an ME session within 48 hours of a weekend Long Run, Zone 3/4 interval run, or heavy gym workout.
    - Double Session Sequencing: On double-session days with ME, the high-power ME session is ALWAYS in the morning (fresh CNS); the easy Zone 1/2 aerobic run is in the afternoon.
    - Load, Not Heart Rate: Disregard heart rate in ME sessions. The load must be heavy enough that local leg fatigue, not breathing, limits the athlete, with a distinct low-grade burn in the propelling muscles for the whole climb or set. Done correctly, heart rate stays below the athlete's unweighted AnT heart rate.
@@ -266,11 +266,13 @@ Rules:
 8. NEVER invent a physiological claim, exercise, or number beyond what the Uphill Athlete training philosophy implies. If unsure of an exact figure, give a sensible range instead of fabricating false precision.
 9. Give the athlete profile and prior feedback below real weight — this plan MUST reflect their specific numbers, schedule, and history, not a generic template.
 10. Uphill Athlete & Trail Specificity: For mountain/trail races, incorporate progressive eccentric quad conditioning (eccentric box step-downs, downhill repeats, hill bounding). For ultra distances (50K+), back-to-back long days follow the overreaching limits in rule 3. If the course profile notes high heat or altitude, integrate acclimation guidance.
-11. Environmental & Routine Scheduling: If the athlete's notes indicate flat/urban living on weekdays with weekend trail travel, prescribe flat road/treadmill aerobic work or gym ME on weekdays, reserving high-vert trail long runs for Saturday/Sunday. Keep weekday runs accessible ({lo}-{hi} min).
+11. Environmental & Routine Scheduling: Place every session where TRAINING VENUES (rule 5) says it can happen. When hills are only reachable on some days, those days carry the high-vert long runs, weighted carries and any back-to-back overreach, and the city weekdays carry gym ME, treadmill or stair work and flat aerobic running. If no hill days are recorded but the athlete's notes mention weekend trail trips, follow the notes the same way. Keep weekday runs accessible ({lo}-{hi} min).
 {me_directives}{high_volume_rules}{quality_rules}"""
 
 
-def build_rules_block(profile: TierProfile, max_continuous_jog_min: int | None = None) -> str:
+def build_rules_block(
+    profile: TierProfile, max_continuous_jog_min: int | None = None, treadmill_max_incline: int = 15
+) -> str:
     """The rules text for this tier, including the tier statement that precedes it.
 
     The tier statement is not decoration: without it the model infers the athlete's
@@ -282,5 +284,9 @@ def build_rules_block(profile: TierProfile, max_continuous_jog_min: int | None =
         f"Write for THIS athlete. Do not import assumptions from a different level of runner — "
         f"in particular, do not add intensity, volume or session types that the rules below omit.\n"
     )
-    body = _beginner_rules(profile, max_continuous_jog_min) if profile.uses_walk_run else _performance_rules(profile)
+    body = (
+        _beginner_rules(profile, max_continuous_jog_min)
+        if profile.uses_walk_run
+        else _performance_rules(profile, treadmill_max_incline)
+    )
     return header + body

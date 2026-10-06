@@ -1,0 +1,42 @@
+{
+  "synthetic": true,
+  "provenance": "scheduler",
+  "_comment": "Sub-elite in a flat city with no hill days but a 25% incline trainer and a gym. Treadmill ME may use 25% (never above); long-run vertical comes from treadmill blocks. Gate: no venue violations.",
+  "user_profile": {
+    "age": 31,
+    "gender": "male",
+    "max_hr": 190,
+    "resting_hr": 46,
+    "aet_hr": 152,
+    "ant_hr": 166,
+    "current_weekly_km": 95.0,
+    "days_per_week": 6,
+    "has_gym_access": true
+  },
+  "race_info": {
+    "lang": "en",
+    "terrain": "trail",
+    "goal_type": "finish",
+    "name": "Lavaredo 80K",
+    "date": "2026-12-27",
+    "course_distance_km": 80,
+    "course_elevation_gain_m": 4500,
+    "preferred_days": [
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Saturday",
+      "Sunday"
+    ],
+    "long_run_day": "Saturday",
+    "days_per_week": 6,
+    "has_gym_access": true,
+    "use_treadmill": true,
+    "training_environment": "flat",
+    "mountain_days": [],
+    "stair_access": false,
+    "treadmill_max_incline": 25
+  },
+  "total_weeks": 18
+}
