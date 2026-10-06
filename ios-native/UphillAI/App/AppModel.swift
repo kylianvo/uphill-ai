@@ -175,6 +175,23 @@ final class AppModel {
         }
     }
 
+    @discardableResult
+    func handleOpenURL(_ url: URL) async -> Bool {
+        guard let params = CorosOAuthCoordinator.parseCallbackURL(url) else {
+            return false
+        }
+        guard !params.isError, let state = params.state, let token = params.token else {
+            return false
+        }
+        do {
+            let success = try await deviceConnectionService.completeCoros(state: state, token: token)
+            return success
+        } catch {
+            print("Failed to complete COROS connection via deep link: \(error)")
+            return false
+        }
+    }
+
     func signOut() async {
         actingAsAthlete = nil
         coachedAthleteProfile = nil

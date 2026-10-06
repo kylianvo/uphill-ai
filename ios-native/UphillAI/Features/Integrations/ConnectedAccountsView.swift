@@ -270,13 +270,20 @@ public struct ConnectedAccountsView: View {
     private func handleConnect() async {
         isLoading = true
         errorMessage = nil
-        do {
-            let authUrl = try await service.connectCorosURL()
-            // In native app, start ASWebAuthenticationSession or direct link
-            _ = await UIApplication.shared.open(authUrl)
-            noticeMessage = "Authorizing with COROS… Once completed, return to the app."
-        } catch {
-            errorMessage = "COROS connection unavailable."
+        noticeMessage = nil
+
+        let result = await CorosOAuthCoordinator.shared.connect(via: service)
+        switch result {
+        case .success:
+            await loadStatus()
+            withAnimation(UH.Motion.standard) {
+                noticeMessage = "Connected to COROS · Syncing activities..."
+            }
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        case .cancelled:
+            break
+        case .failed(let msg):
+            errorMessage = msg
         }
         isLoading = false
     }
