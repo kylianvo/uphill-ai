@@ -17,6 +17,14 @@ struct WorkoutDetailSheet: View {
     @State private var confirmMissed = false
     @State private var showEditWorkout = false
     @State private var confirmDeleteWorkout = false
+    /// Parsed description + steps. Filled after the sheet is on screen so tapping a row never waits on it.
+    @State private var content: WorkoutDetailContent?
+
+    private struct ContentKey: Equatable {
+        let workoutID: Int
+        let description: String?
+        let isTreadmill: Bool
+    }
 
     init(model: PlanViewModel, workoutID: Int,
          actingAsAthlete: CoachedAthleteRow? = nil,
@@ -64,7 +72,7 @@ struct WorkoutDetailSheet: View {
                             stepTimelineSection(workout)
 
                             // c. What it builds
-                            let parsed = WorkoutStepParser.parseDescription(workout.description)
+                            let parsed = content?.description ?? ParsedWorkoutDescription(overview: nil, process: nil, benefit: nil, warning: nil, coachNotes: nil)
                             if let benefit = parsed.benefit, !benefit.isEmpty {
                                 whatItBuildsSection(benefit)
                             }
@@ -125,7 +133,8 @@ struct WorkoutDetailSheet: View {
                             }
 
                             // Coach / Athlete Note Thread
-                            if let noteAthleteId = actingAsAthlete?.athleteId ?? currentUserId,
+                            if content != nil,
+                               let noteAthleteId = actingAsAthlete?.athleteId ?? currentUserId,
                                let service = coachingService {
                                 CoachNoteThreadView(
                                     athleteId: noteAthleteId,
@@ -195,6 +204,13 @@ struct WorkoutDetailSheet: View {
                         }
                     }
                     .onAppear { loadLog(workout) }
+                    .task(id: ContentKey(workoutID: workout.id, description: workout.description, isTreadmill: isTreadmill)) {
+                        let snapshot = workout, treadmill = isTreadmill
+                        let built = await Task.detached(priority: .userInitiated) {
+                            WorkoutDetailContent.make(workout: snapshot, isTreadmill: treadmill)
+                        }.value
+                        content = built
+                    }
                 } else {
                     ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
@@ -318,8 +334,7 @@ struct WorkoutDetailSheet: View {
     // MARK: - Step Timeline (b) & Treadmill Toggle (f)
 
     private func stepTimelineSection(_ w: Workout) -> some View {
-        let parsed = WorkoutStepParser.parseDescription(w.description)
-        let steps = WorkoutStepParser.parseSteps(workout: w, description: parsed, isTreadmill: isTreadmill)
+        let steps = content?.steps ?? []
 
         return VStack(alignment: .leading, spacing: UH.Space.compact) {
             HStack {
@@ -351,6 +366,9 @@ struct WorkoutDetailSheet: View {
             }
 
             VStack(alignment: .leading, spacing: 0) {
+                if content == nil {
+                    ProgressView().frame(maxWidth: .infinity, minHeight: 80)
+                }
                 ForEach(Array(steps.enumerated()), id: \.element.id) { index, step in
                     timelineRow(step: step, isLast: index == steps.count - 1, workout: w)
                 }
