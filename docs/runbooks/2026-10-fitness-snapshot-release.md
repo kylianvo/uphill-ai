@@ -323,3 +323,45 @@ stamp was repeated and verified after health. No `alembic upgrade` ran.
 The synthetic accounts and all five associated test plans were removed after
 saving the samples. Cleanup used exact test emails and owned plan rows, without
 truncating any table. Final staging health is HTTP 200.
+
+## Re-check: completed block 1, 2026-10-06
+
+Purpose: the HOLD came from one no-COROS next block (110.2 km against 115–150 km) generated with `override_gate=true` and zero completed block-1 sessions. This re-check repeats the case with block 1 actually completed and no override.
+
+**Pre-registered criterion (fixed before the run):** PASS if the generated next block's full week-2 running distance is within 115–150 km. One attempt, plus at most one repeat only if the first fell back to the rule-based tier. No retry to turn a FAIL into a PASS.
+
+### Setup
+
+- Preflight (read-only): staging `/api/health` healthy; `services/fitness_snapshot.py` and `services/athlete_tier.py` checksums on the server equal those at `7492069`; Langfuse `plan_generation` `staging` = v4, `production` = v1. Nothing changed.
+- One new synthetic account created through `POST /api/auth/mock-login` (email ending `@test.io`; the address is kept out of this record). No COROS connection.
+- Profile via `POST /api/auth/update-profile`: age 36, male, max HR 184, resting HR 52, AeT 133, AnT 162, `threshold_source=unknown`. `GET /api/auth/fitness-snapshot` then showed no watch data.
+- Initial plan via `POST /api/coach/generate-plan`: fixture `elite_no_coros` (Trail 80K, 4,200 m, trail, goal `finish`, typed 140 km/week, 6 days/week, no gym, `training_environment=mixed`).
+- **Deviation from the original setup:** the 2026-10-03 run did not record its race date or schedule. With owner approval these were derived from the evidence: Wednesday off (preferred days Mon/Tue/Thu–Sun, long run Sunday), race date = start + 10 weeks (the "10-week runway" in the stored outputs), start 2026-10-06 (a Tuesday; the original started on a Saturday). The server reported `total_weeks=12` for race date 2026-12-15, so the plan length may not match the original exactly.
+- Block 1 (week 1, 7 workouts including the rest day) marked completed through `PATCH /api/coach/workouts/log` with RPE 4–5. `GET /api/coach/block-completion` showed 100%, unlocked.
+- Block 2 via `POST /api/coach/generate-next-block` with `block_number=2`, `overall_rpe=5`, **no `override_gate`**. The gate did not block it.
+
+### Result
+
+| Item | Value |
+|---|---|
+| Initial week 1 (partial, 6 days) | 80.0 km, 2,700 m |
+| Block-2 week 2 (full week) | **112.4 km**, 4,190 m ascent |
+| Criterion | 115–150 km |
+| Stored snapshot (both plans) | tier `sub_elite`, `weekly_km` 140.0, `weekly_km_source` `self_reported`, tier score 3.75, no readiness exception |
+| Initial trace | `6f392b83a964122b145fe9b882ea0e87`: `plan_generation` v4, engine `gemini`, tier `primary`, scores `plan_tier=sub_elite`, `plan_checks=1`, `plan_engine=gemini` |
+| Next-block trace | `906be7c4cd4a9aef12d921d883baa176`: `plan_generation` v4, engine `gemini`, tier `primary`, scores `plan_tier=sub_elite`, `plan_checks=1`, `plan_engine=gemini` |
+| Fallback / repeat | none (both Gemini), so no repeat was permitted |
+
+Week-2 distances (km): Mon 12.2, Tue 14.7, Wed rest, Thu 17.4, Fri 8.6 (plus a strength session), Sat 22.0, Sun 37.5.
+
+Observations metadata only was read (Observations and Scores APIs); no prompt or reply content was exported.
+
+**Result: FAIL** against the pre-registered criterion (112.4 km < 115 km, 80.3% of the 140 km typed volume; the prompt's own floor is 80%). Completing block 1 and dropping the override moved the result from 110.2 to 112.4 km. It did not reach the band, so the earlier miss was not caused only by the zero-completion override.
+
+### Cleanup
+
+The synthetic plan was deleted through `DELETE /api/coach/plans/{id}` (`recent-plans` is empty afterwards). The API has no user-delete endpoint, so the account remains on staging: `recheck-nocoros-20261006@test.io`. Nothing else was deleted or truncated. Production, Langfuse labels, prompts, code, requirements, deploy scripts and env files were not touched.
+
+### Decision
+
+HOLD stands for the no-COROS next-block path; measured-COROS paths pass. Owner decides: ship with the gap noted, or investigate that path.
