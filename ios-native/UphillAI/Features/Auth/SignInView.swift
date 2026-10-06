@@ -9,6 +9,20 @@ struct SignInView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
+        ScrollViewReader { proxy in
+            scrollContent
+                // The error sits above the fields; bring it into view if the keyboard scrolled it away.
+                .onChange(of: model.errorMessage) { _, message in
+                    guard let message else { return }
+                    withAnimation(reduceMotion ? nil : UH.Motion.standard) { proxy.scrollTo(Self.errorID, anchor: .top) }
+                    AccessibilityNotification.Announcement(message).post()
+                }
+        }
+    }
+
+    private static let errorID = "signin.error"
+
+    private var scrollContent: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: UH.Space.section) {
                 VStack(alignment: .leading, spacing: UH.Space.compact) {
@@ -20,6 +34,15 @@ struct SignInView: View {
                         .foregroundStyle(UH.Palette.secondary)
                 }
                 .padding(.top, UH.Space.reading)
+
+                if let error = model.errorMessage {
+                    Text(error)
+                        .font(UH.TextStyle.label)
+                        .foregroundStyle(UH.Palette.danger)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .id(Self.errorID)
+                        .accessibilityIdentifier("signin.error")
+                }
 
                 SignInWithAppleButton(.continue) { request in
                     request.requestedScopes = [.fullName, .email]
@@ -39,12 +62,6 @@ struct SignInView: View {
 
                 divider
                 emailForm
-
-                if let error = model.errorMessage {
-                    Text(error)
-                        .font(UH.TextStyle.caption)
-                        .foregroundStyle(UH.Palette.danger)
-                }
             }
             .padding(.horizontal, UH.Space.medium)
             .disabled(model.isBusy)
