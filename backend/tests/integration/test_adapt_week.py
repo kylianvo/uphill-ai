@@ -570,8 +570,8 @@ class TestAdaptWeekVolumeBounds:
 
         ctx = _adapt_and_capture(client, auth_headers["headers"], plan_id, fatigue_level="very_light")
 
-        # Week 1 planned 120 min -> very light band is 1.02-1.08 -> 122-130 min.
-        assert "Reference: Week 1 planned 120 min" in ctx
+        # Week 2 planned 120 min -> very light band is 1.02-1.08 -> 122-130 min.
+        assert "Reference: Week 2 as planned 120 min" in ctx
         assert "Target Full Week Total: 122-130 min" in ctx
 
     def test_an_incomplete_prior_week_holds_volume_instead_of_shrinking_it(self, client, auth_headers):
@@ -589,6 +589,39 @@ class TestAdaptWeekVolumeBounds:
         assert "Prior-Week Adherence" in ctx
         assert "do NOT progress volume" in ctx
         assert "do NOT " in ctx and "punishment" in ctx
+
+    def test_a_peak_week_keeps_its_own_planned_volume(self, client, auth_headers):
+        """Production report: adapting a Peak week sized it off the lighter week before
+        (60.9 km -> 65 km) instead of the 81.6 km the plan had for it. The week being
+        adapted already carries its place in the periodisation, so it is the anchor."""
+        plan_id = _create_test_plan(client, auth_headers["headers"])
+        _seed_two_weeks(client, auth_headers["headers"], plan_id, [40, 40, 40], [60, 60, 60], week1_completed=3)
+
+        ctx = _adapt_and_capture(client, auth_headers["headers"], plan_id, fatigue_level="moderate")
+
+        assert "Reference: Week 2 as planned 180 min" in ctx
+        # moderate 0.98-1.05 of 180 -> 176-189 min, not 118-126 off week 1's 120.
+        assert "Target Full Week Total: 176-189 min" in ctx
+
+    def test_a_taper_week_is_not_pulled_up_to_the_week_before(self, client, auth_headers):
+        plan_id = _create_test_plan(client, auth_headers["headers"])
+        _seed_two_weeks(client, auth_headers["headers"], plan_id, [40, 40, 40], [20, 20, 20], week1_completed=3)
+
+        ctx = _adapt_and_capture(client, auth_headers["headers"], plan_id, fatigue_level="moderate")
+
+        assert "Reference: Week 2 as planned 60 min" in ctx
+        assert "Target Full Week Total: 59-63 min" in ctx
+
+    def test_an_incomplete_week_before_a_peak_holds_at_the_prior_level(self, client, auth_headers):
+        """Missing most of the prior week is still no reason to jump to the peak."""
+        plan_id = _create_test_plan(client, auth_headers["headers"])
+        _seed_two_weeks(client, auth_headers["headers"], plan_id, [40, 40, 40], [60, 60, 60], week1_completed=1)
+
+        ctx = _adapt_and_capture(client, auth_headers["headers"], plan_id, fatigue_level="moderate")
+
+        assert "Reference: Week 1 planned 120 min" in ctx
+        assert "Target Full Week Total: 114-122 min" in ctx
+        assert "Prior-Week Adherence" in ctx
 
     def test_the_athlete_request_is_given_explicit_precedence_over_the_cap(self, client, auth_headers):
         """The 5-tier RPE table used to sit as prose above a MUST/DO-NOT-EXCEED

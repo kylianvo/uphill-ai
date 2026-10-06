@@ -442,6 +442,12 @@ def build_rebuild_inputs(
     #    completion is now reported as its own adherence signal with its own
     #    instruction, so the model can coach the missed week instead of silently
     #    rebaselining onto it.
+    #
+    # 3. THE ANCHOR IS THE ADAPTED WEEK'S OWN PLAN, not the week before. The plan
+    #    already placed this week in the periodisation (build, peak, taper, recovery);
+    #    sizing it off the previous week flattened a peak after a lighter week and
+    #    pulled a taper back up. The previous week only takes over when it was not
+    #    completed and is smaller, so a missed week still holds rather than progresses.
     target_wos = [w for w in all_workouts if w.get("week_number") == request.week_number and w.get("type") != "Rest"]
     if target_wos:
         completed_target = [w for w in target_wos if w.get("is_completed") == 1]
@@ -454,23 +460,27 @@ def build_rebuild_inputs(
         user_weekly_min = float(fresh_user.get("current_weekly_km") or 0.0) * 6.0
 
         prior_planned_min = planned_min if prev_wos else 0.0
-        prior_ref_min = (
-            prior_planned_min
-            or (target_planned_min if target_planned_min > 0 else 0.0)
-            or (user_weekly_min if user_weekly_min > 0 else 180.0)
-        )
+        if target_planned_min > 0:
+            ref_min, ref_label = target_planned_min, f"Week {request.week_number} as planned"
+        elif prior_planned_min > 0:
+            ref_min, ref_label = prior_planned_min, f"Week {prev_wk} planned"
+        else:
+            ref_min = user_weekly_min if user_weekly_min > 0 else 180.0
+            ref_label = "Current weekly volume"
 
         # Adherence is a coaching input, never a smaller baseline.
         adherence_note = ""
         if prev_wos and prior_planned_min > 0:
             adherence = (actual_min or 0.0) / prior_planned_min
             if adherence < 0.8:
+                if prior_planned_min <= ref_min:
+                    ref_min, ref_label = prior_planned_min, f"Week {prev_wk} planned"
                 adherence_note = (
                     f"  Prior-Week Adherence: the athlete completed {adherence * 100:.0f}% of Week {prev_wk}'s "
                     f"planned time ({actual_min:.0f} of {prior_planned_min:.0f} min).\n"
                     f"  IMPORTANT: do NOT progress volume on top of a week that was not completed, and do NOT "
-                    f"shrink the plan as a punishment either. HOLD this week at roughly the same planned volume "
-                    f"as Week {prev_wk} so the athlete gets a second chance at the same stimulus. Say so plainly "
+                    f"shrink the plan as a punishment either. HOLD this week at the reference volume below "
+                    f"so the athlete gets a second chance at the same stimulus. Say so plainly "
                     f"in the workout descriptions -- name it as a repeat, not a setback.\n"
                 )
                 # Repeat the week rather than progress off an incomplete one.
@@ -491,8 +501,8 @@ def build_rebuild_inputs(
             else:  # max_effort, exhausted
                 floor_mult, ceil_mult = 0.70, 0.80
 
-        target_floor_min = prior_ref_min * floor_mult
-        target_ceil_min = prior_ref_min * ceil_mult
+        target_floor_min = ref_min * floor_mult
+        target_ceil_min = ref_min * ceil_mult
 
         rem_floor_min = max(0.0, target_floor_min - completed_min)
         rem_ceil_min = max(rem_floor_min + 15.0, target_ceil_min - completed_min)
@@ -522,7 +532,7 @@ def build_rebuild_inputs(
         volume_guidance = (
             f"  Week {request.week_number} Volume Bounds (in MINUTES of training time -- "
             f"distance is derived from duration, so time is the quantity to set):\n"
-            f"    - Reference: Week {prev_wk} planned {prior_ref_min:.0f} min\n"
+            f"    - Reference: {ref_label} {ref_min:.0f} min\n"
             f"    - Target Full Week Total: {target_floor_min:.0f}-{target_ceil_min:.0f} min\n"
             f"    - Completed So Far: {completed_min:.0f} min ({len(completed_target)} sessions)\n"
             f"    - Remaining {uncompleted_count} Sessions: total between {rem_floor_min:.0f} and "
