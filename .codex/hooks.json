@@ -1,0 +1,27 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // .tool_input.notebook_path // empty' | { read -r f; case \"$f\" in */backend/.env|backend/.env|*/backend/.env.production|backend/.env.production|*/deploy.env|deploy.env) echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Blocked: this file holds real local secrets (backend/.env, backend/.env.production, or deploy.env). Edit it manually outside Claude Code.\"}}' ;; esac; }"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // .tool_response.filePath // empty' | { read -r f; case \"$f\" in *backend/*.py) pre-commit run ruff --files \"$f\" >/dev/null 2>&1; pre-commit run ruff-format --files \"$f\" >/dev/null 2>&1 ;; *frontend/src/*.ts|*frontend/src/*.tsx) (cd frontend && npx eslint --fix \"$f\" >/dev/null 2>&1) ;; esac; exit 0; }",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
+  }
+}
