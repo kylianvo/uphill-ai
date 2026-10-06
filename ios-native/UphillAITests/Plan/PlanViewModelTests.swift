@@ -471,11 +471,11 @@ struct PlanViewModelTests {
         let model = make(service)
         await model.load()
 
-        // Unauthorized / 401 / 403
+        // Unauthorized / 401 is the app session, not COROS
         service.syncWatchResult.withLock { $0 = .failure(.unauthorized) }
         let authNotice = await model.syncWatch()
-        #expect(authNotice == "COROS connection expired. Please reconnect in Profile.")
-        #expect(model.watchSyncNotice == "COROS connection expired. Please reconnect in Profile.")
+        #expect(authNotice == "Your session expired. Please sign in again.")
+        #expect(model.watchSyncNotice == "Your session expired. Please sign in again.")
 
         // Transport / API Error userMessage
         service.syncWatchResult.withLock { $0 = .failure(.transport("Connection reset")) }

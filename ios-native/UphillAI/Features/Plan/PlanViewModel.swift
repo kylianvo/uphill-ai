@@ -152,8 +152,9 @@ final class PlanViewModel {
         } catch let apiError as APIError {
             let msg: String
             switch apiError {
-            case .unauthorized, .http(status: 401, _, _), .http(status: 403, _, _):
-                msg = "COROS connection expired. Please reconnect in Profile."
+            // A 401 here is the Uphill session, not COROS; COROS problems come back as 400 with a message.
+            case .unauthorized, .http(status: 401, _, _):
+                msg = "Your session expired. Please sign in again."
             default:
                 msg = apiError.userMessage
             }
