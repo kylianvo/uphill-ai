@@ -9,6 +9,12 @@ struct ScheduleDraft {
     var hasGymAccess: Bool
     var useTreadmill: Bool
     var environment: TrainingEnvironment
+    /// Weekdays the athlete can reach hills or trails (e.g. weekend trips from a flat city).
+    var mountainDays: Set<Weekday>
+    /// Fire stairs in a tall building, a stadium, or a Stairmaster.
+    var stairAccess: Bool
+    /// The treadmill's top incline in %: 15 on a standard gym treadmill, 25+ on an incline trainer.
+    var treadmillMaxIncline: Int
     var maxContinuousJogMin: Int
     var isGettingStarted: Bool { initialPlan?.goalType == "start_running" }
 
@@ -21,6 +27,9 @@ struct ScheduleDraft {
         hasGymAccess = plan?.hasGymAccess ?? false
         useTreadmill = plan?.useTreadmill ?? false
         environment = plan?.trainingEnvironment.flatMap(TrainingEnvironment.init(rawValue:)) ?? .flat
+        mountainDays = Self.days(plan?.mountainDays)
+        stairAccess = plan?.stairAccess ?? false
+        treadmillMaxIncline = plan?.treadmillMaxIncline ?? 15
         maxContinuousJogMin = plan?.maxContinuousJogMin ?? 0
     }
 
@@ -38,6 +47,9 @@ struct ScheduleDraft {
         if hasGymAccess != before.hasGymAccess { body.hasGymAccess = hasGymAccess }
         if useTreadmill != before.useTreadmill { body.useTreadmill = useTreadmill }
         if environment != before.environment { body.trainingEnvironment = environment.rawValue }
+        if mountainDays != before.mountainDays { body.mountainDays = Weekday.allCases.filter(mountainDays.contains).map(\.rawValue) }
+        if stairAccess != before.stairAccess { body.stairAccess = stairAccess }
+        if treadmillMaxIncline != before.treadmillMaxIncline { body.treadmillMaxIncline = treadmillMaxIncline }
         if isGettingStarted && maxContinuousJogMin != before.maxContinuousJogMin { body.maxContinuousJogMin = maxContinuousJogMin }
     }
 
@@ -50,6 +62,9 @@ struct ScheduleDraft {
         if hasGymAccess != before.hasGymAccess { body.hasGymAccess = hasGymAccess }
         if useTreadmill != before.useTreadmill { body.useTreadmill = useTreadmill }
         if environment != before.environment { body.trainingEnvironment = environment.rawValue }
+        if mountainDays != before.mountainDays { body.mountainDays = Weekday.allCases.filter(mountainDays.contains).map(\.rawValue) }
+        if stairAccess != before.stairAccess { body.stairAccess = stairAccess }
+        if treadmillMaxIncline != before.treadmillMaxIncline { body.treadmillMaxIncline = treadmillMaxIncline }
     }
 
     var hasChanges: Bool {
@@ -57,6 +72,8 @@ struct ScheduleDraft {
         return preferredDays != before.preferredDays || longRunDay != before.longRunDay || daysPerWeek != before.daysPerWeek
             || doubleSessionDays != before.doubleSessionDays || hasGymAccess != before.hasGymAccess
             || useTreadmill != before.useTreadmill || environment != before.environment
+            || mountainDays != before.mountainDays || stairAccess != before.stairAccess
+            || treadmillMaxIncline != before.treadmillMaxIncline
             || (isGettingStarted && maxContinuousJogMin != before.maxContinuousJogMin)
     }
 

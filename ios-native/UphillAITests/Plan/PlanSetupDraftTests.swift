@@ -54,6 +54,8 @@ struct PlanSetupDraftTests {
             #expect(body["current_weekly_km"] as? Double == 30)
             #expect(body["training_environment"] as? String == "flat")
             #expect(body["has_gym_access"] as? Bool == false)
+            #expect(body["mountain_days"] as? [String] == [])
+            #expect(body["stair_access"] as? Bool == false)
         }
     }
 
@@ -184,5 +186,16 @@ struct PlanSetupDraftTests {
             "4 runs a week, long run on Saturday",
             "Starting from 30 km a week",
         ])
+    }
+
+    @Test func trainingVenuesReachBothBodiesInWeekdayOrder() throws {
+        var d = PlanSetupDraft(prefill: nil, today: today, calendar: cal)
+        d.goal = .startRunning
+        d.mountainDays = [.sunday, .saturday]
+        d.stairAccess = true
+        for body in [try encoded(d.onboardingBody(skipPlan: false, calendar: cal)), try encoded(d.planBody(calendar: cal))] {
+            #expect(body["mountain_days"] as? [String] == ["Saturday", "Sunday"])
+            #expect(body["stair_access"] as? Bool == true)
+        }
     }
 }

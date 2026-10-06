@@ -52,6 +52,9 @@ struct NextBlockBody: Encodable, Sendable {
     var hasGymAccess: Bool? = nil
     var useTreadmill: Bool? = nil
     var trainingEnvironment: String? = nil
+    var mountainDays: [String]? = nil
+    var stairAccess: Bool? = nil
+    var treadmillMaxIncline: Int? = nil
     var athleteNotes: String? = nil
 }
 
@@ -70,5 +73,8 @@ struct AdaptWeekBody: Encodable, Sendable {
     var hasGymAccess: Bool? = nil
     var useTreadmill: Bool? = nil
     var trainingEnvironment: String? = nil
+    var mountainDays: [String]? = nil
+    var stairAccess: Bool? = nil
+    var treadmillMaxIncline: Int? = nil
     var maxContinuousJogMin: Int? = nil
 }

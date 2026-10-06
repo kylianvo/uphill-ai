@@ -157,6 +157,31 @@ struct SetupSteps: View {
                 }
                 .trainingCard()
 
+                VStack(alignment: .leading, spacing: UH.Space.regular) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("WHERE YOU TRAIN").font(UH.TextStyle.eyebrow).foregroundStyle(UH.Palette.secondary)
+                        Text("Hill sessions, climbing long runs and strength work are placed where you can actually do them.")
+                            .font(UH.TextStyle.caption)
+                            .foregroundStyle(UH.Palette.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    VStack(alignment: .leading, spacing: UH.Space.compact) {
+                        Text("Terrain near me").font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
+                        Picker("Terrain", selection: $model.draft.environment) {
+                            Text("Mostly flat").tag(TrainingEnvironment.flat)
+                            Text("Hilly").tag(TrainingEnvironment.hilly)
+                            Text("A mix").tag(TrainingEnvironment.mixed)
+                        }
+                        .pickerStyle(.segmented)
+                    }
+                    TrainingVenueSection(
+                        mountainDays: $model.draft.mountainDays,
+                        stairAccess: $model.draft.stairAccess,
+                        treadmillMaxIncline: nil
+                    )
+                }
+                .trainingCard()
+
             case .startDate:
                 Text("When do you want to start?").font(UH.TextStyle.screenTitle)
 

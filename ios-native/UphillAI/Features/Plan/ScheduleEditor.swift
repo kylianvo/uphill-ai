@@ -89,6 +89,15 @@ struct ScheduleEditor: View {
                 .pickerStyle(.segmented)
             }
 
+            Divider()
+
+            // Where the athlete can train: hill days, stairs, treadmill ceiling
+            TrainingVenueSection(
+                mountainDays: $draft.mountainDays,
+                stairAccess: $draft.stairAccess,
+                treadmillMaxIncline: draft.useTreadmill ? $draft.treadmillMaxIncline : nil
+            )
+
             if draft.isGettingStarted {
                 Divider()
                 HStack {
