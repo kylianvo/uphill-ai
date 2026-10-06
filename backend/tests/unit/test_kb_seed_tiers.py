@@ -83,6 +83,8 @@ def test_the_figures_the_prompt_quotes_are_actually_in_the_kb(chunks):
         "2.5 to 3.5 mMol/L",
         "35% to 45%",
         "8 to 12 hour",
+        # race-week carb load (plan_generator fueling_spec)
+        "8 to 12 grams of carbohydrates per kilogram",
     ):
         assert figure in body, f"figure quoted by the prompt is absent from the KB: {figure}"
 
