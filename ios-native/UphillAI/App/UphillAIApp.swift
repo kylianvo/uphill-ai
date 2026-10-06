@@ -8,6 +8,7 @@ struct UphillAIApp: App {
     var body: some Scene {
         WindowGroup {
             RootView(app: app)
+                .preferredColorScheme(.light)
                 .tint(UH.Palette.accentInk)
                 .onOpenURL { url in
                     if GIDSignIn.sharedInstance.handle(url) {

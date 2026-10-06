@@ -52,10 +52,15 @@ struct ProfileView: View {
 
                     Section("Tools & Labs") {
                         NavigationLink("Pace Strategy", value: TrainingDestination.paceStrategy)
+                            .accessibilityIdentifier("me.tool.paceStrategy")
                         NavigationLink("Goal Determiner", value: TrainingDestination.goalDeterminer)
+                            .accessibilityIdentifier("me.tool.goalDeterminer")
                         NavigationLink("Nutrition Lab", value: TrainingDestination.nutritionLab)
+                            .accessibilityIdentifier("me.tool.nutritionLab")
                         NavigationLink("Gear Vault", value: TrainingDestination.gearVault)
+                            .accessibilityIdentifier("me.tool.gearVault")
                         NavigationLink("Knowledge Hub", value: TrainingDestination.knowledgeHub)
+                            .accessibilityIdentifier("me.tool.knowledgeHub")
                     }
 
                     Section("Training profile") {

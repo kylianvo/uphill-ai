@@ -8,6 +8,7 @@ struct ParsedWorkoutDescription: Equatable, Sendable {
     let coachNotes: String?
     /// The "Overall:" line: what the session is for.
     var intent: String? = nil
+    var reason: String? = nil
 }
 
 enum ExecutionStepPhase: String, CaseIterable, Sendable {
@@ -73,21 +74,23 @@ enum WorkoutStepParser {
         return ParsedWorkoutDescription(
             overview: nil,
             process: joined(.process) ?? (free.isEmpty ? nil : free.joined(separator: "\n")),
-            benefit: joined(.builds),       // "What it builds", "Reason" and "Benefit"
-            warning: joined(.warning),      // "Common mistake" / "Warning"
+            benefit: joined(.builds),
+            warning: joined(.warning),
             coachNotes: joined(.coach),
-            intent: joined(.intent)         // "Overall"
+            intent: joined(.intent),
+            reason: joined(.reason)
         )
     }
 
     // MARK: - Segments & labels
 
-    private enum Section { case process, builds, warning, coach, intent }
+    private enum Section { case process, builds, warning, coach, intent, reason }
 
     /// Longest keywords first so "coach uphill note" wins over "coach".
     private static let labels: [(String, Section)] = [
         ("coach uphill note", .coach), ("coach note", .coach), ("coach", .coach),
-        ("what it builds", .builds), ("benefit", .builds), ("reason", .builds), ("builds", .builds),
+        ("what it builds", .builds), ("benefit", .builds), ("builds", .builds),
+        ("reason", .builds), ("why", .builds),
         ("common mistake", .warning), ("warning", .warning), ("mistake", .warning),
         ("how to execute", .process), ("process", .process), ("execution", .process), ("steps", .process),
         ("overall", .intent), ("overview", .intent),
@@ -123,7 +126,17 @@ enum WorkoutStepParser {
     // MARK: - Execution Steps Timeline
 
     static func parseSteps(workout: Workout, description: ParsedWorkoutDescription, isTreadmill: Bool) -> [ExecutionStepItem] {
-        let processText = description.process ?? workout.description ?? ""
+        let extracted = WorkoutDescriptionParser.extractDescriptionSections(workout.description ?? "")
+        let processText: String
+        if let p = description.process, !p.isEmpty {
+            processText = p
+        } else if let ep = extracted.process, !ep.isEmpty {
+            processText = ep
+        } else if extracted.overall != nil || extracted.reason != nil || extracted.benefit != nil || extracted.warning != nil {
+            processText = ""
+        } else {
+            processText = workout.description ?? ""
+        }
         let parts = splitProcess(processText)
 
         var items: [ExecutionStepItem] = []
@@ -161,7 +174,11 @@ enum WorkoutStepParser {
             mainTarget = detectedReps.reps
             recovery = detectedReps.recovery
         } else {
-            mainTarget = workout.targetPace.map { "Target pace: \($0)" } ?? workout.title
+            if !workout.isStrengthOrME, let pace = workout.targetPace?.trimmingCharacters(in: .whitespacesAndNewlines), !pace.isEmpty {
+                mainTarget = "Target pace: \(pace)"
+            } else {
+                mainTarget = workout.title
+            }
             recovery = nil
         }
 
@@ -175,7 +192,12 @@ enum WorkoutStepParser {
             return "\(max(5, Int(workout.durationMinutes) - warm - cool)) min"
         }()
 
-        let cleanMainSteps = parts.main.map { cleanStepText($0, prefix: "main set:") }
+        let cleanMainSteps = parts.main
+            .filter { line in
+                let lower = line.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                return !lower.hasPrefix("overall:") && !lower.hasPrefix("reason:") && !lower.hasPrefix("why:") && !lower.hasPrefix("benefit:") && !lower.hasPrefix("warning:")
+            }
+            .map { cleanStepText($0, prefix: "main set:") }
         items.append(ExecutionStepItem(
             id: "main",
             phase: .main,

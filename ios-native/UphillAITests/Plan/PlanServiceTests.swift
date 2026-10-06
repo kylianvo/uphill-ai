@@ -107,4 +107,33 @@ struct PlanServiceTests {
         })
         try await service.deletePlan(id: 92)
     }
+
+    @Test func syncWatchReturnsMatchCountOnSuccess() async throws {
+        let service = PlanService(client: makeStubClient { request in
+            #expect(request.httpMethod == "POST")
+            #expect(request.url?.path() == "/api/integrations/coros/sync")
+            return (200, json(["activities": 3, "dailyMetrics": 1]))
+        })
+        let result = try await service.syncWatch(planID: 93)
+        #expect(result == "Synced 3 activities from watch")
+    }
+
+    @Test func syncWatchReturnsUpToDateWhenZero() async throws {
+        let service = PlanService(client: makeStubClient { request in
+            #expect(request.httpMethod == "POST")
+            #expect(request.url?.path() == "/api/integrations/coros/sync")
+            return (200, json(["activities": 0, "dailyMetrics": 0]))
+        })
+        let result = try await service.syncWatch(planID: 93)
+        #expect(result == "Watch synced · Up to date")
+    }
+
+    @Test func syncWatchPropagatesError() async throws {
+        let service = PlanService(client: makeStubClient { _ in
+            (500, json(["detail": "Watch token expired"]))
+        })
+        await #expect(throws: Error.self) {
+            _ = try await service.syncWatch(planID: 93)
+        }
+    }
 }

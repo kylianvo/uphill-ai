@@ -5,6 +5,7 @@ struct GearVaultSheet: View {
     let service: any GearServicing
     var activePlan: Plan?
     var user: User?
+    var isPresentedInSheet: Bool = false
     var onAssignToRotation: ((ShoeItem) -> Void)? = nil
 
     // Form inputs
@@ -34,29 +35,31 @@ struct GearVaultSheet: View {
         service: any GearServicing,
         activePlan: Plan? = nil,
         user: User? = nil,
+        isPresentedInSheet: Bool = false,
         onAssignToRotation: ((ShoeItem) -> Void)? = nil,
         initialPlan: GearPlan? = nil
     ) {
         self.service = service
         self.activePlan = activePlan
         self.user = user
+        self.isPresentedInSheet = isPresentedInSheet
         self.onAssignToRotation = onAssignToRotation
         _gearPlan = State(initialValue: initialPlan)
     }
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if let gearPlan {
-                    resultsView(gearPlan)
-                } else {
-                    formView
-                }
+        Group {
+            if let gearPlan {
+                resultsView(gearPlan)
+            } else {
+                formView
             }
-            .background(UH.Palette.surface.ignoresSafeArea())
-            .navigationTitle("Gear Vault")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
+        }
+        .background(UH.Palette.surface.ignoresSafeArea())
+        .navigationTitle("Gear Vault")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if isPresentedInSheet {
                 ToolbarItem(placement: .topBarLeading) {
                     if gearPlan != nil {
                         Button {
@@ -81,13 +84,26 @@ struct GearVaultSheet: View {
                             .foregroundStyle(UH.Palette.muted)
                             .font(.system(size: 22))
                     }
+                    .accessibilityIdentifier("gearVault.dismiss")
+                }
+            } else {
+                if gearPlan != nil {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Edit") {
+                            withAnimation(UH.Motion.standard) {
+                                self.gearPlan = nil
+                            }
+                        }
+                        .font(UH.TextStyle.label)
+                        .foregroundStyle(UH.Palette.accentInk)
+                    }
                 }
             }
-            .sheet(item: $shoeToAssign) { shoe in
-                AssignShoeSheet(shoe: shoe) { item in
-                    onAssignToRotation?(item)
-                    shoeToAssign = nil
-                }
+        }
+        .sheet(item: $shoeToAssign) { shoe in
+            AssignShoeSheet(shoe: shoe) { item in
+                onAssignToRotation?(item)
+                shoeToAssign = nil
             }
         }
     }

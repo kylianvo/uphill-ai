@@ -5,6 +5,7 @@ struct WorkoutDetailSheet: View {
     let workoutID: Int
     var actingAsAthlete: CoachedAthleteRow? = nil
     var coachingService: (any CoachingServicing)? = nil
+    var deviceService: (any DeviceConnectionServicing)? = nil
     var currentUserId: Int? = nil
     var onWorkoutUpdated: (() -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
@@ -20,6 +21,13 @@ struct WorkoutDetailSheet: View {
     /// Parsed description + steps. Filled after the sheet is on screen so tapping a row never waits on it.
     @State private var content: WorkoutDetailContent?
 
+    @State private var corosSendState: CorosSendState = .idle
+    @State private var corosSendNotice: String? = nil
+
+    private enum CorosSendState: Equatable {
+        case idle, sending, sent, error(String), notConnected
+    }
+
     private struct ContentKey: Equatable {
         let workoutID: Int
         let description: String?
@@ -29,6 +37,7 @@ struct WorkoutDetailSheet: View {
     init(model: PlanViewModel, workoutID: Int,
          actingAsAthlete: CoachedAthleteRow? = nil,
          coachingService: (any CoachingServicing)? = nil,
+         deviceService: (any DeviceConnectionServicing)? = nil,
          currentUserId: Int? = nil,
          onWorkoutUpdated: (() -> Void)? = nil,
          initialTreadmill: Bool = false, initialRpe: Int? = nil, initialNotes: String? = nil) {
@@ -36,6 +45,7 @@ struct WorkoutDetailSheet: View {
         self.workoutID = workoutID
         self.actingAsAthlete = actingAsAthlete
         self.coachingService = coachingService
+        self.deviceService = deviceService
         self.currentUserId = currentUserId
         self.onWorkoutUpdated = onWorkoutUpdated
         _isTreadmill = State(initialValue: initialTreadmill)
@@ -63,12 +73,10 @@ struct WorkoutDetailSheet: View {
                             headerSection(workout)
                             statTiles(workout)
                             quietLine(workout)
-                            if let intent = content?.description.intent {
-                                Text(intent)
-                                    .font(UH.TextStyle.body)
-                                    .foregroundStyle(UH.Palette.secondary)
-                                    .fixedSize(horizontal: false, vertical: true)
-                                    .accessibilityIdentifier("detail.intent")
+
+                            // Nutrition / Fueling tip
+                            if let tip = workout.fuelingTip, !tip.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                fuelingTipSection(tip)
                             }
 
                             if workout.isMatched {
@@ -78,15 +86,15 @@ struct WorkoutDetailSheet: View {
                             // b & f. Step timeline with Treadmill toggle
                             stepTimelineSection(workout)
 
-                            // c. What it builds
+                            // c. About this session block (Overall, Why/reason, Benefit)
                             let parsed = content?.description ?? ParsedWorkoutDescription(overview: nil, process: nil, benefit: nil, warning: nil, coachNotes: nil)
-                            if let benefit = parsed.benefit, !benefit.isEmpty {
-                                whatItBuildsSection(benefit)
-                            }
+                            let extractedSections = content?.sections ?? DescriptionSections(overall: nil, process: nil, reason: nil, benefit: nil, warning: nil)
+                            aboutThisSessionSection(sections: extractedSections, parsed: parsed)
 
-                            // d. Common mistake
-                            if let mistake = parsed.warning, !mistake.isEmpty {
-                                commonMistakeSection(mistake)
+                            // d. Distinct caution callout for warning
+                            let warningText = extractedSections.warning ?? parsed.warning
+                            if let warningText, !warningText.isEmpty {
+                                cautionCalloutSection(warningText)
                             }
 
                             // e. Coach Uphill note
@@ -134,6 +142,9 @@ struct WorkoutDetailSheet: View {
                                 }
                             } else {
                                 bottomActionBar(workout)
+                                if actingAsAthlete == nil && !workout.isRest && !workout.isDone && isTodayOrFuture(workout) {
+                                    sendToCorosSection(workout)
+                                }
                                 if !workout.isRest {
                                     howDidItFeelSection(workout)
                                 }
@@ -283,7 +294,17 @@ struct WorkoutDetailSheet: View {
 
     // Three stat tiles: Duration, Est. distance, Pace (/km) in SF Mono
     private func statTiles(_ w: Workout) -> some View {
-        HStack(spacing: UH.Space.small) {
+        let estDistance: String = {
+            if w.isStrengthOrME { return "—" }
+            return w.distanceKm.flatMap { $0 > 0 ? String(format: "%.1f km", $0) : nil } ?? "—"
+        }()
+
+        let paceValue: String = {
+            if w.isStrengthOrME { return "—" }
+            return WorkoutTypePresentation.paceTileValue(w.targetPace)
+        }()
+
+        return HStack(spacing: UH.Space.small) {
             statTile(
                 label: "DURATION",
                 value: "\(Int(w.durationMinutes)) min"
@@ -291,12 +312,12 @@ struct WorkoutDetailSheet: View {
 
             statTile(
                 label: "EST. DISTANCE",
-                value: w.distanceKm.flatMap { $0 > 0 ? String(format: "%.1f km", $0) : nil } ?? "—"
+                value: estDistance
             )
 
             statTile(
                 label: "PACE (/KM)",
-                value: WorkoutTypePresentation.paceTileValue(w.targetPace)
+                value: paceValue
             )
         }
     }
@@ -462,53 +483,121 @@ struct WorkoutDetailSheet: View {
         }
     }
 
-    // MARK: - What It Builds (c)
+    // MARK: - Nutrition & Fueling Tip
 
-    private func whatItBuildsSection(_ text: String) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 4) {
-                Image(systemName: "bolt.heart.fill")
-                    .font(.system(size: 11))
-                    .foregroundStyle(UH.Palette.accentInk)
-                Text("WHAT IT BUILDS")
-                    .font(.system(size: 11, weight: .bold, design: .monospaced))
-                    .foregroundStyle(UH.Palette.accentInk)
-            }
-
-            Text(text)
-                .font(UH.TextStyle.body)
-                .foregroundStyle(UH.Palette.ink)
-                .lineSpacing(2)
-        }
-        .padding(UH.Space.regular)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(UH.Palette.card, in: RoundedRectangle(cornerRadius: UH.Radius.landing))
-        .overlay(RoundedRectangle(cornerRadius: UH.Radius.landing).stroke(UH.Palette.line))
-    }
-
-    // MARK: - Common Mistake (d)
-
-    private func commonMistakeSection(_ text: String) -> some View {
+    private func fuelingTipSection(_ tip: String) -> some View {
         HStack(alignment: .top, spacing: 10) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 14))
-                .foregroundStyle(UH.Palette.warningInk)
+            Image(systemName: "fork.knife.circle.fill")
+                .font(.system(size: 16))
+                .foregroundStyle(Color(red: 16/255, green: 185/255, blue: 129/255))
                 .padding(.top, 1)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text("COMMON MISTAKE")
+                Text("NUTRITION & FUELING")
                     .font(.system(size: 10, weight: .bold, design: .monospaced))
-                    .foregroundStyle(UH.Palette.warningInk)
+                    .foregroundStyle(Color(red: 5/255, green: 150/255, blue: 105/255))
 
-                Text(text)
+                Text(tip)
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(UH.Palette.ink)
+                    .lineSpacing(2)
             }
         }
         .padding(UH.Space.small)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(UH.Palette.warningFill, in: RoundedRectangle(cornerRadius: UH.Radius.control))
-        .overlay(RoundedRectangle(cornerRadius: UH.Radius.control).stroke(UH.Palette.warningInk.opacity(0.3), lineWidth: 1))
+        .background(Color(red: 16/255, green: 185/255, blue: 129/255).opacity(0.08), in: RoundedRectangle(cornerRadius: UH.Radius.control))
+        .overlay(RoundedRectangle(cornerRadius: UH.Radius.control).stroke(Color(red: 16/255, green: 185/255, blue: 129/255).opacity(0.3), lineWidth: 1))
+        .accessibilityIdentifier("detail.fuelingTip")
+    }
+
+    // MARK: - About This Session (Overall, Why, Benefit)
+
+    private func aboutThisSessionSection(sections: DescriptionSections, parsed: ParsedWorkoutDescription) -> some View {
+        let overall = sections.overall ?? parsed.overview ?? parsed.intent
+        let reason = sections.reason ?? parsed.reason
+        let benefit = sections.benefit ?? parsed.benefit
+
+        let hasContent = (overall != nil && !overall!.isEmpty) ||
+                         (reason != nil && !reason!.isEmpty) ||
+                         (benefit != nil && !benefit!.isEmpty)
+
+        return Group {
+            if hasContent {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 5) {
+                        Image(systemName: "info.circle.fill")
+                            .font(.system(size: 11))
+                            .foregroundStyle(UH.Palette.accentInk)
+                        Text("ABOUT THIS SESSION")
+                            .font(.system(size: 10.5, weight: .bold, design: .monospaced))
+                            .foregroundStyle(UH.Palette.accentInk)
+                    }
+
+                    if let overall, !overall.isEmpty {
+                        Text(overall)
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(UH.Palette.ink)
+                            .lineSpacing(2)
+                    }
+
+                    if let reason, !reason.isEmpty {
+                        HStack(alignment: .top, spacing: 6) {
+                            Text("Why:")
+                                .font(.system(size: 12.5, weight: .bold))
+                                .foregroundStyle(UH.Palette.secondary)
+                            Text(reason)
+                                .font(.system(size: 12.5))
+                                .foregroundStyle(UH.Palette.secondary)
+                                .lineSpacing(1.5)
+                        }
+                    }
+
+                    if let benefit, !benefit.isEmpty {
+                        HStack(alignment: .top, spacing: 6) {
+                            Text("Benefit:")
+                                .font(.system(size: 12.5, weight: .bold))
+                                .foregroundStyle(Color(red: 16/255, green: 185/255, blue: 129/255))
+                            Text(benefit)
+                                .font(.system(size: 12.5))
+                                .foregroundStyle(UH.Palette.ink)
+                                .lineSpacing(1.5)
+                        }
+                    }
+                }
+                .padding(UH.Space.regular)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(UH.Palette.card, in: RoundedRectangle(cornerRadius: UH.Radius.landing))
+                .overlay(RoundedRectangle(cornerRadius: UH.Radius.landing).stroke(UH.Palette.line))
+                .accessibilityIdentifier("detail.aboutSession")
+            }
+        }
+    }
+
+    // MARK: - Caution Callout (Warning)
+
+    private func cautionCalloutSection(_ text: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 14))
+                .foregroundStyle(UH.Palette.danger)
+                .padding(.top, 1)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("CAUTION")
+                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .foregroundStyle(UH.Palette.danger)
+
+                Text(text)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(UH.Palette.ink)
+                    .lineSpacing(1.5)
+            }
+        }
+        .padding(UH.Space.small)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(UH.Palette.danger.opacity(0.08), in: RoundedRectangle(cornerRadius: UH.Radius.control))
+        .overlay(RoundedRectangle(cornerRadius: UH.Radius.control).stroke(UH.Palette.danger.opacity(0.3), lineWidth: 1))
+        .accessibilityIdentifier("detail.cautionCallout")
     }
 
     // MARK: - Coach Uphill Note (e)
@@ -561,6 +650,110 @@ struct WorkoutDetailSheet: View {
             }
         }
         .disabled(isBusy)
+    }
+
+    // MARK: - Send to Watch (COROS)
+
+    private func isTodayOrFuture(_ w: Workout) -> Bool {
+        guard let plan = model.snapshot?.plan,
+              let date = PlanCalendar.date(week: w.weekNumber, weekday: w.weekday, plan: plan,
+                                           workouts: model.snapshot?.workouts ?? []) else {
+            return true
+        }
+        let cal = Calendar.current
+        let startOfToday = cal.startOfDay(for: Date())
+        let startOfWorkoutDate = cal.startOfDay(for: date)
+        return startOfWorkoutDate >= startOfToday
+    }
+
+    private func sendToCorosSection(_ w: Workout) -> some View {
+        VStack(spacing: 6) {
+            Button {
+                Task { await performSendToCoros() }
+            } label: {
+                HStack(spacing: 6) {
+                    if UIImage(named: "coros_mark") != nil {
+                        Image("coros_mark")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 14, height: 14)
+                    } else {
+                        Image(systemName: "applewatch")
+                            .font(.system(size: 13, weight: .bold))
+                    }
+
+                    switch corosSendState {
+                    case .sending:
+                        ProgressView().controlSize(.small)
+                        Text("Sending…")
+                            .font(.system(size: 13, weight: .semibold))
+                    case .sent:
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 11, weight: .bold))
+                        Text("Sent to COROS")
+                            .font(.system(size: 13, weight: .semibold))
+                    case .notConnected:
+                        Text("Connect COROS in Profile")
+                            .font(.system(size: 13, weight: .semibold))
+                    case .idle, .error:
+                        Text("Send next 4 weeks to COROS")
+                            .font(.system(size: 13, weight: .semibold))
+                    }
+                }
+                .foregroundStyle(corosSendState == .sent ? UH.Palette.accentInk : UH.Palette.ink)
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+                .background(UH.Palette.surface, in: RoundedRectangle(cornerRadius: UH.Radius.control))
+                .overlay(
+                    RoundedRectangle(cornerRadius: UH.Radius.control)
+                        .stroke(corosSendState == .sent ? UH.Palette.accentInk : UH.Palette.line, lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+            .disabled(corosSendState == .sending)
+            .accessibilityIdentifier("detail.sendToCoros")
+
+            if let notice = corosSendNotice {
+                Text(notice)
+                    .font(UH.TextStyle.caption)
+                    .foregroundStyle(corosSendState == .sent ? UH.Palette.accentInk : UH.Palette.danger)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private func performSendToCoros() async {
+        guard let service = deviceService else {
+            corosSendState = .notConnected
+            corosSendNotice = "COROS isn't connected. Connect it in Profile."
+            return
+        }
+
+        if let status = try? await service.fetchStatus(), !status.isCorosConnected {
+            corosSendState = .notConnected
+            corosSendNotice = "COROS isn't connected. Connect it in Profile."
+            return
+        }
+
+        corosSendState = .sending
+        corosSendNotice = nil
+        let today = ISO8601DateFormatter().string(from: Date()).prefix(10)
+        do {
+            let outcome = try await service.pushToCoros(clientToday: String(today), lang: "en")
+            if outcome.isSuccess {
+                corosSendState = .sent
+                let count = outcome.summary?.workoutsSent ?? 1
+                corosSendNotice = "Sent \(count) workout(s) to COROS."
+            } else {
+                let err = outcome.errorMessage ?? "Could not send to COROS."
+                corosSendState = .error(err)
+                corosSendNotice = err
+            }
+        } catch {
+            let err = error.localizedDescription
+            corosSendState = .error(err)
+            corosSendNotice = err
+        }
     }
 
     // Secondary actions in ⋯ menu
@@ -619,51 +812,107 @@ struct WorkoutDetailSheet: View {
         return target.week > model.currentWeek ? "Next week · \(day)" : day
     }
 
-    // MARK: - How Did It Feel? (Log section)
+    // MARK: - How Did It Feel? (5-Level Feeling Scale)
 
     private func howDidItFeelSection(_ w: Workout) -> some View {
-        VStack(alignment: .leading, spacing: UH.Space.small) {
+        let activeFeeling = WorkoutFeeling.from(rpe: rpe)
+
+        return VStack(alignment: .leading, spacing: UH.Space.small) {
             HStack {
                 Text("HOW DID IT FEEL?")
                     .font(.system(size: 11, weight: .bold, design: .monospaced))
                     .foregroundStyle(UH.Palette.muted)
                 Spacer()
-                if let val = rpe {
-                    Text("RPE \(val)/10")
-                        .font(.system(size: 12, weight: .bold, design: .monospaced))
-                        .foregroundStyle(UH.Palette.accentInk)
+                if let feel = activeFeeling {
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(feel.color)
+                            .frame(width: 6, height: 6)
+                        Text("\(feel.label) · RPE \(feel.rpe)/10")
+                            .font(.system(size: 11, weight: .bold, design: .monospaced))
+                            .foregroundStyle(feel.color)
+                    }
                 }
             }
 
-            // 1-10 Pill selector
+            // 5-level segmented bar
             HStack(spacing: 5) {
-                ForEach(1...10, id: \.self) { num in
+                ForEach(WorkoutFeeling.allCases) { feel in
+                    let isSelected = activeFeeling == feel
                     Button {
-                        rpe = num
+                        rpe = feel.rpe
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     } label: {
-                        Text("\(num)")
-                            .font(.system(size: 12.5, weight: .bold, design: .monospaced))
-                            .foregroundStyle(rpe == num ? Color.white : UH.Palette.ink)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 34)
-                            .background(
-                                rpe == num ? UH.Palette.accentInk : UH.Palette.surface,
-                                in: RoundedRectangle(cornerRadius: 8)
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(rpe == num ? UH.Palette.accentInk : UH.Palette.line, lineWidth: 1)
-                            )
+                        VStack(spacing: 4) {
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(isSelected ? feel.color : UH.Palette.line)
+                                .frame(width: isSelected ? 20 : 12, height: 3.5)
+
+                            Text(feel.label)
+                                .font(.system(size: 10, weight: isSelected ? .bold : .medium))
+                                .foregroundStyle(isSelected ? feel.color : UH.Palette.ink)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+
+                            Text("RPE \(feel.rpe)")
+                                .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                                .foregroundStyle(isSelected ? feel.color : UH.Palette.muted)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 52)
+                        .background(
+                            isSelected ? feel.color.opacity(0.12) : UH.Palette.surface,
+                            in: RoundedRectangle(cornerRadius: 8)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(isSelected ? feel.color : UH.Palette.line, lineWidth: isSelected ? 1.5 : 1)
+                        )
                     }
                     .buttonStyle(.plain)
-                    .accessibilityIdentifier("detail.rpe.\(num)")
+                    .accessibilityIdentifier("detail.feeling.\(feel.rawValue)")
                 }
             }
 
-            if let val = rpe {
-                Text(effortLabel(for: val))
-                    .font(UH.TextStyle.caption)
-                    .foregroundStyle(UH.Palette.secondary)
+            // Spotlight card for selected feeling
+            if let feel = activeFeeling {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Image(systemName: feel.iconName)
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(feel.color)
+                        Text(feel.label)
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(feel.color)
+                        Spacer()
+                        Text("RPE \(feel.rpe) / 10")
+                            .font(.system(size: 10.5, weight: .bold, design: .monospaced))
+                            .foregroundStyle(feel.color)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(feel.color.opacity(0.12), in: Capsule())
+                    }
+
+                    Text(feel.subLabel)
+                        .font(UH.TextStyle.caption)
+                        .foregroundStyle(UH.Palette.secondary)
+
+                    HStack(alignment: .top, spacing: 6) {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 11))
+                            .foregroundStyle(feel.color)
+                            .padding(.top, 1)
+                        Text(feel.coachDescription)
+                            .font(.system(size: 11.5))
+                            .foregroundStyle(UH.Palette.ink)
+                            .lineSpacing(1.5)
+                    }
+                    .padding(8)
+                    .background(UH.Palette.surface, in: RoundedRectangle(cornerRadius: 6))
+                }
+                .padding(10)
+                .background(feel.color.opacity(0.06), in: RoundedRectangle(cornerRadius: UH.Radius.control))
+                .overlay(RoundedRectangle(cornerRadius: UH.Radius.control).stroke(feel.color.opacity(0.25), lineWidth: 1))
             }
 
             TextField("Add session notes (legs, terrain, weather)…", text: $notes, axis: .vertical)
@@ -687,17 +936,6 @@ struct WorkoutDetailSheet: View {
         .padding(UH.Space.regular)
         .background(UH.Palette.card, in: RoundedRectangle(cornerRadius: UH.Radius.landing))
         .overlay(RoundedRectangle(cornerRadius: UH.Radius.landing).stroke(UH.Palette.line))
-    }
-
-    private func effortLabel(for val: Int) -> String {
-        switch val {
-        case 1...2: "Very easy · Active recovery / barely noticeable effort"
-        case 3...4: "Easy · Conversation pace, Zone 2 aerobic base"
-        case 5...6: "Moderate · Steady aerobic effort, can speak in short sentences"
-        case 7...8: "Hard · Threshold effort, heavy breathing, sustained focus"
-        case 9...10: "Maximum effort · All out interval / race sprint finish"
-        default: ""
-        }
     }
 
     private func loadLog(_ w: Workout) {

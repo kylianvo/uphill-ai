@@ -31,6 +31,7 @@ struct PlanView: View {
     @State private var selectedWorkout: Workout?
     @State private var moveSwapDay: PlanDay?
     @State private var showManage = false
+    @State private var toolAfterManage: TrainingDestination? = nil
     @State private var startNewAfterManage = false
     @State private var scheduleAfterManage = false
     @State private var showSchedule = false
@@ -60,6 +61,7 @@ struct PlanView: View {
                         }
                         Button("Manage") { showManage = true }
                             .disabled(model.snapshot == nil)
+                            .accessibilityIdentifier("plan.manageButton")
                     }
                 }
                 .sheet(item: $selectedWorkout) { workout in
@@ -68,6 +70,7 @@ struct PlanView: View {
                         workoutID: workout.id,
                         actingAsAthlete: app?.actingAsAthlete,
                         coachingService: app?.coachingService,
+                        deviceService: app?.deviceConnectionService,
                         currentUserId: user?.id,
                         onWorkoutUpdated: {
                             Task { await model.load() }
@@ -100,10 +103,16 @@ struct PlanView: View {
                 .sheet(isPresented: $showManage, onDismiss: {
                     if startNewAfterManage { startNewAfterManage = false; onBuildPlan() }
                     if scheduleAfterManage { scheduleAfterManage = false; showSchedule = true }
+                    if let tool = toolAfterManage {
+                        toolAfterManage = nil
+                        onSharpen(tool)
+                    }
                 }) {
-                    ManagePlanSheet(model: model, onStartNew: { startNewAfterManage = true },
+                    ManagePlanSheet(model: model,
+                                    deviceService: app?.deviceConnectionService,
+                                    onStartNew: { startNewAfterManage = true },
                                     onSchedule: { scheduleAfterManage = true },
-                                    onTool: { dest in onSharpen(dest) })
+                                    onTool: { dest in toolAfterManage = dest })
                 }
         }
         .task {
@@ -178,12 +187,40 @@ struct PlanView: View {
                         CoachReviewCard(model: model, onOpenReview: { showReview = true }, initialExpanded: initialCoachExpanded)
                             .padding(.horizontal, UH.Space.regular)
 
+                        // Adapt week button
+                        if model.canAdaptWeek(model.selectedWeek) {
+                            HStack {
+                                Spacer()
+                                Button {
+                                    showAdapt = true
+                                } label: {
+                                    HStack(spacing: 5) {
+                                        Image(systemName: "sparkles")
+                                            .font(.system(size: 11, weight: .bold))
+                                        Text("Adapt Week \(model.selectedWeek)")
+                                            .font(.system(size: 12, weight: .semibold))
+                                    }
+                                    .foregroundStyle(UH.Palette.accentInk)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 5)
+                                    .background(UH.Palette.activeFill, in: Capsule())
+                                    .overlay(Capsule().stroke(UH.Palette.accentInk.opacity(0.3), lineWidth: 1))
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityIdentifier("plan.adaptWeek")
+                            }
+                            .padding(.horizontal, UH.Space.regular)
+                        }
+
                         // 4. Week switcher with List / Calendar toggle
                         WeekSwitcher(weeks: model.weeks, selected: $model.selectedWeek, currentWeek: model.currentWeek, viewMode: $viewMode)
                             .padding(.horizontal, UH.Space.regular)
 
-                        // 5. Day list or Month Calendar grid
-                        if viewMode == .calendar {
+                        // 5. Day list, Month Calendar grid, or Ungenerated Week CTA
+                        if model.isWeekUngenerated(model.selectedWeek) {
+                            ungeneratedWeekCTA(model.selectedWeek)
+                                .padding(.horizontal, UH.Space.regular)
+                        } else if viewMode == .calendar {
                             PlanCalendarGridView(model: model) { date, week in
                                 withAnimation(reduceMotion ? nil : UH.Motion.standard) {
                                     model.selectedWeek = week
@@ -363,6 +400,57 @@ struct PlanView: View {
         }
         .padding(UH.Space.section)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    // MARK: - Ungenerated Week Call To Action
+
+    private func ungeneratedWeekCTA(_ week: Int) -> some View {
+        VStack(spacing: UH.Space.regular) {
+            ZStack {
+                Circle()
+                    .fill(UH.Palette.activeFill)
+                    .frame(width: 56, height: 56)
+                Image(systemName: "sparkles")
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundStyle(UH.Palette.accentInk)
+            }
+            .padding(.top, 8)
+
+            VStack(spacing: 4) {
+                Text("Week \(week) is ready to generate")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(UH.Palette.ink)
+
+                Text("Coach Uphill will generate your personalized workouts based on your recent training consistency and progress.")
+                    .font(UH.TextStyle.caption)
+                    .foregroundStyle(UH.Palette.secondary)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(2)
+                    .padding(.horizontal, 16)
+            }
+
+            Button {
+                showNextWeek = true
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "sparkles")
+                    Text("Generate Week \(week)")
+                }
+                .font(.system(size: 14, weight: .bold))
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+                .foregroundStyle(Color.white)
+                .background(UH.Palette.accentInk, in: RoundedRectangle(cornerRadius: UH.Radius.control))
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("plan.generateWeekCTA")
+            .padding(.horizontal, 16)
+            .padding(.bottom, 8)
+        }
+        .padding(UH.Space.regular)
+        .frame(maxWidth: .infinity)
+        .background(UH.Palette.card, in: RoundedRectangle(cornerRadius: UH.Radius.landing))
+        .overlay(RoundedRectangle(cornerRadius: UH.Radius.landing).stroke(UH.Palette.line))
     }
 
     // MARK: - Race and Goal Header

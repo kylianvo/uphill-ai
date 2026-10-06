@@ -291,9 +291,26 @@ struct SummaryCarousel: View {
                         .font(UH.TextStyle.caption)
                         .foregroundStyle(UH.Palette.ink)
                     Spacer()
-                    Text("Planned vs Actual")
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundStyle(UH.Palette.secondary)
+                    if model.canAdaptWeek(model.selectedWeek) {
+                        Button(action: onAdapt) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "sparkles")
+                                    .font(.system(size: 10, weight: .bold))
+                                Text("Adapt Week \(model.selectedWeek)")
+                                    .font(.system(size: 11, weight: .bold))
+                            }
+                            .foregroundStyle(UH.Palette.accentInk)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(UH.Palette.activeFill, in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("plan.summary.adaptWeek")
+                    } else {
+                        Text("Planned vs Actual")
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundStyle(UH.Palette.secondary)
+                    }
                 }
             }
         )

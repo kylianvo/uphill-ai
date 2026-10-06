@@ -45,10 +45,17 @@ struct CoachReviewCard: View {
                         }
 
                         if !isExpanded {
-                            Text("Tap to read coach takeaways and weekly focus")
-                                .font(UH.TextStyle.caption)
-                                .foregroundStyle(UH.Palette.muted)
-                                .lineLimit(1)
+                            if let thisWeek = model.selectedWeekNarrative?.aiThisWeekDescription, !thisWeek.isEmpty {
+                                Text(thisWeek)
+                                    .font(UH.TextStyle.caption)
+                                    .foregroundStyle(UH.Palette.secondary)
+                                    .lineLimit(1)
+                            } else {
+                                Text("Tap to read coach takeaways and weekly focus")
+                                    .font(UH.TextStyle.caption)
+                                    .foregroundStyle(UH.Palette.muted)
+                                    .lineLimit(1)
+                            }
                         }
                     }
 
@@ -127,16 +134,47 @@ struct CoachReviewCard: View {
 
     // Key Coach Takeaways
     private var takeawaysSection: some View {
-        VStack(alignment: .leading, spacing: 3) {
+        let narrative = model.selectedWeekNarrative
+        let hasCustom = (narrative?.aiThisWeekDescription != nil && !narrative!.aiThisWeekDescription!.isEmpty) ||
+                        (narrative?.aiLastWeekReview != nil && !narrative!.aiLastWeekReview!.isEmpty)
+
+        return VStack(alignment: .leading, spacing: 6) {
             Text("KEY COACH TAKEAWAYS")
                 .font(.system(size: 10, weight: .bold, design: .monospaced))
                 .foregroundStyle(UH.Palette.muted)
 
-            Text("“Solid volume progression. Remember: recovery is where adaptation happens. Do not cut rest short on heavy training blocks.”")
-                .font(.system(size: 12.5))
-                .italic()
-                .foregroundStyle(UH.Palette.ink)
-                .lineSpacing(1.5)
+            if hasCustom {
+                if let lastWeek = narrative?.aiLastWeekReview, !lastWeek.isEmpty {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("LAST WEEK REVIEW")
+                            .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                            .foregroundStyle(UH.Palette.secondary)
+                        Text(lastWeek)
+                            .font(.system(size: 12.5))
+                            .foregroundStyle(UH.Palette.ink)
+                            .lineSpacing(1.5)
+                    }
+                    .padding(.bottom, 2)
+                }
+
+                if let thisWeek = narrative?.aiThisWeekDescription, !thisWeek.isEmpty {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("THIS WEEK FOCUS")
+                            .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                            .foregroundStyle(UH.Palette.accentInk)
+                        Text(thisWeek)
+                            .font(.system(size: 12.5))
+                            .foregroundStyle(UH.Palette.ink)
+                            .lineSpacing(1.5)
+                    }
+                }
+            } else {
+                Text("“Solid volume progression. Remember: recovery is where adaptation happens. Do not cut rest short on heavy training blocks.”")
+                    .font(.system(size: 12.5))
+                    .italic()
+                    .foregroundStyle(UH.Palette.ink)
+                    .lineSpacing(1.5)
+            }
         }
         .padding(UH.Space.small)
         .frame(maxWidth: .infinity, alignment: .leading)

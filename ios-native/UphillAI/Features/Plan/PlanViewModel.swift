@@ -75,6 +75,7 @@ final class PlanViewModel {
     /// Last workout marked done; the view keys its success haptic on it.
     private(set) var lastCompletedID: Int?
 
+    private(set) var blockCompletion: BlockCompletionResponse?
     private(set) var nextWeekOffer: NextWeekOffer?
     private(set) var goal: PlanGoal?
     private(set) var isSyncingWatch = false
@@ -118,7 +119,7 @@ final class PlanViewModel {
                 apply(fresh, resetWeek: resetWeek)
                 cachedAt = nil
                 if isSignedIn() { cache.save(fresh, as: .plan) }
-                await refreshNextWeekOffer()
+                await loadBlockCompletion()
                 await loadGoal()
                 await loadKnowledgeCard()
             } else {
@@ -148,8 +149,19 @@ final class PlanViewModel {
             await load()
             watchSyncNotice = msg
             return msg
+        } catch let apiError as APIError {
+            let msg: String
+            switch apiError {
+            // A 401 here is the Uphill session, not COROS; COROS problems come back as 400 with a message.
+            case .unauthorized, .http(status: 401, _, _):
+                msg = "Your session expired. Please sign in again."
+            default:
+                msg = apiError.userMessage
+            }
+            watchSyncNotice = msg
+            return msg
         } catch {
-            let msg = error.localizedDescription
+            let msg = "Couldn't sync watch activities. Please try again."
             watchSyncNotice = msg
             return msg
         }
@@ -172,10 +184,11 @@ final class PlanViewModel {
         cachedAt = nil
         actionError = nil
         if isSignedIn() { cache.save(snapshot, as: .plan) }
-        Task { await refreshNextWeekOffer(); await loadGoal(); await loadKnowledgeCard() }
+        Task { await loadBlockCompletion(); await loadGoal(); await loadKnowledgeCard() }
     }
 
     func reset() {
+        blockCompletion = nil
         nextWeekOffer = nil
         goal = nil
         state = .loading
@@ -244,6 +257,35 @@ final class PlanViewModel {
     }
 
     var phase: String? { PlanSummary.phase(week: selectedWeek, workouts: snapshot?.workouts ?? []) }
+
+    var maxGeneratedWeek: Int {
+        if let maxFromBlock = blockCompletion?.maxGeneratedWeek, maxFromBlock > 0 {
+            return maxFromBlock
+        }
+        return snapshot?.workouts.map(\.weekNumber).max() ?? 0
+    }
+
+    func isWeekUngenerated(_ week: Int) -> Bool {
+        guard let snapshot, week > 0 else { return false }
+        if let maxGen = blockCompletion?.maxGeneratedWeek, maxGen > 0 {
+            return week > maxGen
+        }
+        let weekWorkouts = snapshot.workouts.filter { $0.weekNumber == week }
+        if weekWorkouts.isEmpty { return true }
+        let hasActiveWorkout = weekWorkouts.contains { !$0.isRest }
+        return !hasActiveWorkout
+    }
+
+    func canAdaptWeek(_ week: Int) -> Bool {
+        return !isWeekUngenerated(week) && week <= maxGeneratedWeek
+    }
+
+    var selectedWeekNarrative: BlockCompletion? {
+        guard let blockCompletion else { return nil }
+        return blockCompletion.blocks.first { block in
+            (block.weekStart...block.weekEnd).contains(selectedWeek)
+        }
+    }
 
     var daysToRace: Int? { PlanCalendar.daysToRace(snapshot?.plan.raceDate, now: now(), calendar: calendar) }
 
@@ -384,23 +426,42 @@ final class PlanViewModel {
     // MARK: Next week
 
     /// The offer exists only on the last generated week while later weeks are still to come.
-    func refreshNextWeekOffer() async {
-        guard let snapshot, cachedAt == nil,
-              let generatedWeeks = snapshot.workouts.map(\.weekNumber).max(),
-              generatedWeeks < snapshot.plan.totalWeeks, selectedWeek == generatedWeeks else {
-            nextWeekOffer = nil
-            return
+    func loadBlockCompletion() async {
+        guard let snapshot, cachedAt == nil else { return }
+        if let response = try? await service.blockCompletion(planID: snapshot.plan.id) {
+            self.blockCompletion = response
+            updateNextWeekOffer()
         }
-        guard let response = try? await service.blockCompletion(planID: snapshot.plan.id),
+    }
+
+    /// The offer exists only on the last generated week while later weeks are still to come.
+    func refreshNextWeekOffer() async {
+        if blockCompletion == nil, let snapshot, cachedAt == nil {
+            if let response = try? await service.blockCompletion(planID: snapshot.plan.id) {
+                self.blockCompletion = response
+            }
+        }
+        updateNextWeekOffer()
+    }
+
+    private func updateNextWeekOffer() {
+        guard let snapshot, cachedAt == nil,
+              let response = blockCompletion,
+              let generatedWeeks = snapshot.workouts.map(\.weekNumber).max(),
+              generatedWeeks < snapshot.plan.totalWeeks,
+              (selectedWeek == generatedWeeks || selectedWeek > generatedWeeks),
               let last = response.blocks.max(by: { $0.blockNumber < $1.blockNumber }) else {
             nextWeekOffer = nil
             return
         }
         let start = response.maxGeneratedWeek + 1
         nextWeekOffer = NextWeekOffer(
-            blockNumber: last.blockNumber + 1, weekStart: start,
+            blockNumber: last.blockNumber + 1,
+            weekStart: start,
             weekEnd: min(start + (last.weekEnd - last.weekStart), snapshot.plan.totalWeeks),
-            previousCompletionPct: last.completionPct, unlocked: last.unlocked)
+            previousCompletionPct: last.completionPct,
+            unlocked: last.unlocked
+        )
     }
 
     func buildNextWeek(rpe: Int?, notes: String, override: Bool, schedule: ScheduleDraft? = nil) async -> NextWeekResult {
@@ -569,6 +630,9 @@ final class PlanViewModel {
             if let snapshot = try await service.selectPlan(id: plan.id) {
                 apply(snapshot, resetWeek: true)
                 if isSignedIn() { cache.save(snapshot, as: .plan) }
+                await loadBlockCompletion()
+                await loadGoal()
+                await loadKnowledgeCard()
             }
         } catch let error as APIError {
             actionError = error.userMessage
