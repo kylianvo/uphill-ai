@@ -1,0 +1,26 @@
+{
+  "message_id": 102,
+  "citations": [
+    {
+      "source_id": "cite-1",
+      "title": "Training for the Uphill Athlete",
+      "book": "Training for the Uphill Athlete",
+      "chapter": "Periodization & Recovery",
+      "chapter_num": 5,
+      "chapter_title": "Structuring Quality Work",
+      "section": "Recovery Windows",
+      "topic": "Microcycle spacing",
+      "quote": "Maintain at least 48 hours between high-intensity quality sessions.",
+      "domain": "book",
+      "url": "https://uphillathlete.com/training-principles"
+    }
+  ],
+  "evidence": [
+    {
+      "title": "Microcycle Recovery Guidelines",
+      "content": "When rescheduling interval or tempo workouts, preserve the relationship between hard days and aerobic recovery days.",
+      "score": 0.89
+    }
+  ],
+  "evidence_status": "available"
+}

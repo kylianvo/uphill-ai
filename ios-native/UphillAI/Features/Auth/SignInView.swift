@@ -5,11 +5,24 @@ import SwiftUI
 struct SignInView: View {
     @Bindable var model: SignInViewModel
     @FocusState private var focused: Field?
+    typealias Field = SignInViewModel.Field
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private enum Field { case name, email, password }
-
     var body: some View {
+        ScrollViewReader { proxy in
+            scrollContent
+                // The error sits above the fields; bring it into view if the keyboard scrolled it away.
+                .onChange(of: model.errorMessage) { _, message in
+                    guard let message else { return }
+                    withAnimation(reduceMotion ? nil : UH.Motion.standard) { proxy.scrollTo(Self.errorID, anchor: .top) }
+                    AccessibilityNotification.Announcement(message).post()
+                }
+        }
+    }
+
+    private static let errorID = "signin.error"
+
+    private var scrollContent: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: UH.Space.section) {
                 VStack(alignment: .leading, spacing: UH.Space.compact) {
@@ -21,6 +34,15 @@ struct SignInView: View {
                         .foregroundStyle(UH.Palette.secondary)
                 }
                 .padding(.top, UH.Space.reading)
+
+                if let error = model.errorMessage {
+                    Text(error)
+                        .font(UH.TextStyle.label)
+                        .foregroundStyle(UH.Palette.danger)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .id(Self.errorID)
+                        .accessibilityIdentifier("signin.error")
+                }
 
                 SignInWithAppleButton(.continue) { request in
                     request.requestedScopes = [.fullName, .email]
@@ -40,18 +62,23 @@ struct SignInView: View {
 
                 divider
                 emailForm
-
-                if let error = model.errorMessage {
-                    Text(error)
-                        .font(UH.TextStyle.caption)
-                        .foregroundStyle(UH.Palette.danger)
-                }
             }
             .padding(.horizontal, UH.Space.medium)
             .disabled(model.isBusy)
         }
         .background(UH.Palette.surface.ignoresSafeArea())
-        .scrollDismissesKeyboard(.interactively)
+        // Short content doesn't scroll, so swiping alone can't dismiss: also allow bounce
+        // and a Done button above the keyboard. No screen-wide tap gesture: it also fires
+        // on taps inside the fields and takes their focus away.
+        .scrollDismissesKeyboard(.immediately)
+        .scrollBounceBehavior(.always)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") { focused = nil }
+                    .accessibilityIdentifier("signin.keyboardDone")
+            }
+        }
         .sensoryFeedback(.error, trigger: model.errorMessage) { _, new in new != nil }
     }
 
@@ -81,7 +108,7 @@ struct SignInView: View {
                 .textContentType(Self.autofillDisabled ? nil : (model.mode == .register ? .newPassword : .password))
                 .focused($focused, equals: .password)
                 .submitLabel(.go)
-                .onSubmit { if model.canSubmit { Task { await model.submitEmail() } } }
+                .onSubmit { handleReturn(in: .password) }
                 .inputBox()
                 .accessibilityIdentifier("signin.password")
 
@@ -122,7 +149,19 @@ struct SignInView: View {
     private func textField(_ title: String, text: Binding<String>, field: Field) -> some View {
         TextField(title, text: text)
             .focused($focused, equals: field)
+            .submitLabel(.next)
+            .onSubmit { handleReturn(in: field) }
             .inputBox()
+    }
+
+    private func handleReturn(in field: Field) {
+        switch model.returnAction(in: field) {
+        case .focus(let next): focused = next
+        case .submit:
+            focused = nil
+            Task { await model.submitEmail() }
+        case .none: break
+        }
     }
 
     private func handleApple(_ result: Result<ASAuthorization, Error>) async {
@@ -147,10 +186,9 @@ struct SignInView: View {
         do {
             let token = try await GoogleSignInProvider.signIn()
             await model.completeGoogle(idToken: token)
-        } catch let error as GIDSignInError where error.code == .canceled {
-            return
         } catch {
-            model.show("Google sign-in failed. Please try again.")
+            GoogleSignInProvider.logFailure(error)
+            if let message = GoogleSignInProvider.failureMessage(for: error) { model.show(message) }
         }
     }
 }

@@ -11,8 +11,16 @@ struct Endpoint<Response: Decodable & Sendable>: Sendable {
     var body: Data?
     var requiresAuth = true
 
+    static func delete(_ path: String, query: [URLQueryItem] = [], requiresAuth: Bool = true) -> Endpoint {
+        Endpoint(method: .delete, path: path, query: query, requiresAuth: requiresAuth)
+    }
+
     static func get(_ path: String, query: [URLQueryItem] = [], requiresAuth: Bool = true) -> Endpoint {
         Endpoint(method: .get, path: path, query: query, requiresAuth: requiresAuth)
+    }
+
+    static func post(_ path: String, query: [URLQueryItem] = [], requiresAuth: Bool = true) -> Endpoint {
+        Endpoint(method: .post, path: path, query: query, requiresAuth: requiresAuth)
     }
 
     static func send(_ method: HTTPMethod, _ path: String, body: some Encodable, requiresAuth: Bool = true) throws -> Endpoint {

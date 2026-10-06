@@ -45,6 +45,14 @@ struct NextBlockBody: Encodable, Sendable {
     let notes: String?
     let overrideGate: Bool
     let lang: String
+    var preferredDays: [String]? = nil
+    var longRunDay: String? = nil
+    var daysPerWeek: Int? = nil
+    var doubleSessionDays: [String]? = nil
+    var hasGymAccess: Bool? = nil
+    var useTreadmill: Bool? = nil
+    var trainingEnvironment: String? = nil
+    var athleteNotes: String? = nil
 }
 
 struct AdaptWeekBody: Encodable, Sendable {
@@ -55,4 +63,12 @@ struct AdaptWeekBody: Encodable, Sendable {
     let fatigueNotes: String?
     let lang: String
     let clientToday: String
+    var preferredDays: [String]? = nil
+    var longRunDay: String? = nil
+    var daysPerWeek: Int? = nil
+    var doubleSessionDays: [String]? = nil
+    var hasGymAccess: Bool? = nil
+    var useTreadmill: Bool? = nil
+    var trainingEnvironment: String? = nil
+    var maxContinuousJogMin: Int? = nil
 }

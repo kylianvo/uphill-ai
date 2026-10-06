@@ -5,6 +5,8 @@ import Observation
 @MainActor
 final class SignInViewModel {
     enum Mode { case signIn, register }
+    enum Field: Hashable { case name, email, password }
+    enum ReturnAction: Equatable { case focus(Field), submit, none }
 
     var mode: Mode = .signIn
     var name = ""
@@ -27,6 +29,16 @@ final class SignInViewModel {
     var canSubmit: Bool {
         guard !isBusy, trimmedEmail.contains("@"), password.count >= 8 else { return false }
         return mode == .signIn || !trimmedName.isEmpty
+    }
+
+    /// What the keyboard's Return key does in `field`: name → email → password, and
+    /// Return on the password field submits (only when the form is valid).
+    func returnAction(in field: Field) -> ReturnAction {
+        switch field {
+        case .name: .focus(.email)
+        case .email: .focus(.password)
+        case .password: canSubmit ? .submit : .none
+        }
     }
 
     func submitEmail() async {

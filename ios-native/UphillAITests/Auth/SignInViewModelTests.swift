@@ -63,4 +63,15 @@ struct SignInViewModelTests {
         await model.completeGoogle(idToken: "gid")
         #expect(auth.calls.withLock { $0 } == ["apple jwt Ana Le", "google gid"])
     }
+
+    @Test func returnWalksNameEmailPasswordThenSubmits() {
+        let model = SignInViewModel(auth: FakeAuthService(.failure(.unauthorized)),
+                                    session: SessionStore(tokenStore: InMemoryTokenStore()))
+        #expect(model.returnAction(in: .name) == .focus(.email))
+        #expect(model.returnAction(in: .email) == .focus(.password))
+        #expect(model.returnAction(in: .password) == .none)  // form not valid yet
+        model.email = "ana@example.com"
+        model.password = "longenough"
+        #expect(model.returnAction(in: .password) == .submit)
+    }
 }
