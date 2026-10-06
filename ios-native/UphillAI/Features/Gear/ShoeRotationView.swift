@@ -117,6 +117,7 @@ struct ShoeRotationView: View {
             .overlay(RoundedRectangle(cornerRadius: UH.Radius.panel).stroke(UH.Palette.line, lineWidth: 1))
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("me.shoeRotation.\(slot.rawValue)")
     }
 
     private func wearColor(_ ratio: Double) -> Color {

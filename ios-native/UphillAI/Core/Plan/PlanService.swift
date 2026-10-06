@@ -135,13 +135,9 @@ struct PlanService: PlanServicing {
             let activities: Int?
             let dailyMetrics: Int?
         }
-        do {
-            let resp: SyncResponse = try await client.send(.post("/api/integrations/coros/sync", query: [URLQueryItem(name: "plan_id", value: "\(planID)")]))
-            let count = resp.activities ?? 0
-            return count > 0 ? "Synced \(count) activities from watch" : "Watch synced · Up to date"
-        } catch {
-            return "No watch connected · Connect in Profile"
-        }
+        let resp: SyncResponse = try await client.send(.post("/api/integrations/coros/sync", query: [URLQueryItem(name: "plan_id", value: "\(planID)")]))
+        let count = resp.activities ?? 0
+        return count > 0 ? "Synced \(count) activities from watch" : "Watch synced · Up to date"
     }
     func knowledgeCard(topic: String, lang: String = "en") async -> KnowledgeCardModel? {
         do {

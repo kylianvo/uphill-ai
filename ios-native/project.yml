@@ -26,6 +26,7 @@ targets:
       path: UphillAI/Info.plist
       properties:
         CFBundleDisplayName: Uphill AI
+        UIUserInterfaceStyle: Light
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}

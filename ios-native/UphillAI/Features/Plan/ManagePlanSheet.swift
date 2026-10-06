@@ -13,6 +13,7 @@ struct ManagePlanSheet: View {
     @State private var confirmDelete = false
     @State private var isDeleting = false
     @State private var showExportCalendar = false
+    @State private var connectionStatus: DeviceConnectionStatus? = nil
 
     init(model: PlanViewModel, deviceService: (any DeviceConnectionServicing)? = nil, onStartNew: @escaping () -> Void, onSchedule: @escaping () -> Void = {}, onTool: ((TrainingDestination) -> Void)? = nil, initialPlans: [Plan]? = nil, initialConfirmDelete: Bool = false) {
         self.model = model
@@ -119,6 +120,9 @@ struct ManagePlanSheet: View {
                     if case .transport = error { loadError = PlanViewModel.offlineMessage } else { loadError = error.userMessage }
                 } catch {
                     loadError = error.localizedDescription
+                }
+                if let deviceService {
+                    connectionStatus = try? await deviceService.fetchStatus()
                 }
             }
         }
@@ -302,13 +306,56 @@ struct ManagePlanSheet: View {
     // MARK: - Integrations (Watch & COROS Sync)
 
     private var integrationsSection: some View {
-        VStack(alignment: .leading, spacing: UH.Space.compact) {
+        let isConnected = connectionStatus?.isCorosConnected == true
+        let deviceModel = connectionStatus?.coros?.deviceModel ?? "COROS APEX 2 Pro"
+
+        return VStack(alignment: .leading, spacing: UH.Space.compact) {
             Text("INTEGRATIONS & WATCH SYNC")
                 .font(.system(size: 10.5, weight: .bold, design: .monospaced))
                 .tracking(0.5)
                 .foregroundStyle(UH.Palette.muted)
 
             VStack(spacing: 0) {
+                // Connection status row
+                HStack(spacing: 8) {
+                    Image(systemName: "applewatch")
+                        .font(.system(size: 16))
+                        .foregroundStyle(isConnected ? UH.Palette.accentInk : UH.Palette.muted)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(isConnected ? deviceModel : "No watch connected")
+                            .font(UH.TextStyle.label)
+                            .foregroundStyle(UH.Palette.ink)
+                        Text(isConnected ? "Connected in Profile" : "Connect in Profile")
+                            .font(UH.TextStyle.caption)
+                            .foregroundStyle(UH.Palette.secondary)
+                    }
+
+                    Spacer()
+
+                    if isConnected {
+                        HStack(spacing: 4) {
+                            Circle().fill(UH.Palette.accentInk).frame(width: 6, height: 6)
+                            Text("Connected")
+                                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                .foregroundStyle(UH.Palette.accentInk)
+                        }
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3)
+                        .background(UH.Palette.activeFill, in: Capsule())
+                    } else {
+                        Text("Not connected")
+                            .font(.system(size: 10, weight: .medium, design: .monospaced))
+                            .foregroundStyle(UH.Palette.muted)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3)
+                            .background(UH.Palette.hover, in: Capsule())
+                    }
+                }
+                .padding(UH.Space.regular)
+
+                Divider().overlay(UH.Palette.line.opacity(0.6))
+
                 // Live Sync Watch row
                 Button {
                     Task {
@@ -316,7 +363,7 @@ struct ManagePlanSheet: View {
                     }
                 } label: {
                     HStack {
-                        Label("Sync Watch Activities", systemImage: "applewatch")
+                        Label("Sync Watch Activities", systemImage: "arrow.triangle.2.circlepath")
                             .font(UH.TextStyle.label)
                             .foregroundStyle(UH.Palette.ink)
                         Spacer()
@@ -335,15 +382,17 @@ struct ManagePlanSheet: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(model.isSyncingWatch)
+                .accessibilityIdentifier("manage.syncWatch")
 
                 if let notice = model.watchSyncNotice {
-                    HStack(spacing: 4) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundStyle(UH.Palette.accentInk)
-                            .font(.system(size: 11))
+                    let isSuccess = notice.lowercased().contains("synced") || notice.lowercased().contains("up to date")
+                    HStack(spacing: 6) {
+                        Image(systemName: isSuccess ? "checkmark.circle.fill" : (isConnected ? "exclamationmark.circle.fill" : "info.circle"))
+                            .foregroundStyle(isSuccess ? UH.Palette.accentInk : (isConnected ? UH.Palette.danger : UH.Palette.muted))
+                            .font(.system(size: 12))
                         Text(notice)
                             .font(UH.TextStyle.caption)
-                            .foregroundStyle(UH.Palette.secondary)
+                            .foregroundStyle(isSuccess ? UH.Palette.secondary : UH.Palette.danger)
                     }
                     .padding(.horizontal, UH.Space.regular)
                     .padding(.bottom, 8)
@@ -351,11 +400,19 @@ struct ManagePlanSheet: View {
 
                 Divider().overlay(UH.Palette.line.opacity(0.6))
 
-                // COROS Push Row (if service provided)
+                // COROS Push Row ("Send this week")
                 if let deviceService {
                     VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text("SEND THIS WEEK")
+                                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                .foregroundStyle(UH.Palette.muted)
+                            Spacer()
+                        }
                         CorosPushButton(service: deviceService)
-                        CorosAttribution(deviceModel: "COROS APEX 2 Pro")
+                        if isConnected {
+                            CorosAttribution(deviceModel: deviceModel)
+                        }
                     }
                     .padding(UH.Space.regular)
 
@@ -420,12 +477,13 @@ struct ManagePlanSheet: View {
 
             VStack(spacing: 0) {
                 Button {
-                    onTool?(.nutritionLab)
+                    onTool?(.goalDeterminer)
                     dismiss()
                 } label: {
-                    toolRow(title: "Nutrition Lab", icon: "drop.fill", desc: "Precision fueling timeline")
+                    toolRow(title: "Goal Determiner", icon: "speedometer", desc: "Percentile finish estimation")
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("manage.tool.goalDeterminer")
 
                 Divider().overlay(UH.Palette.line.opacity(0.6))
 
@@ -436,16 +494,29 @@ struct ManagePlanSheet: View {
                     toolRow(title: "Gear Vault", icon: "shoe.fill", desc: "Shoe rotation & recommendations")
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("manage.tool.gearVault")
 
                 Divider().overlay(UH.Palette.line.opacity(0.6))
 
                 Button {
-                    onTool?(.goalDeterminer)
+                    onTool?(.nutritionLab)
                     dismiss()
                 } label: {
-                    toolRow(title: "Goal Determiner", icon: "speedometer", desc: "Percentile finish estimation")
+                    toolRow(title: "Nutrition Lab", icon: "drop.fill", desc: "Precision fueling timeline")
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("manage.tool.nutritionLab")
+
+                Divider().overlay(UH.Palette.line.opacity(0.6))
+
+                Button {
+                    onTool?(.gearVault)
+                    dismiss()
+                } label: {
+                    toolRow(title: "Shoe Rotation", icon: "shoe", desc: "Active shoe rotation & wear")
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("manage.tool.shoeRotation")
             }
             .background(UH.Palette.card, in: RoundedRectangle(cornerRadius: UH.Radius.landing))
             .overlay(RoundedRectangle(cornerRadius: UH.Radius.landing).stroke(UH.Palette.line))

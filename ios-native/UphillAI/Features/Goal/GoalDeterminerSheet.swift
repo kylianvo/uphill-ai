@@ -5,6 +5,7 @@ struct GoalDeterminerSheet: View {
     let service: any GoalEstimateServicing
     var activePlan: Plan?
     var user: User?
+    var isPresentedInSheet: Bool = false
     var pacingService: (any PacingServicing)? = nil
     var onApplyGoal: ((Double) -> Void)? = nil
     var onPlanPacing: ((Double) -> Void)? = nil
@@ -61,6 +62,7 @@ struct GoalDeterminerSheet: View {
         pacingService: (any PacingServicing)? = nil,
         activePlan: Plan? = nil,
         user: User? = nil,
+        isPresentedInSheet: Bool = false,
         onApplyGoal: ((Double) -> Void)? = nil,
         onPlanPacing: ((Double) -> Void)? = nil,
         initialEstimate: GoalEstimate? = nil,
@@ -70,6 +72,7 @@ struct GoalDeterminerSheet: View {
         self.pacingService = pacingService
         self.activePlan = activePlan
         self.user = user
+        self.isPresentedInSheet = isPresentedInSheet
         self.onApplyGoal = onApplyGoal
         self.onPlanPacing = onPlanPacing
         _estimate = State(initialValue: initialEstimate)
@@ -77,18 +80,18 @@ struct GoalDeterminerSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if let estimate {
-                    resultsView(estimate)
-                } else {
-                    formView
-                }
+        Group {
+            if let estimate {
+                resultsView(estimate)
+            } else {
+                formView
             }
-            .background(UH.Palette.surface.ignoresSafeArea())
-            .navigationTitle("Goal Determiner")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
+        }
+        .background(UH.Palette.surface.ignoresSafeArea())
+        .navigationTitle("Goal Determiner")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if isPresentedInSheet {
                 ToolbarItem(placement: .topBarLeading) {
                     if estimate != nil {
                         Button {
@@ -113,18 +116,35 @@ struct GoalDeterminerSheet: View {
                             .foregroundStyle(UH.Palette.muted)
                             .font(.system(size: 22))
                     }
+                    .accessibilityIdentifier("goalDeterminer.dismiss")
+                }
+            } else {
+                if estimate != nil {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Edit") {
+                            withAnimation(UH.Motion.standard) {
+                                self.estimate = nil
+                            }
+                        }
+                        .font(UH.TextStyle.label)
+                        .foregroundStyle(UH.Palette.accentInk)
+                    }
                 }
             }
-            .sheet(isPresented: $showPacingSheet) {
-                if let pacingService {
+        }
+        .sheet(isPresented: $showPacingSheet) {
+            if let pacingService {
+                NavigationStack {
                     PaceStrategySheet(
                         service: pacingService,
                         activePlan: activePlan,
                         user: user,
-                        initialTargetMins: pacingTargetMins
+                        initialTargetMins: pacingTargetMins,
+                        isPresentedInSheet: true
                     )
                 }
             }
+        }
             .sheet(isPresented: $showLinkProfileSheet) {
                 // Link profile stub/sheet
                 NavigationStack {
@@ -160,7 +180,6 @@ struct GoalDeterminerSheet: View {
                     flatPaceMinKm = parsed
                 }
             }
-        }
     }
 
     // MARK: - Form View

@@ -125,6 +125,12 @@ struct Workout: Codable, Sendable, Equatable, Identifiable {
     var isDone: Bool { isCompleted == 1 || (isCompleted != 0 && isMatched) }
     var isMissedFlag: Bool { isMissed == 1 }
     var isMatched: Bool { matchedActivityId != nil || (matchedDistanceKm != nil && matchedDistanceKm! > 0) }
+    var isStrengthOrME: Bool {
+        let t = type.lowercased()
+        if t.contains("strength") || t.contains("muscular endurance") || t == "me" { return true }
+        let titleLower = title.lowercased()
+        return titleLower.contains("strength") || titleLower.contains("muscular endurance")
+    }
 }
 
 struct PlanSnapshot: Codable, Sendable, Equatable {

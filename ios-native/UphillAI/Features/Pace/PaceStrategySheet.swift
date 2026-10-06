@@ -33,6 +33,7 @@ struct PaceStrategySheet: View {
     @State private var restMins: [Int: Int] = [:]
     @State private var isLoading: Bool = false
     @State private var errorMessage: String? = nil
+    var isPresentedInSheet: Bool = false
 
     private var isVietnamese: Bool {
         Locale.current.language.languageCode?.identifier == "vi"
@@ -44,6 +45,7 @@ struct PaceStrategySheet: View {
         user: User? = nil,
         initialTargetMins: Double? = nil,
         initialGpxResult: GpxCourseResult? = nil,
+        isPresentedInSheet: Bool = false,
         onOpenNutrition: (() -> Void)? = nil,
         onOpenGear: (() -> Void)? = nil
     ) {
@@ -51,6 +53,7 @@ struct PaceStrategySheet: View {
         self.activePlan = activePlan
         self.user = user
         self.initialTargetMins = initialTargetMins
+        self.isPresentedInSheet = isPresentedInSheet
         self.onOpenNutrition = onOpenNutrition
         self.onOpenGear = onOpenGear
         _gpxResult = State(initialValue: initialGpxResult)
@@ -95,8 +98,7 @@ struct PaceStrategySheet: View {
     }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
+        ScrollView {
                 VStack(alignment: .leading, spacing: UH.Space.section) {
                     // Header Card
                     VStack(alignment: .leading, spacing: 4) {
@@ -159,7 +161,7 @@ struct PaceStrategySheet: View {
                     // Handoff CTAs (Prod Parity)
                     HStack(spacing: 12) {
                         Button {
-                            dismiss()
+                            if isPresentedInSheet { dismiss() }
                             onOpenNutrition?()
                         } label: {
                             HStack(spacing: 6) {
@@ -174,7 +176,7 @@ struct PaceStrategySheet: View {
                         }
 
                         Button {
-                            dismiss()
+                            if isPresentedInSheet { dismiss() }
                             onOpenGear?()
                         } label: {
                             HStack(spacing: 6) {
@@ -197,13 +199,16 @@ struct PaceStrategySheet: View {
             .navigationTitle("Pace Strategy")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(UH.Palette.muted)
-                            .font(.system(size: 22))
+                if isPresentedInSheet {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            dismiss()
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(UH.Palette.muted)
+                                .font(.system(size: 22))
+                        }
+                        .accessibilityIdentifier("paceStrategy.dismiss")
                     }
                 }
             }
@@ -232,7 +237,6 @@ struct PaceStrategySheet: View {
                 }
                 await recalculatePacing()
             }
-        }
     }
 
     // MARK: - Setup Card

@@ -6,6 +6,26 @@ struct BlockCompletion: Decodable, Sendable, Equatable {
     let weekEnd: Int
     let completionPct: Double
     let unlocked: Bool
+    let aiLastWeekReview: String?
+    let aiThisWeekDescription: String?
+
+    init(
+        blockNumber: Int,
+        weekStart: Int,
+        weekEnd: Int,
+        completionPct: Double,
+        unlocked: Bool,
+        aiLastWeekReview: String? = nil,
+        aiThisWeekDescription: String? = nil
+    ) {
+        self.blockNumber = blockNumber
+        self.weekStart = weekStart
+        self.weekEnd = weekEnd
+        self.completionPct = completionPct
+        self.unlocked = unlocked
+        self.aiLastWeekReview = aiLastWeekReview
+        self.aiThisWeekDescription = aiThisWeekDescription
+    }
 }
 
 struct BlockCompletionResponse: Decodable, Sendable {

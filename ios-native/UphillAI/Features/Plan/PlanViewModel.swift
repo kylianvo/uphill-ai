@@ -75,6 +75,7 @@ final class PlanViewModel {
     /// Last workout marked done; the view keys its success haptic on it.
     private(set) var lastCompletedID: Int?
 
+    private(set) var blockCompletion: BlockCompletionResponse?
     private(set) var nextWeekOffer: NextWeekOffer?
     private(set) var goal: PlanGoal?
     private(set) var isSyncingWatch = false
@@ -175,7 +176,12 @@ final class PlanViewModel {
         Task { await refreshNextWeekOffer(); await loadGoal(); await loadKnowledgeCard() }
     }
 
+    func adoptBlockCompletion(_ response: BlockCompletionResponse) {
+        self.blockCompletion = response
+    }
+
     func reset() {
+        blockCompletion = nil
         nextWeekOffer = nil
         goal = nil
         state = .loading
@@ -244,6 +250,32 @@ final class PlanViewModel {
     }
 
     var phase: String? { PlanSummary.phase(week: selectedWeek, workouts: snapshot?.workouts ?? []) }
+
+    var maxGeneratedWeek: Int {
+        if let maxFromBlock = blockCompletion?.maxGeneratedWeek, maxFromBlock > 0 {
+            return maxFromBlock
+        }
+        let nonRestWeeks = snapshot?.workouts.filter { !$0.isRest }.map(\.weekNumber) ?? []
+        return nonRestWeeks.max() ?? (snapshot?.workouts.map(\.weekNumber).max() ?? 0)
+    }
+
+    func isWeekUngenerated(_ week: Int) -> Bool {
+        guard let snapshot else { return false }
+        let weekWorkouts = snapshot.workouts.filter { $0.weekNumber == week }
+        if weekWorkouts.isEmpty { return week > 0 }
+        let hasActiveWorkout = weekWorkouts.contains { !$0.isRest }
+        return !hasActiveWorkout && week > 0
+    }
+
+    func canAdaptWeek(_ week: Int) -> Bool {
+        return !isWeekUngenerated(week) && week <= maxGeneratedWeek
+    }
+
+    var selectedWeekNarrative: BlockCompletion? {
+        guard let blockCompletion else { return nil }
+        let blockNum = Int(ceil(Double(selectedWeek) / 2.0))
+        return blockCompletion.blocks.first { $0.blockNumber == blockNum }
+    }
 
     var daysToRace: Int? { PlanCalendar.daysToRace(snapshot?.plan.raceDate, now: now(), calendar: calendar) }
 
@@ -384,10 +416,11 @@ final class PlanViewModel {
     // MARK: Next week
 
     /// The offer exists only on the last generated week while later weeks are still to come.
-    func refreshNextWeekOffer() async {
+        func refreshNextWeekOffer() async {
         guard let snapshot, cachedAt == nil,
               let generatedWeeks = snapshot.workouts.map(\.weekNumber).max(),
-              generatedWeeks < snapshot.plan.totalWeeks, selectedWeek == generatedWeeks else {
+              generatedWeeks < snapshot.plan.totalWeeks,
+              (selectedWeek == generatedWeeks || selectedWeek > generatedWeeks) else {
             nextWeekOffer = nil
             return
         }
@@ -396,11 +429,15 @@ final class PlanViewModel {
             nextWeekOffer = nil
             return
         }
+        self.blockCompletion = response
         let start = response.maxGeneratedWeek + 1
         nextWeekOffer = NextWeekOffer(
-            blockNumber: last.blockNumber + 1, weekStart: start,
+            blockNumber: last.blockNumber + 1,
+            weekStart: start,
             weekEnd: min(start + (last.weekEnd - last.weekStart), snapshot.plan.totalWeeks),
-            previousCompletionPct: last.completionPct, unlocked: last.unlocked)
+            previousCompletionPct: last.completionPct,
+            unlocked: last.unlocked
+        )
     }
 
     func buildNextWeek(rpe: Int?, notes: String, override: Bool, schedule: ScheduleDraft? = nil) async -> NextWeekResult {

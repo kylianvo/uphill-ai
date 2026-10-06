@@ -5,6 +5,7 @@ struct NutritionLabSheet: View {
     let service: any NutritionServicing
     var activePlan: Plan?
     var user: User?
+    var isPresentedInSheet: Bool = false
 
     // Form inputs
     @State private var durationHours: Double = 4.0
@@ -36,29 +37,31 @@ struct NutritionLabSheet: View {
         service: any NutritionServicing,
         activePlan: Plan? = nil,
         user: User? = nil,
+        isPresentedInSheet: Bool = false,
         initialPlan: NutritionPlan? = nil,
         initialTab: Tab = .timeline
     ) {
         self.service = service
         self.activePlan = activePlan
         self.user = user
+        self.isPresentedInSheet = isPresentedInSheet
         _plan = State(initialValue: initialPlan)
         _selectedTab = State(initialValue: initialTab)
     }
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if let plan {
-                    resultsView(plan)
-                } else {
-                    formView
-                }
+        Group {
+            if let plan {
+                resultsView(plan)
+            } else {
+                formView
             }
-            .background(UH.Palette.surface.ignoresSafeArea())
-            .navigationTitle("Nutrition Lab")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
+        }
+        .background(UH.Palette.surface.ignoresSafeArea())
+        .navigationTitle("Nutrition Lab")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if isPresentedInSheet {
                 ToolbarItem(placement: .topBarLeading) {
                     if plan != nil {
                         Button {
@@ -83,16 +86,29 @@ struct NutritionLabSheet: View {
                             .foregroundStyle(UH.Palette.muted)
                             .font(.system(size: 22))
                     }
+                    .accessibilityIdentifier("nutritionLab.dismiss")
+                }
+            } else {
+                if plan != nil {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Edit") {
+                            withAnimation(UH.Motion.standard) {
+                                self.plan = nil
+                            }
+                        }
+                        .font(UH.TextStyle.label)
+                        .foregroundStyle(UH.Palette.accentInk)
+                    }
                 }
             }
-            .task {
-                if let activePlan {
-                    if let hours = activePlan.targetTimeHours, hours > 0 {
-                        durationHours = hours
-                    } else if let dist = activePlan.courseDistanceKm, dist > 0 {
-                        // Rough heuristic if target time not specified: 10km/h trail
-                        durationHours = max(1.0, (dist / 8.0).rounded())
-                    }
+        }
+        .task {
+            if let activePlan {
+                if let hours = activePlan.targetTimeHours, hours > 0 {
+                    durationHours = hours
+                } else if let dist = activePlan.courseDistanceKm, dist > 0 {
+                    // Rough heuristic if target time not specified: 10km/h trail
+                    durationHours = max(1.0, (dist / 8.0).rounded())
                 }
             }
         }

@@ -4,12 +4,15 @@ import Foundation
 /// sections and the execution steps. Pure and Sendable so the sheet can open on cheap data
 /// and compute this after presentation, off the main actor.
 struct WorkoutDetailContent: Equatable, Sendable {
+    let sections: DescriptionSections
     let description: ParsedWorkoutDescription
     let steps: [ExecutionStepItem]
 
     static func make(workout: Workout, isTreadmill: Bool) -> WorkoutDetailContent {
-        let parsed = WorkoutStepParser.parseDescription(workout.description)
+        let extracted = WorkoutDescriptionParser.extractDescriptionSections(workout.description ?? "")
+        let parsed = WorkoutStepParser.parseDescription(workout.description ?? "")
         return WorkoutDetailContent(
+            sections: extracted,
             description: parsed,
             steps: WorkoutStepParser.parseSteps(workout: workout, description: parsed, isTreadmill: isTreadmill)
         )
