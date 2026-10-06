@@ -62,3 +62,11 @@ get /api/coach/active-plan active_plan.json
 get /api/coach/recent-plans recent_plans.json
 
 echo "Recorded fixtures into $OUT"
+
+PLAN_ID=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["plan"]["id"])' "$OUT/active_plan.json")
+get "/api/coach/block-completion/$PLAN_ID" block_completion.json
+get "/api/coach/week-review/$PLAN_ID/1" week_review.json
+# Creates one assessment (rules tier unless GOAL_LLM_ENABLED). Limited per day on the server.
+curl -sf -X POST "$BASE/api/plans/$PLAN_ID/goal/reassess" -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' -d '{"exclude":[],"lang":"en"}' >/dev/null || true
+get "/api/plans/$PLAN_ID/goal" plan_goal.json

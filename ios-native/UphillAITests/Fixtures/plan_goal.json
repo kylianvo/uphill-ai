@@ -1,0 +1,38 @@
+{
+  "assessment": {
+    "anchors": [],
+    "confidence": "low",
+    "created_at": "2026-10-01T22:21:21.994347+00:00",
+    "distance_km": 42.0,
+    "elevation_gain_m": 2400.0,
+    "engine": "none",
+    "goals": null,
+    "id": 1,
+    "lang": "en",
+    "missing": [
+      "race_history",
+      "recent_trail_result",
+      "utmb_index",
+      "vo2max",
+      "watch"
+    ],
+    "plan_id": 61,
+    "plan_week": 1,
+    "race_date": "2026-12-12",
+    "race_name": "Vietnam Mountain Marathon 42K",
+    "reasoning": [],
+    "sources": [
+      {
+        "included": true,
+        "key": "block",
+        "label": "Training: 80% of weeks 1\u20131"
+      }
+    ],
+    "trigger": "manual"
+  },
+  "status": {
+    "state": "not_assessed",
+    "suggested_mins": null
+  },
+  "target_time_hours": 6.5
+}

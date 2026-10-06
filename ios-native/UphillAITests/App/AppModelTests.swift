@@ -68,4 +68,37 @@ struct AppModelTests {
         await app.signOut()
         #expect(cache.load(User.self, .user) == nil)
     }
+    @Test func signingOutResetsPlanAndGeneration() async throws {
+        let response = try Fixture.decode(AuthResponse.self, "auth_login.json")
+        let app = AppModel(tokenStore: InMemoryTokenStore(), makeAuth: { _ in FakeAuthService(.success(response)) }, cache: .inMemory())
+        app.session.didSignIn(response)
+        app.plan.adopt(PlanSnapshot(plan: TestData.plan(), workouts: []))
+        app.session.signOut()
+        #expect(app.plan.snapshot == nil)
+        #expect(app.plan.state == .loading)
+        #expect(app.generation.running == nil)
+    }
+    @Test func onboardingCanBeDeferredAndSetupSharesServices() throws {
+        var object = try JSONSerialization.jsonObject(with: Fixture.data("auth_me.json")) as! [String: Any]
+        object["onboarding_complete"] = false
+        let user = try JSONCoding.decoder.decode(User.self, from: json(object))
+        let app = AppModel(tokenStore: InMemoryTokenStore(), cache: .inMemory())
+        app.session.setUser(user)
+        #expect(app.needsOnboarding)
+        let setup = app.makeSetup(mode: .onboarding)
+        #expect(setup.mode == .onboarding)
+        app.onboardingDeferred = true
+        #expect(!app.needsOnboarding)
+        app.session.signOut()
+        #expect(!app.onboardingDeferred)
+    }
+    @Test func makeSetupRemembersTheLastSetupUntilSignOut() throws {
+        let app = AppModel(tokenStore: InMemoryTokenStore(), cache: .inMemory())
+        app.session.setUser(try JSONCoding.decoder.decode(User.self, from: Fixture.data("auth_me.json")))
+        #expect(app.lastSetup == nil)
+        let setup = app.makeSetup(mode: .newPlan)
+        #expect(app.lastSetup === setup)
+        app.session.signOut()
+        #expect(app.lastSetup == nil)
+    }
 }
