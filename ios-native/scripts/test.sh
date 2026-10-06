@@ -18,8 +18,19 @@ for rt in sorted((r for r in devs if "SimRuntime.iOS-" in r), key=ver, reverse=T
 ')"
 fi
 echo "Testing on: $DESTINATION"
-xcodebuild test \
+LOG="${XCODEBUILD_LOG:-$(mktemp -t uphill-xcodebuild).log}"
+if xcodebuild test \
   -project UphillAI.xcodeproj \
   -scheme UphillAI \
   -destination "$DESTINATION" \
-  "$@" | tail -n 25
+  "$@" >"$LOG" 2>&1; then
+  echo "Tests passed (full log: $LOG)"
+else
+  status=$?
+  echo "--- errors ---"
+  grep -E "error:" "$LOG" | sort -u || true
+  echo "--- tail ---"
+  tail -n 25 "$LOG"
+  echo "Full log: $LOG"
+  exit "$status"
+fi
