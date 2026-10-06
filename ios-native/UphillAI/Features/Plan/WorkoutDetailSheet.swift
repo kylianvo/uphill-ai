@@ -63,6 +63,13 @@ struct WorkoutDetailSheet: View {
                             headerSection(workout)
                             statTiles(workout)
                             quietLine(workout)
+                            if let intent = content?.description.intent {
+                                Text(intent)
+                                    .font(UH.TextStyle.body)
+                                    .foregroundStyle(UH.Palette.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .accessibilityIdentifier("detail.intent")
+                            }
 
                             if workout.isMatched {
                                 matchedWatchCard(workout)

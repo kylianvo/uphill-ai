@@ -6,6 +6,8 @@ struct ParsedWorkoutDescription: Equatable, Sendable {
     let benefit: String?
     let warning: String?
     let coachNotes: String?
+    /// The "Overall:" line: what the session is for.
+    var intent: String? = nil
 }
 
 enum ExecutionStepPhase: String, CaseIterable, Sendable {
@@ -41,35 +43,81 @@ enum WorkoutStepParser {
             return ParsedWorkoutDescription(overview: nil, process: nil, benefit: nil, warning: nil, coachNotes: nil)
         }
 
-        func extract(keywords: [String]) -> String? {
-            for kw in keywords {
-                let pattern = "(?i)(?:^|\\n)\\s*" + NSRegularExpression.escapedPattern(for: kw) + "[:\\-]\\s*([\\s\\S]*?)(?=(?:\\n\\s*(?:Process|Overall|Reason|Benefit|Warning|What it builds|Common mistake|Coach Uphill note|Coach note)[:\\-]|$))"
-                if let regex = try? NSRegularExpression(pattern: pattern) {
-                    let nsString = text as NSString
-                    let matches = regex.matches(in: text, range: NSRange(location: 0, length: nsString.length))
-                    if let match = matches.first, match.numberOfRanges > 1 {
-                        let val = nsString.substring(with: match.range(at: 1)).trimmingCharacters(in: .whitespacesAndNewlines)
-                        if !val.isEmpty { return val }
-                    }
-                }
+        var sections: [Section: [String]] = [:]
+        var free: [String] = []
+        var current: Section?
+        var sawLabel = false
+
+        for segment in segments(of: text) {
+            if let (section, body) = label(of: segment) {
+                sawLabel = true
+                current = section
+                if !body.isEmpty { sections[section, default: []].append(body) }
+            } else if let current, current == .process || !isStepLike(segment) {
+                // A labelled paragraph wrapped over several lines; steps never belong to a note.
+                sections[current, default: []].append(segment)
+            } else {
+                current = nil
+                free.append(segment)
             }
-            return nil
         }
 
-        let process = extract(keywords: ["Process", "How to execute", "Execution", "Steps"])
-        let benefit = extract(keywords: ["What it builds", "Benefit", "Reason", "Builds"])
-        let warning = extract(keywords: ["Common mistake", "Warning", "Mistake"])
-        let coachNotes = extract(keywords: ["Coach Uphill note", "Coach note", "Overall"])
+        func joined(_ section: Section) -> String? {
+            let value = sections[section]?.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+            return value?.isEmpty == false ? value : nil
+        }
 
-        let hasStructured = (process != nil || benefit != nil || warning != nil || coachNotes != nil)
-
+        guard sawLabel else {
+            return ParsedWorkoutDescription(overview: text, process: text, benefit: nil, warning: nil, coachNotes: nil)
+        }
         return ParsedWorkoutDescription(
-            overview: hasStructured ? nil : text,
-            process: process ?? (hasStructured ? nil : text),
-            benefit: benefit,
-            warning: warning,
-            coachNotes: coachNotes
+            overview: nil,
+            process: joined(.process) ?? (free.isEmpty ? nil : free.joined(separator: "\n")),
+            benefit: joined(.builds),       // "What it builds", "Reason" and "Benefit"
+            warning: joined(.warning),      // "Common mistake" / "Warning"
+            coachNotes: joined(.coach),
+            intent: joined(.intent)         // "Overall"
         )
+    }
+
+    // MARK: - Segments & labels
+
+    private enum Section { case process, builds, warning, coach, intent }
+
+    /// Longest keywords first so "coach uphill note" wins over "coach".
+    private static let labels: [(String, Section)] = [
+        ("coach uphill note", .coach), ("coach note", .coach), ("coach", .coach),
+        ("what it builds", .builds), ("benefit", .builds), ("reason", .builds), ("builds", .builds),
+        ("common mistake", .warning), ("warning", .warning), ("mistake", .warning),
+        ("how to execute", .process), ("process", .process), ("execution", .process), ("steps", .process),
+        ("overall", .intent), ("overview", .intent),
+    ]
+
+    /// Descriptions arrive with sections separated by newlines or by " / ".
+    private static func segments(of text: String) -> [String] {
+        text.replacingOccurrences(of: #"\s+/\s+"#, with: "\n", options: .regularExpression)
+            .components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+    }
+
+    /// "Reason: Acts as…" -> (.builds, "Acts as…"); nil when the segment has no section label.
+    private static func label(of segment: String) -> (Section, String)? {
+        for (keyword, section) in labels {
+            guard let range = segment.range(of: keyword, options: [.caseInsensitive, .anchored]) else { continue }
+            let rest = segment[range.upperBound...].drop(while: { $0 == " " })
+            guard let separator = rest.first, separator == ":" || separator == "-" else { continue }
+            return (section, rest.dropFirst().trimmingCharacters(in: .whitespacesAndNewlines))
+        }
+        return nil
+    }
+
+    /// A line that is part of the workout itself rather than a note about it.
+    private static func isStepLike(_ segment: String) -> Bool {
+        let lower = segment.lowercased()
+        if lower.hasPrefix("warm") || lower.hasPrefix("main set") || lower.hasPrefix("cool")
+            || lower.hasPrefix("target pace") { return true }
+        return lower.range(of: #"^\d+(?:[–\-]\d+)?\s*(?:min(?:ute)?s?|km|m|sec|s|x|×)\b"#, options: .regularExpression) != nil
     }
 
     // MARK: - Execution Steps Timeline
@@ -97,6 +145,7 @@ enum WorkoutStepParser {
         // 2. Main Set
         let mainTarget: String
         let recovery: String?
+        let isIntervalSet = (workout.intervalReps ?? 0) > 0 || detectReps(parts.main.first ?? "") != nil
         if isTreadmill, let tm = treadmillSettings(workout: workout) {
             mainTarget = "\(tm.speed) · \(tm.incline)"
             recovery = "Maintain stable uphill cadence"
@@ -116,12 +165,14 @@ enum WorkoutStepParser {
             recovery = nil
         }
 
+        // The description's own number wins (an explicit "25 min steady…" line); only when it
+        // states none do we fall back to total minus warm-up and cool-down.
         let mainDuration: String? = {
-            if workout.durationMinutes > 0 {
-                let dur = Int(workout.durationMinutes)
-                return "\(max(10, dur - 20)) min"
-            }
-            return nil
+            if !isIntervalSet, let stated = leadingMinutes(of: parts.main.first) { return stated }
+            guard workout.durationMinutes > 0 else { return nil }
+            let warm = firstNumber(in: extractMinutes(warmupText)) ?? 10
+            let cool = firstNumber(in: extractMinutes(parts.cooldown ?? "")) ?? 5
+            return "\(max(5, Int(workout.durationMinutes) - warm - cool)) min"
         }()
 
         let cleanMainSteps = parts.main.map { cleanStepText($0, prefix: "main set:") }
@@ -194,47 +245,33 @@ enum WorkoutStepParser {
             return (warmup, main, cooldown)
         }
 
-        let lines = text.components(separatedBy: "\n").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
         var warmup: String? = nil
         var cooldown: String? = nil
         var main: [String] = []
-        var inMetadataSection = false
+        var inNote = false
 
-        for line in lines {
-            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
-            if trimmed.isEmpty { continue }
-            let lower = trimmed.lowercased()
-
-            // Skip coach/metadata sections so they do not leak into execution steps
-            if lower.hasPrefix("what it builds") ||
-               lower.hasPrefix("common mistake") ||
-               lower.hasPrefix("coach uphill note") ||
-               lower.hasPrefix("coach note") ||
-               lower.hasPrefix("coach:") ||
-               lower.hasPrefix("benefit:") ||
-               lower.hasPrefix("warning:") ||
-               lower.hasPrefix("reason:") ||
-               lower.hasPrefix("overview:") {
-                inMetadataSection = true
-                continue
-            }
-
-            if inMetadataSection {
-                if lower.hasPrefix("warm-up") || lower.hasPrefix("main set") || lower.hasPrefix("cool-down") {
-                    inMetadataSection = false
+        for segment in segments(of: text) {
+            var step = segment
+            if let (section, body) = label(of: segment) {
+                if section == .process {
+                    step = body
+                    inNote = false
                 } else {
+                    inNote = true   // a note about the workout, never a step
                     continue
                 }
+            } else if inNote {
+                if isStepLike(segment) { inNote = false } else { continue }
             }
+            if step.isEmpty { continue }
 
-            if warmup == nil && (lower.hasPrefix("warm-up") || lower.contains("warm up")) {
-                warmup = trimmed
-            } else if lower.hasPrefix("cool-down") || lower.contains("cool down") {
-                cooldown = trimmed
-            } else if lower.hasPrefix("main set") {
-                main.append(trimmed)
-            } else if !main.isEmpty {
-                main.append(trimmed)
+            let lower = step.lowercased()
+            if warmup == nil && (lower.hasPrefix("warm") || lower.contains("warm up") || lower.contains("warm-up")) {
+                warmup = step
+            } else if lower.hasPrefix("cool") || lower.contains("cool down") || lower.contains("cool-down") {
+                cooldown = step
+            } else {
+                main.append(step)
             }
         }
         return (warmup, main, cooldown)
@@ -246,6 +283,19 @@ enum WorkoutStepParser {
             return "15 min easy Zone 1/2 jog + 4 dynamic drills"
         }
         return "10 min easy jog to build into effort"
+    }
+
+    /// "25 min steady running @ Zone 1-2" -> "25 min"; nil unless the line opens with a duration.
+    private static func leadingMinutes(of text: String?) -> String? {
+        guard let text,
+              let range = text.range(of: #"^\s*(?:main set:?\s*)?(\d+(?:[–\-]\d+)?\s*min)\b"#,
+                                     options: [.regularExpression, .caseInsensitive]) else { return nil }
+        return extractMinutes(String(text[range]))
+    }
+
+    private static func firstNumber(in text: String?) -> Int? {
+        guard let text, let range = text.range(of: #"\d+"#, options: .regularExpression) else { return nil }
+        return Int(text[range])
     }
 
     private static func extractMinutes(_ text: String) -> String? {
