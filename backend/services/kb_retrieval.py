@@ -7,6 +7,7 @@ is intentionally avoided here.
 """
 
 import hashlib
+from collections.abc import Callable
 
 from google import genai
 from google.genai import types
@@ -89,8 +90,18 @@ def _chunk_ref(title: str, content: str) -> str:
     return hashlib.sha1(f"{title}\n{content}".encode()).hexdigest()[:12]
 
 
-def search_scheduler_chunks(query: str, api_key: str, k: int = 6) -> list[dict]:
-    """Top-k philosophy chunks for a retrieval query: title, content, score, ref. [] if collection absent."""
+def search_scheduler_chunks(
+    query: str,
+    api_key: str,
+    k: int = 6,
+    *,
+    fetch_k: int | None = None,
+    keep: Callable[[dict], bool] | None = None,
+) -> list[dict]:
+    """Top-k philosophy chunks for a retrieval query: title, content, score, ref. [] if collection absent.
+
+    With `keep`, `fetch_k` (>= k) hits are fetched, those `keep` rejects are dropped, and
+    the best k survivors returned -- so the span records the chunks actually used."""
     with observability.span(
         "retrieval",
         metadata={"collections": [COLLECTION], "retrieval_k": k},
@@ -101,16 +112,18 @@ def search_scheduler_chunks(query: str, api_key: str, k: int = 6) -> list[dict]:
             print(f"[KBRetrieval] Collection {COLLECTION} does not exist — returning no context")
             return []
         vector = _embed([query], api_key, task_type="retrieval_query")[0]
-        hits = client.query_points(collection_name=COLLECTION, query=vector, limit=k).points
+        limit = max(k, fetch_k or k) if keep else k
+        hits = client.query_points(collection_name=COLLECTION, query=vector, limit=limit).points
         results = []
         for hit in hits:
             if not hit.payload:
                 continue
             title = hit.payload.get("title", "")
             content = hit.payload.get("content", "")
-            results.append(
-                {"title": title, "content": content, "score": float(hit.score), "ref": _chunk_ref(title, content)}
-            )
+            result = {"title": title, "content": content, "score": float(hit.score), "ref": _chunk_ref(title, content)}
+            if keep is None or keep(result):
+                results.append(result)
+        results = results[:k]
         retrieval.set(
             grounded=bool(results),
             chunk_refs=[result["ref"] for result in results],

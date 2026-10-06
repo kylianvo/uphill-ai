@@ -1578,17 +1578,38 @@ class PlanGenerator:
             # is non-fatal — the prompt already carries the core rules inline.
             if not reduced:
                 try:
+                    import functools
+
+                    from services import scheduler_grounding
                     from services.kb_context import render_principles_context
                     from services.kb_retrieval import search_scheduler_chunks
 
-                    _retrieval_query = (
-                        f"{race_info.get('terrain', 'trail')} race training plan: periodization "
-                        f"phases, muscular endurance circuit design, taper and race week, long run "
-                        f"and Zone 2 volume, double sessions"
+                    _has_doubles = bool(double_session_days)
+                    _retrieval_query = scheduler_grounding.build_query(
+                        tier_profile,
+                        race_info.get("terrain", "trail"),
+                        scheduler_grounding.phase_hint(
+                            race_info.get("goal_type"), is_event_goal, total_weeks, block_start_week
+                        ),
+                        adapting_week=target_week is not None,
+                        has_block_feedback=bool(block_context),
+                        has_double_days=_has_doubles,
                     )
-                    _hits = await asyncio.to_thread(search_scheduler_chunks, _retrieval_query, api_key, 6)
+                    _hits = await asyncio.to_thread(
+                        functools.partial(
+                            search_scheduler_chunks,
+                            _retrieval_query,
+                            api_key,
+                            6,
+                            fetch_k=scheduler_grounding.RETRIEVAL_OVERFETCH,
+                            keep=lambda hit: scheduler_grounding.chunk_allowed(
+                                hit.get("title", ""), tier_profile, _has_doubles
+                            ),
+                        )
+                    )
                     _kb_context = render_principles_context(
-                        _hits, heading="UPHILL ATHLETE PHILOSOPHY (grounding context)"
+                        _hits,
+                        heading="UPHILL ATHLETE PHILOSOPHY (grounding context; where it differs from the numbered Rules above, the Rules win)",
                     )
                     print(f"[PlanGen][KB] Retrieved {len(_hits)} philosophy chunks")
                 except Exception as _kb_ex:
