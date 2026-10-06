@@ -11,6 +11,9 @@ describe("AdaptWeekModal", () => {
     has_gym_access: false,
     use_treadmill: false,
     training_environment: "flat" as const,
+    mountain_days: [] as string[],
+    stair_access: false,
+    treadmill_max_incline: 15,
     double_session_days: [],
     athlete_notes: "",
   };

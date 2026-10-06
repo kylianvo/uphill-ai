@@ -4,6 +4,7 @@ import { Sparkle, X, Lightning, CheckCircle } from "@phosphor-icons/react";
 import { translations } from "../app/translations";
 import { describeGuard, localToday, tr } from "../lib/scheduleProposals";
 import ConfirmActionModal from "./ConfirmActionModal";
+import { TrainingVenueFields } from "./TrainingVenueFields";
 
 const API_BASE_URL =
   (typeof window !== "undefined" && localStorage.getItem("UPHILL_API_URL_OVERRIDE")) ||
@@ -24,6 +25,9 @@ export interface AdaptWeekModalProps {
     has_gym_access: boolean;
     use_treadmill: boolean;
     training_environment: "flat" | "hilly" | "mixed";
+    mountain_days: string[];
+    stair_access: boolean;
+    treadmill_max_incline: number;
     double_session_days: string[];
     athlete_notes?: string;
   };
@@ -115,6 +119,9 @@ export function AdaptWeekModal({
         has_gym_access: schedule.has_gym_access,
         use_treadmill: schedule.use_treadmill,
         training_environment: schedule.training_environment,
+        mountain_days: schedule.mountain_days,
+        stair_access: schedule.stair_access,
+        treadmill_max_incline: schedule.treadmill_max_incline,
         lang,
         client_today: localToday(),
       };
@@ -516,6 +523,14 @@ export function AdaptWeekModal({
                 {t("plan_use_treadmill")}
               </label>
             </div>
+
+            <TrainingVenueFields
+              lang={lang}
+              t={t}
+              value={schedule}
+              useTreadmill={schedule.use_treadmill}
+              onChange={(patch) => setSchedule({ ...schedule, ...patch })}
+            />
           </div>
 
           {/* Coach Notes if coach is acting on behalf of athlete */}

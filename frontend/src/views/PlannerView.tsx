@@ -20,6 +20,7 @@ import { WorkoutTypeSelect } from "../components/WorkoutTypeSelect";
 import { minsToHms, isTaperPhase, buildPaceHandoffFromPlan } from "../lib/planHandoff";
 import { parsePaceToMinutes, formatDurationHM } from "../lib/paceStrategy";
 import { ScheduleFieldsEditor, ScheduleFieldsValue } from "../components/ScheduleFieldsEditor";
+import { parseDayList } from "../components/TrainingVenueFields";
 import { useMatching, type RawMatchActivity } from "../hooks/useMatching";
 import MatchedActivityCard from "../components/MatchedActivityCard";
 import UnplannedActivityCard from "../components/UnplannedActivityCard";
@@ -657,6 +658,9 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
     has_gym_access: false,
     use_treadmill: false,
     training_environment: "flat",
+    mountain_days: [],
+    stair_access: false,
+    treadmill_max_incline: 15,
     double_session_days: [],
     athlete_notes: "",
   });
@@ -901,6 +905,9 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
       has_gym_access: !!p.has_gym_access,
       use_treadmill: !!p.use_treadmill,
       training_environment: p.training_environment || "flat",
+      mountain_days: parseDayList(p.mountain_days),
+      stair_access: !!p.stair_access,
+      treadmill_max_incline: p.treadmill_max_incline || 15,
       double_session_days: doubleSessionDays,
       athlete_notes: p.athlete_notes || "",
     });
@@ -937,6 +944,9 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
           has_gym_access: nextBlockSchedule.has_gym_access,
           use_treadmill: nextBlockSchedule.use_treadmill,
           training_environment: nextBlockSchedule.training_environment,
+          mountain_days: nextBlockSchedule.mountain_days,
+          stair_access: nextBlockSchedule.stair_access,
+          treadmill_max_incline: nextBlockSchedule.treadmill_max_incline,
           athlete_notes: nextBlockSchedule.athlete_notes || null,
           client_today: localToday(),
         }),
@@ -996,6 +1006,9 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
       has_gym_access: !!p.has_gym_access,
       use_treadmill: !!p.use_treadmill,
       training_environment: p.training_environment || "flat",
+      mountain_days: parseDayList(p.mountain_days),
+      stair_access: !!p.stair_access,
+      treadmill_max_incline: p.treadmill_max_incline || 15,
       double_session_days: doubleSessionDays,
     }));
   }, [recentPlans, activePlan, setPlanForm]);
@@ -1432,6 +1445,9 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 has_gym_access: planForm.has_gym_access,
                 use_treadmill: planForm.use_treadmill,
                 training_environment: planForm.training_environment,
+                mountain_days: planForm.mountain_days || [],
+                stair_access: !!planForm.stair_access,
+                treadmill_max_incline: planForm.treadmill_max_incline || 15,
                 double_session_days: planForm.double_session_days,
                 athlete_notes: planForm.athlete_notes,
               }}
@@ -2629,6 +2645,9 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
               has_gym_access: !!activePlan.has_gym_access,
               use_treadmill: !!activePlan.use_treadmill,
               training_environment: activePlan.training_environment || "flat",
+              mountain_days: parseDayList(activePlan.mountain_days),
+              stair_access: !!activePlan.stair_access,
+              treadmill_max_incline: activePlan.treadmill_max_incline || 15,
               athlete_notes: activePlan.athlete_notes || "",
             }}
             lang={lang}

@@ -9,6 +9,7 @@ import { RaceNameField } from "../components/RaceNameField";
 import { parsePaceToMinutes, formatDurationHM } from "../lib/paceStrategy";
 import WatchZonesGuideModal from "../components/WatchZonesGuideModal";
 import RaceHistoryPanel from "../components/RaceHistoryPanel";
+import { TrainingVenueFields } from "../components/TrainingVenueFields";
 
 export default function OnboardingWizard() {
   const ctx = useAppContext();
@@ -126,6 +127,10 @@ export default function OnboardingWizard() {
         has_gym_access: onboardingAnswers.has_gym_access || false,
 
         training_environment: onboardingAnswers.training_environment || "flat",
+
+        mountain_days: onboardingAnswers.mountain_days || [],
+
+        stair_access: !!onboardingAnswers.stair_access,
 
         zone2_pace_min: onboardingAnswers.zone2_pace_min || "6:30",
 
@@ -1552,11 +1557,21 @@ export default function OnboardingWizard() {
 
                 <p style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "5px", margin: "5px 0 0 0" }}>
 
-                  {lang === "en"
-                    ? "Whether Hill Sprint sessions can be prescribed depends on this and your treadmill access."
-                    : "Việc có được xếp bài Hill Sprint (chạy dốc) hay không phụ thuộc vào lựa chọn này và việc bạn có máy chạy bộ hay không."}
+                  {t("plan_training_environment_help")}
 
                 </p>
+
+                <TrainingVenueFields
+                  lang={lang}
+                  t={t}
+                  value={{
+                    mountain_days: onboardingAnswers.mountain_days || [],
+                    stair_access: !!onboardingAnswers.stair_access,
+                    treadmill_max_incline: 15,
+                  }}
+                  useTreadmill={false}
+                  onChange={(patch) => Object.entries(patch).forEach(([k, v]) => setAns(k, v))}
+                />
 
               </div>
 

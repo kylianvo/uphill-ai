@@ -66,6 +66,9 @@ export interface ActivePlan {
   has_gym_access?: boolean;
   use_treadmill?: boolean;
   training_environment?: "flat" | "hilly" | "mixed";
+  mountain_days?: string; // JSON-encoded array of weekdays with hill/trail access
+  stair_access?: boolean;
+  treadmill_max_incline?: number;
   preferred_run_days?: string; // JSON-encoded array, e.g. '["Monday","Wednesday"]'
   long_run_day?: string;
   days_per_week?: number;
