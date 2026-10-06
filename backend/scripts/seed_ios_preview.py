@@ -4,8 +4,14 @@ iOS app's screenshots, fixtures and UI tests.
 Usage, from backend/, against the local Docker database only:
     DATABASE_URL=postgresql://uphill:uphill_secret@localhost:5433/uphill_ai python scripts/seed_ios_preview.py
 
-Re-running replaces the preview athlete's plans. No other user is touched.
-The password is a local test credential, also used by ios-native/UphillAIUITests.
+Re-running replaces the preview athlete's plans, and the coach's roster rows and notes.
+No other user is touched. The password is a local test credential, also used by
+ios-native/UphillAIUITests (the coach and invitee accounts use the same one).
+
+Coach data for the native coach screens: COACH_EMAIL coaches the preview athlete
+(one workout awaiting approval, one draft plan, a few notes) and has a pending
+invite out to INVITEE_EMAIL, so /api/coaching/{overview,roster,my-invites,...} all
+return real, non-empty responses.
 """
 
 import datetime
@@ -15,6 +21,8 @@ from urllib.parse import urlparse
 
 EMAIL = "ios-preview@uphill.ai"
 PASSWORD = "uphill-preview-1"
+COACH_EMAIL = "ios-coach@uphill.ai"
+INVITEE_EMAIL = "ios-invitee@uphill.ai"
 
 # Must run before importing db: db builds its engine from DATABASE_URL at import time.
 _host = urlparse(os.environ.get("DATABASE_URL", "")).hostname
@@ -62,6 +70,93 @@ def _workouts(weeks):
                 }
             )
     return out
+
+
+def _ensure_user(email, name):
+    user = db.get_user_by_email(email)
+    if not user:
+        return db.create_user_with_password(email=email, name=name, password_hash=hash_password(PASSWORD))
+    db.set_user_password(user["id"], hash_password(PASSWORD))
+    return user
+
+
+def _seed_coach(athlete_id, active_plan_id, start, total_weeks):
+    coach_id = _ensure_user(COACH_EMAIL, "Coach Kylian")["id"]
+    invitee_id = _ensure_user(INVITEE_EMAIL, "Pending Invitee")["id"]
+    with db.engine.connect() as conn:
+        conn.execute(
+            text("UPDATE users SET is_coach = TRUE, onboarding_complete = TRUE WHERE id = :c"), {"c": coach_id}
+        )
+        conn.execute(text("UPDATE users SET onboarding_complete = TRUE WHERE id = :i"), {"i": invitee_id})
+        # 42 km/week lands the athlete in the "intermediate" level; the rest fills the coach's profile view.
+        conn.execute(
+            text(
+                "UPDATE users SET current_weekly_km = 42, age = 34, max_hr = 188, resting_hr = 52, "
+                "aet_hr = 151, ant_hr = 172, long_run_day = 'Saturday', "
+                'preferred_run_days = \'["Tuesday", "Wednesday", "Friday", "Saturday", "Sunday"]\', '
+                "injury_history = 'Mild Achilles tightness after long technical descents; eccentric calf drops help.', "
+                "athlete_notes = 'Targeting a strong finish at VMM 42K. Wants better uphill pacing and fueling.' "
+                "WHERE id = :a"
+            ),
+            {"a": athlete_id},
+        )
+        conn.execute(text("DELETE FROM coach_notes WHERE coach_id = :c"), {"c": coach_id})
+        conn.execute(text("DELETE FROM coach_athletes WHERE coach_id = :c"), {"c": coach_id})
+        conn.execute(
+            text(
+                "INSERT INTO coach_athletes (coach_id, athlete_id, status, invited_at, responded_at) "
+                "VALUES (:c, :a, 'active', NOW() - INTERVAL '30 days', NOW() - INTERVAL '29 days')"
+            ),
+            {"c": coach_id, "a": athlete_id},
+        )
+        conn.execute(
+            text(
+                "INSERT INTO coach_athletes (coach_id, athlete_id, status, invited_at) VALUES (:c, :i, 'invited', NOW())"
+            ),
+            {"c": coach_id, "i": invitee_id},
+        )
+        # A coach-added workout the coach still has to approve (approved_at NULL = pending).
+        pending_id = conn.execute(
+            text(
+                "UPDATE workouts SET approved_at = NULL, source = 'coach', last_edited_by_user_id = :c "
+                "WHERE plan_id = :p AND week_number = 3 AND day_of_week = 'Tuesday' RETURNING id"
+            ),
+            {"c": coach_id, "p": active_plan_id},
+        ).scalar()
+        conn.commit()
+
+    # A draft plan the coach has not released yet: its workouts are all pending.
+    draft_id = db.create_plan(
+        user_id=athlete_id,
+        race_name="Dalat Ultra Trail 50K",
+        race_date=(start + datetime.timedelta(days=(total_weeks + 10) * 7 + 5)).isoformat(),
+        goal_type="finish",
+        target_time_hours=None,
+        total_weeks=16,
+        course_distance_km=50.0,
+        course_elevation_gain_m=2800.0,
+        start_date=(start + datetime.timedelta(days=total_weeks * 7)).isoformat(),
+        created_by_user_id=coach_id,
+        plan_status="draft",
+    )
+    db.save_workouts(draft_id, _workouts([1]), auto_approve=False)
+
+    db.create_coach_note(
+        coach_id, athlete_id, "general", None, "Knees felt fine after the long run. Keep the Saturday climbs steady."
+    )
+    db.create_coach_note(
+        coach_id, athlete_id, "plan", active_plan_id, "Hold the weekly volume until the Friday run is back on."
+    )
+    db.create_coach_note(
+        coach_id,
+        athlete_id,
+        "workout",
+        pending_id,
+        "Added an extra hill session for week 3. Approve once the legs feel fresh.",
+    )
+    print(
+        f"Seeded coach {COACH_EMAIL} (user {coach_id}): roster athlete {athlete_id}, draft plan {draft_id}, pending workout {pending_id}, invitee {INVITEE_EMAIL}."
+    )
 
 
 def main():
@@ -139,6 +234,7 @@ def main():
         conn.commit()
 
     print(f"Seeded {EMAIL} (user {uid}): active plan {plan_id}, older plan {older}. Week 1 starts {start}.")
+    _seed_coach(uid, plan_id, start, total_weeks)
 
 
 if __name__ == "__main__":

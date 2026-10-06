@@ -21,7 +21,9 @@ def main() -> int:
     total_cleared_summaries = 0
     total_deleted_turns = 0
 
-    print(f"[{now.isoformat()}] Starting Coach Chat retention pruning (batch_size={args.batch_size}, dry_run={args.dry_run})...")
+    print(
+        f"[{now.isoformat()}] Starting Coach Chat retention pruning (batch_size={args.batch_size}, dry_run={args.dry_run})..."
+    )
 
     if args.dry_run:
         print("[DRY-RUN] Dry run mode enabled. No records will be modified.")

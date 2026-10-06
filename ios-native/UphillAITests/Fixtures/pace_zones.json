@@ -1,0 +1,17 @@
+{
+  "coros_running_level": null,
+  "coros_vo2max": null,
+  "model": "5_zone",
+  "threshold_pace": null,
+  "zone1_hr": "108-121 bpm",
+  "zone1_pace": "7:32 - 6:30",
+  "zone2_hr": "121-135 bpm",
+  "zone2_pace": "6:30 - 5:45",
+  "zone3_hr": "135-165 bpm",
+  "zone3_pace": "5:45 - 5:08",
+  "zone4_hr": "165-175 bpm",
+  "zone4_pace": "5:08 - 4:39",
+  "zone5_hr": "175-185 bpm",
+  "zone5_pace": "4:39 - 4:06",
+  "zone_labels": null
+}

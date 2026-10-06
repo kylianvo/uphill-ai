@@ -2,9 +2,7 @@
 
 import uuid
 from decimal import Decimal
-from datetime import UTC, date, datetime
 
-import pytest
 from sqlalchemy import text
 
 import db
@@ -169,7 +167,16 @@ def test_cascade_delete_on_user_removal(client):
         conn.commit()
 
         # Check cascading deletion
-        assert conn.execute(text("SELECT COUNT(*) FROM chat_threads WHERE user_id = :uid"), {"uid": user_id}).scalar() == 0
+        assert (
+            conn.execute(text("SELECT COUNT(*) FROM chat_threads WHERE user_id = :uid"), {"uid": user_id}).scalar() == 0
+        )
         assert conn.execute(text("SELECT COUNT(*) FROM chat_messages WHERE id = :mid"), {"mid": msg_id}).scalar() == 0
-        assert conn.execute(text("SELECT COUNT(*) FROM chat_turns WHERE user_id = :uid"), {"uid": user_id}).scalar() == 0
-        assert conn.execute(text("SELECT COUNT(*) FROM chat_llm_calls WHERE request_id = :rid"), {"rid": str(req_id)}).scalar() == 0
+        assert (
+            conn.execute(text("SELECT COUNT(*) FROM chat_turns WHERE user_id = :uid"), {"uid": user_id}).scalar() == 0
+        )
+        assert (
+            conn.execute(
+                text("SELECT COUNT(*) FROM chat_llm_calls WHERE request_id = :rid"), {"rid": str(req_id)}
+            ).scalar()
+            == 0
+        )

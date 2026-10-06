@@ -2,8 +2,6 @@
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from services import kb_retrieval
 
 
@@ -33,7 +31,9 @@ def test_search_principles_queries_both_collections():
         patch.object(kb_retrieval, "_client", return_value=mock_qdrant),
         patch.object(kb_retrieval, "_embed", return_value=[[0.1] * kb_retrieval.VECTOR_SIZE]) as mock_embed,
     ):
-        results = kb_retrieval.search_principles("how to fuel long run", api_key="test-key", scheduler_k=4, nutrition_k=2)
+        results = kb_retrieval.search_principles(
+            "how to fuel long run", api_key="test-key", scheduler_k=4, nutrition_k=2
+        )
 
         # Verified single embedding call
         assert mock_embed.call_count == 1

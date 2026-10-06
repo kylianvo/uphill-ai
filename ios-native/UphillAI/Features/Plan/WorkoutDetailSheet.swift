@@ -3,41 +3,201 @@ import SwiftUI
 struct WorkoutDetailSheet: View {
     let model: PlanViewModel
     let workoutID: Int
+    var actingAsAthlete: CoachedAthleteRow? = nil
+    var coachingService: (any CoachingServicing)? = nil
+    var currentUserId: Int? = nil
+    var onWorkoutUpdated: (() -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
     @State private var rpe: Int?
-    @State private var notes = ""
-    @State private var didLoadLog = false
-    @State private var showSaved = false
+    @State private var notes: String = ""
     @State private var isBusy = false
+    @State private var showSaved = false
+    @State private var didLoadLog = false
+    @State private var isTreadmill = false
+    @State private var confirmMissed = false
+    @State private var showEditWorkout = false
+    @State private var confirmDeleteWorkout = false
 
-    private var workout: Workout? { model.snapshot?.workouts.first { $0.id == workoutID } }
+    init(model: PlanViewModel, workoutID: Int,
+         actingAsAthlete: CoachedAthleteRow? = nil,
+         coachingService: (any CoachingServicing)? = nil,
+         currentUserId: Int? = nil,
+         onWorkoutUpdated: (() -> Void)? = nil,
+         initialTreadmill: Bool = false, initialRpe: Int? = nil, initialNotes: String? = nil) {
+        self.model = model
+        self.workoutID = workoutID
+        self.actingAsAthlete = actingAsAthlete
+        self.coachingService = coachingService
+        self.currentUserId = currentUserId
+        self.onWorkoutUpdated = onWorkoutUpdated
+        _isTreadmill = State(initialValue: initialTreadmill)
+        if let initialRpe {
+            _rpe = State(initialValue: initialRpe)
+            _didLoadLog = State(initialValue: true)
+        }
+        if let initialNotes {
+            _notes = State(initialValue: initialNotes)
+            _didLoadLog = State(initialValue: true)
+        }
+    }
+
+    private var workout: Workout? {
+        model.snapshot?.workouts.first { $0.id == workoutID }
+    }
 
     var body: some View {
         NavigationStack {
-            if let workout {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: UH.Space.section) {
-                        header(workout)
-                        facts(workout)
-                        if let text = workout.description, !text.isEmpty { prose("About", text) }
-                        if let tip = workout.fuelingTip, !tip.isEmpty { prose("Fueling", tip) }
-                        if let error = model.actionError {
-                            Text(error).font(UH.TextStyle.caption).foregroundStyle(UH.Palette.danger)
+            Group {
+                if let workout {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: UH.Space.regular) {
+                            // a. Type chip, title, 3 stat tiles, quiet line
+                            headerSection(workout)
+                            statTiles(workout)
+                            quietLine(workout)
+
+                            if workout.isMatched {
+                                matchedWatchCard(workout)
+                            }
+
+                            // b & f. Step timeline with Treadmill toggle
+                            stepTimelineSection(workout)
+
+                            // c. What it builds
+                            let parsed = WorkoutStepParser.parseDescription(workout.description)
+                            if let benefit = parsed.benefit, !benefit.isEmpty {
+                                whatItBuildsSection(benefit)
+                            }
+
+                            // d. Common mistake
+                            if let mistake = parsed.warning, !mistake.isEmpty {
+                                commonMistakeSection(mistake)
+                            }
+
+                            // e. Coach Uphill note
+                            if let coachQuote = parsed.coachNotes, !coachQuote.isEmpty {
+                                coachQuoteSection(coachQuote)
+                            }
+
+                            // g. Primary action & How did it feel? (Log)
+                            if workout.approvedAt == nil {
+                                if let athlete = actingAsAthlete, let service = coachingService, let plan = model.snapshot?.plan {
+                                    VStack(spacing: 8) {
+                                        Button {
+                                            run {
+                                                do {
+                                                    _ = try await service.approveWorkout(athleteId: athlete.athleteId, planId: plan.id, workoutId: workout.id)
+                                                    onWorkoutUpdated?()
+                                                    await model.load()
+                                                } catch {
+                                                    print("Failed to approve workout: \(error)")
+                                                }
+                                            }
+                                        } label: {
+                                            HStack(spacing: 6) {
+                                                Image(systemName: "checkmark.seal.fill")
+                                                Text("Approve Workout")
+                                            }
+                                            .font(UH.TextStyle.label)
+                                            .foregroundStyle(Color.white)
+                                            .frame(maxWidth: .infinity)
+                                            .frame(height: 48)
+                                            .background(UH.Palette.accentInk, in: RoundedRectangle(cornerRadius: UH.Radius.control))
+                                        }
+                                        .buttonStyle(.plain)
+                                        .accessibilityIdentifier("detail.coach.approveWorkout")
+
+                                        Text("This session was created for the athlete and is awaiting your review.")
+                                            .font(UH.TextStyle.caption)
+                                            .foregroundStyle(UH.Palette.secondary)
+                                    }
+                                } else {
+                                    Label("Waiting for your coach's approval", systemImage: "hourglass")
+                                        .font(UH.TextStyle.caption)
+                                        .foregroundStyle(UH.Palette.secondary)
+                                        .padding(.vertical, UH.Space.compact)
+                                }
+                            } else {
+                                bottomActionBar(workout)
+                                if !workout.isRest {
+                                    howDidItFeelSection(workout)
+                                }
+                            }
+
+                            // Coach / Athlete Note Thread
+                            if let noteAthleteId = actingAsAthlete?.athleteId ?? currentUserId,
+                               let service = coachingService {
+                                CoachNoteThreadView(
+                                    athleteId: noteAthleteId,
+                                    targetType: "workout",
+                                    targetId: workout.id,
+                                    service: service,
+                                    canAdd: true
+                                )
+                                .accessibilityIdentifier("detail.coachNotesThread")
+                            }
                         }
-                        if workout.approvedAt == nil {
-                            Label("Waiting for your coach's approval", systemImage: "hourglass")
-                                .font(UH.TextStyle.caption)
-                                .foregroundStyle(UH.Palette.secondary)
-                        } else {
-                            actions(workout)
-                            if !workout.isRest { logSection(workout) }
+                        .padding(UH.Space.regular)
+                    }
+                    .background(UH.Palette.surface.ignoresSafeArea())
+                    .toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button("Done") { dismiss() }
+                                .font(UH.TextStyle.label)
+                                .foregroundStyle(UH.Palette.ink)
+                        }
+                        ToolbarItem(placement: .topBarTrailing) {
+                            menuActions(workout)
                         }
                     }
-                    .padding(UH.Space.medium)
+                    .confirmationDialog("Mark session as missed?", isPresented: $confirmMissed, titleVisibility: .visible) {
+                        Button("Mark Missed", role: .destructive) {
+                            run { await model.setMissed(workout) }
+                        }
+                        Button("Cancel", role: .cancel) {}
+                    } message: {
+                        Text("This logs the session as missed and notifies Coach Uphill to balance upcoming load.")
+                    }
+                    .confirmationDialog("Remove this workout?", isPresented: $confirmDeleteWorkout, titleVisibility: .visible) {
+                        Button("Remove Workout", role: .destructive) {
+                            run {
+                                guard let plan = model.snapshot?.plan,
+                                      let service = coachingService,
+                                      let athlete = actingAsAthlete else { return }
+                                do {
+                                    _ = try await service.removeWorkout(athleteId: athlete.athleteId, planId: plan.id, workoutId: workout.id)
+                                    onWorkoutUpdated?()
+                                    await model.load()
+                                    dismiss()
+                                } catch {
+                                    print("Failed to remove workout: \(error)")
+                                }
+                            }
+                        }
+                        Button("Cancel", role: .cancel) {}
+                    } message: {
+                        Text("This will permanently remove the workout from the runner's training schedule.")
+                    }
+                    .sheet(isPresented: $showEditWorkout) {
+                        if let plan = model.snapshot?.plan,
+                           let service = coachingService,
+                           let athlete = actingAsAthlete {
+                            CoachEditWorkoutSheet(
+                                athleteId: athlete.athleteId,
+                                planId: plan.id,
+                                workout: workout,
+                                service: service,
+                                onSaved: { _ in
+                                    onWorkoutUpdated?()
+                                    Task { await model.load() }
+                                }
+                            )
+                        }
+                    }
+                    .onAppear { loadLog(workout) }
+                } else {
+                    ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .background(UH.Palette.surface.ignoresSafeArea())
-                .toolbar { Button("Done") { dismiss() } }
-                .onAppear { loadLog(workout) }
             }
         }
         .presentationDetents([.medium, .large])
@@ -47,13 +207,41 @@ struct WorkoutDetailSheet: View {
         .onDisappear { model.clearActionError() }
     }
 
-    private func header(_ w: Workout) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            if w.isPriority {
-                Text("PRIORITY").font(UH.TextStyle.eyebrow).tracking(0.6).foregroundStyle(UH.Palette.accentInk)
+    // MARK: - Header & Stat Tiles (a)
+
+    private func headerSection(_ w: Workout) -> some View {
+        let zoneColor = WorkoutTypePresentation.zoneColor(for: w)
+        let chip = WorkoutTypePresentation.chipLabel(for: w)
+
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Text(chip)
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(zoneColor)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(zoneColor.opacity(0.12), in: Capsule())
+                    .overlay(Capsule().stroke(zoneColor.opacity(0.3), lineWidth: 1))
+
+                if w.isPriority {
+                    Text("PRIORITY")
+                        .font(.system(size: 10, weight: .bold))
+                        .tracking(0.6)
+                        .foregroundStyle(UH.Palette.accentInk)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(UH.Palette.activeFill, in: Capsule())
+                }
+                Spacer()
             }
-            Text(w.title).font(UH.TextStyle.sectionTitle).foregroundStyle(UH.Palette.ink)
-            Text(subtitle(w)).font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary)
+
+            Text(w.title)
+                .font(.system(size: 24, weight: .bold))
+                .foregroundStyle(UH.Palette.ink)
+
+            Text(subtitle(w))
+                .font(UH.TextStyle.caption)
+                .foregroundStyle(UH.Palette.secondary)
         }
     }
 
@@ -61,94 +249,336 @@ struct WorkoutDetailSheet: View {
         guard let plan = model.snapshot?.plan,
               let date = PlanCalendar.date(week: w.weekNumber, weekday: w.weekday, plan: plan,
                                            workouts: model.snapshot?.workouts ?? []) else { return w.phase }
-        return date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)) + " · " + w.phase
+        return date.formatted(.dateTime.weekday(.wide).day().month(.wide)) + " · " + w.phase + " Phase"
     }
 
-    private struct Fact: Identifiable {
-        let label: String
-        let value: String
-        var id: String { label }
-    }
+    // Three stat tiles: Duration, Est. distance, Pace (/km) in SF Mono
+    private func statTiles(_ w: Workout) -> some View {
+        HStack(spacing: UH.Space.small) {
+            statTile(
+                label: "DURATION",
+                value: "\(Int(w.durationMinutes)) min"
+            )
 
-    private func facts(_ w: Workout) -> some View {
-        let candidates: [(String, String?)] = [
-            ("Duration", "\(Int(w.durationMinutes)) min"),
-            ("Distance", w.distanceKm.flatMap { $0 > 0 ? $0.formatted(.number.precision(.fractionLength(0...1))) + " km" : nil }),
-            ("Elevation gain", w.elevationGainM.flatMap { $0 > 0 ? "\(Int($0)) m" : nil }),
-            ("Zone", w.targetZone == "Rest" ? nil : w.targetZone),
-            ("Heart rate", w.targetHrRange),
-            ("Pace", w.targetPace),
-            ("Intervals", intervals(w)),
-            ("Treadmill", treadmill(w)),
-        ]
-        let facts = candidates.compactMap { label, value in value.map { Fact(label: label, value: $0) } }
-        return LazyVGrid(columns: [GridItem(.flexible(), alignment: .leading), GridItem(.flexible(), alignment: .leading)],
-                         alignment: .leading, spacing: UH.Space.small) {
-            ForEach(facts) { fact in
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(fact.label.uppercased()).font(UH.TextStyle.eyebrow).foregroundStyle(UH.Palette.muted)
-                    Text(fact.value).font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
-                }
-                .accessibilityElement(children: .combine)
-            }
-        }
-        .uhCard()
-    }
+            statTile(
+                label: "EST. DISTANCE",
+                value: w.distanceKm.flatMap { $0 > 0 ? String(format: "%.1f km", $0) : nil } ?? "—"
+            )
 
-    private func intervals(_ w: Workout) -> String? {
-        guard let reps = w.intervalReps, let value = w.intervalRepValue, let unit = w.intervalRepUnit else { return nil }
-        var text = "\(reps) × \(value.formatted(.number.precision(.fractionLength(0...1)))) \(unit)"
-        if let walk = w.walkIntervalValue, walk > 0 {
-            text += ", walk \(walk.formatted(.number.precision(.fractionLength(0...1)))) \(unit)"
-        }
-        return text
-    }
-
-    private func treadmill(_ w: Workout) -> String? {
-        guard let speed = w.treadmillSpeed, speed != "0", !speed.isEmpty else { return nil }
-        let incline = w.treadmillIncline.flatMap { $0 == "0" || $0.isEmpty ? nil : $0 }
-        let speedText = speed.replacingOccurrences(of: "-", with: "–") + " km/h"
-        guard let incline else { return speedText }
-        return speedText + " · " + incline.replacingOccurrences(of: "-", with: "–") + " %"
-    }
-
-    private func prose(_ title: String, _ text: String) -> some View {
-        VStack(alignment: .leading, spacing: UH.Space.compact) {
-            Text(title.uppercased()).font(UH.TextStyle.eyebrow).foregroundStyle(UH.Palette.muted)
-            Text(text).font(UH.TextStyle.body).foregroundStyle(UH.Palette.ink)
+            statTile(
+                label: "PACE (/KM)",
+                value: w.targetPace ?? "—"
+            )
         }
     }
 
-    @ViewBuilder
-    private func actions(_ w: Workout) -> some View {
-        VStack(spacing: UH.Space.small) {
-            if w.isDone {
-                Button("Undo done") { run { await model.setDone(w, false) } }.buttonStyle(.uhSecondary).accessibilityIdentifier("detail.undoDone")
-            } else if !w.isRest {
-                Button("Mark as done") { run { await model.setDone(w, true) } }.buttonStyle(.uhPrimary).accessibilityIdentifier("detail.markDone")
-                if !w.isMissedFlag {
-                    Button("Mark as missed") { run { await model.setMissed(w) } }.buttonStyle(.uhSecondary)
-                } else {
-                    Text("Marked as missed").font(UH.TextStyle.caption).foregroundStyle(UH.Palette.danger)
-                }
-            }
-            if !w.isRest {
-                let targets = model.moveTargets(for: w)
-                if !targets.isEmpty {
-                    Menu {
-                        ForEach(targets) { target in
-                            Button(moveLabel(target)) { run { if await model.move(w, to: target) { dismiss() } } }
-                        }
-                    } label: {
-                        Label("Move to…", systemImage: "calendar")
-                            .frame(maxWidth: .infinity, minHeight: 44)
+    private func statTile(label: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(label)
+                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                .foregroundStyle(UH.Palette.muted)
+
+            Text(value)
+                .font(.system(size: 15, weight: .semibold, design: .monospaced))
+                .foregroundStyle(UH.Palette.ink)
+                .minimumScaleFactor(0.8)
+                .lineLimit(1)
+        }
+        .padding(UH.Space.small)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(UH.Palette.card, in: RoundedRectangle(cornerRadius: UH.Radius.control))
+        .overlay(RoundedRectangle(cornerRadius: UH.Radius.control).stroke(UH.Palette.line))
+    }
+
+    // Quiet line with HR range and zone; elevation only when present
+    private func quietLine(_ w: Workout) -> some View {
+        var items: [String] = []
+        if let hr = w.targetHrRange, !hr.isEmpty {
+            items.append("HR \(hr)")
+        }
+        if !w.targetZone.isEmpty && w.targetZone != "Rest" {
+            items.append("Zone \(w.targetZone)")
+        }
+        if let gain = w.elevationGainM, gain > 0 {
+            items.append("+\(Int(gain)) m elevation gain")
+        }
+
+        return HStack(spacing: 6) {
+            Image(systemName: "heart.fill")
+                .font(.system(size: 10))
+                .foregroundStyle(UH.Palette.muted)
+
+            Text(items.joined(separator: " · "))
+                .font(.system(size: 12, weight: .medium, design: .monospaced))
+                .foregroundStyle(UH.Palette.secondary)
+        }
+        .padding(.horizontal, 4)
+    }
+
+    // MARK: - Step Timeline (b) & Treadmill Toggle (f)
+
+    private func stepTimelineSection(_ w: Workout) -> some View {
+        let parsed = WorkoutStepParser.parseDescription(w.description)
+        let steps = WorkoutStepParser.parseSteps(workout: w, description: parsed, isTreadmill: isTreadmill)
+
+        return VStack(alignment: .leading, spacing: UH.Space.compact) {
+            HStack {
+                Text("HOW TO EXECUTE")
+                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .foregroundStyle(UH.Palette.muted)
+
+                Spacer()
+
+                // Treadmill toggle
+                Button {
+                    withAnimation(UH.Motion.standard) {
+                        isTreadmill.toggle()
                     }
-                    .font(UH.TextStyle.label)
-                    .foregroundStyle(UH.Palette.accentInk)
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "figure.run.treadmill")
+                            .font(.system(size: 12))
+                        Text("Treadmill")
+                            .font(.system(size: 11, weight: .semibold))
+                    }
+                    .foregroundStyle(isTreadmill ? UH.Palette.buttonInk : UH.Palette.secondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(isTreadmill ? UH.Palette.accent : UH.Palette.card, in: Capsule())
+                    .overlay(Capsule().stroke(isTreadmill ? UH.Palette.accent : UH.Palette.line, lineWidth: 1))
                 }
+                .buttonStyle(.plain)
+            }
+
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(steps.enumerated()), id: \.element.id) { index, step in
+                    timelineRow(step: step, isLast: index == steps.count - 1, workout: w)
+                }
+            }
+            .padding(UH.Space.regular)
+            .background(UH.Palette.card, in: RoundedRectangle(cornerRadius: UH.Radius.landing))
+            .overlay(RoundedRectangle(cornerRadius: UH.Radius.landing).stroke(UH.Palette.line))
+        }
+    }
+
+    private func timelineRow(step: ExecutionStepItem, isLast: Bool, workout: Workout) -> some View {
+        let nodeColor = (step.phase == .main) ? WorkoutTypePresentation.zoneColor(for: workout) : UH.Palette.muted
+
+        return HStack(alignment: .top, spacing: 12) {
+            // Timeline line & icon node
+            VStack(spacing: 0) {
+                ZStack {
+                    Circle()
+                        .fill(nodeColor.opacity(0.15))
+                        .frame(width: 24, height: 24)
+
+                    Image(systemName: step.phase.iconName)
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(nodeColor)
+                }
+
+                if !isLast {
+                    Rectangle()
+                        .fill(UH.Palette.line)
+                        .frame(width: 2)
+                        .frame(minHeight: 36)
+                        .padding(.vertical, 2)
+                }
+            }
+
+            // Step contents
+            VStack(alignment: .leading, spacing: 3) {
+                HStack {
+                    Text(step.phase.rawValue.uppercased())
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .foregroundStyle(nodeColor)
+
+                    if let dur = step.duration {
+                        Text("· \(dur)")
+                            .font(.system(size: 11, weight: .medium, design: .monospaced))
+                            .foregroundStyle(UH.Palette.secondary)
+                    }
+                }
+
+                Text(step.target)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(UH.Palette.ink)
+
+                if let rec = step.recovery {
+                    Text(rec)
+                        .font(.system(size: 12))
+                        .foregroundStyle(UH.Palette.secondary)
+                }
+
+                let extraCues = step.steps.filter { line in
+                    let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+                    return !trimmed.isEmpty && trimmed != step.target && trimmed != step.recovery
+                }
+                if !extraCues.isEmpty {
+                    VStack(alignment: .leading, spacing: 2) {
+                        ForEach(extraCues, id: \.self) { line in
+                            Text(line)
+                                .font(.system(size: 12))
+                                .foregroundStyle(UH.Palette.secondary)
+                        }
+                    }
+                    .padding(.top, 2)
+                }
+            }
+            .padding(.bottom, isLast ? 0 : 16)
+        }
+    }
+
+    // MARK: - What It Builds (c)
+
+    private func whatItBuildsSection(_ text: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 4) {
+                Image(systemName: "bolt.heart.fill")
+                    .font(.system(size: 11))
+                    .foregroundStyle(UH.Palette.accentInk)
+                Text("WHAT IT BUILDS")
+                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .foregroundStyle(UH.Palette.accentInk)
+            }
+
+            Text(text)
+                .font(UH.TextStyle.body)
+                .foregroundStyle(UH.Palette.ink)
+                .lineSpacing(2)
+        }
+        .padding(UH.Space.regular)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(UH.Palette.card, in: RoundedRectangle(cornerRadius: UH.Radius.landing))
+        .overlay(RoundedRectangle(cornerRadius: UH.Radius.landing).stroke(UH.Palette.line))
+    }
+
+    // MARK: - Common Mistake (d)
+
+    private func commonMistakeSection(_ text: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 14))
+                .foregroundStyle(UH.Palette.warningInk)
+                .padding(.top, 1)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("COMMON MISTAKE")
+                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .foregroundStyle(UH.Palette.warningInk)
+
+                Text(text)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(UH.Palette.ink)
+            }
+        }
+        .padding(UH.Space.small)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(UH.Palette.warningFill, in: RoundedRectangle(cornerRadius: UH.Radius.control))
+        .overlay(RoundedRectangle(cornerRadius: UH.Radius.control).stroke(UH.Palette.warningInk.opacity(0.3), lineWidth: 1))
+    }
+
+    // MARK: - Coach Uphill Note (e)
+
+    private func coachQuoteSection(_ quote: String) -> some View {
+        HStack(spacing: 12) {
+            Rectangle()
+                .fill(UH.Palette.accentInk)
+                .frame(width: 3)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("“\(quote)”")
+                    .font(.system(size: 13, weight: .medium))
+                    .italic()
+                    .foregroundStyle(UH.Palette.ink)
+
+                Text("— Coach Uphill")
+                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .foregroundStyle(UH.Palette.accentInk)
+            }
+        }
+        .padding(UH.Space.small)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(UH.Palette.card, in: RoundedRectangle(cornerRadius: UH.Radius.control))
+        .overlay(RoundedRectangle(cornerRadius: UH.Radius.control).stroke(UH.Palette.line))
+    }
+
+    // MARK: - Bottom Action Bar (g)
+
+    private func bottomActionBar(_ w: Workout) -> some View {
+        VStack(spacing: UH.Space.compact) {
+            if w.isDone {
+                Button("Undo done") {
+                    run { await model.setDone(w, false) }
+                }
+                .buttonStyle(.uhSecondary)
+                .accessibilityIdentifier("detail.undoDone")
+            } else if !w.isRest {
+                Button("Mark as done") {
+                    run { await model.setDone(w, true) }
+                }
+                .buttonStyle(.uhPrimary)
+                .accessibilityIdentifier("detail.markDone")
+            }
+
+            if w.isMissedFlag {
+                Text("Marked as missed")
+                    .font(UH.TextStyle.caption)
+                    .foregroundStyle(UH.Palette.muted)
             }
         }
         .disabled(isBusy)
+    }
+
+    // Secondary actions in ⋯ menu
+    private func menuActions(_ w: Workout) -> some View {
+        Menu {
+            if actingAsAthlete != nil {
+                Button {
+                    showEditWorkout = true
+                } label: {
+                    Label("Edit Workout", systemImage: "pencil")
+                }
+                .accessibilityIdentifier("detail.coach.editWorkout")
+
+                Button(role: .destructive) {
+                    confirmDeleteWorkout = true
+                } label: {
+                    Label("Remove Workout", systemImage: "trash")
+                }
+                .accessibilityIdentifier("detail.coach.removeWorkout")
+
+                Divider()
+            }
+
+            if !w.isRest {
+                let targets = model.moveTargets(for: w)
+                if !targets.isEmpty {
+                    Menu("Move to…") {
+                        ForEach(targets) { target in
+                            Button(moveLabel(target)) {
+                                run {
+                                    if await model.move(w, to: target) { dismiss() }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if !w.isMissedFlag && !w.isDone {
+                    Button(role: .destructive) {
+                        confirmMissed = true
+                    } label: {
+                        Label("Mark as missed", systemImage: "xmark.circle")
+                    }
+                }
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+                .font(.system(size: 18))
+                .foregroundStyle(UH.Palette.ink)
+                .frame(minWidth: 44, minHeight: 44)
+        }
     }
 
     private func moveLabel(_ target: MoveTarget) -> String {
@@ -156,18 +586,60 @@ struct WorkoutDetailSheet: View {
         return target.week > model.currentWeek ? "Next week · \(day)" : day
     }
 
-    private func logSection(_ w: Workout) -> some View {
+    // MARK: - How Did It Feel? (Log section)
+
+    private func howDidItFeelSection(_ w: Workout) -> some View {
         VStack(alignment: .leading, spacing: UH.Space.small) {
-            Text("YOUR LOG").font(UH.TextStyle.eyebrow).foregroundStyle(UH.Palette.muted)
-            Stepper(value: Binding(get: { rpe ?? 5 }, set: { rpe = rpe == nil ? 5 : $0 }), in: 1...10) {
-                LabeledContent("Effort (RPE)", value: rpe.map(String.init) ?? "Not set")
+            HStack {
+                Text("HOW DID IT FEEL?")
+                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .foregroundStyle(UH.Palette.muted)
+                Spacer()
+                if let val = rpe {
+                    Text("RPE \(val)/10")
+                        .font(.system(size: 12, weight: .bold, design: .monospaced))
+                        .foregroundStyle(UH.Palette.accentInk)
+                }
             }
-            TextField("Notes", text: $notes, axis: .vertical)
-                .lineLimit(3...6)
+
+            // 1-10 Pill selector
+            HStack(spacing: 5) {
+                ForEach(1...10, id: \.self) { num in
+                    Button {
+                        rpe = num
+                    } label: {
+                        Text("\(num)")
+                            .font(.system(size: 12.5, weight: .bold, design: .monospaced))
+                            .foregroundStyle(rpe == num ? Color.white : UH.Palette.ink)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 34)
+                            .background(
+                                rpe == num ? UH.Palette.accentInk : UH.Palette.surface,
+                                in: RoundedRectangle(cornerRadius: 8)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(rpe == num ? UH.Palette.accentInk : UH.Palette.line, lineWidth: 1)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("detail.rpe.\(num)")
+                }
+            }
+
+            if let val = rpe {
+                Text(effortLabel(for: val))
+                    .font(UH.TextStyle.caption)
+                    .foregroundStyle(UH.Palette.secondary)
+            }
+
+            TextField("Add session notes (legs, terrain, weather)…", text: $notes, axis: .vertical)
+                .lineLimit(3...5)
                 .padding(UH.Space.small)
-                .background(UH.Palette.card, in: RoundedRectangle(cornerRadius: UH.Radius.control))
+                .background(UH.Palette.surface, in: RoundedRectangle(cornerRadius: UH.Radius.control))
                 .overlay(RoundedRectangle(cornerRadius: UH.Radius.control).stroke(UH.Palette.line))
-            Button(showSaved ? "Saved" : "Save") {
+
+            Button(showSaved ? "Saved" : "Save Log") {
                 run {
                     if await model.saveLog(w, rpe: rpe, notes: notes) {
                         showSaved = true
@@ -179,7 +651,20 @@ struct WorkoutDetailSheet: View {
             .buttonStyle(.uhSecondary)
             .disabled(rpe == w.rpe && notes == (w.notes ?? ""))
         }
-        .uhCard()
+        .padding(UH.Space.regular)
+        .background(UH.Palette.card, in: RoundedRectangle(cornerRadius: UH.Radius.landing))
+        .overlay(RoundedRectangle(cornerRadius: UH.Radius.landing).stroke(UH.Palette.line))
+    }
+
+    private func effortLabel(for val: Int) -> String {
+        switch val {
+        case 1...2: "Very easy · Active recovery / barely noticeable effort"
+        case 3...4: "Easy · Conversation pace, Zone 2 aerobic base"
+        case 5...6: "Moderate · Steady aerobic effort, can speak in short sentences"
+        case 7...8: "Hard · Threshold effort, heavy breathing, sustained focus"
+        case 9...10: "Maximum effort · All out interval / race sprint finish"
+        default: ""
+        }
     }
 
     private func loadLog(_ w: Workout) {
@@ -196,4 +681,110 @@ struct WorkoutDetailSheet: View {
             isBusy = false
         }
     }
+
+    // MARK: - Matched Watch Workout Card
+
+    @ViewBuilder
+    private func matchedWatchCard(_ w: Workout) -> some View {
+        VStack(alignment: .leading, spacing: UH.Space.small) {
+            HStack {
+                HStack(spacing: 6) {
+                    Image(systemName: "applewatch")
+                        .foregroundStyle(UH.Palette.accentInk)
+                    Text(w.matchedDeviceModel ?? "COROS APEX 2 Pro")
+                        .font(UH.TextStyle.sectionTitle)
+                        .foregroundStyle(UH.Palette.ink)
+                }
+
+                Spacer()
+
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(UH.Palette.accentInk)
+                        .frame(width: 5, height: 5)
+                    Text("Matched")
+                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                        .foregroundStyle(UH.Palette.accentInk)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(UH.Palette.activeFill, in: Capsule())
+            }
+
+            // Target vs Actual 2x2 comparison grid
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: UH.Space.small) {
+                if let km = w.matchedDistanceKm {
+                    comparisonTile(
+                        label: "DISTANCE",
+                        actual: String(format: "%.2f km", km),
+                        target: w.distanceKm.map { String(format: "%.1f km", $0) }
+                    )
+                }
+
+                if let secs = w.matchedDurationSeconds {
+                    let mins = Int(secs / 60)
+                    let remSecs = Int(secs) % 60
+                    comparisonTile(
+                        label: "DURATION",
+                        actual: "\(mins):\(String(format: "%02d", remSecs))",
+                        target: "\(Int(w.durationMinutes))m"
+                    )
+                }
+
+                if let km = w.matchedDistanceKm, let secs = w.matchedDurationSeconds, km > 0 {
+                    let paceSecs = secs / km
+                    let pMin = Int(paceSecs / 60)
+                    let pSec = Int(paceSecs) % 60
+                    comparisonTile(
+                        label: "PACE",
+                        actual: "\(pMin):\(String(format: "%02d", pSec)) /km",
+                        target: w.targetPace
+                    )
+                }
+
+                if let hr = w.matchedAvgHr {
+                    comparisonTile(
+                        label: "AVG HR",
+                        actual: "\(hr) bpm",
+                        target: w.targetHrRange ?? (w.targetZone.isEmpty ? nil : "Z\(w.targetZone)")
+                    )
+                }
+            }
+
+            HStack {
+                Text("Synced automatically via watch integration")
+                    .font(UH.TextStyle.caption)
+                    .foregroundStyle(UH.Palette.muted)
+                Spacer()
+                if let id = w.matchedActivityId {
+                    Text("#\(id)")
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .foregroundStyle(UH.Palette.muted)
+                }
+            }
+        }
+        .trainingCard()
+        .accessibilityIdentifier("detail.matchedCard")
+    }
+
+    private func comparisonTile(label: String, actual: String, target: String?) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(label)
+                .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                .foregroundStyle(UH.Palette.muted)
+            Text(actual)
+                .font(.system(size: 14, weight: .bold, design: .monospaced))
+                .foregroundStyle(UH.Palette.ink)
+            if let target, !target.isEmpty {
+                Text("Target: \(target)")
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(UH.Palette.secondary)
+            }
+        }
+        .padding(8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(UH.Palette.surface, in: RoundedRectangle(cornerRadius: 8))
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(UH.Palette.line, lineWidth: 1))
+    }
+
 }

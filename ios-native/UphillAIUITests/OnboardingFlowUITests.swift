@@ -34,17 +34,33 @@ final class OnboardingFlowUITests: XCTestCase {
         let password = app.secureTextFields["signin.password"]
         password.tap(); password.typeText("uphill-e2e-pass-1")
         app.buttons["signin.submit"].tap()
-        dismissSavePrompt(app)
+        dismissSavePrompt(app, wait: 10)
 
-        XCTAssertTrue(app.buttons["welcome.start"].waitForExistence(timeout: 20))
-        app.buttons["welcome.start"].tap()
+        let welcomeStart = app.buttons["welcome.start"]
+        XCTAssertTrue(welcomeStart.waitForExistence(timeout: 20))
+
+        let saveSheet = app.sheets["Save Password?"]
+        if saveSheet.waitForExistence(timeout: 4) {
+            saveSheet.buttons["Not Now"].tap()
+        }
+
+        if !welcomeStart.isHittable && saveSheet.exists {
+            saveSheet.buttons["Not Now"].tap()
+        }
+
+        XCTAssertTrue(welcomeStart.waitForExistence(timeout: 5))
+        welcomeStart.tap()
+
         let goal = app.descendants(matching: .any)["goal.start_running"].firstMatch
-        XCTAssertTrue(goal.waitForExistence(timeout: 10))
+        XCTAssertTrue(goal.waitForExistence(timeout: 15))
         goal.tap()                                   // → schedule
         let primary = app.buttons["setup.primary"]
         XCTAssertTrue(primary.waitForExistence(timeout: 5))
-        primary.tap()                                // schedule (defaults are valid) → about you
-        primary.tap()                                // about you is optional → review
+        XCTAssertTrue(app.staticTexts["How much do you run now?"].exists)
+        primary.tap()                                // schedule → start date
+        XCTAssertTrue(app.staticTexts["When do you want to start?"].waitForExistence(timeout: 5))
+        primary.tap()                                // start date → review
+        XCTAssertTrue(app.staticTexts["Here's what I'll build from"].waitForExistence(timeout: 5))
         XCTAssertEqual(primary.label, "Build my plan")
         primary.tap()
 
@@ -56,11 +72,13 @@ final class OnboardingFlowUITests: XCTestCase {
     }
 
     /// iOS offers to save the password after sign-up; it blocks taps until dismissed.
-    private func dismissSavePrompt(_ app: XCUIApplication) {
+    @MainActor
+    private func dismissSavePrompt(_ app: XCUIApplication, wait: TimeInterval = 10) {
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
-        for candidate in [app.buttons["Not Now"], springboard.buttons["Not Now"]] where candidate.waitForExistence(timeout: 5) {
-            candidate.tap()
-            return
+        let predicate = NSPredicate(format: "label == 'Not Now' OR identifier == 'Not Now'")
+        for host in [app, springboard] {
+            let notNow = host.descendants(matching: .any).matching(predicate).firstMatch
+            if notNow.waitForExistence(timeout: wait) { notNow.tap(); return }
         }
     }
 }

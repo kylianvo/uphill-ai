@@ -21,13 +21,13 @@ struct WelcomeView: View {
 
                 VStack(alignment: .leading, spacing: UH.Space.section) {
                     Text("Let's build your training plan")
-                        .font(.system(size: 40, weight: .heavy))
+                        .font(.largeTitle.weight(.heavy))
                         .tracking(-0.8)
                         .fixedSize(horizontal: false, vertical: true)
                     Text("Answer a few questions and Coach Uphill builds a plan around your goal, your week and how you feel today.")
                         .font(UH.TextStyle.body)
                         .foregroundStyle(UH.Palette.secondary)
-                    Label("About 2 minutes", systemImage: "clock").font(UH.TextStyle.label)
+                    Label("About 1 minute", systemImage: "clock").font(UH.TextStyle.label)
                     Button("Get started", action: onStart).buttonStyle(.uhPrimary).accessibilityIdentifier("welcome.start")
                     Button("Not now", action: onNotNow).frame(maxWidth: .infinity, minHeight: 44).tint(UH.Palette.accentInk)
                 }

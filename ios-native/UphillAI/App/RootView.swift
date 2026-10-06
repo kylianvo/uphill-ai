@@ -73,17 +73,46 @@ private struct MainTabs: View {
     @State private var overlay: Overlay?
     @State private var selection = Tab.plan
 
-    private enum Tab { case plan, me }
+    private enum Tab: Hashable { case athletes, plan, coach, me }
 
     var body: some View {
         TabView(selection: $selection) {
+            if app.session.user?.isCoach == true {
+                SwiftUI.Tab("Athletes", systemImage: "person.3.sequence.fill", value: Tab.athletes) {
+                    CoachDashboardView(app: app, onSelectTab: { tabIndex in
+                        if tabIndex == 1 {
+                            selection = .plan
+                        }
+                    })
+                }
+            }
             SwiftUI.Tab("Plan", systemImage: "figure.run", value: Tab.plan) {
                 PlanView(model: app.plan, generation: app.generation,
                          onBuildPlan: { overlay = .setup(app.makeSetup(mode: app.session.user?.onboardingComplete == false ? .onboarding : .newPlan)) },
-                         onViewProgress: { overlay = .progress })
+                         onViewProgress: { overlay = .progress }, user: app.session.user,
+                         onSharpen: { destination in
+                             app.trainingDestination = destination
+                             selection = .me
+                         },
+                         app: app)
+            }
+            SwiftUI.Tab("Coach", systemImage: "bubble.left.and.bubble.right.fill", value: Tab.coach) {
+                ChatView(service: app.chat, plan: app.plan.snapshot?.plan, planModel: app.plan)
             }
             SwiftUI.Tab("Me", systemImage: "person.crop.circle", value: Tab.me) {
                 ProfileView(app: app)
+            }
+        }
+        .safeAreaInset(edge: .top) {
+            if let athlete = app.actingAsAthlete {
+                CoachedAthleteBanner(athlete: athlete) {
+                    Task { await app.exitAthleteView() }
+                }
+            }
+        }
+        .onChange(of: app.actingAsAthlete?.athleteId) { _, newId in
+            if newId != nil {
+                selection = .plan
             }
         }
         .fullScreenCover(item: $overlay) { current in

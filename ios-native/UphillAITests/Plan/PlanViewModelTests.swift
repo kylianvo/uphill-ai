@@ -164,7 +164,7 @@ struct PlanViewModelTests {
         let ok = await model.move(workout, to: target)
         #expect(!ok)
         #expect(service.calls.withLock { $0 }.last == "move \(workout.id) -> w3 Tuesday today=2026-10-07")
-        #expect(model.actionError == "Workouts can only move within this week or into next week.")
+        #expect(model.actionError == "Workouts can only move between this week and next week.")
     }
 
     @Test func summaryValues() async {
@@ -396,5 +396,71 @@ struct PlanViewModelTests {
         let model = make(service)
         await model.load()
         #expect(await model.reassessGoal() == "You've used today's goal checks. Try again tomorrow.")
+    }
+
+    @Test func swapDaysSendsClientTodayAndUpdatesWorkouts() async throws {
+        let snap = snapshot()
+        let service = FakePlanService()
+        service.activeResult.withLock { $0 = .success(snap) }
+        service.swapResult.withLock { $0 = .success(snap.workouts) }
+        let model = make(service)
+        await model.load()
+        let ok = await model.swapDays(week: 2, day1: .tuesday, day2: .wednesday)
+        #expect(ok)
+        #expect(service.calls.withLock { $0 }.last == "swap w2 Tuesday <-> Wednesday today=2026-10-07")
+        #expect(model.calendarNotice == nil)
+    }
+
+    @Test func swapDaysSetsWarningNotice() async throws {
+        let snap = snapshot()
+        let service = FakePlanService()
+        service.activeResult.withLock { $0 = .success(snap) }
+        service.swapResult.withLock { $0 = .success(snap.workouts) }
+        service.swapWarnings.withLock { $0 = [ScheduleWarning(code: "W1_hard_stacking", params: ["day": "Tuesday", "week": "2"])] }
+        let model = make(service)
+        await model.load()
+        let ok = await model.swapDays(week: 2, day1: .tuesday, day2: .wednesday)
+        #expect(ok)
+        #expect(model.calendarNotice?.style == .warning)
+        #expect(model.calendarNotice?.text.contains("Two hard sessions on Tuesday (week 2).") == true)
+    }
+
+    @Test func swapDaysMapsGuardErrors() async throws {
+        let snap = snapshot()
+        let service = FakePlanService()
+        service.activeResult.withLock { $0 = .success(snap) }
+        service.swapResult.withLock { $0 = .failure(.scheduleGuard(status: 422, code: "G3_past_target", params: [:])) }
+        let model = make(service)
+        await model.load()
+        let ok = await model.swapDays(week: 2, day1: .tuesday, day2: .wednesday)
+        #expect(!ok)
+        #expect(model.actionError == "You can't move a workout to a day that has already passed.")
+        #expect(model.calendarNotice?.style == .error)
+    }
+
+    @Test func deletePlanCallsServiceAndReloadsActivePlan() async throws {
+        let snap = snapshot()
+        let service = FakePlanService()
+        service.activeResult.withLock { $0 = .success(snap) }
+        let model = make(service)
+        await model.load()
+        let ok = await model.deletePlan(id: snap.plan.id)
+        #expect(ok)
+        let calls = service.calls.withLock { $0 }
+        #expect(calls.contains("delete \(snap.plan.id)"))
+        #expect(calls.last == "active")
+    }
+
+    @Test func syncWatchUpdatesNoticeAndReloads() async throws {
+        let snap = snapshot()
+        let service = FakePlanService()
+        service.activeResult.withLock { $0 = .success(snap) }
+        let model = make(service)
+        await model.load()
+        let notice = await model.syncWatch()
+        #expect(notice == "Watch synced · Up to date")
+        #expect(model.watchSyncNotice == "Watch synced · Up to date")
+        model.clearWatchSyncNotice()
+        #expect(model.watchSyncNotice == nil)
     }
 }

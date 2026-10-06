@@ -182,38 +182,46 @@ def search_principles(
         results: list[dict] = []
 
         if has_sched and scheduler_k > 0:
-            hits_sched = client.query_points(collection_name=COLLECTION_SCHEDULER, query=vector, limit=scheduler_k).points
+            hits_sched = client.query_points(
+                collection_name=COLLECTION_SCHEDULER, query=vector, limit=scheduler_k
+            ).points
             for hit in hits_sched:
                 if not hit.payload:
                     continue
                 title = hit.payload.get("title", "")
                 content = hit.payload.get("content", "")
-                results.append({
-                    "title": title,
-                    "content": content,
-                    "score": float(hit.score),
-                    "ref": _chunk_ref(title, content),
-                    "domain": "scheduler",
-                    "source_label": hit.payload.get("source_label", "Training for the Uphill Athlete"),
-                    "url": hit.payload.get("url"),
-                })
+                results.append(
+                    {
+                        "title": title,
+                        "content": content,
+                        "score": float(hit.score),
+                        "ref": _chunk_ref(title, content),
+                        "domain": "scheduler",
+                        "source_label": hit.payload.get("source_label", "Training for the Uphill Athlete"),
+                        "url": hit.payload.get("url"),
+                    }
+                )
 
         if has_nutr and nutrition_k > 0:
-            hits_nutr = client.query_points(collection_name=COLLECTION_NUTRITION_PRINCIPLES, query=vector, limit=nutrition_k).points
+            hits_nutr = client.query_points(
+                collection_name=COLLECTION_NUTRITION_PRINCIPLES, query=vector, limit=nutrition_k
+            ).points
             for hit in hits_nutr:
                 if not hit.payload:
                     continue
                 title = hit.payload.get("title", "")
                 content = hit.payload.get("content", "")
-                results.append({
-                    "title": title,
-                    "content": content,
-                    "score": float(hit.score),
-                    "ref": _chunk_ref(title, content),
-                    "domain": "nutrition",
-                    "source_label": hit.payload.get("source_label", "Evoke Endurance Nutrition"),
-                    "url": hit.payload.get("url"),
-                })
+                results.append(
+                    {
+                        "title": title,
+                        "content": content,
+                        "score": float(hit.score),
+                        "ref": _chunk_ref(title, content),
+                        "domain": "nutrition",
+                        "source_label": hit.payload.get("source_label", "Evoke Endurance Nutrition"),
+                        "url": hit.payload.get("url"),
+                    }
+                )
 
         # Sort combined hits by retrieval score descending
         results.sort(key=lambda x: x["score"], reverse=True)

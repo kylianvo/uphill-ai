@@ -75,7 +75,7 @@ struct APIClientTests {
 
     @Test func parsesGuardCodeDetail() async {
         let client = makeStubClient { _ in (422, json(["detail": ["code": "G3_past_date", "params": [:]]])) }
-        await #expect(throws: APIError.http(status: 422, message: nil, code: "G3_past_date")) {
+        await #expect(throws: APIError.scheduleGuard(status: 422, code: "G3_past_date", params: [:])) {
             let _: EmptyResponse = try await client.send(.get("/api/x"))
         }
     }

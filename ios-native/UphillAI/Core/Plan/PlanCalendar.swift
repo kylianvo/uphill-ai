@@ -1,3 +1,15 @@
+struct CalendarDayCell: Identifiable, Equatable, Sendable {
+    let date: Date
+    let isCurrentMonth: Bool
+    let isToday: Bool
+    let isRaceDay: Bool
+    let weekNumber: Int?
+    let workouts: [Workout]
+
+    var id: String { PlanCalendar.ymd(date) }
+    var primaryWorkout: Workout? { workouts.first { !$0.isRest } ?? workouts.first }
+}
+
 import Foundation
 
 /// Plan week and date maths. Port of frontend/src/utils/planDate.ts: weeks run
