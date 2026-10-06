@@ -20,7 +20,7 @@ def _chunks():
 
 def test_all_scheduler_seed_chunks_mapped():
     chunks = _chunks()
-    assert len(chunks) == 40
+    assert len(chunks) == 38
 
     for chunk in chunks:
         title = chunk.get("title")
@@ -32,9 +32,14 @@ def test_all_scheduler_seed_chunks_mapped():
         if meta["source"] == BOOK:
             # A book citation must name a real chapter of the book.
             assert meta["book"] == BOOK_TITLE
-            assert meta["chapter_num"] in CHAPTERS
-            assert meta["chapter_title"] == CHAPTERS[meta["chapter_num"]]
-            assert meta["citation_label"] == f"{BOOK_TITLE} — Chapter {meta['chapter_num']}: {meta['chapter_title']}"
+            if meta["chapter_num"] is None:
+                # Chapter unconfirmed: cite the book, never a guessed chapter.
+                assert meta["citation_label"] == BOOK_TITLE
+            else:
+                assert meta["chapter_title"] == CHAPTERS[meta["chapter_num"]]
+                assert meta["citation_label"] == (
+                    f"{BOOK_TITLE} — Chapter {meta['chapter_num']}: {meta['chapter_title']}"
+                )
         else:
             # Podcast material is never passed off as a book quotation.
             assert not meta["citation_label"].startswith(BOOK_TITLE)

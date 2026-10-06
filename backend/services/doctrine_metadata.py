@@ -11,8 +11,10 @@ So each chunk now records:
   - source: BOOK when the chunk restates the book's doctrine, BOOK_CLUB_PODCAST when
     it carries Book Club / podcast material (often alongside book doctrine);
   - chapter_num: the official chapter the topic belongs to, or None when the book has
-    no chapter on it. The assignment is by topic -- the sweep did not keep page-level
-    citations -- so treat it as "where to read more", not as a quotation reference.
+    no chapter on it or the chapter could not be confirmed. The assignment is by topic
+    -- the sweep did not keep page-level citations -- so treat it as "where to read
+    more", not as a quotation reference. The tier rows added later (walk-to-run,
+    high-volume, athlete level) carry no chapter until checked against the book.
 """
 
 from typing import Any
@@ -51,7 +53,7 @@ def _entry(chapter_num: int | None, source: str, topic: str) -> dict[str, Any]:
     }
 
 
-# 40 scheduler philosophy chunks, keyed by kb_seed/scheduler.json title.
+# 38 scheduler philosophy chunks, keyed by kb_seed/scheduler.json title.
 SCHEDULER_CHUNK_PROVENANCE: dict[str, dict[str, Any]] = {
     "Difference Between Muscular Endurance and Conventional Strength Training": _entry(
         7, BOOK, "Difference Between Muscular Endurance and Conventional Strength Training"
@@ -90,12 +92,6 @@ SCHEDULER_CHUNK_PROVENANCE: dict[str, dict[str, Any]] = {
     ),
     "Treadmill & Gym Machine Substitutions": _entry(None, BOOK_CLUB_PODCAST, "Treadmill and Gym Machine Substitutions"),
     "When Double Sessions Make Sense": _entry(None, BOOK_CLUB_PODCAST, "When Double Sessions Make Sense"),
-    "Session Sequencing: Morning vs. Afternoon": _entry(
-        8, BOOK_CLUB_PODCAST, "Session Sequencing: Morning vs. Afternoon"
-    ),
-    "Recovery Spacing & Spacing Protocols": _entry(
-        2, BOOK_CLUB_PODCAST, "Recovery Spacing and Supercompensation Protocols"
-    ),
     "Core Philosophy and Lower Body Strength": _entry(6, BOOK, "Core Philosophy and Lower Body Strength"),
     "Upper Body and Core Strength Exercises": _entry(6, BOOK, "Upper Body and Core Strength Exercises"),
     "Training Protocols and Periodization": _entry(8, BOOK, "Training Protocols and Periodization"),
@@ -106,26 +102,32 @@ SCHEDULER_CHUNK_PROVENANCE: dict[str, dict[str, Any]] = {
     ),
     "Race-Day Pacing Strategies": _entry(None, BOOK_CLUB_PODCAST, "Race-Day Pacing Strategies"),
     "Course-Specific Preparation": _entry(12, BOOK_CLUB_PODCAST, "Course-Specific Preparation and Gradient Matching"),
-    "Walk-to-Run Progression for Complete Beginners": _entry(9, BOOK, "Walk-to-Run Progression for Complete Beginners"),
+    "Walk-to-Run Progression for Complete Beginners": _entry(
+        None, BOOK, "Walk-to-Run Progression for Complete Beginners"
+    ),
     "Transitioning from Run/Walk Intervals to Continuous Running": _entry(
-        9, BOOK, "Transitioning from Run/Walk Intervals to Continuous Running"
+        None, BOOK, "Transitioning from Run/Walk Intervals to Continuous Running"
     ),
     "Connective-Tissue Adaptation and Injury Risk in New Runners": _entry(
-        9, BOOK, "Connective-Tissue Adaptation and Injury Risk in New Runners"
+        None, BOOK, "Connective-Tissue Adaptation and Injury Risk in New Runners"
     ),
     "Regulating Effort Without Pace or Heart-Rate Data": _entry(
         3, BOOK, "Regulating Effort Without Pace or Heart-Rate Data"
     ),
-    "Weeks Containing Two or More Quality Sessions": _entry(8, BOOK, "Weeks Containing Two or More Quality Sessions"),
-    "Periodization Above 100 km per Week": _entry(8, BOOK, "Periodization Above 100 km per Week"),
+    "Weeks Containing Two or More Quality Sessions": _entry(
+        None, BOOK_CLUB_PODCAST, "Weeks Containing Two or More Quality Sessions"
+    ),
+    "Periodization Above 100 km per Week": _entry(None, BOOK, "Periodization Above 100 km per Week"),
     "Double-Day Training: Warrant, Allocation and Spacing": _entry(
-        8, BOOK, "Double-Day Training: Warrant, Allocation and Spacing"
+        None, BOOK_CLUB_PODCAST, "Double-Day Training: Warrant, Allocation and Spacing"
     ),
     "Readiness and Overreaching Markers in Highly Trained Athletes": _entry(
         3, BOOK, "Readiness and Overreaching Markers in Highly Trained Athletes"
     ),
-    "Classifying an Athlete's Training Level": _entry(8, BOOK_CLUB_PODCAST, "Classifying an Athlete's Training Level"),
-    "Zone 2 Pace Ranges by Training Level": _entry(2, BOOK, "Zone 2 Pace Ranges by Training Level"),
+    "Classifying an Athlete's Training Level": _entry(
+        None, BOOK_CLUB_PODCAST, "Classifying an Athlete's Training Level"
+    ),
+    "Zone 2 Pace Ranges by Training Level": _entry(None, BOOK, "Zone 2 Pace Ranges by Training Level"),
     "Establishing Aerobic Threshold Without Lab Testing": _entry(
         3, BOOK, "Establishing Aerobic Threshold Without Lab Testing"
     ),
@@ -137,7 +139,7 @@ def _with_labels(meta_raw: dict[str, Any]) -> dict[str, Any]:
     ch_str = f"Chapter {meta['chapter_num']}: {meta['chapter_title']}" if meta["chapter_num"] else None
     meta["chapter"] = ch_str
     if meta["source"] == BOOK:
-        meta["citation_label"] = f"{BOOK_TITLE} — {ch_str}"
+        meta["citation_label"] = f"{BOOK_TITLE} — {ch_str}" if ch_str else BOOK_TITLE
     elif ch_str:
         meta["citation_label"] = f"{BOOK_CLUB_TITLE} (see {BOOK_TITLE}, {ch_str})"
     else:

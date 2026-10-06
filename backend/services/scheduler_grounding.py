@@ -30,8 +30,6 @@ CHUNK_AUDIENCE: dict[str, str] = {
     "Hill Sprints, Hill Repeats, and Race-Specific Gradient Matching": "me",
     "Treadmill & Gym Machine Substitutions": "me",
     "When Double Sessions Make Sense": "doubles",
-    "Session Sequencing: Morning vs. Afternoon": "doubles",
-    "Recovery Spacing & Spacing Protocols": "doubles",
     "Double-Day Training: Warrant, Allocation and Spacing": "doubles",
     "Weeks Containing Two or More Quality Sessions": "high_volume",
     "Periodization Above 100 km per Week": "high_volume",

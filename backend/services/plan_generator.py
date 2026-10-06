@@ -925,9 +925,13 @@ class PlanGenerator:
         aet_hr = int(user_profile.get("aet_hr", resting_hr + int((max_hr - resting_hr) * 0.65)))
         ant_hr = int(user_profile.get("ant_hr", resting_hr + int((max_hr - resting_hr) * 0.85)))
 
-        # Aerobic Deficiency Syndrome (ADS) per Training for the Uphill Athlete:
-        # ADS is present if AeT is > 30 bpm below AnT, or if AeT < 80% of AnT.
-        is_ads = (ant_hr - aet_hr) > 30 or (ant_hr > 0 and aet_hr < (ant_hr * 0.80))
+        # Aerobic Deficiency Syndrome (ADS) per Training for the Uphill Athlete: present
+        # while AeT sits more than 10% below AnT. Only measured thresholds are evidence --
+        # the defaults above are fixed 65%/85%-of-reserve ratios, whose ~20% spread would
+        # flag every athlete without real numbers.
+        thresholds_measured = bool(user_profile.get("aet_hr") and user_profile.get("ant_hr"))
+        ads_gap_pct = round((ant_hr - aet_hr) / ant_hr * 100) if ant_hr > 0 else 0
+        is_ads = thresholds_measured and ads_gap_pct > 10
 
         # Calculate Heart Rate Zones
         hr_zones = TrainingRules.calculate_heart_rate_zones(max_hr, resting_hr, aet_hr, ant_hr)
@@ -1214,18 +1218,22 @@ class PlanGenerator:
             if is_ads:
                 ads_status = (
                     f"\nAEROBIC DEFICIENCY SYNDROME (ADS) DETECTED:\n"
-                    f"- AeT ({aet_hr} bpm) is {ant_hr - aet_hr} bpm below AnT ({ant_hr} bpm) — spread exceeds 30 bpm / 80% threshold.\n"
-                    f"- Hard Coaching Constraint: The athlete's slow-twitch aerobic base is deficient. DO NOT prescribe Zone 4/5 "
-                    f"speedwork, threshold intervals, or high-glycolytic sessions during Base/Build phases. Allocate 90%+ of running "
-                    f"volume strictly to Zone 1-2 (conversational pace below {aet_hr} bpm) to build mitochondrial density and fat "
-                    f"oxidation capacity before introducing speedwork.\n"
+                    f"- AeT ({aet_hr} bpm) is {ant_hr - aet_hr} bpm ({ads_gap_pct}%) below AnT ({ant_hr} bpm) — the gap exceeds 10%.\n"
+                    f"- Hard Coaching Constraint: The athlete's slow-twitch aerobic base is deficient. ALL running stays in Zone 1-2 "
+                    f"(at or below {aet_hr} bpm). DO NOT prescribe Zone 3, 4 or 5 work — no tempo, threshold intervals or "
+                    f"high-glycolytic sessions — until the AeT-AnT gap closes to 10% or less.\n"
                 )
-            else:
+            elif thresholds_measured:
                 ads_spread = ant_hr - aet_hr
                 ads_ratio_pct = round((aet_hr / ant_hr) * 100) if ant_hr > 0 else 0
                 ads_status = (
                     f"\nAerobic Efficiency: Healthy AeT/AnT spread ({ads_spread} bpm gap, AeT at {ads_ratio_pct}% of AnT). "
                     f"Normal aerobic base. Progressive threshold and ME work permitted in appropriate phases.\n"
+                )
+            else:
+                ads_status = (
+                    "\nAerobic Efficiency: AeT and AnT are estimates, not measured, so ADS cannot be assessed. Keep easy "
+                    "runs conservative and suggest a heart-rate drift test to establish the real AeT.\n"
                 )
 
             user_summary = (
@@ -1511,7 +1519,7 @@ class PlanGenerator:
                 "* Sessions 75-150 mins: 30-60g carbohydrates per hour + 300-500mg sodium/hr with 400-600ml water/hr. "
                 "* Sessions > 150 mins (Long Runs & Ultra simulation): 60-90g carbohydrates per hour + 500-800mg sodium/hr with 500-750ml fluid/hr. Practice with race-day fuels (energy gels, chews, drink mix). "
             )
-            _fuel_race = "* Race Day / Pre-race (Target Race): 8-10g carbohydrates per kg bodyweight per day for 36-48 hours prior; on race day take 60-90g CHO/hr + 600-900mg sodium/hr starting within the first 30-45 minutes."
+            _fuel_race = "* Race Day / Pre-race (Target Race): 8-12g carbohydrates per kg bodyweight per day for 36-48 hours prior; on race day take 60-90g CHO/hr + 600-900mg sodium/hr starting within the first 30-45 minutes."
             if tier_profile.uses_walk_run:
                 fueling_spec = (
                     _fuel_head
@@ -2063,7 +2071,27 @@ class PlanGenerator:
                 )
             else:
                 if terrain == "trail":
-                    if phase == "Base":
+                    # Doctrine order for a mountain runner: ME starts in the EARLY Base
+                    # period as gym ME (straight sets), moves to specific weighted
+                    # step-ups in Build, and Peak keeps neuromuscular hill sprints. Hill
+                    # sprints and bounding are power work, never ME. Tiers whose rules
+                    # forbid ME or intensity get general strength instead.
+                    me_ok = tier_profile.allows_me_blocks
+                    sprint_ok = tier_profile.allows_intensity
+                    zone = "Zone 1"
+                    if phase == "Base" and me_ok:
+                        title = "Muscular Endurance: Gym ME (Straight Sets)"
+                        w_type = "Muscular Endurance"
+                        sets = 4 if week <= 2 else 6
+                        desc = (
+                            f"Straight sets: finish every set of one exercise before the next. Split Jump Squats "
+                            f"{sets}x10, 60s rest between sets → Squat Jumps {sets}x10, 60s rest between sets → Box "
+                            f"Step-Ups at 75% kneecap height {sets}x10/leg, 30s rest between sets → Front Lunges "
+                            f"{sets}x10/leg, 30s rest between sets. 60s between exercises. Aim for a low-grade burn "
+                            f"in the quads and glutes; ignore heart rate. Keep the next two days easy."
+                        )
+                        fuel_tip = "Drink amino acids post-workout for protein synthesis."
+                    elif phase == "Base" or (phase in ("Build", "Peak") and not me_ok and not sprint_ok):
                         title = "General Base Strength"
                         w_type = "Strength"
                         desc = (
@@ -2072,7 +2100,7 @@ class PlanGenerator:
                         if course_elevation_gain_m and course_elevation_gain_m > 0:
                             desc += f" Prepares muscles for the {course_elevation_gain_m}m climbing demands."
                         fuel_tip = "Drink amino acids post-workout for protein synthesis."
-                    elif phase == "Build":
+                    elif phase == "Build" and me_ok:
                         w_type = "Muscular Endurance"
                         steps = 400 + (100 * (week - num_base_weeks - 1))
                         if course_elevation_gain_m and course_elevation_gain_m > 0:
@@ -2099,15 +2127,17 @@ class PlanGenerator:
                             title = "Muscular Endurance: Bodyweight Step-Ups"
                             desc = f"Execute {steps} bodyweight step-ups on a 30cm box, no added weight. Simulates climbing demands for your event ({course_elevation_gain_m or ''}m total gain)."
                             fuel_tip = "Consume electrolytes. Keep hydration nearby during strength efforts."
-                    elif phase == "Peak":
-                        w_type = "Muscular Endurance"
+                    elif phase in ("Build", "Peak"):
+                        # Peak, or Build for a tier without ME: neuromuscular power.
+                        w_type = "Interval"
+                        zone = "Zone 2"
                         if hill_sprint_eligible:
-                            title = "Muscular Endurance: Hill Bounds"
-                            desc = "Find a steep 10-15% grade hill. 6-8x repeats of 30 seconds explosive hill bounds. Walk down recovery."
+                            title = "Hill Sprints"
+                            desc = "Warm up 15 min easy. 8-10x 10-second max-effort uphill sprints on a 15-20%+ grade or steep stairs, 2-3 min full walking/standing rest. Stop when power drops. Ignore heart rate."
                             if course_elevation_gain_m and course_elevation_gain_m > 0:
-                                desc = f"Find a steep 10-15% grade hill simulating your event. 8-10x repeats of 30 seconds explosive hill bounds to handle the {course_elevation_gain_m}m of race vertical. Walk down recovery."
+                                desc += f" Builds stride power for {course_elevation_gain_m}m D+ on race day."
                         else:
-                            title = "Muscular Endurance: Explosive Bounding"
+                            title = "Explosive Bounding"
                             desc = "No hills or treadmill available: 6-8x sets of 8-10 explosive bounding strides on flat ground, focusing on power and stride length. Full recovery between sets."
                             if course_elevation_gain_m and course_elevation_gain_m > 0:
                                 desc = f"No hills or treadmill available: 6-8x sets of 8-10 explosive bounding strides on flat ground to build the power needed for the {course_elevation_gain_m}m of race vertical. Full recovery between sets."
@@ -2118,6 +2148,7 @@ class PlanGenerator:
                         desc = f"Restorative {round(sun_dur)}-minute light walk or hike on soft trail."
                         fuel_tip = "Recovery focus. Drink water."
                 else:
+                    zone = "Zone 1"
                     title = "Core & Hip Stability"
                     w_type = "Strength"
                     desc = "Focus on glute activation, hip bridges, side planks, and calf raises. Essential for road injury prevention."
@@ -2132,7 +2163,7 @@ class PlanGenerator:
                             "title": title,
                             "type": w_type,
                             "duration_minutes": round(sun_dur),
-                            "target_zone": "Zone 1",
+                            "target_zone": zone,
                             "treadmill_incline": treadmill_incl,
                             "treadmill_speed": treadmill_sp,
                             "description": desc,
@@ -2192,9 +2223,11 @@ class PlanGenerator:
                 "Simulates climbing demands for your event (": "Mô phỏng nhu cầu leo dốc cho sự kiện của bạn (",
                 "m total gain).": "m tổng độ cao).",
                 "Consume electrolytes. Keep hydration nearby during strength efforts.": "Bổ sung điện giải. Luôn để sẵn nước bên cạnh khi tập luyện sức mạnh.",
-                "Muscular Endurance: Hill Bounds": "Muscular Endurance: Nhảy dốc bùng nổ (Hill Bounds)",
-                "Muscular Endurance: Explosive Bounding": "Muscular Endurance: Nhảy bật bùng nổ (Explosive Bounding)",
-                "Find a steep 10-15% grade hill. 6-8x repeats of 30 seconds explosive hill bounds. Walk down recovery.": "Tìm một ngọn dốc đứng 10-15%. Thực hiện 6-8 lần lặp lại nhảy dốc bùng nổ trong 30 giây. Đi bộ xuống dốc để phục hồi.",
+                "Muscular Endurance: Gym ME (Straight Sets)": "Muscular Endurance: Gym ME (Straight Sets)",
+                "Explosive Bounding": "Nhảy bật bùng nổ (Explosive Bounding)",
+                "Warm up 15 min easy. 8-10x 10-second max-effort uphill sprints on a 15-20%+ grade or steep stairs, 2-3 min full walking/standing rest. Stop when power drops. Ignore heart rate.": "Warm-up 15 phút chạy nhẹ. 8-10 lần Hill Sprint 10 giây hết sức trên dốc 15-20%+ hoặc cầu thang dốc, nghỉ hẳn 2-3 phút (đi bộ hoặc đứng). Dừng khi lực bật giảm. Bỏ qua HR.",
+                " Builds stride power for ": " Xây sức bật sải chân cho ",
+                "m D+ on race day.": "m D+ ngày đua.",
                 "No hills or treadmill available: 6-8x sets of 8-10 explosive bounding strides on flat ground, focusing on power and stride length. Full recovery between sets.": "Không có đồi hoặc máy chạy bộ (treadmill): Thực hiện 6-8 hiệp x 8-10 lần nhảy bật bùng nổ trên mặt đất phẳng, tập trung vào sức mạnh và độ dài bước chạy. Nghỉ hoàn toàn giữa các hiệp.",
                 "Intense muscle breakdown: Consume 25g protein within 30 minutes of finishing.": "Cơ bắp hoạt động cường độ cao: Nạp 25g protein trong vòng 30 phút sau khi tập xong.",
                 "Active Recovery Walk": "Đi bộ phục hồi chủ động",
@@ -2254,14 +2287,18 @@ class PlanGenerator:
                         "bodyweight step-ups on a 30cm box, no added weight.",
                         "lượt bước lên bục cao 30cm, không cần tạ.",
                     )
-                if (
-                    "Find a steep 10-15% grade hill simulating your event. 8-10x repeats of 30 seconds explosive hill bounds to handle the"
-                    in s
-                ):
-                    s = s.replace(
-                        "Find a steep 10-15% grade hill simulating your event. 8-10x repeats of 30 seconds explosive hill bounds to handle the",
-                        "Tìm một ngọn dốc đứng 10-15% mô phỏng sự kiện của bạn. Lặp lại 8-10 lần 30 giây nhảy dốc bùng nổ để thích nghi với",
-                    ).replace("of race vertical. Walk down recovery.", "độ dốc của cuộc đua. Đi bộ xuống để phục hồi.")
+                s = _re.sub(
+                    r"Straight sets: finish every set of one exercise before the next\. Split Jump Squats (\d+)x10, "
+                    r"60s rest between sets → Squat Jumps \1x10, 60s rest between sets → Box Step-Ups at 75% kneecap "
+                    r"height \1x10/leg, 30s rest between sets → Front Lunges \1x10/leg, 30s rest between sets\. 60s "
+                    r"between exercises\. Aim for a low-grade burn in the quads and glutes; ignore heart rate\. Keep "
+                    r"the next two days easy\.",
+                    r"Straight sets: tập xong mọi hiệp của một bài rồi mới sang bài tiếp. Split Jump Squats \1x10, "
+                    r"nghỉ 60s giữa các hiệp → Squat Jumps \1x10, nghỉ 60s giữa các hiệp → Box Step-Ups cao 75% đầu "
+                    r"gối \1x10/chân, nghỉ 30s giữa các hiệp → Front Lunges \1x10/chân, nghỉ 30s giữa các hiệp. Nghỉ "
+                    r"60s giữa các bài. Cơ đùi trước và mông chỉ cần hơi rát; bỏ qua HR. Hai ngày sau chỉ tập nhẹ.",
+                    s,
+                )
                 if (
                     "No hills or treadmill available: 6-8x sets of 8-10 explosive bounding strides on flat ground to build the power needed for the"
                     in s

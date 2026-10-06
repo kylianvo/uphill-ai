@@ -47,7 +47,7 @@ ME_AND_ULTRA_PRESCRIPTIONS = (
 )
 ENDURANCE_FUELING_PRESCRIPTIONS = (
     "60-90g carbohydrates per hour",
-    "8-10g carbohydrates per kg",
+    "8-12g carbohydrates per kg",
     "30-60g carbohydrates per hour",
 )
 

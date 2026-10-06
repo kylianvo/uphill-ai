@@ -243,7 +243,7 @@ async def test_plan_generator_prompt_includes_all_enriched_context():
         "max_hr": 185,
         "resting_hr": 52,
         "aet_hr": 130,
-        "ant_hr": 168,  # Gap = 38 bpm (>30) -> Triggers ADS!
+        "ant_hr": 168,  # Gap = 38 bpm (23% of AnT, >10%) -> Triggers ADS!
         "has_gym_access": True,
         "use_treadmill": False,
         "training_environment": "mixed",
@@ -301,8 +301,8 @@ async def test_plan_generator_prompt_includes_all_enriched_context():
 
     # 2. Aerobic Deficiency Syndrome (ADS) Guardrail
     assert "AEROBIC DEFICIENCY SYNDROME (ADS) DETECTED" in prompt
-    assert "spread exceeds 30 bpm / 80% threshold" in prompt
-    assert "DO NOT prescribe Zone 4/5 speedwork" in prompt
+    assert "(23%) below AnT (168 bpm) — the gap exceeds 10%" in prompt
+    assert "DO NOT prescribe Zone 3, 4 or 5 work" in prompt
 
     # 3. Course Steepness Ratio & Terrain Categorization (3800m / 70km = 54.3 m/km > 50)
     assert "Course Steepness Ratio: 54.3 m D+/km" in prompt
@@ -346,7 +346,7 @@ async def test_plan_generator_prompt_includes_all_enriched_context():
     assert "Back-to-back weekend long runs (Saturday + Sunday) are NOT a weekly routine" in prompt
 
     # 9. Fueling Guidelines
-    assert "8-10g carbohydrates per kg bodyweight" in prompt
+    assert "8-12g carbohydrates per kg bodyweight" in prompt
     assert "60-90g carbohydrates per hour" in prompt
 
 
@@ -365,8 +365,8 @@ async def test_plan_generator_female_biomarkers_and_healthy_aerobic_base():
         "current_weekly_km": 50.0,
         "max_hr": 190,
         "resting_hr": 50,
-        "aet_hr": 148,
-        "ant_hr": 168,  # Gap = 20 bpm (<=30, 88% of AnT) -> Healthy aerobic base
+        "aet_hr": 155,
+        "ant_hr": 168,  # Gap = 13 bpm (8% of AnT, <=10%) -> Healthy aerobic base
         "has_gym_access": True,
         "use_treadmill": True,
         "training_environment": "hilly",
@@ -500,3 +500,28 @@ async def test_plan_prompt_places_race_history_beside_ceiling():
     assert history in prompt
     assert "- RACE HISTORY" not in prompt  # no longer a scheduling bullet
     assert prompt.index("Athlete Historical Ceiling") < prompt.index("RACE HISTORY")
+
+
+@pytest.mark.asyncio
+async def test_estimated_thresholds_never_trigger_ads():
+    """Default AeT/AnT come from fixed reserve ratios with a ~20% spread; treating them
+    as evidence would flag every athlete who never measured their thresholds."""
+    mock_client = MagicMock()
+    mock_client.models.generate_content.return_value = MagicMock(text="[]")
+    profile = {"age": 30, "max_hr": 200, "resting_hr": 40, "current_weekly_km": 50.0}
+    with (
+        patch("google.genai.Client", return_value=mock_client),
+        patch("services.kb_retrieval.search_scheduler_chunks", return_value=[]),
+    ):
+        await PlanGenerator.generate_plan_workouts(
+            plan_id=3,
+            user_profile=profile,
+            race_info={"lang": "en", "terrain": "trail", "goal_type": "finish", "name": "X"},
+            total_weeks=8,
+            api_key="fake-gemini-key",
+            block_number=1,
+            weeks_per_block=2,
+        )
+    prompt = mock_client.models.generate_content.call_args_list[0].kwargs.get("contents", "")
+    assert "AEROBIC DEFICIENCY SYNDROME (ADS) DETECTED" not in prompt
+    assert "ADS cannot be assessed" in prompt

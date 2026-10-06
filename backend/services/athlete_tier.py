@@ -97,8 +97,8 @@ class TierProfile:
     # Default Zone 2 bounds (slower, faster) in min/km, used ONLY when the athlete has no
     # zones of their own. KB-grounded, converted from the doctrine's min/mile figures.
     zone2_pace: tuple[str, str]
-    # AeT-to-AnT spread this tier typically shows, as a fraction. Above 0.30 is Aerobic
-    # Deficiency Syndrome. This is a stronger tier signal than weekly volume, because it
+    # AeT-to-AnT spread this tier typically shows, as a fraction. The book's ADS test is a
+    # gap above 0.10 (plan_generator flags it); these wider bands only place the tier. This is a stronger tier signal than weekly volume, because it
     # is measured rather than self-reported -- but only when the thresholds are real.
     aet_ant_gap_max: float
 

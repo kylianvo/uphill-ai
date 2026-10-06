@@ -559,10 +559,9 @@ class TestResolveTreadmillSettings:
         assert speed == "6"  # 10 kph flat, effort-adjusted at 15%
 
     def test_hill_bound_keyword_matches(self):
-        # Rule-based fallback's ME session is titled "Muscular Endurance: Hill Bounds" —
-        # same steep-hill-effort category as Hill Sprint/Hill Repeat, so it must get the
-        # same 15% backstop rather than silently falling through unmatched.
-        wo = {"title": "Muscular Endurance: Hill Bounds", "treadmill_incline": 999.0}
+        # A Hill Bound session is the same steep-hill power effort as Hill Sprint/Hill
+        # Repeat, so it must get the same 15% backstop rather than falling through unmatched.
+        wo = {"title": "Hill Bounds", "treadmill_incline": 999.0}
         incline, _ = PlanGenerator.resolve_treadmill_settings(wo, "6:00 /km")
         assert incline == "15"
 
