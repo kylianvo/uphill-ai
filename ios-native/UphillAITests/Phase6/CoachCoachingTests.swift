@@ -23,233 +23,122 @@ struct CoachCoachingTests {
         #expect(unknown == nil)
     }
 
-    @Test func testCoachOverviewDecoding() throws {
-        let json = """
-        {
-            "athletes": [
-                {
-                    "athlete_id": 42,
-                    "name": "Minh Tran",
-                    "runner_level": "intermediate",
-                    "needs_attention": false,
-                    "adherence_pct": 94.0,
-                    "missed_streak": 0,
-                    "active_plan": {
-                        "plan_id": 101,
-                        "race_name": "Dalat Ultra Trail 50K",
-                        "race_date": "2026-11-15",
-                        "current_week": 6,
-                        "total_weeks": 16
-                    },
-                    "last_completed": {
-                        "week_number": 6,
-                        "day_of_week": "Sunday"
-                    }
-                }
-            ],
-            "action_items": {
-                "draft_plans": [
-                    {
-                        "plan_id": 105,
-                        "athlete_id": 55,
-                        "athlete_name": "Huy Le",
-                        "race_name": "Vietnam Mountain Marathon 70K"
-                    }
-                ],
-                "pending_workout_approvals": [
-                    {
-                        "workout_id": 301,
-                        "plan_id": 101,
-                        "athlete_id": 42,
-                        "athlete_name": "Minh Tran",
-                        "title": "Hill Intervals 8x3min"
-                    }
-                ]
-            },
-            "phase_alerts": [
-                {
-                    "athlete_id": 42,
-                    "athlete_name": "Minh Tran",
-                    "phase": "Taper",
-                    "starts": "2026-10-25"
-                }
-            ],
-            "workout_type_mix": [
-                { "type": "Easy", "count": 28, "pct": 45.0 },
-                { "type": "Long Run", "count": 16, "pct": 25.0 }
-            ],
-            "adherence_trend": [
-                { "week_number": 1, "adherence_pct": 82.0 },
-                { "week_number": 2, "adherence_pct": 88.5 }
-            ],
-            "missed_by_day": [
-                { "day_of_week": "Mon", "count": 1 },
-                { "day_of_week": "Wed", "count": 2 }
-            ],
-            "races": [
-                {
-                    "race_name": "Dalat Ultra Trail 50K",
-                    "race_date": "2026-11-15",
-                    "count": 1,
-                    "athletes": [
-                        { "athlete_id": 42, "name": "Minh Tran" }
-                    ]
-                }
-            ],
-            "roster_totals": {
-                "distance_km": 420.5,
-                "duration_hours": 38.5,
-                "elevation_gain_m": 12500,
-                "workout_count": 48
-            },
-            "athletes_without_race": 1
-        }
-        """.data(using: .utf8)!
+    // The decoding tests below read responses recorded from the local backend
+    // (ios-native/scripts/record_fixtures.sh x coach). Never hand-edit them: if a type
+    // stops matching, fix the type.
 
-        let overview = try JSONCoding.decoder.decode(CoachOverview.self, from: json)
+    @Test func testCoachOverviewDecoding() throws {
+        let overview = try Fixture.decode(CoachOverview.self, "coaching_overview.json")
         #expect(overview.athletes.count == 1)
-        #expect(overview.athletes.first?.name == "Minh Tran")
+        let athlete = try #require(overview.athletes.first)
+        #expect(athlete.name == "Preview Runner")
+        #expect(athlete.runnerLevel == "intermediate")
+        // The backend sends adherence as a fraction of 1.
+        let adherence = try #require(athlete.adherencePct)
+        #expect((0...1).contains(adherence))
+        #expect(CoachFormat.wholePercent(adherence).hasSuffix("%"))
+        #expect(!CoachFormat.wholePercent(adherence).contains("."))
+        #expect(athlete.activePlan?.raceName == "Vietnam Mountain Marathon 42K")
         #expect(overview.actionItems.draftPlans.count == 1)
-        #expect(overview.actionItems.pendingWorkoutApprovals.count == 1)
-        #expect(overview.phaseAlerts.count == 1)
-        #expect(overview.phaseAlerts.first?.phase == "Taper")
-        #expect(overview.workoutTypeMix.count == 2)
-        #expect(overview.adherenceTrend.count == 2)
-        #expect(overview.missedByDay.count == 2)
-        #expect(overview.races.count == 1)
-        #expect(overview.rosterTotals?.workoutCount == 48)
-        #expect(overview.athletesWithoutRace == 1)
+        #expect(overview.actionItems.draftPlans.first?.raceName == "Dalat Ultra Trail 50K")
+        // The backend counts the coach-added workout and every workout of the draft plan as pending.
+        #expect(overview.actionItems.pendingWorkoutApprovals.contains { $0.planId == athlete.activePlan?.planId })
+        #expect(overview.workoutTypeMix.allSatisfy { (0...1).contains($0.pct) })
+        #expect(overview.adherenceTrend.allSatisfy { (0...1).contains($0.adherencePct) })
+        #expect(overview.rosterTotals != nil)
+    }
+
+    @Test func testWholePercentFormatting() {
+        #expect(CoachFormat.wholePercent(0.94) == "94%")
+        #expect(CoachFormat.wholePercent(0.087) == "9%")
+        #expect(CoachFormat.wholePercent(1) == "100%")
+        #expect(CoachFormat.wholePercent(0) == "0%")
     }
 
     @Test func testCoachRosterDecoding() throws {
-        let json = """
-        [
-            {
-                "id": 10,
-                "athlete_id": 42,
-                "athlete_name": "Minh Tran",
-                "athlete_email": "minh@example.com",
-                "status": "active",
-                "invited_at": "2026-09-01T10:00:00Z",
-                "responded_at": "2026-09-02T11:00:00Z"
-            },
-            {
-                "id": 11,
-                "athlete_id": 99,
-                "athlete_name": null,
-                "athlete_email": "runner@test.com",
-                "status": "invited",
-                "invited_at": "2026-10-05T12:00:00Z",
-                "responded_at": null
-            }
-        ]
-        """.data(using: .utf8)!
-
-        let roster = try JSONCoding.decoder.decode([CoachedAthleteRow].self, from: json)
+        let roster = try Fixture.decode([CoachedAthleteRow].self, "coaching_roster.json")
         #expect(roster.count == 2)
-        #expect(roster[0].isActive == true)
-        #expect(roster[0].displayName == "Minh Tran")
-        #expect(roster[1].isActive == false)
-        #expect(roster[1].displayName == "runner@test.com")
+        let active = try #require(roster.first { $0.isActive })
+        #expect(active.displayName == "Preview Runner")
+        let invited = try #require(roster.first { !$0.isActive })
+        #expect(invited.status == "invited")
+        #expect(invited.displayName == "Pending Invitee")
     }
 
     @Test func testCoachNotesDecoding() throws {
-        let json = """
-        {
-            "notes": [
-                {
-                    "id": 1,
-                    "coach_id": 7,
-                    "athlete_id": 42,
-                    "target_type": "workout",
-                    "target_id": 301,
-                    "note": "Keep cadence above 175 spm on the uphill segments.",
-                    "created_at": "2026-10-05T14:00:00Z"
-                },
-                {
-                    "id": 2,
-                    "coach_id": 7,
-                    "athlete_id": 42,
-                    "target_type": "workout",
-                    "target_id": 301,
-                    "note": "Understood coach! Will focus on quick steps.",
-                    "created_at": "2026-10-05T15:30:00Z"
-                }
-            ]
-        }
-        """.data(using: .utf8)!
+        let res = try Fixture.decode(CoachNotesResponse.self, "coaching_notes.json")
+        #expect(res.notes.count == 3)
+        #expect(Set(res.notes.map(\.targetType)) == ["general", "plan", "workout"])
+        #expect(res.notes.allSatisfy { !$0.note.isEmpty && $0.createdAt != nil })
+    }
 
-        let res = try JSONCoding.decoder.decode(CoachNotesResponse.self, from: json)
-        #expect(res.notes.count == 2)
-        #expect(res.notes[0].coachId == 7)
-        #expect(res.notes[0].targetType == "workout")
-        #expect(res.notes[1].note.contains("Understood"))
+    @Test func testMyInvitesDecoding() throws {
+        let invites = try Fixture.decode([CoachingInvite].self, "coaching_my_invites.json")
+        #expect(invites.count == 1)
+        #expect(invites[0].displayCoachName == "Coach Kylian")
+        #expect(invites[0].status == "invited")
+    }
+
+    @Test func testAthleteProfileDecoding() throws {
+        let profile = try Fixture.decode(User.self, "coaching_athlete_profile.json")
+        #expect(profile.email == "ios-preview@uphill.ai")
+        #expect(profile.isCoach == false)
+    }
+
+    @Test func testCoachUserDecoding() throws {
+        let coach = try Fixture.decode(User.self, "coaching_coach_me.json")
+        #expect(coach.isCoach == true)
+    }
+
+    @Test func testAthleteActivePlanDecoding() throws {
+        let res = try Fixture.decode(ActivePlanResponse.self, "coaching_athlete_active_plan.json")
+        let snapshot = try #require(res.snapshot)
+        #expect(snapshot.plan.raceName == "Vietnam Mountain Marathon 42K")
+        #expect(snapshot.workouts.contains { $0.approvedAt == nil })
+        #expect(snapshot.workouts.contains { $0.approvedAt != nil })
+    }
+
+    @Test func testAthleteDraftPlanDecoding() throws {
+        let res = try Fixture.decode(DraftPlanResponse.self, "coaching_athlete_draft_plan.json")
+        let snapshot = try #require(res.snapshot)
+        #expect(snapshot.plan.raceName == "Dalat Ultra Trail 50K")
+        #expect(snapshot.workouts.allSatisfy { $0.approvedAt == nil })
     }
 
     @Test func testCoachingServiceAPI() async throws {
+        let rosterData = try Fixture.data("coaching_roster.json")
+        let invitesData = try Fixture.data("coaching_my_invites.json")
+        let notesData = try Fixture.data("coaching_notes.json")
+        let planData = try Fixture.data("coaching_athlete_active_plan.json")
+        let plan = try Fixture.decode(ActivePlanResponse.self, "coaching_athlete_active_plan.json")
+        let workout = try #require(plan.workouts?.first { $0.approvedAt != nil })
+        let workoutData = try JSONEncoder().encode(workout)
+
         let client = makeStubClient { request in
             let url = request.url?.absoluteString ?? ""
-            if url.contains("/api/coaching/roster") {
-                let rosterJson = """
-                [
-                    {
-                        "id": 1,
-                        "athlete_id": 100,
-                        "athlete_name": "Test Runner",
-                        "athlete_email": "test@uphill.ai",
-                        "status": "active",
-                        "invited_at": "2026-09-01T00:00:00Z",
-                        "responded_at": "2026-09-02T00:00:00Z"
-                    }
-                ]
-                """
-                return (200, rosterJson.data(using: .utf8)!)
-            } else if url.contains("/api/coaching/my-invites") {
-                let invitesJson = """
-                [
-                    {
-                        "id": 5,
-                        "coach_id": 7,
-                        "coach_name": "Coach Kylian",
-                        "coach_email": "kylian@uphill.ai",
-                        "status": "pending",
-                        "invited_at": "2026-10-01T10:00:00Z"
-                    }
-                ]
-                """
-                return (200, invitesJson.data(using: .utf8)!)
-            } else if url.contains("/approve") {
-                let wJson = """
-                {
-                    "id": 301,
-                    "plan_id": 50,
-                    "week_number": 1,
-                    "day_of_week": "Monday",
-                    "phase": "Build",
-                    "title": "Approved Run",
-                    "type": "Easy",
-                    "duration_minutes": 45,
-                    "target_zone": "Zone 2",
-                    "approved_at": "2026-10-06T00:00:00Z"
-                }
-                """
-                return (200, wJson.data(using: .utf8)!)
-            } else {
-                return (200, Data())
-            }
+            if url.contains("/api/coaching/roster") { return (200, rosterData) }
+            if url.contains("/api/coaching/my-invites") { return (200, invitesData) }
+            if url.contains("/notes") { return (200, notesData) }
+            if url.contains("/active-plan") { return (200, planData) }
+            if url.contains("/approve") { return (200, workoutData) }
+            return (200, Data())
         }
 
         let service = CoachingService(client: client)
         let roster = try await service.fetchRoster()
-        #expect(roster.count == 1)
-        #expect(roster.first?.athleteName == "Test Runner")
+        #expect(roster.count == 2)
 
         let invites = try await service.fetchMyInvites()
-        #expect(invites.count == 1)
         #expect(invites.first?.displayCoachName == "Coach Kylian")
 
-        let approved = try await service.approveWorkout(athleteId: 100, planId: 50, workoutId: 301)
-        #expect(approved.approvedAt != nil)
-        #expect(approved.title == "Approved Run")
+        let notes = try await service.fetchNotes(athleteId: roster[0].athleteId)
+        #expect(notes.count == 3)
+
+        let snapshot = try await service.fetchAthleteActivePlan(athleteId: roster[0].athleteId)
+        #expect(snapshot?.workouts.isEmpty == false)
+
+        let approved = try await service.approveWorkout(athleteId: roster[0].athleteId, planId: plan.plan?.id ?? 0, workoutId: workout.id)
+        #expect(approved.id == workout.id)
+        #expect(approved.title == workout.title)
     }
 }

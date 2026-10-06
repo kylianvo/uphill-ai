@@ -203,7 +203,7 @@ struct WorkoutTypeMixChartView: View {
                             }
                             .frame(height: 8)
 
-                            Text("\(Int(entry.pct * 100))%")
+                            Text(CoachFormat.wholePercent(entry.pct))
                                 .font(.system(size: 11, weight: .bold, design: .monospaced))
                                 .foregroundStyle(UH.Palette.secondary)
                                 .frame(width: 36, alignment: .trailing)

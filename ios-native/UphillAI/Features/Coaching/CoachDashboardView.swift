@@ -142,27 +142,29 @@ struct CoachDashboardView: View {
                     Spacer()
                 }
 
-                HStack(spacing: 6) {
-                    Text("Level:")
-                        .font(UH.TextStyle.caption)
-                        .foregroundStyle(UH.Palette.secondary)
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 6) {
-                            ForEach(levels, id: \.self) { lvl in
-                                Button(lvl.capitalized) {
-                                    levelFilter = lvl
-                                    Task { await fetchOverviewOnly() }
-                                }
-                                .font(.system(size: 11, weight: levelFilter == lvl ? .bold : .medium))
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 3)
-                                .background(levelFilter == lvl ? UH.Palette.ink.opacity(0.12) : UH.Palette.hover)
-                                .foregroundStyle(levelFilter == lvl ? UH.Palette.ink : UH.Palette.muted)
-                                .clipShape(Capsule())
+                Text("Level:")
+                    .font(UH.TextStyle.caption)
+                    .foregroundStyle(UH.Palette.secondary)
+                // Scrolls edge to edge of the card; the content margin keeps the first and last chip
+                // inset like the rest of the card instead of being cut at the border.
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(levels, id: \.self) { lvl in
+                            Button(lvl.capitalized) {
+                                levelFilter = lvl
+                                Task { await fetchOverviewOnly() }
                             }
+                            .font(.system(size: 11, weight: levelFilter == lvl ? .bold : .medium))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(levelFilter == lvl ? UH.Palette.ink.opacity(0.12) : UH.Palette.hover)
+                            .foregroundStyle(levelFilter == lvl ? UH.Palette.ink : UH.Palette.muted)
+                            .clipShape(Capsule())
                         }
                     }
                 }
+                .contentMargins(.horizontal, UH.Space.regular, for: .scrollContent)
+                .padding(.horizontal, -UH.Space.regular)
             }
             .trainingCard()
             .padding(.horizontal, UH.Space.regular)
@@ -333,8 +335,8 @@ struct CoachDashboardView: View {
                                     Spacer()
 
                                     if let adh = athlete.adherencePct {
-                                        let pct = Int(adh * 100)
-                                        Text("\(pct)%")
+                                        let pct = Int((adh * 100).rounded())
+                                        Text(CoachFormat.wholePercent(adh))
                                             .font(.system(size: 12, weight: .bold, design: .monospaced))
                                             .padding(.horizontal, 8)
                                             .padding(.vertical, 4)

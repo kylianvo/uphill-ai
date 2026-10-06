@@ -5,7 +5,16 @@ import UIKit
 
 @MainActor
 struct Phase6CoachScreenshots {
-    private let outDir = "/Users/vietvo/.codex/worktrees/ios-native-phase2b/uphill-ai/ios-native/docs/screenshots/phase6"
+    /// Screenshots are only written when SCREENSHOT_DIR is set, so ordinary test runs leave the
+    /// working tree alone. Re-render with:
+    ///   TEST_RUNNER_SCREENSHOT_DIR=$PWD/docs/screenshots/phase6 ios-native/scripts/test.sh -only-testing:UphillAITests/Phase6CoachScreenshots
+    private let outDir = ProcessInfo.processInfo.environment["SCREENSHOT_DIR"]
+
+    // Every screen renders recorded backend responses (ios-native/scripts/record_fixtures.sh x coach).
+    private let overview = try! Fixture.decode(CoachOverview.self, "coaching_overview.json")
+    private let roster = try! Fixture.decode([CoachedAthleteRow].self, "coaching_roster.json")
+    private let invites = try! Fixture.decode([CoachingInvite].self, "coaching_my_invites.json")
+    private let athletePlan = try! Fixture.decode(ActivePlanResponse.self, "coaching_athlete_active_plan.json")
 
     private func save<V: View>(_ view: V, name: String, size: CGSize = CGSize(width: 402, height: 874), scale: CGFloat = 2.0) {
         let controller = UIHostingController(rootView: view.frame(width: size.width, height: size.height))
@@ -23,24 +32,17 @@ struct Phase6CoachScreenshots {
         let img = renderer.image { _ in
             controller.view.drawHierarchy(in: CGRect(origin: .zero, size: size), afterScreenUpdates: true)
         }
+        guard let data = img.pngData() else {
+            Issue.record("Could not encode \(name)")
+            return
+        }
+        guard let outDir else { return }
         let url = URL(fileURLWithPath: "\(outDir)/\(name).png")
-        try? img.pngData()?.write(to: url)
+        do { try data.write(to: url) } catch { Issue.record("Could not write \(url.path): \(error)") }
     }
 
-    private func makeApp(isCoach: Bool = true) throws -> AppModel {
-        let userJson = """
-        {
-            "id": 1,
-            "email": "coach@uphill.ai",
-            "name": "Coach Kylian",
-            "role": "coach",
-            "onboarding_complete": true,
-            "provider": "email",
-            "has_password": true,
-            "is_coach": \(isCoach)
-        }
-        """.data(using: .utf8)!
-        let user = try JSONCoding.decoder.decode(User.self, from: userJson)
+    private func makeApp() throws -> AppModel {
+        let user = try Fixture.decode(User.self, "coaching_coach_me.json")
         let base = StubURLProtocol.register { _ in (200, json([:])) }
         let tokenStore = InMemoryTokenStore("tok")
         let app = AppModel(tokenStore: tokenStore, baseURL: { base }, session: StubURLProtocol.session(), cache: .inMemory())
@@ -48,208 +50,50 @@ struct Phase6CoachScreenshots {
         return app
     }
 
-    private var sampleOverview: CoachOverview {
-        CoachOverview(
-            athletes: [
-                CoachOverviewAthlete(
-                    athleteId: 42,
-                    name: "Minh Tran",
-                    runnerLevel: "intermediate",
-                    needsAttention: false,
-                    activePlan: CoachAthleteActivePlan(
-                        planId: 101,
-                        raceName: "Dalat Ultra Trail 50K",
-                        raceDate: "2026-11-15",
-                        currentWeek: 6,
-                        totalWeeks: 16
-                    ),
-                    adherencePct: 94.0,
-                    lastCompleted: CoachLastCompletedWorkout(
-                        weekNumber: 6,
-                        dayOfWeek: "Sunday"
-                    ),
-                    missedStreak: 0
-                ),
-                CoachOverviewAthlete(
-                    athleteId: 48,
-                    name: "Linh Nguyen",
-                    runnerLevel: "advanced",
-                    needsAttention: false,
-                    activePlan: CoachAthleteActivePlan(
-                        planId: 102,
-                        raceName: "UTMB CCC 100K",
-                        raceDate: "2026-12-05",
-                        currentWeek: 3,
-                        totalWeeks: 20
-                    ),
-                    adherencePct: 87.0,
-                    lastCompleted: CoachLastCompletedWorkout(
-                        weekNumber: 3,
-                        dayOfWeek: "Saturday"
-                    ),
-                    missedStreak: 1
-                )
-            ],
-            actionItems: CoachActionItems(
-                draftPlans: [
-                    CoachDraftPlanItem(
-                        planId: 105,
-                        athleteId: 55,
-                        athleteName: "Huy Le",
-                        raceName: "Vietnam Mountain Marathon 70K"
-                    )
-                ],
-                pendingWorkoutApprovals: [
-                    CoachPendingApprovalItem(
-                        workoutId: 301,
-                        planId: 101,
-                        athleteId: 42,
-                        athleteName: "Minh Tran",
-                        title: "Hill Intervals 8x3min"
-                    )
-                ]
-            ),
-            phaseAlerts: [
-                CoachPhaseAlert(
-                    athleteId: 42,
-                    athleteName: "Minh Tran",
-                    phase: "Taper",
-                    starts: "2026-10-25"
-                )
-            ],
-            workoutTypeMix: [
-                WorkoutTypeMixEntry(type: "Easy", count: 28, pct: 45.0),
-                WorkoutTypeMixEntry(type: "Long Run", count: 16, pct: 25.0),
-                WorkoutTypeMixEntry(type: "Tempo", count: 10, pct: 15.0),
-                WorkoutTypeMixEntry(type: "Interval", count: 10, pct: 15.0)
-            ],
-            adherenceTrend: [
-                AdherenceTrendEntry(weekNumber: 1, adherencePct: 82.0),
-                AdherenceTrendEntry(weekNumber: 2, adherencePct: 86.5),
-                AdherenceTrendEntry(weekNumber: 3, adherencePct: 91.0),
-                AdherenceTrendEntry(weekNumber: 4, adherencePct: 88.5)
-            ],
-            missedByDay: [
-                MissedByDayEntry(dayOfWeek: "Mon", count: 1),
-                MissedByDayEntry(dayOfWeek: "Tue", count: 0),
-                MissedByDayEntry(dayOfWeek: "Wed", count: 2),
-                MissedByDayEntry(dayOfWeek: "Thu", count: 0),
-                MissedByDayEntry(dayOfWeek: "Fri", count: 1),
-                MissedByDayEntry(dayOfWeek: "Sat", count: 0),
-                MissedByDayEntry(dayOfWeek: "Sun", count: 0)
-            ],
-            races: [
-                RaceBreakdownEntry(
-                    raceName: "Dalat Ultra Trail 50K",
-                    raceDate: "2026-11-15",
-                    count: 6,
-                    athletes: [RaceBreakdownAthlete(athleteId: 42, name: "Minh Tran")]
-                ),
-                RaceBreakdownEntry(
-                    raceName: "UTMB CCC 100K",
-                    raceDate: "2026-12-05",
-                    count: 3,
-                    athletes: [RaceBreakdownAthlete(athleteId: 48, name: "Linh Nguyen")]
-                ),
-                RaceBreakdownEntry(
-                    raceName: "Vietnam Mountain Marathon",
-                    raceDate: "2026-10-20",
-                    count: 3,
-                    athletes: [RaceBreakdownAthlete(athleteId: 55, name: "Huy Le")]
-                )
-            ],
-            rosterTotals: CoachRosterTotals(
-                distanceKm: 420.5,
-                durationHours: 38.5,
-                elevationGainM: 12500,
-                workoutCount: 48
-            ),
-            athletesWithoutRace: 0
-        )
-    }
-
-    private var sampleRoster: [CoachedAthleteRow] {
-        [
-            CoachedAthleteRow(
-                id: 1,
-                athleteId: 42,
-                athleteName: "Minh Tran",
-                athleteEmail: "minh@example.com",
-                status: "active",
-                invitedAt: "2026-09-01T10:00:00Z",
-                respondedAt: "2026-09-02T11:00:00Z"
-            ),
-            CoachedAthleteRow(
-                id: 2,
-                athleteId: 48,
-                athleteName: "Linh Nguyen",
-                athleteEmail: "linh@example.com",
-                status: "active",
-                invitedAt: "2026-09-10T10:00:00Z",
-                respondedAt: "2026-09-11T12:00:00Z"
-            ),
-            CoachedAthleteRow(
-                id: 3,
-                athleteId: 99,
-                athleteName: nil,
-                athleteEmail: "hoang.runner@test.com",
-                status: "invited",
-                invitedAt: "2026-10-05T12:00:00Z",
-                respondedAt: nil
-            )
-        ]
-    }
+    private var athlete: CoachedAthleteRow { roster.first { $0.isActive }! }
 
     @Test func renderCoachDashboardOverview() throws {
-        let app = try makeApp(isCoach: true)
+        let app = try makeApp()
         let view = NavigationStack {
             CoachDashboardView(
                 app: app,
                 initialSection: .overview,
-                initialOverview: sampleOverview,
-                initialRoster: sampleRoster
+                initialOverview: overview,
+                initialRoster: roster
             )
         }
         save(view, name: "phase6-coach-dashboard-overview")
     }
 
+    /// The whole Overview scroll content (adherence badges, charts) in one tall frame.
+    @Test func renderCoachDashboardOverviewFull() throws {
+        let app = try makeApp()
+        let view = NavigationStack {
+            CoachDashboardView(
+                app: app,
+                initialSection: .overview,
+                initialOverview: overview,
+                initialRoster: roster
+            )
+        }
+        save(view, name: "phase6-coach-dashboard-overview-full", size: CGSize(width: 402, height: 1780))
+    }
+
     @Test func renderCoachDashboardRoster() throws {
-        let app = try makeApp(isCoach: true)
+        let app = try makeApp()
         let view = NavigationStack {
             CoachDashboardView(
                 app: app,
                 initialSection: .roster,
-                initialOverview: sampleOverview,
-                initialRoster: sampleRoster
+                initialOverview: overview,
+                initialRoster: roster
             )
         }
         save(view, name: "phase6-coach-dashboard-roster")
     }
 
     @Test func renderCoachedAthleteProfile() throws {
-        let athlete = sampleRoster[0]
-        let userJson = """
-        {
-            "id": 42,
-            "email": "minh@example.com",
-            "name": "Minh Tran",
-            "role": "user",
-            "onboarding_complete": true,
-            "provider": "email",
-            "has_password": true,
-            "max_hr": 188,
-            "ant_hr": 172,
-            "aet_hr": 151,
-            "current_weekly_km": 65.0,
-            "preferred_run_days": "[\\"Tuesday\\", \\"Wednesday\\", \\"Thursday\\", \\"Saturday\\", \\"Sunday\\"]",
-            "long_run_day": "Saturday",
-            "injury_history": "Mild Achilles tendon tightness after prolonged technical descents. Manages with eccentric calf drops.",
-            "athlete_notes": "Targeting sub-6:30 at Dalat 50K. Wants to improve uphill pacing and hydration strategy.",
-            "is_coach": false
-        }
-        """.data(using: .utf8)!
-        let profile = try JSONCoding.decoder.decode(User.self, from: userJson)
-
+        let profile = try Fixture.decode(User.self, "coaching_athlete_profile.json")
         let client = makeStubClient { _ in (200, json([:])) }
         let service = CoachingService(client: client)
 
@@ -264,7 +108,6 @@ struct Phase6CoachScreenshots {
     }
 
     @Test func renderCoachedAthleteBanner() throws {
-        let athlete = sampleRoster[0]
         let view = VStack(spacing: 16) {
             CoachedAthleteBanner(athlete: athlete) {}
             Spacer()
@@ -277,11 +120,12 @@ struct Phase6CoachScreenshots {
     @Test func renderCoachAddWorkoutSheet() throws {
         let client = makeStubClient { _ in (200, json([:])) }
         let service = CoachingService(client: client)
+        let plan = try #require(athletePlan.plan)
 
         let view = CoachAddWorkoutSheet(
-            athleteId: 42,
-            planId: 101,
-            initialWeek: 4,
+            athleteId: athlete.athleteId,
+            planId: plan.id,
+            initialWeek: 3,
             initialDay: "Thursday",
             service: service,
             onAdded: { _ in }
@@ -292,23 +136,13 @@ struct Phase6CoachScreenshots {
     @Test func renderCoachEditWorkoutSheet() throws {
         let client = makeStubClient { _ in (200, json([:])) }
         let service = CoachingService(client: client)
-
-        let workout = TestData.workout([
-            "id": 301,
-            "week_number": 4,
-            "day_of_week": "Thursday",
-            "title": "Hill Intervals 8x3min",
-            "type": "Interval",
-            "duration_minutes": 65,
-            "distance_km": 11.5,
-            "target_zone": "Zone 4",
-            "description": "Warm-up 15 min Zone 2. 8 reps of 3 min uphill surge at 10-12% grade in Zone 4. Jog back down easy for recovery. Cool down 10 min.",
-            "phase": "Build"
-        ])
+        let plan = try #require(athletePlan.plan)
+        // The coach-added workout still waiting for approval.
+        let workout = try #require(athletePlan.workouts?.first { $0.approvedAt == nil })
 
         let view = CoachEditWorkoutSheet(
-            athleteId: 42,
-            planId: 101,
+            athleteId: athlete.athleteId,
+            planId: plan.id,
             workout: workout,
             service: service,
             onSaved: { _ in }
@@ -317,17 +151,6 @@ struct Phase6CoachScreenshots {
     }
 
     @Test func renderPendingInviteBanner() throws {
-        let invites = [
-            CoachingInvite(
-                id: 1,
-                coachId: 7,
-                coachName: "Coach Kylian",
-                coachEmail: "kylian@uphill.ai",
-                status: "pending",
-                invitedAt: "2026-10-05T09:00:00Z"
-            )
-        ]
-
         let view = VStack(spacing: 16) {
             PendingInviteBanner(
                 invites: invites,

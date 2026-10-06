@@ -1,5 +1,14 @@
 import Foundation
 
+/// The coaching endpoints send adherence and mix shares as fractions of 1 (0.94 = 94%).
+enum CoachFormat {
+    /// Whole percent of a 0...1 fraction, e.g. 0.94 -> "94%". Built as a plain string so the
+    /// locale's digit grouping never splits the number.
+    static func wholePercent(_ fraction: Double) -> String {
+        "\(Int((fraction * 100).rounded()))%"
+    }
+}
+
 struct CoachOverviewAthlete: Codable, Sendable, Identifiable, Equatable {
     var id: Int { athleteId }
     let athleteId: Int

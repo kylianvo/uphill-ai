@@ -57,6 +57,31 @@ if [[ "${2:-}" == "profile" ]]; then
   exit 0
 fi
 
+if [[ "${2:-}" == "coach" ]]; then
+  # Needs the coach accounts from backend/scripts/seed_ios_preview.py (re-run it first).
+  token_for() {
+    curl -sf -X POST "$BASE/api/auth/mock-login" -H 'Content-Type: application/json' -d "{\"email\":\"$1\"}" \
+      | python3 -c 'import json,sys; print(json.load(sys.stdin)["session_token"])'
+  }
+  coach_get() { # path, fixture name
+    curl -sf "$BASE$1" -H "Authorization: Bearer $COACH_TOKEN" | scrub > "$OUT/$2"
+  }
+  COACH_TOKEN=$(token_for ios-coach@uphill.ai)
+  coach_get /api/auth/me coaching_coach_me.json
+  coach_get "/api/coaching/overview?days=14" coaching_overview.json
+  coach_get /api/coaching/roster coaching_roster.json
+  ATHLETE_ID=$(python3 -c 'import json,sys; print(next(r["athlete_id"] for r in json.load(open(sys.argv[1])) if r["status"] == "active"))' "$OUT/coaching_roster.json")
+  coach_get "/api/coaching/athletes/$ATHLETE_ID/profile" coaching_athlete_profile.json
+  coach_get "/api/coaching/athletes/$ATHLETE_ID/notes" coaching_notes.json
+  coach_get "/api/coaching/athletes/$ATHLETE_ID/active-plan" coaching_athlete_active_plan.json
+  coach_get "/api/coaching/athletes/$ATHLETE_ID/plans/draft" coaching_athlete_draft_plan.json
+  # my-invites is the athlete's view: the invitee has a pending invite from the coach.
+  INVITEE_TOKEN=$(token_for ios-invitee@uphill.ai)
+  curl -sf "$BASE/api/coaching/my-invites" -H "Authorization: Bearer $INVITEE_TOKEN" | scrub > "$OUT/coaching_my_invites.json"
+  echo "Recorded coach fixtures into $OUT"
+  exit 0
+fi
+
 LOGIN=$(curl -sf -X POST "$BASE/api/auth/mock-login" \
   -H 'Content-Type: application/json' -d '{"email":"ios-fixtures@uphill.ai"}')
 TOKEN=$(printf '%s' "$LOGIN" | python3 -c 'import json,sys; print(json.load(sys.stdin)["session_token"])')
