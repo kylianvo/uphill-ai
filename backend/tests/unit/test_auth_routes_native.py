@@ -69,7 +69,7 @@ def test_google_rejects_foreign_audience(monkeypatch, created):
 
 def _fake_apple(monkeypatch, claims=None, error=False):
     def verify(token, audiences, jwk_client=None):
-        assert audiences == ["ai.uphill.app"]
+        assert audiences == ["uphill.ai.app", "ai.uphill.app"]
         if error:
             raise apple_auth.AppleTokenError("bad")
         return claims

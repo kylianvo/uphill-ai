@@ -4,6 +4,6 @@ import Testing
 
 struct SmokeTests {
     @Test func hostAppHasProductionBundleID() {
-        #expect(Bundle.main.bundleIdentifier == "ai.uphill.app")
+        #expect(Bundle.main.bundleIdentifier == "uphill.ai.app")
     }
 }
