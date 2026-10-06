@@ -163,7 +163,7 @@ def test_resolve_citations():
     # First resolved matched via [1] -> evidence[0], enriched with book metadata
     assert resolved[0]["ref"] == "abc123def456"
     assert resolved[0]["url"] == "https://uphillathlete.com/principles"
-    assert resolved[0]["book"] == "Training for the Uphill Athlete"
+    assert resolved[0]["book"] == "Evoke Endurance — Uphill Athlete Book Club, podcast & articles"
     assert resolved[0]["chapter_num"] == 7
     assert resolved[0]["chapter_title"] == "Specific Strength-Training Methods"
     assert "Chapter 7: Specific Strength-Training Methods" in resolved[0]["citation_label"]

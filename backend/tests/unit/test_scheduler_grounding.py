@@ -84,3 +84,9 @@ def test_high_volume_chunks_are_for_sub_elite_and_elite_only():
 
 def test_unknown_titles_pass():
     assert sg.chunk_allowed("A re-swept chunk", BEGINNER, False)
+
+
+def test_quality_session_chunks_need_intensity():
+    for title in ("Designing Zone 3 and Zone 4 Sessions", "Strides and Hill Sprints for Endurance Runners"):
+        assert not sg.chunk_allowed(title, BEGINNER, False)
+        assert sg.chunk_allowed(title, NOVICE, False)

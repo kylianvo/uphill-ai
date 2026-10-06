@@ -20,7 +20,7 @@ def _chunks():
 
 def test_all_scheduler_seed_chunks_mapped():
     chunks = _chunks()
-    assert len(chunks) == 38
+    assert len(chunks) == 43
 
     for chunk in chunks:
         title = chunk.get("title")

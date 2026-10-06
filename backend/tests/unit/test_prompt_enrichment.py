@@ -344,6 +344,10 @@ async def test_plan_generator_prompt_includes_all_enriched_context():
     assert "Disregard heart rate in ME sessions" in prompt
     assert "stronger athletes may carry the weight back down" in prompt
     assert "30 minutes the first time, building to no more than 60 minutes" in prompt
+    # Quality sessions per Evoke Endurance (mountain running, FT/ST, speed-work articles)
+    assert "Speed and Quality Session Design" in prompt
+    assert "30-45 min of total work in 10-15 min reps" in prompt  # recreational Zone 3 dose
+    assert "at least 6-8 weeks before the taper" in prompt
     assert "Deload Adaptation Cycles" in prompt
     assert "Aerobic Deficiency Syndrome (ADS) Rule" in prompt
     assert "Uphill Athlete & Trail Specificity" in prompt

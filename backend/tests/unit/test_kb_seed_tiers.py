@@ -85,6 +85,10 @@ def test_the_figures_the_prompt_quotes_are_actually_in_the_kb(chunks):
         "8 to 12 hour",
         # race-week carb load (plan_generator fueling_spec)
         "8 to 12 grams of carbohydrates per kilogram",
+        # quality-session rules (plan_rules rule 14)
+        "30-45 minutes in 10-15 minute segments",
+        "6-8 weeks before the taper",
+        "at least 20% grade",
     ):
         assert figure in body, f"figure quoted by the prompt is absent from the KB: {figure}"
 

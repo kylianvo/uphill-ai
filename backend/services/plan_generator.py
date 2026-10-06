@@ -1221,15 +1221,18 @@ class PlanGenerator:
                     f"- AeT ({aet_hr} bpm) is {ant_hr - aet_hr} bpm ({ads_gap_pct}%) below AnT ({ant_hr} bpm) — the gap exceeds 10%.\n"
                     f"- Hard Coaching Constraint: The athlete's slow-twitch aerobic base is deficient. ALL running stays in Zone 1-2 "
                     f"(at or below {aet_hr} bpm). DO NOT prescribe Zone 3, 4 or 5 work — no tempo, threshold intervals or "
-                    f"high-glycolytic sessions — while the AeT-AnT gap is above 10%. Only if the race-specific period arrives "
-                    f"with the gap still open, add the minimum ME and intensity the race demands (see the ADS Rule).\n"
+                    f"high-glycolytic sessions — while the AeT-AnT gap is above 10%. Strides and Hill Sprints stay in: they are "
+                    f"neuromuscular power, not endurance intensity. Only if the gap is still open 6-8 weeks before the taper, "
+                    f"add the minimum ME and intensity the race demands (see the ADS Rule).\n"
                 )
             elif thresholds_measured:
                 ads_spread = ant_hr - aet_hr
                 ads_ratio_pct = round((aet_hr / ant_hr) * 100) if ant_hr > 0 else 0
                 ads_status = (
                     f"\nAerobic Efficiency: Healthy AeT/AnT spread ({ads_spread} bpm gap, AeT at {ads_ratio_pct}% of AnT). "
-                    f"Normal aerobic base. Progressive threshold and ME work permitted in appropriate phases.\n"
+                    f"Normal aerobic base. Progressive threshold and ME work permitted in appropriate phases. With AeT "
+                    f"within 10% of AnT, this athlete raises AeT speed with more controlled Zone 3, not more Zone 2: be "
+                    f"cautious with Zone 2 volume (its pace is neuromuscularly taxing) and fill easy volume with Zone 1.\n"
                 )
             else:
                 ads_status = (
@@ -2134,7 +2137,7 @@ class PlanGenerator:
                         zone = "Zone 2"
                         if hill_sprint_eligible:
                             title = "Hill Sprints"
-                            desc = "Warm up 15 min easy. 8-10x 10-second max-effort uphill sprints on a 15-20%+ grade or steep stairs, 2-3 min full walking/standing rest. Stop when power drops. Ignore heart rate."
+                            desc = "Warm up 15 min easy. 6-8x 10-second max-effort uphill sprints on a 20%+ grade or steep stairs taken two at a time, 2-3 min full walking/standing rest. Mark your high point; stop when you can no longer reach it. Ignore heart rate."
                             if course_elevation_gain_m and course_elevation_gain_m > 0:
                                 desc += f" Builds stride power for {course_elevation_gain_m}m D+ on race day."
                         else:
@@ -2226,7 +2229,7 @@ class PlanGenerator:
                 "Consume electrolytes. Keep hydration nearby during strength efforts.": "Bổ sung điện giải. Luôn để sẵn nước bên cạnh khi tập luyện sức mạnh.",
                 "Muscular Endurance: Gym ME (Straight Sets)": "Muscular Endurance: Gym ME (Straight Sets)",
                 "Explosive Bounding": "Nhảy bật bùng nổ (Explosive Bounding)",
-                "Warm up 15 min easy. 8-10x 10-second max-effort uphill sprints on a 15-20%+ grade or steep stairs, 2-3 min full walking/standing rest. Stop when power drops. Ignore heart rate.": "Warm-up 15 phút chạy nhẹ. 8-10 lần Hill Sprint 10 giây hết sức trên dốc 15-20%+ hoặc cầu thang dốc, nghỉ hẳn 2-3 phút (đi bộ hoặc đứng). Dừng khi lực bật giảm. Bỏ qua HR.",
+                "Warm up 15 min easy. 6-8x 10-second max-effort uphill sprints on a 20%+ grade or steep stairs taken two at a time, 2-3 min full walking/standing rest. Mark your high point; stop when you can no longer reach it. Ignore heart rate.": "Warm-up 15 phút chạy nhẹ. 6-8 lần Hill Sprint 10 giây hết sức trên dốc 20%+ hoặc cầu thang dốc (bước 2 bậc một), nghỉ hẳn 2-3 phút (đi bộ hoặc đứng). Đánh dấu điểm cao nhất; dừng khi không còn chạm tới được. Bỏ qua HR.",
                 " Builds stride power for ": " Xây sức bật sải chân cho ",
                 "m D+ on race day.": "m D+ ngày đua.",
                 "No hills or treadmill available: 6-8x sets of 8-10 explosive bounding strides on flat ground, focusing on power and stride length. Full recovery between sets.": "Không có đồi hoặc máy chạy bộ (treadmill): Thực hiện 6-8 hiệp x 8-10 lần nhảy bật bùng nổ trên mặt đất phẳng, tập trung vào sức mạnh và độ dài bước chạy. Nghỉ hoàn toàn giữa các hiệp.",

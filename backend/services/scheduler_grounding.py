@@ -19,6 +19,7 @@ from services.athlete_tier import TierProfile
 #   me          -- structured Muscular Endurance; needs tier.allows_me_blocks
 #   doubles     -- two-a-day doctrine; needs double-session days and a non-beginner
 #   high_volume -- sub-elite/elite doctrine
+#   intensity   -- quality-session design and speed work; needs tier.allows_intensity
 #   chat_only   -- useful to Coach Uphill chat but not to plan generation: fueling
 #                  (the plan prompt carries its own tiered fueling spec) and race-day
 #                  execution
@@ -34,6 +35,9 @@ CHUNK_AUDIENCE: dict[str, str] = {
     "Weeks Containing Two or More Quality Sessions": "high_volume",
     "Periodization Above 100 km per Week": "high_volume",
     "Readiness and Overreaching Markers in Highly Trained Athletes": "high_volume",
+    "Designing Zone 3 and Zone 4 Sessions": "intensity",
+    "Fast-Twitch vs. Slow-Twitch Athletes": "intensity",
+    "Strides and Hill Sprints for Endurance Runners": "intensity",
     "Carbohydrate and Fluid Intake Guidelines": "chat_only",
     "Advanced Fueling Strategies": "chat_only",
     "Structuring the Final Week: Fueling and Nutrition": "chat_only",
@@ -68,8 +72,8 @@ def phase_hint(goal_type: str | None, is_event_goal: bool, total_weeks: int, fir
 
 
 _PHASE_TERMS = {
-    "base": "Base period: Zone 1-2 aerobic base volume, general strength, hill sprints for neuromuscular power",
-    "build": "Specific period: event-specific workouts, Zone 3 then Zone 4 intensity, terrain and gradient matching",
+    "base": "Base period capacity training: Zone 1-2 aerobic base volume, general strength, strides and hill sprints",
+    "build": "Specific period utilization training: uphill and rolling intervals, Zone 3 and Zone 4 session design",
     "peak": "Specific period: course-specific preparation, terrain and gradient matching, overreaching blocks",
     "taper": "Tapering and peaking: reducing volume, neuromuscular strides, race week",
     "race_week": "Race week and post-race recovery, active recovery modalities",
@@ -115,6 +119,8 @@ def chunk_allowed(title: str, profile: TierProfile, has_double_days: bool) -> bo
         return profile.allows_me_blocks
     if audience == "doubles":
         return has_double_days and not profile.uses_walk_run
+    if audience == "intensity":
+        return profile.allows_intensity
     if audience == "high_volume":
         return profile.key in HIGH_VOLUME_TIERS
     return True

@@ -1,8 +1,12 @@
 """Source and chapter provenance for the scheduler philosophy chunks.
 
 The chunks were swept from a NotebookLM notebook that holds the book AND the Evoke
-Endurance Uphill Athlete Book Club lectures and podcasts; the gym ME chunks follow
-Scott Johnston's Evoke Endurance article "Muscular Endurance: All You Need to Know". An earlier revision labelled
+Endurance Uphill Athlete Book Club lectures and podcasts. Later revisions also draw on
+Evoke Endurance articles by Scott Johnston and Jack Kuenzle: "Muscular Endurance: All You
+Need to Know", "Training for Mountain Running", "Capacity vs Utilization Training: A Deep
+Dive", "Setting Your Heart Rate Zones", "Training Fast Twitch and Slow Twitch Endurance
+Athletes" and "Why Even Ultra Runners Need Speed Work". Chunks carrying article material
+are cited as Evoke Endurance, with the matching book chapter where one exists. An earlier revision labelled
 every chunk as a book chapter, using a made-up 15-chapter, five-section outline. The
 real book has 12 chapters (CHAPTERS below) and no fueling, tapering or race-day
 chapter, and many chunks carry podcast material the 2019 book cannot contain (Tom
@@ -54,10 +58,10 @@ def _entry(chapter_num: int | None, source: str, topic: str) -> dict[str, Any]:
     }
 
 
-# 38 scheduler philosophy chunks, keyed by kb_seed/scheduler.json title.
+# 43 scheduler philosophy chunks, keyed by kb_seed/scheduler.json title.
 SCHEDULER_CHUNK_PROVENANCE: dict[str, dict[str, Any]] = {
     "Difference Between Muscular Endurance and Conventional Strength Training": _entry(
-        7, BOOK, "Difference Between Muscular Endurance and Conventional Strength Training"
+        7, BOOK_CLUB_PODCAST, "Difference Between Muscular Endurance and Conventional Strength Training"
     ),
     "Gym-Based ME Workout Design": _entry(7, BOOK_CLUB_PODCAST, "Gym-Based ME Workout Design"),
     "Progressive 14-Week Gym ME Protocol": _entry(7, BOOK_CLUB_PODCAST, "Progressive 14-Week Gym ME Protocol"),
@@ -71,14 +75,14 @@ SCHEDULER_CHUNK_PROVENANCE: dict[str, dict[str, Any]] = {
     ),
     "Recovery and Core Training Principles": _entry(2, BOOK, "Recovery and Core Training Principles"),
     "Weekly Volume Share of Aerobic Base Training and Intensity Distribution": _entry(
-        2, BOOK, "Aerobic Base Volume Share and Intensity Distribution (80/20 & 90/10)"
+        2, BOOK_CLUB_PODCAST, "Aerobic Base Volume Share and Intensity Distribution (80/20 & 90/10)"
     ),
     "Aerobic Threshold (AeT) vs. Anaerobic Threshold (AnT)": _entry(
         1, BOOK, "Aerobic Threshold (AeT) vs. Anaerobic Threshold (AnT)"
     ),
-    "Aerobic Deficiency Syndrome (ADS)": _entry(1, BOOK, "Aerobic Deficiency Syndrome (ADS)"),
+    "Aerobic Deficiency Syndrome (ADS)": _entry(1, BOOK_CLUB_PODCAST, "Aerobic Deficiency Syndrome (ADS)"),
     "Training Volume, Terrain Specificity, and Session Structure": _entry(
-        12, BOOK, "Training Volume, Terrain Specificity, and Session Structure"
+        12, BOOK_CLUB_PODCAST, "Training Volume, Terrain Specificity, and Session Structure"
     ),
     "Carbohydrate and Fluid Intake Guidelines": _entry(
         None, BOOK_CLUB_PODCAST, "Carbohydrate and Fluid Intake Guidelines"
@@ -134,6 +138,11 @@ SCHEDULER_CHUNK_PROVENANCE: dict[str, dict[str, Any]] = {
     "Establishing Aerobic Threshold Without Lab Testing": _entry(
         3, BOOK, "Establishing Aerobic Threshold Without Lab Testing"
     ),
+    "Heart-Rate Intensity Zones (Four-Zone System)": _entry(2, BOOK_CLUB_PODCAST, "Heart-Rate Intensity Zones"),
+    "Capacity vs. Utilization Training": _entry(2, BOOK_CLUB_PODCAST, "Capacity vs. Utilization Training"),
+    "Designing Zone 3 and Zone 4 Sessions": _entry(None, BOOK_CLUB_PODCAST, "Designing Zone 3 and Zone 4 Sessions"),
+    "Fast-Twitch vs. Slow-Twitch Athletes": _entry(1, BOOK_CLUB_PODCAST, "Fast-Twitch vs. Slow-Twitch Athletes"),
+    "Strides and Hill Sprints for Endurance Runners": _entry(None, BOOK_CLUB_PODCAST, "Strides and Hill Sprints"),
 }
 
 

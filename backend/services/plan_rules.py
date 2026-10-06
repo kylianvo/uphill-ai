@@ -157,7 +157,7 @@ def _performance_rules(profile: TierProfile) -> str:
     me_periodization = (
         """4. Periodization Phases (Training for the Uphill Athlete):
    - Short Runway Override (<= 10 weeks total plan): Skip extended base building and go straight to event-specific work. Start the Muscular Endurance (ME) block in Week 1 or Week 2, concluding 10-14 days before race day.
-   - Base Phase: Aerobic volume accumulation (Zone 1-2) + general strength (single-leg stability, hips, core) + weekly Hill Sprints for neuromuscular power + the Muscular Endurance (ME) block. For a MOUNTAIN RUNNER the ME block starts in the EARLY Base phase, as volume begins to build — 8-14 weeks, up to 16 when there is time, and at least 8 sessions to secure the benefit. Once a week when the rest of the training load is high; twice a week when it is otherwise low. ME is layered ON TOP of the Zone 1-2 volume, never in place of it. Heavy maximal-strength lifting first is the mountaineer/alpinist sequence, not the runner's: do NOT prescribe heavy low-rep max-strength blocks (e.g. 3-5 x 4-6) to this athlete.
+   - Base Phase: Aerobic volume accumulation (Zone 1-2) + general strength (single-leg stability, hips, core) + weekly Hill Sprints and Strides for neuromuscular power (rule 14) + the Muscular Endurance (ME) block. For a MOUNTAIN RUNNER the ME block starts in the EARLY Base phase, as volume begins to build — 8-14 weeks, up to 16 when there is time, and at least 8 sessions to secure the benefit. Once a week when the rest of the training load is high; twice a week when it is otherwise low. ME is layered ON TOP of the Zone 1-2 volume, never in place of it. Heavy maximal-strength lifting first is the mountaineer/alpinist sequence, not the runner's: do NOT prescribe heavy low-rep max-strength blocks (e.g. 3-5 x 4-6) to this athlete.
    - Build (Specific) Phase: After the ME block, the final ~8 weeks before the taper shift to traditional UPHILL and ROLLING intervals (Zone 3 sub-threshold first, Zone 4 layered in later) on top of continued aerobic volume. Doing ME first makes these intervals more effective. ME is no longer the focus; heavy slow barbell lifting is removed.
    - Peak Phase: Race-specific terrain simulation and eccentric downhill repeats (quad conditioning). Back-to-back long days are an overreaching tool, not a weekly routine: at most 2-3 two-day blocks in the whole Specific period, each followed by several easy recovery days.
    - Taper Phase: Reduce weekly volume by 40-60% while maintaining neuromuscular sharpness (stop heavy ME 10-14 days out).
@@ -179,7 +179,7 @@ def _performance_rules(profile: TierProfile) -> str:
    - Chassis vs. Engine Principle: Local muscular fatigue resistance of propelling fibers, not cardiac capacity, is the primary governor of sustainable race pace.
    - Terrain Routing:
      * Flat/Rolling Races (<25m vert/km or road): Prescribe the Gym ME progression (straight sets, see the ME format above) or Flat Tire Drags/Sled Pushes to adapt FTa frontier fibers and prevent late-race stride shortening, hip drop, and eccentric quad collapse. Hill Sprints/strides are neuromuscular POWER work, not ME — never count them as the week's ME session.
-     * Steep Mountain Races (>=25-35m vert/km or sustained single climbs >500m D+): Prescribe Outdoor Weighted Uphill Carries — water jugs in a backpack (5-15% BW) on a 30%+ grade (ordinary trails rarely exceed 10-12%). Summit Water Dump protocol: dump the water at the top and descend unweighted by default; stronger athletes may carry the weight back down for extra benefit. No suitable hill: fire stairs in a tall building (even six stories works) or a Treadmill Incline Series. Last resort: standing on a bike in a very high gear.
+     * Steep Mountain Races (>=25-35m vert/km or sustained single climbs >500m D+): Prescribe Outdoor Weighted Uphill Carries — water jugs in a backpack (5-15% BW) on a 30%+ grade (ordinary trails rarely exceed 10-12%). Summit Water Dump protocol: dump the water at the top and descend unweighted by default; stronger athletes may carry the weight back down for extra benefit. No suitable hill: fire stairs in a tall building (even six stories works), a Stairmaster, or a Treadmill Incline Series. Last resort: standing on a bike in a very high gear.
    - Dose: total weighted climbing time 30 minutes the first time, building to no more than 60 minutes. On short hills or stairs run it as laps of at least 5 minutes each.
    - Treadmill Incline Hardware Realism: ME on a treadmill is done at 25% grade, which needs an incline trainer. Standard commercial gym treadmills MAX OUT at about 15%: when that is all the athlete has, set 15% and add a weighted vest/pack (5-15% BW) so local leg burn, not breathing, is the limiter, or substitute weighted box step-ups or stair climbing. NEVER prescribe >15% treadmill incline unless the athlete explicitly notes access to an incline trainer.
    - The 48-Hour Buffer: NEVER schedule an ME session within 48 hours of a weekend Long Run, Zone 3/4 interval run, or heavy gym workout.
@@ -196,8 +196,8 @@ def _performance_rules(profile: TierProfile) -> str:
     z4_cap = (
         f" ZONE 4 HARD CAP: total Zone 4 interval time must NOT exceed {profile.zone4_weekly_cap_min} minutes in a "
         f"single week — beyond that even well-conditioned athletes hit severe endocrine stress (elevated cortisol) "
-        f"and risk overtraining. Zone 3 held strictly below AnT is different: 2+ hours per week is tolerable because "
-        f"global fatigue stays minimal."
+        f"and risk overtraining. Controlled mid-Zone 3 held below AnT is different: a high-level runner tolerates 2+ "
+        f"hours per week because global fatigue stays low."
         if profile.zone4_weekly_cap_min
         else ""
     )
@@ -212,6 +212,29 @@ def _performance_rules(profile: TierProfile) -> str:
         f"aerobic base and structural resilience — do NOT prescribe tempo, threshold or interval sessions yet. "
         f"PROGRESSION CEILING: weekly volume MUST NOT increase by more than {cap}% week-over-week, and annual volume "
         f"by no more than {annual}%. Never produce abrupt spikes.\n"
+    )
+
+    # Zone 3 session dose by tier (Evoke Endurance, "Training Fast Twitch and Slow Twitch
+    # Endurance Athletes"): world-class ~60 min in 15-20 min reps, well-trained amateur
+    # 30-45 min in 10-15 min reps, beginner/older/less-trained 15-30 min in 6-10 min reps.
+    z3_dose = {
+        "novice": "15-30 min of total work in 6-10 min reps",
+        "recreational": "30-45 min of total work in 10-15 min reps",
+        "sub_elite": "30-60 min of total work in 10-20 min reps",
+        "elite": "up to 60 min of total work, typically 15-20 min reps",
+    }.get(profile.key, "15-30 min of total work in 6-10 min reps")
+    quality_rules = (
+        f"""14. Speed and Quality Session Design (Evoke Endurance):
+   - Priorities for multi-hour events, in order: (1) speed at the Aerobic Threshold — the best predictor of ultra performance, raised mainly by a lot of Zone 2 (Zone 1 for athletes whose AeT pace is very fast); (2) fatigue resistance of the main propelling muscles (ME, then controlled Zone 3).
+   - Strides and Hill Sprints, year-round from the first block. They are neuromuscular power work: heart rate is irrelevant and they cost almost no fatigue. Strides: 4-8 x under 20 s inside or right after an easy Zone 1-2 run (often in its last 10-20 min) — take 5-10 s to ease up to a 'fun fast' pace with long-distance form and longer strides (no overstriding, not a full sprint), 1-2 min easy between. Hill Sprints: 8-12 s near-maximal on a 20%+ hill or steep stairs taken two at a time, 2-3+ min full standing/walking rest, starting with 6-8 reps; mark the high point of the first reps, double the rest once when the mark is missed, and stop when it is missed again. Together they stay under ~1% of training time.
+   - Zone 3 (threshold) sessions: mid-Zone 3, a 'controlled, fun' hard with another gear in reserve — never pushed over AnT. Dose for this athlete: {z3_dose}, with 2-4 min rest between reps. If the athlete cannot repeat the pace in the next rep the session is over: it was too hard, or they need more ME first.
+   - Zone 4 (VO2max) intervals: reps of 30 s to 4-5 min (no long 8-min reps); an elite tops out at 15-20 min of total work per session and less-trained athletes do less. If the athlete slows during a rep, double the next rest; stop when the speed can no longer be held.
+   - Event length decides the mix: for events of 3+ hours the race-specific block is mostly controlled mid-Zone 3 (uphill and rolling), with only tiny amounts of Zone 4 — elite ultrarunners log about 35-45% of training time in Zone 1, 45-55% in Zone 2, 7-9% in Zone 3 and under 2% in Zone 4. For events under ~2 hours, a Zone 3 block is followed by Zone 4 as the final stage.
+   - Utilization (race-like) work — high-intensity uphill intervals for a mountain runner; low-priority races count — must be added at least 6-8 weeks before the taper, whatever the athlete's aerobic capacity. Before that, capacity sessions train one quality at a time (an easy run stays easy, strides aside).
+   - Anaerobic endurance work (20-60 s efforts to exhaustion) is not worth its fatigue cost for multi-hour events: do not prescribe it.
+"""
+        if profile.allows_intensity
+        else ""
     )
 
     # Doctrine that only applies once volume is high enough for it to matter.
@@ -238,13 +261,13 @@ Rules:
 1. Block Scope & Schedule: Generate workouts for the specified block weeks only. Each week must have structured workouts (typically 4-6 workouts per week). ALWAYS honor the athlete's preferred training days and double-session days from their profile — place Rest workouts on non-preferred days, and produce two workout objects on each double-session day as described above.
 {intensity_rule}3. Long Run Proportionality Cap: In the Base phase the long run is about 25% of total weekly volume (the Uphill Athlete long aerobic run share). From the Build phase onward, as race-specific long efforts grow, a single long run may rise to but must NOT exceed {long_share}% of total weekly volume. Back-to-back weekend long runs (Saturday + Sunday) are NOT a weekly routine — they impose CNS and musculoskeletal overload that costs days of recovery and breaks weekly continuity. Use them only as short two-day overreaching blocks, at most 2-3 times in the Specific period before an ultra (50K+), each followed by several easy days, and their combined total must NOT exceed 50% of that week's volume. WEEKDAY RUN DURATIONS: Weekday runs (Mon-Fri) are typically {lo}-{hi} minutes for this athlete — respect their daily work schedule, and never schedule an excessive 90-120+ minute run on a weekday unless explicitly requested.
 {me_periodization}5. Deload Adaptation Cycles: Follow a 3:1 (or 2:1 for masters/fatigued runners) loading-to-recovery pattern. On recovery/deload weeks, reduce weekly volume by 20-30% to consolidate physiological adaptation and prevent overtraining.
-6. Aerobic Deficiency Syndrome (ADS) Rule: If ADS is detected in the athlete profile, strictly enforce aerobic base building: ALL running at or below AeT (Zone 1-2). NO Zone 3, 4 or 5 work — no tempo, threshold or intervals — while the AeT-AnT gap is above 10%: training above AeT signals the body to prioritise glycolytic capacity and delays the aerobic development ADS needs. Ideally the gap closes before the ME block begins. If it has not closed by the time the race-specific (Build) period must start, still add the ME and higher-intensity work the race demands — an under-prepared athlete is worse off — but keep it to the minimum and protect the Zone 1-2 volume.
+6. Aerobic Deficiency Syndrome (ADS) Rule: If ADS is detected in the athlete profile, strictly enforce aerobic base building: ALL running at or below AeT (Zone 1-2). NO Zone 3, 4 or 5 work — no tempo, threshold or intervals — while the AeT-AnT gap is above 10%: training above AeT signals the body to prioritise glycolytic capacity and delays the aerobic development ADS needs. Ideally the gap closes before the ME block begins. If it has not closed within 6-8 weeks of the taper, still add the ME and higher-intensity work the race demands — an under-prepared athlete is worse off — but keep it to the minimum and protect the Zone 1-2 volume. Strides and Hill Sprints STAY in the plan throughout: they are neuromuscular power work, not Zone 3-5 endurance intensity. Consistent Zone 2 training typically raises an aerobically deficient runner's AeT speed by 20-30% within 6-12 months.
 7. Make the plan highly customized. For example, scale long runs, map Sunday Muscular Endurance box steps/weighted step-ups based on the race elevation gain, or specify treadmill incline/speed settings for gym workouts.
 8. NEVER invent a physiological claim, exercise, or number beyond what the Uphill Athlete training philosophy implies. If unsure of an exact figure, give a sensible range instead of fabricating false precision.
 9. Give the athlete profile and prior feedback below real weight — this plan MUST reflect their specific numbers, schedule, and history, not a generic template.
 10. Uphill Athlete & Trail Specificity: For mountain/trail races, incorporate progressive eccentric quad conditioning (eccentric box step-downs, downhill repeats, hill bounding). For ultra distances (50K+), back-to-back long days follow the overreaching limits in rule 3. If the course profile notes high heat or altitude, integrate acclimation guidance.
 11. Environmental & Routine Scheduling: If the athlete's notes indicate flat/urban living on weekdays with weekend trail travel, prescribe flat road/treadmill aerobic work or gym ME on weekdays, reserving high-vert trail long runs for Saturday/Sunday. Keep weekday runs accessible ({lo}-{hi} min).
-{me_directives}{high_volume_rules}"""
+{me_directives}{high_volume_rules}{quality_rules}"""
 
 
 def build_rules_block(profile: TierProfile, max_continuous_jog_min: int | None = None) -> str:
