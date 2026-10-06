@@ -244,6 +244,7 @@ async def test_plan_generator_prompt_includes_all_enriched_context():
         "resting_hr": 52,
         "aet_hr": 130,
         "ant_hr": 168,  # Gap = 38 bpm (23% of AnT, >10%) -> Triggers ADS!
+        "threshold_source": "lab",
         "has_gym_access": True,
         "use_treadmill": False,
         "training_environment": "mixed",
@@ -376,6 +377,7 @@ async def test_plan_generator_female_biomarkers_and_healthy_aerobic_base():
         "resting_hr": 50,
         "aet_hr": 155,
         "ant_hr": 168,  # Gap = 13 bpm (8% of AnT, <=10%) -> Healthy aerobic base
+        "threshold_source": "field",
         "has_gym_access": True,
         "use_treadmill": True,
         "training_environment": "hilly",
@@ -518,6 +520,39 @@ async def test_estimated_thresholds_never_trigger_ads():
     mock_client = MagicMock()
     mock_client.models.generate_content.return_value = MagicMock(text="[]")
     profile = {"age": 30, "max_hr": 200, "resting_hr": 40, "current_weekly_km": 50.0}
+    with (
+        patch("google.genai.Client", return_value=mock_client),
+        patch("services.kb_retrieval.search_scheduler_chunks", return_value=[]),
+    ):
+        await PlanGenerator.generate_plan_workouts(
+            plan_id=3,
+            user_profile=profile,
+            race_info={"lang": "en", "terrain": "trail", "goal_type": "finish", "name": "X"},
+            total_weeks=8,
+            api_key="fake-gemini-key",
+            block_number=1,
+            weeks_per_block=2,
+        )
+    prompt = mock_client.models.generate_content.call_args_list[0].kwargs.get("contents", "")
+    assert "AEROBIC DEFICIENCY SYNDROME (ADS) DETECTED" not in prompt
+    assert "ADS cannot be assessed" in prompt
+
+
+@pytest.mark.asyncio
+async def test_stored_thresholds_with_unknown_source_never_trigger_ads():
+    """Most users carry stored AeT/AnT estimates with threshold_source 'unknown' (33 of 34
+    in production on 2026-10-07); a stored value is not a measurement."""
+    mock_client = MagicMock()
+    mock_client.models.generate_content.return_value = MagicMock(text="[]")
+    profile = {
+        "age": 30,
+        "max_hr": 190,
+        "resting_hr": 50,
+        "current_weekly_km": 50.0,
+        "aet_hr": 140,
+        "ant_hr": 170,
+        "threshold_source": "unknown",
+    }
     with (
         patch("google.genai.Client", return_value=mock_client),
         patch("services.kb_retrieval.search_scheduler_chunks", return_value=[]),

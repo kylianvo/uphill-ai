@@ -6,7 +6,7 @@ from config import settings
 from db import block_number_for_week, week_range_for_block
 from log_utils import get_logger
 from services import observability
-from services.athlete_tier import get_profile, resolve_tier
+from services.athlete_tier import MEASURED_THRESHOLD_SOURCES, get_profile, resolve_tier
 from services.plan_rules import build_rules_block
 from services.training_rules import TrainingRules, default_zone2_pace, resolve_zone2_pace
 from services.training_venues import INCLINE_TRAINER_MIN, STANDARD_TREADMILL_MAX, Venues
@@ -931,8 +931,13 @@ class PlanGenerator:
         # Aerobic Deficiency Syndrome (ADS) per Training for the Uphill Athlete: present
         # while AeT sits more than 10% below AnT. Only measured thresholds are evidence --
         # the defaults above are fixed 65%/85%-of-reserve ratios, whose ~20% spread would
-        # flag every athlete without real numbers.
-        thresholds_measured = bool(user_profile.get("aet_hr") and user_profile.get("ant_hr"))
+        # flag every athlete without real numbers. Stored values are not enough on their
+        # own: most users carry estimated AeT/AnT with threshold_source 'unknown'.
+        thresholds_measured = bool(
+            user_profile.get("aet_hr")
+            and user_profile.get("ant_hr")
+            and (user_profile.get("threshold_source") or "").lower() in MEASURED_THRESHOLD_SOURCES
+        )
         ads_gap_pct = round((ant_hr - aet_hr) / ant_hr * 100) if ant_hr > 0 else 0
         is_ads = thresholds_measured and ads_gap_pct > 10
 
