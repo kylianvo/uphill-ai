@@ -30,6 +30,7 @@ struct User: Codable, Sendable, Equatable, Identifiable {
     let zone2PaceMax: String?
     let thresholdPace: String?
     let paceZoneModel: String?
+    var athleteNotes: String? = nil
     let isCoach: Bool
 
     var isAdmin: Bool { role == "admin" }

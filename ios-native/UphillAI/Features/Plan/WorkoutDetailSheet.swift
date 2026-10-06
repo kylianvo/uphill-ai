@@ -21,7 +21,9 @@ struct WorkoutDetailSheet: View {
                         facts(workout)
                         if let text = workout.description, !text.isEmpty { prose("About", text) }
                         if let tip = workout.fuelingTip, !tip.isEmpty { prose("Fueling", tip) }
-                        if let error = model.actionError {
+                        if let notice = model.calendarNotice {
+                            ScheduleNoticeBanner(notice: notice, onDismiss: model.dismissCalendarNotice)
+                        } else if let error = model.actionError {
                             Text(error).font(UH.TextStyle.caption).foregroundStyle(UH.Palette.danger)
                         }
                         if workout.approvedAt == nil {

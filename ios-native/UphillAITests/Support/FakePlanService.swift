@@ -6,6 +6,7 @@ import Synchronization
 final class FakePlanService: PlanServicing {
     let activeResult = Mutex<Result<PlanSnapshot?, APIError>>(.success(nil))
     let logResult = Mutex<Result<[Workout], APIError>>(.success([]))
+    let moveWarnings = Mutex<[ScheduleWarning]>([])
     let moveResult = Mutex<Result<[Workout], APIError>>(.success([]))
     let recentResult = Mutex<Result<[Plan], APIError>>(.success([]))
     let selectResult = Mutex<Result<PlanSnapshot?, APIError>>(.success(nil))
@@ -26,9 +27,9 @@ final class FakePlanService: PlanServicing {
         return try logResult.withLock { $0 }.get()
     }
 
-    func move(planID: Int, workoutID: Int, toWeek: Int, toDay: Weekday, clientToday: String) async throws -> [Workout] {
+    func move(planID: Int, workoutID: Int, toWeek: Int, toDay: Weekday, clientToday: String) async throws -> CalendarMoveResult {
         record("move \(workoutID) -> w\(toWeek) \(toDay.rawValue) today=\(clientToday)")
-        return try moveResult.withLock { $0 }.get()
+        return CalendarMoveResult(workouts: try moveResult.withLock { $0 }.get(), warnings: moveWarnings.withLock { $0 })
     }
 
     func recentPlans() async throws -> [Plan] {

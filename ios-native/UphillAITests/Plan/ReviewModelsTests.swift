@@ -26,6 +26,30 @@ struct ReviewModelsTests {
         #expect(g.targetTimeHours == 6.5)
     }
 
+    @Test @MainActor func goalContextFixtureAndEmptyGroups() throws {
+        let assessment = try #require(Fixture.decode(PlanGoal.self, "plan_goal.json").assessment)
+        let context = try #require(assessment.context)
+        #expect(context.race?.distanceKm == 42)
+        #expect(context.groups.map { $0.title } == ["Race"])
+        #expect(context.groups.first?.rows.map { $0.value } == ["42 km", "2400 m", "Estimated", "6:30"])
+        let empty = try JSONCoding.decoder.decode(GoalContext.self, from: json(["race": [:], "athlete": [:]]))
+        #expect(empty.groups.isEmpty)
+        #expect(assessment.anchors.isEmpty)
+    }
+
+    @Test @MainActor func goalContextValuesAndAnchorLabels() throws {
+        let context = try JSONCoding.decoder.decode(GoalContext.self, from: json([
+            "race": ["distance_km": 0, "gain_m": 0, "profile_source": "gpx", "field": ["winner_mins": 120, "percentile_mins": ["p10": 150, "p50": 180, "p90": 240]]],
+            "athlete": ["weight_kg": 65, "threshold_pace": "4:30"]
+        ]))
+        #expect(context.groups.map { $0.title } == ["Race", "Field", "You"])
+        #expect(context.groups[0].rows.map { $0.value } == ["0 km", "0 m", "GPX"])
+        #expect(context.groups[1].rows.count == 4)
+        #expect(context.groups[2].rows.last?.value == "4:30/km")
+        let anchor = try JSONCoding.decoder.decode(GoalAnchor.self, from: json(["id": "a", "method": "easy_pace", "minutes": 180]))
+        #expect(anchor.methodLabel == "Course physics from your easy pace")
+    }
+
     @Test func decodesTiers() throws {
         let a = try JSONCoding.decoder.decode(GoalAssessment.self, from: json(["id": 1, "goals": ["a": 360.0, "b": 390.0, "c": 420.0], "reasoning": ["x"], "missing": []]))
         #expect(a.goals == GoalTiers(a: 360, b: 390, c: 420))

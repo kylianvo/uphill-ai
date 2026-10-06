@@ -3,6 +3,7 @@ import SwiftUI
 struct ManagePlanSheet: View {
     let model: PlanViewModel
     let onStartNew: () -> Void
+    var onSchedule: () -> Void = {}
     @Environment(\.dismiss) private var dismiss
     @State private var plans: [Plan]?
     @State private var loadError: String?
@@ -27,7 +28,7 @@ struct ManagePlanSheet: View {
                                 }
                             } label: {
                                 HStack {
-                                    VStack(alignment: .leading, spacing: 2) {
+                                    VStack(alignment: .leading, spacing: UH.Space.compact) {
                                         Text(plan.raceName).font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
                                         Text(raceDate(plan)).font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary)
                                     }
@@ -48,6 +49,9 @@ struct ManagePlanSheet: View {
                 if let error = model.actionError {
                     Text(error).font(UH.TextStyle.caption).foregroundStyle(UH.Palette.danger)
                 }
+                Section {
+                    Button("Schedule") { onSchedule(); dismiss() }.frame(minHeight: 44)
+                }.listRowBackground(UH.Palette.card)
                 Section("New plan") {
                     Button("Start new plan") { confirmNew = true }
                         .frame(minHeight: 44).accessibilityIdentifier("manage.startNew")
@@ -60,6 +64,8 @@ struct ManagePlanSheet: View {
                 }
             }
             .listRowBackground(UH.Palette.card)
+            .listSectionSpacing(UH.Space.section)
+            .tint(UH.Palette.accentInk)
             .scrollContentBackground(.hidden)
             .background(UH.Palette.surface)
             .confirmationDialog("Start a new plan?", isPresented: $confirmNew, titleVisibility: .visible) {

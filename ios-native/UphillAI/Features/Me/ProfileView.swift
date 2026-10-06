@@ -3,9 +3,11 @@ import SwiftUI
 struct ProfileView: View {
     let app: AppModel
     @State private var showDeveloperMenu = false
+    @State private var path: [TrainingDestination] = []
+    @State private var showSchedule = false
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             List {
                 if let user = app.session.user {
                     Section {
@@ -14,6 +16,11 @@ struct ProfileView: View {
                             Text(user.email).font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary)
                         }
                         .padding(.vertical, 4)
+                    }
+                    Section("Training") {
+                        NavigationLink("About you", value: TrainingDestination.aboutYou)
+                        NavigationLink("Heart rate", value: TrainingDestination.heartRate)
+                        NavigationLink("Paces", value: TrainingDestination.paces)
                     }
                     Section("Training profile") {
                         row("Weekly volume", user.currentWeeklyKm.map { "\(Int($0.rounded())) km" })
@@ -24,7 +31,10 @@ struct ProfileView: View {
                         row("Zone 2 pace", zone2(user))
                     }
                 }
-                Section {
+                Section("Account") {
+                    if app.session.user?.provider == "email" {
+                        NavigationLink("Change password") { ChangePasswordScreen(app: app) }
+                    }
                     Button("Sign out", role: .destructive) {
                         Task { await app.signOut() }
                     }
@@ -39,6 +49,16 @@ struct ProfileView: View {
                 .listRowBackground(Color.clear)
             }
             .navigationTitle("Me")
+            .navigationDestination(for: TrainingDestination.self) { section in
+                if app.session.user != nil { ProfileSettingsScreen(app: app, section: section) }
+            }
+            .onChange(of: app.trainingDestination, initial: true) { _, destination in
+                guard let destination else { return }
+                app.trainingDestination = nil
+                if destination == .schedule { showSchedule = true }
+                else { path.append(destination) }
+            }
+            .sheet(isPresented: $showSchedule) { ScheduleChangeSheet(model: app.plan) }
             .sheet(isPresented: $showDeveloperMenu) { DeveloperMenu() }
         }
     }
