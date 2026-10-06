@@ -23,6 +23,7 @@ if xcodebuild test \
   -project UphillAI.xcodeproj \
   -scheme UphillAI \
   -destination "$DESTINATION" \
+  -collect-test-diagnostics never \
   "$@" >"$LOG" 2>&1; then
   echo "Tests passed (full log: $LOG)"
 else
