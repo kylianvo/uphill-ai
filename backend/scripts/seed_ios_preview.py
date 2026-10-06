@@ -72,6 +72,15 @@ def _workouts(weeks):
     return out
 
 
+# Real production description (sections flattened with " / "); exercises the workout-detail step parser.
+PRODUCTION_DESCRIPTION = (
+    "Warm up 5 min easy jogging / 25 min steady continuous running @ Zone 1-2 / "
+    "Target pace: 6:24 - 5:42 /km / Overall: Short, non-fatiguing morning aerobic run… / "
+    "Reason: Acts as an aerobic primer… / Benefit: Enhances capillary circulation… / "
+    "Warning: Strictly keep heart rate below 140 bpm; do not push pace on flat stretches. / Cool-down 5-10 min"
+)
+
+
 def _ensure_user(email, name):
     user = db.get_user_by_email(email)
     if not user:
@@ -154,6 +163,19 @@ def _seed_coach(athlete_id, active_plan_id, start, total_weeks):
         pending_id,
         "Added an extra hill session for week 3. Approve once the legs feel fresh.",
     )
+    with db.engine.connect() as conn:
+        production_id = conn.execute(
+            text("SELECT id FROM workouts WHERE plan_id = :p AND week_number = 2 AND day_of_week = 'Wednesday'"),
+            {"p": active_plan_id},
+        ).scalar()
+    if production_id:
+        db.create_coach_note(
+            coach_id,
+            athlete_id,
+            "workout",
+            production_id,
+            "Keep this one genuinely easy. If the heart rate drifts, walk the next climb.",
+        )
     print(
         f"Seeded coach {COACH_EMAIL} (user {coach_id}): roster athlete {athlete_id}, draft plan {draft_id}, pending workout {pending_id}, invitee {INVITEE_EMAIL}."
     )
@@ -231,6 +253,15 @@ def main():
                 ),
                 {"p": plan_id, "d": done_days},
             )
+        # Week 2 Wednesday carries the production-style description (and its zone/pace/HR shapes).
+        conn.execute(
+            text(
+                "UPDATE workouts SET title = 'Morning Aerobic Run', duration_minutes = 35, distance_km = 5.5, "
+                "target_zone = 'Zone 1', target_pace = '6:24 - 5:42 /km', target_hr_range = '120-140 bpm', "
+                "description = :d WHERE plan_id = :p AND week_number = 2 AND day_of_week = 'Wednesday'"
+            ),
+            {"p": plan_id, "d": PRODUCTION_DESCRIPTION},
+        )
         conn.commit()
 
     print(f"Seeded {EMAIL} (user {uid}): active plan {plan_id}, older plan {older}. Week 1 starts {start}.")
