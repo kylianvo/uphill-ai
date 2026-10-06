@@ -17,7 +17,25 @@ final class AppModel {
     let knowledgeService: any KnowledgeServicing
     let deviceConnectionService: any DeviceConnectionServicing
     let coachingService: any CoachingServicing
-    var shoeRotation: ShoeRotation = .previewDefault
+    var shoeRotation: ShoeRotation = AppModel.loadShoeRotation() {
+        didSet {
+            saveShoeRotation()
+        }
+    }
+
+    private func saveShoeRotation() {
+        if let data = try? JSONCoding.encoder.encode(shoeRotation) {
+            UserDefaults.standard.set(data, forKey: "uphill_shoe_rotation")
+        }
+    }
+
+    private static func loadShoeRotation() -> ShoeRotation {
+        if let data = UserDefaults.standard.data(forKey: "uphill_shoe_rotation"),
+           let loaded = try? JSONCoding.decoder.decode(ShoeRotation.self, from: data) {
+            return loaded
+        }
+        return .previewDefault
+    }
     var actingAsAthlete: CoachedAthleteRow? = nil
     var coachedAthleteProfile: User? = nil
     var pendingInvites: [CoachingInvite] = []

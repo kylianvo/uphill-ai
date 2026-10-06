@@ -176,8 +176,8 @@ struct GoalDeterminerSheet: View {
                     if let d = p.courseDistanceKm, d > 0 { distanceKm = d }
                     if let g = p.courseElevationGainM, g > 0 { elevationGainM = g }
                 }
-                if let u = user, let z2 = u.zone2PaceMin, let parsed = GoalEstimate.parseTimeToMinutes(z2) {
-                    flatPaceMinKm = parsed
+                if let u = user, let z2 = u.zone2PaceMin, let parsed = GoalEstimate.parsePaceToMinutes(z2) {
+                    flatPaceMinKm = min(max(parsed, 3.0), 12.0)
                 }
             }
     }

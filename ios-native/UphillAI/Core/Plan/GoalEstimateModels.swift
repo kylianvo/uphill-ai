@@ -180,6 +180,20 @@ struct GoalEstimate: Codable, Sendable, Equatable {
         return String(format: "%.1f min/km", avg)
     }
 
+    /// Parses a pace string formatted as "m:ss" or "mm:ss" (or decimal "5.5") into minutes per kilometer.
+    /// E.g. "6:30" -> 6.5, "6:28.5" -> 6.475.
+    static func parsePaceToMinutes(_ paceStr: String) -> Double? {
+        let trimmed = paceStr.trimmingCharacters(in: .whitespacesAndNewlines)
+        let parts = trimmed.split(separator: ":").compactMap { Double($0) }
+        if parts.count >= 2 {
+            return parts[0] + parts[1] / 60.0
+        }
+        if let decimal = Double(trimmed), decimal > 0 {
+            return decimal
+        }
+        return nil
+    }
+
     static func parseTimeToMinutes(_ timeStr: String) -> Double? {
         let parts = timeStr.trimmingCharacters(in: .whitespaces).split(separator: ":").compactMap { Double($0) }
         guard parts.count >= 2 else { return nil }
