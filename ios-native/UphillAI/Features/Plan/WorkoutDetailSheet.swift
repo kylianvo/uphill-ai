@@ -3,6 +3,10 @@ import SwiftUI
 struct WorkoutDetailSheet: View {
     let model: PlanViewModel
     let workoutID: Int
+    var actingAsAthlete: CoachedAthleteRow? = nil
+    var coachingService: (any CoachingServicing)? = nil
+    var currentUserId: Int? = nil
+    var onWorkoutUpdated: (() -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
     @State private var rpe: Int?
     @State private var notes: String = ""
@@ -11,10 +15,21 @@ struct WorkoutDetailSheet: View {
     @State private var didLoadLog = false
     @State private var isTreadmill = false
     @State private var confirmMissed = false
+    @State private var showEditWorkout = false
+    @State private var confirmDeleteWorkout = false
 
-    init(model: PlanViewModel, workoutID: Int, initialTreadmill: Bool = false, initialRpe: Int? = nil, initialNotes: String? = nil) {
+    init(model: PlanViewModel, workoutID: Int,
+         actingAsAthlete: CoachedAthleteRow? = nil,
+         coachingService: (any CoachingServicing)? = nil,
+         currentUserId: Int? = nil,
+         onWorkoutUpdated: (() -> Void)? = nil,
+         initialTreadmill: Bool = false, initialRpe: Int? = nil, initialNotes: String? = nil) {
         self.model = model
         self.workoutID = workoutID
+        self.actingAsAthlete = actingAsAthlete
+        self.coachingService = coachingService
+        self.currentUserId = currentUserId
+        self.onWorkoutUpdated = onWorkoutUpdated
         _isTreadmill = State(initialValue: initialTreadmill)
         if let initialRpe {
             _rpe = State(initialValue: initialRpe)
@@ -66,15 +81,60 @@ struct WorkoutDetailSheet: View {
 
                             // g. Primary action & How did it feel? (Log)
                             if workout.approvedAt == nil {
-                                Label("Waiting for your coach's approval", systemImage: "hourglass")
-                                    .font(UH.TextStyle.caption)
-                                    .foregroundStyle(UH.Palette.secondary)
-                                    .padding(.vertical, UH.Space.compact)
+                                if let athlete = actingAsAthlete, let service = coachingService, let plan = model.snapshot?.plan {
+                                    VStack(spacing: 8) {
+                                        Button {
+                                            run {
+                                                do {
+                                                    _ = try await service.approveWorkout(athleteId: athlete.athleteId, planId: plan.id, workoutId: workout.id)
+                                                    onWorkoutUpdated?()
+                                                    await model.load()
+                                                } catch {
+                                                    print("Failed to approve workout: \(error)")
+                                                }
+                                            }
+                                        } label: {
+                                            HStack(spacing: 6) {
+                                                Image(systemName: "checkmark.seal.fill")
+                                                Text("Approve Workout")
+                                            }
+                                            .font(UH.TextStyle.label)
+                                            .foregroundStyle(Color.white)
+                                            .frame(maxWidth: .infinity)
+                                            .frame(height: 48)
+                                            .background(UH.Palette.accentInk, in: RoundedRectangle(cornerRadius: UH.Radius.control))
+                                        }
+                                        .buttonStyle(.plain)
+                                        .accessibilityIdentifier("detail.coach.approveWorkout")
+
+                                        Text("This session was created for the athlete and is awaiting your review.")
+                                            .font(UH.TextStyle.caption)
+                                            .foregroundStyle(UH.Palette.secondary)
+                                    }
+                                } else {
+                                    Label("Waiting for your coach's approval", systemImage: "hourglass")
+                                        .font(UH.TextStyle.caption)
+                                        .foregroundStyle(UH.Palette.secondary)
+                                        .padding(.vertical, UH.Space.compact)
+                                }
                             } else {
                                 bottomActionBar(workout)
                                 if !workout.isRest {
                                     howDidItFeelSection(workout)
                                 }
+                            }
+
+                            // Coach / Athlete Note Thread
+                            if let noteAthleteId = actingAsAthlete?.athleteId ?? currentUserId,
+                               let service = coachingService {
+                                CoachNoteThreadView(
+                                    athleteId: noteAthleteId,
+                                    targetType: "workout",
+                                    targetId: workout.id,
+                                    service: service,
+                                    canAdd: true
+                                )
+                                .accessibilityIdentifier("detail.coachNotesThread")
                             }
                         }
                         .padding(UH.Space.regular)
@@ -97,6 +157,42 @@ struct WorkoutDetailSheet: View {
                         Button("Cancel", role: .cancel) {}
                     } message: {
                         Text("This logs the session as missed and notifies Coach Uphill to balance upcoming load.")
+                    }
+                    .confirmationDialog("Remove this workout?", isPresented: $confirmDeleteWorkout, titleVisibility: .visible) {
+                        Button("Remove Workout", role: .destructive) {
+                            run {
+                                guard let plan = model.snapshot?.plan,
+                                      let service = coachingService,
+                                      let athlete = actingAsAthlete else { return }
+                                do {
+                                    _ = try await service.removeWorkout(athleteId: athlete.athleteId, planId: plan.id, workoutId: workout.id)
+                                    onWorkoutUpdated?()
+                                    await model.load()
+                                    dismiss()
+                                } catch {
+                                    print("Failed to remove workout: \(error)")
+                                }
+                            }
+                        }
+                        Button("Cancel", role: .cancel) {}
+                    } message: {
+                        Text("This will permanently remove the workout from the runner's training schedule.")
+                    }
+                    .sheet(isPresented: $showEditWorkout) {
+                        if let plan = model.snapshot?.plan,
+                           let service = coachingService,
+                           let athlete = actingAsAthlete {
+                            CoachEditWorkoutSheet(
+                                athleteId: athlete.athleteId,
+                                planId: plan.id,
+                                workout: workout,
+                                service: service,
+                                onSaved: { _ in
+                                    onWorkoutUpdated?()
+                                    Task { await model.load() }
+                                }
+                            )
+                        }
                     }
                     .onAppear { loadLog(workout) }
                 } else {
@@ -437,6 +533,24 @@ struct WorkoutDetailSheet: View {
     // Secondary actions in ⋯ menu
     private func menuActions(_ w: Workout) -> some View {
         Menu {
+            if actingAsAthlete != nil {
+                Button {
+                    showEditWorkout = true
+                } label: {
+                    Label("Edit Workout", systemImage: "pencil")
+                }
+                .accessibilityIdentifier("detail.coach.editWorkout")
+
+                Button(role: .destructive) {
+                    confirmDeleteWorkout = true
+                } label: {
+                    Label("Remove Workout", systemImage: "trash")
+                }
+                .accessibilityIdentifier("detail.coach.removeWorkout")
+
+                Divider()
+            }
+
             if !w.isRest {
                 let targets = model.moveTargets(for: w)
                 if !targets.isEmpty {

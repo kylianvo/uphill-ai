@@ -9,12 +9,14 @@ struct PlanView: View {
     var onSharpen: (TrainingDestination) -> Void = { _ in }
     var initialCoachExpanded: Bool = false
     var initialVolumeMode: VolumeChartMode = .weekDays
+    var app: AppModel? = nil
     @State private var viewMode: PlanViewMode = .list
 
     init(model: PlanViewModel, generation: GenerationCenter, onBuildPlan: @escaping () -> Void,
          onViewProgress: @escaping () -> Void, user: User? = nil, onSharpen: @escaping (TrainingDestination) -> Void = { _ in },
          initialViewMode: PlanViewMode = .list, initialCoachExpanded: Bool = false,
-         initialVolumeMode: VolumeChartMode = .weekDays) {
+         initialVolumeMode: VolumeChartMode = .weekDays,
+         app: AppModel? = nil) {
         self.model = model
         self.generation = generation
         self.onBuildPlan = onBuildPlan
@@ -23,6 +25,7 @@ struct PlanView: View {
         self.onSharpen = onSharpen
         self.initialCoachExpanded = initialCoachExpanded
         self.initialVolumeMode = initialVolumeMode
+        self.app = app
         _viewMode = State(initialValue: initialViewMode)
     }
     @State private var selectedWorkout: Workout?
@@ -36,6 +39,7 @@ struct PlanView: View {
     @State private var showReview = false
     @State private var showGoal = false
     @State private var showExportCalendar = false
+    @State private var showAddWorkout = false
     @State private var readyBanner: String?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -46,13 +50,43 @@ struct PlanView: View {
                 .navigationTitle("Plan")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
+                    ToolbarItemGroup(placement: .topBarTrailing) {
+                        if app?.actingAsAthlete != nil {
+                            Button {
+                                showAddWorkout = true
+                            } label: {
+                                Image(systemName: "plus")
+                            }
+                            .accessibilityIdentifier("plan.coach.addWorkout")
+                        }
                         Button("Manage") { showManage = true }
                             .disabled(model.snapshot == nil)
                     }
                 }
                 .sheet(item: $selectedWorkout) { workout in
-                    WorkoutDetailSheet(model: model, workoutID: workout.id)
+                    WorkoutDetailSheet(
+                        model: model,
+                        workoutID: workout.id,
+                        actingAsAthlete: app?.actingAsAthlete,
+                        coachingService: app?.coachingService,
+                        currentUserId: user?.id,
+                        onWorkoutUpdated: {
+                            Task { await model.load() }
+                        }
+                    )
+                }
+                .sheet(isPresented: $showAddWorkout) {
+                    if let app, let athlete = app.actingAsAthlete, let plan = model.snapshot?.plan {
+                        CoachAddWorkoutSheet(
+                            athleteId: athlete.athleteId,
+                            planId: plan.id,
+                            initialWeek: model.selectedWeek,
+                            service: app.coachingService,
+                            onAdded: { _ in
+                                Task { await model.load() }
+                            }
+                        )
+                    }
                 }
                 .sheet(item: $moveSwapDay) { day in
                     MoveSwapDaySheet(model: model, sourceDay: day)
@@ -76,7 +110,10 @@ struct PlanView: View {
                                     onTool: { dest in onSharpen(dest) })
                 }
         }
-        .task { if model.state == .loading { await model.load() } }
+        .task {
+            if model.state == .loading { await model.load() }
+            if let app { await app.refreshPendingInvites() }
+        }
     }
 
     @ViewBuilder
@@ -117,6 +154,19 @@ struct PlanView: View {
                                 .padding(.horizontal, UH.Space.regular)
                         }
                         if let cachedAt = model.cachedAt { offlineBanner(cachedAt) }
+
+                        if let app, !app.pendingInvites.isEmpty {
+                            PendingInviteBanner(
+                                invites: app.pendingInvites,
+                                onAccept: { inviteId in
+                                    Task { await app.acceptInvite(inviteId: inviteId) }
+                                },
+                                onDecline: { inviteId in
+                                    Task { await app.declineInvite(inviteId: inviteId) }
+                                }
+                            )
+                            .padding(.horizontal, UH.Space.regular)
+                        }
 
                         // 1. Race and goal header
                         raceGoalHeader
