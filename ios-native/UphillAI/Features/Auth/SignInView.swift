@@ -186,10 +186,9 @@ struct SignInView: View {
         do {
             let token = try await GoogleSignInProvider.signIn()
             await model.completeGoogle(idToken: token)
-        } catch let error as GIDSignInError where error.code == .canceled {
-            return
         } catch {
-            model.show("Google sign-in failed. Please try again.")
+            GoogleSignInProvider.logFailure(error)
+            if let message = GoogleSignInProvider.failureMessage(for: error) { model.show(message) }
         }
     }
 }
