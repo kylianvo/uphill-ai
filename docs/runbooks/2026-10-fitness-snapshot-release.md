@@ -365,3 +365,12 @@ The synthetic plan was deleted through `DELETE /api/coach/plans/{id}` (`recent-p
 ### Decision
 
 HOLD stands for the no-COROS next-block path; measured-COROS paths pass. Owner decides: ship with the gap noted, or investigate that path.
+
+### Owner decision, 2026-10-06
+
+**Ship.** The HOLD is lifted by owner risk acceptance; the band was not met and is not widened after the fact.
+
+- Accepted gap: a no-COROS next block lands at about 80% of typed volume (110.2 and 112.4 km against 115–150 km). Tracked in issue #88.
+- Reasons: the bug class this release fixes (measured COROS volume and frozen tiers) passes on staging; v4 on the no-COROS case is above production v1's real outcomes; leaning low on unverified self-reported volume is defensible.
+- Watch after promotion: `plan_volume_fit`, the `plan_tier` distribution and `plan_reworked` for 7 days.
+- Related issues found in a production plan audit, not caused by this release: #89 (sessions not yet due counted as missed in next block / adapt week), #90 (hill sprints typed as Interval / Zone 5).
