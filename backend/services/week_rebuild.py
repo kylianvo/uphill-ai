@@ -24,7 +24,9 @@ from services.calendar_rules import (
     _is_hard,
     _is_long_run,
     current_week,
+    is_upcoming,
     start_monday,
+    upcoming_note,
 )
 from services.coach_tools.base import json_safe
 from services.course_match import resolve_course_match
@@ -242,9 +244,12 @@ def build_rebuild_inputs(
     all_workouts: list[dict[str, Any]],
     rng: RebuildRange,
     request: RebuildRequest,
+    today: dt.date | None = None,
 ) -> RebuildInputs:
     """The adapt-week prompt builder, moved from main._adapt_week_for_athlete
-    unchanged except for the partial-week additions marked `4b:`."""
+    unchanged except for the partial-week additions marked `4b:`. `today` marks
+    the prior week's sessions that are still upcoming (adapting next week before
+    this one ends); without it nothing is treated as upcoming."""
     fresh_user = db.get_user_by_id(athlete_id) or {}
 
     # Map fatigue_level (5 feelings: very_light/light/moderate/hard/max_effort) and overall_rpe coherently
@@ -360,6 +365,13 @@ def build_rebuild_inputs(
     prev_wos = []
     if prev_wk >= 1:
         prev_wos = [w for w in all_workouts if w.get("week_number") == prev_wk and w.get("type") != "Rest"]
+        # Adapting next week before this one ends: sessions still ahead are not due,
+        # so they count neither as planned volume nor against adherence.
+        monday = start_monday(plan.get("start_date"))
+        upcoming_prev = [w for w in prev_wos if today is not None and is_upcoming(w, monday, today)]
+        if upcoming_prev:
+            prev_wos = [w for w in prev_wos if w not in upcoming_prev]
+            context_lines.append(f"  {upcoming_note(upcoming_prev)}")
         completed_prev = [w for w in prev_wos if w.get("is_completed") == 1]
         actual_vol = db.get_block_actual_volume(
             user_id=athlete_id,
@@ -379,9 +391,9 @@ def build_rebuild_inputs(
         planned_km = sum(w.get("distance_km") or 0 for w in prev_wos)
         planned_min = sum(w.get("duration_minutes") or 0 for w in prev_wos)
         context_lines.append(
-            f"  Prior Week ({prev_wk}) Volume: Actual {actual_km:.1f}km / {actual_min/60:.1f}h"
+            f"  Prior Week ({prev_wk}) Volume: Actual {actual_km:.1f}km / {actual_min / 60:.1f}h"
             + (f" (+{actual_vert:.0f}m D+)" if actual_vert > 0 else "")
-            + f" vs Planned {planned_km:.1f}km / {planned_min/60:.1f}h"
+            + f" vs Planned {planned_km:.1f}km / {planned_min / 60:.1f}h"
         )
         # Check if athlete missed an ME session in previous week (Scott Johnston Rule 7)
         missed_me = [
@@ -744,7 +756,7 @@ def request_rebuild(
         raise GuardViolation("G4_window", {"week": week, "current_week": cur})
     rows = load_plan_rows(plan_id)
     rng = rebuild_range(plan, rows, week, today)
-    inputs = build_rebuild_inputs(user_id, plan, rows, rng, request)
+    inputs = build_rebuild_inputs(user_id, plan, rows, rng, request, today=today)
     outcome, proposal_id = db.create_rebuild_proposal(
         user_id=user_id,
         thread_id=thread_id,

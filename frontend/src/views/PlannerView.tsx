@@ -28,6 +28,7 @@ import { MoveWorkoutModal } from "../components/MoveWorkoutModal";
 import { AdaptWeekModal } from "../components/AdaptWeekModal";
 import ConfirmActionModal from "../components/ConfirmActionModal";
 import CorosPushButton from "../components/CorosPushButton";
+import { localToday } from "../lib/scheduleProposals";
 import { FeelingSelector, rpeToFeelingId } from "../components/FeelingSelector";
 import { GoalPill } from "../components/GoalPill";
 import { triggerHaptic } from "../utils/native";
@@ -932,6 +933,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
           use_treadmill: nextBlockSchedule.use_treadmill,
           training_environment: nextBlockSchedule.training_environment,
           athlete_notes: nextBlockSchedule.athlete_notes || null,
+          client_today: localToday(),
         }),
       });
       const data = await resp.json();
