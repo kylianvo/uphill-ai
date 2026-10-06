@@ -5,6 +5,8 @@
 
 /* ─── Font Variables ──────────────────────────────────────────────────────── */
 :root {
+  /* Bottom-nav clearance on mobile: floating bar (~62px) + 12px gap + slack */
+  --bottom-nav-h: 92px;
   --font-fustat:    var(--font-outfit), sans-serif;
 
   /* ─── Brand Colors (spec-exact) ─── */
@@ -462,6 +464,13 @@ body {
   padding: 20px;
 }
 
+/* Doubled class beats the Workspace.module.css `.shell .content-panel-inner` 1240px cap. */
+@media (min-width: 769px) {
+  .content-panel .content-panel-inner.content-panel-inner--plan-v2 {
+    max-width: 720px;
+  }
+}
+
 .content-panel-inner {
   width: 100%;
   max-width: 1100px;
@@ -899,6 +908,18 @@ label {
   border-radius: 9999px;
   border: 1px solid transparent;
   transition: all 0.2s;
+  background: transparent;
+  font-family: inherit;
+  width: 100%;
+  text-align: left;
+}
+
+.sidebar-nav-item:focus-visible,
+.tab-bar-item:focus-visible,
+.top-nav-tab:focus-visible,
+.mobile-bottom-nav-tab:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
 }
 
 .sidebar-nav-item:hover {
@@ -1072,6 +1093,10 @@ label {
   color: var(--text-muted);
   transition: all 0.2s ease;
   border-radius: 8px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  font: inherit;
 }
 
 .tab-bar-item:hover {
@@ -1177,7 +1202,7 @@ label {
     padding: 0px;
   }
   .content-panel-inner {
-    padding: 16px 16px calc(92px + env(safe-area-inset-bottom, 16px));
+    padding: 16px 16px calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 16px));
     border: none;
     border-top: 1px solid rgba(0, 0, 0, 0.08);
     border-radius: 24px 24px 0 0;
@@ -2085,3 +2110,19 @@ label {
     transform: none !important;
   }
 }
+
+/* BottomSheet (V2 Manage plan) */
+.bottom-sheet-backdrop { position: fixed; inset: 0; z-index: 9000; background: rgba(0,0,0,0.5); display: flex; align-items: flex-end; justify-content: center; }
+.bottom-sheet-panel { background: #fff; color: var(--text-primary); width: 100%; max-height: 85vh; overflow-y: auto; border-radius: 16px 16px 0 0; padding: 16px 16px calc(16px + env(safe-area-inset-bottom)); animation: bottomSheetUp 0.22s ease-out; outline: none; }
+.bottom-sheet-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.bottom-sheet-title { margin: 0; font-size: 17px; font-weight: 700; }
+.bottom-sheet-close { background: none; border: none; font-size: 24px; line-height: 1; min-width: 44px; min-height: 44px; cursor: pointer; color: var(--text-muted); }
+.manage-row { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: 0 8px; background: none; border: none; border-bottom: 1px solid var(--border-color); font-size: 15px; color: var(--text-primary); cursor: pointer; text-align: left; }
+.manage-row:disabled { opacity: 0.6; cursor: default; }
+.manage-row-destructive { color: var(--accent-alert, #ef4444); }
+@media (min-width: 768px) {
+  .bottom-sheet-backdrop { align-items: center; }
+  .bottom-sheet-panel { max-width: 440px; border-radius: 16px; animation: none; }
+}
+@keyframes bottomSheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .bottom-sheet-panel { animation: none; } }

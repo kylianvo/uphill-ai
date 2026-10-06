@@ -12,7 +12,7 @@ import { KnowledgeCard } from "../components/KnowledgeCard";
 import { DndContext, DragEndEvent, DragOverEvent, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, TouchSensor, KeyboardSensor } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import ToolsView from "./ToolsView";
-import { UploadSimple, FileArrowUp, Heart, Clock, Mountains, MapPin, Footprints, ArrowsMerge, PlayCircle, CheckCircle, Fire, Path, RoadHorizon, Info, Check, Question, WarningCircle, Plus, Trash, Archive, LockKey, LockKeyOpen, Trophy, Target, Sneaker, PersonSimpleRun, Bed, XCircle, DownloadSimple, Gauge, Sun, Moon, DotsSixVertical, ArrowsClockwise, Flag, TrendUp, TrendDown, Drop, Leaf, Lightning, PencilSimple, X, ArrowLeft, ArrowsLeftRight, ShieldCheck, Sparkle, CaretDown, CaretUp } from '@phosphor-icons/react';
+import { UploadSimple, FileArrowUp, Heart, Clock, Mountains, MapPin, Footprints, ArrowsMerge, PlayCircle, CheckCircle, Fire, Path, RoadHorizon, Info, Check, Question, WarningCircle, Plus, Trash, Archive, LockKey, LockKeyOpen, Trophy, Target, Sneaker, PersonSimpleRun, Bed, XCircle, DownloadSimple, Gauge, Sun, Moon, DotsSixVertical, ArrowsClockwise, Flag, TrendUp, TrendDown, Drop, Leaf, Lightning, PencilSimple, X, ArrowLeft, ArrowsLeftRight, ShieldCheck, Sparkle, CaretDown, CaretUp, ListBullets, CalendarBlank } from '@phosphor-icons/react';
 import { RaceMatch } from "../hooks/useRaceMatch";
 import { RaceNameField } from "../components/RaceNameField";
 import { CoachNoteThread } from "../components/CoachNoteThread";
@@ -27,10 +27,13 @@ import WeeklyReview, { CompletionRing, ringColor, computeCreditedActual, type We
 import { MoveWorkoutModal } from "../components/MoveWorkoutModal";
 import { AdaptWeekModal } from "../components/AdaptWeekModal";
 import ConfirmActionModal from "../components/ConfirmActionModal";
+import ManagePlanSheet from "../components/ManagePlanSheet";
 import CorosPushButton from "../components/CorosPushButton";
 import { localToday } from "../lib/scheduleProposals";
 import { FeelingSelector, rpeToFeelingId } from "../components/FeelingSelector";
 import { GoalPill } from "../components/GoalPill";
+import PlanSummaryCarousel from "../components/PlanSummaryCarousel";
+import { weekVolume } from "../utils/planSummary";
 import { triggerHaptic } from "../utils/native";
 import { resolveCurrentWeek } from "../utils/planDate";
 
@@ -58,6 +61,8 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
   const isCoachActingAsAthlete = !!actingAsAthleteId;
   const workoutAthleteId: number | null = actingAsAthleteId ?? (user?.id ?? null);
   const [switchingAthlete, setSwitchingAthlete] = useState(false);
+  const { shellV2 } = ctx;
+  const [manageOpen, setManageOpen] = useState(false);
   const [recentPlansDropdownOpen, setRecentPlansDropdownOpen] = useState(false);
   const [planToDelete, setPlanToDelete] = useState<any | null>(null);
   const [isDeletingPlan, setIsDeletingPlan] = useState(false);
@@ -1495,6 +1500,143 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
         ) : (
           <div style={{ background: "rgba(255, 255, 255, 0.95)", border: "1px solid var(--border-color)", padding: isMobile ? "20px" : "32px", borderRadius: "16px" }}>
             {/* Header info */}
+            {shellV2 ? (
+              <>
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px", marginBottom: "8px" }}>
+                  <div style={{ minWidth: 0 }}>
+                    <h3 style={{ fontSize: "18px", margin: 0 }}>{activePlan.race_name}</h3>
+                    <p style={{ color: "var(--text-secondary)", fontSize: "12px", margin: "2px 0 0", fontWeight: 500 }}>
+                      {[
+                        getPlanDistance(activePlan) ? `${getPlanDistance(activePlan)}km` : "",
+                        getPlanElevation(activePlan) ? `+${getPlanElevation(activePlan)}m` : "",
+                        activePlan.race_date,
+                      ].filter(Boolean).join(" · ")}
+                    </p>
+                  </div>
+                  <button type="button" className="btn btn-secondary" style={{ flexShrink: 0, minHeight: "44px", padding: "0 16px", borderRadius: "9999px", fontSize: "13px", fontWeight: 600 }} onClick={() => setManageOpen(true)}>
+                    Manage
+                  </button>
+                </div>
+                <PlanSummaryCarousel
+                  activePlan={activePlan}
+                  workouts={workouts}
+                  selectedWeek={selectedWeek}
+                  maxGeneratedWeek={maxGeneratedWeek}
+                  distanceKm={getPlanDistance(activePlan) || 0}
+                  elevationM={getPlanElevation(activePlan) || 0}
+                  goalPill={activePlan.id && activePlan.course_distance_km > 0 ? (
+                    <GoalPill
+                      planId={activePlan.id}
+                      lang={lang}
+                      athleteId={actingAsAthleteId}
+                      onTargetChange={(hours) => setActivePlan({ ...activePlan, target_time_hours: hours })}
+                    />
+                  ) : null}
+                  onAdaptWeek={() => handleOpenAdaptWeek(selectedWeek)}
+                  reviewContent={(() => {
+                    const cur = weekVolume(getWeekWorkouts(selectedWeek));
+                    const prevMins = selectedWeek > 1 ? weekVolume(getWeekWorkouts(selectedWeek - 1)).mins : 0;
+                    const changePct = prevMins > 0 ? Math.round(((cur.mins - prevMins) / prevMins) * 100) : null;
+                    const review = weekReviews[`${activePlan?.id ?? 0}_${selectedWeek}`] || null;
+                    const credited = review ? computeCreditedActual(review) : null;
+                    return (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                        <div style={{ fontSize: "13px", fontWeight: 600 }}>
+                          Planned {cur.hours} hrs · ~{cur.km.toFixed(1)} km
+                          {changePct !== null && <span style={{ color: "var(--text-muted)" }}> · {changePct >= 0 ? `+${changePct}` : changePct}% vs last wk</span>}
+                        </div>
+                        {credited && (
+                          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                            <CompletionRing pct={credited.pct} size={38} />
+                            <span style={{ fontSize: "12px", fontWeight: 700, color: ringColor(credited.pct) }}>
+                              Actual: {(credited.minutes / 60).toFixed(1)}h · {credited.km.toFixed(1)}km
+                            </span>
+                          </div>
+                        )}
+                        {review ? <WeeklyReview data={review} lang={lang} /> : <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>No review available yet.</span>}
+                      </div>
+                    );
+                  })()}
+                  onOpenPaceStrategy={() => setIsPaceStrategyOpen(true)}
+                  onOpenGoalDeterminer={() => setIsGoalDeterminerOpen(true)}
+                  onOpenNutrition={() => ctx.setIsNutritionLabOpen(true)}
+                />
+                <CoachNoteThread
+                  athleteId={actingAsAthleteId ?? (user?.id ?? null)}
+                  targetType="plan"
+                  targetId={null}
+                  lang={lang}
+                  canAdd={isCoachActingAsAthlete}
+                />
+                <div style={{ display: "flex", justifyContent: "flex-end", margin: "8px 0 12px" }}>
+                  <div style={{ display: "flex", background: "rgba(0,0,0,0.05)", border: "1px solid var(--border-color)", borderRadius: "999px", padding: "3px", gap: "2px" }}>
+                    {([["list", "List view", ListBullets], ["calendar", "Calendar view", CalendarBlank]] as const).map(([mode, label, Icon]) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        aria-label={label}
+                        aria-pressed={planViewMode === mode}
+                        onClick={() => setPlanViewMode(mode)}
+                        style={{ border: "none", borderRadius: "999px", minWidth: "44px", minHeight: "36px", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer", background: planViewMode === mode ? "var(--accent-primary)" : "transparent", color: planViewMode === mode ? "#ffffff" : "var(--text-secondary)" }}
+                      >
+                        <Icon size={18} weight="bold" aria-hidden="true" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <ManagePlanSheet
+                  isOpen={manageOpen}
+                  onClose={() => setManageOpen(false)}
+                  onSync={handleHeaderSync}
+                  syncing={watchSyncing || matchingRunning}
+                  syncNotice={watchSyncNotice}
+                  showExportOptions={showExportOptions}
+                  onExport={() => setShowExportOptions(true)}
+                  exportOptions={
+                    <div style={{ display: "flex", gap: "8px", padding: "8px" }}>
+                      <select
+                        aria-label="Preferred workout time"
+                        className="chat-input"
+                        style={{ flex: 1, borderRadius: "6px", padding: "6px", height: "36px", fontSize: "13px" }}
+                        value={exportTimePref}
+                        onChange={(e) => setExportTimePref(e.target.value)}
+                      >
+                        <option value="all_day">All day</option>
+                        <option value="morning">Morning</option>
+                        <option value="afternoon">Afternoon</option>
+                        <option value="evening">Evening</option>
+                      </select>
+                      <a
+                        href={`${API_BASE_URL}/api/coach/export-ics?plan_id=${activePlan.id}&race_date=${activePlan.race_date}&time_pref=${exportTimePref}&token=${typeof window !== 'undefined' ? localStorage.getItem('uphill_session_token') || '' : ''}`}
+                        className="btn btn-primary"
+                        style={{ fontSize: "13px", padding: "0 14px", height: "36px", display: "flex", alignItems: "center", textDecoration: "none" }}
+                        onClick={() => {
+                          trackEvent('plan_exported', { plan_id: activePlan.id, export_format: 'ics', time_pref: exportTimePref });
+                          setShowExportOptions(false);
+                        }}
+                      >
+                        Add to calendar (.ics)
+                      </a>
+                    </div>
+                  }
+                  extraRows={!isCoachActingAsAthlete ? (
+                    <CorosPushButton lang={lang} refreshKey={workouts} onReconnect={() => ctx.setProfileSettingsOpen(true)} />
+                  ) : null}
+                  recentPlans={recentPlans || []}
+                  activePlanId={activePlan?.id}
+                  formatPlanName={formatPlanName}
+                  onSelectPlan={handleSelectPlan}
+                  onPlanSettings={() => { setManageOpen(false); ctx.setProfileSettingsOpen(true); }}
+                  onNewPlan={() => {
+                    trackEvent('create_new_plan', { previous_plan_id: activePlan?.id });
+                    setBackupActivePlan(activePlan);
+                    setBackupWorkouts(workouts);
+                    setActivePlan(null);
+                    setTargetTimeHintLabel(null);
+                  }}
+                />
+              </>
+            ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "16px" }}>
               <div>
                 <h3 style={{ fontSize: isMobile ? "18px" : "22px", margin: 0 }}>
@@ -1697,6 +1839,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 </div>
               )}
             </div>
+            )}
 
             {/* Week Selector Tabs, Weekly Volume, and coach message only apply to the week-scoped list view */}
             {planViewMode === "list" && (<>
@@ -1771,11 +1914,9 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
 
             {/* Weekly Volume + Review (combined: planned volume, actual-so-far, and the
                 full planned-vs-actual breakdown behind a "Show details" toggle) */}
-            {(() => {
+            {!shellV2 && (() => {
               const weekWorkouts = getWeekWorkouts(selectedWeek);
-              const weeklyKm = weekWorkouts.reduce((sum: any, wo: any) => sum + (wo.distance_km || 0), 0);
-              const weeklyMins = weekWorkouts.reduce((sum: any, wo: any) => sum + (wo.duration_minutes || 0), 0);
-              const weeklyHours = parseFloat((weeklyMins / 60).toFixed(1));
+              const { km: weeklyKm, mins: weeklyMins, hours: weeklyHours } = weekVolume(weekWorkouts);
 
               // Small progression indicator: this week's planned volume vs. last week's,
               // the week-over-week overload signal a training plan is supposed to show.
@@ -1957,7 +2098,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
             )}
 
             {/* Coach message for this week */}
-            {coachMessage && (
+            {coachMessage && !shellV2 && (
               <div style={{
                 display: "flex", alignItems: "flex-start", gap: "10px",
                 padding: "12px 16px", borderRadius: "10px", marginBottom: "12px",
@@ -2075,6 +2216,7 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                 onConfirmMatch={handleConfirmMatch}
                 onUnlinkMatch={handleUnlinkMatch}
                 getWorkoutDateObj={getWorkoutDateObj}
+                shellV2={shellV2}
               />
             )}
 
@@ -2907,6 +3049,7 @@ interface DayGroupProps {
   onUnlinkMatch?: (activityId: number) => Promise<boolean>;
   getWorkoutDateObj?: (wo: any) => Date | null;
   onInitiateSwap?: (day: string) => void;
+  shellV2?: boolean;
 }
 
 function DayGroup({
@@ -2931,6 +3074,7 @@ function DayGroup({
   onUnlinkMatch,
   getWorkoutDateObj,
   onInitiateSwap,
+  shellV2,
 }: DayGroupProps) {
   const { attributes, listeners, setNodeRef: setDragRef, transform, isDragging } = useDraggable({ id: day });
   const { setNodeRef: setDropRef } = useDroppable({ id: day });
@@ -2991,8 +3135,61 @@ function DayGroup({
   // Combine refs
   const setRef = (node: HTMLElement | null) => { setDragRef(node); setDropRef(node); };
 
+  // V2: local-timezone TODAY / TOMORROW eyebrow from the workout's own date.
+  const localYmd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const nowLocal = new Date();
+  const tomorrowLocal = new Date(nowLocal.getFullYear(), nowLocal.getMonth(), nowLocal.getDate() + 1);
+  const isToday = !!dayDateStr && dayDateStr === localYmd(nowLocal);
+  const dayEyebrow = shellV2 ? (isToday ? "TODAY" : dayDateStr && dayDateStr === localYmd(tomorrowLocal) ? "TOMORROW" : undefined) : undefined;
+
+  const hasPending = !!isCoachActingAsAthlete && dayWos.some((w: any) => !w.approved_at);
+  const hasMatched = dayWos.some((w: any) => matches.some((a) => a.workout_id === w.id));
+  if (shellV2 && allRest && !hasPending && !hasMatched && unplannedActivities.length === 0) {
+    return (
+      <div className={styles.restRow} ref={setRef} style={{ ...style, ...containerStyle }} data-today={isToday ? "true" : undefined} data-testid="rest-row">
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: "44px", userSelect: "none" }}>
+          <div
+            {...listeners}
+            {...attributes}
+            style={{ display: "flex", alignItems: "center", gap: "7px", flex: 1, height: "100%", cursor: "grab" }}
+          >
+            <DotsSixVertical size={14} weight="bold" color="rgba(0,0,0,0.25)" aria-hidden="true" style={{ flexShrink: 0 }} />
+            <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-muted)" }}>
+              {`${day.slice(0, 3)} \u00b7 Rest`}
+            </span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          {onInitiateSwap && (
+            <button
+              type="button"
+              onClick={() => onInitiateSwap(day)}
+              title="Move or swap this day"
+              onPointerDown={(e) => e.stopPropagation()}
+              style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "2px 7px", borderRadius: "6px", border: "1px solid var(--border-color, rgba(0,0,0,0.12))", background: "var(--bg-secondary, rgba(0,0,0,0.03))", color: "var(--text-secondary, #4b5563)", fontSize: "11px", fontWeight: 600, cursor: "pointer", height: "22px" }}
+            >
+              <ArrowsLeftRight size={11} weight="bold" />
+              <span>Swap</span>
+            </button>
+          )}
+          {onAddWorkout && (
+            <button
+              type="button"
+              onClick={() => onAddWorkout(dayWos[0]?.week_number ?? 1, day)}
+              onPointerDown={(e) => e.stopPropagation()}
+              title={lang === "en" ? "Add workout" : "Thêm bài tập"}
+              style={{ width: "22px", height: "22px", borderRadius: "50%", border: "1px solid var(--accent-primary)", background: "transparent", color: "var(--accent-primary)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, padding: 0 }}
+            >
+              <Plus size={12} weight="bold" aria-hidden="true" />
+            </button>
+          )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className={styles.workoutDay} ref={setRef} style={{ ...style, ...containerStyle }}>
+    <div className={styles.workoutDay} ref={setRef} style={{ ...style, ...containerStyle }} data-today={shellV2 && isToday ? "true" : undefined}>
       {/* Day header — drag handle */}
       <div
         {...listeners}
@@ -3090,6 +3287,8 @@ function DayGroup({
               onApproveWorkout={onApproveWorkout}
               onRemoveWorkout={onRemoveWorkout}
               onEditWorkout={onEditWorkout}
+              shellV2={shellV2}
+              eyebrow={dayEyebrow}
             />
           );
 
@@ -3170,6 +3369,7 @@ interface WeekDayListProps {
   plan?: { start_date?: string | null; total_weeks?: number | null; race_date?: string | null };
   allWorkouts?: any[];
   onMoveWorkout?: (workoutId: number, targetWeek: number, targetDay: string) => void;
+  shellV2?: boolean;
 }
 
 function WeekDayList({
@@ -3194,8 +3394,23 @@ function WeekDayList({
   plan,
   allWorkouts,
   onMoveWorkout,
+  shellV2,
 }: WeekDayListProps) {
   const [overId, setOverId] = React.useState<string | null>(null);
+  const listRef = React.useRef<HTMLDivElement>(null);
+  const scrolledPlanRef = React.useRef<unknown>(null);
+  const planKey = (plan as { id?: number } | undefined)?.id ?? "none";
+  // V2: once per plan load, bring today's card into view (scroll container is
+  // .content-panel; scrollIntoView walks up to it). No-op if today isn't in
+  // the selected week.
+  React.useEffect(() => {
+    if (!shellV2 || weekWos.length === 0 || scrolledPlanRef.current === planKey) return;
+    scrolledPlanRef.current = planKey;
+    const el = listRef.current?.querySelector('[data-today="true"]') as HTMLElement | null;
+    if (!el || typeof el.scrollIntoView !== "function") return;
+    const reduce = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el.scrollIntoView({ block: "start", ...(reduce ? {} : { behavior: "smooth" as const }) });
+  }, [shellV2, weekWos.length, planKey]);
   const [swapModalDay, setSwapModalDay] = React.useState<string | null>(null);
 
   // Default PointerSensor activates on the slightest movement, which on a
@@ -3236,7 +3451,7 @@ function WeekDayList({
   return (
     <>
       <DndContext sensors={sensors} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
-        <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+        <div ref={listRef} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
           {DAY_ORDER.map((day, di) => {
             const dayWos = byDay[day];
             if (!dayWos || dayWos.length === 0) return null;
@@ -3264,6 +3479,7 @@ function WeekDayList({
                 onUnlinkMatch={onUnlinkMatch}
                 getWorkoutDateObj={getWorkoutDateObj}
                 onInitiateSwap={setSwapModalDay}
+                shellV2={shellV2}
               />
             );
           })}

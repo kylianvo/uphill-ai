@@ -49,6 +49,7 @@ export interface Workout {
   fueling_tip?: string;
   is_completed: number;
   is_missed: number;
+  is_priority?: boolean;
 }
 
 export interface ActivePlan {

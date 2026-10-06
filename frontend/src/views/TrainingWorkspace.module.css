@@ -8,6 +8,7 @@
 .workoutDay { background: rgba(255,255,255,.84) !important; backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1px solid var(--border-color) !important; border-radius: 10px !important; padding: 16px !important; margin-bottom: 12px; }
 .workoutDay > div:first-child { padding-bottom: 10px !important; margin-bottom: 12px !important; }
 .workoutDay > div:first-child span { font-size: 13px !important; }
+.restRow { background: rgba(255,255,255,.84); border: 1px solid var(--border-color); border-radius: 10px; padding: 0 12px; margin-bottom: 8px; }
 .calendar { font-variant-numeric: tabular-nums; }
 .calendarScope { display: flex; width: fit-content; padding: 4px; border: 1px solid var(--border-color); background: #f3f6f4; border-radius: 10px; margin-bottom: 20px; }
 .calendarScope button { min-height: 36px; padding: 8px 20px; border: 0; border-radius: 6px; background: transparent; color: var(--text-secondary); font-size: 13px; font-weight: 600; cursor: pointer; }

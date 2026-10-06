@@ -144,6 +144,21 @@ class TestSchemaAndPlanStatusFilter:
         assert row.last_edited_by_user_id is None
 
 
+class TestWorkoutsIsPriorityColumn:
+    def test_init_db_creates_non_null_false_default_column(self):
+        with engine.connect() as conn:
+            row = conn.execute(
+                text(
+                    "SELECT data_type, is_nullable, column_default FROM information_schema.columns "
+                    "WHERE table_name = 'workouts' AND column_name = 'is_priority'"
+                )
+            ).fetchone()
+        assert row is not None
+        assert row.data_type == "boolean"
+        assert row.is_nullable == "NO"
+        assert "false" in row.column_default.lower()
+
+
 class TestGetPlanById:
     def test_returns_the_plan_regardless_of_status(self):
         athlete_id = _create_user("planbyid-athlete@uphill.ai")
@@ -372,6 +387,56 @@ class TestEditWorkoutEndpoint:
         assert body["duration_minutes"] == 90
         assert body["source"] == "coach_edited"
         assert body["last_edited_by_user_id"] == coach_id
+
+    def test_edit_toggles_is_priority_and_cap_does_not_apply(self, client):
+        coach_headers, _ = _make_coach(client, "prio-coach@uphill.ai")
+        _, athlete_id = _link_coach_and_athlete(client, coach_headers, "prio-athlete@uphill.ai")
+        plan_id = create_plan(
+            user_id=athlete_id,
+            race_name="Prio",
+            race_date="2027-05-01",
+            goal_type="finish",
+            target_time_hours=None,
+            total_weeks=8,
+        )
+        ids = [_seed_workout(plan_id, day_of_week=d) for d in ("Monday", "Tuesday", "Wednesday")]
+        for wid in ids:  # three in one week: the AI cap of 2 must not apply to a coach
+            resp = client.put(
+                f"/api/coaching/athletes/{athlete_id}/plans/{plan_id}/workouts/{wid}",
+                json={"is_priority": True},
+                headers=coach_headers,
+            )
+            assert resp.status_code == 200, resp.text
+            assert resp.json()["is_priority"] is True
+        listing = client.get(
+            f"/api/coaching/athletes/{athlete_id}/plans/{plan_id}/workouts", headers=coach_headers
+        ).json()["workouts"]
+        assert [w["is_priority"] for w in listing] == [True, True, True]
+        resp = client.put(
+            f"/api/coaching/athletes/{athlete_id}/plans/{plan_id}/workouts/{ids[0]}",
+            json={"is_priority": False},
+            headers=coach_headers,
+        )
+        assert resp.json()["is_priority"] is False
+
+    def test_edit_rejects_non_bool_is_priority(self, client):
+        coach_headers, _ = _make_coach(client, "prio2-coach@uphill.ai")
+        _, athlete_id = _link_coach_and_athlete(client, coach_headers, "prio2-athlete@uphill.ai")
+        plan_id = create_plan(
+            user_id=athlete_id,
+            race_name="Prio2",
+            race_date="2027-05-01",
+            goal_type="finish",
+            target_time_hours=None,
+            total_weeks=8,
+        )
+        wid = _seed_workout(plan_id)
+        resp = client.put(
+            f"/api/coaching/athletes/{athlete_id}/plans/{plan_id}/workouts/{wid}",
+            json={"is_priority": "yes"},
+            headers=coach_headers,
+        )
+        assert resp.status_code == 422
 
     def test_edit_404s_when_workout_does_not_belong_to_the_plan(self, client):
         coach_headers, _ = _make_coach(client, "editwo-coach2@uphill.ai")

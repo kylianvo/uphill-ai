@@ -35,7 +35,10 @@ Day: {{day_of_week}}, week {{week_number}}
 Return ONLY a single JSON object (no markdown fences, no prose) with exactly these keys:
 {"title": "short session title", "target_zone": "Zone 1|Zone 2|Zone 3|Zone 4|Zone 5",
 "description": "warm-up, main set (with any intervals), cool-down as one paragraph",
-"fueling_tip": "one sentence, or null if not applicable"}"""
+"fueling_tip": "one sentence, or null if not applicable",
+"is_priority": true|false}
+Set "is_priority" to true only if this session is one of the 1-2 sessions of the week that matter most
+for the athlete's goal (usually the key quality session or the long run); never for a rest, recovery or easy run."""
 
 PLAN_GENERATION_PROMPT = """You are a world-class running coach training athletes based on the 'Training for the Uphill Athlete' philosophy.
 {{goal_intro}}
@@ -62,6 +65,7 @@ You MUST return ONLY a JSON array of workout objects. NEVER wrap it in markdown 
 NEVER substitute a placeholder segment like 'Perform the bodyweight strength circuit for 20 minutes' for the actual named-exercise segments, and NEVER place the exercise breakdown anywhere outside this Process → chain (in particular, never append it after Warning or any other section) — every exercise MUST live inside Process and nowhere else), Overall (2-3 sentence summary of the session), Reason (why it is scheduled now), Benefit (expected physiological adaptation), and Warning (ONLY injury risks or execution precautions — NEVER exercise prescriptions, sets, or reps; those belong exclusively in Process). Provide extensive context.)
 {{fueling_spec}}   - `treadmill_incline` (number, optional: recommended incline percentage if using treadmill. Inform this from the route's actual grade instead of a flat generic default: for trail-terrain Easy/Tempo/Interval/Long Run workouts, set it consistent with this same workout's own `grade_percent` above (a flat 1% belt incline under-trains the specific climbing demand of a genuinely hilly race). {{hill_incline_exception}}Omit or use 0 when treadmill access isn't relevant.)
    - `treadmill_speed` (number, optional: recommended speed in kph if using treadmill, reduced appropriately for the incline set above — a steeper incline needs a slower speed to hold the same target effort)
+   - `is_priority` (boolean: true for the 1-2 sessions per week that matter most for the athlete's goal, usually the key quality session and the long run; false otherwise. NEVER true for a rest, recovery or easy run.)
    - `session_slot` (string, optional: ONLY set this on double-session days. Use 'morning' for the first/shorter session and 'afternoon' for the main/longer session. Omit entirely for single-session days.)
 
 {{block_scope_instruction}}{{start_date_constraint}}{{week_schedule_constraints}}{{rules_block}}{{equipment_terrain_rule}}{{lang_rule}}
@@ -73,6 +77,38 @@ Athlete Profile:
 {{target_date_details}}Full Plan Length: {{total_weeks}} weeks.
 - Week 1 starts on: {{current_date_str}} ({{current_weekday}}).
 {{feedback_instruction}}"""
+
+MAX_PRIORITY_PER_WEEK = 2
+# Types that are never the week's key session, whatever the model says.
+_NEVER_PRIORITY_TYPES = {"Rest", "Recovery", "Easy"}
+_PRIORITY_DAY_ORDER = {
+    d: i for i, d in enumerate(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])
+}
+
+
+def apply_priority_guard(workouts: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Normalise `is_priority` on freshly generated workouts (mutates and returns them).
+
+    The field comes from the LLM, so it is never trusted: anything that is not a
+    real bool becomes False (a managed prompt without the field also yields
+    False), Rest, Recovery and Easy workouts are never priority, and each week_number keeps at most
+    MAX_PRIORITY_PER_WEEK priorities -- the earliest by day order (Mon->Sun),
+    then list order. Shared by every generation path so the rule lives once."""
+    by_week: dict[Any, list[tuple[int, int, dict[str, Any]]]] = {}
+    for idx, wo in enumerate(workouts):
+        flag = wo.get("is_priority") is True
+        if flag and wo.get("type") in _NEVER_PRIORITY_TYPES:
+            flag = False
+        wo["is_priority"] = flag
+        if flag:
+            day = _PRIORITY_DAY_ORDER.get(wo.get("day_of_week"), len(_PRIORITY_DAY_ORDER))
+            by_week.setdefault(wo.get("week_number"), []).append((day, idx, wo))
+    for entries in by_week.values():
+        entries.sort(key=lambda e: (e[0], e[1]))
+        for _day, _idx, wo in entries[MAX_PRIORITY_PER_WEEK:]:
+            wo["is_priority"] = False
+    return workouts
+
 
 BLOCK_NARRATIVE_PROMPT = """You are Coach Uphill, an expert trail-running coach. An athlete's training plan
 just advanced to a new block. Using the training history below and the newly generated
@@ -627,6 +663,7 @@ class PlanGenerator:
         title = workout_type
         description = details
         fueling_tip = None
+        is_priority = False
 
         resolved_lang = (lang or user_profile.get("lang") or "en").lower()
         vi_chars = set(
@@ -718,6 +755,7 @@ class PlanGenerator:
                         resolved_zone = parsed.get("target_zone") or resolved_zone
                     description = parsed.get("description")
                     fueling_tip = parsed.get("fueling_tip")
+                    is_priority = parsed.get("is_priority")
             except Exception as ex:
                 print(f"[PlanGen][SingleWorkout] Gemini FAILED: {ex}. Using deterministic fallback.")
 
@@ -743,7 +781,7 @@ class PlanGenerator:
             wu_cd = PlanGenerator._wu_cd_minutes(duration_minutes)
             total_duration = duration_minutes + wu_cd * 2
 
-        return {
+        result = {
             "week_number": week_number,
             "day_of_week": day_of_week,
             "phase": "Training",
@@ -760,7 +798,9 @@ class PlanGenerator:
             "interval_reps": interval_reps if is_interval else None,
             "interval_rep_value": interval_rep_value if is_interval else None,
             "interval_rep_unit": interval_rep_unit if is_interval else None,
+            "is_priority": is_priority,
         }
+        return apply_priority_guard([result])[0]
 
     @staticmethod
     async def generate_plan_workouts(
@@ -1065,7 +1105,7 @@ class PlanGenerator:
                 wo["interval_reps"], wo["interval_rep_value"], wo["interval_rep_unit"] = (
                     PlanGenerator.resolve_interval_summary(wo, w_type)
                 )
-            return wos
+            return apply_priority_guard(wos)
 
         # 2. AI Plan Generation (Gemini → reduced-prompt retry → Rule-Based)
         import re as _re

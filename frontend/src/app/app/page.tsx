@@ -14,6 +14,8 @@ import PlannerView from "@/views/PlannerView";
 import ToolsView from "@/views/ToolsView";
 import KnowledgeView from "@/views/KnowledgeView";
 import CoachDashboardView from "@/views/CoachDashboardView";
+import MeView from "@/views/MeView";
+import { ME_SUBTABS, isNavTabActive, v2NavTabs, v2TabLabel } from "@/utils/tabModel";
 import PendingInviteBanner from "@/components/PendingInviteBanner";
 import { notifyPlanGenerated } from "@/utils/notifications";
 import { resolveCurrentWeek } from "@/utils/planDate";
@@ -46,6 +48,8 @@ import {
   Book,
   Users,
   CheckCircle,
+  UserCircle,
+  ArrowLeft,
 } from "@phosphor-icons/react";
 const API_BASE_URL = getApiBaseUrl();
 interface Message {
@@ -86,6 +90,7 @@ interface Workout {
   description?: string;
   fueling_tip?: string;
   is_completed: number;
+  is_priority?: boolean;
 }
 interface ActivePlan {
   id: number;
@@ -617,6 +622,8 @@ export default function AppPage() {
     setZone2Max,
     handleTabSwitch,
     isNative,
+    shellV2,
+    openedFromMe,
   } = useAppContext();
   // Language State & Persistence
   // State for homepage CTA button hover effect
@@ -2160,11 +2167,13 @@ export default function AppPage() {
         return <BookOpen size={size} color={color} weight={weight} />;
       case "coach":
         return <Users size={size} color={color} weight={weight} />;
+      case "me":
+        return <UserCircle size={size} color={color} weight={weight} />;
       default:
         return null;
     }
   };
-  const renderActiveTab = (isMobile: boolean) => {
+  const renderTabBody = (isMobile: boolean) => {
     switch (activeTab) {
       case "home":
         return <HomeTab isMobile={isMobile} />;
@@ -2180,9 +2189,29 @@ export default function AppPage() {
         return <KnowledgeView isMobile={isMobile} />;
       case "coach":
         return <CoachDashboardView isMobile={isMobile} />;
+      case "me":
+        return <MeView isMobile={isMobile} />;
       default:
         return null;
     }
+  };
+  const renderActiveTab = (isMobile: boolean) => {
+    const showBack = shellV2 && openedFromMe && ME_SUBTABS.includes(activeTab);
+    return (
+      <>
+        {showBack && (
+          <button
+            type="button"
+            className="btn"
+            onClick={() => handleTabSwitch("me")}
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, marginBottom: 12 }}
+          >
+            <ArrowLeft size={16} /> Back to Me
+          </button>
+        )}
+        {renderTabBody(isMobile)}
+      </>
+    );
   };
   const changeViewMode = (mode: "showcase" | "desktop" | "mobile") => {
     setViewMode(mode);
@@ -2192,12 +2221,16 @@ export default function AppPage() {
       window.history.pushState(null, "", url.pathname + url.search);
     }
   };
-  const mobileTabs = [
-    ...(isNative ? (["home"] as const) : []),
-    "chat", "planner", "knowledge", "tools", "about",
-    ...(user?.is_coach ? (["coach"] as const) : []),
-  ] as const;
-  const mobileTabIndex = mobileTabs.findIndex((tab) => tab === activeTab);
+  const navLabel = (tab: string, legacy: string) =>
+    (shellV2 ? v2TabLabel(tab as never) : null) ?? legacy;
+  const mobileTabs: readonly string[] = shellV2
+    ? v2NavTabs(!!user?.is_coach)
+    : [
+        ...(isNative ? ["home"] : []),
+        "chat", "planner", "knowledge", "tools", "about",
+        ...(user?.is_coach ? ["coach"] : []),
+      ];
+  const mobileTabIndex = mobileTabs.findIndex((tab) => isNavTabActive(tab as never, activeTab, shellV2));
   // ─── Onboarding Wizard ────────────────────────────────────────────────────
   // ─── Profile Settings Modal ───────────────────────────────────────────────
   return (
@@ -2410,8 +2443,9 @@ export default function AppPage() {
               <div className="laptop-sidebar-logo">
                 Uphill<span>.AI</span>
               </div>
+              <nav aria-label="Main">
               <ul className="sidebar-nav-list">
-                {(
+                {(shellV2 ? v2NavTabs(!!user?.is_coach) : (
                   [
                     ...(isNative ? (["home"] as const) : []),
                     "chat",
@@ -2421,17 +2455,19 @@ export default function AppPage() {
                     "about",
                     ...(user?.is_coach ? (["coach"] as const) : []),
                   ] as const
-                ).map((tab) => {
-                  const active = activeTab === tab;
+                )).map((tab: any) => {
+                  const active = isNavTabActive(tab as never, activeTab, shellV2);
                   return (
-                    <li
-                      key={tab}
+                    <li key={tab}>
+                    <button
+                      type="button"
+                      aria-current={active ? "page" : undefined}
                       onClick={() => handleTabSwitch(tab)}
                       className={`sidebar-nav-item ${active ? "sidebar-nav-item-active" : ""}`}
                     >
                       {getTabIcon(tab, active)}
                       <span>
-                        {tab === "home"
+                        {navLabel(tab, tab === "home"
                           ? (lang === "en" ? "Home" : "Trang chủ")
                           : tab === "chat"
                             ? t("tab_chat")
@@ -2443,12 +2479,14 @@ export default function AppPage() {
                                   ? t("tab_coach")
                                   : tab === "about"
                                     ? t("tab_about")
-                                    : t("tab_tools")}
+                                    : t("tab_tools"))}
                       </span>
+                    </button>
                     </li>
                   );
                 })}
               </ul>
+              </nav>
             </div>
             {/* Sidebar Profile trigger */}
             <div style={{ padding: "0 8px" }}>
@@ -2550,7 +2588,9 @@ export default function AppPage() {
                 >
                   {lang === "en" ? "Dashboard" : "Bảng điều khiển"} /{" "}
                   <span style={{ color: "var(--accent-primary)" }}>
-                    {activeTab === "home"
+                    {activeTab === "me"
+                      ? "Me"
+                      : activeTab === "home"
                       ? (lang === "en" ? "Home" : "Trang chủ")
                       : activeTab === "chat"
                         ? t("tab_chat")
@@ -2706,7 +2746,7 @@ export default function AppPage() {
                   }
                 >
                   <div
-                    className="content-panel-inner"
+                    className={`content-panel-inner${shellV2 && activeTab === "planner" ? " content-panel-inner--plan-v2" : ""}`}
                     style={{
                       width: "100%",
                       height: activeTab === "chat" ? undefined : "auto",
@@ -2728,7 +2768,9 @@ export default function AppPage() {
                           color: "var(--text-primary)",
                         }}
                       >
-                        {activeTab === "home" ? (
+                        {activeTab === "me" ? (
+                          <UserCircle size={28} weight="duotone" />
+                        ) : activeTab === "home" ? (
                           <House size={28} weight="duotone" />
                         ) : activeTab === "chat" ? (
                           <Robot size={28} weight="duotone" />
@@ -2746,7 +2788,9 @@ export default function AppPage() {
                       </span>
                       <div>
                         <h2>
-                          {activeTab === "home"
+                          {activeTab === "me"
+                            ? "Me"
+                            : activeTab === "home"
                             ? (lang === "en" ? "Home" : "Trang chủ")
                             : activeTab === "chat"
                             ? t("tab_chat")
@@ -2907,8 +2951,8 @@ export default function AppPage() {
               {renderActiveTab(true)}
             </div>
             {/* Persistent Bottom Tab Bar */}
-            <nav className="phone-bottom-tab-bar">
-              {(
+            <nav className="phone-bottom-tab-bar" aria-label="Main">
+              {(shellV2 ? v2NavTabs(!!user?.is_coach) : (
                 [
                   ...(isNative ? (["home"] as const) : []),
                   "planner",
@@ -2918,10 +2962,10 @@ export default function AppPage() {
                   "about",
                   ...(user?.is_coach ? (["coach"] as const) : []),
                 ] as const
-              ).map((tab) => {
-                const active = activeTab === tab;
+              )).map((tab: any) => {
+                const active = isNavTabActive(tab as never, activeTab, shellV2);
                 const tabLabel =
-                  tab === "home"
+navLabel(tab, tab === "home"
                     ? (lang === "en" ? "Home" : "Trang chủ")
                     : tab === "chat"
                       ? "Coach"
@@ -2935,10 +2979,12 @@ export default function AppPage() {
                               : "HLV"
                             : tab === "tools"
                               ? "Calculators"
-                              : "Philosophy";
+                              : "Philosophy");
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={tab}
+                    aria-current={active ? "page" : undefined}
                     onClick={() => handleTabSwitch(tab)}
                     className={`tab-bar-item ${active ? "tab-bar-item-active" : ""}`}
                   >
@@ -2949,7 +2995,7 @@ export default function AppPage() {
                     >
                       {tabLabel}
                     </span>
-                  </div>
+                  </button>
                 );
               })}
             </nav>
@@ -2968,7 +3014,7 @@ export default function AppPage() {
           }}
         >
           {/* ── Top Navigation ──────────────────────────────────── */}
-          <nav className="top-nav" style={{ flexShrink: 0 }}>
+          <nav className="top-nav" aria-label="Main" style={{ flexShrink: 0 }}>
             {/* Logo */}
             <Link
               className="top-nav-logo"
@@ -3006,7 +3052,7 @@ export default function AppPage() {
             </Link>
             {/* Centre tab pills */}
             <div className="top-nav-tabs">
-              {(
+              {(shellV2 ? v2NavTabs(!!user?.is_coach) : (
                 [
                   ...(isNative ? (["home"] as const) : []),
                   "planner",
@@ -3016,9 +3062,9 @@ export default function AppPage() {
                   "about",
                   ...(user?.is_coach ? (["coach"] as const) : []),
                 ] as const
-              ).map((tab) => {
+              )).map((tab: any) => {
                 const label =
-                  tab === "home"
+navLabel(tab, tab === "home"
                     ? (lang === "en" ? "Home" : "Trang chủ")
                     : tab === "chat"
                       ? `${t("tab_chat")}`
@@ -3030,12 +3076,13 @@ export default function AppPage() {
                             ? `${t("tab_coach")}`
                             : tab === "about"
                               ? `${t("tab_about")}`
-                              : `${t("tab_tools")}`;
+                              : `${t("tab_tools")}`);
                 return (
                   <button
+                    type="button"
                     key={tab}
-                    className={`top-nav-tab ${activeTab === tab ? "active" : ""}`}
-                    aria-current={activeTab === tab ? "page" : undefined}
+                    className={`top-nav-tab ${isNavTabActive(tab as never, activeTab, shellV2) ? "active" : ""}`}
+                    aria-current={isNavTabActive(tab as never, activeTab, shellV2) ? "page" : undefined}
                     onClick={() => handleTabSwitch(tab)}
                     style={{
                       display: "flex",
@@ -3043,7 +3090,7 @@ export default function AppPage() {
                       gap: "6px",
                     }}
                   >
-                    {getTabIcon(tab, activeTab === tab, 18)}
+                    {getTabIcon(tab, isNavTabActive(tab as never, activeTab, shellV2), 18)}
                     {label}
                   </button>
                 );
@@ -3141,7 +3188,7 @@ export default function AppPage() {
                 }
               >
                 <div
-                  className="content-panel-inner"
+                  className={`content-panel-inner${shellV2 && activeTab === "planner" ? " content-panel-inner--plan-v2" : ""}`}
                   style={{
                     width: "100%",
                     height: activeTab === "chat" ? undefined : "auto",
@@ -3167,7 +3214,8 @@ export default function AppPage() {
             )}
           </div>
           {/* Mobile Bottom Navigation Tabs (visible only on mobile viewports via CSS) */}
-          <div
+          <nav
+            aria-label="Main"
             className={`mobile-bottom-nav-tabs${isNative ? " native-nav-motion" : ""}`}
             style={{
               "--nav-count": mobileTabs.length,
@@ -3176,9 +3224,9 @@ export default function AppPage() {
             } as CSSProperties}
           >
             {mobileTabs.map((tab) => {
-              const active = activeTab === tab;
+              const active = isNavTabActive(tab as never, activeTab, shellV2);
               const tabLabel =
-                tab === "home"
+navLabel(tab, tab === "home"
                   ? (lang === "en" ? "Home" : "Trang chủ")
                   : tab === "chat"
                     ? t("tab_chat")
@@ -3190,13 +3238,14 @@ export default function AppPage() {
                           ? t("tab_coach")
                           : tab === "tools"
                             ? t("tab_tools")
-                            : t("tab_about");
+                            : t("tab_about"));
               return (
                 <button
+                  type="button"
                   key={tab}
                   className={`mobile-bottom-nav-tab ${active ? "active" : ""}`}
                   aria-current={active ? "page" : undefined}
-                  onClick={() => handleTabSwitch(tab)}
+                  onClick={() => handleTabSwitch(tab as never)}
                 >
                   <span className="mobile-bottom-nav-tab-icon">
                     {getTabIcon(tab, active, 20)}
@@ -3207,7 +3256,7 @@ export default function AppPage() {
                 </button>
               );
             })}
-          </div>
+          </nav>
         </div>
       )}
       {/* Global Modals */}
