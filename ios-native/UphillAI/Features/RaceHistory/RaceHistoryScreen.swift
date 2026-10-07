@@ -3,6 +3,7 @@ import SwiftUI
 struct RaceHistoryScreen: View {
     let service: any RaceHistoryServicing
     var onSelectBadge: ((DistanceBadge) -> Void)? = nil
+    var onLoaded: ((RaceHistoryResponse) -> Void)? = nil
 
     @State private var history: RaceHistoryResponse?
     @State private var isLoading: Bool = false
@@ -29,10 +30,12 @@ struct RaceHistoryScreen: View {
     init(
         service: any RaceHistoryServicing,
         onSelectBadge: ((DistanceBadge) -> Void)? = nil,
-        initialHistory: RaceHistoryResponse? = nil
+        initialHistory: RaceHistoryResponse? = nil,
+        onLoaded: ((RaceHistoryResponse) -> Void)? = nil
     ) {
         self.service = service
         self.onSelectBadge = onSelectBadge
+        self.onLoaded = onLoaded
         _history = State(initialValue: initialHistory)
     }
 
@@ -365,7 +368,9 @@ struct RaceHistoryScreen: View {
         isLoading = history == nil
         errorMessage = nil
         do {
-            history = try await service.history()
+            let fresh = try await service.history()
+            history = fresh
+            onLoaded?(fresh)
         } catch {
             errorMessage = error.localizedDescription
         }

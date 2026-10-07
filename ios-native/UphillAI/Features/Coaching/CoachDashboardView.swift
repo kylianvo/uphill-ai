@@ -589,6 +589,11 @@ struct CoachDashboardView: View {
     // MARK: - Actions
 
     private func loadData() async {
+        if overview == nil, let cached = app.coachDashboard {
+            overview = cached.overview
+            roster = cached.roster
+            pendingInvites = cached.invites
+        }
         if overview != nil && !roster.isEmpty { return }
         isLoading = true
         do {
@@ -599,6 +604,7 @@ struct CoachDashboardView: View {
             self.overview = fetchedOv
             self.roster = fetchedRst
             self.pendingInvites = fetchedInvs
+            app.coachDashboard = CoachDashboardData(overview: fetchedOv, roster: fetchedRst, invites: fetchedInvs)
         } catch {
             print("Failed to load coach overview/roster: \(error)")
         }

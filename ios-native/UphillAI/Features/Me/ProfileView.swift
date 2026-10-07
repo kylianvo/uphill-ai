@@ -104,9 +104,9 @@ struct ProfileView: View {
             .navigationDestination(for: TrainingDestination.self) { destination in
                 switch destination {
                 case .raceHistory:
-                    RaceHistoryScreen(service: app.raceHistoryService) { _ in
+                    RaceHistoryScreen(service: app.raceHistoryService, onSelectBadge: { _ in
                         // Selected badge in history
-                    }
+                    }, initialHistory: app.raceHistory, onLoaded: { app.raceHistory = $0 })
                 case .nutritionLab:
                     NutritionLabSheet(service: app.nutritionService, activePlan: app.plan.snapshot?.plan, user: app.session.user)
                 case .gearVault:
@@ -162,10 +162,12 @@ struct ProfileView: View {
                 )
             }
             .task {
-                await app.loadShoeRotation()
-                if let history = try? await app.raceHistoryService.history() {
-                    badges = DistanceBadge.deriveBadges(from: history.results)
-                }
+                async let rotation: Void = app.loadShoeRotation()
+                async let history: Void = app.loadRaceHistory()
+                _ = await (rotation, history)
+            }
+            .onChange(of: app.raceHistory?.results, initial: true) { _, results in
+                if let results { badges = DistanceBadge.deriveBadges(from: results) }
             }
         }
     }

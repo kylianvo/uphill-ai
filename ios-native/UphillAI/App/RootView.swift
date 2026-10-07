@@ -16,6 +16,8 @@ struct RootView: View {
             }
         }
         .animation(reduceMotion ? nil : UH.Motion.standard, value: app.session.state)
+        // Warms the Athletes tab for coaches on every sign-in, not just on restore.
+        .task(id: app.session.user?.id) { await app.prefetchCoachDashboard() }
         .task {
             await app.restore()
             if app.session.user != nil { app.generation.resumeIfNeeded() }
