@@ -70,11 +70,13 @@ struct Workout: Codable, Sendable, Equatable, Identifiable {
     let notes: String?
     let sessionSlot: String?
     let isPriority: Bool
-    let matchedActivityId: Int?
-    let matchedDeviceModel: String?
-    let matchedDistanceKm: Double?
-    let matchedDurationSeconds: Double?
-    let matchedAvgHr: Int?
+    // var: /api/coach/active-plan doesn't send these; PlanService fills them
+    // from GET /api/integrations/matching.
+    var matchedActivityId: Int?
+    var matchedDeviceModel: String?
+    var matchedDistanceKm: Double?
+    var matchedDurationSeconds: Double?
+    var matchedAvgHr: Int?
 
     enum CodingKeys: String, CodingKey {
         case id, planId, weekNumber, dayOfWeek, phase, title, type, durationMinutes, distanceKm, targetZone

@@ -400,11 +400,11 @@ struct ManagePlanSheet: View {
 
                 Divider().overlay(UH.Palette.line.opacity(0.6))
 
-                // COROS Push Row ("Send this week")
+                // COROS Push Row (sends the next ~4 weeks)
                 if let deviceService {
                     VStack(alignment: .leading, spacing: 6) {
                         HStack {
-                            Text("SEND THIS WEEK")
+                            Text("SEND NEXT 4 WEEKS")
                                 .font(.system(size: 10, weight: .bold, design: .monospaced))
                                 .foregroundStyle(UH.Palette.muted)
                             Spacer()

@@ -25,7 +25,19 @@ public struct CorosPushButton: View {
         _status = State(initialValue: initialStatus)
     }
 
+    // Without an initial status the button used to render nothing, and SwiftUI
+    // never runs .task on an empty view, so the status was never fetched. A
+    // spinner keeps the view on screen until the status arrives.
     public var body: some View {
+        content.task {
+            if status?.lastSummary == nil {
+                await refreshPushStatus()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
         if let status, status.connected {
             VStack(alignment: .leading, spacing: 4) {
                 Button {
@@ -102,11 +114,9 @@ public struct CorosPushButton: View {
                     .transition(.opacity)
                 }
             }
-            .task {
-                if status.lastSummary == nil {
-                    await refreshPushStatus()
-                }
-            }
+        } else if status == nil {
+            ProgressView()
+                .controlSize(.small)
         }
     }
 
