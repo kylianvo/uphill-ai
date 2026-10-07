@@ -15,15 +15,12 @@ struct GoalDeterminerSheet: View {
     @State private var distanceKm: Double = 50.0
     @State private var elevationGainM: Double = 2200.0
     @State private var raceDate: Date = Date().addingTimeInterval(86400 * 60)
-    @State private var flatPaceMinKm: Double = 5.5
-    @State private var weeksToRace: Double = 8.0
 
     // "What we use" toggles
     @State private var includeRaceHistory: Bool = true
     @State private var includeUtmbIndex: Bool = true
     @State private var includeWatchData: Bool = true
     @State private var includePhysiology: Bool = true
-    @State private var includeTrainingBlock: Bool = true
 
     // Manual extra result accordion
     @State private var showManualRef: Bool = false
@@ -50,6 +47,17 @@ struct GoalDeterminerSheet: View {
     @State private var isLoading: Bool = false
     @State private var errorMessage: String? = nil
     @State private var appliedTier: String? = nil
+
+    /// Whole weeks from today to the race, as the server derives them from `raceDate`.
+    private var weeksToRace: Int {
+        max(0, Calendar.current.dateComponents([.day], from: Calendar.current.startOfDay(for: Date()), to: raceDate).day ?? 0) / 7
+    }
+
+    /// The profile's Zone 2 range, which the server averages into the easy-pace prior.
+    private var easyPaceLabel: String? {
+        guard let lo = user?.zone2PaceMin, let hi = user?.zone2PaceMax, !lo.isEmpty, !hi.isEmpty else { return nil }
+        return "\(lo)–\(hi) /km"
+    }
 
     private static let dateFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -176,9 +184,6 @@ struct GoalDeterminerSheet: View {
                     if let d = p.courseDistanceKm, d > 0 { distanceKm = d }
                     if let g = p.courseElevationGainM, g > 0 { elevationGainM = g }
                 }
-                if let u = user, let z2 = u.zone2PaceMin, let parsed = GoalEstimate.parsePaceToMinutes(z2) {
-                    flatPaceMinKm = min(max(parsed, 3.0), 12.0)
-                }
             }
     }
 
@@ -196,7 +201,7 @@ struct GoalDeterminerSheet: View {
                     Text("Target time & field percentile")
                         .font(UH.TextStyle.sectionTitle)
                         .foregroundStyle(UH.Palette.ink)
-                    Text("Estimates your race finish time based on course distance, climb, baseline flat pace, and historical field percentiles.")
+                    Text("Estimates your finish time from the course, its past field, and your race history, watch training and profile.")
                         .font(UH.TextStyle.caption)
                         .foregroundStyle(UH.Palette.secondary)
                 }
@@ -257,117 +262,28 @@ struct GoalDeterminerSheet: View {
                 }
                 .trainingCard()
 
-                // Baseline fitness card
+                // Baseline fitness card: read-only, the server derives both
                 VStack(alignment: .leading, spacing: UH.Space.small) {
                     Text("CURRENT FITNESS BASELINE")
                         .font(.system(size: 11, weight: .bold, design: .monospaced))
                         .foregroundStyle(UH.Palette.muted)
 
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Aerobic Flat Pace")
-                                    .font(UH.TextStyle.body.weight(.medium))
-                                    .foregroundStyle(UH.Palette.ink)
-                                Text("Zone 2 / conversational pace on flat road")
-                                    .font(UH.TextStyle.caption)
-                                    .foregroundStyle(UH.Palette.secondary)
-                            }
-                            Spacer()
-                            HStack(spacing: 8) {
-                                Button {
-                                    if flatPaceMinKm > 3.0 {
-                                        flatPaceMinKm = max(3.0, (flatPaceMinKm * 10 - 1).rounded() / 10)
-                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                    }
-                                } label: {
-                                    Image(systemName: "minus.circle")
-                                        .font(.system(size: 20))
-                                        .foregroundStyle(UH.Palette.ink)
-                                }
+                    baselineRow(
+                        title: "Easy pace",
+                        detail: easyPaceLabel == nil ? "Not set — add your Zone 2 pace in Profile" : "From your profile Zone 2",
+                        value: easyPaceLabel ?? "—"
+                    )
+                    Divider().padding(.vertical, 4)
+                    baselineRow(
+                        title: "Weeks to race",
+                        detail: "From the race date",
+                        value: "\(weeksToRace) wks"
+                    )
 
-                                HStack(spacing: 2) {
-                                    TextField("6.5", value: $flatPaceMinKm, format: .number.precision(.fractionLength(1)))
-                                        .keyboardType(.decimalPad)
-                                        .multilineTextAlignment(.center)
-                                        .font(UH.TextStyle.metric)
-                                        .foregroundStyle(UH.Palette.ink)
-                                        .frame(width: 50)
-                                    Text("min/km")
-                                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                                        .foregroundStyle(UH.Palette.secondary)
-                                }
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 5)
-                                .background(UH.Palette.surface, in: RoundedRectangle(cornerRadius: UH.Radius.control))
-                                .overlay(RoundedRectangle(cornerRadius: UH.Radius.control).stroke(UH.Palette.line))
-
-                                Button {
-                                    if flatPaceMinKm < 12.0 {
-                                        flatPaceMinKm = min(12.0, (flatPaceMinKm * 10 + 1).rounded() / 10)
-                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                    }
-                                } label: {
-                                    Image(systemName: "plus.circle")
-                                        .font(.system(size: 20))
-                                        .foregroundStyle(UH.Palette.ink)
-                                }
-                            }
-                        }
-
-                        Divider().padding(.vertical, 4)
-
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Weeks of Training Left")
-                                    .font(UH.TextStyle.body.weight(.medium))
-                                    .foregroundStyle(UH.Palette.ink)
-                                Text("Structured block improves race fitness")
-                                    .font(UH.TextStyle.caption)
-                                    .foregroundStyle(UH.Palette.secondary)
-                            }
-                            Spacer()
-                            HStack(spacing: 8) {
-                                Button {
-                                    if weeksToRace > 1 {
-                                        weeksToRace -= 1
-                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                    }
-                                } label: {
-                                    Image(systemName: "minus.circle")
-                                        .font(.system(size: 20))
-                                        .foregroundStyle(UH.Palette.ink)
-                                }
-
-                                HStack(spacing: 2) {
-                                    TextField("8", value: $weeksToRace, format: .number)
-                                        .keyboardType(.numberPad)
-                                        .multilineTextAlignment(.center)
-                                        .font(UH.TextStyle.metric)
-                                        .foregroundStyle(UH.Palette.ink)
-                                        .frame(width: 40)
-                                    Text("wks")
-                                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                                        .foregroundStyle(UH.Palette.secondary)
-                                }
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 5)
-                                .background(UH.Palette.surface, in: RoundedRectangle(cornerRadius: UH.Radius.control))
-                                .overlay(RoundedRectangle(cornerRadius: UH.Radius.control).stroke(UH.Palette.line))
-
-                                Button {
-                                    if weeksToRace < 36 {
-                                        weeksToRace += 1
-                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                    }
-                                } label: {
-                                    Image(systemName: "plus.circle")
-                                        .font(.system(size: 20))
-                                        .foregroundStyle(UH.Palette.ink)
-                                }
-                            }
-                        }
-                    }
+                    Text("Linked race results and watch volume below count for more than easy pace when you have them.")
+                        .font(UH.TextStyle.caption)
+                        .foregroundStyle(UH.Palette.secondary)
+                        .padding(.top, 4)
                 }
                 .trainingCard()
 
@@ -409,13 +325,8 @@ struct GoalDeterminerSheet: View {
                         )
                         sourceToggleRow(
                             title: "Physiology & Pace Zones",
-                            subtitle: "AeT HR, Max HR, easy pace, and runner weight",
+                            subtitle: "VO2max, COROS race prediction and easy pace",
                             isOn: $includePhysiology
-                        )
-                        sourceToggleRow(
-                            title: "Active training block execution",
-                            subtitle: "Completed workouts and progression towards race day",
-                            isOn: $includeTrainingBlock
                         )
                     }
 
@@ -495,6 +406,23 @@ struct GoalDeterminerSheet: View {
                 .padding(.bottom, UH.Space.reading)
             }
             .padding(UH.Space.regular)
+        }
+    }
+
+    private func baselineRow(title: String, detail: String, value: String) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(UH.TextStyle.body.weight(.medium))
+                    .foregroundStyle(UH.Palette.ink)
+                Text(detail)
+                    .font(UH.TextStyle.caption)
+                    .foregroundStyle(UH.Palette.secondary)
+            }
+            Spacer()
+            Text(value)
+                .font(UH.TextStyle.metric)
+                .foregroundStyle(UH.Palette.ink)
         }
     }
 
@@ -790,54 +718,37 @@ struct GoalDeterminerSheet: View {
 
     private func whatWeUsedTabContent(_ estimate: GoalEstimate) -> some View {
         VStack(alignment: .leading, spacing: UH.Space.section) {
-            // Overview Banner
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 6) {
-                    Image(systemName: "brain.head.profile")
-                        .foregroundStyle(UH.Palette.accentInk)
-                        .font(.system(size: 13))
-                    Text("LLM CONTEXT SYNTHESIS")
-                        .font(.system(size: 11, weight: .bold, design: .monospaced))
-                        .tracking(0.6)
-                        .foregroundStyle(UH.Palette.muted)
-                }
-
-                Text("Coach Uphill (Gemini 2.5) synthesized the exact signals below into your predicted finishing windows. Rather than relying on a fixed formula, it evaluated your fatigue resistance, climbing history, and race execution profile.")
-                    .font(UH.TextStyle.caption)
-                    .foregroundStyle(UH.Palette.secondary)
-                    .lineSpacing(2)
-            }
-            .trainingCard()
-
-            // Active Data Sources Chips
             VStack(alignment: .leading, spacing: 8) {
-                Text("INCLUDED DATA SOURCES")
+                Text("DATA SOURCES")
                     .font(.system(size: 11, weight: .bold, design: .monospaced))
                     .foregroundStyle(UH.Palette.muted)
 
-                VStack(spacing: 6) {
-                    sourceStatusRow(title: "Linked Race History", source: "UTMB & VBM race index", isIncluded: includeRaceHistory)
-                    sourceStatusRow(title: "UTMB Performance Index", source: "Official race score", isIncluded: includeUtmbIndex)
-                    sourceStatusRow(title: "Watch Telemetry", source: "8-week rolling volume & vert", isIncluded: includeWatchData)
-                    sourceStatusRow(title: "Athlete Physiology", source: "AeT, AnT & Zone 2 pace", isIncluded: includePhysiology)
-                    sourceStatusRow(title: "Training Block", source: "Adherence & long run progression", isIncluded: includeTrainingBlock)
+                let sources = estimate.sources ?? []
+                if sources.isEmpty {
+                    Text("No personal data found, so the goals come from the course and its past field only. Link UTMB / VBM or sync your watch to sharpen them.")
+                        .font(UH.TextStyle.caption)
+                        .foregroundStyle(UH.Palette.secondary)
+                } else {
+                    VStack(spacing: 6) {
+                        ForEach(sources) { source in
+                            sourceStatusRow(title: source.label, source: source.included ? "Used" : "Turned off", isIncluded: source.included)
+                        }
+                    }
                 }
             }
             .trainingCard()
 
-            // Target Race Card
             contextSectionCard(
                 icon: "flag.fill",
                 title: estimate.raceName ?? activePlan?.raceName ?? "Target Race",
                 rows: [
                     ("Distance", "\(String(format: "%.1f", estimate.distanceKm)) km"),
                     ("Elevation Gain", "\(Int(estimate.elevationGainM))m D+"),
-                    ("Course Profile", estimate.targetProfileSource == "gpx" ? "Verified GPX" : "Synthetic Elevation Profile"),
-                    ("Weeks to Race", "\(Int(weeksToRace)) weeks")
+                    ("Course Profile", estimate.targetProfileSource == "gpx" ? "Verified GPX" : "Estimated profile"),
+                    ("Weeks to Race", "\(weeksToRace) weeks")
                 ]
             )
 
-            // Past Field Results Card (if benchmarks available)
             if let firstBench = estimate.benchmarks?.first {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
@@ -854,81 +765,25 @@ struct GoalDeterminerSheet: View {
 
                     let p = firstBench.percentiles?["overall"]
                     HStack(spacing: 6) {
-                        statBox(label: "Winner", value: firstBench.winnerTime ?? "4:05")
-                        statBox(label: "Top 10%", value: p?.p10 ?? "4:50")
-                        statBox(label: "Median 50%", value: p?.p50 ?? "5:58")
-                        statBox(label: "90% Finish", value: p?.p90 ?? "7:30")
+                        statBox(label: "Winner", value: firstBench.winnerTime ?? "—")
+                        statBox(label: "Top 10%", value: p?.p10 ?? "—")
+                        statBox(label: "Median 50%", value: p?.p50 ?? "—")
+                        statBox(label: "90% Finish", value: p?.p90 ?? "—")
                     }
                 }
                 .trainingCard()
             }
 
-            // Athlete Profile & Physiology Card
-            contextSectionCard(
-                icon: "person.fill",
-                title: "Athlete Physiology",
-                rows: [
-                    ("Weekly Volume", user?.currentWeeklyKm.map { "\(Int($0.rounded())) km/week" } ?? "45–55 km/wk"),
-                    ("Aerobic Threshold (AeT)", user?.aetHr.map { "\($0) bpm" } ?? "148 bpm"),
-                    ("Anaerobic Threshold (AnT)", user?.antHr.map { "\($0) bpm" } ?? "168 bpm"),
-                    ("Max Heart Rate", user?.maxHr.map { "\($0) bpm" } ?? "188 bpm"),
-                    ("Aerobic Zone 2 Pace", user?.zone2PaceMin.map { "\($0)–\(user?.zone2PaceMax ?? "") /km" } ?? "\(String(format: "%.1f", estimate.effectiveFlatPace)) min/km"),
-                    ("Threshold Pace", user?.thresholdPace.map { "\($0)/km" } ?? "4:45/km"),
-                    ("UTMB Index", "512 (Active Index)")
-                ]
-            )
-
-            // Watch 8-Week Trends Card
-            contextSectionCard(
-                icon: "applewatch",
-                title: "Watch · Last 8 Weeks",
-                rows: [
-                    ("Avg Weekly Volume", "52.4 km / week"),
-                    ("Avg Weekly Vert", "1,280 m D+ / week"),
-                    ("Resting Heart Rate", "48 bpm"),
-                    ("HRV (RMSSD)", "62 ms · Balanced"),
-                    ("Training Load Ratio", "1.08 · Productive"),
-                    ("Recovery Score", "88% · Ready for load")
-                ]
-            )
-
-            // Training Block Card
-            contextSectionCard(
-                icon: "calendar.badge.checkmark",
-                title: "Training Block Execution",
-                rows: [
-                    ("Target Event", activePlan?.raceName ?? "Dalat Ultra Trail 50K"),
-                    ("Block Progress", activePlan != nil ? "6 / 12 weeks completed" : "6 weeks logged"),
-                    ("Workout Adherence", "92% completed on schedule"),
-                    ("Block Quality Grade", "A- (Strong long runs logged)"),
-                    ("Average Athlete RPE", "6.8 / 10 (Moderate fatigue)")
-                ]
-            )
-
-            // Race History & Manual Anchors Card
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Label("Race History & Reference Anchors", systemImage: "trophy.fill")
-                        .font(UH.TextStyle.body.weight(.bold))
-                        .foregroundStyle(UH.Palette.ink)
-                    Spacer()
-                }
-
-                VStack(spacing: 6) {
-                    anchorRow(name: "Dalat Ultra Trail 50K (2025)", detail: "52 km · 2,300m D+", time: "5:48:00", rank: "#42")
-                    anchorRow(name: "UTMB CCC 100K (2025)", detail: "101.5 km · 6,100m D+", time: "14:34:00", rank: "#214")
-
-                    if showManualRef && !manualRaceName.isEmpty {
-                        anchorRow(
-                            name: manualRaceName,
-                            detail: "\(manualDistanceKm) km · \(manualElevationGainM)m D+",
-                            time: manualFinishTime.isEmpty ? "—" : manualFinishTime,
-                            rank: "Manual"
-                        )
-                    }
-                }
+            let profileRows: [(String, String)] = [
+                ("Weekly Volume", user?.currentWeeklyKm.map { "\(Int($0.rounded())) km/week" }),
+                ("Easy Pace (Zone 2)", easyPaceLabel),
+                ("Threshold Pace", user?.thresholdPace.map { "\($0)/km" }),
+                ("Aerobic Threshold (AeT)", user?.aetHr.map { "\($0) bpm" }),
+                ("Max Heart Rate", user?.maxHr.map { "\($0) bpm" })
+            ].compactMap { label, value in value.map { (label, $0) } }
+            if !profileRows.isEmpty {
+                contextSectionCard(icon: "person.fill", title: "Your Profile", rows: profileRows)
             }
-            .trainingCard()
         }
     }
 
@@ -997,29 +852,6 @@ struct GoalDeterminerSheet: View {
         .overlay(RoundedRectangle(cornerRadius: UH.Radius.control).stroke(UH.Palette.line))
     }
 
-    private func anchorRow(name: String, detail: String, time: String, rank: String) -> some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(name)
-                    .font(UH.TextStyle.caption.weight(.medium))
-                    .foregroundStyle(UH.Palette.ink)
-                Text(detail)
-                    .font(UH.TextStyle.disclosure)
-                    .foregroundStyle(UH.Palette.secondary)
-            }
-            Spacer()
-            VStack(alignment: .trailing, spacing: 2) {
-                Text(time)
-                    .font(.system(size: 12, weight: .bold, design: .monospaced))
-                    .foregroundStyle(UH.Palette.ink)
-                Text(rank)
-                    .font(UH.TextStyle.disclosure)
-                    .foregroundStyle(UH.Palette.accentInk)
-            }
-        }
-        .padding(.vertical, 2)
-    }
-
     private func estimateGoal() async {
         isLoading = true
         errorMessage = nil
@@ -1030,20 +862,24 @@ struct GoalDeterminerSheet: View {
         if !includeUtmbIndex { exclusions.append("utmb_index") }
         if !includeWatchData { exclusions.append("watch") }
         if !includePhysiology { exclusions.append("physiology") }
-        if !includeTrainingBlock { exclusions.append("block") }
+
+        var reference: GoalEstimateRequest.Reference?
+        if showManualRef, let dist = Double(manualDistanceKm), dist > 0, !manualFinishTime.isEmpty {
+            reference = .init(
+                raceName: manualRaceName.isEmpty ? nil : manualRaceName,
+                distanceKm: dist,
+                elevationGainM: Double(manualElevationGainM),
+                time: manualFinishTime
+            )
+        }
 
         let req = GoalEstimateRequest(
             raceName: raceName.isEmpty ? nil : raceName,
             distanceKm: distanceKm,
             elevationGainM: elevationGainM,
             raceDate: Self.dateFormatter.string(from: raceDate),
-            flatPaceMinKm: flatPaceMinKm,
-            weeksToRace: weeksToRace,
-            referenceRaceName: showManualRef && !manualRaceName.isEmpty ? manualRaceName : nil,
-            referenceDistanceKm: showManualRef ? Double(manualDistanceKm) : nil,
-            referenceElevationGainM: showManualRef ? Double(manualElevationGainM) : nil,
-            referenceTime: showManualRef && !manualFinishTime.isEmpty ? manualFinishTime : nil,
-            exclusions: exclusions.isEmpty ? nil : exclusions
+            exclude: exclusions,
+            reference: reference
         )
 
         do {

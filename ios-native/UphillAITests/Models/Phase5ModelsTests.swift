@@ -391,13 +391,11 @@ struct Phase5ModelsTests {
                 "race_name": "Sapa 21K",
                 "distance_km": 21.0,
                 "elevation_gain_m": 1200.0,
-                "predicted_time_mins": 180.0,
-                "adjusted_time_mins": 170.0,
-                "goals": {
-                    "ambitious": 160.0,
-                    "realistic": 170.0,
-                    "safe": 185.0
-                }
+                "goals": {"a": 160.0, "b": 170.0, "c": 185.0},
+                "confidence": "medium",
+                "reasoning": ["Anchored on your Sapa 2025 finish"],
+                "sources": [{"key": "watch", "label": "Watch: 40 km/wk", "included": true}],
+                "context": {"race": {"profile_source": "gpx"}, "athlete": {"easy_pace_min_km": 6.25}}
             }
             """
             return (200, Data(responseJson.utf8))
@@ -406,5 +404,10 @@ struct Phase5ModelsTests {
         let res = try await service.estimateGoal(request: GoalEstimateRequest(raceName: "Sapa 21K", distanceKm: 21.0, elevationGainM: 1200.0))
         #expect(res.raceName == "Sapa 21K")
         #expect(res.goals?.ambitious == 160.0)
+        #expect(res.goals?.safe == 185.0)
+        #expect(res.referenceConfidence == "medium")
+        #expect(res.baseFlatPaceMinKm == 6.25)
+        #expect(res.targetProfileSource == "gpx")
+        #expect(res.sources?.first?.key == "watch")
     }
 }

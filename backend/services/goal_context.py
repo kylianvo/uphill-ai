@@ -142,13 +142,17 @@ def gather(
 ) -> GoalContext:
     """`target` is a course from goal_anchors.resolve_course. Exclusion keys
     match the `key` of each returned source: "result:<id>", "utmb_index",
-    "watch", "vo2max", "predictor", "block"."""
-    exclude = exclude or set()
+    "watch", "vo2max", "predictor", "block". Two group keys cover several:
+    "race_history" (every linked result) and "physiology" (vo2max, predictor
+    and the profile easy pace)."""
+    exclude = set(exclude or ())
+    if "physiology" in exclude:
+        exclude |= {"vo2max", "predictor"}
     missing: list[str] = []
     sources: list[dict[str, Any]] = []
 
     def use(key: str, label: str) -> bool:
-        included = key not in exclude
+        included = key not in exclude and not (key.startswith("result:") and "race_history" in exclude)
         sources.append({"key": key, "label": label, "included": included})
         return included
 
@@ -180,7 +184,7 @@ def gather(
         }
         weekly_km = user.get("current_weekly_km")
         zone2 = (user.get("zone2_pace_min"), user.get("zone2_pace_max"))
-        if zone2 != _DEFAULT_ZONE2 and all(_pace(p) for p in zone2):
+        if "physiology" not in exclude and zone2 != _DEFAULT_ZONE2 and all(_pace(p) for p in zone2):
             easy_pace = (_pace(zone2[0]) + _pace(zone2[1])) / 2
             athlete["easy_pace_min_km"] = round(easy_pace, 2)
 
