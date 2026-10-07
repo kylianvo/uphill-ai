@@ -43,7 +43,10 @@
 	<key>NSCalendarsWriteOnlyAccessUsageDescription</key>
 	<string>Uphill AI adds your scheduled workouts directly to your calendar.</string>
 	<key>UILaunchScreen</key>
-	<dict/>
+	<dict>
+		<key>UIColorName</key>
+		<string>LaunchBackground</string>
+	</dict>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

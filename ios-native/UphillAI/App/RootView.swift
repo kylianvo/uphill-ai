@@ -23,22 +23,7 @@ struct RootView: View {
     }
 
     private var restoringView: some View {
-        VStack(spacing: UH.Space.regular) {
-            if let error = app.restoreError {
-                Text(error)
-                    .font(UH.TextStyle.body)
-                    .foregroundStyle(UH.Palette.secondary)
-                    .multilineTextAlignment(.center)
-                Button("Try again") { Task { await app.restore() } }
-                    .buttonStyle(.uhPrimary)
-                    .frame(maxWidth: 220)
-            } else {
-                ProgressView()
-            }
-        }
-        .padding(UH.Space.section)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(UH.Palette.surface.ignoresSafeArea())
+        LaunchView(error: app.restoreError) { Task { await app.restore() } }
     }
 }
 
