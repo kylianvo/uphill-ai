@@ -219,17 +219,23 @@ struct ProfileSettingsScreen: View {
             let antFrac = min(max(0.20, (CGFloat(model.draft.antHr) - r) / span), 0.95)
 
             VStack(spacing: 6) {
-                // Marker labels above band
+                // Marker labels above band. AeT sits left of its tick and AnT right of
+                // its tick, so they grow apart and never overlap however close the ticks are.
+                let labelW: CGFloat = 56
+                let antX = min(max(0, antFrac * w + 6), w - labelW)
+                let aetX = max(0, min(aetFrac * w - labelW - 4, antX - labelW - 4))
                 ZStack(alignment: .leading) {
                     Text("AeT \(model.draft.aetHr)")
                         .font(.system(size: 11, weight: .bold, design: .monospaced))
                         .foregroundStyle(Color(hex: "#10b981"))
-                        .offset(x: max(0, min(w - 60, aetFrac * w - 24)))
+                        .frame(width: labelW, alignment: .trailing)
+                        .offset(x: aetX)
 
                     Text("AnT \(model.draft.antHr)")
                         .font(.system(size: 11, weight: .bold, design: .monospaced))
                         .foregroundStyle(Color(hex: "#f97316"))
-                        .offset(x: max(0, min(w - 60, antFrac * w - 24)))
+                        .frame(width: labelW, alignment: .leading)
+                        .offset(x: antX)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .frame(height: 16)

@@ -25,6 +25,22 @@ final class AppModel {
         }
     }
     private var applyingRemoteRotation = false
+    /// Last responses, so revisiting these screens shows data at once and refreshes quietly.
+    var raceHistory: RaceHistoryResponse?
+    var coachDashboard: CoachDashboardData?
+
+    func loadRaceHistory() async {
+        if let history = try? await raceHistoryService.history() { raceHistory = history }
+    }
+
+    /// Matches the dashboard's default filters (14 days, all levels).
+    func prefetchCoachDashboard() async {
+        guard session.user?.isCoach == true else { return }
+        async let ov = coachingService.fetchOverview(days: 14, athleteId: nil, level: "all")
+        async let rst = coachingService.fetchRoster()
+        async let invs = coachingService.fetchMyInvites()
+        if let data = try? await CoachDashboardData(overview: ov, roster: rst, invites: invs) { coachDashboard = data }
+    }
     private var shoeRotationSave: Task<Void, Never>?
 
     func loadShoeRotation() async {
@@ -109,6 +125,8 @@ final class AppModel {
             self?.plan.reset()
             self?.onboardingDeferred = false
             self?.lastSetup = nil
+            self?.raceHistory = nil
+            self?.coachDashboard = nil
             self?.shoeRotationSave?.cancel()
             self?.applyingRemoteRotation = true
             self?.shoeRotation = ShoeRotation()
@@ -229,4 +247,10 @@ final class AppModel {
         await auth.logout()
         session.signOut()
     }
+}
+
+struct CoachDashboardData {
+    var overview: CoachOverview
+    var roster: [CoachedAthleteRow]
+    var invites: [CoachingInvite]
 }
