@@ -223,45 +223,22 @@ struct FieldAnchor: Sendable, Equatable, Identifiable {
     }
 }
 
-struct GoalEstimateRequest: Codable, Sendable {
+/// Body of `POST /api/goal/assess`. Fitness (easy pace, watch volume, race
+/// history) and weeks to race come from the server's view of the athlete and
+/// `raceDate`, so the client never sends a pace or a week count.
+struct GoalEstimateRequest: Encodable, Sendable {
+    struct Reference: Encodable, Sendable {
+        var raceName: String?
+        var distanceKm: Double
+        var elevationGainM: Double?
+        var time: String
+    }
+
     var raceName: String?
     var distanceKm: Double?
     var elevationGainM: Double?
     var raceDate: String?
-    var flatPaceMinKm: Double?
-    var weeksToRace: Double?
-    var referenceResultId: Int?
-    var referenceRaceName: String?
-    var referenceDistanceKm: Double?
-    var referenceElevationGainM: Double?
-    var referenceTime: String?
-    var exclusions: [String]?
-
-    init(
-        raceName: String? = nil,
-        distanceKm: Double? = nil,
-        elevationGainM: Double? = nil,
-        raceDate: String? = nil,
-        flatPaceMinKm: Double? = nil,
-        weeksToRace: Double? = nil,
-        referenceResultId: Int? = nil,
-        referenceRaceName: String? = nil,
-        referenceDistanceKm: Double? = nil,
-        referenceElevationGainM: Double? = nil,
-        referenceTime: String? = nil,
-        exclusions: [String]? = nil
-    ) {
-        self.raceName = raceName
-        self.distanceKm = distanceKm
-        self.elevationGainM = elevationGainM
-        self.raceDate = raceDate
-        self.flatPaceMinKm = flatPaceMinKm
-        self.weeksToRace = weeksToRace
-        self.referenceResultId = referenceResultId
-        self.referenceRaceName = referenceRaceName
-        self.referenceDistanceKm = referenceDistanceKm
-        self.referenceElevationGainM = referenceElevationGainM
-        self.referenceTime = referenceTime
-        self.exclusions = exclusions
-    }
+    var exclude: [String] = []
+    var reference: Reference?
+    var lang: String = "en"
 }
