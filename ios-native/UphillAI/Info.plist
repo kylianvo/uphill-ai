@@ -42,6 +42,10 @@
 	<string>Uphill AI syncs your scheduled training plan workouts and long runs to your calendar.</string>
 	<key>NSCalendarsWriteOnlyAccessUsageDescription</key>
 	<string>Uphill AI adds your scheduled workouts directly to your calendar.</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>PlusJakartaSans.ttf</string>
+	</array>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>
