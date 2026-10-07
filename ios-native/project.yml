@@ -29,7 +29,8 @@ targets:
         UIUserInterfaceStyle: Light
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
-        UILaunchScreen: {}
+        UILaunchScreen:
+          UIColorName: LaunchBackground
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         ITSAppUsesNonExemptEncryption: false
         NSAppTransportSecurity:
