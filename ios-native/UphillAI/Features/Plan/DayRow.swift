@@ -349,7 +349,6 @@ struct DayRow: View {
     // MARK: - Compact Synced Watch Badge
 
     private func matchedActivityBadge(_ workout: Workout) -> some View {
-        let modelName = workout.matchedDeviceModel ?? "COROS"
         return Button {
             onSelect(workout)
         } label: {
@@ -357,7 +356,7 @@ struct DayRow: View {
                 Image(systemName: "applewatch")
                     .font(.system(size: 10.5, weight: .semibold))
                     .foregroundStyle(UH.Palette.accentInk)
-                Text(modelName)
+                Text("COROS")
                     .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(UH.Palette.ink)
 

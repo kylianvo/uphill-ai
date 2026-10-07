@@ -307,7 +307,6 @@ struct ManagePlanSheet: View {
 
     private var integrationsSection: some View {
         let isConnected = connectionStatus?.isCorosConnected == true
-        let deviceModel = connectionStatus?.coros?.deviceModel ?? "COROS APEX 2 Pro"
 
         return VStack(alignment: .leading, spacing: UH.Space.compact) {
             Text("INTEGRATIONS & WATCH SYNC")
@@ -323,7 +322,7 @@ struct ManagePlanSheet: View {
                         .foregroundStyle(isConnected ? UH.Palette.accentInk : UH.Palette.muted)
 
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(isConnected ? deviceModel : "No watch connected")
+                        Text(isConnected ? "COROS" : "No watch connected")
                             .font(UH.TextStyle.label)
                             .foregroundStyle(UH.Palette.ink)
                         Text(isConnected ? "Connected in Profile" : "Connect in Profile")
@@ -400,18 +399,18 @@ struct ManagePlanSheet: View {
 
                 Divider().overlay(UH.Palette.line.opacity(0.6))
 
-                // COROS Push Row ("Send this week")
+                // COROS Push Row (sends the next ~4 weeks)
                 if let deviceService {
                     VStack(alignment: .leading, spacing: 6) {
                         HStack {
-                            Text("SEND THIS WEEK")
+                            Text("SEND NEXT 4 WEEKS")
                                 .font(.system(size: 10, weight: .bold, design: .monospaced))
                                 .foregroundStyle(UH.Palette.muted)
                             Spacer()
                         }
                         CorosPushButton(service: deviceService)
                         if isConnected {
-                            CorosAttribution(deviceModel: deviceModel)
+                            CorosAttribution()
                         }
                     }
                     .padding(UH.Space.regular)

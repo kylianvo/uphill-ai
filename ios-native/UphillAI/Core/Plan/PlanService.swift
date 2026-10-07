@@ -70,7 +70,44 @@ struct PlanService: PlanServicing {
 
     func activePlan() async throws -> PlanSnapshot? {
         let response: ActivePlanResponse = try await client.send(.get("/api/coach/active-plan"))
-        return response.snapshot
+        guard var snapshot = response.snapshot else { return nil }
+        snapshot.workouts = await withWatchMatches(snapshot.workouts, planID: snapshot.plan.id)
+        return snapshot
+    }
+
+    /// One row of GET /api/integrations/matching.
+    private struct MatchedActivity: Decodable {
+        let activityId: Int
+        let workoutId: Int?
+        let distanceKm: Double?
+        let durationSeconds: Double?
+        let avgHr: Double?
+        let deviceModel: String?
+    }
+
+    private struct MatchesResponse: Decodable { let activities: [MatchedActivity] }
+
+    /// Active-plan workouts carry no watch data, so attach each workout's matched
+    /// activity here. Best effort: the plan still loads if matching can't be read.
+    private func withWatchMatches(_ workouts: [Workout], planID: Int) async -> [Workout] {
+        guard let response: MatchesResponse = try? await client.send(
+            .get("/api/integrations/matching", query: [URLQueryItem(name: "plan_id", value: "\(planID)")])
+        ) else { return workouts }
+        var byWorkout: [Int: MatchedActivity] = [:]
+        for activity in response.activities {
+            guard let id = activity.workoutId, byWorkout[id] == nil else { continue }
+            byWorkout[id] = activity
+        }
+        return workouts.map { workout in
+            guard let activity = byWorkout[workout.id] else { return workout }
+            var matched = workout
+            matched.matchedActivityId = activity.activityId
+            matched.matchedDeviceModel = activity.deviceModel
+            matched.matchedDistanceKm = activity.distanceKm
+            matched.matchedDurationSeconds = activity.durationSeconds
+            matched.matchedAvgHr = activity.avgHr.map { Int($0.rounded()) }
+            return matched
+        }
     }
 
     func log(workoutID: Int, _ update: WorkoutLogUpdate) async throws -> [Workout] {
@@ -136,6 +173,13 @@ struct PlanService: PlanServicing {
             let dailyMetrics: Int?
         }
         let resp: SyncResponse = try await client.send(.post("/api/integrations/coros/sync", query: [URLQueryItem(name: "plan_id", value: "\(planID)")]))
+        // Sync only stores activities; matching links them to this plan's workouts.
+        struct MatchCounts: Decodable {}
+        let tzOffset = TimeZone.current.secondsFromGMT() / 60
+        let _: MatchCounts = try await client.send(.post("/api/integrations/matching/run", query: [
+            URLQueryItem(name: "plan_id", value: "\(planID)"),
+            URLQueryItem(name: "tz_offset_minutes", value: "\(tzOffset)"),
+        ]))
         let count = resp.activities ?? 0
         return count > 0 ? "Synced \(count) activities from watch" : "Watch synced · Up to date"
     }

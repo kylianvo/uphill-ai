@@ -737,13 +737,16 @@ struct WorkoutDetailSheet: View {
 
         corosSendState = .sending
         corosSendNotice = nil
-        let today = ISO8601DateFormatter().string(from: Date()).prefix(10)
+        // Local date: ISO8601DateFormatter is UTC, a day behind in Vietnam before 7am.
+        let today = Date.ISO8601FormatStyle(timeZone: .current).year().month().day().format(Date())
         do {
-            let outcome = try await service.pushToCoros(clientToday: String(today), lang: "en")
+            // The backend sends the plan's next weeks, not just this workout.
+            let outcome = try await service.pushToCoros(clientToday: today, lang: "en")
             if outcome.isSuccess {
                 corosSendState = .sent
-                let count = outcome.summary?.workoutsSent ?? 1
-                corosSendNotice = "Sent \(count) workout(s) to COROS."
+                let count = outcome.summary?.workoutsSent ?? 0
+                let end = outcome.summary?.windowEnd ?? "the upcoming weeks"
+                corosSendNotice = "Sent \(count) workouts to COROS through \(end)."
             } else {
                 let err = outcome.errorMessage ?? "Could not send to COROS."
                 corosSendState = .error(err)
@@ -962,7 +965,7 @@ struct WorkoutDetailSheet: View {
                 HStack(spacing: 6) {
                     Image(systemName: "applewatch")
                         .foregroundStyle(UH.Palette.accentInk)
-                    Text(w.matchedDeviceModel ?? "COROS APEX 2 Pro")
+                    Text("COROS")
                         .font(UH.TextStyle.sectionTitle)
                         .foregroundStyle(UH.Palette.ink)
                 }

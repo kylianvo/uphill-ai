@@ -47,18 +47,7 @@ final class DeviceConnectionService: DeviceConnectionServicing {
     private struct EmptyResponse: Decodable {}
 
     func fetchStatus() async throws -> DeviceConnectionStatus {
-        do {
-            return try await client.send(.get("/api/integrations/status"))
-        } catch {
-            // Preview / offline fallback
-            return DeviceConnectionStatus(
-                coros: CorosConnectionStatus(
-                    connected: true,
-                    lastSyncAt: "2026-10-06T08:30:00Z",
-                    deviceModel: "COROS APEX 2 Pro"
-                )
-            )
-        }
+        try await client.send(.get("/api/integrations/status"))
     }
 
     func connectCorosURL() async throws -> URL {
@@ -71,42 +60,28 @@ final class DeviceConnectionService: DeviceConnectionServicing {
         return url
     }
 
+    /// The completion token is single-use, so this posts exactly once.
     func completeCoros(state: String, token: String) async throws -> Bool {
-        do {
-            let resp: CompleteResponse = try await client.send(
-                .send(.post, "/api/integrations/coros/complete", body: CompleteBody(state: state, token: token))
-            )
-            return resp.connected
-        } catch {
-            let _: EmptyResponse = try await client.send(
-                .send(.post, "/api/integrations/coros/complete", body: CompleteBody(state: state, token: token))
-            )
-            return true
-        }
+        let resp: CompleteResponse = try await client.send(
+            .send(.post, "/api/integrations/coros/complete", body: CompleteBody(state: state, token: token))
+        )
+        return resp.connected
     }
 
     func syncNow(days: Int = 30) async throws -> DeviceSyncResult {
-        do {
-            return try await client.send(
-                .post("/api/integrations/coros/sync", query: [URLQueryItem(name: "days", value: "\(days)")])
-            )
-        } catch {
-            // Stub fallback for tests/offline
-            return DeviceSyncResult(activities: 3, dailyMetrics: days)
-        }
+        let result: DeviceSyncResult = try await client.send(
+            .post("/api/integrations/coros/sync", query: [URLQueryItem(name: "days", value: "\(days)")])
+        )
+        // Sync only stores activities; matching links them to planned workouts.
+        let _: EmptyResponse = try await client.send(.post("/api/integrations/matching/run", query: [
+            URLQueryItem(name: "days", value: "\(days)"),
+            URLQueryItem(name: "tz_offset_minutes", value: "\(TimeZone.current.secondsFromGMT() / 60)"),
+        ]))
+        return result
     }
 
     func syncFitness() async throws -> FitnessSyncResult {
-        do {
-            return try await client.send(.post("/api/integrations/coros/sync-fitness"))
-        } catch {
-            return FitnessSyncResult(
-                status: "ok",
-                thresholdPace: "4:45",
-                corosVo2max: 58.5,
-                corosRunningLevel: 74.0
-            )
-        }
+        try await client.send(.post("/api/integrations/coros/sync-fitness"))
     }
 
     func disconnectCoros() async throws {
@@ -114,34 +89,13 @@ final class DeviceConnectionService: DeviceConnectionServicing {
     }
 
     func fetchPushStatus(clientToday: String) async throws -> CorosPushStatus {
-        do {
-            let resp: PushApiResponse = try await client.send(
-                .get("/api/integrations/coros/push-status", query: [URLQueryItem(name: "client_today", value: clientToday)])
-            )
-            return CorosPushStatus(
-                connected: resp.status == "connected" || resp.status == "ok",
-                lastPushedAt: resp.lastPushedAt,
-                lastSummary: resp.summary
-            )
-        } catch {
-            return CorosPushStatus(
-                connected: true,
-                lastPushedAt: "2026-10-06T08:00:00Z",
-                outOfDate: false,
-                partial: false,
-                lastSummary: CorosPushSummary(
-                    daysSent: 14,
-                    workoutsSent: 10,
-                    leftInUphill: 2,
-                    lockedDays: 1,
-                    invalid: 0,
-                    windowEnd: "2026-10-20",
-                    planStart: clientToday
-                )
-            )
-        }
+        try await client.send(
+            .get("/api/integrations/coros/push-status", query: [URLQueryItem(name: "client_today", value: clientToday)])
+        )
     }
 
+    /// A refusal the backend explains with a `detail.code` comes back as an
+    /// unsuccessful outcome; anything else (network, 500) throws.
     func pushToCoros(clientToday: String, lang: String = "en") async throws -> CorosPushOutcome {
         do {
             let resp: PushApiResponse = try await client.send(
@@ -153,21 +107,27 @@ final class DeviceConnectionService: DeviceConnectionServicing {
                 summary: resp.summary,
                 lastPushedAt: resp.lastPushedAt
             )
-        } catch {
+        } catch let APIError.http(_, _, code?), let APIError.scheduleGuard(_, code, _) {
             return CorosPushOutcome(
-                isSuccess: true,
-                status: "sent",
-                summary: CorosPushSummary(
-                    daysSent: 14,
-                    workoutsSent: 10,
-                    leftInUphill: 2,
-                    lockedDays: 1,
-                    invalid: 0,
-                    windowEnd: "2026-10-20",
-                    planStart: clientToday
-                ),
-                lastPushedAt: ISO8601DateFormatter().string(from: Date())
+                isSuccess: false,
+                status: "error",
+                errorCode: code,
+                errorMessage: Self.pushErrorMessage(code)
             )
+        }
+    }
+
+    /// English copy from the web's corosPush.ts, without its {placeholders}.
+    static func pushErrorMessage(_ code: String) -> String {
+        switch code {
+        case "COROS_not_connected": "COROS isn't connected. Reconnect it in your profile."
+        case "NOTHING_to_push": "Nothing to send: there are no upcoming runs in your plan."
+        case "RACE_too_far": "COROS plans cover up to 16 weeks. Send to COROS opens closer to your race."
+        case "RACE_too_close": "COROS plans must be at least 4 weeks long."
+        case "PUSH_in_progress": "A send is already running. Try again in a moment."
+        case "PUSH_limit": "You've reached today's limit for sending to COROS. Try again tomorrow."
+        case "COROS_rejected": "COROS didn't accept the plan. Nothing changed on your watch."
+        default: "Couldn't reach COROS. Nothing changed. Try again shortly."
         }
     }
 }

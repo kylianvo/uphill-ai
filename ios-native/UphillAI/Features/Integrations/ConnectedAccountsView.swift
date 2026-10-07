@@ -153,7 +153,7 @@ public struct ConnectedAccountsView: View {
                             .foregroundStyle(UH.Palette.secondary)
                     }
 
-                    CorosAttribution(deviceModel: status?.coros?.deviceModel)
+                    CorosAttribution()
                 }
             }
 

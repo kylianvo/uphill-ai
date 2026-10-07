@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 import Testing
 @testable import UphillAI
 
@@ -11,11 +12,49 @@ struct PlanServiceTests {
     @Test func activePlanReturnsSnapshot() async throws {
         let fixture = try Fixture.data("active_plan.json")
         let service = PlanService(client: makeStubClient { request in
+            if request.url?.path() == "/api/integrations/matching" { return (200, json(["activities": []])) }
             #expect(request.url?.path() == "/api/coach/active-plan")
             return (200, fixture)
         })
         let snapshot = try await service.activePlan()
         #expect(snapshot?.workouts.count == 21)
+    }
+
+    @Test func activePlanMergesMatchedWatchActivities() async throws {
+        let fixture = try Fixture.data("active_plan.json")
+        let service = PlanService(client: makeStubClient { request in
+            if request.url?.path() == "/api/integrations/matching" {
+                #expect(request.url?.query()?.contains("plan_id=93") == true)
+                return (200, json(["activities": [
+                    ["activity_id": 555, "workout_id": 1242, "distance_km": 10.2, "duration_seconds": 3120,
+                     "avg_hr": 142.6, "device_model": "COROS PACE 3", "start_time": "2026-10-06T06:00:00",
+                     "source_provider": "coros"],
+                    ["activity_id": 556, "workout_id": NSNull(), "distance_km": 3.0, "duration_seconds": 900,
+                     "start_time": "2026-10-06T18:00:00", "source_provider": "coros"],
+                ]]))
+            }
+            return (200, fixture)
+        })
+        let snapshot = try #require(try await service.activePlan())
+        let matched = try #require(snapshot.workouts.first { $0.id == 1242 })
+        #expect(matched.isMatched)
+        #expect(matched.matchedActivityId == 555)
+        #expect(matched.matchedDeviceModel == "COROS PACE 3")
+        #expect(matched.matchedDistanceKm == 10.2)
+        #expect(matched.matchedDurationSeconds == 3120)
+        #expect(matched.matchedAvgHr == 143)
+        #expect(snapshot.workouts.filter(\.isMatched).count == 1)
+    }
+
+    @Test func activePlanStillLoadsWhenMatchingFails() async throws {
+        let fixture = try Fixture.data("active_plan.json")
+        let service = PlanService(client: makeStubClient { request in
+            if request.url?.path() == "/api/integrations/matching" { return (500, json(["detail": "boom"])) }
+            return (200, fixture)
+        })
+        let snapshot = try await service.activePlan()
+        #expect(snapshot?.workouts.count == 21)
+        #expect(snapshot?.workouts.contains(where: \.isMatched) == false)
     }
 
     @Test func activePlanNilWhenInactive() async throws {
@@ -108,9 +147,27 @@ struct PlanServiceTests {
         try await service.deletePlan(id: 92)
     }
 
+    @Test func syncWatchRunsMatchingAfterSync() async throws {
+        let paths = Mutex<[String]>([])
+        let service = PlanService(client: makeStubClient { request in
+            #expect(request.httpMethod == "POST")
+            paths.withLock { $0.append(request.url?.path() ?? "") }
+            if request.url?.path() == "/api/integrations/matching/run" {
+                let query = request.url?.query() ?? ""
+                #expect(query.contains("plan_id=93"))
+                #expect(query.contains("tz_offset_minutes="))
+                return (200, json(["matched": 1, "suggested": 0, "unmatched": 0, "skipped_manual": 0]))
+            }
+            return (200, json(["activities": 1, "daily_metrics": 1]))
+        })
+        _ = try await service.syncWatch(planID: 93)
+        #expect(paths.withLock { $0 } == ["/api/integrations/coros/sync", "/api/integrations/matching/run"])
+    }
+
     @Test func syncWatchReturnsMatchCountOnSuccess() async throws {
         let service = PlanService(client: makeStubClient { request in
             #expect(request.httpMethod == "POST")
+            if request.url?.path() == "/api/integrations/matching/run" { return (200, json([:])) }
             #expect(request.url?.path() == "/api/integrations/coros/sync")
             return (200, json(["activities": 3, "dailyMetrics": 1]))
         })
@@ -121,6 +178,7 @@ struct PlanServiceTests {
     @Test func syncWatchReturnsUpToDateWhenZero() async throws {
         let service = PlanService(client: makeStubClient { request in
             #expect(request.httpMethod == "POST")
+            if request.url?.path() == "/api/integrations/matching/run" { return (200, json([:])) }
             #expect(request.url?.path() == "/api/integrations/coros/sync")
             return (200, json(["activities": 0, "dailyMetrics": 0]))
         })
