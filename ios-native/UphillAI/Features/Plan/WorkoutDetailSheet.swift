@@ -965,7 +965,7 @@ struct WorkoutDetailSheet: View {
                 HStack(spacing: 6) {
                     Image(systemName: "applewatch")
                         .foregroundStyle(UH.Palette.accentInk)
-                    Text(w.matchedDeviceModel ?? "COROS APEX 2 Pro")
+                    Text("COROS")
                         .font(UH.TextStyle.sectionTitle)
                         .foregroundStyle(UH.Palette.ink)
                 }
