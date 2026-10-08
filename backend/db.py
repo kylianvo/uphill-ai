@@ -3271,6 +3271,16 @@ def _find_duplicate(conn, user_id: int, activity) -> int | None:
     return None
 
 
+def get_activity_external_ids(user_id: int, provider: str) -> set[str]:
+    """External ids of the athlete's stored activities from one provider."""
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("SELECT external_ids ->> :p FROM activities WHERE user_id = :u AND external_ids ->> :p IS NOT NULL"),
+            {"u": user_id, "p": provider},
+        ).scalars()
+        return {row for row in rows if row}
+
+
 def upsert_activity(user_id: int, activity) -> int:
     """Insert an activity, or return the existing row id if we already have it.
 

@@ -8,6 +8,11 @@ from services import coros_sync, token_crypto
 from services.providers.base import CanonicalActivity, CanonicalDailyMetric
 
 
+@pytest.fixture(autouse=True)
+def _no_stored_activities(monkeypatch):
+    monkeypatch.setattr(coros_sync.db, "get_activity_external_ids", lambda uid, provider: set())
+
+
 class StubAdapter:
     def __init__(self):
         self.activities = [
@@ -22,8 +27,9 @@ class StubAdapter:
         ]
         self.metrics = [CanonicalDailyMetric(date(2026, 9, 4), "coros", resting_hr=57)]
 
-    async def fetch_activities(self, since, until):
-        return self.activities
+    async def fetch_activities(self, since, until, exclude_ids=()):
+        self.excluded = set(exclude_ids)
+        return [a for a in self.activities if a.external_id not in self.excluded]
 
     async def fetch_daily_metrics(self, days=7):
         return self.metrics
@@ -32,7 +38,7 @@ class StubAdapter:
 class EmptyAdapter:
     """An adapter that genuinely has nothing new to report."""
 
-    async def fetch_activities(self, since, until):
+    async def fetch_activities(self, since, until, exclude_ids=()):
         return []
 
     async def fetch_daily_metrics(self, days=7):
@@ -257,3 +263,51 @@ async def test_ensure_fresh_does_nothing_without_connection(monkeypatch):
 
     monkeypatch.setattr(coros_sync, "sync_fitness", boom)
     await coros_sync.ensure_fresh_assessment(30)
+
+
+@pytest.mark.asyncio
+async def test_already_stored_activities_are_excluded_and_not_counted(monkeypatch):
+    """A repeat sync must not re-fetch or re-count activities we already hold:
+    the count reported to the athlete is new activities only."""
+    adapter = StubAdapter()
+    adapter.activities = [
+        adapter.activities[0],
+        CanonicalActivity(
+            external_id="a2",
+            provider="coros",
+            activity_type="road_run",
+            start_time=datetime(2026, 8, 30, tzinfo=UTC),
+            duration_seconds=1800.0,
+            distance_km=5.0,
+        ),
+    ]
+    saved = []
+    monkeypatch.setattr(coros_sync.db, "get_activity_external_ids", lambda uid, provider: {"a1"})
+    monkeypatch.setattr(coros_sync.db, "upsert_activity", lambda uid, a: saved.append(a.external_id) or 1)
+    monkeypatch.setattr(coros_sync.db, "upsert_daily_metric", lambda uid, m: 1)
+    monkeypatch.setattr(coros_sync.db, "mark_connection_synced", lambda uid, p: None)
+
+    result = await coros_sync.persist(user_id=7, adapter=adapter, days=30)
+
+    assert adapter.excluded == {"a1"}
+    assert saved == ["a2"]
+    assert result["activities"] == 1
+
+
+@pytest.mark.asyncio
+async def test_activities_are_saved_before_a_daily_metrics_failure_is_raised(monkeypatch):
+    """Activities and metrics are fetched concurrently, but a metrics outage
+    must not cost the athlete the activities that did arrive."""
+    from services.providers.coros import CorosDailyMetricsUnavailableError
+
+    class MetricsDown(StubAdapter):
+        async def fetch_daily_metrics(self, days=7):
+            raise CorosDailyMetricsUnavailableError("all sources failed")
+
+    saved = []
+    monkeypatch.setattr(coros_sync.db, "upsert_activity", lambda uid, a: saved.append(a) or 1)
+    monkeypatch.setattr(coros_sync.db, "mark_connection_synced", lambda uid, p: None)
+
+    with pytest.raises(CorosDailyMetricsUnavailableError):
+        await coros_sync.persist(user_id=7, adapter=MetricsDown(), days=30)
+    assert len(saved) == 1

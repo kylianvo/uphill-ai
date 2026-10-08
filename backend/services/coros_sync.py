@@ -94,7 +94,19 @@ async def persist(user_id: int, adapter, days: int) -> dict[str, int]:
     until = date.today()
     since = until - timedelta(days=days)
 
-    activities = await adapter.fetch_activities(since, until)
+    # Already-stored activities are skipped entirely (upsert_activity never
+    # updates them), so a repeat sync only pays for details of new ones.
+    # Activities and daily metrics come from independent COROS calls, so they
+    # are fetched together; a metrics failure still raises, but only after
+    # the activities are saved, as before.
+    known_ids = db.get_activity_external_ids(user_id, PROVIDER)
+    activities, metrics = await asyncio.gather(
+        adapter.fetch_activities(since, until, exclude_ids=known_ids),
+        adapter.fetch_daily_metrics(days=min(days, 30)),
+        return_exceptions=True,
+    )
+    if isinstance(activities, BaseException):
+        raise activities
     stored_activities = 0
     for activity in activities:
         try:
@@ -114,7 +126,8 @@ async def persist(user_id: int, adapter, days: int) -> dict[str, int]:
     if activities and not stored_activities:
         raise CorosSyncPersistError(f"all {len(activities)} activities failed to persist for user {user_id}")
 
-    metrics = await adapter.fetch_daily_metrics(days=min(days, 30))
+    if isinstance(metrics, BaseException):
+        raise metrics
     stored_metrics = 0
     for metric in metrics:
         try:
@@ -204,9 +217,15 @@ async def sync_user(user_id: int, days: int = 30) -> dict[str, int]:
     client = McpClient(settings.COROS_MCP_ENDPOINT, token)
     try:
         await client.initialize()
-        result = await persist(user_id, CorosAdapter(client), days)
+        adapter = CorosAdapter(client)
+        result, overview = await asyncio.gather(
+            persist(user_id, adapter, days), adapter.fetch_fitness_overview(), return_exceptions=True
+        )
+        if isinstance(result, BaseException):
+            raise result
         try:
-            overview = await CorosAdapter(client).fetch_fitness_overview()
+            if isinstance(overview, BaseException):
+                raise overview
             if overview:
                 store_overview(user_id, overview)
         except Exception:

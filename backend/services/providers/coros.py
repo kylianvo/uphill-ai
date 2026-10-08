@@ -10,6 +10,8 @@ more than one watch bound this is a best guess -- the exact per-activity model i
 only available inside the FIT file.
 """
 
+import asyncio
+from collections.abc import Collection
 from datetime import date
 from typing import Any, Protocol
 
@@ -21,6 +23,10 @@ from services.providers.base import CanonicalActivity, CanonicalDailyMetric
 logger = get_logger(__name__)
 
 PROVIDER = "coros"
+# getActivityDetail calls in flight at once. Kept low: COROS publishes no rate
+# limit, and a 429 here only costs that activity its detail fields.
+DETAIL_CONCURRENCY = 4
+
 COROS_RUN_SPORT_TYPES = [100, 101, 102, 103, 104, 400, 401, 402, 9901]
 
 SPORT_TYPE_NAMES = {
@@ -108,7 +114,47 @@ class CorosAdapter:
         )
         return None
 
-    async def fetch_activities(self, since: date, until: date) -> list[CanonicalActivity]:
+    async def _activity_detail(self, summary: dict[str, Any]) -> dict[str, Any]:
+        detail: dict[str, Any] = {}
+        try:
+            detail = parsers.parse_activity_detail(
+                await self._mcp.call_tool(
+                    "getActivityDetail",
+                    {
+                        "labelId": summary["label_id"],
+                        "sportType": summary["sport_type"],
+                    },
+                )
+            )
+        except (parsers.CorosParseError, McpError) as exc:
+            # A missing detail must not drop the activity -- the summary
+            # alone is enough to match it against a planned session. This
+            # also covers transient MCP failures (timeout, rate limit,
+            # isError result) hitting a single detail call mid-loop --
+            # those must not abort the whole batch and discard every
+            # activity already collected.
+            logger.warning(
+                "coros activity detail unavailable",
+                extra={
+                    "fields": {
+                        "service": "coros_adapter",
+                        "event": "detail_missing",
+                        "label_id": summary["label_id"],
+                        "error_type": type(exc).__name__,
+                        "error": str(exc),
+                    }
+                },
+            )
+        return detail
+
+    async def fetch_activities(
+        self, since: date, until: date, exclude_ids: Collection[str] = ()
+    ) -> list[CanonicalActivity]:
+        """Activities in the window, minus `exclude_ids` (already stored).
+
+        Excluded activities are dropped before their getActivityDetail call:
+        a stored activity is never updated, so its detail would be thrown away.
+        """
         text = await self._mcp.call_tool(
             "querySportRecords",
             {
@@ -124,42 +170,21 @@ class CorosAdapter:
                 "limit": 100,
             },
         )
-        summaries = parsers.parse_sport_records(text)
-        device_model = await self._primary_device_model()
+        summaries = [s for s in parsers.parse_sport_records(text) if s["label_id"] not in exclude_ids]
+        if not summaries:
+            return []
+        semaphore = asyncio.Semaphore(DETAIL_CONCURRENCY)
+
+        async def detail_for(summary: dict[str, Any]) -> dict[str, Any]:
+            async with semaphore:
+                return await self._activity_detail(summary)
+
+        device_model, *details = await asyncio.gather(
+            self._primary_device_model(), *(detail_for(summary) for summary in summaries)
+        )
 
         activities: list[CanonicalActivity] = []
-        for summary in summaries:
-            detail: dict[str, Any] = {}
-            try:
-                detail = parsers.parse_activity_detail(
-                    await self._mcp.call_tool(
-                        "getActivityDetail",
-                        {
-                            "labelId": summary["label_id"],
-                            "sportType": summary["sport_type"],
-                        },
-                    )
-                )
-            except (parsers.CorosParseError, McpError) as exc:
-                # A missing detail must not drop the activity -- the summary
-                # alone is enough to match it against a planned session. This
-                # also covers transient MCP failures (timeout, rate limit,
-                # isError result) hitting a single detail call mid-loop --
-                # those must not abort the whole batch and discard every
-                # activity already collected.
-                logger.warning(
-                    "coros activity detail unavailable",
-                    extra={
-                        "fields": {
-                            "service": "coros_adapter",
-                            "event": "detail_missing",
-                            "label_id": summary["label_id"],
-                            "error_type": type(exc).__name__,
-                            "error": str(exc),
-                        }
-                    },
-                )
-
+        for summary, detail in zip(summaries, details, strict=True):
             activities.append(
                 CanonicalActivity(
                     external_id=summary["label_id"],
@@ -196,63 +221,34 @@ class CorosAdapter:
         as "this athlete has no health data" instead of "COROS was
         unavailable".
         """
-        resting: dict[date, int] = {}
-        hrv: dict[date, dict[str, Any]] = {}
-        load: dict[date, dict[str, Any]] = {}
         failures: list[tuple[str, Exception]] = []
 
-        try:
-            resting = parsers.parse_resting_hr(await self._mcp.call_tool("queryRestingHeartRate", {"days": days}))
-        except (parsers.CorosParseError, McpError) as exc:
-            failures.append(("queryRestingHeartRate", exc))
-            logger.warning(
-                "coros daily metric source unavailable",
-                extra={
-                    "fields": {
-                        "service": "coros_adapter",
-                        "event": "daily_metric_source_failed",
-                        "source": "queryRestingHeartRate",
-                        "error_type": type(exc).__name__,
-                        "error": str(exc),
-                    }
-                },
-            )
+        async def source(name: str, arguments: dict[str, Any], parse) -> dict[date, Any]:
+            try:
+                return parse(await self._mcp.call_tool(name, arguments))
+            except (parsers.CorosParseError, McpError) as exc:
+                failures.append((name, exc))
+                logger.warning(
+                    "coros daily metric source unavailable",
+                    extra={
+                        "fields": {
+                            "service": "coros_adapter",
+                            "event": "daily_metric_source_failed",
+                            "source": name,
+                            "error_type": type(exc).__name__,
+                            "error": str(exc),
+                        }
+                    },
+                )
+                return {}
 
-        try:
-            hrv = parsers.parse_sleep_hrv(
-                await self._mcp.call_tool("querySleepHrv", {"startDate": None, "endDate": None, "days": min(days, 7)})
-            )
-        except (parsers.CorosParseError, McpError) as exc:
-            failures.append(("querySleepHrv", exc))
-            logger.warning(
-                "coros daily metric source unavailable",
-                extra={
-                    "fields": {
-                        "service": "coros_adapter",
-                        "event": "daily_metric_source_failed",
-                        "source": "querySleepHrv",
-                        "error_type": type(exc).__name__,
-                        "error": str(exc),
-                    }
-                },
-            )
-
-        try:
-            load = parsers.parse_training_load(await self._mcp.call_tool("queryTrainingLoadAssessment", {"days": days}))
-        except (parsers.CorosParseError, McpError) as exc:
-            failures.append(("queryTrainingLoadAssessment", exc))
-            logger.warning(
-                "coros daily metric source unavailable",
-                extra={
-                    "fields": {
-                        "service": "coros_adapter",
-                        "event": "daily_metric_source_failed",
-                        "source": "queryTrainingLoadAssessment",
-                        "error_type": type(exc).__name__,
-                        "error": str(exc),
-                    }
-                },
-            )
+        resting, hrv, load = await asyncio.gather(
+            source("queryRestingHeartRate", {"days": days}, parsers.parse_resting_hr),
+            source(
+                "querySleepHrv", {"startDate": None, "endDate": None, "days": min(days, 7)}, parsers.parse_sleep_hrv
+            ),
+            source("queryTrainingLoadAssessment", {"days": days}, parsers.parse_training_load),
+        )
 
         if len(failures) == 3:
             names = ", ".join(name for name, _ in failures)
