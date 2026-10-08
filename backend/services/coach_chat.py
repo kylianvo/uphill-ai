@@ -5,7 +5,7 @@ import contextlib
 import datetime as dt
 import json
 import time
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from decimal import Decimal
 from typing import Any
 from uuid import UUID, uuid4
@@ -47,6 +47,20 @@ def today_line(plan: dict[str, Any], today: dt.date) -> str:
     if monday is None:
         return line
     return f"{line} (plan week {current_week(monday, today)}, days Monday–Sunday)"
+
+
+def _prefetch_retrieval(
+    retrieve: Callable[[str], list[dict[str, Any]]], question: str
+) -> Callable[[str], Awaitable[list[dict[str, Any]]]]:
+    """Start KB retrieval now in a worker thread; the graph's retrieve node awaits the result.
+
+    Lets embedding + Qdrant run while the turn's chat context is read from Postgres."""
+    task = asyncio.create_task(asyncio.to_thread(retrieve, question))
+
+    async def _await_retrieval(_question: str) -> list[dict[str, Any]]:
+        return await task
+
+    return _await_retrieval
 
 
 async def track_chat_call(
@@ -295,10 +309,28 @@ async def run_turn(
                 return kb_retrieval.search_principles(query=q, api_key=api_key)
             return []
 
-        graph = build_graph(model=model, retrieve_fn=_retrieve_kb, tools=tools or None)
-        call_id = uuid4()
+        # Root trace for the turn: feedback, proposal outcomes and judge scores attach to
+        # its id, stored on the assistant message. Opened before retrieval starts so the
+        # prefetched retrieval span is recorded inside it.
+        turn_trace = contextlib.ExitStack()
+        turn_trace.enter_context(
+            observability.trace(
+                "coach_chat.turn", feature="coach_chat", user_id=user_id, thread_id=thread_id, metadata={"lang": lang}
+            )
+        )
+        trace_id = observability.current_trace_id()
 
-        chat_context = coach_context.build_chat_context(user_id=user_id, question=question, thread_id=thread_id)
+        try:
+            retrieve_kb = _prefetch_retrieval(_retrieve_kb, question)
+            graph = build_graph(model=model, retrieve_fn=retrieve_kb, tools=tools or None)
+            call_id = uuid4()
+
+            chat_context = await asyncio.to_thread(
+                coach_context.build_chat_context, user_id=user_id, question=question, thread_id=thread_id
+            )
+        except BaseException:
+            turn_trace.close()
+            raise
         # The thread row was already fetched above (admission needs it); reuse it
         # rather than a second DB read, and carry its retained summary into the
         # prompt so `compile_coach_prompt` can render it (see coach_prompts.py).
@@ -339,16 +371,6 @@ async def run_turn(
         last_persisted_len = 0
         final_citations: list[dict[str, Any]] = []
         final_tool_history: list[dict[str, Any]] = []
-
-        # Root trace for the turn: feedback, proposal outcomes and judge scores attach to
-        # its id, stored on the assistant message.
-        turn_trace = contextlib.ExitStack()
-        turn_trace.enter_context(
-            observability.trace(
-                "coach_chat.turn", feature="coach_chat", user_id=user_id, thread_id=thread_id, metadata={"lang": lang}
-            )
-        )
-        trace_id = observability.current_trace_id()
 
         try:
             async with asyncio.timeout(settings.COACH_CHAT_TURN_TIMEOUT_SECONDS):
