@@ -273,3 +273,27 @@ async def test_a_workout_held_by_a_manual_match_is_not_offered_to_other_activiti
 
     await runner.match_user(7, date(2026, 9, 1), date(2026, 9, 3))
     assert [s["workout_id"] for s in saved if s["activity_id"] == 2] == [None]
+
+
+@pytest.mark.asyncio
+async def test_moving_a_workout_to_another_activity_releases_it_first(monkeypatch):
+    """matched_workout_id is UNIQUE. When a re-run gives workout 10 to a newly
+    synced activity that sorts ahead of its current holder, the holder must be
+    released before the new link is written, or the write is rejected."""
+    holder = {**activity(2, offset_s=4 * 3600, duration_s=900.0, km=2.5, method="auto"), "matched_workout_id": 10}
+    better = activity(1, offset_s=0)  # earlier, and a far closer fit to workout 10
+    links = {2: 10}
+
+    def unique_save_match(**kw):
+        wid = kw["workout_id"]
+        if wid is not None and any(w == wid and a != kw["activity_id"] for a, w in links.items()):
+            raise RuntimeError("duplicate key value violates unique constraint")
+        links[kw["activity_id"]] = wid
+
+    monkeypatch.setattr(runner.db, "get_activities_for_matching", lambda *a, **k: [better, holder])
+    monkeypatch.setattr(runner.db, "get_dated_workouts_for_matching", lambda *a, **k: [workout(10)])
+    monkeypatch.setattr(runner.db, "save_match", unique_save_match)
+    monkeypatch.setattr(runner.settings, "MATCHING_SHADOW_MODE", True)
+
+    await runner.match_user(7, date(2026, 9, 1), date(2026, 9, 3))
+    assert links == {1: 10, 2: None}

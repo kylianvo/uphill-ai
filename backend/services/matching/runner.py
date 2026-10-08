@@ -154,6 +154,7 @@ async def match_user(
 
     activities_by_id = {a["id"]: a for a in activities}
 
+    writes: list[dict] = []
     for day, day_activities in sorted(by_day.items()):
         bundles = bundle_activities(day_activities)
         candidates = [w for w in by_date.get(day, []) if w.get("id") not in manual_held]
@@ -202,15 +203,17 @@ async def match_user(
                 q_grade = quality_res.grade if (is_primary and quality_res) else None
                 q_details = quality_res.to_dict() if (is_primary and quality_res) else None
 
-                db.save_match(
-                    activity_id=activity_id,
-                    workout_id=assigned_workout_id,
-                    confidence=assignment.score.total if is_primary else 0.0,
-                    method=band if (is_primary and band != "unmatched") else "none",
-                    details=fragment_details,
-                    quality_score=q_score,
-                    quality_grade=q_grade,
-                    quality_details=q_details,
+                writes.append(
+                    dict(
+                        activity_id=activity_id,
+                        workout_id=assigned_workout_id,
+                        confidence=assignment.score.total if is_primary else 0.0,
+                        method=band if (is_primary and band != "unmatched") else "none",
+                        details=fragment_details,
+                        quality_score=q_score,
+                        quality_grade=q_grade,
+                        quality_details=q_details,
+                    )
                 )
 
             if assignment.workout_id:
@@ -218,6 +221,15 @@ async def match_user(
 
             if band == "auto" and assignment.workout_id and not settings.MATCHING_SHADOW_MODE:
                 db.update_workout_log(assignment.workout_id, is_completed=1)
+
+    # matched_workout_id is UNIQUE, so a workout moving to another activity
+    # must be released by its current holder before the new link is written.
+    for write in writes:
+        current = activities_by_id.get(write["activity_id"], {}).get("matched_workout_id")
+        if current is not None and current != write["workout_id"]:
+            db.save_match(**{**write, "workout_id": None})
+    for write in writes:
+        db.save_match(**write)
 
     # Auto-Skip: Mark past scheduled workouts with no recorded activity and no match as is_missed = 1
     if not settings.MATCHING_SHADOW_MODE:
