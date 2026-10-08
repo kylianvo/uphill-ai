@@ -16,6 +16,7 @@ import hmac
 import json
 import math
 import re
+from datetime import datetime
 from typing import Any
 
 METADATA_KEYS = frozenset(
@@ -336,6 +337,13 @@ def _metadata_attribute(key: str, value: Any) -> Any | None:
 
 def _sanitize_attribute(key: str, value: Any) -> Any | None:
     if key == "openinference.span.kind" and value in _SPAN_KINDS:
+        return value
+    if key == "langfuse.observation.completion_start_time":
+        try:
+            stamp = json.loads(value) if isinstance(value, str) else None
+            datetime.fromisoformat(str(stamp).replace("Z", "+00:00"))
+        except (TypeError, ValueError):
+            return None
         return value
     if key == "llm.provider" and value in _PROVIDERS:
         return value

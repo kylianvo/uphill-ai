@@ -308,3 +308,33 @@ async def test_gemini_adapter_binds_tools_when_provided():
         mock_instance.bind_tools.return_value = mock_instance
         adapter._get_chat()
     mock_instance.bind_tools.assert_called_once_with(["fake-tool"])
+
+
+@pytest.mark.asyncio
+async def test_gemini_adapter_marks_first_token_once():
+    async def fake_astream(messages):
+        for t in ["Easy ", "run ", "today."]:
+            chunk = MagicMock()
+            chunk.content = t
+            chunk.additional_kwargs = {}
+            chunk.tool_calls = []
+            chunk.tool_call_chunks = []
+            chunk.usage_metadata = None
+            yield chunk
+
+    adapter = GeminiCoachModel(api_key="test-key", model="gemini-3.8-flash")
+    adapter._chat = MagicMock()
+    adapter._chat.astream = fake_astream
+    req = ModelRequest(
+        messages=(ChatMessage(role="user", content="What today?"),),
+        system="You are Coach Uphill.",
+        max_output_tokens=500,
+        call_id=uuid4(),
+    )
+
+    with patch("services.observability.generation") as mock_gen:
+        recorder = mock_gen.return_value.__enter__.return_value
+        events = [e async for e in adapter.stream(req)]
+
+    assert [e.text for e in events if e.kind == "text"] == ["Easy ", "run ", "today."]
+    recorder.mark_first_token.assert_called_once_with()

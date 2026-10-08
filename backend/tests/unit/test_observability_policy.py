@@ -404,3 +404,12 @@ def test_release_attribute_exports_only_a_git_sha():
 
     unsafe = policy.sanitize_span_envelope({"name": "generation", "attributes": {"langfuse.release": CANARY}})
     assert CANARY not in json.dumps(unsafe)
+
+
+def test_completion_start_time_attribute_exports_only_timestamps():
+    def attrs(value):
+        envelope = {"name": "generation", "attributes": {"langfuse.observation.completion_start_time": value}}
+        return policy.sanitize_span_envelope(envelope)["attributes"]
+
+    assert attrs('"2026-10-09T01:02:03Z"') == {"langfuse.observation.completion_start_time": '"2026-10-09T01:02:03Z"'}
+    assert attrs('"what is my tempo pace?"') == {}

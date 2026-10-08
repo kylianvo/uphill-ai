@@ -199,6 +199,7 @@ class GeminiCoachModel:
             prompt=request.prompt,
         ) as gen:
             final_usage: Usage | None = None
+            first_token_seen = False
             try:
                 stream_iter = chat.astream(lc_messages)
                 async for chunk in stream_iter:
@@ -224,14 +225,22 @@ class GeminiCoachModel:
 
                     # 3. Extract text content
                     content = getattr(chunk, "content", None)
-                    if isinstance(content, str) and content:
-                        yield ModelEvent(kind="text", text=content)
+                    if isinstance(content, str):
+                        texts = [content]
                     elif isinstance(content, list):
-                        for part in content:
-                            if isinstance(part, str) and part:
-                                yield ModelEvent(kind="text", text=part)
-                            elif isinstance(part, dict) and part.get("type") == "text":
-                                yield ModelEvent(kind="text", text=part.get("text", ""))
+                        texts = [
+                            part if isinstance(part, str) else part.get("text", "")
+                            for part in content
+                            if isinstance(part, str) or (isinstance(part, dict) and part.get("type") == "text")
+                        ]
+                    else:
+                        texts = []
+                    for text in texts:
+                        if text:
+                            if not first_token_seen:
+                                first_token_seen = True
+                                gen.mark_first_token()
+                            yield ModelEvent(kind="text", text=text)
 
                     # 4. Check for usage metadata
                     usage_meta = getattr(chunk, "usage_metadata", None)
