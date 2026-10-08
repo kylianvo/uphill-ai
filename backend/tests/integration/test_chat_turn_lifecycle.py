@@ -383,3 +383,33 @@ async def test_thread_summary_rendered_in_system_prompt_when_present(auth_header
     with_summary_system = fake_model_2.requests[-1].system
     assert "Earlier conversation summary" in with_summary_system
     assert "Athlete is training for Dalat Ultra Trail 75km; prefers morning runs." in with_summary_system
+
+
+async def test_client_closing_stream_after_done_keeps_reply_ok(auth_headers):
+    """Clients close the stream once DoneEvent arrives. The reply is already
+    finalized at that point, so closing must not flip it back to "interrupted"
+    -- an interrupted reply drops out of the next turn's history, and the model
+    then sees earlier questions as unanswered and answers them all again."""
+    user_id = auth_headers["user_id"]
+    fake_model = FakeCoachModel(
+        responses=[
+            ModelEvent(kind="text", text="Taper for about two weeks."),
+            ModelEvent(kind="usage", usage=Usage(input_tokens=50, output_tokens=10)),
+        ]
+    )
+    request_data = {"request_id": str(uuid.uuid4()), "message": "How long should I taper?", "lang": "en"}
+
+    stream = run_turn(user={"id": user_id}, request=request_data, model=fake_model)
+    done = None
+    async for event in stream:
+        if isinstance(event, DoneEvent):
+            done = event
+            break
+    await stream.aclose()
+
+    assert done is not None
+    assistant_msg = db.get_chat_message(done.message_id)
+    assert assistant_msg["status"] == "ok"
+    assert assistant_msg["content"] == "Taper for about two weeks."
+    turn_row = db.get_chat_turn(user_id=user_id, request_id=uuid.UUID(request_data["request_id"]))
+    assert turn_row["status"] == "ok"
