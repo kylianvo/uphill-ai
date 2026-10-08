@@ -330,3 +330,51 @@ async def test_fetch_fitness_overview_failure_degrades_gracefully():
     stub = RaisingMcp({}, raising={"queryFitnessAssessmentOverview": McpError("timeout")})
     overview = await CorosAdapter(stub).fetch_fitness_overview()
     assert overview == {}
+
+
+@pytest.mark.asyncio
+async def test_excluded_activities_skip_their_detail_call():
+    stub = StubMcp(
+        {"querySportRecords": SPORT_RECORDS_TWO, "getActivityDetail": ACTIVITY_DETAIL, "queryDevices": DEVICES}
+    )
+    activities = await CorosAdapter(stub).fetch_activities(
+        date(2026, 8, 29), date(2026, 9, 2), exclude_ids={"479959465976692837"}
+    )
+    assert [a.external_id for a in activities] == ["479959465976692838"]
+    detail_ids = [args["labelId"] for name, args in stub.calls if name == "getActivityDetail"]
+    assert detail_ids == ["479959465976692838"]
+
+
+@pytest.mark.asyncio
+async def test_nothing_new_makes_no_detail_or_device_calls():
+    stub = StubMcp({"querySportRecords": SPORT_RECORDS_TWO})
+    activities = await CorosAdapter(stub).fetch_activities(
+        date(2026, 8, 29), date(2026, 9, 2), exclude_ids={"479959465976692837", "479959465976692838"}
+    )
+    assert activities == []
+    assert [name for name, _ in stub.calls] == ["querySportRecords"]
+
+
+@pytest.mark.asyncio
+async def test_detail_calls_run_concurrently_up_to_the_limit():
+    import asyncio
+
+    from services.providers import coros as coros_module
+
+    class CountingMcp(StubMcp):
+        in_flight = peak = 0
+
+        async def call_tool(self, name, arguments):
+            if name != "getActivityDetail":
+                return await super().call_tool(name, arguments)
+            CountingMcp.in_flight += 1
+            CountingMcp.peak = max(CountingMcp.peak, CountingMcp.in_flight)
+            await asyncio.sleep(0.01)
+            CountingMcp.in_flight -= 1
+            return ACTIVITY_DETAIL
+
+    stub = CountingMcp({"querySportRecords": SPORT_RECORDS_TWO, "queryDevices": DEVICES})
+    activities = await CorosAdapter(stub).fetch_activities(date(2026, 8, 29), date(2026, 9, 2))
+    assert len(activities) == 2
+    assert CountingMcp.peak == min(2, coros_module.DETAIL_CONCURRENCY)
+    assert all(a.training_load == 161.0 for a in activities)
