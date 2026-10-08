@@ -80,3 +80,27 @@ def test_search_principles_both_collections_missing():
     ):
         results = kb_retrieval.search_principles("anything", api_key="test-key")
         assert results == []
+
+
+def test_search_principles_wraps_each_qdrant_query_in_a_span():
+    import contextlib
+
+    mock_qdrant = MagicMock()
+    mock_qdrant.collection_exists.return_value = True
+    mock_qdrant.query_points.return_value.points = []
+    opened: list[tuple[str, dict]] = []
+
+    @contextlib.contextmanager
+    def fake_span(name, *, metadata=None):
+        opened.append((name, metadata or {}))
+        yield MagicMock()
+
+    with (
+        patch.object(kb_retrieval, "_client", return_value=mock_qdrant),
+        patch.object(kb_retrieval, "_embed", return_value=[[0.1] * kb_retrieval.VECTOR_SIZE]),
+        patch.object(kb_retrieval.observability, "span", side_effect=fake_span),
+    ):
+        kb_retrieval.search_principles("q", api_key="test-key")
+
+    query_spans = [meta["collections"] for name, meta in opened if name == "qdrant_query"]
+    assert query_spans == [[kb_retrieval.COLLECTION_SCHEDULER], [kb_retrieval.COLLECTION_NUTRITION_PRINCIPLES]]

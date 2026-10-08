@@ -113,7 +113,8 @@ def search_scheduler_chunks(
             return []
         vector = _embed([query], api_key, task_type="retrieval_query")[0]
         limit = max(k, fetch_k or k) if keep else k
-        hits = client.query_points(collection_name=COLLECTION, query=vector, limit=limit).points
+        with observability.span("qdrant_query", metadata={"collections": [COLLECTION]}):
+            hits = client.query_points(collection_name=COLLECTION, query=vector, limit=limit).points
         results = []
         for hit in hits:
             if not hit.payload:
@@ -195,9 +196,10 @@ def search_principles(
         results: list[dict] = []
 
         if has_sched and scheduler_k > 0:
-            hits_sched = client.query_points(
-                collection_name=COLLECTION_SCHEDULER, query=vector, limit=scheduler_k
-            ).points
+            with observability.span("qdrant_query", metadata={"collections": [COLLECTION_SCHEDULER]}):
+                hits_sched = client.query_points(
+                    collection_name=COLLECTION_SCHEDULER, query=vector, limit=scheduler_k
+                ).points
             for hit in hits_sched:
                 if not hit.payload:
                     continue
@@ -216,9 +218,10 @@ def search_principles(
                 )
 
         if has_nutr and nutrition_k > 0:
-            hits_nutr = client.query_points(
-                collection_name=COLLECTION_NUTRITION_PRINCIPLES, query=vector, limit=nutrition_k
-            ).points
+            with observability.span("qdrant_query", metadata={"collections": [COLLECTION_NUTRITION_PRINCIPLES]}):
+                hits_nutr = client.query_points(
+                    collection_name=COLLECTION_NUTRITION_PRINCIPLES, query=vector, limit=nutrition_k
+                ).points
             for hit in hits_nutr:
                 if not hit.payload:
                     continue
