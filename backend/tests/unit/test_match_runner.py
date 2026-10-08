@@ -225,3 +225,51 @@ async def test_match_user_scopes_workouts_by_plan_id(monkeypatch):
     await runner.match_user(7, date(2026, 9, 1), date(2026, 9, 3), plan_id=42)
     assert len(calls) == 1
     assert calls[0]["plan_id"] == 42
+
+
+@pytest.mark.asyncio
+async def test_rerun_keeps_a_match_whose_workout_is_now_completed(monkeypatch):
+    """Sync -> match -> athlete marks the workout done (or live mode does) ->
+    next sync. The completed workout must stay a candidate for the activity
+    already linked to it, or the re-run unlinks the synced run."""
+    saved = []
+    linked = {**activity(1, method="auto"), "matched_workout_id": 10}
+    done = {**workout(10), "is_completed": 1}
+    monkeypatch.setattr(runner.db, "get_activities_for_matching", lambda *a, **k: [linked])
+    monkeypatch.setattr(runner.db, "get_dated_workouts_for_matching", lambda *a, **k: [done])
+    monkeypatch.setattr(runner.db, "save_match", lambda **kw: saved.append(kw))
+    monkeypatch.setattr(runner.settings, "MATCHING_SHADOW_MODE", True)
+
+    await runner.match_user(7, date(2026, 9, 1), date(2026, 9, 3))
+    assert saved[0]["workout_id"] == 10
+
+
+@pytest.mark.asyncio
+async def test_an_unlinked_activity_relinks_to_its_completed_workout(monkeypatch):
+    """Activities already unlinked by the old candidate filter (or a run done
+    after the athlete ticked the workout by hand) link on the next sync."""
+    saved = []
+    done = {**workout(10), "is_completed": 1}
+    monkeypatch.setattr(runner.db, "get_activities_for_matching", lambda *a, **k: [activity(1, method="none")])
+    monkeypatch.setattr(runner.db, "get_dated_workouts_for_matching", lambda *a, **k: [done])
+    monkeypatch.setattr(runner.db, "save_match", lambda **kw: saved.append(kw))
+    monkeypatch.setattr(runner.settings, "MATCHING_SHADOW_MODE", True)
+
+    await runner.match_user(7, date(2026, 9, 1), date(2026, 9, 3))
+    assert saved[0]["workout_id"] == 10
+
+
+@pytest.mark.asyncio
+async def test_a_workout_held_by_a_manual_match_is_not_offered_to_other_activities(monkeypatch):
+    """matched_workout_id is UNIQUE; offering a manually-held workout to another
+    activity would steal it or fail the write."""
+    saved = []
+    manual = {**activity(1, method="manual"), "matched_workout_id": 10}
+    other = activity(2, offset_s=4 * 3600)
+    monkeypatch.setattr(runner.db, "get_activities_for_matching", lambda *a, **k: [manual, other])
+    monkeypatch.setattr(runner.db, "get_dated_workouts_for_matching", lambda *a, **k: [workout(10)])
+    monkeypatch.setattr(runner.db, "save_match", lambda **kw: saved.append(kw))
+    monkeypatch.setattr(runner.settings, "MATCHING_SHADOW_MODE", True)
+
+    await runner.match_user(7, date(2026, 9, 1), date(2026, 9, 3))
+    assert [s["workout_id"] for s in saved if s["activity_id"] == 2] == [None]

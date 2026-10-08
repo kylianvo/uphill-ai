@@ -3633,7 +3633,7 @@ def get_activities_for_matching(user_id: int, since, until) -> list[dict[str, An
         rows = conn.execute(
             text("""
             SELECT id, start_time, duration_seconds, distance_km, elevation_gain_m,
-                   avg_hr, activity_type, match_method
+                   avg_hr, activity_type, match_method, matched_workout_id
             FROM activities
             WHERE user_id = :u AND duplicate_of IS NULL
               AND start_time >= :since AND start_time < :until
