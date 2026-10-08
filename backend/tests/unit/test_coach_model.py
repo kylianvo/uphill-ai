@@ -338,3 +338,23 @@ async def test_gemini_adapter_marks_first_token_once():
 
     assert [e.text for e in events if e.kind == "text"] == ["Easy ", "run ", "today."]
     recorder.mark_first_token.assert_called_once_with()
+
+
+def test_gemini_adapter_sends_the_configured_thinking_level():
+    with patch("services.coach_model.settings.GEMINI_THINKING_LEVEL", "low"):
+        adapter = GeminiCoachModel(api_key="test-key", tools=["fake-tool"])
+    with patch("langchain_google_genai.ChatGoogleGenerativeAI") as MockChat:
+        MockChat.return_value.bind_tools.return_value = MockChat.return_value
+        adapter._get_chat()
+        adapter._get_chat(tools_enabled=False)
+
+    assert MockChat.call_count == 2
+    for call in MockChat.call_args_list:
+        assert call.kwargs["thinking_config"].thinking_level.value.lower() == "low"
+
+
+def test_gemini_adapter_explicit_thinking_level_wins():
+    adapter = GeminiCoachModel(api_key="test-key", thinking_level="medium")
+    with patch("langchain_google_genai.ChatGoogleGenerativeAI") as MockChat:
+        adapter._get_chat()
+    assert MockChat.call_args.kwargs["thinking_config"].thinking_level.value.lower() == "medium"

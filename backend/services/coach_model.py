@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Any, Literal, Protocol, runtime_checkable
 from uuid import UUID
 
+from config import settings
 from services import observability
 from services.observability import Usage
 
@@ -124,15 +125,28 @@ class GeminiCoachModel:
         self,
         api_key: str,
         model: str = "gemini-3.8-flash",
-        thinking_level: str | None = "low",
+        thinking_level: str | None = None,
         tools: list[Any] | None = None,
     ) -> None:
         self.api_key = api_key
         self.model = model
-        self.thinking_level = thinking_level
+        self.thinking_level = thinking_level or settings.GEMINI_THINKING_LEVEL
         self.tools = tools
         self._chat: Any = None
         self._closed = False
+
+    def _new_chat(self) -> Any:
+        from google.genai import types
+        from langchain_google_genai import ChatGoogleGenerativeAI
+
+        # max_retries=0: SDK retries are disabled per spec
+        return ChatGoogleGenerativeAI(
+            model=self.model,
+            api_key=self.api_key,
+            max_retries=0,
+            temperature=0.3,
+            thinking_config=types.ThinkingConfig(thinking_level=self.thinking_level),
+        )
 
     def _get_chat(self, tools_enabled: bool = True) -> Any:
         if not tools_enabled:
@@ -140,24 +154,9 @@ class GeminiCoachModel:
             # unbound chat instance so the model cannot emit another
             # tool_call. Not cached on self._chat -- that cache is the
             # tools-bound instance the rest of the turn uses.
-            from langchain_google_genai import ChatGoogleGenerativeAI
-
-            return ChatGoogleGenerativeAI(
-                model=self.model,
-                api_key=self.api_key,
-                max_retries=0,
-                temperature=0.3,
-            )
+            return self._new_chat()
         if self._chat is None:
-            from langchain_google_genai import ChatGoogleGenerativeAI
-
-            # max_retries=0: SDK retries are disabled per spec
-            chat = ChatGoogleGenerativeAI(
-                model=self.model,
-                api_key=self.api_key,
-                max_retries=0,
-                temperature=0.3,
-            )
+            chat = self._new_chat()
             self._chat = chat.bind_tools(self.tools) if self.tools else chat
         return self._chat
 
