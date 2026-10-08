@@ -245,16 +245,18 @@ async def test_rerun_keeps_a_match_whose_workout_is_now_completed(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_a_completed_workout_with_no_linked_activity_is_not_a_candidate(monkeypatch):
+async def test_an_unlinked_activity_relinks_to_its_completed_workout(monkeypatch):
+    """Activities already unlinked by the old candidate filter (or a run done
+    after the athlete ticked the workout by hand) link on the next sync."""
     saved = []
     done = {**workout(10), "is_completed": 1}
-    monkeypatch.setattr(runner.db, "get_activities_for_matching", lambda *a, **k: [activity(1)])
+    monkeypatch.setattr(runner.db, "get_activities_for_matching", lambda *a, **k: [activity(1, method="none")])
     monkeypatch.setattr(runner.db, "get_dated_workouts_for_matching", lambda *a, **k: [done])
     monkeypatch.setattr(runner.db, "save_match", lambda **kw: saved.append(kw))
     monkeypatch.setattr(runner.settings, "MATCHING_SHADOW_MODE", True)
 
     await runner.match_user(7, date(2026, 9, 1), date(2026, 9, 3))
-    assert saved[0]["workout_id"] is None
+    assert saved[0]["workout_id"] == 10
 
 
 @pytest.mark.asyncio

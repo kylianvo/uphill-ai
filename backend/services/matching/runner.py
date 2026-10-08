@@ -136,16 +136,11 @@ async def match_user(
 
     matched_workout_ids: set[int] = set()
 
-    # Workouts already linked to an activity. A completed workout stays a
-    # candidate while an automatic match holds it -- excluding it would make
-    # every re-run unlink the synced activity once the workout is marked done.
+    # Completed workouts stay candidates: a re-run must re-link the activity
+    # that completed them (excluding them unlinked synced runs once marked
+    # done), and a run can still land on a workout the athlete ticked by hand.
     # A manual match keeps its workout to itself (matched_workout_id is unique).
     manual_held = {a.get("matched_workout_id") for a in activities if a.get("match_method") == "manual"}
-    auto_held = {
-        a["matched_workout_id"]
-        for a in activities
-        if a.get("match_method") != "manual" and a.get("matched_workout_id") is not None
-    }
 
     by_day: dict[date, list[dict]] = defaultdict(list)
     for activity in activities:
@@ -161,11 +156,7 @@ async def match_user(
 
     for day, day_activities in sorted(by_day.items()):
         bundles = bundle_activities(day_activities)
-        candidates = [
-            w
-            for w in by_date.get(day, [])
-            if w.get("id") not in manual_held and (not w.get("is_completed") or w.get("id") in auto_held)
-        ]
+        candidates = [w for w in by_date.get(day, []) if w.get("id") not in manual_held]
         for assignment in assign(bundles, candidates):
             band = assignment.confidence_band
             if band == "auto":
