@@ -6,6 +6,7 @@ see services/vector_service.py note in the implementation plan for why langchain
 is intentionally avoided here.
 """
 
+import functools
 import hashlib
 from collections.abc import Callable
 
@@ -24,12 +25,34 @@ EMBEDDING_MODEL = "models/gemini-embedding-2"
 VECTOR_SIZE = 3072
 
 
+@functools.lru_cache(maxsize=1)
 def _client() -> QdrantClient:
+    # One client per process: it pools HTTP connections and is safe to share
+    # across the worker threads that callers run these sync functions in.
     return QdrantClient(url=settings.QDRANT_URL)
 
 
+@functools.lru_cache(maxsize=8)
+def _genai_client(api_key: str) -> genai.Client:
+    return genai.Client(api_key=api_key)
+
+
+# Collections seen to exist. Only positive answers are cached, so a collection
+# created after startup is picked up on the next search.
+_existing_collections: set[str] = set()
+
+
+def _collection_exists(client: QdrantClient, name: str) -> bool:
+    if name in _existing_collections:
+        return True
+    if client.collection_exists(name):
+        _existing_collections.add(name)
+        return True
+    return False
+
+
 def _embed(texts: list[str], api_key: str, task_type: str) -> list[list[float]]:
-    client = genai.Client(api_key=api_key)
+    client = _genai_client(api_key)
     vectors = []
     for t in texts:
         with observability.generation(
@@ -107,13 +130,14 @@ def search_scheduler_chunks(
         metadata={"collections": [COLLECTION], "retrieval_k": k},
     ) as retrieval:
         client = _client()
-        if not client.collection_exists(COLLECTION):
+        if not _collection_exists(client, COLLECTION):
             retrieval.set(grounded=False, chunk_refs=[], chunk_scores=[])
             print(f"[KBRetrieval] Collection {COLLECTION} does not exist — returning no context")
             return []
         vector = _embed([query], api_key, task_type="retrieval_query")[0]
         limit = max(k, fetch_k or k) if keep else k
-        hits = client.query_points(collection_name=COLLECTION, query=vector, limit=limit).points
+        with observability.span("qdrant_query", metadata={"collections": [COLLECTION]}):
+            hits = client.query_points(collection_name=COLLECTION, query=vector, limit=limit).points
         results = []
         for hit in hits:
             if not hit.payload:
@@ -175,8 +199,8 @@ def search_principles(
     active_collections = []
     client = _client()
 
-    has_sched = client.collection_exists(COLLECTION_SCHEDULER)
-    has_nutr = client.collection_exists(COLLECTION_NUTRITION_PRINCIPLES)
+    has_sched = _collection_exists(client, COLLECTION_SCHEDULER)
+    has_nutr = _collection_exists(client, COLLECTION_NUTRITION_PRINCIPLES)
 
     if has_sched:
         active_collections.append(COLLECTION_SCHEDULER)
@@ -195,9 +219,10 @@ def search_principles(
         results: list[dict] = []
 
         if has_sched and scheduler_k > 0:
-            hits_sched = client.query_points(
-                collection_name=COLLECTION_SCHEDULER, query=vector, limit=scheduler_k
-            ).points
+            with observability.span("qdrant_query", metadata={"collections": [COLLECTION_SCHEDULER]}):
+                hits_sched = client.query_points(
+                    collection_name=COLLECTION_SCHEDULER, query=vector, limit=scheduler_k
+                ).points
             for hit in hits_sched:
                 if not hit.payload:
                     continue
@@ -216,9 +241,10 @@ def search_principles(
                 )
 
         if has_nutr and nutrition_k > 0:
-            hits_nutr = client.query_points(
-                collection_name=COLLECTION_NUTRITION_PRINCIPLES, query=vector, limit=nutrition_k
-            ).points
+            with observability.span("qdrant_query", metadata={"collections": [COLLECTION_NUTRITION_PRINCIPLES]}):
+                hits_nutr = client.query_points(
+                    collection_name=COLLECTION_NUTRITION_PRINCIPLES, query=vector, limit=nutrition_k
+                ).points
             for hit in hits_nutr:
                 if not hit.payload:
                     continue

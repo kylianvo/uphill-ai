@@ -97,6 +97,7 @@ _SPAN_NAMES = frozenset(
         "plan_generation",
         "propose_rebuild_week",
         "propose_schedule_change",
+        "qdrant_query",
         "retrieval",
         "retrieve",
         "rule_based",

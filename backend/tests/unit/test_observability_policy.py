@@ -138,6 +138,12 @@ def test_coach_graph_node_names_pass_through_allowlist():
         assert safe["name"] == name, name
 
 
+def test_qdrant_query_span_name_passes_through_allowlist():
+    safe = policy.sanitize_span_envelope({"name": "qdrant_query", "attributes": {}, "status": {"code": "OK"}})
+    assert safe is not None
+    assert safe["name"] == "qdrant_query"
+
+
 def test_unallowlisted_span_name_is_still_masked():
     safe = policy.sanitize_span_envelope({"name": "user question text", "attributes": {}, "status": {"code": "OK"}})
     assert safe is not None
