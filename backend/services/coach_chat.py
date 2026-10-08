@@ -371,6 +371,10 @@ async def run_turn(
         last_persisted_len = 0
         final_citations: list[dict[str, Any]] = []
         final_tool_history: list[dict[str, Any]] = []
+        # Set once the reply and turn are stored as "ok". After that the handlers
+        # below must not rewrite them: clients close the stream on DoneEvent, which
+        # raises here during the post-reply work (judge, summary).
+        finalized = False
 
         try:
             async with asyncio.timeout(settings.COACH_CHAT_TURN_TIMEOUT_SECONDS):
@@ -427,6 +431,7 @@ async def run_turn(
                 status="ok",
                 result_message_id=assistant_msg_id,
             )
+            finalized = True
 
             # 3. Emit done event (only after successful DB finalization)
             yield DoneEvent(
@@ -466,22 +471,31 @@ async def run_turn(
                 logger.warning(f"Summary update failed or timed out: {exc}")
 
         except (asyncio.CancelledError, GeneratorExit):
+            if finalized:
+                raise
             full_text = "".join(accumulated)
             db.update_chat_message(assistant_msg_id, content=full_text, status="interrupted")
             db.finish_chat_turn(request_id=req_uuid, status="interrupted", result_message_id=assistant_msg_id)
             raise
         except TimeoutError:
+            if finalized:
+                return
             full_text = "".join(accumulated)
             db.update_chat_message(assistant_msg_id, content=full_text, status="interrupted", error_code="chat_timeout")
             db.finish_chat_turn(request_id=req_uuid, status="interrupted", result_message_id=assistant_msg_id)
             yield ErrorEvent(code="chat_timeout")
         except CoachChatError as exc:
+            if finalized:
+                logger.warning(f"coach_chat post-reply step failed: {exc.code}")
+                return
             full_text = "".join(accumulated)
             db.update_chat_message(assistant_msg_id, content=full_text, status="error", error_code=exc.code)
             db.finish_chat_turn(request_id=req_uuid, status="error", result_message_id=assistant_msg_id)
             yield ErrorEvent(code=exc.code, message=exc.message)
         except Exception as exc:
             logger.exception(f"Unexpected error in coach_chat run_turn: {exc}")
+            if finalized:
+                return
             full_text = "".join(accumulated)
             db.update_chat_message(
                 assistant_msg_id, content=full_text, status="error", error_code="coach_upstream_error"
