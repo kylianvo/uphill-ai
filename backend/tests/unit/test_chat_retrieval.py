@@ -2,7 +2,18 @@
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from services import kb_retrieval
+
+
+@pytest.fixture(autouse=True)
+def _reset_kb_retrieval_caches():
+    kb_retrieval._genai_client.cache_clear()
+    kb_retrieval._existing_collections.clear()
+    yield
+    kb_retrieval._genai_client.cache_clear()
+    kb_retrieval._existing_collections.clear()
 
 
 def test_search_principles_queries_both_collections():
