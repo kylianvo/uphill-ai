@@ -11170,6 +11170,126 @@
           }
         }
       }
+    },
+    "Proposed rebuild · Week %lld": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đề xuất xếp lại · Tuần %lld"
+          }
+        }
+      }
+    },
+    "Proposed schedule change": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đề xuất thay đổi lịch tập"
+          }
+        }
+      }
+    },
+    "Drafting week %lld…": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang soạn lại tuần %lld…"
+          }
+        }
+      }
+    },
+    "Week total": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tổng tuần"
+          }
+        }
+      }
+    },
+    "kept": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "giữ nguyên"
+          }
+        }
+      }
+    },
+    "was: %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "trước đây: %@"
+          }
+        }
+      }
+    },
+    "Your plan changed since this was proposed — ask the coach again.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lịch tập của bạn đã thay đổi kể từ khi đề xuất — hãy hỏi lại Coach."
+          }
+        }
+      }
+    },
+    "Couldn't draft this week — ask the coach to try again.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa soạn được tuần này — hãy nhờ Coach thử lại."
+          }
+        }
+      }
+    },
+    "Couldn't apply — try again.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa áp dụng được — thử lại nhé."
+          }
+        }
+      }
+    },
+    "Drafting": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang soạn"
+          }
+        }
+      }
+    },
+    "Week %lld · %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tuần %lld · %@"
+          }
+        }
+      }
+    },
+    "%lld min · %@ km · +%lld m": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld phút · %@ km · +%lld m"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

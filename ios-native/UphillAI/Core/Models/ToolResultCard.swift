@@ -83,25 +83,105 @@ struct PacingSplitsCardData: Codable, Sendable, Equatable {
     }
 }
 
-struct ScheduleProposalCardData: Codable, Sendable, Equatable {
+/// The few workout fields the chat cards show (the full Workout model is too strict for drafts).
+struct ProposalWorkout: Codable, Sendable, Equatable {
+    let title: String?
+    let type: String?
+    let durationMinutes: Double?
+    let distanceKm: Double?
+}
+
+/// One moved workout in a schedule_proposal diff.
+struct ProposalMove: Codable, Sendable, Equatable {
+    let workoutId: Int?
+    let fromWeek: Int?
+    let fromDay: String?
+    let toWeek: Int?
+    let toDay: String?
+    let workout: ProposalWorkout?
+}
+
+struct ScheduleProposalCardData: Decodable, Sendable, Equatable {
     let proposalId: Int?
     let status: String?
     let rationale: String?
-    let warnings: [String]?
-    let diff: [String: JSONValue]?
+    let warnings: [ScheduleWarning]?
+    let diff: [ProposalMove]?
+    /// Rebuild cards only.
+    let week: Int?
+    let fromDay: String?
 
     init(
         proposalId: Int? = nil,
         status: String? = "proposed",
         rationale: String? = nil,
-        warnings: [String]? = nil,
-        diff: [String: JSONValue]? = nil
+        warnings: [ScheduleWarning]? = nil,
+        diff: [ProposalMove]? = nil,
+        week: Int? = nil,
+        fromDay: String? = nil
     ) {
         self.proposalId = proposalId
         self.status = status
         self.rationale = rationale
         self.warnings = warnings
         self.diff = diff
+        self.week = week
+        self.fromDay = fromDay
+    }
+}
+
+struct RebuildTotals: Codable, Sendable, Equatable {
+    let min: Double?
+    let km: Double?
+    let vert: Double?
+}
+
+struct RebuildDay: Codable, Sendable, Equatable {
+    let day: String
+    let kept: [ProposalWorkout]
+    let before: [ProposalWorkout]
+    let after: [ProposalWorkout]
+}
+
+struct RebuildDiff: Codable, Sendable, Equatable {
+    struct Totals: Codable, Sendable, Equatable {
+        let before: RebuildTotals
+        let after: RebuildTotals
+    }
+    let week: Int?
+    let fromDay: String?
+    let days: [RebuildDay]
+    let totals: Totals?
+}
+
+/// GET /api/coach/chat/proposals/{id}. `diff` is `{}` until a rebuild draft is ready.
+struct ProposalDetail: Decodable, Sendable, Equatable {
+    let id: Int
+    let kind: String?
+    let status: String
+    let rebuild: RebuildDiff?
+    let warnings: [ScheduleWarning]?
+    let staleReason: String?
+
+    enum CodingKeys: String, CodingKey { case id, kind, status, diff, warnings, staleReason }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(Int.self, forKey: .id)
+        kind = try? c.decode(String.self, forKey: .kind)
+        status = try c.decode(String.self, forKey: .status)
+        rebuild = try? c.decode(RebuildDiff.self, forKey: .diff)
+        warnings = try? c.decode([ScheduleWarning].self, forKey: .warnings)
+        staleReason = try? c.decode(String.self, forKey: .staleReason)
+    }
+
+    init(id: Int, status: String, rebuild: RebuildDiff? = nil) {
+        self.id = id
+        self.kind = nil
+        self.status = status
+        self.rebuild = rebuild
+        self.warnings = nil
+        self.staleReason = nil
     }
 }
 

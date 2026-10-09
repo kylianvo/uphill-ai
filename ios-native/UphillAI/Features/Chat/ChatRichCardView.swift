@@ -3,8 +3,10 @@ import SwiftUI
 struct ChatRichCardView: View {
     let payload: ToolResultPayload
     let proposalStates: [Int: String]
+    var rebuildDiffs: [Int: RebuildDiff] = [:]
+    var onLoadRebuild: ((Int) async -> Void)? = nil
     var onSelectWorkout: ((Int) -> Void)? = nil
-    let onApplyProposal: (Int) async -> Void
+    let onApplyProposal: (Int) async -> Bool
     let onDiscardProposal: (Int) async -> Void
 
     var body: some View {
@@ -14,6 +16,8 @@ struct ChatRichCardView: View {
                 ChatProposalCard(
                     payload: payload,
                     proposalState: proposalStates[pId],
+                    rebuildDiff: rebuildDiffs[pId],
+                    onLoadRebuild: onLoadRebuild,
                     onApply: onApplyProposal,
                     onDiscard: onDiscardProposal
                 )

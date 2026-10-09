@@ -53,11 +53,15 @@ struct ChatView: View {
                                     ChatMessageBubble(
                                         message: message,
                                         proposalStates: service.proposalStates,
+                                        rebuildDiffs: service.rebuildDiffs,
+                                        onLoadRebuild: { id in
+                                            await service.pollRebuild(proposalId: id)
+                                        },
                                         onSelectWorkout: { id in
                                             selectedWorkoutID = id
                                         },
                                         onApplyProposal: { id in
-                                            _ = await service.applyProposal(proposalId: id)
+                                            await service.applyProposal(proposalId: id)
                                         },
                                         onDiscardProposal: { id in
                                             _ = await service.discardProposal(proposalId: id)
