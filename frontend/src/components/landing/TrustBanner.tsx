@@ -20,8 +20,8 @@ export function TrustBanner({ lang }: { lang: "en" | "vi" }) {
       <ShieldCheck size={18} weight="duotone" color="var(--accent-primary)" />
       <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-primary)" }}>
         {lang === "en"
-          ? "No hallucinated advice — every answer traces back to a real, curated source."
-          : "Cơ sở khoa học chuẩn xác — 100% câu trả lời đều dẫn xuất từ tài liệu đã kiểm chứng."}
+          ? "Training for the Uphill Athlete informs the training principles."
+          : "Nguyên tắc tập luyện dựa trên Training for the Uphill Athlete."}
       </span>
     </div>
   );

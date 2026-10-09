@@ -6,11 +6,11 @@ import { TrustBanner } from "./TrustBanner";
 describe("TrustBanner", () => {
   it("shows the English trust message", () => {
     render(<TrustBanner lang="en" />);
-    expect(screen.getByText(/No hallucinated advice/)).toBeInTheDocument();
+    expect(screen.getByText(/Training for the Uphill Athlete/)).toBeInTheDocument();
   });
 
   it("shows the Vietnamese trust message", () => {
     render(<TrustBanner lang="vi" />);
-    expect(screen.getByText(/Cơ sở khoa học chuẩn xác/)).toBeInTheDocument();
+    expect(screen.getByText(/Nguyên tắc tập luyện dựa trên/)).toBeInTheDocument();
   });
 });

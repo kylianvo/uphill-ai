@@ -17,14 +17,14 @@ const props = { workouts, lang: "en", isMobile: false, focusWeek: 1, onWeekChang
 describe("weekly planning calendar", () => {
   it("opens the selected training week and totals days across a month boundary", () => {
     render(<PlanCalendarView {...props} />);
-    expect(screen.getByRole("button", { name: "Week", exact: true })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Week" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getAllByText("~21 km").length).toBeGreaterThan(0);
     expect(screen.getByText("Long Run")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Next week" }));
     expect(props.onWeekChange).toHaveBeenCalledWith(2);
     expect(screen.getByText("Recovery Run")).toBeInTheDocument();
     expect(screen.queryByText("Long Run")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Month", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "Month" }));
     expect(screen.getByRole("button", { name: "Next month" })).toBeInTheDocument();
   });
 

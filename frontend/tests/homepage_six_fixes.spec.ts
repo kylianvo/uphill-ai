@@ -6,19 +6,20 @@ test.describe("Homepage 6 Fixes Verification", () => {
     await page.waitForLoadState("networkidle");
 
     // Check COROS has live indicator
-    const corosBadge = page.locator("div", { hasText: "COROS" }).first();
+    const syncSection = page.locator("#sync");
+    const corosBadge = syncSection.getByRole("img", { name: "COROS", exact: true });
     await expect(corosBadge).toBeVisible();
-    await expect(page.getByText(/^Live$|^Đang hoạt động$/i)).toBeVisible();
+    await expect(syncSection.getByText(/^Live$|^Đang hoạt động$/i)).toBeVisible();
 
     // Check others are labeled Coming Soon
-    const comingSoonLabels = page.getByText(/Coming soon|Sắp ra mắt/i);
+    const comingSoonLabels = syncSection.getByText(/Coming soon|Sắp ra mắt/i);
     await expect(comingSoonLabels.first()).toBeVisible();
     const count = await comingSoonLabels.count();
     expect(count).toBeGreaterThanOrEqual(3); // Garmin, Strava, Apple Watch
 
-    // Check Garmin, Strava, Apple Watch exist and are styled with opacity
+    // Check the integration labels, scoped away from the comparison table
     for (const name of ["Garmin Connect", "Strava", "Apple Watch"]) {
-      const el = page.locator("div", { hasText: name }).last();
+      const el = syncSection.getByText(name, { exact: true });
       await expect(el).toBeVisible();
     }
   });
@@ -110,35 +111,46 @@ test.describe("Homepage 6 Fixes Verification", () => {
 
     // Coach Uphill section is visible with image
     const coachImg = page.locator("#coach img");
+    await coachImg.scrollIntoViewIfNeeded();
     await expect(coachImg).toBeVisible();
     const coachSrc = await coachImg.getAttribute("src");
-    expect(coachSrc).toContain("coach-uphill-chat-exchange.png");
+    expect(coachSrc).toContain("ios-coach-saturday.png");
 
     // 4 tool images are visible
     const toolImages = page.locator("#tools img");
     expect(await toolImages.count()).toBe(4);
 
     const expectedToolImgs = [
-      "tool-pace-strategy.png",
-      "tool-goal-determiner.png",
-      "tool-gear-finder.png",
-      "tool-nutrition-lab.png",
+      "ios-pace-strategy.png",
+      "ios-goal-determiner.png",
+      "ios-gear-vault.png",
+      "ios-nutrition-lab.png",
     ];
     for (let i = 0; i < 4; i++) {
       const src = await toolImages.nth(i).getAttribute("src");
       expect(src).toContain(expectedToolImgs[i]);
     }
 
-    // Step 1 uses onboarding/goal determiner image, distinct from Step 3 and Hero
+    // Step 1 shows the native plan builder, distinct from the adapt-week screen
     const stepImgs = page.locator("#how-it-works img");
     const step1Src = await stepImgs.nth(0).getAttribute("src");
     const step3Src = await stepImgs.nth(2).getAttribute("src");
-    expect(step1Src).toContain("tell-us-where-you-are.png");
+    expect(step1Src).toContain("ios-plan-builder.png");
     expect(step1Src).not.toBe(step3Src);
+
+    // Scroll lazy screenshots into view and verify the selected WebP/PNG loads.
+    const screenshots = page.locator("#coach img, #tools img, #how-it-works img");
+    for (const screenshot of await screenshots.all()) {
+      await screenshot.scrollIntoViewIfNeeded();
+      await expect(screenshot).toBeVisible();
+      await expect.poll(() => screenshot.evaluate((img: HTMLImageElement) =>
+        img.complete && img.naturalWidth > 0 && img.currentSrc.includes("/landing/")
+      )).toBe(true);
+    }
 
     // Assert all loaded screenshot images returned 200
     for (const res of imageResponses) {
-      if (res.url.includes("/screenshots/")) {
+      if (res.url.includes("/landing/")) {
         expect(res.status).toBe(200);
       }
     }

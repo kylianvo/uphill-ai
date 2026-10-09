@@ -98,7 +98,7 @@ describe("useMatching", () => {
     expect(url).toContain("/api/integrations/matching?days=30");
     expect(opts.method).toBe("GET");
     expect(activities).toHaveLength(1);
-    expect((activities as { activity_id: number }[])[0].activity_id).toBe(7);
+    expect(activities).toMatchObject([{ activity_id: 7 }]);
   });
 
   it("surfaces an error when fetching matches fails", async () => {
