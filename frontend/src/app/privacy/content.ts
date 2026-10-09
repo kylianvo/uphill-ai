@@ -141,7 +141,7 @@ export const privacyVi: LegalContent = {
   title: "Chính sách quyền riêng tư",
   updated: "Cập nhật lần cuối: ngày 2 tháng 9 năm 2026",
   intro: [
-    "Uphill AI Vietnam (“Uphill AI”, “chúng tôi”) cung cấp nền tảng huấn luyện có hỗ trợ trí tuệ nhân tạo dành cho vận động viên chạy địa hình (trail) và chạy núi. Chính sách này giải thích chúng tôi thu thập dữ liệu cá nhân nào, vì sao thu thập, lưu trong bao lâu, cách chúng tôi sử dụng trí tuệ nhân tạo, và cách bạn thu hồi quyền truy cập hoặc yêu cầu xóa dữ liệu.",
+    "Uphill AI Vietnam (“Uphill AI”, “chúng tôi”) cung cấp nền tảng huấn luyện có hỗ trợ trí tuệ nhân tạo dành cho vận động viên chạy trail. Chính sách này giải thích chúng tôi thu thập dữ liệu cá nhân nào, vì sao thu thập, lưu trong bao lâu, cách chúng tôi sử dụng trí tuệ nhân tạo, và cách bạn thu hồi quyền truy cập hoặc yêu cầu xóa dữ liệu.",
     `Nếu bạn có bất kỳ câu hỏi nào về chính sách này hoặc về dữ liệu của mình, vui lòng liên hệ ${CONTACT}.`,
   ],
   sections: [
