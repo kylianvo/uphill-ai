@@ -210,7 +210,7 @@ struct KnowledgeHubScreen: View {
                                 Image(systemName: iconForTopic(topic))
                                     .font(.system(size: 11))
                             }
-                            Text(topic)
+                            Text(L(topic))
                                 .font(UH.TextStyle.caption.weight(isSelected ? .bold : .medium))
                         }
                         .foregroundStyle(isSelected ? Color.white : UH.Palette.ink)

@@ -2841,6 +2841,16 @@
         }
       }
     },
+    "Daily": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hằng ngày"
+          }
+        }
+      }
+    },
     "Data provided by COROS": {
       "localizations": {
         "vi": {
@@ -3287,6 +3297,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mỗi chi tiết giúp buổi tập tuần sau sát với bạn hơn."
+          }
+        }
+      }
+    },
+    "Easy & Recovery": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Easy & hồi phục"
           }
         }
       }
@@ -4077,6 +4097,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bị chặn"
+          }
+        }
+      }
+    },
+    "Gear": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gear"
           }
         }
       }
@@ -4911,6 +4941,16 @@
         }
       }
     },
+    "Intervals & Threshold": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Interval & Threshold"
+          }
+        }
+      }
+    },
     "Invalid callback response from COROS.": {
       "localizations": {
         "vi": {
@@ -5587,6 +5627,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tối thiểu 8 ký tự"
+          }
+        }
+      }
+    },
+    "Mindset": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tâm lý"
           }
         }
       }
@@ -6321,6 +6371,16 @@
         }
       }
     },
+    "Nutrition": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dinh dưỡng"
+          }
+        }
+      }
+    },
     "OVERALL EFFORT (RPE)": {
       "localizations": {
         "vi": {
@@ -6557,6 +6617,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "ƯU ĐIỂM"
+          }
+        }
+      }
+    },
+    "Pacing": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pace"
           }
         }
       }
@@ -7027,6 +7097,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ngày Race"
+          }
+        }
+      }
+    },
+    "Race Day Carbon": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carbon ngày Race"
           }
         }
       }
@@ -8361,6 +8441,16 @@
         }
       }
     },
+    "Start": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xuất phát"
+          }
+        }
+      }
+    },
     "Start Time (Clock)": {
       "localizations": {
         "vi": {
@@ -8957,6 +9047,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mục tiêu: 80%"
+          }
+        }
+      }
+    },
+    "Technical & Mountain": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kỹ thuật & núi"
           }
         }
       }

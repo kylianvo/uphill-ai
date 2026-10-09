@@ -10,7 +10,7 @@ enum ShoeRotationSlot: String, Codable, Sendable, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .daily: return "Daily"
+        case .daily: return L("Daily")
         case .tempo: return "Tempo"
         case .race: return "Race"
         case .trail: return "Trail"
@@ -19,10 +19,10 @@ enum ShoeRotationSlot: String, Codable, Sendable, CaseIterable, Identifiable {
 
     var subtitle: String {
         switch self {
-        case .daily: return "Easy & Recovery"
-        case .tempo: return "Intervals & Threshold"
-        case .race: return "Race Day Carbon"
-        case .trail: return "Technical & Mountain"
+        case .daily: return L("Easy & Recovery")
+        case .tempo: return L("Intervals & Threshold")
+        case .race: return L("Race Day Carbon")
+        case .trail: return L("Technical & Mountain")
         }
     }
 
