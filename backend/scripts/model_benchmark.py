@@ -93,7 +93,10 @@ def call_gemini(prompt: str) -> tuple[str, int, int]:
 def call_haiku(prompt: str) -> tuple[str, int, int]:
     import anthropic
 
-    response = anthropic.Anthropic().messages.parse(
+    # gzip, not brotli: httpx2's brotli decoder needs Brotli >= 1.2, and older local
+    # installs fail every response with "process() takes no keyword arguments".
+    client = anthropic.Anthropic(default_headers={"Accept-Encoding": "gzip"})
+    response = client.messages.parse(
         model=HAIKU_MODEL,
         max_tokens=4096,
         output_config={"effort": "low"},
