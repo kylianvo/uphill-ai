@@ -11290,6 +11290,256 @@
           }
         }
       }
+    },
+    "Resting HR": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resting HR"
+          }
+        }
+      }
+    },
+    "Max HR": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Max HR"
+          }
+        }
+      }
+    },
+    "Zone 2 slow end": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zone 2 chậm"
+          }
+        }
+      }
+    },
+    "Zone 2 fast end": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zone 2 nhanh"
+          }
+        }
+      }
+    },
+    "Coach": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coach"
+          }
+        }
+      }
+    },
+    "Set by %@ · %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ đặt · %@"
+          }
+        }
+      }
+    },
+    "Set by %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ đặt"
+          }
+        }
+      }
+    },
+    "Athlete · lab test": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "VĐV · test lab"
+          }
+        }
+      }
+    },
+    "Athlete · field test": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "VĐV · field test"
+          }
+        }
+      }
+    },
+    "Athlete · watch/formula": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "VĐV · đồng hồ/công thức"
+          }
+        }
+      }
+    },
+    "Athlete · method unknown": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "VĐV · không rõ cách đo"
+          }
+        }
+      }
+    },
+    "Entered by athlete": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "VĐV tự nhập"
+          }
+        }
+      }
+    },
+    "App default, not measured": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mặc định của app, chưa đo"
+          }
+        }
+      }
+    },
+    "Heart rate": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhịp tim"
+          }
+        }
+      }
+    },
+    "Pace": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pace"
+          }
+        }
+      }
+    },
+    "%@ will see what you changed. Workouts already in the plan keep their targets; new ones use these numbers.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ sẽ thấy bạn đã đổi gì. Các buổi tập đã có trong plan giữ nguyên mục tiêu; buổi mới dùng các chỉ số này."
+          }
+        }
+      }
+    },
+    "Edit zones": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sửa zone"
+          }
+        }
+      }
+    },
+    "%@ must be a whole number.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ phải là số nguyên."
+          }
+        }
+      }
+    },
+    "%@ must be below %@.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ phải thấp hơn %@."
+          }
+        }
+      }
+    },
+    "%@ must look like 5:30.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ phải có dạng 5:30."
+          }
+        }
+      }
+    },
+    "Zone 2 slow end must be slower than the fast end.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zone 2 chậm phải chậm hơn Zone 2 nhanh."
+          }
+        }
+      }
+    },
+    "Threshold pace must be faster than Zone 2.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Threshold pace phải nhanh hơn Zone 2."
+          }
+        }
+      }
+    },
+    "Your coach": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coach của bạn"
+          }
+        }
+      }
+    },
+    "%@ updated your zones": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ đã cập nhật zone của bạn"
+          }
+        }
+      }
+    },
+    "New workouts use these numbers.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buổi tập mới dùng các chỉ số này."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

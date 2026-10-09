@@ -871,6 +871,7 @@ def init_db():
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS athlete_tier TEXT",
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS fitness_snapshot JSONB",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS threshold_source TEXT NOT NULL DEFAULT 'unknown'",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_field_sources JSONB",
             "ALTER TABLE plans ADD COLUMN IF NOT EXISTS prediction JSONB",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS rpe INTEGER",
             "ALTER TABLE workouts ADD COLUMN IF NOT EXISTS notes TEXT",
@@ -2155,6 +2156,85 @@ def update_user_profile(user_id: int, profile_data: dict[str, Any]) -> bool:
         )
         conn.commit()
     return result.rowcount > 0
+
+
+# Physiology/pace numbers a coach may set for an athlete. Their provenance is
+# kept in users.profile_field_sources.
+COACH_EDITABLE_PROFILE_FIELDS = (
+    "resting_hr",
+    "max_hr",
+    "aet_hr",
+    "ant_hr",
+    "zone2_pace_min",
+    "zone2_pace_max",
+    "threshold_pace",
+)
+
+
+def update_athlete_physiology_by_coach(
+    athlete_id: int, changes: dict[str, Any], coach_name: str
+) -> dict[str, Any] | None:
+    """Writes the changed fields and records each as coach-set (unseen by the
+    athlete) in profile_field_sources, keeping the previous value for the
+    athlete's notice. Returns the updated user row."""
+    changes = {k: v for k, v in changes.items() if k in COACH_EDITABLE_PROFILE_FIELDS}
+    with engine.connect() as conn:
+        row = conn.execute(text("SELECT * FROM users WHERE id = :id FOR UPDATE"), {"id": athlete_id}).fetchone()
+        if not row:
+            return None
+        current = _row_to_dict(row)
+        sources = dict(current.get("profile_field_sources") or {})
+        now = datetime.datetime.now(datetime.UTC).isoformat()
+        changed = {k: v for k, v in changes.items() if current.get(k) != v}
+        for field, value in changed.items():
+            sources[field] = {
+                "source": "coach",
+                "by_name": coach_name,
+                "at": now,
+                "previous": current.get(field),
+                "seen": False,
+            }
+        if changed:
+            sets = ", ".join(f"{f} = :{f}" for f in changed)
+            conn.execute(
+                text(f"UPDATE users SET {sets}, profile_field_sources = CAST(:src AS jsonb) WHERE id = :id"),
+                {**changed, "src": json.dumps(sources), "id": athlete_id},
+            )
+        conn.commit()
+    return get_user_by_id(athlete_id)
+
+
+def mark_profile_fields_athlete_set(user_id: int, before: dict[str, Any], after: dict[str, Any]) -> None:
+    """After the athlete saves their own profile, any coach-editable field whose
+    value changed is now athlete-set: drop its coach provenance entry."""
+    sources = dict(after.get("profile_field_sources") or {})
+    changed = [f for f in COACH_EDITABLE_PROFILE_FIELDS if before.get(f) != after.get(f) and f in sources]
+    if not changed:
+        return
+    for f in changed:
+        sources.pop(f)
+    with engine.connect() as conn:
+        conn.execute(
+            text("UPDATE users SET profile_field_sources = CAST(:src AS jsonb) WHERE id = :id"),
+            {"src": json.dumps(sources), "id": user_id},
+        )
+        conn.commit()
+
+
+def acknowledge_coach_profile_changes(user_id: int) -> None:
+    """The athlete has seen the coach's edits: mark every entry seen."""
+    user = get_user_by_id(user_id)
+    sources = dict((user or {}).get("profile_field_sources") or {})
+    if not any(not e.get("seen", True) for e in sources.values()):
+        return
+    for e in sources.values():
+        e["seen"] = True
+    with engine.connect() as conn:
+        conn.execute(
+            text("UPDATE users SET profile_field_sources = CAST(:src AS jsonb) WHERE id = :id"),
+            {"src": json.dumps(sources), "id": user_id},
+        )
+        conn.commit()
 
 
 def update_user_fitness(

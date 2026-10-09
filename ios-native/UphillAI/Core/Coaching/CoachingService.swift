@@ -9,6 +9,7 @@ protocol CoachingServicing: Sendable {
     func declineInvite(inviteId: Int) async throws
     func removeFromRoster(linkId: Int) async throws
     func fetchAthleteProfile(athleteId: Int) async throws -> User
+    func updateAthleteProfile(athleteId: Int, payload: CoachProfileUpdatePayload) async throws -> User
     func fetchAthleteActivePlan(athleteId: Int) async throws -> PlanSnapshot?
     func fetchAthleteDraftPlan(athleteId: Int) async throws -> PlanSnapshot?
     func approveWorkout(athleteId: Int, planId: Int, workoutId: Int) async throws -> Workout
@@ -36,6 +37,17 @@ struct CoachInvitePayload: Encodable, Sendable {
     enum CodingKeys: String, CodingKey {
         case athleteEmail = "athlete_email"
     }
+}
+
+/// Only non-nil fields are sent, and only those change.
+struct CoachProfileUpdatePayload: Encodable, Sendable, Equatable {
+    var restingHr: Int?
+    var maxHr: Int?
+    var aetHr: Int?
+    var antHr: Int?
+    var zone2PaceMin: String?
+    var zone2PaceMax: String?
+    var thresholdPace: String?
 }
 
 struct CoachWorkoutUpdatePayload: Encodable, Sendable {
@@ -145,6 +157,10 @@ struct CoachingService: CoachingServicing {
     func fetchAthleteProfile(athleteId: Int) async throws -> User {
         let endpoint = Endpoint<User>.get("/api/coaching/athletes/\(athleteId)/profile")
         return try await client.send(endpoint)
+    }
+
+    func updateAthleteProfile(athleteId: Int, payload: CoachProfileUpdatePayload) async throws -> User {
+        try await client.send(.send(.patch, "/api/coaching/athletes/\(athleteId)/profile", body: payload))
     }
 
     func fetchAthleteActivePlan(athleteId: Int) async throws -> PlanSnapshot? {

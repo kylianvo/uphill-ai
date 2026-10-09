@@ -571,6 +571,67 @@ class TestAthleteProfileEndpoint:
         assert resp.status_code in (403, 404)
 
 
+class TestCoachEditsAthleteProfile:
+    def test_coach_edit_saves_marks_source_and_notifies_athlete(self, client):
+        coach_headers, _ = _make_coach(client, "edit-coach1@uphill.ai")
+        athlete_headers, athlete_id = _link_coach_and_athlete(client, coach_headers, "edit-athlete1@uphill.ai")
+
+        resp = client.patch(
+            f"/api/coaching/athletes/{athlete_id}/profile",
+            json={"max_hr": 192, "aet_hr": 148, "threshold_pace": "4:50"},
+            headers=coach_headers,
+        )
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["max_hr"] == 192 and body["threshold_pace"] == "4:50"
+        assert body["field_sources"]["max_hr"]["source"] == "coach"
+        assert body["field_sources"]["aet_hr"]["method"] == "unknown"
+        assert body["field_sources"]["resting_hr"]["source"] in ("athlete", "default")
+
+        me = client.get("/api/auth/me", headers=athlete_headers).json()
+        changed = {c["field"]: c for c in me["coach_profile_changes"]}
+        assert set(changed) == {"max_hr", "aet_hr", "threshold_pace"}
+        assert changed["max_hr"]["value"] == 192
+
+        acked = client.post("/api/auth/coach-profile-changes/ack", headers=athlete_headers).json()
+        assert acked["coach_profile_changes"] == []
+        assert acked["field_sources"]["max_hr"]["source"] == "coach"
+
+    def test_athlete_changing_a_coach_set_value_takes_it_back(self, client):
+        coach_headers, _ = _make_coach(client, "edit-coach2@uphill.ai")
+        athlete_headers, athlete_id = _link_coach_and_athlete(client, coach_headers, "edit-athlete2@uphill.ai")
+        client.patch(f"/api/coaching/athletes/{athlete_id}/profile", json={"max_hr": 190}, headers=coach_headers)
+        me = client.get("/api/auth/me", headers=athlete_headers).json()
+        payload = {k: me[k] for k in ("age", "resting_hr", "aet_hr", "ant_hr")} | {"max_hr": 195}
+        out = client.post("/api/auth/update-profile", json=payload, headers=athlete_headers).json()
+        assert out["field_sources"]["max_hr"]["source"] == "athlete"
+
+    def test_rejects_out_of_order_heart_rates(self, client):
+        coach_headers, _ = _make_coach(client, "edit-coach3@uphill.ai")
+        _, athlete_id = _link_coach_and_athlete(client, coach_headers, "edit-athlete3@uphill.ai")
+        resp = client.patch(
+            f"/api/coaching/athletes/{athlete_id}/profile",
+            json={"aet_hr": 170, "ant_hr": 160, "max_hr": 190},
+            headers=coach_headers,
+        )
+        assert resp.status_code == 422
+
+    def test_athlete_cannot_use_coach_route_on_self(self, client, auth_headers):
+        resp = client.patch(
+            f"/api/coaching/athletes/{auth_headers['user_id']}/profile",
+            json={"max_hr": 190},
+            headers=auth_headers["headers"],
+        )
+        assert resp.status_code == 403
+
+    def test_unlinked_coach_is_forbidden(self, client, auth_headers):
+        coach_headers, _ = _make_coach(client, "edit-coach4@uphill.ai")
+        resp = client.patch(
+            f"/api/coaching/athletes/{auth_headers['user_id']}/profile", json={"max_hr": 190}, headers=coach_headers
+        )
+        assert resp.status_code == 403
+
+
 class TestDeclineInviteEndpoint:
     def test_athlete_can_decline_a_pending_invite(self, client):
         coach_headers, _ = _make_coach(client, "decline-coach1@uphill.ai")

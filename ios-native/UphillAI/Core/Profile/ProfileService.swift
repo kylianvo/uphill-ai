@@ -93,6 +93,10 @@ struct ProfileService: Sendable {
     func update(_ body: ProfileDraft) async throws -> User {
         try await client.send(.send(.post, "/api/auth/update-profile", body: body))
     }
+    /// Clears the "your coach updated your zones" card.
+    func acknowledgeCoachChanges() async throws -> User {
+        try await client.send(Endpoint<User>(method: .post, path: "/api/auth/coach-profile-changes/ack"))
+    }
     func zones(model: String) async throws -> PaceZones {
         try await client.send(.get("/api/auth/pace-zones", query: [URLQueryItem(name: "model", value: model)]))
     }
