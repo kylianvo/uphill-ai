@@ -138,4 +138,47 @@ struct ChatServiceTests {
         service.dismissClarify()
         #expect(service.clarifyOptions == nil)
     }
+
+    @Test func streamedCardArrivingBeforeTokensIsKept() async throws {
+        let card: [String: Any] = [
+            "type": "tool_result", "tool_call_id": "t1", "name": "propose_schedule_change",
+            "status": "success", "card_type": "schedule_proposal",
+            "card_data": ["proposal_id": 7, "status": "proposed"]
+        ]
+        let sse = [card, ["type": "token", "text": "Swapped."], ["type": "done", "request_id": "r", "message_id": 12]]
+            .map { "data: " + String(data: json($0), encoding: .utf8)! + "\n\n" }
+            .joined()
+        let client = makeStubClient { _ in (200, Data(sse.utf8)) }
+
+        let service = ChatService(client: client)
+        await service.send(text: "I am busy Saturday")
+
+        let reply = try #require(service.messages.last)
+        #expect(reply.role == .assistant)
+        #expect(reply.content == "Swapped.")
+        #expect(reply.toolCalls?.first?.cardType == "schedule_proposal")
+        #expect(service.proposalStates[7] == "proposed")
+    }
+
+    @Test func threadHistoryDecodesStoredToolCalls() async throws {
+        let client = makeStubClient { _ in
+            (200, json([
+                "messages": [[
+                    "id": 3, "role": "assistant", "content": "See the card.",
+                    "tool_calls_json": [[
+                        "tool_call_id": "t1", "name": "propose_schedule_change", "status": "success",
+                        "card_type": "schedule_proposal", "card_data": ["proposal_id": 7]
+                    ]]
+                ]],
+                "has_more": false
+            ]))
+        }
+
+        let service = ChatService(client: client)
+        await service.loadInitial(planId: 1)
+
+        let payload = try #require(service.messages.first?.toolCalls?.first)
+        #expect(payload.cardType == "schedule_proposal")
+        #expect(payload.decodeScheduleProposal()?.proposalId == 7)
+    }
 }

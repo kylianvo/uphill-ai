@@ -218,6 +218,11 @@ final class ChatService {
                         cardType: cardType,
                         cardData: cardData
                     )
+                    // Tools run before the reply is written, so the card can arrive before any token.
+                    if !assistantCreated {
+                        assistantCreated = true
+                        self.messages.append(ChatMessage(role: .assistant, content: "", requestId: requestId))
+                    }
                     if let lastIdx = self.messages.indices.last, self.messages[lastIdx].role == .assistant {
                         var existing = self.messages[lastIdx].toolCalls ?? []
                         existing.append(toolPayload)

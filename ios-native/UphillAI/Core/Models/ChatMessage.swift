@@ -86,6 +86,7 @@ struct ChatMessage: Codable, Sendable, Equatable, Identifiable {
         case evidenceStatus
         case interrupted
         case toolCalls
+        case toolCallsJson
         case feedback
     }
 
@@ -110,7 +111,9 @@ struct ChatMessage: Codable, Sendable, Equatable, Identifiable {
         self.citations = try? container.decode([CitationItem].self, forKey: .citations)
         self.evidenceStatus = try? container.decode(String.self, forKey: .evidenceStatus)
         self.interrupted = try? container.decode(Bool.self, forKey: .interrupted)
-        self.toolCalls = try? container.decode([ToolResultPayload].self, forKey: .toolCalls)
+        // The thread endpoint returns the stored column name, tool_calls_json.
+        self.toolCalls = (try? container.decode([ToolResultPayload].self, forKey: .toolCalls))
+            ?? (try? container.decode([ToolResultPayload].self, forKey: .toolCallsJson))
         self.feedback = try? container.decode(Int.self, forKey: .feedback)
     }
 
