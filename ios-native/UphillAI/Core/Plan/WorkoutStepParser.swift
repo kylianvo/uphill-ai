@@ -266,9 +266,9 @@ enum WorkoutStepParser {
 
             for s in segments {
                 let lower = s.lowercased()
-                if warmup == nil && (lower.contains("warm") || lower.contains("easy jog")) {
+                if warmup == nil && (lower.contains("warm") || lower.contains("easy jog") || lower.contains("khởi động")) {
                     warmup = s
-                } else if lower.contains("cool") || lower.contains("stretch") {
+                } else if lower.contains("cool") || lower.contains("stretch") || lower.contains("thả lỏng") || lower.contains("hạ nhiệt") {
                     cooldown = s
                 } else {
                     main.append(s)
@@ -298,9 +298,9 @@ enum WorkoutStepParser {
             if step.isEmpty { continue }
 
             let lower = step.lowercased()
-            if warmup == nil && (lower.hasPrefix("warm") || lower.contains("warm up") || lower.contains("warm-up")) {
+            if warmup == nil && (lower.hasPrefix("warm") || lower.contains("warm up") || lower.contains("warm-up") || lower.hasPrefix("khởi động")) {
                 warmup = step
-            } else if lower.hasPrefix("cool") || lower.contains("cool down") || lower.contains("cool-down") {
+            } else if lower.hasPrefix("cool") || lower.contains("cool down") || lower.contains("cool-down") || lower.hasPrefix("thả lỏng") || lower.hasPrefix("hạ nhiệt") {
                 cooldown = step
             } else {
                 main.append(step)
@@ -331,7 +331,7 @@ enum WorkoutStepParser {
     }
 
     private static func extractMinutes(_ text: String) -> String? {
-        guard let regex = try? NSRegularExpression(pattern: #"(\d+[–\-]\d+\s*min|\d+\s*min)"#, options: .caseInsensitive) else { return nil }
+        guard let regex = try? NSRegularExpression(pattern: #"(\d+[–\-]\d+\s*(?:min|phút)|\d+\s*(?:min|phút))"#, options: .caseInsensitive) else { return nil }
         let ns = text as NSString
         if let match = regex.firstMatch(in: text, range: NSRange(location: 0, length: ns.length)) {
             return ns.substring(with: match.range)

@@ -149,4 +149,25 @@ struct WorkoutStepParserTests {
         #expect(parsed.intent?.contains("High-cadence") == true)
         #expect(parsed.warning?.contains("Stop immediately") == true)
     }
+
+    // Plans generated in Vietnamese write durations as "phút" and sometimes name the
+    // warm-up/cool-down in Vietnamese (samples from production descriptions).
+    @Test func vietnameseDurationsAreRead() {
+        let w = makeWorkout(type: "Easy", reps: nil, repVal: nil, repUnit: nil, walkVal: nil,
+                            desc: "Process: Warm-up 10 phút chạy nhẹ nhàng Zone 1 → Chạy 30 phút Zone 2 → Cool-down 5 phút đi bộ thả lỏng. Overall: Bài chạy nền.")
+        let steps = WorkoutStepParser.parseSteps(workout: w, description: WorkoutStepParser.parseDescription(w.description), isTreadmill: false)
+        #expect(steps.first?.phase == .warmup)
+        #expect(steps.first?.duration == "10 phút")
+        #expect(steps.last?.phase == .cooldown)
+        #expect(steps.last?.duration == "5 phút")
+    }
+
+    @Test func vietnameseWarmupAndCooldownLabels() {
+        let w = makeWorkout(type: "Easy", reps: nil, repVal: nil, repUnit: nil, walkVal: nil,
+                            desc: "Process: Khởi động 10 phút chạy chậm → Chạy 40 phút Zone 2 → Thả lỏng 10 phút và giãn cơ. Overall: Bài chạy nền.")
+        let steps = WorkoutStepParser.parseSteps(workout: w, description: WorkoutStepParser.parseDescription(w.description), isTreadmill: false)
+        #expect(steps.map(\.phase) == [.warmup, .main, .cooldown])
+        #expect(steps.first?.target.contains("Khởi động") == true)
+        #expect(steps.last?.duration == "10 phút")
+    }
 }
