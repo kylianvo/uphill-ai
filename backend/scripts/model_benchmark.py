@@ -12,12 +12,15 @@ import glob
 import json
 import os
 import statistics
+import sys
 import time
 
 from pydantic import ValidationError
 
-from config import settings
-from services import goal_judge
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from config import settings  # noqa: E402
+from services import goal_judge  # noqa: E402
 
 HAIKU_MODEL = "claude-haiku-5-5"
 # USD per 1M tokens (input, output). Gemini output includes thinking tokens.
