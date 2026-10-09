@@ -136,3 +136,19 @@ def test_no_race_name_means_no_matched_race_in_response(monkeypatch):
     ):
         result = asyncio.run(gp.gear_planner.generate_plan("", GearParams(surface="trail")))
     assert result["matched_race"] is None
+
+
+def test_road_request_sends_only_road_capable_catalog_entries(monkeypatch):
+    monkeypatch.setattr(settings, "GEMINI_API_KEY", "test-key")
+    fake_client = _mock_gemini_client(GEAR_JSON)
+    chunks = [{"title": f"Road {i}", "payload": {"brand": "Nike", "terrain": ["Road"]}} for i in range(12)] + [
+        {"title": "Speedgoat 7", "payload": {"brand": "Hoka", "terrain": ["Technical trail"]}}
+    ]
+    with (
+        patch("db.get_kb_chunks", return_value=chunks),
+        patch("google.genai.Client", return_value=fake_client),
+    ):
+        asyncio.run(gp.gear_planner.generate_plan("", GearParams(surface="road")))
+    prompt_sent = fake_client.models.generate_content.call_args.kwargs["contents"]
+    assert "Road 0" in prompt_sent
+    assert "Speedgoat 7" not in prompt_sent
