@@ -94,7 +94,7 @@ struct SummaryCarousel: View {
                                     volumeChartMode = mode
                                 }
                             } label: {
-                                Text(mode.rawValue)
+                                Text(L(mode.rawValue))
                                     .font(.system(size: 10, weight: volumeChartMode == mode ? .bold : .medium, design: .monospaced))
                                     .foregroundStyle(volumeChartMode == mode ? UH.Palette.accentInk : UH.Palette.secondary)
                                     .padding(.horizontal, 7)
@@ -187,7 +187,7 @@ struct SummaryCarousel: View {
             AxisMarks(values: .automatic) { value in
                 AxisValueLabel {
                     if let raw = value.as(String.self), let wd = Weekday(rawValue: raw) {
-                        Text(String(wd.rawValue.prefix(1)))
+                        Text(AppLanguage.current == .vi ? L(String(wd.rawValue.prefix(3))) : String(wd.rawValue.prefix(1)))
                             .font(.system(size: 9.5, weight: .bold, design: .monospaced))
                             .foregroundStyle(wd.rawValue == "Saturday" || wd.rawValue == "Sunday" ? UH.Palette.ink : UH.Palette.secondary)
                     }
@@ -272,7 +272,7 @@ struct SummaryCarousel: View {
                 HStack(spacing: 0) {
                     ForEach(model.dayStates, id: \.weekday) { item in
                         VStack(spacing: 4) {
-                            Text(String(item.weekday.rawValue.prefix(1)))
+                            Text(AppLanguage.current == .vi ? L(String(item.weekday.rawValue.prefix(3))) : String(item.weekday.rawValue.prefix(1)))
                                 .font(.system(size: 10, weight: .bold, design: .monospaced))
                                 .foregroundStyle(UH.Palette.muted)
                             dot(item.state)

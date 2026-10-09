@@ -462,7 +462,7 @@ struct ManagePlanSheet: View {
 
     private func raceDate(_ plan: Plan) -> String {
         guard let day = PlanCalendar.day(from: plan.raceDate) else { return plan.raceDate }
-        return L("Race ") + day.formatted(.dateTime.day().month(.abbreviated).year())
+        return L("Race ") + day.formatted(Date.FormatStyle(locale: AppLanguage.current.locale).day().month(.abbreviated).year())
     }
 
     // MARK: - Tools & Labs

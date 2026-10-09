@@ -289,7 +289,7 @@ struct WorkoutDetailSheet: View {
         guard let plan = model.snapshot?.plan,
               let date = PlanCalendar.date(week: w.weekNumber, weekday: w.weekday, plan: plan,
                                            workouts: model.snapshot?.workouts ?? []) else { return w.phase }
-        return date.formatted(.dateTime.weekday(.wide).day().month(.wide)) + " · " + L("%@ Phase", L(w.phase))
+        return date.formatted(Date.FormatStyle(locale: AppLanguage.current.locale).weekday(.wide).day().month(.wide)) + " · " + L("%@ Phase", L(w.phase))
     }
 
     // Three stat tiles: Duration, Est. distance, Pace (/km) in SF Mono
@@ -811,7 +811,7 @@ struct WorkoutDetailSheet: View {
     }
 
     private func moveLabel(_ target: MoveTarget) -> String {
-        let day = target.date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated))
+        let day = target.date.formatted(Date.FormatStyle(locale: AppLanguage.current.locale).weekday(.abbreviated).day().month(.abbreviated))
         return target.week > model.currentWeek ? L("Next week · %@", day) : day
     }
 

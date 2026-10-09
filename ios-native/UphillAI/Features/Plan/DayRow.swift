@@ -16,7 +16,7 @@ struct DayRow: View {
 
     private var dateText: String {
         guard let date = day.date else { return day.weekday.short }
-        return date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated))
+        return date.formatted(Date.FormatStyle(locale: AppLanguage.current.locale).weekday(.abbreviated).day().month(.abbreviated))
     }
 
     private var dayIdentifier: String {

@@ -2881,6 +2881,16 @@
         }
       }
     },
+    "Days": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngày"
+          }
+        }
+      }
+    },
     "Days per week": {
       "localizations": {
         "vi": {
@@ -9537,6 +9547,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Độ dốc tối đa Treadmill"
+          }
+        }
+      }
+    },
+    "Trend": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xu hướng"
           }
         }
       }

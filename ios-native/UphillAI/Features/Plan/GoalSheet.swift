@@ -197,7 +197,7 @@ struct GoalSheet: View {
     private func footer(_ assessment: GoalAssessment) -> String {
         let source = assessment.engine == "none" || assessment.engine == nil ? L("Estimated from your training so far") : L("Estimated from your race history")
         guard let created = assessment.createdAt, let date = (try? Date(created, strategy: Date.ISO8601FormatStyle(includingFractionalSeconds: true))) ?? (try? Date(created, strategy: .iso8601)) else { return source }
-        return source + " · " + date.formatted(.dateTime.day().month(.abbreviated))
+        return source + " · " + date.formatted(Date.FormatStyle(locale: AppLanguage.current.locale).day().month(.abbreviated))
     }
 
     private func check() async {
