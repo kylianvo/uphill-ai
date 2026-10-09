@@ -1,12 +1,2272 @@
 {
   "sourceLanguage": "en",
   "strings": {
-    "Me": {
+    "%@ Coming soon": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tôi"
+            "value": "%@ Sắp có"
+          }
+        }
+      }
+    },
+    "%@ hill or trail day": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ngày có dốc/trail"
+          }
+        }
+      }
+    },
+    "%@ invited you to be coached": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ mời bạn làm học viên"
+          }
+        }
+      }
+    },
+    "%@ · %lld weeks": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · %lld tuần"
+          }
+        }
+      }
+    },
+    "%@%lld%% vs last wk · Total %lld weeks": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@%lld%% so với tuần trước · Tổng %lld tuần"
+          }
+        }
+      }
+    },
+    "%@: Draft plan \"%@\"": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: Plan nháp \"%@\""
+          }
+        }
+      }
+    },
+    "%@: Session \"%@\" needs approval": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: Buổi \"%@\" cần duyệt"
+          }
+        }
+      }
+    },
+    "%lld INSIGHTS": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld NHẬN XÉT"
+          }
+        }
+      }
+    },
+    "%lld days / week": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld ngày / tuần"
+          }
+        }
+      }
+    },
+    "%lld days ago": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld ngày trước"
+          }
+        }
+      }
+    },
+    "%lld days to go": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Còn %lld ngày"
+          }
+        }
+      }
+    },
+    "%lld days/week": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld ngày/tuần"
+          }
+        }
+      }
+    },
+    "%lld finishers": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld người về đích"
+          }
+        }
+      }
+    },
+    "%lld hours": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld giờ"
+          }
+        }
+      }
+    },
+    "%lld km expected life": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tuổi thọ dự kiến %lld km"
+          }
+        }
+      }
+    },
+    "%lld min": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld phút"
+          }
+        }
+      }
+    },
+    "%lld of %lld": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld / %lld"
+          }
+        }
+      }
+    },
+    "%lld of %lld completed": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã xong %lld / %lld"
+          }
+        }
+      }
+    },
+    "%lld of %lld sessions completed": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã xong %lld / %lld buổi"
+          }
+        }
+      }
+    },
+    "%lld of %lld workouts completed": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã xong %lld / %lld buổi tập"
+          }
+        }
+      }
+    },
+    "%lld runners": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld runner"
+          }
+        }
+      }
+    },
+    "%lld shoes": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld đôi giày"
+          }
+        }
+      }
+    },
+    "%lld total": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tổng %lld"
+          }
+        }
+      }
+    },
+    "%lld total misses": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tổng %lld buổi lỡ"
+          }
+        }
+      }
+    },
+    "%lld weeks · %lld sessions": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld tuần · %lld buổi tập"
+          }
+        }
+      }
+    },
+    "%lld yrs": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld tuổi"
+          }
+        }
+      }
+    },
+    "%lld%% / 70%% required": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld%% / cần 70%%"
+          }
+        }
+      }
+    },
+    "%lld%% adherence": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tuân thủ %lld%%"
+          }
+        }
+      }
+    },
+    "%lld/%lld UNLOCKED": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ĐÃ MỞ %lld/%lld"
+          }
+        }
+      }
+    },
+    "%lldg carbs": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lldg carbs"
+          }
+        }
+      }
+    },
+    "%lldmg sodium": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lldmg sodium"
+          }
+        }
+      }
+    },
+    "(Interrupted)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(Bị gián đoạn)"
+          }
+        }
+      }
+    },
+    "+ Add a result that isn't linked": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+ Thêm kết quả chưa liên kết"
+          }
+        }
+      }
+    },
+    "100 MILES (161 KM)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "100 DẶM (161 KM)"
+          }
+        }
+      }
+    },
+    "2 SESSIONS": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "2 BUỔI"
+          }
+        }
+      }
+    },
+    "4 SLOTS ACTIVE": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "4 VỊ TRÍ ĐANG DÙNG"
+          }
+        }
+      }
+    },
+    "4 zones": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "4 zone"
+          }
+        }
+      }
+    },
+    "5 zones": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "5 zone"
+          }
+        }
+      }
+    },
+    "A hard day right before the long run makes both harder.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Một ngày tập nặng ngay trước Long Run làm cả hai buổi đều nặng hơn."
+          }
+        }
+      }
+    },
+    "A mix": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kết hợp"
+          }
+        }
+      }
+    },
+    "ABOUT THIS SESSION": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "VỀ BUỔI TẬP NÀY"
+          }
+        }
+      }
+    },
+    "ACTIVE": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ĐANG DÙNG"
+          }
+        }
+      }
+    },
+    "ASSIGN TO ROTATION SLOT": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GÁN VÀO VỊ TRÍ XOAY VÒNG"
+          }
+        }
+      }
+    },
+    "AUTO-UPDATING CALENDAR SUBSCRIPTION": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ĐĂNG KÝ LỊCH TỰ CẬP NHẬT"
+          }
+        }
+      }
+    },
+    "About 1 minute": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khoảng 1 phút"
+          }
+        }
+      }
+    },
+    "About you": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Về bạn"
+          }
+        }
+      }
+    },
+    "Accept": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chấp nhận"
+          }
+        }
+      }
+    },
+    "Account": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tài khoản"
+          }
+        }
+      }
+    },
+    "Action": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hành động"
+          }
+        }
+      }
+    },
+    "Action Items": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Việc cần làm"
+          }
+        }
+      }
+    },
+    "Active": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang dùng"
+          }
+        }
+      }
+    },
+    "Active Race: %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Race hiện tại: %@"
+          }
+        }
+      }
+    },
+    "Active Race: %@ (%@)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Race hiện tại: %@ (%@)"
+          }
+        }
+      }
+    },
+    "Adapt Week %lld": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Điều chỉnh tuần %lld"
+          }
+        }
+      }
+    },
+    "Adapt week %lld": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Điều chỉnh tuần %lld"
+          }
+        }
+      }
+    },
+    "Add": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm"
+          }
+        }
+      }
+    },
+    "Add Other Custom Model...": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm mẫu khác..."
+          }
+        }
+      }
+    },
+    "Add Race Result": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm kết quả Race"
+          }
+        }
+      }
+    },
+    "Add Workout": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm buổi tập"
+          }
+        }
+      }
+    },
+    "Add an Athlete": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm học viên"
+          }
+        }
+      }
+    },
+    "Add link: https://uphillathlete.com/...": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm link: https://uphillathlete.com/..."
+          }
+        }
+      }
+    },
+    "Add session notes (legs, terrain, weather)…": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ghi chú buổi tập (chân, địa hình, thời tiết)…"
+          }
+        }
+      }
+    },
+    "Add to Apple Calendar": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm vào Apple Calendar"
+          }
+        }
+      }
+    },
+    "Add to Calendar (.ics)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm vào lịch (.ics)"
+          }
+        }
+      }
+    },
+    "Add workouts directly to Apple Calendar, Google Calendar, or Outlook. Subscriptions stay updated as your plan adapts.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm buổi tập thẳng vào Apple Calendar, Google Calendar hoặc Outlook. Lịch đăng ký tự cập nhật khi plan thay đổi."
+          }
+        }
+      }
+    },
+    "Added %lld sessions to %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã thêm %lld buổi vào %@"
+          }
+        }
+      }
+    },
+    "Additional notes (e.g. blister prone, rock protection needed)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ghi chú thêm (vd. dễ phồng rộp, cần bảo vệ đá)"
+          }
+        }
+      }
+    },
+    "Adherence": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tuân thủ"
+          }
+        }
+      }
+    },
+    "Adherence Trend": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xu hướng tuân thủ"
+          }
+        }
+      }
+    },
+    "Adjust": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Điều chỉnh"
+          }
+        }
+      }
+    },
+    "Adjust your preferred running days, long run, and training environment.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chỉnh ngày chạy, ngày Long Run và nơi tập của bạn."
+          }
+        }
+      }
+    },
+    "Aerobic Threshold (AeT)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngưỡng Aerobic (AeT)"
+          }
+        }
+      }
+    },
+    "Aggressive": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mạo hiểm"
+          }
+        }
+      }
+    },
+    "All": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tất cả"
+          }
+        }
+      }
+    },
+    "All Years": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mọi năm"
+          }
+        }
+      }
+    },
+    "All messages in this conversation will be permanently removed.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mọi tin nhắn trong cuộc trò chuyện này sẽ bị xóa vĩnh viễn."
+          }
+        }
+      }
+    },
+    "Anaerobic Threshold (AnT)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngưỡng Anaerobic (AnT)"
+          }
+        }
+      }
+    },
+    "Answer a few questions and Coach Uphill builds a plan around your goal, your week and how you feel today.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trả lời vài câu hỏi, Coach Uphill sẽ lên plan theo mục tiêu, lịch tuần và thể trạng hôm nay của bạn."
+          }
+        }
+      }
+    },
+    "Any": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bất kỳ"
+          }
+        }
+      }
+    },
+    "Applied": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã áp dụng"
+          }
+        }
+      }
+    },
+    "Apply Change": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Áp dụng"
+          }
+        }
+      }
+    },
+    "Approve Workout": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duyệt buổi tập"
+          }
+        }
+      }
+    },
+    "Are you sure you want to remove %@? They will no longer share their plan and data with you.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn chắc chắn muốn xóa %@? Học viên sẽ không còn chia sẻ plan và dữ liệu với bạn."
+          }
+        }
+      }
+    },
+    "Ask Coach Uphill…": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hỏi Coach Uphill…"
+          }
+        }
+      }
+    },
+    "Assign": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gán"
+          }
+        }
+      }
+    },
+    "Assign Shoe": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gán giày"
+          }
+        }
+      }
+    },
+    "Assign to Shoe Rotation": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gán vào bộ giày xoay vòng"
+          }
+        }
+      }
+    },
+    "Athlete Level": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trình độ"
+          }
+        }
+      }
+    },
+    "Athlete Notes:": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ghi chú của học viên:"
+          }
+        }
+      }
+    },
+    "Athlete Profile": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hồ sơ học viên"
+          }
+        }
+      }
+    },
+    "Athlete's Uphill email...": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Email Uphill của học viên..."
+          }
+        }
+      }
+    },
+    "Athletes": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Học viên"
+          }
+        }
+      }
+    },
+    "Athletes by Target Race": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Học viên theo Race mục tiêu"
+          }
+        }
+      }
+    },
+    "Automatically create a dedicated \"Uphill AI Training\" calendar in your native Calendar app without manual file imports.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tự tạo lịch \"Uphill AI Training\" riêng trong app Lịch, không cần nhập file."
+          }
+        }
+      }
+    },
+    "Avg %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TB %@"
+          }
+        }
+      }
+    },
+    "BLOCK %lld REVIEW": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ĐÁNH GIÁ BLOCK %lld"
+          }
+        }
+      }
+    },
+    "BRAND PREFERENCES": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "THƯƠNG HIỆU ƯA THÍCH"
+          }
+        }
+      }
+    },
+    "BRAND PREFERENCES & BUDGET": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "THƯƠNG HIỆU & NGÂN SÁCH"
+          }
+        }
+      }
+    },
+    "Back": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quay lại"
+          }
+        }
+      }
+    },
+    "Balanced": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cân bằng"
+          }
+        }
+      }
+    },
+    "Benefit:": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lợi ích:"
+          }
+        }
+      }
+    },
+    "Block completion: %lld%% done": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hoàn thành Block: %lld%%"
+          }
+        }
+      }
+    },
+    "Block progress": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiến độ Block"
+          }
+        }
+      }
+    },
+    "Brand (e.g. Brooks)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hãng (vd. Brooks)"
+          }
+        }
+      }
+    },
+    "Build anyway": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vẫn tạo"
+          }
+        }
+      }
+    },
+    "Build my plan": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tạo plan"
+          }
+        }
+      }
+    },
+    "Build the next block anyway?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vẫn tạo Block tiếp theo?"
+          }
+        }
+      }
+    },
+    "Building the next block…": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang tạo Block tiếp theo…"
+          }
+        }
+      }
+    },
+    "Building your plan": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang tạo plan"
+          }
+        }
+      }
+    },
+    "Building your plan… %lld:%@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang tạo plan… %lld:%@"
+          }
+        }
+      }
+    },
+    "CAUTION": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LƯU Ý"
+          }
+        }
+      }
+    },
+    "COACH UPHILL REASONING": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LẬP LUẬN CỦA COACH UPHILL"
+          }
+        }
+      }
+    },
+    "COACH UPHILL TAKEAWAY": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ĐIỂM CHÍNH TỪ COACH UPHILL"
+          }
+        }
+      }
+    },
+    "COACH'S FUELING PROTOCOLS": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CÁCH FUELING CỦA COACH"
+          }
+        }
+      }
+    },
+    "COACH'S PICK THIS WEEK": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "COACH CHỌN TUẦN NÀY"
+          }
+        }
+      }
+    },
+    "COACH'S REVIEW": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ĐÁNH GIÁ CỦA COACH"
+          }
+        }
+      }
+    },
+    "COACHING MODE": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CHẾ ĐỘ HUẤN LUYỆN"
+          }
+        }
+      }
+    },
+    "CONNECTED ACCOUNTS": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TÀI KHOẢN ĐÃ KẾT NỐI"
+          }
+        }
+      }
+    },
+    "CONS / TRADE-OFFS": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NHƯỢC ĐIỂM"
+          }
+        }
+      }
+    },
+    "COURSE CONFIGURATION": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CẤU HÌNH CUNG ĐƯỜNG"
+          }
+        }
+      }
+    },
+    "COURSE PROFILE & TARGET PACE": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CAO ĐỘ & PACE MỤC TIÊU"
+          }
+        }
+      }
+    },
+    "COURSE STATS": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "THÔNG SỐ CUNG ĐƯỜNG"
+          }
+        }
+      }
+    },
+    "CURRENT DISTANCE LOGGED": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QUÃNG ĐƯỜNG ĐÃ CHẠY"
+          }
+        }
+      }
+    },
+    "CURRENT FITNESS BASELINE": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "THỂ LỰC HIỆN TẠI"
+          }
+        }
+      }
+    },
+    "Calculate Fueling Plan": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tính kế hoạch Fueling"
+          }
+        }
+      }
+    },
+    "Calculate your race nutrition strategy": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tính chiến lược dinh dưỡng thi đấu"
+          }
+        }
+      }
+    },
+    "Calculation Anchors": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mốc tính toán"
+          }
+        }
+      }
+    },
+    "Calibrated against %lld field (%lld finishers)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hiệu chỉnh theo giải %lld (%lld người về đích)"
+          }
+        }
+      }
+    },
+    "Calibrated from your threshold & fitness profile": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hiệu chỉnh từ ngưỡng và thể lực của bạn"
+          }
+        }
+      }
+    },
+    "Calibrated using the Minetti metabolic cost curve with altitude penalty, cumulative fatigue decay, and split strategy adjustment.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hiệu chỉnh bằng đường cong chi phí chuyển hóa Minetti, có tính độ cao, mệt mỏi tích lũy và chiến thuật Split."
+          }
+        }
+      }
+    },
+    "Calibrates calorie expenditure, pacing models, and recovery rates.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dùng để tính calo tiêu hao, pace và tốc độ hồi phục."
+          }
+        }
+      }
+    },
+    "Calibrates remaining volume and workout intensity for week %lld.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Điều chỉnh khối lượng còn lại và cường độ buổi tập cho tuần %lld."
+          }
+        }
+      }
+    },
+    "Cancel": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hủy"
+          }
+        }
+      }
+    },
+    "Carbon / Propulsion Plate": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carbon Plate"
+          }
+        }
+      }
+    },
+    "Carbs per hour": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carbs mỗi giờ"
+          }
+        }
+      }
+    },
+    "Change": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đổi"
+          }
+        }
+      }
+    },
+    "Change my schedule": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đổi lịch tập"
+          }
+        }
+      }
+    },
+    "Change password": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đổi mật khẩu"
+          }
+        }
+      }
+    },
+    "Change target": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đổi mục tiêu"
+          }
+        }
+      }
+    },
+    "Change your target time to %@?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đổi thời gian mục tiêu thành %@?"
+          }
+        }
+      }
+    },
+    "Changes not on your watch yet": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thay đổi chưa có trên đồng hồ"
+          }
+        }
+      }
+    },
+    "Check again": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiểm tra lại"
+          }
+        }
+      }
+    },
+    "Checking connection…": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang kiểm tra kết nối…"
+          }
+        }
+      }
+    },
+    "Choose a password with at least 8 characters.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn mật khẩu ít nhất 8 ký tự."
+          }
+        }
+      }
+    },
+    "Clear": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xóa"
+          }
+        }
+      }
+    },
+    "Clear Conversation?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xóa cuộc trò chuyện?"
+          }
+        }
+      }
+    },
+    "Clear conversation": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xóa cuộc trò chuyện"
+          }
+        }
+      }
+    },
+    "Close": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đóng"
+          }
+        }
+      }
+    },
+    "Coach AI Co-Creation": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cùng tạo với Coach AI"
+          }
+        }
+      }
+    },
+    "Coach Uphill builds your first weeks now and adds each new week as you train.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coach Uphill tạo các tuần đầu ngay bây giờ và thêm tuần mới khi bạn tập."
+          }
+        }
+      }
+    },
+    "Coach Uphill provides training suggestions based on endurance principles. Always listen to your body and consult medical professionals for injuries.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coach Uphill đưa gợi ý tập dựa trên nguyên tắc sức bền. Luôn lắng nghe cơ thể và hỏi bác sĩ khi chấn thương."
+          }
+        }
+      }
+    },
+    "Coach Uphill rebuilds the workouts you haven't done yet. Finished and synced workouts stay as they are.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coach Uphill làm lại các buổi bạn chưa tập. Buổi đã xong và đã đồng bộ giữ nguyên."
+          }
+        }
+      }
+    },
+    "Coach Uphill uses how this block went to shape the next one.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coach Uphill dựa vào Block này để lên Block tiếp theo."
+          }
+        }
+      }
+    },
+    "Coach Uphill uses your feedback and past training consistency to shape the next block of workouts.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coach Uphill dựa vào phản hồi và độ đều đặn tập luyện của bạn để lên Block tiếp theo."
+          }
+        }
+      }
+    },
+    "Coach Uphill will count back your training phases from race day.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coach Uphill sẽ tính ngược các giai đoạn tập từ ngày Race."
+          }
+        }
+      }
+    },
+    "Coach Uphill will generate your personalized workouts based on your recent training consistency and progress.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coach Uphill sẽ tạo buổi tập riêng cho bạn dựa trên độ đều đặn và tiến bộ gần đây."
+          }
+        }
+      }
+    },
+    "Coaching Invitation": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lời mời huấn luyện"
+          }
+        }
+      }
+    },
+    "Cold (<15°C)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lạnh (<15°C)"
+          }
+        }
+      }
+    },
+    "Coming soon": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sắp có"
+          }
+        }
+      }
+    },
+    "Competitive": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thi đấu"
+          }
+        }
+      }
+    },
+    "Complete a 100-mile race to unlock": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hoàn thành Race 100 dặm để mở"
+          }
+        }
+      }
+    },
+    "Complete the current block to unlock": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hoàn thành Block hiện tại để mở"
+          }
+        }
+      }
+    },
+    "Completed": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã xong"
+          }
+        }
+      }
+    },
+    "Completion": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hoàn thành"
+          }
+        }
+      }
+    },
+    "Confirm New Password": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xác nhận mật khẩu mới"
+          }
+        }
+      }
+    },
+    "Confirm password": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xác nhận mật khẩu"
+          }
+        }
+      }
+    },
+    "Connect COROS Account": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kết nối tài khoản COROS"
+          }
+        }
+      }
+    },
+    "Connect COROS in Profile": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kết nối COROS trong Hồ sơ"
+          }
+        }
+      }
+    },
+    "Connect in Profile": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kết nối trong Hồ sơ"
+          }
+        }
+      }
+    },
+    "Connect your verified race history to sharpen your goal calculation.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kết nối lịch sử Race đã xác minh để tính mục tiêu chính xác hơn."
+          }
+        }
+      }
+    },
+    "Connect your watch so completed runs are matched to your plan automatically.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kết nối đồng hồ để buổi chạy xong tự khớp vào plan."
+          }
+        }
+      }
+    },
+    "Connected": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã kết nối"
+          }
+        }
+      }
+    },
+    "Connected in Profile": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã kết nối trong Hồ sơ"
+          }
+        }
+      }
+    },
+    "Conservative": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "An toàn"
+          }
+        }
+      }
+    },
+    "Continue with Apple": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiếp tục với Apple"
+          }
+        }
+      }
+    },
+    "Continue with Google": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiếp tục với Google"
+          }
+        }
+      }
+    },
+    "Continuous jog": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chạy chậm liên tục"
+          }
+        }
+      }
+    },
+    "Copy Calendar Subscription URL": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sao chép URL đăng ký lịch"
+          }
+        }
+      }
+    },
+    "Create account": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tạo tài khoản"
+          }
+        }
+      }
+    },
+    "Curated endurance physiology, gut training protocol, uphill biomechanics, and mental models from verified sport science.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiến thức đã tuyển chọn về thể chất sức bền, Gut training, cơ sinh học leo dốc và tâm lý, từ khoa học thể thao đã kiểm chứng."
+          }
+        }
+      }
+    },
+    "Cushioning": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Độ êm"
+          }
+        }
+      }
+    },
+    "DAILY INSIGHT": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GỢI Ý HÔM NAY"
+          }
+        }
+      }
+    },
+    "DANGER ZONE": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "VÙNG NGUY HIỂM"
+          }
+        }
+      }
+    },
+    "DATA SOURCES": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NGUỒN DỮ LIỆU"
+          }
+        }
+      }
+    },
+    "DIRECT APPLE CALENDAR SYNC": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ĐỒNG BỘ TRỰC TIẾP APPLE CALENDAR"
+          }
+        }
+      }
+    },
+    "DIST": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CỰ LY"
+          }
+        }
+      }
+    },
+    "DISTANCE BADGES & PERSONAL BESTS": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HUY HIỆU CỰ LY & THÀNH TÍCH TỐT NHẤT"
+          }
+        }
+      }
+    },
+    "Day": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngày"
+          }
+        }
+      }
+    },
+    "Days since the race": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Số ngày từ Race"
+          }
+        }
+      }
+    },
+    "Days you can reach real hills or trails, like weekend trips. Climbing long runs and hill sessions go on these days.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Những ngày bạn tới được dốc hoặc trail thật, như chuyến cuối tuần. Long Run leo dốc và buổi tập dốc sẽ xếp vào các ngày này."
+          }
+        }
+      }
+    },
+    "Decline": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Từ chối"
+          }
+        }
+      }
+    },
+    "Delete Plan": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xóa plan"
+          }
+        }
+      }
+    },
+    "Delete Result": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xóa kết quả"
+          }
+        }
+      }
+    },
+    "Delete Training Plan": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xóa plan"
+          }
+        }
+      }
+    },
+    "Delete Training Plan?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xóa plan?"
+          }
+        }
+      }
+    },
+    "Deleting plan…": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang xóa plan…"
+          }
+        }
+      }
+    },
+    "Describe the intended session:": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mô tả buổi tập dự định:"
+          }
+        }
+      }
+    },
+    "Description & Execution Steps": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mô tả & cách thực hiện"
+          }
+        }
+      }
+    },
+    "Designated Long Run:": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Long Run được chỉ định:"
+          }
+        }
+      }
+    },
+    "Details & Pros/Cons": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chi tiết & ưu/nhược"
+          }
+        }
+      }
+    },
+    "Dial in hourly Carbs and Sodium intake based on duration, temperature, and digestive tolerance.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tính lượng Carbs và Sodium mỗi giờ theo thời lượng, nhiệt độ và khả năng tiêu hóa."
+          }
+        }
+      }
+    },
+    "Did not finish (DNF)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không về đích (DNF)"
+          }
+        }
+      }
+    },
+    "Digestive notes (e.g. caffeine sensitive, easily bloated)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ghi chú tiêu hóa (vd. nhạy caffeine, dễ đầy bụng)"
+          }
+        }
+      }
+    },
+    "Discard": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bỏ"
+          }
+        }
+      }
+    },
+    "Discarded": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã bỏ"
+          }
+        }
+      }
+    },
+    "Discipline": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Môn"
+          }
+        }
+      }
+    },
+    "Disconnect": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngắt kết nối"
+          }
+        }
+      }
+    },
+    "Disconnect COROS": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngắt kết nối COROS"
+          }
+        }
+      }
+    },
+    "Disconnect COROS?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngắt kết nối COROS?"
+          }
+        }
+      }
+    },
+    "Dismiss suggestions": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ẩn gợi ý"
+          }
+        }
+      }
+    },
+    "Dist (km)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cự ly (km)"
+          }
+        }
+      }
+    },
+    "Distance": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cự ly"
+          }
+        }
+      }
+    },
+    "Distance (km)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cự ly (km)"
+          }
+        }
+      }
+    },
+    "Done": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xong"
+          }
+        }
+      }
+    },
+    "Double-session days (max 2)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngày tập 2 buổi (tối đa 2)"
+          }
+        }
+      }
+    },
+    "Draft plans to finish": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plan nháp cần hoàn thiện"
+          }
+        }
+      }
+    },
+    "Duration": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thời lượng"
+          }
+        }
+      }
+    },
+    "Duration (min)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thời lượng (phút)"
+          }
+        }
+      }
+    },
+    "EFFORT (RPE)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MỨC GẮNG SỨC (RPE)"
+          }
+        }
+      }
+    },
+    "EMPTY SLOT": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CÒN TRỐNG"
+          }
+        }
+      }
+    },
+    "ENVIRONMENT & DURATION": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MÔI TRƯỜNG & THỜI LƯỢNG"
+          }
+        }
+      }
+    },
+    "EVENT DATE": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NGÀY THI ĐẤU"
+          }
+        }
+      }
+    },
+    "EXECUTION STRATEGY": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CHIẾN THUẬT THỰC HIỆN"
+          }
+        }
+      }
+    },
+    "EXPORT .ICS FILE": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "XUẤT FILE .ICS"
+          }
+        }
+      }
+    },
+    "Each detail makes your next week's workouts more tailored.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mỗi chi tiết giúp buổi tập tuần sau sát với bạn hơn."
+          }
+        }
+      }
+    },
+    "Edit": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sửa"
+          }
+        }
+      }
+    },
+    "Edit Session": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sửa buổi tập"
           }
         }
       }
@@ -17,6 +2277,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ngôn ngữ"
+          }
+        }
+      }
+    },
+    "Me": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tôi"
           }
         }
       }

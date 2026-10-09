@@ -54,6 +54,8 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: uphill.ai.app
+        SWIFT_EMIT_LOC_STRINGS: YES
+        LOCALIZATION_PREFERS_STRING_CATALOGS: YES
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         TARGETED_DEVICE_FAMILY: "1"
   UphillAITests:
