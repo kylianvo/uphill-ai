@@ -471,7 +471,7 @@ final class PlanViewModel {
         let trimmed = notes.trimmingCharacters(in: .whitespacesAndNewlines)
         var body = NextBlockBody(
             planId: planID, blockNumber: offer.blockNumber, overallRpe: rpe,
-            notes: trimmed.isEmpty ? nil : trimmed, overrideGate: override, lang: "en")
+            notes: trimmed.isEmpty ? nil : trimmed, overrideGate: override, lang: AppLanguage.code)
         schedule?.applyChanges(to: &body)
         do {
             let job = try await generationService.generateNextBlock(body)
@@ -506,7 +506,7 @@ final class PlanViewModel {
         do {
             var body = AdaptWeekBody(
                 planId: planID, weekNumber: week, overallRpe: rpe, fatigueLevel: fatigue.rawValue,
-                fatigueNotes: trimmed.isEmpty ? nil : trimmed, lang: "en",
+                fatigueNotes: trimmed.isEmpty ? nil : trimmed, lang: AppLanguage.code,
                 clientToday: PlanCalendar.ymd(now(), calendar: calendar))
             schedule?.applyChanges(to: &body)
             let job = try await generationService.adaptWeek(body)
@@ -576,7 +576,7 @@ final class PlanViewModel {
             topic = "Training"
         }
 
-        contextKnowledgeCard = await service.knowledgeCard(topic: topic, lang: "en")
+        contextKnowledgeCard = await service.knowledgeCard(topic: topic, lang: AppLanguage.code)
     }
 
     func loadGoal() async {

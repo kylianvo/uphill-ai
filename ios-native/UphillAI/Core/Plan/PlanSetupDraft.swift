@@ -229,7 +229,7 @@ struct PlanSetupDraft: Equatable, Sendable {
     func onboardingBody(skipPlan: Bool, calendar: Calendar) -> OnboardingBody {
         let event = goal?.isEvent == true
         return OnboardingBody(
-            lang: "en",
+            lang: AppLanguage.code,
             dob: birthDate.map { PlanCalendar.ymd($0, calendar: calendar) },
             gender: gender,
             heightCm: heightCm,
@@ -267,7 +267,7 @@ struct PlanSetupDraft: Equatable, Sendable {
     func planBody(calendar: Calendar) -> PlanBody {
         let event = goal?.isEvent == true
         return PlanBody(
-            lang: "en",
+            lang: AppLanguage.code,
             raceName: event ? eventName : nil,
             raceDate: event ? raceDate.map { PlanCalendar.ymd($0, calendar: calendar) } : nil,
             goalType: event ? raceGoal.rawValue : (goal ?? .startRunning).rawValue,

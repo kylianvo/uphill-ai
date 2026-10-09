@@ -3,6 +3,7 @@ import SwiftUI
 struct RootView: View {
     let app: AppModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @AppStorage(AppLanguage.storageKey) private var language = AppLanguage.en
 
     var body: some View {
         Group {
@@ -12,7 +13,8 @@ struct RootView: View {
             case .restoring:
                 restoringView
             case .signedIn:
-                MainTabs(app: app)
+                // Rebuilt on a language change so strings computed in code (`L(…)`) re-resolve.
+                MainTabs(app: app).id(language)
             }
         }
         .animation(reduceMotion ? nil : UH.Motion.standard, value: app.session.state)

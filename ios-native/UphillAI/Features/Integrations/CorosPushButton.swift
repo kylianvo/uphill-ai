@@ -144,7 +144,7 @@ public struct CorosPushButton: View {
 
         let today = Self.dateFormatter.string(from: Date())
         do {
-            let outcome = try await service.pushToCoros(clientToday: today, lang: "en")
+            let outcome = try await service.pushToCoros(clientToday: today, lang: AppLanguage.code)
             if outcome.isSuccess {
                 UINotificationFeedbackGenerator().notificationOccurred(.success)
                 let workouts = outcome.summary?.workoutsSent ?? 0

@@ -4,10 +4,12 @@ import SwiftUI
 @main
 struct UphillAIApp: App {
     @State private var app = AppModel(tokenStore: KeychainTokenStore())
+    @AppStorage(AppLanguage.storageKey) private var language = AppLanguage.en
 
     var body: some Scene {
         WindowGroup {
             RootView(app: app)
+                .environment(\.locale, language.locale)
                 .preferredColorScheme(.light)
                 .tint(UH.Palette.accentInk)
                 .onAppear { KeyboardDismissal.install() }

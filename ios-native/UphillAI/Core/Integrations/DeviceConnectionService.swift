@@ -96,7 +96,7 @@ final class DeviceConnectionService: DeviceConnectionServicing {
 
     /// A refusal the backend explains with a `detail.code` comes back as an
     /// unsuccessful outcome; anything else (network, 500) throws.
-    func pushToCoros(clientToday: String, lang: String = "en") async throws -> CorosPushOutcome {
+    func pushToCoros(clientToday: String, lang: String = AppLanguage.code) async throws -> CorosPushOutcome {
         do {
             let resp: PushApiResponse = try await client.send(
                 .send(.post, "/api/integrations/coros/push", body: PushBody(client_today: clientToday, lang: lang))

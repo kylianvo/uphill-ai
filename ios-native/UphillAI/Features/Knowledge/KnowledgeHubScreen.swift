@@ -346,7 +346,7 @@ struct KnowledgeHubScreen: View {
     private func loadKnowledgeData() async {
         isLoading = true
         do {
-            async let loadedCards = service.fetchCards(topic: nil, lang: "en")
+            async let loadedCards = service.fetchCards(topic: nil, lang: AppLanguage.code)
             async let loadedTopics = service.fetchTopics()
             async let loadedSources = service.fetchSources()
 

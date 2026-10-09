@@ -15,7 +15,7 @@ struct KnowledgeService: KnowledgeServicing {
         self.client = client
     }
 
-    func fetchCards(topic: String? = nil, lang: String = "en") async throws -> [KnowledgeCardModel] {
+    func fetchCards(topic: String? = nil, lang: String = AppLanguage.code) async throws -> [KnowledgeCardModel] {
         var queryItems: [URLQueryItem] = [URLQueryItem(name: "lang", value: lang)]
         if let topic, topic != "All" {
             queryItems.append(URLQueryItem(name: "topic", value: topic))
@@ -37,7 +37,7 @@ struct KnowledgeService: KnowledgeServicing {
         }
     }
 
-    func fetchRandomCards(count: Int = 3, lang: String = "en") async throws -> [KnowledgeCardModel] {
+    func fetchRandomCards(count: Int = 3, lang: String = AppLanguage.code) async throws -> [KnowledgeCardModel] {
         let queryItems = [
             URLQueryItem(name: "n", value: String(count)),
             URLQueryItem(name: "lang", value: lang)

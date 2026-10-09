@@ -26,6 +26,8 @@ targets:
       path: UphillAI/Info.plist
       properties:
         CFBundleDisplayName: Uphill AI
+        CFBundleDevelopmentRegion: en
+        CFBundleLocalizations: [en, vi]
         UIUserInterfaceStyle: Light
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)

@@ -741,7 +741,7 @@ struct WorkoutDetailSheet: View {
         let today = Date.ISO8601FormatStyle(timeZone: .current).year().month().day().format(Date())
         do {
             // The backend sends the plan's next weeks, not just this workout.
-            let outcome = try await service.pushToCoros(clientToday: today, lang: "en")
+            let outcome = try await service.pushToCoros(clientToday: today, lang: AppLanguage.code)
             if outcome.isSuccess {
                 corosSendState = .sent
                 let count = outcome.summary?.workoutsSent ?? 0
