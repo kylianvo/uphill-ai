@@ -32,6 +32,10 @@ struct User: Codable, Sendable, Equatable, Identifiable {
     let paceZoneModel: String?
     var athleteNotes: String? = nil
     let isCoach: Bool
+    /// Keyed by backend column name (max_hr, aet_hr, zone2_pace_min, ...).
+    var fieldSources: [String: ProfileFieldSource]? = nil
+    /// Coach edits the athlete hasn't acknowledged yet.
+    var coachProfileChanges: [CoachProfileChange]? = nil
 
     var isAdmin: Bool { role == "admin" }
 }
@@ -40,4 +44,48 @@ struct User: Codable, Sendable, Equatable, Identifiable {
 struct AuthResponse: Codable, Sendable {
     let sessionToken: String
     let user: User
+}
+
+/// Where one physiology/pace number came from.
+struct ProfileFieldSource: Codable, Sendable, Equatable {
+    /// "coach" | "athlete" | "default"
+    let source: String
+    var byName: String? = nil
+    var at: String? = nil
+    /// AeT/AnT only: lab | field | estimated | unknown.
+    var method: String? = nil
+}
+
+struct CoachProfileChange: Codable, Sendable, Equatable, Identifiable {
+    let field: String
+    let previous: ProfileValue?
+    let value: ProfileValue?
+    let byName: String?
+    let at: String?
+    var id: String { field }
+}
+
+/// A profile number that is an Int (heart rates) or a "m:ss" String (paces).
+enum ProfileValue: Codable, Sendable, Equatable {
+    case int(Int), string(String)
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.singleValueContainer()
+        if let i = try? c.decode(Int.self) { self = .int(i) } else { self = .string(try c.decode(String.self)) }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.singleValueContainer()
+        switch self {
+        case .int(let i): try c.encode(i)
+        case .string(let s): try c.encode(s)
+        }
+    }
+
+    var display: String {
+        switch self {
+        case .int(let i): "\(i)"
+        case .string(let s): s
+        }
+    }
 }

@@ -197,6 +197,15 @@ final class AppModel {
         }
     }
 
+    func acknowledgeCoachProfileChanges() async {
+        do {
+            let user = try await ProfileService(client: client).acknowledgeCoachChanges()
+            session.setUser(user)
+        } catch {
+            print("Failed to acknowledge coach profile changes: \(error)")
+        }
+    }
+
     func refreshPendingInvites() async {
         do {
             pendingInvites = try await coachingService.fetchMyInvites()

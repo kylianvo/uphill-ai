@@ -14,7 +14,9 @@ from pydantic import BaseModel, Field, StrictBool
 
 from config import settings
 from db import (
+    COACH_EDITABLE_PROFILE_FIELDS,
     accept_coach_invite,
+    acknowledge_coach_profile_changes,
     add_source,
     approve_workout,
     block_number_for_week,
@@ -68,6 +70,7 @@ from db import (
     list_sources,
     make_rest_day,
     mark_onboarding_complete,
+    mark_profile_fields_athlete_set,
     query_nutrition_catalog,
     remove_coach_athlete_link,
     replace_shoe_rotation,
@@ -79,6 +82,7 @@ from db import (
     set_plan_fitness_snapshot,
     set_user_is_coach,
     set_user_password,
+    update_athlete_physiology_by_coach,
     update_onboarding_profile,
     update_plan_schedule,
     update_plan_target_time,
@@ -487,6 +491,44 @@ class UpdateProfileRequest(BaseModel):
     threshold_source: Literal["lab", "field", "estimated", "unknown"] | None = None
 
 
+_PACE_RE = r"^\d{1,2}:[0-5]\d$"
+
+
+class CoachProfileUpdateRequest(BaseModel):
+    """Every field optional: only the ones sent are changed. Null is not
+    accepted -- a coach sets a number, never clears one."""
+
+    resting_hr: int | None = Field(None, ge=30, le=120)
+    max_hr: int | None = Field(None, ge=120, le=230)
+    aet_hr: int | None = Field(None, ge=80, le=220)
+    ant_hr: int | None = Field(None, ge=90, le=225)
+    zone2_pace_min: str | None = Field(None, pattern=_PACE_RE)
+    zone2_pace_max: str | None = Field(None, pattern=_PACE_RE)
+    threshold_pace: str | None = Field(None, pattern=_PACE_RE)
+
+
+def _pace_seconds(pace: str) -> int:
+    m, sec = pace.split(":")
+    return int(m) * 60 + int(sec)
+
+
+def _validate_hr_order(v: dict[str, Any]) -> None:
+    chain = [("resting_hr", "Resting HR"), ("aet_hr", "AeT"), ("ant_hr", "AnT"), ("max_hr", "Max HR")]
+    known = [(label, v[f]) for f, label in chain if v.get(f) is not None]
+    for (la, a), (lb, b) in zip(known, known[1:]):
+        if a >= b:
+            raise HTTPException(status_code=422, detail=f"{la} ({a}) must be below {lb} ({b}).")
+
+
+def _validate_pace_order(v: dict[str, Any]) -> None:
+    # Zone 2 "min" is the slower bound (e.g. 6:30) and "max" the faster (5:45).
+    lo, hi, thr = v.get("zone2_pace_min"), v.get("zone2_pace_max"), v.get("threshold_pace")
+    if lo and hi and _pace_seconds(lo) < _pace_seconds(hi):
+        raise HTTPException(status_code=422, detail="Zone 2 slow bound must be slower than its fast bound.")
+    if hi and thr and _pace_seconds(thr) >= _pace_seconds(hi):
+        raise HTTPException(status_code=422, detail="Threshold pace must be faster than Zone 2.")
+
+
 class SetCoachStatusRequest(BaseModel):
     is_coach: bool
 
@@ -583,6 +625,40 @@ def _z2_max_for(user: dict[str, Any]) -> str:
     return resolve_zone2_pace(user.get("zone2_pace_min"), user.get("zone2_pace_max"), user.get("goal_type"))[1]
 
 
+def _profile_field_sources(user: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """Where each coach-editable number came from: a recorded coach edit, else
+    the athlete (column has a value) or an app default (column is NULL, so the
+    response shows a fallback)."""
+    recorded = user.get("profile_field_sources") or {}
+    out: dict[str, dict[str, Any]] = {}
+    for field in COACH_EDITABLE_PROFILE_FIELDS:
+        entry = recorded.get(field)
+        if entry and entry.get("source") == "coach":
+            out[field] = {"source": "coach", "by_name": entry.get("by_name"), "at": entry.get("at")}
+        else:
+            out[field] = {"source": "athlete" if user.get(field) not in (None, "") else "default"}
+        if field in ("aet_hr", "ant_hr"):
+            # lab | field | estimated | unknown -- the athlete's own answer to
+            # "How did you get your AeT/AnT?"
+            out[field]["method"] = user.get("threshold_source") or "unknown"
+    return out
+
+
+def _unseen_coach_changes(user: dict[str, Any]) -> list[dict[str, Any]]:
+    recorded = user.get("profile_field_sources") or {}
+    return [
+        {
+            "field": field,
+            "previous": e.get("previous"),
+            "value": user.get(field),
+            "by_name": e.get("by_name"),
+            "at": e.get("at"),
+        }
+        for field, e in recorded.items()
+        if e.get("source") == "coach" and not e.get("seen", True)
+    ]
+
+
 def format_user_response(user: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": user["id"],
@@ -617,6 +693,8 @@ def format_user_response(user: dict[str, Any]) -> dict[str, Any]:
         "custom_pace_zones": user.get("custom_pace_zones"),
         "threshold_source": user.get("threshold_source") or "unknown",
         "is_coach": bool(user.get("is_coach", False)),
+        "field_sources": _profile_field_sources(user),
+        "coach_profile_changes": _unseen_coach_changes(user),
     }
 
 
@@ -1228,7 +1306,14 @@ def update_profile(request: UpdateProfileRequest, user: dict[str, Any] = Depends
     if not success:
         raise HTTPException(status_code=500, detail="Failed to update user profile.")
     updated_user = get_user_by_id(user["id"])
-    return format_user_response(updated_user)
+    mark_profile_fields_athlete_set(user["id"], user, updated_user)
+    return format_user_response(get_user_by_id(user["id"]))
+
+
+@app.post("/api/auth/coach-profile-changes/ack")
+def ack_coach_profile_changes(user: dict[str, Any] = Depends(get_current_user)):
+    acknowledge_coach_profile_changes(user["id"])
+    return format_user_response(get_user_by_id(user["id"]))
 
 
 @app.get("/api/auth/fitness-snapshot")
@@ -1429,6 +1514,28 @@ def get_athlete_profile(athlete_id: int, acting_user: dict[str, Any] = Depends(r
     if not athlete:
         raise HTTPException(status_code=404, detail="Athlete not found.")
     return format_user_response(athlete)
+
+
+@app.patch("/api/coaching/athletes/{athlete_id}/profile")
+def coach_update_athlete_profile(
+    athlete_id: int,
+    request: CoachProfileUpdateRequest,
+    acting_user: dict[str, Any] = Depends(require_athlete_access),
+):
+    """A coach sets the athlete's physiology/pace numbers. The athlete edits
+    their own through /api/auth/update-profile, so self-access is refused here
+    (it would mislabel the athlete's own numbers as coach-set)."""
+    if acting_user["id"] == athlete_id:
+        raise HTTPException(status_code=403, detail="Use your own profile settings.")
+    athlete = get_user_by_id(athlete_id)
+    if not athlete:
+        raise HTTPException(status_code=404, detail="Athlete not found.")
+    changes = {k: v for k, v in request.dict(exclude_unset=True).items() if v is not None}
+    merged = {**{f: athlete.get(f) for f in COACH_EDITABLE_PROFILE_FIELDS}, **changes}
+    _validate_hr_order(merged)
+    _validate_pace_order(merged)
+    updated = update_athlete_physiology_by_coach(athlete_id, changes, acting_user.get("name") or acting_user["email"])
+    return format_user_response(updated)
 
 
 @app.get("/api/coaching/athletes/{athlete_id}/plans/draft")

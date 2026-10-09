@@ -160,6 +160,14 @@ struct PlanView: View {
                         }
                         if let cachedAt = model.cachedAt { offlineBanner(cachedAt) }
 
+                        if let app, app.actingAsAthlete == nil,
+                           let changes = app.session.user?.coachProfileChanges, !changes.isEmpty {
+                            CoachProfileChangesCard(changes: changes) {
+                                Task { await app.acknowledgeCoachProfileChanges() }
+                            }
+                            .padding(.horizontal, UH.Space.regular)
+                        }
+
                         if let app, !app.pendingInvites.isEmpty {
                             PendingInviteBanner(
                                 invites: app.pendingInvites,

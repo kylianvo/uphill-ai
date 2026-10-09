@@ -2,9 +2,18 @@ import SwiftUI
 
 struct CoachedAthleteProfileView: View {
     let athlete: CoachedAthleteRow
-    let profile: User?
     let service: any CoachingServicing
     var onDismiss: (() -> Void)? = nil
+    @State private var profile: User?
+    @State private var editing = false
+
+    init(athlete: CoachedAthleteRow, profile: User?, service: any CoachingServicing, onDismiss: (() -> Void)? = nil) {
+        self.athlete = athlete
+        self.service = service
+        self.onDismiss = onDismiss
+        // Only reuse a cached profile that belongs to this athlete.
+        _profile = State(initialValue: profile?.id == athlete.athleteId ? profile : nil)
+    }
 
     var body: some View {
         ScrollView {
@@ -64,39 +73,58 @@ struct CoachedAthleteProfileView: View {
 
                 // Physiology & Thresholds Card
                 VStack(alignment: .leading, spacing: 12) {
-                    Label("Physiology & Threshold Zones", systemImage: "heart.text.square.fill")
-                        .font(UH.TextStyle.sectionTitle)
-                        .foregroundStyle(UH.Palette.ink)
+                    HStack(alignment: .firstTextBaseline) {
+                        Label("Physiology & Threshold Zones", systemImage: "heart.text.square.fill")
+                            .font(UH.TextStyle.sectionTitle)
+                            .foregroundStyle(UH.Palette.ink)
+                        Spacer(minLength: 8)
+                        Button(L("Edit")) { editing = true }
+                            .font(UH.TextStyle.label)
+                            .foregroundStyle(UH.Palette.accentInk)
+                            .disabled(profile == nil)
+                    }
 
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
-                        MetricTile(label: "Resting HR", value: profile?.restingHr.map { "\($0) bpm" } ?? "—")
-                        MetricTile(label: "Max HR", value: profile?.maxHr.map { "\($0) bpm" } ?? "—")
-                        MetricTile(label: L("AeT Threshold (Z2)"), value: profile?.aetHr.map { "\($0) bpm" } ?? "—", accentColor: Color.blue)
-                        MetricTile(label: L("AnT Threshold (Z4)"), value: profile?.antHr.map { "\($0) bpm" } ?? "—", accentColor: Color.orange)
+                        MetricTile(label: "Resting HR", value: profile?.restingHr.map { "\($0) bpm" } ?? "—",
+                                   source: source("resting_hr"))
+                        MetricTile(label: "Max HR", value: profile?.maxHr.map { "\($0) bpm" } ?? "—",
+                                   source: source("max_hr"))
+                        MetricTile(label: L("AeT Threshold (Z2)"), value: profile?.aetHr.map { "\($0) bpm" } ?? "—",
+                                   accentColor: Color.blue, source: source("aet_hr"))
+                        MetricTile(label: L("AnT Threshold (Z4)"), value: profile?.antHr.map { "\($0) bpm" } ?? "—",
+                                   accentColor: Color.orange, source: source("ant_hr"))
                     }
 
                     if let z2Min = profile?.zone2PaceMin, let z2Max = profile?.zone2PaceMax {
-                        HStack {
-                            Text("Zone 2 Pace Range:")
-                                .font(UH.TextStyle.caption)
-                                .foregroundStyle(UH.Palette.secondary)
-                            Spacer()
-                            Text("\(z2Min) – \(z2Max) /km")
-                                .font(.system(size: 12, weight: .bold, design: .monospaced))
-                                .foregroundStyle(Color.blue)
+                        VStack(alignment: .trailing, spacing: 2) {
+                            HStack {
+                                Text("Zone 2 Pace Range:")
+                                    .font(UH.TextStyle.caption)
+                                    .foregroundStyle(UH.Palette.secondary)
+                                Spacer()
+                                Text("\(z2Min) – \(z2Max) /km")
+                                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                                    .foregroundStyle(Color.blue)
+                            }
+                            // The pair shares one line; the newer coach edit wins.
+                            ProvenanceLine(source: source("zone2_pace_max")?.source == "coach"
+                                ? source("zone2_pace_max") : source("zone2_pace_min"))
                         }
                         .padding(.top, 4)
                     }
 
                     if let thresholdPace = profile?.thresholdPace {
-                        HStack {
-                            Text("Threshold Pace:")
-                                .font(UH.TextStyle.caption)
-                                .foregroundStyle(UH.Palette.secondary)
-                            Spacer()
-                            Text("\(thresholdPace) /km")
-                                .font(.system(size: 12, weight: .bold, design: .monospaced))
-                                .foregroundStyle(Color.orange)
+                        VStack(alignment: .trailing, spacing: 2) {
+                            HStack {
+                                Text("Threshold Pace:")
+                                    .font(UH.TextStyle.caption)
+                                    .foregroundStyle(UH.Palette.secondary)
+                                Spacer()
+                                Text("\(thresholdPace) /km")
+                                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                                    .foregroundStyle(Color.orange)
+                            }
+                            ProvenanceLine(source: source("threshold_pace"))
                         }
                     }
                 }
@@ -186,6 +214,28 @@ struct CoachedAthleteProfileView: View {
         }
         .navigationTitle("Athlete Profile")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $editing) {
+            if let profile {
+                CoachEditPhysiologySheet(
+                    athleteId: athlete.athleteId,
+                    athleteName: athlete.displayName,
+                    profile: profile,
+                    service: service,
+                    onSaved: { self.profile = $0 }
+                )
+            }
+        }
+        .task(id: athlete.athleteId) {
+            do {
+                profile = try await service.fetchAthleteProfile(athleteId: athlete.athleteId)
+            } catch {
+                print("Failed to load athlete profile: \(error)")
+            }
+        }
+    }
+
+    private func source(_ field: String) -> ProfileFieldSource? {
+        profile?.fieldSources?[field]
     }
 }
 
@@ -193,6 +243,10 @@ private struct MetricTile: View {
     let label: String
     let value: String
     var accentColor: Color = UH.Palette.ink
+    var source: ProfileFieldSource? = nil
+
+    /// An app fallback isn't the athlete's number; show it, but quietly.
+    private var isDefault: Bool { source?.source == "default" }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
@@ -201,7 +255,9 @@ private struct MetricTile: View {
                 .foregroundStyle(UH.Palette.muted)
             Text(value)
                 .font(.system(size: 15, weight: .bold, design: .monospaced))
-                .foregroundStyle(accentColor)
+                .foregroundStyle(isDefault ? UH.Palette.muted : accentColor)
+            ProvenanceLine(source: source)
+                .padding(.top, 2)
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
