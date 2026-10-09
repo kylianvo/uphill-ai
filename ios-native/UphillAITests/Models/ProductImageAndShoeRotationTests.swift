@@ -63,6 +63,19 @@ struct ProductImageAndShoeRotationTests {
         // Hoka trail
         let hokaSpeedgoat = GearImageResolver.assetName(brand: "Hoka", model: "Speedgoat 6", slot: .daily)
         #expect(hokaSpeedgoat == "shoe_hoka_speedgoat_7")
+
+        // New shoe packshots
+        let pumaVelocity5 = GearImageResolver.assetName(brand: "Puma", model: "Velocity Nitro 5", slot: .daily)
+        #expect(pumaVelocity5 == "shoe_puma_velocity_nitro_5")
+
+        let pumaVelocity4 = GearImageResolver.assetName(brand: "Puma", model: "Velocity Nitro 4", slot: .daily)
+        #expect(pumaVelocity4 == "shoe_puma_velocity_nitro_4")
+
+        let sauconyAzura = GearImageResolver.assetName(brand: "Saucony", model: "Endorphin Azura", slot: .tempo)
+        #expect(sauconyAzura == "shoe_saucony_endorphin_azura")
+
+        let asicsSonicblast = GearImageResolver.assetName(brand: "Asics", model: "Sonicblast 2", slot: .tempo)
+        #expect(asicsSonicblast == "shoe_asics_sonicblast_2")
     }
 
     @Test func shoeRotationSlotMutationAndPresets() {
