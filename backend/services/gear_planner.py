@@ -136,6 +136,7 @@ class GearPlannerService:
         import time
 
         from db import get_kb_chunks
+        from services.gear_catalog import filter_catalog
         from services.kb_context import render_catalog_context
         from telemetry import rag_attempts_total, rag_latency_seconds
 
@@ -146,12 +147,13 @@ class GearPlannerService:
         if not chunks:
             # Never answer ungrounded — no KB means this engine refuses.
             raise RuntimeError("gear KB is empty — run POST /api/kb/distill or /api/kb/import first.")
-        catalog_context = render_catalog_context(chunks, "gear")
+        sent = filter_catalog(chunks, params.surface, params.preferred_brands)
+        catalog_context = render_catalog_context(sent, "gear")
 
         with observability.trace(
             "gear_finder",
             feature="gear_finder",
-            metadata={"catalog_entries": len(chunks), "cache_hit": False},
+            metadata={"catalog_entries": len(sent), "cache_hit": False},
         ):
             trace_id = observability.current_trace_id()
             _prompt_tpl = observability.load_prompt("gear_finder", GEAR_FINDER_PROMPT)
@@ -172,7 +174,7 @@ class GearPlannerService:
                         "engine": "gemini",
                         "event": "prompt_sent",
                         "chars_sent": len(prompt),
-                        "catalog_entries": len(chunks),
+                        "catalog_entries": len(sent),
                     }
                 },
             )
