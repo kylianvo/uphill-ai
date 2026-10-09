@@ -84,3 +84,18 @@ def test_render_report_lists_metrics_and_rejections():
     report = model_benchmark.render_report(model_benchmark.summarize(rows), rows)
     assert "| p50_s | 4.00 |" in report
     assert "gemini / fixture_a.json: give 3 to 5 reasoning bullets" in report
+
+
+def test_gemini_rows_from_refs_reuse_saved_answers_without_calls():
+    fixtures = [
+        ("fixture_a.json", FIXTURE, {"latency_s": 3.2, "engine_used": "gemini", "output": json.loads(_answer())}),
+        ("fixture_b.json", FIXTURE, {"latency_s": 6.7, "engine_used": "gemini_retry", "output": json.loads(_answer())}),
+        ("fixture_c.json", FIXTURE, None),
+    ]
+    rows = model_benchmark.gemini_rows_from_refs(fixtures)
+
+    assert [r["fixture"] for r in rows] == ["fixture_a.json"]  # retried and missing refs are skipped
+    assert rows[0]["seconds"] == 3.2 and rows[0]["accepted"]
+    assert rows[0]["b_vs_ref_pct"] is None  # the ref is this answer; distance to itself means nothing
+    summary = model_benchmark.summarize(rows)["gemini"]
+    assert summary["usd_per_call"] is None and summary["mean_input_tokens"] is None

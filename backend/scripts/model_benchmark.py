@@ -48,8 +48,9 @@ def summarize(rows: list[dict]) -> dict[str, dict]:
         mine = [r for r in rows if r["engine"] == engine]
         seconds = [r["seconds"] for r in mine]
         devs = [r["b_vs_ref_pct"] for r in mine if r["b_vs_ref_pct"] is not None]
-        in_tok = statistics.mean(r["input_tokens"] for r in mine)
-        out_tok = statistics.mean(r["output_tokens"] for r in mine)
+        tokens_known = all(r["input_tokens"] is not None for r in mine)
+        in_tok = statistics.mean(r["input_tokens"] for r in mine) if tokens_known else None
+        out_tok = statistics.mean(r["output_tokens"] for r in mine) if tokens_known else None
         price_in, price_out = PRICES[engine]
         summary[engine] = {
             "calls": len(mine),
@@ -60,7 +61,7 @@ def summarize(rows: list[dict]) -> dict[str, dict]:
             "median_b_vs_ref_pct": statistics.median(devs) if devs else None,
             "mean_input_tokens": in_tok,
             "mean_output_tokens": out_tok,
-            "usd_per_call": (in_tok * price_in + out_tok * price_out) / 1_000_000,
+            "usd_per_call": (in_tok * price_in + out_tok * price_out) / 1_000_000 if tokens_known else None,
         }
     return summary
 
@@ -123,6 +124,27 @@ def _fixtures() -> list[tuple[str, dict, dict | None]]:
     return out
 
 
+def gemini_rows_from_refs(fixtures: list[tuple[str, dict, dict | None]]) -> list[dict]:
+    """Gemini side from the committed golden baselines instead of new calls: one clean
+    (no-retry) answer per fixture, with its captured latency. Token counts were not saved."""
+    rows = []
+    for name, fixture, ref in fixtures:
+        if not ref or ref.get("engine_used") != "gemini":
+            continue
+        result = score(json.dumps(ref["output"]), fixture, None)
+        rows.append(
+            {
+                "engine": "gemini",
+                "fixture": name,
+                "seconds": ref["latency_s"],
+                "input_tokens": None,
+                "output_tokens": None,
+                **result,
+            }
+        )
+    return rows
+
+
 def _cell(key: str, value) -> str:
     if value is None:
         return "—"
@@ -161,13 +183,20 @@ def render_report(summary: dict[str, dict], rows: list[dict]) -> str:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--repeats", type=int, default=3)
+    parser.add_argument(
+        "--gemini-from-refs",
+        action="store_true",
+        help="Score the committed Gemini baselines (*.ref.json) instead of calling Gemini again",
+    )
     args = parser.parse_args()
 
-    rows: list[dict] = []
-    for name, fixture, ref in _fixtures():
+    fixtures = _fixtures()
+    engines = {"haiku": call_haiku} if args.gemini_from_refs else ENGINES
+    rows: list[dict] = gemini_rows_from_refs(fixtures) if args.gemini_from_refs else []
+    for name, fixture, ref in fixtures:
         prompt = goal_judge.build_prompt(fixture["context"], fixture["anchors"], fixture.get("lang", "en"))
         for _ in range(args.repeats):
-            for engine, call in ENGINES.items():
+            for engine, call in engines.items():
                 start = time.perf_counter()
                 try:
                     raw, in_tok, out_tok = call(prompt)
