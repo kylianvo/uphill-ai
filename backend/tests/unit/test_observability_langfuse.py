@@ -198,3 +198,12 @@ def test_traces_carry_the_configured_release(release_sha, langfuse_spans):
         pass
 
     assert _attrs(_by_name(langfuse_spans, "plan_generation"))["langfuse.release"] == "52d941a"
+
+
+def test_generation_exports_first_token_time_once(langfuse_spans):
+    with obs.generation("generation", feature="coach_chat", model="gemini-3.8-flash") as gen:
+        gen.mark_first_token()
+        gen.mark_first_token()  # no-op: the first call wins
+
+    attrs = _attrs(_by_name(langfuse_spans, "generation"))
+    assert attrs["langfuse.observation.completion_start_time"].startswith('"20')

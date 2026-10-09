@@ -794,6 +794,7 @@ class GenerationRecorder(Observation):
         self._usage: Usage | None = None
         self._usage_known = False
         self._finished = False
+        self._first_token_marked = False
 
     def set_usage(self, usage: Usage, *, known: bool = True) -> None:
         if not _valid_usage(usage):
@@ -809,6 +810,18 @@ class GenerationRecorder(Observation):
                 cached_tokens=max(self._usage.cached_tokens, usage.cached_tokens),
             )
         self._usage_known = bool(known)
+
+    def mark_first_token(self) -> None:
+        """Record when the first visible token arrived (Langfuse time to first token). First call wins."""
+        if self._first_token_marked:
+            return
+        self._first_token_marked = True
+        if self._handle is None:
+            return
+        try:
+            self._handle.update(completion_start_time=datetime.now(UTC))
+        except Exception as exc:
+            _warn_once("generation_first_token", exc)
 
     def _finish(self, *, status: str, latency_s: float) -> None:
         if self._finished:
