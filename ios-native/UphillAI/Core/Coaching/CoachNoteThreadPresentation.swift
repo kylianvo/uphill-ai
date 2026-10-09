@@ -21,10 +21,10 @@ struct CoachNoteThreadPresentation: Equatable {
     /// Athletes see nothing until a coach has written; coaches always see the thread.
     var isVisible: Bool { !isAthlete || hasCoachNotes }
 
-    var title: String { isAthlete ? "Notes from your coach" : "Coach Notes (\(notes.count))" }
-    var emptyText: String { "No coach notes yet. Leave training feedback or execution advice here." }
-    var placeholder: String { isAthlete ? "Reply to your coach…" : "Add a note for this \(targetType)..." }
-    var postLabel: String { isAthlete ? "Reply" : "Post" }
+    var title: String { isAthlete ? L("Notes from your coach") : L("Coach Notes (%lld)", notes.count) }
+    var emptyText: String { L("No coach notes yet. Leave training feedback or execution advice here.") }
+    var placeholder: String { isAthlete ? L("Reply to your coach…") : L("Add a note for this %@...", L(targetType)) }
+    var postLabel: String { isAthlete ? L("Reply") : L("Post") }
 
     /// The backend sends `created_at` as ISO 8601 with microseconds ("2026-10-06T08:50:49.566735+00:00").
     /// Shown as a short local date and time; anything unparseable is hidden rather than shown raw.
@@ -40,6 +40,6 @@ struct CoachNoteThreadPresentation: Equatable {
 
     func authorLabel(for note: CoachNote) -> String? {
         guard isAthlete else { return nil }
-        return note.coachId == athleteId ? "You" : "Coach"
+        return note.coachId == athleteId ? L("You") : "Coach"
     }
 }

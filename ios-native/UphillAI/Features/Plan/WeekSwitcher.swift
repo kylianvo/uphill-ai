@@ -25,20 +25,20 @@ struct WeekSwitcher: View {
                         .foregroundStyle(UH.Palette.ink)
                 }
             } else {
-                stepButton("chevron.left", label: "Previous week", to: selected - 1)
+                stepButton("chevron.left", label: L("Previous week"), to: selected - 1)
                 Spacer()
                 VStack(spacing: 2) {
                     Text("Week \(selected)")
                         .font(UH.TextStyle.sectionTitle)
                         .foregroundStyle(UH.Palette.ink)
                         .contentTransition(.numericText())
-                    Text(selected == currentWeek ? "This week" : " ")
+                    Text(selected == currentWeek ? L("This week") : " ")
                         .font(UH.TextStyle.eyebrow)
                         .foregroundStyle(UH.Palette.accentInk)
                 }
                 .accessibilityElement(children: .combine)
                 Spacer()
-                stepButton("chevron.right", label: "Next week", to: selected + 1)
+                stepButton("chevron.right", label: L("Next week"), to: selected + 1)
             }
 
             if let viewMode {

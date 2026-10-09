@@ -484,7 +484,7 @@ struct CoachDashboardView: View {
                 }
 
                 if filtered.isEmpty {
-                    Text(roster.isEmpty ? "No athletes yet — send an invite above to begin coaching." : "No athletes match \"\(rosterSearch)\".")
+                    Text(roster.isEmpty ? L("No athletes yet — send an invite above to begin coaching.") : L("No athletes match \"%@\".", rosterSearch))
                         .font(UH.TextStyle.caption)
                         .foregroundStyle(UH.Palette.muted)
                         .padding(.vertical, 8)
@@ -507,7 +507,7 @@ struct CoachDashboardView: View {
                                             .font(UH.TextStyle.label)
                                             .foregroundStyle(UH.Palette.ink)
                                         HStack(spacing: 6) {
-                                            Text(athlete.isActive ? "Active" : "Invite pending")
+                                            Text(athlete.isActive ? L("Active") : L("Invite pending"))
                                                 .font(.system(size: 10.5, weight: .semibold))
                                                 .foregroundStyle(athlete.isActive ? Color.green : Color.orange)
                                             Text("·")
@@ -628,7 +628,7 @@ struct CoachDashboardView: View {
         do {
             let row = try await app.coachingService.sendInvite(athleteEmail: email)
             roster.insert(row, at: 0)
-            inviteSuccess = "Invitation sent to \(email)!"
+            inviteSuccess = L("Invitation sent to %@!", email)
             inviteEmail = ""
         } catch {
             inviteError = error.localizedDescription

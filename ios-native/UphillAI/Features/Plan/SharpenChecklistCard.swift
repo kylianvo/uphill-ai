@@ -93,7 +93,7 @@ struct SharpenChecklistCard: View {
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
-                            .accessibilityValue(item.done ? "Done" : "Not done")
+                            .accessibilityValue(item.done ? L("Done") : L("Not done"))
 
                             if index < items.count - 1 {
                                 Divider()
@@ -134,12 +134,12 @@ struct SharpenChecklistCard: View {
 
     private func benefit(for id: String) -> String {
         switch id {
-        case "hr": "Locks in your aerobic endurance thresholds"
-        case "pace": "Calibrates Zone 2 recovery & aerobic runs"
-        case "notes": "Alerts Coach Uphill to adapt volume & loading"
-        case "schedule": "Anchors your primary weekend endurance session"
-        case "profile": "Refines energy expenditure & recovery rates"
-        default: "Makes workouts more accurate"
+        case "hr": L("Locks in your aerobic endurance thresholds")
+        case "pace": L("Calibrates Zone 2 recovery & aerobic runs")
+        case "notes": L("Alerts Coach Uphill to adapt volume & loading")
+        case "schedule": L("Anchors your primary weekend endurance session")
+        case "profile": L("Refines energy expenditure & recovery rates")
+        default: L("Makes workouts more accurate")
         }
     }
 }

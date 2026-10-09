@@ -71,7 +71,7 @@ struct DistanceBadgeGrid: View {
                         .lineLimit(1)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 } else {
-                    Text(badge.unlocked ? "PB Recorded" : "Locked")
+                    Text(badge.unlocked ? L("PB Recorded") : L("Locked"))
                         .font(.system(size: 9.5))
                         .foregroundStyle(UH.Palette.muted)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -123,7 +123,7 @@ struct DistanceBadgeGrid: View {
                             .font(UH.TextStyle.caption.weight(.semibold))
                             .foregroundStyle(UH.Palette.accentInk)
                     } else {
-                        Text(badge.unlocked ? "PB \(badge.formattedPB)" : "Complete a 100-mile race to unlock")
+                        Text(badge.unlocked ? "PB \(badge.formattedPB)" : L("Complete a 100-mile race to unlock"))
                             .font(UH.TextStyle.caption)
                             .foregroundStyle(UH.Palette.secondary)
                     }

@@ -15,17 +15,17 @@ struct ChatView: View {
         if let plan {
             let week = plan.currentWeek ?? 1
             return [
-                "What's on for week \(week)?",
-                "How should I pace \(plan.raceName)?",
-                "Review last week's training",
-                "Explain the 80/20 training rule"
+                L("What's on for week %lld?", week),
+                L("How should I pace %@?", plan.raceName),
+                L("Review last week's training"),
+                L("Explain the 80/20 training rule")
             ]
         } else {
             return [
-                "Explain Zone 2 heart rate training",
-                "How to prevent muscle cramps in ultras?",
-                "What is Muscular Endurance (ME)?",
-                "How much elevation gain should I train for?"
+                L("Explain Zone 2 heart rate training"),
+                L("How to prevent muscle cramps in ultras?"),
+                L("What is Muscular Endurance (ME)?"),
+                L("How much elevation gain should I train for?")
             ]
         }
     }
@@ -213,17 +213,17 @@ struct ChatView: View {
     private var statusLabel: String {
         switch service.status {
         case .idle, .done:
-            return "Ready"
+            return L("Ready")
         case .retrieving:
-            return "Retrieving…"
+            return L("Retrieving…")
         case .generating:
-            return "Generating…"
+            return L("Generating…")
         case .admitting:
-            return "Connecting…"
+            return L("Connecting…")
         case .error:
-            return "Error"
+            return L("Error")
         case .interrupted:
-            return "Interrupted"
+            return L("Interrupted")
         }
     }
 
@@ -339,7 +339,7 @@ struct ChatView: View {
             Image(systemName: "exclamationmark.circle.fill")
                 .foregroundStyle(UH.Palette.danger)
 
-            Text(err.message ?? "An error occurred.")
+            Text(err.message ?? L("An error occurred."))
                 .font(UH.TextStyle.caption)
                 .foregroundStyle(UH.Palette.danger)
                 .lineLimit(2)

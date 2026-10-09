@@ -144,7 +144,7 @@ struct PlanView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         case .failed(let error):
             VStack(spacing: UH.Space.regular) {
-                message(title: "Couldn't load your plan", body: error)
+                message(title: L("Couldn't load your plan"), body: error)
                 Button("Try again") { Task { await model.load() } }
                     .buttonStyle(.uhPrimary)
                     .frame(maxWidth: 220)
@@ -268,7 +268,7 @@ struct PlanView: View {
                     guard let outcome, outcome.kind == .nextWeek || outcome.kind == .adaptWeek else { return }
                     generation.clearOutcome()
                     if case .done = outcome.outcome {
-                        readyBanner = outcome.kind == .adaptWeek ? "Week updated" : "New week is ready"
+                        readyBanner = outcome.kind == .adaptWeek ? L("Week updated") : L("New week is ready")
                         Task { try? await Task.sleep(for: .seconds(3)); readyBanner = nil }
                     }
                 }

@@ -94,7 +94,7 @@ struct SignInView: View {
     private var emailForm: some View {
         VStack(spacing: UH.Space.small) {
             if model.mode == .register {
-                textField("Name", text: $model.name, field: .name)
+                textField(L("Name"), text: $model.name, field: .name)
                     .textContentType(.name)
                     .accessibilityIdentifier("signin.name")
             }
@@ -118,14 +118,14 @@ struct SignInView: View {
                 if model.isBusy {
                     ProgressView()
                 } else {
-                    Text(model.mode == .signIn ? "Sign in" : "Create account")
+                    Text(model.mode == .signIn ? L("Sign in") : L("Create account"))
                 }
             }
             .buttonStyle(.uhPrimary)
             .disabled(!model.canSubmit)
             .accessibilityIdentifier("signin.submit")
 
-            Button(model.mode == .signIn ? "New to Uphill? Create an account" : "Have an account? Sign in") {
+            Button(model.mode == .signIn ? L("New to Uphill? Create an account") : L("Have an account? Sign in")) {
                 withAnimation(reduceMotion ? nil : UH.Motion.standard) {
                     model.mode = model.mode == .signIn ? .register : .signIn
                 }
@@ -171,7 +171,7 @@ struct SignInView: View {
                   let tokenData = credential.identityToken,
                   let token = String(data: tokenData, encoding: .utf8)
             else {
-                model.show("Apple sign-in did not return a token. Please try again.")
+                model.show(L("Apple sign-in did not return a token. Please try again."))
                 return
             }
             let name = credential.fullName.map { PersonNameComponentsFormatter().string(from: $0) } ?? ""

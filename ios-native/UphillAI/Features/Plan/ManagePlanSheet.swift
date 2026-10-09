@@ -322,10 +322,10 @@ struct ManagePlanSheet: View {
                         .foregroundStyle(isConnected ? UH.Palette.accentInk : UH.Palette.muted)
 
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(isConnected ? "COROS" : "No watch connected")
+                        Text(isConnected ? "COROS" : L("No watch connected"))
                             .font(UH.TextStyle.label)
                             .foregroundStyle(UH.Palette.ink)
-                        Text(isConnected ? "Connected in Profile" : "Connect in Profile")
+                        Text(isConnected ? L("Connected in Profile") : L("Connect in Profile"))
                             .font(UH.TextStyle.caption)
                             .foregroundStyle(UH.Palette.secondary)
                     }
@@ -384,7 +384,7 @@ struct ManagePlanSheet: View {
                 .accessibilityIdentifier("manage.syncWatch")
 
                 if let notice = model.watchSyncNotice {
-                    let isSuccess = notice.lowercased().contains("synced") || notice.lowercased().contains("up to date")
+                    let isSuccess = notice.lowercased().contains("synced") || notice.lowercased().contains("up to date") || notice.hasPrefix("Đã đồng bộ")
                     HStack(spacing: 6) {
                         Image(systemName: isSuccess ? "checkmark.circle.fill" : (isConnected ? "exclamationmark.circle.fill" : "info.circle"))
                             .foregroundStyle(isSuccess ? UH.Palette.accentInk : (isConnected ? UH.Palette.danger : UH.Palette.muted))
@@ -462,7 +462,7 @@ struct ManagePlanSheet: View {
 
     private func raceDate(_ plan: Plan) -> String {
         guard let day = PlanCalendar.day(from: plan.raceDate) else { return plan.raceDate }
-        return "Race " + day.formatted(.dateTime.day().month(.abbreviated).year())
+        return L("Race ") + day.formatted(.dateTime.day().month(.abbreviated).year())
     }
 
     // MARK: - Tools & Labs
@@ -479,7 +479,7 @@ struct ManagePlanSheet: View {
                     onTool?(.goalDeterminer)
                     dismiss()
                 } label: {
-                    toolRow(title: "Goal Determiner", icon: "speedometer", desc: "Percentile finish estimation")
+                    toolRow(title: L("Goal Determiner"), icon: "speedometer", desc: L("Percentile finish estimation"))
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("manage.tool.goalDeterminer")
@@ -490,7 +490,7 @@ struct ManagePlanSheet: View {
                     onTool?(.gearVault)
                     dismiss()
                 } label: {
-                    toolRow(title: "Gear Vault", icon: "shoe.fill", desc: "Shoe rotation & recommendations")
+                    toolRow(title: L("Gear Vault"), icon: "shoe.fill", desc: L("Shoe rotation & recommendations"))
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("manage.tool.gearVault")
@@ -501,7 +501,7 @@ struct ManagePlanSheet: View {
                     onTool?(.nutritionLab)
                     dismiss()
                 } label: {
-                    toolRow(title: "Nutrition Lab", icon: "drop.fill", desc: "Precision fueling timeline")
+                    toolRow(title: L("Nutrition Lab"), icon: "drop.fill", desc: L("Precision fueling timeline"))
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("manage.tool.nutritionLab")
@@ -512,7 +512,7 @@ struct ManagePlanSheet: View {
                     onTool?(.gearVault)
                     dismiss()
                 } label: {
-                    toolRow(title: "Shoe Rotation", icon: "shoe", desc: "Active shoe rotation & wear")
+                    toolRow(title: L("Shoe Rotation"), icon: "shoe", desc: L("Active shoe rotation & wear"))
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("manage.tool.shoeRotation")

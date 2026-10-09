@@ -23,7 +23,7 @@ struct GenerationProgressView: View {
         switch generation.lastOutcome?.outcome {
         case .failed(let message): return .failed(message)
         case .lost where !hasPlan:
-            return .failed("We lost track of your plan while the server restarted. Check the Plan tab; if nothing is there, try again.")
+            return .failed(L("We lost track of your plan while the server restarted. Check the Plan tab; if nothing is there, try again."))
         default: return .done
         }
     }

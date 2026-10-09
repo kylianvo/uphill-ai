@@ -11,6 +11,16 @@
         }
       }
     },
+    "%@ Phase": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giai đoạn %@"
+          }
+        }
+      }
+    },
     "%@ hill or trail day": {
       "localizations": {
         "vi": {
@@ -31,12 +41,52 @@
         }
       }
     },
+    "%@ kilometres": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ km"
+          }
+        }
+      }
+    },
+    "%@ km logged": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã chạy %@ km"
+          }
+        }
+      }
+    },
+    "%@ on %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ vào %@"
+          }
+        }
+      }
+    },
     "%@ · %lld weeks": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "%@ · %lld tuần"
+          }
+        }
+      }
+    },
+    "%@%% Done": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xong %@%%"
           }
         }
       }
@@ -151,7 +201,27 @@
         }
       }
     },
+    "%lld km/week": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld km/tuần"
+          }
+        }
+      }
+    },
     "%lld min": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld phút"
+          }
+        }
+      }
+    },
+    "%lld minutes": {
       "localizations": {
         "vi": {
           "stringUnit": {
@@ -211,6 +281,16 @@
         }
       }
     },
+    "%lld runs a week, long run on %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld buổi chạy/tuần, Long Run vào %@"
+          }
+        }
+      }
+    },
     "%lld shoes": {
       "localizations": {
         "vi": {
@@ -241,12 +321,32 @@
         }
       }
     },
+    "%lld weeks": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld tuần"
+          }
+        }
+      }
+    },
     "%lld weeks · %lld sessions": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "%lld tuần · %lld buổi tập"
+          }
+        }
+      }
+    },
+    "%lld wks": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld tuần"
           }
         }
       }
@@ -331,6 +431,26 @@
         }
       }
     },
+    "+%lld m elevation gain": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+%lld m D+"
+          }
+        }
+      }
+    },
+    "10% finished": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "10% về đích"
+          }
+        }
+      }
+    },
     "100 MILES (161 KM)": {
       "localizations": {
         "vi": {
@@ -341,12 +461,52 @@
         }
       }
     },
+    "100 Miles": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "100 dặm"
+          }
+        }
+      }
+    },
+    "1–3 months": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1–3 tháng"
+          }
+        }
+      }
+    },
     "2 SESSIONS": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "2 BUỔI"
+          }
+        }
+      }
+    },
+    "2–6 weeks": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "2–6 tuần"
+          }
+        }
+      }
+    },
+    "3–6 months": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "3–6 tháng"
           }
         }
       }
@@ -381,6 +541,66 @@
         }
       }
     },
+    "6+ months": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "6+ tháng"
+          }
+        }
+      }
+    },
+    "90% Finish": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "90% về đích"
+          }
+        }
+      }
+    },
+    "90% finished": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "90% về đích"
+          }
+        }
+      }
+    },
+    "< 2 weeks": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "< 2 tuần"
+          }
+        }
+      }
+    },
+    "A bit rusty, slightly deconditioned": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hơi lụt nghề, thể lực giảm nhẹ"
+          }
+        }
+      }
+    },
+    "A distance": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Một cự ly"
+          }
+        }
+      }
+    },
     "A hard day right before the long run makes both harder.": {
       "localizations": {
         "vi": {
@@ -397,6 +617,56 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kết hợp"
+          }
+        }
+      }
+    },
+    "A road race": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Một Race road"
+          }
+        }
+      }
+    },
+    "A send is already running. Try again in a moment.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang có lượt gửi khác. Thử lại sau giây lát."
+          }
+        }
+      }
+    },
+    "A specific race": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Một Race cụ thể"
+          }
+        }
+      }
+    },
+    "A trail race": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Một Race trail"
+          }
+        }
+      }
+    },
+    "A: Ambitious": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A: Tham vọng"
           }
         }
       }
@@ -441,12 +711,32 @@
         }
       }
     },
+    "AVG HR": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HR TB"
+          }
+        }
+      }
+    },
     "About 1 minute": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "Khoảng 1 phút"
+          }
+        }
+      }
+    },
+    "About what I expected": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đúng như dự kiến"
           }
         }
       }
@@ -531,6 +821,26 @@
         }
       }
     },
+    "Active recovery & warm-ups": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hồi phục chủ động & Warm-up"
+          }
+        }
+      }
+    },
+    "Active shoe rotation & wear": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giày đang dùng & độ mòn"
+          }
+        }
+      }
+    },
     "Adapt Week %lld": {
       "localizations": {
         "vi": {
@@ -591,6 +901,16 @@
         }
       }
     },
+    "Add a note for this %@...": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm ghi chú cho %@ này..."
+          }
+        }
+      }
+    },
     "Add an Athlete": {
       "localizations": {
         "vi": {
@@ -621,6 +941,16 @@
         }
       }
     },
+    "Add the race name.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm tên Race."
+          }
+        }
+      }
+    },
     "Add to Apple Calendar": {
       "localizations": {
         "vi": {
@@ -647,6 +977,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "Thêm buổi tập thẳng vào Apple Calendar, Google Calendar hoặc Outlook. Lịch đăng ký tự cập nhật khi plan thay đổi."
+          }
+        }
+      }
+    },
+    "Add your age and weight": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm tuổi và cân nặng"
+          }
+        }
+      }
+    },
+    "Add your easy pace": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm pace Easy"
+          }
+        }
+      }
+    },
+    "Add your heart rate zones": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm Heart Rate Zone"
           }
         }
       }
@@ -711,6 +1071,16 @@
         }
       }
     },
+    "AeT Threshold (Z2)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngưỡng AeT (Z2)"
+          }
+        }
+      }
+    },
     "Aerobic Threshold (AeT)": {
       "localizations": {
         "vi": {
@@ -721,12 +1091,102 @@
         }
       }
     },
+    "Aerobic base; conversational effort": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nền Aerobic; mức nói chuyện được"
+          }
+        }
+      }
+    },
+    "Aerobic capacity (AeT-AnT)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sức bền Aerobic (AeT-AnT)"
+          }
+        }
+      }
+    },
+    "Aerobic threshold (AeT)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngưỡng Aerobic (AeT)"
+          }
+        }
+      }
+    },
+    "Aerobic threshold (AeT) must be below anaerobic threshold (AnT).": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngưỡng Aerobic (AeT) phải thấp hơn ngưỡng Anaerobic (AnT)."
+          }
+        }
+      }
+    },
+    "Aerobic threshold HR": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HR ngưỡng Aerobic"
+          }
+        }
+      }
+    },
+    "Afternoon": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chiều"
+          }
+        }
+      }
+    },
+    "Age": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tuổi"
+          }
+        }
+      }
+    },
     "Aggressive": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "Mạo hiểm"
+          }
+        }
+      }
+    },
+    "Ahead of target": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhanh hơn mục tiêu"
+          }
+        }
+      }
+    },
+    "Alerts Coach Uphill to adapt volume & loading": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Báo Coach Uphill điều chỉnh khối lượng"
           }
         }
       }
@@ -761,12 +1221,82 @@
         }
       }
     },
+    "Ambitious": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tham vọng"
+          }
+        }
+      }
+    },
+    "An error occurred.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã xảy ra lỗi."
+          }
+        }
+      }
+    },
+    "AnT Threshold (Z4)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngưỡng AnT (Z4)"
+          }
+        }
+      }
+    },
     "Anaerobic Threshold (AnT)": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "Ngưỡng Anaerobic (AnT)"
+          }
+        }
+      }
+    },
+    "Anaerobic threshold (AnT)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngưỡng Anaerobic (AnT)"
+          }
+        }
+      }
+    },
+    "Anaerobic threshold (AnT) must not exceed max heart rate.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngưỡng Anaerobic (AnT) không được vượt Max HR."
+          }
+        }
+      }
+    },
+    "Anaerobic threshold HR": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HR ngưỡng Anaerobic"
+          }
+        }
+      }
+    },
+    "Anchors your primary weekend endurance session": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cố định buổi sức bền chính cuối tuần"
           }
         }
       }
@@ -787,6 +1317,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bất kỳ"
+          }
+        }
+      }
+    },
+    "Apple sign-in did not return a token. Please try again.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đăng nhập Apple không trả về mã. Vui lòng thử lại."
           }
         }
       }
@@ -931,6 +1471,16 @@
         }
       }
     },
+    "Authorization security check failed (state mismatch).": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiểm tra bảo mật khi cấp quyền thất bại (state không khớp)."
+          }
+        }
+      }
+    },
     "Automatically create a dedicated \"Uphill AI Training\" calendar in your native Calendar app without manual file imports.": {
       "localizations": {
         "vi": {
@@ -947,6 +1497,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "TB %@"
+          }
+        }
+      }
+    },
+    "B: Realistic": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "B: Thực tế"
           }
         }
       }
@@ -997,6 +1557,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "Cân bằng"
+          }
+        }
+      }
+    },
+    "Base Phase": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giai đoạn Base"
+          }
+        }
+      }
+    },
+    "Be ready for a distance, like your first 21 km.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sẵn sàng cho một cự ly, như 21 km đầu tiên."
+          }
+        }
+      }
+    },
+    "Behind target": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chậm hơn mục tiêu"
           }
         }
       }
@@ -1071,6 +1661,36 @@
         }
       }
     },
+    "Build toward a race on a set date.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tập hướng tới một Race có ngày cố định."
+          }
+        }
+      }
+    },
+    "Build week %lld": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tạo tuần %lld"
+          }
+        }
+      }
+    },
+    "Build weeks %lld–%lld": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tạo tuần %lld–%lld"
+          }
+        }
+      }
+    },
     "Building the next block…": {
       "localizations": {
         "vi": {
@@ -1101,12 +1721,32 @@
         }
       }
     },
+    "C: Safe": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "C: An toàn"
+          }
+        }
+      }
+    },
     "CAUTION": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "LƯU Ý"
+          }
+        }
+      }
+    },
+    "CLIMBING": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LEO DỐC"
           }
         }
       }
@@ -1187,6 +1827,66 @@
           "stringUnit": {
             "state": "translated",
             "value": "NHƯỢC ĐIỂM"
+          }
+        }
+      }
+    },
+    "COROS authorization was declined or cancelled.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Việc cấp quyền COROS bị từ chối hoặc hủy."
+          }
+        }
+      }
+    },
+    "COROS didn't accept the plan. Nothing changed on your watch.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "COROS không nhận plan. Đồng hồ không thay đổi gì."
+          }
+        }
+      }
+    },
+    "COROS isn't connected. Connect it in Profile.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "COROS chưa kết nối. Kết nối trong Hồ sơ."
+          }
+        }
+      }
+    },
+    "COROS isn't connected. Reconnect it in your profile.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "COROS chưa kết nối. Kết nối lại trong hồ sơ."
+          }
+        }
+      }
+    },
+    "COROS plans cover up to 16 weeks. Send to COROS opens closer to your race.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plan COROS tối đa 16 tuần. Nút gửi sang COROS sẽ mở khi gần ngày Race hơn."
+          }
+        }
+      }
+    },
+    "COROS plans must be at least 4 weeks long.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plan COROS phải dài ít nhất 4 tuần."
           }
         }
       }
@@ -1301,6 +2001,16 @@
         }
       }
     },
+    "Calibrates Zone 2 recovery & aerobic runs": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hiệu chỉnh buổi hồi phục & Aerobic Zone 2"
+          }
+        }
+      }
+    },
     "Calibrates calorie expenditure, pacing models, and recovery rates.": {
       "localizations": {
         "vi": {
@@ -1321,12 +2031,32 @@
         }
       }
     },
+    "Can't reach Uphill. Check your connection and try again.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không kết nối được Uphill. Kiểm tra mạng và thử lại."
+          }
+        }
+      }
+    },
     "Cancel": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "Hủy"
+          }
+        }
+      }
+    },
+    "Cannot clear thread while a turn is active.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không thể xóa khi Coach đang trả lời."
           }
         }
       }
@@ -1441,6 +2171,16 @@
         }
       }
     },
+    "Choose what you're training for.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn mục tiêu tập của bạn."
+          }
+        }
+      }
+    },
     "Clear": {
       "localizations": {
         "vi": {
@@ -1487,6 +2227,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Cùng tạo với Coach AI"
+          }
+        }
+      }
+    },
+    "Coach Notes (%lld)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ghi chú của coach (%lld)"
           }
         }
       }
@@ -1577,6 +2327,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Lạnh (<15°C)"
+          }
+        }
+      }
+    },
+    "Come back after a break": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quay lại sau thời gian nghỉ"
+          }
+        }
+      }
+    },
+    "Coming back after a break": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quay lại sau thời gian nghỉ"
           }
         }
       }
@@ -1731,12 +2501,42 @@
         }
       }
     },
+    "Connected to COROS · Syncing activities...": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã kết nối COROS · Đang đồng bộ hoạt động..."
+          }
+        }
+      }
+    },
+    "Connecting…": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang kết nối…"
+          }
+        }
+      }
+    },
     "Conservative": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "An toàn"
+          }
+        }
+      }
+    },
+    "Conservative buffer against heat, fatigue or cramps": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dư địa an toàn phòng nóng, mệt hoặc chuột rút"
           }
         }
       }
@@ -1771,12 +2571,152 @@
         }
       }
     },
+    "Controlled cadence": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giữ Cadence kiểm soát"
+          }
+        }
+      }
+    },
     "Copy Calendar Subscription URL": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "Sao chép URL đăng ký lịch"
+          }
+        }
+      }
+    },
+    "Could not complete COROS connection.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không hoàn tất kết nối COROS được."
+          }
+        }
+      }
+    },
+    "Could not disconnect.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không ngắt kết nối được."
+          }
+        }
+      }
+    },
+    "Could not send to COROS.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không gửi được sang COROS."
+          }
+        }
+      }
+    },
+    "Couldn't load your plan": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không tải được plan"
+          }
+        }
+      }
+    },
+    "Couldn't reach COROS. Nothing changed. Try again shortly.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không kết nối được COROS. Không có gì thay đổi. Thử lại sau."
+          }
+        }
+      }
+    },
+    "Couldn't start adapting this week. Try again.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không điều chỉnh được tuần này. Thử lại."
+          }
+        }
+      }
+    },
+    "Couldn't start the next week. Try again.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không bắt đầu được tuần tiếp theo. Thử lại."
+          }
+        }
+      }
+    },
+    "Couldn't sync watch activities. Please try again.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không đồng bộ được hoạt động từ đồng hồ. Vui lòng thử lại."
+          }
+        }
+      }
+    },
+    "Course Profile": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cao độ cung đường"
+          }
+        }
+      }
+    },
+    "Course physics from this result": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tính theo cung đường từ kết quả này"
+          }
+        }
+      }
+    },
+    "Course physics from your easy pace": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tính theo cung đường từ pace Easy"
+          }
+        }
+      }
+    },
+    "Course physics from your flat pace": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tính theo cung đường từ pace đường bằng"
+          }
+        }
+      }
+    },
+    "Course profile": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cao độ cung đường"
           }
         }
       }
@@ -1841,6 +2781,16 @@
         }
       }
     },
+    "DESCENT": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "XUỐNG DỐC"
+          }
+        }
+      }
+    },
     "DIRECT APPLE CALENDAR SYNC": {
       "localizations": {
         "vi": {
@@ -1861,6 +2811,16 @@
         }
       }
     },
+    "DISTANCE": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CỰ LY"
+          }
+        }
+      }
+    },
     "DISTANCE BADGES & PERSONAL BESTS": {
       "localizations": {
         "vi": {
@@ -1871,12 +2831,52 @@
         }
       }
     },
+    "DURATION": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "THỜI LƯỢNG"
+          }
+        }
+      }
+    },
+    "Data provided by COROS": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dữ liệu từ COROS"
+          }
+        }
+      }
+    },
+    "Data provided by COROS · %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dữ liệu từ COROS · %@"
+          }
+        }
+      }
+    },
     "Day": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "Ngày"
+          }
+        }
+      }
+    },
+    "Days per week": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Số ngày/tuần"
           }
         }
       }
@@ -1907,6 +2907,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Từ chối"
+          }
+        }
+      }
+    },
+    "Deep exhaustion or overreaching risk — coach will schedule an active recovery deload week.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiệt sức hoặc có nguy cơ quá tải. Coach sẽ xếp một tuần Deload hồi phục."
           }
         }
       }
@@ -2091,6 +3101,16 @@
         }
       }
     },
+    "Disconnected from COROS.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã ngắt kết nối COROS."
+          }
+        }
+      }
+    },
     "Dismiss suggestions": {
       "localizations": {
         "vi": {
@@ -2161,6 +3181,16 @@
         }
       }
     },
+    "Drink Mix": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bột pha nước"
+          }
+        }
+      }
+    },
     "Duration": {
       "localizations": {
         "vi": {
@@ -2211,6 +3241,16 @@
         }
       }
     },
+    "EST. DISTANCE": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CỰ LY DỰ KIẾN"
+          }
+        }
+      }
+    },
     "EVENT DATE": {
       "localizations": {
         "vi": {
@@ -2247,6 +3287,66 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mỗi chi tiết giúp buổi tập tuần sau sát với bạn hơn."
+          }
+        }
+      }
+    },
+    "Easy Pace (Zone 2)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pace Easy (Zone 2)"
+          }
+        }
+      }
+    },
+    "Easy pace": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pace Easy"
+          }
+        }
+      }
+    },
+    "Easy pace, faster end": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pace Easy, mức nhanh"
+          }
+        }
+      }
+    },
+    "Easy pace, slower end": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pace Easy, mức chậm"
+          }
+        }
+      }
+    },
+    "Easy recovery runs (< AeT)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chạy hồi phục nhẹ (< AeT)"
+          }
+        }
+      }
+    },
+    "Easy weeks after a hard effort.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Các tuần nhẹ sau một Race nặng."
           }
         }
       }
@@ -2301,6 +3401,26 @@
         }
       }
     },
+    "Effortless recovery": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hồi phục nhẹ nhàng"
+          }
+        }
+      }
+    },
+    "Effortless recovery or peak freshness — coach will maintain or slightly increase volume to capitalize.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hồi phục tốt hoặc rất sung sức. Coach sẽ giữ hoặc tăng nhẹ khối lượng."
+          }
+        }
+      }
+    },
     "Elapsed %lld minutes %lld seconds": {
       "localizations": {
         "vi": {
@@ -2341,12 +3461,42 @@
         }
       }
     },
+    "Enter 0 to 250 km.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhập từ 0 đến 250 km."
+          }
+        }
+      }
+    },
+    "Enter a distance between 1 and 400 km.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhập cự ly từ 1 đến 400 km."
+          }
+        }
+      }
+    },
     "Enter runner full name (as on bib)": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "Nhập họ tên runner (như trên bib)"
+          }
+        }
+      }
+    },
+    "Error": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lỗi"
           }
         }
       }
@@ -2361,12 +3511,52 @@
         }
       }
     },
+    "Estimated": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ước tính"
+          }
+        }
+      }
+    },
+    "Estimated from your race history": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ước tính từ lịch sử Race"
+          }
+        }
+      }
+    },
+    "Estimated from your training so far": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ước tính từ quá trình tập tới nay"
+          }
+        }
+      }
+    },
     "Estimated hours on course": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "Số giờ dự kiến trên đường chạy"
+          }
+        }
+      }
+    },
+    "Estimated profile": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cao độ ước tính"
           }
         }
       }
@@ -2391,6 +3581,56 @@
         }
       }
     },
+    "Evening": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tối"
+          }
+        }
+      }
+    },
+    "Every week of this plan is already built.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mọi tuần của plan này đã được tạo."
+          }
+        }
+      }
+    },
+    "Every week volume trend": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xu hướng khối lượng các tuần"
+          }
+        }
+      }
+    },
+    "EvoLab sync failed. Please try again.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đồng bộ EvoLab thất bại. Vui lòng thử lại."
+          }
+        }
+      }
+    },
+    "EvoLab synced successfully: threshold pace %@/km, VO2max %@.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã đồng bộ EvoLab: pace Threshold %@/km, VO2max %@."
+          }
+        }
+      }
+    },
     "Excluded": {
       "localizations": {
         "vi": {
@@ -2401,12 +3641,52 @@
         }
       }
     },
+    "Exhausted": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiệt sức"
+          }
+        }
+      }
+    },
+    "Exhausted / Deload": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiệt sức / cần Deload"
+          }
+        }
+      }
+    },
     "Exit": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "Thoát"
+          }
+        }
+      }
+    },
+    "Explain Zone 2 heart rate training": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giải thích tập theo nhịp tim Zone 2"
+          }
+        }
+      }
+    },
+    "Explain the 80/20 training rule": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giải thích nguyên tắc tập 80/20"
           }
         }
       }
@@ -2471,12 +3751,92 @@
         }
       }
     },
+    "FLAT": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ĐƯỜNG BẰNG"
+          }
+        }
+      }
+    },
+    "Failed": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thất bại"
+          }
+        }
+      }
+    },
     "Fatigue, minor niggles, upcoming travel, or schedule changes…": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "Mệt mỏi, đau nhẹ, sắp đi xa hoặc đổi lịch…"
+          }
+        }
+      }
+    },
+    "Feeling good, just need structure": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vẫn khỏe, chỉ cần có lịch tập"
+          }
+        }
+      }
+    },
+    "Feeling great, minimal soreness": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rất khỏe, gần như không đau"
+          }
+        }
+      }
+    },
+    "Female": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nữ"
+          }
+        }
+      }
+    },
+    "Field": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thành tích giải"
+          }
+        }
+      }
+    },
+    "Field percentile transfer": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quy đổi theo bách phân vị"
+          }
+        }
+      }
+    },
+    "Field position from weekly volume": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vị trí ước tính từ khối lượng tuần"
           }
         }
       }
@@ -2521,6 +3881,16 @@
         }
       }
     },
+    "Finish strong": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Về đích khỏe"
+          }
+        }
+      }
+    },
     "Finishers Field Curve": {
       "localizations": {
         "vi": {
@@ -2557,6 +3927,86 @@
           "stringUnit": {
             "state": "translated",
             "value": "Trọng tâm: xây nền Aerobic đều đặn và khả năng chịu mệt."
+          }
+        }
+      }
+    },
+    "Fresh": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sung sức"
+          }
+        }
+      }
+    },
+    "Fresh & easy": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sung sức & nhẹ"
+          }
+        }
+      }
+    },
+    "Fresh and well recovered — coach will maintain progressive overload without cutting volume.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sung sức và hồi phục tốt. Coach sẽ giữ mức tăng tải, không giảm khối lượng."
+          }
+        }
+      }
+    },
+    "Fri": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "T6"
+          }
+        }
+      }
+    },
+    "Friday": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thứ Sáu"
+          }
+        }
+      }
+    },
+    "From the race date": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Từ ngày Race"
+          }
+        }
+      }
+    },
+    "From walk-run to running 30 minutes.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Từ chạy-đi bộ xen kẽ tới chạy liền 30 phút."
+          }
+        }
+      }
+    },
+    "From your profile Zone 2": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Từ Zone 2 trong hồ sơ"
           }
         }
       }
@@ -2651,6 +4101,16 @@
         }
       }
     },
+    "Generate Block %lld anyway": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vẫn tạo Block %lld"
+          }
+        }
+      }
+    },
     "Generate Week %lld": {
       "localizations": {
         "vi": {
@@ -2671,6 +4131,16 @@
         }
       }
     },
+    "Generating…": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang soạn…"
+          }
+        }
+      }
+    },
     "Get started": {
       "localizations": {
         "vi": {
@@ -2681,12 +4151,32 @@
         }
       }
     },
+    "Getting started": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mới bắt đầu"
+          }
+        }
+      }
+    },
     "Go to Profile tab (bottom right) > Settings > Heart Rate Zone.": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "Vào tab Hồ sơ (góc dưới phải) > Cài đặt > Heart Rate Zone."
+          }
+        }
+      }
+    },
+    "Goal %lldh %@m": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mục tiêu %lldh %@m"
           }
         }
       }
@@ -2741,6 +4231,66 @@
         }
       }
     },
+    "Goal: best possible time": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mục tiêu: thời gian tốt nhất"
+          }
+        }
+      }
+    },
+    "Goal: finish strong": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mục tiêu: về đích khỏe"
+          }
+        }
+      }
+    },
+    "Google didn't return a sign-in token. Please try again.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Google không trả về mã đăng nhập. Vui lòng thử lại."
+          }
+        }
+      }
+    },
+    "Google sign-in couldn't open. Please try again.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không mở được đăng nhập Google. Vui lòng thử lại."
+          }
+        }
+      }
+    },
+    "Google sign-in failed (%@ %lld). Please try again.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đăng nhập Google thất bại (%@ %lld). Vui lòng thử lại."
+          }
+        }
+      }
+    },
+    "Google sign-in failed (error %lld). Please try again.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đăng nhập Google thất bại (lỗi %lld). Vui lòng thử lại."
+          }
+        }
+      }
+    },
     "Got it": {
       "localizations": {
         "vi": {
@@ -2767,6 +4317,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mức Gut training cơ bản: 60g"
+          }
+        }
+      }
+    },
+    "HIGH CONFIDENCE": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ĐỘ TIN CẬY CAO"
           }
         }
       }
@@ -2811,12 +4371,72 @@
         }
       }
     },
+    "Half finished": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Một nửa về đích"
+          }
+        }
+      }
+    },
+    "Hard": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nặng"
+          }
+        }
+      }
+    },
+    "Hard / challenging. Workouts pushed you, but manageable.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nặng / thử thách. Buổi tập đẩy bạn lên nhưng vẫn kiểm soát được."
+          }
+        }
+      }
+    },
+    "Hard / demanding. Heavy legs, needed deep recovery.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nặng / vất vả. Chân nặng, cần hồi phục kỹ."
+          }
+        }
+      }
+    },
+    "Hard session on {day} (week {week}) right before the long run.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buổi nặng vào {day} (tuần {week}) ngay trước Long Run."
+          }
+        }
+      }
+    },
     "Have an account? Sign in": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "Đã có tài khoản? Đăng nhập"
+          }
+        }
+      }
+    },
+    "Heads-up: ": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lưu ý: "
           }
         }
       }
@@ -2847,6 +4467,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mốc nhịp tim"
+          }
+        }
+      }
+    },
+    "Heavy legs": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chân nặng"
+          }
+        }
+      }
+    },
+    "Heavy legs / Tired": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chân nặng / mệt"
+          }
+        }
+      }
+    },
+    "Heavy legs or elevated fatigue — coach will ease off volume and reduce high-intensity sessions.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chân nặng hoặc mệt nhiều. Coach sẽ giảm khối lượng và bớt buổi cường độ cao."
+          }
+        }
+      }
+    },
+    "Height": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chiều cao"
           }
         }
       }
@@ -2951,6 +4611,16 @@
         }
       }
     },
+    "Hit a target time": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đạt thời gian mục tiêu"
+          }
+        }
+      }
+    },
     "Hot (>25°C)": {
       "localizations": {
         "vi": {
@@ -3021,12 +4691,42 @@
         }
       }
     },
+    "How much elevation gain should I train for?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tôi nên tập với bao nhiêu D+?"
+          }
+        }
+      }
+    },
+    "How should I pace %@?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tôi nên chạy pace thế nào ở %@?"
+          }
+        }
+      }
+    },
     "How to find your zones": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "Cách tìm zone của bạn"
+          }
+        }
+      }
+    },
+    "How to prevent muscle cramps in ultras?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Làm sao tránh chuột rút khi chạy Ultra?"
           }
         }
       }
@@ -3071,6 +4771,26 @@
         }
       }
     },
+    "I need a lighter week": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tôi cần tuần nhẹ hơn"
+          }
+        }
+      }
+    },
+    "I'll count the weeks back from race day.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tôi sẽ tính ngược số tuần từ ngày Race."
+          }
+        }
+      }
+    },
     "IMPORT YOUR OFFICIAL RESULTS": {
       "localizations": {
         "vi": {
@@ -3087,6 +4807,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "KẾT NỐI & ĐỒNG BỘ ĐỒNG HỒ"
+          }
+        }
+      }
+    },
+    "If I know the race, I know its distance and climbing.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Biết Race thì tôi biết cự ly và độ leo."
           }
         }
       }
@@ -3117,6 +4847,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nguồn & tài liệu"
+          }
+        }
+      }
+    },
+    "Ingest": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nạp"
           }
         }
       }
@@ -3157,6 +4897,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hướng dẫn..."
+          }
+        }
+      }
+    },
+    "Interrupted": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bị gián đoạn"
+          }
+        }
+      }
+    },
+    "Invalid callback response from COROS.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "COROS trả về phản hồi không hợp lệ."
+          }
+        }
+      }
+    },
+    "Invitation sent to %@!": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã gửi lời mời tới %@!"
           }
         }
       }
@@ -3261,6 +5031,36 @@
         }
       }
     },
+    "LONGEST TRAIL": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TRAIL DÀI NHẤT"
+          }
+        }
+      }
+    },
+    "Lactate threshold (AnT)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngưỡng lactate (AnT)"
+          }
+        }
+      }
+    },
+    "Lactate threshold; ~1 hour race pace": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngưỡng lactate; pace Race ~1 giờ"
+          }
+        }
+      }
+    },
     "Language": {
       "localizations": {
         "vi": {
@@ -3307,6 +5107,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Trình độ:"
+          }
+        }
+      }
+    },
+    "Light": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhẹ"
           }
         }
       }
@@ -3367,6 +5177,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Liên kết hồ sơ runner UTMB hoặc VBM để tự nhập các Race đã chạy."
+          }
+        }
+      }
+    },
+    "Linked race results (UTMB / VBM)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kết quả Race đã liên kết (UTMB / VBM)"
           }
         }
       }
@@ -3451,12 +5271,32 @@
         }
       }
     },
+    "Locks in your aerobic endurance thresholds": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xác định ngưỡng sức bền Aerobic"
+          }
+        }
+      }
+    },
     "Logged (km)": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "Đã chạy (km)"
+          }
+        }
+      }
+    },
+    "Long run day": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngày Long Run"
           }
         }
       }
@@ -3477,6 +5317,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "CHUYỂN SANG NGÀY TRONG TUẦN NÀY HOẶC TUẦN SAU"
+          }
+        }
+      }
+    },
+    "Makes workouts more accurate": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giúp buổi tập chính xác hơn"
+          }
+        }
+      }
+    },
+    "Male": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nam"
           }
         }
       }
@@ -3611,12 +5471,92 @@
         }
       }
     },
+    "Max Effort": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tối đa"
+          }
+        }
+      }
+    },
+    "Max Heart Rate": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Max HR"
+          }
+        }
+      }
+    },
+    "Max heart rate": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Max HR"
+          }
+        }
+      }
+    },
+    "Maximum anaerobic power (> AnT)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sức Anaerobic tối đa (> AnT)"
+          }
+        }
+      }
+    },
+    "Maximum effort / near exhaustion. High accumulated fatigue.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gắng sức tối đa / gần kiệt. Mệt tích lũy cao."
+          }
+        }
+      }
+    },
+    "Maximum effort / near exhaustion. Very high fatigue.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gắng sức tối đa / gần kiệt. Rất mệt."
+          }
+        }
+      }
+    },
     "Me": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "Tôi"
+          }
+        }
+      }
+    },
+    "Median (50%)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trung vị (50%)"
+          }
+        }
+      }
+    },
+    "Median 50%": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trung vị 50%"
           }
         }
       }
@@ -3681,12 +5621,42 @@
         }
       }
     },
+    "Missing authorization tokens from COROS.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thiếu mã cấp quyền từ COROS."
+          }
+        }
+      }
+    },
+    "Mod": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vừa"
+          }
+        }
+      }
+    },
     "Model (e.g. Ghost 16)": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "Mẫu (vd. Ghost 16)"
+          }
+        }
+      }
+    },
+    "Moderate": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vừa"
           }
         }
       }
@@ -3701,6 +5671,26 @@
         }
       }
     },
+    "Moderate / sustainable. Good training rhythm without excessive strain.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vừa / duy trì được. Nhịp tập tốt, không quá sức."
+          }
+        }
+      }
+    },
+    "Moderate fatigue, some soreness": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mệt vừa, hơi đau"
+          }
+        }
+      }
+    },
     "Modify available days, long run day, or weekly volume": {
       "localizations": {
         "vi": {
@@ -3711,12 +5701,42 @@
         }
       }
     },
+    "Mon": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "T2"
+          }
+        }
+      }
+    },
+    "Monday": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thứ Hai"
+          }
+        }
+      }
+    },
     "Month Calendar": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "Lịch tháng"
+          }
+        }
+      }
+    },
+    "Morning": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sáng"
           }
         }
       }
@@ -3791,6 +5811,16 @@
         }
       }
     },
+    "My best possible time": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thời gian tốt nhất có thể"
+          }
+        }
+      }
+    },
     "NOTES FOR COACH UPHILL (OPTIONAL)": {
       "localizations": {
         "vi": {
@@ -3807,6 +5837,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "DINH DƯỠNG & FUELING"
+          }
+        }
+      }
+    },
+    "Name": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tên"
           }
         }
       }
@@ -3851,6 +5891,26 @@
         }
       }
     },
+    "New week is ready": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tuần mới đã sẵn sàng"
+          }
+        }
+      }
+    },
+    "Next": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiếp"
+          }
+        }
+      }
+    },
     "Next month": {
       "localizations": {
         "vi": {
@@ -3871,6 +5931,16 @@
         }
       }
     },
+    "Next week · %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tuần sau · %@"
+          }
+        }
+      }
+    },
     "No": {
       "localizations": {
         "vi": {
@@ -3887,6 +5957,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Chưa có plan đang chạy"
+          }
+        }
+      }
+    },
+    "No active plan to sync.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không có plan đang chạy để đồng bộ."
           }
         }
       }
@@ -3961,6 +6041,16 @@
         }
       }
     },
+    "No coach notes yet. Leave training feedback or execution advice here.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa có ghi chú. Để lại nhận xét hoặc lời khuyên tập luyện ở đây."
+          }
+        }
+      }
+    },
     "No completed workouts in window": {
       "localizations": {
         "vi": {
@@ -4031,6 +6121,16 @@
         }
       }
     },
+    "No target set": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa đặt mục tiêu"
+          }
+        }
+      }
+    },
     "No verified benchmark field data available for this race.": {
       "localizations": {
         "vi": {
@@ -4057,6 +6157,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bình thường"
+          }
+        }
+      }
+    },
+    "Normal fatigue": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mệt bình thường"
+          }
+        }
+      }
+    },
+    "Normal tiredness": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mệt bình thường"
+          }
+        }
+      }
+    },
+    "Normal training fatigue — coach will keep balanced volume with steady progression.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mệt bình thường. Coach sẽ giữ khối lượng cân bằng và tăng đều."
+          }
+        }
+      }
+    },
+    "Not assessed yet": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa đánh giá"
           }
         }
       }
@@ -4101,6 +6241,16 @@
         }
       }
     },
+    "Not set — add your Zone 2 pace in Profile": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa đặt. Thêm pace Zone 2 trong Hồ sơ"
+          }
+        }
+      }
+    },
     "Not yet": {
       "localizations": {
         "vi": {
@@ -4141,6 +6291,36 @@
         }
       }
     },
+    "Notes from your coach": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ghi chú từ coach"
+          }
+        }
+      }
+    },
+    "Nothing to send: there are no upcoming runs in your plan.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không có gì để gửi: plan không còn buổi chạy sắp tới."
+          }
+        }
+      }
+    },
+    "Nothing would change.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không có gì thay đổi."
+          }
+        }
+      }
+    },
     "OVERALL EFFORT (RPE)": {
       "localizations": {
         "vi": {
@@ -4157,6 +6337,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Offline · đang hiện plan từ %@"
+          }
+        }
+      }
+    },
+    "On track": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đúng tiến độ"
           }
         }
       }
@@ -4207,6 +6397,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Không bắt buộc (mét)"
+          }
+        }
+      }
+    },
+    "Other": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khác"
           }
         }
       }
@@ -4391,12 +6591,82 @@
         }
       }
     },
+    "Password must be at least 8 characters.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mật khẩu cần ít nhất 8 ký tự."
+          }
+        }
+      }
+    },
+    "Password updated successfully.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã đổi mật khẩu."
+          }
+        }
+      }
+    },
+    "Passwords do not match.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mật khẩu không khớp."
+          }
+        }
+      }
+    },
+    "Past finish times, pace degradation and course difficulty": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thời gian về đích, mức giảm pace và độ khó cung đường"
+          }
+        }
+      }
+    },
+    "Peak race day execution, ideal weather & conditions": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chạy tốt nhất, thời tiết & điều kiện lý tưởng"
+          }
+        }
+      }
+    },
+    "Pending": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang chờ"
+          }
+        }
+      }
+    },
     "Percentile": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "Bách phân vị"
+          }
+        }
+      }
+    },
+    "Percentile finish estimation": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ước tính về đích theo bách phân vị"
           }
         }
       }
@@ -4411,12 +6681,32 @@
         }
       }
     },
+    "Physiology & Pace Zones": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chỉ số thể chất & zone pace"
+          }
+        }
+      }
+    },
     "Physiology & Threshold Zones": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "Chỉ số thể chất & zone ngưỡng"
+          }
+        }
+      }
+    },
+    "Pick a date at least 2 weeks away so the plan has room to build.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn ngày cách ít nhất 2 tuần để plan có thời gian xây nền."
           }
         }
       }
@@ -4521,6 +6811,36 @@
         }
       }
     },
+    "Post": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đăng"
+          }
+        }
+      }
+    },
+    "Power hike / high grade": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Power hike / dốc cao"
+          }
+        }
+      }
+    },
+    "Precision fueling timeline": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lịch Fueling chi tiết"
+          }
+        }
+      }
+    },
     "Preferred brands or specific request": {
       "localizations": {
         "vi": {
@@ -4557,6 +6877,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tháng trước"
+          }
+        }
+      }
+    },
+    "Previous week": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tuần trước"
+          }
+        }
+      }
+    },
+    "Primary target goal with solid execution": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mục tiêu chính khi chạy ổn định"
+          }
+        }
+      }
+    },
+    "Private": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không tiết lộ"
           }
         }
       }
@@ -4651,6 +7001,16 @@
         }
       }
     },
+    "RESTING": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LÚC NGHỈ"
+          }
+        }
+      }
+    },
     "RUNS PER WEEK": {
       "localizations": {
         "vi": {
@@ -4671,12 +7031,32 @@
         }
       }
     },
+    "Race Goal": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mục tiêu Race"
+          }
+        }
+      }
+    },
     "Race History": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "Lịch sử Race"
+          }
+        }
+      }
+    },
+    "Race Target": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Race mục tiêu"
           }
         }
       }
@@ -4771,12 +7151,52 @@
         }
       }
     },
+    "Ready": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sẵn sàng"
+          }
+        }
+      }
+    },
+    "Ready for more": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sẵn sàng tập thêm"
+          }
+        }
+      }
+    },
     "Ready to unlock": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "Sẵn sàng mở"
+          }
+        }
+      }
+    },
+    "Realistic": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thực tế"
+          }
+        }
+      }
+    },
+    "Rebuild safely after time off.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lấy lại thể lực an toàn sau thời gian nghỉ."
           }
         }
       }
@@ -4801,12 +7221,52 @@
         }
       }
     },
+    "Recent weekly mileage, vertical gain, and durability": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Số km, D+ hằng tuần gần đây và độ bền"
+          }
+        }
+      }
+    },
     "Recommend Shoes": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "Gợi ý giày"
+          }
+        }
+      }
+    },
+    "Recover from a race": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hồi phục sau Race"
+          }
+        }
+      }
+    },
+    "Recovering from a race": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hồi phục sau Race"
+          }
+        }
+      }
+    },
+    "Recovery": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hồi phục"
           }
         }
       }
@@ -4837,6 +7297,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tên Race tham chiếu (vd. Sapa 42K)"
+          }
+        }
+      }
+    },
+    "Refines energy expenditure & recovery rates": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tính sát hơn năng lượng tiêu hao & hồi phục"
+          }
+        }
+      }
+    },
+    "Relative field placement and competitive caliber": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vị trí so với các runner khác và trình độ thi đấu"
           }
         }
       }
@@ -4901,6 +7381,26 @@
         }
       }
     },
+    "Reply": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trả lời"
+          }
+        }
+      }
+    },
+    "Reply to your coach…": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trả lời coach…"
+          }
+        }
+      }
+    },
     "Rest": {
       "localizations": {
         "vi": {
@@ -4931,6 +7431,26 @@
         }
       }
     },
+    "Resting heart rate": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resting HR (nhịp tim lúc nghỉ)"
+          }
+        }
+      }
+    },
+    "Resting heart rate must be below aerobic threshold (AeT).": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resting HR phải thấp hơn ngưỡng Aerobic (AeT)."
+          }
+        }
+      }
+    },
     "Retrieved Context": {
       "localizations": {
         "vi": {
@@ -4941,12 +7461,32 @@
         }
       }
     },
+    "Retrieving…": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang truy xuất…"
+          }
+        }
+      }
+    },
     "Retry": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "Thử lại"
+          }
+        }
+      }
+    },
+    "Review last week's training": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đánh giá tuần tập vừa rồi"
           }
         }
       }
@@ -5127,6 +7667,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "ĐỔI VỚI NGÀY KHÁC TRONG TUẦN"
+          }
+        }
+      }
+    },
+    "Safe": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "An toàn"
+          }
+        }
+      }
+    },
+    "Sat": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "T7"
+          }
+        }
+      }
+    },
+    "Saturday": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thứ Bảy"
           }
         }
       }
@@ -5351,6 +7921,26 @@
         }
       }
     },
+    "Select your perceived effort (1 to 10)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn mức gắng sức (1 đến 10)"
+          }
+        }
+      }
+    },
+    "Select your perceived effort for the block (1 to 10)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn mức gắng sức cho Block (1 đến 10)"
+          }
+        }
+      }
+    },
     "Send message": {
       "localizations": {
         "vi": {
@@ -5391,6 +7981,16 @@
         }
       }
     },
+    "Sent %lld workouts to COROS through %@.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã gửi %lld buổi tập sang COROS tới %@."
+          }
+        }
+      }
+    },
     "Sent to COROS": {
       "localizations": {
         "vi": {
@@ -5407,6 +8007,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Đã gửi sang COROS · %@"
+          }
+        }
+      }
+    },
+    "Session": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buổi"
           }
         }
       }
@@ -5447,6 +8057,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Đặt mật khẩu mới"
+          }
+        }
+      }
+    },
+    "Set your long-run day": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đặt ngày Long Run"
           }
         }
       }
@@ -5501,6 +8121,36 @@
         }
       }
     },
+    "Shoe Rotation": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giày xoay vòng"
+          }
+        }
+      }
+    },
+    "Shoe rotation & recommendations": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giày xoay vòng & gợi ý"
+          }
+        }
+      }
+    },
+    "Short intervals & steep climbs": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Interval ngắn & dốc gắt"
+          }
+        }
+      }
+    },
     "Show Less": {
       "localizations": {
         "vi": {
@@ -5551,12 +8201,42 @@
         }
       }
     },
+    "Significant deconditioning — starting nearly fresh": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thể lực giảm nhiều, gần như bắt đầu lại"
+          }
+        }
+      }
+    },
     "Slot": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "Vị trí"
+          }
+        }
+      }
+    },
+    "Smooth Zone 2 aerobic": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aerobic Zone 2 đều"
+          }
+        }
+      }
+    },
+    "So I don't start you too hard.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Để tôi không cho bạn bắt đầu quá nặng."
           }
         }
       }
@@ -5571,12 +8251,32 @@
         }
       }
     },
+    "Solid": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đồ ăn đặc"
+          }
+        }
+      }
+    },
     "Solid consistency": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "Tập đều đặn"
+          }
+        }
+      }
+    },
+    "Something went wrong (%lld). Please try again.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Có lỗi xảy ra (%lld). Vui lòng thử lại."
           }
         }
       }
@@ -5597,6 +8297,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nguồn"
+          }
+        }
+      }
+    },
+    "Source added to indexing queue": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã thêm nguồn vào hàng chờ"
           }
         }
       }
@@ -5691,6 +8401,46 @@
         }
       }
     },
+    "Start running": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bắt đầu chạy"
+          }
+        }
+      }
+    },
+    "Start today or later.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bắt đầu từ hôm nay trở đi."
+          }
+        }
+      }
+    },
+    "Starting from %lld km a week": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bắt đầu từ %lld km/tuần"
+          }
+        }
+      }
+    },
+    "Steady rhythm for trail climbing": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhịp đều khi leo dốc trail"
+          }
+        }
+      }
+    },
     "Step %lld of %lld": {
       "localizations": {
         "vi": {
@@ -5731,6 +8481,26 @@
         }
       }
     },
+    "Stretch": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thử thách"
+          }
+        }
+      }
+    },
+    "Struggling to hit the paces": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khó giữ đúng pace"
+          }
+        }
+      }
+    },
     "Subscribe in Apple Calendar (webcal)": {
       "localizations": {
         "vi": {
@@ -5741,12 +8511,42 @@
         }
       }
     },
+    "Suggested %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gợi ý %@"
+          }
+        }
+      }
+    },
     "Suggested Questions": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "Câu hỏi gợi ý"
+          }
+        }
+      }
+    },
+    "Sun": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CN"
+          }
+        }
+      }
+    },
+    "Sunday": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chủ Nhật"
           }
         }
       }
@@ -5791,6 +8591,16 @@
         }
       }
     },
+    "Sync failed. Please try again.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đồng bộ thất bại. Vui lòng thử lại."
+          }
+        }
+      }
+    },
     "Sync now": {
       "localizations": {
         "vi": {
@@ -5801,12 +8611,32 @@
         }
       }
     },
+    "Sync successful: fetched %lld workouts and %lld days of health data.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đồng bộ xong: lấy %lld buổi tập và %lld ngày dữ liệu sức khỏe."
+          }
+        }
+      }
+    },
     "Synced": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "Đã đồng bộ"
+          }
+        }
+      }
+    },
+    "Synced %lld activities from watch": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã đồng bộ %lld hoạt động từ đồng hồ"
           }
         }
       }
@@ -5881,6 +8711,16 @@
         }
       }
     },
+    "TIME": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "THỜI GIAN"
+          }
+        }
+      }
+    },
     "TIME SINCE RACE": {
       "localizations": {
         "vi": {
@@ -5937,6 +8777,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "TỔNG SODIUM"
+          }
+        }
+      }
+    },
+    "TRAIL FINISHES": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SỐ LẦN VỀ ĐÍCH TRAIL"
           }
         }
       }
@@ -6051,12 +8901,32 @@
         }
       }
     },
+    "Target Race": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Race mục tiêu"
+          }
+        }
+      }
+    },
     "Target Time": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "Thời gian mục tiêu"
+          }
+        }
+      }
+    },
+    "Target time %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thời gian mục tiêu %@"
           }
         }
       }
@@ -6087,6 +8957,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mục tiêu: 80%"
+          }
+        }
+      }
+    },
+    "Tell me about injuries": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cho tôi biết về chấn thương"
           }
         }
       }
@@ -6141,6 +9021,36 @@
         }
       }
     },
+    "That change couldn't be made.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không thực hiện được thay đổi."
+          }
+        }
+      }
+    },
+    "That change isn't valid.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thay đổi này không hợp lệ."
+          }
+        }
+      }
+    },
+    "That week is outside your plan.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tuần đó nằm ngoài plan."
+          }
+        }
+      }
+    },
     "That's %lld weeks away": {
       "localizations": {
         "vi": {
@@ -6181,6 +9091,16 @@
         }
       }
     },
+    "This plan has no start date, so only same-week day swaps are possible.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plan chưa có ngày bắt đầu, nên chỉ đổi được ngày trong cùng tuần."
+          }
+        }
+      }
+    },
     "This session drives your primary training stimulus this week. Stay disciplined on the target zone.": {
       "localizations": {
         "vi": {
@@ -6197,6 +9117,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Buổi này được tạo cho học viên và đang chờ bạn duyệt."
+          }
+        }
+      }
+    },
+    "This sets the shape of your whole plan.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lựa chọn này định hình cả plan."
           }
         }
       }
@@ -6241,12 +9171,72 @@
         }
       }
     },
+    "This workout is already completed or matched to an activity, so it can't be moved.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buổi tập đã xong hoặc đã khớp với hoạt động, nên không chuyển được."
+          }
+        }
+      }
+    },
+    "This workout isn't in your active plan.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buổi tập này không thuộc plan đang chạy."
+          }
+        }
+      }
+    },
+    "Threshold Pace": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pace Threshold"
+          }
+        }
+      }
+    },
     "Threshold Pace:": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "Pace Threshold:"
+          }
+        }
+      }
+    },
+    "Threshold pace": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pace Threshold"
+          }
+        }
+      }
+    },
+    "Thu": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "T5"
+          }
+        }
+      }
+    },
+    "Thursday": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thứ Năm"
           }
         }
       }
@@ -6277,6 +9267,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Thời gian (phút)"
+          }
+        }
+      }
+    },
+    "Time Target": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mục tiêu thời gian"
           }
         }
       }
@@ -6371,6 +9371,16 @@
         }
       }
     },
+    "Training Phase": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giai đoạn tập"
+          }
+        }
+      }
+    },
     "Training Preferences & Constraints": {
       "localizations": {
         "vi": {
@@ -6407,6 +9417,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Zone tập luyện"
+          }
+        }
+      }
+    },
+    "Transition": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chuyển tiếp"
           }
         }
       }
@@ -6451,12 +9471,72 @@
         }
       }
     },
+    "Tue": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "T3"
+          }
+        }
+      }
+    },
+    "Tuesday": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thứ Ba"
+          }
+        }
+      }
+    },
+    "Turned off": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã tắt"
+          }
+        }
+      }
+    },
+    "Two hard sessions on {day} (week {week}).": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hai buổi nặng vào {day} (tuần {week})."
+          }
+        }
+      }
+    },
     "ULTRA PINNACLE": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "ĐỈNH CAO ULTRA"
+          }
+        }
+      }
+    },
+    "ULTRAS COMPLETED": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SỐ ULTRA HOÀN THÀNH"
+          }
+        }
+      }
+    },
+    "UTMB Index & Field Ranking": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "UTMB Index & thứ hạng"
           }
         }
       }
@@ -6477,6 +9557,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bỏ đánh dấu xong"
+          }
+        }
+      }
+    },
+    "Unexpected response from the server.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Máy chủ trả về dữ liệu không như mong đợi."
           }
         }
       }
@@ -6571,12 +9661,42 @@
         }
       }
     },
+    "Used": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang dùng"
+          }
+        }
+      }
+    },
     "Used to calculate your remaining acute fatigue and recovery phase.": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "Dùng để tính độ mệt còn lại và giai đoạn hồi phục."
+          }
+        }
+      }
+    },
+    "VERT": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "D+"
+          }
+        }
+      }
+    },
+    "VO2max, COROS race prediction and easy pace": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "VO2max, dự đoán Race của COROS và pace Easy"
           }
         }
       }
@@ -6597,6 +9717,56 @@
           "stringUnit": {
             "state": "translated",
             "value": "Đã xác minh"
+          }
+        }
+      }
+    },
+    "Verified GPX": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GPX đã xác minh"
+          }
+        }
+      }
+    },
+    "Very Light": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rất nhẹ"
+          }
+        }
+      }
+    },
+    "Very fatigued — need real rest": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rất mệt, cần nghỉ thật sự"
+          }
+        }
+      }
+    },
+    "Very light / recovery. Fresh legs, low fatigue.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rất nhẹ / hồi phục. Chân nhẹ, ít mệt."
+          }
+        }
+      }
+    },
+    "Very light / recovery. You felt fresh and recovered easily.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rất nhẹ / hồi phục. Bạn thấy sung sức và hồi phục dễ."
           }
         }
       }
@@ -6761,6 +9931,26 @@
         }
       }
     },
+    "Watch 8-week training volume": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khối lượng 8 tuần từ đồng hồ"
+          }
+        }
+      }
+    },
+    "Watch synced · Up to date": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã đồng bộ đồng hồ · Mới nhất"
+          }
+        }
+      }
+    },
     "We can't estimate a finish time yet.": {
       "localizations": {
         "vi": {
@@ -6781,12 +9971,52 @@
         }
       }
     },
+    "We couldn't start building your plan. Please try again.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không bắt đầu tạo plan được. Vui lòng thử lại."
+          }
+        }
+      }
+    },
+    "We lost track of your plan while the server restarted. Check the Plan tab; if nothing is there, try again.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mất dấu plan khi máy chủ khởi động lại. Xem tab Plan; nếu chưa có gì, hãy thử lại."
+          }
+        }
+      }
+    },
     "Weather Temperature": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "Nhiệt độ thời tiết"
+          }
+        }
+      }
+    },
+    "Wed": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "T4"
+          }
+        }
+      }
+    },
+    "Wednesday": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thứ Tư"
           }
         }
       }
@@ -6831,6 +10061,16 @@
         }
       }
     },
+    "Week %lld Volume": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khối lượng tuần %lld"
+          }
+        }
+      }
+    },
     "Week %lld is ready to generate": {
       "localizations": {
         "vi": {
@@ -6847,6 +10087,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tuần %lld / %lld"
+          }
+        }
+      }
+    },
+    "Week days volume": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khối lượng các ngày"
+          }
+        }
+      }
+    },
+    "Week updated": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã cập nhật tuần"
+          }
+        }
+      }
+    },
+    "Week {week} volume changes from {before} to {after} min.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khối lượng tuần {week} đổi từ {before} thành {after} phút."
           }
         }
       }
@@ -6871,12 +10141,62 @@
         }
       }
     },
+    "Weekly Volume": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khối lượng tuần"
+          }
+        }
+      }
+    },
+    "Weekly volume": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khối lượng tuần"
+          }
+        }
+      }
+    },
     "Weekly volume trend": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "Xu hướng khối lượng tuần"
+          }
+        }
+      }
+    },
+    "Weeks to Race": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Số tuần tới Race"
+          }
+        }
+      }
+    },
+    "Weeks to race": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Số tuần tới Race"
+          }
+        }
+      }
+    },
+    "Weight": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cân nặng"
           }
         }
       }
@@ -6911,6 +10231,16 @@
         }
       }
     },
+    "What is Muscular Endurance (ME)?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Muscular Endurance (ME) là gì?"
+          }
+        }
+      }
+    },
     "What this is based on": {
       "localizations": {
         "vi": {
@@ -6927,6 +10257,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Có chuyện gì vậy?"
+          }
+        }
+      }
+    },
+    "What's on for week %lld?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tuần %lld có gì?"
           }
         }
       }
@@ -7041,6 +10381,16 @@
         }
       }
     },
+    "Winner": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Người thắng"
+          }
+        }
+      }
+    },
     "Women": {
       "localizations": {
         "vi": {
@@ -7077,6 +10427,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tỷ lệ loại buổi tập"
+          }
+        }
+      }
+    },
+    "Workouts can only move between this week and next week.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chỉ chuyển được buổi tập trong tuần này và tuần sau."
           }
         }
       }
@@ -7121,6 +10481,86 @@
         }
       }
     },
+    "You": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn"
+          }
+        }
+      }
+    },
+    "You can add heart rate, paces and injuries after this. They make each new week more accurate.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sau bước này bạn có thể thêm nhịp tim, pace và chấn thương. Các thông tin đó giúp mỗi tuần mới chính xác hơn."
+          }
+        }
+      }
+    },
+    "You can't move a workout to a day that has already passed.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không thể chuyển buổi tập sang ngày đã qua."
+          }
+        }
+      }
+    },
+    "You have a coach — ask them to change your schedule.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn có coach. Hãy nhờ coach đổi lịch."
+          }
+        }
+      }
+    },
+    "You haven't completed 70% of the current block yet.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn chưa hoàn thành 70% Block hiện tại."
+          }
+        }
+      }
+    },
+    "You're offline. Changes need a connection.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn đang offline. Cần có mạng để thay đổi."
+          }
+        }
+      }
+    },
+    "You've reached today's limit for sending to COROS. Try again tomorrow.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn đã hết lượt gửi sang COROS hôm nay. Thử lại ngày mai."
+          }
+        }
+      }
+    },
+    "You've used today's goal checks. Try again tomorrow.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn đã dùng hết lượt kiểm tra mục tiêu hôm nay. Thử lại ngày mai."
+          }
+        }
+      }
+    },
     "Your Aerobic Endurance upper limit is AeT; your Threshold zone limit is AnT.": {
       "localizations": {
         "vi": {
@@ -7137,6 +10577,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Học viên của bạn"
+          }
+        }
+      }
+    },
+    "Your Profile": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hồ sơ của bạn"
           }
         }
       }
@@ -7161,12 +10611,42 @@
         }
       }
     },
+    "Your finishing rank on this field": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thứ hạng của bạn ở giải này"
+          }
+        }
+      }
+    },
+    "Your first week starts close to what you already do.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tuần đầu sẽ gần với mức bạn đang tập."
+          }
+        }
+      }
+    },
     "Your past workouts and health metrics from COROS will no longer automatically sync.": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "Buổi tập và chỉ số sức khỏe từ COROS sẽ không còn tự đồng bộ."
+          }
+        }
+      }
+    },
+    "Your plan changed since this was proposed.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plan đã thay đổi kể từ khi đề xuất."
           }
         }
       }
@@ -7191,6 +10671,36 @@
         }
       }
     },
+    "Your session expired. Please sign in again.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại."
+          }
+        }
+      }
+    },
+    "Your session has expired. Please sign in again.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại."
+          }
+        }
+      }
+    },
+    "Your target: ": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mục tiêu của bạn: "
+          }
+        }
+      }
+    },
     "Your training paces won't change until your next week is built.": {
       "localizations": {
         "vi": {
@@ -7211,6 +10721,16 @@
         }
       }
     },
+    "Zone 1 · Recovery": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zone 1 · Hồi phục"
+          }
+        }
+      }
+    },
     "Zone 2 Pace Range:": {
       "localizations": {
         "vi": {
@@ -7221,12 +10741,42 @@
         }
       }
     },
+    "Zone 2 pace": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pace Zone 2"
+          }
+        }
+      }
+    },
     "Zone 2 upper limit is AeT; Zone 4 upper limit is AnT.": {
       "localizations": {
         "vi": {
           "stringUnit": {
             "state": "translated",
             "value": "Ngưỡng trên Zone 2 là AeT; ngưỡng trên Zone 4 là AnT."
+          }
+        }
+      }
+    },
+    "Zone 2 · Aerobic Base": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zone 2 · Nền Aerobic"
+          }
+        }
+      }
+    },
+    "Zone 5 · VO2max / Speed": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zone 5 · VO2max / tốc độ"
           }
         }
       }
@@ -7381,6 +10931,46 @@
         }
       }
     },
+    "the upcoming weeks": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "các tuần tới"
+          }
+        }
+      }
+    },
+    "week": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tuần"
+          }
+        }
+      }
+    },
+    "workout": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "buổi tập"
+          }
+        }
+      }
+    },
+    "years": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tuổi"
+          }
+        }
+      }
+    },
     "· %lld weeks to go": {
       "localizations": {
         "vi": {
@@ -7427,6 +11017,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "“Khối lượng tăng đều. Nhớ: cơ thể thích nghi khi hồi phục. Đừng cắt bớt nghỉ ở các Block nặng.”"
+          }
+        }
+      }
+    },
+    "“{title}” is still pending coach review.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“{title}” vẫn đang chờ coach duyệt."
           }
         }
       }

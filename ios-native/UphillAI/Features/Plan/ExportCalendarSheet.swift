@@ -14,7 +14,7 @@ struct ExportCalendarSheet: View {
     @State private var icsFileURL: URL? = nil
 
     private var isVietnamese: Bool {
-        Locale.current.language.languageCode?.identifier == "vi"
+        AppLanguage.current == .vi
     }
 
     private var plan: Plan? {

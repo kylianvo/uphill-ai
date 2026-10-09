@@ -17,9 +17,9 @@ struct ChatGoalCard: View {
 
             if let goals = estimate.goals {
                 HStack(spacing: 8) {
-                    tierPill(title: "A: Ambitious", mins: goals.ambitious, color: Color(hex: "#10b981"))
-                    tierPill(title: "B: Realistic", mins: goals.realistic, color: UH.Palette.accentInk)
-                    tierPill(title: "C: Safe", mins: goals.safe, color: Color(hex: "#f59e0b"))
+                    tierPill(title: L("A: Ambitious"), mins: goals.ambitious, color: Color(hex: "#10b981"))
+                    tierPill(title: L("B: Realistic"), mins: goals.realistic, color: UH.Palette.accentInk)
+                    tierPill(title: L("C: Safe"), mins: goals.safe, color: Color(hex: "#f59e0b"))
                 }
             } else if let adj = estimate.adjustedTimeMins {
                 Text("Target Finish: \(GoalEstimate.formatMinutes(adj))")

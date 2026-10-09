@@ -181,7 +181,7 @@ struct PlanService: PlanServicing {
             URLQueryItem(name: "tz_offset_minutes", value: "\(tzOffset)"),
         ]))
         let count = resp.activities ?? 0
-        return count > 0 ? "Synced \(count) activities from watch" : "Watch synced · Up to date"
+        return count > 0 ? L("Synced %lld activities from watch", count) : L("Watch synced · Up to date")
     }
     func knowledgeCard(topic: String, lang: String = AppLanguage.code) async -> KnowledgeCardModel? {
         do {

@@ -71,8 +71,8 @@ struct CoachedAthleteProfileView: View {
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
                         MetricTile(label: "Resting HR", value: profile?.restingHr.map { "\($0) bpm" } ?? "—")
                         MetricTile(label: "Max HR", value: profile?.maxHr.map { "\($0) bpm" } ?? "—")
-                        MetricTile(label: "AeT Threshold (Z2)", value: profile?.aetHr.map { "\($0) bpm" } ?? "—", accentColor: Color.blue)
-                        MetricTile(label: "AnT Threshold (Z4)", value: profile?.antHr.map { "\($0) bpm" } ?? "—", accentColor: Color.orange)
+                        MetricTile(label: L("AeT Threshold (Z2)"), value: profile?.aetHr.map { "\($0) bpm" } ?? "—", accentColor: Color.blue)
+                        MetricTile(label: L("AnT Threshold (Z4)"), value: profile?.antHr.map { "\($0) bpm" } ?? "—", accentColor: Color.orange)
                     }
 
                     if let z2Min = profile?.zone2PaceMin, let z2Max = profile?.zone2PaceMax {
@@ -113,7 +113,7 @@ struct CoachedAthleteProfileView: View {
                             .font(UH.TextStyle.body)
                             .foregroundStyle(UH.Palette.secondary)
                         Spacer()
-                        Text(profile?.daysPerWeek.map { "\($0) days/week" } ?? "—")
+                        Text(profile?.daysPerWeek.map { L("%lld days/week", $0) } ?? "—")
                             .font(UH.TextStyle.label)
                             .foregroundStyle(UH.Palette.ink)
                     }

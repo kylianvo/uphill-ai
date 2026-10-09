@@ -295,7 +295,7 @@ final class ChatService {
             return true
         } catch let apiErr as APIError {
             if case .http(409, _, _) = apiErr {
-                self.error = ChatError(code: "chat_in_progress", message: "Cannot clear thread while a turn is active.")
+                self.error = ChatError(code: "chat_in_progress", message: L("Cannot clear thread while a turn is active."))
             } else {
                 self.error = ChatError(code: "clear_failed", message: apiErr.localizedDescription)
             }

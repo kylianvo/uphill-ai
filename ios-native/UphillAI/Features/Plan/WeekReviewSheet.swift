@@ -98,7 +98,7 @@ struct WeekReviewSheet: View {
             .frame(width: 68, height: 68)
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(pct >= 80 ? "Great week of training" : (pct >= 50 ? "Solid consistency" : "Recovery & catch-up"))
+                Text(pct >= 80 ? L("Great week of training") : (pct >= 50 ? L("Solid consistency") : L("Recovery & catch-up")))
                     .font(UH.TextStyle.sectionTitle)
                     .foregroundStyle(UH.Palette.ink)
 
@@ -132,19 +132,19 @@ struct WeekReviewSheet: View {
 
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: UH.Space.compact) {
                 metricCell(
-                    title: "DISTANCE",
+                    title: L("DISTANCE"),
                     actual: String(format: "%.1f km", actualDist),
                     planned: plannedDist > 0 ? String(format: "%.0f km", plannedDist) : nil
                 )
 
                 metricCell(
-                    title: "TIME",
+                    title: L("TIME"),
                     actual: formatHoursMins(actualMins),
                     planned: plannedMins > 0 ? formatHoursMins(plannedMins) : nil
                 )
 
                 metricCell(
-                    title: "VERT",
+                    title: L("VERT"),
                     actual: "\(Int(actualVert)) m",
                     planned: plannedVert > 0 ? "\(Int(plannedVert)) m" : nil
                 )
@@ -290,7 +290,7 @@ struct WeekReviewSheet: View {
                             .font(.system(size: 10, weight: .bold, design: .monospaced))
                             .foregroundStyle(UH.Palette.secondary)
                     }
-                    Text(entry.title ?? entry.type ?? "Workout")
+                    Text(entry.title ?? entry.type ?? L("Workout"))
                         .font(UH.TextStyle.label)
                         .foregroundStyle(UH.Palette.ink)
                 }
@@ -330,13 +330,13 @@ struct WeekReviewSheet: View {
     private func badgeConfig(for state: String) -> (String, Color, Color) {
         switch state {
         case "matched":
-            return ("Synced", UH.Palette.accentInk, UH.Palette.activeFill)
+            return (L("Synced"), UH.Palette.accentInk, UH.Palette.activeFill)
         case "checkbox_only":
-            return ("Done", Color(red: 0.05, green: 0.65, blue: 0.45), Color(red: 0.05, green: 0.65, blue: 0.45).opacity(0.12))
+            return (L("Done"), Color(red: 0.05, green: 0.65, blue: 0.45), Color(red: 0.05, green: 0.65, blue: 0.45).opacity(0.12))
         case "missed":
-            return ("Missed", UH.Palette.danger, UH.Palette.danger.opacity(0.12))
+            return (L("Missed"), UH.Palette.danger, UH.Palette.danger.opacity(0.12))
         default:
-            return ("Pending", UH.Palette.secondary, UH.Palette.surface)
+            return (L("Pending"), UH.Palette.secondary, UH.Palette.surface)
         }
     }
 

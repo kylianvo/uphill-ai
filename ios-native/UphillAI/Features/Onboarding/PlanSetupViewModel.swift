@@ -57,7 +57,7 @@ final class PlanSetupViewModel {
     var progress: Double { Double(min(stepIndex, steps.count - 1) + 1) / Double(max(steps.count, 1)) }
     var isFirstStep: Bool { stepIndex == 0 }
     var isLastStep: Bool { step == .review }
-    var primaryTitle: String { isLastStep ? "Build my plan" : "Next" }
+    var primaryTitle: String { isLastStep ? L("Build my plan") : L("Next") }
 
     var issues: [SetupIssue] {
         showIssues ? draft.issues(for: step, today: now(), calendar: calendar) : []
@@ -146,7 +146,7 @@ final class PlanSetupViewModel {
                 jobID = try await service.generatePlan(draft.planBody(calendar: calendar)).jobId
             }
             guard let jobID else {
-                submitError = "We couldn't start building your plan. Please try again."
+                submitError = L("We couldn't start building your plan. Please try again.")
                 return
             }
             generation.track(kind: .newPlan, jobID: jobID, summary: draft.summaryLines)

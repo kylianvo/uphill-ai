@@ -18,10 +18,10 @@ enum DistanceCategory: String, Codable, Sendable, CaseIterable, Identifiable {
         case .fiveK: return "5 km"
         case .tenK: return "10 km"
         case .halfMarathon: return "Half Marathon"
-        case .marathon: return "Full Marathon"
+        case .marathon: return L("Full Marathon")
         case .fiftyK: return "50 km Ultra"
         case .hundredK: return "100 km Ultra"
-        case .hundredMiles: return "100 Miles"
+        case .hundredMiles: return L("100 Miles")
         }
     }
 

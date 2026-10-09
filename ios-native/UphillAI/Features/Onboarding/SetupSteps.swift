@@ -89,7 +89,7 @@ struct SetupSteps: View {
                         Text("\(model.draft.daysSinceRace)")
                             .font(.system(size: 40, weight: .bold, design: .rounded))
                             .foregroundStyle(UH.Palette.ink)
-                        Text(model.draft.daysSinceRace == 1 ? "day ago" : "days ago")
+                        Text(model.draft.daysSinceRace == 1 ? L("day ago") : L("days ago"))
                             .font(UH.TextStyle.label)
                             .foregroundStyle(UH.Palette.secondary)
                         Spacer()
@@ -243,13 +243,13 @@ struct SetupSteps: View {
 
     private var coachLine: String {
         switch model.step {
-        case .goal: "This sets the shape of your whole plan."
-        case .details where model.draft.goal?.isEvent == true: "If I know the race, I know its distance and climbing."
-        case .details, .fitnessFeel, .daysSinceRace, .recoveryFeel: "So I don't start you too hard."
-        case .raceDate: "I'll count the weeks back from race day."
-        case .schedule: "Your first week starts close to what you already do."
-        case .startDate: "Pick today or any day in the next two weeks."
-        case .review, .aboutYou: "You can add heart rate, paces and injuries after this. They make each new week more accurate."
+        case .goal: L("This sets the shape of your whole plan.")
+        case .details where model.draft.goal?.isEvent == true: L("If I know the race, I know its distance and climbing.")
+        case .details, .fitnessFeel, .daysSinceRace, .recoveryFeel: L("So I don't start you too hard.")
+        case .raceDate: L("I'll count the weeks back from race day.")
+        case .schedule: L("Your first week starts close to what you already do.")
+        case .startDate: L("Pick today or any day in the next two weeks.")
+        case .review, .aboutYou: L("You can add heart rate, paces and injuries after this. They make each new week more accurate.")
         }
     }
 
@@ -409,7 +409,7 @@ private struct SetupReviewStep: View {
                                 .font(.subheadline)
                                 .foregroundStyle(UH.Palette.accentInk)
                                 .frame(width: 24)
-                            Text(line)
+                            Text(L(line))
                                 .font(UH.TextStyle.label)
                                 .foregroundStyle(UH.Palette.ink)
                                 .multilineTextAlignment(.leading)
@@ -480,11 +480,11 @@ private struct SetupOption: View {
                     }
                 }
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(title)
+                    Text(L(title))
                         .font(UH.TextStyle.label)
                         .foregroundStyle(UH.Palette.ink)
                     if let subtitle, !subtitle.isEmpty {
-                        Text(subtitle)
+                        Text(L(subtitle))
                             .font(UH.TextStyle.caption)
                             .foregroundStyle(UH.Palette.secondary)
                     }

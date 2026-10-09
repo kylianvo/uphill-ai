@@ -523,7 +523,7 @@ struct GearVaultSheet: View {
                 }
             } label: {
                 HStack {
-                    Text(isExpanded ? "Show Less" : "Details & Pros/Cons")
+                    Text(isExpanded ? L("Show Less") : L("Details & Pros/Cons"))
                         .font(UH.TextStyle.caption.weight(.semibold))
                         .foregroundStyle(UH.Palette.secondary)
                     Spacer()
@@ -560,7 +560,7 @@ struct GearVaultSheet: View {
                 .foregroundStyle(UH.Palette.secondary)
             Spacer()
             if let sent = feedbackSent {
-                Text(sent == 1 ? "Thanks! 👍" : "Noted. 👎")
+                Text(sent == 1 ? L("Thanks! 👍") : L("Noted. 👎"))
                     .font(UH.TextStyle.caption.weight(.semibold))
                     .foregroundStyle(UH.Palette.accentInk)
             } else {

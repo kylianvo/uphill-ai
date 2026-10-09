@@ -298,7 +298,7 @@ struct MoveSwapDaySheet: View {
 
                                 Spacer()
 
-                                Text(target.week == sourceDay.week ? "This week" : "Next week")
+                                Text(target.week == sourceDay.week ? L("This week") : L("Next week"))
                                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                                     .foregroundStyle(UH.Palette.secondary)
                                     .padding(.horizontal, 6)

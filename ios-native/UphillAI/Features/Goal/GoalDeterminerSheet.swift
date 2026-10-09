@@ -269,15 +269,15 @@ struct GoalDeterminerSheet: View {
                         .foregroundStyle(UH.Palette.muted)
 
                     baselineRow(
-                        title: "Easy pace",
-                        detail: easyPaceLabel == nil ? "Not set — add your Zone 2 pace in Profile" : "From your profile Zone 2",
+                        title: L("Easy pace"),
+                        detail: easyPaceLabel == nil ? L("Not set — add your Zone 2 pace in Profile") : L("From your profile Zone 2"),
                         value: easyPaceLabel ?? "—"
                     )
                     Divider().padding(.vertical, 4)
                     baselineRow(
-                        title: "Weeks to race",
-                        detail: "From the race date",
-                        value: "\(weeksToRace) wks"
+                        title: L("Weeks to race"),
+                        detail: L("From the race date"),
+                        value: L("%lld wks", weeksToRace)
                     )
 
                     Text("Linked race results and watch volume below count for more than easy pace when you have them.")
@@ -309,23 +309,23 @@ struct GoalDeterminerSheet: View {
 
                     VStack(spacing: 8) {
                         sourceToggleRow(
-                            title: "Linked race results (UTMB / VBM)",
-                            subtitle: "Past finish times, pace degradation and course difficulty",
+                            title: L("Linked race results (UTMB / VBM)"),
+                            subtitle: L("Past finish times, pace degradation and course difficulty"),
                             isOn: $includeRaceHistory
                         )
                         sourceToggleRow(
-                            title: "UTMB Index & Field Ranking",
-                            subtitle: "Relative field placement and competitive caliber",
+                            title: L("UTMB Index & Field Ranking"),
+                            subtitle: L("Relative field placement and competitive caliber"),
                             isOn: $includeUtmbIndex
                         )
                         sourceToggleRow(
-                            title: "Watch 8-week training volume",
-                            subtitle: "Recent weekly mileage, vertical gain, and durability",
+                            title: L("Watch 8-week training volume"),
+                            subtitle: L("Recent weekly mileage, vertical gain, and durability"),
                             isOn: $includeWatchData
                         )
                         sourceToggleRow(
-                            title: "Physiology & Pace Zones",
-                            subtitle: "VO2max, COROS race prediction and easy pace",
+                            title: L("Physiology & Pace Zones"),
+                            subtitle: L("VO2max, COROS race prediction and easy pace"),
                             isOn: $includePhysiology
                         )
                     }
@@ -339,7 +339,7 @@ struct GoalDeterminerSheet: View {
                         }
                     } label: {
                         HStack {
-                            Text(showManualRef ? "− Hide extra unlinked result" : "+ Add a result that isn't linked")
+                            Text(showManualRef ? L("− Hide extra unlinked result") : L("+ Add a result that isn't linked"))
                                 .font(UH.TextStyle.caption.weight(.bold))
                                 .foregroundStyle(UH.Palette.accentInk)
                             Spacer()
@@ -504,7 +504,7 @@ struct GoalDeterminerSheet: View {
                     Image(systemName: "checkmark.seal.fill")
                         .foregroundStyle(UH.Palette.accentInk)
                         .font(.system(size: 11))
-                    Text(estimate.referenceConfidence?.uppercased() ?? "HIGH CONFIDENCE")
+                    Text(estimate.referenceConfidence?.uppercased() ?? L("HIGH CONFIDENCE"))
                         .font(.system(size: 10, weight: .bold, design: .monospaced))
                         .foregroundStyle(UH.Palette.accentInk)
                 }
@@ -524,9 +524,9 @@ struct GoalDeterminerSheet: View {
                         .font(.system(size: 11, weight: .bold, design: .monospaced))
                         .foregroundStyle(UH.Palette.muted)
 
-                    tierCard(tier: "A", name: "Ambitious", minutes: goals.ambitious, color: Color(hex: "#10b981"), desc: "Peak race day execution, ideal weather & conditions")
-                    tierCard(tier: "B", name: "Realistic", minutes: goals.realistic, color: UH.Palette.accentInk, desc: "Primary target goal with solid execution")
-                    tierCard(tier: "C", name: "Safe", minutes: goals.safe, color: Color(hex: "#f59e0b"), desc: "Conservative buffer against heat, fatigue or cramps")
+                    tierCard(tier: "A", name: L("Ambitious"), minutes: goals.ambitious, color: Color(hex: "#10b981"), desc: L("Peak race day execution, ideal weather & conditions"))
+                    tierCard(tier: "B", name: L("Realistic"), minutes: goals.realistic, color: UH.Palette.accentInk, desc: L("Primary target goal with solid execution"))
+                    tierCard(tier: "C", name: L("Safe"), minutes: goals.safe, color: Color(hex: "#f59e0b"), desc: L("Conservative buffer against heat, fatigue or cramps"))
                 }
             }
 
@@ -616,7 +616,7 @@ struct GoalDeterminerSheet: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: isApplied ? "checkmark" : "target")
-                        Text(isApplied ? "Target Applied" : "Use for Plan")
+                        Text(isApplied ? L("Target Applied") : L("Use for Plan"))
                     }
                     .font(UH.TextStyle.caption.weight(.bold))
                     .foregroundStyle(isApplied ? UH.Palette.accentInk : UH.Palette.ink)
@@ -670,9 +670,9 @@ struct GoalDeterminerSheet: View {
             }
 
             HStack(spacing: 8) {
-                pacePill(icon: "mountain.2.fill", title: "CLIMBING", pace: estimate.climbingPaceTarget, desc: "Power hike / high grade")
-                pacePill(icon: "figure.run", title: "FLAT", pace: estimate.flatPaceTarget, desc: "Smooth Zone 2 aerobic")
-                pacePill(icon: "arrow.down.right", title: "DESCENT", pace: estimate.descentPaceTarget, desc: "Controlled cadence")
+                pacePill(icon: "mountain.2.fill", title: L("CLIMBING"), pace: estimate.climbingPaceTarget, desc: L("Power hike / high grade"))
+                pacePill(icon: "figure.run", title: L("FLAT"), pace: estimate.flatPaceTarget, desc: L("Smooth Zone 2 aerobic"))
+                pacePill(icon: "arrow.down.right", title: L("DESCENT"), pace: estimate.descentPaceTarget, desc: L("Controlled cadence"))
             }
 
             VStack(alignment: .leading, spacing: 4) {
@@ -731,7 +731,7 @@ struct GoalDeterminerSheet: View {
                 } else {
                     VStack(spacing: 6) {
                         ForEach(sources) { source in
-                            sourceStatusRow(title: source.label, source: source.included ? "Used" : "Turned off", isIncluded: source.included)
+                            sourceStatusRow(title: source.label, source: source.included ? L("Used") : L("Turned off"), isIncluded: source.included)
                         }
                     }
                 }
@@ -740,12 +740,12 @@ struct GoalDeterminerSheet: View {
 
             contextSectionCard(
                 icon: "flag.fill",
-                title: estimate.raceName ?? activePlan?.raceName ?? "Target Race",
+                title: estimate.raceName ?? activePlan?.raceName ?? L("Target Race"),
                 rows: [
-                    ("Distance", "\(String(format: "%.1f", estimate.distanceKm)) km"),
-                    ("Elevation Gain", "\(Int(estimate.elevationGainM))m D+"),
-                    ("Course Profile", estimate.targetProfileSource == "gpx" ? "Verified GPX" : "Estimated profile"),
-                    ("Weeks to Race", "\(weeksToRace) weeks")
+                    (L("Distance"), "\(String(format: "%.1f", estimate.distanceKm)) km"),
+                    (L("Elevation Gain"), "\(Int(estimate.elevationGainM))m D+"),
+                    (L("Course Profile"), estimate.targetProfileSource == "gpx" ? L("Verified GPX") : L("Estimated profile")),
+                    (L("Weeks to Race"), L("%lld weeks", weeksToRace))
                 ]
             )
 
@@ -765,24 +765,24 @@ struct GoalDeterminerSheet: View {
 
                     let p = firstBench.percentiles?["overall"]
                     HStack(spacing: 6) {
-                        statBox(label: "Winner", value: firstBench.winnerTime ?? "—")
-                        statBox(label: "Top 10%", value: p?.p10 ?? "—")
-                        statBox(label: "Median 50%", value: p?.p50 ?? "—")
-                        statBox(label: "90% Finish", value: p?.p90 ?? "—")
+                        statBox(label: L("Winner"), value: firstBench.winnerTime ?? "—")
+                        statBox(label: L("Top 10%"), value: p?.p10 ?? "—")
+                        statBox(label: L("Median 50%"), value: p?.p50 ?? "—")
+                        statBox(label: L("90% Finish"), value: p?.p90 ?? "—")
                     }
                 }
                 .trainingCard()
             }
 
             let profileRows: [(String, String)] = [
-                ("Weekly Volume", user?.currentWeeklyKm.map { "\(Int($0.rounded())) km/week" }),
-                ("Easy Pace (Zone 2)", easyPaceLabel),
-                ("Threshold Pace", user?.thresholdPace.map { "\($0)/km" }),
-                ("Aerobic Threshold (AeT)", user?.aetHr.map { "\($0) bpm" }),
-                ("Max Heart Rate", user?.maxHr.map { "\($0) bpm" })
+                (L("Weekly Volume"), user?.currentWeeklyKm.map { L("%lld km/week", Int($0.rounded())) }),
+                (L("Easy Pace (Zone 2)"), easyPaceLabel),
+                (L("Threshold Pace"), user?.thresholdPace.map { "\($0)/km" }),
+                (L("Aerobic Threshold (AeT)"), user?.aetHr.map { "\($0) bpm" }),
+                (L("Max Heart Rate"), user?.maxHr.map { "\($0) bpm" })
             ].compactMap { label, value in value.map { (label, $0) } }
             if !profileRows.isEmpty {
-                contextSectionCard(icon: "person.fill", title: "Your Profile", rows: profileRows)
+                contextSectionCard(icon: "person.fill", title: L("Your Profile"), rows: profileRows)
             }
         }
     }
@@ -801,7 +801,7 @@ struct GoalDeterminerSheet: View {
             HStack(spacing: 4) {
                 Image(systemName: isIncluded ? "checkmark.circle.fill" : "minus.circle.fill")
                     .foregroundStyle(isIncluded ? UH.Palette.accentInk : UH.Palette.muted)
-                Text(isIncluded ? "Included" : "Excluded")
+                Text(isIncluded ? L("Included") : L("Excluded"))
                     .font(.system(size: 11, weight: .bold, design: .monospaced))
                     .foregroundStyle(isIncluded ? UH.Palette.accentInk : UH.Palette.muted)
             }

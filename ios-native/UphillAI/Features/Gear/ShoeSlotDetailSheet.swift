@@ -139,7 +139,7 @@ struct ShoeSlotDetailSheet: View {
                             .foregroundStyle(UH.Palette.ink)
 
                         HStack(spacing: 4) {
-                            Text(String(format: "%.0f km logged", shoe.distanceKm))
+                            Text(L("%@ km logged", String(format: "%.0f", shoe.distanceKm)))
                                 .font(UH.TextStyle.caption.weight(.semibold))
                                 .foregroundStyle(UH.Palette.ink)
                             Text("· \(Int(shoe.wearRatio * 100))% wear")
@@ -313,7 +313,7 @@ struct ShoeSlotDetailSheet: View {
             } label: {
                 HStack {
                     Image(systemName: showCustomForm ? "chevron.up" : "plus.circle")
-                    Text(showCustomForm ? "Hide Custom Shoe Input" : "Add Other Custom Model...")
+                    Text(showCustomForm ? L("Hide Custom Shoe Input") : L("Add Other Custom Model..."))
                 }
                 .font(UH.TextStyle.caption.weight(.semibold))
                 .foregroundStyle(UH.Palette.secondary)

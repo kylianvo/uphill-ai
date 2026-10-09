@@ -5,21 +5,21 @@ enum SetupGoal: String, CaseIterable, Sendable {
 
     var title: String {
         switch self {
-        case .race: "A specific race"
-        case .distance: "A distance"
-        case .startRunning: "Start running"
-        case .returning: "Come back after a break"
-        case .recovery: "Recover from a race"
+        case .race: L("A specific race")
+        case .distance: L("A distance")
+        case .startRunning: L("Start running")
+        case .returning: L("Come back after a break")
+        case .recovery: L("Recover from a race")
         }
     }
 
     var subtitle: String {
         switch self {
-        case .race: "Build toward a race on a set date."
-        case .distance: "Be ready for a distance, like your first 21 km."
-        case .startRunning: "From walk-run to running 30 minutes."
-        case .returning: "Rebuild safely after time off."
-        case .recovery: "Easy weeks after a hard effort."
+        case .race: L("Build toward a race on a set date.")
+        case .distance: L("Be ready for a distance, like your first 21 km.")
+        case .startRunning: L("From walk-run to running 30 minutes.")
+        case .returning: L("Rebuild safely after time off.")
+        case .recovery: L("Easy weeks after a hard effort.")
         }
     }
 
@@ -41,9 +41,9 @@ enum RaceGoal: String, CaseIterable, Sendable {
 
     var title: String {
         switch self {
-        case .finish: "Finish strong"
-        case .time: "Hit a target time"
-        case .optimal: "My best possible time"
+        case .finish: L("Finish strong")
+        case .time: L("Hit a target time")
+        case .optimal: L("My best possible time")
         }
     }
 }
@@ -182,24 +182,24 @@ struct PlanSetupDraft: Equatable, Sendable {
 
         switch step {
         case .goal:
-            if goal == nil { add(.goal, "Choose what you're training for.") }
+            if goal == nil { add(.goal, L("Choose what you're training for.")) }
         case .details:
             if goal?.isEvent == true {
                 if goal == .race, raceName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    add(.raceName, "Add the race name.")
+                    add(.raceName, L("Add the race name."))
                 }
-                if !(1...400).contains(distanceKm ?? 0) { add(.distance, "Enter a distance between 1 and 400 km.") }
+                if !(1...400).contains(distanceKm ?? 0) { add(.distance, L("Enter a distance between 1 and 400 km.")) }
             }
         case .raceDate:
             let earliest = calendar.date(byAdding: .day, value: 14, to: start)!
             if raceDate.map({ $0 < earliest }) ?? true {
-                add(.raceDate, "Pick a date at least 2 weeks away so the plan has room to build.")
+                add(.raceDate, L("Pick a date at least 2 weeks away so the plan has room to build."))
             }
         case .schedule:
-            if !(0...250).contains(currentWeeklyKm) { add(.weeklyKm, "Enter 0 to 250 km.") }
+            if !(0...250).contains(currentWeeklyKm) { add(.weeklyKm, L("Enter 0 to 250 km.")) }
         case .startDate:
             let latest = calendar.date(byAdding: .day, value: 14, to: start)!
-            if !(start...latest).contains(calendar.startOfDay(for: startDate)) { add(.startDate, "Start today or later.") }
+            if !(start...latest).contains(calendar.startOfDay(for: startDate)) { add(.startDate, L("Start today or later.")) }
         case .aboutYou, .fitnessFeel, .daysSinceRace, .recoveryFeel, .review:
             break
         }
@@ -301,16 +301,16 @@ struct PlanSetupDraft: Equatable, Sendable {
                 let style = Date.FormatStyle(date: .omitted, time: .omitted, locale: Locale(identifier: "en_GB"),
                                              calendar: Calendar(identifier: .gregorian), timeZone: summaryTimeZone)
                     .weekday(.abbreviated).day().month(.abbreviated)
-                lines.append("\(name) on \(date.formatted(style))")
+                lines.append(L("%@ on %@", name, date.formatted(style)))
             } else {
                 lines.append(name)
             }
-            if let target = targetText { lines.append("Target time \(target)") }
+            if let target = targetText { lines.append(L("Target time %@", target)) }
         } else if let goal {
             lines.append(goal.title)
         }
-        lines.append("\(daysPerWeek) runs a week, long run on \(longRunDay.rawValue)")
-        lines.append("Starting from \(Int(currentWeeklyKm.rounded())) km a week")
+        lines.append(L("%lld runs a week, long run on %@", daysPerWeek, L(longRunDay.rawValue)))
+        lines.append(L("Starting from %lld km a week", Int(currentWeeklyKm.rounded())))
         return lines
     }
 }

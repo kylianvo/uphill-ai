@@ -27,12 +27,12 @@ enum APIError: Error, Equatable, Sendable {
 
     var userMessage: String {
         switch self {
-        case .unauthorized: "Your session has expired. Please sign in again."
+        case .unauthorized: L("Your session has expired. Please sign in again.")
         case .http(_, let message?, _): message
-        case .http(let status, nil, _): "Something went wrong (\(status)). Please try again."
+        case .http(let status, nil, _): L("Something went wrong (%lld). Please try again.", status)
         case .scheduleGuard(_, let code, let params): ScheduleMessages.guardText(code: code, params: params)
-        case .decoding: "Unexpected response from the server."
-        case .transport: "Can't reach Uphill. Check your connection and try again."
+        case .decoding: L("Unexpected response from the server.")
+        case .transport: L("Can't reach Uphill. Check your connection and try again.")
         }
     }
 }

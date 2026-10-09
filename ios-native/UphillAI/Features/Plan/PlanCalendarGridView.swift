@@ -100,11 +100,11 @@ struct PlanCalendarGridView: View {
 
     private var intensityLegend: some View {
         HStack(spacing: 8) {
-            legendItem(name: "Easy", color: Color(hex: "#3b82f6"))
-            legendItem(name: "Mod", color: Color(hex: "#10b981"))
-            legendItem(name: "Hard", color: Color(hex: "#ef4444"))
-            legendItem(name: "Strength", color: Color(hex: "#8b5cf6"))
-            legendItem(name: "Rest", color: Color(hex: "#94a3b8"))
+            legendItem(name: L("Easy"), color: Color(hex: "#3b82f6"))
+            legendItem(name: L("Mod"), color: Color(hex: "#10b981"))
+            legendItem(name: L("Hard"), color: Color(hex: "#ef4444"))
+            legendItem(name: L("Strength"), color: Color(hex: "#8b5cf6"))
+            legendItem(name: L("Rest"), color: Color(hex: "#94a3b8"))
         }
         .padding(.horizontal, 4)
         .padding(.bottom, 2)

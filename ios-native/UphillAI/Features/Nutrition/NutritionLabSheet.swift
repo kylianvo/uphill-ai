@@ -504,9 +504,9 @@ struct NutritionLabSheet: View {
                 // Top Metrics Cards
                 VStack(spacing: 8) {
                     HStack(spacing: 8) {
-                        metricBox(title: "TOTAL CARBS", value: "\(Int(plan.totalCarbs))g", sub: "\(Int(plan.avgCarbsPerHour)) g/h")
-                        metricBox(title: "TOTAL SODIUM", value: "\(Int(plan.totalSodium))mg", sub: "\(Int(plan.avgSodiumPerHour)) mg/h")
-                        metricBox(title: "DURATION", value: String(format: "%.1fh", durationHours), sub: "\(plan.hourlyPlan.count) hours")
+                        metricBox(title: L("TOTAL CARBS"), value: "\(Int(plan.totalCarbs))g", sub: "\(Int(plan.avgCarbsPerHour)) g/h")
+                        metricBox(title: L("TOTAL SODIUM"), value: "\(Int(plan.totalSodium))mg", sub: "\(Int(plan.avgSodiumPerHour)) mg/h")
+                        metricBox(title: L("DURATION"), value: String(format: "%.1fh", durationHours), sub: L("%lld hours", plan.hourlyPlan.count))
                     }
                 }
 
@@ -746,7 +746,7 @@ struct NutritionLabSheet: View {
                         .foregroundStyle(UH.Palette.secondary)
                     Spacer()
                     if let sent = feedbackSent {
-                        Text(sent == 1 ? "Thanks for feedback! 👍" : "Noted. We'll improve! 👎")
+                        Text(sent == 1 ? L("Thanks for feedback! 👍") : L("Noted. We'll improve! 👎"))
                             .font(UH.TextStyle.caption.weight(.semibold))
                             .foregroundStyle(UH.Palette.accentInk)
                     } else {

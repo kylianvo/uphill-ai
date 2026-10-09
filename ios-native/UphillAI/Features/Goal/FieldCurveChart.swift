@@ -46,26 +46,26 @@ struct FieldCurveChart: View {
         // Winner time anchor (approx 0.1 percentile)
         let winnerTimeStr = selectedGender == "women" ? (bench.winnerTimeWomen ?? bench.winnerTime) : bench.winnerTime
         if let winnerTimeStr, let winnerMins = GoalEstimate.parseTimeToMinutes(winnerTimeStr) {
-            points.append(FieldCurvePoint(minutes: winnerMins, percentile: 0.2, label: "Winner"))
+            points.append(FieldCurvePoint(minutes: winnerMins, percentile: 0.2, label: L("Winner")))
         }
 
         if let p5 = percentilesDict.p5, let m = GoalEstimate.parseTimeToMinutes(p5) {
-            points.append(FieldCurvePoint(minutes: m, percentile: 5.0, label: "Top 5%"))
+            points.append(FieldCurvePoint(minutes: m, percentile: 5.0, label: L("Top 5%")))
         }
         if let p10 = percentilesDict.p10, let m = GoalEstimate.parseTimeToMinutes(p10) {
-            points.append(FieldCurvePoint(minutes: m, percentile: 10.0, label: "Top 10%"))
+            points.append(FieldCurvePoint(minutes: m, percentile: 10.0, label: L("Top 10%")))
         }
         if let p25 = percentilesDict.p25, let m = GoalEstimate.parseTimeToMinutes(p25) {
-            points.append(FieldCurvePoint(minutes: m, percentile: 25.0, label: "Top 25%"))
+            points.append(FieldCurvePoint(minutes: m, percentile: 25.0, label: L("Top 25%")))
         }
         if let p50 = percentilesDict.p50, let m = GoalEstimate.parseTimeToMinutes(p50) {
-            points.append(FieldCurvePoint(minutes: m, percentile: 50.0, label: "Median (50%)"))
+            points.append(FieldCurvePoint(minutes: m, percentile: 50.0, label: L("Median (50%)")))
         }
         if let p75 = percentilesDict.p75, let m = GoalEstimate.parseTimeToMinutes(p75) {
-            points.append(FieldCurvePoint(minutes: m, percentile: 75.0, label: "Top 75%"))
+            points.append(FieldCurvePoint(minutes: m, percentile: 75.0, label: L("Top 75%")))
         }
         if let p90 = percentilesDict.p90, let m = GoalEstimate.parseTimeToMinutes(p90) {
-            points.append(FieldCurvePoint(minutes: m, percentile: 90.0, label: "Top 90%"))
+            points.append(FieldCurvePoint(minutes: m, percentile: 90.0, label: L("Top 90%")))
         }
 
         return points.sorted(by: { $0.minutes < $1.minutes })
@@ -132,7 +132,7 @@ struct FieldCurveChart: View {
                         }
                     } label: {
                         HStack(spacing: 4) {
-                            Text(selectedYear.map(String.init) ?? "All Years")
+                            Text(selectedYear.map(String.init) ?? L("All Years"))
                                 .font(UH.TextStyle.caption.weight(.bold))
                             Image(systemName: "chevron.down")
                                 .font(.system(size: 10))
@@ -242,9 +242,9 @@ struct FieldCurveChart: View {
 
                 // Legend
                 HStack(spacing: 14) {
-                    legendItem(color: Color(hex: "#10b981"), label: "A: Ambitious")
-                    legendItem(color: UH.Palette.accentInk, label: "B: Realistic")
-                    legendItem(color: Color(hex: "#f59e0b"), label: "C: Safe")
+                    legendItem(color: Color(hex: "#10b981"), label: L("A: Ambitious"))
+                    legendItem(color: UH.Palette.accentInk, label: L("B: Realistic"))
+                    legendItem(color: Color(hex: "#f59e0b"), label: L("C: Safe"))
                     Spacer()
                     Text("UTMB verified")
                         .font(.system(size: 9, weight: .bold, design: .monospaced))

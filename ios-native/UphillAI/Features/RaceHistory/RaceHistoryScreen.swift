@@ -111,10 +111,10 @@ struct RaceHistoryScreen: View {
                 // Section 1: Top stats summary
                 VStack(spacing: 8) {
                     HStack(spacing: 8) {
-                        statTile(title: "TRAIL FINISHES", value: "\(history.summary.trailFinishes)")
-                        statTile(title: "ULTRAS COMPLETED", value: "\(history.summary.ultras)")
+                        statTile(title: L("TRAIL FINISHES"), value: "\(history.summary.trailFinishes)")
+                        statTile(title: L("ULTRAS COMPLETED"), value: "\(history.summary.ultras)")
                         let longest = history.summary.longestFinish.map { "\($0.formattedDistance)" } ?? "—"
-                        statTile(title: "LONGEST TRAIL", value: longest)
+                        statTile(title: L("LONGEST TRAIL"), value: longest)
                     }
 
                     // PR / UTMB sub-row
@@ -266,7 +266,7 @@ struct RaceHistoryScreen: View {
             }
 
             HStack {
-                Text(claim.syncStatus == "ok" ? "Synced" : claim.syncStatus.capitalized)
+                Text(claim.syncStatus == "ok" ? L("Synced") : L(claim.syncStatus.capitalized))
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(claim.syncStatus == "ok" ? UH.Palette.accentInk : UH.Palette.muted)
 

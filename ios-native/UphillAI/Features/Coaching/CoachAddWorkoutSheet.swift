@@ -55,7 +55,7 @@ struct CoachAddWorkoutSheet: View {
                                 .font(UH.TextStyle.sectionTitle)
                                 .foregroundStyle(UH.Palette.accent)
                             Spacer()
-                            Button(showAiPrompt ? "Manual form" : "Use AI generator") {
+                            Button(showAiPrompt ? L("Manual form") : L("Use AI generator")) {
                                 withAnimation { showAiPrompt.toggle() }
                             }
                             .font(UH.TextStyle.caption)

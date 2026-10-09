@@ -317,10 +317,10 @@ struct KnowledgeHubScreen: View {
                                 try? await service.addLink(url: newLinkInput)
                                 newLinkInput = ""
                                 isSubmittingLink = false
-                                statusMessage = "Source added to indexing queue"
+                                statusMessage = L("Source added to indexing queue")
                             }
                         } label: {
-                            Text(isSubmittingLink ? "..." : "Ingest")
+                            Text(isSubmittingLink ? "..." : L("Ingest"))
                                 .font(UH.TextStyle.caption.weight(.bold))
                                 .foregroundStyle(Color.white)
                                 .padding(.horizontal, 12)

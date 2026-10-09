@@ -120,14 +120,14 @@ final class DeviceConnectionService: DeviceConnectionServicing {
     /// English copy from the web's corosPush.ts, without its {placeholders}.
     static func pushErrorMessage(_ code: String) -> String {
         switch code {
-        case "COROS_not_connected": "COROS isn't connected. Reconnect it in your profile."
-        case "NOTHING_to_push": "Nothing to send: there are no upcoming runs in your plan."
-        case "RACE_too_far": "COROS plans cover up to 16 weeks. Send to COROS opens closer to your race."
-        case "RACE_too_close": "COROS plans must be at least 4 weeks long."
-        case "PUSH_in_progress": "A send is already running. Try again in a moment."
-        case "PUSH_limit": "You've reached today's limit for sending to COROS. Try again tomorrow."
-        case "COROS_rejected": "COROS didn't accept the plan. Nothing changed on your watch."
-        default: "Couldn't reach COROS. Nothing changed. Try again shortly."
+        case "COROS_not_connected": L("COROS isn't connected. Reconnect it in your profile.")
+        case "NOTHING_to_push": L("Nothing to send: there are no upcoming runs in your plan.")
+        case "RACE_too_far": L("COROS plans cover up to 16 weeks. Send to COROS opens closer to your race.")
+        case "RACE_too_close": L("COROS plans must be at least 4 weeks long.")
+        case "PUSH_in_progress": L("A send is already running. Try again in a moment.")
+        case "PUSH_limit": L("You've reached today's limit for sending to COROS. Try again tomorrow.")
+        case "COROS_rejected": L("COROS didn't accept the plan. Nothing changed on your watch.")
+        default: L("Couldn't reach COROS. Nothing changed. Try again shortly.")
         }
     }
 }
@@ -178,23 +178,23 @@ public final class CorosOAuthCoordinator: NSObject, ASWebAuthenticationPresentat
             }
 
             guard let params = Self.parseCallbackURL(callbackURL) else {
-                return .failed("Invalid callback response from COROS.")
+                return .failed(L("Invalid callback response from COROS."))
             }
 
             if params.isError {
-                return .failed("COROS authorization was declined or cancelled.")
+                return .failed(L("COROS authorization was declined or cancelled."))
             }
 
             guard let state = params.state, let token = params.token else {
-                return .failed("Missing authorization tokens from COROS.")
+                return .failed(L("Missing authorization tokens from COROS."))
             }
 
             if let expected = expectedState, state != expected {
-                return .failed("Authorization security check failed (state mismatch).")
+                return .failed(L("Authorization security check failed (state mismatch)."))
             }
 
             let completed = try await service.completeCoros(state: state, token: token)
-            return completed ? .success : .failed("Could not complete COROS connection.")
+            return completed ? .success : .failed(L("Could not complete COROS connection."))
         } catch {
             return .failed(error.localizedDescription)
         }
