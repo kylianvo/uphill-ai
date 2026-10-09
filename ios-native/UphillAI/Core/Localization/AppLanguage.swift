@@ -40,5 +40,5 @@ func L(_ english: String) -> String {
 
 /// Same as `L`, for a key with format arguments: `L("Week %lld", n)`.
 func L(_ english: String, _ args: CVarArg...) -> String {
-    String(format: L(english), locale: AppLanguage.current.locale, arguments: args)
+    String(format: L(english), arguments: args)
 }
