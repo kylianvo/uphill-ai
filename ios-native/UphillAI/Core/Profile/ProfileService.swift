@@ -53,9 +53,9 @@ struct ProfileDraft: Encodable, Sendable {
     }
 
     var heartRateError: String? {
-        if aetHr >= antHr { return "Aerobic threshold (AeT) must be below anaerobic threshold (AnT)." }
-        if antHr > maxHr { return "Anaerobic threshold (AnT) must not exceed max heart rate." }
-        if restingHr >= aetHr { return "Resting heart rate must be below aerobic threshold (AeT)." }
+        if aetHr >= antHr { return L("Aerobic threshold (AeT) must be below anaerobic threshold (AnT).") }
+        if antHr > maxHr { return L("Anaerobic threshold (AnT) must not exceed max heart rate.") }
+        if restingHr >= aetHr { return L("Resting heart rate must be below aerobic threshold (AeT).") }
         return nil
     }
 }

@@ -46,17 +46,17 @@ enum ScheduleMessages {
     static func guardText(code: String, params: [String: String] = [:]) -> String {
         let text: String
         switch code {
-        case "G1_not_owner": text = "This workout isn't in your active plan."
-        case "G2_history": text = "This workout is already completed or matched to an activity, so it can't be moved."
-        case "G3_past_target": text = "You can't move a workout to a day that has already passed."
-        case "G4_window": text = "Workouts can only move between this week and next week."
-        case "G5_out_of_plan": text = "That week is outside your plan."
-        case "G6_coach_linked": text = "You have a coach — ask them to change your schedule."
-        case "G7_no_dates": text = "This plan has no start date, so only same-week day swaps are possible."
-        case "STALE_changed": text = "Your plan changed since this was proposed."
-        case "NOTHING_to_move": text = "Nothing would change."
-        case "INVALID_operation": text = "That change isn't valid."
-        default: text = "That change couldn't be made."
+        case "G1_not_owner": text = L("This workout isn't in your active plan.")
+        case "G2_history": text = L("This workout is already completed or matched to an activity, so it can't be moved.")
+        case "G3_past_target": text = L("You can't move a workout to a day that has already passed.")
+        case "G4_window": text = L("Workouts can only move between this week and next week.")
+        case "G5_out_of_plan": text = L("That week is outside your plan.")
+        case "G6_coach_linked": text = L("You have a coach — ask them to change your schedule.")
+        case "G7_no_dates": text = L("This plan has no start date, so only same-week day swaps are possible.")
+        case "STALE_changed": text = L("Your plan changed since this was proposed.")
+        case "NOTHING_to_move": text = L("Nothing would change.")
+        case "INVALID_operation": text = L("That change isn't valid.")
+        default: text = L("That change couldn't be made.")
         }
         return fill(text, params)
     }
@@ -67,12 +67,12 @@ enum ScheduleMessages {
         switch warning.code {
         case "W1_hard_stacking", "W1_same_day", "W1_before_long_run":
             text = warning.params["kind"] == "before_long_run" || warning.code == "W1_before_long_run"
-                ? "Hard session on {day} (week {week}) right before the long run."
-                : "Two hard sessions on {day} (week {week})."
+                ? L("Hard session on {day} (week {week}) right before the long run.")
+                : L("Two hard sessions on {day} (week {week}).")
         case "W2_volume_shift":
-            text = "Week {week} volume changes from {before} to {after} min."
+            text = L("Week {week} volume changes from {before} to {after} min.")
             params["before"] = params["before_minutes"]; params["after"] = params["after_minutes"]
-        case "W3_pending_draft": text = "“{title}” is still pending coach review."
+        case "W3_pending_draft": text = L("“{title}” is still pending coach review.")
         default: return warning.code
         }
         return fill(text, params)

@@ -210,23 +210,23 @@ struct GoalContext: Decodable, Sendable, Equatable {
             guard let value, value != 0 else { return nil }
             return PlanViewModel.formatMinutes(value)
         }
-        let profile = race?.profileSource.flatMap { $0.isEmpty ? nil : ($0 == "gpx" ? "GPX" : "Estimated") }
+        let profile = race?.profileSource.flatMap { $0.isEmpty ? nil : ($0 == "gpx" ? "GPX" : L("Estimated")) }
         let pace = athlete?.thresholdPace.flatMap { $0.isEmpty ? nil : $0 + "/km" }
         return [
-            Group(title: "Race", rows: rows([
-                ("Distance", race?.distanceKm.map { "\(Int($0.rounded())) km" }),
+            Group(title: L("Race"), rows: rows([
+                (L("Distance"), race?.distanceKm.map { "\(Int($0.rounded())) km" }),
                 ("D+", race?.gainM.map { "\(Int($0.rounded())) m" }),
-                ("Course profile", profile), ("Time Target", time(currentTargetMins))
+                (L("Course profile"), profile), (L("Time Target"), time(currentTargetMins))
             ])),
-            Group(title: "Field", rows: rows([
-                ("Winner", time(race?.field?.winnerMins)),
-                ("10% finished", time(race?.field?.percentileMins?.p10)),
-                ("Half finished", time(race?.field?.percentileMins?.p50)),
-                ("90% finished", time(race?.field?.percentileMins?.p90))
+            Group(title: L("Field"), rows: rows([
+                (L("Winner"), time(race?.field?.winnerMins)),
+                (L("10% finished"), time(race?.field?.percentileMins?.p10)),
+                (L("Half finished"), time(race?.field?.percentileMins?.p50)),
+                (L("90% finished"), time(race?.field?.percentileMins?.p90))
             ])),
-            Group(title: "You", rows: rows([
-                ("Weight", athlete?.weightKg.map { $0.formatted(.number) + " kg" }),
-                ("Threshold pace", pace)
+            Group(title: L("You"), rows: rows([
+                (L("Weight"), athlete?.weightKg.map { $0.formatted(.number) + " kg" }),
+                (L("Threshold pace"), pace)
             ]))
         ].filter { !$0.rows.isEmpty }
     }
@@ -239,12 +239,12 @@ struct GoalAnchor: Decodable, Sendable, Equatable, Identifiable {
 
     var methodLabel: String {
         switch method {
-        case "physics": "Course physics from this result"
-        case "field_rank": "Your finishing rank on this field"
-        case "percentile_transfer": "Field percentile transfer"
-        case "field_prior": "Field position from weekly volume"
-        case "easy_pace": "Course physics from your easy pace"
-        case "base_pace": "Course physics from your flat pace"
+        case "physics": L("Course physics from this result")
+        case "field_rank": L("Your finishing rank on this field")
+        case "percentile_transfer": L("Field percentile transfer")
+        case "field_prior": L("Field position from weekly volume")
+        case "easy_pace": L("Course physics from your easy pace")
+        case "base_pace": L("Course physics from your flat pace")
         default: method
         }
     }

@@ -29,7 +29,7 @@ struct NextWeekOffer: Equatable {
     let previousCompletionPct: Double?
     let unlocked: Bool
 
-    var title: String { weekStart == weekEnd ? "Build week \(weekStart)" : "Build weeks \(weekStart)\u{2013}\(weekEnd)" }
+    var title: String { weekStart == weekEnd ? L("Build week %lld", weekStart) : L("Build weeks %lld–%lld", weekStart, weekEnd) }
 }
 
 enum NextWeekResult: Equatable {
@@ -42,18 +42,18 @@ enum FatigueLevel: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .easy: "Fresh"
-        case .medium: "Normal tiredness"
-        case .hard: "Heavy legs"
-        case .exhausted: "Exhausted"
+        case .easy: L("Fresh")
+        case .medium: L("Normal tiredness")
+        case .hard: L("Heavy legs")
+        case .exhausted: L("Exhausted")
         }
     }
     var subtitle: String {
         switch self {
-        case .easy: "Ready for more"
-        case .medium: "About what I expected"
-        case .hard: "Struggling to hit the paces"
-        case .exhausted: "I need a lighter week"
+        case .easy: L("Ready for more")
+        case .medium: L("About what I expected")
+        case .hard: L("Struggling to hit the paces")
+        case .exhausted: L("I need a lighter week")
         }
     }
 }
@@ -63,7 +63,7 @@ enum FatigueLevel: String, CaseIterable, Identifiable {
 final class PlanViewModel {
     enum LoadState: Equatable { case loading, empty, loaded, failed(String) }
 
-    static let offlineMessage = "You're offline. Changes need a connection."
+    static var offlineMessage: String { L("You're offline. Changes need a connection.") }
 
     private(set) var state: LoadState = .loading
     private(set) var snapshot: PlanSnapshot?
@@ -141,7 +141,7 @@ final class PlanViewModel {
 
     func syncWatch() async -> String? {
         guard !isSyncingWatch else { return nil }
-        guard let plan = snapshot?.plan else { return "No active plan to sync." }
+        guard let plan = snapshot?.plan else { return L("No active plan to sync.") }
         isSyncingWatch = true
         defer { isSyncingWatch = false }
         do {
@@ -154,14 +154,14 @@ final class PlanViewModel {
             switch apiError {
             // A 401 here is the Uphill session, not COROS; COROS problems come back as 400 with a message.
             case .unauthorized, .http(status: 401, _, _):
-                msg = "Your session expired. Please sign in again."
+                msg = L("Your session expired. Please sign in again.")
             default:
                 msg = apiError.userMessage
             }
             watchSyncNotice = msg
             return msg
         } catch {
-            let msg = "Couldn't sync watch activities. Please try again."
+            let msg = L("Couldn't sync watch activities. Please try again.")
             watchSyncNotice = msg
             return msg
         }
@@ -295,9 +295,9 @@ final class PlanViewModel {
         case "time":
             guard let hours = plan.targetTimeHours else { return nil }
             let total = Int((hours * 60).rounded())
-            return "Goal \(total / 60)h \(String(format: "%02d", total % 60))m"
-        case "finish": return "Goal: finish strong"
-        case "optimal": return "Goal: best possible time"
+            return L("Goal %lldh %@m", total / 60, String(format: "%02d", total % 60))
+        case "finish": return L("Goal: finish strong")
+        case "optimal": return L("Goal: best possible time")
         default: return nil
         }
     }
@@ -351,7 +351,7 @@ final class PlanViewModel {
             let result = try await self.service.move(planID: planID, workoutID: workout.id,
                                         toWeek: target.week, toDay: target.weekday, clientToday: today)
             if !result.warnings.isEmpty {
-                self.calendarNotice = ScheduleNotice(text: "Heads-up: " + result.warnings.map(ScheduleMessages.warningText).joined(separator: "\n"), style: .warning)
+                self.calendarNotice = ScheduleNotice(text: L("Heads-up: ") + result.warnings.map(ScheduleMessages.warningText).joined(separator: "\n"), style: .warning)
             }
             return result.workouts
         }
@@ -364,7 +364,7 @@ final class PlanViewModel {
         return await write {
             let result = try await self.service.swapDays(planID: planID, weekNumber: week, day1: day1, day2: day2, clientToday: today)
             if !result.warnings.isEmpty {
-                self.calendarNotice = ScheduleNotice(text: "Heads-up: " + result.warnings.map(ScheduleMessages.warningText).joined(separator: "\n"), style: .warning)
+                self.calendarNotice = ScheduleNotice(text: L("Heads-up: ") + result.warnings.map(ScheduleMessages.warningText).joined(separator: "\n"), style: .warning)
             }
             return result.workouts
         }
@@ -466,12 +466,12 @@ final class PlanViewModel {
 
     func buildNextWeek(rpe: Int?, notes: String, override: Bool, schedule: ScheduleDraft? = nil) async -> NextWeekResult {
         guard let offer = nextWeekOffer, let planID = snapshot?.plan.id,
-              let generation, let generationService else { return .failed("Couldn't start the next week. Try again.") }
+              let generation, let generationService else { return .failed(L("Couldn't start the next week. Try again.")) }
         guard cachedAt == nil else { return .failed(Self.offlineMessage) }
         let trimmed = notes.trimmingCharacters(in: .whitespacesAndNewlines)
         var body = NextBlockBody(
             planId: planID, blockNumber: offer.blockNumber, overallRpe: rpe,
-            notes: trimmed.isEmpty ? nil : trimmed, overrideGate: override, lang: "en")
+            notes: trimmed.isEmpty ? nil : trimmed, overrideGate: override, lang: AppLanguage.code)
         schedule?.applyChanges(to: &body)
         do {
             let job = try await generationService.generateNextBlock(body)
@@ -481,7 +481,7 @@ final class PlanViewModel {
             return .needsConfirmation(message)
         } catch APIError.http(400, let message, _) {
             nextWeekOffer = nil
-            return .failed(message ?? "Every week of this plan is already built.")
+            return .failed(message ?? L("Every week of this plan is already built."))
         } catch let error as APIError {
             return .failed(error.userMessage)
         } catch {
@@ -499,14 +499,14 @@ final class PlanViewModel {
     /// Returns an error message, or nil once the job has started.
     func adaptWeek(_ week: Int, fatigue: FatigueLevel, rpe: Int?, notes: String, schedule: ScheduleDraft? = nil) async -> String? {
         guard let planID = snapshot?.plan.id, let generation, let generationService else {
-            return "Couldn't start adapting this week. Try again."
+            return L("Couldn't start adapting this week. Try again.")
         }
         guard cachedAt == nil else { return Self.offlineMessage }
         let trimmed = notes.trimmingCharacters(in: .whitespacesAndNewlines)
         do {
             var body = AdaptWeekBody(
                 planId: planID, weekNumber: week, overallRpe: rpe, fatigueLevel: fatigue.rawValue,
-                fatigueNotes: trimmed.isEmpty ? nil : trimmed, lang: "en",
+                fatigueNotes: trimmed.isEmpty ? nil : trimmed, lang: AppLanguage.code,
                 clientToday: PlanCalendar.ymd(now(), calendar: calendar))
             schedule?.applyChanges(to: &body)
             let job = try await generationService.adaptWeek(body)
@@ -549,11 +549,11 @@ final class PlanViewModel {
     var goalPillText: String? {
         guard let goal, snapshot?.plan.courseDistanceKm != nil else { return nil }
         switch goal.status.kind {
-        case .onTrack: return "On track"
-        case .ahead: return "Ahead of target"
-        case .behind: return "Behind target"
-        case .noTarget: return goal.status.suggestedMins.map { "Suggested \(Self.formatMinutes($0))" } ?? "Not assessed yet"
-        case .notAssessed: return "Not assessed yet"
+        case .onTrack: return L("On track")
+        case .ahead: return L("Ahead of target")
+        case .behind: return L("Behind target")
+        case .noTarget: return goal.status.suggestedMins.map { L("Suggested %@", Self.formatMinutes($0)) } ?? L("Not assessed yet")
+        case .notAssessed: return L("Not assessed yet")
         }
     }
 
@@ -576,7 +576,7 @@ final class PlanViewModel {
             topic = "Training"
         }
 
-        contextKnowledgeCard = await service.knowledgeCard(topic: topic, lang: "en")
+        contextKnowledgeCard = await service.knowledgeCard(topic: topic, lang: AppLanguage.code)
     }
 
     func loadGoal() async {
@@ -592,7 +592,7 @@ final class PlanViewModel {
             goal = try await service.reassessGoal(planID: planID)
             return nil
         } catch APIError.http(429, _, _) {
-            return "You've used today's goal checks. Try again tomorrow."
+            return L("You've used today's goal checks. Try again tomorrow.")
         } catch let error as APIError {
             return error.userMessage
         } catch {

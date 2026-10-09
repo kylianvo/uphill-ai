@@ -187,7 +187,7 @@ struct ChatWeekReviewCard: View {
                 Spacer()
 
                 if let comp = data.compliancePercent {
-                    Text(String(format: "%.0f%% Done", comp))
+                    Text(L("%@%% Done", String(format: "%.0f", comp)))
                         .font(UH.TextStyle.disclosure)
                         .foregroundStyle(comp >= 80 ? UH.Palette.accentInk : UH.Palette.warningInk)
                         .padding(.horizontal, 8)

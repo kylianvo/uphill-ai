@@ -36,7 +36,7 @@ struct PaceStrategySheet: View {
     var isPresentedInSheet: Bool = false
 
     private var isVietnamese: Bool {
-        Locale.current.language.languageCode?.identifier == "vi"
+        AppLanguage.current == .vi
     }
 
     init(

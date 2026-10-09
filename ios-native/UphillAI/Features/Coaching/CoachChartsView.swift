@@ -99,13 +99,13 @@ struct MissedByDayChartView: View {
 
     private func shortDay(_ day: String) -> String {
         switch day {
-        case "Monday": return "Mon"
-        case "Tuesday": return "Tue"
-        case "Wednesday": return "Wed"
-        case "Thursday": return "Thu"
-        case "Friday": return "Fri"
-        case "Saturday": return "Sat"
-        case "Sunday": return "Sun"
+        case "Monday": return L("Mon")
+        case "Tuesday": return L("Tue")
+        case "Wednesday": return L("Wed")
+        case "Thursday": return L("Thu")
+        case "Friday": return L("Fri")
+        case "Saturday": return L("Sat")
+        case "Sunday": return L("Sun")
         default: return String(day.prefix(3))
         }
     }

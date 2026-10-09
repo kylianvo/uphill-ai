@@ -10,8 +10,8 @@ struct GoalSheet: View {
     @State private var isContextExpanded = true
 
     private var targetText: String {
-        guard let hours = model.goal?.targetTimeHours else { return "No target set" }
-        return "Your target: " + PlanViewModel.formatMinutes(hours * 60)
+        guard let hours = model.goal?.targetTimeHours else { return L("No target set") }
+        return L("Your target: ") + PlanViewModel.formatMinutes(hours * 60)
     }
 
     private var contextGroups: [GoalContext.Group] {
@@ -20,17 +20,17 @@ struct GoalSheet: View {
         }
         var rows: [GoalContext.Row] = []
         if let km = model.snapshot?.plan.courseDistanceKm {
-            rows.append(GoalContext.Row(label: "Distance", value: "\(Int(km.rounded())) km"))
+            rows.append(GoalContext.Row(label: L("Distance"), value: "\(Int(km.rounded())) km"))
         }
         if let dPlus = model.snapshot?.plan.courseElevationGainM {
             rows.append(GoalContext.Row(label: "D+", value: "\(Int(dPlus.rounded())) m"))
         }
-        rows.append(GoalContext.Row(label: "Course profile", value: "Estimated"))
+        rows.append(GoalContext.Row(label: L("Course profile"), value: L("Estimated")))
         if let hours = model.goal?.targetTimeHours ?? model.snapshot?.plan.targetTimeHours {
-            rows.append(GoalContext.Row(label: "Time Target", value: PlanViewModel.formatMinutes(hours * 60)))
+            rows.append(GoalContext.Row(label: L("Time Target"), value: PlanViewModel.formatMinutes(hours * 60)))
         }
         if !rows.isEmpty {
-            return [GoalContext.Group(title: "Race", rows: rows)]
+            return [GoalContext.Group(title: L("Race"), rows: rows)]
         }
         return []
     }
@@ -41,7 +41,7 @@ struct GoalSheet: View {
                 VStack(alignment: .leading, spacing: UH.Space.section) {
                     // Header with race name and target
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(model.snapshot?.plan.raceName ?? "Race Goal")
+                        Text(model.snapshot?.plan.raceName ?? L("Race Goal"))
                             .font(UH.TextStyle.screenTitle)
                             .foregroundStyle(UH.Palette.ink)
                         Text(targetText)
@@ -52,9 +52,9 @@ struct GoalSheet: View {
                     // Tiers card
                     if let tiers = model.goal?.assessment?.goals {
                         VStack(spacing: 0) {
-                            tier("Stretch", tiers.a, emphasised: false)
-                            tier("Realistic", tiers.b, emphasised: true)
-                            tier("Safe", tiers.c, emphasised: false)
+                            tier(L("Stretch"), tiers.a, emphasised: false)
+                            tier(L("Realistic"), tiers.b, emphasised: true)
+                            tier(L("Safe"), tiers.c, emphasised: false)
                         }
                         .padding(.horizontal, UH.Space.regular)
                         .trainingCard(padding: 0)
@@ -190,14 +190,14 @@ struct GoalSheet: View {
             Text(PlanViewModel.formatMinutes(minutes)).font(UH.TextStyle.metric)
         }
         .frame(minHeight: 52)
-        .overlay(alignment: .bottom) { if title != "Safe" { Divider() } }
+        .overlay(alignment: .bottom) { if title != L("Safe") { Divider() } }
         .accessibilityElement(children: .combine)
     }
 
     private func footer(_ assessment: GoalAssessment) -> String {
-        let source = assessment.engine == "none" || assessment.engine == nil ? "Estimated from your training so far" : "Estimated from your race history"
+        let source = assessment.engine == "none" || assessment.engine == nil ? L("Estimated from your training so far") : L("Estimated from your race history")
         guard let created = assessment.createdAt, let date = (try? Date(created, strategy: Date.ISO8601FormatStyle(includingFractionalSeconds: true))) ?? (try? Date(created, strategy: .iso8601)) else { return source }
-        return source + " · " + date.formatted(.dateTime.day().month(.abbreviated))
+        return source + " · " + date.formatted(Date.FormatStyle(locale: AppLanguage.current.locale).day().month(.abbreviated))
     }
 
     private func check() async {

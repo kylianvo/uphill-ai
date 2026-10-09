@@ -9,8 +9,8 @@ enum VolumeChartMode: String, CaseIterable, Identifiable {
 
     var accessibilityTitle: String {
         switch self {
-        case .weekDays: "Week days volume"
-        case .weekTrend: "Every week volume trend"
+        case .weekDays: L("Week days volume")
+        case .weekTrend: L("Every week volume trend")
         }
     }
 }
@@ -82,7 +82,7 @@ struct SummaryCarousel: View {
             VStack(alignment: .leading, spacing: 3) {
                 // Header: Eyebrow + Mode Switcher [Days | Trend]
                 HStack(alignment: .center) {
-                    eyebrow("Week \(model.selectedWeek) Volume")
+                    eyebrow(L("Week %lld Volume", model.selectedWeek))
 
                     Spacer()
 
@@ -94,7 +94,7 @@ struct SummaryCarousel: View {
                                     volumeChartMode = mode
                                 }
                             } label: {
-                                Text(mode.rawValue)
+                                Text(L(mode.rawValue))
                                     .font(.system(size: 10, weight: volumeChartMode == mode ? .bold : .medium, design: .monospaced))
                                     .foregroundStyle(volumeChartMode == mode ? UH.Palette.accentInk : UH.Palette.secondary)
                                     .padding(.horizontal, 7)
@@ -187,7 +187,7 @@ struct SummaryCarousel: View {
             AxisMarks(values: .automatic) { value in
                 AxisValueLabel {
                     if let raw = value.as(String.self), let wd = Weekday(rawValue: raw) {
-                        Text(String(wd.rawValue.prefix(1)))
+                        Text(AppLanguage.current == .vi ? L(String(wd.rawValue.prefix(3))) : String(wd.rawValue.prefix(1)))
                             .font(.system(size: 9.5, weight: .bold, design: .monospaced))
                             .foregroundStyle(wd.rawValue == "Saturday" || wd.rawValue == "Sunday" ? UH.Palette.ink : UH.Palette.secondary)
                     }
@@ -258,7 +258,7 @@ struct SummaryCarousel: View {
         return card(
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
-                    eyebrow(model.selectedWeek == model.currentWeek ? "This week" : "Week \(model.selectedWeek)")
+                    eyebrow(model.selectedWeek == model.currentWeek ? L("This week") : L("Week %lld", model.selectedWeek))
                     Spacer()
                     // Adherence % pill
                     Text("\(comp.adherencePct)% adherence")
@@ -272,7 +272,7 @@ struct SummaryCarousel: View {
                 HStack(spacing: 0) {
                     ForEach(model.dayStates, id: \.weekday) { item in
                         VStack(spacing: 4) {
-                            Text(String(item.weekday.rawValue.prefix(1)))
+                            Text(AppLanguage.current == .vi ? L(String(item.weekday.rawValue.prefix(3))) : String(item.weekday.rawValue.prefix(1)))
                                 .font(.system(size: 10, weight: .bold, design: .monospaced))
                                 .foregroundStyle(UH.Palette.muted)
                             dot(item.state)
@@ -346,7 +346,7 @@ struct SummaryCarousel: View {
         let raceDay = PlanCalendar.day(from: plan?.raceDate)
         return card(
             VStack(alignment: .leading, spacing: 4) {
-                eyebrow("Race Target")
+                eyebrow(L("Race Target"))
                 Text(plan?.raceName ?? "")
                     .font(UH.TextStyle.sectionTitle)
                     .foregroundStyle(UH.Palette.ink)
@@ -362,7 +362,7 @@ struct SummaryCarousel: View {
 
                 HStack {
                     if let days = model.daysToRace {
-                        Text(days < 7 ? "Race week" : "\(days) days to go")
+                        Text(days < 7 ? L("Race week") : L("%lld days to go", days))
                             .font(.system(size: 13, weight: .semibold, design: .monospaced))
                             .foregroundStyle(UH.Palette.accentInk)
                     }
@@ -395,8 +395,8 @@ struct SummaryCarousel: View {
     private var phaseCard: some View {
         card(
             VStack(alignment: .leading, spacing: 5) {
-                eyebrow("Training Phase")
-                Text(model.phase ?? "Base Phase")
+                eyebrow(L("Training Phase"))
+                Text(L(model.phase ?? "Base Phase"))
                     .font(UH.TextStyle.metric)
                     .foregroundStyle(UH.Palette.ink)
 

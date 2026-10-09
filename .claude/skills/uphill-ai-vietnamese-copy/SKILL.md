@@ -57,6 +57,7 @@ Gloss in parentheses **only on first use in a form field label** —
 | Grounded / traceable | `bảo chứng` | `dựa trên`, `truy được về nguồn` |
 | Curated catalog | `danh mục chính hãng` | `danh mục đã tuyển chọn` |
 | How it works | `Hệ thống vận hành như thế nào?` | `Cách hoạt động` |
+| Mountain running / trail running | `chạy núi` | `chạy trail` |
 
 ## R3 — Ban list
 

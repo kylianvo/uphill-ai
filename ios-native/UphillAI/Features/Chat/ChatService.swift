@@ -136,7 +136,7 @@ final class ChatService {
         }
     }
 
-    func send(text: String, clientToday: String? = nil, lang: String = "en") async {
+    func send(text: String, clientToday: String? = nil, lang: String = AppLanguage.code) async {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, !isExecuting else { return }
 
@@ -149,7 +149,7 @@ final class ChatService {
         await executeStream(requestId: reqId, message: trimmed, retryOf: nil, clientToday: clientToday, lang: lang)
     }
 
-    func retry(rootRequestId: String, clientToday: String? = nil, lang: String = "en") async {
+    func retry(rootRequestId: String, clientToday: String? = nil, lang: String = AppLanguage.code) async {
         guard !rootRequestId.isEmpty, !isExecuting else { return }
 
         let newReqId = UUID().uuidString
@@ -295,7 +295,7 @@ final class ChatService {
             return true
         } catch let apiErr as APIError {
             if case .http(409, _, _) = apiErr {
-                self.error = ChatError(code: "chat_in_progress", message: "Cannot clear thread while a turn is active.")
+                self.error = ChatError(code: "chat_in_progress", message: L("Cannot clear thread while a turn is active."))
             } else {
                 self.error = ChatError(code: "clear_failed", message: apiErr.localizedDescription)
             }

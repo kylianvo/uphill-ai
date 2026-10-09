@@ -177,7 +177,7 @@ enum PacingCalculator {
         let n = max(1, Int(ceil(distanceKm / intervalKm)))
         var checkpoints: [CourseCheckpoint] = [
             CourseCheckpoint(
-                name: "Start",
+                name: L("Start"),
                 distanceMeters: 0,
                 elevationMeters: baseElevationM,
                 segmentGainMeters: 0,

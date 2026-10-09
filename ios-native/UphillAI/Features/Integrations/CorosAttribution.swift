@@ -35,8 +35,8 @@ public struct CorosAttribution: View {
 
     private var attributionText: String {
         if let deviceModel, !deviceModel.isEmpty {
-            return "Data provided by COROS · \(deviceModel)"
+            return L("Data provided by COROS · %@", deviceModel)
         }
-        return "Data provided by COROS"
+        return L("Data provided by COROS")
     }
 }

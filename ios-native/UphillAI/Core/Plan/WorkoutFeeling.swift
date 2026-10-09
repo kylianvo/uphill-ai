@@ -13,36 +13,36 @@ public enum WorkoutFeeling: String, CaseIterable, Identifiable, Sendable {
 
     public var label: String {
         switch self {
-        case .veryLight: "Very Light"
-        case .light: "Light"
-        case .moderate: "Moderate"
-        case .hard: "Hard"
-        case .maxEffort: "Max Effort"
+        case .veryLight: L("Very Light")
+        case .light: L("Light")
+        case .moderate: L("Moderate")
+        case .hard: L("Hard")
+        case .maxEffort: L("Max Effort")
         }
     }
 
     public var subLabel: String {
         switch self {
-        case .veryLight: "Effortless recovery"
-        case .light: "Fresh & easy"
-        case .moderate: "Normal fatigue"
-        case .hard: "Heavy legs / Tired"
-        case .maxEffort: "Exhausted / Deload"
+        case .veryLight: L("Effortless recovery")
+        case .light: L("Fresh & easy")
+        case .moderate: L("Normal fatigue")
+        case .hard: L("Heavy legs / Tired")
+        case .maxEffort: L("Exhausted / Deload")
         }
     }
 
     public var coachDescription: String {
         switch self {
         case .veryLight:
-            "Effortless recovery or peak freshness — coach will maintain or slightly increase volume to capitalize."
+            L("Effortless recovery or peak freshness — coach will maintain or slightly increase volume to capitalize.")
         case .light:
-            "Fresh and well recovered — coach will maintain progressive overload without cutting volume."
+            L("Fresh and well recovered — coach will maintain progressive overload without cutting volume.")
         case .moderate:
-            "Normal training fatigue — coach will keep balanced volume with steady progression."
+            L("Normal training fatigue — coach will keep balanced volume with steady progression.")
         case .hard:
-            "Heavy legs or elevated fatigue — coach will ease off volume and reduce high-intensity sessions."
+            L("Heavy legs or elevated fatigue — coach will ease off volume and reduce high-intensity sessions.")
         case .maxEffort:
-            "Deep exhaustion or overreaching risk — coach will schedule an active recovery deload week."
+            L("Deep exhaustion or overreaching risk — coach will schedule an active recovery deload week.")
         }
     }
 

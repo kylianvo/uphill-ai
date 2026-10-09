@@ -35,7 +35,7 @@ struct CoachWorkoutTypePicker: View {
                     selection = opt.value
                 } label: {
                     HStack {
-                        Text(opt.labelEn)
+                        Text(AppLanguage.current == .vi ? opt.labelVi : opt.labelEn)
                         if selection.lowercased() == opt.value.lowercased() {
                             Image(systemName: "checkmark")
                         }
@@ -48,7 +48,7 @@ struct CoachWorkoutTypePicker: View {
                 Circle()
                     .fill(current.color)
                     .frame(width: 10, height: 10)
-                Text(current.labelEn)
+                Text(AppLanguage.current == .vi ? current.labelVi : current.labelEn)
                     .font(UH.TextStyle.body)
                     .foregroundStyle(UH.Palette.ink)
                 Spacer()

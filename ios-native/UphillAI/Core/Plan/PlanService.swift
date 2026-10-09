@@ -154,12 +154,12 @@ struct PlanService: PlanServicing {
     }
 
     func goal(planID: Int) async throws -> PlanGoal {
-        try await client.send(.get("/api/plans/\(planID)/goal", query: [URLQueryItem(name: "lang", value: "en")]))
+        try await client.send(.get("/api/plans/\(planID)/goal", query: [URLQueryItem(name: "lang", value: AppLanguage.code)]))
     }
 
     func reassessGoal(planID: Int) async throws -> PlanGoal {
         struct Body: Encodable { let exclude: [String]; let lang: String }
-        return try await client.send(.send(.post, "/api/plans/\(planID)/goal/reassess", body: Body(exclude: [], lang: "en")))
+        return try await client.send(.send(.post, "/api/plans/\(planID)/goal/reassess", body: Body(exclude: [], lang: AppLanguage.code)))
     }
 
     func applyGoal(planID: Int, targetMinutes: Double) async throws -> PlanGoal {
@@ -181,9 +181,9 @@ struct PlanService: PlanServicing {
             URLQueryItem(name: "tz_offset_minutes", value: "\(tzOffset)"),
         ]))
         let count = resp.activities ?? 0
-        return count > 0 ? "Synced \(count) activities from watch" : "Watch synced · Up to date"
+        return count > 0 ? L("Synced %lld activities from watch", count) : L("Watch synced · Up to date")
     }
-    func knowledgeCard(topic: String, lang: String = "en") async -> KnowledgeCardModel? {
+    func knowledgeCard(topic: String, lang: String = AppLanguage.code) async -> KnowledgeCardModel? {
         do {
             let resp: KnowledgeCardsResponse = try await client.send(.get("/api/knowledge/cards", query: [
                 URLQueryItem(name: "topic", value: topic),

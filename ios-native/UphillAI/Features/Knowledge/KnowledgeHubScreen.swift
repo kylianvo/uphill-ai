@@ -210,7 +210,7 @@ struct KnowledgeHubScreen: View {
                                 Image(systemName: iconForTopic(topic))
                                     .font(.system(size: 11))
                             }
-                            Text(topic)
+                            Text(L(topic))
                                 .font(UH.TextStyle.caption.weight(isSelected ? .bold : .medium))
                         }
                         .foregroundStyle(isSelected ? Color.white : UH.Palette.ink)
@@ -317,10 +317,10 @@ struct KnowledgeHubScreen: View {
                                 try? await service.addLink(url: newLinkInput)
                                 newLinkInput = ""
                                 isSubmittingLink = false
-                                statusMessage = "Source added to indexing queue"
+                                statusMessage = L("Source added to indexing queue")
                             }
                         } label: {
-                            Text(isSubmittingLink ? "..." : "Ingest")
+                            Text(isSubmittingLink ? "..." : L("Ingest"))
                                 .font(UH.TextStyle.caption.weight(.bold))
                                 .foregroundStyle(Color.white)
                                 .padding(.horizontal, 12)
@@ -346,7 +346,7 @@ struct KnowledgeHubScreen: View {
     private func loadKnowledgeData() async {
         isLoading = true
         do {
-            async let loadedCards = service.fetchCards(topic: nil, lang: "en")
+            async let loadedCards = service.fetchCards(topic: nil, lang: AppLanguage.code)
             async let loadedTopics = service.fetchTopics()
             async let loadedSources = service.fetchSources()
 

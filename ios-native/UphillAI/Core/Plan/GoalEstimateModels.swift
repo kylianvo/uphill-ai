@@ -240,5 +240,5 @@ struct GoalEstimateRequest: Encodable, Sendable {
     var raceDate: String?
     var exclude: [String] = []
     var reference: Reference?
-    var lang: String = "en"
+    var lang: String = AppLanguage.code
 }

@@ -22,7 +22,7 @@ struct PlanSetupFlow: View {
                         Capsule().fill(UH.Palette.line)
                         Capsule().fill(UH.Palette.accent).frame(width: geometry.size.width * model.progress)
                     }
-                }.frame(height: 4).accessibilityLabel("Setup progress").accessibilityValue("Step \(model.stepIndex + 1) of \(model.steps.count)")
+                }.frame(height: 4).accessibilityLabel("Setup progress").accessibilityValue(L("Step %lld of %lld", model.stepIndex + 1, model.steps.count))
                 Button(action: onClose) { Image(systemName: "xmark").frame(width: 44, height: 44) }.accessibilityLabel("Close")
             }
             .padding(.horizontal, UH.Space.small)

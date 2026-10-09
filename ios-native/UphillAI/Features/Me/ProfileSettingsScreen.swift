@@ -18,10 +18,10 @@ struct ProfileSettingsScreen: View {
 
     private var title: String {
         switch model.section {
-        case .aboutYou: "About you"
-        case .trainingZones, .heartRate, .paces: "Training zones"
-        case .schedule: "Schedule"
-        case .raceHistory: "Race History"
+        case .aboutYou: L("About you")
+        case .trainingZones, .heartRate, .paces: L("Training zones")
+        case .schedule: L("Schedule")
+        case .raceHistory: L("Race History")
         case .nutritionLab: "Nutrition Lab"
         case .gearVault: "Gear Vault"
         case .goalDeterminer: "Goal Determiner"
@@ -91,24 +91,24 @@ struct ProfileSettingsScreen: View {
                 Text("Calibrates calorie expenditure, pacing models, and recovery rates.")
                     .font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary)
 
-                stepperRow("Age", value: $model.draft.age, inRange: 15...99, unit: "years")
+                stepperRow(L("Age"), value: $model.draft.age, inRange: 15...99, unit: L("years"))
                 Divider()
 
                 VStack(alignment: .leading, spacing: UH.Space.compact) {
                     Text("Sex").font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: UH.Space.small) {
-                        sexOption("Female", symbol: "figure.run", tag: "female")
-                        sexOption("Male", symbol: "figure.run", tag: "male")
-                        sexOption("Other", symbol: "person.fill", tag: "other")
-                        sexOption("Private", symbol: "person.crop.circle", tag: nil)
+                        sexOption(L("Female"), symbol: "figure.run", tag: "female")
+                        sexOption(L("Male"), symbol: "figure.run", tag: "male")
+                        sexOption(L("Other"), symbol: "person.fill", tag: "other")
+                        sexOption(L("Private"), symbol: "person.crop.circle", tag: nil)
                     }
                 }
                 Divider()
 
-                optionalStepperRow("Height", value: $model.draft.heightCm, inRange: 120...230, unit: "cm")
+                optionalStepperRow(L("Height"), value: $model.draft.heightCm, inRange: 120...230, unit: "cm")
                 Divider()
 
-                optionalStepperRow("Weight", value: $model.draft.weightKg, inRange: 35...180, unit: "kg")
+                optionalStepperRow(L("Weight"), value: $model.draft.weightKg, inRange: 35...180, unit: "kg")
             }
             .trainingCard()
 
@@ -165,10 +165,10 @@ struct ProfileSettingsScreen: View {
 
                 // Chips summary
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: UH.Space.small) {
-                    statChip(title: "RESTING", value: "\(model.draft.restingHr) bpm", color: Color(hex: "#0ea5e9"))
+                    statChip(title: L("RESTING"), value: "\(model.draft.restingHr) bpm", color: Color(hex: "#0ea5e9"))
                     statChip(title: "AEROBIC (AeT)", value: "\(model.draft.aetHr) bpm", color: Color(hex: "#10b981"))
                     statChip(title: "ANAEROBIC (AnT)", value: "\(model.draft.antHr) bpm", color: Color(hex: "#f97316"))
-                    statChip(title: "MAX HR", value: "\(model.draft.maxHr) bpm", color: Color(hex: "#ef4444"))
+                    statChip(title: L("MAX HR"), value: "\(model.draft.maxHr) bpm", color: Color(hex: "#ef4444"))
                 }
             }
             .trainingCard()
@@ -177,13 +177,13 @@ struct ProfileSettingsScreen: View {
             VStack(alignment: .leading, spacing: UH.Space.regular) {
                 Text("Heart rate anchors").font(UH.TextStyle.sectionTitle).foregroundStyle(UH.Palette.ink)
 
-                stepperRow("Max heart rate", value: $model.draft.maxHr, inRange: 120...240, unit: "bpm")
+                stepperRow(L("Max heart rate"), value: $model.draft.maxHr, inRange: 120...240, unit: "bpm")
                 Divider()
-                stepperRow("Resting heart rate", value: $model.draft.restingHr, inRange: 30...110, unit: "bpm")
+                stepperRow(L("Resting heart rate"), value: $model.draft.restingHr, inRange: 30...110, unit: "bpm")
                 Divider()
-                stepperRow("Aerobic threshold (AeT)", value: $model.draft.aetHr, inRange: 90...190, unit: "bpm")
+                stepperRow(L("Aerobic threshold (AeT)"), value: $model.draft.aetHr, inRange: 90...190, unit: "bpm")
                 Divider()
-                stepperRow("Anaerobic threshold (AnT)", value: $model.draft.antHr, inRange: 120...220, unit: "bpm")
+                stepperRow(L("Anaerobic threshold (AnT)"), value: $model.draft.antHr, inRange: 120...220, unit: "bpm")
             }
             .trainingCard()
 
@@ -365,11 +365,11 @@ struct ProfileSettingsScreen: View {
                         .font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary)
                 }
 
-                paceField("Threshold pace", value: $model.draft.thresholdPace, hint: "m:ss")
+                paceField(L("Threshold pace"), value: $model.draft.thresholdPace, hint: "m:ss")
                 Divider()
-                paceField("Easy pace, slower end", value: $model.draft.zone2PaceMin, hint: "m:ss")
+                paceField(L("Easy pace, slower end"), value: $model.draft.zone2PaceMin, hint: "m:ss")
                 Divider()
-                paceField("Easy pace, faster end", value: $model.draft.zone2PaceMax, hint: "m:ss")
+                paceField(L("Easy pace, faster end"), value: $model.draft.zone2PaceMax, hint: "m:ss")
             }
             .trainingCard()
         }
@@ -439,18 +439,18 @@ struct ProfileSettingsScreen: View {
     private func zoneMeta(id: Int, total: Int) -> ZoneMeta {
         if total == 4 {
             switch id {
-            case 1: return ZoneMeta(name: "Zone 1 · Recovery", purpose: "Easy recovery runs (< AeT)", color: Color(hex: "#0ea5e9"))
-            case 2: return ZoneMeta(name: "Zone 2 · Aerobic Base", purpose: "Aerobic capacity (AeT-AnT)", color: Color(hex: "#10b981"))
-            case 3: return ZoneMeta(name: "Zone 3 · Threshold", purpose: "Lactate threshold (AnT)", color: Color(hex: "#f97316"))
-            default: return ZoneMeta(name: "Zone 4 · Anaerobic / Max", purpose: "Maximum anaerobic power (> AnT)", color: Color(hex: "#ef4444"))
+            case 1: return ZoneMeta(name: L("Zone 1 · Recovery"), purpose: L("Easy recovery runs (< AeT)"), color: Color(hex: "#0ea5e9"))
+            case 2: return ZoneMeta(name: L("Zone 2 · Aerobic Base"), purpose: L("Aerobic capacity (AeT-AnT)"), color: Color(hex: "#10b981"))
+            case 3: return ZoneMeta(name: L("Zone 3 · Threshold"), purpose: L("Lactate threshold (AnT)"), color: Color(hex: "#f97316"))
+            default: return ZoneMeta(name: L("Zone 4 · Anaerobic / Max"), purpose: L("Maximum anaerobic power (> AnT)"), color: Color(hex: "#ef4444"))
             }
         } else {
             switch id {
-            case 1: return ZoneMeta(name: "Zone 1 · Recovery", purpose: "Active recovery & warm-ups", color: Color(hex: "#0ea5e9"))
-            case 2: return ZoneMeta(name: "Zone 2 · Easy / Aerobic", purpose: "Aerobic base; conversational effort", color: Color(hex: "#10b981"))
-            case 3: return ZoneMeta(name: "Zone 3 · Tempo", purpose: "Steady rhythm for trail climbing", color: Color(hex: "#f59e0b"))
-            case 4: return ZoneMeta(name: "Zone 4 · Threshold", purpose: "Lactate threshold; ~1 hour race pace", color: Color(hex: "#f97316"))
-            default: return ZoneMeta(name: "Zone 5 · VO2max / Speed", purpose: "Short intervals & steep climbs", color: Color(hex: "#ef4444"))
+            case 1: return ZoneMeta(name: L("Zone 1 · Recovery"), purpose: L("Active recovery & warm-ups"), color: Color(hex: "#0ea5e9"))
+            case 2: return ZoneMeta(name: L("Zone 2 · Easy / Aerobic"), purpose: L("Aerobic base; conversational effort"), color: Color(hex: "#10b981"))
+            case 3: return ZoneMeta(name: L("Zone 3 · Tempo"), purpose: L("Steady rhythm for trail climbing"), color: Color(hex: "#f59e0b"))
+            case 4: return ZoneMeta(name: L("Zone 4 · Threshold"), purpose: L("Lactate threshold; ~1 hour race pace"), color: Color(hex: "#f97316"))
+            default: return ZoneMeta(name: L("Zone 5 · VO2max / Speed"), purpose: L("Short intervals & steep climbs"), color: Color(hex: "#ef4444"))
             }
         }
     }
@@ -676,14 +676,14 @@ struct ChangePasswordScreen: View {
 
     private func save() async {
         if app.isOffline || app.plan.cachedAt != nil { message = PlanViewModel.offlineMessage; return }
-        guard password == confirmation else { message = "Passwords do not match."; return }
-        guard password.count >= 8 else { message = "Password must be at least 8 characters."; return }
+        guard password == confirmation else { message = L("Passwords do not match."); return }
+        guard password.count >= 8 else { message = L("Password must be at least 8 characters."); return }
         saving = true
         defer { saving = false }
         do {
             try await ProfileService(client: app.client).changePassword(password)
             password = ""; confirmation = ""
-            message = "Password updated successfully."
+            message = L("Password updated successfully.")
         } catch let e as APIError { message = e.userMessage }
         catch { message = error.localizedDescription }
     }

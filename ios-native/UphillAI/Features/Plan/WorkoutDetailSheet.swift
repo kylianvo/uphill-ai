@@ -289,7 +289,7 @@ struct WorkoutDetailSheet: View {
         guard let plan = model.snapshot?.plan,
               let date = PlanCalendar.date(week: w.weekNumber, weekday: w.weekday, plan: plan,
                                            workouts: model.snapshot?.workouts ?? []) else { return w.phase }
-        return date.formatted(.dateTime.weekday(.wide).day().month(.wide)) + " · " + w.phase + " Phase"
+        return date.formatted(Date.FormatStyle(locale: AppLanguage.current.locale).weekday(.wide).day().month(.wide)) + " · " + L("%@ Phase", L(w.phase))
     }
 
     // Three stat tiles: Duration, Est. distance, Pace (/km) in SF Mono
@@ -306,17 +306,17 @@ struct WorkoutDetailSheet: View {
 
         return HStack(spacing: UH.Space.small) {
             statTile(
-                label: "DURATION",
+                label: L("DURATION"),
                 value: "\(Int(w.durationMinutes)) min"
             )
 
             statTile(
-                label: "EST. DISTANCE",
+                label: L("EST. DISTANCE"),
                 value: estDistance
             )
 
             statTile(
-                label: "PACE (/KM)",
+                label: L("PACE (/KM)"),
                 value: paceValue
             )
         }
@@ -352,7 +352,7 @@ struct WorkoutDetailSheet: View {
             items.append(zone)
         }
         if let gain = w.elevationGainM, gain > 0 {
-            items.append("+\(Int(gain)) m elevation gain")
+            items.append(L("+%lld m elevation gain", Int(gain)))
         }
 
         return HStack(spacing: 6) {
@@ -725,13 +725,13 @@ struct WorkoutDetailSheet: View {
     private func performSendToCoros() async {
         guard let service = deviceService else {
             corosSendState = .notConnected
-            corosSendNotice = "COROS isn't connected. Connect it in Profile."
+            corosSendNotice = L("COROS isn't connected. Connect it in Profile.")
             return
         }
 
         if let status = try? await service.fetchStatus(), !status.isCorosConnected {
             corosSendState = .notConnected
-            corosSendNotice = "COROS isn't connected. Connect it in Profile."
+            corosSendNotice = L("COROS isn't connected. Connect it in Profile.")
             return
         }
 
@@ -741,14 +741,14 @@ struct WorkoutDetailSheet: View {
         let today = Date.ISO8601FormatStyle(timeZone: .current).year().month().day().format(Date())
         do {
             // The backend sends the plan's next weeks, not just this workout.
-            let outcome = try await service.pushToCoros(clientToday: today, lang: "en")
+            let outcome = try await service.pushToCoros(clientToday: today, lang: AppLanguage.code)
             if outcome.isSuccess {
                 corosSendState = .sent
                 let count = outcome.summary?.workoutsSent ?? 0
-                let end = outcome.summary?.windowEnd ?? "the upcoming weeks"
-                corosSendNotice = "Sent \(count) workouts to COROS through \(end)."
+                let end = outcome.summary?.windowEnd ?? L("the upcoming weeks")
+                corosSendNotice = L("Sent %lld workouts to COROS through %@.", count, end)
             } else {
-                let err = outcome.errorMessage ?? "Could not send to COROS."
+                let err = outcome.errorMessage ?? L("Could not send to COROS.")
                 corosSendState = .error(err)
                 corosSendNotice = err
             }
@@ -811,8 +811,8 @@ struct WorkoutDetailSheet: View {
     }
 
     private func moveLabel(_ target: MoveTarget) -> String {
-        let day = target.date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated))
-        return target.week > model.currentWeek ? "Next week · \(day)" : day
+        let day = target.date.formatted(Date.FormatStyle(locale: AppLanguage.current.locale).weekday(.abbreviated).day().month(.abbreviated))
+        return target.week > model.currentWeek ? L("Next week · %@", day) : day
     }
 
     // MARK: - How Did It Feel? (5-Level Feeling Scale)
@@ -924,7 +924,7 @@ struct WorkoutDetailSheet: View {
                 .background(UH.Palette.surface, in: RoundedRectangle(cornerRadius: UH.Radius.control))
                 .overlay(RoundedRectangle(cornerRadius: UH.Radius.control).stroke(UH.Palette.line))
 
-            Button(showSaved ? "Saved" : "Save Log") {
+            Button(showSaved ? L("Saved") : L("Save Log")) {
                 run {
                     if await model.saveLog(w, rpe: rpe, notes: notes) {
                         showSaved = true
@@ -989,7 +989,7 @@ struct WorkoutDetailSheet: View {
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: UH.Space.small) {
                 if let km = w.matchedDistanceKm {
                     comparisonTile(
-                        label: "DISTANCE",
+                        label: L("DISTANCE"),
                         actual: String(format: "%.2f km", km),
                         target: w.distanceKm.map { String(format: "%.1f km", $0) }
                     )
@@ -999,7 +999,7 @@ struct WorkoutDetailSheet: View {
                     let mins = Int(secs / 60)
                     let remSecs = Int(secs) % 60
                     comparisonTile(
-                        label: "DURATION",
+                        label: L("DURATION"),
                         actual: "\(mins):\(String(format: "%02d", remSecs))",
                         target: "\(Int(w.durationMinutes))m"
                     )
@@ -1010,7 +1010,7 @@ struct WorkoutDetailSheet: View {
                     let pMin = Int(paceSecs / 60)
                     let pSec = Int(paceSecs) % 60
                     comparisonTile(
-                        label: "PACE",
+                        label: L("PACE"),
                         actual: "\(pMin):\(String(format: "%02d", pSec)) /km",
                         target: w.targetPace
                     )
@@ -1018,7 +1018,7 @@ struct WorkoutDetailSheet: View {
 
                 if let hr = w.matchedAvgHr {
                     comparisonTile(
-                        label: "AVG HR",
+                        label: L("AVG HR"),
                         actual: "\(hr) bpm",
                         target: w.targetHrRange ?? WorkoutTypePresentation.zoneShort(w.targetZone)
                     )

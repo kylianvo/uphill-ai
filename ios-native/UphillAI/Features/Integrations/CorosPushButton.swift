@@ -144,19 +144,19 @@ public struct CorosPushButton: View {
 
         let today = Self.dateFormatter.string(from: Date())
         do {
-            let outcome = try await service.pushToCoros(clientToday: today, lang: "en")
+            let outcome = try await service.pushToCoros(clientToday: today, lang: AppLanguage.code)
             if outcome.isSuccess {
                 UINotificationFeedbackGenerator().notificationOccurred(.success)
                 let workouts = outcome.summary?.workoutsSent ?? 0
-                let end = outcome.summary?.windowEnd ?? "upcoming window"
+                let end = outcome.summary?.windowEnd ?? L("the upcoming weeks")
                 withAnimation(UH.Motion.standard) {
-                    self.outcomeMessage = "Sent \(workouts) workouts to COROS through \(end)."
+                    self.outcomeMessage = L("Sent %lld workouts to COROS through %@.", workouts, end)
                 }
                 await refreshPushStatus()
             } else {
                 UINotificationFeedbackGenerator().notificationOccurred(.error)
                 withAnimation(UH.Motion.standard) {
-                    self.errorMessage = outcome.errorMessage ?? "Could not send workouts to COROS."
+                    self.errorMessage = outcome.errorMessage ?? L("Could not send to COROS.")
                 }
             }
         } catch {

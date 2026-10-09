@@ -16,7 +16,7 @@ struct DayRow: View {
 
     private var dateText: String {
         guard let date = day.date else { return day.weekday.short }
-        return date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated))
+        return date.formatted(Date.FormatStyle(locale: AppLanguage.current.locale).weekday(.abbreviated).day().month(.abbreviated))
     }
 
     private var dayIdentifier: String {
@@ -253,7 +253,7 @@ struct DayRow: View {
                         .background(UH.Palette.activeFill, in: Capsule())
                 }
             } else {
-                let slot = workout.sessionSlot?.capitalized ?? "Session"
+                let slot = L(workout.sessionSlot?.capitalized ?? "Session")
                 Text(slot)
                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                     .foregroundStyle(zoneColor)
@@ -335,12 +335,12 @@ struct DayRow: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("workout.\(workout.id).done")
-        .accessibilityLabel(workout.isDone ? "Mark as not done" : "Mark as done")
+        .accessibilityLabel(workout.isDone ? L("Mark as not done") : L("Mark as done"))
     }
 
     private func accessibility(_ w: Workout) -> String {
-        var parts = [w.title, "\(Int(w.durationMinutes)) minutes"]
-        if let km = w.distanceKm, km > 0 { parts.append("\(km.formatted(.number.precision(.fractionLength(0...1)))) kilometres") }
+        var parts = [w.title, L("%lld minutes", Int(w.durationMinutes))]
+        if let km = w.distanceKm, km > 0 { parts.append(L("%@ kilometres", km.formatted(.number.precision(.fractionLength(0...1))))) }
         if w.isPriority { parts.append("priority") }
         if w.isDone { parts.append("done") } else if w.isMissedFlag { parts.append("missed") }
         return parts.joined(separator: ", ")

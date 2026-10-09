@@ -66,7 +66,7 @@ struct NextWeekSheet: View {
                 Button("Build anyway") { Task { await submit(override: true) } }
                 Button("Not yet", role: .cancel) {}
             } message: {
-                Text(confirmMessage ?? "You haven't completed 70% of the current block yet.")
+                Text(confirmMessage ?? L("You haven't completed 70% of the current block yet."))
             }
         }
         .presentationDetents([.medium, .large])
@@ -178,12 +178,12 @@ struct NextWeekSheet: View {
     }
 
     private var rpeDescriptor: String {
-        guard let rpe else { return "Select your perceived effort for the block (1 to 10)" }
+        guard let rpe else { return L("Select your perceived effort for the block (1 to 10)") }
         switch rpe {
-        case 1...3: return "Very light / recovery. You felt fresh and recovered easily."
-        case 4...6: return "Moderate / sustainable. Good training rhythm without excessive strain."
-        case 7...8: return "Hard / challenging. Workouts pushed you, but manageable."
-        case 9...10: return "Maximum effort / near exhaustion. Very high fatigue."
+        case 1...3: return L("Very light / recovery. You felt fresh and recovered easily.")
+        case 4...6: return L("Moderate / sustainable. Good training rhythm without excessive strain.")
+        case 7...8: return L("Hard / challenging. Workouts pushed you, but manageable.")
+        case 9...10: return L("Maximum effort / near exhaustion. Very high fatigue.")
         default: return ""
         }
     }
@@ -251,7 +251,7 @@ struct NextWeekSheet: View {
                 ProgressView()
                     .frame(maxWidth: .infinity)
             } else {
-                Text(offer.unlocked ? offer.title : "Generate Block \(offer.blockNumber) anyway")
+                Text(offer.unlocked ? offer.title : L("Generate Block %lld anyway", offer.blockNumber))
                     .frame(maxWidth: .infinity)
             }
         }

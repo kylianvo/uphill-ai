@@ -12,8 +12,8 @@ enum ProductFormat: String, Codable, Sendable, CaseIterable, Identifiable {
         switch self {
         case .gel: return "Gel"
         case .chews: return "Chews"
-        case .drinkMix: return "Drink Mix"
-        case .solid: return "Solid"
+        case .drinkMix: return L("Drink Mix")
+        case .solid: return L("Solid")
         }
     }
 

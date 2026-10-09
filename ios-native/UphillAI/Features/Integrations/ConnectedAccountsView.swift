@@ -130,7 +130,7 @@ public struct ConnectedAccountsView: View {
                         Circle()
                             .fill(UH.Palette.accentInk)
                             .frame(width: 6, height: 6)
-                        Text(status?.coros?.lastSyncAt != nil ? "Synced" : "Connected")
+                        Text(status?.coros?.lastSyncAt != nil ? L("Synced") : L("Connected"))
                             .font(.system(size: 11, weight: .bold, design: .monospaced))
                             .foregroundStyle(UH.Palette.accentInk)
                     }
@@ -195,7 +195,7 @@ public struct ConnectedAccountsView: View {
                                 Image(systemName: "arrow.triangle.2.circlepath")
                                     .font(.system(size: 10))
                             }
-                            Text(isSyncing ? "Syncing…" : "Sync now")
+                            Text(isSyncing ? L("Syncing…") : L("Sync now"))
                                 .font(.system(size: 11, weight: .bold))
                                 .fixedSize()
                         }
@@ -277,7 +277,7 @@ public struct ConnectedAccountsView: View {
         case .success:
             await loadStatus()
             withAnimation(UH.Motion.standard) {
-                noticeMessage = "Connected to COROS · Syncing activities..."
+                noticeMessage = L("Connected to COROS · Syncing activities...")
             }
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         case .cancelled:
@@ -298,12 +298,12 @@ public struct ConnectedAccountsView: View {
             let result = try await service.syncNow(days: 30)
             UINotificationFeedbackGenerator().notificationOccurred(.success)
             withAnimation(UH.Motion.standard) {
-                self.noticeMessage = "Sync successful: fetched \(result.activities) workouts and \(result.dailyMetrics) days of health data."
+                self.noticeMessage = L("Sync successful: fetched %lld workouts and %lld days of health data.", result.activities, result.dailyMetrics)
             }
             await loadStatus()
         } catch {
             UINotificationFeedbackGenerator().notificationOccurred(.error)
-            errorMessage = "Sync failed. Please try again."
+            errorMessage = L("Sync failed. Please try again.")
         }
         isSyncing = false
     }
@@ -320,13 +320,13 @@ public struct ConnectedAccountsView: View {
             withAnimation(UH.Motion.standard) {
                 let pace = result.thresholdPace ?? "—"
                 let vo2 = result.corosVo2max != nil ? "\(Int(result.corosVo2max!))" : "—"
-                self.noticeMessage = "EvoLab synced successfully: threshold pace \(pace)/km, VO2max \(vo2)."
+                self.noticeMessage = L("EvoLab synced successfully: threshold pace %@/km, VO2max %@.", pace, vo2)
             }
             onUpdatedUser?(result)
             await loadStatus()
         } catch {
             UINotificationFeedbackGenerator().notificationOccurred(.error)
-            errorMessage = "EvoLab sync failed. Please try again."
+            errorMessage = L("EvoLab sync failed. Please try again.")
         }
         isSyncingFitness = false
     }
@@ -340,10 +340,10 @@ public struct ConnectedAccountsView: View {
             try await service.disconnectCoros()
             withAnimation(UH.Motion.standard) {
                 self.status = DeviceConnectionStatus(coros: nil)
-                self.noticeMessage = "Disconnected from COROS."
+                self.noticeMessage = L("Disconnected from COROS.")
             }
         } catch {
-            errorMessage = "Could not disconnect."
+            errorMessage = L("Could not disconnect.")
         }
         isLoading = false
     }

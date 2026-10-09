@@ -74,7 +74,7 @@ struct KnowledgeCardView: View {
                 HStack(spacing: 5) {
                     Image(systemName: topicIcon)
                         .font(.system(size: 10, weight: .bold))
-                    Text(card.topic.uppercased())
+                    Text(L(card.topic).uppercased())
                         .font(.system(size: 10, weight: .bold, design: .monospaced))
                         .tracking(0.5)
                 }

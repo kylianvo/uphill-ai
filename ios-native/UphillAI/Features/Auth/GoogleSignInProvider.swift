@@ -14,16 +14,16 @@ enum GoogleSignInProvider {
     static func failureMessage(for error: Error) -> String? {
         if let failure = error as? Failure {
             switch failure {
-            case .noPresenter: return "Google sign-in couldn't open. Please try again."
-            case .noIDToken: return "Google didn't return a sign-in token. Please try again."
+            case .noPresenter: return L("Google sign-in couldn't open. Please try again.")
+            case .noIDToken: return L("Google didn't return a sign-in token. Please try again.")
             }
         }
         let ns = error as NSError
         guard ns.domain == GIDSignInError.errorDomain else {
-            return "Google sign-in failed (\(ns.domain) \(ns.code)). Please try again."
+            return L("Google sign-in failed (%@ %lld). Please try again.", ns.domain, ns.code)
         }
         if ns.code == GIDSignInError.canceled.rawValue { return nil }
-        return "Google sign-in failed (error \(ns.code)). Please try again."
+        return L("Google sign-in failed (error %lld). Please try again.", ns.code)
     }
 
     /// Logs the underlying error (no tokens are ever part of it).

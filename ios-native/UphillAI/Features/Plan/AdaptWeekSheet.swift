@@ -219,12 +219,12 @@ struct AdaptWeekSheet: View {
     }
 
     private func rpeDescriptor(_ val: Int?) -> String {
-        guard let val else { return "Select your perceived effort (1 to 10)" }
+        guard let val else { return L("Select your perceived effort (1 to 10)") }
         switch val {
-        case 1...3: return "Very light / recovery. Fresh legs, low fatigue."
-        case 4...6: return "Moderate / sustainable. Good training rhythm without excessive strain."
-        case 7...8: return "Hard / demanding. Heavy legs, needed deep recovery."
-        case 9...10: return "Maximum effort / near exhaustion. High accumulated fatigue."
+        case 1...3: return L("Very light / recovery. Fresh legs, low fatigue.")
+        case 4...6: return L("Moderate / sustainable. Good training rhythm without excessive strain.")
+        case 7...8: return L("Hard / demanding. Heavy legs, needed deep recovery.")
+        case 9...10: return L("Maximum effort / near exhaustion. High accumulated fatigue.")
         default: return ""
         }
     }

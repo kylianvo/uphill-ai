@@ -156,7 +156,7 @@ struct MoveSwapDaySheet: View {
 
     private var sourceDateText: String {
         guard let d = sourceDay.date else { return sourceDay.weekday.rawValue }
-        return d.formatted(.dateTime.weekday(.wide).month(.abbreviated).day())
+        return d.formatted(Date.FormatStyle(locale: AppLanguage.current.locale).weekday(.wide).month(.abbreviated).day())
     }
 
     // MARK: - Swap Section
@@ -180,7 +180,7 @@ struct MoveSwapDaySheet: View {
                                     .font(UH.TextStyle.label)
                                     .foregroundStyle(UH.Palette.ink)
                                 if let d = targetDay.date {
-                                    Text(d.formatted(.dateTime.month(.abbreviated).day()))
+                                    Text(d.formatted(Date.FormatStyle(locale: AppLanguage.current.locale).month(.abbreviated).day()))
                                         .font(UH.TextStyle.caption)
                                         .foregroundStyle(UH.Palette.muted)
                                 }
@@ -291,14 +291,14 @@ struct MoveSwapDaySheet: View {
                                     Text(target.weekday.rawValue)
                                         .font(UH.TextStyle.label)
                                         .foregroundStyle(UH.Palette.ink)
-                                    Text(target.date.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()))
+                                    Text(target.date.formatted(Date.FormatStyle(locale: AppLanguage.current.locale).weekday(.abbreviated).month(.abbreviated).day()))
                                         .font(UH.TextStyle.caption)
                                         .foregroundStyle(UH.Palette.muted)
                                 }
 
                                 Spacer()
 
-                                Text(target.week == sourceDay.week ? "This week" : "Next week")
+                                Text(target.week == sourceDay.week ? L("This week") : L("Next week"))
                                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                                     .foregroundStyle(UH.Palette.secondary)
                                     .padding(.horizontal, 6)
