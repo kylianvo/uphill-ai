@@ -67,11 +67,13 @@ enum GearImageResolver {
         // Saucony
         if b.contains("saucony") {
             if m.contains("endorphin") {
+                if m.contains("azura") { return "shoe_saucony_endorphin_azura" }
                 if m.contains("edge") { return "shoe_saucony_endorphin_edge" }
                 if m.contains("speed") { return "shoe_saucony_endorphin_speed_5" }
                 if m.contains("elite") { return "shoe_saucony_endorphin_elite_2" }
                 if m.contains("pro") { return "shoe_saucony_endorphin_pro_5" }
             }
+            if m.contains("azura") { return "shoe_saucony_endorphin_azura" }
             if m.contains("peregrine") { return "shoe_saucony_peregrine_16" }
             if m.contains("triumph") { return "shoe_saucony_triumph_23" }
             if m.contains("ride") { return "shoe_saucony_ride_19" }
@@ -99,6 +101,7 @@ enum GearImageResolver {
 
         // Asics
         if b.contains("asics") {
+            if m.contains("sonicblast") { return "shoe_asics_sonicblast_2" }
             if m.contains("metafuji") { return "shoe_asics_metafuji_trail_2" }
             if m.contains("trabuco") { return "shoe_asics_trabuco_14" }
             if m.contains("novablast") { return "shoe_asics_novablast_5" }
@@ -180,7 +183,10 @@ enum GearImageResolver {
                 if m.contains("pure") { return "shoe_puma_deviate_nitro_pure" }
                 return "shoe_puma_deviate_nitro_4"
             }
-            if m.contains("velocity") { return "shoe_puma_velocity_nitro_4" }
+            if m.contains("velocity") {
+                if m.contains("5") { return "shoe_puma_velocity_nitro_5" }
+                return "shoe_puma_velocity_nitro_4"
+            }
         }
 
         // Adidas
