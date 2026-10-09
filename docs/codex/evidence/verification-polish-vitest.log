@@ -1,0 +1,9 @@
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+
+ RUN  v4.1.9 /Users/vietvo/Documents/antigravity/uphill-ai/.claude/worktrees/landing-page-redesign-codex-2d6105/frontend
+
+
+ Test Files  63 passed (63)
+      Tests  505 passed (505)
+   Start at  22:32:37
+   Duration  37.83s (transform 11.12s, setup 27.10s, import 136.78s, tests 46.71s, environment 108.17s)

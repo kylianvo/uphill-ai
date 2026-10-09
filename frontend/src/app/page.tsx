@@ -3,19 +3,10 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  Crosshair,
-  Gauge,
-  Sneaker,
-  BowlFood,
-  MapPin,
-  CalendarBlank,
-  ArrowsClockwise,
   Trophy,
-  ShieldCheck,
   ChartLineUp,
   Mountains,
   CheckCircle,
-  Robot,
   ArrowRight,
   DownloadSimple,
 } from "@phosphor-icons/react";
@@ -26,6 +17,7 @@ import { TrustBanner } from "@/components/landing/TrustBanner";
 import { LANDING_FEATURES } from "@/data/landingFeatures";
 import { BetaDownloadModal } from "@/components/landing/BetaDownloadModal";
 import { ComparisonSection } from "@/components/landing/ComparisonSection";
+import { ProductDevice, CorosWatchPhoto } from "@/components/landing/ProductDevices";
 import landingStyles from "./LandingPage.module.css";
 
 // Whether the Proof section renders real numbers/testimonials yet.
@@ -34,82 +26,58 @@ import landingStyles from "./LandingPage.module.css";
 // labels to show. Never fabricate these to fill the slot early.
 const SHOW_PROOF_CONTENT = false;
 
-const TOOLING_ICONS = { Crosshair, Gauge, Sneaker, BowlFood };
 const TOOLING_FEATURE_IDS = ["pace", "goal", "gear", "nutrition"] as const;
 
 type Step = {
-  icon: React.ElementType;
   titleKey: keyof typeof translations.en;
   descKey: keyof typeof translations.en;
   altKey: keyof typeof translations.en;
-  image: string;
+  image: Parameters<typeof ProductDevice>[0]["shot"];
+  device: "laptop" | "phone" | "closeup";
   anchor: string;
 };
 
 const STEPS: Step[] = [
   {
-    icon: MapPin,
     titleKey: "landing_step1_title",
     descKey: "landing_step1_desc",
     altKey: "landing_step1_alt",
-    image: "/screenshots/tell-us-where-you-are.png",
+    image: "ios-plan-builder",
+    device: "phone",
     anchor: "/science#thresholds",
   },
   {
-    icon: CalendarBlank,
     titleKey: "landing_step2_title",
     descKey: "landing_step2_desc",
     altKey: "landing_step2_alt",
-    image: "/screenshots/current-planner-view.png",
+    image: "ios-plan-week2",
+    device: "phone",
     anchor: "/science#thresholds",
   },
   {
-    icon: ArrowsClockwise,
     titleKey: "landing_step3_title",
     descKey: "landing_step3_desc",
     altKey: "landing_step3_alt",
-    image: "/screenshots/adapt-week-feeling-selector.png",
+    image: "ios-adapt-week",
+    device: "phone",
     anchor: "/science#adaptation",
   },
   {
-    icon: Trophy,
     titleKey: "landing_step4_title",
     descKey: "landing_step4_desc",
     altKey: "landing_step4_alt",
-    image: "/screenshots/block-review-coach-feedback.png",
+    image: "web-calendar-month",
+    device: "laptop",
     anchor: "/science#block-evaluation",
   },
 ];
 
-const TOOL_CONFIG: Record<
-  "pace" | "goal" | "gear" | "nutrition",
-  {
-    image: string;
-    anchor: string;
-    alt: string;
-  }
-> = {
-  pace: {
-    image: "/screenshots/tool-pace-strategy.png",
-    anchor: "/science#pace-physics",
-    alt: "Pace Strategy splits table and elevation breakdown",
-  },
-  goal: {
-    image: "/screenshots/tool-goal-determiner.png",
-    anchor: "/science#goal-prediction",
-    alt: "Goal Determiner finish time predictor and A/B/C goals",
-  },
-  gear: {
-    image: "/screenshots/tool-gear-finder.png",
-    anchor: "/science#gear-grounding",
-    alt: "Gear Finder technical trail shoe match and verified specs",
-  },
-  nutrition: {
-    image: "/screenshots/tool-nutrition-lab.png",
-    anchor: "/science#nutrition-grounding",
-    alt: "Nutrition Lab metabolic hour-by-hour race fuel plan",
-  },
-};
+const TOOL_CONFIG = {
+  pace: { anchor: "/science#pace-physics", shot: "ios-pace-strategy", label: "Pace Strategy", alt: "landing_preview_pace_alt" },
+  goal: { anchor: "/science#goal-prediction", shot: "ios-goal-determiner", label: "Goal Determiner", alt: "landing_preview_goal_alt" },
+  gear: { anchor: "/science#gear-grounding", shot: "ios-gear-vault", label: "Gear Vault", alt: "landing_preview_gear_alt" },
+  nutrition: { anchor: "/science#nutrition-grounding", shot: "ios-nutrition-lab", label: "Nutrition Lab", alt: "landing_preview_nutrition_alt" },
+} as const;
 
 export default function MarketingHome() {
   const router = useRouter();
@@ -203,113 +171,38 @@ export default function MarketingHome() {
     };
   }, [showMarketing]);
 
-  // Video background refs — dual-video crossfade engine
-  const videoARef = useRef<HTMLVideoElement>(null);
-  const videoBRef = useRef<HTMLVideoElement>(null);
-  const activeVideoRef = useRef<"A" | "B">("A");
-  const crossfadeRafARef = useRef<number | null>(null);
-  const crossfadeRafBRef = useRef<number | null>(null);
-  const crossfadingRef = useRef(false);
-
   useEffect(() => {
-    const vidA = videoARef.current;
-    const vidB = videoBRef.current;
-    if (!vidA || !vidB) return;
-    const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
-    const SRC = basePath + "/bg.mp4";
-    const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const FADE_MS = 250;
-    const FADE_THRESHOLD = 0.55;
-    vidA.src = SRC;
-    vidB.src = SRC;
-    vidA.muted = true;
-    vidB.muted = true;
+    if (!showMarketing) return;
+    const previous = document.documentElement.lang;
+    document.documentElement.lang = lang;
+    return () => { document.documentElement.lang = previous; };
+  }, [showMarketing, lang]);
 
-    const animateFade = (
-      el: HTMLVideoElement,
-      rafRef: React.MutableRefObject<number | null>,
-      from: number,
-      to: number,
-      onDone?: () => void,
-    ) => {
-      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-      const t0 = performance.now();
-      const d = to - from;
-      const tick = (now: number) => {
-        const p = Math.min((now - t0) / FADE_MS, 1);
-        el.style.opacity = String(from + d * p);
-        if (p < 1) {
-          rafRef.current = requestAnimationFrame(tick);
-        } else {
-          rafRef.current = null;
-          onDone?.();
-        }
-      };
-      rafRef.current = requestAnimationFrame(tick);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    if (!showMarketing) return;
+    const video = videoRef.current;
+    if (!video) return;
+    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const apply = () => {
+      if (motion.matches || document.hidden) {
+        video.pause();
+      } else {
+        if (!video.getAttribute("src")) video.src = `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/bg.mp4`;
+        video.play().catch(() => {});
+      }
     };
-
-    const triggerCrossfade = () => {
-      if (motionPreference.matches || crossfadingRef.current) return;
-      crossfadingRef.current = true;
-      const outVid = activeVideoRef.current === "A" ? vidA : vidB;
-      const inVid = activeVideoRef.current === "A" ? vidB : vidA;
-      const outRaf =
-        activeVideoRef.current === "A" ? crossfadeRafARef : crossfadeRafBRef;
-      const inRaf =
-        activeVideoRef.current === "A" ? crossfadeRafBRef : crossfadeRafARef;
-
-      inVid.currentTime = 0;
-      inVid.style.opacity = "0";
-      inVid.style.zIndex = "2";
-      outVid.style.zIndex = "1";
-      inVid.play().catch(() => {});
-
-      animateFade(outVid, outRaf, 1, 0, () => {
-        outVid.pause();
-        crossfadingRef.current = false;
-        activeVideoRef.current = activeVideoRef.current === "A" ? "B" : "A";
-      });
-      animateFade(inVid, inRaf, 0, 1);
-    };
-
-    const handleTimeUpdateA = () => {
-      if (!vidA.duration || activeVideoRef.current !== "A") return;
-      if (vidA.duration - vidA.currentTime <= FADE_THRESHOLD) triggerCrossfade();
-    };
-    const handleTimeUpdateB = () => {
-      if (!vidB.duration || activeVideoRef.current !== "B") return;
-      if (vidB.duration - vidB.currentTime <= FADE_THRESHOLD) triggerCrossfade();
-    };
-
-    vidA.addEventListener("timeupdate", handleTimeUpdateA);
-    vidB.addEventListener("timeupdate", handleTimeUpdateB);
-    const applyMotionPreference = () => {
-      if (crossfadeRafARef.current !== null) cancelAnimationFrame(crossfadeRafARef.current);
-      if (crossfadeRafBRef.current !== null) cancelAnimationFrame(crossfadeRafBRef.current);
-      vidA.pause();
-      vidB.pause();
-      crossfadingRef.current = false;
-      activeVideoRef.current = "A";
-      vidA.style.opacity = "1";
-      vidB.style.opacity = "0";
-      if (!motionPreference.matches) vidA.play().catch(() => {});
-    };
-    applyMotionPreference();
-    motionPreference.addEventListener("change", applyMotionPreference);
-
+    // Product imagery gets the network first; reduced motion loads only the poster.
+    const timer = window.setTimeout(apply, 1800);
+    motion.addEventListener("change", apply);
+    document.addEventListener("visibilitychange", apply);
     return () => {
-      motionPreference.removeEventListener("change", applyMotionPreference);
-      vidA.pause();
-      vidB.pause();
-      vidA.removeEventListener("timeupdate", handleTimeUpdateA);
-      vidB.removeEventListener("timeupdate", handleTimeUpdateB);
-      if (crossfadeRafARef.current !== null)
-        cancelAnimationFrame(crossfadeRafARef.current);
-      if (crossfadeRafBRef.current !== null)
-        cancelAnimationFrame(crossfadeRafBRef.current);
+      clearTimeout(timer);
+      motion.removeEventListener("change", apply);
+      document.removeEventListener("visibilitychange", apply);
+      video.pause();
     };
   }, [showMarketing]);
-
 
   if (!showMarketing) return null;
 
@@ -319,67 +212,9 @@ export default function MarketingHome() {
 
   return (
     <div className={`landing-page ${landingStyles.page}`} style={{ position: "relative", minHeight: "100dvh", color: "#111827" }}>
-      {/* ── Fixed Video Background Layer ─────────────────────────────── */}
-      <div
-        className="video-bg-container"
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 0,
-          overflow: "hidden",
-          pointerEvents: "none",
-          background: "#0d1117",
-        }}
-      >
-        <video
-          ref={videoARef}
-          muted
-          playsInline
-          style={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            width: "115%",
-            height: "115%",
-            transform: "translate(-50%, -50%)",
-            objectFit: "cover",
-            objectPosition: "center top",
-            opacity: 0,
-            willChange: "opacity",
-            zIndex: 2,
-            pointerEvents: "none",
-          }}
-        />
-        <video
-          ref={videoBRef}
-          muted
-          playsInline
-          style={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            width: "115%",
-            height: "115%",
-            transform: "translate(-50%, -50%)",
-            objectFit: "cover",
-            objectPosition: "center top",
-            opacity: 0,
-            willChange: "opacity",
-            zIndex: 1,
-            pointerEvents: "none",
-          }}
-        />
-        {/* Soft light vignette overlay keeping video atmospheric while ensuring text legibility */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background:
-              "radial-gradient(ellipse at 50% 15%, rgba(255, 255, 255, 0.48) 0%, rgba(255, 255, 255, 0.75) 60%, rgba(255, 255, 255, 0.88) 100%)",
-            pointerEvents: "none",
-            zIndex: 3,
-          }}
-        />
+      <div className={landingStyles.backdrop} aria-hidden="true">
+        <video ref={videoRef} muted playsInline loop preload="none"
+          poster={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/landing/mountain-poster.webp`} />
       </div>
 
       {/* ── Content Wrapper (Relative above video) ───────────────────── */}
@@ -448,7 +283,7 @@ export default function MarketingHome() {
               </div>
               <span
                 style={{
-                  fontFamily: "var(--font-schibsted), sans-serif",
+                  fontFamily: "var(--font-outfit), sans-serif",
                   fontSize: "22px",
                   fontWeight: 700,
                   letterSpacing: "-0.8px",
@@ -583,110 +418,24 @@ export default function MarketingHome() {
 
         {/* ── Main Marketing Body ────────────────────────────────────── */}
         <main>
-          {/* ── Hero Section (Product-Led Presentation over Video) ───── */}
           <section className={landingStyles.hero}>
             <div className={landingStyles.heroInner}>
-              <h1 className={`hero-anim-title ${landingStyles.heroTitle}`}>
-                <span>{lang === "vi" ? "Tập Luyện Thông Minh," : "Train Smarter,"}</span>{" "}
-                <span>{lang === "vi" ? "Chinh Phục Đỉnh Cao" : "Go Higher"}</span>
-              </h1>
-
-              <p className={`hero-anim-sub ${landingStyles.heroSubtitle}`}>
-                {t("landing_subtitle")}
-              </p>
-
-              {/* Primary & Secondary Action Cluster */}
-              <div className={`hero-anim-cta ${landingStyles.heroActions}`}>
-                <Link
-                  href="/app"
-                  className="btn-primary-motion"
-                  style={{
-                    background: "#111827",
-                    color: "#ffffff",
-                    padding: "16px 36px",
-                    borderRadius: "9999px",
-                    fontSize: "16.5px",
-                    fontWeight: 700,
-                    textDecoration: "none",
-                    boxShadow: "0 8px 24px rgba(0, 0, 0, 0.18)",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "10px",
-                  }}
-                >
-                  <span>{t("landing_cta_primary")}</span>
-                  <ArrowRight size={18} weight="bold" className="cta-arrow" />
-                </Link>
-
-                <button
-                  type="button"
-                  onClick={() => setBetaModalOpen(true)}
-                  className="btn-secondary-motion"
-                  style={{
-                    background: "rgba(16, 185, 129, 0.12)",
-                    backdropFilter: "blur(16px)",
-                    WebkitBackdropFilter: "blur(16px)",
-                    color: "#047857",
-                    border: "1px solid rgba(16, 185, 129, 0.35)",
-                    padding: "16px 30px",
-                    borderRadius: "9999px",
-                    fontSize: "16.5px",
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    boxShadow: "0 4px 16px rgba(16, 185, 129, 0.12)",
-                    transition: "all 0.15s ease",
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.background = "rgba(16, 185, 129, 0.2)";
-                    e.currentTarget.style.borderColor = "rgba(16, 185, 129, 0.6)";
-                  }}
-                  onMouseOut={(e) => {
-                    e.currentTarget.style.background = "rgba(16, 185, 129, 0.12)";
-                    e.currentTarget.style.borderColor = "rgba(16, 185, 129, 0.35)";
-                  }}
-                >
-                  <DownloadSimple size={18} weight="bold" />
-                  <span>{t("landing_hero_beta_download")}</span>
-                </button>
-
-                <Link
-                  href="/science"
-                  className="btn-secondary-motion"
-                  style={{
-                    background: "rgba(255, 255, 255, 0.75)",
-                    backdropFilter: "blur(16px)",
-                    color: "#111827",
-                    border: "1px solid rgba(255, 255, 255, 0.9)",
-                    padding: "16px 28px",
-                    borderRadius: "9999px",
-                    fontSize: "16.5px",
-                    fontWeight: 600,
-                    textDecoration: "none",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    boxShadow: "0 4px 16px rgba(0, 0, 0, 0.04)",
-                  }}
-                >
-                  <span>{t("landing_nav_science")}</span>
-                </Link>
+              <div className={landingStyles.heroCopy}>
+                <h1 className={landingStyles.heroTitle}>
+                  <span>{t("landing_hero_line1")}</span>
+                  <span>{t("landing_hero_line2")}</span>
+                </h1>
+                <p className={landingStyles.heroSubtitle}>{t("landing_subtitle")}</p>
+                <div className={landingStyles.heroActions}>
+                  <button type="button" onClick={() => setBetaModalOpen(true)} className={landingStyles.primaryAction}>
+                    <DownloadSimple size={19} weight="bold" aria-hidden="true" />{t("landing_preview_download")}
+                  </button>
+                  <Link href="/app" className={landingStyles.webAction}>{t("landing_preview_web")}<ArrowRight size={18} aria-hidden="true" /></Link>
+                </div>
               </div>
 
-              {/* Trust Statement (Hero Integration) */}
-              <div className={landingStyles.heroProof}>
-                <ShieldCheck size={18} weight="bold" aria-hidden="true" />
-                <span>{lang === "vi" ? "KHOA HỌC CHẠY TRAIL" : "GROUNDED IN EXERCISE PHYSIOLOGY"}</span>
-              </div>
-              <div className={`hero-anim-trust ${landingStyles.heroTrust}`}>
-                <TrustBanner lang={lang} />
-              </div>
             </div>
           </section>
-
-
 
           {/* ── 4 Sequential Product Steps (Real App Walkthrough) ─────── */}
           <section
@@ -696,7 +445,7 @@ export default function MarketingHome() {
             <div className={landingStyles.sectionHeading}>
               <h2
                 style={{
-                  fontFamily: "var(--font-schibsted), sans-serif",
+                  fontFamily: "var(--font-outfit), sans-serif",
                   fontSize: "clamp(26px, 4vw, 40px)",
                   fontWeight: 800,
                   color: "#111827",
@@ -720,39 +469,21 @@ export default function MarketingHome() {
               </p>
             </div>
 
-            {/* Steps alternating layout */}
+            <div className={landingStyles.trust}><TrustBanner lang={lang} /></div>
+            {/* Real product views, captioned as example data. */}
             <div className="landing-steps-container">
               {STEPS.map((step, i) => {
-                const Icon = step.icon;
                 const isEven = i % 2 === 1;
                 return (
                   <div
                     key={step.titleKey}
-                    className={`card-interactive-lift landing-step-card scroll-reveal ${isEven ? "step-even" : "step-odd"}`}
+                    className={`landing-step-card scroll-reveal ${isEven ? "step-even" : "step-odd"} ${i === 3 ? landingStyles.reviewStep : ""}`}
                   >
                     {/* Left Column (or Right Column if isEven on desktop; always top on mobile) */}
                     <div className="landing-step-text-col">
-                      <div
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "8px",
-                          padding: "6px 12px",
-                          borderRadius: "8px",
-                          background: "rgba(25, 206, 139, 0.12)",
-                          color: "var(--landing-accent-ink)",
-                          fontSize: "12.5px",
-                          fontWeight: 700,
-                          marginBottom: "16px",
-                        }}
-                      >
-                        <Icon size={16} weight="bold" />
-                        <span>{lang === "en" ? `Step 0${i + 1}` : `Bước 0${i + 1}`}</span>
-                      </div>
-
                       <h3
                         style={{
-                          fontFamily: "var(--font-schibsted), sans-serif",
+                          fontFamily: "var(--font-outfit), sans-serif",
                           fontSize: "clamp(20px, 2.5vw, 26px)",
                           fontWeight: 700,
                           color: "#111827",
@@ -793,18 +524,262 @@ export default function MarketingHome() {
 
                     {/* Screenshot Card Container */}
                     <div className="landing-step-img-col">
-                      <img
-                        src={step.image}
-                        alt={t(step.altKey)}
-                        width={1280}
-                        height={720}
-                        loading="lazy"
-                        className="landing-step-img"
-                      />
-                    </div>
+                      <ProductDevice shot={step.image} alt={t(step.altKey)} device={step.device} />
+                      </div>
                   </div>
                 );
               })}
+            </div>
+          </section>
+
+          {/* ── Coach Uphill (AI Chat Agent) Feature Spotlight ──────── */}
+          <section
+            id="coach"
+            className="landing-coach-section"
+          >
+            <div
+              className="card-interactive-lift landing-coach-card scroll-reveal"
+            >
+              <div>
+                <h2
+                  style={{
+                    fontFamily: "var(--font-outfit), sans-serif",
+                    fontSize: "clamp(26px, 3.5vw, 36px)",
+                    fontWeight: 800,
+                    color: "#111827",
+                    letterSpacing: "-0.8px",
+                    lineHeight: 1.2,
+                    marginBottom: "14px",
+                  }}
+                >
+                  {t("landing_coach_title")}
+                </h2>
+                <p
+                  style={{
+                    fontSize: "16px",
+                    lineHeight: 1.65,
+                    color: "#4b5563",
+                    marginBottom: "24px",
+                  }}
+                >
+                  {t("landing_coach_subtitle")}
+                </p>
+
+                <Link
+                  href="/science#coach-grounding"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    fontSize: "15px",
+                    fontWeight: 700,
+                    color: "var(--landing-accent-ink)",
+                    textDecoration: "none",
+                  }}
+                >
+                  <span>{t("landing_coach_science_link")}</span>
+                  <ArrowRight size={16} weight="bold" />
+                </Link>
+              </div>
+
+              <div className="landing-coach-img-col">
+                <ProductDevice shot="ios-coach-saturday" device="phone" alt={t("landing_preview_coach_alt")} />
+              </div>
+            </div>
+          </section>
+
+          {/* ── Specialized Mountain Tools Strip ─────────────────────── */}
+          <section
+            id="tools"
+            className="landing-tools-section"
+          >
+            <div style={{ maxWidth: "1140px", margin: "0 auto" }}>
+              <div className={landingStyles.sectionHeading}>
+                <h2
+                  style={{
+                    fontFamily: "var(--font-outfit), sans-serif",
+                    fontSize: "clamp(26px, 3.5vw, 36px)",
+                    fontWeight: 800,
+                    color: "#111827",
+                    letterSpacing: "-0.8px",
+                    marginBottom: "10px",
+                  }}
+                >
+                  {t("landing_tooling_title")}
+                </h2>
+                <p
+                  style={{
+                    fontSize: "16px",
+                    color: "#4b5563",
+                    maxWidth: "580px",
+                    margin: "0 auto",
+                    fontWeight: 500,
+                  }}
+                >
+                  {t("landing_tooling_subtitle")}
+                </p>
+              </div>
+
+              <div className="landing-tools-grid">
+                {toolingFeatures.map((feature) => {
+                  const copy = feature[lang];
+                  const config = TOOL_CONFIG[feature.id as keyof typeof TOOL_CONFIG];
+                  return (
+                    <article key={feature.id} className="landing-tool-card scroll-reveal">
+                      <div className={landingStyles.toolCopy}>
+                        <h3>{config.label}</h3>
+                        <p>{copy.cardBlurb}</p>
+                        <Link href={config.anchor}>{t("landing_step_science_link")}</Link>
+                      </div>
+                      <ProductDevice shot={config.shot} device="phone" alt={t(config.alt)} />
+                    </article>
+                  );
+                })}
+              </div>
+
+              <div style={{ textAlign: "center", marginTop: "40px" }}>
+                <Link
+                  href="/science"
+                  style={{
+                    fontSize: "15px",
+                    fontWeight: 700,
+                    color: "var(--landing-accent-ink)",
+                    textDecoration: "none",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                  }}
+                >
+                  <span>{t("landing_tooling_cta")}</span>
+                </Link>
+              </div>
+            </div>
+          </section>
+
+          {/* ── Connected Mountain Trail Ecosystem Strip ─────────────── */}
+          <section id="sync" className={landingStyles.syncSection}>
+            <div
+              className={`scroll-reveal ${landingStyles.syncInner}`}
+              style={{
+                maxWidth: "1140px",
+                margin: "0 auto",
+                textAlign: "center",
+                background: "rgba(255, 255, 255, 0.78)",
+                backdropFilter: "blur(20px)",
+                WebkitBackdropFilter: "blur(20px)",
+                borderRadius: "24px",
+                padding: "36px 28px",
+                border: "1px solid rgba(255, 255, 255, 0.85)",
+                boxShadow: "0 12px 32px rgba(0, 0, 0, 0.04)",
+              }}
+            >
+              <div className={landingStyles.syncDevices}>
+                <ProductDevice shot="ios-coros-workout" device="phone" alt={t("landing_preview_coros_alt")} />
+                <div><CorosWatchPhoto lang={lang} /></div>
+              </div>
+              <div className={landingStyles.syncCopy}>
+              <h3
+                style={{
+                  fontFamily: "var(--font-outfit), sans-serif",
+                  fontSize: "20px",
+                  fontWeight: 700,
+                  color: "#111827",
+                  marginBottom: "8px",
+                }}
+              >
+                {t("landing_sync_title")}
+              </h3>
+              <p
+                style={{
+                  fontSize: "14.5px",
+                  color: "#4b5563",
+                  marginBottom: "24px",
+                }}
+              >
+                {t("landing_sync_subtitle")}
+              </p>
+
+              {/* Platform Badges: COROS Live, others clearly Coming soon */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "28px",
+                  flexWrap: "wrap",
+                }}
+              >
+                {/* COROS - Active Integration */}
+                <div
+                  className="card-interactive-lift"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    color: "#111827",
+                    fontSize: "15px",
+                    fontWeight: 700,
+                    padding: "8px 16px",
+                    borderRadius: "9999px",
+                    background: "rgba(25, 206, 139, 0.12)",
+                    border: "1px solid rgba(25, 206, 139, 0.35)",
+                  }}
+                >
+                  <span className="live-beacon-dot" />
+                  <CheckCircle size={18} weight="fill" color="#19ce8b" />
+                  <img src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/brand/coros-logo.webp`} alt="COROS" width={92} height={24} style={{ width: 92, height: "auto" }} loading="lazy" />
+                  <span
+                    style={{
+                      fontSize: "10.5px",
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.5px",
+                      color: "var(--landing-accent-ink)",
+                      background: "rgba(25, 206, 139, 0.2)",
+                      padding: "2px 7px",
+                      borderRadius: "4px",
+                      marginLeft: "4px",
+                    }}
+                  >
+                    {t("landing_sync_live")}
+                  </span>
+                </div>
+
+                {/* Coming Soon Platforms */}
+                {[
+                  { name: "Garmin Connect" },
+                  { name: "Strava" },
+                  { name: "Apple Watch" },
+                ].map((item) => (
+                  <div
+                    key={item.name}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      color: "#6b7280",
+                      fontSize: "14.5px",
+                      fontWeight: 500,
+                      opacity: 1,
+                    }}
+                  >
+                    <span>{item.name}</span>
+                    <span
+                      style={{
+                        fontSize: "10.5px",
+                        fontWeight: 600,
+                        color: "#6b7280",
+                        background: "rgba(0, 0, 0, 0.05)",
+                        padding: "2px 6px",
+                        borderRadius: "4px",
+                      }}
+                    >
+                      {t("landing_sync_coming_soon")}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              </div>
             </div>
           </section>
 
@@ -823,7 +798,7 @@ export default function MarketingHome() {
             <div className={landingStyles.sectionHeading}>
               <h2
                 style={{
-                  fontFamily: "var(--font-schibsted), sans-serif",
+                  fontFamily: "var(--font-outfit), sans-serif",
                   fontSize: "clamp(28px, 4vw, 40px)",
                   fontWeight: 800,
                   color: "#111827",
@@ -990,7 +965,7 @@ export default function MarketingHome() {
 
                   <h3
                     style={{
-                      fontFamily: "var(--font-schibsted), sans-serif",
+                      fontFamily: "var(--font-outfit), sans-serif",
                       fontSize: "clamp(24px, 2.8vw, 30px)",
                       fontWeight: 800,
                       color: "#111827",
@@ -1030,7 +1005,7 @@ export default function MarketingHome() {
                       margin: "8px 0 4px",
                       padding: "14px 18px",
                       background: "rgba(240, 253, 244, 0.85)",
-                      borderLeft: "4px solid var(--accent-primary)",
+                      borderLeft: "1px solid var(--landing-accent-ink)",
                       borderRadius: "0 12px 12px 0",
                     }}
                   >
@@ -1188,7 +1163,7 @@ export default function MarketingHome() {
                       </span>
                       <h4
                         style={{
-                          fontFamily: "var(--font-schibsted), sans-serif",
+                          fontFamily: "var(--font-outfit), sans-serif",
                           fontSize: "18.5px",
                           fontWeight: 800,
                           color: "#111827",
@@ -1262,7 +1237,7 @@ export default function MarketingHome() {
                       </span>
                       <h4
                         style={{
-                          fontFamily: "var(--font-schibsted), sans-serif",
+                          fontFamily: "var(--font-outfit), sans-serif",
                           fontSize: "18.5px",
                           fontWeight: 800,
                           color: "#111827",
@@ -1336,7 +1311,7 @@ export default function MarketingHome() {
                       </span>
                       <h4
                         style={{
-                          fontFamily: "var(--font-schibsted), sans-serif",
+                          fontFamily: "var(--font-outfit), sans-serif",
                           fontSize: "18.5px",
                           fontWeight: 800,
                           color: "#111827",
@@ -1366,357 +1341,9 @@ export default function MarketingHome() {
             </div>
           </section>
 
-          {/* ── Coach Uphill (AI Chat Agent) Feature Spotlight ──────── */}
-          <section
-            id="coach"
-            className="landing-coach-section"
-          >
-            <div
-              className="card-interactive-lift landing-coach-card scroll-reveal"
-            >
-              <div>
-                <h2
-                  style={{
-                    fontFamily: "var(--font-schibsted), sans-serif",
-                    fontSize: "clamp(26px, 3.5vw, 36px)",
-                    fontWeight: 800,
-                    color: "#111827",
-                    letterSpacing: "-0.8px",
-                    lineHeight: 1.2,
-                    marginBottom: "14px",
-                  }}
-                >
-                  {t("landing_coach_title")}
-                </h2>
-                <div
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    padding: "6px 14px",
-                    borderRadius: "9999px",
-                    background: "rgba(25, 206, 139, 0.12)",
-                    color: "var(--landing-accent-ink)",
-                    fontSize: "12.5px",
-                    fontWeight: 700,
-                    marginBottom: "16px",
-                  }}
-                >
-                  <Robot size={18} weight="bold" />
-                  <span>{t("landing_coach_eyebrow")}</span>
-                </div>
-
-
-
-                <p
-                  style={{
-                    fontSize: "16px",
-                    lineHeight: 1.65,
-                    color: "#4b5563",
-                    marginBottom: "24px",
-                  }}
-                >
-                  {t("landing_coach_subtitle")}
-                </p>
-
-                <Link
-                  href="/science#coach-grounding"
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    fontSize: "15px",
-                    fontWeight: 700,
-                    color: "var(--landing-accent-ink)",
-                    textDecoration: "none",
-                  }}
-                >
-                  <span>{t("landing_coach_science_link")}</span>
-                  <ArrowRight size={16} weight="bold" />
-                </Link>
-              </div>
-
-              {/* Tight screenshot of chat exchange demonstrating refusal & citation */}
-              <div className="landing-coach-img-col">
-                <img
-                  src="/screenshots/coach-uphill-chat-exchange.png"
-                  alt="Coach Uphill chat exchange demonstrating source citation and refusal to recommend unverified supplements"
-                  width={1360}
-                  height={1200}
-                  loading="lazy"
-                  className="landing-coach-img"
-                />
-              </div>
-            </div>
-          </section>
-
-          {/* ── Specialized Mountain Tools Strip ─────────────────────── */}
-          <section
-            id="tools"
-            className="landing-tools-section"
-          >
-            <div style={{ maxWidth: "1140px", margin: "0 auto" }}>
-              <div className={landingStyles.sectionHeading}>
-                <h2
-                  style={{
-                    fontFamily: "var(--font-schibsted), sans-serif",
-                    fontSize: "clamp(26px, 3.5vw, 36px)",
-                    fontWeight: 800,
-                    color: "#111827",
-                    letterSpacing: "-0.8px",
-                    marginBottom: "10px",
-                  }}
-                >
-                  {t("landing_tooling_title")}
-                </h2>
-                <p
-                  style={{
-                    fontSize: "16px",
-                    color: "#4b5563",
-                    maxWidth: "580px",
-                    margin: "0 auto",
-                    fontWeight: 500,
-                  }}
-                >
-                  {t("landing_tooling_subtitle")}
-                </p>
-              </div>
-
-              {/* 4 Tool Cards with Tight Screenshots (KoopAI-Style 2x2 Grid) */}
-              <div className="landing-tools-grid">
-                {toolingFeatures.map((feature, i) => {
-                  const Icon = TOOLING_ICONS[feature.icon as keyof typeof TOOLING_ICONS];
-                  const copy = feature[lang];
-                  const config = TOOL_CONFIG[feature.id as keyof typeof TOOL_CONFIG];
-                  return (
-                    <div
-                      key={feature.id}
-                      className={`card-interactive-lift landing-tool-card scroll-reveal stagger-${i + 1}`}
-                    >
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "14px",
-                          marginBottom: "14px",
-                        }}
-                      >
-                        <div
-                          style={{
-                            width: "44px",
-                            height: "44px",
-                            borderRadius: "12px",
-                            background: "rgba(25, 206, 139, 0.12)",
-                            color: "var(--landing-accent-ink)",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            flexShrink: 0,
-                          }}
-                        >
-                          <Icon size={24} weight="duotone" />
-                        </div>
-                        <div>
-                          <h3
-                            style={{
-                              fontFamily: "var(--font-schibsted), sans-serif",
-                              fontSize: "19px",
-                              fontWeight: 700,
-                              color: "#111827",
-                              margin: 0,
-                            }}
-                          >
-                            {copy.tagline}
-                          </h3>
-                        </div>
-                      </div>
-
-                      <p
-                        style={{
-                          fontSize: "14px",
-                          lineHeight: 1.55,
-                          color: "#4b5563",
-                          margin: "0 0 18px",
-                        }}
-                      >
-                        {copy.cardBlurb}
-                      </p>
-
-                      {/* Tight Cropped Module Screenshot */}
-                      <div className="landing-tool-img-box">
-                        <img
-                          src={config.image}
-                          alt={config.alt}
-                          width={1360}
-                          height={800}
-                          className="landing-tool-img"
-                        />
-                      </div>
-
-                      <div style={{ marginTop: "auto" }}>
-                        <Link
-                          href={config.anchor}
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "6px",
-                            fontSize: "14px",
-                            fontWeight: 700,
-                            color: "var(--landing-accent-ink)",
-                            textDecoration: "none",
-                          }}
-                        >
-                          <span>{t("landing_step_science_link")}</span>
-                        </Link>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div style={{ textAlign: "center", marginTop: "40px" }}>
-                <Link
-                  href="/science"
-                  style={{
-                    fontSize: "15px",
-                    fontWeight: 700,
-                    color: "var(--landing-accent-ink)",
-                    textDecoration: "none",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "6px",
-                  }}
-                >
-                  <span>{t("landing_tooling_cta")}</span>
-                </Link>
-              </div>
-            </div>
-          </section>
-
           <div id="comparison" style={{ padding: "0 24px", display: "flex", justifyContent: "center", scrollMarginTop: "96px" }}>
             <ComparisonSection lang={lang} />
           </div>
-
-          {/* ── Connected Mountain Trail Ecosystem Strip ─────────────── */}
-          <section style={{ padding: "64px 24px" }}>
-            <div
-              className="scroll-reveal"
-              style={{
-                maxWidth: "840px",
-                margin: "0 auto",
-                textAlign: "center",
-                background: "rgba(255, 255, 255, 0.78)",
-                backdropFilter: "blur(20px)",
-                WebkitBackdropFilter: "blur(20px)",
-                borderRadius: "24px",
-                padding: "36px 28px",
-                border: "1px solid rgba(255, 255, 255, 0.85)",
-                boxShadow: "0 12px 32px rgba(0, 0, 0, 0.04)",
-              }}
-            >
-              <h3
-                style={{
-                  fontFamily: "var(--font-schibsted), sans-serif",
-                  fontSize: "20px",
-                  fontWeight: 700,
-                  color: "#111827",
-                  marginBottom: "8px",
-                }}
-              >
-                {t("landing_sync_title")}
-              </h3>
-              <p
-                style={{
-                  fontSize: "14.5px",
-                  color: "#4b5563",
-                  marginBottom: "24px",
-                }}
-              >
-                {t("landing_sync_subtitle")}
-              </p>
-
-              {/* Platform Badges: COROS Live, others clearly Coming soon */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "28px",
-                  flexWrap: "wrap",
-                }}
-              >
-                {/* COROS - Active Integration */}
-                <div
-                  className="card-interactive-lift"
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    color: "#111827",
-                    fontSize: "15px",
-                    fontWeight: 700,
-                    padding: "8px 16px",
-                    borderRadius: "9999px",
-                    background: "rgba(25, 206, 139, 0.12)",
-                    border: "1px solid rgba(25, 206, 139, 0.35)",
-                  }}
-                >
-                  <span className="live-beacon-dot" />
-                  <CheckCircle size={18} weight="fill" color="#19ce8b" />
-                  <span>COROS</span>
-                  <span
-                    style={{
-                      fontSize: "10.5px",
-                      fontWeight: 700,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                      color: "var(--landing-accent-ink)",
-                      background: "rgba(25, 206, 139, 0.2)",
-                      padding: "2px 7px",
-                      borderRadius: "4px",
-                      marginLeft: "4px",
-                    }}
-                  >
-                    {t("landing_sync_live")}
-                  </span>
-                </div>
-
-                {/* Coming Soon Platforms */}
-                {[
-                  { name: "Garmin Connect" },
-                  { name: "Strava" },
-                  { name: "Apple Watch" },
-                ].map((item) => (
-                  <div
-                    key={item.name}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      color: "#6b7280",
-                      fontSize: "14.5px",
-                      fontWeight: 500,
-                      opacity: 1,
-                    }}
-                  >
-                    <span>{item.name}</span>
-                    <span
-                      style={{
-                        fontSize: "10.5px",
-                        fontWeight: 600,
-                        color: "#6b7280",
-                        background: "rgba(0, 0, 0, 0.05)",
-                        padding: "2px 6px",
-                        borderRadius: "4px",
-                      }}
-                    >
-                      {t("landing_sync_coming_soon")}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
 
           {/* ── Proof Slot (Empty behind a flag per brief) ───────────── */}
           {SHOW_PROOF_CONTENT ? (
@@ -1728,7 +1355,7 @@ export default function MarketingHome() {
             >
               <h3
                 style={{
-                  fontFamily: "var(--font-schibsted), sans-serif",
+                  fontFamily: "var(--font-outfit), sans-serif",
                   fontSize: "18px",
                   fontWeight: 600,
                   color: "#9ca3af",
@@ -1766,7 +1393,7 @@ export default function MarketingHome() {
             >
               <h2
                 style={{
-                  fontFamily: "var(--font-schibsted), sans-serif",
+                  fontFamily: "var(--font-outfit), sans-serif",
                   fontSize: "clamp(28px, 4vw, 40px)",
                   fontWeight: 800,
                   color: "#111827",
@@ -1879,7 +1506,7 @@ export default function MarketingHome() {
             <div>
               <div
                 style={{
-                  fontFamily: "var(--font-schibsted), sans-serif",
+                  fontFamily: "var(--font-outfit), sans-serif",
                   fontSize: "18px",
                   fontWeight: 700,
                   color: "#111827",

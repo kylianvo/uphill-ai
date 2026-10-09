@@ -1,0 +1,98 @@
+[
+  {
+    "lang": "en",
+    "overflow": false,
+    "reduced": false,
+    "unloaded": 0,
+    "width": 1440
+  },
+  {
+    "lang": "en",
+    "overflow": false,
+    "reduced": false,
+    "unloaded": 0,
+    "width": 768
+  },
+  {
+    "lang": "en",
+    "overflow": false,
+    "reduced": false,
+    "unloaded": 0,
+    "width": 390
+  },
+  {
+    "lang": "vi",
+    "overflow": false,
+    "reduced": false,
+    "unloaded": 0,
+    "width": 390
+  },
+  {
+    "lang": "vi",
+    "overflow": false,
+    "reduced": false,
+    "unloaded": 0,
+    "width": 768
+  },
+  {
+    "lang": "vi",
+    "overflow": false,
+    "reduced": false,
+    "unloaded": 0,
+    "width": 1440
+  },
+  {
+    "coach": "http://127.0.0.1:18081/landing/ios-coach-saturday.png",
+    "lang": "vi",
+    "overflow": false,
+    "reduced": true,
+    "unloaded": 0,
+    "videoPaused": true,
+    "width": 1440
+  },
+  {
+    "coach": "http://127.0.0.1:18081/landing/ios-coach-saturday.png",
+    "lang": "vi",
+    "overflow": false,
+    "reduced": true,
+    "unloaded": 0,
+    "videoPaused": true,
+    "width": 768
+  },
+  {
+    "coach": "http://127.0.0.1:18081/landing/ios-coach-saturday.png",
+    "lang": "vi",
+    "overflow": false,
+    "reduced": true,
+    "unloaded": 0,
+    "videoPaused": true,
+    "width": 390
+  },
+  {
+    "coach": "http://127.0.0.1:18081/landing/ios-coach-saturday.png",
+    "lang": "en",
+    "overflow": false,
+    "reduced": true,
+    "unloaded": 0,
+    "videoPaused": true,
+    "width": 390
+  },
+  {
+    "coach": "http://127.0.0.1:18081/landing/ios-coach-saturday.png",
+    "lang": "en",
+    "overflow": false,
+    "reduced": true,
+    "unloaded": 0,
+    "videoPaused": true,
+    "width": 768
+  },
+  {
+    "coach": "http://127.0.0.1:18081/landing/ios-coach-saturday.png",
+    "lang": "en",
+    "overflow": false,
+    "reduced": true,
+    "unloaded": 0,
+    "videoPaused": true,
+    "width": 1440
+  }
+]

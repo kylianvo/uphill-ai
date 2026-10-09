@@ -50,6 +50,7 @@ describe("ConnectedAccounts", () => {
   });
 
   afterEach(() => {
+    // @ts-expect-error -- restore the same jsdom location replaced above
     window.location = originalLocation;
   });
 

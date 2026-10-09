@@ -1,0 +1,183 @@
+
+> frontend@0.1.0 lint
+> eslint
+
+
+/Users/vietvo/Documents/antigravity/uphill-ai/.claude/worktrees/landing-page-redesign-codex-2d6105/frontend/src/app/layout.tsx
+  49:9  warning  Custom fonts not added in `pages/_document.js` will only load for a single page. This is discouraged. See: https://nextjs.org/docs/messages/no-page-custom-font  @next/next/no-page-custom-font
+
+/Users/vietvo/Documents/antigravity/uphill-ai/.claude/worktrees/landing-page-redesign-codex-2d6105/frontend/src/app/marketing-preview/page.tsx
+   5:3  warning  'CalendarBlank' is defined but never used  @typescript-eslint/no-unused-vars
+  14:3  warning  'Clock' is defined but never used          @typescript-eslint/no-unused-vars
+  15:3  warning  'Mountains' is defined but never used      @typescript-eslint/no-unused-vars
+  16:3  warning  'Fire' is defined but never used           @typescript-eslint/no-unused-vars
+  17:3  warning  'ChartLineUp' is defined but never used    @typescript-eslint/no-unused-vars
+  19:3  warning  'Target' is defined but never used         @typescript-eslint/no-unused-vars
+  20:3  warning  'Lightning' is defined but never used      @typescript-eslint/no-unused-vars
+  22:3  warning  'ArrowRight' is defined but never used     @typescript-eslint/no-unused-vars
+
+/Users/vietvo/Documents/antigravity/uphill-ai/.claude/worktrees/landing-page-redesign-codex-2d6105/frontend/src/app/page.tsx
+  730:19  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  910:23  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/vietvo/Documents/antigravity/uphill-ai/.claude/worktrees/landing-page-redesign-codex-2d6105/frontend/src/app/science/page.tsx
+   7:3  warning  'CalendarBlank' is defined but never used  @typescript-eslint/no-unused-vars
+  11:3  warning  'CheckCircle' is defined but never used    @typescript-eslint/no-unused-vars
+
+/Users/vietvo/Documents/antigravity/uphill-ai/.claude/worktrees/landing-page-redesign-codex-2d6105/frontend/src/components/ConfirmActionModal.test.tsx
+  1:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+/Users/vietvo/Documents/antigravity/uphill-ai/.claude/worktrees/landing-page-redesign-codex-2d6105/frontend/src/components/ConnectedAccounts.tsx
+  141:11  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/vietvo/Documents/antigravity/uphill-ai/.claude/worktrees/landing-page-redesign-codex-2d6105/frontend/src/components/CorosPushButton.tsx
+  102:9  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/vietvo/Documents/antigravity/uphill-ai/.claude/worktrees/landing-page-redesign-codex-2d6105/frontend/src/components/GoalDeterminer.tsx
+  14:3  warning  'PercentileSet' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/vietvo/Documents/antigravity/uphill-ai/.claude/worktrees/landing-page-redesign-codex-2d6105/frontend/src/components/MatchedActivityCard.tsx
+   20:3  warning  'Flame' is defined but never used                  @typescript-eslint/no-unused-vars
+  121:9  warning  'qualityScore' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/vietvo/Documents/antigravity/uphill-ai/.claude/worktrees/landing-page-redesign-codex-2d6105/frontend/src/components/RaceNameField.tsx
+  90:9  warning  Elements with the ARIA role "combobox" must have the following attributes defined: aria-controls,aria-expanded  jsx-a11y/role-has-required-aria-props
+
+/Users/vietvo/Documents/antigravity/uphill-ai/.claude/worktrees/landing-page-redesign-codex-2d6105/frontend/src/contexts/AppContext.tsx
+  512:9  warning  Unused eslint-disable directive (no problems were reported from 'react-hooks/set-state-in-effect')
+
+/Users/vietvo/Documents/antigravity/uphill-ai/.claude/worktrees/landing-page-redesign-codex-2d6105/frontend/src/hooks/useAppAuth.ts
+   9:76  warning  'authErrorMsg' is assigned a value but never used           @typescript-eslint/no-unused-vars
+  22:9   warning  'fetchSourcesWithToken' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  22:40  warning  'user' is defined but never used                            @typescript-eslint/no-unused-vars
+  22:51  warning  'token' is defined but never used                           @typescript-eslint/no-unused-vars
+
+/Users/vietvo/Documents/antigravity/uphill-ai/.claude/worktrees/landing-page-redesign-codex-2d6105/frontend/src/hooks/useKnowledge.ts
+  123:14  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+  136:14  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/vietvo/Documents/antigravity/uphill-ai/.claude/worktrees/landing-page-redesign-codex-2d6105/frontend/src/hooks/usePlanner.ts
+   13:333  warning  'setCourseInputMode' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  441:11   warning  'gainStr' is assigned a value but never used             @typescript-eslint/no-unused-vars
+
+/Users/vietvo/Documents/antigravity/uphill-ai/.claude/worktrees/landing-page-redesign-codex-2d6105/frontend/src/hooks/useRaceMatch.ts
+  49:7  warning  Unused eslint-disable directive (no problems were reported from 'react-hooks/set-state-in-effect')
+
+/Users/vietvo/Documents/antigravity/uphill-ai/.claude/worktrees/landing-page-redesign-codex-2d6105/frontend/src/lib/coachChatStream.test.ts
+  1:32  warning  'vi' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/vietvo/Documents/antigravity/uphill-ai/.claude/worktrees/landing-page-redesign-codex-2d6105/frontend/src/utils/markdown.test.tsx
+  50:13  warning  'container' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/vietvo/Documents/antigravity/uphill-ai/.claude/worktrees/landing-page-redesign-codex-2d6105/frontend/src/views/AboutTab.tsx
+   3:27   warning  'useEffect' is defined but never used                    @typescript-eslint/no-unused-vars
+   3:38   warning  'useRef' is defined but never used                       @typescript-eslint/no-unused-vars
+   6:10   warning  'WarningCircle' is defined but never used                @typescript-eslint/no-unused-vars
+   6:25   warning  'Trophy' is defined but never used                       @typescript-eslint/no-unused-vars
+   6:33   warning  'Barbell' is defined but never used                      @typescript-eslint/no-unused-vars
+   6:42   warning  'Clock' is defined but never used                        @typescript-eslint/no-unused-vars
+   6:49   warning  'Lightning' is defined but never used                    @typescript-eslint/no-unused-vars
+   6:60   warning  'Sneaker' is defined but never used                      @typescript-eslint/no-unused-vars
+   6:77   warning  'Calendar' is defined but never used                     @typescript-eslint/no-unused-vars
+   6:87   warning  'House' is defined but never used                        @typescript-eslint/no-unused-vars
+   6:94   warning  'Plant' is defined but never used                        @typescript-eslint/no-unused-vars
+   6:101  warning  'Code' is defined but never used                         @typescript-eslint/no-unused-vars
+   6:107  warning  'Plus' is defined but never used                         @typescript-eslint/no-unused-vars
+   6:113  warning  'Trash' is defined but never used                        @typescript-eslint/no-unused-vars
+   8:46   warning  'handleTabSwitch' is defined but never used              @typescript-eslint/no-unused-vars
+  10:17   warning  'user' is assigned a value but never used                @typescript-eslint/no-unused-vars
+  10:23   warning  'activePlan' is assigned a value but never used          @typescript-eslint/no-unused-vars
+  10:35   warning  'setAuthModalOpen' is assigned a value but never used    @typescript-eslint/no-unused-vars
+  10:53   warning  'activeTab' is assigned a value but never used           @typescript-eslint/no-unused-vars
+  11:9    warning  't' is assigned a value but never used                   @typescript-eslint/no-unused-vars
+  13:10   warning  'startBtnHovered' is assigned a value but never used     @typescript-eslint/no-unused-vars
+  13:27   warning  'setStartBtnHovered' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/vietvo/Documents/antigravity/uphill-ai/.claude/worktrees/landing-page-redesign-codex-2d6105/frontend/src/views/AuthModal.tsx
+   2:17  warning  'useState' is defined but never used                 @typescript-eslint/no-unused-vars
+   5:10  warning  'usePlanner' is defined but never used               @typescript-eslint/no-unused-vars
+   7:10  warning  'X' is defined but never used                        @typescript-eslint/no-unused-vars
+  20:18  warning  'setAuthLoading' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  23:9   warning  't' is assigned a value but never used               @typescript-eslint/no-unused-vars
+  32:11  warning  'DAYS' is assigned a value but never used            @typescript-eslint/no-unused-vars
+  44:11  warning  'cardBtnStyle' is assigned a value but never used    @typescript-eslint/no-unused-vars
+
+/Users/vietvo/Documents/antigravity/uphill-ai/.claude/worktrees/landing-page-redesign-codex-2d6105/frontend/src/views/HomeTab.tsx
+   2:27   warning  'useEffect' is defined but never used                  @typescript-eslint/no-unused-vars
+   2:38   warning  'useRef' is defined but never used                     @typescript-eslint/no-unused-vars
+   5:10   warning  'WarningCircle' is defined but never used              @typescript-eslint/no-unused-vars
+   5:25   warning  'Trophy' is defined but never used                     @typescript-eslint/no-unused-vars
+   5:33   warning  'Barbell' is defined but never used                    @typescript-eslint/no-unused-vars
+   5:42   warning  'Clock' is defined but never used                      @typescript-eslint/no-unused-vars
+   5:49   warning  'Lightning' is defined but never used                  @typescript-eslint/no-unused-vars
+   5:60   warning  'Sneaker' is defined but never used                    @typescript-eslint/no-unused-vars
+   5:69   warning  'Target' is defined but never used                     @typescript-eslint/no-unused-vars
+   5:77   warning  'Calendar' is defined but never used                   @typescript-eslint/no-unused-vars
+   5:87   warning  'House' is defined but never used                      @typescript-eslint/no-unused-vars
+   5:94   warning  'Plant' is defined but never used                      @typescript-eslint/no-unused-vars
+   5:101  warning  'Code' is defined but never used                       @typescript-eslint/no-unused-vars
+   5:107  warning  'Plus' is defined but never used                       @typescript-eslint/no-unused-vars
+   5:113  warning  'Trash' is defined but never used                      @typescript-eslint/no-unused-vars
+  10:17   warning  'user' is assigned a value but never used              @typescript-eslint/no-unused-vars
+  10:23   warning  'activePlan' is assigned a value but never used        @typescript-eslint/no-unused-vars
+  10:35   warning  'setAuthModalOpen' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  10:53   warning  'activeTab' is assigned a value but never used         @typescript-eslint/no-unused-vars
+
+/Users/vietvo/Documents/antigravity/uphill-ai/.claude/worktrees/landing-page-redesign-codex-2d6105/frontend/src/views/KnowledgeView.tsx
+  11:32  warning  'knowledgeTopics' is assigned a value but never used         @typescript-eslint/no-unused-vars
+  11:49  warning  'knowledgeTopic' is assigned a value but never used          @typescript-eslint/no-unused-vars
+  12:86  warning  'filterKnowledgeByTopic' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/vietvo/Documents/antigravity/uphill-ai/.claude/worktrees/landing-page-redesign-codex-2d6105/frontend/src/views/OnboardingWizard.tsx
+    6:10   warning  'Calendar' is defined but never used                           @typescript-eslint/no-unused-vars
+    6:37   warning  'Mountains' is defined but never used                          @typescript-eslint/no-unused-vars
+    6:63   warning  'CaretRight' is defined but never used                         @typescript-eslint/no-unused-vars
+    6:75   warning  'CaretLeft' is defined but never used                          @typescript-eslint/no-unused-vars
+    6:86   warning  'CaretDown' is defined but never used                          @typescript-eslint/no-unused-vars
+    6:97   warning  'CaretUp' is defined but never used                            @typescript-eslint/no-unused-vars
+    6:106  warning  'Plus' is defined but never used                               @typescript-eslint/no-unused-vars
+    6:112  warning  'Info' is defined but never used                               @typescript-eslint/no-unused-vars
+    6:118  warning  'X' is defined but never used                                  @typescript-eslint/no-unused-vars
+    6:121  warning  'Footprints' is defined but never used                         @typescript-eslint/no-unused-vars
+    6:144  warning  'Heartbeat' is defined but never used                          @typescript-eslint/no-unused-vars
+    6:191  warning  'Heart' is defined but never used                              @typescript-eslint/no-unused-vars
+    6:205  warning  'FirstAid' is defined but never used                           @typescript-eslint/no-unused-vars
+   17:9    warning  'fetchActivePlanWithToken' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   18:11   warning  'activeTab' is assigned a value but never used                 @typescript-eslint/no-unused-vars
+   26:9    warning  'trackEvent' is assigned a value but never used                @typescript-eslint/no-unused-vars
+  319:34   warning  'label' is defined but never used                              @typescript-eslint/no-unused-vars
+  319:49   warning  'emoji' is defined but never used                              @typescript-eslint/no-unused-vars
+
+/Users/vietvo/Documents/antigravity/uphill-ai/.claude/worktrees/landing-page-redesign-codex-2d6105/frontend/src/views/PlannerView.tsx
+    15:24   warning  'FileArrowUp' is defined but never used                                                                        @typescript-eslint/no-unused-vars
+    15:37   warning  'Heart' is defined but never used                                                                              @typescript-eslint/no-unused-vars
+    15:44   warning  'Clock' is defined but never used                                                                              @typescript-eslint/no-unused-vars
+    15:51   warning  'Mountains' is defined but never used                                                                          @typescript-eslint/no-unused-vars
+    15:62   warning  'MapPin' is defined but never used                                                                             @typescript-eslint/no-unused-vars
+    15:70   warning  'Footprints' is defined but never used                                                                         @typescript-eslint/no-unused-vars
+    15:82   warning  'ArrowsMerge' is defined but never used                                                                        @typescript-eslint/no-unused-vars
+    15:95   warning  'PlayCircle' is defined but never used                                                                         @typescript-eslint/no-unused-vars
+    15:126  warning  'Path' is defined but never used                                                                               @typescript-eslint/no-unused-vars
+    15:132  warning  'RoadHorizon' is defined but never used                                                                        @typescript-eslint/no-unused-vars
+    15:145  warning  'Info' is defined but never used                                                                               @typescript-eslint/no-unused-vars
+    15:151  warning  'Check' is defined but never used                                                                              @typescript-eslint/no-unused-vars
+    15:158  warning  'Question' is defined but never used                                                                           @typescript-eslint/no-unused-vars
+    15:168  warning  'WarningCircle' is defined but never used                                                                      @typescript-eslint/no-unused-vars
+    15:196  warning  'Archive' is defined but never used                                                                            @typescript-eslint/no-unused-vars
+    15:214  warning  'LockKeyOpen' is defined but never used                                                                        @typescript-eslint/no-unused-vars
+    15:283  warning  'DownloadSimple' is defined but never used                                                                     @typescript-eslint/no-unused-vars
+   328:6    warning  React Hook useEffect has a missing dependency: 'activePlan'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+   834:6    warning  React Hook useEffect has a missing dependency: 'activePlan'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  2776:9    warning  'renderTools' is assigned a value but never used                                                               @typescript-eslint/no-unused-vars
+
+/Users/vietvo/Documents/antigravity/uphill-ai/.claude/worktrees/landing-page-redesign-codex-2d6105/frontend/src/views/ProfileSettingsModal.tsx
+   8:13   warning  'User' is defined but never used                                                                                         @typescript-eslint/no-unused-vars
+   8:19   warning  'Heartbeat' is defined but never used                                                                                    @typescript-eslint/no-unused-vars
+   8:30   warning  'Watch' is defined but never used                                                                                        @typescript-eslint/no-unused-vars
+  25:127  warning  'setActivePlan' is assigned a value but never used                                                                       @typescript-eslint/no-unused-vars
+  25:152  warning  'setWorkouts' is assigned a value but never used                                                                         @typescript-eslint/no-unused-vars
+  25:165  warning  'setSources' is assigned a value but never used                                                                          @typescript-eslint/no-unused-vars
+  47:6    warning  React Hook React.useEffect has a missing dependency: 'fetchPaceZones'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+✖ 128 problems (0 errors, 128 warnings)
+  0 errors and 3 warnings potentially fixable with the `--fix` option.

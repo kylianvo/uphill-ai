@@ -1,0 +1,32 @@
+
+> frontend@0.1.0 build
+> next build --webpack
+
+▲ Next.js 16.2.7 (webpack)
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 7.4s
+  Running TypeScript ...
+  Finished TypeScript in 7.2s ...
+  Collecting page data using 9 workers ...
+  Generating static pages using 9 workers (0/11) ...
+  Generating static pages using 9 workers (2/11)
+  Generating static pages using 9 workers (5/11)
+  Generating static pages using 9 workers (8/11)
+✓ Generating static pages using 9 workers (11/11) in 263ms
+  Finalizing page optimization ...
+  Collecting build traces ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ○ /app
+├ ○ /apple-icon.png
+├ ○ /icon.svg
+├ ○ /marketing-preview
+├ ○ /privacy
+├ ○ /science
+└ ○ /support
+
+
+○  (Static)  prerendered as static content
