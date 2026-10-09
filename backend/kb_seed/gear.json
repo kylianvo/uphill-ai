@@ -3218,6 +3218,123 @@
         "weight": "8.0 oz / 226 g (men's); 7.0 oz / 200 g (women's)"
       },
       "source_label": "Doctors of Running review"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "adidas Adizero Adios Pro 5",
+      "content": "adidas Adizero Adios Pro 5: Much lighter than v3/v4, strong forefoot energy return, better traction and more comfortable upper Cons: Big price increase, narrow fit, less stable than earlier Adios Pros, outsole durability concerns",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "midfoot and forefoot strikers racing road distances",
+        "brand": "adidas",
+        "carbon_plate": "No full-length plate; ENERGYRIM perimeter structure",
+        "cons": "Big price increase, narrow fit, less stable than earlier Adios Pros, outsole durability concerns",
+        "cushioning": "Soft",
+        "drop": "4 mm brand (5.6 mm lab)",
+        "foam_material": "A-TPU base with softer PEBA-based top layer (Lightstrike Pro)",
+        "foot_shape": "Medium width, narrow toebox (runs slightly small)",
+        "intended_use": "Race day from 5K to marathon",
+        "model": "Adizero Adios Pro 5",
+        "outsole_compound": "Lighttraxion PU with small Continental forefoot patch",
+        "overview": "A lighter, softer road super shoe for racing from the mile to the marathon.",
+        "price": "$275",
+        "pros": "Much lighter than v3/v4, strong forefoot energy return, better traction and more comfortable upper",
+        "stack": "39/35 mm brand (35.6/30.0 mm lab)",
+        "terrain": [
+          "Road"
+        ],
+        "weight": "6.2 oz / 177 g (men's); 5.3 oz / 150 g (women's)"
+      },
+      "source_label": "RunRepeat"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Puma Velocity Nitro 5",
+      "content": "Puma Velocity Nitro 5: Responsive fun ride, excellent wet/dry traction, durable, secure lockdown, great value Cons: Slightly heavier and less bouncy than v4, not for wide feet in the standard width",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "runners wanting a value daily trainer with great grip",
+        "brand": "Puma",
+        "carbon_plate": "No",
+        "cons": "Slightly heavier and less bouncy than v4, not for wide feet in the standard width",
+        "cushioning": "Balanced",
+        "drop": "8 mm brand",
+        "foam_material": "Dual-layer A-TPU Nitro foam",
+        "foot_shape": "Narrow, snug toebox (Normal and Wide available)",
+        "intended_use": "Daily training and tempo",
+        "model": "Velocity Nitro 5",
+        "outsole_compound": "Pumagrip (3.6 mm)",
+        "overview": "A flexible, responsive, well-priced road daily trainer with top-tier traction.",
+        "price": "$140",
+        "pros": "Responsive fun ride, excellent wet/dry traction, durable, secure lockdown, great value",
+        "stack": "35/27 mm brand",
+        "terrain": [
+          "Road"
+        ],
+        "weight": "8.6 oz / 244 g (men's); 7.4 oz / 210 g (women's)"
+      },
+      "source_label": "RunRepeat"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Saucony Endorphin Azura",
+      "content": "Saucony Endorphin Azura: Lively PB bounce, generous stack, very stable, light for its cushioning, durable, strong value Cons: Firm ride, SpeedRoll rocker can feel intrusive, less fun than some super trainers",
+      "payload": {
+        "arch_support": "Neutral (handles mild pronation)",
+        "best_for": "runners wanting a stable, bouncy super trainer at a fair price",
+        "brand": "Saucony",
+        "carbon_plate": "No (SpeedRoll rocker)",
+        "cons": "Firm ride, SpeedRoll rocker can feel intrusive, less fun than some super trainers",
+        "cushioning": "High, firm",
+        "drop": "8 mm",
+        "foam_material": "PWRRUN PB (beaded Pebax)",
+        "foot_shape": "True to size, wide stable platform (Narrow and Normal for men)",
+        "intended_use": "Daily running, tempo and long runs",
+        "model": "Endorphin Azura",
+        "outsole_compound": "Exposed PWRRUN PB with XT-900 rubber patches",
+        "overview": "A versatile, stable road super trainer for daily, tempo and some race-day running.",
+        "price": "$150",
+        "pros": "Lively PB bounce, generous stack, very stable, light for its cushioning, durable, strong value",
+        "stack": "40/32 mm",
+        "terrain": [
+          "Road",
+          "treadmill"
+        ],
+        "weight": "8.5 oz / 240 g (men's); 7.4 oz / 211 g (women's)"
+      },
+      "source_label": "RunRepeat"
+    },
+    {
+      "domain": "gear",
+      "kind": "catalog_item",
+      "title": "Asics Sonicblast 2",
+      "content": "Asics Sonicblast 2: Lighter than v1, poppy forefoot trampoline pod, breathable upper, little break-in Cons: $190 is steep, firm ride for easy miles, stiff plate may irritate the Achilles",
+      "payload": {
+        "arch_support": "Neutral",
+        "best_for": "runners wanting a plated super trainer for long uptempo runs",
+        "brand": "Asics",
+        "carbon_plate": "Forked Pebax AstroPlate (no carbon)",
+        "cons": "$190 is steep, firm ride for easy miles, stiff plate may irritate the Achilles",
+        "cushioning": "Max stack, firm and responsive",
+        "drop": "8 mm",
+        "foam_material": "FF Turbo Squared top with forefoot trampoline pod / FF Blast Max base",
+        "foot_shape": "Standard, secure fit",
+        "intended_use": "Long runs and uptempo mileage",
+        "model": "Sonicblast 2",
+        "outsole_compound": "AsicsGrip",
+        "overview": "A lighter, more breathable plated super trainer with a lively forefoot.",
+        "price": "$190",
+        "pros": "Lighter than v1, poppy forefoot trampoline pod, breathable upper, little break-in",
+        "stack": "46/38 mm",
+        "terrain": [
+          "Road"
+        ],
+        "weight": "8.5 oz / 241 g (men's); 7.5 oz / 213 g (women's)"
+      },
+      "source_label": "Believe in the Run"
     }
   ]
 }
