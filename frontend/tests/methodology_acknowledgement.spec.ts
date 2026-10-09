@@ -55,13 +55,17 @@ test.describe("Methodology & Acknowledgement Section Verification", () => {
     const authorCards = methodologySec.locator(".card-interactive-lift");
     await expect(authorCards).toHaveCount(3);
 
-    // 10. Dalat Ultra Trail block is placed in 'How it works' (Step 2), NOT in Hero
+    // 10. Native Plan screenshot appears in 'How it works' (Step 2), not the hero
     const heroSection = page.locator("section").first();
-    await expect(heroSection.locator('img[src="/screenshots/current-planner-view.png"]')).toHaveCount(0);
+    await expect(heroSection.locator('img[src="/landing/ios-plan-week2.png"]')).toHaveCount(0);
 
     const howItWorksSection = page.locator("#how-it-works");
-    const dutImageInHowItWorks = howItWorksSection.locator('img[src="/screenshots/current-planner-view.png"]');
-    await expect(dutImageInHowItWorks).toBeVisible();
+    const planImageInHowItWorks = howItWorksSection.locator('img[src="/landing/ios-plan-week2.png"]');
+    await planImageInHowItWorks.scrollIntoViewIfNeeded();
+    await expect(planImageInHowItWorks).toBeVisible();
+    await expect.poll(() => planImageInHowItWorks.evaluate((img: HTMLImageElement) =>
+      img.complete && img.naturalWidth > 0
+    )).toBe(true);
 
     // 11. Bilingual toggle: Switch to Vietnamese and check acknowledgement translations
     const viBtn = page.getByRole("button", { name: /Switch to Vietnamese/i });
