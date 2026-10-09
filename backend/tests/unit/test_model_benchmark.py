@@ -65,3 +65,22 @@ def test_summarize_per_engine():
     assert round(summary["accepted_rate"], 3) == 0.667
     # 2000 * 0.10 / 1e6 + 400 * 0.50 / 1e6
     assert round(summary["usd_per_call"], 6) == 0.0004
+
+
+def test_render_report_lists_metrics_and_rejections():
+    rows = [
+        {
+            "engine": "gemini",
+            "fixture": "fixture_a.json",
+            "seconds": 4.0,
+            "input_tokens": 2000,
+            "output_tokens": 600,
+            "parsed": True,
+            "accepted": False,
+            "errors": ["give 3 to 5 reasoning bullets"],
+            "b_vs_ref_pct": 2.0,
+        },
+    ]
+    report = model_benchmark.render_report(model_benchmark.summarize(rows), rows)
+    assert "| p50_s | 4.00 |" in report
+    assert "gemini / fixture_a.json: give 3 to 5 reasoning bullets" in report
