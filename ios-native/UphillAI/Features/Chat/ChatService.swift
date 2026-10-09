@@ -71,6 +71,8 @@ final class ChatService {
     private(set) var isLoadingOlder: Bool = false
     private(set) var clarifyOptions: [String]? = nil
     private(set) var proposalStates: [Int: String] = [:]
+    /// Ready rebuild drafts by proposal id, fetched by `pollRebuild`.
+    private(set) var rebuildDiffs: [Int: RebuildDiff] = [:]
     private(set) var selectedMessageSources: MessageSourcesResponse? = nil
     private(set) var isExecuting: Bool = false
 
@@ -228,7 +230,8 @@ final class ChatService {
                         existing.append(toolPayload)
                         self.messages[lastIdx].toolCalls = existing
                     }
-                    if cardType == "schedule_proposal", let pId = cardData?["proposal_id"]?.intValue {
+                    if cardType == "schedule_proposal" || cardType == "schedule_rebuild",
+                       let pId = cardData?["proposal_id"]?.intValue {
                         self.proposalStates[pId] = cardData?["status"]?.stringValue ?? "proposed"
                     }
 
@@ -371,14 +374,45 @@ final class ChatService {
         }
     }
 
-    func applyProposal(proposalId: Int, clientToday: String? = nil) async -> Bool {
+    func applyProposal(proposalId: Int, clientToday: String? = PlanCalendar.ymd(Date(), calendar: .current)) async -> Bool {
         do {
             let body = ProposalApplyBody(clientToday: clientToday)
             let _: EmptyResponse = try await client.send(.send(.post, "/api/coach/chat/proposals/\(proposalId)/apply", body: body))
             self.proposalStates[proposalId] = "applied"
             return true
+        } catch APIError.http(status: 409, _, _) {
+            // Stale or no longer applicable: show the server's current status instead of a dead button.
+            await refreshProposal(proposalId: proposalId)
+            return false
         } catch {
             return false
+        }
+    }
+
+    /// Fetches a proposal's current status (and a rebuild's draft once it is ready).
+    @discardableResult
+    func refreshProposal(proposalId: Int) async -> ProposalDetail? {
+        guard let detail: ProposalDetail = try? await client.send(.get("/api/coach/chat/proposals/\(proposalId)")) else {
+            return nil
+        }
+        proposalStates[proposalId] = detail.status
+        if let diff = detail.rebuild { rebuildDiffs[proposalId] = diff }
+        return detail
+    }
+
+    /// Polls a rebuild while its week is being drafted in the background; mirrors the web card
+    /// (3 s interval, gives up after 4 min). Cancelled with the calling view's task.
+    func pollRebuild(proposalId: Int, interval: Duration = .seconds(3), limit: Duration = .seconds(240)) async {
+        let clock = ContinuousClock()
+        let deadline = clock.now.advanced(by: limit)
+        while !Task.isCancelled {
+            let detail = await refreshProposal(proposalId: proposalId)
+            if let detail, detail.status != "generating" { return }
+            if clock.now >= deadline {
+                if proposalStates[proposalId] == "generating" { proposalStates[proposalId] = "failed" }
+                return
+            }
+            try? await Task.sleep(for: interval)
         }
     }
 

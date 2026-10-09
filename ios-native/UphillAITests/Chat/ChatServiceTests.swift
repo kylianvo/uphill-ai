@@ -181,4 +181,62 @@ struct ChatServiceTests {
         #expect(payload.cardType == "schedule_proposal")
         #expect(payload.decodeScheduleProposal()?.proposalId == 7)
     }
+
+    @Test func moveProposalCardDecodesBackendShape() throws {
+        // Shape from propose_schedule_change: diff is a list, warnings are {code, params} objects.
+        let payload = ToolResultPayload(
+            toolCallId: "t1", name: "propose_schedule_change", cardType: "schedule_proposal",
+            cardData: try JSONDecoder().decode([String: JSONValue].self, from: json([
+                "proposal_id": 7, "status": "proposed", "rationale": "Busy Saturday",
+                "diff": [[
+                    "workout_id": 4946, "from_week": 12, "from_day": "Saturday", "to_week": 12, "to_day": "Sunday",
+                    "workout": ["title": "Course Simulation", "type": "Long", "duration_minutes": 145, "distance_km": 24]
+                ]],
+                "warnings": [["code": "W2_volume_shift", "params": ["week": 12, "before_minutes": 600, "after_minutes": 445]]]
+            ]))
+        )
+        let data = try #require(payload.decodeScheduleProposal())
+        #expect(data.proposalId == 7)
+        #expect(data.diff?.first?.toDay == "Sunday")
+        #expect(data.diff?.first?.workout?.title == "Course Simulation")
+        let warning = try #require(data.warnings?.first)
+        #expect(ScheduleMessages.warningText(warning) == "Week 12 volume changes from 600 to 445 min.")
+    }
+
+    @Test func pollRebuildFetchesDraftWhenReady() async throws {
+        let calls = Mutex(0)
+        let client = makeStubClient { request in
+            #expect(request.url?.path() == "/api/coach/chat/proposals/9")
+            let n = calls.withLock { $0 += 1; return $0 }
+            if n == 1 { return (200, json(["id": 9, "kind": "rebuild", "status": "generating", "diff": [:], "warnings": []])) }
+            return (200, json([
+                "id": 9, "kind": "rebuild", "status": "proposed", "warnings": [],
+                "diff": [
+                    "week": 12, "from_day": "Sat",
+                    "days": [["day": "Sat", "kept": [], "before": [["title": "Course Simulation", "duration_minutes": 145]], "after": []]],
+                    "totals": ["before": ["min": 600, "km": 80, "vert": 900], "after": ["min": 455, "km": 56, "vert": 400]]
+                ]
+            ]))
+        }
+
+        let service = ChatService(client: client)
+        await service.pollRebuild(proposalId: 9, interval: .milliseconds(1))
+
+        #expect(calls.withLock { $0 } == 2)
+        #expect(service.proposalStates[9] == "proposed")
+        #expect(service.rebuildDiffs[9]?.days.first?.before.first?.title == "Course Simulation")
+    }
+
+    @Test func applyConflictShowsServerStatus() async throws {
+        let client = makeStubClient { request in
+            if request.httpMethod == "POST" { return (409, json(["status": "stale", "stale_reason": "plan_changed"])) }
+            return (200, json(["id": 5, "kind": "schedule", "status": "stale", "diff": [], "warnings": []]))
+        }
+
+        let service = ChatService(client: client)
+        let applied = await service.applyProposal(proposalId: 5)
+
+        #expect(applied == false)
+        #expect(service.proposalStates[5] == "stale")
+    }
 }

@@ -3,8 +3,10 @@ import SwiftUI
 struct ChatMessageBubble: View {
     let message: ChatMessage
     let proposalStates: [Int: String]
+    var rebuildDiffs: [Int: RebuildDiff] = [:]
+    var onLoadRebuild: ((Int) async -> Void)? = nil
     var onSelectWorkout: ((Int) -> Void)? = nil
-    let onApplyProposal: (Int) async -> Void
+    let onApplyProposal: (Int) async -> Bool
     let onDiscardProposal: (Int) async -> Void
     let onViewSources: (Int) -> Void
     let onFeedback: (Int, Int) -> Void
@@ -73,6 +75,8 @@ struct ChatMessageBubble: View {
                         ChatRichCardView(
                             payload: toolCall,
                             proposalStates: proposalStates,
+                            rebuildDiffs: rebuildDiffs,
+                            onLoadRebuild: onLoadRebuild,
                             onSelectWorkout: onSelectWorkout,
                             onApplyProposal: onApplyProposal,
                             onDiscardProposal: onDiscardProposal
