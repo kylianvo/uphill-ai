@@ -408,6 +408,8 @@ final class PlanViewModel {
             snapshot.workouts = workouts
             self.snapshot = snapshot
             if isSignedIn() { cache.save(snapshot, as: .plan) }
+            // Completion % is server-computed; done/missed/move changes it.
+            await loadBlockCompletion()
             return true
         } catch APIError.scheduleGuard(_, let code, let params) {
             actionError = ScheduleMessages.guardText(code: code, params: params)
