@@ -24,6 +24,37 @@ struct SetupFlowScreenshots {
         try data.write(to: URL(fileURLWithPath: outDir).appendingPathComponent(name + ".png"))
     }
 
+    @Test func renderEffortColorBar() async throws {
+        guard outDir != nil else { return }
+        let oldLanguage = UserDefaults.standard.string(forKey: AppLanguage.storageKey)
+        defer { UserDefaults.standard.set(oldLanguage, forKey: AppLanguage.storageKey) }
+        for language in [AppLanguage.en, .vi] {
+            UserDefaults.standard.set(language.rawValue, forKey: AppLanguage.storageKey)
+            let states = VStack(alignment: .leading, spacing: UH.Space.section) {
+                Text("Overall effort").font(UH.TextStyle.sectionTitle)
+                EffortSelector(selection: .constant(nil), identifier: "preview.effort")
+                ForEach(WorkoutFeeling.allCases) { effort in
+                    EffortSelector(selection: .constant(effort.rpe), identifier: "preview.effort")
+                }
+                Spacer()
+            }
+            .padding(UH.Space.section)
+            .background(UH.Palette.surface)
+            .environment(\.locale, language.locale)
+            try await capture(states, name: "effort-color-states-\(language.rawValue)", size: CGSize(width: 375, height: 900))
+            let large = VStack(alignment: .leading, spacing: UH.Space.regular) {
+                Text("Overall effort").font(UH.TextStyle.sectionTitle)
+                EffortSelector(selection: .constant(8), identifier: "preview.effort")
+                Spacer()
+            }
+            .padding(UH.Space.section)
+            .background(UH.Palette.surface)
+            .environment(\.locale, language.locale)
+            .dynamicTypeSize(.accessibility3)
+            try await capture(large, name: "effort-color-large-\(language.rawValue)", size: CGSize(width: 375, height: 1100))
+        }
+    }
+
     @Test func renderSetupAndWeeklyActions() async throws {
         guard outDir != nil else { return }
         let oldLanguage = UserDefaults.standard.string(forKey: AppLanguage.storageKey)
