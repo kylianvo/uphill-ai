@@ -36,6 +36,8 @@ class MatchedRace:
     course_context: str
     confidence: float
     course_intelligence: dict[str, Any] = field(default_factory=dict)
+    # Every distance the race offers, so a client can let the athlete pick one.
+    distances: list[dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -45,6 +47,7 @@ class MatchedRace:
             "elevation_gain_m": self.elevation_gain_m,
             "terrain": self.terrain,
             "course_intelligence": self.course_intelligence,
+            "distances": self.distances,
         }
 
 
@@ -234,6 +237,15 @@ def _to_matched_race(chunk: dict[str, Any], score: float, resolved_distance_km: 
         course_context=full_context,
         confidence=score,
         course_intelligence=course_intelligence,
+        distances=[
+            {
+                "label": d.get("label"),
+                "distance_km": d.get("distance_km"),
+                "elevation_gain_m": d.get("elevation_gain_m"),
+            }
+            for d in distances
+            if d.get("distance_km")
+        ],
     )
 
 

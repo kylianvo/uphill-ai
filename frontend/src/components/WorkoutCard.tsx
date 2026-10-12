@@ -24,7 +24,7 @@ import {
   Flag,
 } from "@phosphor-icons/react";
 import { getZoneColor } from "../data/workoutLibrary";
-import { FeelingSelector, rpeToFeelingId } from "./FeelingSelector";
+import { FeelingSelector, rpeToFeelingId, rpeLabel } from "./FeelingSelector";
 import { useWorkoutTypes, resolveWorkoutInfo } from "../hooks/useWorkoutTypes";
 import {
   parseExecutionSteps,
@@ -471,7 +471,7 @@ export default function WorkoutCard({
                       fontWeight: "700",
                     }}
                   >
-                    {rpe !== null ? `RPE ${rpe}` : ""}
+                    {rpe !== null ? rpeLabel(rpe, lang) : ""}
                     {rpe !== null && notes.trim() ? " · " : ""}
                     {notes.trim() ? "note" : ""}
                   </span>
@@ -989,9 +989,9 @@ export default function WorkoutCard({
                     borderRadius: "6px",
                   }}
                 >
-                  <strong>RPE</strong> (Rate of Perceived Exertion) is a 1–10 scale for how hard an effort felt.
-                  Kilian Jornet uses RPE alongside heart rate to track training load over time. Logging it helps the
-                  coach understand how your body is responding week-to-week.
+                  {lang === "en"
+                    ? "Choose Very Light, Light, Moderate, Hard, or Max Effort to describe how the workout felt. Your feedback helps Coach Uphill adjust upcoming training."
+                    : "Chọn Rất nhẹ, Nhẹ, Vừa sức, Nặng hoặc Hết sức theo cảm nhận buổi tập. Phản hồi giúp Coach Uphill điều chỉnh các buổi tới."}
                 </p>
               )}
               {/* RPE feeling scale */}

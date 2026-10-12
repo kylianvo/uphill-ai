@@ -1576,7 +1576,7 @@
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sẵn sàng cho một cự ly, như 21 km đầu tiên."
+            "value": "Sẵn sàng chạy một cự ly, như 21 km đầu tiên."
           }
         }
       }
@@ -5826,7 +5826,7 @@
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Chủ yếu bằng phẳng"
+            "value": "Bằng phẳng"
           }
         }
       }
@@ -11537,6 +11537,716 @@
           "stringUnit": {
             "state": "translated",
             "value": "Buổi tập mới dùng các chỉ số này."
+          }
+        }
+      }
+    },
+    "%@ km": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ km"
+          }
+        }
+      }
+    },
+    "%@ km · %@ m D+": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ km · %@ m D+"
+          }
+        }
+      }
+    },
+    "%lld h": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld giờ"
+          }
+        }
+      }
+    },
+    "A clear goal sets how hard your key sessions are.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mục tiêu quyết định cường độ các buổi tập chính."
+          }
+        }
+      }
+    },
+    "Add birth date": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm ngày sinh"
+          }
+        }
+      }
+    },
+    "Anything else I should know? (optional)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ghi chú thêm (tùy chọn)"
+          }
+        }
+      }
+    },
+    "Arrive healthy and finish feeling in control.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đến Race khỏe mạnh và finish trong khả năng."
+          }
+        }
+      }
+    },
+    "Birth date": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngày sinh"
+          }
+        }
+      }
+    },
+    "Body and injury history": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cơ thể và chấn thương"
+          }
+        }
+      }
+    },
+    "Choose a long run day from your run days.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn ngày Long Run trong các ngày chạy."
+          }
+        }
+      }
+    },
+    "Choose the effort that best matches how it felt.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn mức gắng sức phù hợp với cảm nhận của bạn."
+          }
+        }
+      }
+    },
+    "Climbing (m D+)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "D+ (m)"
+          }
+        }
+      }
+    },
+    "Coach Uphill sets the target from your fitness as you train.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coach Uphill đặt mục tiêu theo thể lực trong quá trình tập."
+          }
+        }
+      }
+    },
+    "Distance and climbing set how long your key runs get.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cự ly và D+ quyết định độ dài các buổi tập chính."
+          }
+        }
+      }
+    },
+    "Double sessions (optional)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tập đôi (tùy chọn)"
+          }
+        }
+      }
+    },
+    "Double sessions: %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngày tập đôi: %@"
+          }
+        }
+      }
+    },
+    "Effort": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gắng sức"
+          }
+        }
+      }
+    },
+    "Enter 0 to 120 minutes.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhập từ 0 đến 120 phút."
+          }
+        }
+      }
+    },
+    "Find my profile": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tìm hồ sơ"
+          }
+        }
+      }
+    },
+    "Gym access": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Có phòng gym"
+          }
+        }
+      }
+    },
+    "Have you raced before?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kết quả Race"
+          }
+        }
+      }
+    },
+    "Heart rate (optional)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HR (tùy chọn)"
+          }
+        }
+      }
+    },
+    "Height (cm)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chiều cao (cm)"
+          }
+        }
+      }
+    },
+    "Hill / trail days: %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngày dốc / Trail: %@"
+          }
+        }
+      }
+    },
+    "Hill sessions and strength work go where you can actually do them.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buổi tập dốc và Strength sẽ phù hợp với nơi bạn tập."
+          }
+        }
+      }
+    },
+    "How does your body hold up?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tình trạng cơ thể"
+          }
+        }
+      }
+    },
+    "I bounce back quickly from hard efforts.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tôi phục hồi nhanh sau buổi tập nặng."
+          }
+        }
+      }
+    },
+    "I need a careful, conservative build.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tôi cần tăng khối lượng chậm và cẩn thận."
+          }
+        }
+      }
+    },
+    "Injury history sets how fast I add volume.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiền sử chấn thương quyết định tốc độ tăng khối lượng."
+          }
+        }
+      }
+    },
+    "Leave blank if you don't know. You can add training zones in Profile later.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Để trống nếu chưa biết. Bạn có thể thêm Zone trong Hồ sơ sau."
+          }
+        }
+      }
+    },
+    "Link your UTMB or Vietnam race profile and I'll read your past finishes. They shape your starting load and race-day goal.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Liên kết hồ sơ UTMB hoặc Race Việt Nam để đọc kết quả cũ. Các kết quả giúp chọn khối lượng ban đầu và mục tiêu Race."
+          }
+        }
+      }
+    },
+    "Long run": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Long Run"
+          }
+        }
+      }
+    },
+    "Minor or past injury": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Từng chấn thương"
+          }
+        }
+      }
+    },
+    "Modify run days, long run, or training venues": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đổi ngày chạy, Long Run hoặc nơi tập"
+          }
+        }
+      }
+    },
+    "More about you (optional)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thông tin thêm"
+          }
+        }
+      }
+    },
+    "Mostly resolved, I'm careful at times.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã hồi phục, đôi lúc vẫn cần chú ý."
+          }
+        }
+      }
+    },
+    "Mostly resolved, I’m careful at times.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã hồi phục, đôi lúc vẫn cần chú ý."
+          }
+        }
+      }
+    },
+    "No race results linked yet. You can add them later in Profile.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa liên kết kết quả Race. Bạn có thể thêm trong Hồ sơ sau."
+          }
+        }
+      }
+    },
+    "No race yet, like your first 21 km or 50 km.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa có Race, ví dụ lần đầu chạy 21 km hoặc 50 km."
+          }
+        }
+      }
+    },
+    "Not sure? Estimate it from your results": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ước tính từ kết quả Race"
+          }
+        }
+      }
+    },
+    "Often or recently injured": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hay chấn thương"
+          }
+        }
+      }
+    },
+    "Overall effort": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mức gắng sức"
+          }
+        }
+      }
+    },
+    "Past results tell me what you can already do.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kết quả cũ cho biết khả năng hiện tại của bạn."
+          }
+        }
+      }
+    },
+    "Pick %lld run days.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn %lld ngày chạy."
+          }
+        }
+      }
+    },
+    "Pick up to 2 run days for double sessions.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn tối đa 2 ngày chạy để tập đôi."
+          }
+        }
+      }
+    },
+    "Profile linked. Your results are syncing.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã liên kết. Đang đồng bộ kết quả."
+          }
+        }
+      }
+    },
+    "Rarely or never injured": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ít chấn thương"
+          }
+        }
+      }
+    },
+    "Run days": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngày chạy"
+          }
+        }
+      }
+    },
+    "Running now": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hiện tại"
+          }
+        }
+      }
+    },
+    "Set your target finish time.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhập thời gian finish mục tiêu."
+          }
+        }
+      }
+    },
+    "Skip for now": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bỏ qua"
+          }
+        }
+      }
+    },
+    "Stair access": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Có cầu thang"
+          }
+        }
+      }
+    },
+    "Target finish time": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thời gian mục tiêu"
+          }
+        }
+      }
+    },
+    "Terrain near home": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Địa hình gần nhà"
+          }
+        }
+      }
+    },
+    "Terrain near home: %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Địa hình gần nhà: %@"
+          }
+        }
+      }
+    },
+    "Train toward a finish time you choose.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tập theo thời gian finish bạn chọn."
+          }
+        }
+      }
+    },
+    "Travel, work shifts, a training camp, a niggle…": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đi xa, ca làm, tập huấn, đau nhẹ…"
+          }
+        }
+      }
+    },
+    "Treadmill up to %lld%%": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Treadmill tối đa %lld%%"
+          }
+        }
+      }
+    },
+    "Up to 2 of your run days can carry a second short session.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn tối đa 2 ngày chạy có thêm một buổi ngắn."
+          }
+        }
+      }
+    },
+    "Used to work out how much fatigue is left.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dùng để ước tính mức mệt còn lại."
+          }
+        }
+      }
+    },
+    "Weekly km": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Km mỗi tuần"
+          }
+        }
+      }
+    },
+    "Weight (kg)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cân nặng (kg)"
+          }
+        }
+      }
+    },
+    "What distance?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cự ly mục tiêu"
+          }
+        }
+      }
+    },
+    "What does your week look like?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lịch tập trong tuần"
+          }
+        }
+      }
+    },
+    "What's your goal on race day?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mục tiêu Race"
+          }
+        }
+      }
+    },
+    "Where do you train?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nơi tập luyện"
+          }
+        }
+      }
+    },
+    "Which distance are you running?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn cự ly Race"
+          }
+        }
+      }
+    },
+    "You can change any of this later from your plan.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn có thể đổi các thông tin này trong plan sau."
+          }
+        }
+      }
+    },
+    "Your average over the last month. Your first week starts close to it.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trung bình tháng vừa rồi. Tuần đầu sẽ gần mức này."
+          }
+        }
+      }
+    },
+    "double-session day": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ngày tập đôi"
+          }
+        }
+      }
+    },
+    "run day": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ngày chạy"
           }
         }
       }

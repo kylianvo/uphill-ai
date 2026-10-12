@@ -77,7 +77,8 @@ final class AppModel {
     private(set) var lastSetup: PlanSetupViewModel?
 
     func makeSetup(mode: PlanSetupViewModel.Mode) -> PlanSetupViewModel {
-        let setup = PlanSetupViewModel(mode: mode, user: session.user, service: generationService, generation: generation, session: session, raceService: RaceMatchService(client: client))
+        let setup = PlanSetupViewModel(mode: mode, user: session.user, service: generationService, generation: generation, session: session, raceService: RaceMatchService(client: client),
+                                       goalEstimateService: goalEstimateService, raceHistoryService: raceHistoryService)
         lastSetup = setup
         return setup
     }

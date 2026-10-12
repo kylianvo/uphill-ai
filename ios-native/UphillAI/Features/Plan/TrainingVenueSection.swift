@@ -21,7 +21,7 @@ struct TrainingVenueSection: View {
                         Button {
                             if isSelected { mountainDays.remove(day) } else { mountainDays.insert(day) }
                         } label: {
-                            Text(day.short)
+                            Text(L(day.short))
                                 .font(UH.TextStyle.label)
                                 .frame(maxWidth: .infinity, minHeight: 44)
                                 .foregroundStyle(isSelected ? UH.Palette.buttonInk : UH.Palette.ink)
@@ -31,7 +31,7 @@ struct TrainingVenueSection: View {
                                     .stroke(isSelected ? UH.Palette.accent : UH.Palette.line, lineWidth: 1))
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel("\(day.rawValue) hill or trail day")
+                        .accessibilityLabel(L("%@ hill or trail day", L(day.rawValue)))
                         .accessibilityAddTraits(isSelected ? .isSelected : [])
                     }
                 }

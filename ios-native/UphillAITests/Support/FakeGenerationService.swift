@@ -9,6 +9,7 @@ final class FakeGenerationService: GenerationServicing {
     let onboardingResult = Mutex<Result<OnboardingResult, APIError>>(.success(OnboardingResult(jobId: "job-1", user: nil)))
     let statuses = Mutex<[Result<JobStatus, APIError>]>([])
     let calls = Mutex<[String]>([])
+    let nextBodies = Mutex<[NextBlockBody]>([])
 
     private func record(_ call: String) { calls.withLock { $0.append(call) } }
 
@@ -23,6 +24,7 @@ final class FakeGenerationService: GenerationServicing {
     }
 
     func generateNextBlock(_ body: NextBlockBody) async throws -> JobStart {
+        nextBodies.withLock { $0.append(body) }
         record("next \(body.blockNumber) override=\(body.overrideGate)")
         return try startResult.withLock { $0 }.get()
     }

@@ -1018,7 +1018,7 @@ export const translations = {
     feeling_hard: "Nặng",
     feeling_hard_sub: "Chân nặng / Căng thẳng",
     feeling_hard_desc: "Chân nặng hoặc mệt mỏi nhiều — coach sẽ giảm bớt bài nặng và hạ khối lượng 10-15%.",
-    feeling_max_effort: "Cực kỳ nặng",
+    feeling_max_effort: "Hết sức",
     feeling_max_effort_sub: "Kiệt sức / Cần xả tải",
     feeling_max_effort_desc: "Quá tải hoặc kiệt sức — coach sẽ bố trí tuần deload hồi phục chủ động giảm 20-30% khối lượng.",
 

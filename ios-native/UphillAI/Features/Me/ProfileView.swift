@@ -128,6 +128,7 @@ struct ProfileView: View {
                         pacingService: app.pacingService,
                         activePlan: app.plan.snapshot?.plan,
                         user: app.session.user,
+                        raceHistoryService: app.raceHistoryService,
                         onApplyGoal: { targetMinutes in
                             if let planId = app.plan.snapshot?.plan.id {
                                 Task { try? await app.planService.applyGoal(planID: planId, targetMinutes: targetMinutes) }

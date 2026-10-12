@@ -38,6 +38,40 @@ struct ScheduleDraft {
         return Set(values.compactMap(Weekday.init(rawValue:)))
     }
 
+    var orderedDays: [Weekday] { Weekday.allCases.filter(preferredDays.contains) }
+
+    var validationMessage: String? {
+        let before = ScheduleDraft(plan: initialPlan)
+        // An unchanged empty list means the server chooses the run days (older web plans).
+        let unspecified = preferredDays.isEmpty && before.preferredDays.isEmpty
+        guard (3...7).contains(daysPerWeek), unspecified || preferredDays.count == daysPerWeek else {
+            return L("Pick %lld run days.", daysPerWeek)
+        }
+        if let longRunDay, !unspecified, !preferredDays.contains(longRunDay) { return L("Choose a long run day from your run days.") }
+        if doubleSessionDays.count > 2 || !doubleSessionDays.isSubset(of: preferredDays) { return L("Pick up to 2 run days for double sessions.") }
+        if isGettingStarted && !(0...120).contains(maxContinuousJogMin) { return L("Enter 0 to 120 minutes.") }
+        return nil
+    }
+
+    mutating func setDaysPerWeek(_ count: Int) {
+        daysPerWeek = min(max(count, 3), 7)
+        preferredDays = PlanSetupDraft.defaultDays(count: daysPerWeek)
+        reconcileDays()
+    }
+
+    mutating func toggleDay(_ day: Weekday) {
+        if preferredDays.contains(day) { preferredDays.remove(day) } else { preferredDays.insert(day) }
+        daysPerWeek = min(max(preferredDays.count, 3), 7)
+        reconcileDays()
+    }
+
+    private mutating func reconcileDays() {
+        doubleSessionDays.formIntersection(preferredDays)
+        if let longRunDay, !preferredDays.contains(longRunDay) {
+            self.longRunDay = preferredDays.contains(.saturday) ? .saturday : orderedDays.last
+        }
+    }
+
     func applyChanges(to body: inout AdaptWeekBody) {
         let before = ScheduleDraft(plan: initialPlan)
         if preferredDays != before.preferredDays { body.preferredDays = Weekday.allCases.filter(preferredDays.contains).map(\.rawValue) }

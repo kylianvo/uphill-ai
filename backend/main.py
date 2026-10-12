@@ -445,6 +445,7 @@ class OnboardingRequest(BaseModel):
     long_run_day: str | None = None
     current_weekly_km: float | None = 30.0
     has_gym_access: bool | None = False
+    use_treadmill: bool | None = None
     training_environment: str | None = "flat"  # 'flat' | 'hilly' | 'mixed'
     # Training venues (services/training_venues.py): weekdays with hill/trail access,
     # stairs, and the treadmill's top incline in %.
@@ -1102,6 +1103,8 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
     # replaced it, so a beginner who genuinely measured 6:30 could not keep it.
     zone2_min, zone2_max = resolve_zone2_pace(request.zone2_pace_min, request.zone2_pace_max, request.goal_type)
 
+    use_treadmill = request.use_treadmill if request.use_treadmill is not None else bool(request.has_gym_access)
+
     onboarding_data = {
         "dob": request.dob,
         "age": age,
@@ -1113,7 +1116,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         "preferred_run_days": request.preferred_run_days or [],
         "long_run_day": request.long_run_day,
         "days_per_week": request.days_per_week or 4,
-        "current_weekly_km": request.current_weekly_km or 30.0,
+        "current_weekly_km": request.current_weekly_km if request.current_weekly_km is not None else 30.0,
         "max_hr": max_hr,
         "resting_hr": resting_hr,
         "aet_hr": aet_hr,
@@ -1168,7 +1171,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         double_session_days=request.double_session_days or [],
         start_date=onboarding_start_date,
         has_gym_access=request.has_gym_access or False,
-        use_treadmill=request.has_gym_access or False,
+        use_treadmill=use_treadmill,
         training_environment=request.training_environment or "flat",
         mountain_days=request.mountain_days or [],
         stair_access=bool(request.stair_access),
@@ -1198,7 +1201,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         "days_per_week": request.days_per_week,
         "double_session_days": request.double_session_days or [],
         "has_gym_access": request.has_gym_access or False,
-        "use_treadmill": request.has_gym_access or False,
+        "use_treadmill": use_treadmill,
         "training_environment": request.training_environment or "flat",
         "mountain_days": request.mountain_days or [],
         "stair_access": bool(request.stair_access),

@@ -103,6 +103,12 @@ export function feelingIdToRpe(id: FeelingId): number {
   return match ? match.rpe : 6;
 }
 
+export function rpeLabel(rpe: number | null | undefined, lang: string = "en"): string {
+  const id = rpeToFeelingId(rpe);
+  const option = UNIFIED_FEELINGS.find((effort) => effort.id === id);
+  return option ? translations[lang === "vi" ? "vi" : "en"][option.labelKey] : "";
+}
+
 interface FeelingSelectorProps {
   selectedId: FeelingId | null;
   onChange: (id: FeelingId, rpe: number) => void;
@@ -214,7 +220,7 @@ export const FeelingSelector: React.FC<FeelingSelectorProps> = ({
                 transition: "all 0.18s cubic-bezier(0.16, 1, 0.3, 1)",
                 boxShadow: isSelected ? `0 2px 8px ${opt.badgeBorder}` : "none",
                 minWidth: 0,
-                outline: "none",
+                minHeight: "44px",
               }}
             >
               {/* Segment Pill Color Bar */}
@@ -230,9 +236,9 @@ export const FeelingSelector: React.FC<FeelingSelectorProps> = ({
               />
               <span
                 style={{
-                  fontSize: isMobile ? "9.5px" : "11px",
+                  fontSize: isMobile ? "12px" : "13px",
                   fontWeight: isSelected ? "800" : "600",
-                  color: isSelected ? opt.color : "var(--text-secondary)",
+                  color: "var(--text-primary)",
                   textAlign: "center",
                   lineHeight: 1.15,
                   letterSpacing: isMobile ? "-0.03em" : "-0.01em",
@@ -241,17 +247,6 @@ export const FeelingSelector: React.FC<FeelingSelectorProps> = ({
                 }}
               >
                 {t(opt.labelKey)}
-              </span>
-              <span
-                style={{
-                  fontSize: "9px",
-                  fontWeight: "700",
-                  color: opt.badgeText,
-                  marginTop: "2px",
-                  opacity: isSelected ? 1 : 0.65,
-                }}
-              >
-                RPE {opt.rpe}
               </span>
             </button>
           );
@@ -276,26 +271,13 @@ export const FeelingSelector: React.FC<FeelingSelectorProps> = ({
               style={{
                 fontSize: "15px",
                 fontWeight: "800",
-                color: activeOption.color,
+                color: "var(--text-primary)",
                 letterSpacing: "-0.01em",
               }}
             >
-              {t(activeOption.labelKey)} (RPE {activeOption.rpe})
+              {t(activeOption.labelKey)}
             </span>
           </div>
-          <span
-            style={{
-              fontSize: "11px",
-              fontWeight: "700",
-              color: activeOption.badgeText,
-              background: activeOption.badgeBg,
-              border: `1px solid ${activeOption.badgeBorder}`,
-              borderRadius: "6px",
-              padding: "2px 7px",
-            }}
-          >
-            RPE {activeOption.rpe} / 10
-          </span>
         </div>
 
         <div
@@ -331,7 +313,7 @@ export const FeelingSelector: React.FC<FeelingSelectorProps> = ({
               style={{ color: activeOption.color, flexShrink: 0, marginTop: "2px" }}
             />
             <div>
-              <strong style={{ color: "var(--text-primary)" }}>Coach Adjustment: </strong>
+              <strong style={{ color: "var(--text-primary)" }}>{lang === "vi" ? "Coach điều chỉnh: " : "Coach Adjustment: "}</strong>
               <span>{t(activeOption.descKey)}</span>
             </div>
           </div>

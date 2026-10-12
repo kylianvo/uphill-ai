@@ -56,8 +56,15 @@ final class OnboardingFlowUITests: XCTestCase {
         goal.tap()                                   // → schedule
         let primary = app.buttons["setup.primary"]
         XCTAssertTrue(primary.waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["How much do you run now?"].exists)
-        primary.tap()                                // schedule → start date
+        XCTAssertTrue(app.staticTexts["What does your week look like?"].exists)
+        primary.tap()                                // schedule → venues
+        XCTAssertTrue(app.staticTexts["Where do you train?"].waitForExistence(timeout: 5))
+        primary.tap()                                // venues → body
+        XCTAssertTrue(app.staticTexts["How does your body hold up?"].waitForExistence(timeout: 5))
+        primary.tap()                                // body → race history
+        XCTAssertTrue(app.staticTexts["Have you raced before?"].waitForExistence(timeout: 5))
+        XCTAssertEqual(primary.label, "Skip for now")
+        primary.tap()                                // race history → start date
         XCTAssertTrue(app.staticTexts["When do you want to start?"].waitForExistence(timeout: 5))
         primary.tap()                                // start date → review
         XCTAssertTrue(app.staticTexts["Here's what I'll build from"].waitForExistence(timeout: 5))

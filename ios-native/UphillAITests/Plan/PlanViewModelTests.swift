@@ -322,6 +322,9 @@ struct PlanViewModelTests {
         #expect(await model.buildNextWeek(rpe: 6, notes: "", override: true) == .started)
         #expect(gen.calls.withLock { $0.filter { $0.hasPrefix("next") } } == ["next 4 override=false", "next 4 override=true"])
         #expect(center.running?.kind == .nextWeek)
+        let body = gen.nextBodies.withLock { $0.last! }
+        let payload = try! JSONSerialization.jsonObject(with: JSONCoding.encoder.encode(body)) as! [String: Any]
+        #expect(payload["client_today"] as? String == "2026-10-07")
     }
 
     @Test func everythingGeneratedClearsOfferOn400() async {
@@ -364,6 +367,25 @@ struct PlanViewModelTests {
         #expect(error == nil)
         #expect(gen.calls.withLock { $0.filter { $0.hasPrefix("adapt") } } == ["adapt 2 hard"])
         #expect(center.running?.kind == .adaptWeek)
+    }
+
+    @Test func invalidScheduleCannotStartAdaptOrNextWeek() async {
+        let service = FakePlanService()
+        service.activeResult.withLock { $0 = .success(snapshot()) }
+        service.completionResult.withLock { $0 = .success(completion(80, unlocked: true)) }
+        let (model, center) = makeWithGeneration(service, gen: FakeGenerationService())
+        await model.load()
+        model.selectedWeek = 3
+        await model.refreshNextWeekOffer()
+        var schedule = ScheduleDraft(plan: model.snapshot?.plan)
+        schedule.preferredDays = [.tuesday, .thursday]
+        schedule.daysPerWeek = 4
+        #expect(await model.adaptWeek(2, fatigue: .medium, rpe: nil, notes: "", schedule: schedule) != nil)
+        if case .started = await model.buildNextWeek(rpe: nil, notes: "", override: false, schedule: schedule) {
+            Issue.record("Invalid schedule started next-week generation")
+        }
+        #expect(center.running == nil)
+        center.reset()
     }
 
     @Test func adaptBlockedOffline() async {

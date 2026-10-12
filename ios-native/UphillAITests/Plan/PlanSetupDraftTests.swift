@@ -41,10 +41,9 @@ struct PlanSetupDraftTests {
     @Test func onlyRequiredAnswersBuildBothBodies() throws {
         var d = PlanSetupDraft(prefill: nil, today: today, calendar: cal)
         d.goal = .startRunning
-        d.preferredDays = []
         d.maxHr = 250
         d.heightCm = 90
-        for step in SetupStep.steps(for: .startRunning, includeAboutYou: true) {
+        for step in SetupStep.steps(for: .startRunning, includeProfile: true) {
             #expect(d.issues(for: step, today: today, calendar: cal).isEmpty)
         }
         let onboarding = try encoded(d.onboardingBody(skipPlan: false, calendar: cal))
@@ -60,10 +59,13 @@ struct PlanSetupDraftTests {
     }
 
     @Test func stepsDependOnGoal() {
-        #expect(SetupStep.steps(for: nil, includeAboutYou: true) == [.goal])
-        #expect(SetupStep.steps(for: .race, includeAboutYou: true) == [.goal, .details, .raceDate, .schedule, .startDate, .review])
-        #expect(SetupStep.steps(for: .startRunning, includeAboutYou: true) == [.goal, .schedule, .startDate, .review])
-        #expect(SetupStep.steps(for: .returning, includeAboutYou: false) == [.goal, .details, .fitnessFeel, .schedule, .startDate, .review])
+        #expect(SetupStep.steps(for: nil, includeProfile: true) == [.goal])
+        #expect(SetupStep.steps(for: .race, includeProfile: true)
+                == [.goal, .details, .raceDate, .raceGoal, .schedule, .venues, .body, .raceHistory, .startDate, .review])
+        #expect(SetupStep.steps(for: .race, includeProfile: false)
+                == [.goal, .details, .raceDate, .raceGoal, .schedule, .venues, .startDate, .review])
+        #expect(SetupStep.steps(for: .startRunning, includeProfile: true) == [.goal, .schedule, .venues, .body, .raceHistory, .startDate, .review])
+        #expect(SetupStep.steps(for: .returning, includeProfile: false) == [.goal, .details, .fitnessFeel, .schedule, .venues, .startDate, .review])
     }
 
     @Test func defaultsFromPrefillAndToday() throws {
@@ -76,7 +78,7 @@ struct PlanSetupDraftTests {
 
     @Test func validRaceDraftHasNoIssues() {
         let d = raceDraft()
-        for step in [SetupStep.goal, .details, .schedule, .aboutYou, .review] {
+        for step in [SetupStep.goal, .details, .raceGoal, .schedule, .venues, .body, .review] {
             #expect(d.issues(for: step, today: today, calendar: cal).isEmpty, "step \(step)")
         }
     }
@@ -107,7 +109,8 @@ struct PlanSetupDraftTests {
         d.currentWeeklyKm = 300
         d.startDate = day("2026-10-06")
         let issues = d.issues(for: .schedule, today: today, calendar: cal)
-        #expect(issues.map(\.field) == [.weeklyKm])
+        #expect(issues.map(\.field) == [.preferredDays, .weeklyKm])
+        #expect(issues.first?.message == "Pick 5 run days.")
         #expect(d.issues(for: .startDate, today: today, calendar: cal).map(\.field) == [.startDate])
     }
 
@@ -120,11 +123,28 @@ struct PlanSetupDraftTests {
         #expect(d.issues(for: .details, today: today, calendar: cal).map(\.field) == [])
     }
 
-    @Test func aboutYouRanges() {
+    @Test func timeGoalNeedsTarget() {
         var d = raceDraft()
-        d.heightCm = 90
-        d.maxHr = 250
-        #expect(d.issues(for: .aboutYou, today: today, calendar: cal).map(\.field) == [])
+        d.raceGoal = .time
+        d.targetMinutes = nil
+        #expect(d.issues(for: .raceGoal, today: today, calendar: cal).map(\.field) == [.targetTime])
+        d.targetMinutes = 330
+        #expect(d.issues(for: .raceGoal, today: today, calendar: cal).isEmpty)
+    }
+
+    @Test func doubleSessionsAndTreadmillReachBothBodies() throws {
+        var d = raceDraft()
+        d.doubleSessionDays = [.tuesday, .monday]
+        d.useTreadmill = true
+        d.treadmillMaxIncline = 20
+        let plan = try encoded(d.planBody(calendar: cal))
+        let onboarding = try encoded(d.onboardingBody(skipPlan: false, calendar: cal))
+        let expectedDoubles = Weekday.allCases.filter { [.tuesday, .monday].contains($0) && d.preferredDays.contains($0) }.map(\.rawValue)
+        #expect(plan["double_session_days"] as? [String] == expectedDoubles)
+        #expect(onboarding["double_session_days"] as? [String] == expectedDoubles)
+        #expect(plan["use_treadmill"] as? Bool == true)
+        #expect(plan["treadmill_max_incline"] as? Int == 20)
+        #expect(onboarding["treadmill_max_incline"] as? Int == 20)
     }
 
     @Test func onboardingBodyForTimedRace() throws {
@@ -182,10 +202,19 @@ struct PlanSetupDraftTests {
     @Test func summaryLinesDescribeInputs() {
         #expect(raceDraft().summaryLines == [
             "Vietnam Mountain Marathon 42K on Sat 19 Dec",
+            "42 km · 2,400 m D+",
             "Target time 6:30",
             "4 runs a week, long run on Saturday",
             "Starting from 30 km a week",
+            "Terrain near home: Hilly",
         ])
+    }
+
+    @Test func onboardingKeepsTreadmillSeparateFromGym() throws {
+        var d = raceDraft()
+        d.hasGymAccess = true
+        d.useTreadmill = false
+        #expect(try encoded(d.onboardingBody(skipPlan: false, calendar: cal))["use_treadmill"] as? Bool == false)
     }
 
     @Test func trainingVenuesReachBothBodiesInWeekdayOrder() throws {

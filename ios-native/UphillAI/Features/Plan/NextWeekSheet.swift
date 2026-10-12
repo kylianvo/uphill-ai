@@ -20,6 +20,8 @@ struct NextWeekSheet: View {
         _schedule = State(initialValue: ScheduleDraft(plan: model.snapshot?.plan))
     }
 
+    private var currentOffer: NextWeekOffer { model.nextWeekOffer ?? offer }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -55,7 +57,7 @@ struct NextWeekSheet: View {
                 .padding(UH.Space.regular)
             }
             .background(UH.Palette.surface)
-            .navigationTitle(offer.title)
+            .navigationTitle(currentOffer.title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -79,12 +81,12 @@ struct NextWeekSheet: View {
     private var blockStatusCard: some View {
         VStack(alignment: .leading, spacing: UH.Space.small) {
             HStack {
-                Text("BLOCK \(max(1, offer.blockNumber - 1)) REVIEW")
+                Text("BLOCK \(max(1, currentOffer.blockNumber - 1)) REVIEW")
                     .font(.system(size: 10.5, weight: .bold, design: .monospaced))
                     .tracking(0.5)
                     .foregroundStyle(UH.Palette.muted)
                 Spacer()
-                if offer.unlocked {
+                if currentOffer.unlocked {
                     HStack(spacing: 4) {
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundStyle(UH.Palette.accentInk)
@@ -107,7 +109,7 @@ struct NextWeekSheet: View {
                 .font(UH.TextStyle.body)
                 .foregroundStyle(UH.Palette.secondary)
 
-            if let pct = offer.previousCompletionPct {
+            if let pct = currentOffer.previousCompletionPct {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
                         Text("Completion")
@@ -134,58 +136,16 @@ struct NextWeekSheet: View {
 
     private var rpeCard: some View {
         VStack(alignment: .leading, spacing: UH.Space.small) {
-            HStack {
-                Text("OVERALL EFFORT (RPE)")
-                    .font(.system(size: 10.5, weight: .bold, design: .monospaced))
-                    .tracking(0.5)
-                    .foregroundStyle(UH.Palette.muted)
-                Spacer()
-                if let rpe {
-                    Text("RPE \(rpe)")
-                        .font(.system(size: 11, weight: .bold, design: .monospaced))
-                        .foregroundStyle(UH.Palette.accentInk)
-                }
-            }
-
-            // 1-10 selector buttons
-            HStack(spacing: 4) {
-                ForEach(1...10, id: \.self) { val in
-                    Button {
-                        rpe = val
-                    } label: {
-                        Text("\(val)")
-                            .font(.system(size: 13, weight: .bold, design: .monospaced))
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 38)
-                            .background(rpe == val ? UH.Palette.accentInk : UH.Palette.hover,
-                                        in: RoundedRectangle(cornerRadius: UH.Radius.control))
-                            .foregroundStyle(rpe == val ? Color.white : UH.Palette.ink)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("nextweek.rpe.\(val)")
-                }
-            }
-
-            Text(rpeDescriptor)
+            Text("Overall effort").font(UH.TextStyle.sectionTitle).foregroundStyle(UH.Palette.ink)
+            EffortSelector(selection: $rpe, identifier: "nextweek.rpe")
+            Text("Choose the effort that best matches how it felt.")
                 .font(UH.TextStyle.caption)
                 .foregroundStyle(UH.Palette.secondary)
-                .padding(.top, 2)
         }
         .padding(UH.Space.regular)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(UH.Palette.card, in: RoundedRectangle(cornerRadius: UH.Radius.landing))
         .overlay(RoundedRectangle(cornerRadius: UH.Radius.landing).stroke(UH.Palette.line))
-    }
-
-    private var rpeDescriptor: String {
-        guard let rpe else { return L("Select your perceived effort for the block (1 to 10)") }
-        switch rpe {
-        case 1...3: return L("Very light / recovery. You felt fresh and recovered easily.")
-        case 4...6: return L("Moderate / sustainable. Good training rhythm without excessive strain.")
-        case 7...8: return L("Hard / challenging. Workouts pushed you, but manageable.")
-        case 9...10: return L("Maximum effort / near exhaustion. Very high fatigue.")
-        default: return ""
-        }
     }
 
     // MARK: - Coach Notes Card
@@ -217,7 +177,7 @@ struct NextWeekSheet: View {
         DisclosureGroup(isExpanded: $scheduleExpanded) {
             VStack(spacing: UH.Space.regular) {
                 Divider()
-                ScheduleEditor(draft: $schedule, workouts: model.snapshot?.workouts.filter { $0.weekNumber == model.currentWeek } ?? [])
+                ScheduleEditor(draft: $schedule, workouts: model.snapshot?.workouts.filter { $0.weekNumber == model.currentWeek } ?? [], includeBeginnerProgress: false)
             }
             .padding(.top, UH.Space.compact)
         } label: {
@@ -226,10 +186,10 @@ struct NextWeekSheet: View {
                     .font(.headline)
                     .foregroundStyle(UH.Palette.accentInk)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Update Schedule Preferences (Optional)")
+                    Text("Change my schedule")
                         .font(UH.TextStyle.sectionTitle)
                         .foregroundStyle(UH.Palette.ink)
-                    Text("These changes apply starting with Block \(offer.blockNumber)")
+                    Text("These changes apply starting with Block \(currentOffer.blockNumber)")
                         .font(UH.TextStyle.caption)
                         .foregroundStyle(UH.Palette.secondary)
                 }
@@ -245,13 +205,13 @@ struct NextWeekSheet: View {
 
     private var submitButton: some View {
         Button {
-            Task { await submit(override: !offer.unlocked) }
+            Task { await submit(override: false) }
         } label: {
             if isSubmitting {
                 ProgressView()
                     .frame(maxWidth: .infinity)
             } else {
-                Text(offer.unlocked ? offer.title : L("Generate Block %lld anyway", offer.blockNumber))
+                Text(currentOffer.unlocked ? currentOffer.title : L("Generate Block %lld anyway", currentOffer.blockNumber))
                     .frame(maxWidth: .infinity)
             }
         }

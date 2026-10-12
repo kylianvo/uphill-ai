@@ -470,10 +470,12 @@ final class PlanViewModel {
         guard let offer = nextWeekOffer, let planID = snapshot?.plan.id,
               let generation, let generationService else { return .failed(L("Couldn't start the next week. Try again.")) }
         guard cachedAt == nil else { return .failed(Self.offlineMessage) }
+        if let schedule, schedule.hasChanges, let error = schedule.validationMessage { return .failed(error) }
         let trimmed = notes.trimmingCharacters(in: .whitespacesAndNewlines)
         var body = NextBlockBody(
             planId: planID, blockNumber: offer.blockNumber, overallRpe: rpe,
-            notes: trimmed.isEmpty ? nil : trimmed, overrideGate: override, lang: AppLanguage.code)
+            notes: trimmed.isEmpty ? nil : trimmed, overrideGate: override, lang: AppLanguage.code,
+            clientToday: PlanCalendar.ymd(now(), calendar: calendar))
         schedule?.applyChanges(to: &body)
         do {
             let job = try await generationService.generateNextBlock(body)
@@ -504,6 +506,7 @@ final class PlanViewModel {
             return L("Couldn't start adapting this week. Try again.")
         }
         guard cachedAt == nil else { return Self.offlineMessage }
+        if let schedule, schedule.hasChanges, let error = schedule.validationMessage { return error }
         let trimmed = notes.trimmingCharacters(in: .whitespacesAndNewlines)
         do {
             var body = AdaptWeekBody(

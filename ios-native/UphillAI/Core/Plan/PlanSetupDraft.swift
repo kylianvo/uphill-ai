@@ -49,21 +49,33 @@ enum RaceGoal: String, CaseIterable, Sendable {
 }
 
 enum Terrain: String, CaseIterable, Sendable { case trail, road, mixed }
-enum TrainingEnvironment: String, CaseIterable, Sendable { case flat, hilly, mixed }
+enum TrainingEnvironment: String, CaseIterable, Sendable {
+    case flat, hilly, mixed
+    var title: String {
+        switch self {
+        case .flat: L("Mostly flat")
+        case .hilly: L("Hilly")
+        case .mixed: L("A mix")
+        }
+    }
+}
 
 enum SetupStep: Equatable, Sendable {
-    case goal, details, raceDate, fitnessFeel, daysSinceRace, recoveryFeel, schedule, startDate, aboutYou, review
+    case goal, details, raceDate, raceGoal, fitnessFeel, daysSinceRace, recoveryFeel
+    case schedule, venues, body, raceHistory, startDate, review
 
-    static func steps(for goal: SetupGoal?, includeAboutYou: Bool) -> [SetupStep] {
+    /// Body and race history are profile answers, asked once at onboarding and edited in Profile afterwards.
+    static func steps(for goal: SetupGoal?, includeProfile: Bool) -> [SetupStep] {
         guard let goal else { return [.goal] }
         let questions: [SetupStep]
         switch goal {
-        case .race, .distance: questions = [.details, .raceDate]
+        case .race, .distance: questions = [.details, .raceDate, .raceGoal]
         case .returning: questions = [.details, .fitnessFeel]
         case .recovery: questions = [.details, .daysSinceRace, .recoveryFeel]
         case .startRunning: questions = []
         }
-        return [.goal] + questions + [.schedule, .startDate, .review]
+        let profile: [SetupStep] = includeProfile ? [.body, .raceHistory] : []
+        return [.goal] + questions + [.schedule, .venues] + profile + [.startDate, .review]
     }
 }
 
@@ -87,6 +99,12 @@ struct PlanSetupDraft: Equatable, Sendable {
         "Significant deconditioning — starting nearly fresh",
     ]
     static let raceDistanceOptions = ["5k", "10k", "Half Marathon", "Marathon", "Ultra (< 60k)", "Ultra (60k+)"]
+    static let injuryOptions: [(value: String, title: String, subtitle: String)] = [
+        ("rarely", "Rarely or never injured", "I bounce back quickly from hard efforts."),
+        ("minor", "Minor or past injury", "Mostly resolved, I'm careful at times."),
+        ("frequent", "Often or recently injured", "I need a careful, conservative build."),
+    ]
+    static let distancePresets: [Double] = [10, 21, 42, 50, 70, 100]
     static let recoveryFeelOptions = [
         "Feeling great, minimal soreness",
         "Moderate fatigue, some soreness",
@@ -103,6 +121,8 @@ struct PlanSetupDraft: Equatable, Sendable {
     var terrain: Terrain = .trail
     var raceGoal: RaceGoal = .finish
     var targetMinutes: Int?
+    /// Label of the race distance picked from the matched race's list, if any.
+    var distanceLabel: String?
     // Return
     var timeAway: String?
     var fitnessFeel: String?
@@ -119,6 +139,9 @@ struct PlanSetupDraft: Equatable, Sendable {
     var mountainDays: Set<Weekday> = []
     var stairAccess = false
     var hasGymAccess = false
+    var useTreadmill = false
+    var treadmillMaxIncline = 15
+    var doubleSessionDays: Set<Weekday> = []
     var startDate: Date
     // About you (optional)
     var birthDate: Date?
@@ -169,6 +192,9 @@ struct PlanSetupDraft: Equatable, Sendable {
         let days = preferredDays.count == daysPerWeek ? preferredDays : Self.defaultDays(count: daysPerWeek)
         return Weekday.allCases.filter(days.contains)
     }
+    private var requestDoubleDays: [String] {
+        Weekday.allCases.filter { doubleSessionDays.contains($0) && requestDays.contains($0) }.map(\.rawValue)
+    }
     private var requestLongRunDay: Weekday {
         requestDays.contains(longRunDay) ? longRunDay : requestDays.last!
     }
@@ -195,12 +221,19 @@ struct PlanSetupDraft: Equatable, Sendable {
             if raceDate.map({ $0 < earliest }) ?? true {
                 add(.raceDate, L("Pick a date at least 2 weeks away so the plan has room to build."))
             }
+        case .raceGoal:
+            if raceGoal == .time, !(30...6000).contains(targetMinutes ?? 0) {
+                add(.targetTime, L("Set your target finish time."))
+            }
         case .schedule:
+            if preferredDays.count != daysPerWeek {
+                add(.preferredDays, L("Pick %lld run days.", daysPerWeek))
+            }
             if !(0...250).contains(currentWeeklyKm) { add(.weeklyKm, L("Enter 0 to 250 km.")) }
         case .startDate:
             let latest = calendar.date(byAdding: .day, value: 14, to: start)!
             if !(start...latest).contains(calendar.startOfDay(for: startDate)) { add(.startDate, L("Start today or later.")) }
-        case .aboutYou, .fitnessFeel, .daysSinceRace, .recoveryFeel, .review:
+        case .venues, .body, .raceHistory, .fitnessFeel, .daysSinceRace, .recoveryFeel, .review:
             break
         }
         return issues
@@ -250,9 +283,12 @@ struct PlanSetupDraft: Equatable, Sendable {
             longRunDay: requestLongRunDay.rawValue,
             currentWeeklyKm: currentWeeklyKm,
             hasGymAccess: hasGymAccess,
+            useTreadmill: useTreadmill,
             trainingEnvironment: environment.rawValue,
             mountainDays: Weekday.allCases.filter(mountainDays.contains).map(\.rawValue),
             stairAccess: stairAccess,
+            treadmillMaxIncline: useTreadmill ? treadmillMaxIncline : nil,
+            doubleSessionDays: requestDoubleDays,
             timeAway: goal == .returning ? timeAway : nil,
             fitnessFeel: goal == .returning ? fitnessFeel : nil,
             raceDistanceCompleted: goal == .recovery ? raceDistanceCompleted : nil,
@@ -280,9 +316,12 @@ struct PlanSetupDraft: Equatable, Sendable {
             longRunDay: requestLongRunDay.rawValue,
             daysPerWeek: daysPerWeek,
             hasGymAccess: hasGymAccess,
+            useTreadmill: useTreadmill,
             trainingEnvironment: environment.rawValue,
             mountainDays: Weekday.allCases.filter(mountainDays.contains).map(\.rawValue),
             stairAccess: stairAccess,
+            treadmillMaxIncline: useTreadmill ? treadmillMaxIncline : nil,
+            doubleSessionDays: requestDoubleDays,
             planStartDate: PlanCalendar.ymd(startDate, calendar: calendar),
             timeAway: goal == .returning ? timeAway : nil,
             fitnessFeel: goal == .returning ? fitnessFeel : nil,
@@ -294,24 +333,50 @@ struct PlanSetupDraft: Equatable, Sendable {
     }
 
     /// Facts the plan is built from, shown while it generates. Inputs, not invented progress.
-    var summaryLines: [String] {
-        var lines: [String] = []
+    var summaryLines: [String] { summaryItems.map(\.text) }
+
+    /// Review rows, each with the step that edits it.
+    var summaryItems: [(text: String, step: SetupStep)] {
+        var items: [(text: String, step: SetupStep)] = []
         if goal?.isEvent == true, let name = eventName {
             if let date = raceDate {
-                let style = Date.FormatStyle(date: .omitted, time: .omitted, locale: Locale(identifier: "en_GB"),
+                let style = Date.FormatStyle(date: .omitted, time: .omitted, locale: AppLanguage.current == .vi ? AppLanguage.vi.locale : Locale(identifier: "en_GB"),
                                              calendar: Calendar(identifier: .gregorian), timeZone: summaryTimeZone)
                     .weekday(.abbreviated).day().month(.abbreviated)
-                lines.append(L("%@ on %@", name, date.formatted(style)))
+                items.append((L("%@ on %@", name, date.formatted(style)), .details))
             } else {
-                lines.append(name)
+                items.append((name, .details))
             }
-            if let target = targetText { lines.append(L("Target time %@", target)) }
+            if let course = courseLine { items.append((course, .details)) }
+            if let target = targetText {
+                items.append((L("Target time %@", target), .raceGoal))
+            } else {
+                items.append((raceGoal.title, .raceGoal))
+            }
         } else if let goal {
-            lines.append(goal.title)
+            items.append((goal.title, .goal))
         }
-        lines.append(L("%lld runs a week, long run on %@", daysPerWeek, L(longRunDay.rawValue)))
-        lines.append(L("Starting from %lld km a week", Int(currentWeeklyKm.rounded())))
-        return lines
+        items.append((L("%lld runs a week, long run on %@", daysPerWeek, L(longRunDay.rawValue)), .schedule))
+        items.append((L("Starting from %lld km a week", Int(currentWeeklyKm.rounded())), .schedule))
+        items.append((L("Terrain near home: %@", environment.title), .venues))
+        if hasGymAccess { items.append((L("Gym access"), .venues)) }
+        if useTreadmill { items.append((L("Treadmill up to %lld%%", treadmillMaxIncline), .venues)) }
+        if stairAccess { items.append((L("Stair access"), .venues)) }
+        if !mountainDays.isEmpty {
+            items.append((L("Hill / trail days: %@", Weekday.allCases.filter(mountainDays.contains).map { L($0.short) }.joined(separator: ", ")), .venues))
+        }
+        if !doubleSessionDays.isEmpty {
+            items.append((L("Double sessions: %@", Weekday.allCases.filter(doubleSessionDays.contains).map { L($0.short) }.joined(separator: ", ")), .schedule))
+        }
+        return items
+    }
+
+    /// "50 km · 3,200 m D+", or nil before a distance is set.
+    var courseLine: String? {
+        guard let km = distanceKm else { return nil }
+        let kmText = km.formatted(.number.precision(.fractionLength(0...1)).locale(AppLanguage.current.locale))
+        guard let gain = elevationGainM, gain > 0 else { return L("%@ km", kmText) }
+        return L("%@ km · %@ m D+", kmText, Int(gain).formatted(.number.locale(AppLanguage.current.locale)))
     }
 }
 
@@ -338,9 +403,12 @@ struct OnboardingBody: Encodable, Sendable {
     var longRunDay: String
     var currentWeeklyKm: Double
     var hasGymAccess: Bool
+    var useTreadmill: Bool
     var trainingEnvironment: String
     var mountainDays: [String]
     var stairAccess: Bool
+    var treadmillMaxIncline: Int?
+    var doubleSessionDays: [String]
     var timeAway: String?
     var fitnessFeel: String?
     var raceDistanceCompleted: String?
@@ -366,9 +434,12 @@ struct PlanBody: Encodable, Sendable {
     var longRunDay: String
     var daysPerWeek: Int
     var hasGymAccess: Bool
+    var useTreadmill: Bool
     var trainingEnvironment: String
     var mountainDays: [String]
     var stairAccess: Bool
+    var treadmillMaxIncline: Int?
+    var doubleSessionDays: [String]
     var planStartDate: String
     var timeAway: String?
     var fitnessFeel: String?

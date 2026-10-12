@@ -1,4 +1,5 @@
 "use client";
+import { rpeLabel } from "./FeelingSelector";
 
 import React from "react";
 import { Calculator, CalendarCheck, ChartLineUp, Flag, Trophy, User, Watch } from "@phosphor-icons/react";
@@ -183,7 +184,7 @@ export function GoalContextView({
         [t("Distance", "Cự ly"), `${block.completed_km}/${block.planned_km} km`],
         ["D+", `${block.completed_vert_m}/${block.planned_vert_m} m`],
         [t("Block grade", "Đánh giá Block"), block.latest_block_quality_grade as string | null],
-        ["RPE", block.latest_block_rpe as number | null],
+        [t("Effort", "Gắng sức"), rpeLabel(block.latest_block_rpe as number | null, lang) || null],
       ])
     : [];
   const completion = typeof block?.completion_pct === "number" ? block.completion_pct : null;

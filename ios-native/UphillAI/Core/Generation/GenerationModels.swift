@@ -56,6 +56,7 @@ struct NextBlockBody: Encodable, Sendable {
     var stairAccess: Bool? = nil
     var treadmillMaxIncline: Int? = nil
     var athleteNotes: String? = nil
+    var clientToday: String? = nil
 }
 
 struct AdaptWeekBody: Encodable, Sendable {

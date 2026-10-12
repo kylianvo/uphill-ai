@@ -5,6 +5,14 @@ struct RaceMatch: Decodable, Sendable, Equatable {
     let distanceLabel: String?
     let distanceKm: Double?
     let elevationGainM: Double?
+    /// Every distance the race offers; one is picked when the match didn't resolve a single one.
+    var distances: [RaceDistance]? = nil
+}
+
+struct RaceDistance: Decodable, Sendable, Equatable, Hashable {
+    let label: String?
+    let distanceKm: Double
+    let elevationGainM: Double?
 }
 
 struct RaceMatchResponse: Decodable, Sendable {

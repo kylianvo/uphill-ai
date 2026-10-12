@@ -157,3 +157,21 @@ class TestSkipPlanOnboarding:
         assert resp.status_code == 200, resp.text
         assert "job_id" in resp.json()
         assert get_active_plan(auth_headers["user_id"]) is not None
+
+
+def test_onboarding_keeps_treadmill_separate_from_gym(client, auth_headers, mock_plan_generation):
+    for gym, treadmill in [(True, False), (False, True)]:
+        resp = client.post(
+            "/api/auth/onboarding",
+            headers=auth_headers["headers"],
+            json={
+                "goal_type": "start_running",
+                "has_gym_access": gym,
+                "use_treadmill": treadmill,
+                "current_weekly_km": 0,
+            },
+        )
+        assert resp.status_code == 200, resp.text
+        plan = get_active_plan(auth_headers["user_id"])
+        assert bool(plan["use_treadmill"]) == treadmill
+        assert get_user_by_id(auth_headers["user_id"])["current_weekly_km"] == 0

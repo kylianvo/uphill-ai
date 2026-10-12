@@ -4,6 +4,7 @@ import SwiftUI
 struct ScheduleEditor: View {
     @Binding var draft: ScheduleDraft
     let workouts: [Workout]
+    var includeBeginnerProgress = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: UH.Space.regular) {
@@ -14,7 +15,7 @@ struct ScheduleEditor: View {
                     Text("\(draft.daysPerWeek) days / week").font(.system(.subheadline, design: .monospaced).weight(.bold)).foregroundStyle(UH.Palette.secondary)
                 }
                 Spacer()
-                Stepper("Runs per week", value: $draft.daysPerWeek, in: 3...7)
+                Stepper("Runs per week", value: Binding(get: { draft.daysPerWeek }, set: { draft.setDaysPerWeek($0) }), in: 3...7)
                     .labelsHidden()
             }
             .frame(minHeight: 44)
@@ -25,13 +26,7 @@ struct ScheduleEditor: View {
             VStack(alignment: .leading, spacing: UH.Space.compact) {
                 Text("Preferred run days").font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
                 daysGrid(selected: draft.preferredDays, available: Set(Weekday.allCases)) { day in
-                    if draft.preferredDays.contains(day) {
-                        draft.preferredDays.remove(day)
-                        draft.doubleSessionDays.remove(day)
-                    } else {
-                        draft.preferredDays.insert(day)
-                    }
-                    draft.daysPerWeek = max(3, min(7, draft.preferredDays.count))
+                    draft.toggleDay(day)
                 }
             }
 
@@ -43,7 +38,7 @@ struct ScheduleEditor: View {
                 Spacer()
                 Picker("Long-run day", selection: $draft.longRunDay) {
                     if draft.longRunDay == nil { Text("Not set").tag(Weekday?.none) }
-                    ForEach(Weekday.allCases) { Text($0.rawValue).tag(Weekday?($0)) }
+                    ForEach(draft.orderedDays) { Text(L($0.rawValue)).tag(Weekday?($0)) }
                 }
                 .pickerStyle(.menu)
                 .tint(UH.Palette.accentInk)
@@ -98,7 +93,7 @@ struct ScheduleEditor: View {
                 treadmillMaxIncline: draft.useTreadmill ? $draft.treadmillMaxIncline : nil
             )
 
-            if draft.isGettingStarted {
+            if draft.isGettingStarted && includeBeginnerProgress {
                 Divider()
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
@@ -149,6 +144,10 @@ struct ScheduleEditor: View {
                 .frame(minHeight: 48)
             }
 
+            if let message = draft.validationMessage {
+                Text(message).font(UH.TextStyle.caption).foregroundStyle(UH.Palette.danger)
+            }
+
             // Hard day warning
             if draft.hasHardDayBeforeLongRun(workouts: workouts) {
                 HStack(spacing: 8) {
@@ -176,7 +175,7 @@ struct ScheduleEditor: View {
                 Button {
                     if isAvailable { toggle(day) }
                 } label: {
-                    Text(day.short)
+                    Text(L(day.short))
                         .font(UH.TextStyle.label)
                         .frame(maxWidth: .infinity, minHeight: 44)
                         .foregroundStyle(isSelected ? UH.Palette.buttonInk : (isAvailable ? UH.Palette.ink : UH.Palette.muted))
@@ -186,7 +185,7 @@ struct ScheduleEditor: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(!isAvailable)
-                .accessibilityLabel(day.rawValue)
+                .accessibilityLabel(L(day.rawValue))
                 .accessibilityAddTraits(isSelected ? .isSelected : [])
             }
         }

@@ -145,7 +145,19 @@ def test_to_dict_shape():
             "distance_label": "50km",
             "historical_results": None,
         },
+        "distances": [
+            {"label": "21km", "distance_km": 21.5, "elevation_gain_m": 1200},
+            {"label": "50km", "distance_km": 46.7, "elevation_gain_m": 2800},
+            {"label": "100km", "distance_km": 100.0, "elevation_gain_m": 5500},
+        ],
     }
+
+
+def test_multi_distance_race_without_hint_lists_all_distances():
+    with patch("db.get_kb_chunks", return_value=[VMM_CHUNK, UNRELATED_CHUNK]):
+        matched = match_race("VMM")
+    assert matched.distance_km is None
+    assert [d["distance_km"] for d in matched.to_dict()["distances"]] == [21.5, 46.7, 100.0]
 
 
 MONT_BLANC_MARATHON_CHUNK = {
