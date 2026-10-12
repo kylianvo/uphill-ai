@@ -259,3 +259,56 @@ def test_manual_link_metadata_and_rank_only_patch(client, auth_headers):
     other = client.post("/api/auth/mock-login", json={"email": "race-other@uphill.ai"}).json()
     other_headers = {"Authorization": f"Bearer {other['session_token']}"}
     assert client.patch(endpoint, headers=other_headers, json={"location": "Elsewhere"}).status_code == 404
+
+
+def test_reported_vbm_prs_require_confirmation_and_rejection_survives_sync(client, auth_headers, monkeypatch):
+    from services import race_history
+
+    parents = [
+        {
+            "event": "FMM",
+            "race_full_name": "PREVIEW MARATHON 03/12/2023",
+            "mark": "03:39:14",
+            "bib": "42",
+            "other_results_full": [{"race": "PREVIEW MARATHON 03/12/2023", "time": "03:39:14", "bib": "42"}],
+        },
+        {
+            "event": "HMM",
+            "race_full_name": "PREVIEW HALF 19/11/2023",
+            "mark": "01:44:04",
+            "bib": "21",
+            "other_results_full": [{"race": "PREVIEW HALF 19/11/2023", "time": "01:44:04", "bib": "21"}],
+        },
+    ]
+    for parent in parents:
+        parent["full_name"] = "PREVIEW RUNNER"
+    monkeypatch.setattr(race_history, "_fetch", lambda *args, **kwargs: {"data": parents})
+    h = auth_headers["headers"]
+    claim = client.post(
+        "/api/race-history/claims", headers=h, json={"source": "vbm", "external_id": "PREVIEW PBS"}
+    ).json()
+    initial = client.get("/api/race-history", headers=h).json()
+    assert initial["summary"]["road_prs"]["hm"] is None and initial["summary"]["road_prs"]["fm"] is None
+    assert len(initial["results"]) == 2
+    for row in initial["results"]:
+        assert (
+            client.patch(f"/api/race-history/results/{row['id']}", headers=h, json={"selected": True}).status_code
+            == 200
+        )
+        assert (
+            client.patch(
+                f"/api/race-history/results/{row['id']}", headers=h, json={"result_url": "https://example.org"}
+            ).status_code
+            == 422
+        )
+    summary = client.get("/api/race-history", headers=h).json()["summary"]
+    assert summary["road_prs"]["fm"]["time_sec"] == 13154 and summary["road_prs"]["hm"]["time_sec"] == 6244
+    assert summary["road_fm_pr"] == summary["road_prs"]["fm"] and summary["road_hm_pr"] == summary["road_prs"]["hm"]
+    half = next(row for row in initial["results"] if row["distance_km"] < 30)
+    assert (
+        client.patch(f"/api/race-history/results/{half['id']}", headers=h, json={"selected": False}).status_code == 200
+    )
+    race_history.sync_claim(claim["id"])
+    refreshed = client.get("/api/race-history", headers=h).json()
+    assert refreshed["summary"]["road_prs"]["hm"] is None
+    assert not next(row for row in refreshed["results"] if row["id"] == half["id"])["selected"]
