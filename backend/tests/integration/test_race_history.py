@@ -209,3 +209,53 @@ def test_linking_a_profile_syncs_immediately(client, auth_headers, monkeypatch):
     )
     assert claim.status_code == 202, claim.text
     assert synced == [claim.json()["id"]]
+
+
+def test_manual_link_metadata_and_rank_only_patch(client, auth_headers):
+    h = auth_headers["headers"]
+    response = client.post(
+        "/api/race-history/results",
+        headers=h,
+        json={
+            "discipline": "road",
+            "race_name": "City Marathon",
+            "race_date": "2023-12-03",
+            "distance_km": 42.195,
+            "finish_time_sec": 13154,
+            "location": "Can Tho",
+            "result_url": "https://example.org/results/42",
+            "rank_overall": 30,
+            "total_overall": 100,
+            "rank_gender": 5,
+            "total_gender": 20,
+            "rank_age_group": 2,
+            "total_age_group": 5,
+            "bib": "42",
+        },
+    )
+    assert response.status_code == 200, response.text
+    result = response.json()
+    assert result["source"] == "manual" and result.get("location") == "Can Tho"
+    endpoint = f"/api/race-history/results/{result['id']}"
+    for changes in [
+        {"rank_overall": 101},
+        {"rank_gender": 21},
+        {"rank_age_group": 6},
+        {"elevation_gain_m": -1},
+        {"selected": None},
+        {"hidden": None},
+        {"race_name": None},
+        {"result_url": "javascript:alert(1)"},
+        {"unknown": "value"},
+    ]:
+        invalid = client.patch(endpoint, headers=h, json=changes)
+        assert invalid.status_code == 422, (changes, invalid.text)
+    cleared = client.patch(endpoint, headers=h, json={"result_url": None, "location": None, "elevation_gain_m": None})
+    assert cleared.status_code == 200
+    assert cleared.json()["result_url"] is None and cleared.json()["location"] is None
+    assert cleared.json()["elevation_gain_m"] is None
+    dnf = client.patch(endpoint, headers=h, json={"is_dnf": True})
+    assert dnf.status_code == 200 and dnf.json()["finish_time_sec"] is None
+    other = client.post("/api/auth/mock-login", json={"email": "race-other@uphill.ai"}).json()
+    other_headers = {"Authorization": f"Bearer {other['session_token']}"}
+    assert client.patch(endpoint, headers=other_headers, json={"location": "Elsewhere"}).status_code == 404

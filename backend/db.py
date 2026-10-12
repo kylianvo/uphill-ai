@@ -437,6 +437,7 @@ def init_db():
             event_name TEXT,
             race_date DATE NOT NULL,
             country_code TEXT,
+            location TEXT,
             distance_km REAL NOT NULL,
             elevation_gain_m REAL,
             utmb_category TEXT,
@@ -466,6 +467,7 @@ def init_db():
         )
         """)
         )
+        conn.execute(text("ALTER TABLE race_results ADD COLUMN IF NOT EXISTS location TEXT"))
         conn.execute(
             text(
                 "CREATE UNIQUE INDEX IF NOT EXISTS uq_race_result_manual_key ON race_results (source_key) WHERE source = 'manual'"

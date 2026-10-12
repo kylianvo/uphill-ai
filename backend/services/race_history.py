@@ -403,16 +403,31 @@ def set_verified_bib(claim_id: int, user_id: int, bib: str) -> None:
 def create_manual(user_id: int, data: dict[str, Any]) -> dict[str, Any]:
     import uuid
 
-    params = dict(data)
+    params = {
+        key: None
+        for key in (
+            "location",
+            "bib",
+            "result_url",
+            "user_note",
+            "rank_gender",
+            "total_gender",
+            "rank_age_group",
+            "total_age_group",
+        )
+    }
+    params.update(data)
     params.update({"uid": user_id, "key": str(uuid.uuid4()), "raw": "{}"})
     with engine.begin() as conn:
         row = (
             conn.execute(
                 text("""
             INSERT INTO race_results (user_id, source, source_key, discipline, race_name, race_date,
-              distance_km, elevation_gain_m, finish_time_sec, is_dnf, rank_overall, total_overall, raw)
+              distance_km, elevation_gain_m, finish_time_sec, is_dnf, rank_overall, total_overall, location, bib, result_url, user_note,
+              rank_gender, total_gender, rank_age_group, total_age_group, raw)
             VALUES (:uid, 'manual', :key, :discipline, :race_name, :race_date,
-              :distance_km, :elevation_gain_m, :finish_time_sec, :is_dnf, :rank_overall, :total_overall, CAST(:raw AS jsonb))
+              :distance_km, :elevation_gain_m, :finish_time_sec, :is_dnf, :rank_overall, :total_overall, :location, :bib, :result_url, :user_note,
+              :rank_gender, :total_gender, :rank_age_group, :total_age_group, CAST(:raw AS jsonb))
             RETURNING *
         """),
                 params,
@@ -442,6 +457,13 @@ _EDITABLE_MANUAL = _EDITABLE_IMPORTED | {
     "is_dnf",
     "rank_overall",
     "total_overall",
+    "location",
+    "bib",
+    "result_url",
+    "rank_gender",
+    "total_gender",
+    "rank_age_group",
+    "total_age_group",
 }
 
 
