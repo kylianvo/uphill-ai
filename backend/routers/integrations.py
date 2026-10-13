@@ -624,6 +624,8 @@ def _implausible(w: AppleHealthWorkout, now: datetime) -> str | None:
     for hr in (w.avg_hr, w.max_hr):
         if hr is not None and not 25 <= hr <= 250:
             return "heart rate out of range"
+    if w.avg_hr is not None and w.max_hr is not None and w.avg_hr > w.max_hr:
+        return "avg_hr above max_hr"
     if w.activity_type in APPLE_HEALTH_RUN_TYPES and w.distance_km:
         if w.duration_seconds / w.distance_km < MIN_RUN_PACE_SEC_PER_KM:
             return "pace faster than 2:30/km"
@@ -675,7 +677,7 @@ async def apple_health_sync(body: AppleHealthSyncRequest, user: dict[str, Any] =
     for workout in body.workouts:
         reason = _implausible(workout, now)
         if reason:
-            rejected.append({"external_id": workout.external_id, "reason": reason})
+            rejected.append({"external_id": workout.external_id[:64], "reason": reason})
             continue
         db.upsert_activity(user_id, _to_canonical(workout))
         accepted += 1
