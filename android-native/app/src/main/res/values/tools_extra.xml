@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="tools_back" formatted="false">Back</string>
+  <string name="tools_goal_determiner" formatted="false">Goal Determiner</string>
+  <string name="tools_race_setup" formatted="false">Race setup</string>
+  <string name="tools_race_name" formatted="false">Race name</string>
+  <string name="tools_race_date_yyyy_mm_dd" formatted="false">Race date (YYYY-MM-DD)</string>
+  <string name="tools_your_baseline" formatted="false">Your baseline</string>
+  <string name="tools_week" formatted="false">week</string>
+  <string name="tools_race_history" formatted="false">Race history</string>
+  <string name="tools_utmb_index" formatted="false">UTMB index</string>
+  <string name="tools_watch_data" formatted="false">Watch data</string>
+  <string name="tools_physiology" formatted="false">Physiology</string>
+  <string name="tools_manual_reference_race" formatted="false">Manual reference race</string>
+  <string name="tools_reference_race" formatted="false">Reference race</string>
+  <string name="tools_reference_distance_km" formatted="false">Reference distance (km)</string>
+  <string name="tools_reference_gain_m" formatted="false">Reference gain (m)</string>
+  <string name="tools_finish_time_h_mm_ss" formatted="false">Finish time (H:MM:SS)</string>
+  <string name="tools_estimate_my_goals" formatted="false">Estimate my goals</string>
+  <string name="tools_results" formatted="false">Results</string>
+  <string name="tools_goals" formatted="false">Goals</string>
+  <string name="tools_what_we_used" formatted="false">What we used</string>
+  <string name="tools_field_curve" formatted="false">Field curve</string>
+  <string name="tools_ambitious" formatted="false">Ambitious</string>
+  <string name="tools_realistic" formatted="false">Realistic</string>
+  <string name="tools_safe" formatted="false">Safe</string>
+  <string name="tools_plan_pacing" formatted="false">Plan pacing</string>
+  <string name="tools_not_enough_data_to_estimate_a_goal" formatted="false">Not enough data to estimate a goal.</string>
+  <string name="tools_to_sharpen_this" formatted="false">To sharpen this</string>
+  <string name="tools_coach_reasoning" formatted="false">Coach reasoning</string>
+  <string name="tools_confidence" formatted="false">Confidence</string>
+  <string name="tools_course_profile" formatted="false">Course profile</string>
+  <string name="tools_unknown" formatted="false">Unknown</string>
+  <string name="tools_finishers_field_curve" formatted="false">Finishers field curve</string>
+  <string name="tools_no_verified_benchmark_field_data_available_for_this_race" formatted="false">No verified benchmark field data available for this race.</string>
+  <string name="tools_year" formatted="false">Year</string>
+  <string name="tools_gender" formatted="false">Gender</string>
+  <string name="tools_overall" formatted="false">overall</string>
+  <string name="tools_men" formatted="false">men</string>
+  <string name="tools_women" formatted="false">women</string>
+  <string name="tools_time_mins_percentile" formatted="false">Time (mins) / percentile</string>
+  <string name="tools_top" formatted="false">Top</string>
+  <string name="tools_gear_vault" formatted="false">Gear Vault</string>
+  <string name="tools_gear" formatted="false">Gear</string>
+  <string name="tools_find_shoes" formatted="false">Find shoes</string>
+  <string name="tools_shoe_rotation" formatted="false">Shoe rotation</string>
+  <string name="tools_shoe_preferences" formatted="false">Shoe preferences</string>
+  <string name="tools_race_distance_km" formatted="false">Race distance (km)</string>
+  <string name="tools_surface" formatted="false">Surface</string>
+  <string name="tools_trail" formatted="false">trail</string>
+  <string name="tools_road" formatted="false">road</string>
+  <string name="tools_terrain" formatted="false">Terrain</string>
+  <string name="tools_runnable" formatted="false">runnable</string>
+  <string name="tools_technical" formatted="false">technical</string>
+  <string name="tools_muddy" formatted="false">muddy</string>
+  <string name="tools_rocky" formatted="false">rocky</string>
+  <string name="tools_use_case" formatted="false">Use case</string>
+  <string name="tools_daily_training" formatted="false">daily training</string>
+  <string name="tools_tempo" formatted="false">tempo</string>
+  <string name="tools_race" formatted="false">race</string>
+  <string name="tools_daily" formatted="false">daily</string>
+  <string name="tools_cushioning" formatted="false">Cushioning</string>
+  <string name="tools_plush" formatted="false">plush</string>
+  <string name="tools_balanced" formatted="false">balanced</string>
+  <string name="tools_firm" formatted="false">firm</string>
+  <string name="tools_width" formatted="false">Width</string>
+  <string name="tools_narrow" formatted="false">narrow</string>
+  <string name="tools_normal" formatted="false">normal</string>
+  <string name="tools_wide" formatted="false">wide</string>
+  <string name="tools_carbon_plate" formatted="false">Carbon Plate</string>
+  <string name="tools_yes" formatted="false">yes</string>
+  <string name="tools_no" formatted="false">no</string>
+  <string name="tools_preferred_brands" formatted="false">Preferred brands</string>
+  <string name="tools_budget" formatted="false">Budget</string>
+  <string name="tools_additional_context" formatted="false">Additional context</string>
+  <string name="tools_find_matching_shoes" formatted="false">Find matching shoes</string>
+  <string name="tools_matched_race" formatted="false">Matched race</string>
+  <string name="tools_no_recommendations_available" formatted="false">No recommendations available.</string>
+  <string name="tools_pros" formatted="false">Pros</string>
+  <string name="tools_cons" formatted="false">Cons</string>
+  <string name="tools_assign_to_rotation" formatted="false">Assign to rotation</string>
+  <string name="tools_tips" formatted="false">Tips</string>
+  <string name="tools_saving_rotation" formatted="false">Saving rotation…</string>
+  <string name="tools_slot" formatted="false">Slot</string>
+  <string name="tools_save" formatted="false">Save</string>
+  <string name="tools_cancel" formatted="false">Cancel</string>
+  <string name="tools_retire" formatted="false">Retire</string>
+  <string name="tools_remove" formatted="false">Remove</string>
+  <string name="tools_no_shoe_assigned_to_this_slot" formatted="false">No shoe assigned to this slot</string>
+  <string name="tools_configure_shoe" formatted="false">Configure shoe</string>
+  <string name="tools_brand" formatted="false">Brand</string>
+  <string name="tools_model" formatted="false">Model</string>
+  <string name="tools_logged_distance_km" formatted="false">Logged distance (km)</string>
+  <string name="tools_expected_life_km" formatted="false">Expected life (km)</string>
+  <string name="tools_notes" formatted="false">Notes</string>
+  <string name="tools_was_this_useful" formatted="false">Was this useful?</string>
+  <string name="tools_thanks" formatted="false">Thanks</string>
+  <string name="tools_helpful" formatted="false">Helpful</string>
+  <string name="tools_needs_work" formatted="false">Needs work</string>
+  <string name="tools_which_distance" formatted="false">Which distance?</string>
+  <string name="tools_nutrition_lab" formatted="false">Nutrition Lab</string>
+  <string name="tools_fueling_setup" formatted="false">Fueling setup</string>
+  <string name="tools_duration_hours" formatted="false">Duration (hours)</string>
+  <string name="tools_temperature" formatted="false">Temperature</string>
+  <string name="tools_cool" formatted="false">cool</string>
+  <string name="tools_moderate" formatted="false">moderate</string>
+  <string name="tools_hot" formatted="false">hot</string>
+  <string name="tools_formats" formatted="false">Formats</string>
+  <string name="tools_gel" formatted="false">gel</string>
+  <string name="tools_chews" formatted="false">chews</string>
+  <string name="tools_drink_mix" formatted="false">drink_mix</string>
+  <string name="tools_solid" formatted="false">solid</string>
+  <string name="tools_athlete_level" formatted="false">Athlete level</string>
+  <string name="tools_recreational" formatted="false">Recreational</string>
+  <string name="tools_intermediate" formatted="false">Intermediate</string>
+  <string name="tools_advanced" formatted="false">Advanced</string>
+  <string name="tools_carbs_g_hour" formatted="false">Carbs (g/hour)</string>
+  <string name="tools_sodium_mg_hour" formatted="false">Sodium (mg/hour)</string>
+  <string name="tools_calculate_fueling" formatted="false">Calculate fueling</string>
+  <string name="tools_fueling_totals" formatted="false">Fueling totals</string>
+  <string name="tools_timeline" formatted="false">Timeline</string>
+  <string name="tools_products" formatted="false">Products</string>
+  <string name="tools_hour" formatted="false">Hour</string>
+  <string name="tools_protein" formatted="false">Protein</string>
+  <string name="tools_browse_product_catalog" formatted="false">Browse product catalog</string>
+  <string name="tools_search_products" formatted="false">Search products</string>
+  <string name="tools_caffeine" formatted="false">Caffeine</string>
+  <string name="tools_water" formatted="false">Water</string>
+  <string name="tools_use_this_brand" formatted="false">Use this brand</string>
+  <string name="tools_knowledge_hub" formatted="false">Knowledge Hub</string>
+  <string name="tools_search_knowledge" formatted="false">Search knowledge</string>
+  <string name="tools_daily_insight" formatted="false">Daily insight</string>
+  <string name="tools_topics" formatted="false">Topics</string>
+  <string name="tools_no_knowledge_cards_found" formatted="false">No knowledge cards found.</string>
+  <string name="tools_knowledge_sources" formatted="false">Knowledge sources</string>
+  <string name="tools_open_source" formatted="false">Open source</string>
+  <string name="tools_source_url" formatted="false">Source URL</string>
+  <string name="tools_add_source" formatted="false">Add source</string>
+  <string name="tools_source_added" formatted="false">Source added</string>
+  <string name="tools_show_less" formatted="false">Show less</string>
+  <string name="tools_key_points" formatted="false">Key points</string>
+  <string name="tools_all" formatted="false">All</string>
+  <string name="tools_training" formatted="false">Training</string>
+  <string name="tools_nutrition" formatted="false">Nutrition</string>
+  <string name="tools_recovery" formatted="false">Recovery</string>
+  <string name="tools_pacing" formatted="false">Pacing</string>
+  <string name="tools_mindset" formatted="false">Mindset</string>
+  <string name="tools_pdf" formatted="false">pdf</string>
+  <string name="tools_youtube" formatted="false">youtube</string>
+  <string name="tools_web" formatted="false">web</string>
+  <string name="tools_pace_strategy" formatted="false">Pace strategy</string>
+  <string name="tools_course_setup" formatted="false">Course setup</string>
+  <string name="tools_import_gpx" formatted="false">Import GPX</string>
+  <string name="tools_trackpoints" formatted="false">trackpoints</string>
+  <string name="tools_remove_gpx" formatted="false">Remove GPX</string>
+  <string name="tools_split_interval_km" formatted="false">Split interval (km)</string>
+  <string name="tools_pacing_controls" formatted="false">Pacing controls</string>
+  <string name="tools_target_time_minutes" formatted="false">Target time (minutes)</string>
+  <string name="tools_runner_weight_kg" formatted="false">Runner weight (kg)</string>
+  <string name="tools_start_time_hh_mm" formatted="false">Start time (HH:MM)</string>
+  <string name="tools_split_strategy" formatted="false">Split strategy</string>
+  <string name="tools_even" formatted="false">Even</string>
+  <string name="tools_negative" formatted="false">Negative</string>
+  <string name="tools_positive" formatted="false">Positive</string>
+  <string name="tools_split_bias" formatted="false">Split bias</string>
+  <string name="tools_suggested_range" formatted="false">Suggested range</string>
+  <string name="tools_calculate_pacing" formatted="false">Calculate pacing</string>
+  <string name="tools_past_results" formatted="false">Past results</string>
+  <string name="tools_all_years" formatted="false">All years</string>
+  <string name="tools_winner" formatted="false">Winner</string>
+  <string name="tools_winner_f" formatted="false">Winner (F)</string>
+  <string name="tools_race_summary" formatted="false">Race summary</string>
+  <string name="tools_moving_time" formatted="false">Moving time</string>
+  <string name="tools_with_rest" formatted="false">With rest</string>
+  <string name="tools_hike_sections" formatted="false">Hike sections</string>
+  <string name="tools_elevation_profile" formatted="false">Elevation profile</string>
+  <string name="tools_distance_km_elevation_m" formatted="false">Distance (km) / elevation (m)</string>
+  <string name="tools_pacing_splits" formatted="false">Pacing splits</string>
+  <string name="tools_run" formatted="false">run</string>
+  <string name="tools_hike" formatted="false">hike</string>
+  <string name="tools_split" formatted="false">Split</string>
+  <string name="tools_elapsed" formatted="false">Elapsed</string>
+  <string name="tools_after_sunset" formatted="false">After sunset</string>
+  <string name="tools_rest_minutes" formatted="false">Rest (minutes)</string>
+  <string name="tools_plan_fueling" formatted="false">Plan fueling</string>
+  <string name="tools_choose_gear" formatted="false">Choose gear</string>
+  <string name="tools_distance_km" formatted="false">Distance (km)</string>
+  <string name="tools_elevation_gain_m" formatted="false">Elevation Gain (m)</string>
+  <string name="tools_link_race_profile" formatted="false">Link race profile</string>
+  <string name="tools_add_a_race_result" formatted="false">Add a race result</string>
+  <string name="tools_low" formatted="false">Low</string>
+  <string name="tools_medium" formatted="false">Medium</string>
+  <string name="tools_high" formatted="false">High</string>
+  <string name="tools_synthetic" formatted="false">synthetic</string>
+  <string name="tools_gpx" formatted="false">gpx</string>
+  <string name="tools_recent_trail_result" formatted="false">Recent trail result</string>
+  <string name="tools_vo2max" formatted="false">Vo2max</string>
+  <string name="tools_watch" formatted="false">Watch</string>
+  <string name="tools_block" formatted="false">Block</string>
+  <string name="tools_profile" formatted="false">Profile</string>
+  <string name="tools_p5" formatted="false">P5</string>
+  <string name="tools_p10" formatted="false">P10</string>
+  <string name="tools_p25" formatted="false">P25</string>
+  <string name="tools_p50" formatted="false">P50</string>
+  <string name="tools_p75" formatted="false">P75</string>
+  <string name="tools_p90" formatted="false">P90</string>
+  <string name="tools_apply_to_plan" formatted="false">Apply to plan</string>
+  <string name="tools_goal_updated" formatted="false">Goal updated</string>
+  <string name="tools_confirm_time_target" formatted="false">Confirm time target</string>
+  <string name="tools_update_plan_target_to" formatted="false">Update plan target to</string>
+  <string name="tools_apply" formatted="false">Apply</string>
+</resources>

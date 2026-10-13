@@ -1,0 +1,1429 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+  <string name="as_context" formatted="false"> as context</string>
+  <string name="set_as_target">%1$s %2$s, set as target</string>
+  <string name="coming_soon">%1$s Coming soon</string>
+  <string name="phase">%1$s Phase</string>
+  <string name="hill_or_trail_day">%1$s hill or trail day</string>
+  <string name="invited_you_to_be_coached">%1$s invited you to be coached</string>
+  <string name="kilometres">%1$s kilometres</string>
+  <string name="km">%1$s km</string>
+  <string name="km_logged">%1$s km logged</string>
+  <string name="km_m_d">%1$s km · %2$s m D+</string>
+  <string name="must_be_a_whole_number">%1$s must be a whole number.</string>
+  <string name="must_be_below">%1$s must be below %2$s.</string>
+  <string name="must_look_like_5_30">%1$s must look like 5:30.</string>
+  <string name="on">%1$s on %2$s</string>
+  <string name="updated_your_zones">%1$s updated your zones</string>
+  <string name="will_see_what_you_changed_workouts_already_in_the_plan_keep_their_targets_new_on">%1$s will see what you changed. Workouts already in the plan keep their targets; new ones use these numbers.</string>
+  <string name="lld_weeks">%1$s · %2$d weeks</string>
+  <string name="top">%1$s · top %2$s%%</string>
+  <string name="done">%1$s%% Done</string>
+  <string name="lld_vs_last_wk_total_lld_weeks">%1$s%2$d%% vs last wk · Total %3$d weeks</string>
+  <string name="lld_m_d">%1$s, %2$d m D+</string>
+  <string name="coming_soon_998c6d8e0c">%1$s, coming soon</string>
+  <string name="draft_plan">%1$s: Draft plan \"%2$s\"</string>
+  <string name="session_needs_approval">%1$s: Session \"%2$s\" needs approval</string>
+  <string name="lld_insights">%1$d INSIGHTS</string>
+  <string name="lld_days_week">%1$d days / week</string>
+  <string name="lld_days_ago">%1$d days ago</string>
+  <string name="lld_days_to_go">%1$d days to go</string>
+  <string name="lld_days_week_0ca508e46d">%1$d days/week</string>
+  <string name="lld_finishers">%1$d finishers</string>
+  <string name="lld_h">%1$d h</string>
+  <string name="lld_hours">%1$d hours</string>
+  <string name="lld_km_expected_life">%1$d km expected life</string>
+  <string name="lld_km_week">%1$d km/week</string>
+  <string name="lld_min">%1$d min</string>
+  <string name="lld_min_km_lld_m">%1$d min · %2$s km · +%3$d m</string>
+  <string name="lld_minutes">%1$d minutes</string>
+  <string name="lld_of_lld">%1$d of %2$d</string>
+  <string name="lld_of_lld_completed">%1$d of %2$d completed</string>
+  <string name="lld_of_lld_sessions_completed">%1$d of %2$d sessions completed</string>
+  <string name="lld_of_lld_workouts_completed">%1$d of %2$d workouts completed</string>
+  <string name="lld_runners">%1$d runners</string>
+  <string name="lld_runs_a_week_long_run_on">%1$d runs a week, long run on %2$s</string>
+  <string name="lld_runs_from_your_watch_marked_done">%1$d runs from your watch marked done</string>
+  <string name="lld_shoes">%1$d shoes</string>
+  <string name="lld_total">%1$d total</string>
+  <string name="lld_total_misses">%1$d total misses</string>
+  <string name="lld_weeks_62b4ed1d3b">%1$d weeks</string>
+  <string name="lld_weeks_lld_sessions">%1$d weeks · %2$d sessions</string>
+  <string name="lld_wks">%1$d wks</string>
+  <string name="lld_yrs">%1$d yrs</string>
+  <string name="lld_70_required">%1$d%% / 70%% required</string>
+  <string name="lld_adherence">%1$d%% adherence</string>
+  <string name="lld_lld_unlocked">%1$d/%2$d UNLOCKED</string>
+  <string name="lldg_carbs">%1$dg carbs</string>
+  <string name="lldmg_sodium">%1$dmg sodium</string>
+  <string name="interrupted" formatted="false">(Interrupted)</string>
+  <string name="add_a_result_that_isn_t_linked" formatted="false">+ Add a result that isn\'t linked</string>
+  <string name="lld_m_elevation_gain">+%1$d m elevation gain</string>
+  <string name="text_1_run_from_your_watch_marked_done" formatted="false">1 run from your watch marked done</string>
+  <string name="text_10_finished" formatted="false">10% finished</string>
+  <string name="text_100_miles_161_km" formatted="false">100 MILES (161 KM)</string>
+  <string name="text_100_miles" formatted="false">100 Miles</string>
+  <string name="text_1_3_months" formatted="false">1–3 months</string>
+  <string name="text_2_sessions" formatted="false">2 SESSIONS</string>
+  <string name="text_2_6_weeks" formatted="false">2–6 weeks</string>
+  <string name="text_3_6_months" formatted="false">3–6 months</string>
+  <string name="text_4_slots_active" formatted="false">4 SLOTS ACTIVE</string>
+  <string name="text_4_zones" formatted="false">4 zones</string>
+  <string name="text_5_zones" formatted="false">5 zones</string>
+  <string name="text_6_months" formatted="false">6+ months</string>
+  <string name="text_90_finish" formatted="false">90% Finish</string>
+  <string name="text_90_finished" formatted="false">90% finished</string>
+  <string name="text_2_weeks" formatted="false">&lt; 2 weeks</string>
+  <string name="a_bit_rusty_slightly_deconditioned" formatted="false">A bit rusty, slightly deconditioned</string>
+  <string name="a_clear_goal_sets_how_hard_your_key_sessions_are" formatted="false">A clear goal sets how hard your key sessions are.</string>
+  <string name="a_distance" formatted="false">A distance</string>
+  <string name="a_hard_day_right_before_the_long_run_makes_both_harder" formatted="false">A hard day right before the long run makes both harder.</string>
+  <string name="a_mix" formatted="false">A mix</string>
+  <string name="a_road_race" formatted="false">A road race</string>
+  <string name="a_send_is_already_running_try_again_in_a_moment" formatted="false">A send is already running. Try again in a moment.</string>
+  <string name="a_specific_race" formatted="false">A specific race</string>
+  <string name="a_trail_race" formatted="false">A trail race</string>
+  <string name="a_ambitious" formatted="false">A: Ambitious</string>
+  <string name="about_this_session" formatted="false">ABOUT THIS SESSION</string>
+  <string name="active" formatted="false">ACTIVE</string>
+  <string name="assign_to_rotation_slot" formatted="false">ASSIGN TO ROTATION SLOT</string>
+  <string name="auto_updating_calendar_subscription" formatted="false">AUTO-UPDATING CALENDAR SUBSCRIPTION</string>
+  <string name="avg_hr" formatted="false">AVG HR</string>
+  <string name="about_1_minute" formatted="false">About 1 minute</string>
+  <string name="about_what_i_expected" formatted="false">About what I expected</string>
+  <string name="about_you" formatted="false">About you</string>
+  <string name="accept" formatted="false">Accept</string>
+  <string name="account" formatted="false">Account</string>
+  <string name="action" formatted="false">Action</string>
+  <string name="action_items" formatted="false">Action Items</string>
+  <string name="active_9234069589" formatted="false">Active</string>
+  <string name="active_race">Active Race: %1$s</string>
+  <string name="active_race_7a4c56aff7">Active Race: %1$s (%2$s)</string>
+  <string name="active_recovery_warm_ups" formatted="false">Active recovery &amp; warm-ups</string>
+  <string name="active_shoe_rotation_wear" formatted="false">Active shoe rotation &amp; wear</string>
+  <string name="adapt_week_lld">Adapt Week %1$d</string>
+  <string name="adapt_week_lld_327ece43bb">Adapt week %1$d</string>
+  <string name="add" formatted="false">Add</string>
+  <string name="add_other_custom_model" formatted="false">Add Other Custom Model...</string>
+  <string name="add_race_result" formatted="false">Add Race Result</string>
+  <string name="add_threshold_pace_or_both_easy_pace_bounds_to_preview_your_zones" formatted="false">Add Threshold Pace or both easy pace bounds to preview your zones.</string>
+  <string name="add_workout" formatted="false">Add Workout</string>
+  <string name="add_a_note_for_this">Add a note for this %1$s...</string>
+  <string name="add_an_athlete" formatted="false">Add an Athlete</string>
+  <string name="add_birth_date" formatted="false">Add birth date</string>
+  <string name="add_link_https_uphillathlete_com" formatted="false">Add link: https://uphillathlete.com/...</string>
+  <string name="add_session_notes_legs_terrain_weather" formatted="false">Add session notes (legs, terrain, weather)…</string>
+  <string name="add_the_race_name" formatted="false">Add the race name.</string>
+  <string name="add_to_apple_calendar" formatted="false">Add to Apple Calendar</string>
+  <string name="add_to_calendar_ics" formatted="false">Add to Calendar (.ics)</string>
+  <string name="add_workouts_directly_to_apple_calendar_google_calendar_or_outlook_subscriptions" formatted="false">Add workouts directly to Apple Calendar, Google Calendar, or Outlook. Subscriptions stay updated as your plan adapts.</string>
+  <string name="add_your_aet_and_ant_heart_rates" formatted="false">Add your AeT and AnT heart rates</string>
+  <string name="add_your_age_and_weight" formatted="false">Add your age and weight</string>
+  <string name="add_your_easy_pace" formatted="false">Add your easy pace</string>
+  <string name="add_your_heart_rate_zones" formatted="false">Add your heart rate zones</string>
+  <string name="add_your_pace_zones" formatted="false">Add your pace zones</string>
+  <string name="added_lld_sessions_to">Added %1$d sessions to %2$s</string>
+  <string name="additional_notes_e_g_blister_prone_rock_protection_needed" formatted="false">Additional notes (e.g. blister prone, rock protection needed)</string>
+  <string name="adherence" formatted="false">Adherence</string>
+  <string name="adherence_trend" formatted="false">Adherence Trend</string>
+  <string name="adjust" formatted="false">Adjust</string>
+  <string name="adjust_your_preferred_running_days_long_run_and_training_environment" formatted="false">Adjust your preferred running days, long run, and training environment.</string>
+  <string name="aet_threshold_z2" formatted="false">AeT Threshold (Z2)</string>
+  <string name="aet_lld_bpm">AeT: %1$d bpm</string>
+  <string name="aet_top_of_zone_2_ant_top_of_zone_3" formatted="false">AeT: top of Zone 2. AnT: top of Zone 3.</string>
+  <string name="aet_top_of_zone_2_ant_top_of_zone_3_zone_widths_are_schematic" formatted="false">AeT: top of Zone 2. AnT: top of Zone 3. Zone widths are schematic.</string>
+  <string name="aerobic_threshold_aet" formatted="false">Aerobic Threshold (AeT)</string>
+  <string name="aerobic_base_conversational_effort" formatted="false">Aerobic base; conversational effort</string>
+  <string name="aerobic_capacity_aet_ant" formatted="false">Aerobic capacity (AeT-AnT)</string>
+  <string name="aerobic_threshold_aet_b133c8e623" formatted="false">Aerobic threshold (AeT)</string>
+  <string name="aerobic_threshold_aet_must_be_below_anaerobic_threshold_ant" formatted="false">Aerobic threshold (AeT) must be below anaerobic threshold (AnT).</string>
+  <string name="aerobic_threshold_hr" formatted="false">Aerobic threshold HR</string>
+  <string name="afternoon" formatted="false">Afternoon</string>
+  <string name="age" formatted="false">Age</string>
+  <string name="aggressive" formatted="false">Aggressive</string>
+  <string name="ahead_of_target" formatted="false">Ahead of target</string>
+  <string name="alerts_coach_uphill_to_adapt_volume_loading" formatted="false">Alerts Coach Uphill to adapt volume &amp; loading</string>
+  <string name="all" formatted="false">All</string>
+  <string name="all_years" formatted="false">All Years</string>
+  <string name="all_messages_in_this_conversation_will_be_permanently_removed" formatted="false">All messages in this conversation will be permanently removed.</string>
+  <string name="all_years_a0f0951065" formatted="false">All years</string>
+  <string name="all_years_average" formatted="false">All years (average)</string>
+  <string name="ambitious" formatted="false">Ambitious</string>
+  <string name="an_error_occurred" formatted="false">An error occurred.</string>
+  <string name="ant_threshold_z4" formatted="false">AnT Threshold (Z4)</string>
+  <string name="ant_lld_bpm">AnT: %1$d bpm</string>
+  <string name="anaerobic_threshold_ant" formatted="false">Anaerobic Threshold (AnT)</string>
+  <string name="anaerobic_threshold_ant_4231fb3241" formatted="false">Anaerobic threshold (AnT)</string>
+  <string name="anaerobic_threshold_ant_must_not_exceed_max_heart_rate" formatted="false">Anaerobic threshold (AnT) must not exceed max heart rate.</string>
+  <string name="anaerobic_threshold_hr" formatted="false">Anaerobic threshold HR</string>
+  <string name="anchors_your_primary_weekend_endurance_session" formatted="false">Anchors your primary weekend endurance session</string>
+  <string name="answer_a_few_questions_and_coach_uphill_builds_a_plan_around_your_goal_your_week" formatted="false">Answer a few questions and Coach Uphill builds a plan around your goal, your week and how you feel today.</string>
+  <string name="any" formatted="false">Any</string>
+  <string name="anything_else_i_should_know_optional" formatted="false">Anything else I should know? (optional)</string>
+  <string name="app_default_not_measured" formatted="false">App default, not measured</string>
+  <string name="apple_watch" formatted="false">Apple Watch</string>
+  <string name="apple_sign_in_did_not_return_a_token_please_try_again" formatted="false">Apple sign-in did not return a token. Please try again.</string>
+  <string name="applied" formatted="false">Applied</string>
+  <string name="apply" formatted="false">Apply</string>
+  <string name="apply_change" formatted="false">Apply Change</string>
+  <string name="approve_workout" formatted="false">Approve Workout</string>
+  <string name="are_you_sure_you_want_to_remove_they_will_no_longer_share_their_plan_and_data_wi">Are you sure you want to remove %1$s? They will no longer share their plan and data with you.</string>
+  <string name="arrive_healthy_and_finish_feeling_in_control" formatted="false">Arrive healthy and finish feeling in control.</string>
+  <string name="ask_coach_uphill" formatted="false">Ask Coach Uphill</string>
+  <string name="ask_coach_uphill_47a6ebc29f" formatted="false">Ask Coach Uphill…</string>
+  <string name="assign" formatted="false">Assign</string>
+  <string name="assign_shoe" formatted="false">Assign Shoe</string>
+  <string name="assign_to_shoe_rotation" formatted="false">Assign to Shoe Rotation</string>
+  <string name="athlete_level" formatted="false">Athlete Level</string>
+  <string name="athlete_notes" formatted="false">Athlete Notes:</string>
+  <string name="athlete_profile" formatted="false">Athlete Profile</string>
+  <string name="athlete_notes_563109780f" formatted="false">Athlete notes</string>
+  <string name="athlete_field_test" formatted="false">Athlete · field test</string>
+  <string name="athlete_lab_test" formatted="false">Athlete · lab test</string>
+  <string name="athlete_method_unknown" formatted="false">Athlete · method unknown</string>
+  <string name="athlete_watch_formula" formatted="false">Athlete · watch/formula</string>
+  <string name="athlete_s_uphill_email" formatted="false">Athlete\'s Uphill email...</string>
+  <string name="athletes" formatted="false">Athletes</string>
+  <string name="athletes_by_target_race" formatted="false">Athletes by Target Race</string>
+  <string name="authorization_security_check_failed_state_mismatch" formatted="false">Authorization security check failed (state mismatch).</string>
+  <string name="automatic_zones_use_a_heart_rate_formula_treat_their_boundaries_as_estimates_not" formatted="false">Automatic zones use a heart rate formula. Treat their boundaries as estimates, not measured thresholds.</string>
+  <string name="automatically_create_a_dedicated_uphill_ai_training_calendar_in_your_native_cale" formatted="false">Automatically create a dedicated \"Uphill AI Training\" calendar in your native Calendar app without manual file imports.</string>
+  <string name="average_of_lld_editions">Average of %1$d editions</string>
+  <string name="avg">Avg %1$s</string>
+  <string name="b_realistic" formatted="false">B: Realistic</string>
+  <string name="block_lld_review">BLOCK %1$d REVIEW</string>
+  <string name="brand_preferences" formatted="false">BRAND PREFERENCES</string>
+  <string name="brand_preferences_budget" formatted="false">BRAND PREFERENCES &amp; BUDGET</string>
+  <string name="back" formatted="false">Back</string>
+  <string name="balanced" formatted="false">Balanced</string>
+  <string name="base_phase" formatted="false">Base Phase</string>
+  <string name="be_ready_for_a_distance_like_your_first_21_km" formatted="false">Be ready for a distance, like your first 21 km.</string>
+  <string name="behind_target" formatted="false">Behind target</string>
+  <string name="benefit" formatted="false">Benefit:</string>
+  <string name="birth_date" formatted="false">Birth date</string>
+  <string name="block_completion_lld_done">Block completion: %1$d%% done</string>
+  <string name="block_progress" formatted="false">Block progress</string>
+  <string name="body_and_injury_history" formatted="false">Body and injury history</string>
+  <string name="brand" formatted="false">Brand</string>
+  <string name="brand_e_g_brooks" formatted="false">Brand (e.g. Brooks)</string>
+  <string name="build_anyway" formatted="false">Build anyway</string>
+  <string name="build_my_plan" formatted="false">Build my plan</string>
+  <string name="build_the_next_block_anyway" formatted="false">Build the next block anyway?</string>
+  <string name="build_toward_a_race_on_a_set_date" formatted="false">Build toward a race on a set date.</string>
+  <string name="build_week_lld">Build week %1$d</string>
+  <string name="build_weeks_lld_lld">Build weeks %1$d–%2$d</string>
+  <string name="building_the_next_block" formatted="false">Building the next block…</string>
+  <string name="building_your_plan" formatted="false">Building your plan</string>
+  <string name="building_your_plan_lld">Building your plan… %1$d:%2$s</string>
+  <string name="c_safe" formatted="false">C: Safe</string>
+  <string name="caution" formatted="false">CAUTION</string>
+  <string name="climbing" formatted="false">CLIMBING</string>
+  <string name="coach_uphill_reasoning" formatted="false">COACH UPHILL REASONING</string>
+  <string name="coach_uphill_takeaway" formatted="false">COACH UPHILL TAKEAWAY</string>
+  <string name="coach_s_fueling_protocols" formatted="false">COACH\'S FUELING PROTOCOLS</string>
+  <string name="coach_s_pick_this_week" formatted="false">COACH\'S PICK THIS WEEK</string>
+  <string name="coach_s_review" formatted="false">COACH\'S REVIEW</string>
+  <string name="coaching_mode" formatted="false">COACHING MODE</string>
+  <string name="connected_accounts" formatted="false">CONNECTED ACCOUNTS</string>
+  <string name="cons_trade_offs" formatted="false">CONS / TRADE-OFFS</string>
+  <string name="coros" formatted="false">COROS</string>
+  <string name="coros_authorization_was_declined_or_cancelled" formatted="false">COROS authorization was declined or cancelled.</string>
+  <string name="coros_connected" formatted="false">COROS connected</string>
+  <string name="coros_didn_t_accept_the_plan_nothing_changed_on_your_watch" formatted="false">COROS didn\'t accept the plan. Nothing changed on your watch.</string>
+  <string name="coros_isn_t_connected_connect_it_in_profile" formatted="false">COROS isn\'t connected. Connect it in Profile.</string>
+  <string name="coros_isn_t_connected_reconnect_it_in_your_profile" formatted="false">COROS isn\'t connected. Reconnect it in your profile.</string>
+  <string name="coros_plans_cover_up_to_16_weeks_send_to_coros_opens_closer_to_your_race" formatted="false">COROS plans cover up to 16 weeks. Send to COROS opens closer to your race.</string>
+  <string name="coros_plans_must_be_at_least_4_weeks_long" formatted="false">COROS plans must be at least 4 weeks long.</string>
+  <string name="course_configuration" formatted="false">COURSE CONFIGURATION</string>
+  <string name="course_profile_target_pace" formatted="false">COURSE PROFILE &amp; TARGET PACE</string>
+  <string name="course_stats" formatted="false">COURSE STATS</string>
+  <string name="current_distance_logged" formatted="false">CURRENT DISTANCE LOGGED</string>
+  <string name="current_fitness_baseline" formatted="false">CURRENT FITNESS BASELINE</string>
+  <string name="calculate_fueling_plan" formatted="false">Calculate Fueling Plan</string>
+  <string name="calculate_your_race_nutrition_strategy" formatted="false">Calculate your race nutrition strategy</string>
+  <string name="calculation_anchors" formatted="false">Calculation Anchors</string>
+  <string name="calibrated_against_lld_field_lld_finishers">Calibrated against %1$d field (%2$d finishers)</string>
+  <string name="calibrated_from_your_threshold_fitness_profile" formatted="false">Calibrated from your threshold &amp; fitness profile</string>
+  <string name="calibrated_using_the_minetti_metabolic_cost_curve_with_altitude_penalty_cumulati" formatted="false">Calibrated using the Minetti metabolic cost curve with altitude penalty, cumulative fatigue decay, and split strategy adjustment.</string>
+  <string name="calibrates_zone_2_recovery_aerobic_runs" formatted="false">Calibrates Zone 2 recovery &amp; aerobic runs</string>
+  <string name="calibrates_calorie_expenditure_pacing_models_and_recovery_rates" formatted="false">Calibrates calorie expenditure, pacing models, and recovery rates.</string>
+  <string name="calibrates_remaining_volume_and_workout_intensity_for_week_lld">Calibrates remaining volume and workout intensity for week %1$d.</string>
+  <string name="can_t_reach_uphill_check_your_connection_and_try_again" formatted="false">Can\'t reach Uphill. Check your connection and try again.</string>
+  <string name="cancel" formatted="false">Cancel</string>
+  <string name="cannot_clear_thread_while_a_turn_is_active" formatted="false">Cannot clear thread while a turn is active.</string>
+  <string name="carbon_propulsion_plate" formatted="false">Carbon / Propulsion Plate</string>
+  <string name="carbs_per_hour" formatted="false">Carbs per hour</string>
+  <string name="change" formatted="false">Change</string>
+  <string name="change_my_schedule" formatted="false">Change my schedule</string>
+  <string name="change_password" formatted="false">Change password</string>
+  <string name="change_target" formatted="false">Change target</string>
+  <string name="change_your_target_time_to">Change your target time to %1$s?</string>
+  <string name="changes_not_on_your_watch_yet" formatted="false">Changes not on your watch yet</string>
+  <string name="check_again" formatted="false">Check again</string>
+  <string name="check_your_aerobic_endurance_limit_and_threshold_heart_rate_keep_watch_generated" formatted="false">Check your Aerobic Endurance limit and threshold heart rate. Keep watch-generated values marked as estimates.</string>
+  <string name="checking_connection" formatted="false">Checking connection…</string>
+  <string name="choose_field_test_or_lab_test_only_when_both_thresholds_were_measured_that_way" formatted="false">Choose Field test or Lab test only when both thresholds were measured that way.</string>
+  <string name="choose_a_long_run_day_from_your_run_days" formatted="false">Choose a long run day from your run days.</string>
+  <string name="choose_a_password_with_at_least_8_characters" formatted="false">Choose a password with at least 8 characters.</string>
+  <string name="choose_the_effort_that_best_matches_how_it_felt" formatted="false">Choose the effort that best matches how it felt.</string>
+  <string name="choose_what_you_re_training_for" formatted="false">Choose what you\'re training for.</string>
+  <string name="clear" formatted="false">Clear</string>
+  <string name="clear_conversation" formatted="false">Clear Conversation?</string>
+  <string name="clear_conversation_16299ad1ab" formatted="false">Clear conversation</string>
+  <string name="clear_conversation_1953205493" formatted="false">Clear conversation?</string>
+  <string name="climbing_m_d" formatted="false">Climbing (m D+)</string>
+  <string name="close" formatted="false">Close</string>
+  <string name="coach" formatted="false">Coach</string>
+  <string name="coach_ai_co_creation" formatted="false">Coach AI Co-Creation</string>
+  <string name="coach_notes_lld">Coach Notes (%1$d)</string>
+  <string name="coach_uphill" formatted="false">Coach Uphill</string>
+  <string name="coach_uphill_builds_your_first_weeks_now_and_adds_each_new_week_as_you_train" formatted="false">Coach Uphill builds your first weeks now and adds each new week as you train.</string>
+  <string name="coach_uphill_follows_this_when_it_writes_the_new_weeks_optional" formatted="false">Coach Uphill follows this when it writes the new weeks. Optional.</string>
+  <string name="coach_uphill_provides_training_suggestions_based_on_endurance_principles_always_" formatted="false">Coach Uphill provides training suggestions based on endurance principles. Always listen to your body and consult medical professionals for injuries.</string>
+  <string name="coach_uphill_rebuilds_the_workouts_you_haven_t_done_yet_finished_and_synced_work" formatted="false">Coach Uphill rebuilds the workouts you haven\'t done yet. Finished and synced workouts stay as they are.</string>
+  <string name="coach_uphill_sets_the_target_from_your_fitness_as_you_train" formatted="false">Coach Uphill sets the target from your fitness as you train.</string>
+  <string name="coach_uphill_uses_how_this_block_went_to_shape_the_next_one" formatted="false">Coach Uphill uses how this block went to shape the next one.</string>
+  <string name="coach_uphill_uses_your_feedback_and_past_training_consistency_to_shape_the_next_" formatted="false">Coach Uphill uses your feedback and past training consistency to shape the next block of workouts.</string>
+  <string name="coach_uphill_will_count_back_your_training_phases_from_race_day" formatted="false">Coach Uphill will count back your training phases from race day.</string>
+  <string name="coach_uphill_will_generate_your_personalized_workouts_based_on_your_recent_train" formatted="false">Coach Uphill will generate your personalized workouts based on your recent training consistency and progress.</string>
+  <string name="coach_notes_on_this_block" formatted="false">Coach notes on this block</string>
+  <string name="coaching_invitation" formatted="false">Coaching Invitation</string>
+  <string name="cold_15_c" formatted="false">Cold (&lt;15°C)</string>
+  <string name="come_back_after_a_break" formatted="false">Come back after a break</string>
+  <string name="coming_back_after_a_break" formatted="false">Coming back after a break</string>
+  <string name="coming_soon_4f7d640176" formatted="false">Coming soon</string>
+  <string name="competitive" formatted="false">Competitive</string>
+  <string name="complete_a_100_mile_race_to_unlock" formatted="false">Complete a 100-mile race to unlock</string>
+  <string name="complete_the_current_block_to_unlock" formatted="false">Complete the current block to unlock</string>
+  <string name="completed" formatted="false">Completed</string>
+  <string name="completion" formatted="false">Completion</string>
+  <string name="confirm_new_password" formatted="false">Confirm New Password</string>
+  <string name="confirm_password" formatted="false">Confirm password</string>
+  <string name="connect_coros" formatted="false">Connect COROS</string>
+  <string name="connect_coros_account" formatted="false">Connect COROS Account</string>
+  <string name="connect_coros_in_profile" formatted="false">Connect COROS in Profile</string>
+  <string name="connect_in_profile" formatted="false">Connect in Profile</string>
+  <string name="connect_your_verified_race_history_to_sharpen_your_goal_calculation" formatted="false">Connect your verified race history to sharpen your goal calculation.</string>
+  <string name="connect_your_watch" formatted="false">Connect your watch</string>
+  <string name="connect_your_watch_for_recent_training" formatted="false">Connect your watch for recent training</string>
+  <string name="connect_your_watch_so_completed_runs_are_matched_to_your_plan_automatically" formatted="false">Connect your watch so completed runs are matched to your plan automatically.</string>
+  <string name="connected" formatted="false">Connected</string>
+  <string name="connected_accounts_2fc385cd20" formatted="false">Connected accounts</string>
+  <string name="connected_in_profile" formatted="false">Connected in Profile</string>
+  <string name="connected_to_coros_syncing_activities" formatted="false">Connected to COROS · Syncing activities...</string>
+  <string name="connected_i_ll_use_your_recent_runs_to_set_your_starting_mileage" formatted="false">Connected. I\'ll use your recent runs to set your starting mileage.</string>
+  <string name="connecting" formatted="false">Connecting…</string>
+  <string name="conservative" formatted="false">Conservative</string>
+  <string name="conservative_buffer_against_heat_fatigue_or_cramps" formatted="false">Conservative buffer against heat, fatigue or cramps</string>
+  <string name="continue_with_apple" formatted="false">Continue with Apple</string>
+  <string name="continue_with_google" formatted="false">Continue with Google</string>
+  <string name="continue_with_estimated_zones" formatted="false">Continue with estimated zones?</string>
+  <string name="continue_with_estimates" formatted="false">Continue with estimates</string>
+  <string name="continuous_jog" formatted="false">Continuous jog</string>
+  <string name="controlled_cadence" formatted="false">Controlled cadence</string>
+  <string name="copy_calendar_subscription_url" formatted="false">Copy Calendar Subscription URL</string>
+  <string name="copy_your_tested_thresholds_if_available_or_use_watch_zone_boundaries_as_estimat" formatted="false">Copy your tested thresholds if available, or use watch zone boundaries as estimates.</string>
+  <string name="could_not_complete_coros_connection" formatted="false">Could not complete COROS connection.</string>
+  <string name="could_not_disconnect" formatted="false">Could not disconnect.</string>
+  <string name="could_not_send_to_coros" formatted="false">Could not send to COROS.</string>
+  <string name="couldn_t_apply_try_again" formatted="false">Couldn\'t apply — try again.</string>
+  <string name="couldn_t_draft_this_week_ask_the_coach_to_try_again" formatted="false">Couldn\'t draft this week — ask the coach to try again.</string>
+  <string name="couldn_t_load_your_plan" formatted="false">Couldn\'t load your plan</string>
+  <string name="couldn_t_load_your_watch_runs" formatted="false">Couldn\'t load your watch runs</string>
+  <string name="couldn_t_reach_coros_nothing_changed_try_again_shortly" formatted="false">Couldn\'t reach COROS. Nothing changed. Try again shortly.</string>
+  <string name="couldn_t_start_adapting_this_week_try_again" formatted="false">Couldn\'t start adapting this week. Try again.</string>
+  <string name="couldn_t_start_the_next_week_try_again" formatted="false">Couldn\'t start the next week. Try again.</string>
+  <string name="couldn_t_sync_watch_activities_please_try_again" formatted="false">Couldn\'t sync watch activities. Please try again.</string>
+  <string name="course_profile" formatted="false">Course Profile</string>
+  <string name="course_physics_from_this_result" formatted="false">Course physics from this result</string>
+  <string name="course_physics_from_your_easy_pace" formatted="false">Course physics from your easy pace</string>
+  <string name="course_physics_from_your_flat_pace" formatted="false">Course physics from your flat pace</string>
+  <string name="course_profile_59c90ab34f" formatted="false">Course profile</string>
+  <string name="create_account" formatted="false">Create account</string>
+  <string name="curated_endurance_physiology_gut_training_protocol_uphill_biomechanics_and_menta" formatted="false">Curated endurance physiology, gut training protocol, uphill biomechanics, and mental models from verified sport science.</string>
+  <string name="cushioning" formatted="false">Cushioning</string>
+  <string name="daily_insight" formatted="false">DAILY INSIGHT</string>
+  <string name="danger_zone" formatted="false">DANGER ZONE</string>
+  <string name="data_sources" formatted="false">DATA SOURCES</string>
+  <string name="descent" formatted="false">DESCENT</string>
+  <string name="direct_apple_calendar_sync" formatted="false">DIRECT APPLE CALENDAR SYNC</string>
+  <string name="dist" formatted="false">DIST</string>
+  <string name="distance" formatted="false">DISTANCE</string>
+  <string name="distance_badges_personal_bests" formatted="false">DISTANCE BADGES &amp; PERSONAL BESTS</string>
+  <string name="duration" formatted="false">DURATION</string>
+  <string name="daily" formatted="false">Daily</string>
+  <string name="data_provided_by_coros" formatted="false">Data provided by COROS</string>
+  <string name="data_provided_by_coros_f76713916e">Data provided by COROS · %1$s</string>
+  <string name="day" formatted="false">Day</string>
+  <string name="days" formatted="false">Days</string>
+  <string name="days_per_week" formatted="false">Days per week</string>
+  <string name="days_since_the_race" formatted="false">Days since the race</string>
+  <string name="days_you_can_reach_real_hills_or_trails_like_weekend_trips_climbing_long_runs_an" formatted="false">Days you can reach real hills or trails, like weekend trips. Climbing long runs and hill sessions go on these days.</string>
+  <string name="decline" formatted="false">Decline</string>
+  <string name="decrease" formatted="false">Decrease</string>
+  <string name="deep_exhaustion_or_overreaching_risk_coach_will_schedule_an_active_recovery_delo" formatted="false">Deep exhaustion or overreaching risk — coach will schedule an active recovery deload week.</string>
+  <string name="delete_plan" formatted="false">Delete Plan</string>
+  <string name="delete_result" formatted="false">Delete Result</string>
+  <string name="delete_training_plan" formatted="false">Delete Training Plan</string>
+  <string name="delete_training_plan_899746db1c" formatted="false">Delete Training Plan?</string>
+  <string name="deleting_plan" formatted="false">Deleting plan…</string>
+  <string name="describe_the_intended_session" formatted="false">Describe the intended session:</string>
+  <string name="description_execution_steps" formatted="false">Description &amp; Execution Steps</string>
+  <string name="designated_long_run" formatted="false">Designated Long Run:</string>
+  <string name="details_pros_cons" formatted="false">Details &amp; Pros/Cons</string>
+  <string name="dial_in_hourly_carbs_and_sodium_intake_based_on_duration_temperature_and_digesti" formatted="false">Dial in hourly Carbs and Sodium intake based on duration, temperature, and digestive tolerance.</string>
+  <string name="did_not_finish_dnf" formatted="false">Did not finish (DNF)</string>
+  <string name="digestive_notes_e_g_caffeine_sensitive_easily_bloated" formatted="false">Digestive notes (e.g. caffeine sensitive, easily bloated)</string>
+  <string name="discard" formatted="false">Discard</string>
+  <string name="discarded" formatted="false">Discarded</string>
+  <string name="discipline" formatted="false">Discipline</string>
+  <string name="disconnect" formatted="false">Disconnect</string>
+  <string name="disconnect_coros" formatted="false">Disconnect COROS</string>
+  <string name="disconnect_coros_7487e24713" formatted="false">Disconnect COROS?</string>
+  <string name="disconnected_from_coros" formatted="false">Disconnected from COROS.</string>
+  <string name="dismiss_suggestions" formatted="false">Dismiss suggestions</string>
+  <string name="dist_km" formatted="false">Dist (km)</string>
+  <string name="distance_b7bdf7a2d6" formatted="false">Distance</string>
+  <string name="distance_km" formatted="false">Distance (km)</string>
+  <string name="distance_achievements" formatted="false">Distance achievements</string>
+  <string name="distance_and_climbing_set_how_long_your_key_runs_get" formatted="false">Distance and climbing set how long your key runs get.</string>
+  <string name="distance_6c15a5515c">Distance: %1$s</string>
+  <string name="done_11a6767d56" formatted="false">Done</string>
+  <string name="double_sessions_optional" formatted="false">Double sessions (optional)</string>
+  <string name="double_sessions">Double sessions: %1$s</string>
+  <string name="double_session_days_max_2" formatted="false">Double-session days (max 2)</string>
+  <string name="draft_plans_to_finish" formatted="false">Draft plans to finish</string>
+  <string name="drafting" formatted="false">Drafting</string>
+  <string name="drafting_week_lld">Drafting week %1$d…</string>
+  <string name="drag_across_the_chart_to_read_any_finish_time" formatted="false">Drag across the chart to read any finish time.</string>
+  <string name="drink_mix" formatted="false">Drink Mix</string>
+  <string name="duration_4fc52a3c4c" formatted="false">Duration</string>
+  <string name="duration_min" formatted="false">Duration (min)</string>
+  <string name="effort_rpe" formatted="false">EFFORT (RPE)</string>
+  <string name="empty_slot" formatted="false">EMPTY SLOT</string>
+  <string name="environment_duration" formatted="false">ENVIRONMENT &amp; DURATION</string>
+  <string name="est_distance" formatted="false">EST. DISTANCE</string>
+  <string name="event_date" formatted="false">EVENT DATE</string>
+  <string name="execution_strategy" formatted="false">EXECUTION STRATEGY</string>
+  <string name="export_ics_file" formatted="false">EXPORT .ICS FILE</string>
+  <string name="each_detail_makes_your_next_week_s_workouts_more_tailored" formatted="false">Each detail makes your next week\'s workouts more tailored.</string>
+  <string name="each_one_helps_coach_uphill_fit_your_next_weeks_to_you_instead_of_an_estimate" formatted="false">Each one helps Coach Uphill fit your next weeks to you instead of an estimate.</string>
+  <string name="easy_recovery" formatted="false">Easy &amp; Recovery</string>
+  <string name="easy_pace_zone_2" formatted="false">Easy Pace (Zone 2)</string>
+  <string name="easy_days_stay_easy_hard_days_hit_the_target" formatted="false">Easy days stay easy, hard days hit the target</string>
+  <string name="easy_pace" formatted="false">Easy pace</string>
+  <string name="easy_pace_faster_end" formatted="false">Easy pace, faster end</string>
+  <string name="easy_pace_faster_end_km">Easy pace, faster end: %1$s /km</string>
+  <string name="easy_pace_slower_end" formatted="false">Easy pace, slower end</string>
+  <string name="easy_pace_slower_end_must_be_slower_than_the_faster_end" formatted="false">Easy pace, slower end must be slower than the faster end.</string>
+  <string name="easy_pace_slower_end_km">Easy pace, slower end: %1$s /km</string>
+  <string name="easy_recovery_runs_aet" formatted="false">Easy recovery runs (&lt; AeT)</string>
+  <string name="easy_weeks_after_a_hard_effort" formatted="false">Easy weeks after a hard effort.</string>
+  <string name="edit" formatted="false">Edit</string>
+  <string name="edit_session" formatted="false">Edit Session</string>
+  <string name="edit_workout" formatted="false">Edit Workout</string>
+  <string name="edit_answers" formatted="false">Edit answers</string>
+  <string name="edit_zones" formatted="false">Edit zones</string>
+  <string name="edition" formatted="false">Edition</string>
+  <string name="effort" formatted="false">Effort</string>
+  <string name="effort_context" formatted="false">Effort &amp; Context</string>
+  <string name="effortless_recovery" formatted="false">Effortless recovery</string>
+  <string name="effortless_recovery_or_peak_freshness_coach_will_maintain_or_slightly_increase_v" formatted="false">Effortless recovery or peak freshness — coach will maintain or slightly increase volume to capitalize.</string>
+  <string name="elapsed_lld_minutes_lld_seconds">Elapsed %1$d minutes %2$d seconds</string>
+  <string name="elevation_gain_d" formatted="false">Elevation Gain (D+)</string>
+  <string name="elevation_gain_m" formatted="false">Elevation Gain (m)</string>
+  <string name="elevation_gain_m_6e74158895" formatted="false">Elevation gain (m)</string>
+  <string name="email" formatted="false">Email</string>
+  <string name="enter_0_to_120_minutes" formatted="false">Enter 0 to 120 minutes.</string>
+  <string name="enter_0_to_250_km" formatted="false">Enter 0 to 250 km.</string>
+  <string name="enter_aet_between_80_and_220_bpm" formatted="false">Enter AeT between 80 and 220 bpm.</string>
+  <string name="enter_ant_between_90_and_225_bpm" formatted="false">Enter AnT between 90 and 225 bpm.</string>
+  <string name="enter_max_hr_between_120_and_240_bpm" formatted="false">Enter Max HR between 120 and 240 bpm.</string>
+  <string name="enter_resting_hr_between_30_and_120_bpm" formatted="false">Enter Resting HR between 30 and 120 bpm.</string>
+  <string name="enter_a_distance_between_1_and_400_km" formatted="false">Enter a distance between 1 and 400 km.</string>
+  <string name="enter_pace_as_m_ss_per_km_for_example_6_30" formatted="false">Enter pace as m:ss per km, for example 6:30.</string>
+  <string name="enter_runner_full_name_as_on_bib" formatted="false">Enter runner full name (as on bib)</string>
+  <string name="entered_by_athlete" formatted="false">Entered by athlete</string>
+  <string name="environment" formatted="false">Environment</string>
+  <string name="error" formatted="false">Error</string>
+  <string name="estimate_race_goal" formatted="false">Estimate Race Goal</string>
+  <string name="estimated" formatted="false">Estimated</string>
+  <string name="estimated_from_your_inputs_threshold_pace_takes_priority_over_the_easy_pace_rang" formatted="false">Estimated from your inputs. Threshold Pace takes priority over the easy pace range.</string>
+  <string name="estimated_from_your_race_history" formatted="false">Estimated from your race history</string>
+  <string name="estimated_from_your_training_so_far" formatted="false">Estimated from your training so far</string>
+  <string name="estimated_hours_on_course" formatted="false">Estimated hours on course</string>
+  <string name="estimated_profile" formatted="false">Estimated profile</string>
+  <string name="estimates_your_finish_time_from_the_course_its_past_field_and_your_race_history_" formatted="false">Estimates your finish time from the course, its past field, and your race history, watch training and profile.</string>
+  <string name="even" formatted="false">Even</string>
+  <string name="evening" formatted="false">Evening</string>
+  <string name="every_week_of_this_plan_is_already_built" formatted="false">Every week of this plan is already built.</string>
+  <string name="every_week_volume_trend" formatted="false">Every week volume trend</string>
+  <string name="every_workout_gets_a_pace_you_can_hold" formatted="false">Every workout gets a pace you can hold</string>
+  <string name="evolab_sync_failed_please_try_again" formatted="false">EvoLab sync failed. Please try again.</string>
+  <string name="evolab_synced_successfully_threshold_pace_km_vo2max">EvoLab synced successfully: threshold pace %1$s/km, VO2max %2$s.</string>
+  <string name="evoke_uses_a_sustained_20_60_minute_time_trial_depending_on_experience_average_h" formatted="false">Evoke uses a sustained 20–60 minute time trial, depending on experience. Average heart rate estimates AnT for that activity. This is a hard effort; test well-rested.</string>
+  <string name="excluded" formatted="false">Excluded</string>
+  <string name="exhausted" formatted="false">Exhausted</string>
+  <string name="exhausted_deload" formatted="false">Exhausted / Deload</string>
+  <string name="exit" formatted="false">Exit</string>
+  <string name="explain_zone_2_heart_rate_training" formatted="false">Explain Zone 2 heart rate training</string>
+  <string name="explain_the_80_20_training_rule" formatted="false">Explain the 80/20 training rule</string>
+  <string name="explore_personalized_recommendations_in_gear_vault" formatted="false">Explore personalized recommendations in Gear Vault</string>
+  <string name="export_calendar" formatted="false">Export Calendar</string>
+  <string name="export_a_standard_icalendar_file_to_share_via_airdrop_open_in_third_party_calend" formatted="false">Export a standard iCalendar file to share via AirDrop, open in third-party calendar apps, or save to Files.</string>
+  <string name="field_distribution_cdf" formatted="false">FIELD DISTRIBUTION (CDF)</string>
+  <string name="finish_time_rank" formatted="false">FINISH TIME &amp; RANK</string>
+  <string name="fit_cushioning" formatted="false">FIT &amp; CUSHIONING</string>
+  <string name="flat" formatted="false">FLAT</string>
+  <string name="failed" formatted="false">Failed</string>
+  <string name="fatigue_minor_niggles_upcoming_travel_or_schedule_changes" formatted="false">Fatigue, minor niggles, upcoming travel, or schedule changes…</string>
+  <string name="feeling_good_just_need_structure" formatted="false">Feeling good, just need structure</string>
+  <string name="feeling_great_minimal_soreness" formatted="false">Feeling great, minimal soreness</string>
+  <string name="female" formatted="false">Female</string>
+  <string name="field" formatted="false">Field</string>
+  <string name="field_percentile_transfer" formatted="false">Field percentile transfer</string>
+  <string name="field_position_from_weekly_volume" formatted="false">Field position from weekly volume</string>
+  <string name="field_test" formatted="false">Field test</string>
+  <string name="filter" formatted="false">Filter</string>
+  <string name="find_matching_shoes_with_ai" formatted="false">Find Matching Shoes with AI</string>
+  <string name="find_my_profile" formatted="false">Find my profile</string>
+  <string name="find_shoes_matched_to_course_technicality_foot_shape_cushioning_preference_and_p" formatted="false">Find shoes matched to course technicality, foot shape, cushioning preference, and plate requirements.</string>
+  <string name="find_values_from_your_watch_or_a_test" formatted="false">Find values from your watch or a test</string>
+  <string name="find_your_values" formatted="false">Find your values</string>
+  <string name="fine_tune_your_training_anchors_your_next_week_adapts_automatically" formatted="false">Fine-tune your training anchors. Your next week adapts automatically.</string>
+  <string name="finish_strong" formatted="false">Finish strong</string>
+  <string name="finishers_field_curve" formatted="false">Finishers Field Curve</string>
+  <string name="firm" formatted="false">Firm</string>
+  <string name="focus_on_building_steady_aerobic_durability_and_consistent_rhythm_keep_easy_runs" formatted="false">Focus on building steady aerobic durability and consistent rhythm. Keep easy runs conversational to maximize mitochondrial adaptation.</string>
+  <string name="focus_limits_races_or_travel_to_plan_around" formatted="false">Focus, limits, races or travel to plan around…</string>
+  <string name="focus_build_consistent_aerobic_capacity_and_fatigue_resistance" formatted="false">Focus: build consistent aerobic capacity and fatigue resistance.</string>
+  <string name="fresh" formatted="false">Fresh</string>
+  <string name="fresh_easy" formatted="false">Fresh &amp; easy</string>
+  <string name="fresh_and_well_recovered_coach_will_maintain_progressive_overload_without_cuttin" formatted="false">Fresh and well recovered — coach will maintain progressive overload without cutting volume.</string>
+  <string name="fri" formatted="false">Fri</string>
+  <string name="friday" formatted="false">Friday</string>
+  <string name="from_the_race_date" formatted="false">From the race date</string>
+  <string name="from_walk_run_to_running_30_minutes" formatted="false">From walk-run to running 30 minutes.</string>
+  <string name="from_watch" formatted="false">From watch</string>
+  <string name="from_your_coros_lld_km_a_week_over_the_last_4_full_weeks">From your COROS: %1$d km a week over the last 4 full weeks</string>
+  <string name="from_your_profile_zone_2" formatted="false">From your profile Zone 2</string>
+  <string name="from_your_watch_runs" formatted="false">From your watch runs</string>
+  <string name="fueling_strategy" formatted="false">Fueling Strategy</string>
+  <string name="gear_specialist_tips" formatted="false">GEAR SPECIALIST TIPS</string>
+  <string name="goal_estimation" formatted="false">GOAL ESTIMATION</string>
+  <string name="grade" formatted="false">GRADE</string>
+  <string name="gain_m_d" formatted="false">Gain (m D+)</string>
+  <string name="gain_m" formatted="false">Gain (m)</string>
+  <string name="garmin" formatted="false">Garmin</string>
+  <string name="gated" formatted="false">Gated</string>
+  <string name="gear" formatted="false">Gear</string>
+  <string name="gear_vault" formatted="false">Gear Vault</string>
+  <string name="gender" formatted="false">Gender</string>
+  <string name="generate_insert_session" formatted="false">Generate &amp; Insert Session</string>
+  <string name="generate_block_lld_anyway">Generate Block %1$d anyway</string>
+  <string name="generate_week_lld">Generate Week %1$d</string>
+  <string name="generate_anyway" formatted="false">Generate anyway</string>
+  <string name="generating" formatted="false">Generating…</string>
+  <string name="get_started" formatted="false">Get started</string>
+  <string name="get_the_most_from_your_plan" formatted="false">Get the most from your plan</string>
+  <string name="getting_started" formatted="false">Getting started</string>
+  <string name="go_to_profile_tab_bottom_right_settings_heart_rate_zone" formatted="false">Go to Profile tab (bottom right) &gt; Settings &gt; Heart Rate Zone.</string>
+  <string name="goal_lldh_m">Goal %1$dh %2$sm</string>
+  <string name="goal_assessment" formatted="false">Goal Assessment</string>
+  <string name="goal_determiner" formatted="false">Goal Determiner</string>
+  <string name="goal_pct" formatted="false">Goal Pct</string>
+  <string name="goal_time" formatted="false">Goal Time</string>
+  <string name="goal_times_are_estimates_synthesized_from_your_training_data_not_a_finish_line_g" formatted="false">Goal times are estimates synthesized from your training data, not a finish line guarantee.</string>
+  <string name="goal">Goal: %1$s</string>
+  <string name="goal_best_possible_time" formatted="false">Goal: best possible time</string>
+  <string name="goal_finish_strong" formatted="false">Goal: finish strong</string>
+  <string name="google_didn_t_return_a_sign_in_token_please_try_again" formatted="false">Google didn\'t return a sign-in token. Please try again.</string>
+  <string name="google_sign_in_couldn_t_open_please_try_again" formatted="false">Google sign-in couldn\'t open. Please try again.</string>
+  <string name="google_sign_in_failed_lld_please_try_again">Google sign-in failed (%1$s %2$d). Please try again.</string>
+  <string name="google_sign_in_failed_error_lld_please_try_again">Google sign-in failed (error %1$d). Please try again.</string>
+  <string name="got_it" formatted="false">Got it</string>
+  <string name="great_week_of_training" formatted="false">Great week of training</string>
+  <string name="guidance_for_this_block" formatted="false">Guidance for this block</string>
+  <string name="gut_training_baseline_60g" formatted="false">Gut training baseline: 60g</string>
+  <string name="gym_access" formatted="false">Gym access</string>
+  <string name="high_confidence" formatted="false">HIGH CONFIDENCE</string>
+  <string name="hourly_race_timeline" formatted="false">HOURLY RACE TIMELINE</string>
+  <string name="hourly_targets_hourly_intake" formatted="false">HOURLY TARGETS (HOURLY INTAKE)</string>
+  <string name="how_did_it_feel" formatted="false">HOW DID IT FEEL?</string>
+  <string name="how_to_execute" formatted="false">HOW TO EXECUTE</string>
+  <string name="half_finished" formatted="false">Half finished</string>
+  <string name="half_marathon" formatted="false">Half marathon</string>
+  <string name="hard" formatted="false">Hard</string>
+  <string name="hard_challenging_workouts_pushed_you_but_manageable" formatted="false">Hard / challenging. Workouts pushed you, but manageable.</string>
+  <string name="hard_demanding_heavy_legs_needed_deep_recovery" formatted="false">Hard / demanding. Heavy legs, needed deep recovery.</string>
+  <string name="hard_session_on_day_week_week_right_before_the_long_run" formatted="false">Hard session on {day} (week {week}) right before the long run.</string>
+  <string name="have_an_account_sign_in" formatted="false">Have an account? Sign in</string>
+  <string name="have_you_raced_before" formatted="false">Have you raced before?</string>
+  <string name="heads_up" formatted="false">Heads-up: </string>
+  <string name="heart_rate" formatted="false">Heart Rate</string>
+  <string name="heart_rate_spectrum" formatted="false">Heart Rate Spectrum</string>
+  <string name="heart_rate_zones_guide" formatted="false">Heart Rate Zones Guide</string>
+  <string name="heart_rate_1447897ca9" formatted="false">Heart rate</string>
+  <string name="heart_rate_optional" formatted="false">Heart rate (optional)</string>
+  <string name="heart_rate_anchors" formatted="false">Heart rate anchors</string>
+  <string name="heart_rate_thresholds" formatted="false">Heart rate thresholds</string>
+  <string name="heart_rates_must_increase_from_resting_to_aet_to_ant_to_max" formatted="false">Heart rates must increase from Resting to AeT to AnT to Max.</string>
+  <string name="heavy_legs" formatted="false">Heavy legs</string>
+  <string name="heavy_legs_tired" formatted="false">Heavy legs / Tired</string>
+  <string name="heavy_legs_or_elevated_fatigue_coach_will_ease_off_volume_and_reduce_high_intens" formatted="false">Heavy legs or elevated fatigue — coach will ease off volume and reduce high-intensity sessions.</string>
+  <string name="height" formatted="false">Height</string>
+  <string name="height_cm" formatted="false">Height (cm)</string>
+  <string name="helpful_recommendations" formatted="false">Helpful recommendations?</string>
+  <string name="helpful_response" formatted="false">Helpful response</string>
+  <string name="here_s_what_i_ll_build_from" formatted="false">Here\'s what I\'ll build from</string>
+  <string name="hide_custom_shoe_input" formatted="false">Hide Custom Shoe Input</string>
+  <string name="hide_for_now" formatted="false">Hide for now</string>
+  <string name="hike" formatted="false">Hike</string>
+  <string name="hill_trail_days">Hill / trail days: %1$s</string>
+  <string name="hill_or_trail_days" formatted="false">Hill or trail days</string>
+  <string name="hill_sessions_and_strength_work_go_where_you_can_actually_do_them" formatted="false">Hill sessions and strength work go where you can actually do them.</string>
+  <string name="hill_sessions_climbing_long_runs_and_strength_work_are_placed_where_you_can_actu" formatted="false">Hill sessions, climbing long runs and strength work are placed where you can actually do them.</string>
+  <string name="hilly" formatted="false">Hilly</string>
+  <string name="historical_field_times_lld">Historical Field Times (%1$d)</string>
+  <string name="hit_a_target_time" formatted="false">Hit a target time</string>
+  <string name="hot_25_c" formatted="false">Hot (&gt;25°C)</string>
+  <string name="hours" formatted="false">Hours</string>
+  <string name="how_do_you_feel_right_now" formatted="false">How do you feel right now?</string>
+  <string name="how_do_you_feel" formatted="false">How do you feel?</string>
+  <string name="how_does_your_body_feel" formatted="false">How does your body feel?</string>
+  <string name="how_does_your_body_hold_up" formatted="false">How does your body hold up?</string>
+  <string name="how_long_have_you_been_away" formatted="false">How long have you been away?</string>
+  <string name="how_much_do_you_run_now" formatted="false">How much do you run now?</string>
+  <string name="how_much_elevation_gain_should_i_train_for" formatted="false">How much elevation gain should I train for?</string>
+  <string name="how_should_i_pace">How should I pace %1$s?</string>
+  <string name="how_to_find_your_zones" formatted="false">How to find your zones</string>
+  <string name="how_to_prevent_muscle_cramps_in_ultras" formatted="false">How to prevent muscle cramps in ultras?</string>
+  <string name="how_were_these_measured" formatted="false">How were these measured?</string>
+  <string name="hydration_balance_500mg" formatted="false">Hydration balance: 500mg</string>
+  <string name="i_bounce_back_quickly_from_hard_efforts" formatted="false">I bounce back quickly from hard efforts.</string>
+  <string name="i_can_use_a_gym" formatted="false">I can use a gym</string>
+  <string name="i_can_use_a_treadmill" formatted="false">I can use a treadmill</string>
+  <string name="i_can_use_stairs_fire_stairs_or_a_stairmaster" formatted="false">I can use stairs (fire stairs or a Stairmaster)</string>
+  <string name="i_need_a_careful_conservative_build" formatted="false">I need a careful, conservative build.</string>
+  <string name="i_need_a_lighter_week" formatted="false">I need a lighter week</string>
+  <string name="i_need_at_least_one_past_result_a_linked_profile_or_recent_watch_training_to_est" formatted="false">I need at least one past result, a linked profile or recent watch training to estimate A/B/C times for this race.</string>
+  <string name="i_ll_count_the_weeks_back_from_race_day" formatted="false">I\'ll count the weeks back from race day.</string>
+  <string name="import_your_official_results" formatted="false">IMPORT YOUR OFFICIAL RESULTS</string>
+  <string name="integrations_watch_sync" formatted="false">INTEGRATIONS &amp; WATCH SYNC</string>
+  <string name="if_i_know_the_race_i_know_its_distance_and_climbing" formatted="false">If I know the race, I know its distance and climbing.</string>
+  <string name="import_gpx_course_file" formatted="false">Import GPX Course File</string>
+  <string name="included" formatted="false">Included</string>
+  <string name="increase" formatted="false">Increase</string>
+  <string name="indexed_sources_documentation" formatted="false">Indexed Sources &amp; Documentation</string>
+  <string name="ingest" formatted="false">Ingest</string>
+  <string name="injuries_and_notes_for_coach_uphill" formatted="false">Injuries and notes for Coach Uphill</string>
+  <string name="injury_notes_limitations" formatted="false">Injury Notes / Limitations:</string>
+  <string name="injury_history_sets_how_fast_i_add_volume" formatted="false">Injury history sets how fast I add volume.</string>
+  <string name="instructions_execution_description" formatted="false">Instructions / Execution Description</string>
+  <string name="instructions" formatted="false">Instructions...</string>
+  <string name="integrations" formatted="false">Integrations</string>
+  <string name="interrupted_132d124d6b" formatted="false">Interrupted</string>
+  <string name="intervals_threshold" formatted="false">Intervals &amp; Threshold</string>
+  <string name="invalid_callback_response_from_coros" formatted="false">Invalid callback response from COROS.</string>
+  <string name="invitation_sent_to">Invitation sent to %1$s!</string>
+  <string name="invite" formatted="false">Invite</string>
+  <string name="invite_pending" formatted="false">Invite pending</string>
+  <string name="key_coach_takeaways" formatted="false">KEY COACH TAKEAWAYS</string>
+  <string name="keep">Keep %1$s</string>
+  <string name="keep_plan" formatted="false">Keep Plan</string>
+  <string name="keep_an_eye_on" formatted="false">Keep an eye on</string>
+  <string name="keep_using_the_app" formatted="false">Keep using the app</string>
+  <string name="knowledge_hub" formatted="false">Knowledge Hub</string>
+  <string name="last_week_review" formatted="false">LAST WEEK REVIEW</string>
+  <string name="linked_athlete_profiles" formatted="false">LINKED ATHLETE PROFILES</string>
+  <string name="log_run_distance" formatted="false">LOG RUN DISTANCE</string>
+  <string name="longest_trail" formatted="false">LONGEST TRAIL</string>
+  <string name="lab_test" formatted="false">Lab test</string>
+  <string name="lactate_threshold_ant" formatted="false">Lactate threshold (AnT)</string>
+  <string name="lactate_threshold_1_hour_race_pace" formatted="false">Lactate threshold; ~1 hour race pace</string>
+  <string name="language" formatted="false">Language</string>
+  <string name="last_synced">Last synced %1$s</string>
+  <string name="leave_blank_if_you_don_t_know" formatted="false">Leave blank if you don\'t know.</string>
+  <string name="leave_blank_if_you_don_t_know_you_can_add_training_zones_in_profile_later" formatted="false">Leave blank if you don\'t know. You can add training zones in Profile later.</string>
+  <string name="let_s_build_your_training_plan" formatted="false">Let\'s build your training plan</string>
+  <string name="level" formatted="false">Level</string>
+  <string name="level_7cc6078a35" formatted="false">Level:</string>
+  <string name="light" formatted="false">Light</string>
+  <string name="link_copied" formatted="false">Link Copied!</string>
+  <string name="link_profile" formatted="false">Link Profile</string>
+  <string name="link_runner_profile" formatted="false">Link Runner Profile</string>
+  <string name="link_utmb_vbm" formatted="false">Link UTMB / VBM</string>
+  <string name="link_utmb_or_vbm_profile" formatted="false">Link UTMB or VBM Profile</string>
+  <string name="link_a_past_trail_race_result" formatted="false">Link a past trail race result</string>
+  <string name="link_a_watch_run" formatted="false">Link a watch run</string>
+  <string name="link_your_utmb_or_vbm_profile" formatted="false">Link your UTMB or VBM profile</string>
+  <string name="link_your_utmb_or_vietnam_backyards_vbm_runner_profile_to_automatically_import_p" formatted="false">Link your UTMB or Vietnam Backyards / VBM runner profile to automatically import past races.</string>
+  <string name="link_your_utmb_or_vietnam_race_profile_and_i_ll_read_your_past_finishes_they_sha" formatted="false">Link your UTMB or Vietnam race profile and I\'ll read your past finishes. They shape your starting load and race-day goal.</string>
+  <string name="link_your_utmb_profile_for_your_utmb_index" formatted="false">Link your UTMB profile for your UTMB index</string>
+  <string name="link_your_race_history" formatted="false">Link your race history</string>
+  <string name="linked_race_results_utmb_vbm" formatted="false">Linked race results (UTMB / VBM)</string>
+  <string name="linked_race_results_and_watch_volume_below_count_for_more_than_easy_pace_when_yo" formatted="false">Linked race results and watch volume below count for more than easy pace when you have them.</string>
+  <string name="linked_to_this_workout" formatted="false">Linked to this workout</string>
+  <string name="list" formatted="false">List</string>
+  <string name="load_earlier_messages" formatted="false">Load earlier messages</string>
+  <string name="load_exact_elevation_profile_waypoints_from_gpx" formatted="false">Load exact elevation profile &amp; waypoints from .gpx</string>
+  <string name="load_older_messages" formatted="false">Load older messages</string>
+  <string name="loading_plans" formatted="false">Loading plans…</string>
+  <string name="loading_race_history" formatted="false">Loading race history…</string>
+  <string name="loading_week_summary_and_performance_metrics_from_coach_uphill" formatted="false">Loading week summary and performance metrics from Coach Uphill…</string>
+  <string name="loading_your_training" formatted="false">Loading your training</string>
+  <string name="local" formatted="false">Local</string>
+  <string name="local_usb" formatted="false">Local (USB)</string>
+  <string name="locked" formatted="false">Locked</string>
+  <string name="locks_in_your_aerobic_endurance_thresholds" formatted="false">Locks in your aerobic endurance thresholds</string>
+  <string name="logged_km" formatted="false">Logged (km)</string>
+  <string name="long_run" formatted="false">Long run</string>
+  <string name="long_run_day" formatted="false">Long run day</string>
+  <string name="long_run_day_a79abbb956" formatted="false">Long-run day</string>
+  <string name="look_for_running_lactate_threshold_pace_in_garmin_connect_or_threshold_pace_in_c" formatted="false">Look for running Lactate Threshold pace in Garmin Connect or Threshold Pace in COROS EvoLab, if available. Use easy runs on flat ground for your easy pace range. Convert min/mile values to min/km before entering them.</string>
+  <string name="max_hr" formatted="false">MAX HR</string>
+  <string name="move_to_a_day_this_week_or_next_week" formatted="false">MOVE TO A DAY THIS WEEK OR NEXT WEEK</string>
+  <string name="makes_workouts_more_accurate" formatted="false">Makes workouts more accurate</string>
+  <string name="male" formatted="false">Male</string>
+  <string name="manage" formatted="false">Manage</string>
+  <string name="manage_plan" formatted="false">Manage Plan</string>
+  <string name="manual_course_profile" formatted="false">Manual Course Profile</string>
+  <string name="manual_form" formatted="false">Manual form</string>
+  <string name="marathon" formatted="false">Marathon</string>
+  <string name="mark_missed" formatted="false">Mark Missed</string>
+  <string name="mark_as_done" formatted="false">Mark as done</string>
+  <string name="mark_as_missed" formatted="false">Mark as missed</string>
+  <string name="mark_as_not_done" formatted="false">Mark as not done</string>
+  <string name="mark_session_as_missed" formatted="false">Mark session as missed?</string>
+  <string name="marked_as_missed" formatted="false">Marked as missed</string>
+  <string name="match_the_right_shoe_for_your_terrain" formatted="false">Match the right shoe for your terrain</string>
+  <string name="matched" formatted="false">Matched</string>
+  <string name="matched_race" formatted="false">Matched race</string>
+  <string name="max_lld_bpm">Max %1$d bpm</string>
+  <string name="max_effort" formatted="false">Max Effort</string>
+  <string name="max_hr_1291bf1750" formatted="false">Max HR</string>
+  <string name="max_heart_rate" formatted="false">Max Heart Rate</string>
+  <string name="max_distance_km" formatted="false">Max distance (km)</string>
+  <string name="max_heart_rate_2132e3615f" formatted="false">Max heart rate</string>
+  <string name="maximum_anaerobic_power_ant" formatted="false">Maximum anaerobic power (&gt; AnT)</string>
+  <string name="maximum_effort_near_exhaustion_high_accumulated_fatigue" formatted="false">Maximum effort / near exhaustion. High accumulated fatigue.</string>
+  <string name="maximum_effort_near_exhaustion_very_high_fatigue" formatted="false">Maximum effort / near exhaustion. Very high fatigue.</string>
+  <string name="me" formatted="false">Me</string>
+  <string name="median_50" formatted="false">Median (50%)</string>
+  <string name="median_50_294d82f2ee" formatted="false">Median 50%</string>
+  <string name="men" formatted="false">Men</string>
+  <string name="mention_past_injuries_current_niggles_or_training_constraints" formatted="false">Mention past injuries, current niggles, or training constraints.</string>
+  <string name="min_8_characters" formatted="false">Min 8 characters</string>
+  <string name="mindset" formatted="false">Mindset</string>
+  <string name="minor_or_past_injury" formatted="false">Minor or past injury</string>
+  <string name="minutes" formatted="false">Minutes</string>
+  <string name="missed" formatted="false">Missed</string>
+  <string name="missed_by_day" formatted="false">Missed by Day</string>
+  <string name="missing_authorization_tokens_from_coros" formatted="false">Missing authorization tokens from COROS.</string>
+  <string name="mod" formatted="false">Mod</string>
+  <string name="model" formatted="false">Model</string>
+  <string name="model_e_g_ghost_16" formatted="false">Model (e.g. Ghost 16)</string>
+  <string name="moderate" formatted="false">Moderate</string>
+  <string name="moderate_15_24_c" formatted="false">Moderate (15–24°C)</string>
+  <string name="moderate_sustainable_good_training_rhythm_without_excessive_strain" formatted="false">Moderate / sustainable. Good training rhythm without excessive strain.</string>
+  <string name="moderate_fatigue_some_soreness" formatted="false">Moderate fatigue, some soreness</string>
+  <string name="modify_available_days_long_run_day_or_weekly_volume" formatted="false">Modify available days, long run day, or weekly volume</string>
+  <string name="modify_run_days_long_run_or_training_venues" formatted="false">Modify run days, long run, or training venues</string>
+  <string name="mon" formatted="false">Mon</string>
+  <string name="monday" formatted="false">Monday</string>
+  <string name="month_calendar" formatted="false">Month Calendar</string>
+  <string name="more_about_you_optional" formatted="false">More about you (optional)</string>
+  <string name="morning" formatted="false">Morning</string>
+  <string name="most_gym_treadmills_stop_at_15_pick_25_only_for_an_incline_trainer" formatted="false">Most gym treadmills stop at 15%. Pick 25%+ only for an incline trainer.</string>
+  <string name="most_of_your_running_happens_here_conversational_aerobic_effort_that_builds_stam" formatted="false">Most of your running happens here. Conversational aerobic effort that builds stamina without accumulating excess fatigue.</string>
+  <string name="mostly_flat" formatted="false">Mostly flat</string>
+  <string name="mostly_resolved_i_m_careful_at_times" formatted="false">Mostly resolved, I\'m careful at times.</string>
+  <string name="mostly_resolved_i_m_careful_at_times_54eaa7ca2d" formatted="false">Mostly resolved, I’m careful at times.</string>
+  <string name="mountain_running_library" formatted="false">Mountain Running Library</string>
+  <string name="move_or_swap" formatted="false">Move or Swap</string>
+  <string name="move_or_swap_this_day" formatted="false">Move or swap this day</string>
+  <string name="move_to" formatted="false">Move to…</string>
+  <string name="my_best_possible_time" formatted="false">My best possible time</string>
+  <string name="notes_for_coach_uphill_optional" formatted="false">NOTES FOR COACH UPHILL (OPTIONAL)</string>
+  <string name="nutrition_fueling" formatted="false">NUTRITION &amp; FUELING</string>
+  <string name="name" formatted="false">Name</string>
+  <string name="narrow" formatted="false">Narrow</string>
+  <string name="new_password" formatted="false">New Password</string>
+  <string name="new_plan" formatted="false">New Plan</string>
+  <string name="new_to_uphill_create_an_account" formatted="false">New to Uphill? Create an account</string>
+  <string name="new_week_is_ready" formatted="false">New week is ready</string>
+  <string name="new_workouts_use_these_numbers" formatted="false">New workouts use these numbers.</string>
+  <string name="next" formatted="false">Next</string>
+  <string name="next_month" formatted="false">Next month</string>
+  <string name="next_week" formatted="false">Next week</string>
+  <string name="next_week_df705defac">Next week · %1$s</string>
+  <string name="no" formatted="false">No</string>
+  <string name="no_active_plan" formatted="false">No active plan</string>
+  <string name="no_active_plan_to_sync" formatted="false">No active plan to sync.</string>
+  <string name="no_adherence_data_recorded_yet" formatted="false">No adherence data recorded yet</string>
+  <string name="no_athlete_profiles_found" formatted="false">No athlete profiles found</string>
+  <string name="no_athletes_match">No athletes match \"%1$s\".</string>
+  <string name="no_athletes_on_your_roster_yet_switch_to_roster_tab_to_invite_runners" formatted="false">No athletes on your roster yet. Switch to Roster tab to invite runners.</string>
+  <string name="no_athletes_yet_send_an_invite_above_to_begin_coaching" formatted="false">No athletes yet — send an invite above to begin coaching.</string>
+  <string name="no_available_target_days" formatted="false">No available target days.</string>
+  <string name="no_cards_matching">No cards matching \"%1$s\"</string>
+  <string name="no_coach_notes_yet_leave_training_feedback_or_execution_advice_here" formatted="false">No coach notes yet. Leave training feedback or execution advice here.</string>
+  <string name="no_completed_workouts_in_window" formatted="false">No completed workouts in window</string>
+  <string name="no_confirmed_result" formatted="false">No confirmed result</string>
+  <string name="no_personal_data_found_so_the_goals_come_from_the_course_and_its_past_field_only" formatted="false">No personal data found, so the goals come from the course and its past field only. Link UTMB / VBM or sync your watch to sharpen them.</string>
+  <string name="no_plan_yet" formatted="false">No plan yet</string>
+  <string name="no_plans_found" formatted="false">No plans found.</string>
+  <string name="no_race_results_linked_yet_you_can_add_them_later_in_profile" formatted="false">No race results linked yet. You can add them later in Profile.</string>
+  <string name="no_race_yet_like_your_first_21_km_or_50_km" formatted="false">No race yet, like your first 21 km or 50 km.</string>
+  <string name="no_races_logged_yet" formatted="false">No races logged yet</string>
+  <string name="no_running_yet" formatted="false">No running yet</string>
+  <string name="no_shoe_assigned_to_this_slot" formatted="false">No shoe assigned to this slot</string>
+  <string name="no_sources_available" formatted="false">No sources available.</string>
+  <string name="no_target_races_configured_yet" formatted="false">No target races configured yet</string>
+  <string name="no_target_set" formatted="false">No target set</string>
+  <string name="no_verified_benchmark_field_data_available_for_this_race" formatted="false">No verified benchmark field data available for this race.</string>
+  <string name="no_watch_connected" formatted="false">No watch connected</string>
+  <string name="no_watch_runs_in_this_plan_yet" formatted="false">No watch runs in this plan yet</string>
+  <string name="no_watch_skip_this_you_can_connect_one_later_in_me_connected_accounts" formatted="false">No watch? Skip this. You can connect one later in Me → Connected accounts.</string>
+  <string name="normal" formatted="false">Normal</string>
+  <string name="normal_fatigue" formatted="false">Normal fatigue</string>
+  <string name="normal_tiredness" formatted="false">Normal tiredness</string>
+  <string name="normal_training_fatigue_coach_will_keep_balanced_volume_with_steady_progression" formatted="false">Normal training fatigue — coach will keep balanced volume with steady progression.</string>
+  <string name="not_assessed_yet" formatted="false">Not assessed yet</string>
+  <string name="not_connected" formatted="false">Not connected</string>
+  <string name="not_done" formatted="false">Not done</string>
+  <string name="not_enough_data_for_goal_times_yet" formatted="false">Not enough data for goal times yet</string>
+  <string name="not_linked" formatted="false">Not linked</string>
+  <string name="not_now" formatted="false">Not now</string>
+  <string name="not_set" formatted="false">Not set</string>
+  <string name="not_set_add_your_zone_2_pace_in_profile" formatted="false">Not set — add your Zone 2 pace in Profile</string>
+  <string name="not_sure" formatted="false">Not sure</string>
+  <string name="not_sure_estimate_it_from_your_results" formatted="false">Not sure? Estimate it from your results</string>
+  <string name="not_yet" formatted="false">Not yet</string>
+  <string name="note_your_zone_2_upper_limit_aet_and_zone_4_upper_limit_lactate_threshold_ant" formatted="false">Note your Zone 2 upper limit (AeT) and Zone 4 upper limit / Lactate Threshold (AnT).</string>
+  <string name="noted_we_ll_improve" formatted="false">Noted. We\'ll improve! 👎</string>
+  <string name="noted" formatted="false">Noted. 👎</string>
+  <string name="notes_from_your_coach" formatted="false">Notes from your coach</string>
+  <string name="nothing_to_send_there_are_no_upcoming_runs_in_your_plan" formatted="false">Nothing to send: there are no upcoming runs in your plan.</string>
+  <string name="nothing_would_change" formatted="false">Nothing would change.</string>
+  <string name="now_linked_to">Now linked to %1$s</string>
+  <string name="nutrition" formatted="false">Nutrition</string>
+  <string name="nutrition_lab" formatted="false">Nutrition Lab</string>
+  <string name="overall_effort_rpe" formatted="false">OVERALL EFFORT (RPE)</string>
+  <string name="offline_showing_your_plan_from">Offline · showing your plan from %1$s</string>
+  <string name="often_or_recently_injured" formatted="false">Often or recently injured</string>
+  <string name="on_track" formatted="false">On track</string>
+  <string name="open_garmin_connect_app_on_your_phone" formatted="false">Open Garmin Connect app on your phone.</string>
+  <string name="open_source" formatted="false">Open source</string>
+  <string name="open_the_apple_watch_app_on_your_iphone" formatted="false">Open the Apple Watch app on your iPhone.</string>
+  <string name="open_the_coros_app_on_your_phone" formatted="false">Open the COROS app on your phone.</string>
+  <string name="optional" formatted="false">Optional</string>
+  <string name="optional_meters" formatted="false">Optional (meters)</string>
+  <string name="optional_add_values_you_know_leave_the_rest_blank_you_can_update_them_in_profile" formatted="false">Optional. Add values you know; leave the rest blank. You can update them in Profile later.</string>
+  <string name="other" formatted="false">Other</string>
+  <string name="other_brands_or_custom_request" formatted="false">Other brands or custom request</string>
+  <string name="other_watches" formatted="false">Other watches</string>
+  <string name="overall" formatted="false">Overall</string>
+  <string name="overall_rank" formatted="false">Overall Rank</string>
+  <string name="overall_effort" formatted="false">Overall effort</string>
+  <string name="pacing_splits_aid_station_plan" formatted="false">PACING SPLITS &amp; AID STATION PLAN</string>
+  <string name="packing_list_products" formatted="false">PACKING LIST &amp; PRODUCTS</string>
+  <string name="pb_recorded" formatted="false">PB Recorded</string>
+  <string name="phase_brief">PHASE BRIEF · %1$s</string>
+  <string name="plan_actions" formatted="false">PLAN ACTIONS</string>
+  <string name="plan_blueprint" formatted="false">PLAN BLUEPRINT</string>
+  <string name="podium_top_times" formatted="false">PODIUM &amp; TOP TIMES</string>
+  <string name="popular_shoes">POPULAR %1$s SHOES</string>
+  <string name="precision_fueling" formatted="false">PRECISION FUELING</string>
+  <string name="preferred_fuel_formats" formatted="false">PREFERRED FUEL FORMATS</string>
+  <string name="preferred_workout_time" formatted="false">PREFERRED WORKOUT TIME</string>
+  <string name="priority" formatted="false">PRIORITY</string>
+  <string name="pros" formatted="false">PROS</string>
+  <string name="pace" formatted="false">Pace</string>
+  <string name="pace_strategy" formatted="false">Pace Strategy</string>
+  <string name="pace_zone_model" formatted="false">Pace zone model</string>
+  <string name="pace_zone_preview" formatted="false">Pace zone preview</string>
+  <string name="paces" formatted="false">Paces</string>
+  <string name="pacing" formatted="false">Pacing</string>
+  <string name="pacing_profile_will_appear_once_course_is_configured" formatted="false">Pacing profile will appear once course is configured</string>
+  <string name="partly_sent_try_again" formatted="false">Partly sent. Try again.</string>
+  <string name="password" formatted="false">Password</string>
+  <string name="password_8_characters" formatted="false">Password (8+ characters)</string>
+  <string name="password_must_be_at_least_8_characters" formatted="false">Password must be at least 8 characters.</string>
+  <string name="password_updated_successfully" formatted="false">Password updated successfully.</string>
+  <string name="passwords_do_not_match" formatted="false">Passwords do not match.</string>
+  <string name="past_finish_times_fall_outside_this_slider_s_range" formatted="false">Past finish times fall outside this slider\'s range.</string>
+  <string name="past_finish_times_pace_degradation_and_course_difficulty" formatted="false">Past finish times, pace degradation and course difficulty</string>
+  <string name="past_results" formatted="false">Past results</string>
+  <string name="past_results_tell_me_what_you_can_already_do" formatted="false">Past results tell me what you can already do.</string>
+  <string name="peak_race_day_execution_ideal_weather_conditions" formatted="false">Peak race day execution, ideal weather &amp; conditions</string>
+  <string name="pending" formatted="false">Pending</string>
+  <string name="percentile" formatted="false">Percentile</string>
+  <string name="percentile_finish_estimation" formatted="false">Percentile finish estimation</string>
+  <string name="phase_alerts" formatted="false">Phase Alerts</string>
+  <string name="physiology_pace_zones" formatted="false">Physiology &amp; Pace Zones</string>
+  <string name="physiology_threshold_zones" formatted="false">Physiology &amp; Threshold Zones</string>
+  <string name="pick_lld_run_days">Pick %1$d run days.</string>
+  <string name="pick_a_date_at_least_2_weeks_away_so_the_plan_has_room_to_build" formatted="false">Pick a date at least 2 weeks away so the plan has room to build.</string>
+  <string name="pick_a_different_run" formatted="false">Pick a different run</string>
+  <string name="pick_one_to_continue" formatted="false">Pick one to continue:</string>
+  <string name="pick_the_run_you_did_for">Pick the run you did for %1$s.</string>
+  <string name="pick_today_or_any_day_in_the_next_two_weeks" formatted="false">Pick today or any day in the next two weeks.</string>
+  <string name="pick_up_to_2_run_days_for_double_sessions" formatted="false">Pick up to 2 run days for double sessions.</string>
+  <string name="plan_fueling" formatted="false">Plan Fueling</string>
+  <string name="plan_pacing" formatted="false">Plan Pacing</string>
+  <string name="plan_settings" formatted="false">Plan Settings</string>
+  <string name="plan_actions_2aa72ce1e5" formatted="false">Plan actions</string>
+  <string name="planned" formatted="false">Planned</string>
+  <string name="planned_km_actual_km">Planned %1$s km · Actual %2$s km</string>
+  <string name="planned_vs_actual" formatted="false">Planned vs Actual</string>
+  <string name="plush" formatted="false">Plush</string>
+  <string name="polar_polar_flow_app_sport_profiles_heart_rate_zones" formatted="false">Polar: Polar Flow App &gt; Sport Profiles &gt; Heart Rate Zones.</string>
+  <string name="popular_shoes_9ca6df44bc" formatted="false">Popular shoes</string>
+  <string name="post" formatted="false">Post</string>
+  <string name="power_hike_high_grade" formatted="false">Power hike / high grade</string>
+  <string name="precision_fueling_timeline" formatted="false">Precision fueling timeline</string>
+  <string name="preferred_brands_or_specific_request" formatted="false">Preferred brands or specific request</string>
+  <string name="preferred_run_days" formatted="false">Preferred run days</string>
+  <string name="preparing_ics_file" formatted="false">Preparing .ics File...</string>
+  <string name="previous_month" formatted="false">Previous month</string>
+  <string name="previous_week" formatted="false">Previous week</string>
+  <string name="primary_target_goal_with_solid_execution" formatted="false">Primary target goal with solid execution</string>
+  <string name="text_private" formatted="false">Private</string>
+  <string name="production" formatted="false">Production</string>
+  <string name="profile" formatted="false">Profile</string>
+  <string name="profile_linked_your_results_are_syncing" formatted="false">Profile linked. Your results are syncing.</string>
+  <string name="proposed" formatted="false">Proposed</string>
+  <string name="proposed_rebuild_week_lld">Proposed rebuild · Week %1$d</string>
+  <string name="proposed_schedule_change" formatted="false">Proposed schedule change</string>
+  <string name="qty_lld">Qty: %1$d</string>
+  <string name="quickly_add_kilometers_from_your_latest_run" formatted="false">Quickly add kilometers from your latest run:</string>
+  <string name="race_day_pacing_targets" formatted="false">RACE DAY PACING TARGETS</string>
+  <string name="race_details" formatted="false">RACE DETAILS</string>
+  <string name="recent_plans" formatted="false">RECENT PLANS</string>
+  <string name="recommended_matches_lld">RECOMMENDED MATCHES (%1$d)</string>
+  <string name="rest" formatted="false">REST</string>
+  <string name="resting" formatted="false">RESTING</string>
+  <string name="runs_per_week" formatted="false">RUNS PER WEEK</string>
+  <string name="race_date" formatted="false">Race Date</string>
+  <string name="race_day_carbon" formatted="false">Race Day Carbon</string>
+  <string name="race_goal" formatted="false">Race Goal</string>
+  <string name="race_goal_estimate" formatted="false">Race Goal Estimate</string>
+  <string name="race_history" formatted="false">Race History</string>
+  <string name="race_target" formatted="false">Race Target</string>
+  <string name="race_date_11162b91c2" formatted="false">Race date</string>
+  <string name="race_history_b0cee90cda" formatted="false">Race history</string>
+  <string name="race_name" formatted="false">Race name</string>
+  <string name="race_name_e_g_dalat_ultra_trail_50k" formatted="false">Race name (e.g. Dalat Ultra Trail 50K)</string>
+  <string name="race_name_e_g_vietnam_mountain_marathon" formatted="false">Race name (e.g. Vietnam Mountain Marathon)</string>
+  <string name="race_name_optional" formatted="false">Race name (optional)</string>
+  <string name="race_week" formatted="false">Race week</string>
+  <string name="ran_this_but_it_didn_t_match_pick_the_run" formatted="false">Ran this but it didn\'t match? Pick the run.</string>
+  <string name="rank_lld">Rank #%1$d</string>
+  <string name="rarely_or_never_injured" formatted="false">Rarely or never injured</string>
+  <string name="rate_your_recent_perceived_exertion_and_note_any_soreness_or_schedule_conflicts" formatted="false">Rate your recent perceived exertion and note any soreness or schedule conflicts.</string>
+  <string name="read_evoke_s_assessment_guide" formatted="false">Read Evoke\'s assessment guide</string>
+  <string name="read_complete_weekly_review" formatted="false">Read complete weekly review</string>
+  <string name="ready" formatted="false">Ready</string>
+  <string name="ready_for_more" formatted="false">Ready for more</string>
+  <string name="ready_to_unlock" formatted="false">Ready to unlock</string>
+  <string name="real_mileage_and_runs_not_a_guess" formatted="false">Real mileage and runs, not a guess</string>
+  <string name="realistic" formatted="false">Realistic</string>
+  <string name="rebuild_safely_after_time_off" formatted="false">Rebuild safely after time off.</string>
+  <string name="rebuild_this_week_around_your_new_schedule" formatted="false">Rebuild this week around your new schedule?</string>
+  <string name="rebuild_week" formatted="false">Rebuild week</string>
+  <string name="recent_plans_89ee30ed0f" formatted="false">Recent plans</string>
+  <string name="recent_weekly_mileage_vertical_gain_and_durability" formatted="false">Recent weekly mileage, vertical gain, and durability</string>
+  <string name="recommend_shoes" formatted="false">Recommend Shoes</string>
+  <string name="record_easy_pace_below_aet_on_flat_ground_use_a_flat_running_time_trial_for_thre" formatted="false">Record easy pace below AeT on flat ground. Use a flat running time trial for Threshold pace; uphill pace is not interchangeable.</string>
+  <string name="recorded_finish" formatted="false">Recorded finish</string>
+  <string name="recover_from_a_race" formatted="false">Recover from a race</string>
+  <string name="recovering_from_a_race" formatted="false">Recovering from a race</string>
+  <string name="recovery" formatted="false">Recovery</string>
+  <string name="recovery_catch_up" formatted="false">Recovery &amp; catch-up</string>
+  <string name="recreational" formatted="false">Recreational</string>
+  <string name="reference_race_name_e_g_sapa_42k" formatted="false">Reference race name (e.g. Sapa 42K)</string>
+  <string name="refines_energy_expenditure_recovery_rates" formatted="false">Refines energy expenditure &amp; recovery rates</string>
+  <string name="relative_field_placement_and_competitive_caliber" formatted="false">Relative field placement and competitive caliber</string>
+  <string name="remove" formatted="false">Remove</string>
+  <string name="remove_e25a3a52df">Remove %1$s</string>
+  <string name="remove_athlete_from_roster" formatted="false">Remove Athlete from Roster?</string>
+  <string name="remove_gpx_file" formatted="false">Remove GPX file</string>
+  <string name="remove_workout" formatted="false">Remove Workout</string>
+  <string name="remove_from_slot">Remove from %1$s Slot</string>
+  <string name="remove_this_workout" formatted="false">Remove this workout?</string>
+  <string name="reply" formatted="false">Reply</string>
+  <string name="reply_to_your_coach" formatted="false">Reply to your coach…</string>
+  <string name="response_interrupted" formatted="false">Response interrupted</string>
+  <string name="rest_05863ec2c3" formatted="false">Rest</string>
+  <string name="rest_day" formatted="false">Rest Day</string>
+  <string name="resting_lld_bpm">Resting %1$d bpm</string>
+  <string name="resting_hr" formatted="false">Resting HR</string>
+  <string name="resting_heart_rate" formatted="false">Resting heart rate</string>
+  <string name="resting_heart_rate_must_be_below_aerobic_threshold_aet" formatted="false">Resting heart rate must be below aerobic threshold (AeT).</string>
+  <string name="retrieved_context" formatted="false">Retrieved Context</string>
+  <string name="retrieving" formatted="false">Retrieving…</string>
+  <string name="retry" formatted="false">Retry</string>
+  <string name="review_last_week_s_training" formatted="false">Review last week\'s training</string>
+  <string name="review_values" formatted="false">Review values</string>
+  <string name="road_use_case" formatted="false">Road Use Case</string>
+  <string name="road_personal_bests" formatted="false">Road personal bests</string>
+  <string name="roster_progress" formatted="false">Roster Progress</string>
+  <string name="run" formatted="false">Run</string>
+  <string name="run_days" formatted="false">Run days</string>
+  <string name="run_quality_lld">Run quality · %1$d%%</string>
+  <string name="runner_weight_kg" formatted="false">Runner Weight (kg)</string>
+  <string name="running_days" formatted="false">Running Days:</string>
+  <string name="running_now" formatted="false">Running now</string>
+  <string name="running_pace_min_km" formatted="false">Running pace (min/km)</string>
+  <string name="runs_per_week_b77997b302" formatted="false">Runs per week</string>
+  <string name="runs_per_week_lld">Runs per week: %1$d</string>
+  <string name="runs_weekly_mileage_and_fitness_synced_automatically" formatted="false">Runs, weekly mileage and fitness, synced automatically.</string>
+  <string name="science_practice" formatted="false">SCIENCE &amp; PRACTICE</string>
+  <string name="select_workout_to_move" formatted="false">SELECT WORKOUT TO MOVE</string>
+  <string name="send_next_4_weeks" formatted="false">SEND NEXT 4 WEEKS</string>
+  <string name="session_breakdown" formatted="false">SESSION BREAKDOWN</string>
+  <string name="shoe" formatted="false">SHOE</string>
+  <string name="shoe_rotation" formatted="false">SHOE ROTATION</string>
+  <string name="shoe_specialist" formatted="false">SHOE SPECIALIST</string>
+  <string name="start_date" formatted="false">START DATE</string>
+  <string name="surface_terrain" formatted="false">SURFACE &amp; TERRAIN</string>
+  <string name="swap" formatted="false">SWAP</string>
+  <string name="swap_with_another_day_this_week" formatted="false">SWAP WITH ANOTHER DAY THIS WEEK</string>
+  <string name="safe" formatted="false">Safe</string>
+  <string name="sat" formatted="false">Sat</string>
+  <string name="saturday" formatted="false">Saturday</string>
+  <string name="save" formatted="false">Save</string>
+  <string name="save_log" formatted="false">Save Log</string>
+  <string name="save_as_shoe">Save as %1$s Shoe</string>
+  <string name="save_my_profile_build_a_plan_later" formatted="false">Save my profile, build a plan later</string>
+  <string name="saved" formatted="false">Saved</string>
+  <string name="saved_your_next_week_will_use_these" formatted="false">Saved. Your next week will use these.</string>
+  <string name="schedule" formatted="false">Schedule</string>
+  <string name="schedule_proposal" formatted="false">Schedule Proposal</string>
+  <string name="scientific_literature_principles" formatted="false">Scientific Literature &amp; Principles</string>
+  <string name="scroll_down_and_tap_workout" formatted="false">Scroll down and tap Workout.</string>
+  <string name="search_athletes" formatted="false">Search Athletes</string>
+  <string name="search_athletes_by_name_or_email" formatted="false">Search athletes by name or email...</string>
+  <string name="search_race_name_or_enter_manually" formatted="false">Search race name or enter manually</string>
+  <string name="search_topics_keywords_or_tags" formatted="false">Search topics, keywords or #tags...</string>
+  <string name="seconds" formatted="false">Seconds</string>
+  <string name="section" formatted="false">Section</string>
+  <string name="see_my_plan" formatted="false">See my plan</string>
+  <string name="select_heart_rate_power_zones_heart_rate_zones" formatted="false">Select Heart Rate &amp; Power Zones &gt; Heart Rate &gt; Zones.</string>
+  <string name="select_shoes" formatted="false">Select Shoes</string>
+  <string name="select_threshold_heart_rate_zone_or_max_hr_zone" formatted="false">Select Threshold Heart Rate Zone (or Max HR Zone).</string>
+  <string name="select_a_recommended_model_below_or_configure_your_current_pair" formatted="false">Select a recommended model below or configure your current pair.</string>
+  <string name="select_all_formats_you_can_digest_during_high_intensity" formatted="false">Select all formats you can digest during high intensity:</string>
+  <string name="select_your_perceived_effort_1_to_10" formatted="false">Select your perceived effort (1 to 10)</string>
+  <string name="select_your_perceived_effort_for_the_block_1_to_10" formatted="false">Select your perceived effort for the block (1 to 10)</string>
+  <string name="send" formatted="false">Send</string>
+  <string name="send_message" formatted="false">Send message</string>
+  <string name="send_next_4_weeks_to_coros" formatted="false">Send next 4 weeks to COROS</string>
+  <string name="send_to_coros" formatted="false">Send to COROS</string>
+  <string name="sending" formatted="false">Sending…</string>
+  <string name="sent_lld_workouts_to_coros_through">Sent %1$d workouts to COROS through %2$s.</string>
+  <string name="sent_to_coros" formatted="false">Sent to COROS</string>
+  <string name="sent_to_coros_190217712b">Sent to COROS · %1$s</string>
+  <string name="session" formatted="false">Session</string>
+  <string name="session_details" formatted="false">Session Details</string>
+  <string name="session_intent_or_prompt" formatted="false">Session intent or prompt...</string>
+  <string name="sessions_done" formatted="false">Sessions done</string>
+  <string name="set_as_my_target">Set %1$s as my target</string>
+  <string name="set_new_password" formatted="false">Set New Password</string>
+  <string name="set_by">Set by %1$s</string>
+  <string name="set_by_25b53402f6">Set by %1$s · %2$s</string>
+  <string name="set_your_long_run_day" formatted="false">Set your long-run day</string>
+  <string name="set_your_target_finish_time" formatted="false">Set your target finish time.</string>
+  <string name="set_your_training_zones" formatted="false">Set your training zones</string>
+  <string name="setup_progress" formatted="false">Setup progress</string>
+  <string name="sex" formatted="false">Sex</string>
+  <string name="share_export_ics_file" formatted="false">Share / Export .ics File</string>
+  <string name="sharpen_your_plan" formatted="false">Sharpen your plan</string>
+  <string name="shoe_recommendations" formatted="false">Shoe Recommendations</string>
+  <string name="shoe_rotation_893506bd91" formatted="false">Shoe Rotation</string>
+  <string name="shoe_rotation_recommendations" formatted="false">Shoe rotation &amp; recommendations</string>
+  <string name="short_intervals_steep_climbs" formatted="false">Short intervals &amp; steep climbs</string>
+  <string name="show_less" formatted="false">Show Less</string>
+  <string name="shuffle" formatted="false">Shuffle</string>
+  <string name="sign_in" formatted="false">Sign in</string>
+  <string name="sign_out" formatted="false">Sign out</string>
+  <string name="sign_out_after_switching_sessions_don_t_carry_across_backends" formatted="false">Sign out after switching: sessions don\'t carry across backends.</string>
+  <string name="significant_deconditioning_starting_nearly_fresh" formatted="false">Significant deconditioning — starting nearly fresh</string>
+  <string name="skip_for_now" formatted="false">Skip for now</string>
+  <string name="slot" formatted="false">Slot</string>
+  <string name="smooth_zone_2_aerobic" formatted="false">Smooth Zone 2 aerobic</string>
+  <string name="so_i_don_t_start_you_too_hard" formatted="false">So I don\'t start you too hard.</string>
+  <string name="sodium_per_hour" formatted="false">Sodium per hour</string>
+  <string name="solid" formatted="false">Solid</string>
+  <string name="solid_consistency" formatted="false">Solid consistency</string>
+  <string name="something_went_wrong_lld_please_try_again">Something went wrong (%1$d). Please try again.</string>
+  <string name="soon" formatted="false">Soon</string>
+  <string name="source" formatted="false">Source</string>
+  <string name="source_added_to_indexing_queue" formatted="false">Source added to indexing queue</string>
+  <string name="sources" formatted="false">Sources</string>
+  <string name="sources_evidence" formatted="false">Sources &amp; Evidence</string>
+  <string name="sources_lld">Sources (%1$d)</string>
+  <string name="split_execution_strategy" formatted="false">Split Execution Strategy</string>
+  <string name="split_interval" formatted="false">Split Interval</string>
+  <string name="staging" formatted="false">Staging</string>
+  <string name="stair_access" formatted="false">Stair access</string>
+  <string name="stale" formatted="false">Stale</string>
+  <string name="start" formatted="false">Start</string>
+  <string name="start_time_clock" formatted="false">Start Time (Clock)</string>
+  <string name="start_a_new_plan" formatted="false">Start a new plan?</string>
+  <string name="start_at_least_2_weeks_before_your_goal_date" formatted="false">Start at least 2 weeks before your goal date.</string>
+  <string name="start_date_8169693101" formatted="false">Start date</string>
+  <string name="start_new_plan" formatted="false">Start new plan</string>
+  <string name="start_running" formatted="false">Start running</string>
+  <string name="start_today_or_later" formatted="false">Start today or later.</string>
+  <string name="starting_from_lld_km_a_week">Starting from %1$d km a week</string>
+  <string name="steady_rhythm_for_trail_climbing" formatted="false">Steady rhythm for trail climbing</string>
+  <string name="step_lld_of_lld">Step %1$d of %2$d</string>
+  <string name="step_by_step_instructions_for_garmin_coros_apple_watch" formatted="false">Step-by-step instructions for Garmin, COROS &amp; Apple Watch</string>
+  <string name="still_working_plans_with_a_race_far_away_take_longer" formatted="false">Still working. Plans with a race far away take longer.</string>
+  <string name="stop" formatted="false">Stop</string>
+  <string name="strava_you_settings_heart_rate_max_custom_zones" formatted="false">Strava: You &gt; Settings &gt; Heart Rate &gt; Max &amp; Custom Zones.</string>
+  <string name="stretch" formatted="false">Stretch</string>
+  <string name="struggling_to_hit_the_paces" formatted="false">Struggling to hit the paces</string>
+  <string name="subscribe_in_apple_calendar_webcal" formatted="false">Subscribe in Apple Calendar (webcal)</string>
+  <string name="suggested">Suggested %1$s</string>
+  <string name="suggested_questions" formatted="false">Suggested Questions</string>
+  <string name="sun" formatted="false">Sun</string>
+  <string name="sunday" formatted="false">Sunday</string>
+  <string name="surface" formatted="false">Surface</string>
+  <string name="suunto_suunto_app_profile_watch_settings_intensity_zones" formatted="false">Suunto: Suunto App &gt; Profile &gt; Watch Settings &gt; Intensity Zones.</string>
+  <string name="swap_6ec282d40a" formatted="false">Swap</string>
+  <string name="sync_vo2max_from_your_watch" formatted="false">Sync VO2max from your watch</string>
+  <string name="sync_watch_activities" formatted="false">Sync Watch Activities</string>
+  <string name="sync_failed_please_try_again" formatted="false">Sync failed. Please try again.</string>
+  <string name="sync_now" formatted="false">Sync now</string>
+  <string name="sync_successful_fetched_lld_workouts_and_lld_days_of_health_data">Sync successful: fetched %1$d workouts and %2$d days of health data.</string>
+  <string name="sync_your_watch_from_manage_then_come_back_to_link_a_run" formatted="false">Sync your watch from Manage, then come back to link a run.</string>
+  <string name="synced" formatted="false">Synced</string>
+  <string name="synced_lld_activities_from_watch">Synced %1$d activities from watch</string>
+  <string name="synced_automatically_via_watch_integration" formatted="false">Synced automatically via watch integration</string>
+  <string name="syncing_to_calendar" formatted="false">Syncing to Calendar...</string>
+  <string name="syncing" formatted="false">Syncing…</string>
+  <string name="target_goal_tiers" formatted="false">TARGET GOAL TIERS</string>
+  <string name="target_race" formatted="false">TARGET RACE</string>
+  <string name="target_time_strategy" formatted="false">TARGET TIME &amp; STRATEGY</string>
+  <string name="this_week_focus" formatted="false">THIS WEEK FOCUS</string>
+  <string name="time" formatted="false">TIME</string>
+  <string name="time_since_race" formatted="false">TIME SINCE RACE</string>
+  <string name="timeline" formatted="false">TIMELINE</string>
+  <string name="today" formatted="false">TODAY</string>
+  <string name="tools_labs" formatted="false">TOOLS &amp; LABS</string>
+  <string name="total_carbs" formatted="false">TOTAL CARBS</string>
+  <string name="total_sodium" formatted="false">TOTAL SODIUM</string>
+  <string name="trail_finishes" formatted="false">TRAIL FINISHES</string>
+  <string name="tap_to_add_a_race_or_link_your_utmb_vbm_profile" formatted="false">Tap + to add a race or link your UTMB/VBM profile.</string>
+  <string name="tap_heart_rate_zones_calculated_automatically_or_manual" formatted="false">Tap Heart Rate Zones (calculated automatically or manual).</string>
+  <string name="tap_more_settings_user_settings" formatted="false">Tap More (...) &gt; Settings &gt; User Settings.</string>
+  <string name="tap_to_assign_shoe" formatted="false">Tap to assign shoe</string>
+  <string name="tap_to_dismiss" formatted="false">Tap to dismiss</string>
+  <string name="tap_to_read_coach_takeaways_and_weekly_focus" formatted="false">Tap to read coach takeaways and weekly focus</string>
+  <string name="target" formatted="false">Target</string>
+  <string name="target_applied" formatted="false">Target Applied</string>
+  <string name="target_finish_time" formatted="false">Target Finish Time</string>
+  <string name="target_finish">Target Finish: %1$s</string>
+  <string name="target_intensity_zone" formatted="false">Target Intensity Zone</string>
+  <string name="target_race_9c2d892cb7" formatted="false">Target Race</string>
+  <string name="target_time" formatted="false">Target Time</string>
+  <string name="target_finish_time_0f880e077b" formatted="false">Target finish time</string>
+  <string name="target_time_d1c1f472a3">Target time %1$s</string>
+  <string name="target_time_field_percentile" formatted="false">Target time &amp; field percentile</string>
+  <string name="target_1a7b0ab461">Target: %1$s</string>
+  <string name="target_80" formatted="false">Target: 80%</string>
+  <string name="technical_mountain" formatted="false">Technical &amp; Mountain</string>
+  <string name="tell_coach_uphill_about_injuries" formatted="false">Tell Coach Uphill about injuries</string>
+  <string name="tell_me_about_injuries" formatted="false">Tell me about injuries</string>
+  <string name="temperature" formatted="false">Temperature</string>
+  <string name="terrain" formatted="false">Terrain</string>
+  <string name="terrain_near_home" formatted="false">Terrain near home</string>
+  <string name="terrain_near_home_482ab3997a">Terrain near home: %1$s</string>
+  <string name="terrain_near_me" formatted="false">Terrain near me</string>
+  <string name="thanks_for_feedback" formatted="false">Thanks for feedback! 👍</string>
+  <string name="thanks" formatted="false">Thanks! 👍</string>
+  <string name="that_change_couldn_t_be_made" formatted="false">That change couldn\'t be made.</string>
+  <string name="that_change_isn_t_valid" formatted="false">That change isn\'t valid.</string>
+  <string name="that_week_is_outside_your_plan" formatted="false">That week is outside your plan.</string>
+  <string name="that_s_lld_weeks_away">That\'s %1$d weeks away</string>
+  <string name="the_athlete_must_already_have_an_uphill_ai_account" formatted="false">The athlete must already have an Uphill AI account.</string>
+  <string name="the_run_stays_in_your_watch_history_automatic_matching_won_t_link_it_again" formatted="false">The run stays in your watch history. Automatic matching won\'t link it again.</string>
+  <string name="these_changes_apply_starting_with_block_lld">These changes apply starting with Block %1$d</string>
+  <string name="this_logs_the_session_as_missed_and_notifies_coach_uphill_to_balance_upcoming_lo" formatted="false">This logs the session as missed and notifies Coach Uphill to balance upcoming load.</string>
+  <string name="this_plan_has_no_start_date_so_only_same_week_day_swaps_are_possible" formatted="false">This plan has no start date, so only same-week day swaps are possible.</string>
+  <string name="this_session_drives_your_primary_training_stimulus_this_week_stay_disciplined_on" formatted="false">This session drives your primary training stimulus this week. Stay disciplined on the target zone.</string>
+  <string name="this_session_was_created_for_the_athlete_and_is_awaiting_your_review" formatted="false">This session was created for the athlete and is awaiting your review.</string>
+  <string name="this_sets_the_shape_of_your_whole_plan" formatted="false">This sets the shape of your whole plan.</string>
+  <string name="this_usually_takes_under_a_minute_you_can_leave_this_screen_we_ll_keep_working" formatted="false">This usually takes under a minute. You can leave this screen; we\'ll keep working.</string>
+  <string name="this_week" formatted="false">This week</string>
+  <string name="this_will_permanently_delete_your_training_plan_and_all_scheduled_workouts_this_" formatted="false">This will permanently delete your training plan and all scheduled workouts. This action cannot be undone.</string>
+  <string name="this_will_permanently_remove_the_workout_from_the_runner_s_training_schedule" formatted="false">This will permanently remove the workout from the runner\'s training schedule.</string>
+  <string name="this_workout_is_already_completed_or_matched_to_an_activity_so_it_can_t_be_moved" formatted="false">This workout is already completed or matched to an activity, so it can\'t be moved.</string>
+  <string name="this_workout_isn_t_in_your_active_plan" formatted="false">This workout isn\'t in your active plan.</string>
+  <string name="threshold_pace" formatted="false">Threshold Pace</string>
+  <string name="threshold_pace_e3d2682a6c" formatted="false">Threshold Pace:</string>
+  <string name="threshold_pace_cb2403403b" formatted="false">Threshold pace</string>
+  <string name="threshold_pace_must_be_faster_than_zone_2" formatted="false">Threshold pace must be faster than Zone 2.</string>
+  <string name="threshold_pace_must_be_faster_than_easy_pace" formatted="false">Threshold pace must be faster than easy pace.</string>
+  <string name="threshold_pace_km">Threshold pace: %1$s /km</string>
+  <string name="thu" formatted="false">Thu</string>
+  <string name="thursday" formatted="false">Thursday</string>
+  <string name="time_33b93476cf" formatted="false">Time</string>
+  <string name="time_4_45_00" formatted="false">Time (4:45:00)</string>
+  <string name="time_mins" formatted="false">Time (mins)</string>
+  <string name="time_target" formatted="false">Time Target</string>
+  <string name="title" formatted="false">Title</string>
+  <string name="to_sharpen_this" formatted="false">To sharpen this:</string>
+  <string name="to_subscribe_in_google_calendar_or_outlook_on_the_web_copy_the_subscription_link" formatted="false">To subscribe in Google Calendar or Outlook on the web, copy the subscription link above and select \"Add Calendar from URL\".</string>
+  <string name="toggle_data_sources_used_by_the_estimation_engine" formatted="false">Toggle data sources used by the estimation engine:</string>
+  <string name="tools_labs_6a1d721172" formatted="false">Tools &amp; Labs</string>
+  <string name="top_lld">Top %1$d</string>
+  <string name="top_lld_1ecb4e3d79">Top %1$d%%</string>
+  <string name="total_lld_weeks_progression">Total %1$d weeks progression</string>
+  <string name="total_finishers" formatted="false">Total Finishers</string>
+  <string name="trail_ultra_endurance_coaching_grounded_in_science" formatted="false">Trail &amp; ultra endurance coaching grounded in science.</string>
+  <string name="trail_terrain_types" formatted="false">Trail Terrain Types</string>
+  <string name="train_toward_a_finish_time_you_choose" formatted="false">Train toward a finish time you choose.</string>
+  <string name="training" formatted="false">Training</string>
+  <string name="training_phase" formatted="false">Training Phase</string>
+  <string name="training_preferences_constraints" formatted="false">Training Preferences &amp; Constraints</string>
+  <string name="training_zones" formatted="false">Training Zones</string>
+  <string name="training_profile" formatted="false">Training profile</string>
+  <string name="training_settings" formatted="false">Training settings</string>
+  <string name="training_zones_b8e7493c98" formatted="false">Training zones</string>
+  <string name="training_zones_guide" formatted="false">Training zones guide</string>
+  <string name="transition" formatted="false">Transition</string>
+  <string name="travel_work_shifts_a_training_camp_a_niggle" formatted="false">Travel, work shifts, a training camp, a niggle…</string>
+  <string name="treadmill_max_incline" formatted="false">Treadmill max incline</string>
+  <string name="treadmill_up_to_lld">Treadmill up to %1$d%%</string>
+  <string name="trend" formatted="false">Trend</string>
+  <string name="try_again" formatted="false">Try again</string>
+  <string name="try_searching_for_terms_like_aerobic_carbs_sodium_sleep_or_poles" formatted="false">Try searching for terms like aerobic, carbs, sodium, sleep, or poles.</string>
+  <string name="try_searching_with_the_exact_spelling_used_during_race_registration" formatted="false">Try searching with the exact spelling used during race registration.</string>
+  <string name="tue" formatted="false">Tue</string>
+  <string name="tuesday" formatted="false">Tuesday</string>
+  <string name="turned_off" formatted="false">Turned off</string>
+  <string name="two_hard_sessions_on_day_week_week" formatted="false">Two hard sessions on {day} (week {week}).</string>
+  <string name="ultra_pinnacle" formatted="false">ULTRA PINNACLE</string>
+  <string name="ultras_completed" formatted="false">ULTRAS COMPLETED</string>
+  <string name="unlocked" formatted="false">UNLOCKED</string>
+  <string name="utmb_index_field_ranking" formatted="false">UTMB Index &amp; Field Ranking</string>
+  <string name="utmb_verified" formatted="false">UTMB verified</string>
+  <string name="undo_done" formatted="false">Undo done</string>
+  <string name="unexpected_response_from_the_server" formatted="false">Unexpected response from the server.</string>
+  <string name="unhelpful_response" formatted="false">Unhelpful response</string>
+  <string name="unlink" formatted="false">Unlink</string>
+  <string name="unlink_this_run" formatted="false">Unlink this run</string>
+  <string name="unlink_this_run_608c3fd748" formatted="false">Unlink this run?</string>
+  <string name="up_to_2_of_your_run_days_can_carry_a_second_short_session" formatted="false">Up to 2 of your run days can carry a second short session.</string>
+  <string name="update_schedule_preferences_optional" formatted="false">Update Schedule Preferences (Optional)</string>
+  <string name="uphill_ai" formatted="false">Uphill AI</string>
+  <string name="upper_limit_of_zone_2_easy_conversational_effort_key_aerobic_base_for_ultra_trai" formatted="false">Upper limit of Zone 2 (Easy). Conversational effort, key aerobic base for ultra trail endurance.</string>
+  <string name="upper_limit_of_zone_4_lactate_threshold_lthr_maximum_effort_sustainable_for_1_ho" formatted="false">Upper limit of Zone 4 / Lactate Threshold (LTHR). Maximum effort sustainable for ~1 hour.</string>
+  <string name="use_ai_generator" formatted="false">Use AI generator</string>
+  <string name="use_case" formatted="false">Use Case</string>
+  <string name="use_a_tested_lactate_threshold_lthr_when_available_do_not_assume_every_watch_zon" formatted="false">Use a tested Lactate Threshold (LTHR) when available. Do not assume every watch Zone 4 boundary is AnT.</string>
+  <string name="use_flat_ground_running_pace_not_your_trail_race_average_enter_m_ss_for_example_" formatted="false">Use flat-ground running pace, not your trail race average. Enter m:ss, for example 6:30.</string>
+  <string name="use_for_plan" formatted="false">Use for Plan</string>
+  <string name="use_my_plan_s_race" formatted="false">Use my plan\'s race</string>
+  <string name="use_plan_race">Use plan race: %1$s</string>
+  <string name="used" formatted="false">Used</string>
+  <string name="used_to_calculate_your_remaining_acute_fatigue_and_recovery_phase" formatted="false">Used to calculate your remaining acute fatigue and recovery phase.</string>
+  <string name="used_to_work_out_how_much_fatigue_is_left" formatted="false">Used to work out how much fatigue is left.</string>
+  <string name="using" formatted="false">Using </string>
+  <string name="vert" formatted="false">VERT</string>
+  <string name="vo2max_coros_race_prediction_and_easy_pace" formatted="false">VO2max, COROS race prediction and easy pace</string>
+  <string name="volume_comparison" formatted="false">VOLUME COMPARISON</string>
+  <string name="verified" formatted="false">Verified</string>
+  <string name="verified_gpx" formatted="false">Verified GPX</string>
+  <string name="very_light" formatted="false">Very Light</string>
+  <string name="very_fatigued_need_real_rest" formatted="false">Very fatigued — need real rest</string>
+  <string name="very_light_recovery_fresh_legs_low_fatigue" formatted="false">Very light / recovery. Fresh legs, low fatigue.</string>
+  <string name="very_light_recovery_you_felt_fresh_and_recovered_easily" formatted="false">Very light / recovery. You felt fresh and recovered easily.</string>
+  <string name="view" formatted="false">View</string>
+  <string name="view_lld_sources">View %1$d sources</string>
+  <string name="view_mode" formatted="false">View Mode</string>
+  <string name="view_original_source" formatted="false">View Original Source</string>
+  <string name="view_plan" formatted="false">View Plan</string>
+  <string name="view_strategy" formatted="false">View strategy</string>
+  <string name="viewing_managing_plan_as_coach" formatted="false">Viewing &amp; managing plan as coach</string>
+  <string name="visualizing_your_aerobic_aet_and_anaerobic_ant_thresholds_from_resting_to_max" formatted="false">Visualizing your aerobic (AeT) and anaerobic (AnT) thresholds from resting to max.</string>
+  <string name="volume_builds_at_a_pace_your_body_handles" formatted="false">Volume builds at a pace your body handles</string>
+  <string name="volume_by_day_of_week" formatted="false">Volume by day of week</string>
+  <string name="waypoint" formatted="false">WAYPOINT</string>
+  <string name="week_lld">WEEK %1$d</string>
+  <string name="weekly_volume" formatted="false">WEEKLY VOLUME</string>
+  <string name="what_we_use" formatted="false">WHAT WE USE</string>
+  <string name="where_you_train" formatted="false">WHERE YOU TRAIN</string>
+  <string name="waiting_for_your_coach_s_approval" formatted="false">Waiting for your coach\'s approval</string>
+  <string name="warm_up_10_min_easy_then" formatted="false">Warm up 10 min easy, then...</string>
+  <string name="warm_up_then_hold_a_steady_speed_for_60_minutes_compare_heart_rate_between_halve" formatted="false">Warm up, then hold a steady speed for 60 minutes. Compare heart rate between halves; drift above 5% suggests you started above AeT. Follow Evoke\'s full protocol and interpretation.</string>
+  <string name="was_this_fueling_plan_helpful" formatted="false">Was this fueling plan helpful?</string>
+  <string name="watch_8_week_training_volume" formatted="false">Watch 8-week training volume</string>
+  <string name="watch_estimate" formatted="false">Watch estimate</string>
+  <string name="watch_run" formatted="false">Watch run</string>
+  <string name="watch_synced_up_to_date" formatted="false">Watch synced · Up to date</string>
+  <string name="watch_zones_are_estimates_unless_calibrated_by_a_test_zone_numbers_vary_by_zone_" formatted="false">Watch zones are estimates unless calibrated by a test. Zone numbers vary by zone model; a percentage of Max HR is not a measured AeT or AnT.</string>
+  <string name="we_can_t_estimate_a_finish_time_yet" formatted="false">We can\'t estimate a finish time yet.</string>
+  <string name="we_couldn_t_build_your_plan" formatted="false">We couldn\'t build your plan</string>
+  <string name="we_couldn_t_start_building_your_plan_please_try_again" formatted="false">We couldn\'t start building your plan. Please try again.</string>
+  <string name="we_lost_track_of_your_plan_while_the_server_restarted_check_the_plan_tab_if_noth" formatted="false">We lost track of your plan while the server restarted. Check the Plan tab; if nothing is there, try again.</string>
+  <string name="weather_temperature" formatted="false">Weather Temperature</string>
+  <string name="wed" formatted="false">Wed</string>
+  <string name="wednesday" formatted="false">Wednesday</string>
+  <string name="week" formatted="false">Week</string>
+  <string name="week_lld_de0dba613a">Week %1$d</string>
+  <string name="week_lld_review">Week %1$d Review</string>
+  <string name="week_lld_schedule">Week %1$d Schedule</string>
+  <string name="week_lld_volume">Week %1$d Volume</string>
+  <string name="week_lld_is_ready_to_generate">Week %1$d is ready to generate</string>
+  <string name="week_lld_of_lld">Week %1$d of %2$d</string>
+  <string name="week_lld_a537df6ee2">Week %1$d · %2$s</string>
+  <string name="week_days_volume" formatted="false">Week days volume</string>
+  <string name="week_review" formatted="false">Week review</string>
+  <string name="week_schedule" formatted="false">Week schedule</string>
+  <string name="week_total" formatted="false">Week total</string>
+  <string name="week_updated" formatted="false">Week updated</string>
+  <string name="week_week_volume_changes_from_before_to_after_min" formatted="false">Week {week} volume changes from {before} to {after} min.</string>
+  <string name="weekly_schedule" formatted="false">Weekly Schedule</string>
+  <string name="weekly_sessions" formatted="false">Weekly Sessions:</string>
+  <string name="weekly_volume_03783315c5" formatted="false">Weekly Volume</string>
+  <string name="weekly_km" formatted="false">Weekly km</string>
+  <string name="weekly_volume_96443d183d" formatted="false">Weekly volume</string>
+  <string name="weekly_volume_trend" formatted="false">Weekly volume trend</string>
+  <string name="weeks_to_race" formatted="false">Weeks to Race</string>
+  <string name="weeks_to_race_4aeb36d186" formatted="false">Weeks to race</string>
+  <string name="weight" formatted="false">Weight</string>
+  <string name="weight_kg" formatted="false">Weight (kg)</string>
+  <string name="weight_3f0c8eeebf">Weight: %1$s</string>
+  <string name="went_well" formatted="false">Went well</string>
+  <string name="what_are_you_training_for" formatted="false">What are you training for?</string>
+  <string name="what_distance" formatted="false">What distance?</string>
+  <string name="what_does_your_week_look_like" formatted="false">What does your week look like?</string>
+  <string name="what_is_muscular_endurance_me" formatted="false">What is Muscular Endurance (ME)?</string>
+  <string name="what_this_is_based_on" formatted="false">What this is based on</string>
+  <string name="what_s_going_on" formatted="false">What\'s going on?</string>
+  <string name="what_s_on_for_week_lld">What\'s on for week %1$d?</string>
+  <string name="what_s_your_goal_on_race_day" formatted="false">What\'s your goal on race day?</string>
+  <string name="when_did_you_finish" formatted="false">When did you finish?</string>
+  <string name="when_disconnecting_data_received_from_coros_is_permanently_deleted_within_24_hou" formatted="false">When disconnecting, data received from COROS is permanently deleted within 24 hours.</string>
+  <string name="when_do_you_want_to_start" formatted="false">When do you want to start?</string>
+  <string name="when_is_it" formatted="false">When is it?</string>
+  <string name="where_do_you_train" formatted="false">Where do you train?</string>
+  <string name="which_distance_are_you_running" formatted="false">Which distance are you running?</string>
+  <string name="which_distance" formatted="false">Which distance?</string>
+  <string name="which_race_did_you_just_finish" formatted="false">Which race did you just finish?</string>
+  <string name="which_race" formatted="false">Which race?</string>
+  <string name="why" formatted="false">Why:</string>
+  <string name="wide" formatted="false">Wide</string>
+  <string name="width" formatted="false">Width</string>
+  <string name="width_foot_shape" formatted="false">Width / Foot Shape</string>
+  <string name="window" formatted="false">Window:</string>
+  <string name="winner" formatted="false">Winner</string>
+  <string name="winner_f" formatted="false">Winner (F)</string>
+  <string name="women" formatted="false">Women</string>
+  <string name="workout" formatted="false">Workout</string>
+  <string name="workout_type" formatted="false">Workout Type</string>
+  <string name="workout_type_mix" formatted="false">Workout Type Mix</string>
+  <string name="workouts_can_only_move_between_this_week_and_next_week" formatted="false">Workouts can only move between this week and next week.</string>
+  <string name="workouts_pending_approval" formatted="false">Workouts pending approval</string>
+  <string name="wrong_run" formatted="false">Wrong run?</string>
+  <string name="your_easy_pace" formatted="false">YOUR EASY PACE</string>
+  <string name="your_races_lld">YOUR RACES (%1$d)</string>
+  <string name="yes" formatted="false">Yes</string>
+  <string name="you" formatted="false">You</string>
+  <string name="you_can_add_heart_rate_paces_and_injuries_after_this_they_make_each_new_week_mor" formatted="false">You can add heart rate, paces and injuries after this. They make each new week more accurate.</string>
+  <string name="you_can_change_any_of_this_later_from_your_plan" formatted="false">You can change any of this later from your plan.</string>
+  <string name="you_can_skip_these_fields_and_add_test_results_later" formatted="false">You can skip these fields and add test results later.</string>
+  <string name="you_can_t_move_a_workout_to_a_day_that_has_already_passed" formatted="false">You can\'t move a workout to a day that has already passed.</string>
+  <string name="you_have_a_coach_ask_them_to_change_your_schedule" formatted="false">You have a coach — ask them to change your schedule.</string>
+  <string name="you_haven_t_completed_70_of_the_current_block_yet" formatted="false">You haven\'t completed 70% of the current block yet.</string>
+  <string name="you_re_offline_changes_need_a_connection" formatted="false">You\'re offline. Changes need a connection.</string>
+  <string name="you_ve_reached_today_s_limit_for_sending_to_coros_try_again_tomorrow" formatted="false">You\'ve reached today\'s limit for sending to COROS. Try again tomorrow.</string>
+  <string name="you_ve_used_today_s_goal_checks_try_again_tomorrow" formatted="false">You\'ve used today\'s goal checks. Try again tomorrow.</string>
+  <string name="your_aerobic_endurance_upper_limit_is_aet_your_threshold_zone_limit_is_ant" formatted="false">Your Aerobic Endurance upper limit is AeT; your Threshold zone limit is AnT.</string>
+  <string name="your_athletes" formatted="false">Your Athletes</string>
+  <string name="your_profile" formatted="false">Your Profile</string>
+  <string name="your_adaptive_training_plan_for_the_mountains" formatted="false">Your adaptive training plan for the mountains.</string>
+  <string name="your_average_over_the_last_month_your_first_week_starts_close_to_it" formatted="false">Your average over the last month. Your first week starts close to it.</string>
+  <string name="your_coach" formatted="false">Your coach</string>
+  <string name="your_coach_updated_your_training_zones" formatted="false">Your coach updated your training zones.</string>
+  <string name="your_current_plan_stays_in_recent_plans_the_new_plan_becomes_your_active_plan" formatted="false">Your current plan stays in Recent plans. The new plan becomes your active plan.</string>
+  <string name="your_finishing_rank_on_this_field" formatted="false">Your finishing rank on this field</string>
+  <string name="your_first_week_starts_close_to_what_you_already_do" formatted="false">Your first week starts close to what you already do.</string>
+  <string name="your_past_finishes_set_a_realistic_goal" formatted="false">Your past finishes set a realistic goal</string>
+  <string name="your_past_workouts_and_health_metrics_from_coros_will_no_longer_automatically_sy" formatted="false">Your past workouts and health metrics from COROS will no longer automatically sync.</string>
+  <string name="your_plan_changed_since_this_was_proposed_ask_the_coach_again" formatted="false">Your plan changed since this was proposed — ask the coach again.</string>
+  <string name="your_plan_changed_since_this_was_proposed" formatted="false">Your plan changed since this was proposed.</string>
+  <string name="your_plan_is_built_around" formatted="false">Your plan is built around</string>
+  <string name="your_plan_is_ready" formatted="false">Your plan is ready</string>
+  <string name="your_runs_show_me_what_you_really_do_not_just_what_you_remember" formatted="false">Your runs show me what you really do, not just what you remember.</string>
+  <string name="your_session_expired_please_sign_in_again" formatted="false">Your session expired. Please sign in again.</string>
+  <string name="your_session_has_expired_please_sign_in_again" formatted="false">Your session has expired. Please sign in again.</string>
+  <string name="your_target" formatted="false">Your target: </string>
+  <string name="your_thresholds_and_easy_pace_help_set_workout_intensity" formatted="false">Your thresholds and easy pace help set workout intensity.</string>
+  <string name="your_training_paces_won_t_change_until_your_next_week_is_built" formatted="false">Your training paces won\'t change until your next week is built.</string>
+  <string name="your_training_zones_are_missing_or_their_source_is_unconfirmed_the_plan_will_use" formatted="false">Your training zones are missing or their source is unconfirmed. The plan will use available values and estimates. You can update them in Profile after a test.</string>
+  <string name="your_weekly_workouts_show_up_here_once_coach_uphill_builds_your_plan" formatted="false">Your weekly workouts show up here once Coach Uphill builds your plan.</string>
+  <string name="zone_1_recovery" formatted="false">Zone 1 · Recovery</string>
+  <string name="zone_2_pace_range" formatted="false">Zone 2 Pace Range:</string>
+  <string name="zone_2_fast_end" formatted="false">Zone 2 fast end</string>
+  <string name="zone_2_pace" formatted="false">Zone 2 pace</string>
+  <string name="zone_2_slow_end" formatted="false">Zone 2 slow end</string>
+  <string name="zone_2_slow_end_must_be_slower_than_the_fast_end" formatted="false">Zone 2 slow end must be slower than the fast end.</string>
+  <string name="zone_2_upper_limit_is_aet_zone_4_upper_limit_is_ant" formatted="false">Zone 2 upper limit is AeT; Zone 4 upper limit is AnT.</string>
+  <string name="zone_2_aerobic_base" formatted="false">Zone 2 · Aerobic Base</string>
+  <string name="zone_2_tempo" formatted="false">Zone 2 · Tempo</string>
+  <string name="zone_3_tempo" formatted="false">Zone 3 · Tempo</string>
+  <string name="zone_3_threshold" formatted="false">Zone 3 · Threshold</string>
+  <string name="zone_4_threshold" formatted="false">Zone 4 · Threshold</string>
+  <string name="zone_5_vo2max_speed" formatted="false">Zone 5 · VO2max / Speed</string>
+  <string name="zone_category" formatted="false">Zone Category</string>
+  <string name="zone_model" formatted="false">Zone model</string>
+  <string name="adherence_130bcd3861" formatted="false">adherence</string>
+  <string name="admitting" formatted="false">admitting</string>
+  <string name="applied_b4267ce93c" formatted="false">applied</string>
+  <string name="avg_hr_lld">avg HR %1$d</string>
+  <string name="day_ago" formatted="false">day ago</string>
+  <string name="days_ago" formatted="false">days ago</string>
+  <string name="days_to_go" formatted="false">days to go</string>
+  <string name="discarded_1fcc4b3714" formatted="false">discarded</string>
+  <string name="double_session_day" formatted="false">double-session day</string>
+  <string name="e_g_10_0" formatted="false">e.g. 10.0</string>
+  <string name="e_g_1200" formatted="false">e.g. 1200</string>
+  <string name="e_g_42" formatted="false">e.g. 42</string>
+  <string name="e_g_60" formatted="false">e.g. 60</string>
+  <string name="e_g_aerobic_base_run_strides" formatted="false">e.g. Aerobic Base Run + Strides</string>
+  <string name="e_g_travel_illness_race_postponed_sore_calf" formatted="false">e.g. Travel, illness, race postponed, sore calf...</string>
+  <string name="e_g_runner_s_knee_it_band_tightness_recent_ankle_sprain" formatted="false">e.g. runner\'s knee, IT band tightness, recent ankle sprain...</string>
+  <string name="failed_5d28a90f44" formatted="false">failed</string>
+  <string name="generating_941ee53e40" formatted="false">generating</string>
+  <string name="kept" formatted="false">kept</string>
+  <string name="km_week" formatted="false">km / week</string>
+  <string name="km_run" formatted="false">km run</string>
+  <string name="min" formatted="false">min</string>
+  <string name="or" formatted="false">or</string>
+  <string name="proposed_81e766d897" formatted="false">proposed</string>
+  <string name="retrieving_23572fdd15" formatted="false">retrieving</string>
+  <string name="run_day" formatted="false">run day</string>
+  <string name="runs_week" formatted="false">runs / week</string>
+  <string name="the_upcoming_weeks" formatted="false">the upcoming weeks</string>
+  <string name="top_d865b56ea0">top %1$s%%</string>
+  <string name="was">was: %1$s</string>
+  <string name="week_6df37daaa4" formatted="false">week</string>
+  <string name="weeks_to_go" formatted="false">weeks to go</string>
+  <string name="winner_349fcb1582">winner %1$s</string>
+  <string name="workout_b10c94bd8a" formatted="false">workout</string>
+  <string name="years" formatted="false">years</string>
+  <string name="lld_weeks_to_go">· %1$d weeks to go</string>
+  <string name="lld_wear">· %1$d%% wear</string>
+  <string name="pick">· Pick: %1$s</string>
+  <string name="coach_uphill_24df6ca740" formatted="false">— Coach Uphill</string>
+  <string name="solid_volume_progression_remember_recovery_is_where_adaptation_happens_do_not_cu" formatted="false">“Solid volume progression. Remember: recovery is where adaptation happens. Do not cut rest short on heavy training blocks.”</string>
+  <string name="title_is_still_pending_coach_review" formatted="false">“{title}” is still pending coach review.</string>
+  <string name="first_30_discipline_in_low_zone_2_bank_zero_lactate_on_early_climbs_middle_40_se" formatted="false">• First 30%: Discipline in low Zone 2. Bank zero lactate on early climbs.\n• Middle 40%: Settle into steady rhythm, fuel every 30 mins.\n• Final 30%: Empty the tank on runnable sections if quads allow.</string>
+  <string name="hide_extra_unlinked_result" formatted="false">− Hide extra unlinked result</string>
+</resources>

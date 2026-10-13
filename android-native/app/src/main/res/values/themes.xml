@@ -1,0 +1,8 @@
+<resources>
+    <style name="Theme.Uphill" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowBackground">#F8FAF8</item>
+        <item name="android:statusBarColor">#F8FAF8</item>
+        <item name="android:navigationBarColor">#F8FAF8</item>
+    </style>
+</resources>

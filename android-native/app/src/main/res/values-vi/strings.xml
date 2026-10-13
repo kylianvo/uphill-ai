@@ -1,0 +1,1429 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+  <string name="as_context" formatted="false"> làm ngữ cảnh</string>
+  <string name="set_as_target">%1$s %2$s, đặt mục tiêu</string>
+  <string name="coming_soon">%1$s Sắp có</string>
+  <string name="phase">Giai đoạn %1$s</string>
+  <string name="hill_or_trail_day">%1$s ngày có dốc/trail</string>
+  <string name="invited_you_to_be_coached">%1$s mời bạn làm học viên</string>
+  <string name="kilometres">%1$s km</string>
+  <string name="km">%1$s km</string>
+  <string name="km_logged">Đã chạy %1$s km</string>
+  <string name="km_m_d">%1$s km · %2$s m D+</string>
+  <string name="must_be_a_whole_number">%1$s phải là số nguyên.</string>
+  <string name="must_be_below">%1$s phải thấp hơn %2$s.</string>
+  <string name="must_look_like_5_30">%1$s phải có dạng 5:30.</string>
+  <string name="on">%1$s vào %2$s</string>
+  <string name="updated_your_zones">%1$s đã cập nhật zone của bạn</string>
+  <string name="will_see_what_you_changed_workouts_already_in_the_plan_keep_their_targets_new_on">%1$s sẽ thấy bạn đã đổi gì. Các buổi tập đã có trong plan giữ nguyên mục tiêu; buổi mới dùng các chỉ số này.</string>
+  <string name="lld_weeks">%1$s · %2$d tuần</string>
+  <string name="top">%1$s · top %2$s%%</string>
+  <string name="done">Xong %1$s%%</string>
+  <string name="lld_vs_last_wk_total_lld_weeks">%1$s%2$d%% so với tuần trước · Tổng %3$d tuần</string>
+  <string name="lld_m_d">%1$s, %2$d m D+</string>
+  <string name="coming_soon_998c6d8e0c">%1$s, sắp có</string>
+  <string name="draft_plan">%1$s: Plan nháp \"%2$s\"</string>
+  <string name="session_needs_approval">%1$s: Buổi \"%2$s\" cần duyệt</string>
+  <string name="lld_insights">%1$d NHẬN XÉT</string>
+  <string name="lld_days_week">%1$d ngày / tuần</string>
+  <string name="lld_days_ago">%1$d ngày trước</string>
+  <string name="lld_days_to_go">Còn %1$d ngày</string>
+  <string name="lld_days_week_0ca508e46d">%1$d ngày/tuần</string>
+  <string name="lld_finishers">%1$d người về đích</string>
+  <string name="lld_h">%1$d giờ</string>
+  <string name="lld_hours">%1$d giờ</string>
+  <string name="lld_km_expected_life">Tuổi thọ dự kiến %1$d km</string>
+  <string name="lld_km_week">%1$d km/tuần</string>
+  <string name="lld_min">%1$d phút</string>
+  <string name="lld_min_km_lld_m">%1$d phút · %2$s km · +%3$d m</string>
+  <string name="lld_minutes">%1$d phút</string>
+  <string name="lld_of_lld">%1$d / %2$d</string>
+  <string name="lld_of_lld_completed">Đã xong %1$d / %2$d</string>
+  <string name="lld_of_lld_sessions_completed">Đã xong %1$d / %2$d buổi</string>
+  <string name="lld_of_lld_workouts_completed">Đã xong %1$d / %2$d buổi tập</string>
+  <string name="lld_runners">%1$d runner</string>
+  <string name="lld_runs_a_week_long_run_on">%1$d buổi chạy/tuần, Long Run vào %2$s</string>
+  <string name="lld_runs_from_your_watch_marked_done">Đã đánh dấu xong %1$d buổi đồng hồ</string>
+  <string name="lld_shoes">%1$d đôi giày</string>
+  <string name="lld_total">Tổng %1$d</string>
+  <string name="lld_total_misses">Tổng %1$d buổi lỡ</string>
+  <string name="lld_weeks_62b4ed1d3b">%1$d tuần</string>
+  <string name="lld_weeks_lld_sessions">%1$d tuần · %2$d buổi tập</string>
+  <string name="lld_wks">%1$d tuần</string>
+  <string name="lld_yrs">%1$d tuổi</string>
+  <string name="lld_70_required">%1$d%% / cần 70%%</string>
+  <string name="lld_adherence">Tuân thủ %1$d%%</string>
+  <string name="lld_lld_unlocked">ĐÃ MỞ %1$d/%2$d</string>
+  <string name="lldg_carbs">%1$dg carbs</string>
+  <string name="lldmg_sodium">%1$dmg sodium</string>
+  <string name="interrupted" formatted="false">(Bị gián đoạn)</string>
+  <string name="add_a_result_that_isn_t_linked" formatted="false">+ Thêm kết quả chưa liên kết</string>
+  <string name="lld_m_elevation_gain">+%1$d m D+</string>
+  <string name="text_1_run_from_your_watch_marked_done" formatted="false">Đã đánh dấu xong 1 buổi đồng hồ</string>
+  <string name="text_10_finished" formatted="false">10% về đích</string>
+  <string name="text_100_miles_161_km" formatted="false">100 DẶM (161 KM)</string>
+  <string name="text_100_miles" formatted="false">100 dặm</string>
+  <string name="text_1_3_months" formatted="false">1–3 tháng</string>
+  <string name="text_2_sessions" formatted="false">2 BUỔI</string>
+  <string name="text_2_6_weeks" formatted="false">2–6 tuần</string>
+  <string name="text_3_6_months" formatted="false">3–6 tháng</string>
+  <string name="text_4_slots_active" formatted="false">4 VỊ TRÍ ĐANG DÙNG</string>
+  <string name="text_4_zones" formatted="false">4 zone</string>
+  <string name="text_5_zones" formatted="false">5 zone</string>
+  <string name="text_6_months" formatted="false">6+ tháng</string>
+  <string name="text_90_finish" formatted="false">90% về đích</string>
+  <string name="text_90_finished" formatted="false">90% về đích</string>
+  <string name="text_2_weeks" formatted="false">&lt; 2 tuần</string>
+  <string name="a_bit_rusty_slightly_deconditioned" formatted="false">Hơi lụt nghề, thể lực giảm nhẹ</string>
+  <string name="a_clear_goal_sets_how_hard_your_key_sessions_are" formatted="false">Mục tiêu quyết định cường độ các buổi tập chính.</string>
+  <string name="a_distance" formatted="false">Một cự ly</string>
+  <string name="a_hard_day_right_before_the_long_run_makes_both_harder" formatted="false">Một ngày tập nặng ngay trước Long Run làm cả hai buổi đều nặng hơn.</string>
+  <string name="a_mix" formatted="false">Kết hợp</string>
+  <string name="a_road_race" formatted="false">Một Race road</string>
+  <string name="a_send_is_already_running_try_again_in_a_moment" formatted="false">Đang có lượt gửi khác. Thử lại sau giây lát.</string>
+  <string name="a_specific_race" formatted="false">Một Race cụ thể</string>
+  <string name="a_trail_race" formatted="false">Một Race trail</string>
+  <string name="a_ambitious" formatted="false">A: Tham vọng</string>
+  <string name="about_this_session" formatted="false">VỀ BUỔI TẬP NÀY</string>
+  <string name="active" formatted="false">ĐANG DÙNG</string>
+  <string name="assign_to_rotation_slot" formatted="false">GÁN VÀO VỊ TRÍ XOAY VÒNG</string>
+  <string name="auto_updating_calendar_subscription" formatted="false">ĐĂNG KÝ LỊCH TỰ CẬP NHẬT</string>
+  <string name="avg_hr" formatted="false">HR TB</string>
+  <string name="about_1_minute" formatted="false">Khoảng 1 phút</string>
+  <string name="about_what_i_expected" formatted="false">Đúng như dự kiến</string>
+  <string name="about_you" formatted="false">Về bạn</string>
+  <string name="accept" formatted="false">Chấp nhận</string>
+  <string name="account" formatted="false">Tài khoản</string>
+  <string name="action" formatted="false">Hành động</string>
+  <string name="action_items" formatted="false">Việc cần làm</string>
+  <string name="active_9234069589" formatted="false">Đang dùng</string>
+  <string name="active_race">Race hiện tại: %1$s</string>
+  <string name="active_race_7a4c56aff7">Race hiện tại: %1$s (%2$s)</string>
+  <string name="active_recovery_warm_ups" formatted="false">Hồi phục chủ động &amp; Warm-up</string>
+  <string name="active_shoe_rotation_wear" formatted="false">Giày đang dùng &amp; độ mòn</string>
+  <string name="adapt_week_lld">Điều chỉnh tuần %1$d</string>
+  <string name="adapt_week_lld_327ece43bb">Điều chỉnh tuần %1$d</string>
+  <string name="add" formatted="false">Thêm</string>
+  <string name="add_other_custom_model" formatted="false">Thêm mẫu khác...</string>
+  <string name="add_race_result" formatted="false">Thêm kết quả Race</string>
+  <string name="add_threshold_pace_or_both_easy_pace_bounds_to_preview_your_zones" formatted="false">Nhập Threshold Pace hoặc cả hai đầu khoảng Pace chạy nhẹ để xem trước Zone.</string>
+  <string name="add_workout" formatted="false">Thêm buổi tập</string>
+  <string name="add_a_note_for_this">Thêm ghi chú cho %1$s này...</string>
+  <string name="add_an_athlete" formatted="false">Thêm học viên</string>
+  <string name="add_birth_date" formatted="false">Thêm ngày sinh</string>
+  <string name="add_link_https_uphillathlete_com" formatted="false">Thêm link: https://uphillathlete.com/...</string>
+  <string name="add_session_notes_legs_terrain_weather" formatted="false">Ghi chú buổi tập (chân, địa hình, thời tiết)…</string>
+  <string name="add_the_race_name" formatted="false">Thêm tên Race.</string>
+  <string name="add_to_apple_calendar" formatted="false">Thêm vào Apple Calendar</string>
+  <string name="add_to_calendar_ics" formatted="false">Thêm vào lịch (.ics)</string>
+  <string name="add_workouts_directly_to_apple_calendar_google_calendar_or_outlook_subscriptions" formatted="false">Thêm buổi tập thẳng vào Apple Calendar, Google Calendar hoặc Outlook. Lịch đăng ký tự cập nhật khi plan thay đổi.</string>
+  <string name="add_your_aet_and_ant_heart_rates" formatted="false">Thêm HR tại AeT và AnT</string>
+  <string name="add_your_age_and_weight" formatted="false">Thêm tuổi và cân nặng</string>
+  <string name="add_your_easy_pace" formatted="false">Thêm pace Easy</string>
+  <string name="add_your_heart_rate_zones" formatted="false">Thêm Heart Rate Zone</string>
+  <string name="add_your_pace_zones" formatted="false">Thêm vùng pace</string>
+  <string name="added_lld_sessions_to">Đã thêm %1$d buổi vào %2$s</string>
+  <string name="additional_notes_e_g_blister_prone_rock_protection_needed" formatted="false">Ghi chú thêm (vd. dễ phồng rộp, cần bảo vệ đá)</string>
+  <string name="adherence" formatted="false">Tuân thủ</string>
+  <string name="adherence_trend" formatted="false">Xu hướng tuân thủ</string>
+  <string name="adjust" formatted="false">Điều chỉnh</string>
+  <string name="adjust_your_preferred_running_days_long_run_and_training_environment" formatted="false">Chỉnh ngày chạy, ngày Long Run và nơi tập của bạn.</string>
+  <string name="aet_threshold_z2" formatted="false">Ngưỡng AeT (Z2)</string>
+  <string name="aet_lld_bpm">AeT: %1$d bpm</string>
+  <string name="aet_top_of_zone_2_ant_top_of_zone_3" formatted="false">AeT: giới hạn trên Zone 2. AnT: giới hạn trên Zone 3.</string>
+  <string name="aet_top_of_zone_2_ant_top_of_zone_3_zone_widths_are_schematic" formatted="false">AeT: giới hạn trên Zone 2. AnT: giới hạn trên Zone 3. Độ rộng Zone chỉ để minh họa.</string>
+  <string name="aerobic_threshold_aet" formatted="false">Ngưỡng Aerobic (AeT)</string>
+  <string name="aerobic_base_conversational_effort" formatted="false">Nền Aerobic; mức nói chuyện được</string>
+  <string name="aerobic_capacity_aet_ant" formatted="false">Sức bền Aerobic (AeT-AnT)</string>
+  <string name="aerobic_threshold_aet_b133c8e623" formatted="false">Ngưỡng Aerobic (AeT)</string>
+  <string name="aerobic_threshold_aet_must_be_below_anaerobic_threshold_ant" formatted="false">Ngưỡng Aerobic (AeT) phải thấp hơn ngưỡng Anaerobic (AnT).</string>
+  <string name="aerobic_threshold_hr" formatted="false">HR ngưỡng Aerobic</string>
+  <string name="afternoon" formatted="false">Chiều</string>
+  <string name="age" formatted="false">Tuổi</string>
+  <string name="aggressive" formatted="false">Mạo hiểm</string>
+  <string name="ahead_of_target" formatted="false">Nhanh hơn mục tiêu</string>
+  <string name="alerts_coach_uphill_to_adapt_volume_loading" formatted="false">Báo Coach Uphill điều chỉnh khối lượng</string>
+  <string name="all" formatted="false">Tất cả</string>
+  <string name="all_years" formatted="false">Mọi năm</string>
+  <string name="all_messages_in_this_conversation_will_be_permanently_removed" formatted="false">Mọi tin nhắn trong cuộc trò chuyện này sẽ bị xóa vĩnh viễn.</string>
+  <string name="all_years_a0f0951065" formatted="false">Tất cả</string>
+  <string name="all_years_average" formatted="false">Tất cả (trung bình)</string>
+  <string name="ambitious" formatted="false">Tham vọng</string>
+  <string name="an_error_occurred" formatted="false">Đã xảy ra lỗi.</string>
+  <string name="ant_threshold_z4" formatted="false">Ngưỡng AnT (Z4)</string>
+  <string name="ant_lld_bpm">AnT: %1$d bpm</string>
+  <string name="anaerobic_threshold_ant" formatted="false">Ngưỡng Anaerobic (AnT)</string>
+  <string name="anaerobic_threshold_ant_4231fb3241" formatted="false">Ngưỡng Anaerobic (AnT)</string>
+  <string name="anaerobic_threshold_ant_must_not_exceed_max_heart_rate" formatted="false">Ngưỡng Anaerobic (AnT) không được vượt Max HR.</string>
+  <string name="anaerobic_threshold_hr" formatted="false">HR ngưỡng Anaerobic</string>
+  <string name="anchors_your_primary_weekend_endurance_session" formatted="false">Cố định buổi sức bền chính cuối tuần</string>
+  <string name="answer_a_few_questions_and_coach_uphill_builds_a_plan_around_your_goal_your_week" formatted="false">Trả lời vài câu hỏi, Coach Uphill sẽ lên plan theo mục tiêu, lịch tuần và thể trạng hôm nay của bạn.</string>
+  <string name="any" formatted="false">Bất kỳ</string>
+  <string name="anything_else_i_should_know_optional" formatted="false">Ghi chú thêm (tùy chọn)</string>
+  <string name="app_default_not_measured" formatted="false">Mặc định của app, chưa đo</string>
+  <string name="apple_watch" formatted="false">Apple Watch</string>
+  <string name="apple_sign_in_did_not_return_a_token_please_try_again" formatted="false">Đăng nhập Apple không trả về mã. Vui lòng thử lại.</string>
+  <string name="applied" formatted="false">Đã áp dụng</string>
+  <string name="apply" formatted="false">Áp dụng</string>
+  <string name="apply_change" formatted="false">Áp dụng</string>
+  <string name="approve_workout" formatted="false">Duyệt buổi tập</string>
+  <string name="are_you_sure_you_want_to_remove_they_will_no_longer_share_their_plan_and_data_wi">Bạn chắc chắn muốn xóa %1$s? Học viên sẽ không còn chia sẻ plan và dữ liệu với bạn.</string>
+  <string name="arrive_healthy_and_finish_feeling_in_control" formatted="false">Đến Race khỏe mạnh và finish trong khả năng.</string>
+  <string name="ask_coach_uphill" formatted="false">Hỏi Coach Uphill</string>
+  <string name="ask_coach_uphill_47a6ebc29f" formatted="false">Hỏi Coach Uphill…</string>
+  <string name="assign" formatted="false">Gán</string>
+  <string name="assign_shoe" formatted="false">Gán giày</string>
+  <string name="assign_to_shoe_rotation" formatted="false">Gán vào bộ giày xoay vòng</string>
+  <string name="athlete_level" formatted="false">Trình độ</string>
+  <string name="athlete_notes" formatted="false">Ghi chú của học viên:</string>
+  <string name="athlete_profile" formatted="false">Hồ sơ học viên</string>
+  <string name="athlete_notes_563109780f" formatted="false">Ghi chú vận động viên</string>
+  <string name="athlete_field_test" formatted="false">VĐV · field test</string>
+  <string name="athlete_lab_test" formatted="false">VĐV · test lab</string>
+  <string name="athlete_method_unknown" formatted="false">VĐV · không rõ cách đo</string>
+  <string name="athlete_watch_formula" formatted="false">VĐV · đồng hồ/công thức</string>
+  <string name="athlete_s_uphill_email" formatted="false">Email Uphill của học viên...</string>
+  <string name="athletes" formatted="false">Học viên</string>
+  <string name="athletes_by_target_race" formatted="false">Học viên theo Race mục tiêu</string>
+  <string name="authorization_security_check_failed_state_mismatch" formatted="false">Kiểm tra bảo mật khi cấp quyền thất bại (state không khớp).</string>
+  <string name="automatic_zones_use_a_heart_rate_formula_treat_their_boundaries_as_estimates_not" formatted="false">Zone tự động dùng công thức nhịp tim. Giới hạn này là ước tính, không phải ngưỡng đã đo.</string>
+  <string name="automatically_create_a_dedicated_uphill_ai_training_calendar_in_your_native_cale" formatted="false">Tự tạo lịch \"Uphill AI Training\" riêng trong app Lịch, không cần nhập file.</string>
+  <string name="average_of_lld_editions">Trung bình %1$d năm</string>
+  <string name="avg">TB %1$s</string>
+  <string name="b_realistic" formatted="false">B: Thực tế</string>
+  <string name="block_lld_review">ĐÁNH GIÁ BLOCK %1$d</string>
+  <string name="brand_preferences" formatted="false">THƯƠNG HIỆU ƯA THÍCH</string>
+  <string name="brand_preferences_budget" formatted="false">THƯƠNG HIỆU &amp; NGÂN SÁCH</string>
+  <string name="back" formatted="false">Quay lại</string>
+  <string name="balanced" formatted="false">Cân bằng</string>
+  <string name="base_phase" formatted="false">Giai đoạn Base</string>
+  <string name="be_ready_for_a_distance_like_your_first_21_km" formatted="false">Sẵn sàng chạy một cự ly, như 21 km đầu tiên.</string>
+  <string name="behind_target" formatted="false">Chậm hơn mục tiêu</string>
+  <string name="benefit" formatted="false">Lợi ích:</string>
+  <string name="birth_date" formatted="false">Ngày sinh</string>
+  <string name="block_completion_lld_done">Hoàn thành Block: %1$d%%</string>
+  <string name="block_progress" formatted="false">Tiến độ Block</string>
+  <string name="body_and_injury_history" formatted="false">Cơ thể và chấn thương</string>
+  <string name="brand" formatted="false">Thương hiệu</string>
+  <string name="brand_e_g_brooks" formatted="false">Hãng (vd. Brooks)</string>
+  <string name="build_anyway" formatted="false">Vẫn tạo</string>
+  <string name="build_my_plan" formatted="false">Tạo plan</string>
+  <string name="build_the_next_block_anyway" formatted="false">Vẫn tạo Block tiếp theo?</string>
+  <string name="build_toward_a_race_on_a_set_date" formatted="false">Tập hướng tới một Race có ngày cố định.</string>
+  <string name="build_week_lld">Tạo tuần %1$d</string>
+  <string name="build_weeks_lld_lld">Tạo tuần %1$d–%2$d</string>
+  <string name="building_the_next_block" formatted="false">Đang tạo Block tiếp theo…</string>
+  <string name="building_your_plan" formatted="false">Đang tạo plan</string>
+  <string name="building_your_plan_lld">Đang tạo plan… %1$d:%2$s</string>
+  <string name="c_safe" formatted="false">C: An toàn</string>
+  <string name="caution" formatted="false">LƯU Ý</string>
+  <string name="climbing" formatted="false">LEO DỐC</string>
+  <string name="coach_uphill_reasoning" formatted="false">LẬP LUẬN CỦA COACH UPHILL</string>
+  <string name="coach_uphill_takeaway" formatted="false">ĐIỂM CHÍNH TỪ COACH UPHILL</string>
+  <string name="coach_s_fueling_protocols" formatted="false">CÁCH FUELING CỦA COACH</string>
+  <string name="coach_s_pick_this_week" formatted="false">COACH CHỌN TUẦN NÀY</string>
+  <string name="coach_s_review" formatted="false">ĐÁNH GIÁ CỦA COACH</string>
+  <string name="coaching_mode" formatted="false">CHẾ ĐỘ HUẤN LUYỆN</string>
+  <string name="connected_accounts" formatted="false">TÀI KHOẢN ĐÃ KẾT NỐI</string>
+  <string name="cons_trade_offs" formatted="false">NHƯỢC ĐIỂM</string>
+  <string name="coros" formatted="false">COROS</string>
+  <string name="coros_authorization_was_declined_or_cancelled" formatted="false">Việc cấp quyền COROS bị từ chối hoặc hủy.</string>
+  <string name="coros_connected" formatted="false">Đã kết nối COROS</string>
+  <string name="coros_didn_t_accept_the_plan_nothing_changed_on_your_watch" formatted="false">COROS không nhận plan. Đồng hồ không thay đổi gì.</string>
+  <string name="coros_isn_t_connected_connect_it_in_profile" formatted="false">COROS chưa kết nối. Kết nối trong Hồ sơ.</string>
+  <string name="coros_isn_t_connected_reconnect_it_in_your_profile" formatted="false">COROS chưa kết nối. Kết nối lại trong hồ sơ.</string>
+  <string name="coros_plans_cover_up_to_16_weeks_send_to_coros_opens_closer_to_your_race" formatted="false">Plan COROS tối đa 16 tuần. Nút gửi sang COROS sẽ mở khi gần ngày Race hơn.</string>
+  <string name="coros_plans_must_be_at_least_4_weeks_long" formatted="false">Plan COROS phải dài ít nhất 4 tuần.</string>
+  <string name="course_configuration" formatted="false">CẤU HÌNH CUNG ĐƯỜNG</string>
+  <string name="course_profile_target_pace" formatted="false">CAO ĐỘ &amp; PACE MỤC TIÊU</string>
+  <string name="course_stats" formatted="false">THÔNG SỐ CUNG ĐƯỜNG</string>
+  <string name="current_distance_logged" formatted="false">QUÃNG ĐƯỜNG ĐÃ CHẠY</string>
+  <string name="current_fitness_baseline" formatted="false">THỂ LỰC HIỆN TẠI</string>
+  <string name="calculate_fueling_plan" formatted="false">Tính kế hoạch Fueling</string>
+  <string name="calculate_your_race_nutrition_strategy" formatted="false">Tính chiến lược dinh dưỡng thi đấu</string>
+  <string name="calculation_anchors" formatted="false">Mốc tính toán</string>
+  <string name="calibrated_against_lld_field_lld_finishers">Hiệu chỉnh theo giải %1$d (%2$d người về đích)</string>
+  <string name="calibrated_from_your_threshold_fitness_profile" formatted="false">Hiệu chỉnh từ ngưỡng và thể lực của bạn</string>
+  <string name="calibrated_using_the_minetti_metabolic_cost_curve_with_altitude_penalty_cumulati" formatted="false">Hiệu chỉnh bằng đường cong chi phí chuyển hóa Minetti, có tính độ cao, mệt mỏi tích lũy và chiến thuật Split.</string>
+  <string name="calibrates_zone_2_recovery_aerobic_runs" formatted="false">Hiệu chỉnh buổi hồi phục &amp; Aerobic Zone 2</string>
+  <string name="calibrates_calorie_expenditure_pacing_models_and_recovery_rates" formatted="false">Dùng để tính calo tiêu hao, pace và tốc độ hồi phục.</string>
+  <string name="calibrates_remaining_volume_and_workout_intensity_for_week_lld">Điều chỉnh khối lượng còn lại và cường độ buổi tập cho tuần %1$d.</string>
+  <string name="can_t_reach_uphill_check_your_connection_and_try_again" formatted="false">Không kết nối được Uphill. Kiểm tra mạng và thử lại.</string>
+  <string name="cancel" formatted="false">Hủy</string>
+  <string name="cannot_clear_thread_while_a_turn_is_active" formatted="false">Không thể xóa khi Coach đang trả lời.</string>
+  <string name="carbon_propulsion_plate" formatted="false">Carbon Plate</string>
+  <string name="carbs_per_hour" formatted="false">Carbs mỗi giờ</string>
+  <string name="change" formatted="false">Đổi</string>
+  <string name="change_my_schedule" formatted="false">Đổi lịch tập</string>
+  <string name="change_password" formatted="false">Đổi mật khẩu</string>
+  <string name="change_target" formatted="false">Đổi mục tiêu</string>
+  <string name="change_your_target_time_to">Đổi thời gian mục tiêu thành %1$s?</string>
+  <string name="changes_not_on_your_watch_yet" formatted="false">Thay đổi chưa có trên đồng hồ</string>
+  <string name="check_again" formatted="false">Kiểm tra lại</string>
+  <string name="check_your_aerobic_endurance_limit_and_threshold_heart_rate_keep_watch_generated" formatted="false">Xem giới hạn Aerobic Endurance và nhịp tim ngưỡng. Đánh dấu giá trị đồng hồ tính là ước tính.</string>
+  <string name="checking_connection" formatted="false">Đang kiểm tra kết nối…</string>
+  <string name="choose_field_test_or_lab_test_only_when_both_thresholds_were_measured_that_way" formatted="false">Chỉ chọn kiểm tra thực địa hoặc phòng lab khi cả hai ngưỡng đều được đo bằng phương pháp đó.</string>
+  <string name="choose_a_long_run_day_from_your_run_days" formatted="false">Chọn ngày Long Run trong các ngày chạy.</string>
+  <string name="choose_a_password_with_at_least_8_characters" formatted="false">Chọn mật khẩu ít nhất 8 ký tự.</string>
+  <string name="choose_the_effort_that_best_matches_how_it_felt" formatted="false">Chọn mức gắng sức phù hợp với cảm nhận của bạn.</string>
+  <string name="choose_what_you_re_training_for" formatted="false">Chọn mục tiêu tập của bạn.</string>
+  <string name="clear" formatted="false">Xóa</string>
+  <string name="clear_conversation" formatted="false">Xóa cuộc trò chuyện?</string>
+  <string name="clear_conversation_16299ad1ab" formatted="false">Xóa cuộc trò chuyện</string>
+  <string name="clear_conversation_1953205493" formatted="false">Xóa cuộc trò chuyện?</string>
+  <string name="climbing_m_d" formatted="false">D+ (m)</string>
+  <string name="close" formatted="false">Đóng</string>
+  <string name="coach" formatted="false">Coach</string>
+  <string name="coach_ai_co_creation" formatted="false">Cùng tạo với Coach AI</string>
+  <string name="coach_notes_lld">Ghi chú của coach (%1$d)</string>
+  <string name="coach_uphill" formatted="false">Coach Uphill</string>
+  <string name="coach_uphill_builds_your_first_weeks_now_and_adds_each_new_week_as_you_train" formatted="false">Coach Uphill tạo các tuần đầu ngay bây giờ và thêm tuần mới khi bạn tập.</string>
+  <string name="coach_uphill_follows_this_when_it_writes_the_new_weeks_optional" formatted="false">Coach Uphill dựa vào đây khi viết các tuần mới. Không bắt buộc.</string>
+  <string name="coach_uphill_provides_training_suggestions_based_on_endurance_principles_always_" formatted="false">Coach Uphill đưa gợi ý tập dựa trên nguyên tắc sức bền. Luôn lắng nghe cơ thể và hỏi bác sĩ khi chấn thương.</string>
+  <string name="coach_uphill_rebuilds_the_workouts_you_haven_t_done_yet_finished_and_synced_work" formatted="false">Coach Uphill làm lại các buổi bạn chưa tập. Buổi đã xong và đã đồng bộ giữ nguyên.</string>
+  <string name="coach_uphill_sets_the_target_from_your_fitness_as_you_train" formatted="false">Coach Uphill đặt mục tiêu theo thể lực trong quá trình tập.</string>
+  <string name="coach_uphill_uses_how_this_block_went_to_shape_the_next_one" formatted="false">Coach Uphill dựa vào Block này để lên Block tiếp theo.</string>
+  <string name="coach_uphill_uses_your_feedback_and_past_training_consistency_to_shape_the_next_" formatted="false">Coach Uphill dựa vào phản hồi và độ đều đặn tập luyện của bạn để lên Block tiếp theo.</string>
+  <string name="coach_uphill_will_count_back_your_training_phases_from_race_day" formatted="false">Coach Uphill sẽ tính ngược các giai đoạn tập từ ngày Race.</string>
+  <string name="coach_uphill_will_generate_your_personalized_workouts_based_on_your_recent_train" formatted="false">Coach Uphill sẽ tạo buổi tập riêng cho bạn dựa trên độ đều đặn và tiến bộ gần đây.</string>
+  <string name="coach_notes_on_this_block" formatted="false">Ghi chú Coach cho Block</string>
+  <string name="coaching_invitation" formatted="false">Lời mời huấn luyện</string>
+  <string name="cold_15_c" formatted="false">Lạnh (&lt;15°C)</string>
+  <string name="come_back_after_a_break" formatted="false">Quay lại sau thời gian nghỉ</string>
+  <string name="coming_back_after_a_break" formatted="false">Quay lại sau thời gian nghỉ</string>
+  <string name="coming_soon_4f7d640176" formatted="false">Sắp có</string>
+  <string name="competitive" formatted="false">Thi đấu</string>
+  <string name="complete_a_100_mile_race_to_unlock" formatted="false">Hoàn thành Race 100 dặm để mở</string>
+  <string name="complete_the_current_block_to_unlock" formatted="false">Hoàn thành Block hiện tại để mở</string>
+  <string name="completed" formatted="false">Đã xong</string>
+  <string name="completion" formatted="false">Hoàn thành</string>
+  <string name="confirm_new_password" formatted="false">Xác nhận mật khẩu mới</string>
+  <string name="confirm_password" formatted="false">Xác nhận mật khẩu</string>
+  <string name="connect_coros" formatted="false">Kết nối COROS</string>
+  <string name="connect_coros_account" formatted="false">Kết nối tài khoản COROS</string>
+  <string name="connect_coros_in_profile" formatted="false">Kết nối COROS trong Hồ sơ</string>
+  <string name="connect_in_profile" formatted="false">Kết nối trong Hồ sơ</string>
+  <string name="connect_your_verified_race_history_to_sharpen_your_goal_calculation" formatted="false">Kết nối lịch sử Race đã xác minh để tính mục tiêu chính xác hơn.</string>
+  <string name="connect_your_watch" formatted="false">Kết nối đồng hồ</string>
+  <string name="connect_your_watch_for_recent_training" formatted="false">Kết nối đồng hồ để có dữ liệu tập gần đây</string>
+  <string name="connect_your_watch_so_completed_runs_are_matched_to_your_plan_automatically" formatted="false">Kết nối đồng hồ để buổi chạy xong tự khớp vào plan.</string>
+  <string name="connected" formatted="false">Đã kết nối</string>
+  <string name="connected_accounts_2fc385cd20" formatted="false">Tài khoản đã kết nối</string>
+  <string name="connected_in_profile" formatted="false">Đã kết nối trong Hồ sơ</string>
+  <string name="connected_to_coros_syncing_activities" formatted="false">Đã kết nối COROS · Đang đồng bộ hoạt động...</string>
+  <string name="connected_i_ll_use_your_recent_runs_to_set_your_starting_mileage" formatted="false">Đã kết nối. Tôi sẽ dùng các buổi chạy gần đây để đặt khối lượng khởi đầu.</string>
+  <string name="connecting" formatted="false">Đang kết nối…</string>
+  <string name="conservative" formatted="false">An toàn</string>
+  <string name="conservative_buffer_against_heat_fatigue_or_cramps" formatted="false">Dư địa an toàn phòng nóng, mệt hoặc chuột rút</string>
+  <string name="continue_with_apple" formatted="false">Tiếp tục với Apple</string>
+  <string name="continue_with_google" formatted="false">Tiếp tục với Google</string>
+  <string name="continue_with_estimated_zones" formatted="false">Tiếp tục với Zone ước tính?</string>
+  <string name="continue_with_estimates" formatted="false">Tiếp tục với ước tính</string>
+  <string name="continuous_jog" formatted="false">Chạy chậm liên tục</string>
+  <string name="controlled_cadence" formatted="false">Giữ Cadence kiểm soát</string>
+  <string name="copy_calendar_subscription_url" formatted="false">Sao chép URL đăng ký lịch</string>
+  <string name="copy_your_tested_thresholds_if_available_or_use_watch_zone_boundaries_as_estimat" formatted="false">Ghi lại ngưỡng đã kiểm tra nếu có, hoặc dùng giới hạn Zone từ đồng hồ như giá trị ước tính.</string>
+  <string name="could_not_complete_coros_connection" formatted="false">Không hoàn tất kết nối COROS được.</string>
+  <string name="could_not_disconnect" formatted="false">Không ngắt kết nối được.</string>
+  <string name="could_not_send_to_coros" formatted="false">Không gửi được sang COROS.</string>
+  <string name="couldn_t_apply_try_again" formatted="false">Chưa áp dụng được — thử lại nhé.</string>
+  <string name="couldn_t_draft_this_week_ask_the_coach_to_try_again" formatted="false">Chưa soạn được tuần này — hãy nhờ Coach thử lại.</string>
+  <string name="couldn_t_load_your_plan" formatted="false">Không tải được plan</string>
+  <string name="couldn_t_load_your_watch_runs" formatted="false">Chưa tải được buổi từ đồng hồ</string>
+  <string name="couldn_t_reach_coros_nothing_changed_try_again_shortly" formatted="false">Không kết nối được COROS. Không có gì thay đổi. Thử lại sau.</string>
+  <string name="couldn_t_start_adapting_this_week_try_again" formatted="false">Không điều chỉnh được tuần này. Thử lại.</string>
+  <string name="couldn_t_start_the_next_week_try_again" formatted="false">Không bắt đầu được tuần tiếp theo. Thử lại.</string>
+  <string name="couldn_t_sync_watch_activities_please_try_again" formatted="false">Không đồng bộ được hoạt động từ đồng hồ. Vui lòng thử lại.</string>
+  <string name="course_profile" formatted="false">Cao độ cung đường</string>
+  <string name="course_physics_from_this_result" formatted="false">Tính theo cung đường từ kết quả này</string>
+  <string name="course_physics_from_your_easy_pace" formatted="false">Tính theo cung đường từ pace Easy</string>
+  <string name="course_physics_from_your_flat_pace" formatted="false">Tính theo cung đường từ pace đường bằng</string>
+  <string name="course_profile_59c90ab34f" formatted="false">Cao độ cung đường</string>
+  <string name="create_account" formatted="false">Tạo tài khoản</string>
+  <string name="curated_endurance_physiology_gut_training_protocol_uphill_biomechanics_and_menta" formatted="false">Kiến thức đã tuyển chọn về thể chất sức bền, Gut training, cơ sinh học leo dốc và tâm lý, từ khoa học thể thao đã kiểm chứng.</string>
+  <string name="cushioning" formatted="false">Độ êm</string>
+  <string name="daily_insight" formatted="false">GỢI Ý HÔM NAY</string>
+  <string name="danger_zone" formatted="false">VÙNG NGUY HIỂM</string>
+  <string name="data_sources" formatted="false">NGUỒN DỮ LIỆU</string>
+  <string name="descent" formatted="false">XUỐNG DỐC</string>
+  <string name="direct_apple_calendar_sync" formatted="false">ĐỒNG BỘ TRỰC TIẾP APPLE CALENDAR</string>
+  <string name="dist" formatted="false">CỰ LY</string>
+  <string name="distance" formatted="false">CỰ LY</string>
+  <string name="distance_badges_personal_bests" formatted="false">HUY HIỆU CỰ LY &amp; THÀNH TÍCH TỐT NHẤT</string>
+  <string name="duration" formatted="false">THỜI LƯỢNG</string>
+  <string name="daily" formatted="false">Hằng ngày</string>
+  <string name="data_provided_by_coros" formatted="false">Dữ liệu từ COROS</string>
+  <string name="data_provided_by_coros_f76713916e">Dữ liệu từ COROS · %1$s</string>
+  <string name="day" formatted="false">Ngày</string>
+  <string name="days" formatted="false">Ngày</string>
+  <string name="days_per_week" formatted="false">Số ngày/tuần</string>
+  <string name="days_since_the_race" formatted="false">Số ngày từ Race</string>
+  <string name="days_you_can_reach_real_hills_or_trails_like_weekend_trips_climbing_long_runs_an" formatted="false">Những ngày bạn tới được dốc hoặc trail thật, như chuyến cuối tuần. Long Run leo dốc và buổi tập dốc sẽ xếp vào các ngày này.</string>
+  <string name="decline" formatted="false">Từ chối</string>
+  <string name="decrease" formatted="false">Giảm</string>
+  <string name="deep_exhaustion_or_overreaching_risk_coach_will_schedule_an_active_recovery_delo" formatted="false">Kiệt sức hoặc có nguy cơ quá tải. Coach sẽ xếp một tuần Deload hồi phục.</string>
+  <string name="delete_plan" formatted="false">Xóa plan</string>
+  <string name="delete_result" formatted="false">Xóa kết quả</string>
+  <string name="delete_training_plan" formatted="false">Xóa plan</string>
+  <string name="delete_training_plan_899746db1c" formatted="false">Xóa plan?</string>
+  <string name="deleting_plan" formatted="false">Đang xóa plan…</string>
+  <string name="describe_the_intended_session" formatted="false">Mô tả buổi tập dự định:</string>
+  <string name="description_execution_steps" formatted="false">Mô tả &amp; cách thực hiện</string>
+  <string name="designated_long_run" formatted="false">Long Run được chỉ định:</string>
+  <string name="details_pros_cons" formatted="false">Chi tiết &amp; ưu/nhược</string>
+  <string name="dial_in_hourly_carbs_and_sodium_intake_based_on_duration_temperature_and_digesti" formatted="false">Tính lượng Carbs và Sodium mỗi giờ theo thời lượng, nhiệt độ và khả năng tiêu hóa.</string>
+  <string name="did_not_finish_dnf" formatted="false">Không về đích (DNF)</string>
+  <string name="digestive_notes_e_g_caffeine_sensitive_easily_bloated" formatted="false">Ghi chú tiêu hóa (vd. nhạy caffeine, dễ đầy bụng)</string>
+  <string name="discard" formatted="false">Bỏ</string>
+  <string name="discarded" formatted="false">Đã bỏ</string>
+  <string name="discipline" formatted="false">Môn</string>
+  <string name="disconnect" formatted="false">Ngắt kết nối</string>
+  <string name="disconnect_coros" formatted="false">Ngắt kết nối COROS</string>
+  <string name="disconnect_coros_7487e24713" formatted="false">Ngắt kết nối COROS?</string>
+  <string name="disconnected_from_coros" formatted="false">Đã ngắt kết nối COROS.</string>
+  <string name="dismiss_suggestions" formatted="false">Ẩn gợi ý</string>
+  <string name="dist_km" formatted="false">Cự ly (km)</string>
+  <string name="distance_b7bdf7a2d6" formatted="false">Cự ly</string>
+  <string name="distance_km" formatted="false">Cự ly (km)</string>
+  <string name="distance_achievements" formatted="false">Thành tích cự ly</string>
+  <string name="distance_and_climbing_set_how_long_your_key_runs_get" formatted="false">Cự ly và D+ quyết định độ dài các buổi tập chính.</string>
+  <string name="distance_6c15a5515c">Cự ly: %1$s</string>
+  <string name="done_11a6767d56" formatted="false">Xong</string>
+  <string name="double_sessions_optional" formatted="false">Tập đôi (tùy chọn)</string>
+  <string name="double_sessions">Ngày tập đôi: %1$s</string>
+  <string name="double_session_days_max_2" formatted="false">Ngày tập 2 buổi (tối đa 2)</string>
+  <string name="draft_plans_to_finish" formatted="false">Plan nháp cần hoàn thiện</string>
+  <string name="drafting" formatted="false">Đang soạn</string>
+  <string name="drafting_week_lld">Đang soạn lại tuần %1$d…</string>
+  <string name="drag_across_the_chart_to_read_any_finish_time" formatted="false">Kéo trên biểu đồ để xem từng thời gian về đích.</string>
+  <string name="drink_mix" formatted="false">Bột pha nước</string>
+  <string name="duration_4fc52a3c4c" formatted="false">Thời lượng</string>
+  <string name="duration_min" formatted="false">Thời lượng (phút)</string>
+  <string name="effort_rpe" formatted="false">MỨC GẮNG SỨC (RPE)</string>
+  <string name="empty_slot" formatted="false">CÒN TRỐNG</string>
+  <string name="environment_duration" formatted="false">MÔI TRƯỜNG &amp; THỜI LƯỢNG</string>
+  <string name="est_distance" formatted="false">CỰ LY DỰ KIẾN</string>
+  <string name="event_date" formatted="false">NGÀY THI ĐẤU</string>
+  <string name="execution_strategy" formatted="false">CHIẾN THUẬT THỰC HIỆN</string>
+  <string name="export_ics_file" formatted="false">XUẤT FILE .ICS</string>
+  <string name="each_detail_makes_your_next_week_s_workouts_more_tailored" formatted="false">Mỗi chi tiết giúp buổi tập tuần sau sát với bạn hơn.</string>
+  <string name="each_one_helps_coach_uphill_fit_your_next_weeks_to_you_instead_of_an_estimate" formatted="false">Mỗi mục giúp Coach Uphill xếp các tuần tới theo đúng bạn, thay vì ước tính.</string>
+  <string name="easy_recovery" formatted="false">Easy &amp; hồi phục</string>
+  <string name="easy_pace_zone_2" formatted="false">Pace Easy (Zone 2)</string>
+  <string name="easy_days_stay_easy_hard_days_hit_the_target" formatted="false">Ngày nhẹ đúng là nhẹ, ngày nặng đúng mục tiêu</string>
+  <string name="easy_pace" formatted="false">Pace Easy</string>
+  <string name="easy_pace_faster_end" formatted="false">Pace Easy, mức nhanh</string>
+  <string name="easy_pace_faster_end_km">Pace chạy nhẹ, đầu nhanh: %1$s /km</string>
+  <string name="easy_pace_slower_end" formatted="false">Pace Easy, mức chậm</string>
+  <string name="easy_pace_slower_end_must_be_slower_than_the_faster_end" formatted="false">Đầu chậm của khoảng Pace chạy nhẹ phải chậm hơn đầu nhanh.</string>
+  <string name="easy_pace_slower_end_km">Pace chạy nhẹ, đầu chậm: %1$s /km</string>
+  <string name="easy_recovery_runs_aet" formatted="false">Chạy hồi phục nhẹ (&lt; AeT)</string>
+  <string name="easy_weeks_after_a_hard_effort" formatted="false">Các tuần nhẹ sau một Race nặng.</string>
+  <string name="edit" formatted="false">Sửa</string>
+  <string name="edit_session" formatted="false">Sửa buổi tập</string>
+  <string name="edit_workout" formatted="false">Sửa buổi tập</string>
+  <string name="edit_answers" formatted="false">Sửa câu trả lời</string>
+  <string name="edit_zones" formatted="false">Sửa zone</string>
+  <string name="edition" formatted="false">Năm</string>
+  <string name="effort" formatted="false">Gắng sức</string>
+  <string name="effort_context" formatted="false">Mức gắng sức &amp; bối cảnh</string>
+  <string name="effortless_recovery" formatted="false">Hồi phục nhẹ nhàng</string>
+  <string name="effortless_recovery_or_peak_freshness_coach_will_maintain_or_slightly_increase_v" formatted="false">Hồi phục tốt hoặc rất sung sức. Coach sẽ giữ hoặc tăng nhẹ khối lượng.</string>
+  <string name="elapsed_lld_minutes_lld_seconds">Đã qua %1$d phút %2$d giây</string>
+  <string name="elevation_gain_d" formatted="false">Elevation Gain (D+)</string>
+  <string name="elevation_gain_m" formatted="false">Elevation Gain (m)</string>
+  <string name="elevation_gain_m_6e74158895" formatted="false">Elevation Gain (m)</string>
+  <string name="email" formatted="false">Email</string>
+  <string name="enter_0_to_120_minutes" formatted="false">Nhập từ 0 đến 120 phút.</string>
+  <string name="enter_0_to_250_km" formatted="false">Nhập từ 0 đến 250 km.</string>
+  <string name="enter_aet_between_80_and_220_bpm" formatted="false">Nhập AeT từ 80 đến 220 bpm.</string>
+  <string name="enter_ant_between_90_and_225_bpm" formatted="false">Nhập AnT từ 90 đến 225 bpm.</string>
+  <string name="enter_max_hr_between_120_and_240_bpm" formatted="false">Nhập Max HR từ 120 đến 240 bpm.</string>
+  <string name="enter_resting_hr_between_30_and_120_bpm" formatted="false">Nhập Resting HR từ 30 đến 120 bpm.</string>
+  <string name="enter_a_distance_between_1_and_400_km" formatted="false">Nhập cự ly từ 1 đến 400 km.</string>
+  <string name="enter_pace_as_m_ss_per_km_for_example_6_30" formatted="false">Nhập Pace theo phút:giây mỗi km, ví dụ 6:30.</string>
+  <string name="enter_runner_full_name_as_on_bib" formatted="false">Nhập họ tên runner (như trên bib)</string>
+  <string name="entered_by_athlete" formatted="false">VĐV tự nhập</string>
+  <string name="environment" formatted="false">Môi trường</string>
+  <string name="error" formatted="false">Lỗi</string>
+  <string name="estimate_race_goal" formatted="false">Ước tính mục tiêu Race</string>
+  <string name="estimated" formatted="false">Ước tính</string>
+  <string name="estimated_from_your_inputs_threshold_pace_takes_priority_over_the_easy_pace_rang" formatted="false">Ước tính từ giá trị bạn nhập. Threshold Pace được ưu tiên hơn khoảng Pace chạy nhẹ.</string>
+  <string name="estimated_from_your_race_history" formatted="false">Ước tính từ lịch sử Race</string>
+  <string name="estimated_from_your_training_so_far" formatted="false">Ước tính từ quá trình tập tới nay</string>
+  <string name="estimated_hours_on_course" formatted="false">Số giờ dự kiến trên đường chạy</string>
+  <string name="estimated_profile" formatted="false">Cao độ ước tính</string>
+  <string name="estimates_your_finish_time_from_the_course_its_past_field_and_your_race_history_" formatted="false">Ước tính thời gian về đích từ cung đường, kết quả các năm trước, lịch sử Race, dữ liệu đồng hồ và hồ sơ của bạn.</string>
+  <string name="even" formatted="false">Đều</string>
+  <string name="evening" formatted="false">Tối</string>
+  <string name="every_week_of_this_plan_is_already_built" formatted="false">Mọi tuần của plan này đã được tạo.</string>
+  <string name="every_week_volume_trend" formatted="false">Xu hướng khối lượng các tuần</string>
+  <string name="every_workout_gets_a_pace_you_can_hold" formatted="false">Mỗi buổi tập có pace bạn giữ được</string>
+  <string name="evolab_sync_failed_please_try_again" formatted="false">Đồng bộ EvoLab thất bại. Vui lòng thử lại.</string>
+  <string name="evolab_synced_successfully_threshold_pace_km_vo2max">Đã đồng bộ EvoLab: pace Threshold %1$s/km, VO2max %2$s.</string>
+  <string name="evoke_uses_a_sustained_20_60_minute_time_trial_depending_on_experience_average_h" formatted="false">Evoke dùng bài time trial liên tục 20–60 phút tùy kinh nghiệm. Nhịp tim trung bình ước tính AnT cho hoạt động đó. Bài này rất nặng; hãy kiểm tra khi đã hồi phục.</string>
+  <string name="excluded" formatted="false">Đã loại</string>
+  <string name="exhausted" formatted="false">Kiệt sức</string>
+  <string name="exhausted_deload" formatted="false">Kiệt sức / cần Deload</string>
+  <string name="exit" formatted="false">Thoát</string>
+  <string name="explain_zone_2_heart_rate_training" formatted="false">Giải thích tập theo nhịp tim Zone 2</string>
+  <string name="explain_the_80_20_training_rule" formatted="false">Giải thích nguyên tắc tập 80/20</string>
+  <string name="explore_personalized_recommendations_in_gear_vault" formatted="false">Xem gợi ý riêng cho bạn trong Gear Vault</string>
+  <string name="export_calendar" formatted="false">Xuất lịch</string>
+  <string name="export_a_standard_icalendar_file_to_share_via_airdrop_open_in_third_party_calend" formatted="false">Xuất file iCalendar để chia sẻ qua AirDrop, mở trong app lịch khác hoặc lưu vào Tệp.</string>
+  <string name="field_distribution_cdf" formatted="false">PHÂN BỐ THÀNH TÍCH (CDF)</string>
+  <string name="finish_time_rank" formatted="false">THỜI GIAN &amp; THỨ HẠNG</string>
+  <string name="fit_cushioning" formatted="false">FORM &amp; ĐỘ ÊM</string>
+  <string name="flat" formatted="false">ĐƯỜNG BẰNG</string>
+  <string name="failed" formatted="false">Thất bại</string>
+  <string name="fatigue_minor_niggles_upcoming_travel_or_schedule_changes" formatted="false">Mệt mỏi, đau nhẹ, sắp đi xa hoặc đổi lịch…</string>
+  <string name="feeling_good_just_need_structure" formatted="false">Vẫn khỏe, chỉ cần có lịch tập</string>
+  <string name="feeling_great_minimal_soreness" formatted="false">Rất khỏe, gần như không đau</string>
+  <string name="female" formatted="false">Nữ</string>
+  <string name="field" formatted="false">Thành tích giải</string>
+  <string name="field_percentile_transfer" formatted="false">Quy đổi theo bách phân vị</string>
+  <string name="field_position_from_weekly_volume" formatted="false">Vị trí ước tính từ khối lượng tuần</string>
+  <string name="field_test" formatted="false">Kiểm tra thực địa</string>
+  <string name="filter" formatted="false">Lọc</string>
+  <string name="find_matching_shoes_with_ai" formatted="false">Tìm giày phù hợp bằng AI</string>
+  <string name="find_my_profile" formatted="false">Tìm hồ sơ</string>
+  <string name="find_shoes_matched_to_course_technicality_foot_shape_cushioning_preference_and_p" formatted="false">Tìm giày hợp với độ kỹ thuật cung đường, form chân, độ êm và nhu cầu Carbon Plate.</string>
+  <string name="find_values_from_your_watch_or_a_test" formatted="false">Lấy giá trị từ đồng hồ hoặc bài kiểm tra</string>
+  <string name="find_your_values" formatted="false">Tìm giá trị của bạn</string>
+  <string name="fine_tune_your_training_anchors_your_next_week_adapts_automatically" formatted="false">Tinh chỉnh các mốc tập luyện. Tuần sau tự điều chỉnh theo.</string>
+  <string name="finish_strong" formatted="false">Về đích khỏe</string>
+  <string name="finishers_field_curve" formatted="false">Đường phân bố người về đích</string>
+  <string name="firm" formatted="false">Cứng</string>
+  <string name="focus_on_building_steady_aerobic_durability_and_consistent_rhythm_keep_easy_runs" formatted="false">Tập trung xây sức bền Aerobic và nhịp đều. Giữ Easy Run ở mức nói chuyện được để ty thể thích nghi tốt nhất.</string>
+  <string name="focus_limits_races_or_travel_to_plan_around" formatted="false">Trọng tâm, giới hạn, Race hoặc lịch đi xa…</string>
+  <string name="focus_build_consistent_aerobic_capacity_and_fatigue_resistance" formatted="false">Trọng tâm: xây nền Aerobic đều đặn và khả năng chịu mệt.</string>
+  <string name="fresh" formatted="false">Sung sức</string>
+  <string name="fresh_easy" formatted="false">Sung sức &amp; nhẹ</string>
+  <string name="fresh_and_well_recovered_coach_will_maintain_progressive_overload_without_cuttin" formatted="false">Sung sức và hồi phục tốt. Coach sẽ giữ mức tăng tải, không giảm khối lượng.</string>
+  <string name="fri" formatted="false">T6</string>
+  <string name="friday" formatted="false">Thứ Sáu</string>
+  <string name="from_the_race_date" formatted="false">Từ ngày Race</string>
+  <string name="from_walk_run_to_running_30_minutes" formatted="false">Từ chạy-đi bộ xen kẽ tới chạy liền 30 phút.</string>
+  <string name="from_watch" formatted="false">Từ đồng hồ</string>
+  <string name="from_your_coros_lld_km_a_week_over_the_last_4_full_weeks">Từ COROS: %1$d km/tuần, trung bình 4 tuần đầy đủ gần nhất</string>
+  <string name="from_your_profile_zone_2" formatted="false">Từ Zone 2 trong hồ sơ</string>
+  <string name="from_your_watch_runs" formatted="false">Từ buổi chạy đồng hồ</string>
+  <string name="fueling_strategy" formatted="false">Chiến lược Fueling</string>
+  <string name="gear_specialist_tips" formatted="false">MẸO TỪ CHUYÊN GIA GEAR</string>
+  <string name="goal_estimation" formatted="false">ƯỚC TÍNH MỤC TIÊU</string>
+  <string name="grade" formatted="false">ĐỘ DỐC</string>
+  <string name="gain_m_d" formatted="false">D+ (m)</string>
+  <string name="gain_m" formatted="false">D+ (m)</string>
+  <string name="garmin" formatted="false">Garmin</string>
+  <string name="gated" formatted="false">Bị chặn</string>
+  <string name="gear" formatted="false">Gear</string>
+  <string name="gear_vault" formatted="false">Gear Vault</string>
+  <string name="gender" formatted="false">Giới tính</string>
+  <string name="generate_insert_session" formatted="false">Tạo &amp; chèn buổi tập</string>
+  <string name="generate_block_lld_anyway">Vẫn tạo Block %1$d</string>
+  <string name="generate_week_lld">Tạo tuần %1$d</string>
+  <string name="generate_anyway" formatted="false">Vẫn tạo</string>
+  <string name="generating" formatted="false">Đang soạn…</string>
+  <string name="get_started" formatted="false">Bắt đầu</string>
+  <string name="get_the_most_from_your_plan" formatted="false">Để plan sát với bạn hơn</string>
+  <string name="getting_started" formatted="false">Mới bắt đầu</string>
+  <string name="go_to_profile_tab_bottom_right_settings_heart_rate_zone" formatted="false">Vào tab Hồ sơ (góc dưới phải) &gt; Cài đặt &gt; Heart Rate Zone.</string>
+  <string name="goal_lldh_m">Mục tiêu %1$dh %2$sm</string>
+  <string name="goal_assessment" formatted="false">Đánh giá mục tiêu</string>
+  <string name="goal_determiner" formatted="false">Ước tính mục tiêu</string>
+  <string name="goal_pct" formatted="false">% mục tiêu</string>
+  <string name="goal_time" formatted="false">Thời gian mục tiêu</string>
+  <string name="goal_times_are_estimates_synthesized_from_your_training_data_not_a_finish_line_g" formatted="false">Thời gian mục tiêu là ước tính từ dữ liệu tập luyện, không đảm bảo kết quả về đích.</string>
+  <string name="goal">Mục tiêu: %1$s</string>
+  <string name="goal_best_possible_time" formatted="false">Mục tiêu: thời gian tốt nhất</string>
+  <string name="goal_finish_strong" formatted="false">Mục tiêu: về đích khỏe</string>
+  <string name="google_didn_t_return_a_sign_in_token_please_try_again" formatted="false">Google không trả về mã đăng nhập. Vui lòng thử lại.</string>
+  <string name="google_sign_in_couldn_t_open_please_try_again" formatted="false">Không mở được đăng nhập Google. Vui lòng thử lại.</string>
+  <string name="google_sign_in_failed_lld_please_try_again">Đăng nhập Google thất bại (%1$s %2$d). Vui lòng thử lại.</string>
+  <string name="google_sign_in_failed_error_lld_please_try_again">Đăng nhập Google thất bại (lỗi %1$d). Vui lòng thử lại.</string>
+  <string name="got_it" formatted="false">Đã hiểu</string>
+  <string name="great_week_of_training" formatted="false">Tuần tập rất tốt</string>
+  <string name="guidance_for_this_block" formatted="false">Định hướng Block này</string>
+  <string name="gut_training_baseline_60g" formatted="false">Mức Gut training cơ bản: 60g</string>
+  <string name="gym_access" formatted="false">Có phòng gym</string>
+  <string name="high_confidence" formatted="false">ĐỘ TIN CẬY CAO</string>
+  <string name="hourly_race_timeline" formatted="false">LỊCH TRÌNH THEO GIỜ</string>
+  <string name="hourly_targets_hourly_intake" formatted="false">MỤC TIÊU NẠP MỖI GIỜ</string>
+  <string name="how_did_it_feel" formatted="false">CẢM THẤY THẾ NÀO?</string>
+  <string name="how_to_execute" formatted="false">CÁCH THỰC HIỆN</string>
+  <string name="half_finished" formatted="false">Một nửa về đích</string>
+  <string name="half_marathon" formatted="false">Half marathon</string>
+  <string name="hard" formatted="false">Nặng</string>
+  <string name="hard_challenging_workouts_pushed_you_but_manageable" formatted="false">Nặng / thử thách. Buổi tập đẩy bạn lên nhưng vẫn kiểm soát được.</string>
+  <string name="hard_demanding_heavy_legs_needed_deep_recovery" formatted="false">Nặng / vất vả. Chân nặng, cần hồi phục kỹ.</string>
+  <string name="hard_session_on_day_week_week_right_before_the_long_run" formatted="false">Buổi nặng vào {day} (tuần {week}) ngay trước Long Run.</string>
+  <string name="have_an_account_sign_in" formatted="false">Đã có tài khoản? Đăng nhập</string>
+  <string name="have_you_raced_before" formatted="false">Kết quả Race</string>
+  <string name="heads_up" formatted="false">Lưu ý: </string>
+  <string name="heart_rate" formatted="false">Nhịp tim</string>
+  <string name="heart_rate_spectrum" formatted="false">Dải nhịp tim</string>
+  <string name="heart_rate_zones_guide" formatted="false">Hướng dẫn Heart Rate Zone</string>
+  <string name="heart_rate_1447897ca9" formatted="false">Nhịp tim</string>
+  <string name="heart_rate_optional" formatted="false">HR (tùy chọn)</string>
+  <string name="heart_rate_anchors" formatted="false">Mốc nhịp tim</string>
+  <string name="heart_rate_thresholds" formatted="false">Ngưỡng nhịp tim</string>
+  <string name="heart_rates_must_increase_from_resting_to_aet_to_ant_to_max" formatted="false">Nhịp tim phải tăng theo thứ tự: nhịp tim nghỉ, AeT, AnT, nhịp tim tối đa.</string>
+  <string name="heavy_legs" formatted="false">Chân nặng</string>
+  <string name="heavy_legs_tired" formatted="false">Chân nặng / mệt</string>
+  <string name="heavy_legs_or_elevated_fatigue_coach_will_ease_off_volume_and_reduce_high_intens" formatted="false">Chân nặng hoặc mệt nhiều. Coach sẽ giảm khối lượng và bớt buổi cường độ cao.</string>
+  <string name="height" formatted="false">Chiều cao</string>
+  <string name="height_cm" formatted="false">Chiều cao (cm)</string>
+  <string name="helpful_recommendations" formatted="false">Gợi ý có hữu ích không?</string>
+  <string name="helpful_response" formatted="false">Câu trả lời hữu ích</string>
+  <string name="here_s_what_i_ll_build_from" formatted="false">Đây là dữ liệu tôi sẽ dùng</string>
+  <string name="hide_custom_shoe_input" formatted="false">Ẩn ô nhập giày</string>
+  <string name="hide_for_now" formatted="false">Ẩn lúc này</string>
+  <string name="hike" formatted="false">Đi bộ</string>
+  <string name="hill_trail_days">Ngày dốc / Trail: %1$s</string>
+  <string name="hill_or_trail_days" formatted="false">Ngày có dốc/trail</string>
+  <string name="hill_sessions_and_strength_work_go_where_you_can_actually_do_them" formatted="false">Buổi tập dốc và Strength sẽ phù hợp với nơi bạn tập.</string>
+  <string name="hill_sessions_climbing_long_runs_and_strength_work_are_placed_where_you_can_actu" formatted="false">Buổi tập dốc, Long Run leo dốc và Strength được xếp vào ngày bạn thực sự tập được.</string>
+  <string name="hilly" formatted="false">Nhiều dốc</string>
+  <string name="historical_field_times_lld">Thành tích các năm (%1$d)</string>
+  <string name="hit_a_target_time" formatted="false">Đạt thời gian mục tiêu</string>
+  <string name="hot_25_c" formatted="false">Nóng (&gt;25°C)</string>
+  <string name="hours" formatted="false">Giờ</string>
+  <string name="how_do_you_feel_right_now" formatted="false">Bây giờ bạn thấy thế nào?</string>
+  <string name="how_do_you_feel" formatted="false">Bạn thấy thế nào?</string>
+  <string name="how_does_your_body_feel" formatted="false">Cơ thể bạn thấy thế nào?</string>
+  <string name="how_does_your_body_hold_up" formatted="false">Tình trạng cơ thể</string>
+  <string name="how_long_have_you_been_away" formatted="false">Bạn nghỉ bao lâu rồi?</string>
+  <string name="how_much_do_you_run_now" formatted="false">Hiện bạn chạy bao nhiêu?</string>
+  <string name="how_much_elevation_gain_should_i_train_for" formatted="false">Tôi nên tập với bao nhiêu D+?</string>
+  <string name="how_should_i_pace">Tôi nên chạy pace thế nào ở %1$s?</string>
+  <string name="how_to_find_your_zones" formatted="false">Cách tìm zone của bạn</string>
+  <string name="how_to_prevent_muscle_cramps_in_ultras" formatted="false">Làm sao tránh chuột rút khi chạy Ultra?</string>
+  <string name="how_were_these_measured" formatted="false">Các ngưỡng này được xác định thế nào?</string>
+  <string name="hydration_balance_500mg" formatted="false">Cân bằng nước: 500mg</string>
+  <string name="i_bounce_back_quickly_from_hard_efforts" formatted="false">Tôi phục hồi nhanh sau buổi tập nặng.</string>
+  <string name="i_can_use_a_gym" formatted="false">Tôi tập được ở gym</string>
+  <string name="i_can_use_a_treadmill" formatted="false">Tôi dùng được Treadmill</string>
+  <string name="i_can_use_stairs_fire_stairs_or_a_stairmaster" formatted="false">Tôi leo cầu thang được (cầu thang bộ hoặc Stairmaster)</string>
+  <string name="i_need_a_careful_conservative_build" formatted="false">Tôi cần tăng khối lượng chậm và cẩn thận.</string>
+  <string name="i_need_a_lighter_week" formatted="false">Tôi cần tuần nhẹ hơn</string>
+  <string name="i_need_at_least_one_past_result_a_linked_profile_or_recent_watch_training_to_est" formatted="false">Cần ít nhất một kết quả giải trước, hồ sơ đã liên kết hoặc dữ liệu tập gần đây từ đồng hồ để ước tính mục tiêu A/B/C cho giải này.</string>
+  <string name="i_ll_count_the_weeks_back_from_race_day" formatted="false">Tôi sẽ tính ngược số tuần từ ngày Race.</string>
+  <string name="import_your_official_results" formatted="false">NHẬP KẾT QUẢ CHÍNH THỨC</string>
+  <string name="integrations_watch_sync" formatted="false">KẾT NỐI &amp; ĐỒNG BỘ ĐỒNG HỒ</string>
+  <string name="if_i_know_the_race_i_know_its_distance_and_climbing" formatted="false">Biết Race thì tôi biết cự ly và độ leo.</string>
+  <string name="import_gpx_course_file" formatted="false">Nhập file GPX</string>
+  <string name="included" formatted="false">Đã gồm</string>
+  <string name="increase" formatted="false">Tăng</string>
+  <string name="indexed_sources_documentation" formatted="false">Nguồn &amp; tài liệu</string>
+  <string name="ingest" formatted="false">Nạp</string>
+  <string name="injuries_and_notes_for_coach_uphill" formatted="false">Chấn thương và ghi chú cho Coach Uphill</string>
+  <string name="injury_notes_limitations" formatted="false">Chấn thương / hạn chế:</string>
+  <string name="injury_history_sets_how_fast_i_add_volume" formatted="false">Tiền sử chấn thương quyết định tốc độ tăng khối lượng.</string>
+  <string name="instructions_execution_description" formatted="false">Hướng dẫn / cách thực hiện</string>
+  <string name="instructions" formatted="false">Hướng dẫn...</string>
+  <string name="integrations" formatted="false">Kết nối</string>
+  <string name="interrupted_132d124d6b" formatted="false">Bị gián đoạn</string>
+  <string name="intervals_threshold" formatted="false">Interval &amp; Threshold</string>
+  <string name="invalid_callback_response_from_coros" formatted="false">COROS trả về phản hồi không hợp lệ.</string>
+  <string name="invitation_sent_to">Đã gửi lời mời tới %1$s!</string>
+  <string name="invite" formatted="false">Mời</string>
+  <string name="invite_pending" formatted="false">Đang chờ nhận lời</string>
+  <string name="key_coach_takeaways" formatted="false">ĐIỂM CHÍNH TỪ COACH</string>
+  <string name="keep">Giữ %1$s</string>
+  <string name="keep_plan" formatted="false">Giữ plan</string>
+  <string name="keep_an_eye_on" formatted="false">Cần để ý</string>
+  <string name="keep_using_the_app" formatted="false">Tiếp tục dùng app</string>
+  <string name="knowledge_hub" formatted="false">Kho kiến thức</string>
+  <string name="last_week_review" formatted="false">ĐÁNH GIÁ TUẦN TRƯỚC</string>
+  <string name="linked_athlete_profiles" formatted="false">HỒ SƠ RUNNER ĐÃ LIÊN KẾT</string>
+  <string name="log_run_distance" formatted="false">GHI QUÃNG ĐƯỜNG</string>
+  <string name="longest_trail" formatted="false">TRAIL DÀI NHẤT</string>
+  <string name="lab_test" formatted="false">Kiểm tra tại phòng lab</string>
+  <string name="lactate_threshold_ant" formatted="false">Ngưỡng lactate (AnT)</string>
+  <string name="lactate_threshold_1_hour_race_pace" formatted="false">Ngưỡng lactate; pace Race ~1 giờ</string>
+  <string name="language" formatted="false">Ngôn ngữ</string>
+  <string name="last_synced">Đồng bộ lần cuối %1$s</string>
+  <string name="leave_blank_if_you_don_t_know" formatted="false">Để trống nếu bạn chưa biết.</string>
+  <string name="leave_blank_if_you_don_t_know_you_can_add_training_zones_in_profile_later" formatted="false">Để trống nếu chưa biết. Bạn có thể thêm Zone trong Hồ sơ sau.</string>
+  <string name="let_s_build_your_training_plan" formatted="false">Cùng lên plan tập của bạn</string>
+  <string name="level" formatted="false">Trình độ</string>
+  <string name="level_7cc6078a35" formatted="false">Trình độ:</string>
+  <string name="light" formatted="false">Nhẹ</string>
+  <string name="link_copied" formatted="false">Đã sao chép link!</string>
+  <string name="link_profile" formatted="false">Liên kết hồ sơ</string>
+  <string name="link_runner_profile" formatted="false">Liên kết hồ sơ runner</string>
+  <string name="link_utmb_vbm" formatted="false">Liên kết UTMB / VBM</string>
+  <string name="link_utmb_or_vbm_profile" formatted="false">Liên kết hồ sơ UTMB hoặc VBM</string>
+  <string name="link_a_past_trail_race_result" formatted="false">Liên kết kết quả Trail race trước</string>
+  <string name="link_a_watch_run" formatted="false">Gắn buổi đồng hồ</string>
+  <string name="link_your_utmb_or_vbm_profile" formatted="false">Liên kết hồ sơ UTMB hoặc VBM</string>
+  <string name="link_your_utmb_or_vietnam_backyards_vbm_runner_profile_to_automatically_import_p" formatted="false">Liên kết hồ sơ runner UTMB hoặc VBM để tự nhập các Race đã chạy.</string>
+  <string name="link_your_utmb_or_vietnam_race_profile_and_i_ll_read_your_past_finishes_they_sha" formatted="false">Liên kết hồ sơ UTMB hoặc Race Việt Nam để đọc kết quả cũ. Các kết quả giúp chọn khối lượng ban đầu và mục tiêu Race.</string>
+  <string name="link_your_utmb_profile_for_your_utmb_index" formatted="false">Liên kết hồ sơ UTMB để có UTMB index</string>
+  <string name="link_your_race_history" formatted="false">Liên kết lịch sử Race</string>
+  <string name="linked_race_results_utmb_vbm" formatted="false">Kết quả Race đã liên kết (UTMB / VBM)</string>
+  <string name="linked_race_results_and_watch_volume_below_count_for_more_than_easy_pace_when_yo" formatted="false">Khi có, kết quả Race đã liên kết và khối lượng từ đồng hồ được tính nặng hơn pace Easy.</string>
+  <string name="linked_to_this_workout" formatted="false">Đã gắn với buổi này</string>
+  <string name="list" formatted="false">Danh sách</string>
+  <string name="load_earlier_messages" formatted="false">Tải tin nhắn cũ hơn</string>
+  <string name="load_exact_elevation_profile_waypoints_from_gpx" formatted="false">Nạp cao độ và điểm mốc chính xác từ file .gpx</string>
+  <string name="load_older_messages" formatted="false">Xem tin nhắn cũ</string>
+  <string name="loading_plans" formatted="false">Đang tải plan…</string>
+  <string name="loading_race_history" formatted="false">Đang tải lịch sử Race…</string>
+  <string name="loading_week_summary_and_performance_metrics_from_coach_uphill" formatted="false">Đang tải tổng kết tuần và chỉ số từ Coach Uphill…</string>
+  <string name="loading_your_training" formatted="false">Đang tải lịch tập</string>
+  <string name="local" formatted="false">Local</string>
+  <string name="local_usb" formatted="false">Local (USB)</string>
+  <string name="locked" formatted="false">Đã khóa</string>
+  <string name="locks_in_your_aerobic_endurance_thresholds" formatted="false">Xác định ngưỡng sức bền Aerobic</string>
+  <string name="logged_km" formatted="false">Đã chạy (km)</string>
+  <string name="long_run" formatted="false">Long Run</string>
+  <string name="long_run_day" formatted="false">Ngày Long Run</string>
+  <string name="long_run_day_a79abbb956" formatted="false">Ngày Long Run</string>
+  <string name="look_for_running_lactate_threshold_pace_in_garmin_connect_or_threshold_pace_in_c" formatted="false">Tìm Lactate Threshold Pace chạy trong Garmin Connect hoặc Threshold Pace trong COROS EvoLab nếu có. Lấy khoảng Pace từ các buổi chạy nhẹ trên đường bằng. Đổi phút/mile sang phút/km trước khi nhập.</string>
+  <string name="max_hr" formatted="false">Max HR</string>
+  <string name="move_to_a_day_this_week_or_next_week" formatted="false">CHUYỂN SANG NGÀY TRONG TUẦN NÀY HOẶC TUẦN SAU</string>
+  <string name="makes_workouts_more_accurate" formatted="false">Giúp buổi tập chính xác hơn</string>
+  <string name="male" formatted="false">Nam</string>
+  <string name="manage" formatted="false">Quản lý</string>
+  <string name="manage_plan" formatted="false">Quản lý plan</string>
+  <string name="manual_course_profile" formatted="false">Nhập cao độ thủ công</string>
+  <string name="manual_form" formatted="false">Nhập tay</string>
+  <string name="marathon" formatted="false">Marathon</string>
+  <string name="mark_missed" formatted="false">Đánh dấu lỡ</string>
+  <string name="mark_as_done" formatted="false">Đánh dấu đã xong</string>
+  <string name="mark_as_missed" formatted="false">Đánh dấu bị lỡ</string>
+  <string name="mark_as_not_done" formatted="false">Đánh dấu chưa xong</string>
+  <string name="mark_session_as_missed" formatted="false">Đánh dấu buổi này bị lỡ?</string>
+  <string name="marked_as_missed" formatted="false">Đã đánh dấu lỡ</string>
+  <string name="match_the_right_shoe_for_your_terrain" formatted="false">Chọn giày hợp địa hình</string>
+  <string name="matched" formatted="false">Đã khớp</string>
+  <string name="matched_race" formatted="false">Đã khớp giải</string>
+  <string name="max_lld_bpm">Tối đa %1$d bpm</string>
+  <string name="max_effort" formatted="false">Hết sức</string>
+  <string name="max_hr_1291bf1750" formatted="false">Max HR</string>
+  <string name="max_heart_rate" formatted="false">Max HR</string>
+  <string name="max_distance_km" formatted="false">Giới hạn (km)</string>
+  <string name="max_heart_rate_2132e3615f" formatted="false">Max HR</string>
+  <string name="maximum_anaerobic_power_ant" formatted="false">Sức Anaerobic tối đa (&gt; AnT)</string>
+  <string name="maximum_effort_near_exhaustion_high_accumulated_fatigue" formatted="false">Gắng sức tối đa / gần kiệt. Mệt tích lũy cao.</string>
+  <string name="maximum_effort_near_exhaustion_very_high_fatigue" formatted="false">Gắng sức tối đa / gần kiệt. Rất mệt.</string>
+  <string name="me" formatted="false">Tôi</string>
+  <string name="median_50" formatted="false">Trung vị (50%)</string>
+  <string name="median_50_294d82f2ee" formatted="false">Trung vị 50%</string>
+  <string name="men" formatted="false">Nam</string>
+  <string name="mention_past_injuries_current_niggles_or_training_constraints" formatted="false">Ghi chấn thương cũ, chỗ đang đau hoặc hạn chế khi tập.</string>
+  <string name="min_8_characters" formatted="false">Tối thiểu 8 ký tự</string>
+  <string name="mindset" formatted="false">Tâm lý</string>
+  <string name="minor_or_past_injury" formatted="false">Từng chấn thương</string>
+  <string name="minutes" formatted="false">Phút</string>
+  <string name="missed" formatted="false">Bị lỡ</string>
+  <string name="missed_by_day" formatted="false">Buổi lỡ theo ngày</string>
+  <string name="missing_authorization_tokens_from_coros" formatted="false">Thiếu mã cấp quyền từ COROS.</string>
+  <string name="mod" formatted="false">Vừa</string>
+  <string name="model" formatted="false">Mẫu giày</string>
+  <string name="model_e_g_ghost_16" formatted="false">Mẫu (vd. Ghost 16)</string>
+  <string name="moderate" formatted="false">Vừa</string>
+  <string name="moderate_15_24_c" formatted="false">Vừa (15–24°C)</string>
+  <string name="moderate_sustainable_good_training_rhythm_without_excessive_strain" formatted="false">Vừa / duy trì được. Nhịp tập tốt, không quá sức.</string>
+  <string name="moderate_fatigue_some_soreness" formatted="false">Mệt vừa, hơi đau</string>
+  <string name="modify_available_days_long_run_day_or_weekly_volume" formatted="false">Đổi ngày tập, ngày Long Run hoặc khối lượng tuần</string>
+  <string name="modify_run_days_long_run_or_training_venues" formatted="false">Đổi ngày chạy, Long Run hoặc nơi tập</string>
+  <string name="mon" formatted="false">T2</string>
+  <string name="monday" formatted="false">Thứ Hai</string>
+  <string name="month_calendar" formatted="false">Lịch tháng</string>
+  <string name="more_about_you_optional" formatted="false">Thông tin thêm</string>
+  <string name="morning" formatted="false">Sáng</string>
+  <string name="most_gym_treadmills_stop_at_15_pick_25_only_for_an_incline_trainer" formatted="false">Đa số Treadmill ở gym tối đa 15%. Chỉ chọn 25%+ nếu là máy leo dốc.</string>
+  <string name="most_of_your_running_happens_here_conversational_aerobic_effort_that_builds_stam" formatted="false">Phần lớn buổi chạy nằm ở đây. Mức Aerobic nói chuyện được, xây sức bền mà không dồn mệt.</string>
+  <string name="mostly_flat" formatted="false">Bằng phẳng</string>
+  <string name="mostly_resolved_i_m_careful_at_times" formatted="false">Đã hồi phục, đôi lúc vẫn cần chú ý.</string>
+  <string name="mostly_resolved_i_m_careful_at_times_54eaa7ca2d" formatted="false">Đã hồi phục, đôi lúc vẫn cần chú ý.</string>
+  <string name="mountain_running_library" formatted="false">Thư viện chạy trail</string>
+  <string name="move_or_swap" formatted="false">Chuyển hoặc đổi</string>
+  <string name="move_or_swap_this_day" formatted="false">Chuyển hoặc đổi ngày này</string>
+  <string name="move_to" formatted="false">Chuyển sang…</string>
+  <string name="my_best_possible_time" formatted="false">Thời gian tốt nhất có thể</string>
+  <string name="notes_for_coach_uphill_optional" formatted="false">GHI CHÚ CHO COACH UPHILL (KHÔNG BẮT BUỘC)</string>
+  <string name="nutrition_fueling" formatted="false">DINH DƯỠNG &amp; FUELING</string>
+  <string name="name" formatted="false">Tên</string>
+  <string name="narrow" formatted="false">Hẹp</string>
+  <string name="new_password" formatted="false">Mật khẩu mới</string>
+  <string name="new_plan" formatted="false">Plan mới</string>
+  <string name="new_to_uphill_create_an_account" formatted="false">Mới dùng Uphill? Tạo tài khoản</string>
+  <string name="new_week_is_ready" formatted="false">Tuần mới đã sẵn sàng</string>
+  <string name="new_workouts_use_these_numbers" formatted="false">Buổi tập mới dùng các chỉ số này.</string>
+  <string name="next" formatted="false">Tiếp</string>
+  <string name="next_month" formatted="false">Tháng sau</string>
+  <string name="next_week" formatted="false">Tuần sau</string>
+  <string name="next_week_df705defac">Tuần sau · %1$s</string>
+  <string name="no" formatted="false">Không</string>
+  <string name="no_active_plan" formatted="false">Chưa có plan đang chạy</string>
+  <string name="no_active_plan_to_sync" formatted="false">Không có plan đang chạy để đồng bộ.</string>
+  <string name="no_adherence_data_recorded_yet" formatted="false">Chưa có dữ liệu tuân thủ</string>
+  <string name="no_athlete_profiles_found" formatted="false">Không tìm thấy hồ sơ runner</string>
+  <string name="no_athletes_match">Không có học viên khớp \"%1$s\".</string>
+  <string name="no_athletes_on_your_roster_yet_switch_to_roster_tab_to_invite_runners" formatted="false">Chưa có học viên. Sang tab Danh sách để mời runner.</string>
+  <string name="no_athletes_yet_send_an_invite_above_to_begin_coaching" formatted="false">Chưa có học viên. Gửi lời mời ở trên để bắt đầu.</string>
+  <string name="no_available_target_days" formatted="false">Không còn ngày trống.</string>
+  <string name="no_cards_matching">Không có thẻ khớp \"%1$s\"</string>
+  <string name="no_coach_notes_yet_leave_training_feedback_or_execution_advice_here" formatted="false">Chưa có ghi chú. Để lại nhận xét hoặc lời khuyên tập luyện ở đây.</string>
+  <string name="no_completed_workouts_in_window" formatted="false">Không có buổi tập hoàn thành trong khoảng này</string>
+  <string name="no_confirmed_result" formatted="false">Chưa có kết quả xác nhận</string>
+  <string name="no_personal_data_found_so_the_goals_come_from_the_course_and_its_past_field_only" formatted="false">Không có dữ liệu cá nhân, nên mục tiêu chỉ dựa vào cung đường và kết quả các năm trước. Liên kết UTMB / VBM hoặc đồng bộ đồng hồ để chính xác hơn.</string>
+  <string name="no_plan_yet" formatted="false">Chưa có plan</string>
+  <string name="no_plans_found" formatted="false">Không có plan nào.</string>
+  <string name="no_race_results_linked_yet_you_can_add_them_later_in_profile" formatted="false">Chưa liên kết kết quả Race. Bạn có thể thêm trong Hồ sơ sau.</string>
+  <string name="no_race_yet_like_your_first_21_km_or_50_km" formatted="false">Chưa có Race, ví dụ lần đầu chạy 21 km hoặc 50 km.</string>
+  <string name="no_races_logged_yet" formatted="false">Chưa có Race nào</string>
+  <string name="no_running_yet" formatted="false">Chưa chạy bộ</string>
+  <string name="no_shoe_assigned_to_this_slot" formatted="false">Chưa gán giày cho vị trí này</string>
+  <string name="no_sources_available" formatted="false">Chưa có nguồn.</string>
+  <string name="no_target_races_configured_yet" formatted="false">Chưa đặt Race mục tiêu</string>
+  <string name="no_target_set" formatted="false">Chưa đặt mục tiêu</string>
+  <string name="no_verified_benchmark_field_data_available_for_this_race" formatted="false">Chưa có dữ liệu thành tích đã xác minh cho Race này.</string>
+  <string name="no_watch_connected" formatted="false">Chưa kết nối đồng hồ</string>
+  <string name="no_watch_runs_in_this_plan_yet" formatted="false">Plan chưa có buổi từ đồng hồ</string>
+  <string name="no_watch_skip_this_you_can_connect_one_later_in_me_connected_accounts" formatted="false">Chưa có đồng hồ? Bỏ qua bước này. Bạn có thể kết nối sau trong Tôi → Tài khoản đã kết nối.</string>
+  <string name="normal" formatted="false">Bình thường</string>
+  <string name="normal_fatigue" formatted="false">Mệt bình thường</string>
+  <string name="normal_tiredness" formatted="false">Mệt bình thường</string>
+  <string name="normal_training_fatigue_coach_will_keep_balanced_volume_with_steady_progression" formatted="false">Mệt bình thường. Coach sẽ giữ khối lượng cân bằng và tăng đều.</string>
+  <string name="not_assessed_yet" formatted="false">Chưa đánh giá</string>
+  <string name="not_connected" formatted="false">Chưa kết nối</string>
+  <string name="not_done" formatted="false">Chưa xong</string>
+  <string name="not_enough_data_for_goal_times_yet" formatted="false">Chưa đủ dữ liệu để đặt mục tiêu thời gian</string>
+  <string name="not_linked" formatted="false">Chưa gắn</string>
+  <string name="not_now" formatted="false">Để sau</string>
+  <string name="not_set" formatted="false">Chưa đặt</string>
+  <string name="not_set_add_your_zone_2_pace_in_profile" formatted="false">Chưa đặt. Thêm pace Zone 2 trong Hồ sơ</string>
+  <string name="not_sure" formatted="false">Chưa rõ</string>
+  <string name="not_sure_estimate_it_from_your_results" formatted="false">Ước tính từ kết quả Race</string>
+  <string name="not_yet" formatted="false">Chưa</string>
+  <string name="note_your_zone_2_upper_limit_aet_and_zone_4_upper_limit_lactate_threshold_ant" formatted="false">Ghi lại ngưỡng trên Zone 2 (AeT) và ngưỡng trên Zone 4 / ngưỡng lactate (AnT).</string>
+  <string name="noted_we_ll_improve" formatted="false">Đã ghi nhận. Chúng tôi sẽ cải thiện 👎</string>
+  <string name="noted" formatted="false">Đã ghi nhận. 👎</string>
+  <string name="notes_from_your_coach" formatted="false">Ghi chú từ coach</string>
+  <string name="nothing_to_send_there_are_no_upcoming_runs_in_your_plan" formatted="false">Không có gì để gửi: plan không còn buổi chạy sắp tới.</string>
+  <string name="nothing_would_change" formatted="false">Không có gì thay đổi.</string>
+  <string name="now_linked_to">Đang gắn với %1$s</string>
+  <string name="nutrition" formatted="false">Dinh dưỡng</string>
+  <string name="nutrition_lab" formatted="false">Nutrition Lab</string>
+  <string name="overall_effort_rpe" formatted="false">MỨC GẮNG SỨC CHUNG (RPE)</string>
+  <string name="offline_showing_your_plan_from">Offline · đang hiện plan từ %1$s</string>
+  <string name="often_or_recently_injured" formatted="false">Hay chấn thương</string>
+  <string name="on_track" formatted="false">Đúng tiến độ</string>
+  <string name="open_garmin_connect_app_on_your_phone" formatted="false">Mở app Garmin Connect trên điện thoại.</string>
+  <string name="open_source" formatted="false">Mở nguồn</string>
+  <string name="open_the_apple_watch_app_on_your_iphone" formatted="false">Mở app Apple Watch trên iPhone.</string>
+  <string name="open_the_coros_app_on_your_phone" formatted="false">Mở app COROS trên điện thoại.</string>
+  <string name="optional" formatted="false">Không bắt buộc</string>
+  <string name="optional_meters" formatted="false">Không bắt buộc (mét)</string>
+  <string name="optional_add_values_you_know_leave_the_rest_blank_you_can_update_them_in_profile" formatted="false">Không bắt buộc. Nhập các giá trị bạn biết, để trống phần còn lại. Bạn có thể cập nhật trong Hồ sơ sau.</string>
+  <string name="other" formatted="false">Khác</string>
+  <string name="other_brands_or_custom_request" formatted="false">Hãng khác hoặc yêu cầu riêng</string>
+  <string name="other_watches" formatted="false">Đồng hồ khác</string>
+  <string name="overall" formatted="false">Chung</string>
+  <string name="overall_rank" formatted="false">Hạng chung</string>
+  <string name="overall_effort" formatted="false">Mức gắng sức</string>
+  <string name="pacing_splits_aid_station_plan" formatted="false">SPLIT &amp; KẾ HOẠCH TRẠM TIẾP TẾ</string>
+  <string name="packing_list_products" formatted="false">ĐỒ CẦN MANG &amp; SẢN PHẨM</string>
+  <string name="pb_recorded" formatted="false">Đã ghi PB</string>
+  <string name="phase_brief">TÓM TẮT GIAI ĐOẠN · %1$s</string>
+  <string name="plan_actions" formatted="false">THAO TÁC PLAN</string>
+  <string name="plan_blueprint" formatted="false">KHUNG PLAN</string>
+  <string name="podium_top_times" formatted="false">BỤC VINH QUANG &amp; THỜI GIAN TOP</string>
+  <string name="popular_shoes">GIÀY %1$s PHỔ BIẾN</string>
+  <string name="precision_fueling" formatted="false">FUELING CHÍNH XÁC</string>
+  <string name="preferred_fuel_formats" formatted="false">DẠNG FUEL ƯA THÍCH</string>
+  <string name="preferred_workout_time" formatted="false">GIỜ TẬP ƯU TIÊN</string>
+  <string name="priority" formatted="false">ƯU TIÊN</string>
+  <string name="pros" formatted="false">ƯU ĐIỂM</string>
+  <string name="pace" formatted="false">Pace</string>
+  <string name="pace_strategy" formatted="false">Chiến thuật pace</string>
+  <string name="pace_zone_model" formatted="false">Mô hình zone pace</string>
+  <string name="pace_zone_preview" formatted="false">Xem trước Zone theo Pace</string>
+  <string name="paces" formatted="false">Pace</string>
+  <string name="pacing" formatted="false">Pace</string>
+  <string name="pacing_profile_will_appear_once_course_is_configured" formatted="false">Biểu đồ pace sẽ hiện khi cấu hình xong cung đường</string>
+  <string name="partly_sent_try_again" formatted="false">Mới gửi được một phần. Thử lại.</string>
+  <string name="password" formatted="false">Mật khẩu</string>
+  <string name="password_8_characters" formatted="false">Mật khẩu (8+ ký tự)</string>
+  <string name="password_must_be_at_least_8_characters" formatted="false">Mật khẩu cần ít nhất 8 ký tự.</string>
+  <string name="password_updated_successfully" formatted="false">Đã đổi mật khẩu.</string>
+  <string name="passwords_do_not_match" formatted="false">Mật khẩu không khớp.</string>
+  <string name="past_finish_times_fall_outside_this_slider_s_range" formatted="false">Thành tích cũ nằm ngoài khoảng của thanh trượt.</string>
+  <string name="past_finish_times_pace_degradation_and_course_difficulty" formatted="false">Thời gian về đích, mức giảm pace và độ khó cung đường</string>
+  <string name="past_results" formatted="false">Kết quả cũ</string>
+  <string name="past_results_tell_me_what_you_can_already_do" formatted="false">Kết quả cũ cho biết khả năng hiện tại của bạn.</string>
+  <string name="peak_race_day_execution_ideal_weather_conditions" formatted="false">Chạy tốt nhất, thời tiết &amp; điều kiện lý tưởng</string>
+  <string name="pending" formatted="false">Đang chờ</string>
+  <string name="percentile" formatted="false">Bách phân vị</string>
+  <string name="percentile_finish_estimation" formatted="false">Ước tính về đích theo bách phân vị</string>
+  <string name="phase_alerts" formatted="false">Cảnh báo giai đoạn</string>
+  <string name="physiology_pace_zones" formatted="false">Chỉ số thể chất &amp; zone pace</string>
+  <string name="physiology_threshold_zones" formatted="false">Chỉ số thể chất &amp; zone ngưỡng</string>
+  <string name="pick_lld_run_days">Chọn %1$d ngày chạy.</string>
+  <string name="pick_a_date_at_least_2_weeks_away_so_the_plan_has_room_to_build" formatted="false">Chọn ngày cách ít nhất 2 tuần để plan có thời gian xây nền.</string>
+  <string name="pick_a_different_run" formatted="false">Chọn bài chạy khác</string>
+  <string name="pick_one_to_continue" formatted="false">Chọn một để tiếp tục:</string>
+  <string name="pick_the_run_you_did_for">Chọn buổi đã chạy cho %1$s.</string>
+  <string name="pick_today_or_any_day_in_the_next_two_weeks" formatted="false">Chọn hôm nay hoặc một ngày trong hai tuần tới.</string>
+  <string name="pick_up_to_2_run_days_for_double_sessions" formatted="false">Chọn tối đa 2 ngày chạy để tập đôi.</string>
+  <string name="plan_fueling" formatted="false">Lên Fueling</string>
+  <string name="plan_pacing" formatted="false">Lên pace</string>
+  <string name="plan_settings" formatted="false">Cài đặt plan</string>
+  <string name="plan_actions_2aa72ce1e5" formatted="false">Thao tác với plan</string>
+  <string name="planned" formatted="false">Theo plan</string>
+  <string name="planned_km_actual_km">Plan %1$s km · Thực tế %2$s km</string>
+  <string name="planned_vs_actual" formatted="false">Plan và thực tế</string>
+  <string name="plush" formatted="false">Rất êm</string>
+  <string name="polar_polar_flow_app_sport_profiles_heart_rate_zones" formatted="false">Polar: app Polar Flow &gt; Sport Profiles &gt; Heart Rate Zones.</string>
+  <string name="popular_shoes_9ca6df44bc" formatted="false">Giày phổ biến</string>
+  <string name="post" formatted="false">Đăng</string>
+  <string name="power_hike_high_grade" formatted="false">Power hike / dốc cao</string>
+  <string name="precision_fueling_timeline" formatted="false">Lịch Fueling chi tiết</string>
+  <string name="preferred_brands_or_specific_request" formatted="false">Hãng ưa thích hoặc yêu cầu riêng</string>
+  <string name="preferred_run_days" formatted="false">Ngày chạy ưa thích</string>
+  <string name="preparing_ics_file" formatted="false">Đang chuẩn bị file .ics...</string>
+  <string name="previous_month" formatted="false">Tháng trước</string>
+  <string name="previous_week" formatted="false">Tuần trước</string>
+  <string name="primary_target_goal_with_solid_execution" formatted="false">Mục tiêu chính khi chạy ổn định</string>
+  <string name="text_private" formatted="false">Không tiết lộ</string>
+  <string name="production" formatted="false">Production</string>
+  <string name="profile" formatted="false">Hồ sơ</string>
+  <string name="profile_linked_your_results_are_syncing" formatted="false">Đã liên kết. Đang đồng bộ kết quả.</string>
+  <string name="proposed" formatted="false">Đề xuất</string>
+  <string name="proposed_rebuild_week_lld">Đề xuất xếp lại · Tuần %1$d</string>
+  <string name="proposed_schedule_change" formatted="false">Đề xuất thay đổi lịch tập</string>
+  <string name="qty_lld">SL: %1$d</string>
+  <string name="quickly_add_kilometers_from_your_latest_run" formatted="false">Thêm nhanh số km từ buổi chạy gần nhất:</string>
+  <string name="race_day_pacing_targets" formatted="false">PACE MỤC TIÊU NGÀY RACE</string>
+  <string name="race_details" formatted="false">THÔNG TIN RACE</string>
+  <string name="recent_plans" formatted="false">PLAN GẦN ĐÂY</string>
+  <string name="recommended_matches_lld">GỢI Ý PHÙ HỢP (%1$d)</string>
+  <string name="rest" formatted="false">NGHỈ</string>
+  <string name="resting" formatted="false">LÚC NGHỈ</string>
+  <string name="runs_per_week" formatted="false">SỐ BUỔI CHẠY/TUẦN</string>
+  <string name="race_date" formatted="false">Ngày Race</string>
+  <string name="race_day_carbon" formatted="false">Carbon ngày Race</string>
+  <string name="race_goal" formatted="false">Mục tiêu Race</string>
+  <string name="race_goal_estimate" formatted="false">Ước tính mục tiêu race</string>
+  <string name="race_history" formatted="false">Lịch sử Race</string>
+  <string name="race_target" formatted="false">Race mục tiêu</string>
+  <string name="race_date_11162b91c2" formatted="false">Ngày Race</string>
+  <string name="race_history_b0cee90cda" formatted="false">Lịch sử Race</string>
+  <string name="race_name" formatted="false">Tên Race</string>
+  <string name="race_name_e_g_dalat_ultra_trail_50k" formatted="false">Tên Race (vd. Dalat Ultra Trail 50K)</string>
+  <string name="race_name_e_g_vietnam_mountain_marathon" formatted="false">Tên Race (vd. Vietnam Mountain Marathon)</string>
+  <string name="race_name_optional" formatted="false">Tên giải (tùy chọn)</string>
+  <string name="race_week" formatted="false">Tuần Race</string>
+  <string name="ran_this_but_it_didn_t_match_pick_the_run" formatted="false">Đã chạy nhưng chưa khớp? Chọn bài chạy.</string>
+  <string name="rank_lld">Hạng #%1$d</string>
+  <string name="rarely_or_never_injured" formatted="false">Ít chấn thương</string>
+  <string name="rate_your_recent_perceived_exertion_and_note_any_soreness_or_schedule_conflicts" formatted="false">Chấm mức gắng sức gần đây và ghi chỗ đau hoặc lịch bận.</string>
+  <string name="read_evoke_s_assessment_guide" formatted="false">Đọc hướng dẫn kiểm tra của Evoke</string>
+  <string name="read_complete_weekly_review" formatted="false">Đọc toàn bộ đánh giá tuần</string>
+  <string name="ready" formatted="false">Sẵn sàng</string>
+  <string name="ready_for_more" formatted="false">Sẵn sàng tập thêm</string>
+  <string name="ready_to_unlock" formatted="false">Sẵn sàng mở</string>
+  <string name="real_mileage_and_runs_not_a_guess" formatted="false">Khối lượng và buổi chạy thật, không phải ước đoán</string>
+  <string name="realistic" formatted="false">Thực tế</string>
+  <string name="rebuild_safely_after_time_off" formatted="false">Lấy lại thể lực an toàn sau thời gian nghỉ.</string>
+  <string name="rebuild_this_week_around_your_new_schedule" formatted="false">Làm lại tuần này theo lịch mới?</string>
+  <string name="rebuild_week" formatted="false">Làm lại tuần</string>
+  <string name="recent_plans_89ee30ed0f" formatted="false">Các plan gần đây</string>
+  <string name="recent_weekly_mileage_vertical_gain_and_durability" formatted="false">Số km, D+ hằng tuần gần đây và độ bền</string>
+  <string name="recommend_shoes" formatted="false">Gợi ý giày</string>
+  <string name="record_easy_pace_below_aet_on_flat_ground_use_a_flat_running_time_trial_for_thre" formatted="false">Ghi Pace chạy nhẹ dưới AeT trên đường bằng. Lấy Threshold Pace từ time trial chạy đường bằng; không dùng Pace leo dốc thay thế.</string>
+  <string name="recorded_finish" formatted="false">Đã ghi nhận</string>
+  <string name="recover_from_a_race" formatted="false">Hồi phục sau Race</string>
+  <string name="recovering_from_a_race" formatted="false">Hồi phục sau Race</string>
+  <string name="recovery" formatted="false">Hồi phục</string>
+  <string name="recovery_catch_up" formatted="false">Hồi phục &amp; bù buổi</string>
+  <string name="recreational" formatted="false">Phong trào</string>
+  <string name="reference_race_name_e_g_sapa_42k" formatted="false">Tên Race tham chiếu (vd. Sapa 42K)</string>
+  <string name="refines_energy_expenditure_recovery_rates" formatted="false">Tính sát hơn năng lượng tiêu hao &amp; hồi phục</string>
+  <string name="relative_field_placement_and_competitive_caliber" formatted="false">Vị trí so với các runner khác và trình độ thi đấu</string>
+  <string name="remove" formatted="false">Xóa</string>
+  <string name="remove_e25a3a52df">Xóa %1$s</string>
+  <string name="remove_athlete_from_roster" formatted="false">Xóa học viên khỏi danh sách?</string>
+  <string name="remove_gpx_file" formatted="false">Xóa file GPX</string>
+  <string name="remove_workout" formatted="false">Xóa buổi tập</string>
+  <string name="remove_from_slot">Gỡ khỏi vị trí %1$s</string>
+  <string name="remove_this_workout" formatted="false">Xóa buổi tập này?</string>
+  <string name="reply" formatted="false">Trả lời</string>
+  <string name="reply_to_your_coach" formatted="false">Trả lời coach…</string>
+  <string name="response_interrupted" formatted="false">Phản hồi bị gián đoạn</string>
+  <string name="rest_05863ec2c3" formatted="false">Nghỉ</string>
+  <string name="rest_day" formatted="false">Ngày nghỉ</string>
+  <string name="resting_lld_bpm">Nhịp tim nghỉ %1$d bpm</string>
+  <string name="resting_hr" formatted="false">Resting HR</string>
+  <string name="resting_heart_rate" formatted="false">Resting HR (nhịp tim lúc nghỉ)</string>
+  <string name="resting_heart_rate_must_be_below_aerobic_threshold_aet" formatted="false">Resting HR phải thấp hơn ngưỡng Aerobic (AeT).</string>
+  <string name="retrieved_context" formatted="false">Ngữ cảnh đã truy xuất</string>
+  <string name="retrieving" formatted="false">Đang truy xuất…</string>
+  <string name="retry" formatted="false">Thử lại</string>
+  <string name="review_last_week_s_training" formatted="false">Đánh giá tuần tập vừa rồi</string>
+  <string name="review_values" formatted="false">Kiểm tra lại giá trị</string>
+  <string name="road_use_case" formatted="false">Dùng cho Road</string>
+  <string name="road_personal_bests" formatted="false">PR Road</string>
+  <string name="roster_progress" formatted="false">Tiến độ học viên</string>
+  <string name="run" formatted="false">Chạy</string>
+  <string name="run_days" formatted="false">Ngày chạy</string>
+  <string name="run_quality_lld">Chất lượng · %1$d%%</string>
+  <string name="runner_weight_kg" formatted="false">Cân nặng runner (kg)</string>
+  <string name="running_days" formatted="false">Ngày chạy:</string>
+  <string name="running_now" formatted="false">Hiện tại</string>
+  <string name="running_pace_min_km" formatted="false">Pace chạy (phút/km)</string>
+  <string name="runs_per_week_b77997b302" formatted="false">Số buổi chạy/tuần</string>
+  <string name="runs_per_week_lld">Số buổi chạy/tuần: %1$d</string>
+  <string name="runs_weekly_mileage_and_fitness_synced_automatically" formatted="false">Buổi chạy, khối lượng tuần và chỉ số thể chất, đồng bộ tự động.</string>
+  <string name="science_practice" formatted="false">KHOA HỌC &amp; THỰC HÀNH</string>
+  <string name="select_workout_to_move" formatted="false">CHỌN BUỔI CẦN CHUYỂN</string>
+  <string name="send_next_4_weeks" formatted="false">GỬI 4 TUẦN TỚI</string>
+  <string name="session_breakdown" formatted="false">CHI TIẾT BUỔI TẬP</string>
+  <string name="shoe" formatted="false">GIÀY</string>
+  <string name="shoe_rotation" formatted="false">GIÀY XOAY VÒNG</string>
+  <string name="shoe_specialist" formatted="false">CHUYÊN GIA GIÀY</string>
+  <string name="start_date" formatted="false">NGÀY BẮT ĐẦU</string>
+  <string name="surface_terrain" formatted="false">MẶT ĐƯỜNG &amp; ĐỊA HÌNH</string>
+  <string name="swap" formatted="false">ĐỔI</string>
+  <string name="swap_with_another_day_this_week" formatted="false">ĐỔI VỚI NGÀY KHÁC TRONG TUẦN</string>
+  <string name="safe" formatted="false">An toàn</string>
+  <string name="sat" formatted="false">T7</string>
+  <string name="saturday" formatted="false">Thứ Bảy</string>
+  <string name="save" formatted="false">Lưu</string>
+  <string name="save_log" formatted="false">Lưu</string>
+  <string name="save_as_shoe">Lưu làm giày %1$s</string>
+  <string name="save_my_profile_build_a_plan_later" formatted="false">Lưu hồ sơ, lên plan sau</string>
+  <string name="saved" formatted="false">Đã lưu</string>
+  <string name="saved_your_next_week_will_use_these" formatted="false">Đã lưu. Tuần sau sẽ dùng các thông tin này.</string>
+  <string name="schedule" formatted="false">Lịch</string>
+  <string name="schedule_proposal" formatted="false">Đề xuất lịch</string>
+  <string name="scientific_literature_principles" formatted="false">Tài liệu khoa học &amp; nguyên tắc</string>
+  <string name="scroll_down_and_tap_workout" formatted="false">Cuộn xuống và chạm Workout.</string>
+  <string name="search_athletes" formatted="false">Tìm học viên</string>
+  <string name="search_athletes_by_name_or_email" formatted="false">Tìm học viên theo tên hoặc email...</string>
+  <string name="search_race_name_or_enter_manually" formatted="false">Tìm tên Race hoặc nhập tay</string>
+  <string name="search_topics_keywords_or_tags" formatted="false">Tìm chủ đề, từ khóa hoặc #tag...</string>
+  <string name="seconds" formatted="false">Giây</string>
+  <string name="section" formatted="false">Đoạn</string>
+  <string name="see_my_plan" formatted="false">Xem plan</string>
+  <string name="select_heart_rate_power_zones_heart_rate_zones" formatted="false">Chọn Heart Rate &amp; Power Zones &gt; Heart Rate &gt; Zones.</string>
+  <string name="select_shoes" formatted="false">Chọn giày</string>
+  <string name="select_threshold_heart_rate_zone_or_max_hr_zone" formatted="false">Chọn Threshold Heart Rate Zone (hoặc Max HR Zone).</string>
+  <string name="select_a_recommended_model_below_or_configure_your_current_pair" formatted="false">Chọn một mẫu gợi ý bên dưới hoặc nhập đôi bạn đang dùng.</string>
+  <string name="select_all_formats_you_can_digest_during_high_intensity" formatted="false">Chọn mọi dạng bạn tiêu hóa được khi chạy cường độ cao:</string>
+  <string name="select_your_perceived_effort_1_to_10" formatted="false">Chọn mức gắng sức (1 đến 10)</string>
+  <string name="select_your_perceived_effort_for_the_block_1_to_10" formatted="false">Chọn mức gắng sức cho Block (1 đến 10)</string>
+  <string name="send" formatted="false">Gửi</string>
+  <string name="send_message" formatted="false">Gửi tin nhắn</string>
+  <string name="send_next_4_weeks_to_coros" formatted="false">Gửi 4 tuần tới sang COROS</string>
+  <string name="send_to_coros" formatted="false">Gửi sang COROS</string>
+  <string name="sending" formatted="false">Đang gửi…</string>
+  <string name="sent_lld_workouts_to_coros_through">Đã gửi %1$d buổi tập sang COROS tới %2$s.</string>
+  <string name="sent_to_coros" formatted="false">Đã gửi sang COROS</string>
+  <string name="sent_to_coros_190217712b">Đã gửi sang COROS · %1$s</string>
+  <string name="session" formatted="false">Buổi</string>
+  <string name="session_details" formatted="false">Chi tiết buổi tập</string>
+  <string name="session_intent_or_prompt" formatted="false">Mục đích buổi tập hoặc yêu cầu...</string>
+  <string name="sessions_done" formatted="false">Buổi đã tập</string>
+  <string name="set_as_my_target">Đặt %1$s làm mục tiêu</string>
+  <string name="set_new_password" formatted="false">Đặt mật khẩu mới</string>
+  <string name="set_by">%1$s đặt</string>
+  <string name="set_by_25b53402f6">%1$s đặt · %2$s</string>
+  <string name="set_your_long_run_day" formatted="false">Đặt ngày Long Run</string>
+  <string name="set_your_target_finish_time" formatted="false">Nhập thời gian finish mục tiêu.</string>
+  <string name="set_your_training_zones" formatted="false">Thiết lập Zone tập luyện</string>
+  <string name="setup_progress" formatted="false">Tiến độ thiết lập</string>
+  <string name="sex" formatted="false">Giới tính</string>
+  <string name="share_export_ics_file" formatted="false">Chia sẻ / xuất file .ics</string>
+  <string name="sharpen_your_plan" formatted="false">Làm plan sát hơn</string>
+  <string name="shoe_recommendations" formatted="false">Gợi ý giày</string>
+  <string name="shoe_rotation_893506bd91" formatted="false">Giày xoay vòng</string>
+  <string name="shoe_rotation_recommendations" formatted="false">Giày xoay vòng &amp; gợi ý</string>
+  <string name="short_intervals_steep_climbs" formatted="false">Interval ngắn &amp; dốc gắt</string>
+  <string name="show_less" formatted="false">Thu gọn</string>
+  <string name="shuffle" formatted="false">Xáo trộn</string>
+  <string name="sign_in" formatted="false">Đăng nhập</string>
+  <string name="sign_out" formatted="false">Đăng xuất</string>
+  <string name="sign_out_after_switching_sessions_don_t_carry_across_backends" formatted="false">Đăng xuất sau khi đổi: phiên đăng nhập không dùng chung giữa các backend.</string>
+  <string name="significant_deconditioning_starting_nearly_fresh" formatted="false">Thể lực giảm nhiều, gần như bắt đầu lại</string>
+  <string name="skip_for_now" formatted="false">Bỏ qua</string>
+  <string name="slot" formatted="false">Vị trí</string>
+  <string name="smooth_zone_2_aerobic" formatted="false">Aerobic Zone 2 đều</string>
+  <string name="so_i_don_t_start_you_too_hard" formatted="false">Để tôi không cho bạn bắt đầu quá nặng.</string>
+  <string name="sodium_per_hour" formatted="false">Sodium mỗi giờ</string>
+  <string name="solid" formatted="false">Đồ ăn đặc</string>
+  <string name="solid_consistency" formatted="false">Tập đều đặn</string>
+  <string name="something_went_wrong_lld_please_try_again">Có lỗi xảy ra (%1$d). Vui lòng thử lại.</string>
+  <string name="soon" formatted="false">Sắp có</string>
+  <string name="source" formatted="false">Nguồn</string>
+  <string name="source_added_to_indexing_queue" formatted="false">Đã thêm nguồn vào hàng chờ</string>
+  <string name="sources" formatted="false">Nguồn</string>
+  <string name="sources_evidence" formatted="false">Nguồn &amp; bằng chứng</string>
+  <string name="sources_lld">Nguồn (%1$d)</string>
+  <string name="split_execution_strategy" formatted="false">Chiến thuật Split</string>
+  <string name="split_interval" formatted="false">Khoảng cách Split</string>
+  <string name="staging" formatted="false">Staging</string>
+  <string name="stair_access" formatted="false">Có cầu thang</string>
+  <string name="stale" formatted="false">Cũ</string>
+  <string name="start" formatted="false">Xuất phát</string>
+  <string name="start_time_clock" formatted="false">Giờ xuất phát</string>
+  <string name="start_a_new_plan" formatted="false">Bắt đầu plan mới?</string>
+  <string name="start_at_least_2_weeks_before_your_goal_date" formatted="false">Bắt đầu ít nhất 2 tuần trước ngày mục tiêu.</string>
+  <string name="start_date_8169693101" formatted="false">Ngày bắt đầu</string>
+  <string name="start_new_plan" formatted="false">Bắt đầu plan mới</string>
+  <string name="start_running" formatted="false">Bắt đầu chạy</string>
+  <string name="start_today_or_later" formatted="false">Bắt đầu từ hôm nay trở đi.</string>
+  <string name="starting_from_lld_km_a_week">Bắt đầu từ %1$d km/tuần</string>
+  <string name="steady_rhythm_for_trail_climbing" formatted="false">Nhịp đều khi leo dốc trail</string>
+  <string name="step_lld_of_lld">Bước %1$d / %2$d</string>
+  <string name="step_by_step_instructions_for_garmin_coros_apple_watch" formatted="false">Hướng dẫn từng bước cho Garmin, COROS &amp; Apple Watch</string>
+  <string name="still_working_plans_with_a_race_far_away_take_longer" formatted="false">Vẫn đang làm. Plan cho Race còn xa sẽ lâu hơn.</string>
+  <string name="stop" formatted="false">Dừng</string>
+  <string name="strava_you_settings_heart_rate_max_custom_zones" formatted="false">Strava: You &gt; Settings &gt; Heart Rate &gt; Max &amp; Custom Zones.</string>
+  <string name="stretch" formatted="false">Thử thách</string>
+  <string name="struggling_to_hit_the_paces" formatted="false">Khó giữ đúng pace</string>
+  <string name="subscribe_in_apple_calendar_webcal" formatted="false">Đăng ký trên Apple Calendar (webcal)</string>
+  <string name="suggested">Gợi ý %1$s</string>
+  <string name="suggested_questions" formatted="false">Câu hỏi gợi ý</string>
+  <string name="sun" formatted="false">CN</string>
+  <string name="sunday" formatted="false">Chủ Nhật</string>
+  <string name="surface" formatted="false">Mặt đường</string>
+  <string name="suunto_suunto_app_profile_watch_settings_intensity_zones" formatted="false">Suunto: app Suunto &gt; Profile &gt; Watch Settings &gt; Intensity Zones.</string>
+  <string name="swap_6ec282d40a" formatted="false">Đổi</string>
+  <string name="sync_vo2max_from_your_watch" formatted="false">Đồng bộ VO2max từ đồng hồ</string>
+  <string name="sync_watch_activities" formatted="false">Đồng bộ hoạt động từ đồng hồ</string>
+  <string name="sync_failed_please_try_again" formatted="false">Đồng bộ thất bại. Vui lòng thử lại.</string>
+  <string name="sync_now" formatted="false">Đồng bộ ngay</string>
+  <string name="sync_successful_fetched_lld_workouts_and_lld_days_of_health_data">Đồng bộ xong: lấy %1$d buổi tập và %2$d ngày dữ liệu sức khỏe.</string>
+  <string name="sync_your_watch_from_manage_then_come_back_to_link_a_run" formatted="false">Đồng bộ đồng hồ trong Quản lý, rồi quay lại để liên kết.</string>
+  <string name="synced" formatted="false">Đã đồng bộ</string>
+  <string name="synced_lld_activities_from_watch">Đã đồng bộ %1$d hoạt động từ đồng hồ</string>
+  <string name="synced_automatically_via_watch_integration" formatted="false">Tự đồng bộ qua kết nối đồng hồ</string>
+  <string name="syncing_to_calendar" formatted="false">Đang đồng bộ vào lịch...</string>
+  <string name="syncing" formatted="false">Đang đồng bộ…</string>
+  <string name="target_goal_tiers" formatted="false">CÁC MỨC MỤC TIÊU</string>
+  <string name="target_race" formatted="false">RACE MỤC TIÊU</string>
+  <string name="target_time_strategy" formatted="false">MỤC TIÊU THỜI GIAN &amp; CHIẾN THUẬT</string>
+  <string name="this_week_focus" formatted="false">TRỌNG TÂM TUẦN NÀY</string>
+  <string name="time" formatted="false">THỜI GIAN</string>
+  <string name="time_since_race" formatted="false">THỜI GIAN TỪ RACE</string>
+  <string name="timeline" formatted="false">LỘ TRÌNH</string>
+  <string name="today" formatted="false">HÔM NAY</string>
+  <string name="tools_labs" formatted="false">CÔNG CỤ</string>
+  <string name="total_carbs" formatted="false">TỔNG CARBS</string>
+  <string name="total_sodium" formatted="false">TỔNG SODIUM</string>
+  <string name="trail_finishes" formatted="false">SỐ LẦN VỀ ĐÍCH TRAIL</string>
+  <string name="tap_to_add_a_race_or_link_your_utmb_vbm_profile" formatted="false">Chạm + để thêm Race hoặc liên kết hồ sơ UTMB/VBM.</string>
+  <string name="tap_heart_rate_zones_calculated_automatically_or_manual" formatted="false">Chạm Heart Rate Zones (tự tính hoặc nhập tay).</string>
+  <string name="tap_more_settings_user_settings" formatted="false">Chạm More (...) &gt; Settings &gt; User Settings.</string>
+  <string name="tap_to_assign_shoe" formatted="false">Chạm để gán giày</string>
+  <string name="tap_to_dismiss" formatted="false">Chạm để đóng</string>
+  <string name="tap_to_read_coach_takeaways_and_weekly_focus" formatted="false">Chạm để đọc điểm chính và trọng tâm tuần</string>
+  <string name="target" formatted="false">Mục tiêu</string>
+  <string name="target_applied" formatted="false">Đã áp dụng mục tiêu</string>
+  <string name="target_finish_time" formatted="false">Thời gian về đích mục tiêu</string>
+  <string name="target_finish">Mục tiêu về đích: %1$s</string>
+  <string name="target_intensity_zone" formatted="false">Zone cường độ mục tiêu</string>
+  <string name="target_race_9c2d892cb7" formatted="false">Race mục tiêu</string>
+  <string name="target_time" formatted="false">Thời gian mục tiêu</string>
+  <string name="target_finish_time_0f880e077b" formatted="false">Thời gian mục tiêu</string>
+  <string name="target_time_d1c1f472a3">Thời gian mục tiêu %1$s</string>
+  <string name="target_time_field_percentile" formatted="false">Thời gian mục tiêu &amp; bách phân vị</string>
+  <string name="target_1a7b0ab461">Mục tiêu: %1$s</string>
+  <string name="target_80" formatted="false">Mục tiêu: 80%</string>
+  <string name="technical_mountain" formatted="false">Kỹ thuật &amp; núi</string>
+  <string name="tell_coach_uphill_about_injuries" formatted="false">Cho Coach Uphill biết về chấn thương</string>
+  <string name="tell_me_about_injuries" formatted="false">Cho tôi biết về chấn thương</string>
+  <string name="temperature" formatted="false">Nhiệt độ</string>
+  <string name="terrain" formatted="false">Địa hình</string>
+  <string name="terrain_near_home" formatted="false">Địa hình gần nhà</string>
+  <string name="terrain_near_home_482ab3997a">Địa hình gần nhà: %1$s</string>
+  <string name="terrain_near_me" formatted="false">Địa hình gần tôi</string>
+  <string name="thanks_for_feedback" formatted="false">Cảm ơn góp ý! 👍</string>
+  <string name="thanks" formatted="false">Cảm ơn! 👍</string>
+  <string name="that_change_couldn_t_be_made" formatted="false">Không thực hiện được thay đổi.</string>
+  <string name="that_change_isn_t_valid" formatted="false">Thay đổi này không hợp lệ.</string>
+  <string name="that_week_is_outside_your_plan" formatted="false">Tuần đó nằm ngoài plan.</string>
+  <string name="that_s_lld_weeks_away">Còn %1$d tuần nữa</string>
+  <string name="the_athlete_must_already_have_an_uphill_ai_account" formatted="false">Học viên cần có sẵn tài khoản Uphill AI.</string>
+  <string name="the_run_stays_in_your_watch_history_automatic_matching_won_t_link_it_again" formatted="false">Bài chạy vẫn còn trong lịch sử đồng hồ. Ghép tự động sẽ không liên kết lại.</string>
+  <string name="these_changes_apply_starting_with_block_lld">Thay đổi áp dụng từ Block %1$d</string>
+  <string name="this_logs_the_session_as_missed_and_notifies_coach_uphill_to_balance_upcoming_lo" formatted="false">Buổi này sẽ được ghi là bị lỡ và Coach Uphill sẽ cân lại khối lượng sắp tới.</string>
+  <string name="this_plan_has_no_start_date_so_only_same_week_day_swaps_are_possible" formatted="false">Plan chưa có ngày bắt đầu, nên chỉ đổi được ngày trong cùng tuần.</string>
+  <string name="this_session_drives_your_primary_training_stimulus_this_week_stay_disciplined_on" formatted="false">Đây là buổi tập chính của tuần. Giữ đúng zone mục tiêu.</string>
+  <string name="this_session_was_created_for_the_athlete_and_is_awaiting_your_review" formatted="false">Buổi này được tạo cho học viên và đang chờ bạn duyệt.</string>
+  <string name="this_sets_the_shape_of_your_whole_plan" formatted="false">Lựa chọn này định hình cả plan.</string>
+  <string name="this_usually_takes_under_a_minute_you_can_leave_this_screen_we_ll_keep_working" formatted="false">Thường mất chưa tới một phút. Bạn có thể rời màn hình này, app vẫn tiếp tục làm.</string>
+  <string name="this_week" formatted="false">Tuần này</string>
+  <string name="this_will_permanently_delete_your_training_plan_and_all_scheduled_workouts_this_" formatted="false">Plan và mọi buổi tập đã xếp sẽ bị xóa vĩnh viễn. Không thể hoàn tác.</string>
+  <string name="this_will_permanently_remove_the_workout_from_the_runner_s_training_schedule" formatted="false">Buổi tập sẽ bị xóa vĩnh viễn khỏi lịch của runner.</string>
+  <string name="this_workout_is_already_completed_or_matched_to_an_activity_so_it_can_t_be_moved" formatted="false">Buổi tập đã xong hoặc đã khớp với hoạt động, nên không chuyển được.</string>
+  <string name="this_workout_isn_t_in_your_active_plan" formatted="false">Buổi tập này không thuộc plan đang chạy.</string>
+  <string name="threshold_pace" formatted="false">Pace Threshold</string>
+  <string name="threshold_pace_e3d2682a6c" formatted="false">Pace Threshold:</string>
+  <string name="threshold_pace_cb2403403b" formatted="false">Pace Threshold</string>
+  <string name="threshold_pace_must_be_faster_than_zone_2" formatted="false">Threshold pace phải nhanh hơn Zone 2.</string>
+  <string name="threshold_pace_must_be_faster_than_easy_pace" formatted="false">Threshold Pace phải nhanh hơn Pace chạy nhẹ.</string>
+  <string name="threshold_pace_km">Threshold Pace: %1$s /km</string>
+  <string name="thu" formatted="false">T5</string>
+  <string name="thursday" formatted="false">Thứ Năm</string>
+  <string name="time_33b93476cf" formatted="false">Thời gian</string>
+  <string name="time_4_45_00" formatted="false">Thời gian (4:45:00)</string>
+  <string name="time_mins" formatted="false">Thời gian (phút)</string>
+  <string name="time_target" formatted="false">Mục tiêu thời gian</string>
+  <string name="title" formatted="false">Tiêu đề</string>
+  <string name="to_sharpen_this" formatted="false">Để chính xác hơn:</string>
+  <string name="to_subscribe_in_google_calendar_or_outlook_on_the_web_copy_the_subscription_link" formatted="false">Để đăng ký trên Google Calendar hoặc Outlook web, sao chép link ở trên và chọn \"Add Calendar from URL\".</string>
+  <string name="toggle_data_sources_used_by_the_estimation_engine" formatted="false">Bật/tắt nguồn dữ liệu dùng để ước tính:</string>
+  <string name="tools_labs_6a1d721172" formatted="false">Công cụ</string>
+  <string name="top_lld">Top %1$d</string>
+  <string name="top_lld_1ecb4e3d79">Top %1$d%%</string>
+  <string name="total_lld_weeks_progression">Lộ trình tổng %1$d tuần</string>
+  <string name="total_finishers" formatted="false">Tổng người về đích</string>
+  <string name="trail_ultra_endurance_coaching_grounded_in_science" formatted="false">Huấn luyện Trail &amp; Ultra dựa trên khoa học.</string>
+  <string name="trail_terrain_types" formatted="false">Loại địa hình Trail</string>
+  <string name="train_toward_a_finish_time_you_choose" formatted="false">Tập theo thời gian finish bạn chọn.</string>
+  <string name="training" formatted="false">Tập luyện</string>
+  <string name="training_phase" formatted="false">Giai đoạn tập</string>
+  <string name="training_preferences_constraints" formatted="false">Tùy chọn &amp; giới hạn tập luyện</string>
+  <string name="training_zones" formatted="false">Zone tập luyện</string>
+  <string name="training_profile" formatted="false">Hồ sơ tập luyện</string>
+  <string name="training_settings" formatted="false">Thiết lập tập luyện</string>
+  <string name="training_zones_b8e7493c98" formatted="false">Zone tập luyện</string>
+  <string name="training_zones_guide" formatted="false">Hướng dẫn Zone tập luyện</string>
+  <string name="transition" formatted="false">Chuyển tiếp</string>
+  <string name="travel_work_shifts_a_training_camp_a_niggle" formatted="false">Đi xa, ca làm, tập huấn, đau nhẹ…</string>
+  <string name="treadmill_max_incline" formatted="false">Độ dốc tối đa Treadmill</string>
+  <string name="treadmill_up_to_lld">Treadmill tối đa %1$d%%</string>
+  <string name="trend" formatted="false">Xu hướng</string>
+  <string name="try_again" formatted="false">Thử lại</string>
+  <string name="try_searching_for_terms_like_aerobic_carbs_sodium_sleep_or_poles" formatted="false">Thử tìm aerobic, carbs, sodium, ngủ hoặc gậy.</string>
+  <string name="try_searching_with_the_exact_spelling_used_during_race_registration" formatted="false">Thử tìm đúng cách viết khi đăng ký Race.</string>
+  <string name="tue" formatted="false">T3</string>
+  <string name="tuesday" formatted="false">Thứ Ba</string>
+  <string name="turned_off" formatted="false">Đã tắt</string>
+  <string name="two_hard_sessions_on_day_week_week" formatted="false">Hai buổi nặng vào {day} (tuần {week}).</string>
+  <string name="ultra_pinnacle" formatted="false">ĐỈNH CAO ULTRA</string>
+  <string name="ultras_completed" formatted="false">SỐ ULTRA HOÀN THÀNH</string>
+  <string name="unlocked" formatted="false">ĐÃ MỞ</string>
+  <string name="utmb_index_field_ranking" formatted="false">UTMB Index &amp; thứ hạng</string>
+  <string name="utmb_verified" formatted="false">Đã xác minh UTMB</string>
+  <string name="undo_done" formatted="false">Bỏ đánh dấu xong</string>
+  <string name="unexpected_response_from_the_server" formatted="false">Máy chủ trả về dữ liệu không như mong đợi.</string>
+  <string name="unhelpful_response" formatted="false">Câu trả lời chưa hữu ích</string>
+  <string name="unlink" formatted="false">Hủy liên kết</string>
+  <string name="unlink_this_run" formatted="false">Bỏ liên kết</string>
+  <string name="unlink_this_run_608c3fd748" formatted="false">Bỏ gắn buổi này?</string>
+  <string name="up_to_2_of_your_run_days_can_carry_a_second_short_session" formatted="false">Chọn tối đa 2 ngày chạy có thêm một buổi ngắn.</string>
+  <string name="update_schedule_preferences_optional" formatted="false">Cập nhật lịch tập (không bắt buộc)</string>
+  <string name="uphill_ai" formatted="false">Uphill AI</string>
+  <string name="upper_limit_of_zone_2_easy_conversational_effort_key_aerobic_base_for_ultra_trai" formatted="false">Ngưỡng trên Zone 2 (Easy). Mức nói chuyện được, nền Aerobic quan trọng cho Ultra Trail.</string>
+  <string name="upper_limit_of_zone_4_lactate_threshold_lthr_maximum_effort_sustainable_for_1_ho" formatted="false">Ngưỡng trên Zone 4 / ngưỡng lactate (LTHR). Mức gắng sức tối đa giữ được khoảng 1 giờ.</string>
+  <string name="use_ai_generator" formatted="false">Dùng AI tạo</string>
+  <string name="use_case" formatted="false">Mục đích dùng</string>
+  <string name="use_a_tested_lactate_threshold_lthr_when_available_do_not_assume_every_watch_zon" formatted="false">Dùng Lactate Threshold (LTHR) đã kiểm tra nếu có. Không phải mọi giới hạn Zone 4 trên đồng hồ đều là AnT.</string>
+  <string name="use_flat_ground_running_pace_not_your_trail_race_average_enter_m_ss_for_example_" formatted="false">Dùng Pace chạy trên đường bằng, không dùng Pace trung bình của giải trail. Nhập phút:giây, ví dụ 6:30.</string>
+  <string name="use_for_plan" formatted="false">Dùng cho plan</string>
+  <string name="use_my_plan_s_race" formatted="false">Dùng giải trong giáo án</string>
+  <string name="use_plan_race">Dùng Race của plan: %1$s</string>
+  <string name="used" formatted="false">Đang dùng</string>
+  <string name="used_to_calculate_your_remaining_acute_fatigue_and_recovery_phase" formatted="false">Dùng để tính độ mệt còn lại và giai đoạn hồi phục.</string>
+  <string name="used_to_work_out_how_much_fatigue_is_left" formatted="false">Dùng để ước tính mức mệt còn lại.</string>
+  <string name="using" formatted="false">Đang dùng </string>
+  <string name="vert" formatted="false">D+</string>
+  <string name="vo2max_coros_race_prediction_and_easy_pace" formatted="false">VO2max, dự đoán Race của COROS và pace Easy</string>
+  <string name="volume_comparison" formatted="false">SO SÁNH KHỐI LƯỢNG</string>
+  <string name="verified" formatted="false">Đã xác minh</string>
+  <string name="verified_gpx" formatted="false">GPX đã xác minh</string>
+  <string name="very_light" formatted="false">Rất nhẹ</string>
+  <string name="very_fatigued_need_real_rest" formatted="false">Rất mệt, cần nghỉ thật sự</string>
+  <string name="very_light_recovery_fresh_legs_low_fatigue" formatted="false">Rất nhẹ / hồi phục. Chân nhẹ, ít mệt.</string>
+  <string name="very_light_recovery_you_felt_fresh_and_recovered_easily" formatted="false">Rất nhẹ / hồi phục. Bạn thấy sung sức và hồi phục dễ.</string>
+  <string name="view" formatted="false">Xem</string>
+  <string name="view_lld_sources">Xem %1$d nguồn</string>
+  <string name="view_mode" formatted="false">Chế độ xem</string>
+  <string name="view_original_source" formatted="false">Xem nguồn gốc</string>
+  <string name="view_plan" formatted="false">Xem plan</string>
+  <string name="view_strategy" formatted="false">Xem chiến thuật</string>
+  <string name="viewing_managing_plan_as_coach" formatted="false">Đang xem &amp; quản lý plan với vai trò coach</string>
+  <string name="visualizing_your_aerobic_aet_and_anaerobic_ant_thresholds_from_resting_to_max" formatted="false">Hiển thị ngưỡng Aerobic (AeT) và Anaerobic (AnT) từ lúc nghỉ tới tối đa.</string>
+  <string name="volume_builds_at_a_pace_your_body_handles" formatted="false">Khối lượng tăng vừa sức cơ thể bạn</string>
+  <string name="volume_by_day_of_week" formatted="false">Khối lượng theo ngày trong tuần</string>
+  <string name="waypoint" formatted="false">ĐIỂM MỐC</string>
+  <string name="week_lld">TUẦN %1$d</string>
+  <string name="weekly_volume" formatted="false">KHỐI LƯỢNG TUẦN</string>
+  <string name="what_we_use" formatted="false">DỮ LIỆU SỬ DỤNG</string>
+  <string name="where_you_train" formatted="false">NƠI BẠN TẬP</string>
+  <string name="waiting_for_your_coach_s_approval" formatted="false">Đang chờ coach duyệt</string>
+  <string name="warm_up_10_min_easy_then" formatted="false">Warm-up 10 phút nhẹ, sau đó...</string>
+  <string name="warm_up_then_hold_a_steady_speed_for_60_minutes_compare_heart_rate_between_halve" formatted="false">Khởi động rồi giữ tốc độ đều trong 60 phút. So sánh nhịp tim hai nửa; độ trôi trên 5% cho thấy có thể bạn bắt đầu trên AeT. Xem quy trình và cách đọc kết quả của Evoke.</string>
+  <string name="was_this_fueling_plan_helpful" formatted="false">Kế hoạch Fueling này có hữu ích không?</string>
+  <string name="watch_8_week_training_volume" formatted="false">Khối lượng 8 tuần từ đồng hồ</string>
+  <string name="watch_estimate" formatted="false">Đồng hồ ước tính</string>
+  <string name="watch_run" formatted="false">Bài chạy</string>
+  <string name="watch_synced_up_to_date" formatted="false">Đã đồng bộ đồng hồ · Mới nhất</string>
+  <string name="watch_zones_are_estimates_unless_calibrated_by_a_test_zone_numbers_vary_by_zone_" formatted="false">Zone từ đồng hồ là giá trị ước tính nếu chưa hiệu chỉnh bằng kiểm tra. Số Zone tùy mô hình; phần trăm Max HR không phải AeT hay AnT đã đo.</string>
+  <string name="we_can_t_estimate_a_finish_time_yet" formatted="false">Chưa thể ước tính thời gian về đích.</string>
+  <string name="we_couldn_t_build_your_plan" formatted="false">Không tạo được plan</string>
+  <string name="we_couldn_t_start_building_your_plan_please_try_again" formatted="false">Không bắt đầu tạo plan được. Vui lòng thử lại.</string>
+  <string name="we_lost_track_of_your_plan_while_the_server_restarted_check_the_plan_tab_if_noth" formatted="false">Mất dấu plan khi máy chủ khởi động lại. Xem tab Plan; nếu chưa có gì, hãy thử lại.</string>
+  <string name="weather_temperature" formatted="false">Nhiệt độ thời tiết</string>
+  <string name="wed" formatted="false">T4</string>
+  <string name="wednesday" formatted="false">Thứ Tư</string>
+  <string name="week" formatted="false">Tuần</string>
+  <string name="week_lld_de0dba613a">Tuần %1$d</string>
+  <string name="week_lld_review">Đánh giá tuần %1$d</string>
+  <string name="week_lld_schedule">Lịch tuần %1$d</string>
+  <string name="week_lld_volume">Khối lượng tuần %1$d</string>
+  <string name="week_lld_is_ready_to_generate">Tuần %1$d đã sẵn sàng để tạo</string>
+  <string name="week_lld_of_lld">Tuần %1$d / %2$d</string>
+  <string name="week_lld_a537df6ee2">Tuần %1$d · %2$s</string>
+  <string name="week_days_volume" formatted="false">Khối lượng các ngày</string>
+  <string name="week_review" formatted="false">Đánh giá tuần</string>
+  <string name="week_schedule" formatted="false">Lịch tuần</string>
+  <string name="week_total" formatted="false">Tổng tuần</string>
+  <string name="week_updated" formatted="false">Đã cập nhật tuần</string>
+  <string name="week_week_volume_changes_from_before_to_after_min" formatted="false">Khối lượng tuần {week} đổi từ {before} thành {after} phút.</string>
+  <string name="weekly_schedule" formatted="false">Lịch tuần</string>
+  <string name="weekly_sessions" formatted="false">Số buổi/tuần:</string>
+  <string name="weekly_volume_03783315c5" formatted="false">Khối lượng tuần</string>
+  <string name="weekly_km" formatted="false">Km mỗi tuần</string>
+  <string name="weekly_volume_96443d183d" formatted="false">Khối lượng tuần</string>
+  <string name="weekly_volume_trend" formatted="false">Xu hướng khối lượng tuần</string>
+  <string name="weeks_to_race" formatted="false">Số tuần tới Race</string>
+  <string name="weeks_to_race_4aeb36d186" formatted="false">Số tuần tới Race</string>
+  <string name="weight" formatted="false">Cân nặng</string>
+  <string name="weight_kg" formatted="false">Cân nặng (kg)</string>
+  <string name="weight_3f0c8eeebf">Cân nặng: %1$s</string>
+  <string name="went_well" formatted="false">Tốt</string>
+  <string name="what_are_you_training_for" formatted="false">Bạn đang tập cho mục tiêu gì?</string>
+  <string name="what_distance" formatted="false">Cự ly mục tiêu</string>
+  <string name="what_does_your_week_look_like" formatted="false">Lịch tập trong tuần</string>
+  <string name="what_is_muscular_endurance_me" formatted="false">Muscular Endurance (ME) là gì?</string>
+  <string name="what_this_is_based_on" formatted="false">Dựa trên</string>
+  <string name="what_s_going_on" formatted="false">Có chuyện gì vậy?</string>
+  <string name="what_s_on_for_week_lld">Tuần %1$d có gì?</string>
+  <string name="what_s_your_goal_on_race_day" formatted="false">Mục tiêu Race</string>
+  <string name="when_did_you_finish" formatted="false">Bạn về đích khi nào?</string>
+  <string name="when_disconnecting_data_received_from_coros_is_permanently_deleted_within_24_hou" formatted="false">Khi ngắt kết nối, dữ liệu nhận từ COROS sẽ bị xóa vĩnh viễn trong 24 giờ.</string>
+  <string name="when_do_you_want_to_start" formatted="false">Bạn muốn bắt đầu khi nào?</string>
+  <string name="when_is_it" formatted="false">Khi nào diễn ra?</string>
+  <string name="where_do_you_train" formatted="false">Nơi tập luyện</string>
+  <string name="which_distance_are_you_running" formatted="false">Chọn cự ly Race</string>
+  <string name="which_distance" formatted="false">Cự ly nào?</string>
+  <string name="which_race_did_you_just_finish" formatted="false">Bạn vừa chạy Race nào?</string>
+  <string name="which_race" formatted="false">Race nào?</string>
+  <string name="why" formatted="false">Lý do:</string>
+  <string name="wide" formatted="false">Rộng</string>
+  <string name="width" formatted="false">Độ rộng</string>
+  <string name="width_foot_shape" formatted="false">Độ rộng / form chân</string>
+  <string name="window" formatted="false">Khoảng:</string>
+  <string name="winner" formatted="false">Người thắng</string>
+  <string name="winner_f" formatted="false">Vô địch nữ</string>
+  <string name="women" formatted="false">Nữ</string>
+  <string name="workout" formatted="false">Buổi tập</string>
+  <string name="workout_type" formatted="false">Loại buổi tập</string>
+  <string name="workout_type_mix" formatted="false">Tỷ lệ loại buổi tập</string>
+  <string name="workouts_can_only_move_between_this_week_and_next_week" formatted="false">Chỉ chuyển được buổi tập trong tuần này và tuần sau.</string>
+  <string name="workouts_pending_approval" formatted="false">Buổi tập chờ duyệt</string>
+  <string name="wrong_run" formatted="false">Sai buổi?</string>
+  <string name="your_easy_pace" formatted="false">PACE EASY CỦA BẠN</string>
+  <string name="your_races_lld">RACE CỦA BẠN (%1$d)</string>
+  <string name="yes" formatted="false">Có</string>
+  <string name="you" formatted="false">Bạn</string>
+  <string name="you_can_add_heart_rate_paces_and_injuries_after_this_they_make_each_new_week_mor" formatted="false">Sau bước này bạn có thể thêm nhịp tim, pace và chấn thương. Các thông tin đó giúp mỗi tuần mới chính xác hơn.</string>
+  <string name="you_can_change_any_of_this_later_from_your_plan" formatted="false">Bạn có thể đổi các thông tin này trong plan sau.</string>
+  <string name="you_can_skip_these_fields_and_add_test_results_later" formatted="false">Bạn có thể bỏ qua và bổ sung kết quả kiểm tra sau.</string>
+  <string name="you_can_t_move_a_workout_to_a_day_that_has_already_passed" formatted="false">Không thể chuyển buổi tập sang ngày đã qua.</string>
+  <string name="you_have_a_coach_ask_them_to_change_your_schedule" formatted="false">Bạn có coach. Hãy nhờ coach đổi lịch.</string>
+  <string name="you_haven_t_completed_70_of_the_current_block_yet" formatted="false">Bạn chưa hoàn thành 70% Block hiện tại.</string>
+  <string name="you_re_offline_changes_need_a_connection" formatted="false">Bạn đang offline. Cần có mạng để thay đổi.</string>
+  <string name="you_ve_reached_today_s_limit_for_sending_to_coros_try_again_tomorrow" formatted="false">Bạn đã hết lượt gửi sang COROS hôm nay. Thử lại ngày mai.</string>
+  <string name="you_ve_used_today_s_goal_checks_try_again_tomorrow" formatted="false">Bạn đã dùng hết lượt kiểm tra mục tiêu hôm nay. Thử lại ngày mai.</string>
+  <string name="your_aerobic_endurance_upper_limit_is_aet_your_threshold_zone_limit_is_ant" formatted="false">Ngưỡng trên sức bền Aerobic là AeT; ngưỡng zone Threshold là AnT.</string>
+  <string name="your_athletes" formatted="false">Học viên của bạn</string>
+  <string name="your_profile" formatted="false">Hồ sơ của bạn</string>
+  <string name="your_adaptive_training_plan_for_the_mountains" formatted="false">Plan tập luyện tự điều chỉnh cho chạy trail.</string>
+  <string name="your_average_over_the_last_month_your_first_week_starts_close_to_it" formatted="false">Trung bình tháng vừa rồi. Tuần đầu sẽ gần mức này.</string>
+  <string name="your_coach" formatted="false">Coach của bạn</string>
+  <string name="your_coach_updated_your_training_zones" formatted="false">Coach đã cập nhật zone tập của bạn.</string>
+  <string name="your_current_plan_stays_in_recent_plans_the_new_plan_becomes_your_active_plan" formatted="false">Plan hiện tại vẫn nằm trong Plan gần đây. Plan mới sẽ thành plan đang chạy.</string>
+  <string name="your_finishing_rank_on_this_field" formatted="false">Thứ hạng của bạn ở giải này</string>
+  <string name="your_first_week_starts_close_to_what_you_already_do" formatted="false">Tuần đầu sẽ gần với mức bạn đang tập.</string>
+  <string name="your_past_finishes_set_a_realistic_goal" formatted="false">Thành tích cũ giúp đặt mục tiêu sát thực tế</string>
+  <string name="your_past_workouts_and_health_metrics_from_coros_will_no_longer_automatically_sy" formatted="false">Buổi tập và chỉ số sức khỏe từ COROS sẽ không còn tự đồng bộ.</string>
+  <string name="your_plan_changed_since_this_was_proposed_ask_the_coach_again" formatted="false">Lịch tập của bạn đã thay đổi kể từ khi đề xuất — hãy hỏi lại Coach.</string>
+  <string name="your_plan_changed_since_this_was_proposed" formatted="false">Plan đã thay đổi kể từ khi đề xuất.</string>
+  <string name="your_plan_is_built_around" formatted="false">Plan của bạn được xây quanh</string>
+  <string name="your_plan_is_ready" formatted="false">Plan đã sẵn sàng</string>
+  <string name="your_runs_show_me_what_you_really_do_not_just_what_you_remember" formatted="false">Dữ liệu chạy cho tôi biết bạn thực sự tập bao nhiêu, không chỉ dựa vào trí nhớ.</string>
+  <string name="your_session_expired_please_sign_in_again" formatted="false">Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.</string>
+  <string name="your_session_has_expired_please_sign_in_again" formatted="false">Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.</string>
+  <string name="your_target" formatted="false">Mục tiêu của bạn: </string>
+  <string name="your_thresholds_and_easy_pace_help_set_workout_intensity" formatted="false">Ngưỡng nhịp tim và Pace chạy nhẹ giúp xác định cường độ bài tập.</string>
+  <string name="your_training_paces_won_t_change_until_your_next_week_is_built" formatted="false">Pace tập sẽ không đổi cho tới khi tạo tuần tiếp theo.</string>
+  <string name="your_training_zones_are_missing_or_their_source_is_unconfirmed_the_plan_will_use" formatted="false">Bạn chưa có Zone tập luyện hoặc chưa xác nhận nguồn. Kế hoạch sẽ dùng các giá trị hiện có cùng giá trị ước tính. Bạn có thể cập nhật trong Hồ sơ sau khi kiểm tra.</string>
+  <string name="your_weekly_workouts_show_up_here_once_coach_uphill_builds_your_plan" formatted="false">Buổi tập hằng tuần sẽ hiện ở đây khi Coach Uphill tạo xong plan.</string>
+  <string name="zone_1_recovery" formatted="false">Zone 1 · Hồi phục</string>
+  <string name="zone_2_pace_range" formatted="false">Khoảng pace Zone 2:</string>
+  <string name="zone_2_fast_end" formatted="false">Zone 2 nhanh</string>
+  <string name="zone_2_pace" formatted="false">Pace Zone 2</string>
+  <string name="zone_2_slow_end" formatted="false">Zone 2 chậm</string>
+  <string name="zone_2_slow_end_must_be_slower_than_the_fast_end" formatted="false">Zone 2 chậm phải chậm hơn Zone 2 nhanh.</string>
+  <string name="zone_2_upper_limit_is_aet_zone_4_upper_limit_is_ant" formatted="false">Ngưỡng trên Zone 2 là AeT; ngưỡng trên Zone 4 là AnT.</string>
+  <string name="zone_2_aerobic_base" formatted="false">Zone 2 · Nền Aerobic</string>
+  <string name="zone_2_tempo" formatted="false">Zone 2 · Tempo</string>
+  <string name="zone_3_tempo" formatted="false">Zone 3 · Tempo</string>
+  <string name="zone_3_threshold" formatted="false">Zone 3 · Threshold</string>
+  <string name="zone_4_threshold" formatted="false">Zone 4 · Threshold</string>
+  <string name="zone_5_vo2max_speed" formatted="false">Zone 5 · VO2max / tốc độ</string>
+  <string name="zone_category" formatted="false">Nhóm zone</string>
+  <string name="zone_model" formatted="false">Mô hình zone</string>
+  <string name="adherence_130bcd3861" formatted="false">mức độ hoàn thành</string>
+  <string name="admitting" formatted="false">đang nhận</string>
+  <string name="applied_b4267ce93c" formatted="false">đã áp dụng</string>
+  <string name="avg_hr_lld">HR TB %1$d</string>
+  <string name="day_ago" formatted="false">ngày trước</string>
+  <string name="days_ago" formatted="false">ngày trước</string>
+  <string name="days_to_go" formatted="false">ngày nữa</string>
+  <string name="discarded_1fcc4b3714" formatted="false">đã bỏ</string>
+  <string name="double_session_day" formatted="false">ngày tập đôi</string>
+  <string name="e_g_10_0" formatted="false">vd. 10.0</string>
+  <string name="e_g_1200" formatted="false">vd. 1200</string>
+  <string name="e_g_42" formatted="false">vd. 42</string>
+  <string name="e_g_60" formatted="false">vd. 60</string>
+  <string name="e_g_aerobic_base_run_strides" formatted="false">vd. Aerobic Base Run + Strides</string>
+  <string name="e_g_travel_illness_race_postponed_sore_calf" formatted="false">vd. Đi xa, ốm, Race hoãn, đau bắp chân...</string>
+  <string name="e_g_runner_s_knee_it_band_tightness_recent_ankle_sprain" formatted="false">vd. đau gối, căng dải IT, mới lật cổ chân...</string>
+  <string name="failed_5d28a90f44" formatted="false">chưa hoàn tất</string>
+  <string name="generating_941ee53e40" formatted="false">đang tạo</string>
+  <string name="kept" formatted="false">giữ nguyên</string>
+  <string name="km_week" formatted="false">km / tuần</string>
+  <string name="km_run" formatted="false">km tập</string>
+  <string name="min" formatted="false">phút</string>
+  <string name="or" formatted="false">hoặc</string>
+  <string name="proposed_81e766d897" formatted="false">đề xuất</string>
+  <string name="retrieving_23572fdd15" formatted="false">đang tìm</string>
+  <string name="run_day" formatted="false">ngày chạy</string>
+  <string name="runs_week" formatted="false">buổi / tuần</string>
+  <string name="the_upcoming_weeks" formatted="false">các tuần tới</string>
+  <string name="top_d865b56ea0">top %1$s%%</string>
+  <string name="was">trước đây: %1$s</string>
+  <string name="week_6df37daaa4" formatted="false">tuần</string>
+  <string name="weeks_to_go" formatted="false">tuần nữa</string>
+  <string name="winner_349fcb1582">nhất %1$s</string>
+  <string name="workout_b10c94bd8a" formatted="false">buổi tập</string>
+  <string name="years" formatted="false">tuổi</string>
+  <string name="lld_weeks_to_go">· còn %1$d tuần</string>
+  <string name="lld_wear">· mòn %1$d%%</string>
+  <string name="pick">· Chọn: %1$s</string>
+  <string name="coach_uphill_24df6ca740" formatted="false">— Coach Uphill</string>
+  <string name="solid_volume_progression_remember_recovery_is_where_adaptation_happens_do_not_cu" formatted="false">“Khối lượng tăng đều. Nhớ: cơ thể thích nghi khi hồi phục. Đừng cắt bớt nghỉ ở các Block nặng.”</string>
+  <string name="title_is_still_pending_coach_review" formatted="false">“{title}” vẫn đang chờ coach duyệt.</string>
+  <string name="first_30_discipline_in_low_zone_2_bank_zero_lactate_on_early_climbs_middle_40_se" formatted="false">• 30% đầu: Giữ kỷ luật ở Zone 2 thấp. Không tích lactate ở các dốc đầu.\n• 40% giữa: Giữ nhịp đều, Fueling mỗi 30 phút.\n• 30% cuối: Dốc hết sức ở đoạn chạy được nếu đùi còn cho phép.</string>
+  <string name="hide_extra_unlinked_result" formatted="false">− Ẩn kết quả chưa liên kết</string>
+</resources>
