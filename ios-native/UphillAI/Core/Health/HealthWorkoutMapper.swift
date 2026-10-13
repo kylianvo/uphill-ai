@@ -41,7 +41,7 @@ enum HealthWorkoutMapper {
             startTime: formatter.string(from: s.start),
             endTime: formatter.string(from: s.end),
             durationSeconds: s.duration.rounded(),
-            distanceKm: s.distanceMeters.map { ($0 / 1000 * 1000).rounded() / 1000 },
+            distanceKm: s.distanceMeters.map { $0.rounded() / 1000 }  // whole metres, so 10_400 m -> 10.4 km,
             elevationGainM: climb.map { ($0 * 10).rounded() / 10 },
             avgHr: s.averageHeartRate.map { Int($0.rounded()) },
             maxHr: s.maxHeartRate.map { Int($0.rounded()) },

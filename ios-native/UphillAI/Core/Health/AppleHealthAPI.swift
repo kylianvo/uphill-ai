@@ -8,8 +8,6 @@ protocol AppleHealthUploading: Sendable {
 struct AppleHealthAPI: AppleHealthUploading {
     let client: APIClient
 
-    private struct EmptyResponse: Decodable {}
-
     func sync(_ body: AppleHealthSyncBody) async throws -> AppleHealthSyncResult {
         try await client.send(.send(.post, "/api/integrations/apple-health/sync", body: body))
     }
