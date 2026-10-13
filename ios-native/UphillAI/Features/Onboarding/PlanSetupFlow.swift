@@ -60,7 +60,14 @@ struct PlanSetupFlow: View {
         .foregroundStyle(UH.Palette.ink)
         .tint(UH.Palette.accentInk)
         .animation(reduceMotion ? .easeInOut(duration: 0.15) : UH.Motion.standard, value: model.stepIndex)
+        .alert("Continue with estimated zones?", isPresented: $model.showZoneEstimateWarning) {
+            Button("Review values", role: .cancel) {}
+            Button("Continue with estimates") { model.continueWithEstimatedZones() }
+        } message: {
+            Text("Your training zones are missing or their source is unconfirmed. The plan will use available values and estimates. You can update them in Profile after a test.")
+        }
         .sensoryFeedback(.selection, trigger: model.stepIndex)
         .onChange(of: model.didStart) { _, started in if started { onClose() } }
+        .task { await model.refreshWatch() }
     }
 }

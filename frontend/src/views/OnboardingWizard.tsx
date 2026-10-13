@@ -3,7 +3,7 @@ import React from "react";
 import { useAppContext } from "../contexts/AppContext";
 import { usePlanner } from "../hooks/usePlanner";
 import { translations } from "../app/translations";
-import { Calendar, PersonSimpleRun, Mountains, Watch, Target, CaretRight, CaretLeft, CaretDown, CaretUp, Plus, Info, X, Footprints, Lightning, Heartbeat , Trophy, Sneaker, Bed, Check, Flag, Heart, Flask, FirstAid, Moon, Sparkle, RocketLaunch, ArrowsClockwise } from '@phosphor-icons/react';
+import { Calendar, Mountains, Watch, Target, CaretRight, CaretLeft, CaretDown, CaretUp, Plus, Info, X, Footprints, Lightning, Heartbeat , Trophy, Sneaker, Check, Flag, Heart, Flask, FirstAid, Moon, Sparkle, RocketLaunch, ArrowsClockwise } from '@phosphor-icons/react';
 import { RaceMatch } from "../hooks/useRaceMatch";
 import { RaceNameField } from "../components/RaceNameField";
 import { parsePaceToMinutes, formatDurationHM } from "../lib/paceStrategy";
@@ -557,9 +557,7 @@ export default function OnboardingWizard() {
 
                   { val: "start_running", Icon: Sneaker, label: lang === "en" ? "Start Running" : "Bắt đầu chạy bộ" },
 
-                  { val: "return", Icon: PersonSimpleRun, label: lang === "en" ? "Get Back to Running" : "Tập luyện trở lại (Return to Running)" },
 
-                  { val: "recovery", Icon: Bed, label: lang === "en" ? "Post-Race Recovery" : "Phục hồi sau giải chạy (Recovery)" },
 
                 ].map(({ val, Icon, label }) => (
 

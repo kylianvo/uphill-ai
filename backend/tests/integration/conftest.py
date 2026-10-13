@@ -59,6 +59,15 @@ def _init_test_database():
     default users) that would otherwise leak into whichever test happens to
     run first in the session.
     """
+    # Every test here TRUNCATEs every table: refuse anything that isn't plainly a
+    # throwaway database, whatever DATABASE_URL was left pointing at.
+    db_name = engine.url.database or ""
+    if not any(marker in db_name.lower() for marker in ("test", "scratch")):
+        pytest.exit(
+            f"Refusing to run integration tests against database {db_name!r}: "
+            "its name must contain 'test' or 'scratch' because every test truncates all tables.",
+            returncode=2,
+        )
     init_db()
     with engine.connect() as conn:
         conn.execute(text(f"TRUNCATE TABLE {', '.join(ALL_TABLES)} RESTART IDENTITY CASCADE"))

@@ -1086,8 +1086,6 @@ export default function PlannerView({ isMobile }: { isMobile: boolean }) {
                   { val: "race",          Icon: Trophy, label: t("goal_race") },
                   { val: "distance",      Icon: Target, label: t("goal_distance") },
                   { val: "start_running", Icon: Sneaker, label: t("goal_start") },
-                  { val: "return",        Icon: PersonSimpleRun, label: t("goal_return") },
-                  { val: "recovery",      Icon: Bed, label: t("goal_recovery") },
                 ] as const).map(({ val, Icon, label }) => {
                   const active = planForm.plan_goal_category === val;
                   return (

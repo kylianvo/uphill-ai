@@ -132,7 +132,7 @@ struct ProfileView: View {
                 case .nutritionLab:
                     NutritionLabSheet(service: app.nutritionService, activePlan: app.plan.snapshot?.plan, user: app.session.user)
                 case .gearVault:
-                    GearVaultSheet(service: app.gearService, activePlan: app.plan.snapshot?.plan, user: app.session.user) { newShoe in
+                    GearVaultSheet(service: app.gearService, activePlan: app.plan.snapshot?.plan, user: app.session.user, raceMatchService: app.raceMatchService) { newShoe in
                         app.shoeRotation.shoes.removeAll { $0.slot == newShoe.slot }
                         app.shoeRotation.shoes.append(newShoe)
                     }
@@ -142,6 +142,7 @@ struct ProfileView: View {
                         pacingService: app.pacingService,
                         activePlan: app.plan.snapshot?.plan,
                         user: app.session.user,
+                        raceHistoryService: app.raceHistoryService,
                         onApplyGoal: { targetMinutes in
                             if let planId = app.plan.snapshot?.plan.id {
                                 Task { try? await app.planService.applyGoal(planID: planId, targetMinutes: targetMinutes) }
@@ -149,7 +150,8 @@ struct ProfileView: View {
                         },
                         onPlanPacing: { _ in
                             path.append(.paceStrategy)
-                        }
+                        },
+                        raceMatchService: app.raceMatchService
                     )
                 case .paceStrategy:
                     PaceStrategySheet(
@@ -159,6 +161,15 @@ struct ProfileView: View {
                         onOpenNutrition: { path.append(.nutritionLab) },
                         onOpenGear: { path.append(.gearVault) }
                     )
+                case .watch:
+                    ScrollView {
+                        ConnectedAccountsView(service: app.deviceConnectionService)
+                            .padding(UH.Space.regular)
+                    }
+                    .background(UH.Palette.surface)
+                    .navigationTitle("Connected accounts")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .onDisappear { Task { await app.loadCorosStatus() } }
                 case .knowledgeHub:
                     KnowledgeHubScreen(service: app.knowledgeService)
                 default:

@@ -208,15 +208,39 @@ struct GearPlan: Codable, Sendable, Equatable {
     let recommendations: [ShoeRecommendation]
     let tips: [String]
     let feedbackToken: String?
+    /// The KB race the server matched the race name to, used as context.
+    var matchedRace: RaceMatch? = nil
 
     init(
         recommendations: [ShoeRecommendation],
         tips: [String],
-        feedbackToken: String? = nil
+        feedbackToken: String? = nil,
+        matchedRace: RaceMatch? = nil
     ) {
         self.recommendations = recommendations
         self.tips = tips
         self.feedbackToken = feedbackToken
+        self.matchedRace = matchedRace
+    }
+}
+
+extension GearParams {
+    /// Same summary the web Gear Vault sends as `user_profile`.
+    static func profileContext(_ user: User?) -> String {
+        guard let user else { return "None" }
+        let na = "N/A"
+        return "Age: \(user.age.map(String.init) ?? na), Max HR: \(user.maxHr.map(String.init) ?? na), "
+            + "Resting HR: \(user.restingHr.map(String.init) ?? na), Weekly volume: \(user.currentWeeklyKm.map { String(format: "%g", $0) } ?? na)km"
+    }
+
+    /// Same summary the web Gear Vault sends as `active_plan_context`.
+    static func planContext(_ plan: Plan?) -> String {
+        guard let plan else { return "None" }
+        var text = "\(plan.raceName) on \(plan.raceDate), Goal: \(plan.goalType), "
+            + "Distance: \(plan.courseDistanceKm.map { String(format: "%g", $0) } ?? "N/A")km, "
+            + "Elevation: \(plan.courseElevationGainM.map { String(format: "%g", $0) } ?? "N/A")m"
+        if let hours = plan.targetTimeHours, hours > 0 { text += ", Target Time: \(String(format: "%g", hours))h" }
+        return text
     }
 }
 

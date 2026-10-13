@@ -1,4 +1,5 @@
 import os
+import re
 import threading
 import time
 import uuid as _uuid
@@ -10,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from google import genai
 from google.genai import types as genai_types
 from prometheus_fastapi_instrumentator import Instrumentator, metrics
-from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, field_validator
 
 from config import settings
 from db import (
@@ -71,6 +72,7 @@ from db import (
     make_rest_day,
     mark_onboarding_complete,
     mark_profile_fields_athlete_set,
+    mark_profile_fields_estimated,
     query_nutrition_catalog,
     remove_coach_athlete_link,
     replace_shoe_rotation,
@@ -410,6 +412,9 @@ class SetPasswordRequest(BaseModel):
     password: str
 
 
+ONBOARDING_HR_RANGES = {"aet_hr": (80, 220), "ant_hr": (90, 225), "max_hr": (120, 240), "resting_hr": (30, 120)}
+
+
 class OnboardingRequest(BaseModel):
     lang: str | None = "en"
     # Step 1
@@ -430,8 +435,30 @@ class OnboardingRequest(BaseModel):
     resting_hr: int | None = None
     zone2_pace_min: str | None = None
     zone2_pace_max: str | None = None
+    threshold_pace: str | None = None
     # Injury
     injury_history: str | None = None
+
+    # A typo in an optional zone must not block sign-up: values outside a plausible
+    # range or not in m:ss form are dropped and estimated like a blank field.
+    @field_validator("aet_hr", "ant_hr", "max_hr", "resting_hr", mode="before")
+    @classmethod
+    def _drop_implausible_hr(cls, v: Any, info: Any) -> Any:
+        low, high = ONBOARDING_HR_RANGES[info.field_name]
+        try:
+            return v if v is None or low <= int(v) <= high else None
+        except (TypeError, ValueError):
+            return None
+
+    @field_validator("zone2_pace_min", "zone2_pace_max", "threshold_pace", mode="before")
+    @classmethod
+    def _drop_malformed_pace(cls, v: Any) -> Any:
+        return (
+            v
+            if isinstance(v, str) and re.fullmatch(r"\d{1,2}:[0-5]\d", v.strip()) and v.strip() not in ("0:00", "00:00")
+            else None
+        )
+
     # Race / distance target
     race_name: str | None = None
     race_date: str | None = None
@@ -446,6 +473,7 @@ class OnboardingRequest(BaseModel):
     long_run_day: str | None = None
     current_weekly_km: float | None = 30.0
     has_gym_access: bool | None = False
+    use_treadmill: bool | None = None
     training_environment: str | None = "flat"  # 'flat' | 'hilly' | 'mixed'
     # Training venues (services/training_venues.py): weekdays with hill/trail access,
     # stairs, and the treadmill's top incline in %.
@@ -631,13 +659,21 @@ def _profile_field_sources(user: dict[str, Any]) -> dict[str, dict[str, Any]]:
     the athlete (column has a value) or an app default (column is NULL, so the
     response shows a fallback)."""
     recorded = user.get("profile_field_sources") or {}
+    # Before onboarding, every number is the column default; after it, the ones the
+    # app estimated carry an "estimate" entry (db.mark_profile_fields_estimated).
+    pre_onboarding = not user.get("onboarding_complete", True)
     out: dict[str, dict[str, Any]] = {}
     for field in COACH_EDITABLE_PROFILE_FIELDS:
         entry = recorded.get(field)
         if entry and entry.get("source") == "coach":
             out[field] = {"source": "coach", "by_name": entry.get("by_name"), "at": entry.get("at")}
         else:
-            out[field] = {"source": "athlete" if user.get(field) not in (None, "") else "default"}
+            is_default = (
+                user.get(field) in (None, "")
+                or (entry or {}).get("source") == "estimate"
+                or (pre_onboarding and not entry)
+            )
+            out[field] = {"source": "default" if is_default else "athlete"}
         if field in ("aet_hr", "ant_hr"):
             # lab | field | estimated | unknown -- the athlete's own answer to
             # "How did you get your AeT/AnT?"
@@ -1089,19 +1125,42 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
     import asyncio
     from datetime import date, timedelta
 
+    supplied_zones = request.model_dump(exclude_none=True)
+    _validate_hr_order(supplied_zones)
+    _validate_pace_order(supplied_zones)
+    if (
+        request.threshold_pace
+        and request.zone2_pace_min
+        and _pace_seconds(request.threshold_pace) >= _pace_seconds(request.zone2_pace_min)
+    ):
+        raise HTTPException(status_code=422, detail="Threshold pace must be faster than Zone 2.")
+    if request.threshold_source in ("lab", "field") and (request.aet_hr is None or request.ant_hr is None):
+        # A measured pair lost one value to the plausibility check: what's left is an estimate.
+        request.threshold_source = "estimated"
     today = date.today()
     age = _compute_age(request.dob, request.age or user.get("age", 30), today)
 
     # Estimate HR zones from age if not provided
-    max_hr = request.max_hr or (220 - age)
-    aet_hr = request.aet_hr or round(max_hr * 0.73)
-    ant_hr = request.ant_hr or round(max_hr * 0.89)
-    resting_hr = request.resting_hr or 60
+    # Keep supplied anchors and place unknown estimates around them in order.
+    max_hr = request.max_hr or max(220 - age, (request.ant_hr or 0) + 1, (request.aet_hr or 0) + 2)
+    aet_hr = request.aet_hr or min(
+        max(round(max_hr * 0.73), (request.resting_hr or 0) + 1), (request.ant_hr or max_hr) - 1
+    )
+    ant_hr = request.ant_hr or max(round(max_hr * 0.89), aet_hr + 1)
+    resting_hr = request.resting_hr or min(60, aet_hr - 1)
+    _validate_hr_order({"resting_hr": resting_hr, "aet_hr": aet_hr, "ant_hr": ant_hr, "max_hr": max_hr})
 
     # Zone 2 defaults come from the athlete's tier, not from a literal repeated per
     # call site. The old form also treated an explicit "6:30" as "unset" and silently
     # replaced it, so a beginner who genuinely measured 6:30 could not keep it.
     zone2_min, zone2_max = resolve_zone2_pace(request.zone2_pace_min, request.zone2_pace_max, request.goal_type)
+
+    if request.zone2_pace_min is None and request.zone2_pace_max is not None:
+        zone2_min = request.zone2_pace_max if _pace_seconds(zone2_min) < _pace_seconds(zone2_max) else zone2_min
+    if request.zone2_pace_max is None and request.zone2_pace_min is not None:
+        zone2_max = request.zone2_pace_min if _pace_seconds(zone2_max) > _pace_seconds(zone2_min) else zone2_max
+
+    use_treadmill = request.use_treadmill if request.use_treadmill is not None else bool(request.has_gym_access)
 
     onboarding_data = {
         "dob": request.dob,
@@ -1114,7 +1173,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         "preferred_run_days": request.preferred_run_days or [],
         "long_run_day": request.long_run_day,
         "days_per_week": request.days_per_week or 4,
-        "current_weekly_km": request.current_weekly_km or 30.0,
+        "current_weekly_km": request.current_weekly_km if request.current_weekly_km is not None else 30.0,
         "max_hr": max_hr,
         "resting_hr": resting_hr,
         "aet_hr": aet_hr,
@@ -1122,8 +1181,17 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         "zone2_pace_min": zone2_min,
         "zone2_pace_max": zone2_max,
         "threshold_source": request.threshold_source,
+        "threshold_pace": request.threshold_pace,
     }
     update_onboarding_profile(user["id"], onboarding_data)
+    mark_profile_fields_estimated(
+        user["id"],
+        [
+            f
+            for f in ("max_hr", "resting_hr", "aet_hr", "ant_hr", "zone2_pace_min", "zone2_pace_max")
+            if f not in supplied_zones
+        ],
+    )
 
     if request.skip_plan:
         # Profile saved, no plan row created -- the user starts one later
@@ -1169,7 +1237,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         double_session_days=request.double_session_days or [],
         start_date=onboarding_start_date,
         has_gym_access=request.has_gym_access or False,
-        use_treadmill=request.has_gym_access or False,
+        use_treadmill=use_treadmill,
         training_environment=request.training_environment or "flat",
         mountain_days=request.mountain_days or [],
         stair_access=bool(request.stair_access),
@@ -1199,7 +1267,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         "days_per_week": request.days_per_week,
         "double_session_days": request.double_session_days or [],
         "has_gym_access": request.has_gym_access or False,
-        "use_treadmill": request.has_gym_access or False,
+        "use_treadmill": use_treadmill,
         "training_environment": request.training_environment or "flat",
         "mountain_days": request.mountain_days or [],
         "stair_access": bool(request.stair_access),

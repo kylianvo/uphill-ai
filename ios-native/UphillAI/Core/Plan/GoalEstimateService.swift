@@ -40,9 +40,10 @@ struct GoalAssessmentResponse: Decodable, Sendable {
     let sources: [GoalSourceItem]?
     let benchmarks: [RaceBenchmark]?
     let context: Context?
+    let missing: [String]?
 
     var estimate: GoalEstimate {
-        GoalEstimate(
+        var estimate = GoalEstimate(
             raceName: raceName,
             distanceKm: distanceKm,
             elevationGainM: elevationGainM ?? 0,
@@ -54,5 +55,7 @@ struct GoalAssessmentResponse: Decodable, Sendable {
             sources: sources,
             reasoning: reasoning
         )
+        estimate.missing = missing
+        return estimate
     }
 }

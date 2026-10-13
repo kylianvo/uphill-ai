@@ -157,3 +157,172 @@ class TestSkipPlanOnboarding:
         assert resp.status_code == 200, resp.text
         assert "job_id" in resp.json()
         assert get_active_plan(auth_headers["user_id"]) is not None
+
+
+def test_onboarding_keeps_treadmill_separate_from_gym(client, auth_headers, mock_plan_generation):
+    for gym, treadmill in [(True, False), (False, True)]:
+        resp = client.post(
+            "/api/auth/onboarding",
+            headers=auth_headers["headers"],
+            json={
+                "goal_type": "start_running",
+                "has_gym_access": gym,
+                "use_treadmill": treadmill,
+                "current_weekly_km": 0,
+            },
+        )
+        assert resp.status_code == 200, resp.text
+        plan = get_active_plan(auth_headers["user_id"])
+        assert bool(plan["use_treadmill"]) == treadmill
+        assert get_user_by_id(auth_headers["user_id"])["current_weekly_km"] == 0
+
+
+def test_onboarding_persists_training_zones(client, auth_headers, mock_plan_generation):
+    response = client.post(
+        "/api/auth/onboarding",
+        headers=auth_headers["headers"],
+        json={
+            "goal_type": "start_running",
+            "skip_plan": True,
+            "max_hr": 190,
+            "resting_hr": 55,
+            "aet_hr": 145,
+            "ant_hr": 170,
+            "threshold_source": "field",
+            "zone2_pace_min": "6:40",
+            "zone2_pace_max": "5:50",
+            "threshold_pace": "4:45",
+        },
+    )
+    assert response.status_code == 200, response.text
+    user = get_user_by_id(auth_headers["user_id"])
+    for key, value in {
+        "aet_hr": 145,
+        "ant_hr": 170,
+        "threshold_source": "field",
+        "zone2_pace_min": "6:40",
+        "zone2_pace_max": "5:50",
+        "threshold_pace": "4:45",
+    }.items():
+        assert user[key] == value
+
+
+def test_onboarding_rejects_contradictory_training_zones(client, auth_headers, mock_plan_generation):
+    for values in [
+        {"aet_hr": 175, "ant_hr": 160},
+        {"zone2_pace_min": "5:30", "zone2_pace_max": "6:30"},
+        {"zone2_pace_max": "5:30", "threshold_pace": "6:00"},
+    ]:
+        response = client.post(
+            "/api/auth/onboarding",
+            headers=auth_headers["headers"],
+            json={"goal_type": "start_running", "skip_plan": True, **values},
+        )
+        assert response.status_code == 422, response.text
+
+
+def test_onboarding_estimates_implausible_zones_instead_of_rejecting(client, auth_headers, mock_plan_generation):
+    """A typo in an optional zone must never block sign-up."""
+    response = client.post(
+        "/api/auth/onboarding",
+        headers=auth_headers["headers"],
+        json={
+            "goal_type": "start_running",
+            "skip_plan": True,
+            "max_hr": 115,
+            "aet_hr": 145,
+            "threshold_source": "field",
+            "zone2_pace_min": "6:99",
+            "threshold_pace": "0:00",
+        },
+    )
+    assert response.status_code == 200, response.text
+    user = get_user_by_id(auth_headers["user_id"])
+    assert 120 <= user["max_hr"] <= 240
+    assert user["aet_hr"] == 145
+    assert user["threshold_source"] == "estimated"
+    assert user["threshold_pace"] is None
+
+
+def test_onboarding_marks_estimated_zones_as_defaults(client, auth_headers, mock_plan_generation):
+    response = client.post(
+        "/api/auth/onboarding",
+        headers=auth_headers["headers"],
+        json={"goal_type": "start_running", "skip_plan": True, "max_hr": 190},
+    )
+    assert response.status_code == 200, response.text
+    sources = client.get("/api/auth/me", headers=auth_headers["headers"]).json()["field_sources"]
+    assert sources["max_hr"]["source"] == "athlete"
+    for field in ("resting_hr", "aet_hr", "ant_hr", "zone2_pace_min", "zone2_pace_max"):
+        assert sources[field]["source"] == "default", field
+
+
+def test_onboarding_passes_zones_to_first_plan(client, auth_headers, mock_plan_generation):
+    import time
+    from unittest.mock import AsyncMock
+
+    with patch("main._plan_snapshot", new_callable=AsyncMock, return_value={}):
+        response = client.post(
+            "/api/auth/onboarding",
+            headers=auth_headers["headers"],
+            json={
+                "goal_type": "start_running",
+                "aet_hr": 145,
+                "ant_hr": 170,
+                "threshold_source": "field",
+                "zone2_pace_min": "6:40",
+                "zone2_pace_max": "5:50",
+                "threshold_pace": "4:45",
+            },
+        )
+        assert response.status_code == 200
+        deadline = time.monotonic() + 3
+        while not mock_plan_generation.await_args_list and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert mock_plan_generation.await_args_list
+        profile = mock_plan_generation.await_args.args[1]
+        assert profile["aet_hr"] == 145 and profile["ant_hr"] == 170
+        assert profile["threshold_source"] == "field"
+        assert profile["zone2_pace_min"] == "6:40" and profile["zone2_pace_max"] == "5:50"
+        assert profile["threshold_pace"] == "4:45"
+
+
+def test_onboarding_partial_thresholds_keep_estimated_zones_ordered(client, auth_headers, mock_plan_generation):
+    for values in [{"aet_hr": 185}, {"ant_hr": 120}, {"ant_hr": 205}]:
+        response = client.post(
+            "/api/auth/onboarding",
+            headers=auth_headers["headers"],
+            json={"goal_type": "race", "skip_plan": True, **values},
+        )
+        assert response.status_code == 200
+        user = get_user_by_id(auth_headers["user_id"])
+        assert user["resting_hr"] < user["aet_hr"] < user["ant_hr"] < user["max_hr"]
+        for key, value in values.items():
+            assert user[key] == value
+
+
+def test_onboarding_partial_easy_pace_keeps_range_ordered(client, auth_headers, mock_plan_generation):
+    from main import _pace_seconds
+
+    for values in [{"zone2_pace_min": "5:00"}, {"zone2_pace_max": "9:00"}]:
+        response = client.post(
+            "/api/auth/onboarding",
+            headers=auth_headers["headers"],
+            json={"goal_type": "race", "skip_plan": True, **values},
+        )
+        assert response.status_code == 200
+        user = get_user_by_id(auth_headers["user_id"])
+        assert _pace_seconds(user["zone2_pace_min"]) >= _pace_seconds(user["zone2_pace_max"])
+        for key, value in values.items():
+            assert user[key] == value
+
+
+def test_new_athlete_seed_values_are_app_defaults(client):
+    response = client.post(
+        "/api/auth/register",
+        json={"name": "New Runner", "email": "new-runner@example.com", "password": "new-runner-pass-1"},
+    )
+    assert response.status_code == 200
+    sources = response.json()["user"]["field_sources"]
+    for field in ("max_hr", "resting_hr", "aet_hr", "ant_hr", "zone2_pace_min", "zone2_pace_max"):
+        assert sources[field]["source"] == "default"

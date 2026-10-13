@@ -1,4 +1,5 @@
 "use client";
+import { rpeLabel } from "../components/FeelingSelector";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useState } from "react";
 import {
@@ -909,9 +910,9 @@ export default function CoachDashboardView({ isMobile }: { isMobile: boolean }) 
                   </p>
                 ) : (
                   <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
-                    <span style={{ fontSize: "28px", fontWeight: 800 }}>{overview.rpe_distribution.avg_rpe.toFixed(1)}</span>
+                    <span style={{ fontSize: "28px", fontWeight: 800 }}>{rpeLabel(overview.rpe_distribution.avg_rpe, lang)}</span>
                     <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>
-                      {lang === "en" ? "average RPE" : "RPE trung bình"}
+                      {lang === "en" ? "average effort" : "Gắng sức trung bình"}
                     </span>
                   </div>
                 )}

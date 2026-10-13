@@ -50,6 +50,12 @@ struct ScheduleDraftTests {
         #expect(!draft.stairAccess)
         #expect(draft.treadmillMaxIncline == 15)
     }
+    @Test func venueOnlyChangesKeepAnUnspecifiedSchedule() {
+        var draft = ScheduleDraft(plan: TestData.plan(["preferred_run_days": "[]", "days_per_week": 4]))
+        draft.hasGymAccess = true
+        #expect(draft.validationMessage == nil)
+    }
+
     @Test func unknownLongRunDayCanBeSet() throws {
         var draft = ScheduleDraft(plan: TestData.plan())
         #expect(draft.longRunDay == nil)

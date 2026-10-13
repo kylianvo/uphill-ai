@@ -1,145 +1,120 @@
 import SwiftUI
 
-/// Redesigned training card with a progress ring, icons, benefit copy, and checks.
+/// "Get the most from your plan": the context that makes each new week fit the athlete
+/// (watch, race history, thresholds, paces, injuries). Hidden once everything is done;
+/// "Not now" hides it for two weeks.
 struct SharpenChecklistCard: View {
     let user: User
-    let plan: Plan
+    let corosConnected: Bool
+    let raceHistoryLinked: Bool
     let onOpen: (TrainingDestination) -> Void
-    @State private var hidden = false
-    private var key: String { "UPHILL_SHARPEN_HIDDEN_\(plan.id)" }
-    private var items: [SharpenItem] { SharpenChecklist.items(user: user, plan: plan) }
+    var now: () -> Date = { .now }
+
+    static let snoozeKey = "UPHILL_SHARPEN_SNOOZED_AT"
+    static let snoozeDays = 14
+
+    @State private var snoozed = false
+    private var items: [SharpenItem] {
+        SharpenChecklist.items(user: user, corosConnected: corosConnected, raceHistoryLinked: raceHistoryLinked)
+    }
 
     var body: some View {
+        let items = items
+        let doneCount = items.filter(\.done).count
         Group {
-            if !hidden && items.contains(where: { !$0.done }) {
-                let doneCount = items.filter(\.done).count
-                let totalCount = items.count
-
+            if !snoozed && doneCount < items.count {
                 VStack(alignment: .leading, spacing: UH.Space.regular) {
-                    // Header with progress ring
-                    HStack(alignment: .center, spacing: UH.Space.regular) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Sharpen your plan").font(UH.TextStyle.sectionTitle).foregroundStyle(UH.Palette.ink)
-                            Text("Each detail makes your next week's workouts more tailored.")
-                                .font(UH.TextStyle.caption)
-                                .foregroundStyle(UH.Palette.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-
+                    HStack(alignment: .firstTextBaseline) {
+                        Text("Get the most from your plan").font(UH.TextStyle.sectionTitle).foregroundStyle(UH.Palette.ink)
                         Spacer(minLength: 8)
-
-                        // Circular progress ring
-                        ZStack {
-                            Circle()
-                                .stroke(UH.Palette.line, lineWidth: 4.5)
-                            Circle()
-                                .trim(from: 0, to: CGFloat(doneCount) / CGFloat(max(1, totalCount)))
-                                .stroke(UH.Palette.accent, style: StrokeStyle(lineWidth: 4.5, lineCap: .round))
-                                .rotationEffect(.degrees(-90))
-                            Text("\(doneCount) of \(totalCount)")
-                                .font(.system(size: 11, weight: .bold, design: .monospaced))
-                                .foregroundStyle(UH.Palette.ink)
-                                .multilineTextAlignment(.center)
-                        }
-                        .frame(width: 52, height: 52)
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel("\(doneCount) of \(totalCount) completed")
+                        Text(L("%lld of %lld", doneCount, items.count))
+                            .font(UH.TextStyle.caption.weight(.semibold).monospacedDigit())
+                            .foregroundStyle(UH.Palette.accentInk)
                     }
+                    Text("Each one helps Coach Uphill fit your next weeks to you instead of an estimate.")
+                        .font(UH.TextStyle.caption)
+                        .foregroundStyle(UH.Palette.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
 
-                    Divider()
-
-                    // Item rows with icons, benefits, and checks
-                    VStack(spacing: UH.Space.small) {
+                    VStack(spacing: 0) {
                         ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-                            Button {
-                                onOpen(item.destination)
-                            } label: {
-                                HStack(spacing: UH.Space.small) {
-                                    // Icon badge
-                                    ZStack {
-                                        RoundedRectangle(cornerRadius: UH.Radius.control)
-                                            .fill(item.done ? UH.Palette.activeFill : UH.Palette.surface)
-                                            .frame(width: 36, height: 36)
-                                            .overlay(RoundedRectangle(cornerRadius: UH.Radius.control).stroke(item.done ? UH.Palette.accent : UH.Palette.line, lineWidth: 1))
-                                        Image(systemName: icon(for: item.id))
-                                            .font(.subheadline.weight(.semibold))
-                                            .foregroundStyle(item.done ? UH.Palette.buttonInk : UH.Palette.accentInk)
-                                    }
-
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(item.title)
-                                            .font(UH.TextStyle.label)
-                                            .foregroundStyle(UH.Palette.ink)
-                                            .multilineTextAlignment(.leading)
-                                        Text(benefit(for: item.id))
-                                            .font(UH.TextStyle.caption)
-                                            .foregroundStyle(UH.Palette.secondary)
-                                            .multilineTextAlignment(.leading)
-                                    }
-
-                                    Spacer(minLength: 0)
-
-                                    if item.done {
-                                        Image(systemName: "checkmark.circle.fill")
-                                            .font(.title3)
-                                            .foregroundStyle(UH.Palette.accentInk)
-                                    } else {
-                                        Image(systemName: "chevron.right")
-                                            .font(.footnote.weight(.semibold))
-                                            .foregroundStyle(UH.Palette.muted)
-                                    }
-                                }
-                                .frame(minHeight: 48)
-                                .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityValue(item.done ? L("Done") : L("Not done"))
-
-                            if index < items.count - 1 {
-                                Divider()
-                            }
+                            if index > 0 { Divider() }
+                            row(item)
                         }
                     }
 
-                    // Hide button
-                    Button {
-                        UserDefaults.standard.set(true, forKey: key)
-                        hidden = true
-                    } label: {
-                        Text("Hide for now")
-                            .font(UH.TextStyle.caption)
-                            .foregroundStyle(UH.Palette.muted)
-                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .center)
+                    Button("Not now") {
+                        UserDefaults.standard.set(now().timeIntervalSince1970, forKey: Self.snoozeKey)
+                        withAnimation(UH.Motion.standard) { snoozed = true }
                     }
-                    .buttonStyle(.plain)
+                    .font(UH.TextStyle.caption)
+                    .foregroundStyle(UH.Palette.secondary)
+                    .frame(maxWidth: .infinity, minHeight: 44)
                 }
                 .trainingCard()
+                .accessibilityIdentifier("plan.sharpen")
             }
         }
-        .task(id: plan.id) {
-            hidden = UserDefaults.standard.bool(forKey: key)
+        .onAppear { snoozed = Self.isSnoozed(at: now()) }
+    }
+
+    static func isSnoozed(at date: Date, defaults: UserDefaults = .standard) -> Bool {
+        let at = defaults.double(forKey: snoozeKey)
+        guard at > 0 else { return false }
+        return date.timeIntervalSince1970 - at < Double(snoozeDays) * 86_400
+    }
+
+    private func row(_ item: SharpenItem) -> some View {
+        Button { onOpen(item.destination) } label: {
+            HStack(spacing: UH.Space.small) {
+                Image(systemName: icon(for: item.id))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(item.done ? UH.Palette.muted : UH.Palette.accentInk)
+                    .frame(width: 36, height: 36)
+                    .background(item.done ? UH.Palette.surface : UH.Palette.accent.opacity(0.12),
+                                in: RoundedRectangle(cornerRadius: UH.Radius.control))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(item.title)
+                        .font(UH.TextStyle.label)
+                        .foregroundStyle(item.done ? UH.Palette.secondary : UH.Palette.ink)
+                        .strikethrough(item.done, color: UH.Palette.muted)
+                    if !item.done {
+                        Text(benefit(for: item.id))
+                            .font(UH.TextStyle.caption)
+                            .foregroundStyle(UH.Palette.secondary)
+                    }
+                }
+                .multilineTextAlignment(.leading)
+                Spacer(minLength: 0)
+                Image(systemName: item.done ? "checkmark.circle.fill" : "chevron.right")
+                    .font(item.done ? .title3 : .footnote.weight(.semibold))
+                    .foregroundStyle(item.done ? UH.Palette.accentInk : UH.Palette.muted)
+            }
+            .frame(minHeight: 56)
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .accessibilityValue(item.done ? L("Done") : L("Not done"))
+        .accessibilityIdentifier("plan.sharpen.\(item.id)")
     }
 
     private func icon(for id: String) -> String {
         switch id {
+        case "watch": "applewatch.radiowaves.left.and.right"
+        case "races": "medal"
         case "hr": "heart.fill"
         case "pace": "speedometer"
-        case "notes": "cross.case.fill"
-        case "schedule": "calendar"
-        case "profile": "person.text.rectangle"
-        default: "sparkles"
+        default: "cross.case.fill"
         }
     }
 
     private func benefit(for id: String) -> String {
         switch id {
-        case "hr": L("Locks in your aerobic endurance thresholds")
-        case "pace": L("Calibrates Zone 2 recovery & aerobic runs")
-        case "notes": L("Alerts Coach Uphill to adapt volume & loading")
-        case "schedule": L("Anchors your primary weekend endurance session")
-        case "profile": L("Refines energy expenditure & recovery rates")
-        default: L("Makes workouts more accurate")
+        case "watch": L("Real mileage and runs, not a guess")
+        case "races": L("Your past finishes set a realistic goal")
+        case "hr": L("Easy days stay easy, hard days hit the target")
+        case "pace": L("Every workout gets a pace you can hold")
+        default: L("Volume builds at a pace your body handles")
         }
     }
 }

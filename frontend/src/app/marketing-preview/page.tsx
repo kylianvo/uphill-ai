@@ -314,7 +314,7 @@ export default function MarketingPreview() {
               Train, log, and adapt
             </h3>
             <p style={{ fontSize: "12.5px", color: "#6b7280", margin: 0 }}>
-              Athlete logs session RPE (1–10 CR10 scale). Coach AI recalibrates remaining block.
+              Athlete chooses Very Light, Light, Moderate, Hard, or Max Effort. Coach AI recalibrates remaining block.
             </p>
           </div>
           <span style={{ background: "#ecfdf5", color: "#059669", padding: "4px 10px", borderRadius: "8px", fontSize: "11px", fontWeight: 700, border: "1px solid #a7f3d0" }}>
@@ -346,7 +346,7 @@ export default function MarketingPreview() {
                 boxShadow: item.active ? "0 4px 12px rgba(217, 119, 6, 0.15)" : "none",
               }}
             >
-              <div style={{ fontSize: "11px", fontWeight: 800, color: item.color }}>RPE {item.rpe}</div>
+
               <div style={{ fontSize: "12.5px", fontWeight: 700, color: item.active ? "#92400e" : "#111827" }}>{item.label}</div>
               <div style={{ fontSize: "10px", color: "#64748b" }}>{item.sub}</div>
               {item.active && (
@@ -368,7 +368,7 @@ export default function MarketingPreview() {
             </div>
           </div>
           <span style={{ background: "#fef3c7", color: "#d97706", padding: "4px 10px", borderRadius: "8px", fontSize: "12px", fontWeight: 800, border: "1px solid #fde68a" }}>
-            RPE 8 Logged
+            Hard effort logged
           </span>
         </div>
 
@@ -379,7 +379,7 @@ export default function MarketingPreview() {
             <span style={{ fontSize: "12.5px", fontWeight: 700, color: "#065f46" }}>Coach AI Dynamic Adaptation Engine</span>
           </div>
           <p style={{ fontSize: "12px", color: "#1e3a2f", lineHeight: 1.5, margin: 0 }}>
-            Neuromuscular fatigue detected (RPE 8 vs planned 6). Converting Tuesday Gym ME session to <strong>45-min Zone 1 Active Recovery (&lt;130 bpm)</strong> to flush metabolites and protect aerobic base.
+            Hard effort reported where Moderate was planned. Converting Tuesday Gym ME session to <strong>45-min Zone 1 Active Recovery (&lt;130 bpm)</strong> to flush metabolites and protect aerobic base.
           </p>
         </div>
       </div>
@@ -497,7 +497,7 @@ export default function MarketingPreview() {
               <ul style={{ margin: "0 0 8px", paddingLeft: "18px", fontSize: "12.5px", color: "#166534", lineHeight: 1.5 }}>
                 <li><strong>Tomorrow (Tuesday):</strong> Converted to 40-min Zone 1 Active Recovery (&lt;130 bpm) to flush metabolites.</li>
                 <li><strong>Gym ME Session:</strong> Moved to Thursday to allow a 48h neuromuscular recovery window.</li>
-                <li>If soreness remains above RPE 3 on Thursday, we will convert ME to mobility and resume next week.</li>
+                <li>If soreness feels more than Light on Thursday, we will convert ME to mobility and resume next week.</li>
               </ul>
               <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "#15803d", color: "#ffffff", padding: "4px 10px", borderRadius: "6px", fontSize: "11.5px", fontWeight: 700 }}>
                 <CheckCircle size={14} weight="fill" />

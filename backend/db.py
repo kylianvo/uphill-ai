@@ -2208,13 +2208,35 @@ def update_athlete_physiology_by_coach(
 
 def mark_profile_fields_athlete_set(user_id: int, before: dict[str, Any], after: dict[str, Any]) -> None:
     """After the athlete saves their own profile, any coach-editable field whose
-    value changed is now athlete-set: drop its coach provenance entry."""
+    value changed is now athlete-set. Record that explicitly (rather than just
+    dropping a coach/estimate entry) so a value saved before onboarding is
+    finished isn't shown as an app default."""
     sources = dict(after.get("profile_field_sources") or {})
-    changed = [f for f in COACH_EDITABLE_PROFILE_FIELDS if before.get(f) != after.get(f) and f in sources]
+    changed = [f for f in COACH_EDITABLE_PROFILE_FIELDS if before.get(f) != after.get(f)]
     if not changed:
         return
     for f in changed:
-        sources.pop(f)
+        sources[f] = {"source": "athlete"}
+    with engine.connect() as conn:
+        conn.execute(
+            text("UPDATE users SET profile_field_sources = CAST(:src AS jsonb) WHERE id = :id"),
+            {"src": json.dumps(sources), "id": user_id},
+        )
+        conn.commit()
+
+
+def mark_profile_fields_estimated(user_id: int, fields: list[str]) -> None:
+    """Records fields the app estimated (not measured) at onboarding, so the profile
+    shows them as defaults until the athlete or a coach sets them. A later change by
+    either replaces the entry (mark_profile_fields_athlete_set / coach update)."""
+    fields = [f for f in fields if f in COACH_EDITABLE_PROFILE_FIELDS]
+    if not fields:
+        return
+    user = get_user_by_id(user_id)
+    sources = dict((user or {}).get("profile_field_sources") or {})
+    for f in fields:
+        if (sources.get(f) or {}).get("source") != "coach":
+            sources[f] = {"source": "estimate"}
     with engine.connect() as conn:
         conn.execute(
             text("UPDATE users SET profile_field_sources = CAST(:src AS jsonb) WHERE id = :id"),
@@ -2308,7 +2330,8 @@ def update_onboarding_profile(user_id: int, data: dict[str, Any]) -> bool:
                 ant_hr = :ant_hr,
                 zone2_pace_min = COALESCE(:zone2_pace_min, zone2_pace_min),
                 zone2_pace_max = COALESCE(:zone2_pace_max, zone2_pace_max),
-                threshold_source = COALESCE(:threshold_source, threshold_source)
+                threshold_source = COALESCE(:threshold_source, threshold_source),
+                threshold_pace = COALESCE(:threshold_pace, threshold_pace)
             WHERE id = :id
         """),
             {
@@ -2330,6 +2353,7 @@ def update_onboarding_profile(user_id: int, data: dict[str, Any]) -> bool:
                 "zone2_pace_min": data.get("zone2_pace_min"),
                 "zone2_pace_max": data.get("zone2_pace_max"),
                 "threshold_source": data.get("threshold_source"),
+                "threshold_pace": data.get("threshold_pace"),
                 "double_session_days": json.dumps(data.get("double_session_days", [])),
                 "id": user_id,
             },

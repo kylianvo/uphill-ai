@@ -831,51 +831,14 @@ struct WorkoutDetailSheet: View {
                         Circle()
                             .fill(feel.color)
                             .frame(width: 6, height: 6)
-                        Text("\(feel.label) · RPE \(feel.rpe)/10")
+                        Text(feel.label)
                             .font(.system(size: 11, weight: .bold, design: .monospaced))
-                            .foregroundStyle(feel.color)
+                            .foregroundStyle(UH.Palette.ink)
                     }
                 }
             }
 
-            // 5-level segmented bar
-            HStack(spacing: 5) {
-                ForEach(WorkoutFeeling.allCases) { feel in
-                    let isSelected = activeFeeling == feel
-                    Button {
-                        rpe = feel.rpe
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    } label: {
-                        VStack(spacing: 4) {
-                            RoundedRectangle(cornerRadius: 2)
-                                .fill(isSelected ? feel.color : UH.Palette.line)
-                                .frame(width: isSelected ? 20 : 12, height: 3.5)
-
-                            Text(feel.label)
-                                .font(.system(size: 10, weight: isSelected ? .bold : .medium))
-                                .foregroundStyle(isSelected ? feel.color : UH.Palette.ink)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.7)
-
-                            Text("RPE \(feel.rpe)")
-                                .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                                .foregroundStyle(isSelected ? feel.color : UH.Palette.muted)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 52)
-                        .background(
-                            isSelected ? feel.color.opacity(0.12) : UH.Palette.surface,
-                            in: RoundedRectangle(cornerRadius: 8)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(isSelected ? feel.color : UH.Palette.line, lineWidth: isSelected ? 1.5 : 1)
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("detail.feeling.\(feel.rawValue)")
-                }
-            }
+            EffortSelector(selection: $rpe, identifier: "detail.feeling")
 
             // Spotlight card for selected feeling
             if let feel = activeFeeling {
@@ -883,17 +846,12 @@ struct WorkoutDetailSheet: View {
                     HStack {
                         Image(systemName: feel.iconName)
                             .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(feel.color)
+                            .foregroundStyle(UH.Palette.ink)
                         Text(feel.label)
                             .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(feel.color)
+                            .foregroundStyle(UH.Palette.ink)
                         Spacer()
-                        Text("RPE \(feel.rpe) / 10")
-                            .font(.system(size: 10.5, weight: .bold, design: .monospaced))
-                            .foregroundStyle(feel.color)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(feel.color.opacity(0.12), in: Capsule())
+
                     }
 
                     Text(feel.subLabel)
@@ -903,7 +861,7 @@ struct WorkoutDetailSheet: View {
                     HStack(alignment: .top, spacing: 6) {
                         Image(systemName: "sparkles")
                             .font(.system(size: 11))
-                            .foregroundStyle(feel.color)
+                            .foregroundStyle(UH.Palette.ink)
                             .padding(.top, 1)
                         Text(feel.coachDescription)
                             .font(.system(size: 11.5))

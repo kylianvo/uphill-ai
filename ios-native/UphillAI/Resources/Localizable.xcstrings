@@ -1576,7 +1576,7 @@
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sẵn sàng cho một cự ly, như 21 km đầu tiên."
+            "value": "Sẵn sàng chạy một cự ly, như 21 km đầu tiên."
           }
         }
       }
@@ -5526,7 +5526,7 @@
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tối đa"
+            "value": "Hết sức"
           }
         }
       }
@@ -5826,7 +5826,7 @@
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Chủ yếu bằng phẳng"
+            "value": "Bằng phẳng"
           }
         }
       }
@@ -7516,7 +7516,7 @@
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Lúc nghỉ %lld bpm"
+            "value": "Nhịp tim nghỉ %lld bpm"
           }
         }
       }
@@ -11537,6 +11537,1686 @@
           "stringUnit": {
             "state": "translated",
             "value": "Buổi tập mới dùng các chỉ số này."
+          }
+        }
+      }
+    },
+    "%@ km": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ km"
+          }
+        }
+      }
+    },
+    "%@ km · %@ m D+": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ km · %@ m D+"
+          }
+        }
+      }
+    },
+    "%lld h": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld giờ"
+          }
+        }
+      }
+    },
+    "A clear goal sets how hard your key sessions are.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mục tiêu quyết định cường độ các buổi tập chính."
+          }
+        }
+      }
+    },
+    "Add birth date": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm ngày sinh"
+          }
+        }
+      }
+    },
+    "Anything else I should know? (optional)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ghi chú thêm (tùy chọn)"
+          }
+        }
+      }
+    },
+    "Arrive healthy and finish feeling in control.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đến Race khỏe mạnh và finish trong khả năng."
+          }
+        }
+      }
+    },
+    "Birth date": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngày sinh"
+          }
+        }
+      }
+    },
+    "Body and injury history": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cơ thể và chấn thương"
+          }
+        }
+      }
+    },
+    "Choose a long run day from your run days.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn ngày Long Run trong các ngày chạy."
+          }
+        }
+      }
+    },
+    "Choose the effort that best matches how it felt.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn mức gắng sức phù hợp với cảm nhận của bạn."
+          }
+        }
+      }
+    },
+    "Climbing (m D+)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "D+ (m)"
+          }
+        }
+      }
+    },
+    "Coach Uphill sets the target from your fitness as you train.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coach Uphill đặt mục tiêu theo thể lực trong quá trình tập."
+          }
+        }
+      }
+    },
+    "Distance and climbing set how long your key runs get.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cự ly và D+ quyết định độ dài các buổi tập chính."
+          }
+        }
+      }
+    },
+    "Double sessions (optional)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tập đôi (tùy chọn)"
+          }
+        }
+      }
+    },
+    "Double sessions: %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngày tập đôi: %@"
+          }
+        }
+      }
+    },
+    "Effort": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gắng sức"
+          }
+        }
+      }
+    },
+    "Enter 0 to 120 minutes.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhập từ 0 đến 120 phút."
+          }
+        }
+      }
+    },
+    "Find my profile": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tìm hồ sơ"
+          }
+        }
+      }
+    },
+    "Gym access": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Có phòng gym"
+          }
+        }
+      }
+    },
+    "Have you raced before?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kết quả Race"
+          }
+        }
+      }
+    },
+    "Heart rate (optional)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HR (tùy chọn)"
+          }
+        }
+      }
+    },
+    "Height (cm)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chiều cao (cm)"
+          }
+        }
+      }
+    },
+    "Hill / trail days: %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngày dốc / Trail: %@"
+          }
+        }
+      }
+    },
+    "Hill sessions and strength work go where you can actually do them.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buổi tập dốc và Strength sẽ phù hợp với nơi bạn tập."
+          }
+        }
+      }
+    },
+    "How does your body hold up?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tình trạng cơ thể"
+          }
+        }
+      }
+    },
+    "I bounce back quickly from hard efforts.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tôi phục hồi nhanh sau buổi tập nặng."
+          }
+        }
+      }
+    },
+    "I need a careful, conservative build.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tôi cần tăng khối lượng chậm và cẩn thận."
+          }
+        }
+      }
+    },
+    "Injury history sets how fast I add volume.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiền sử chấn thương quyết định tốc độ tăng khối lượng."
+          }
+        }
+      }
+    },
+    "Leave blank if you don't know. You can add training zones in Profile later.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Để trống nếu chưa biết. Bạn có thể thêm Zone trong Hồ sơ sau."
+          }
+        }
+      }
+    },
+    "Link your UTMB or Vietnam race profile and I'll read your past finishes. They shape your starting load and race-day goal.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Liên kết hồ sơ UTMB hoặc Race Việt Nam để đọc kết quả cũ. Các kết quả giúp chọn khối lượng ban đầu và mục tiêu Race."
+          }
+        }
+      }
+    },
+    "Long run": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Long Run"
+          }
+        }
+      }
+    },
+    "Minor or past injury": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Từng chấn thương"
+          }
+        }
+      }
+    },
+    "Modify run days, long run, or training venues": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đổi ngày chạy, Long Run hoặc nơi tập"
+          }
+        }
+      }
+    },
+    "More about you (optional)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thông tin thêm"
+          }
+        }
+      }
+    },
+    "Mostly resolved, I'm careful at times.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã hồi phục, đôi lúc vẫn cần chú ý."
+          }
+        }
+      }
+    },
+    "Mostly resolved, I’m careful at times.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã hồi phục, đôi lúc vẫn cần chú ý."
+          }
+        }
+      }
+    },
+    "No race results linked yet. You can add them later in Profile.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa liên kết kết quả Race. Bạn có thể thêm trong Hồ sơ sau."
+          }
+        }
+      }
+    },
+    "No race yet, like your first 21 km or 50 km.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa có Race, ví dụ lần đầu chạy 21 km hoặc 50 km."
+          }
+        }
+      }
+    },
+    "Not sure? Estimate it from your results": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ước tính từ kết quả Race"
+          }
+        }
+      }
+    },
+    "Often or recently injured": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hay chấn thương"
+          }
+        }
+      }
+    },
+    "Overall effort": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mức gắng sức"
+          }
+        }
+      }
+    },
+    "Past results tell me what you can already do.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kết quả cũ cho biết khả năng hiện tại của bạn."
+          }
+        }
+      }
+    },
+    "Pick %lld run days.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn %lld ngày chạy."
+          }
+        }
+      }
+    },
+    "Pick up to 2 run days for double sessions.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn tối đa 2 ngày chạy để tập đôi."
+          }
+        }
+      }
+    },
+    "Profile linked. Your results are syncing.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã liên kết. Đang đồng bộ kết quả."
+          }
+        }
+      }
+    },
+    "Rarely or never injured": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ít chấn thương"
+          }
+        }
+      }
+    },
+    "Run days": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngày chạy"
+          }
+        }
+      }
+    },
+    "Running now": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hiện tại"
+          }
+        }
+      }
+    },
+    "Set your target finish time.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhập thời gian finish mục tiêu."
+          }
+        }
+      }
+    },
+    "Skip for now": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bỏ qua"
+          }
+        }
+      }
+    },
+    "Stair access": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Có cầu thang"
+          }
+        }
+      }
+    },
+    "Target finish time": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thời gian mục tiêu"
+          }
+        }
+      }
+    },
+    "Terrain near home": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Địa hình gần nhà"
+          }
+        }
+      }
+    },
+    "Terrain near home: %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Địa hình gần nhà: %@"
+          }
+        }
+      }
+    },
+    "Train toward a finish time you choose.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tập theo thời gian finish bạn chọn."
+          }
+        }
+      }
+    },
+    "Travel, work shifts, a training camp, a niggle…": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đi xa, ca làm, tập huấn, đau nhẹ…"
+          }
+        }
+      }
+    },
+    "Treadmill up to %lld%%": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Treadmill tối đa %lld%%"
+          }
+        }
+      }
+    },
+    "Up to 2 of your run days can carry a second short session.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn tối đa 2 ngày chạy có thêm một buổi ngắn."
+          }
+        }
+      }
+    },
+    "Used to work out how much fatigue is left.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dùng để ước tính mức mệt còn lại."
+          }
+        }
+      }
+    },
+    "Weekly km": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Km mỗi tuần"
+          }
+        }
+      }
+    },
+    "Weight (kg)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cân nặng (kg)"
+          }
+        }
+      }
+    },
+    "What distance?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cự ly mục tiêu"
+          }
+        }
+      }
+    },
+    "What does your week look like?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lịch tập trong tuần"
+          }
+        }
+      }
+    },
+    "What's your goal on race day?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mục tiêu Race"
+          }
+        }
+      }
+    },
+    "Where do you train?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nơi tập luyện"
+          }
+        }
+      }
+    },
+    "Which distance are you running?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn cự ly Race"
+          }
+        }
+      }
+    },
+    "You can change any of this later from your plan.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn có thể đổi các thông tin này trong plan sau."
+          }
+        }
+      }
+    },
+    "Your average over the last month. Your first week starts close to it.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trung bình tháng vừa rồi. Tuần đầu sẽ gần mức này."
+          }
+        }
+      }
+    },
+    "double-session day": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ngày tập đôi"
+          }
+        }
+      }
+    },
+    "run day": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ngày chạy"
+          }
+        }
+      }
+    },
+    "Set your training zones": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thiết lập Zone tập luyện"
+          }
+        }
+      }
+    },
+    "Optional. Add values you know; leave the rest blank. You can update them in Profile later.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không bắt buộc. Nhập các giá trị bạn biết, để trống phần còn lại. Bạn có thể cập nhật trong Hồ sơ sau."
+          }
+        }
+      }
+    },
+    "Find values from your watch or a test": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lấy giá trị từ đồng hồ hoặc bài kiểm tra"
+          }
+        }
+      }
+    },
+    "Heart rate thresholds": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngưỡng nhịp tim"
+          }
+        }
+      }
+    },
+    "How were these measured?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Các ngưỡng này được xác định thế nào?"
+          }
+        }
+      }
+    },
+    "Not sure": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa rõ"
+          }
+        }
+      }
+    },
+    "Watch estimate": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đồng hồ ước tính"
+          }
+        }
+      }
+    },
+    "Field test": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiểm tra thực địa"
+          }
+        }
+      }
+    },
+    "Lab test": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiểm tra tại phòng lab"
+          }
+        }
+      }
+    },
+    "Choose Field test or Lab test only when both thresholds were measured that way.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chỉ chọn kiểm tra thực địa hoặc phòng lab khi cả hai ngưỡng đều được đo bằng phương pháp đó."
+          }
+        }
+      }
+    },
+    "Running pace (min/km)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pace chạy (phút/km)"
+          }
+        }
+      }
+    },
+    "Use flat-ground running pace, not your trail race average. Enter m:ss, for example 6:30.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dùng Pace chạy trên đường bằng, không dùng Pace trung bình của giải trail. Nhập phút:giây, ví dụ 6:30."
+          }
+        }
+      }
+    },
+    "Your thresholds and easy pace help set workout intensity.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngưỡng nhịp tim và Pace chạy nhẹ giúp xác định cường độ bài tập."
+          }
+        }
+      }
+    },
+    "Leave blank if you don't know.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Để trống nếu bạn chưa biết."
+          }
+        }
+      }
+    },
+    "Enter AeT between 80 and 220 bpm.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhập AeT từ 80 đến 220 bpm."
+          }
+        }
+      }
+    },
+    "Enter AnT between 90 and 225 bpm.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhập AnT từ 90 đến 225 bpm."
+          }
+        }
+      }
+    },
+    "Heart rates must increase from Resting to AeT to AnT to Max.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhịp tim phải tăng theo thứ tự: nhịp tim nghỉ, AeT, AnT, nhịp tim tối đa."
+          }
+        }
+      }
+    },
+    "Enter pace as m:ss per km, for example 6:30.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhập Pace theo phút:giây mỗi km, ví dụ 6:30."
+          }
+        }
+      }
+    },
+    "Easy pace, slower end must be slower than the faster end.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đầu chậm của khoảng Pace chạy nhẹ phải chậm hơn đầu nhanh."
+          }
+        }
+      }
+    },
+    "Threshold pace must be faster than easy pace.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Threshold Pace phải nhanh hơn Pace chạy nhẹ."
+          }
+        }
+      }
+    },
+    "AeT: %lld bpm": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AeT: %lld bpm"
+          }
+        }
+      }
+    },
+    "AnT: %lld bpm": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AnT: %lld bpm"
+          }
+        }
+      }
+    },
+    "Easy pace, slower end: %@ /km": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pace chạy nhẹ, đầu chậm: %@ /km"
+          }
+        }
+      }
+    },
+    "Easy pace, faster end: %@ /km": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pace chạy nhẹ, đầu nhanh: %@ /km"
+          }
+        }
+      }
+    },
+    "Threshold pace: %@ /km": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Threshold Pace: %@ /km"
+          }
+        }
+      }
+    },
+    "Find your values": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tìm giá trị của bạn"
+          }
+        }
+      }
+    },
+    "From watch": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Từ đồng hồ"
+          }
+        }
+      }
+    },
+    "Training zones guide": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hướng dẫn Zone tập luyện"
+          }
+        }
+      }
+    },
+    "Watch zones are estimates unless calibrated by a test. Zone numbers vary by zone model; a percentage of Max HR is not a measured AeT or AnT.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zone từ đồng hồ là giá trị ước tính nếu chưa hiệu chỉnh bằng kiểm tra. Số Zone tùy mô hình; phần trăm Max HR không phải AeT hay AnT đã đo."
+          }
+        }
+      }
+    },
+    "Use a tested Lactate Threshold (LTHR) when available. Do not assume every watch Zone 4 boundary is AnT.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dùng Lactate Threshold (LTHR) đã kiểm tra nếu có. Không phải mọi giới hạn Zone 4 trên đồng hồ đều là AnT."
+          }
+        }
+      }
+    },
+    "Copy your tested thresholds if available, or use watch zone boundaries as estimates.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ghi lại ngưỡng đã kiểm tra nếu có, hoặc dùng giới hạn Zone từ đồng hồ như giá trị ước tính."
+          }
+        }
+      }
+    },
+    "Check your Aerobic Endurance limit and threshold heart rate. Keep watch-generated values marked as estimates.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xem giới hạn Aerobic Endurance và nhịp tim ngưỡng. Đánh dấu giá trị đồng hồ tính là ước tính."
+          }
+        }
+      }
+    },
+    "Automatic zones use a heart rate formula. Treat their boundaries as estimates, not measured thresholds.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zone tự động dùng công thức nhịp tim. Giới hạn này là ước tính, không phải ngưỡng đã đo."
+          }
+        }
+      }
+    },
+    "Look for running Lactate Threshold pace in Garmin Connect or Threshold Pace in COROS EvoLab, if available. Use easy runs on flat ground for your easy pace range. Convert min/mile values to min/km before entering them.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tìm Lactate Threshold Pace chạy trong Garmin Connect hoặc Threshold Pace trong COROS EvoLab nếu có. Lấy khoảng Pace từ các buổi chạy nhẹ trên đường bằng. Đổi phút/mile sang phút/km trước khi nhập."
+          }
+        }
+      }
+    },
+    "Warm up, then hold a steady speed for 60 minutes. Compare heart rate between halves; drift above 5% suggests you started above AeT. Follow Evoke's full protocol and interpretation.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khởi động rồi giữ tốc độ đều trong 60 phút. So sánh nhịp tim hai nửa; độ trôi trên 5% cho thấy có thể bạn bắt đầu trên AeT. Xem quy trình và cách đọc kết quả của Evoke."
+          }
+        }
+      }
+    },
+    "Evoke uses a sustained 20–60 minute time trial, depending on experience. Average heart rate estimates AnT for that activity. This is a hard effort; test well-rested.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Evoke dùng bài time trial liên tục 20–60 phút tùy kinh nghiệm. Nhịp tim trung bình ước tính AnT cho hoạt động đó. Bài này rất nặng; hãy kiểm tra khi đã hồi phục."
+          }
+        }
+      }
+    },
+    "Record easy pace below AeT on flat ground. Use a flat running time trial for Threshold pace; uphill pace is not interchangeable.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ghi Pace chạy nhẹ dưới AeT trên đường bằng. Lấy Threshold Pace từ time trial chạy đường bằng; không dùng Pace leo dốc thay thế."
+          }
+        }
+      }
+    },
+    "Read Evoke's assessment guide": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đọc hướng dẫn kiểm tra của Evoke"
+          }
+        }
+      }
+    },
+    "You can skip these fields and add test results later.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn có thể bỏ qua và bổ sung kết quả kiểm tra sau."
+          }
+        }
+      }
+    },
+    "AeT: top of Zone 2. AnT: top of Zone 3. Zone widths are schematic.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AeT: giới hạn trên Zone 2. AnT: giới hạn trên Zone 3. Độ rộng Zone chỉ để minh họa."
+          }
+        }
+      }
+    },
+    "Continue with estimated zones?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiếp tục với Zone ước tính?"
+          }
+        }
+      }
+    },
+    "Review values": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiểm tra lại giá trị"
+          }
+        }
+      }
+    },
+    "Continue with estimates": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiếp tục với ước tính"
+          }
+        }
+      }
+    },
+    "Your training zones are missing or their source is unconfirmed. The plan will use available values and estimates. You can update them in Profile after a test.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn chưa có Zone tập luyện hoặc chưa xác nhận nguồn. Kế hoạch sẽ dùng các giá trị hiện có cùng giá trị ước tính. Bạn có thể cập nhật trong Hồ sơ sau khi kiểm tra."
+          }
+        }
+      }
+    },
+    "Pace zone preview": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xem trước Zone theo Pace"
+          }
+        }
+      }
+    },
+    "Add Threshold Pace or both easy pace bounds to preview your zones.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhập Threshold Pace hoặc cả hai đầu khoảng Pace chạy nhẹ để xem trước Zone."
+          }
+        }
+      }
+    },
+    "Estimated from your inputs. Threshold Pace takes priority over the easy pace range.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ước tính từ giá trị bạn nhập. Threshold Pace được ưu tiên hơn khoảng Pace chạy nhẹ."
+          }
+        }
+      }
+    },
+    "AeT: top of Zone 2. AnT: top of Zone 3.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AeT: giới hạn trên Zone 2. AnT: giới hạn trên Zone 3."
+          }
+        }
+      }
+    },
+    "Enter Max HR between 120 and 240 bpm.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhập Max HR từ 120 đến 240 bpm."
+          }
+        }
+      }
+    },
+    "Enter Resting HR between 30 and 120 bpm.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhập Resting HR từ 30 đến 120 bpm."
+          }
+        }
+      }
+    },
+    "Heart Rate": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhịp tim"
+          }
+        }
+      }
+    },
+    "Paces": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pace"
+          }
+        }
+      }
+    },
+    "No running yet": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa chạy bộ"
+          }
+        }
+      }
+    },
+    "Start at least 2 weeks before your goal date.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bắt đầu ít nhất 2 tuần trước ngày mục tiêu."
+          }
+        }
+      }
+    },
+    "%@, coming soon": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@, sắp có"
+          }
+        }
+      }
+    },
+    "Add your AeT and AnT heart rates": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm HR tại AeT và AnT"
+          }
+        }
+      }
+    },
+    "Add your pace zones": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm vùng pace"
+          }
+        }
+      }
+    },
+    "COROS connected": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã kết nối COROS"
+          }
+        }
+      }
+    },
+    "Connect COROS": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kết nối COROS"
+          }
+        }
+      }
+    },
+    "Connect your watch": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kết nối đồng hồ"
+          }
+        }
+      }
+    },
+    "Connected accounts": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tài khoản đã kết nối"
+          }
+        }
+      }
+    },
+    "Connected. I'll use your recent runs to set your starting mileage.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã kết nối. Tôi sẽ dùng các buổi chạy gần đây để đặt khối lượng khởi đầu."
+          }
+        }
+      }
+    },
+    "Each one helps Coach Uphill fit your next weeks to you instead of an estimate.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mỗi mục giúp Coach Uphill xếp các tuần tới theo đúng bạn, thay vì ước tính."
+          }
+        }
+      }
+    },
+    "Easy days stay easy, hard days hit the target": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngày nhẹ đúng là nhẹ, ngày nặng đúng mục tiêu"
+          }
+        }
+      }
+    },
+    "Every workout gets a pace you can hold": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mỗi buổi tập có pace bạn giữ được"
+          }
+        }
+      }
+    },
+    "From your COROS: %lld km a week over the last 4 full weeks": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Từ COROS: %lld km/tuần, trung bình 4 tuần đầy đủ gần nhất"
+          }
+        }
+      }
+    },
+    "Get the most from your plan": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Để plan sát với bạn hơn"
+          }
+        }
+      }
+    },
+    "Link your race history": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Liên kết lịch sử Race"
+          }
+        }
+      }
+    },
+    "No watch? Skip this. You can connect one later in Me → Connected accounts.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa có đồng hồ? Bỏ qua bước này. Bạn có thể kết nối sau trong Tôi → Tài khoản đã kết nối."
+          }
+        }
+      }
+    },
+    "Real mileage and runs, not a guess": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khối lượng và buổi chạy thật, không phải ước đoán"
+          }
+        }
+      }
+    },
+    "Runs, weekly mileage and fitness, synced automatically.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buổi chạy, khối lượng tuần và chỉ số thể chất, đồng bộ tự động."
+          }
+        }
+      }
+    },
+    "Tell Coach Uphill about injuries": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cho Coach Uphill biết về chấn thương"
+          }
+        }
+      }
+    },
+    "Volume builds at a pace your body handles": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khối lượng tăng vừa sức cơ thể bạn"
+          }
+        }
+      }
+    },
+    "Your past finishes set a realistic goal": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thành tích cũ giúp đặt mục tiêu sát thực tế"
+          }
+        }
+      }
+    },
+    "Your runs show me what you really do, not just what you remember.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dữ liệu chạy cho tôi biết bạn thực sự tập bao nhiêu, không chỉ dựa vào trí nhớ."
+          }
+        }
+      }
+    },
+    " as context": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " làm ngữ cảnh"
+          }
+        }
+      }
+    },
+    "%@, %lld m D+": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@, %lld m D+"
+          }
+        }
+      }
+    },
+    "Connect your watch for recent training": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kết nối đồng hồ để có dữ liệu tập gần đây"
+          }
+        }
+      }
+    },
+    "Distance: %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cự ly: %@"
+          }
+        }
+      }
+    },
+    "Drag across the chart to read any finish time.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kéo trên biểu đồ để xem từng thời gian về đích."
+          }
+        }
+      }
+    },
+    "I need at least one past result, a linked profile or recent watch training to estimate A/B/C times for this race.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cần ít nhất một kết quả giải trước, hồ sơ đã liên kết hoặc dữ liệu tập gần đây từ đồng hồ để ước tính mục tiêu A/B/C cho giải này."
+          }
+        }
+      }
+    },
+    "Link a past trail race result": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Liên kết kết quả Trail race trước"
+          }
+        }
+      }
+    },
+    "Link your UTMB or VBM profile": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Liên kết hồ sơ UTMB hoặc VBM"
+          }
+        }
+      }
+    },
+    "Link your UTMB profile for your UTMB index": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Liên kết hồ sơ UTMB để có UTMB index"
+          }
+        }
+      }
+    },
+    "Matched race": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã khớp giải"
+          }
+        }
+      }
+    },
+    "Not enough data for goal times yet": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa đủ dữ liệu để đặt mục tiêu thời gian"
+          }
+        }
+      }
+    },
+    "PODIUM & TOP TIMES": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "BỤC VINH QUANG & THỜI GIAN TOP"
+          }
+        }
+      }
+    },
+    "Race name (optional)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tên giải (tùy chọn)"
+          }
+        }
+      }
+    },
+    "Sync VO2max from your watch": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đồng bộ VO2max từ đồng hồ"
+          }
+        }
+      }
+    },
+    "To sharpen this:": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Để chính xác hơn:"
+          }
+        }
+      }
+    },
+    "Top %lld": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Top %lld"
+          }
+        }
+      }
+    },
+    "Top %lld%%": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Top %lld%%"
+          }
+        }
+      }
+    },
+    "Use my plan's race": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dùng giải trong giáo án"
+          }
+        }
+      }
+    },
+    "Using ": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang dùng "
+          }
+        }
+      }
+    },
+    "Which distance?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cự ly nào?"
+          }
+        }
+      }
+    },
+    "top %@%%": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "top %@%%"
+          }
+        }
+      }
+    },
+    "%@ · top %@%%": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · top %@%%"
           }
         }
       }

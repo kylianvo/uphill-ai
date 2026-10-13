@@ -11,6 +11,8 @@ final class PlanSetupViewModel {
     private(set) var stepIndex = 0
     private(set) var direction: Direction = .forward
     private(set) var showIssues = false
+    var showZoneEstimateWarning = false
+    var showPaceInputs = false
     private(set) var isSubmitting = false
     private(set) var submitError: String?
     private(set) var didStart = false
@@ -22,12 +24,27 @@ final class PlanSetupViewModel {
     private let now: () -> Date
     private let calendar: Calendar
     private let raceService: RaceMatchService?
+    let goalEstimateService: (any GoalEstimateServicing)?
+    let raceHistoryService: (any RaceHistoryServicing)?
     var selectedRace: RaceMatch?
     var raceCandidates: [RaceMatch] = []
+    /// Set once the athlete links a UTMB or VBM profile during setup.
+    var linkedRaceHistory = false
+    let deviceService: (any DeviceConnectionServicing)?
+    private let loadWatchVolume: (@Sendable () async -> Double?)?
+    /// COROS 4-week average, shown beside the weekly km field when it was used.
+    private(set) var watchWeeklyKm: Double?
+    private(set) var corosConnected = false
 
     init(mode: Mode, user: User?, service: any GenerationServicing, generation: GenerationCenter,
-         session: SessionStore, now: @escaping () -> Date = { .now }, calendar: Calendar = PlanCalendar.calendar, raceService: RaceMatchService? = nil) {
+         session: SessionStore, now: @escaping () -> Date = { .now }, calendar: Calendar = PlanCalendar.calendar, raceService: RaceMatchService? = nil,
+         goalEstimateService: (any GoalEstimateServicing)? = nil, raceHistoryService: (any RaceHistoryServicing)? = nil,
+         deviceService: (any DeviceConnectionServicing)? = nil, loadWatchVolume: (@Sendable () async -> Double?)? = nil) {
+        self.deviceService = deviceService
+        self.loadWatchVolume = loadWatchVolume
         self.raceService = raceService
+        self.goalEstimateService = goalEstimateService
+        self.raceHistoryService = raceHistoryService
         self.mode = mode
         self.service = service
         self.generation = generation
@@ -38,6 +55,51 @@ final class PlanSetupViewModel {
     }
 
     var today: Date { calendar.startOfDay(for: now()) }
+
+    // MARK: Watch
+
+    /// Reads connection state and, when COROS has enough synced weeks, its weekly average.
+    func refreshWatch() async {
+        if let deviceService, let status = try? await deviceService.fetchStatus() {
+            corosConnected = status.isCorosConnected
+        }
+        await prefillWatchVolume()
+    }
+
+    /// Fills weekly km from COROS unless the athlete already typed a value of their own.
+    func prefillWatchVolume() async {
+        guard let loadWatchVolume, let km = await loadWatchVolume() else { return }
+        watchWeeklyKm = km.rounded()
+        if !editedWeeklyKm {
+            draft.currentWeeklyKm = km.rounded()
+            draft.weeklyKmFromWatch = true
+        }
+    }
+
+    /// Set once the athlete edits weekly km themselves; a later COROS read must not overwrite it.
+    private var editedWeeklyKm = false
+
+    func setWeeklyKm(_ km: Double?) {
+        editedWeeklyKm = true
+        draft.currentWeeklyKm = km
+        draft.weeklyKmFromWatch = km != nil && km == watchWeeklyKm
+    }
+
+    /// Connects COROS, then pulls a month of runs so mileage is ready for the next screen.
+    func connectCoros() async -> String? {
+        guard let deviceService else { return nil }
+        switch await CorosOAuthCoordinator.shared.connect(via: deviceService) {
+        case .success:
+            corosConnected = true
+            _ = try? await deviceService.syncNow(days: 30)
+            await prefillWatchVolume()
+            return nil
+        case .cancelled:
+            return nil
+        case .failed(let message):
+            return message
+        }
+    }
     var earliestRaceDate: Date { calendar.date(byAdding: .day, value: 14, to: today)! }
 
     func reopenAtReview() {
@@ -52,12 +114,18 @@ final class PlanSetupViewModel {
         showIssues = false
     }
 
-    var steps: [SetupStep] { SetupStep.steps(for: draft.goal, includeAboutYou: mode == .onboarding) }
+    var steps: [SetupStep] { SetupStep.steps(for: draft.goal, includeProfile: mode == .onboarding) }
     var step: SetupStep { steps[min(stepIndex, steps.count - 1)] }
     var progress: Double { Double(min(stepIndex, steps.count - 1) + 1) / Double(max(steps.count, 1)) }
     var isFirstStep: Bool { stepIndex == 0 }
     var isLastStep: Bool { step == .review }
-    var primaryTitle: String { isLastStep ? L("Build my plan") : L("Next") }
+    var primaryTitle: String {
+        if step == .watch, !corosConnected { return L("Skip for now") }
+        if isLastStep { return L("Build my plan") }
+        if step == .trainingZones, !draft.hasTrainingZones { return L("Skip for now") }
+        if step == .raceHistory, !linkedRaceHistory { return L("Skip for now") }
+        return L("Next")
+    }
 
     var issues: [SetupIssue] {
         showIssues ? draft.issues(for: step, today: now(), calendar: calendar) : []
@@ -67,29 +135,68 @@ final class PlanSetupViewModel {
         issues.first { $0.field == field }?.message
     }
 
-    var latestStartDate: Date { calendar.date(byAdding: .day, value: 14, to: today)! }
+    var latestStartDate: Date { draft.latestStartDate(today: today, calendar: calendar) }
     var weeksToRace: Int { max(0, calendar.dateComponents([.day], from: today, to: draft.raceDate ?? earliestRaceDate).day ?? 0) / 7 }
 
     func searchRace() async {
         let name = draft.raceName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard draft.goal == .race, step == .details, selectedRace?.raceName != name else { return }
         selectedRace = nil
         raceCandidates = []
         guard name.count >= 3, let raceService else { return }
+        let initialDistance = draft.distanceKm
+        let initialElevation = draft.elevationGainM
         do {
             try await Task.sleep(for: .milliseconds(500))
             let result = try await raceService.match(name: name)
             try Task.checkCancellation()
             guard draft.raceName.trimmingCharacters(in: .whitespacesAndNewlines) == name else { return }
-            if result.autoApply == true, let match = result.match { selectRace(match) }
+            if result.autoApply == true, let match = result.match {
+                let typedDistance = draft.distanceKm
+                let typedElevation = draft.elevationGainM
+                selectRace(match)
+                if typedDistance != initialDistance {
+                    draft.distanceKm = typedDistance
+                    draft.distanceLabel = nil
+                }
+                if typedElevation != initialElevation { draft.elevationGainM = typedElevation }
+            }
             else { raceCandidates = result.candidates ?? [] }
         } catch { }
     }
 
     func selectRace(_ race: RaceMatch) {
+        draft.raceName = race.raceName
         selectedRace = race
         raceCandidates = []
-        draft.distanceKm = race.distanceKm
-        draft.elevationGainM = race.elevationGainM
+        if let km = race.distanceKm {
+            draft.distanceKm = km
+            draft.elevationGainM = race.elevationGainM
+            draft.distanceLabel = race.distanceLabel
+        } else if let only = raceDistances.first, raceDistances.count == 1 {
+            pickDistance(only)
+        }
+    }
+
+    /// Distances the selected race offers, shortest first.
+    var raceDistances: [RaceDistance] {
+        (selectedRace?.distances ?? []).sorted { $0.distanceKm < $1.distanceKm }
+    }
+
+    func pickDistance(_ distance: RaceDistance) {
+        draft.distanceKm = distance.distanceKm
+        draft.elevationGainM = distance.elevationGainM
+        draft.distanceLabel = distance.label
+    }
+
+    func isPicked(_ distance: RaceDistance) -> Bool {
+        draft.distanceKm == distance.distanceKm && draft.distanceLabel == distance.label
+    }
+
+    /// Goal Determiner result: a target in minutes becomes the race's time goal.
+    func applyEstimatedGoal(minutes: Double) {
+        draft.raceGoal = .time
+        draft.targetMinutes = Int(minutes.rounded())
     }
 
     func selectGoal(_ goal: SetupGoal) {
@@ -100,7 +207,6 @@ final class PlanSetupViewModel {
 
     func selectRaceGoal(_ goal: RaceGoal) {
         draft.raceGoal = goal
-        if goal == .time, draft.targetMinutes == nil { draft.targetMinutes = 390 }
     }
 
     func next() {
@@ -108,6 +214,20 @@ final class PlanSetupViewModel {
             showIssues = true
             return
         }
+        if step == .trainingZones, draft.needsZoneEstimateWarning {
+            showZoneEstimateWarning = true
+            return
+        }
+        advance()
+    }
+
+    func continueWithEstimatedZones() {
+        showZoneEstimateWarning = false
+        guard step == .trainingZones, draft.trainingZonesError == nil else { return }
+        advance()
+    }
+
+    private func advance() {
         showIssues = false
         direction = .forward
         stepIndex = min(stepIndex + 1, steps.count - 1)
@@ -123,17 +243,44 @@ final class PlanSetupViewModel {
         let count = min(max(n, 3), 7)
         draft.daysPerWeek = count
         draft.preferredDays = PlanSetupDraft.defaultDays(count: count)
+        draft.doubleSessionDays.formIntersection(draft.preferredDays)
         if !draft.preferredDays.contains(draft.longRunDay) {
             draft.longRunDay = draft.preferredDays.contains(.saturday) ? .saturday : draft.orderedDays.last!
         }
     }
 
     func toggleDay(_ day: Weekday) {
-        if draft.preferredDays.contains(day) { draft.preferredDays.remove(day) } else { draft.preferredDays.insert(day) }
+        if draft.preferredDays.contains(day) {
+            draft.preferredDays.remove(day)
+            draft.doubleSessionDays.remove(day)
+        } else {
+            draft.preferredDays.insert(day)
+        }
+        if (3...7).contains(draft.preferredDays.count) { draft.daysPerWeek = draft.preferredDays.count }
+        if !draft.preferredDays.contains(draft.longRunDay), let last = draft.orderedDays.last {
+            draft.longRunDay = draft.preferredDays.contains(.saturday) ? .saturday : last
+        }
+    }
+
+    func toggleDoubleDay(_ day: Weekday) {
+        if draft.doubleSessionDays.contains(day) {
+            draft.doubleSessionDays.remove(day)
+        } else if draft.doubleSessionDays.count < 2, draft.preferredDays.contains(day) {
+            draft.doubleSessionDays.insert(day)
+        }
+    }
+
+    private func validate(_ steps: [SetupStep]) -> Bool {
+        for step in steps where !draft.issues(for: step, today: today, calendar: calendar).isEmpty {
+            jump(to: step)
+            showIssues = true
+            return false
+        }
+        return true
     }
 
     func submit() async {
-        guard !isSubmitting else { return }
+        guard !isSubmitting, validate(steps) else { return }
         isSubmitting = true
         submitError = nil
         defer { isSubmitting = false }
@@ -159,7 +306,7 @@ final class PlanSetupViewModel {
     }
 
     func saveProfileOnly() async {
-        guard mode == .onboarding, !isSubmitting else { return }
+        guard mode == .onboarding, !isSubmitting, validate([.goal, .schedule, .body, .trainingZones]) else { return }
         isSubmitting = true
         submitError = nil
         defer { isSubmitting = false }

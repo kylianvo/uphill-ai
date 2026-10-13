@@ -60,11 +60,11 @@ describe("AdaptWeekModal", () => {
     expect(screen.getByText("Adapt Week 2")).toBeInTheDocument();
     expect(screen.getByText(/2 completed\/recorded session\(s\) in this week will be strictly preserved/)).toBeInTheDocument();
     expect(screen.getByText("How are your legs & energy feeling?")).toBeInTheDocument();
-    expect(screen.getByText("Very Light")).toBeInTheDocument();
-    expect(screen.getByText("Light")).toBeInTheDocument();
-    expect(screen.getByText("Moderate")).toBeInTheDocument();
-    expect(screen.getByText("Hard")).toBeInTheDocument();
-    expect(screen.getByText("Max Effort")).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Very Light" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Light" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Moderate" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Hard" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Max Effort" })).toBeInTheDocument();
     expect(screen.getByText("Double Session Days (Optional)")).toBeInTheDocument();
     expect(screen.getByText("Regenerate Week 2")).toBeInTheDocument();
   });

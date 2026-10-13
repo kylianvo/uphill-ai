@@ -119,10 +119,33 @@ struct PlanViewModelTests {
         let model = make(service, cache: cache)
         await model.load()
         await model.setDone(target, true)
-        #expect(service.calls.withLock { $0 }.last == "log \(target.id) done=1 missed=- rpe=-")
+        #expect(service.calls.withLock { $0 }.contains("log \(target.id) done=1 missed=- rpe=-"))
         #expect(model.days[2].workouts.first?.isDone == true)
         #expect(model.lastCompletedID == target.id)
         #expect(cache.load(PlanSnapshot.self, .plan)?.value.workouts == updated)
+    }
+
+    @Test func doneRefreshesNextWeekCompletion() async {
+        let snap = snapshot()
+        let service = FakePlanService()
+        service.activeResult.withLock { $0 = .success(snap) }
+        service.logResult.withLock { $0 = .success(snap.workouts) }
+        func completion(_ pct: Double) -> BlockCompletionResponse {
+            BlockCompletionResponse(blocks: [BlockCompletion(blockNumber: 1, weekStart: 1, weekEnd: 3,
+                                                             completionPct: pct, unlocked: pct >= 70)],
+                                    maxGeneratedWeek: 3)
+        }
+        service.completionResult.withLock { $0 = .success(completion(40)) }
+        let model = make(service)
+        await model.load()
+        model.selectedWeek = 3
+        await model.refreshNextWeekOffer()
+        #expect(model.nextWeekOffer?.previousCompletionPct == 40)
+
+        service.completionResult.withLock { $0 = .success(completion(75)) }
+        await model.setDone(snap.workouts[1], true)
+        #expect(model.nextWeekOffer?.previousCompletionPct == 75)
+        #expect(model.nextWeekOffer?.unlocked == true)
     }
 
     @Test func undoDoneClearsBothFlags() async throws {
@@ -133,7 +156,7 @@ struct PlanViewModelTests {
         let model = make(service)
         await model.load()
         await model.setDone(snap.workouts[1], false)
-        #expect(service.calls.withLock { $0 }.last == "log 2 done=0 missed=0 rpe=-")
+        #expect(service.calls.withLock { $0 }.contains("log 2 done=0 missed=0 rpe=-"))
     }
 
     @Test func moveTargetsRunFromTodayToEndOfNextWeek() async throws {
@@ -163,7 +186,7 @@ struct PlanViewModelTests {
         let target = try #require(model.moveTargets(for: workout).first { $0.week == 3 && $0.weekday == .tuesday })
         let ok = await model.move(workout, to: target)
         #expect(!ok)
-        #expect(service.calls.withLock { $0 }.last == "move \(workout.id) -> w3 Tuesday today=2026-10-07")
+        #expect(service.calls.withLock { $0 }.contains("move \(workout.id) -> w3 Tuesday today=2026-10-07"))
         #expect(model.actionError == "Workouts can only move between this week and next week.")
     }
 
@@ -299,6 +322,9 @@ struct PlanViewModelTests {
         #expect(await model.buildNextWeek(rpe: 6, notes: "", override: true) == .started)
         #expect(gen.calls.withLock { $0.filter { $0.hasPrefix("next") } } == ["next 4 override=false", "next 4 override=true"])
         #expect(center.running?.kind == .nextWeek)
+        let body = gen.nextBodies.withLock { $0.last! }
+        let payload = try! JSONSerialization.jsonObject(with: JSONCoding.encoder.encode(body)) as! [String: Any]
+        #expect(payload["client_today"] as? String == "2026-10-07")
     }
 
     @Test func everythingGeneratedClearsOfferOn400() async {
@@ -341,6 +367,25 @@ struct PlanViewModelTests {
         #expect(error == nil)
         #expect(gen.calls.withLock { $0.filter { $0.hasPrefix("adapt") } } == ["adapt 2 hard"])
         #expect(center.running?.kind == .adaptWeek)
+    }
+
+    @Test func invalidScheduleCannotStartAdaptOrNextWeek() async {
+        let service = FakePlanService()
+        service.activeResult.withLock { $0 = .success(snapshot()) }
+        service.completionResult.withLock { $0 = .success(completion(80, unlocked: true)) }
+        let (model, center) = makeWithGeneration(service, gen: FakeGenerationService())
+        await model.load()
+        model.selectedWeek = 3
+        await model.refreshNextWeekOffer()
+        var schedule = ScheduleDraft(plan: model.snapshot?.plan)
+        schedule.preferredDays = [.tuesday, .thursday]
+        schedule.daysPerWeek = 4
+        #expect(await model.adaptWeek(2, fatigue: .medium, rpe: nil, notes: "", schedule: schedule) != nil)
+        if case .started = await model.buildNextWeek(rpe: nil, notes: "", override: false, schedule: schedule) {
+            Issue.record("Invalid schedule started next-week generation")
+        }
+        #expect(center.running == nil)
+        center.reset()
     }
 
     @Test func adaptBlockedOffline() async {
@@ -407,7 +452,7 @@ struct PlanViewModelTests {
         await model.load()
         let ok = await model.swapDays(week: 2, day1: .tuesday, day2: .wednesday)
         #expect(ok)
-        #expect(service.calls.withLock { $0 }.last == "swap w2 Tuesday <-> Wednesday today=2026-10-07")
+        #expect(service.calls.withLock { $0 }.contains("swap w2 Tuesday <-> Wednesday today=2026-10-07"))
         #expect(model.calendarNotice == nil)
     }
 

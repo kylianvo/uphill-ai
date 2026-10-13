@@ -27,6 +27,7 @@ struct ProfileSettingsScreen: View {
         case .goalDeterminer: "Goal Determiner"
         case .paceStrategy: "Pace Strategy"
         case .knowledgeHub: "Knowledge Hub"
+        case .watch: L("Connected accounts")
         }
     }
 
@@ -38,7 +39,7 @@ struct ProfileSettingsScreen: View {
                     aboutYouContent
                 case .trainingZones, .heartRate, .paces:
                     trainingZonesSegmentedContent
-                case .schedule, .raceHistory, .nutritionLab, .gearVault, .goalDeterminer, .paceStrategy, .knowledgeHub:
+                case .schedule, .watch, .raceHistory, .nutritionLab, .gearVault, .goalDeterminer, .paceStrategy, .knowledgeHub:
                     EmptyView()
                 }
 

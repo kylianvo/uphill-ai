@@ -7,8 +7,12 @@ struct GoalDeterminerSheet: View {
     var user: User?
     var isPresentedInSheet: Bool = false
     var pacingService: (any PacingServicing)? = nil
+    var raceHistoryService: (any RaceHistoryServicing)? = nil
     var onApplyGoal: ((Double) -> Void)? = nil
+    /// Race details to start from when there is no plan yet (plan setup).
+    var prefill: GoalPrefill? = nil
     var onPlanPacing: ((Double) -> Void)? = nil
+    var raceMatchService: RaceMatchService? = nil
 
     // Form inputs
     @State private var raceName: String = ""
@@ -71,16 +75,22 @@ struct GoalDeterminerSheet: View {
         activePlan: Plan? = nil,
         user: User? = nil,
         isPresentedInSheet: Bool = false,
+        raceHistoryService: (any RaceHistoryServicing)? = nil,
         onApplyGoal: ((Double) -> Void)? = nil,
         onPlanPacing: ((Double) -> Void)? = nil,
         initialEstimate: GoalEstimate? = nil,
-        initialTab: GoalResultTab = .goals
+        initialTab: GoalResultTab = .goals,
+        prefill: GoalPrefill? = nil,
+        raceMatchService: RaceMatchService? = nil
     ) {
+        self.prefill = prefill
+        self.raceMatchService = raceMatchService
         self.service = service
         self.pacingService = pacingService
         self.activePlan = activePlan
         self.user = user
         self.isPresentedInSheet = isPresentedInSheet
+        self.raceHistoryService = raceHistoryService
         self.onApplyGoal = onApplyGoal
         self.onPlanPacing = onPlanPacing
         _estimate = State(initialValue: initialEstimate)
@@ -154,28 +164,8 @@ struct GoalDeterminerSheet: View {
             }
         }
             .sheet(isPresented: $showLinkProfileSheet) {
-                // Link profile stub/sheet
-                NavigationStack {
-                    VStack(spacing: 16) {
-                        Image(systemName: "link.badge.plus")
-                            .font(.system(size: 44))
-                            .foregroundStyle(UH.Palette.accentInk)
-                            .padding(.top, 40)
-                        Text("Link UTMB or VBM Profile")
-                            .font(UH.TextStyle.sectionTitle)
-                        Text("Connect your verified race history to sharpen your goal calculation.")
-                            .font(UH.TextStyle.caption)
-                            .foregroundStyle(UH.Palette.secondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal)
-                        Spacer()
-                    }
-                    .padding()
-                    .toolbar {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Button("Done") { showLinkProfileSheet = false }
-                        }
-                    }
+                if let raceHistoryService {
+                    LinkProfileSheet(service: raceHistoryService)
                 }
             }
             .task {
@@ -183,6 +173,11 @@ struct GoalDeterminerSheet: View {
                     raceName = p.raceName
                     if let d = p.courseDistanceKm, d > 0 { distanceKm = d }
                     if let g = p.courseElevationGainM, g > 0 { elevationGainM = g }
+                } else if let prefill {
+                    raceName = prefill.raceName
+                    if let d = prefill.distanceKm, d > 0 { distanceKm = d }
+                    elevationGainM = prefill.elevationGainM ?? 0
+                    if let date = prefill.raceDate { raceDate = date }
                 }
             }
     }
@@ -224,11 +219,10 @@ struct GoalDeterminerSheet: View {
                         .font(.system(size: 11, weight: .bold, design: .monospaced))
                         .foregroundStyle(UH.Palette.muted)
 
-                    TextField("Race name (e.g. Dalat Ultra Trail 50K)", text: $raceName)
-                        .font(UH.TextStyle.body)
-                        .padding(10)
-                        .background(UH.Palette.surface, in: RoundedRectangle(cornerRadius: UH.Radius.control))
-                        .overlay(RoundedRectangle(cornerRadius: UH.Radius.control).stroke(UH.Palette.line))
+                    RaceSearchField(raceName: $raceName, service: raceMatchService, placeholder: L("Race name (e.g. Dalat Ultra Trail 50K)")) { course in
+                        distanceKm = course.distanceKm
+                        if let gain = course.elevationGainM { elevationGainM = gain }
+                    }
 
                     HStack(spacing: 12) {
                         VStack(alignment: .leading, spacing: 4) {
@@ -294,12 +288,14 @@ struct GoalDeterminerSheet: View {
                             .font(.system(size: 11, weight: .bold, design: .monospaced))
                             .foregroundStyle(UH.Palette.muted)
                         Spacer()
+                        if raceHistoryService != nil {
                         Button {
                             showLinkProfileSheet = true
                         } label: {
                             Text("Link UTMB / VBM")
                                 .font(UH.TextStyle.disclosure.weight(.bold))
                                 .foregroundStyle(UH.Palette.accentInk)
+                        }
                         }
                     }
 
@@ -528,6 +524,12 @@ struct GoalDeterminerSheet: View {
                     tierCard(tier: "B", name: L("Realistic"), minutes: goals.realistic, color: UH.Palette.accentInk, desc: L("Primary target goal with solid execution"))
                     tierCard(tier: "C", name: L("Safe"), minutes: goals.safe, color: Color(hex: "#f59e0b"), desc: L("Conservative buffer against heat, fatigue or cramps"))
                 }
+            } else {
+                notEnoughDataCard
+            }
+
+            if estimate.goals != nil, !missingHints(estimate).isEmpty {
+                hintList(missingHints(estimate))
             }
 
             // Coach Reasoning
@@ -573,6 +575,51 @@ struct GoalDeterminerSheet: View {
                 .foregroundStyle(UH.Palette.muted)
                 .padding(.horizontal, 4)
         }
+    }
+
+    private static let hintCopy: [(key: String, text: String)] = [
+        ("recent_trail_result", L("Link a past trail race result")),
+        ("race_history", L("Link your UTMB or VBM profile")),
+        ("utmb_index", L("Link your UTMB profile for your UTMB index")),
+        ("watch", L("Connect your watch for recent training")),
+        ("vo2max", L("Sync VO2max from your watch")),
+    ]
+
+    private func missingHints(_ estimate: GoalEstimate) -> [String] {
+        let missing = Set(estimate.missing ?? [])
+        return Self.hintCopy.filter { missing.contains($0.key) }.map(\.text)
+    }
+
+    private func hintList(_ hints: [String]) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("To sharpen this:")
+                .font(UH.TextStyle.caption.weight(.semibold))
+            ForEach(hints, id: \.self) { Text("· \($0)").font(UH.TextStyle.caption) }
+        }
+        .foregroundStyle(Color(hex: "#b45309"))
+    }
+
+    /// Shown when the server had too little personal data to set A/B/C times.
+    private var notEnoughDataCard: some View {
+        VStack(alignment: .leading, spacing: UH.Space.small) {
+            Label("Not enough data for goal times yet", systemImage: "chart.line.uptrend.xyaxis")
+                .font(UH.TextStyle.label)
+                .foregroundStyle(UH.Palette.ink)
+            Text("I need at least one past result, a linked profile or recent watch training to estimate A/B/C times for this race.")
+                .font(UH.TextStyle.caption)
+                .foregroundStyle(UH.Palette.secondary)
+            if let estimate { hintList(missingHints(estimate)) }
+            if raceHistoryService != nil {
+                Button { showLinkProfileSheet = true } label: {
+                    Text("Link UTMB / VBM")
+                        .font(UH.TextStyle.label)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(UH.Palette.accentInk)
+            }
+        }
+        .trainingCard()
     }
 
     // MARK: - Tier Card with "Use for plan" & "Plan pacing"
@@ -894,4 +941,11 @@ struct GoalDeterminerSheet: View {
         }
         isLoading = false
     }
+}
+
+struct GoalPrefill: Equatable {
+    let raceName: String
+    let distanceKm: Double?
+    let elevationGainM: Double?
+    let raceDate: Date?
 }

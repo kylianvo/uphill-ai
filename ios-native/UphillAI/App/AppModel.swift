@@ -17,6 +17,7 @@ final class AppModel {
     let knowledgeService: any KnowledgeServicing
     let deviceConnectionService: any DeviceConnectionServicing
     let coachingService: any CoachingServicing
+    var raceMatchService: RaceMatchService { RaceMatchService(client: client) }
     /// The server (`/api/shoe-rotation`) owns the rotation; every local change is saved back.
     var shoeRotation = ShoeRotation() {
         didSet {
@@ -31,6 +32,13 @@ final class AppModel {
 
     func loadRaceHistory() async {
         if let history = try? await raceHistoryService.history() { raceHistory = history }
+    }
+
+    /// Whether COROS is linked, for the plan screen's "Get the most from your plan" card.
+    var corosConnected = false
+
+    func loadCorosStatus() async {
+        if let status = try? await deviceConnectionService.fetchStatus() { corosConnected = status.isCorosConnected }
     }
 
     /// Matches the dashboard's default filters (14 days, all levels).
@@ -77,7 +85,14 @@ final class AppModel {
     private(set) var lastSetup: PlanSetupViewModel?
 
     func makeSetup(mode: PlanSetupViewModel.Mode) -> PlanSetupViewModel {
-        let setup = PlanSetupViewModel(mode: mode, user: session.user, service: generationService, generation: generation, session: session, raceService: RaceMatchService(client: client))
+        let setup = PlanSetupViewModel(mode: mode, user: session.user, service: generationService, generation: generation, session: session, raceService: RaceMatchService(client: client),
+                                       goalEstimateService: goalEstimateService, raceHistoryService: raceHistoryService,
+                                       deviceService: deviceConnectionService,
+                                       loadWatchVolume: { [client] in
+                                           guard let snapshot = try? await client.send(Endpoint<WatchVolume>.get("/api/auth/fitness-snapshot")),
+                                                 snapshot.weeklyKmSource == "coros" else { return nil }
+                                           return snapshot.weeklyKm
+                                       })
         lastSetup = setup
         return setup
     }
