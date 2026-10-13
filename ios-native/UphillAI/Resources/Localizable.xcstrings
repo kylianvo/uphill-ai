@@ -13660,6 +13660,116 @@
           }
         }
       }
+    },
+    "What I read": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tôi đọc gì"
+          }
+        }
+      }
+    },
+    "Runs, hikes, stair sessions and strength workouts from the last 12 weeks, then each new one as it's saved.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buổi chạy, hike, leo cầu thang và Strength trong 12 tuần gần nhất, sau đó là từng buổi mới ngay khi được lưu."
+          }
+        }
+      }
+    },
+    "Why": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Để làm gì"
+          }
+        }
+      }
+    },
+    "To mark your planned sessions done and start your plan from your real weekly mileage.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Để đánh dấu buổi tập trong plan đã xong và bắt đầu plan từ khối lượng tuần thực tế của bạn."
+          }
+        }
+      }
+    },
+    "What I send to Uphill": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tôi gửi gì cho Uphill"
+          }
+        }
+      }
+    },
+    "Time, distance, climb, heart rate and calories for each workout. Your GPS routes stay on your phone.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thời gian, quãng đường, độ cao leo, nhịp tim và calo của mỗi buổi tập. Lộ trình GPS ở lại trên điện thoại của bạn."
+          }
+        }
+      }
+    },
+    "Nothing written": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không ghi gì vào Health"
+          }
+        }
+      }
+    },
+    "I never write to Apple Health.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tôi không bao giờ ghi dữ liệu vào Apple Health."
+          }
+        }
+      }
+    },
+    "Continue": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiếp tục"
+          }
+        }
+      }
+    },
+    "Disconnect Apple Health?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngắt kết nối Apple Health?"
+          }
+        }
+      }
+    },
+    "Workouts received from Apple Health are deleted from Uphill AI. To stop sharing completely, turn off access in Settings → Health → Data Access & Devices.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Các buổi tập nhận từ Apple Health sẽ bị xóa khỏi Uphill AI. Để dừng chia sẻ hoàn toàn, hãy tắt quyền truy cập trong Cài đặt → Sức khỏe → Truy cập dữ liệu & thiết bị."
+          }
+        }
+      }
     }
   },
   "version": "1.0"
