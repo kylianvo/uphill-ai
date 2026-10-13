@@ -23,18 +23,18 @@ struct RaceDetailScreen: View {
             VStack(alignment: .leading, spacing: UH.Space.section) {
                 VStack(alignment: .leading, spacing: UH.Space.small) {
                     Text(recorded.raceName).font(UH.TextStyle.sectionTitle).accessibilityAddTraits(.isHeader)
-                    Text("\(recorded.raceDate) · \(recorded.discipline.capitalized) · \(recorded.source.uppercased())").foregroundStyle(UH.Palette.secondary)
+                    Text("\(recorded.raceDate) · \(RaceDisplay.discipline(recorded.discipline)) · \(RaceDisplay.source(recorded.source))").foregroundStyle(UH.Palette.secondary)
                     if !recorded.selected { Text("Awaiting confirmation").foregroundStyle(UH.Palette.accentInk) }
                     Text(recorded.formattedDuration).font(UH.TextStyle.metric.monospacedDigit())
                     Text("Recorded distance: \(recorded.formattedDistance)")
-                    if let elevation = recorded.elevationGainM { Text("Recorded elevation gain: \(elevation.formatted()) m") }
+                    if let elevation = recorded.elevationGainM { Text("Recorded elevation gain: \(RaceDisplay.number(elevation)) m") }
                     if let location = recorded.location { Label(location, systemImage: "mappin.and.ellipse") }
                     if let bib = recorded.bib { Text("Bib: \(bib)") }
                     rank("Overall", rank: recorded.rankOverall, total: recorded.totalOverall, pct: model.detail?.performance.overallTopPct)
                     rank("Gender", rank: recorded.rankGender, total: recorded.totalGender, pct: model.detail?.performance.genderTopPct)
                     rank("Age group", rank: recorded.rankAgeGroup, total: recorded.totalAgeGroup, pct: model.detail?.performance.ageGroupTopPct)
                     if let key = model.detail?.performance.roadPbKey { Label("\(key.uppercased()) personal best", systemImage: "medal") }
-                    if let pace = model.detail?.performance.averagePaceSecKm { Text("Average pace: \(Int(pace) / 60):\(String(format: "%02d", Int(pace) % 60)) /km") }
+                    if let pace = model.detail?.performance.averagePaceSecKm { Text("Average pace: \(RaceDisplay.pace(pace)) /km") }
                     if let link = recorded.resultUrl, let url = safeRaceResultURL(link) { Link("Open result source", destination: url) }
                 }.trainingCard()
                 if let note = recorded.userNote, !note.isEmpty {
@@ -51,7 +51,7 @@ struct RaceDetailScreen: View {
                             Button("Delete result", role: .destructive) { deleting = true }
                         } else if recorded.source == "vbm" {
                             Button(recorded.selected ? "Not my result" : "This is my result") {
-                                Task { await mutate { _ = try await service.updateResult(id: recorded.id, changes: ["selected": .bool(!recorded.selected)]) } }
+                                Task { await mutate { _ = try await service.updateResult(id: recorded.id, changes: ["selected": .bool(!recorded.selected)]); courseId = nil } }
                             }
                         }
                     }.disabled(isSaving)
@@ -81,7 +81,7 @@ struct RaceDetailScreen: View {
             .task(id: courseId) { await reload() }
             .sheet(isPresented: $editing) {
                 AddRaceSheet(service: service, editingResult: recorded) { _ in
-                    onChanged?(); Task { await reload() }
+                    courseId = nil; onChanged?(); Task { await reload() }
                 }
             }
             .confirmationDialog("Delete this manual result?", isPresented: $deleting, titleVisibility: .visible) {

@@ -16,13 +16,12 @@ struct DistanceBadgeGrid: View {
         VStack(alignment: .leading, spacing: UH.Space.small) {
             HStack {
                 Text("Distance achievements")
-                    .font(.system(size: 11, weight: .bold, design: .monospaced))
-                    .tracking(0.6)
+                    .font(UH.TextStyle.eyebrow)
                     .foregroundStyle(UH.Palette.muted)
                 Spacer()
                 let unlockedCount = badges.filter { $0.unlocked }.count
                 Text("\(unlockedCount)/\(badges.count) UNLOCKED")
-                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .font(UH.TextStyle.eyebrow)
                     .foregroundStyle(unlockedCount > 0 ? UH.Palette.accentInk : UH.Palette.muted)
             }
 
@@ -61,7 +60,7 @@ struct DistanceBadgeGrid: View {
                 }
 
                 Text(badge.unlocked ? "Completed" : "—")
-                    .font(.system(size: 14, weight: .bold, design: .monospaced))
+                    .font(UH.TextStyle.label)
                     .foregroundStyle(badge.unlocked ? UH.Palette.ink : UH.Palette.muted.opacity(0.6))
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.top, 2)
@@ -113,7 +112,7 @@ struct DistanceBadgeGrid: View {
                         Spacer()
                         if badge.unlocked {
                             Text("ULTRA PINNACLE")
-                                .font(.system(size: 9, weight: .heavy, design: .monospaced))
+                                .font(UH.TextStyle.eyebrow)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
                                 .background(Color(hex: "#f59e0b").opacity(0.16), in: Capsule())

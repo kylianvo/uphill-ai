@@ -51,7 +51,7 @@ struct RaceHistoryScreen: View {
                                 .font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary)
                             ForEach(pending) { result in
                                 VStack(alignment: .leading, spacing: UH.Space.small) {
-                                    NavigationLink { detailScreen(result) } label: { resultSummary(result) }.buttonStyle(.plain)
+                                    NavigationLink { detailScreen(result) } label: { resultSummary(result, trimDate: true) }.buttonStyle(.plain)
                                     Button("This is my result") { Task { await model.confirm(id: result.id, selected: true) } }
                                         .buttonStyle(PrimaryButtonStyle())
                                         .disabled(model.isMutating).accessibilityIdentifier("race.confirm.\(result.id)")
@@ -129,10 +129,10 @@ struct RaceHistoryScreen: View {
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func resultSummary(_ result: RaceResult) -> some View {
+    private func resultSummary(_ result: RaceResult, trimDate: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: UH.Space.compact) {
             HStack(alignment: .top) {
-                Text(result.raceName).font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink).fixedSize(horizontal: false, vertical: true)
+                Text(trimDate ? RaceDisplay.stripTrailingDate(result.raceName) : result.raceName).font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink).fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 8)
                 Text(result.formattedDuration).font(UH.TextStyle.label.monospacedDigit()).foregroundStyle(UH.Palette.ink)
             }

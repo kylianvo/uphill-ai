@@ -17,15 +17,15 @@ struct RaceCourseContextView: View {
                 }
                 Text("\(course.distanceLabel) · Course context").font(UH.TextStyle.caption)
                 if let location = course.location { Label(location, systemImage: "mappin.and.ellipse") }
-                if let elevation = course.elevationGainM { Text("Course elevation gain: \(elevation.formatted()) m") }
+                if let elevation = course.elevationGainM { Text("Course elevation gain: \(RaceDisplay.number(elevation)) m") }
                 facts("Terrain", values: course.terrain)
                 facts("Key climbs", values: course.keyClimbs)
                 if !course.climate.isEmpty {
                     Text("Typical conditions").font(UH.TextStyle.label)
-                    if let temperature = course.climate["avg_temp_c"]?.doubleValue { Text("Average temperature: \(temperature.formatted()) °C") }
+                    if let temperature = course.climate["avg_temp_c"]?.doubleValue { Text("Average temperature: \(RaceDisplay.number(temperature)) °C") }
                     if let humidity = course.climate["humidity_pct"] {
                         if let value = humidity.stringValue { Text("Humidity: \(value)") }
-                        else if let value = humidity.doubleValue { Text("Humidity: \(value.formatted())%") }
+                        else if let value = humidity.doubleValue { Text("Humidity: \(RaceDisplay.number(value))%") }
                     }
                     if let season = course.climate["season"]?.stringValue { Text(season) }
                     if let notes = course.climate["notes"]?.stringValue { Text(notes) }
