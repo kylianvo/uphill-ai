@@ -90,3 +90,39 @@ def test_missing_context_and_duplicate_benchmarks_are_not_guessed():
     payload = course()["payload"]
     payload["results"].append(dict(payload["results"][0]))
     assert review.historical_field(payload, "50 km", 50, 2024) is None
+
+
+@pytest.mark.parametrize(
+    "rank,total,dnf,expected",
+    [
+        (30, 100, False, 30.0),
+        (1, 100, False, 1.0),
+        (None, 100, False, None),
+        (30, None, False, None),
+        (101, 100, False, None),
+        (0, 100, False, None),
+        (30, 100, True, None),
+    ],
+)
+def test_field_position_is_not_fabricated(rank, total, dnf, expected):
+    assert module().top_position_pct(rank, total, dnf) == expected
+
+
+def test_previous_finish_requires_safe_identity_and_comparable_distance():
+    current = result(
+        id=2,
+        race_name="City Marathon",
+        race_date="2025-01-01",
+        discipline="road",
+        distance_km=42.195,
+        finish_time_sec=13154,
+    )
+    prior = {**current, "id": 1, "race_date": "2024-01-01", "finish_time_sec": 14000}
+    assert module().previous_finish(current, [prior], {})["delta_sec"] == -846
+    assert module().previous_finish(current, [{**prior, "race_name": "Other City Marathon"}], {}) is None
+    assert module().previous_finish(current, [{**prior, "distance_km": 21.0975}], {}) is None
+    assert module().previous_finish({**current, "is_dnf": True}, [prior], {}) is None
+    assert module().previous_finish(current, [{**prior, "selected": False}], {}) is None
+    assert (
+        module().previous_finish(current, [{**prior, "race_name": "Other course"}], {2: 10, 1: 10})["delta_sec"] == -846
+    )

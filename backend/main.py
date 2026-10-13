@@ -107,6 +107,7 @@ from services import (
     fitness_snapshot,
     observability,
     race_history,
+    race_review,
     week_rebuild,
 )
 from services.auth_service import hash_password, verify_password
@@ -3627,6 +3628,33 @@ def get_race_history(user: dict[str, Any] = Depends(get_current_user)):
 @app.get("/api/coaching/athletes/{athlete_id}/race-history")
 def get_coach_race_history(athlete_id: int, acting_user: dict[str, Any] = Depends(require_athlete_access)):
     return _race_history_payload(athlete_id)
+
+
+@app.get("/api/race-history/results/{result_id}/detail")
+def get_race_detail(result_id: int, course_id: int | None = None, user: dict[str, Any] = Depends(get_current_user)):
+    try:
+        detail = race_review.build_detail(user["id"], result_id, course_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from None
+    if detail is None:
+        raise HTTPException(status_code=404, detail="Result not found")
+    return detail
+
+
+@app.get("/api/coaching/athletes/{athlete_id}/race-history/results/{result_id}/detail")
+def get_coach_race_detail(
+    athlete_id: int,
+    result_id: int,
+    course_id: int | None = None,
+    acting_user: dict[str, Any] = Depends(require_athlete_access),
+):
+    try:
+        detail = race_review.build_detail(athlete_id, result_id, course_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from None
+    if detail is None:
+        raise HTTPException(status_code=404, detail="Result not found")
+    return detail
 
 
 @app.post("/api/race-history/results")

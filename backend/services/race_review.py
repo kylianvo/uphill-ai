@@ -4,6 +4,7 @@ import math
 from typing import Any
 from urllib.parse import urlsplit
 
+from services.race_history import normalize_name
 from services.race_matcher import _payload_as_dict, score_race_course_chunks
 
 
@@ -154,3 +155,108 @@ def select_course_context(
         },
     )
     return context
+
+
+def top_position_pct(rank: int | None, total: int | None, is_dnf: bool) -> float | None:
+    if is_dnf or type(rank) is not int or type(total) is not int or not 1 <= rank <= total:
+        return None
+    return round(100 * rank / total, 1)
+
+
+def previous_finish(
+    result: dict[str, Any], rows: list[dict[str, Any]], canonical_ids: dict[int, int]
+) -> dict[str, Any] | None:
+    if not result.get("selected") or result.get("is_dnf") or not result.get("finish_time_sec"):
+        return None
+    candidates = []
+    current_course = canonical_ids.get(result["id"])
+    for row in rows:
+        same_name = normalize_name(row["race_name"]) == normalize_name(result["race_name"])
+        same_course = current_course is not None and canonical_ids.get(row["id"]) == current_course
+        if (
+            row["id"] != result["id"]
+            and row.get("selected")
+            and not row.get("is_dnf")
+            and (row.get("finish_time_sec") or 0) > 0
+            and row["race_date"] < result["race_date"]
+            and row["discipline"] == result["discipline"]
+            and (same_name or same_course)
+            and abs(row["distance_km"] - result["distance_km"]) / result["distance_km"] <= 0.01
+        ):
+            candidates.append(row)
+    if not candidates:
+        return None
+    prior = sorted(candidates, key=lambda row: (row["race_date"], row["id"]), reverse=True)[0]
+    return {
+        "result_id": prior["id"],
+        "race_date": prior["race_date"],
+        "finish_time_sec": prior["finish_time_sec"],
+        "delta_sec": result["finish_time_sec"] - prior["finish_time_sec"],
+    }
+
+
+def build_detail(user_id: int, result_id: int, course_id: int | None = None) -> dict[str, Any] | None:
+    from datetime import date
+
+    import db
+    from log_utils import get_logger
+    from services import race_history
+    from services.race_personal_bests import compute_road_prs
+
+    result = race_history.get_result(result_id, user_id)
+    if result is None:
+        return None
+    rows = race_history._dedupe(race_history.list_results(user_id, False))
+    prs = compute_road_prs(rows, date.today())
+    road_pb_key = next((key for key, pr in prs.items() if pr and pr["result_id"] == result_id), None)
+    chunks = []
+    context = None
+    try:
+        chunks = db.get_kb_chunks("race_courses", kind="race_profile")
+    except Exception as exc:
+        get_logger(__name__).warning("Race course KB read unavailable: %s", type(exc).__name__)
+        context = dict(
+            status="unavailable", candidates=[], course=None, message="Course context could not be loaded. Retry."
+        )
+    if context is None:
+        context = select_course_context(result, chunks, course_id)
+    canonical_ids = {}
+    if context["course"] is not None:
+        canonical_ids[result_id] = context["course"]["id"]
+    for row in rows:
+        if row["id"] == result_id:
+            continue
+        match = select_course_context(row, chunks)
+        if match["status"] == "matched":
+            canonical_ids[row["id"]] = match["course"]["id"]
+    field = None
+    if context["course"] is not None:
+        chosen = context["course"]
+        payload = _payload_as_dict(next(chunk["payload"] for chunk in chunks if chunk["id"] == chosen["id"]))
+        field = historical_field(payload, chosen["distance_label"], result["distance_km"], int(result["race_date"][:4]))
+    pace = None
+    if (
+        result["selected"]
+        and result["discipline"] == "road"
+        and not result["is_dnf"]
+        and (result["finish_time_sec"] or 0) > 0
+    ):
+        pace = round(result["finish_time_sec"] / result["distance_km"], 1)
+    public_result = {key: value for key, value in result.items() if key not in ("raw", "user_id")}
+    return {
+        "result": public_result,
+        "performance": {
+            "overall_top_pct": top_position_pct(
+                result.get("rank_overall"), result.get("total_overall"), result["is_dnf"]
+            ),
+            "gender_top_pct": top_position_pct(result.get("rank_gender"), result.get("total_gender"), result["is_dnf"]),
+            "age_group_top_pct": top_position_pct(
+                result.get("rank_age_group"), result.get("total_age_group"), result["is_dnf"]
+            ),
+            "average_pace_sec_km": pace,
+            "road_pb_key": road_pb_key,
+        },
+        "previous_finish": previous_finish(result, rows, canonical_ids),
+        "course_context": context,
+        "historical_field": field,
+    }
