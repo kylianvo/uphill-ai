@@ -1,4 +1,5 @@
 .dialog {
+  margin: auto;
   color: var(--text-primary, #163c30);
   background: var(--surface, #fff);
   border: 1px solid var(--border, #d3e1da);

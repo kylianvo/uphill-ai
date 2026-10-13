@@ -131,3 +131,13 @@ it("ignores a late response after a newer result is opened", async () => {
   await waitFor(() => expect(screen.getByText("New race")).toBeInTheDocument());
   expect(screen.queryByText("City Marathon")).not.toBeInTheDocument();
 });
+
+it("shows localized copy, not the raw error, when the review fails", async () => {
+  vi.spyOn(console, "error").mockImplementation(() => {});
+  vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
+  render(<RaceDetailDialog result={result} lang="en" onClose={() => {}} onChanged={() => {}} />);
+  expect(await screen.findByText(/Couldn't load the race review/)).toBeInTheDocument();
+  expect(screen.queryByText(/Failed to fetch/)).toBeNull();
+  expect(screen.getByRole("button", { name: "Retry", hidden: true })).toBeInTheDocument();
+  expect(screen.getByText(/VBM/)).toBeInTheDocument();
+});

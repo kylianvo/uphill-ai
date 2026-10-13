@@ -201,7 +201,7 @@ export type RaceCourse = {
   terrain: string[];
   key_climbs: string[];
   climate: {
-    avg_temp_c?: number;
+    avg_temp_c?: number | string;
     humidity_pct?: number | string;
     season?: string;
     notes?: string;
@@ -243,3 +243,16 @@ export type RaceDetail = {
     percentiles?: { overall?: { p50?: string } };
   } | null;
 };
+
+export function formatNumber(n: number, lang: "en" | "vi"): string {
+  return new Intl.NumberFormat(lang === "vi" ? "vi-VN" : "en-US").format(n);
+}
+
+export function formatKm(km: number): string {
+  return String(Math.round(km * 10) / 10);
+}
+
+export function formatPace(secPerKm: number): string {
+  const s = Math.round(secPerKm);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}

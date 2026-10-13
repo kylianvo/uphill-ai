@@ -1,6 +1,6 @@
 "use client";
 import type { CourseContext } from "../lib/raceHistory";
-import { safeResultUrl } from "../lib/raceHistory";
+import { formatNumber, safeResultUrl } from "../lib/raceHistory";
 import styles from "./RaceDetail.module.css";
 export default function RaceCourseContext({
   context,
@@ -86,7 +86,7 @@ export default function RaceCourseContext({
       {course.elevation_gain_m !== null && (
         <p>
           {t("Course elevation gain", "D+ đường đua")}:{" "}
-          {course.elevation_gain_m.toLocaleString()} m
+          {formatNumber(course.elevation_gain_m, lang)} m
         </p>
       )}
       {facts(t("Terrain", "Địa hình"), course.terrain)}

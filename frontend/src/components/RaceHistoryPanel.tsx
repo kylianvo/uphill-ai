@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useCallback, useEffect, useId, useRef, useState } from "react";
-import { ArrowClockwise, CaretDown, CheckCircle, Flag, LinkSimple, MagnifyingGlass, Mountains, Plus, Trophy, X } from "@phosphor-icons/react";
+import { ArrowClockwise, CaretDown, CheckCircle, Flag, LinkSimple, MagnifyingGlass, Mountains, Plus, X } from "@phosphor-icons/react";
 import styles from "./RaceHistory.module.css";
 import RaceDetailDialog from "./RaceDetailDialog";
 import { getApiBaseUrl } from "@/lib/apiUrlOverride";
 
-import { manualResultPayload, safeResultUrl } from "../lib/raceHistory";
+import { formatKm, formatNumber, manualResultPayload, safeResultUrl } from "../lib/raceHistory";
 import type { RaceResult as Result, RaceHistory as History, RoadKey } from "../lib/raceHistory";
 
 function duration(seconds: number | null): string {
@@ -146,9 +146,7 @@ export default function RaceHistoryPanel({ lang, athleteId, initiallyOpen = fals
               <div className={styles.stat}><strong>{history.summary.ultras}</strong><small>{t("Ultra finishes", "Hoàn thành Ultra")}</small></div>
               <div className={styles.stat}><strong>{history.summary.longest_finish ? <>{history.summary.longest_finish.distance_km}<span> km</span></> : "—"}</strong><small>{t("Longest trail", "Trail dài nhất")}</small></div>
             </div>
-            {(history.summary.road_hm_pr || history.summary.road_fm_pr || utmbIndexes.length > 0) && <div className={styles.records} style={{ marginTop: 12 }}>
-              {history.summary.road_hm_pr && <span><Trophy size={14} />HM PR <b>{duration(history.summary.road_hm_pr.time_sec)}</b>{history.summary.road_hm_pr.stale && t("· over 2 years ago", "· hơn 2 năm")}</span>}
-              {history.summary.road_fm_pr && <span><Trophy size={14} />FM PR <b>{duration(history.summary.road_fm_pr.time_sec)}</b>{history.summary.road_fm_pr.stale && t("· over 2 years ago", "· hơn 2 năm")}</span>}
+            {utmbIndexes.length > 0 && <div className={styles.records} style={{ marginTop: 12 }}>
               {utmbIndexes.map((value, index) => <span key={`${value.piCategory}-${index}`}>UTMB {value.piCategory || ""} <b>{value.index}</b></span>)}
             </div>}
           </div>}
@@ -223,7 +221,7 @@ export default function RaceHistoryPanel({ lang, athleteId, initiallyOpen = fals
             <div className={styles.sectionHead}><h3>{t("Confirm your VBM results", "Xác nhận kết quả VBM")}</h3><span className={styles.badge}>{pendingVBM.length}</span></div>
             <p>{t("Only selected races become part of your history.", "Chỉ Race đã chọn được thêm vào lịch sử.")}</p>
             <div className={styles.selection}>{pendingVBM.map((result) => <div key={result.id} className={styles.pendingResult}>
-              <span><strong>{result.race_name}</strong><br /><span className={styles.muted}>{dateLabel(result.race_date)} · {result.distance_km} km · {duration(result.finish_time_sec)}{result.bib ? ` · bib ${result.bib}` : ""}</span></span>
+              <span><strong>{result.race_name}</strong><br /><span className={styles.muted}>{dateLabel(result.race_date)} · {formatKm(result.distance_km)} km · {duration(result.finish_time_sec)}{result.bib ? ` · bib ${result.bib}` : ""}</span></span>
               <button type="button" className={styles.button} onClick={() => setDetailResult(result)}>{t("View details", "Xem chi tiết")}</button>
               <button type="button" className={styles.primary} disabled={busy} onClick={() => void changeResult(result.id, { selected: true })}>{t("This is my result", "Của tôi")}</button>
             </div>)}</div>
@@ -235,7 +233,7 @@ export default function RaceHistoryPanel({ lang, athleteId, initiallyOpen = fals
             </div>
             <div className={styles.results}>{visible.map((result) => <details key={result.id} className={styles.result}>
               <summary><div className={styles.resultMain}><div className={styles.resultMeta}><span>{dateLabel(result.race_date)}</span><span className={styles.badge}>{result.source === "manual" ? t("Manual", "Nhập tay") : result.source.toUpperCase()}</span>{result.verified && <CheckCircle size={13} color="#147653" aria-label={t("Evidence matched", "Đã khớp")} />}{result.hidden && <span className={styles.badge}>{t("Excluded from text", "Ẩn khỏi lời Coach")}</span>}</div>
-                <h4>{result.race_name}</h4><span className={styles.badge}>{result.discipline === "road" ? "Road" : "Trail"}</span><div className={styles.resultNumbers}><strong>{duration(result.finish_time_sec)}</strong><span>{result.distance_km} km</span>{result.elevation_gain_m != null && <span>{result.elevation_gain_m.toLocaleString()} m D+</span>}</div>
+                <h4>{result.race_name}</h4><span className={styles.badge}>{result.discipline === "road" ? "Road" : "Trail"}</span><div className={styles.resultNumbers}><strong>{duration(result.finish_time_sec)}</strong><span>{formatKm(result.distance_km)} km</span>{result.elevation_gain_m != null && <span>{formatNumber(result.elevation_gain_m, lang)} m D+</span>}</div>
               </div><CaretDown className={styles.chevron} size={15} /></summary>
               <div className={styles.resultDetail}>
                 <button type="button" className={styles.button} onClick={() => setDetailResult(result)}>{t("View details", "Xem chi tiết")}</button>

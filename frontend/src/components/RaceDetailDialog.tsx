@@ -2,7 +2,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { X } from "@phosphor-icons/react";
 import { getApiBaseUrl } from "@/lib/apiUrlOverride";
-import { safeResultUrl } from "../lib/raceHistory";
+import { formatKm, formatNumber, formatPace, safeResultUrl } from "../lib/raceHistory";
 import type { RaceDetail, RaceResult } from "../lib/raceHistory";
 import RaceCourseContext from "./RaceCourseContext";
 import styles from "./RaceDetail.module.css";
@@ -34,7 +34,7 @@ export default function RaceDetailDialog({
     [courseId, setCourseId] = useState<number | null>(null),
     [retry, setRetry] = useState(0),
     [loading, setLoading] = useState(true),
-    [error, setError] = useState(""),
+    [error, setError] = useState<"load" | "mutate" | null>(null),
     [busy, setBusy] = useState(false),
     [deleting, setDeleting] = useState(false);
   useEffect(() => {
@@ -75,7 +75,10 @@ export default function RaceDetailDialog({
         if (active) setDetail(body);
       })
       .catch((err) => {
-        if (active && err.name !== "AbortError") setError(String(err));
+        if (active && err.name !== "AbortError") {
+          console.error(err);
+          setError("load");
+        }
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -87,18 +90,18 @@ export default function RaceDetailDialog({
   }, [result.id, athleteId, courseId, retry]);
   const refresh = () => {
     setLoading(true);
-    setError("");
+    setError(null);
     setRetry((r) => r + 1);
   };
   const choose = (id: number) => {
     setLoading(true);
-    setError("");
+    setError(null);
     setCourseId(id);
   };
   const recorded = detail?.result.id === result.id ? detail.result : result;
   const mutate = async (remove = false) => {
     setBusy(true);
-    setError("");
+    setError(null);
     try {
       const response = await fetch(
         `${getApiBaseUrl()}/api/race-history/results/${result.id}`,
@@ -120,7 +123,8 @@ export default function RaceDetailDialog({
       if (remove) onClose();
       else refresh();
     } catch (err) {
-      setError(String(err));
+      console.error(err);
+      setError("mutate");
     } finally {
       setBusy(false);
     }
@@ -170,8 +174,18 @@ export default function RaceDetailDialog({
       </header>
       <div className={styles.body}>
         <p>
-          {recorded.race_date} · {recorded.discipline} ·{" "}
-          {recorded.source.toUpperCase()}
+          {recorded.race_date} ·{" "}
+          {recorded.discipline === "road"
+            ? t("Road", "Đường nhựa")
+            : t("Trail", "Trail")}{" "}
+          ·{" "}
+          {recorded.source === "manual"
+            ? t("Manual entry", "Tự nhập")
+            : recorded.source === "vbm"
+            ? "VBM"
+            : recorded.source === "utmb"
+            ? "UTMB"
+            : recorded.source.toUpperCase()}
         </p>
         {!recorded.selected && (
           <p className={styles.notice}>
@@ -187,12 +201,12 @@ export default function RaceDetailDialog({
           </div>
           <div>
             <dt>{t("Recorded distance", "Cự ly đã ghi nhận")}</dt>
-            <dd>{recorded.distance_km} km</dd>
+            <dd>{formatKm(recorded.distance_km)} km</dd>
           </div>
           {recorded.elevation_gain_m !== null && (
             <div>
               <dt>{t("Recorded elevation gain", "D+ đã ghi nhận")}</dt>
-              <dd>{recorded.elevation_gain_m} m</dd>
+              <dd>{formatNumber(recorded.elevation_gain_m, lang)} m</dd>
             </div>
           )}
           {rank(
@@ -225,11 +239,7 @@ export default function RaceDetailDialog({
         {detail?.performance.average_pace_sec_km != null && (
           <p>
             {t("Average pace", "Pace trung bình")}:{" "}
-            {Math.floor(detail.performance.average_pace_sec_km / 60)}:
-            {String(
-              Math.round(detail.performance.average_pace_sec_km) % 60
-            ).padStart(2, "0")}{" "}
-            /km
+            {formatPace(detail.performance.average_pace_sec_km)} /km
           </p>
         )}
         {link && (
@@ -302,10 +312,22 @@ export default function RaceDetailDialog({
           )}
           {error && (
             <div role="alert">
-              <p>{error}</p>
-              <button className={styles.button} onClick={refresh}>
-                {t("Retry", "Thử lại")}
-              </button>
+              <p>
+                {error === "load"
+                  ? t(
+                      "Couldn't load the race review. Your recorded result is unchanged.",
+                      "Không tải được phần nhìn lại Race. Kết quả đã ghi nhận của bạn vẫn giữ nguyên."
+                    )
+                  : t(
+                      "Couldn't save that change. Your recorded result is unchanged.",
+                      "Không lưu được thay đổi. Kết quả đã ghi nhận của bạn vẫn giữ nguyên."
+                    )}
+              </p>
+              {error === "load" && (
+                <button className={styles.button} onClick={refresh}>
+                  {t("Retry", "Thử lại")}
+                </button>
+              )}
             </div>
           )}
           {!recorded.is_dnf && recorded.selected && prior && (

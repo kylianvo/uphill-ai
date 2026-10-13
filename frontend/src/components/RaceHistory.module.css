@@ -33,6 +33,7 @@
 .searchRow > label { flex: 1; min-width: 0; }
 .panel .field { display: grid; gap: 6px; margin: 0; font-size: 12px; line-height: 1.4; text-transform: none; letter-spacing: 0; color: var(--text-secondary); font-weight: 500; }
 .panel .input { width: 100%; min-width: 0; height: 42px; padding: 9px 11px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--bg-card); color: var(--text-primary); font-size: 14px; font-weight: 400; }
+.panel .input:focus { background: var(--bg-card); border-color: var(--accent-primary, #147653); }
 .input::placeholder { color: var(--text-muted); }
 .formGrid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
 .full { grid-column: 1 / -1; }
@@ -99,6 +100,6 @@
   .pendingResult button { align-self: flex-start; }
 }
 
-.pbItem { background: transparent; color: inherit; font: inherit; text-align: left; }
+.pbItem { border: 0; background: transparent; color: inherit; font: inherit; text-align: left; }
 .pbItem:not(:disabled) { cursor: pointer; }
 .pbItem:focus-visible { outline: 3px solid var(--accent-primary, #147653); outline-offset: 3px; }
