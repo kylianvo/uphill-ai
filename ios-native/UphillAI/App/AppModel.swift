@@ -59,7 +59,9 @@ final class AppModel {
     private func applyAppleHealthStatus(_ status: AppleHealthConnectionStatus?) async {
         appleHealthEnabled = (status?.enabled ?? false) && (await appleHealth.isAvailable)
         let observing = if let id = session.user?.id { await appleHealth.isObserving(userId: id) } else { false }
-        appleHealthConnected = (status?.connected ?? false) || observing
+        // Only this phone's observing counts: after a reinstall, new phone or session expiry the
+        // server still says connected, but nothing syncs until the athlete taps Connect again.
+        appleHealthConnected = observing
         appleHealthLastSync = status?.lastSyncAt
     }
 
