@@ -728,13 +728,27 @@ final class PlanViewModel {
     func setMatch(activityID: Int, to workout: Workout?) async -> String? {
         guard athleteId == nil else { return APIError.http(status: 403, message: nil, code: nil).userMessage }
         guard cachedAt == nil else { return Self.offlineMessage }
+        // Unlinking takes back the "done" the run gave the workout.
+        let unlinked = workout == nil ? snapshot?.workouts.first { $0.matchedActivityId == activityID } : nil
+        // The backend bundles runs when the workout already has a match.
+        // "Pick a different run" replaces that match, so release it first.
+        let previousID = workout?.matchedActivityId.flatMap { $0 == activityID ? nil : $0 }
         do {
-            // The backend bundles runs when the workout already has a match.
-            // "Pick a different run" replaces that match, so release it first.
-            if let previousID = workout?.matchedActivityId, previousID != activityID {
+            if let previousID {
                 try await service.setMatch(activityID: previousID, workoutID: nil)
             }
-            try await service.setMatch(activityID: activityID, workoutID: workout?.id)
+            do {
+                try await service.setMatch(activityID: activityID, workoutID: workout?.id)
+            } catch {
+                // Put the old run back so a failed swap doesn't leave the workout with none.
+                if let previousID, let workout {
+                    try? await service.setMatch(activityID: previousID, workoutID: workout.id)
+                }
+                throw error
+            }
+            if let unlinked, unlinked.isCompleted == 1 {
+                _ = try? await service.log(workoutID: unlinked.id, WorkoutLogUpdate(isCompleted: 0))
+            }
             await load()
             // A run the athlete linked themselves is a done session.
             if workout != nil { await markMatchedWorkoutsDone() }

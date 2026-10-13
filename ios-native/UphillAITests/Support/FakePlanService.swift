@@ -100,8 +100,11 @@ final class FakePlanService: PlanServicing {
         return try watchActivitiesResult.withLock { $0 }.get()
     }
 
+    let failingMatchLinks = Mutex<Set<Int>>([])
+
     func setMatch(activityID: Int, workoutID: Int?) async throws {
         record("setMatch \(activityID) -> \(workoutID.map(String.init) ?? "none")")
+        if workoutID != nil, failingMatchLinks.withLock({ $0.contains(activityID) }) { throw APIError.transport("offline") }
     }
 
     func blockEvaluation(planID: Int, block: Int) async throws -> BlockEvaluation {

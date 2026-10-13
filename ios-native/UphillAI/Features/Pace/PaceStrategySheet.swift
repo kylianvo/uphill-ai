@@ -599,10 +599,13 @@ struct PaceStrategySheet: View {
             } else {
                 GeometryReader { geo in
                     let width = geo.size.width
+                    // The slider's track stops half a thumb short of each edge; match it.
+                    let inset: CGFloat = 14
+                    let track = max(1, width - inset * 2)
                     ZStack(alignment: .topLeading) {
-                        Capsule().fill(UH.Palette.line).frame(height: 2).offset(y: 5)
+                        Capsule().fill(UH.Palette.line).frame(width: track, height: 2).offset(x: inset, y: 5)
                         ForEach(Array(markers.enumerated()), id: \.element.id) { index, marker in
-                            let x = width * (marker.minutes - range.min) / max(1, range.max - range.min)
+                            let x = inset + track * (marker.minutes - range.min) / max(1, range.max - range.min)
                             Button {
                                 targetTimeMins = (marker.minutes / 5).rounded() * 5
                             } label: {
