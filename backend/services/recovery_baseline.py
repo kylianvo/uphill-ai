@@ -52,3 +52,16 @@ def refresh(user_id: int, dates: Iterable[date]) -> None:
     end = max(affected)
     values = dict(db.get_daily_hrv(user_id, start, end, APPLE_HEALTH))
     db.set_daily_hrv_status(user_id, APPLE_HEALTH, statuses(values, affected))
+
+
+SOURCE_NAMES = {"apple_health": "Apple Health", "coros": "COROS"}
+
+
+def source_name(provider: str | None) -> str:
+    """Display name of a readiness summary's source_provider, for prompts."""
+    return SOURCE_NAMES.get(provider or "", provider or "wearable")
+
+
+def format_sleep(minutes: int) -> str:
+    """412 -> "6h52"."""
+    return f"{minutes // 60}h{minutes % 60:02d}"

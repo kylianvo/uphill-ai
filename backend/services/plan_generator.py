@@ -5,7 +5,7 @@ from typing import Any
 from config import settings
 from db import block_number_for_week, week_range_for_block
 from log_utils import get_logger
-from services import observability
+from services import observability, recovery_baseline
 from services.athlete_tier import MEASURED_THRESHOLD_SOURCES, get_profile, resolve_tier
 from services.plan_rules import build_rules_block
 from services.training_rules import TrainingRules, default_zone2_pace, resolve_zone2_pace
@@ -1436,15 +1436,24 @@ class PlanGenerator:
                 acwr_str = f"{acwr}" if acwr is not None else (f"{lat_acwr}" if lat_acwr is not None else "N/A")
                 lat_acwr_str = f"{lat_acwr}" if lat_acwr is not None else "N/A"
                 recov_str = f"{recov}%" if recov is not None else "N/A"
+                source = recovery_baseline.source_name(readiness_summary.get("source_provider"))
+                nights = readiness_summary.get("nights_recorded") or 0
+                avg_sleep = readiness_summary.get("avg_sleep_minutes")
+                sleep_line = (
+                    f"- Sleep: {recovery_baseline.format_sleep(avg_sleep)} avg ({nights} nights)\n"
+                    if nights > 0 and avg_sleep is not None
+                    else ""
+                )
 
                 feedback_instruction += (
-                    f"\n7-DAY WEARABLE BIOLOGICAL READINESS & LOAD RATIO:\n"
+                    f"\n7-DAY WEARABLE BIOLOGICAL READINESS & LOAD RATIO ({source}):\n"
                     f"- Rolling HRV: {hrv_str} (Status: {hrv_stat}) | Resting HR: {rhr_str}\n"
                     f"- ACWR (Acute:Chronic Load Ratio): {acwr_str} (Latest: {lat_acwr_str})\n"
                     f"- Rolling Recovery: {recov_str} | Biological Readiness Flag: {flag}\n"
+                    f"{sleep_line}"
                     f"Wearable Load Guidance:\n"
                     f"  • OVERREACHING (ACWR > 1.4): Cap weekly volume increase at 0% or deload 10-15% to avoid high injury risk. Eliminate high-impact eccentric downhill pounding.\n"
-                    f"  • FATIGUED (Low HRV / Recovery < 45%): Convert one scheduled tempo/interval workout to an easy Zone 1 recovery run or Rest.\n"
+                    f"  • FATIGUED (Low HRV / Recovery < 45% / Sleep < 6h avg): Convert one scheduled tempo/interval workout to an easy Zone 1 recovery run or Rest.\n"
                     f"  • OPTIMAL / FRESH (ACWR 0.8-1.3): Athlete is adapting well; proceed with planned progressive overload.\n"
                 )
 

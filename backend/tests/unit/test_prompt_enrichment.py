@@ -328,7 +328,8 @@ async def test_plan_generator_prompt_includes_all_enriched_context():
     assert "Flat/Urban Weekdays vs Weekend Trails" in prompt
 
     # 6. 7-day Wearable Readiness
-    assert "7-DAY WEARABLE BIOLOGICAL READINESS & LOAD RATIO:" in prompt
+    assert "7-DAY WEARABLE BIOLOGICAL READINESS & LOAD RATIO (wearable):" in prompt
+    assert "- Sleep:" not in prompt
     assert "Rolling HRV: 68.0 ms" in prompt
     assert "ACWR (Acute:Chronic Load Ratio): 1.15 (Latest: 1.15)" in prompt
     assert "Biological Readiness Flag: OPTIMAL" in prompt
@@ -474,7 +475,8 @@ async def test_plan_generator_readiness_clean_formatting_when_none():
         )
 
     prompt = mock_client.models.generate_content.call_args.kwargs.get("contents", "")
-    assert "7-DAY WEARABLE BIOLOGICAL READINESS & LOAD RATIO:" in prompt
+    assert "7-DAY WEARABLE BIOLOGICAL READINESS & LOAD RATIO (wearable):" in prompt
+    assert "- Sleep:" not in prompt
     assert "None ms" not in prompt
     assert "None%" not in prompt
     assert "Rolling HRV: N/A" in prompt

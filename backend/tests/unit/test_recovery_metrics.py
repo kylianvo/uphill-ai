@@ -4,6 +4,8 @@ import datetime
 from datetime import date, timedelta
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from db import get_latest_daily_metrics, get_recent_readiness_summary, upsert_daily_metric
 from services import recovery_baseline
 from services.providers.base import CanonicalDailyMetric
@@ -165,3 +167,107 @@ def test_refresh_reads_and_writes_apple_health_only():
     written = put.call_args[0][2]
     assert [d for d, _, _ in written] == [synced]  # the 3 later days have no row yet
     assert written[0][2] == "normal"
+
+
+# --- prompts ----------------------------------------------------------------
+
+
+async def _plan_prompt(summary):
+    from services.plan_generator import PlanGenerator
+
+    resp = MagicMock(text="invalid json to trigger fallback")
+    client = MagicMock()
+    client.models.generate_content.return_value = resp
+    race_info = {"name": "Run", "date": "2026-11-01", "goal_type": "finish", "readiness_summary": summary}
+    with (
+        patch("google.genai.Client", return_value=client),
+        patch("services.kb_retrieval.search_scheduler_chunks", return_value=[]),
+    ):
+        await PlanGenerator.generate_plan_workouts(
+            plan_id=3,
+            user_profile={"age": 35, "current_weekly_km": 30.0},
+            race_info=race_info,
+            total_weeks=6,
+            api_key="fake-gemini-key",
+            block_number=1,
+            weeks_per_block=2,
+        )
+    return client.models.generate_content.call_args.kwargs.get("contents", "")
+
+
+APPLE_SUMMARY = {
+    "source_provider": "apple_health",
+    "days_recorded": 6,
+    "avg_hrv_ms": 54.0,
+    "latest_hrv_status": "low",
+    "avg_resting_hr": 52.0,
+    "avg_load_ratio": None,
+    "latest_load_ratio": None,
+    "avg_recovery_percent": None,
+    "avg_sleep_minutes": 370,
+    "nights_recorded": 6,
+    "readiness_flag": "fatigued",
+}
+
+
+@pytest.mark.asyncio
+async def test_plan_readiness_block_names_source_and_shows_sleep():
+    prompt = await _plan_prompt(APPLE_SUMMARY)
+    assert "7-DAY WEARABLE BIOLOGICAL READINESS & LOAD RATIO (Apple Health):" in prompt
+    assert "- Sleep: 6h10 avg (6 nights)" in prompt
+    assert "FATIGUED (Low HRV / Recovery < 45% / Sleep < 6h avg)" in prompt
+    assert "ACWR (Acute:Chronic Load Ratio): N/A" in prompt
+
+
+@pytest.mark.asyncio
+async def test_plan_readiness_block_without_sleep():
+    prompt = await _plan_prompt(
+        {**APPLE_SUMMARY, "source_provider": "coros", "nights_recorded": 0, "avg_sleep_minutes": None}
+    )
+    assert "LOAD RATIO (COROS):" in prompt
+    assert "- Sleep:" not in prompt
+
+
+def test_coach_recovery_section():
+    from services.coach_prompts import compile_coach_prompt
+
+    prompt = compile_coach_prompt(system_base="BASE", context={"recovery": APPLE_SUMMARY})
+    assert "### Recovery (last 7 days, Apple Health)" in prompt
+    assert "- HRV 54 ms (status: low) | Resting HR 52 bpm" in prompt
+    assert "- Sleep 6h10 avg over 6 nights" in prompt
+    assert "- Readiness: FATIGUED" in prompt
+    assert "never to diagnose" in prompt
+
+
+def test_coach_recovery_section_omits_empty_lines():
+    from services.coach_prompts import format_recovery
+
+    text = format_recovery({"source_provider": "coros", "readiness_flag": "insufficient_data", "nights_recorded": 0})
+    assert text == ""
+    text = format_recovery({"source_provider": "coros", "avg_resting_hr": 48.0, "readiness_flag": "optimal"})
+    assert "Sleep" not in text and "HRV" not in text
+    assert "- Resting HR 48 bpm" in text
+
+
+def _chat_context(readiness):
+    from services.coach_context import build_chat_context
+
+    with (
+        patch("db.get_user_by_id", return_value={"id": 1}),
+        patch("db.get_active_plan", return_value=None),
+        patch("db.get_activities_for_user", return_value=[]),
+        patch("db.get_chat_thread_messages", return_value=[]),
+        patch("services.race_history.prompt_summary", return_value=""),
+        patch("services.fitness_snapshot.chat_summary", return_value={}),
+        patch("db.get_recent_readiness_summary", **readiness),
+    ):
+        return build_chat_context(user_id=1, question="how am I recovering?")
+
+
+def test_chat_context_carries_recovery():
+    assert _chat_context({"return_value": APPLE_SUMMARY})["recovery"] == APPLE_SUMMARY
+
+
+def test_chat_context_omits_recovery_without_rows_or_on_error():
+    assert _chat_context({"return_value": {"days_recorded": 0}})["recovery"] is None
+    assert _chat_context({"side_effect": RuntimeError("db down")})["recovery"] is None
