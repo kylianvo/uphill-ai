@@ -334,6 +334,7 @@ struct DayRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .disabled(onToggleDone == nil)
         .accessibilityIdentifier("workout.\(workout.id).done")
         .accessibilityLabel(workout.isDone ? L("Mark as not done") : L("Mark as done"))
     }

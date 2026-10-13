@@ -4,6 +4,8 @@ import Synchronization
 
 /// Scriptable PlanServicing. Set the results before use; read `calls` after.
 final class FakePlanService: PlanServicing {
+    let beforeGoalReturn = Mutex<(@Sendable () async -> Void)?>(nil)
+    let beforeActiveReturn = Mutex<(@Sendable () async -> Void)?>(nil)
     let activeResult = Mutex<Result<PlanSnapshot?, APIError>>(.success(nil))
     let logResult = Mutex<Result<[Workout], APIError>>(.success([]))
     let moveWarnings = Mutex<[ScheduleWarning]>([])
@@ -17,13 +19,17 @@ final class FakePlanService: PlanServicing {
     let reviewResult = Mutex<Result<WeekReview, APIError>>(.failure(.http(status: 404, message: nil, code: nil)))
     let goalResult = Mutex<Result<PlanGoal, APIError>>(.failure(.http(status: 404, message: nil, code: nil)))
     let syncWatchResult = Mutex<Result<String, APIError>>(.success("Watch synced · Up to date"))
+    let watchActivitiesResult = Mutex<Result<[WatchActivity], APIError>>(.success([]))
+    let evaluationResult = Mutex<Result<BlockEvaluation, APIError>>(.failure(.http(status: 404, message: nil, code: nil)))
     let calls = Mutex<[String]>([])
 
     private func record(_ call: String) { calls.withLock { $0.append(call) } }
 
     func activePlan() async throws -> PlanSnapshot? {
         record("active")
-        return try activeResult.withLock { $0 }.get()
+        let result = activeResult.withLock { $0 }
+        if let wait = beforeActiveReturn.withLock({ $0 }) { await wait() }
+        return try result.get()
     }
 
     func log(workoutID: Int, _ update: WorkoutLogUpdate) async throws -> [Workout] {
@@ -73,18 +79,42 @@ final class FakePlanService: PlanServicing {
 
     func reassessGoal(planID: Int) async throws -> PlanGoal {
         record("reassess \(planID)")
-        return try goalResult.withLock { $0 }.get()
+        let result = goalResult.withLock { $0 }
+        if let wait = beforeGoalReturn.withLock({ $0 }) { await wait() }
+        return try result.get()
     }
 
     func applyGoal(planID: Int, targetMinutes: Double) async throws -> PlanGoal {
         record("apply \(planID) \(Int(targetMinutes))")
-        return try goalResult.withLock { $0 }.get()
+        let result = goalResult.withLock { $0 }
+        if let wait = beforeGoalReturn.withLock({ $0 }) { await wait() }
+        return try result.get()
     }
 
     func syncWatch(planID: Int) async throws -> String {
         record("syncWatch \(planID)")
         return try syncWatchResult.withLock { $0 }.get()
     }
+    func watchActivities(planID: Int) async throws -> [WatchActivity] {
+        record("watchActivities \(planID)")
+        return try watchActivitiesResult.withLock { $0 }.get()
+    }
+
+    func setMatch(activityID: Int, workoutID: Int?) async throws {
+        record("setMatch \(activityID) -> \(workoutID.map(String.init) ?? "none")")
+    }
+
+    func blockEvaluation(planID: Int, block: Int) async throws -> BlockEvaluation {
+        record("evaluation \(planID) b\(block)")
+        return try evaluationResult.withLock { $0 }.get()
+    }
+
+    /// Scoping keeps this fake (so tests see every call) and records the athlete.
+    func scoped(toAthlete athleteId: Int?) -> any PlanServicing {
+        record("scoped \(athleteId.map(String.init) ?? "self")")
+        return self
+    }
+
     func knowledgeCard(topic: String, lang: String) async -> KnowledgeCardModel? {
         return KnowledgeCardModel(
             id: 1,

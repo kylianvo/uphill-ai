@@ -57,6 +57,8 @@ struct NextBlockBody: Encodable, Sendable {
     var treadmillMaxIncline: Int? = nil
     var athleteNotes: String? = nil
     var clientToday: String? = nil
+    /// Coach-authored guidance for the new block; sent only on the coach-scoped path.
+    var coachNotes: String? = nil
 }
 
 struct AdaptWeekBody: Encodable, Sendable {

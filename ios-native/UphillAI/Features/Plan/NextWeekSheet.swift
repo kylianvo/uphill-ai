@@ -13,6 +13,11 @@ struct NextWeekSheet: View {
     @State private var confirmMessage: String?
     @State private var confirming = false
     @State private var error: String?
+    @State private var coachNotes = ""
+    @State private var evaluation: BlockEvaluation?
+
+    /// A coach builds the block for an athlete: the athlete's own effort review isn't theirs to give.
+    private var isCoach: Bool { model.athleteId != nil }
 
     init(model: PlanViewModel, offer: NextWeekOffer) {
         self.model = model
@@ -42,11 +47,12 @@ struct NextWeekSheet: View {
                     // Block info & unlock status
                     blockStatusCard
 
-                    // RPE selector card
-                    rpeCard
-
-                    // Coach notes card
-                    notesCard
+                    if isCoach {
+                        coachGuidanceCard
+                    } else {
+                        rpeCard
+                        notesCard
+                    }
 
                     // Schedule Preferences Card (Optional)
                     scheduleCard
@@ -71,6 +77,7 @@ struct NextWeekSheet: View {
                 Text(confirmMessage ?? L("You haven't completed 70% of the current block yet."))
             }
         }
+        .task { evaluation = await model.blockEvaluation(for: currentOffer) }
         .presentationDetents([.medium, .large])
         .presentationBackground(UH.Palette.surface)
         .accessibilityIdentifier("nextweek.sheet")
@@ -125,6 +132,94 @@ struct NextWeekSheet: View {
                 }
                 .padding(.top, 2)
             }
+
+            if let evaluation {
+                evaluationDetails(evaluation)
+            }
+        }
+        .padding(UH.Space.regular)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(UH.Palette.card, in: RoundedRectangle(cornerRadius: UH.Radius.landing))
+        .overlay(RoundedRectangle(cornerRadius: UH.Radius.landing).stroke(UH.Palette.line))
+    }
+
+    // MARK: - Block Evaluation
+
+    private func evaluationDetails(_ evaluation: BlockEvaluation) -> some View {
+        VStack(alignment: .leading, spacing: UH.Space.small) {
+            Divider()
+            HStack(spacing: UH.Space.regular) {
+                stat(value: "\(evaluation.sessionsCompleted)/\(evaluation.sessionsTotal)", label: L("Sessions done"))
+                stat(value: "\(Self.km(evaluation.actualKm))/\(Self.km(evaluation.plannedKm))", label: L("km run"))
+                if let grade = evaluation.qualityGrade, let score = evaluation.avgQualityScore {
+                    stat(value: grade, label: L("Run quality · %lld%%", Int(score.rounded())))
+                }
+            }
+            .accessibilityElement(children: .combine)
+
+            if let summary = evaluation.coachSummary, !summary.isEmpty {
+                Text(summary)
+                    .font(UH.TextStyle.body)
+                    .foregroundStyle(UH.Palette.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if !evaluation.coachingTakeaways.isEmpty {
+                bulletList(title: L("From your watch runs"), items: evaluation.coachingTakeaways, icon: "waveform.path.ecg")
+            }
+            if !evaluation.coachNotes.isEmpty {
+                bulletList(title: L("Coach notes on this block"), items: evaluation.coachNotes, icon: "person.fill")
+            }
+        }
+        .accessibilityIdentifier("nextweek.evaluation")
+    }
+
+    private func stat(value: String, label: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(value)
+                .font(.system(size: 17, weight: .bold))
+                .monospacedDigit()
+                .foregroundStyle(UH.Palette.ink)
+            Text(label)
+                .font(UH.TextStyle.caption)
+                .foregroundStyle(UH.Palette.secondary)
+        }
+    }
+
+    private func bulletList(title: String, items: [String], icon: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title).font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
+            ForEach(items, id: \.self) { item in
+                Label {
+                    Text(item).fixedSize(horizontal: false, vertical: true)
+                } icon: {
+                    Image(systemName: icon).foregroundStyle(UH.Palette.accentInk)
+                }
+                .font(UH.TextStyle.caption)
+                .foregroundStyle(UH.Palette.secondary)
+            }
+        }
+    }
+
+    private static func km(_ value: Double) -> String {
+        value.formatted(.number.precision(.fractionLength(0...1)))
+    }
+
+    // MARK: - Coach Guidance Card
+
+    private var coachGuidanceCard: some View {
+        VStack(alignment: .leading, spacing: UH.Space.small) {
+            Text("Guidance for this block").font(UH.TextStyle.sectionTitle).foregroundStyle(UH.Palette.ink)
+            Text("Coach Uphill follows this when it writes the new weeks. Optional.")
+                .font(UH.TextStyle.caption)
+                .foregroundStyle(UH.Palette.secondary)
+            TextField("Focus, limits, races or travel to plan around…", text: $coachNotes, axis: .vertical)
+                .font(UH.TextStyle.body)
+                .lineLimit(3...6)
+                .padding(UH.Space.small)
+                .background(UH.Palette.hover, in: RoundedRectangle(cornerRadius: UH.Radius.control))
+                .overlay(RoundedRectangle(cornerRadius: UH.Radius.control).stroke(UH.Palette.line))
+                .accessibilityIdentifier("nextweek.coachNotes")
         }
         .padding(UH.Space.regular)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -224,7 +319,8 @@ struct NextWeekSheet: View {
         isSubmitting = true
         error = nil
         defer { isSubmitting = false }
-        switch await model.buildNextWeek(rpe: rpe, notes: notes, override: override, schedule: schedule.hasChanges ? schedule : nil) {
+        switch await model.buildNextWeek(rpe: isCoach ? nil : rpe, notes: isCoach ? "" : notes, override: override,
+                                       schedule: schedule.hasChanges ? schedule : nil, coachNotes: coachNotes) {
         case .started:
             dismiss()
         case .needsConfirmation(let message):

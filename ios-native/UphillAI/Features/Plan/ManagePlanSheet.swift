@@ -59,18 +59,18 @@ struct ManagePlanSheet: View {
                     recentPlansSection
 
                     // 2. Plan Actions (New Plan, Plan Settings)
-                    planActionsSection
+                    if model.athleteId == nil { planActionsSection }
 
                     // Tools & Labs
                     toolsSection
 
                     // 3. Delete Plan Section
-                    if model.snapshot != nil {
+                    if model.snapshot != nil && model.athleteId == nil {
                         deletePlanSection
                     }
 
                     // 4. Integrations / Coming Soon
-                    integrationsSection
+                    if model.athleteId == nil { integrationsSection }
                 }
                 .padding(UH.Space.regular)
             }
@@ -121,7 +121,7 @@ struct ManagePlanSheet: View {
                 } catch {
                     loadError = error.localizedDescription
                 }
-                if let deviceService {
+                if model.athleteId == nil, let deviceService {
                     connectionStatus = try? await deviceService.fetchStatus()
                 }
             }
@@ -203,7 +203,7 @@ struct ManagePlanSheet: View {
                                 )
                             }
                             .buttonStyle(.plain)
-                            .disabled(isActive)
+                            .disabled(isActive || model.athleteId != nil)
                             .accessibilityIdentifier("manage.plan.\(plan.id)")
                             .accessibilityAddTraits(isActive ? .isSelected : [])
                         }
@@ -400,7 +400,7 @@ struct ManagePlanSheet: View {
                 Divider().overlay(UH.Palette.line.opacity(0.6))
 
                 // COROS Push Row (sends the next ~4 weeks)
-                if let deviceService {
+                if model.athleteId == nil, let deviceService {
                     VStack(alignment: .leading, spacing: 6) {
                         HStack {
                             Text("SEND NEXT 4 WEEKS")
