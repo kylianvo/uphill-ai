@@ -223,6 +223,33 @@ struct PlanAutoDoneTests {
         ])
     }
 
+    @Test func failedReplacementRelinksOldRun() async {
+        let service = FakePlanService()
+        var snap = snapshot()
+        snap.workouts[0].matchedActivityId = 555
+        service.activeResult.withLock { $0 = .success(snap) }
+        service.failingMatchLinks.withLock { $0 = [556] }
+        let model = PlanViewModel(service: service, cache: .inMemory())
+        await model.load()
+        #expect(await model.setMatch(activityID: 556, to: snap.workouts[0]) != nil)
+        #expect(service.calls.withLock { $0 }.filter { $0.hasPrefix("setMatch") } == [
+            "setMatch 555 -> none", "setMatch 556 -> 1", "setMatch 555 -> 1",
+        ])
+    }
+
+    @Test func unlinkingRunClearsDone() async {
+        let service = FakePlanService()
+        var snap = snapshot()
+        snap.workouts[0] = TestData.workout(["id": 1, "plan_id": 7, "week_number": 2, "day_of_week": "Tuesday",
+                                             "type": "Easy Run", "duration_minutes": 40, "is_completed": 1])
+        snap.workouts[0].matchedActivityId = 555
+        service.activeResult.withLock { $0 = .success(snap) }
+        let model = PlanViewModel(service: service, cache: .inMemory())
+        await model.load()
+        #expect(await model.setMatch(activityID: 555, to: nil) == nil)
+        #expect(service.calls.withLock { $0 }.contains("log \(snap.workouts[0].id) done=0 missed=- rpe=-"))
+    }
+
     @Test func automaticCompletionKeepsWatchCard() async {
         let service = FakePlanService()
         var snap = snapshot()
