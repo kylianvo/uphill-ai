@@ -61,10 +61,10 @@ struct PlanSetupDraftTests {
     @Test func stepsDependOnGoal() {
         #expect(SetupStep.steps(for: nil, includeProfile: true) == [.goal])
         #expect(SetupStep.steps(for: .race, includeProfile: true)
-                == [.goal, .details, .raceDate, .raceGoal, .schedule, .venues, .body, .trainingZones, .raceHistory, .startDate, .review])
+                == [.goal, .details, .raceDate, .raceGoal, .watch, .schedule, .venues, .body, .trainingZones, .raceHistory, .startDate, .review])
         #expect(SetupStep.steps(for: .race, includeProfile: false)
                 == [.goal, .details, .raceDate, .raceGoal, .schedule, .venues, .startDate, .review])
-        #expect(SetupStep.steps(for: .startRunning, includeProfile: true) == [.goal, .schedule, .venues, .body, .trainingZones, .raceHistory, .startDate, .review])
+        #expect(SetupStep.steps(for: .startRunning, includeProfile: true) == [.goal, .watch, .schedule, .venues, .body, .trainingZones, .raceHistory, .startDate, .review])
         #expect(SetupStep.steps(for: .returning, includeProfile: false) == [.goal, .details, .fitnessFeel, .schedule, .venues, .startDate, .review])
     }
 

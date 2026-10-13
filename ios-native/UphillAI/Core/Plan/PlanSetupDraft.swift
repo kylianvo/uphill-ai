@@ -62,9 +62,10 @@ enum TrainingEnvironment: String, CaseIterable, Sendable {
 
 enum SetupStep: Equatable, Sendable {
     case goal, details, raceDate, raceGoal, fitnessFeel, daysSinceRace, recoveryFeel
-    case schedule, venues, body, trainingZones, raceHistory, startDate, review
+    case watch, schedule, venues, body, trainingZones, raceHistory, startDate, review
 
-    /// Body and race history are profile answers, asked once at onboarding and edited in Profile afterwards.
+    /// Watch, body and race history are profile answers, asked once at onboarding and edited in Profile afterwards.
+    /// The watch comes before the week so a fresh COROS sync can fill in current mileage.
     static func steps(for goal: SetupGoal?, includeProfile: Bool) -> [SetupStep] {
         guard let goal else { return [.goal] }
         let questions: [SetupStep]
@@ -75,7 +76,8 @@ enum SetupStep: Equatable, Sendable {
         case .startRunning: questions = []
         }
         let profile: [SetupStep] = includeProfile ? [.body, .trainingZones, .raceHistory] : []
-        return [.goal] + questions + [.schedule, .venues] + profile + [.startDate, .review]
+        let watch: [SetupStep] = includeProfile ? [.watch] : []
+        return [.goal] + questions + watch + [.schedule, .venues] + profile + [.startDate, .review]
     }
 }
 
@@ -135,6 +137,8 @@ struct PlanSetupDraft: Equatable, Sendable {
     var preferredDays: Set<Weekday> = [.tuesday, .thursday, .saturday, .sunday]
     var longRunDay: Weekday = .saturday
     var currentWeeklyKm: Double? = 30
+    /// True while `currentWeeklyKm` is the untouched COROS 4-week average.
+    var weeklyKmFromWatch = false
     var environment: TrainingEnvironment = .flat
     var mountainDays: Set<Weekday> = []
     var stairAccess = false
@@ -251,7 +255,7 @@ struct PlanSetupDraft: Equatable, Sendable {
             if !(start...latest).contains(calendar.startOfDay(for: startDate)) {
                 add(.startDate, goal?.isEvent == true ? L("Start at least 2 weeks before your goal date.") : L("Start today or later."))
             }
-        case .venues, .body, .raceHistory, .fitnessFeel, .daysSinceRace, .recoveryFeel, .review:
+        case .watch, .venues, .body, .raceHistory, .fitnessFeel, .daysSinceRace, .recoveryFeel, .review:
             break
         }
         return issues
@@ -376,6 +380,7 @@ struct PlanSetupDraft: Equatable, Sendable {
             raceDate: event ? raceDate.map { PlanCalendar.ymd($0, calendar: calendar) } : nil,
             goalType: event ? raceGoal.rawValue : (goal ?? .startRunning).rawValue,
             currentWeeklyKm: currentWeeklyKm ?? 0,
+            weeklyKmFromWatch: weeklyKmFromWatch,
             targetTimeHours: (event && raceGoal == .time) ? targetMinutes.map { Double($0) / 60 } : nil,
             terrain: terrain.rawValue,
             courseDistanceKm: event ? distanceKm : nil,
@@ -505,6 +510,7 @@ struct PlanBody: Encodable, Sendable {
     var raceDate: String?
     var goalType: String
     var currentWeeklyKm: Double
+    var weeklyKmFromWatch: Bool
     var targetTimeHours: Double?
     var terrain: String?
     var courseDistanceKm: Double?

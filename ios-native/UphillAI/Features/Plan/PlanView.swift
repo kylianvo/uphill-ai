@@ -195,6 +195,21 @@ struct PlanView: View {
                         CoachReviewCard(model: model, onOpenReview: { showReview = true }, initialExpanded: initialCoachExpanded)
                             .padding(.horizontal, UH.Space.regular)
 
+                        if let app, let user, app.actingAsAthlete == nil {
+                            SharpenChecklistCard(
+                                user: user,
+                                corosConnected: app.corosConnected,
+                                raceHistoryLinked: !(app.raceHistory?.claims.isEmpty ?? true),
+                                onOpen: onSharpen
+                            )
+                            .padding(.horizontal, UH.Space.regular)
+                            .task {
+                                async let coros: Void = app.loadCorosStatus()
+                                async let races: Void = app.loadRaceHistory()
+                                _ = await (coros, races)
+                            }
+                        }
+
                         // Adapt week button
                         if model.canAdaptWeek(model.selectedWeek) {
                             HStack {

@@ -68,5 +68,6 @@ struct PlanSetupFlow: View {
         }
         .sensoryFeedback(.selection, trigger: model.stepIndex)
         .onChange(of: model.didStart) { _, started in if started { onClose() } }
+        .task { await model.refreshWatch() }
     }
 }

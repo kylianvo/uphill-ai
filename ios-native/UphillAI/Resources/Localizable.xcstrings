@@ -12790,6 +12790,216 @@
           }
         }
       }
+    },
+    "%@, coming soon": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@, sắp có"
+          }
+        }
+      }
+    },
+    "Add your AeT and AnT heart rates": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm HR tại AeT và AnT"
+          }
+        }
+      }
+    },
+    "Add your pace zones": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm vùng pace"
+          }
+        }
+      }
+    },
+    "COROS connected": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã kết nối COROS"
+          }
+        }
+      }
+    },
+    "Connect COROS": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kết nối COROS"
+          }
+        }
+      }
+    },
+    "Connect your watch": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kết nối đồng hồ"
+          }
+        }
+      }
+    },
+    "Connected accounts": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tài khoản đã kết nối"
+          }
+        }
+      }
+    },
+    "Connected. I'll use your recent runs to set your starting mileage.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã kết nối. Tôi sẽ dùng các buổi chạy gần đây để đặt khối lượng khởi đầu."
+          }
+        }
+      }
+    },
+    "Each one helps Coach Uphill fit your next weeks to you instead of an estimate.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mỗi mục giúp Coach Uphill xếp các tuần tới theo đúng bạn, thay vì ước tính."
+          }
+        }
+      }
+    },
+    "Easy days stay easy, hard days hit the target": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngày nhẹ đúng là nhẹ, ngày nặng đúng mục tiêu"
+          }
+        }
+      }
+    },
+    "Every workout gets a pace you can hold": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mỗi buổi tập có pace bạn giữ được"
+          }
+        }
+      }
+    },
+    "From your COROS: %lld km a week over the last 4 full weeks": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Từ COROS: %lld km/tuần, trung bình 4 tuần đầy đủ gần nhất"
+          }
+        }
+      }
+    },
+    "Get the most from your plan": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Để plan sát với bạn hơn"
+          }
+        }
+      }
+    },
+    "Link your race history": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Liên kết lịch sử Race"
+          }
+        }
+      }
+    },
+    "No watch? Skip this. You can connect one later in Me → Connected accounts.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa có đồng hồ? Bỏ qua bước này. Bạn có thể kết nối sau trong Tôi → Tài khoản đã kết nối."
+          }
+        }
+      }
+    },
+    "Real mileage and runs, not a guess": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khối lượng và buổi chạy thật, không phải ước đoán"
+          }
+        }
+      }
+    },
+    "Runs, weekly mileage and fitness, synced automatically.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buổi chạy, khối lượng tuần và chỉ số thể chất, đồng bộ tự động."
+          }
+        }
+      }
+    },
+    "Tell Coach Uphill about injuries": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cho Coach Uphill biết về chấn thương"
+          }
+        }
+      }
+    },
+    "Volume builds at a pace your body handles": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khối lượng tăng vừa sức cơ thể bạn"
+          }
+        }
+      }
+    },
+    "Your past finishes set a realistic goal": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thành tích cũ giúp đặt mục tiêu sát thực tế"
+          }
+        }
+      }
+    },
+    "Your runs show me what you really do, not just what you remember.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dữ liệu chạy cho tôi biết bạn thực sự tập bao nhiêu, không chỉ dựa vào trí nhớ."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

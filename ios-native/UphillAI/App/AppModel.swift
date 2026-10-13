@@ -34,6 +34,13 @@ final class AppModel {
         if let history = try? await raceHistoryService.history() { raceHistory = history }
     }
 
+    /// Whether COROS is linked, for the plan screen's "Get the most from your plan" card.
+    var corosConnected = false
+
+    func loadCorosStatus() async {
+        if let status = try? await deviceConnectionService.fetchStatus() { corosConnected = status.isCorosConnected }
+    }
+
     /// Matches the dashboard's default filters (14 days, all levels).
     func prefetchCoachDashboard() async {
         guard session.user?.isCoach == true else { return }
@@ -79,7 +86,13 @@ final class AppModel {
 
     func makeSetup(mode: PlanSetupViewModel.Mode) -> PlanSetupViewModel {
         let setup = PlanSetupViewModel(mode: mode, user: session.user, service: generationService, generation: generation, session: session, raceService: RaceMatchService(client: client),
-                                       goalEstimateService: goalEstimateService, raceHistoryService: raceHistoryService)
+                                       goalEstimateService: goalEstimateService, raceHistoryService: raceHistoryService,
+                                       deviceService: deviceConnectionService,
+                                       loadWatchVolume: { [client] in
+                                           guard let snapshot = try? await client.send(Endpoint<WatchVolume>.get("/api/auth/fitness-snapshot")),
+                                                 snapshot.weeklyKmSource == "coros" else { return nil }
+                                           return snapshot.weeklyKm
+                                       })
         lastSetup = setup
         return setup
     }

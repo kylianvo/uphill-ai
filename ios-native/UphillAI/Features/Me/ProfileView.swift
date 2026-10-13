@@ -147,6 +147,15 @@ struct ProfileView: View {
                         onOpenNutrition: { path.append(.nutritionLab) },
                         onOpenGear: { path.append(.gearVault) }
                     )
+                case .watch:
+                    ScrollView {
+                        ConnectedAccountsView(service: app.deviceConnectionService)
+                            .padding(UH.Space.regular)
+                    }
+                    .background(UH.Palette.surface)
+                    .navigationTitle("Connected accounts")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .onDisappear { Task { await app.loadCorosStatus() } }
                 case .knowledgeHub:
                     KnowledgeHubScreen(service: app.knowledgeService)
                 default:

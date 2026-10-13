@@ -25,6 +25,40 @@ struct SetupFlowScreenshots {
         try data.write(to: URL(fileURLWithPath: outDir).appendingPathComponent(name + ".png"))
     }
 
+    @Test func renderWatchStepAndChecklist() async throws {
+        guard outDir != nil else { return }
+        let oldLanguage = UserDefaults.standard.string(forKey: AppLanguage.storageKey)
+        let oldSnooze = UserDefaults.standard.object(forKey: SharpenChecklistCard.snoozeKey)
+        UserDefaults.standard.removeObject(forKey: SharpenChecklistCard.snoozeKey)
+        defer {
+            UserDefaults.standard.set(oldLanguage, forKey: AppLanguage.storageKey)
+            UserDefaults.standard.set(oldSnooze, forKey: SharpenChecklistCard.snoozeKey)
+        }
+        let user = try Fixture.decode(User.self, "auth_me.json")
+        for language in [AppLanguage.en, .vi] {
+            UserDefaults.standard.set(language.rawValue, forKey: AppLanguage.storageKey)
+            for connected in [false, true] {
+                let watch = ScrollView {
+                    VStack(alignment: .leading, spacing: UH.Space.section) {
+                        Text("Connect your watch").font(UH.TextStyle.screenTitle)
+                        WatchChannelsList(connected: connected, available: true) { nil }
+                    }
+                    .padding(UH.Space.section)
+                }
+                .background(UH.Palette.surface)
+                .environment(\.locale, language.locale)
+                try await capture(watch, name: "watch-step-\(connected ? "connected" : "new")-\(language.rawValue)")
+            }
+            let card = ScrollView {
+                SharpenChecklistCard(user: user, corosConnected: true, raceHistoryLinked: false, onOpen: { _ in })
+                    .padding(UH.Space.regular)
+            }
+            .background(UH.Palette.surface)
+            .environment(\.locale, language.locale)
+            try await capture(card, name: "plan-checklist-\(language.rawValue)")
+        }
+    }
+
     @Test func renderEffortColorBar() async throws {
         guard outDir != nil else { return }
         let oldLanguage = UserDefaults.standard.string(forKey: AppLanguage.storageKey)

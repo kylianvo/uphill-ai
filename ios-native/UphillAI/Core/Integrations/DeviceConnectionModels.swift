@@ -135,3 +135,9 @@ public struct CorosPushOutcome: Codable, Sendable, Equatable {
         self.errorMessage = errorMessage
     }
 }
+
+/// The part of /api/auth/fitness-snapshot that plan setup reads: measured weekly volume and where it came from.
+struct WatchVolume: Decodable, Sendable {
+    let weeklyKm: Double
+    let weeklyKmSource: String
+}

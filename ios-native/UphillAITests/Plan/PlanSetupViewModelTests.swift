@@ -11,24 +11,25 @@ struct PlanSetupViewModelTests {
     }()
     private var now: Date { PlanCalendar.day(from: "2026-10-07", calendar: cal)! }
 
-    private func make(_ mode: PlanSetupViewModel.Mode, service: FakeGenerationService = FakeGenerationService())
+    private func make(_ mode: PlanSetupViewModel.Mode, service: FakeGenerationService = FakeGenerationService(),
+                      loadWatchVolume: (@Sendable () async -> Double?)? = nil)
         -> (PlanSetupViewModel, FakeGenerationService, GenerationCenter, SessionStore) {
         let session = SessionStore(tokenStore: InMemoryTokenStore())
         let center = GenerationCenter(service: service, defaults: UserDefaults(suiteName: UUID().uuidString)!,
                                       makePoller: { JobPoller(service: $0, interval: .seconds(60), timeout: .seconds(120)) })
         let now = self.now
         let model = PlanSetupViewModel(mode: mode, user: nil, service: service, generation: center,
-                                       session: session, now: { now }, calendar: cal)
+                                       session: session, now: { now }, calendar: cal, loadWatchVolume: loadWatchVolume)
         return (model, service, center, session)
     }
 
     @Test func raceAndNonRacePathsHaveSingleQuestionScreens() {
         let (model, _, _, _) = make(.onboarding)
         model.selectGoal(.race)
-        #expect(model.steps.count == 11)
+        #expect(model.steps.count == 12)
         model.back()
         model.selectGoal(.recovery)
-        #expect(model.steps == [.goal, .details, .daysSinceRace, .recoveryFeel, .schedule, .venues, .body, .trainingZones, .raceHistory, .startDate, .review])
+        #expect(model.steps == [.goal, .details, .daysSinceRace, .recoveryFeel, .watch, .schedule, .venues, .body, .trainingZones, .raceHistory, .startDate, .review])
     }
 
     @Test func revisitingSetupKeepsAnEditedCourse() async {
@@ -123,12 +124,32 @@ struct PlanSetupViewModelTests {
         #expect(model.draft.targetMinutes == 412)
     }
 
+    @Test func watchVolumePrefillsUntilTheAthleteTypes() async {
+        let (model, _, _, _) = make(.newPlan, loadWatchVolume: { 41.6 })
+        model.draft.currentWeeklyKm = 25
+        await model.prefillWatchVolume()
+        #expect(model.draft.currentWeeklyKm == 42)
+        #expect(model.draft.weeklyKmFromWatch)
+        #expect(model.draft.planBody(calendar: PlanCalendar.calendar).weeklyKmFromWatch)
+        model.setWeeklyKm(50)
+        #expect(!model.draft.weeklyKmFromWatch)
+        await model.prefillWatchVolume()
+        #expect(model.draft.currentWeeklyKm == 50)
+    }
+
+    @Test func onboardingAsksForWatchBeforeTheWeek() {
+        let (model, _, _, _) = make(.onboarding)
+        model.selectGoal(.startRunning)
+        #expect(model.step == .watch)
+        #expect(model.primaryTitle == "Skip for now")
+    }
+
     @Test func goalTapAdvances() {
         let (model, _, _, _) = make(.onboarding)
         #expect(model.step == .goal)
         model.selectGoal(.startRunning)
-        #expect(model.step == .schedule)
-        #expect(model.steps == [.goal, .schedule, .venues, .body, .trainingZones, .raceHistory, .startDate, .review])
+        #expect(model.step == .watch)
+        #expect(model.steps == [.goal, .watch, .schedule, .venues, .body, .trainingZones, .raceHistory, .startDate, .review])
         #expect(model.direction == .forward)
     }
 

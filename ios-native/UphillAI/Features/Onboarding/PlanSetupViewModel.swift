@@ -30,10 +30,18 @@ final class PlanSetupViewModel {
     var raceCandidates: [RaceMatch] = []
     /// Set once the athlete links a UTMB or VBM profile during setup.
     var linkedRaceHistory = false
+    let deviceService: (any DeviceConnectionServicing)?
+    private let loadWatchVolume: (@Sendable () async -> Double?)?
+    /// COROS 4-week average, shown beside the weekly km field when it was used.
+    private(set) var watchWeeklyKm: Double?
+    private(set) var corosConnected = false
 
     init(mode: Mode, user: User?, service: any GenerationServicing, generation: GenerationCenter,
          session: SessionStore, now: @escaping () -> Date = { .now }, calendar: Calendar = PlanCalendar.calendar, raceService: RaceMatchService? = nil,
-         goalEstimateService: (any GoalEstimateServicing)? = nil, raceHistoryService: (any RaceHistoryServicing)? = nil) {
+         goalEstimateService: (any GoalEstimateServicing)? = nil, raceHistoryService: (any RaceHistoryServicing)? = nil,
+         deviceService: (any DeviceConnectionServicing)? = nil, loadWatchVolume: (@Sendable () async -> Double?)? = nil) {
+        self.deviceService = deviceService
+        self.loadWatchVolume = loadWatchVolume
         self.raceService = raceService
         self.goalEstimateService = goalEstimateService
         self.raceHistoryService = raceHistoryService
@@ -47,6 +55,51 @@ final class PlanSetupViewModel {
     }
 
     var today: Date { calendar.startOfDay(for: now()) }
+
+    // MARK: Watch
+
+    /// Reads connection state and, when COROS has enough synced weeks, its weekly average.
+    func refreshWatch() async {
+        if let deviceService, let status = try? await deviceService.fetchStatus() {
+            corosConnected = status.isCorosConnected
+        }
+        await prefillWatchVolume()
+    }
+
+    /// Fills weekly km from COROS unless the athlete already typed a value of their own.
+    func prefillWatchVolume() async {
+        guard let loadWatchVolume, let km = await loadWatchVolume() else { return }
+        watchWeeklyKm = km.rounded()
+        if !editedWeeklyKm {
+            draft.currentWeeklyKm = km.rounded()
+            draft.weeklyKmFromWatch = true
+        }
+    }
+
+    /// Set once the athlete edits weekly km themselves; a later COROS read must not overwrite it.
+    private var editedWeeklyKm = false
+
+    func setWeeklyKm(_ km: Double?) {
+        editedWeeklyKm = true
+        draft.currentWeeklyKm = km
+        draft.weeklyKmFromWatch = km != nil && km == watchWeeklyKm
+    }
+
+    /// Connects COROS, then pulls a month of runs so mileage is ready for the next screen.
+    func connectCoros() async -> String? {
+        guard let deviceService else { return nil }
+        switch await CorosOAuthCoordinator.shared.connect(via: deviceService) {
+        case .success:
+            corosConnected = true
+            _ = try? await deviceService.syncNow(days: 30)
+            await prefillWatchVolume()
+            return nil
+        case .cancelled:
+            return nil
+        case .failed(let message):
+            return message
+        }
+    }
     var earliestRaceDate: Date { calendar.date(byAdding: .day, value: 14, to: today)! }
 
     func reopenAtReview() {
@@ -67,6 +120,7 @@ final class PlanSetupViewModel {
     var isFirstStep: Bool { stepIndex == 0 }
     var isLastStep: Bool { step == .review }
     var primaryTitle: String {
+        if step == .watch, !corosConnected { return L("Skip for now") }
         if isLastStep { return L("Build my plan") }
         if step == .trainingZones, !draft.hasTrainingZones { return L("Skip for now") }
         if step == .raceHistory, !linkedRaceHistory { return L("Skip for now") }

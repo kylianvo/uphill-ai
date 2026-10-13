@@ -105,6 +105,11 @@ struct SetupSteps: View {
                 bodyStep
             case .trainingZones:
                 trainingZones
+            case .watch:
+                Text("Connect your watch").font(UH.TextStyle.screenTitle)
+                WatchChannelsList(connected: model.corosConnected, available: model.deviceService != nil) {
+                    await model.connectCoros()
+                }
             case .raceHistory:
                 raceHistory
             case .startDate:
@@ -172,6 +177,7 @@ struct SetupSteps: View {
         case .trainingZones: L("Your thresholds and easy pace help set workout intensity.")
         case .body: L("Injury history sets how fast I add volume.")
         case .raceHistory: L("Past results tell me what you can already do.")
+        case .watch: L("Your runs show me what you really do, not just what you remember.")
         case .startDate: L("Pick today or any day in the next two weeks.")
         case .review: L("You can change any of this later from your plan.")
         }
@@ -445,7 +451,7 @@ struct SetupSteps: View {
         VStack(alignment: .leading, spacing: UH.Space.compact) {
             Text("Running now").font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
             HStack(alignment: .center, spacing: 8) {
-                TextField("km", value: $model.draft.currentWeeklyKm, format: .number)
+                TextField("km", value: Binding(get: { model.draft.currentWeeklyKm }, set: model.setWeeklyKm), format: .number)
                     .keyboardType(.numberPad)
                     .font(.system(size: 32, weight: .bold, design: .rounded))
                     .foregroundStyle(UH.Palette.ink)
@@ -454,13 +460,20 @@ struct SetupSteps: View {
                     .font(UH.TextStyle.label)
                     .foregroundStyle(UH.Palette.secondary)
                 Spacer()
-                Stepper("Weekly km", value: Binding(get: { model.draft.currentWeeklyKm ?? 0 }, set: { model.draft.currentWeeklyKm = $0 }), in: 0...250, step: 5)
+                Stepper("Weekly km", value: Binding(get: { model.draft.currentWeeklyKm ?? 0 }, set: { model.setWeeklyKm($0) }), in: 0...250, step: 5)
                     .labelsHidden()
             }
-            Text("Your average over the last month. Your first week starts close to it.")
-                .font(UH.TextStyle.caption)
-                .foregroundStyle(UH.Palette.secondary)
-            Button("No running yet") { model.draft.currentWeeklyKm = 0 }
+            if model.draft.weeklyKmFromWatch, let km = model.watchWeeklyKm {
+                Label(L("From your COROS: %lld km a week over the last 4 full weeks", Int(km)), systemImage: "applewatch.radiowaves.left.and.right")
+                    .font(UH.TextStyle.caption)
+                    .foregroundStyle(UH.Palette.accentInk)
+                    .accessibilityIdentifier("setup.weeklyKmFromWatch")
+            } else {
+                Text("Your average over the last month. Your first week starts close to it.")
+                    .font(UH.TextStyle.caption)
+                    .foregroundStyle(UH.Palette.secondary)
+            }
+            Button("No running yet") { model.setWeeklyKm(0) }
                 .font(UH.TextStyle.caption)
                 .tint(UH.Palette.accentInk)
                 .accessibilityIdentifier("setup.noRunning")

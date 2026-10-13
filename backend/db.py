@@ -2221,6 +2221,26 @@ def mark_profile_fields_athlete_set(user_id: int, before: dict[str, Any], after:
         conn.commit()
 
 
+def mark_profile_fields_estimated(user_id: int, fields: list[str]) -> None:
+    """Records fields the app estimated (not measured) at onboarding, so the profile
+    shows them as defaults until the athlete or a coach sets them. A later change by
+    either replaces the entry (mark_profile_fields_athlete_set / coach update)."""
+    fields = [f for f in fields if f in COACH_EDITABLE_PROFILE_FIELDS]
+    if not fields:
+        return
+    user = get_user_by_id(user_id)
+    sources = dict((user or {}).get("profile_field_sources") or {})
+    for f in fields:
+        if (sources.get(f) or {}).get("source") != "coach":
+            sources[f] = {"source": "estimate"}
+    with engine.connect() as conn:
+        conn.execute(
+            text("UPDATE users SET profile_field_sources = CAST(:src AS jsonb) WHERE id = :id"),
+            {"src": json.dumps(sources), "id": user_id},
+        )
+        conn.commit()
+
+
 def acknowledge_coach_profile_changes(user_id: int) -> None:
     """The athlete has seen the coach's edits: mark every entry seen."""
     user = get_user_by_id(user_id)

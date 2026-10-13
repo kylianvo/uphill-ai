@@ -1,4 +1,5 @@
 import os
+import re
 import threading
 import time
 import uuid as _uuid
@@ -10,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from google import genai
 from google.genai import types as genai_types
 from prometheus_fastapi_instrumentator import Instrumentator, metrics
-from pydantic import BaseModel, Field, StrictBool
+from pydantic import BaseModel, Field, StrictBool, field_validator
 
 from config import settings
 from db import (
@@ -71,6 +72,7 @@ from db import (
     make_rest_day,
     mark_onboarding_complete,
     mark_profile_fields_athlete_set,
+    mark_profile_fields_estimated,
     query_nutrition_catalog,
     remove_coach_athlete_link,
     replace_shoe_rotation,
@@ -409,6 +411,9 @@ class SetPasswordRequest(BaseModel):
     password: str
 
 
+ONBOARDING_HR_RANGES = {"aet_hr": (80, 220), "ant_hr": (90, 225), "max_hr": (120, 240), "resting_hr": (30, 120)}
+
+
 class OnboardingRequest(BaseModel):
     lang: str | None = "en"
     # Step 1
@@ -420,18 +425,39 @@ class OnboardingRequest(BaseModel):
     # Step 2
     goal_type: str  # race|distance|start_running|return|recovery
     # Fitness
-    aet_hr: int | None = Field(None, ge=80, le=220)
+    aet_hr: int | None = None
     # How the stored AeT/AnT pair was obtained. Only "lab"/"field" let the gap count
     # toward the tier; None keeps whatever the athlete already had.
     threshold_source: Literal["lab", "field", "estimated", "unknown"] | None = None
-    ant_hr: int | None = Field(None, ge=90, le=225)
-    max_hr: int | None = Field(None, ge=120, le=240)
-    resting_hr: int | None = Field(None, ge=30, le=120)
-    zone2_pace_min: str | None = Field(None, pattern=r"^\d{1,2}:[0-5]\d$")
-    zone2_pace_max: str | None = Field(None, pattern=r"^\d{1,2}:[0-5]\d$")
-    threshold_pace: str | None = Field(None, pattern=r"^\d{1,2}:[0-5]\d$")
+    ant_hr: int | None = None
+    max_hr: int | None = None
+    resting_hr: int | None = None
+    zone2_pace_min: str | None = None
+    zone2_pace_max: str | None = None
+    threshold_pace: str | None = None
     # Injury
     injury_history: str | None = None
+
+    # A typo in an optional zone must not block sign-up: values outside a plausible
+    # range or not in m:ss form are dropped and estimated like a blank field.
+    @field_validator("aet_hr", "ant_hr", "max_hr", "resting_hr", mode="before")
+    @classmethod
+    def _drop_implausible_hr(cls, v: Any, info: Any) -> Any:
+        low, high = ONBOARDING_HR_RANGES[info.field_name]
+        try:
+            return v if v is None or low <= int(v) <= high else None
+        except (TypeError, ValueError):
+            return None
+
+    @field_validator("zone2_pace_min", "zone2_pace_max", "threshold_pace", mode="before")
+    @classmethod
+    def _drop_malformed_pace(cls, v: Any) -> Any:
+        return (
+            v
+            if isinstance(v, str) and re.fullmatch(r"\d{1,2}:[0-5]\d", v.strip()) and v.strip() not in ("0:00", "00:00")
+            else None
+        )
+
     # Race / distance target
     race_name: str | None = None
     race_date: str | None = None
@@ -632,21 +658,19 @@ def _profile_field_sources(user: dict[str, Any]) -> dict[str, dict[str, Any]]:
     the athlete (column has a value) or an app default (column is NULL, so the
     response shows a fallback)."""
     recorded = user.get("profile_field_sources") or {}
-    seed_hr = {"max_hr": 185, "resting_hr": 60, "aet_hr": 135, "ant_hr": 165}
-    unconfirmed_seed = (
-        not user.get("onboarding_complete", True)
-        and (user.get("threshold_source") or "unknown") == "unknown"
-        and all(user.get(field) == value for field, value in seed_hr.items())
-    )
-    seed_zones = {**seed_hr, "zone2_pace_min": "6:30", "zone2_pace_max": "5:45"}
+    # Before onboarding, every number is the column default; after it, the ones the
+    # app estimated carry an "estimate" entry (db.mark_profile_fields_estimated).
+    pre_onboarding = not user.get("onboarding_complete", True)
     out: dict[str, dict[str, Any]] = {}
     for field in COACH_EDITABLE_PROFILE_FIELDS:
         entry = recorded.get(field)
         if entry and entry.get("source") == "coach":
             out[field] = {"source": "coach", "by_name": entry.get("by_name"), "at": entry.get("at")}
         else:
-            is_default = user.get(field) in (None, "") or (
-                unconfirmed_seed and field in seed_zones and user.get(field) == seed_zones[field]
+            is_default = (
+                user.get(field) in (None, "")
+                or (entry or {}).get("source") == "estimate"
+                or (pre_onboarding and not entry)
             )
             out[field] = {"source": "default" if is_default else "athlete"}
         if field in ("aet_hr", "ant_hr"):
@@ -1110,10 +1134,8 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
     ):
         raise HTTPException(status_code=422, detail="Threshold pace must be faster than Zone 2.")
     if request.threshold_source in ("lab", "field") and (request.aet_hr is None or request.ant_hr is None):
-        raise HTTPException(status_code=422, detail="Measured thresholds require both AeT and AnT.")
-    for field in ("zone2_pace_min", "zone2_pace_max", "threshold_pace"):
-        if supplied_zones.get(field) and _pace_seconds(supplied_zones[field]) == 0:
-            raise HTTPException(status_code=422, detail="Pace must be greater than zero.")
+        # A measured pair lost one value to the plausibility check: what's left is an estimate.
+        request.threshold_source = "estimated"
     today = date.today()
     age = _compute_age(request.dob, request.age or user.get("age", 30), today)
 
@@ -1161,6 +1183,14 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         "threshold_pace": request.threshold_pace,
     }
     update_onboarding_profile(user["id"], onboarding_data)
+    mark_profile_fields_estimated(
+        user["id"],
+        [
+            f
+            for f in ("max_hr", "resting_hr", "aet_hr", "ant_hr", "zone2_pace_min", "zone2_pace_max")
+            if f not in supplied_zones
+        ],
+    )
 
     if request.skip_plan:
         # Profile saved, no plan row created -- the user starts one later
