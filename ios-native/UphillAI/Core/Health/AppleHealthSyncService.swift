@@ -69,12 +69,17 @@ actor AppleHealthSyncService {
         await stopObserving(userId: id)
     }
 
-    /// A second call while one runs waits for the first instead of uploading twice.
+    /// A call while a run is in flight waits for it, then joins (or starts) one fresh run: the
+    /// in-flight run read Health before this call, possibly for another athlete, so its result
+    /// can't stand in for this one.
     func sync() async throws -> AppleHealthSyncOutcome {
+        if let previous = running { _ = try? await previous.value }
         if let running { return try await running.value }
-        let task = Task { try await self.performSync() }
+        let task = Task {
+            defer { self.running = nil }
+            return try await self.performSync()
+        }
         running = task
-        defer { running = nil }
         return try await task.value
     }
 

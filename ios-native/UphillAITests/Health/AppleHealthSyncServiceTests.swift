@@ -126,16 +126,30 @@ struct AppleHealthSyncServiceTests {
         #expect(anchors.anchor(for: 7) == nil)
     }
 
+    @Test func signOutMidImportStopsFurtherBatches() async throws {
+        anchors.setObservingUserId(7)
+        let svc = service()
+        store.pages.withLock { $0 = [HealthWorkoutPage(samples: (0..<600).map(run), deleted: [], anchor: Data([5]))] }
+        let anchors = self.anchors
+        api.onSync.withLock { $0 = { anchors.setObservingUserId(nil) } }
+        await #expect(throws: AppleHealthSyncError.notObserving) { try await svc.sync() }
+        #expect(api.bodies.withLock { $0.count } == 1)
+    }
+
     @Test func signOutStopsObservingWhoeverConnected() async throws {
+        store.pages.withLock { $0 = [HealthWorkoutPage(samples: [run(1)], deleted: [], anchor: Data([1]))] }
         let svc = service()
         _ = try await svc.connect(userId: 7)
+        #expect(anchors.anchor(for: 7) == Data([1]))
         await svc.stopObservingForSignOut()
         #expect(anchors.observingUserId == nil && anchors.anchor(for: 7) == nil)
     }
 
     @Test func test_stop_observing_clears_anchor() async throws {
+        store.pages.withLock { $0 = [HealthWorkoutPage(samples: [run(1)], deleted: [], anchor: Data([1]))] }
         let svc = service()
         _ = try await svc.connect(userId: 7)
+        #expect(anchors.anchor(for: 7) == Data([1]))
         await svc.stopObserving(userId: 7)
         #expect(anchors.observingUserId == nil)
         #expect(anchors.anchor(for: 7) == nil)
