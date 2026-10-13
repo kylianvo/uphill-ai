@@ -249,3 +249,20 @@ struct GoalAnchor: Decodable, Sendable, Equatable, Identifiable {
         }
     }
 }
+
+/// GET /api/coach/block-evaluation/{plan}/{block}: how the finished block went,
+/// shown before the athlete (or their coach) builds the next one.
+struct BlockEvaluation: Decodable, Sendable, Equatable {
+    let blockNumber: Int
+    let sessionsTotal: Int
+    let sessionsCompleted: Int
+    let sessionsMissed: Int
+    let completionPct: Double
+    let plannedKm: Double
+    let actualKm: Double
+    let avgQualityScore: Double?
+    let qualityGrade: String?
+    let coachingTakeaways: [String]
+    let coachSummary: String?
+    let coachNotes: [String]
+}

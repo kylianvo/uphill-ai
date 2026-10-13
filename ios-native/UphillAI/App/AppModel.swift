@@ -136,6 +136,7 @@ final class AppModel {
                              generation: generation, generationService: generationService)
         chat = ChatService(client: client)
         onSignedOut = { [weak self] in
+            self?.lastAutoWatchSync = nil
             self?.generation.reset()
             self?.plan.reset()
             self?.onboardingDeferred = false
@@ -150,7 +151,13 @@ final class AppModel {
         generation.onFinished = { [weak self] kind, outcome in
             guard let self, self.session.user != nil else { return }
             switch outcome {
-            case .done(let snapshot?): self.plan.adopt(snapshot)
+            case .done(let snapshot?):
+                if kind == .newPlan && self.plan.athleteId == nil {
+                    self.plan.adopt(snapshot)
+                } else {
+                    // A coach may have left this athlete's view while the job ran.
+                    await self.plan.load()
+                }
             case .done(nil), .lost: await self.plan.load()
             case .failed, .cancelled: return
             }
@@ -187,29 +194,38 @@ final class AppModel {
         }
     }
 
+    private var lastAutoWatchSync: Date?
+    private var isAutoWatchSyncing = false
+
+    /// Called when the app opens or returns to the foreground: syncs the watch at most every 15 minutes.
+    func autoSyncWatchIfDue(now: Date = .now) async {
+        guard let userID = session.user?.id, actingAsAthlete == nil, !isAutoWatchSyncing else { return }
+        isAutoWatchSyncing = true
+        defer { isAutoWatchSyncing = false }
+        if let last = lastAutoWatchSync, now.timeIntervalSince(last) < 15 * 60 { return }
+        if plan.snapshot == nil { await plan.load() }
+        guard plan.snapshot != nil else { return }
+        await loadCorosStatus()
+        guard session.user?.id == userID, actingAsAthlete == nil, plan.athleteId == nil, corosConnected else { return }
+        lastAutoWatchSync = now
+        await plan.autoSyncWatch()
+    }
+
     func enterAthleteView(athlete: CoachedAthleteRow) {
         actingAsAthlete = athlete
         Task {
-            do {
-                async let p = coachingService.fetchAthleteProfile(athleteId: athlete.athleteId)
-                async let snap = coachingService.fetchAthleteActivePlan(athleteId: athlete.athleteId)
-                let (fetchedP, fetchedSnap) = try await (p, snap)
-                self.coachedAthleteProfile = fetchedP
-                if let fetchedSnap {
-                    self.plan.adopt(fetchedSnap)
-                }
-            } catch {
-                print("Failed to enter athlete view: \(error)")
-            }
+            async let p = try? coachingService.fetchAthleteProfile(athleteId: athlete.athleteId)
+            async let scoped: Void = plan.setAthleteScope(athlete.athleteId)
+            let (fetchedP, _) = await (p, scoped)
+            // Another athlete may have been opened meanwhile.
+            if actingAsAthlete?.athleteId == athlete.athleteId { self.coachedAthleteProfile = fetchedP }
         }
     }
 
     func exitAthleteView() {
         actingAsAthlete = nil
         coachedAthleteProfile = nil
-        Task {
-            await plan.load()
-        }
+        Task { await plan.setAthleteScope(nil) }
     }
 
     func acknowledgeCoachProfileChanges() async {
@@ -265,6 +281,7 @@ final class AppModel {
     }
 
     func signOut() async {
+        lastAutoWatchSync = nil
         actingAsAthlete = nil
         coachedAthleteProfile = nil
         pendingInvites = []

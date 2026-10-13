@@ -21,6 +21,10 @@ struct WorkoutDetailSheet: View {
     /// Parsed description + steps. Filled after the sheet is on screen so tapping a row never waits on it.
     @State private var content: WorkoutDetailContent?
 
+    @State private var showWatchMatch = false
+    @State private var confirmUnlink = false
+    @State private var matchError: String?
+
     @State private var corosSendState: CorosSendState = .idle
     @State private var corosSendNotice: String? = nil
 
@@ -81,6 +85,8 @@ struct WorkoutDetailSheet: View {
 
                             if workout.isMatched {
                                 matchedWatchCard(workout)
+                            } else if canFixMatch(workout) && !isFuture(workout) {
+                                linkWatchRunRow
                             }
 
                             // b & f. Step timeline with Treadmill toggle
@@ -141,11 +147,11 @@ struct WorkoutDetailSheet: View {
                                         .padding(.vertical, UH.Space.compact)
                                 }
                             } else {
-                                bottomActionBar(workout)
-                                if actingAsAthlete == nil && !workout.isRest && !workout.isDone && isTodayOrFuture(workout) {
+                                if model.athleteId == nil { bottomActionBar(workout) }
+                                if model.athleteId == nil && !workout.isRest && !workout.isDone && isTodayOrFuture(workout) {
                                     sendToCorosSection(workout)
                                 }
-                                if !workout.isRest {
+                                if model.athleteId == nil && !workout.isRest {
                                     howDidItFeelSection(workout)
                                 }
                             }
@@ -182,6 +188,16 @@ struct WorkoutDetailSheet: View {
                         ToolbarItem(placement: .topBarTrailing) {
                             menuActions(workout)
                         }
+                    }
+                    .sheet(isPresented: $showWatchMatch) { WatchMatchSheet(model: model, workout: workout) }
+                    .confirmationDialog("Unlink this run?", isPresented: $confirmUnlink, titleVisibility: .visible) {
+                        Button("Unlink", role: .destructive) {
+                            guard let activityID = workout.matchedActivityId else { return }
+                            run { matchError = await model.setMatch(activityID: activityID, to: nil) }
+                        }
+                        Button("Cancel", role: .cancel) {}
+                    } message: {
+                        Text("The run stays in your watch history. Automatic matching won't link it again.")
                     }
                     .confirmationDialog("Mark session as missed?", isPresented: $confirmMissed, titleVisibility: .visible) {
                         Button("Mark Missed", role: .destructive) {
@@ -780,7 +796,7 @@ struct WorkoutDetailSheet: View {
                 Divider()
             }
 
-            if !w.isRest {
+            if model.athleteId == nil && !w.isRest {
                 let targets = model.moveTargets(for: w)
                 if !targets.isEmpty {
                     Menu("Move to…") {
@@ -914,6 +930,41 @@ struct WorkoutDetailSheet: View {
         }
     }
 
+    // MARK: - Fixing a watch match
+
+    /// Only the athlete fixes their own matches; the endpoint checks ownership.
+    private func canFixMatch(_ w: Workout) -> Bool {
+        model.athleteId == nil && deviceService != nil && !w.isRest
+    }
+
+    private func isFuture(_ w: Workout) -> Bool {
+        guard let plan = model.snapshot?.plan,
+              let date = PlanCalendar.date(week: w.weekNumber, weekday: w.weekday, plan: plan,
+                                           workouts: model.snapshot?.workouts ?? []) else { return false }
+        let cal = Calendar.current
+        return cal.startOfDay(for: date) > cal.startOfDay(for: Date())
+    }
+
+    private var linkWatchRunRow: some View {
+        Button { showWatchMatch = true } label: {
+            HStack(spacing: UH.Space.small) {
+                Image(systemName: "applewatch").foregroundStyle(UH.Palette.accentInk)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Link a watch run").font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
+                    Text("Ran this but it didn't match? Pick the run.")
+                        .font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(UH.Palette.muted)
+            }
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .trainingCard()
+        .accessibilityIdentifier("detail.linkWatchRun")
+    }
+
     // MARK: - Matched Watch Workout Card
 
     @ViewBuilder
@@ -988,11 +1039,21 @@ struct WorkoutDetailSheet: View {
                     .font(UH.TextStyle.caption)
                     .foregroundStyle(UH.Palette.muted)
                 Spacer()
-                if let id = w.matchedActivityId {
-                    Text("#\(id)")
-                        .font(.system(size: 10, weight: .bold, design: .monospaced))
-                        .foregroundStyle(UH.Palette.muted)
+                if canFixMatch(w), w.matchedActivityId != nil {
+                    Menu {
+                        Button { showWatchMatch = true } label: { Label("Pick a different run", systemImage: "arrow.triangle.swap") }
+                        Button(role: .destructive) { confirmUnlink = true } label: { Label("Unlink this run", systemImage: "link.badge.minus") }
+                    } label: {
+                        Text("Wrong run?")
+                            .font(UH.TextStyle.caption.weight(.semibold))
+                            .foregroundStyle(UH.Palette.accentInk)
+                            .frame(minHeight: 44)
+                    }
+                    .accessibilityIdentifier("detail.wrongRun")
                 }
+            }
+            if let matchError {
+                Text(matchError).font(UH.TextStyle.caption).foregroundStyle(UH.Palette.danger)
             }
         }
         .trainingCard()

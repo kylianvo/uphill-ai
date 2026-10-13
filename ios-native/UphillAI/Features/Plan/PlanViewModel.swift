@@ -82,9 +82,16 @@ final class PlanViewModel {
     private(set) var watchSyncNotice: String?
     private(set) var contextKnowledgeCard: KnowledgeCardModel?
 
-    private let service: any PlanServicing
+    private let baseService: any PlanServicing
+    private var service: any PlanServicing
     private let generation: GenerationCenter?
-    private let generationService: (any GenerationServicing)?
+    private let baseGenerationService: (any GenerationServicing)?
+    private var generationService: (any GenerationServicing)?
+    /// The coached athlete whose plan is shown, or nil for the signed-in user's own plan.
+    private(set) var athleteId: Int?
+    private var scopeRevision = 0
+    /// A coach's view of an athlete is never written to the athlete-owned offline cache.
+    private var usesCache: Bool { athleteId == nil }
     private let cache: OfflineCache
     private let now: @MainActor () -> Date
     private let calendar: Calendar
@@ -97,7 +104,9 @@ final class PlanViewModel {
          generation: GenerationCenter? = nil, generationService: (any GenerationServicing)? = nil) {
         self.isSignedIn = isSignedIn
         self.generation = generation
+        self.baseGenerationService = generationService
         self.generationService = generationService
+        self.baseService = service
         self.service = service
         self.cache = cache
         self.now = now
@@ -107,39 +116,45 @@ final class PlanViewModel {
     // MARK: Loading
 
     func load() async {
+        let revision = scopeRevision
         let hadSnapshot = snapshot != nil
-        if !hadSnapshot, let cached = cache.load(PlanSnapshot.self, .plan) {
+        if !hadSnapshot, usesCache, let cached = cache.load(PlanSnapshot.self, .plan) {
             apply(cached.value, resetWeek: true)
             cachedAt = cached.savedAt
         }
 
         do {
-            if let fresh = try await service.activePlan() {
+            let fresh = try await service.activePlan()
+            guard revision == scopeRevision else { return }
+            if let fresh {
                 let resetWeek = !hadSnapshot && cachedAt == nil
                 apply(fresh, resetWeek: resetWeek)
                 cachedAt = nil
-                if isSignedIn() { cache.save(fresh, as: .plan) }
+                if isSignedIn() && usesCache { cache.save(fresh, as: .plan) }
                 await loadBlockCompletion()
                 await loadGoal()
                 await loadKnowledgeCard()
             } else {
                 snapshot = nil
                 cachedAt = nil
-                cache.remove(.plan)
+                if usesCache { cache.remove(.plan) }
                 state = .empty
             }
         } catch let error as APIError {
-            if case .transport = error, snapshot != nil {
+            guard revision == scopeRevision else { return }
+            if case .transport = error, snapshot != nil, usesCache {
                 cachedAt = cache.load(PlanSnapshot.self, .plan)?.savedAt ?? now()
                 return
             }
             if snapshot == nil { state = .failed(error.userMessage) }
         } catch {
+            guard revision == scopeRevision else { return }
             if snapshot == nil { state = .failed(error.localizedDescription) }
         }
     }
 
     func syncWatch() async -> String? {
+        guard athleteId == nil else { return nil }
         guard !isSyncingWatch else { return nil }
         guard let plan = snapshot?.plan else { return L("No active plan to sync.") }
         isSyncingWatch = true
@@ -147,6 +162,7 @@ final class PlanViewModel {
         do {
             let msg = try await service.syncWatch(planID: plan.id)
             await load()
+            await markMatchedWorkoutsDone()
             watchSyncNotice = msg
             return msg
         } catch let apiError as APIError {
@@ -167,6 +183,47 @@ final class PlanViewModel {
         }
     }
 
+    /// Set when an automatic sync marked runs done; the plan screen shows it briefly.
+    private(set) var autoSyncSummary: String?
+    func clearAutoSyncSummary() { autoSyncSummary = nil }
+
+    /// Background sync on app open: pulls new watch runs, matches them, and marks every
+    /// settled match (auto or the athlete's own link) done. Silent unless something changed.
+    func autoSyncWatch() async {
+        guard athleteId == nil, cachedAt == nil, !isSyncingWatch, let plan = snapshot?.plan else { return }
+        isSyncingWatch = true
+        defer { isSyncingWatch = false }
+        guard (try? await service.syncWatch(planID: plan.id)) != nil else { return }
+        await load()
+        let marked = await markMatchedWorkoutsDone()
+        if marked > 0 {
+            autoSyncSummary = marked == 1 ? L("1 run from your watch marked done") : L("%lld runs from your watch marked done", marked)
+        }
+    }
+
+    /// Returns how many workouts were newly marked done.
+    @discardableResult
+    func markMatchedWorkoutsDone() async -> Int {
+        guard athleteId == nil, let snapshot,
+              let activities = try? await service.watchActivities(planID: snapshot.plan.id) else { return 0 }
+        let settled = Set(activities.filter(\.isSettledMatch).compactMap(\.workoutId))
+        let today = calendar.startOfDay(for: now())
+        let pending = snapshot.workouts.filter { workout in
+            guard settled.contains(workout.id), !workout.isDone, !workout.isRest,
+                  let date = PlanCalendar.date(week: workout.weekNumber, weekday: workout.weekday,
+                                               plan: snapshot.plan, workouts: snapshot.workouts, calendar: calendar) else { return false }
+            return calendar.startOfDay(for: date) <= today
+        }
+        var marked = 0
+        for workout in pending {
+            if await write({ try await self.service.log(workoutID: workout.id, WorkoutLogUpdate(isCompleted: 1, isMissed: 0)) }) {
+                marked += 1
+            }
+        }
+        if marked > 0 { await load() }
+        return marked
+    }
+
     func clearWatchSyncNotice() {
         watchSyncNotice = nil
     }
@@ -183,11 +240,28 @@ final class PlanViewModel {
         apply(snapshot, resetWeek: true)
         cachedAt = nil
         actionError = nil
-        if isSignedIn() { cache.save(snapshot, as: .plan) }
+        if isSignedIn() && usesCache { cache.save(snapshot, as: .plan) }
         Task { await loadBlockCompletion(); await loadGoal(); await loadKnowledgeCard() }
     }
 
+    /// Switches between the signed-in user's plan and a coached athlete's, then reloads.
+    func setAthleteScope(_ athleteId: Int?) async {
+        guard athleteId != self.athleteId || snapshot == nil else { return }
+        reset()
+        self.athleteId = athleteId
+        service = baseService.scoped(toAthlete: athleteId)
+        generationService = baseGenerationService?.scoped(toAthlete: athleteId)
+        await load()
+    }
+
+    /// Also returns to the signed-in user's own plan (sign-out must not keep a coach's athlete view).
     func reset() {
+        scopeRevision += 1
+        autoSyncSummary = nil
+        watchSyncNotice = nil
+        athleteId = nil
+        service = baseService
+        generationService = baseGenerationService
         blockCompletion = nil
         nextWeekOffer = nil
         goal = nil
@@ -371,6 +445,7 @@ final class PlanViewModel {
     }
 
     func deletePlan(id: Int) async -> Bool {
+        guard athleteId == nil else { return false }
         guard cachedAt == nil else {
             actionError = Self.offlineMessage
             return false
@@ -397,17 +472,19 @@ final class PlanViewModel {
 
     /// Runs a write that returns the plan's workouts. Returns true on success.
     private func write(_ operation: () async throws -> [Workout]) async -> Bool {
+        guard athleteId == nil else { return false }
         guard cachedAt == nil else {
             actionError = Self.offlineMessage
             return false
         }
         actionError = nil
+        let revision = scopeRevision
         do {
             let workouts = try await operation()
-            guard var snapshot else { return false }
+            guard revision == scopeRevision, var snapshot else { return false }
             snapshot.workouts = workouts
             self.snapshot = snapshot
-            if isSignedIn() { cache.save(snapshot, as: .plan) }
+            if isSignedIn() && usesCache { cache.save(snapshot, as: .plan) }
             // Completion % is server-computed; done/missed/move changes it.
             await loadBlockCompletion()
             return true
@@ -429,8 +506,10 @@ final class PlanViewModel {
 
     /// The offer exists only on the last generated week while later weeks are still to come.
     func loadBlockCompletion() async {
+        let revision = scopeRevision
         guard let snapshot, cachedAt == nil else { return }
         if let response = try? await service.blockCompletion(planID: snapshot.plan.id) {
+            guard revision == scopeRevision else { return }
             self.blockCompletion = response
             updateNextWeekOffer()
         }
@@ -466,7 +545,14 @@ final class PlanViewModel {
         )
     }
 
-    func buildNextWeek(rpe: Int?, notes: String, override: Bool, schedule: ScheduleDraft? = nil) async -> NextWeekResult {
+    /// How the block before `offer` went; nil when it can't be read.
+    func blockEvaluation(for offer: NextWeekOffer) async -> BlockEvaluation? {
+        guard let planID = snapshot?.plan.id, offer.blockNumber > 1, cachedAt == nil else { return nil }
+        return try? await service.blockEvaluation(planID: planID, block: offer.blockNumber - 1)
+    }
+
+    func buildNextWeek(rpe: Int?, notes: String, override: Bool, schedule: ScheduleDraft? = nil,
+                       coachNotes: String = "") async -> NextWeekResult {
         guard let offer = nextWeekOffer, let planID = snapshot?.plan.id,
               let generation, let generationService else { return .failed(L("Couldn't start the next week. Try again.")) }
         guard cachedAt == nil else { return .failed(Self.offlineMessage) }
@@ -476,6 +562,8 @@ final class PlanViewModel {
             planId: planID, blockNumber: offer.blockNumber, overallRpe: rpe,
             notes: trimmed.isEmpty ? nil : trimmed, overrideGate: override, lang: AppLanguage.code,
             clientToday: PlanCalendar.ymd(now(), calendar: calendar))
+        let trimmedCoach = coachNotes.trimmingCharacters(in: .whitespacesAndNewlines)
+        if athleteId != nil, !trimmedCoach.isEmpty { body.coachNotes = trimmedCoach }
         schedule?.applyChanges(to: &body)
         do {
             let job = try await generationService.generateNextBlock(body)
@@ -585,16 +673,20 @@ final class PlanViewModel {
     }
 
     func loadGoal() async {
+        let revision = scopeRevision
         guard let plan = snapshot?.plan, plan.courseDistanceKm != nil, cachedAt == nil else { return }
-        if let fresh = try? await service.goal(planID: plan.id) { goal = fresh }
+        if let fresh = try? await service.goal(planID: plan.id), revision == scopeRevision { goal = fresh }
     }
 
     /// Returns an error message, or nil on success.
     func reassessGoal() async -> String? {
+        let revision = scopeRevision
         guard let planID = snapshot?.plan.id else { return nil }
         guard cachedAt == nil else { return Self.offlineMessage }
         do {
-            goal = try await service.reassessGoal(planID: planID)
+            let fresh = try await service.reassessGoal(planID: planID)
+            guard revision == scopeRevision, snapshot?.plan.id == planID else { return nil }
+            goal = fresh
             return nil
         } catch APIError.http(429, _, _) {
             return L("You've used today's goal checks. Try again tomorrow.")
@@ -606,15 +698,53 @@ final class PlanViewModel {
     }
 
     func applySuggestedGoal() async -> String? {
+        let revision = scopeRevision
         guard let planID = snapshot?.plan.id, let minutes = suggestedMinutes else { return nil }
         guard cachedAt == nil else { return Self.offlineMessage }
         do {
-            goal = try await service.applyGoal(planID: planID, targetMinutes: minutes)
+            let fresh = try await service.applyGoal(planID: planID, targetMinutes: minutes)
+            guard revision == scopeRevision, snapshot?.plan.id == planID else { return nil }
+            goal = fresh
             await load()
             return nil
         } catch let error as APIError {
             return error.userMessage
         } catch {
+            return error.localizedDescription
+        }
+    }
+
+    // MARK: Watch matches
+
+    /// Watch runs in this plan's window, newest first. Throws so the picker can say why it's empty.
+    func watchActivities() async throws -> [WatchActivity] {
+        guard athleteId == nil, let planID = snapshot?.plan.id else { return [] }
+        return try await service.watchActivities(planID: planID)
+            .sorted { ($0.startDate ?? .distantPast) > ($1.startDate ?? .distantPast) }
+    }
+
+    /// Links `activityID` to `workout` (nil unlinks it), then reloads so completion and the card follow.
+    /// Returns an error message, or nil on success.
+    func setMatch(activityID: Int, to workout: Workout?) async -> String? {
+        guard athleteId == nil else { return APIError.http(status: 403, message: nil, code: nil).userMessage }
+        guard cachedAt == nil else { return Self.offlineMessage }
+        do {
+            // The backend bundles runs when the workout already has a match.
+            // "Pick a different run" replaces that match, so release it first.
+            if let previousID = workout?.matchedActivityId, previousID != activityID {
+                try await service.setMatch(activityID: previousID, workoutID: nil)
+            }
+            try await service.setMatch(activityID: activityID, workoutID: workout?.id)
+            await load()
+            // A run the athlete linked themselves is a done session.
+            if workout != nil { await markMatchedWorkoutsDone() }
+            await loadBlockCompletion()
+            return nil
+        } catch let error as APIError {
+            await load()
+            return error.userMessage
+        } catch {
+            await load()
             return error.localizedDescription
         }
     }
@@ -627,14 +757,17 @@ final class PlanViewModel {
     }
 
     func select(_ plan: Plan) async {
+        guard athleteId == nil else { return }
+        let revision = scopeRevision
         guard cachedAt == nil else {
             actionError = Self.offlineMessage
             return
         }
         do {
             if let snapshot = try await service.selectPlan(id: plan.id) {
+                guard revision == scopeRevision else { return }
                 apply(snapshot, resetWeek: true)
-                if isSignedIn() { cache.save(snapshot, as: .plan) }
+                if isSignedIn() && usesCache { cache.save(snapshot, as: .plan) }
                 await loadBlockCompletion()
                 await loadGoal()
                 await loadKnowledgeCard()

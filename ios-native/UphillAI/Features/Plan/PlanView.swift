@@ -254,11 +254,11 @@ struct PlanView: View {
                         } else {
                             LazyVStack(spacing: UH.Space.compact) {
                                 ForEach(model.days) { day in
-                                    DayRow(day: day, onToggleDone: { workout in
+                                    DayRow(day: day, onToggleDone: model.athleteId == nil ? { workout in
                                         Task { await model.setDone(workout, !workout.isDone) }
-                                    }, onMoveOrSwap: { day in
+                                    } : nil, onMoveOrSwap: model.athleteId == nil ? { day in
                                         moveSwapDay = day
-                                    }, onSelect: { selectedWorkout = $0 })
+                                    } : nil, onSelect: { selectedWorkout = $0 })
                                         .id(day.id)
                                 }
                             }
@@ -294,6 +294,12 @@ struct PlanView: View {
                         readyBanner = outcome.kind == .adaptWeek ? L("Week updated") : L("New week is ready")
                         Task { try? await Task.sleep(for: .seconds(3)); readyBanner = nil }
                     }
+                }
+                .onChange(of: model.autoSyncSummary) { _, summary in
+                    guard let summary else { return }
+                    model.clearAutoSyncSummary()
+                    readyBanner = summary
+                    Task { try? await Task.sleep(for: .seconds(3)); readyBanner = nil }
                 }
                 .sensoryFeedback(.success, trigger: readyBanner)
                 .overlay(alignment: .top) {

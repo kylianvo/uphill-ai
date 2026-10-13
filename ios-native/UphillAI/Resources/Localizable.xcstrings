@@ -13220,6 +13220,356 @@
           }
         }
       }
+    },
+    "%@ %@, set as target": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ %@, đặt mục tiêu"
+          }
+        }
+      }
+    },
+    "%lld runs from your watch marked done": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã đánh dấu xong %lld buổi đồng hồ"
+          }
+        }
+      }
+    },
+    "1 run from your watch marked done": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã đánh dấu xong 1 buổi đồng hồ"
+          }
+        }
+      }
+    },
+    "All years": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tất cả"
+          }
+        }
+      }
+    },
+    "All years (average)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tất cả (trung bình)"
+          }
+        }
+      }
+    },
+    "Average of %lld editions": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trung bình %lld năm"
+          }
+        }
+      }
+    },
+    "Coach Uphill follows this when it writes the new weeks. Optional.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coach Uphill dựa vào đây khi viết các tuần mới. Không bắt buộc."
+          }
+        }
+      }
+    },
+    "Coach notes on this block": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ghi chú Coach cho Block"
+          }
+        }
+      }
+    },
+    "Couldn't load your watch runs": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa tải được buổi từ đồng hồ"
+          }
+        }
+      }
+    },
+    "Edition": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Năm"
+          }
+        }
+      }
+    },
+    "Focus, limits, races or travel to plan around…": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trọng tâm, giới hạn, Race hoặc lịch đi xa…"
+          }
+        }
+      }
+    },
+    "From your watch runs": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Từ buổi chạy đồng hồ"
+          }
+        }
+      }
+    },
+    "Guidance for this block": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Định hướng Block này"
+          }
+        }
+      }
+    },
+    "Link a watch run": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gắn buổi đồng hồ"
+          }
+        }
+      }
+    },
+    "Linked to this workout": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã gắn với buổi này"
+          }
+        }
+      }
+    },
+    "No watch runs in this plan yet": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plan chưa có buổi từ đồng hồ"
+          }
+        }
+      }
+    },
+    "Not linked": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa gắn"
+          }
+        }
+      }
+    },
+    "Now linked to %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang gắn với %@"
+          }
+        }
+      }
+    },
+    "Past finish times fall outside this slider's range.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thành tích cũ nằm ngoài khoảng của thanh trượt."
+          }
+        }
+      }
+    },
+    "Past results": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kết quả cũ"
+          }
+        }
+      }
+    },
+    "Pick a different run": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn bài chạy khác"
+          }
+        }
+      }
+    },
+    "Pick the run you did for %@.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn buổi đã chạy cho %@."
+          }
+        }
+      }
+    },
+    "Ran this but it didn't match? Pick the run.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã chạy nhưng chưa khớp? Chọn bài chạy."
+          }
+        }
+      }
+    },
+    "Run quality · %lld%%": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chất lượng · %lld%%"
+          }
+        }
+      }
+    },
+    "Sessions done": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buổi đã tập"
+          }
+        }
+      }
+    },
+    "Sync your watch from Manage, then come back to link a run.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đồng bộ đồng hồ trong Quản lý, rồi quay lại để liên kết."
+          }
+        }
+      }
+    },
+    "The run stays in your watch history. Automatic matching won't link it again.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bài chạy vẫn còn trong lịch sử đồng hồ. Ghép tự động sẽ không liên kết lại."
+          }
+        }
+      }
+    },
+    "Unlink this run": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bỏ liên kết"
+          }
+        }
+      }
+    },
+    "Unlink this run?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bỏ gắn buổi này?"
+          }
+        }
+      }
+    },
+    "Watch run": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bài chạy"
+          }
+        }
+      }
+    },
+    "Winner (F)": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vô địch nữ"
+          }
+        }
+      }
+    },
+    "Wrong run?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sai buổi?"
+          }
+        }
+      }
+    },
+    "avg HR %lld": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HR TB %lld"
+          }
+        }
+      }
+    },
+    "km run": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "km tập"
+          }
+        }
+      }
+    },
+    "winner %@": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "nhất %@"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

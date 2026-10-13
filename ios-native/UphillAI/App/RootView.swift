@@ -3,6 +3,7 @@ import SwiftUI
 struct RootView: View {
     let app: AppModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
     @AppStorage(AppLanguage.storageKey) private var language = AppLanguage.en
 
     var body: some View {
@@ -23,6 +24,12 @@ struct RootView: View {
         .task {
             await app.restore()
             if app.session.user != nil { app.generation.resumeIfNeeded() }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { Task { await app.autoSyncWatchIfDue() } }
+        }
+        .task(id: app.session.user?.id) {
+            if app.session.user != nil { await app.autoSyncWatchIfDue() }
         }
     }
 

@@ -33,6 +33,9 @@ struct PaceStrategySheet: View {
     @State private var restMins: [Int: Int] = [:]
     @State private var isLoading: Bool = false
     @State private var errorMessage: String? = nil
+    @State private var benchmarks: [RaceBenchmark] = []
+    /// nil = averaged over every curated edition.
+    @State private var benchmarkYear: Int? = nil
     var isPresentedInSheet: Bool = false
 
     private var isVietnamese: Bool {
@@ -453,6 +456,20 @@ struct PaceStrategySheet: View {
                 }
                 .font(.system(size: 10, design: .monospaced))
                 .foregroundStyle(UH.Palette.muted)
+
+                if !benchmarks.isEmpty {
+                    benchmarkStrip
+                }
+            }
+            .task(id: "\(raceName)|\(Int(courseDistanceKm))") {
+                // Debounce typing in the race name.
+                try? await Task.sleep(for: .milliseconds(400))
+                guard !Task.isCancelled else { return }
+                let name = raceName.trimmingCharacters(in: .whitespacesAndNewlines)
+                let found = name.count >= 3 ? await service.benchmarks(raceName: name, distanceKm: courseDistanceKm) : []
+                guard !Task.isCancelled else { return }
+                benchmarks = found
+                if let year = benchmarkYear, !found.contains(where: { $0.year == year }) { benchmarkYear = nil }
             }
 
             Divider().padding(.vertical, 2)
@@ -518,6 +535,102 @@ struct PaceStrategySheet: View {
     }
 
     // MARK: - Metrics Strip
+
+    // MARK: - Past results
+
+    private var courseDistanceKm: Double { gpxResult?.totalDistanceKm ?? distanceKm }
+
+    private var benchmarkYears: [Int] {
+        Array(Set(benchmarks.map(\.year).filter { $0 > 0 })).sorted(by: >)
+    }
+
+    private var benchmarkCaption: String {
+        if let year = benchmarkYear, let edition = benchmarks.first(where: { $0.year == year }) {
+            var parts = [String(year)]
+            if let n = edition.finishers { parts.append(L("%lld finishers", n)) }
+            if let winner = edition.winnerTime { parts.append(L("winner %@", winner)) }
+            return parts.joined(separator: " · ")
+        }
+        let counts = benchmarks.compactMap(\.finishers)
+        let editions = L("Average of %lld editions", benchmarks.count)
+        guard !counts.isEmpty else { return benchmarks.count == 1 ? String(benchmarks[0].year) : editions }
+        let avg = counts.reduce(0, +) / counts.count
+        return benchmarks.count == 1
+            ? "\(benchmarks[0].year) · " + L("%lld finishers", avg)
+            : editions + " · ~" + L("%lld finishers", avg)
+    }
+
+    /// Where past finishers landed on this slider's range. Tapping a time sets it as the target.
+    private var benchmarkStrip: some View {
+        let range = bounds
+        let markers = BenchmarkMarker.markers(benchmarks, year: benchmarkYear)
+            .filter { $0.minutes >= range.min && $0.minutes <= range.max }
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Past results").font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
+                Spacer()
+                if benchmarkYears.count > 1 {
+                    Menu {
+                        Picker("Edition", selection: $benchmarkYear) {
+                            Text("All years (average)").tag(Int?.none)
+                            ForEach(benchmarkYears, id: \.self) { Text(String($0)).tag(Int?.some($0)) }
+                        }
+                    } label: {
+                        HStack(spacing: 3) {
+                            Text(benchmarkYear.map(String.init) ?? L("All years"))
+                            Image(systemName: "chevron.up.chevron.down").font(.system(size: 9, weight: .semibold))
+                        }
+                        .font(UH.TextStyle.caption.weight(.semibold))
+                        .foregroundStyle(UH.Palette.accentInk)
+                        .frame(minHeight: 32)
+                    }
+                    .accessibilityIdentifier("pace.benchmarkYear")
+                }
+            }
+            Text(benchmarkCaption)
+                .font(UH.TextStyle.caption)
+                .monospacedDigit()
+                .foregroundStyle(UH.Palette.secondary)
+
+            if markers.isEmpty {
+                Text("Past finish times fall outside this slider's range.")
+                    .font(UH.TextStyle.caption)
+                    .foregroundStyle(UH.Palette.muted)
+            } else {
+                GeometryReader { geo in
+                    let width = geo.size.width
+                    ZStack(alignment: .topLeading) {
+                        Capsule().fill(UH.Palette.line).frame(height: 2).offset(y: 5)
+                        ForEach(Array(markers.enumerated()), id: \.element.id) { index, marker in
+                            let x = width * (marker.minutes - range.min) / max(1, range.max - range.min)
+                            Button {
+                                targetTimeMins = (marker.minutes / 5).rounded() * 5
+                            } label: {
+                                VStack(spacing: 2) {
+                                    Circle().fill(UH.Palette.accentInk).frame(width: 8, height: 8)
+                                    // Alternate rows so neighbouring labels don't collide.
+                                    if index % 2 == 1 { Spacer().frame(height: 14) }
+                                    Text(marker.label)
+                                        .font(.system(size: 10, weight: .bold))
+                                        .foregroundStyle(UH.Palette.accentInk)
+                                        .fixedSize()
+                                }
+                                .frame(minWidth: 32, minHeight: 44, alignment: .top)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .position(x: min(max(x, 16), width - 16), y: 22)
+                            .accessibilityLabel(L("%@ %@, set as target", marker.label, GoalEstimate.formatMinutes(marker.minutes)))
+                        }
+                    }
+                }
+                .frame(height: 46)
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("pace.benchmarks")
+            }
+        }
+        .padding(.top, 4)
+    }
 
     private var metricsSummaryStrip: some View {
         HStack(spacing: 8) {

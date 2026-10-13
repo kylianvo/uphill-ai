@@ -348,3 +348,30 @@ enum PacingCalculator {
         }
     }
 }
+
+/// A past-results time placed on the Pace Strategy finish-time slider.
+struct BenchmarkMarker: Identifiable, Equatable {
+    let label: String
+    let minutes: Double
+    var id: String { label }
+
+    /// Winner times and overall percentiles for one edition, or averaged over all of them (`year == nil`).
+    static func markers(_ benchmarks: [RaceBenchmark], year: Int?) -> [BenchmarkMarker] {
+        let editions = year.map { y in benchmarks.filter { $0.year == y } } ?? benchmarks
+        func average(_ pick: (RaceBenchmark) -> String?) -> Double? {
+            let values = editions.compactMap(pick).compactMap(GoalEstimate.parseTimeToMinutes)
+            return values.isEmpty ? nil : values.reduce(0, +) / Double(values.count)
+        }
+        let candidates: [(String, Double?)] = [
+            (L("Winner"), average { $0.winnerTime }),
+            (L("Winner (F)"), average { $0.winnerTimeWomen }),
+            ("P10", average { $0.percentiles?["overall"]?.p10 }),
+            ("P25", average { $0.percentiles?["overall"]?.p25 }),
+            ("P50", average { $0.percentiles?["overall"]?.p50 }),
+            ("P75", average { $0.percentiles?["overall"]?.p75 }),
+            ("P90", average { $0.percentiles?["overall"]?.p90 }),
+        ]
+        return candidates.compactMap { label, minutes in minutes.map { BenchmarkMarker(label: label, minutes: $0) } }
+            .sorted { $0.minutes < $1.minutes }
+    }
+}
