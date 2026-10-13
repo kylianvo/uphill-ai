@@ -176,7 +176,7 @@ export default function RaceDetailDialog({
         <p>
           {recorded.race_date} ·{" "}
           {recorded.discipline === "road"
-            ? t("Road", "Đường nhựa")
+            ? t("Road", "Road")
             : t("Trail", "Trail")}{" "}
           ·{" "}
           {recorded.source === "manual"

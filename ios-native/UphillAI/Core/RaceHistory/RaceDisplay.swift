@@ -11,7 +11,7 @@ enum RaceDisplay {
     }
 
     static func discipline(_ raw: String, vietnamese: Bool = isVietnamese) -> String {
-        raw == "road" ? (vietnamese ? "Đường nhựa" : "Road") : "Trail"
+        raw == "road" ? "Road" : "Trail"
     }
 
     static func source(_ raw: String, vietnamese: Bool = isVietnamese) -> String {

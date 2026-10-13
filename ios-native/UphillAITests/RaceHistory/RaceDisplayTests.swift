@@ -12,7 +12,7 @@ final class RaceDisplayTests: XCTestCase {
         XCTAssertEqual(RaceDisplay.number(50, vietnamese: false), "50")
     }
     func testLocalizedLabels() {
-        XCTAssertEqual(RaceDisplay.discipline("road", vietnamese: true), "Đường nhựa")
+        XCTAssertEqual(RaceDisplay.discipline("road", vietnamese: true), "Road")
         XCTAssertEqual(RaceDisplay.discipline("trail", vietnamese: false), "Trail")
         XCTAssertEqual(RaceDisplay.source("manual", vietnamese: true), "Tự nhập")
         XCTAssertEqual(RaceDisplay.source("manual", vietnamese: false), "Manual entry")

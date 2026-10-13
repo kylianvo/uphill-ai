@@ -91,6 +91,20 @@ components:
     textColor: "#000000"
     rounded: "{rounded.pill}"
     padding: "10px 14px"
+  road-pb-grid:
+    backgroundColor: "rgba(255,255,255,.7)"
+    rounded: "{rounded.workspace-panel}"
+  road-pb-cell:
+    padding: "18px 16px"
+  race-detail-dialog:
+    backgroundColor: "{colors.white}"
+    rounded: "20px"
+    padding: "24px"
+    width: "min(720px, calc(100vw - 32px))"
+  race-detail-action:
+    rounded: "10px"
+    padding: "10px 14px"
+    height: "44px"
 ---
 
 # Design System: Uphill AI
@@ -141,6 +155,8 @@ Science has a 1200px container with a 230px sticky topic column and a flexible a
 
 The landing hero uses a 1092px inner width; the comparison section reaches 1120px. Public-page sections use more generous spacing and independent responsive composition. Their open rows should not be inferred to be glass cards.
 
+Race history (web panel and native screen) stacks its blocks in one column: road personal bests, trail summary, linked profiles, the pending-confirmation block, then the race list. The web road-PB grid uses four columns and becomes two at 560px; native always uses two flexible columns. Pending rows put the result and its actions side by side and stack them at 560px. The web race detail dialog is at most 720px wide with a 16px viewport margin, scrolls internally within the dynamic viewport height, and reduces its 24px header and body padding to 20px at 480px. Native opens the same detail as a pushed screen with 16px padding.
+
 ## Elevation & Depth
 
 Glass, background blur and fine borders provide most workspace depth. Planner, day, tool and About surfaces use 24px blur; app navigation uses 20px. Science combines 24px blur with a fixed mountain video and a pale translucent veil. The app navigation retains a soft shadow; many content cards explicitly remove shadows. Selected calendar controls carry a small shadow.
@@ -181,6 +197,24 @@ Tool cards combine 28px padding, 12px corners, fine borders and glass. Hover cha
 
 Matched activities group the planned workout and recorded activity vertically. The recorded card uses a pale green glass surface and flat metric cells with tabular numerals, bottom borders and a responsive three-to-two-column grid. Supporting comparisons remain smaller than the measured values.
 
+### Race History
+
+Sources: `RaceHistoryPanel.tsx`, `RaceDetailDialog.tsx`, `RaceCourseContext.tsx`, `RaceHistory.module.css`, `RaceDetail.module.css` and `lib/raceHistory.ts` under `frontend/src`; `Features/RaceHistory` and `Core/RaceHistory/RaceDisplay.swift` under `ios-native/UphillAI`.
+
+**Road personal bests.** Four fixed distances in order: 5 km, 10 km, HM, FM (native spells out Half marathon and Marathon). On web they sit in one bordered, pale-glass strip with 12px corners, divided by hairlines rather than separate tiles. Each cell has a 12px secondary label, a 24px semibold (650) tabular time and a 12px secondary date or status line. Native draws each distance as its own training card (panel radius, 16px padding) in a two-column grid, with a metric-style time and a filled medal symbol in the selected ink when a result exists. A cell with no result shows an em dash and "No confirmed result" and is disabled. A cell with a result opens that race's detail.
+
+**The One List Rule.** Confirmed races appear in one reverse-chronological list. Road and Trail are shown as a small label on each row, not as a filter. Web rows use the existing collapsible result row with pill badges for source and discipline. Native rows are training cards showing name, tabular time, and a date · distance · discipline · source line.
+
+**Pending confirmation.** Imported VBM results that are not yet confirmed appear only in a separate block ("Confirm your VBM results", with a count badge) above the list. They never appear in the race list or count toward personal bests. Each row has a quiet "View details" control and a primary "This is my result" action at least 44px tall. Native shows each pending result as a training card with a primary button and removes the date the race name repeats.
+
+**Race detail.** On web this is a modal `<dialog>` that returns focus to the control that opened it. It has a white surface, a 20px radius, a dark forest backdrop at 55% opacity, and a header with a 24px title (22px on mobile) beside a 44px close control. The body starts with a date · discipline · source line and an "Awaiting confirmation" notice for unconfirmed results. Next comes a two-column definition list: finish time, recorded distance, recorded elevation gain, and overall, gender and age-group rank as "#rank / total" with a "Top n% of the field" note (left out for DNF). Then come location, bib, PB key, average pace, the source link, notes and source-specific actions: edit or delete for manual results, confirm or reject for VBM. A "Race Review" section, separated by a top rule, holds the comparison with the previous finish, the course context and the historical field. Action buttons are outlined, with 10px corners and a minimum height of 44px. Native shows the same content order on a pushed screen: a training card for the recorded result, then notes, actions and Race Review.
+
+**Course context.** This is a fact list inside Race Review, not a card. It starts with the course name and distance label, followed by location and course elevation gain. When the course profile is from a different edition, a tinted notice states both years; when the edition is unknown, a line says so. Terrain, key climbs, typical conditions and runner reviews follow as short headed groups, and only when they have data. A footer gives the source label, verification date and source links (named by host). If the course is ambiguous, the block lists candidate courses as full-width buttons. If it is unavailable, it shows Retry. Both states say the race record stays the same.
+
+**The Recorded-Result Rule.** Review content, course context and every error describe or explain the athlete's recorded result; they never alter it. Error copy names the failure, says the recorded result is unchanged and offers Retry when retrying helps (for example, "Couldn't load the race review. Your recorded result is unchanged."). On web each message is a `t(en, vi)` pair shown in an alert region. Errors are never shown as a raw HTTP status.
+
+**The App-Language Number Rule.** Counts and metres use the app language, not the device region. Web uses `formatNumber` (en-US or vi-VN grouping), and native uses `RaceDisplay.number` (en_US or vi_VN, 0–1 decimal places). Distance is rounded to one decimal place and written as "n km". Pace is written as m:ss /km, rounding once before splitting so the seconds never show 60. Times are h:mm:ss, and DNF replaces the time.
+
 ## Do's and Don'ts
 
 ### Do:
@@ -188,8 +222,11 @@ Matched activities group the planned workout and recorded activity vertically. T
 - Do distinguish workspace tokens from global and landing tokens when extending a surface.
 - Do preserve visible keyboard focus and reduced-motion behavior.
 - Do retain the weekly planning context when extending scheduler views.
+- Do keep unconfirmed imports in their own confirmation block, outside the race list and personal bests.
+- Do write race-history errors as bilingual sentences that say the recorded result is unchanged.
 
 ### Don't:
 - Don't promote the workspace radius or compact type scale into a universal landing-page rule.
 - Don't replace readable glass panels with unfiltered text over the video.
 - Don't treat legacy font aliases as evidence that their named fonts are installed.
+- Don't reintroduce a Trail/Road filter on the race list; discipline is a label.
