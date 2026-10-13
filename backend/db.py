@@ -2206,13 +2206,15 @@ def update_athlete_physiology_by_coach(
 
 def mark_profile_fields_athlete_set(user_id: int, before: dict[str, Any], after: dict[str, Any]) -> None:
     """After the athlete saves their own profile, any coach-editable field whose
-    value changed is now athlete-set: drop its coach provenance entry."""
+    value changed is now athlete-set. Record that explicitly (rather than just
+    dropping a coach/estimate entry) so a value saved before onboarding is
+    finished isn't shown as an app default."""
     sources = dict(after.get("profile_field_sources") or {})
-    changed = [f for f in COACH_EDITABLE_PROFILE_FIELDS if before.get(f) != after.get(f) and f in sources]
+    changed = [f for f in COACH_EDITABLE_PROFILE_FIELDS if before.get(f) != after.get(f)]
     if not changed:
         return
     for f in changed:
-        sources.pop(f)
+        sources[f] = {"source": "athlete"}
     with engine.connect() as conn:
         conn.execute(
             text("UPDATE users SET profile_field_sources = CAST(:src AS jsonb) WHERE id = :id"),
