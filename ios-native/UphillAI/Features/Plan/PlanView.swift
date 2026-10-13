@@ -153,7 +153,7 @@ struct PlanView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: UH.Space.small) {
-                        if generation.running?.kind == .newPlan { buildingBanner }
+                        if generation.running != nil { buildingBanner }
                         if let notice = model.calendarNotice {
                             ScheduleNoticeBanner(notice: notice, onDismiss: model.dismissCalendarNotice)
                                 .padding(.horizontal, UH.Space.regular)
@@ -394,13 +394,22 @@ struct PlanView: View {
     private var buildingBanner: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
             let elapsed = max(0, Int(context.date.timeIntervalSince(generation.running?.startedAt ?? context.date)))
+            let kind = generation.running?.kind
+            let title: String = switch kind {
+            case .adaptWeek: L("Adapting your week…")
+            case .nextWeek: L("Building the next block…")
+            default: L("Building your plan…")
+            }
             HStack(spacing: UH.Space.small) {
                 ProgressView()
-                Text("Building your plan… \(elapsed / 60):\(String(format: "%02d", elapsed % 60))")
+                Text("\(title) \(elapsed / 60):\(String(format: "%02d", elapsed % 60))")
                     .font(UH.TextStyle.caption).foregroundStyle(UH.Palette.ink)
                 Spacer(minLength: 0)
-                Button("View", action: onViewProgress).font(UH.TextStyle.disclosure).frame(minWidth: 44, minHeight: 44)
+                if kind == .newPlan {
+                    Button("View", action: onViewProgress).font(UH.TextStyle.disclosure).frame(minWidth: 44, minHeight: 44)
+                }
             }
+            .frame(minHeight: 44)
             .padding(.horizontal, UH.Space.small)
             .background(UH.Palette.hover, in: RoundedRectangle(cornerRadius: UH.Radius.control))
             .padding(.horizontal, UH.Space.regular)
@@ -462,8 +471,13 @@ struct PlanView: View {
                 showNextWeek = true
             } label: {
                 HStack(spacing: 6) {
-                    Image(systemName: "sparkles")
-                    Text("Generate Week \(week)")
+                    if generation.running?.kind == .nextWeek {
+                        ProgressView().tint(.white)
+                        Text("Building the next block…")
+                    } else {
+                        Image(systemName: "sparkles")
+                        Text("Generate Week \(week)")
+                    }
                 }
                 .font(.system(size: 14, weight: .bold))
                 .frame(maxWidth: .infinity)
@@ -472,6 +486,7 @@ struct PlanView: View {
                 .background(UH.Palette.accentInk, in: RoundedRectangle(cornerRadius: UH.Radius.control))
             }
             .buttonStyle(.plain)
+            .disabled(generation.running?.kind == .nextWeek)
             .accessibilityIdentifier("plan.generateWeekCTA")
             .padding(.horizontal, 16)
             .padding(.bottom, 8)
