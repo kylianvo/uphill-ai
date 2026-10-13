@@ -59,7 +59,8 @@ final class AppModel {
     }
 
     private func applyAppleHealthStatus(_ status: AppleHealthConnectionStatus?) async {
-        appleHealthEnabled = (status?.enabled ?? false) && (await appleHealth.isAvailable)
+        let available = await appleHealth.isAvailable
+        appleHealthEnabled = (status?.enabled ?? false) && available
         let observing = if let id = session.user?.id { await appleHealth.isObserving(userId: id) } else { false }
         // Only this phone's observing counts: after a reinstall, new phone or session expiry the
         // server still says connected, but nothing syncs until the athlete taps Connect again.
@@ -165,11 +166,14 @@ final class AppModel {
 
     func makeSetup(mode: PlanSetupViewModel.Mode) -> PlanSetupViewModel {
         // Onboarding treats "nothing found" as success; only a failed connect returns a message.
-        let connectHealth: (@MainActor () async -> String?)? = appleHealthEnabled ? { [weak self] in
-            guard let self else { return nil }
-            await self.connectAppleHealth()
-            return self.appleHealthConnected ? nil : self.appleHealthMessage
-        } : nil
+        var connectHealth: (@MainActor () async -> String?)?
+        if appleHealthEnabled {
+            connectHealth = { [weak self] in
+                guard let self else { return nil }
+                await self.connectAppleHealth()
+                return self.appleHealthConnected ? nil : self.appleHealthMessage
+            }
+        }
         let setup = PlanSetupViewModel(mode: mode, user: session.user, service: generationService, generation: generation, session: session, raceService: RaceMatchService(client: client),
                                        goalEstimateService: goalEstimateService, raceHistoryService: raceHistoryService,
                                        deviceService: deviceConnectionService,
