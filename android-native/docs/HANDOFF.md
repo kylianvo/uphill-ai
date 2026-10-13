@@ -33,7 +33,8 @@ Do not claim exact font rendering or complete UI parity.
   Cold restart in `/tmp/uphill-android-emulator-final.log`.
 - Added eighth UI case: schedule edit enables changed-only rebuild and confirms it.
   Post-design eight-case rerun remains outstanding.
-- Final release build is in `/tmp/uphill-android-release-final.log`: inspect final exit.
+- Final release check initially failed on Media3 zoom API opt-in; the opt-in was added.
+  Rerun is `/tmp/uphill-android-handoff-release.log`: inspect final exit.
   Earlier certificate inspection matched Capacitor exactly. Script now handles build-tools37
   `V2 Signer` output as well as older `Signer #1` output.
 - Screenshots in docs/screenshots PRECEDE latest design changes. plan-en.png is a loading
