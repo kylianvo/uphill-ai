@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from google import genai
 from google.genai import types as genai_types
 from prometheus_fastapi_instrumentator import Instrumentator, metrics
-from pydantic import BaseModel, Field, StrictBool, field_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, field_validator
 
 from config import settings
 from db import (
@@ -109,6 +109,7 @@ from services import (
     fitness_snapshot,
     observability,
     race_history,
+    race_review,
     week_rebuild,
 )
 from services.auth_service import hash_password, verify_password
@@ -3550,52 +3551,58 @@ class RaceBibRequest(BaseModel):
 
 
 class RaceResultInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    location: str | None = Field(default=None, max_length=200)
+    bib: str | None = Field(default=None, max_length=100)
+    result_url: str | None = Field(default=None, max_length=2048)
+    rank_gender: StrictInt | None = None
+    total_gender: StrictInt | None = None
+    rank_age_group: StrictInt | None = None
+    total_age_group: StrictInt | None = None
+    user_note: str | None = Field(default=None, max_length=2000)
+
     discipline: str
     race_name: str
     race_date: str
     distance_km: float
     elevation_gain_m: float | None = None
     finish_time_sec: int | None = None
-    is_dnf: bool = False
-    rank_overall: int | None = None
-    total_overall: int | None = None
+    is_dnf: StrictBool = False
+    rank_overall: StrictInt | None = None
+    total_overall: StrictInt | None = None
 
 
 class RaceResultPatch(BaseModel):
-    selected: bool | None = None
-    hidden: bool | None = None
-    user_note: str | None = None
+    model_config = ConfigDict(extra="forbid")
+    location: str | None = Field(default=None, max_length=200)
+    bib: str | None = Field(default=None, max_length=100)
+    result_url: str | None = Field(default=None, max_length=2048)
+    rank_gender: StrictInt | None = None
+    total_gender: StrictInt | None = None
+    rank_age_group: StrictInt | None = None
+    total_age_group: StrictInt | None = None
+
+    selected: StrictBool | None = None
+    hidden: StrictBool | None = None
+    user_note: str | None = Field(default=None, max_length=2000)
     discipline: str | None = None
     race_name: str | None = None
     race_date: str | None = None
     distance_km: float | None = None
     elevation_gain_m: float | None = None
     finish_time_sec: int | None = None
-    is_dnf: bool | None = None
-    rank_overall: int | None = None
-    total_overall: int | None = None
+    is_dnf: StrictBool | None = None
+    rank_overall: StrictInt | None = None
+    total_overall: StrictInt | None = None
 
 
 def _validate_race_result(data: dict[str, Any]) -> None:
-    from datetime import date
+    from services.race_result_fields import normalize_manual_result
 
-    if data.get("discipline") not in ("trail", "road") or not (data.get("race_name") or "").strip():
-        raise HTTPException(status_code=422, detail="Race name and discipline are required")
     try:
-        date.fromisoformat(data["race_date"])
-    except (KeyError, TypeError, ValueError):
-        raise HTTPException(status_code=422, detail="Invalid race date")
-    if not 0 < (data.get("distance_km") or 0) <= 1000:
-        raise HTTPException(status_code=422, detail="Invalid race distance")
-    if data.get("elevation_gain_m") is not None and data["elevation_gain_m"] < 0:
-        raise HTTPException(status_code=422, detail="Invalid elevation gain")
-    rank, total = data.get("rank_overall"), data.get("total_overall")
-    if (rank is not None and rank < 1) or (total is not None and total < 1) or (rank and total and rank > total):
-        raise HTTPException(status_code=422, detail="Invalid overall rank")
-    if data.get("is_dnf"):
-        data["finish_time_sec"] = None
-    elif not data.get("finish_time_sec") or data["finish_time_sec"] <= 0:
-        raise HTTPException(status_code=422, detail="Finish time is required for a finish")
+        data.update(normalize_manual_result(data))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from None
 
 
 @app.get("/api/race-history/search")
@@ -3691,6 +3698,33 @@ def get_coach_race_history(athlete_id: int, acting_user: dict[str, Any] = Depend
     return _race_history_payload(athlete_id)
 
 
+@app.get("/api/race-history/results/{result_id}/detail")
+def get_race_detail(result_id: int, course_id: int | None = None, user: dict[str, Any] = Depends(get_current_user)):
+    try:
+        detail = race_review.build_detail(user["id"], result_id, course_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from None
+    if detail is None:
+        raise HTTPException(status_code=404, detail="Result not found")
+    return detail
+
+
+@app.get("/api/coaching/athletes/{athlete_id}/race-history/results/{result_id}/detail")
+def get_coach_race_detail(
+    athlete_id: int,
+    result_id: int,
+    course_id: int | None = None,
+    acting_user: dict[str, Any] = Depends(require_athlete_access),
+):
+    try:
+        detail = race_review.build_detail(athlete_id, result_id, course_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from None
+    if detail is None:
+        raise HTTPException(status_code=404, detail="Result not found")
+    return detail
+
+
 @app.post("/api/race-history/results")
 def create_manual_race_result(request: RaceResultInput, user: dict[str, Any] = Depends(get_current_user)):
     data = request.model_dump()
@@ -3704,12 +3738,15 @@ def patch_race_result(result_id: int, request: RaceResultPatch, user: dict[str, 
     if not existing:
         raise HTTPException(status_code=404, detail="Result not found")
     changes = request.model_dump(exclude_unset=True)
-    if existing["source"] == "manual" and any(
-        k in changes for k in ("race_name", "race_date", "distance_km", "finish_time_sec", "is_dnf", "discipline")
-    ):
+    required = {"selected", "hidden", "is_dnf", "discipline", "race_name", "race_date", "distance_km"}
+    if any(changes[key] is None for key in changes.keys() & required):
+        raise HTTPException(status_code=422, detail="Required result fields cannot be cleared")
+    if existing["source"] == "manual":
         merged = {**existing, **changes}
         _validate_race_result(merged)
-        changes["finish_time_sec"] = merged["finish_time_sec"]
+        changes = {key: merged[key] for key in changes}
+        if "is_dnf" in changes:
+            changes["finish_time_sec"] = merged["finish_time_sec"]
     try:
         return race_history.update_result(result_id, user["id"], changes)
     except ValueError as exc:

@@ -7,13 +7,30 @@ enum AppEnvironment: String, CaseIterable, Identifiable, Sendable {
 
     var baseURL: URL {
         switch self {
-        case .production: URL(string: "https://api.uphill-ai.io.vn")!
-        case .staging: URL(string: "https://staging-api.uphill-ai.io.vn")!
+        case .production: return URL(string: "https://api.uphill-ai.io.vn")!
+        case .staging: return URL(string: "https://staging-api.uphill-ai.io.vn")!
         case .local:
-            // Debug-only override (`-UPHILL_LOCAL_URL http://localhost:8010`) for when 8000 is taken.
-            UserDefaults.standard.string(forKey: "UPHILL_LOCAL_URL").flatMap(URL.init(string:)) ?? URL(string: "http://localhost:8000")!
+            #if DEBUG
+            return Self.localURL(port: ProcessInfo.processInfo.environment["UPHILL_LOCAL_API_PORT"])
+            #else
+            return URL(string: "http://localhost:8000")!
+            #endif
         }
     }
+
+    static func localURL(port: String?) -> URL {
+        let number = port.flatMap(Int.init).flatMap { (1...65535).contains($0) ? $0 : nil } ?? 8000
+        return URL(string: "http://localhost:\(number)")!
+    }
+
+    #if DEBUG
+    static func uiTestSessionToken(url: URL, environment: [String: String]) -> String? {
+        guard url.scheme == "http", ["localhost", "127.0.0.1"].contains(url.host ?? ""),
+              url.user == nil, url.password == nil,
+              let token = environment["UITEST_SESSION_TOKEN"], !token.isEmpty else { return nil }
+        return token
+    }
+    #endif
 
     static let defaultsKey = "UPHILL_ENVIRONMENT"
 

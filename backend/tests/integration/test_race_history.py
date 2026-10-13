@@ -209,3 +209,123 @@ def test_linking_a_profile_syncs_immediately(client, auth_headers, monkeypatch):
     )
     assert claim.status_code == 202, claim.text
     assert synced == [claim.json()["id"]]
+
+
+def test_manual_link_metadata_and_rank_only_patch(client, auth_headers):
+    h = auth_headers["headers"]
+    response = client.post(
+        "/api/race-history/results",
+        headers=h,
+        json={
+            "discipline": "road",
+            "race_name": "City Marathon",
+            "race_date": "2023-12-03",
+            "distance_km": 42.195,
+            "finish_time_sec": 13154,
+            "location": "Can Tho",
+            "result_url": "https://example.org/results/42",
+            "rank_overall": 30,
+            "total_overall": 100,
+            "rank_gender": 5,
+            "total_gender": 20,
+            "rank_age_group": 2,
+            "total_age_group": 5,
+            "bib": "42",
+        },
+    )
+    assert response.status_code == 200, response.text
+    result = response.json()
+    assert result["source"] == "manual" and result.get("location") == "Can Tho"
+    endpoint = f"/api/race-history/results/{result['id']}"
+    for changes in [
+        {"rank_overall": 101},
+        {"rank_gender": 21},
+        {"rank_age_group": 6},
+        {"elevation_gain_m": -1},
+        {"selected": None},
+        {"hidden": None},
+        {"race_name": None},
+        {"result_url": "javascript:alert(1)"},
+        {"unknown": "value"},
+    ]:
+        invalid = client.patch(endpoint, headers=h, json=changes)
+        assert invalid.status_code == 422, (changes, invalid.text)
+    cleared = client.patch(endpoint, headers=h, json={"result_url": None, "location": None, "elevation_gain_m": None})
+    assert cleared.status_code == 200
+    assert cleared.json()["result_url"] is None and cleared.json()["location"] is None
+    assert cleared.json()["elevation_gain_m"] is None
+    dnf = client.patch(endpoint, headers=h, json={"is_dnf": True})
+    assert dnf.status_code == 200 and dnf.json()["finish_time_sec"] is None
+    other = client.post("/api/auth/mock-login", json={"email": "race-other@uphill.ai"}).json()
+    other_headers = {"Authorization": f"Bearer {other['session_token']}"}
+    assert client.patch(endpoint, headers=other_headers, json={"location": "Elsewhere"}).status_code == 404
+
+
+def test_reported_vbm_prs_require_confirmation_and_rejection_survives_sync(client, auth_headers, monkeypatch):
+    from services import race_history
+
+    parents = [
+        {
+            "event": "FMM",
+            "race_full_name": "PREVIEW MARATHON 03/12/2023",
+            "mark": "03:39:14",
+            "bib": "42",
+            "other_results_full": [{"race": "PREVIEW MARATHON 03/12/2023", "time": "03:39:14", "bib": "42"}],
+        },
+        {
+            "event": "HMM",
+            "race_full_name": "PREVIEW HALF 19/11/2023",
+            "mark": "01:44:04",
+            "bib": "21",
+            "other_results_full": [{"race": "PREVIEW HALF 19/11/2023", "time": "01:44:04", "bib": "21"}],
+        },
+    ]
+    for parent in parents:
+        parent["full_name"] = "PREVIEW RUNNER"
+    monkeypatch.setattr(race_history, "_fetch", lambda *args, **kwargs: {"data": parents})
+    h = auth_headers["headers"]
+    claim = client.post(
+        "/api/race-history/claims", headers=h, json={"source": "vbm", "external_id": "PREVIEW PBS"}
+    ).json()
+    initial = client.get("/api/race-history", headers=h).json()
+    assert initial["summary"]["road_prs"]["hm"] is None and initial["summary"]["road_prs"]["fm"] is None
+    assert len(initial["results"]) == 2
+    for row in initial["results"]:
+        assert (
+            client.patch(f"/api/race-history/results/{row['id']}", headers=h, json={"selected": True}).status_code
+            == 200
+        )
+        assert (
+            client.patch(
+                f"/api/race-history/results/{row['id']}", headers=h, json={"result_url": "https://example.org"}
+            ).status_code
+            == 422
+        )
+    summary = client.get("/api/race-history", headers=h).json()["summary"]
+    assert summary["road_prs"]["fm"]["time_sec"] == 13154 and summary["road_prs"]["hm"]["time_sec"] == 6244
+    assert summary["road_fm_pr"] == summary["road_prs"]["fm"] and summary["road_hm_pr"] == summary["road_prs"]["hm"]
+    half = next(row for row in initial["results"] if row["distance_km"] < 30)
+    assert (
+        client.patch(f"/api/race-history/results/{half['id']}", headers=h, json={"selected": False}).status_code == 200
+    )
+    race_history.sync_claim(claim["id"])
+    refreshed = client.get("/api/race-history", headers=h).json()
+    assert refreshed["summary"]["road_prs"]["hm"] is None
+    assert not next(row for row in refreshed["results"] if row["id"] == half["id"])["selected"]
+
+
+def test_local_preview_race_seed_is_scoped_and_idempotent(client, auth_headers):
+    import db
+    from scripts import seed_ios_preview
+    from services import race_history
+
+    seed = getattr(seed_ios_preview, "_seed_race_history", None)
+    assert seed is not None, "Preview seed does not include race-history fixtures"
+    retained = _manual(client, auth_headers["headers"], name="Keep this race")
+    seed(auth_headers["user_id"])
+    seed(auth_headers["user_id"])
+    results = race_history.list_results(auth_headers["user_id"])
+    assert len(results) == 10
+    assert len(db.get_kb_chunks("race_courses", kind="race_profile")) == 4
+    assert any(row["id"] == retained["id"] for row in results)
+    assert sum(row["source"] == "vbm" and not row["selected"] for row in results) == 2

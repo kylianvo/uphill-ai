@@ -7,6 +7,8 @@ struct ProfileView: View {
     @State private var path: [TrainingDestination] = []
     @State private var showSchedule = false
     @State private var selectedShoeSlot: ShoeRotationSlot? = nil
+    @State private var detailResult: RaceResult?
+    @State private var raceHistory: RaceHistoryResponse?
     @State private var badges: [DistanceBadge] = DistanceBadge.deriveBadges(from: [])
 
     init(app: AppModel, initialBadges: [DistanceBadge]? = nil) {
@@ -28,10 +30,17 @@ struct ProfileView: View {
                         .padding(.vertical, 4)
                     }
 
+                    if let history = raceHistory {
+                        Section {
+                            RoadPersonalBestsView(summary: history.summary) { id in detailResult = history.results.first { $0.id == id } }
+                                .listRowBackground(Color.clear)
+                        }
+                    }
+
                     // Distance Badges (the grid draws its own title and unlocked counter)
                     Section {
                         DistanceBadgeGrid(badges: badges) { badge in
-                            path.append(.raceHistory)
+                            detailResult = raceHistory?.results.first { $0.id == badge.resultId }
                         }
                         .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                         .listRowBackground(Color.clear)
@@ -109,12 +118,17 @@ struct ProfileView: View {
                 .listRowBackground(Color.clear)
             }
             .navigationTitle("Me")
+            .navigationDestination(isPresented: Binding(get: { detailResult != nil }, set: { if !$0 { detailResult = nil } })) {
+                if let detailResult {
+                    RaceDetailScreen(result: detailResult, service: app.raceHistoryService) {
+                        Task { if let history = try? await app.raceHistoryService.history() { app.raceHistory = history } }
+                    }
+                }
+            }
             .navigationDestination(for: TrainingDestination.self) { destination in
                 switch destination {
                 case .raceHistory:
-                    RaceHistoryScreen(service: app.raceHistoryService, onSelectBadge: { _ in
-                        // Selected badge in history
-                    }, initialHistory: app.raceHistory, onLoaded: { app.raceHistory = $0 })
+                    RaceHistoryScreen(service: app.raceHistoryService, onSelectBadge: { _ in }, initialHistory: app.raceHistory ?? raceHistory, onHistoryChanged: { app.raceHistory = $0 })
                 case .nutritionLab:
                     NutritionLabSheet(service: app.nutritionService, activePlan: app.plan.snapshot?.plan, user: app.session.user)
                 case .gearVault:
@@ -185,8 +199,8 @@ struct ProfileView: View {
                 async let history: Void = app.loadRaceHistory()
                 _ = await (rotation, history)
             }
-            .onChange(of: app.raceHistory?.results, initial: true) { _, results in
-                if let results { badges = DistanceBadge.deriveBadges(from: results) }
+            .onChange(of: app.raceHistory, initial: true) { _, history in
+                if let history { raceHistory = history; badges = DistanceBadge.deriveBadges(from: history.results) }
             }
         }
     }
