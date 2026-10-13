@@ -175,6 +175,9 @@ class Config:
     )
     COROS_MCP_ENDPOINT: str = os.getenv("COROS_MCP_ENDPOINT", "https://mcp.coros.com/mcp")
     COROS_DAILY_PUSH_LIMIT: int = int(os.getenv("COROS_DAILY_PUSH_LIMIT", "10"))
+    # Hides Apple Health in the app (via /api/integrations/status) and 404s its sync
+    # endpoint, without an app release.
+    APPLE_HEALTH_ENABLED: bool = os.getenv("APPLE_HEALTH_ENABLED", "true").lower() != "false"
 
     # Where the OAuth callback redirects the athlete's browser after a COROS
     # connect attempt (success or failure) -- the static-export frontend, not the API.

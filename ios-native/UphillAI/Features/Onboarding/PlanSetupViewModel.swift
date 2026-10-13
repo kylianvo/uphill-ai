@@ -31,17 +31,27 @@ final class PlanSetupViewModel {
     /// Set once the athlete links a UTMB or VBM profile during setup.
     var linkedRaceHistory = false
     let deviceService: (any DeviceConnectionServicing)?
-    private let loadWatchVolume: (@Sendable () async -> Double?)?
+    private let loadWatchVolume: (@Sendable () async -> WatchVolume?)?
+    private let appleHealthConnect: (@MainActor () async -> String?)?
     /// COROS 4-week average, shown beside the weekly km field when it was used.
     private(set) var watchWeeklyKm: Double?
     private(set) var corosConnected = false
+    /// Where the prefilled weekly km came from (`coros` or `apple_health`), for the label under the field.
+    private(set) var watchVolumeSource: String?
+    /// True only after this phone connected (or was already syncing). The server's own "connected" flag
+    /// is ignored: it can outlive a reinstall or new phone while nothing syncs.
+    private(set) var appleHealthConnected: Bool
+    var canConnectAppleHealth: Bool { appleHealthConnect != nil }
 
     init(mode: Mode, user: User?, service: any GenerationServicing, generation: GenerationCenter,
          session: SessionStore, now: @escaping () -> Date = { .now }, calendar: Calendar = PlanCalendar.calendar, raceService: RaceMatchService? = nil,
          goalEstimateService: (any GoalEstimateServicing)? = nil, raceHistoryService: (any RaceHistoryServicing)? = nil,
-         deviceService: (any DeviceConnectionServicing)? = nil, loadWatchVolume: (@Sendable () async -> Double?)? = nil) {
+         deviceService: (any DeviceConnectionServicing)? = nil, loadWatchVolume: (@Sendable () async -> WatchVolume?)? = nil,
+         connectAppleHealth: (@MainActor () async -> String?)? = nil, appleHealthConnected: Bool = false) {
         self.deviceService = deviceService
         self.loadWatchVolume = loadWatchVolume
+        self.appleHealthConnect = connectAppleHealth
+        self.appleHealthConnected = appleHealthConnected
         self.raceService = raceService
         self.goalEstimateService = goalEstimateService
         self.raceHistoryService = raceHistoryService
@@ -66,14 +76,24 @@ final class PlanSetupViewModel {
         await prefillWatchVolume()
     }
 
-    /// Fills weekly km from COROS unless the athlete already typed a value of their own.
+    /// Fills weekly km from COROS or Apple Health unless the athlete already typed a value of their own.
     func prefillWatchVolume() async {
-        guard let loadWatchVolume, let km = await loadWatchVolume() else { return }
-        watchWeeklyKm = km.rounded()
+        guard let loadWatchVolume, let volume = await loadWatchVolume() else { return }
+        watchWeeklyKm = volume.weeklyKm.rounded()
+        watchVolumeSource = volume.weeklyKmSource
         if !editedWeeklyKm {
-            draft.currentWeeklyKm = km.rounded()
+            draft.currentWeeklyKm = volume.weeklyKm.rounded()
             draft.weeklyKmFromWatch = true
         }
+    }
+
+    /// Connects Apple Health, then pulls its mileage for the next screen. Returns an error message or nil.
+    func connectAppleHealth() async -> String? {
+        guard let appleHealthConnect else { return nil }
+        if let error = await appleHealthConnect() { return error }
+        appleHealthConnected = true
+        await prefillWatchVolume()
+        return nil
     }
 
     /// Set once the athlete edits weekly km themselves; a later COROS read must not overwrite it.
@@ -120,7 +140,7 @@ final class PlanSetupViewModel {
     var isFirstStep: Bool { stepIndex == 0 }
     var isLastStep: Bool { step == .review }
     var primaryTitle: String {
-        if step == .watch, !corosConnected { return L("Skip for now") }
+        if step == .watch, !corosConnected, !appleHealthConnected { return L("Skip for now") }
         if isLastStep { return L("Build my plan") }
         if step == .trainingZones, !draft.hasTrainingZones { return L("Skip for now") }
         if step == .raceHistory, !linkedRaceHistory { return L("Skip for now") }

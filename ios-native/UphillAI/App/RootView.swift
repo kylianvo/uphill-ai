@@ -26,10 +26,18 @@ struct RootView: View {
             if app.session.user != nil { app.generation.resumeIfNeeded() }
         }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { Task { await app.autoSyncWatchIfDue() } }
+            if phase == .active {
+                Task {
+                    await app.autoSyncWatchIfDue()
+                    await app.syncAppleHealthIfDue()
+                }
+            }
         }
         .task(id: app.session.user?.id) {
-            if app.session.user != nil { await app.autoSyncWatchIfDue() }
+            if app.session.user != nil {
+                await app.autoSyncWatchIfDue()
+                await app.syncAppleHealthIfDue()
+            }
         }
     }
 

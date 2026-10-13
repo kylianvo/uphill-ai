@@ -17,6 +17,8 @@ enum UH {
         static let warningInk = Color(hex: "#92400e")
         static let warningFill = Color(hex: "#f59e0b").opacity(0.12)
         static let danger = Color(hex: "#b42318")
+        /// Apple Health's heart pink, used only beside the Apple Health name.
+        static let healthPink = Color(hex: "#ff2d55")
     }
 
     enum Space {

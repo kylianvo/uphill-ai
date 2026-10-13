@@ -152,3 +152,40 @@ def test_upsert_activity_survives_a_concurrent_insert_for_the_same_identity(user
     with db.engine.connect() as conn:
         count = conn.execute(text("SELECT count(*) FROM activities WHERE user_id = :u"), {"u": user_id}).scalar()
     assert count == 1
+
+
+def test_apple_health_copy_of_a_coros_run_is_a_duplicate(user_id):
+    coros = db.upsert_activity(user_id, _activity(external_id="c-run", provider="coros"))
+    health = db.upsert_activity(
+        user_id, _activity(external_id="HK-1", provider="apple_health", start=START + timedelta(seconds=40))
+    )
+    with db.engine.connect() as conn:
+        dup = conn.execute(text("SELECT duplicate_of FROM activities WHERE id = :i"), {"i": health}).scalar()
+    assert dup == coros
+
+
+def test_delete_activities_by_external_ids_only_touches_that_provider(user_id):
+    db.upsert_activity(user_id, _activity(external_id="HK-1", provider="apple_health"))
+    db.upsert_activity(user_id, _activity(external_id="HK-2", provider="apple_health", start=START + timedelta(days=1)))
+    db.upsert_activity(user_id, _activity(external_id="HK-1", provider="coros", start=START + timedelta(days=2)))
+    assert db.delete_activities_by_external_ids(user_id, "apple_health", ["HK-1", "missing"]) == 1
+    assert db.get_activity_external_ids(user_id, "apple_health") == {"HK-2"}
+    assert db.get_activity_external_ids(user_id, "coros") == {"HK-1"}
+
+
+def test_delete_activities_by_external_ids_with_no_ids_is_a_no_op(user_id):
+    db.upsert_activity(user_id, _activity(external_id="HK-1", provider="apple_health"))
+    assert db.delete_activities_by_external_ids(user_id, "apple_health", []) == 0
+    assert db.get_activity_external_ids(user_id, "apple_health") == {"HK-1"}
+
+
+def test_deleting_the_canonical_row_promotes_its_duplicate(user_id):
+    health = db.upsert_activity(user_id, _activity(external_id="HK-1", provider="apple_health"))
+    coros = db.upsert_activity(
+        user_id, _activity(external_id="c-run", provider="coros", start=START + timedelta(seconds=30))
+    )
+    db.delete_activities_by_external_ids(user_id, "apple_health", ["HK-1"])
+    with db.engine.connect() as conn:
+        dup = conn.execute(text("SELECT duplicate_of FROM activities WHERE id = :i"), {"i": coros}).scalar()
+        gone = conn.execute(text("SELECT count(*) FROM activities WHERE id = :i"), {"i": health}).scalar()
+    assert dup is None and gone == 0

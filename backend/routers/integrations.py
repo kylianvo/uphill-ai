@@ -16,14 +16,14 @@ import html
 import json
 import secrets
 import time
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any, Literal
 from urllib.parse import urlencode, urlparse
 
 import httpx
 from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 import db
 from config import settings
@@ -35,6 +35,7 @@ from services.matching import runner as matching_runner
 from services.matching.quality_scorer import score_workout_quality
 from services.mcp_client import McpError
 from services.plan_generator import PlanGenerator
+from services.providers.base import CanonicalActivity
 from services.providers.coros import PROVIDER, CorosDailyMetricsUnavailableError
 from services.providers.coros_parsers import CorosParseError
 
@@ -567,10 +568,162 @@ async def coros_push_status(client_today: str | None = None, user: dict[str, Any
     return coros_push.push_status(user["id"], resolve_today(client_today, date.today()))
 
 
+APPLE_HEALTH = "apple_health"
+APPLE_HEALTH_TYPES = frozenset({"outdoor_run", "indoor_run", "hike", "strength"})
+APPLE_HEALTH_RUN_TYPES = frozenset({"outdoor_run", "indoor_run"})
+APPLE_HEALTH_BATCH = 500
+# Faster than 2:30/km is a world-record pace held for the whole run: a distance glitch.
+MIN_RUN_PACE_SEC_PER_KM = 150
+MAX_DURATION_SECONDS = 48 * 3600
+
+
+class AppleHealthWorkout(BaseModel):
+    external_id: str
+    activity_type: str
+    start_time: datetime
+    end_time: datetime
+    duration_seconds: float
+    distance_km: float | None = None
+    elevation_gain_m: float | None = None
+    avg_hr: int | None = None
+    max_hr: int | None = None
+    calories: int | None = None
+    source_name: str | None = None
+
+
+class AppleHealthSyncRequest(BaseModel):
+    workouts: list[AppleHealthWorkout] = Field(default_factory=list, max_length=APPLE_HEALTH_BATCH)
+    deleted_ids: list[str] = Field(default_factory=list, max_length=APPLE_HEALTH_BATCH)
+    plan_id: int | None = None
+    tz_offset_minutes: int | None = None
+
+
+def _implausible(w: AppleHealthWorkout, now: datetime) -> str | None:
+    """Why a row from Apple Health can't be trusted, or None. Third-party apps write
+    to Health too, so a bad row is skipped rather than failing the athlete's batch."""
+    if not 1 <= len(w.external_id) <= 64:
+        return "external_id must be 1-64 characters"
+    if w.activity_type not in APPLE_HEALTH_TYPES:
+        return "unsupported activity_type"
+    if w.duration_seconds <= 0:
+        return "duration must be positive"
+    if (
+        (w.distance_km is not None and w.distance_km < 0)
+        or (w.elevation_gain_m is not None and w.elevation_gain_m < 0)
+        or (w.calories is not None and w.calories < 0)
+    ):
+        return "negative distance, climb or calories"
+    if w.start_time.tzinfo is None or w.end_time.tzinfo is None:
+        return "start_time and end_time need a UTC offset"
+    if w.end_time <= w.start_time:
+        return "end_time is not after start_time"
+    if w.duration_seconds > MAX_DURATION_SECONDS:
+        return "duration over 48 h"
+    if w.start_time > now + timedelta(days=1):
+        return "start_time in the future"
+    for hr in (w.avg_hr, w.max_hr):
+        if hr is not None and not 25 <= hr <= 250:
+            return "heart rate out of range"
+    if w.avg_hr is not None and w.max_hr is not None and w.avg_hr > w.max_hr:
+        return "avg_hr above max_hr"
+    if w.activity_type in APPLE_HEALTH_RUN_TYPES and w.distance_km:
+        if w.duration_seconds / w.distance_km < MIN_RUN_PACE_SEC_PER_KM:
+            return "pace faster than 2:30/km"
+    return None
+
+
+def _to_canonical(w: AppleHealthWorkout) -> CanonicalActivity:
+    pace = None
+    if w.activity_type in APPLE_HEALTH_RUN_TYPES and w.distance_km and w.distance_km >= 0.1:
+        pace = w.duration_seconds / w.distance_km
+    return CanonicalActivity(
+        external_id=w.external_id,
+        provider=APPLE_HEALTH,
+        activity_type=w.activity_type,
+        start_time=w.start_time,
+        end_time=w.end_time,
+        duration_seconds=w.duration_seconds,
+        distance_km=w.distance_km,
+        elevation_gain_m=w.elevation_gain_m,
+        avg_hr=w.avg_hr,
+        max_hr=w.max_hr,
+        avg_pace_sec_per_km=pace,
+        calories=w.calories,
+        device_model=w.source_name[:100] if w.source_name else None,
+    )
+
+
+@router.post("/apple-health/sync")
+async def apple_health_sync(body: AppleHealthSyncRequest, user: dict[str, Any] = Depends(get_current_user)):
+    """Stores workout summaries the iOS app read from Apple Health, then matches them.
+    Idempotent: a re-sent workout is a no-op (upsert on the HealthKit UUID)."""
+    if not settings.APPLE_HEALTH_ENABLED:
+        raise HTTPException(status_code=404, detail="Apple Health is not available.")
+    user_id = user["id"]
+    if db.get_connection(user_id, APPLE_HEALTH) is None:
+        # No tokens: HealthKit access lives on the phone, not with us.
+        db.save_connection(
+            user_id,
+            APPLE_HEALTH,
+            access_token_enc=None,
+            refresh_token_enc=None,
+            token_expires_at=None,
+            scopes="read",
+        )
+
+    now = datetime.now(UTC)
+    accepted = 0
+    rejected: list[dict[str, str]] = []
+    for workout in body.workouts:
+        reason = _implausible(workout, now)
+        if reason:
+            rejected.append({"external_id": workout.external_id[:64], "reason": reason})
+            continue
+        db.upsert_activity(user_id, _to_canonical(workout))
+        accepted += 1
+    deleted = db.delete_activities_by_external_ids(user_id, APPLE_HEALTH, body.deleted_ids)
+    db.mark_connection_synced(user_id, APPLE_HEALTH)
+    if rejected:
+        logger.info(
+            "apple health rows rejected",
+            extra={
+                "fields": {
+                    "service": "integrations",
+                    "provider": APPLE_HEALTH,
+                    "event": "rows_rejected",
+                    "user_id": user_id,
+                    "count": len(rejected),
+                }
+            },
+        )
+
+    if body.plan_id is not None:
+        since, until = _resolve_plan_window(body.plan_id, user_id)
+    else:
+        until = date.today()
+        since = until - timedelta(days=30)
+    try:
+        matching = await matching_runner.match_user(
+            user_id, since, until, plan_id=body.plan_id, tz_offset_minutes=body.tz_offset_minutes
+        )
+    except Exception:
+        # The workouts are stored; the next sync re-runs matching.
+        logger.exception("apple health matching failed")
+        matching = None
+    return {"accepted": accepted, "rejected": rejected, "deleted": deleted, "matching": matching}
+
+
+@router.delete("/apple-health")
+async def apple_health_disconnect(user: dict[str, Any] = Depends(get_current_user)):
+    db.delete_provider_data(user["id"], APPLE_HEALTH)
+    return {"status": "disconnected"}
+
+
 @router.get("/status")
 async def integration_status(user: dict[str, Any] = Depends(get_current_user)):
     connection = db.get_connection(user["id"], PROVIDER)
     profile = db.get_user_by_id(user["id"]) or user
+    health = db.get_connection(user["id"], "apple_health")
     return {
         "coros": {
             "connected": bool(connection and connection.get("status") == "active"),
@@ -579,7 +732,12 @@ async def integration_status(user: dict[str, Any] = Depends(get_current_user)):
             "coros_vo2max": profile.get("coros_vo2max"),
             "coros_running_level": profile.get("coros_running_level"),
             "pace_zone_model": profile.get("pace_zone_model") or "5_zone",
-        }
+        },
+        "apple_health": {
+            "enabled": settings.APPLE_HEALTH_ENABLED,
+            "connected": bool(health and health.get("status") == "active"),
+            "last_sync_at": health.get("last_sync_at") if health else None,
+        },
     }
 
 

@@ -265,3 +265,62 @@ def test_chat_summary_uses_snapshot_volume_and_plan_tier(stub_db, monkeypatch):
 def test_chat_summary_survives_a_snapshot_failure(monkeypatch):
     monkeypatch.setattr(fs, "build", lambda uid: (_ for _ in ()).throw(RuntimeError("down")))
     assert fs.chat_summary(30, None) == {}
+
+
+class TestDeviceProviders:
+    def _connections(self, monkeypatch, by_provider):
+        monkeypatch.setattr(fs.db, "get_connection", lambda uid, p: by_provider.get(p))
+
+    def test_apple_health_alone_is_measured(self, stub_db, monkeypatch):
+        self._connections(
+            monkeypatch,
+            {"apple_health": {"status": "active", "last_sync_at": datetime(2026, 8, 28, 6, 17, tzinfo=UTC)}},
+        )
+        snap = fs.build(30, today=TODAY)
+        assert snap.weekly_km_source == "apple_health"
+        assert snap.weekly_km == pytest.approx(137.4, abs=0.1)
+        assert "Apple Health" in snap.prompt_block("en")
+
+    def test_fresher_provider_wins(self, stub_db, monkeypatch):
+        self._connections(
+            monkeypatch,
+            {
+                "coros": {"status": "active", "last_sync_at": datetime(2026, 8, 20, tzinfo=UTC)},
+                "apple_health": {"status": "active", "last_sync_at": datetime(2026, 8, 28, tzinfo=UTC)},
+            },
+        )
+        assert fs.build(30, today=TODAY).weekly_km_source == "apple_health"
+
+    def test_tie_keeps_coros(self, stub_db, monkeypatch):
+        same = datetime(2026, 8, 28, tzinfo=UTC)
+        self._connections(
+            monkeypatch,
+            {
+                "coros": {"status": "active", "last_sync_at": same},
+                "apple_health": {"status": "active", "last_sync_at": same},
+            },
+        )
+        assert fs.build(30, today=TODAY).weekly_km_source == "coros"
+
+    def test_inactive_connection_is_ignored(self, stub_db, monkeypatch):
+        self._connections(
+            monkeypatch,
+            {"apple_health": {"status": "revoked", "last_sync_at": datetime(2026, 8, 28, tzinfo=UTC)}},
+        )
+        assert fs.build(30, today=TODAY).weekly_km_source == "self_reported"
+
+    def test_apple_health_vert_reaches_the_tier(self, stub_db, monkeypatch):
+        self._connections(
+            monkeypatch,
+            {"apple_health": {"status": "active", "last_sync_at": datetime(2026, 8, 28, 6, 17, tzinfo=UTC)}},
+        )
+        seen = {}
+        real = fs.resolve_tier_explained
+
+        def spy(**kwargs):
+            seen.update(kwargs)
+            return real(**kwargs)
+
+        monkeypatch.setattr(fs, "resolve_tier_explained", spy)
+        fs.build(30, today=TODAY).resolve_tier(None, "race", None, None, 138, 168)
+        assert seen["weekly_vert_m"] is not None

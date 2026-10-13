@@ -349,33 +349,37 @@ struct DayRow: View {
 
     // MARK: - Compact Synced Watch Badge
 
+    private func matchedMetrics(_ workout: Workout, leadingDot: Bool = true) -> some View {
+        let parts = [
+            workout.matchedDistanceKm.map { "\(String(format: "%.1f", $0)) km" },
+            workout.matchedDurationSeconds.map { "\(Int($0 / 60))m" },
+            workout.matchedAvgHr.map { "\($0) bpm" },
+        ].compactMap { $0 }
+        return Text(verbatim: (leadingDot && !parts.isEmpty ? "· " : "") + parts.joined(separator: " · "))
+            .font(.system(size: 10.5, weight: .medium, design: .monospaced))
+            .foregroundStyle(UH.Palette.secondary)
+    }
+
     private func matchedActivityBadge(_ workout: Workout) -> some View {
         return Button {
             onSelect(workout)
         } label: {
             HStack(spacing: 5) {
-                Image(systemName: "applewatch")
+                Image(systemName: workout.matchedFromAppleHealth ? "heart.fill" : "applewatch")
                     .font(.system(size: 10.5, weight: .semibold))
-                    .foregroundStyle(UH.Palette.accentInk)
-                Text("COROS")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(UH.Palette.ink)
-
-                if let km = workout.matchedDistanceKm {
-                    Text("· \(String(format: "%.1f", km)) km")
-                        .font(.system(size: 10.5, weight: .medium, design: .monospaced))
-                        .foregroundStyle(UH.Palette.secondary)
-                }
-                if let secs = workout.matchedDurationSeconds {
-                    let mins = Int(secs / 60)
-                    Text("· \(mins)m")
-                        .font(.system(size: 10.5, weight: .medium, design: .monospaced))
-                        .foregroundStyle(UH.Palette.secondary)
-                }
-                if let hr = workout.matchedAvgHr {
-                    Text("· \(hr) bpm")
-                        .font(.system(size: 10.5, weight: .medium, design: .monospaced))
-                        .foregroundStyle(UH.Palette.secondary)
+                    .foregroundStyle(workout.matchedFromAppleHealth ? UH.Palette.healthPink : UH.Palette.accentInk)
+                    .accessibilityLabel(Text(verbatim: workout.matchedSourceName))
+                // The name drops before the metrics wrap ("Apple Health" is too long on narrow phones).
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 5) {
+                        Text(verbatim: workout.matchedSourceName)
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(UH.Palette.ink)
+                            .accessibilityHidden(true)
+                        matchedMetrics(workout)
+                    }
+                    .fixedSize()
+                    matchedMetrics(workout, leadingDot: false).fixedSize()
                 }
 
                 Spacer()

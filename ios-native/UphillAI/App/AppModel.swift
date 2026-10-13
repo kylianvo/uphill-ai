@@ -16,6 +16,7 @@ final class AppModel {
     let pacingService: any PacingServicing
     let knowledgeService: any KnowledgeServicing
     let deviceConnectionService: any DeviceConnectionServicing
+    let appleHealth: AppleHealthSyncService
     let coachingService: any CoachingServicing
     var raceMatchService: RaceMatchService { RaceMatchService(client: client) }
     /// The server (`/api/shoe-rotation`) owns the rotation; every local change is saved back.
@@ -38,7 +39,86 @@ final class AppModel {
     var corosConnected = false
 
     func loadCorosStatus() async {
-        if let status = try? await deviceConnectionService.fetchStatus() { corosConnected = status.isCorosConnected }
+        guard let status = try? await deviceConnectionService.fetchStatus() else { return }
+        corosConnected = status.isCorosConnected
+        await applyAppleHealthStatus(status.appleHealth)
+    }
+
+    /// Apple Health, for Me → Connected accounts and onboarding's watch step.
+    var appleHealthEnabled = false
+    var appleHealthConnected = false
+    var appleHealthLastSync: String?
+    var appleHealthSyncing = false
+    var appleHealthMessage: String?
+    /// Failures show in the danger tone; the nothing-found hint and retry notice don't.
+    var appleHealthMessageIsError = false
+    private var lastAppleHealthSync: Date?
+
+    func loadAppleHealthStatus() async {
+        if let status = try? await deviceConnectionService.fetchStatus() { await applyAppleHealthStatus(status.appleHealth) }
+    }
+
+    private func applyAppleHealthStatus(_ status: AppleHealthConnectionStatus?) async {
+        let available = await appleHealth.isAvailable
+        appleHealthEnabled = (status?.enabled ?? false) && available
+        let observing = if let id = session.user?.id { await appleHealth.isObserving(userId: id) } else { false }
+        // Only this phone's observing counts: after a reinstall, new phone or session expiry the
+        // server still says connected, but nothing syncs until the athlete taps Connect again.
+        appleHealthConnected = observing
+        appleHealthLastSync = status?.lastSyncAt
+    }
+
+    func connectAppleHealth() async {
+        guard let userID = session.user?.id, !appleHealthSyncing else { return }
+        appleHealthSyncing = true
+        defer { appleHealthSyncing = false }
+        do {
+            let outcome = try await appleHealth.connect(userId: userID)
+            appleHealthConnected = true
+            lastAppleHealthSync = .now
+            appleHealthMessageIsError = false
+            appleHealthMessage = outcome.nothingFound
+                ? L("No workouts found. Check Settings → Health → Data Access & Devices → Uphill AI.")
+                : nil
+            await plan.applyWatchMatches()
+            await loadAppleHealthStatus()
+        } catch AppleHealthSyncError.unavailable {
+            appleHealthMessageIsError = true
+            appleHealthMessage = L("Apple Health isn't available on this device.")
+        } catch {
+            // Connected locally; the next foreground or background wake retries the upload.
+            appleHealthConnected = await appleHealth.isObserving(userId: userID)
+            appleHealthMessageIsError = false
+            appleHealthMessage = L("Couldn't sync with Uphill. I'll try again next time you open the app.")
+        }
+    }
+
+    /// App open / foreground: at most every 5 minutes, only for the athlete who connected on this phone.
+    func syncAppleHealthIfDue(now: Date = .now) async {
+        guard let userID = session.user?.id, actingAsAthlete == nil, !appleHealthSyncing,
+              await appleHealth.isObserving(userId: userID) else { return }
+        if let last = lastAppleHealthSync, now.timeIntervalSince(last) < 5 * 60 { return }
+        lastAppleHealthSync = now
+        appleHealthSyncing = true
+        defer { appleHealthSyncing = false }
+        guard let outcome = try? await appleHealth.sync() else { return }
+        if outcome.accepted > 0 || outcome.deleted > 0 { await plan.applyWatchMatches() }
+    }
+
+    func disconnectAppleHealth() async {
+        guard let userID = session.user?.id, !appleHealthSyncing else { return }
+        appleHealthSyncing = true
+        defer { appleHealthSyncing = false }
+        do {
+            try await AppleHealthAPI(client: client).disconnect()
+            await appleHealth.stopObserving(userId: userID)
+            appleHealthConnected = false
+            appleHealthLastSync = nil
+            appleHealthMessage = nil
+        } catch {
+            appleHealthMessageIsError = true
+            appleHealthMessage = L("Couldn't disconnect. Check your connection and try again.")
+        }
     }
 
     /// Matches the dashboard's default filters (14 days, all levels).
@@ -85,14 +165,25 @@ final class AppModel {
     private(set) var lastSetup: PlanSetupViewModel?
 
     func makeSetup(mode: PlanSetupViewModel.Mode) -> PlanSetupViewModel {
+        // Onboarding treats "nothing found" as success; only a failed connect returns a message.
+        var connectHealth: (@MainActor () async -> String?)?
+        if appleHealthEnabled {
+            connectHealth = { [weak self] in
+                guard let self else { return nil }
+                await self.connectAppleHealth()
+                return self.appleHealthConnected ? nil : self.appleHealthMessage
+            }
+        }
         let setup = PlanSetupViewModel(mode: mode, user: session.user, service: generationService, generation: generation, session: session, raceService: RaceMatchService(client: client),
                                        goalEstimateService: goalEstimateService, raceHistoryService: raceHistoryService,
                                        deviceService: deviceConnectionService,
                                        loadWatchVolume: { [client] in
                                            guard let snapshot = try? await client.send(Endpoint<WatchVolume>.get("/api/auth/fitness-snapshot")),
-                                                 snapshot.weeklyKmSource == "coros" else { return nil }
-                                           return snapshot.weeklyKm
-                                       })
+                                                 ["coros", "apple_health"].contains(snapshot.weeklyKmSource) else { return nil }
+                                           return snapshot
+                                       },
+                                       connectAppleHealth: connectHealth,
+                                       appleHealthConnected: appleHealthConnected)
         lastSetup = setup
         return setup
     }
@@ -130,13 +221,29 @@ final class AppModel {
         pacingService = PacingService(client: client)
         knowledgeService = KnowledgeService(client: client)
         deviceConnectionService = DeviceConnectionService(client: client)
+        let planIdBox = PlanIdBox()
+        #if DEBUG
+        let healthStore: any HealthStoring = UserDefaults.standard.bool(forKey: SampleHealthStore.defaultsKey)
+            ? SampleHealthStore() : HealthKitStore()
+        #else
+        let healthStore: any HealthStoring = HealthKitStore()
+        #endif
+        let health = AppleHealthSyncService(store: healthStore, api: AppleHealthAPI(client: client),
+                                            anchors: UserDefaultsAnchorStore(), planId: { await planIdBox.value() })
+        appleHealth = health
         coachingService = CoachingService(client: client)
         generation = GenerationCenter(service: generationService)
         plan = PlanViewModel(service: planService, cache: cache, isSignedIn: { [session] in session.user != nil },
                              generation: generation, generationService: generationService)
+        planIdBox.model = plan
         chat = ChatService(client: client)
         onSignedOut = { [weak self] in
             self?.lastAutoWatchSync = nil
+            self?.lastAppleHealthSync = nil
+            self?.appleHealthConnected = false
+            self?.appleHealthLastSync = nil
+            self?.appleHealthMessage = nil
+            Task { [weak self] in await self?.appleHealth.stopObservingForSignOut() }
             self?.generation.reset()
             self?.plan.reset()
             self?.onboardingDeferred = false
@@ -163,6 +270,8 @@ final class AppModel {
             }
             if kind == .newPlan { await self.refreshUser() }
         }
+        // Background delivery must be registered on every launch, including background wakes.
+        Task { await health.resumeObservingIfNeeded() }
     }
 
     /// Confirms a stored token with /api/auth/me. Offline, it signs in with the
@@ -294,4 +403,12 @@ struct CoachDashboardData {
     var overview: CoachOverview
     var roster: [CoachedAthleteRow]
     var invites: [CoachingInvite]
+}
+
+/// Lets the Apple Health sync read the active plan id without capturing AppModel before init ends.
+@MainActor
+final class PlanIdBox: Sendable {
+    weak var model: PlanViewModel?
+    nonisolated init() {}
+    func value() -> Int? { model?.snapshot?.plan.id }
 }

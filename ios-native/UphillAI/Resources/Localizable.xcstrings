@@ -13580,6 +13580,206 @@
           }
         }
       }
+    },
+    "Apple Health connected": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã kết nối Apple Health"
+          }
+        }
+      }
+    },
+    "Apple Health isn't available on this device.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Health không khả dụng trên thiết bị này."
+          }
+        }
+      }
+    },
+    "Connect Apple Health": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kết nối Apple Health"
+          }
+        }
+      }
+    },
+    "Connected. I'll use your recent workouts to set your starting mileage.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã kết nối. Tôi sẽ dùng các buổi tập gần đây để đặt khối lượng khởi đầu."
+          }
+        }
+      }
+    },
+    "Couldn't disconnect. Check your connection and try again.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không ngắt kết nối được. Kiểm tra mạng rồi thử lại."
+          }
+        }
+      }
+    },
+    "Couldn't sync with Uphill. I'll try again next time you open the app.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không đồng bộ được với Uphill. Tôi sẽ thử lại lần sau khi bạn mở app."
+          }
+        }
+      }
+    },
+    "From Apple Health: %lld km a week over the last 4 full weeks": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Từ Apple Health: %lld km/tuần, trung bình 4 tuần đầy đủ gần nhất"
+          }
+        }
+      }
+    },
+    "No workouts found. Check Settings → Health → Data Access & Devices → Uphill AI.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không thấy buổi tập nào. Kiểm tra Cài đặt → Sức khỏe → Truy cập dữ liệu & thiết bị → Uphill AI."
+          }
+        }
+      }
+    },
+    "Runs, hikes and strength sessions from your iPhone, Apple Watch or any app that saves to Health.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buổi chạy, hike và buổi Strength từ iPhone, Apple Watch hoặc app nào lưu vào Health."
+          }
+        }
+      }
+    },
+    "What I read": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tôi đọc gì"
+          }
+        }
+      }
+    },
+    "Runs, hikes, stair sessions and strength workouts from the last 12 weeks, then each new one as it's saved.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buổi chạy, hike, leo cầu thang và Strength trong 12 tuần gần nhất, sau đó là từng buổi mới ngay khi được lưu."
+          }
+        }
+      }
+    },
+    "Why": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Để làm gì"
+          }
+        }
+      }
+    },
+    "To mark your planned sessions done and start your plan from your real weekly mileage.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Để đánh dấu buổi tập trong plan đã xong và bắt đầu plan từ khối lượng tuần thực tế của bạn."
+          }
+        }
+      }
+    },
+    "What I send to Uphill": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tôi gửi gì cho Uphill"
+          }
+        }
+      }
+    },
+    "Time, distance, climb, heart rate, calories and the app that recorded each workout. Your GPS routes stay on your phone.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thời gian, quãng đường, D+, nhịp tim, calo và app đã ghi lại mỗi buổi tập. Lộ trình GPS ở lại trên điện thoại của bạn."
+          }
+        }
+      }
+    },
+    "Nothing written": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không ghi gì vào Health"
+          }
+        }
+      }
+    },
+    "I never write to Apple Health.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tôi không bao giờ ghi dữ liệu vào Apple Health."
+          }
+        }
+      }
+    },
+    "Continue": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiếp tục"
+          }
+        }
+      }
+    },
+    "Disconnect Apple Health?": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngắt kết nối Apple Health?"
+          }
+        }
+      }
+    },
+    "Workouts received from Apple Health are deleted from Uphill AI. To stop sharing completely, turn off access in Settings → Health → Data Access & Devices.": {
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Các buổi tập nhận từ Apple Health sẽ bị xóa khỏi Uphill AI. Để dừng chia sẻ hoàn toàn, hãy tắt quyền truy cập trong Cài đặt → Sức khỏe → Truy cập dữ liệu & thiết bị."
+          }
+        }
+      }
     }
   },
   "version": "1.0"
