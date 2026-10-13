@@ -837,7 +837,7 @@ class PlanGenerator:
                 block_context=block_context,
                 target_week=target_week,
             )
-            from services import plan_signals
+            from services import fitness_snapshot, plan_signals
 
             snap = race_info.get("fitness_snapshot")
             plan_signals.record_generation(
@@ -847,7 +847,9 @@ class PlanGenerator:
                 workouts=workouts,
                 trace_id=trace_id,
                 tier=tier,
-                measured_weekly_km=snap.weekly_km if snap and snap.weekly_km_source == "coros" else None,
+                measured_weekly_km=snap.weekly_km
+                if snap and snap.weekly_km_source in fitness_snapshot.DEVICE_PROVIDERS
+                else None,
             )
             return workouts, tier
 
