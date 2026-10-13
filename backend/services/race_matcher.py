@@ -427,3 +427,10 @@ def course_profile_variants(name: str | None, distance_label: str | None) -> dic
     years = (payload.get("course_profiles") or {}).get(distance_label) or {}
     years = {k: v for k, v in years.items() if isinstance(v, dict) and k.isdigit()}
     return {int(year_key): entry.get("variant") for year_key, entry in years.items()}
+
+
+def score_race_course_chunks(name: str, chunks: list[dict[str, Any]]) -> list[tuple[dict[str, Any], float]]:
+    """Expose existing name scoring without its course/benchmark fallback."""
+    if not name or len(name.strip()) < _MIN_NAME_LENGTH:
+        return []
+    return _score_chunks(name.strip().lower(), chunks)
