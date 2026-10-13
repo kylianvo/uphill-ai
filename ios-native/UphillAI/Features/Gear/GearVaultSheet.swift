@@ -644,7 +644,9 @@ struct GearVaultSheet: View {
             preferredBrands: preferredBrands.isEmpty ? nil : preferredBrands,
             additionalContext: additionalContext.isEmpty ? nil : additionalContext,
             raceDistance: raceDistance.isEmpty ? nil : raceDistance,
-            raceName: raceName.trimmingCharacters(in: .whitespaces).isEmpty ? nil : raceName
+            raceName: raceName.trimmingCharacters(in: .whitespaces).isEmpty ? nil : raceName,
+            userProfile: GearParams.profileContext(user),
+            activePlanContext: GearParams.planContext(activePlan)
         )
 
         do {
