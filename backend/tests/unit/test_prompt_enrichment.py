@@ -55,6 +55,8 @@ def test_get_user_activity_ceiling_empty():
 def test_get_recent_readiness_summary_optimal():
     row1 = MagicMock(
         metric_date=datetime.date(2026, 3, 7),
+        source_provider="coros",
+        sleep_minutes=None,
         resting_hr=48,
         hrv_ms=65.0,
         hrv_status="Balanced",
@@ -63,6 +65,8 @@ def test_get_recent_readiness_summary_optimal():
     )
     row2 = MagicMock(
         metric_date=datetime.date(2026, 3, 6),
+        source_provider="coros",
+        sleep_minutes=None,
         resting_hr=50,
         hrv_ms=60.0,
         hrv_status="Balanced",
@@ -91,6 +95,8 @@ def test_get_recent_readiness_summary_overreaching_and_fatigued():
     # Overreaching: load_ratio > 1.4
     row_over = MagicMock(
         metric_date=datetime.date(2026, 3, 7),
+        source_provider="coros",
+        sleep_minutes=None,
         resting_hr=55,
         hrv_ms=45.0,
         hrv_status="Balanced",
@@ -108,6 +114,8 @@ def test_get_recent_readiness_summary_overreaching_and_fatigued():
     # Fatigued: low recovery (< 45) or low HRV status
     row_fatigued = MagicMock(
         metric_date=datetime.date(2026, 3, 7),
+        source_provider="coros",
+        sleep_minutes=None,
         resting_hr=58,
         hrv_ms=30.0,
         hrv_status="Low",
