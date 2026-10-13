@@ -420,15 +420,16 @@ class OnboardingRequest(BaseModel):
     # Step 2
     goal_type: str  # race|distance|start_running|return|recovery
     # Fitness
-    aet_hr: int | None = None
+    aet_hr: int | None = Field(None, ge=80, le=220)
     # How the stored AeT/AnT pair was obtained. Only "lab"/"field" let the gap count
     # toward the tier; None keeps whatever the athlete already had.
     threshold_source: Literal["lab", "field", "estimated", "unknown"] | None = None
-    ant_hr: int | None = None
-    max_hr: int | None = None
-    resting_hr: int | None = None
-    zone2_pace_min: str | None = None
-    zone2_pace_max: str | None = None
+    ant_hr: int | None = Field(None, ge=90, le=225)
+    max_hr: int | None = Field(None, ge=120, le=240)
+    resting_hr: int | None = Field(None, ge=30, le=120)
+    zone2_pace_min: str | None = Field(None, pattern=r"^\d{1,2}:[0-5]\d$")
+    zone2_pace_max: str | None = Field(None, pattern=r"^\d{1,2}:[0-5]\d$")
+    threshold_pace: str | None = Field(None, pattern=r"^\d{1,2}:[0-5]\d$")
     # Injury
     injury_history: str | None = None
     # Race / distance target
@@ -631,13 +632,23 @@ def _profile_field_sources(user: dict[str, Any]) -> dict[str, dict[str, Any]]:
     the athlete (column has a value) or an app default (column is NULL, so the
     response shows a fallback)."""
     recorded = user.get("profile_field_sources") or {}
+    seed_hr = {"max_hr": 185, "resting_hr": 60, "aet_hr": 135, "ant_hr": 165}
+    unconfirmed_seed = (
+        not user.get("onboarding_complete", True)
+        and (user.get("threshold_source") or "unknown") == "unknown"
+        and all(user.get(field) == value for field, value in seed_hr.items())
+    )
+    seed_zones = {**seed_hr, "zone2_pace_min": "6:30", "zone2_pace_max": "5:45"}
     out: dict[str, dict[str, Any]] = {}
     for field in COACH_EDITABLE_PROFILE_FIELDS:
         entry = recorded.get(field)
         if entry and entry.get("source") == "coach":
             out[field] = {"source": "coach", "by_name": entry.get("by_name"), "at": entry.get("at")}
         else:
-            out[field] = {"source": "athlete" if user.get(field) not in (None, "") else "default"}
+            is_default = user.get(field) in (None, "") or (
+                unconfirmed_seed and field in seed_zones and user.get(field) == seed_zones[field]
+            )
+            out[field] = {"source": "default" if is_default else "athlete"}
         if field in ("aet_hr", "ant_hr"):
             # lab | field | estimated | unknown -- the athlete's own answer to
             # "How did you get your AeT/AnT?"
@@ -1089,19 +1100,42 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
     import asyncio
     from datetime import date, timedelta
 
+    supplied_zones = request.model_dump(exclude_none=True)
+    _validate_hr_order(supplied_zones)
+    _validate_pace_order(supplied_zones)
+    if (
+        request.threshold_pace
+        and request.zone2_pace_min
+        and _pace_seconds(request.threshold_pace) >= _pace_seconds(request.zone2_pace_min)
+    ):
+        raise HTTPException(status_code=422, detail="Threshold pace must be faster than Zone 2.")
+    if request.threshold_source in ("lab", "field") and (request.aet_hr is None or request.ant_hr is None):
+        raise HTTPException(status_code=422, detail="Measured thresholds require both AeT and AnT.")
+    for field in ("zone2_pace_min", "zone2_pace_max", "threshold_pace"):
+        if supplied_zones.get(field) and _pace_seconds(supplied_zones[field]) == 0:
+            raise HTTPException(status_code=422, detail="Pace must be greater than zero.")
     today = date.today()
     age = _compute_age(request.dob, request.age or user.get("age", 30), today)
 
     # Estimate HR zones from age if not provided
-    max_hr = request.max_hr or (220 - age)
-    aet_hr = request.aet_hr or round(max_hr * 0.73)
-    ant_hr = request.ant_hr or round(max_hr * 0.89)
-    resting_hr = request.resting_hr or 60
+    # Keep supplied anchors and place unknown estimates around them in order.
+    max_hr = request.max_hr or max(220 - age, (request.ant_hr or 0) + 1, (request.aet_hr or 0) + 2)
+    aet_hr = request.aet_hr or min(
+        max(round(max_hr * 0.73), (request.resting_hr or 0) + 1), (request.ant_hr or max_hr) - 1
+    )
+    ant_hr = request.ant_hr or max(round(max_hr * 0.89), aet_hr + 1)
+    resting_hr = request.resting_hr or min(60, aet_hr - 1)
+    _validate_hr_order({"resting_hr": resting_hr, "aet_hr": aet_hr, "ant_hr": ant_hr, "max_hr": max_hr})
 
     # Zone 2 defaults come from the athlete's tier, not from a literal repeated per
     # call site. The old form also treated an explicit "6:30" as "unset" and silently
     # replaced it, so a beginner who genuinely measured 6:30 could not keep it.
     zone2_min, zone2_max = resolve_zone2_pace(request.zone2_pace_min, request.zone2_pace_max, request.goal_type)
+
+    if request.zone2_pace_min is None and request.zone2_pace_max is not None:
+        zone2_min = request.zone2_pace_max if _pace_seconds(zone2_min) < _pace_seconds(zone2_max) else zone2_min
+    if request.zone2_pace_max is None and request.zone2_pace_min is not None:
+        zone2_max = request.zone2_pace_min if _pace_seconds(zone2_max) > _pace_seconds(zone2_min) else zone2_max
 
     use_treadmill = request.use_treadmill if request.use_treadmill is not None else bool(request.has_gym_access)
 
@@ -1124,6 +1158,7 @@ async def complete_onboarding(request: OnboardingRequest, user: dict[str, Any] =
         "zone2_pace_min": zone2_min,
         "zone2_pace_max": zone2_max,
         "threshold_source": request.threshold_source,
+        "threshold_pace": request.threshold_pace,
     }
     update_onboarding_profile(user["id"], onboarding_data)
 

@@ -62,7 +62,7 @@ enum TrainingEnvironment: String, CaseIterable, Sendable {
 
 enum SetupStep: Equatable, Sendable {
     case goal, details, raceDate, raceGoal, fitnessFeel, daysSinceRace, recoveryFeel
-    case schedule, venues, body, raceHistory, startDate, review
+    case schedule, venues, body, trainingZones, raceHistory, startDate, review
 
     /// Body and race history are profile answers, asked once at onboarding and edited in Profile afterwards.
     static func steps(for goal: SetupGoal?, includeProfile: Bool) -> [SetupStep] {
@@ -74,14 +74,14 @@ enum SetupStep: Equatable, Sendable {
         case .recovery: questions = [.details, .daysSinceRace, .recoveryFeel]
         case .startRunning: questions = []
         }
-        let profile: [SetupStep] = includeProfile ? [.body, .raceHistory] : []
+        let profile: [SetupStep] = includeProfile ? [.body, .trainingZones, .raceHistory] : []
         return [.goal] + questions + [.schedule, .venues] + profile + [.startDate, .review]
     }
 }
 
 enum SetupField: Hashable, Sendable {
     case goal, raceName, raceDate, distance, targetTime, timeAway, fitnessFeel, raceCompleted, daysSinceRace, recoveryFeel
-    case preferredDays, longRunDay, weeklyKm, startDate, height, weight, maxHr, restingHr
+    case preferredDays, longRunDay, weeklyKm, startDate, height, weight, maxHr, restingHr, trainingZones
 }
 
 struct SetupIssue: Equatable, Sendable {
@@ -134,7 +134,7 @@ struct PlanSetupDraft: Equatable, Sendable {
     var daysPerWeek = 4
     var preferredDays: Set<Weekday> = [.tuesday, .thursday, .saturday, .sunday]
     var longRunDay: Weekday = .saturday
-    var currentWeeklyKm: Double = 30
+    var currentWeeklyKm: Double? = 30
     var environment: TrainingEnvironment = .flat
     var mountainDays: Set<Weekday> = []
     var stairAccess = false
@@ -150,6 +150,12 @@ struct PlanSetupDraft: Equatable, Sendable {
     var weightKg: Double?
     var maxHr: Int?
     var restingHr: Int?
+    var aetHr: Int?
+    var antHr: Int?
+    var thresholdSource = "unknown"
+    var zone2PaceMin = ""
+    var zone2PaceMax = ""
+    var thresholdPace = ""
     var injuryHistory = ""
     var notes = ""
 
@@ -158,7 +164,9 @@ struct PlanSetupDraft: Equatable, Sendable {
         startDate = calendar.startOfDay(for: today)
         guard let user else { return }
         if let days = user.daysPerWeek, (3...7).contains(days) { daysPerWeek = days }
-        if let km = user.currentWeeklyKm { currentWeeklyKm = km }
+        if let km = user.currentWeeklyKm {
+            currentWeeklyKm = !user.onboardingComplete && user.goalType == nil && km == 30 ? nil : km
+        }
         if let data = user.preferredRunDays?.data(using: .utf8),
            let names = try? JSONDecoder().decode([String].self, from: data) {
             let days = Set(names.compactMap(Weekday.init(rawValue:)))
@@ -169,8 +177,14 @@ struct PlanSetupDraft: Equatable, Sendable {
         if !preferredDays.contains(longRunDay) { longRunDay = preferredDays.contains(.saturday) ? .saturday : orderedDays.last! }
         heightCm = user.heightCm
         weightKg = user.weightKg
-        maxHr = user.maxHr
-        restingHr = user.restingHr
+        maxHr = user.fieldSources?["max_hr"]?.source == "default" ? nil : user.maxHr
+        restingHr = user.fieldSources?["resting_hr"]?.source == "default" ? nil : user.restingHr
+        aetHr = user.fieldSources?["aet_hr"]?.source == "default" ? nil : user.aetHr
+        antHr = user.fieldSources?["ant_hr"]?.source == "default" ? nil : user.antHr
+        thresholdSource = user.fieldSources?["aet_hr"]?.method ?? "unknown"
+        zone2PaceMin = user.fieldSources?["zone2_pace_min"]?.source == "default" ? "" : (user.zone2PaceMin ?? "")
+        zone2PaceMax = user.fieldSources?["zone2_pace_max"]?.source == "default" ? "" : (user.zone2PaceMax ?? "")
+        thresholdPace = user.fieldSources?["threshold_pace"]?.source == "default" ? "" : (user.thresholdPace ?? "")
         gender = user.gender
         birthDate = PlanCalendar.day(from: user.dob, calendar: calendar)
         injuryHistory = user.injuryHistory ?? ""
@@ -222,21 +236,69 @@ struct PlanSetupDraft: Equatable, Sendable {
                 add(.raceDate, L("Pick a date at least 2 weeks away so the plan has room to build."))
             }
         case .raceGoal:
-            if raceGoal == .time, !(30...6000).contains(targetMinutes ?? 0) {
+            if raceGoal == .time, !(1...6000).contains(targetMinutes ?? 0) {
                 add(.targetTime, L("Set your target finish time."))
             }
         case .schedule:
             if preferredDays.count != daysPerWeek {
                 add(.preferredDays, L("Pick %lld run days.", daysPerWeek))
             }
-            if !(0...250).contains(currentWeeklyKm) { add(.weeklyKm, L("Enter 0 to 250 km.")) }
+            if currentWeeklyKm == nil || !(0...250).contains(currentWeeklyKm ?? -1) { add(.weeklyKm, L("Enter 0 to 250 km.")) }
+        case .trainingZones:
+            if let error = trainingZonesError { add(.trainingZones, error) }
         case .startDate:
-            let latest = calendar.date(byAdding: .day, value: 14, to: start)!
-            if !(start...latest).contains(calendar.startOfDay(for: startDate)) { add(.startDate, L("Start today or later.")) }
+            let latest = latestStartDate(today: start, calendar: calendar)
+            if !(start...latest).contains(calendar.startOfDay(for: startDate)) {
+                add(.startDate, goal?.isEvent == true ? L("Start at least 2 weeks before your goal date.") : L("Start today or later."))
+            }
         case .venues, .body, .raceHistory, .fitnessFeel, .daysSinceRace, .recoveryFeel, .review:
             break
         }
         return issues
+    }
+
+    func latestStartDate(today: Date, calendar: Calendar) -> Date {
+        let start = calendar.startOfDay(for: today)
+        let latest = calendar.date(byAdding: .day, value: 14, to: start)!
+        guard goal?.isEvent == true, let raceDate else { return latest }
+        return max(start, min(latest, calendar.date(byAdding: .day, value: -14, to: raceDate)!))
+    }
+
+    var hasTrainingZones: Bool {
+        maxHr != nil || restingHr != nil || aetHr != nil || antHr != nil || [zone2PaceMin, zone2PaceMax, thresholdPace].contains { nonEmpty($0) != nil }
+    }
+
+    var needsZoneEstimateWarning: Bool {
+        !hasTrainingZones || maxHr == nil || restingHr == nil || aetHr == nil || antHr == nil || thresholdSource == "unknown"
+    }
+
+    var trainingZonesError: String? {
+        if let maxHr, !(120...240).contains(maxHr) { return L("Enter Max HR between 120 and 240 bpm.") }
+        if let restingHr, !(30...120).contains(restingHr) { return L("Enter Resting HR between 30 and 120 bpm.") }
+        if let aetHr, !(80...220).contains(aetHr) { return L("Enter AeT between 80 and 220 bpm.") }
+        if let antHr, !(90...225).contains(antHr) { return L("Enter AnT between 90 and 225 bpm.") }
+        let known = [restingHr, aetHr, antHr, maxHr].compactMap { $0 }
+        if zip(known, known.dropFirst()).contains(where: { $0 >= $1 }) {
+            return L("Heart rates must increase from Resting to AeT to AnT to Max.")
+        }
+        let paces = [zone2PaceMin, zone2PaceMax, thresholdPace].map { nonEmpty($0) }
+        for pace in paces.compactMap({ $0 }) {
+            if pace.range(of: #"^\d{1,2}:[0-5]\d$"#, options: .regularExpression) == nil || paceSeconds(pace) == 0 {
+                return L("Enter pace as m:ss per km, for example 6:30.")
+            }
+        }
+        if let slow = paces[0], let fast = paces[1], paceSeconds(slow) < paceSeconds(fast) {
+            return L("Easy pace, slower end must be slower than the faster end.")
+        }
+        if let threshold = paces[2], paces.prefix(2).compactMap({ $0 }).contains(where: { paceSeconds(threshold) >= paceSeconds($0) }) {
+            return L("Threshold pace must be faster than easy pace.")
+        }
+        return nil
+    }
+
+    private func paceSeconds(_ pace: String) -> Int {
+        let parts = pace.split(separator: ":").compactMap { Int($0) }
+        return parts.count == 2 ? parts[0] * 60 + parts[1] : 0
     }
 
     // MARK: Request bodies
@@ -244,7 +306,7 @@ struct PlanSetupDraft: Equatable, Sendable {
     private var trimmedName: String { raceName.trimmingCharacters(in: .whitespacesAndNewlines) }
     private var eventName: String? {
         guard goal?.isEvent == true else { return nil }
-        if !trimmedName.isEmpty { return trimmedName }
+        if goal == .race, !trimmedName.isEmpty { return trimmedName }
         guard let km = distanceKm else { return nil }
         return km.formatted(.number.precision(.fractionLength(0...1)).locale(Locale(identifier: "en_US_POSIX"))) + " km goal"
     }
@@ -270,6 +332,12 @@ struct PlanSetupDraft: Equatable, Sendable {
             goalType: goal?.rawValue ?? SetupGoal.startRunning.rawValue,
             maxHr: maxHr,
             restingHr: restingHr,
+            aetHr: aetHr,
+            antHr: antHr,
+            thresholdSource: aetHr != nil && antHr != nil ? thresholdSource : "unknown",
+            zone2PaceMin: nonEmpty(zone2PaceMin),
+            zone2PaceMax: nonEmpty(zone2PaceMax),
+            thresholdPace: nonEmpty(thresholdPace),
             injuryHistory: nonEmpty(injuryHistory),
             raceName: event ? eventName : nil,
             raceDate: event ? raceDate.map { PlanCalendar.ymd($0, calendar: calendar) } : nil,
@@ -281,7 +349,7 @@ struct PlanSetupDraft: Equatable, Sendable {
             daysPerWeek: daysPerWeek,
             preferredRunDays: requestDays.map(\.rawValue),
             longRunDay: requestLongRunDay.rawValue,
-            currentWeeklyKm: currentWeeklyKm,
+            currentWeeklyKm: currentWeeklyKm ?? 0,
             hasGymAccess: hasGymAccess,
             useTreadmill: useTreadmill,
             trainingEnvironment: environment.rawValue,
@@ -307,7 +375,7 @@ struct PlanSetupDraft: Equatable, Sendable {
             raceName: event ? eventName : nil,
             raceDate: event ? raceDate.map { PlanCalendar.ymd($0, calendar: calendar) } : nil,
             goalType: event ? raceGoal.rawValue : (goal ?? .startRunning).rawValue,
-            currentWeeklyKm: currentWeeklyKm,
+            currentWeeklyKm: currentWeeklyKm ?? 0,
             targetTimeHours: (event && raceGoal == .time) ? targetMinutes.map { Double($0) / 60 } : nil,
             terrain: terrain.rawValue,
             courseDistanceKm: event ? distanceKm : nil,
@@ -357,7 +425,7 @@ struct PlanSetupDraft: Equatable, Sendable {
             items.append((goal.title, .goal))
         }
         items.append((L("%lld runs a week, long run on %@", daysPerWeek, L(longRunDay.rawValue)), .schedule))
-        items.append((L("Starting from %lld km a week", Int(currentWeeklyKm.rounded())), .schedule))
+        if let currentWeeklyKm { items.append((L("Starting from %lld km a week", Int(currentWeeklyKm.rounded())), .schedule)) }
         items.append((L("Terrain near home: %@", environment.title), .venues))
         if hasGymAccess { items.append((L("Gym access"), .venues)) }
         if useTreadmill { items.append((L("Treadmill up to %lld%%", treadmillMaxIncline), .venues)) }
@@ -368,6 +436,11 @@ struct PlanSetupDraft: Equatable, Sendable {
         if !doubleSessionDays.isEmpty {
             items.append((L("Double sessions: %@", Weekday.allCases.filter(doubleSessionDays.contains).map { L($0.short) }.joined(separator: ", ")), .schedule))
         }
+        if let aetHr { items.append((L("AeT: %lld bpm", aetHr), .trainingZones)) }
+        if let antHr { items.append((L("AnT: %lld bpm", antHr), .trainingZones)) }
+        if let pace = nonEmpty(zone2PaceMin) { items.append((L("Easy pace, slower end: %@ /km", pace), .trainingZones)) }
+        if let pace = nonEmpty(zone2PaceMax) { items.append((L("Easy pace, faster end: %@ /km", pace), .trainingZones)) }
+        if let pace = nonEmpty(thresholdPace) { items.append((L("Threshold pace: %@ /km", pace), .trainingZones)) }
         return items
     }
 
@@ -390,6 +463,12 @@ struct OnboardingBody: Encodable, Sendable {
     var goalType: String
     var maxHr: Int?
     var restingHr: Int?
+    var aetHr: Int?
+    var antHr: Int?
+    var thresholdSource: String?
+    var zone2PaceMin: String?
+    var zone2PaceMax: String?
+    var thresholdPace: String?
     var injuryHistory: String?
     var raceName: String?
     var raceDate: String?

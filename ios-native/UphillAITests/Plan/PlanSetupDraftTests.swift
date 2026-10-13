@@ -41,7 +41,7 @@ struct PlanSetupDraftTests {
     @Test func onlyRequiredAnswersBuildBothBodies() throws {
         var d = PlanSetupDraft(prefill: nil, today: today, calendar: cal)
         d.goal = .startRunning
-        d.maxHr = 250
+        d.maxHr = 190
         d.heightCm = 90
         for step in SetupStep.steps(for: .startRunning, includeProfile: true) {
             #expect(d.issues(for: step, today: today, calendar: cal).isEmpty)
@@ -61,10 +61,10 @@ struct PlanSetupDraftTests {
     @Test func stepsDependOnGoal() {
         #expect(SetupStep.steps(for: nil, includeProfile: true) == [.goal])
         #expect(SetupStep.steps(for: .race, includeProfile: true)
-                == [.goal, .details, .raceDate, .raceGoal, .schedule, .venues, .body, .raceHistory, .startDate, .review])
+                == [.goal, .details, .raceDate, .raceGoal, .schedule, .venues, .body, .trainingZones, .raceHistory, .startDate, .review])
         #expect(SetupStep.steps(for: .race, includeProfile: false)
                 == [.goal, .details, .raceDate, .raceGoal, .schedule, .venues, .startDate, .review])
-        #expect(SetupStep.steps(for: .startRunning, includeProfile: true) == [.goal, .schedule, .venues, .body, .raceHistory, .startDate, .review])
+        #expect(SetupStep.steps(for: .startRunning, includeProfile: true) == [.goal, .schedule, .venues, .body, .trainingZones, .raceHistory, .startDate, .review])
         #expect(SetupStep.steps(for: .returning, includeProfile: false) == [.goal, .details, .fitnessFeel, .schedule, .venues, .startDate, .review])
     }
 
@@ -227,4 +227,84 @@ struct PlanSetupDraftTests {
             #expect(body["stair_access"] as? Bool == true)
         }
     }
+    @Test func trainingZonesAreOptionalAndEncodeKnownValues() throws {
+        var d = raceDraft()
+        #expect(d.issues(for: .trainingZones, today: today, calendar: cal).isEmpty)
+        var body = try encoded(d.onboardingBody(skipPlan: false, calendar: cal))
+        #expect(body["aet_hr"] == nil && body["threshold_pace"] == nil)
+        d.aetHr = 145; d.antHr = 170; d.thresholdSource = "field"
+        d.zone2PaceMin = " 6:40 "; d.zone2PaceMax = "5:50"; d.thresholdPace = "4:45"
+        body = try encoded(d.onboardingBody(skipPlan: false, calendar: cal))
+        #expect(body["aet_hr"] as? Int == 145)
+        #expect(body["ant_hr"] as? Int == 170)
+        #expect(body["threshold_source"] as? String == "field")
+        #expect(body["zone2_pace_min"] as? String == "6:40")
+        #expect(body["threshold_pace"] as? String == "4:45")
+        d.antHr = nil
+        body = try encoded(d.onboardingBody(skipPlan: false, calendar: cal))
+        #expect(body["threshold_source"] as? String == "unknown")
+    }
+
+    @Test func trainingZonesRejectMalformedAndReversedValues() {
+        var d = raceDraft()
+        d.aetHr = 175; d.antHr = 160
+        #expect(d.trainingZonesError != nil)
+        d.aetHr = 145; d.antHr = 170
+        d.zone2PaceMin = "6:99"
+        #expect(d.trainingZonesError != nil)
+        d.zone2PaceMin = "5:30"; d.zone2PaceMax = "6:30"
+        #expect(d.trainingZonesError != nil)
+        d.zone2PaceMin = "6:30"; d.zone2PaceMax = "5:30"; d.thresholdPace = "6:00"
+        #expect(d.trainingZonesError != nil)
+        d.thresholdPace = "4:45"
+        #expect(d.trainingZonesError == nil)
+    }
+
+    @Test func trainingZonesPrefillFromSavedProfile() throws {
+        let fixture = try Fixture.data("auth_me.json")
+        var values = try #require(JSONSerialization.jsonObject(with: fixture) as? [String: Any])
+        values["aet_hr"] = 145; values["ant_hr"] = 170
+        values["zone2_pace_min"] = "6:40"; values["zone2_pace_max"] = "5:50"; values["threshold_pace"] = "4:45"
+        let user = try JSONCoding.decoder.decode(User.self, from: JSONSerialization.data(withJSONObject: values))
+        let d = PlanSetupDraft(prefill: user, today: today, calendar: cal)
+        #expect(d.aetHr == 145 && d.antHr == 170)
+        #expect(d.zone2PaceMin == "6:40" && d.thresholdPace == "4:45")
+    }
+
+    @Test func appDefaultsAreNotPrefilledAsMeasurements() throws {
+        var values = try #require(JSONSerialization.jsonObject(with: Fixture.data("auth_me.json")) as? [String: Any])
+        values["aet_hr"] = 135; values["ant_hr"] = 165
+        values["zone2_pace_min"] = "6:30"; values["zone2_pace_max"] = "5:45"
+        values["field_sources"] = Dictionary(uniqueKeysWithValues:
+            ["max_hr", "resting_hr", "aet_hr", "ant_hr", "zone2_pace_min", "zone2_pace_max", "threshold_pace"].map { ($0, ["source": "default"]) })
+        let user = try JSONCoding.decoder.decode(User.self, from: JSONSerialization.data(withJSONObject: values))
+        let d = PlanSetupDraft(prefill: user, today: today, calendar: cal)
+        #expect(d.aetHr == nil && d.antHr == nil && d.maxHr == nil && d.restingHr == nil)
+        #expect(d.zone2PaceMin.isEmpty && d.zone2PaceMax.isEmpty)
+        #expect(d.needsZoneEstimateWarning)
+    }
+
+    @Test func shortRaceTargetsAndEventStartWindow() {
+        var d = raceDraft()
+        d.targetMinutes = 15
+        #expect(d.issues(for: .raceGoal, today: today, calendar: cal).isEmpty)
+        d.targetMinutes = 0
+        #expect(!d.issues(for: .raceGoal, today: today, calendar: cal).isEmpty)
+        d.raceDate = day("2026-10-21")
+        #expect(d.latestStartDate(today: today, calendar: cal) == today)
+        d.startDate = day("2026-10-08")
+        #expect(!d.issues(for: .startDate, today: today, calendar: cal).isEmpty)
+    }
+
+    @Test func missingVolumeMustBeAnsweredAndDistanceDoesNotReuseRaceName() {
+        var d = raceDraft()
+        d.currentWeeklyKm = nil
+        #expect(!d.issues(for: .schedule, today: today, calendar: cal).isEmpty)
+        d.currentWeeklyKm = 0
+        #expect(d.issues(for: .schedule, today: today, calendar: cal).isEmpty)
+        d.goal = .distance
+        d.distanceKm = 21
+        #expect(d.planBody(calendar: cal).raceName == "21 km goal")
+    }
+
 }

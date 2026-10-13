@@ -4,6 +4,7 @@ struct SetupSteps: View {
     @Bindable var model: PlanSetupViewModel
     @State private var showGoalDeterminer = false
     @State private var showLinkProfile = false
+    @State private var showZonesGuide = false
     @State private var includeBirthDate = false
 
     var body: some View {
@@ -34,8 +35,6 @@ struct SetupSteps: View {
                     goal("A distance", .distance, symbol: "point.topleft.down.to.point.bottomright.curvepath",
                          subtitle: "No race yet, like your first 21 km or 50 km.")
                     goal("Getting started", .startRunning, symbol: "figure.walk")
-                    goal("Coming back after a break", .returning, symbol: "arrow.uturn.forward")
-                    goal("Recovering from a race", .recovery, symbol: "bed.double")
                 }
             case .details:
                 details
@@ -104,6 +103,8 @@ struct SetupSteps: View {
                 venues
             case .body:
                 bodyStep
+            case .trainingZones:
+                trainingZones
             case .raceHistory:
                 raceHistory
             case .startDate:
@@ -150,6 +151,7 @@ struct SetupSteps: View {
                 }
             }
         }
+        .sheet(isPresented: $showZonesGuide) { WatchZonesGuideSheet() }
         .sheet(isPresented: $showLinkProfile) {
             if let service = model.raceHistoryService {
                 LinkProfileSheet(service: service) { model.linkedRaceHistory = true }
@@ -167,6 +169,7 @@ struct SetupSteps: View {
         case .raceGoal: L("A clear goal sets how hard your key sessions are.")
         case .schedule: L("Your first week starts close to what you already do.")
         case .venues: L("Hill sessions and strength work go where you can actually do them.")
+        case .trainingZones: L("Your thresholds and easy pace help set workout intensity.")
         case .body: L("Injury history sets how fast I add volume.")
         case .raceHistory: L("Past results tell me what you can already do.")
         case .startDate: L("Pick today or any day in the next two weeks.")
@@ -442,7 +445,7 @@ struct SetupSteps: View {
         VStack(alignment: .leading, spacing: UH.Space.compact) {
             Text("Running now").font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
             HStack(alignment: .center, spacing: 8) {
-                TextField("30", value: $model.draft.currentWeeklyKm, format: .number)
+                TextField("km", value: $model.draft.currentWeeklyKm, format: .number)
                     .keyboardType(.numberPad)
                     .font(.system(size: 32, weight: .bold, design: .rounded))
                     .foregroundStyle(UH.Palette.ink)
@@ -451,12 +454,16 @@ struct SetupSteps: View {
                     .font(UH.TextStyle.label)
                     .foregroundStyle(UH.Palette.secondary)
                 Spacer()
-                Stepper("Weekly km", value: $model.draft.currentWeeklyKm, in: 0...250, step: 5)
+                Stepper("Weekly km", value: Binding(get: { model.draft.currentWeeklyKm ?? 0 }, set: { model.draft.currentWeeklyKm = $0 }), in: 0...250, step: 5)
                     .labelsHidden()
             }
             Text("Your average over the last month. Your first week starts close to it.")
                 .font(UH.TextStyle.caption)
                 .foregroundStyle(UH.Palette.secondary)
+            Button("No running yet") { model.draft.currentWeeklyKm = 0 }
+                .font(UH.TextStyle.caption)
+                .tint(UH.Palette.accentInk)
+                .accessibilityIdentifier("setup.noRunning")
             SetupError(model: model, field: .weeklyKm)
         }
         .trainingCard()
@@ -525,18 +532,136 @@ struct SetupSteps: View {
             }
         }
 
-        VStack(alignment: .leading, spacing: UH.Space.regular) {
-            Text("Heart rate (optional)").font(UH.TextStyle.label).foregroundStyle(UH.Palette.ink)
-            HStack(alignment: .top, spacing: UH.Space.small) {
-                hrField("Max", placeholder: "185", value: $model.draft.maxHr)
-                hrField("Resting", placeholder: "55", value: $model.draft.restingHr)
-            }
-            Text("Leave blank if you don't know. You can add training zones in Profile later.")
-                .font(UH.TextStyle.caption)
-                .foregroundStyle(UH.Palette.secondary)
-        }
-        .trainingCard()
         optionalProfile
+    }
+
+    @ViewBuilder private var trainingZones: some View {
+        Text("Set your training zones").font(UH.TextStyle.screenTitle)
+        Text("Optional. Add values you know; leave the rest blank. You can update them in Profile later.")
+            .font(UH.TextStyle.body).foregroundStyle(UH.Palette.secondary)
+        Button { showZonesGuide = true } label: {
+            Label("Find values from your watch or a test", systemImage: "questionmark.circle")
+                .font(UH.TextStyle.label).frame(minHeight: 44, alignment: .leading)
+        }
+        .accessibilityIdentifier("setup.zonesGuide")
+        .tint(UH.Palette.accentInk)
+
+        Picker("Zone Category", selection: $model.showPaceInputs) {
+            Text("Heart Rate").tag(false)
+            Text("Paces").tag(true)
+        }
+        .pickerStyle(.segmented)
+        if !model.showPaceInputs {
+            VStack(alignment: .leading, spacing: UH.Space.regular) {
+                Text("Heart rate anchors").font(UH.TextStyle.label)
+                TrainingZoneBar(aetHr: model.draft.aetHr, antHr: model.draft.antHr,
+                                restingHr: model.draft.restingHr, maxHr: model.draft.maxHr)
+                HStack(alignment: .top, spacing: UH.Space.small) {
+                    hrField("Max", placeholder: L("Optional"), value: $model.draft.maxHr)
+                        .accessibilityIdentifier("setup.maxHr")
+                    hrField("Resting", placeholder: L("Optional"), value: $model.draft.restingHr)
+                        .accessibilityIdentifier("setup.restingHr")
+                }
+                hrField("Aerobic Threshold (AeT)", placeholder: L("Optional"), value: $model.draft.aetHr)
+                    .accessibilityIdentifier("setup.aetHr")
+                hrField("Anaerobic Threshold (AnT)", placeholder: L("Optional"), value: $model.draft.antHr)
+                    .accessibilityIdentifier("setup.antHr")
+                if model.draft.aetHr != nil || model.draft.antHr != nil {
+                    Text("How were these measured?").font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary)
+                    Menu {
+                        Button("Not sure") { model.draft.thresholdSource = "unknown" }
+                        Button("Watch estimate") { model.draft.thresholdSource = "estimated" }
+                        Button("Field test") { model.draft.thresholdSource = "field" }
+                        Button("Lab test") { model.draft.thresholdSource = "lab" }
+                    } label: {
+                        HStack {
+                            Text(thresholdSourceTitle).fixedSize(horizontal: false, vertical: true)
+                            Spacer()
+                            Image(systemName: "chevron.up.chevron.down")
+                        }
+                        .font(UH.TextStyle.label)
+                        .frame(minHeight: 44)
+                    }
+                    .tint(UH.Palette.accentInk)
+                    .accessibilityLabel("How were these measured?")
+                    .accessibilityValue(Text(thresholdSourceTitle))
+                    Text("Choose Field test or Lab test only when both thresholds were measured that way.")
+                        .font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary)
+                }
+        }
+            .trainingCard()
+        } else {
+            VStack(alignment: .leading, spacing: UH.Space.regular) {
+                Text("Running pace (min/km)").font(UH.TextStyle.label)
+                paceField("Easy pace, slower end", value: $model.draft.zone2PaceMin, identifier: "setup.easySlow")
+                paceField("Easy pace, faster end", value: $model.draft.zone2PaceMax, identifier: "setup.easyFast")
+                paceField("Threshold pace", value: $model.draft.thresholdPace, identifier: "setup.thresholdPace")
+                Text("Use flat-ground running pace, not your trail race average. Enter m:ss, for example 6:30.")
+                    .font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary)
+        }
+            .trainingCard()
+            paceZonePreview
+        }
+        SetupError(model: model, field: .trainingZones).id(SetupField.trainingZones)
+    }
+
+    private var paceZonePreview: some View {
+        let names = ["Zone 1 · Recovery", "Zone 2 · Easy / Aerobic", "Zone 3 · Tempo", "Zone 4 · Threshold", "Zone 5 · VO2max / Speed"]
+        let colors = ["#0ea5e9", "#10b981", "#f59e0b", "#f97316", "#ef4444"]
+        let ranges = OnboardingPacePreview.ranges(draft: model.draft)
+        return VStack(alignment: .leading, spacing: UH.Space.regular) {
+            Text("Pace zone preview").font(UH.TextStyle.label)
+            Text(ranges == nil ? L("Add Threshold Pace or both easy pace bounds to preview your zones.") : L("Estimated from your inputs. Threshold Pace takes priority over the easy pace range."))
+                .font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            ForEach(0..<5, id: \.self) { index in
+                VStack(alignment: .leading, spacing: UH.Space.compact) {
+                    ViewThatFits(in: .horizontal) {
+                        HStack {
+                            Text(L(names[index])).font(UH.TextStyle.caption.weight(.semibold))
+                            Spacer()
+                            Text(ranges.map { "\($0[index]) /km" } ?? "—").font(UH.TextStyle.caption.monospacedDigit())
+                        }
+                        VStack(alignment: .leading) {
+                            Text(L(names[index])).font(UH.TextStyle.caption.weight(.semibold))
+                            Text(ranges.map { "\($0[index]) /km" } ?? "—").font(UH.TextStyle.caption.monospacedDigit())
+                        }
+                    }
+                    GeometryReader { geometry in
+                        Capsule().fill(UH.Palette.line)
+                            .overlay(alignment: .leading) {
+                                Capsule().fill(Color(hex: colors[index]))
+                                    .frame(width: geometry.size.width * CGFloat(index + 1) / 5)
+                            }
+                    }.frame(height: 6).accessibilityHidden(true)
+                }
+            }
+        }.trainingCard()
+    }
+
+    private var thresholdSourceTitle: String {
+        switch model.draft.thresholdSource {
+        case "estimated": L("Watch estimate")
+        case "field": L("Field test")
+        case "lab": L("Lab test")
+        default: L("Not sure")
+        }
+    }
+
+    private func paceField(_ title: LocalizedStringKey, value: Binding<String>, identifier: String) -> some View {
+        VStack(alignment: .leading, spacing: UH.Space.compact) {
+            Text(title).font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary)
+            TextField(L("Optional"), text: value)
+                .font(.body.monospacedDigit())
+                .keyboardType(.numbersAndPunctuation)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .accessibilityIdentifier(identifier)
+                .accessibilityLabel(Text(title))
+                .padding(UH.Space.small)
+                .background(UH.Palette.surface, in: RoundedRectangle(cornerRadius: UH.Radius.control))
+                .overlay(RoundedRectangle(cornerRadius: UH.Radius.control).stroke(UH.Palette.line, lineWidth: 1))
+        }
     }
 
     @ViewBuilder private var optionalProfile: some View {
@@ -582,6 +707,7 @@ struct SetupSteps: View {
             Text(title).font(UH.TextStyle.caption).foregroundStyle(UH.Palette.secondary)
             HStack(spacing: 4) {
                 TextField(placeholder, value: value, format: .number)
+                    .accessibilityLabel(Text(title))
                     .keyboardType(.numberPad)
                     .font(.body.monospacedDigit())
                 Text("bpm").font(UH.TextStyle.caption).foregroundStyle(UH.Palette.muted)
@@ -665,7 +791,7 @@ private struct SetupReviewStep: View {
             Text("Here's what I'll build from").font(UH.TextStyle.screenTitle)
 
             VStack(alignment: .leading, spacing: 0) {
-                ForEach(Array(model.draft.summaryItems.enumerated()), id: \.offset) { index, item in
+                ForEach(Array(model.draft.summaryItems.filter { model.steps.contains($0.step) }.enumerated()), id: \.offset) { index, item in
                     if index > 0 { Divider() }
                     Button {
                         model.jump(to: item.step)

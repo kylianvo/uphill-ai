@@ -25,10 +25,10 @@ struct PlanSetupViewModelTests {
     @Test func raceAndNonRacePathsHaveSingleQuestionScreens() {
         let (model, _, _, _) = make(.onboarding)
         model.selectGoal(.race)
-        #expect(model.steps.count == 10)
+        #expect(model.steps.count == 11)
         model.back()
         model.selectGoal(.recovery)
-        #expect(model.steps == [.goal, .details, .daysSinceRace, .recoveryFeel, .schedule, .venues, .body, .raceHistory, .startDate, .review])
+        #expect(model.steps == [.goal, .details, .daysSinceRace, .recoveryFeel, .schedule, .venues, .body, .trainingZones, .raceHistory, .startDate, .review])
     }
 
     @Test func revisitingSetupKeepsAnEditedCourse() async {
@@ -128,7 +128,7 @@ struct PlanSetupViewModelTests {
         #expect(model.step == .goal)
         model.selectGoal(.startRunning)
         #expect(model.step == .schedule)
-        #expect(model.steps == [.goal, .schedule, .venues, .body, .raceHistory, .startDate, .review])
+        #expect(model.steps == [.goal, .schedule, .venues, .body, .trainingZones, .raceHistory, .startDate, .review])
         #expect(model.direction == .forward)
     }
 
@@ -234,7 +234,7 @@ struct PlanSetupViewModelTests {
         model.selectGoal(.race)
         #expect(model.draft.raceDate == model.earliestRaceDate)
         model.selectRaceGoal(.time)
-        #expect(model.draft.targetMinutes == 390)
+        #expect(model.draft.targetMinutes == nil)
     }
     @Test func reopenAtReviewKeepsAnswersAndAllowsResubmit() {
         let (model, _, _, _) = make(.newPlan)
@@ -245,4 +245,44 @@ struct PlanSetupViewModelTests {
         #expect(!model.didStart)
         #expect(model.draft.goal == .startRunning)
     }
+    @Test func unknownZonesNeedExplicitConfirmation() {
+        let (model, _, _, _) = make(.onboarding)
+        model.selectGoal(.startRunning)
+        model.jump(to: .trainingZones)
+        model.next()
+        #expect(model.step == .trainingZones)
+        #expect(model.showZoneEstimateWarning)
+        model.showZoneEstimateWarning = false // Review values keeps the step open.
+        #expect(model.step == .trainingZones)
+        model.next()
+        model.continueWithEstimatedZones()
+        #expect(!model.showZoneEstimateWarning && model.step == .raceHistory)
+    }
+
+    @Test func enteredThresholdsNeedTheirSource() {
+        let (model, _, _, _) = make(.onboarding)
+        model.selectGoal(.startRunning)
+        model.jump(to: .trainingZones)
+        model.draft.aetHr = 145; model.draft.antHr = 170
+        model.next()
+        #expect(model.showZoneEstimateWarning && model.step == .trainingZones)
+        model.showZoneEstimateWarning = false
+        model.draft.maxHr = 190; model.draft.restingHr = 55
+        model.draft.thresholdSource = "estimated"
+        model.next()
+        #expect(model.step == .raceHistory && !model.showZoneEstimateWarning)
+    }
+
+    @Test func submissionReturnsToMissingContext() async {
+        let (model, service, _, _) = make(.newPlan)
+        model.selectGoal(.startRunning)
+        model.draft.currentWeeklyKm = nil
+        model.jump(to: .review)
+        await model.submit()
+        #expect(model.step == .schedule)
+        #expect(model.showIssues)
+        #expect(!model.didStart)
+        #expect(!model.isSubmitting)
+    }
+
 }

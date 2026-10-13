@@ -2306,7 +2306,8 @@ def update_onboarding_profile(user_id: int, data: dict[str, Any]) -> bool:
                 ant_hr = :ant_hr,
                 zone2_pace_min = COALESCE(:zone2_pace_min, zone2_pace_min),
                 zone2_pace_max = COALESCE(:zone2_pace_max, zone2_pace_max),
-                threshold_source = COALESCE(:threshold_source, threshold_source)
+                threshold_source = COALESCE(:threshold_source, threshold_source),
+                threshold_pace = COALESCE(:threshold_pace, threshold_pace)
             WHERE id = :id
         """),
             {
@@ -2328,6 +2329,7 @@ def update_onboarding_profile(user_id: int, data: dict[str, Any]) -> bool:
                 "zone2_pace_min": data.get("zone2_pace_min"),
                 "zone2_pace_max": data.get("zone2_pace_max"),
                 "threshold_source": data.get("threshold_source"),
+                "threshold_pace": data.get("threshold_pace"),
                 "double_session_days": json.dumps(data.get("double_session_days", [])),
                 "id": user_id,
             },

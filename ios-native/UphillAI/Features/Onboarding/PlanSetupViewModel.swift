@@ -11,6 +11,8 @@ final class PlanSetupViewModel {
     private(set) var stepIndex = 0
     private(set) var direction: Direction = .forward
     private(set) var showIssues = false
+    var showZoneEstimateWarning = false
+    var showPaceInputs = false
     private(set) var isSubmitting = false
     private(set) var submitError: String?
     private(set) var didStart = false
@@ -66,6 +68,7 @@ final class PlanSetupViewModel {
     var isLastStep: Bool { step == .review }
     var primaryTitle: String {
         if isLastStep { return L("Build my plan") }
+        if step == .trainingZones, !draft.hasTrainingZones { return L("Skip for now") }
         if step == .raceHistory, !linkedRaceHistory { return L("Skip for now") }
         return L("Next")
     }
@@ -78,7 +81,7 @@ final class PlanSetupViewModel {
         issues.first { $0.field == field }?.message
     }
 
-    var latestStartDate: Date { calendar.date(byAdding: .day, value: 14, to: today)! }
+    var latestStartDate: Date { draft.latestStartDate(today: today, calendar: calendar) }
     var weeksToRace: Int { max(0, calendar.dateComponents([.day], from: today, to: draft.raceDate ?? earliestRaceDate).day ?? 0) / 7 }
 
     func searchRace() async {
@@ -150,7 +153,6 @@ final class PlanSetupViewModel {
 
     func selectRaceGoal(_ goal: RaceGoal) {
         draft.raceGoal = goal
-        if goal == .time, draft.targetMinutes == nil { draft.targetMinutes = 390 }
     }
 
     func next() {
@@ -158,6 +160,20 @@ final class PlanSetupViewModel {
             showIssues = true
             return
         }
+        if step == .trainingZones, draft.needsZoneEstimateWarning {
+            showZoneEstimateWarning = true
+            return
+        }
+        advance()
+    }
+
+    func continueWithEstimatedZones() {
+        showZoneEstimateWarning = false
+        guard step == .trainingZones, draft.trainingZonesError == nil else { return }
+        advance()
+    }
+
+    private func advance() {
         showIssues = false
         direction = .forward
         stepIndex = min(stepIndex + 1, steps.count - 1)
@@ -200,8 +216,17 @@ final class PlanSetupViewModel {
         }
     }
 
+    private func validate(_ steps: [SetupStep]) -> Bool {
+        for step in steps where !draft.issues(for: step, today: today, calendar: calendar).isEmpty {
+            jump(to: step)
+            showIssues = true
+            return false
+        }
+        return true
+    }
+
     func submit() async {
-        guard !isSubmitting else { return }
+        guard !isSubmitting, validate(steps) else { return }
         isSubmitting = true
         submitError = nil
         defer { isSubmitting = false }
@@ -227,7 +252,7 @@ final class PlanSetupViewModel {
     }
 
     func saveProfileOnly() async {
-        guard mode == .onboarding, !isSubmitting else { return }
+        guard mode == .onboarding, !isSubmitting, validate([.goal, .schedule, .body, .trainingZones]) else { return }
         isSubmitting = true
         submitError = nil
         defer { isSubmitting = false }

@@ -5,6 +5,7 @@ import UIKit
 
 /// Opt-in simulator captures of the real setup and weekly-action views with controlled test data.
 @MainActor
+@Suite(.serialized)
 struct SetupFlowScreenshots {
     private let outDir = ProcessInfo.processInfo.environment["SCREENSHOT_DIR"]
 
@@ -55,6 +56,45 @@ struct SetupFlowScreenshots {
         }
     }
 
+    @Test func renderOnboardingTrainingZones() async throws {
+        guard outDir != nil else { return }
+        let oldLanguage = UserDefaults.standard.string(forKey: AppLanguage.storageKey)
+        defer { UserDefaults.standard.set(oldLanguage, forKey: AppLanguage.storageKey) }
+        let service = FakeGenerationService()
+        let setup = PlanSetupViewModel(mode: .onboarding, user: nil, service: service,
+            generation: GenerationCenter(service: service, defaults: UserDefaults(suiteName: UUID().uuidString)!),
+            session: SessionStore(tokenStore: InMemoryTokenStore()))
+        setup.selectGoal(.race)
+        setup.jump(to: .trainingZones)
+        for language in [AppLanguage.en, .vi] {
+            UserDefaults.standard.set(language.rawValue, forKey: AppLanguage.storageKey)
+            try await capture(PlanSetupFlow(model: setup, onClose: {}).environment(\.locale, language.locale),
+                              name: "training-zones-empty-\(language.rawValue)", size: CGSize(width: 393, height: 1400))
+            setup.draft.maxHr = 190; setup.draft.restingHr = 55
+            setup.draft.aetHr = 145; setup.draft.antHr = 170; setup.draft.thresholdSource = "field"
+            setup.draft.zone2PaceMin = "6:40"; setup.draft.zone2PaceMax = "5:50"; setup.draft.thresholdPace = "4:45"
+            try await capture(PlanSetupFlow(model: setup, onClose: {}).environment(\.locale, language.locale),
+                              name: "training-zones-filled-\(language.rawValue)", size: CGSize(width: 393, height: 1600))
+            try await capture(PlanSetupFlow(model: setup, onClose: {}).environment(\.locale, language.locale),
+                              name: "training-zones-phone-\(language.rawValue)")
+            setup.showPaceInputs = true
+            try await capture(PlanSetupFlow(model: setup, onClose: {}).environment(\.locale, language.locale),
+                              name: "training-paces-filled-\(language.rawValue)", size: CGSize(width: 393, height: 1600))
+            try await capture(PlanSetupFlow(model: setup, onClose: {}).environment(\.locale, language.locale).dynamicTypeSize(.accessibility3),
+                              name: "training-paces-large-\(language.rawValue)", size: CGSize(width: 393, height: 2600))
+            setup.showPaceInputs = false
+            for method in [0, 1] {
+                try await capture(WatchZonesGuideSheet(method: method).environment(\.locale, language.locale),
+                                  name: "training-guide-\(method)-\(language.rawValue)", size: CGSize(width: 393, height: method == 0 ? 2700 : 1400))
+            }
+            try await capture(PlanSetupFlow(model: setup, onClose: {}).environment(\.locale, language.locale).dynamicTypeSize(.accessibility3),
+                              name: "training-zones-large-\(language.rawValue)", size: CGSize(width: 393, height: 2600))
+            setup.draft.maxHr = nil; setup.draft.restingHr = nil
+            setup.draft.aetHr = nil; setup.draft.antHr = nil
+            setup.draft.zone2PaceMin = ""; setup.draft.zone2PaceMax = ""; setup.draft.thresholdPace = ""
+        }
+    }
+
     @Test func renderSetupAndWeeklyActions() async throws {
         guard outDir != nil else { return }
         let oldLanguage = UserDefaults.standard.string(forKey: AppLanguage.storageKey)
@@ -76,9 +116,9 @@ struct SetupFlowScreenshots {
         setup.draft.environment = .hilly
         for language in [AppLanguage.en, .vi] {
             UserDefaults.standard.set(language.rawValue, forKey: AppLanguage.storageKey)
-            for (step, name) in [(SetupStep.details, "race"), (.raceGoal, "goal"), (.schedule, "week"), (.venues, "venues"), (.body, "body"), (.raceHistory, "history"), (.review, "review")] {
+            for (step, name) in [(SetupStep.goal, "choose-goal"), (.details, "race"), (.raceDate, "race-date"), (.raceGoal, "goal"), (.schedule, "week"), (.venues, "venues"), (.body, "body"), (.trainingZones, "training-zones"), (.raceHistory, "history"), (.startDate, "start-date"), (.review, "review")] {
                 setup.jump(to: step)
-                try await capture(PlanSetupFlow(model: setup, onClose: {}).environment(\.locale, language.locale), name: "setup-\(name)-\(language.rawValue)")
+                try await capture(PlanSetupFlow(model: setup, onClose: {}).environment(\.locale, language.locale), name: "setup-\(name)-\(language.rawValue)", size: CGSize(width: 393, height: 1600))
             }
             setup.jump(to: .schedule)
             try await capture(PlanSetupFlow(model: setup, onClose: {}).environment(\.locale, language.locale).dynamicTypeSize(.accessibility3), name: "setup-week-large-\(language.rawValue)", size: CGSize(width: 375, height: 812))
