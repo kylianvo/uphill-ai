@@ -178,6 +178,9 @@ class Config:
     # Hides Apple Health in the app (via /api/integrations/status) and 404s its sync
     # endpoint, without an app release.
     APPLE_HEALTH_ENABLED: bool = os.getenv("APPLE_HEALTH_ENABLED", "true").lower() != "false"
+    # Resting HR, HRV and sleep riding on the Apple Health sync. Off: the server ignores
+    # them and /status tells the app to stop reading them.
+    APPLE_HEALTH_RECOVERY_ENABLED: bool = os.getenv("APPLE_HEALTH_RECOVERY_ENABLED", "true").lower() != "false"
 
     # Where the OAuth callback redirects the athlete's browser after a COROS
     # connect attempt (success or failure) -- the static-export frontend, not the API.
